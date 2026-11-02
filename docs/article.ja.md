@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.md sha256=e52c7c4035e1d95a -->
+<!-- i18n: pair=article.md sha256=9d7dbb127cd391a9 -->
 # 本を書く（article.md）
 
 [English](article.md) | 日本語
@@ -85,7 +85,7 @@ HTML（上の表のほか）、ほかの指令と役割（`{note}` などの囲�
 
 ### 引用とライセンス
 
-引用は [citeproc-js](https://github.com/Juris-M/citeproc-js) で組みます（CPAL-1.0 で使います）。動くのは手元で組み立てるときと `pack` のときだけで、教材と Egatari ファイルに入るのは組んだ字だけです。citeproc で引用を組んだとき、組み立てと `pack` は帰属の表示を出します（英語のまま）。
+引用は [citeproc-js](https://github.com/Juris-M/citeproc-js) で組みます（CPAL-1.0 で使います）。動くのは手元で組み立てるときと `pack` のとき、それに文献を引く本を編集アプリが見せる・保存するときです（編集アプリは、そのときだけ手を加えていない citeproc のファイルを読み込みます）。教材と Egatari ファイルに入るのは組んだ字だけです。citeproc で引用を組んだとき、組み立てと `pack` は帰属の表示を出し、編集アプリは本の下に出します（英語のまま）。
 
 > Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/
 
@@ -97,4 +97,4 @@ HTML（上の表のほか）、ほかの指令と役割（`{note}` などの囲�
 
 ## Egatari ファイル
 
-`npm run portable -- pack <作業フォルダ>`（と `node kit/build.mjs <deck.html> --portable`）は本を Egatari ファイルに入れます。章のファイル・`references.json`・本の画像が中に入り、組んだ本はファイルの読める文の最後（`#egatari-article`）に入るので、スクリプトなしでも読めます。誤りのある本は書き出しません。先に点検の挙げたものを直します。id のない節には id を付け、作業フォルダにも書き戻します。`unpack` は同じファイルと、`egatari.json` の読む順を出します。編集アプリは台本と音声の直しを保存するとき本をそのまま残します。本の編集と、本のある作業フォルダの書き出しはまだできません。
+`npm run portable -- pack <作業フォルダ>`（と `node kit/build.mjs <deck.html> --portable`）は本を Egatari ファイルに入れます。章のファイル・`references.json`・本の画像が中に入り、組んだ本はファイルの読める文の最後（`#egatari-article`）に入るので、スクリプトなしでも読めます。誤りのある本は書き出しません。先に点検の挙げたものを直します。id のない節には id を付け、作業フォルダにも書き戻します。`unpack` は同じファイルと、`egatari.json` の読む順を出します。編集アプリは本を見せ、点検し、直し、印刷します（[編集アプリ](editor.ja.md#本下書き)）。本だけを直したときは本だけを組み直して Egatari ファイルを保存し、本のある作業フォルダも書き出せます。

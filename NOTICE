@@ -51,17 +51,25 @@ Book citations (format spec §9C.4) are formatted at build time by citeproc-js (
 https://github.com/Juris-M/citeproc-js, Copyright (c) 2009-2019 Frank Bennett). Its LICENSE offers the Common Public
 Attribution License 1.0 or any later version, or the GNU Affero General Public License 3.0 or any later version
 ("CPAL-1.0+ OR AGPL-3.0+"); Egatari Studio uses it under the CPAL-1.0 (text: https://opensource.org/licenses/CPAL-1.0
-and the file CPAL in the citeproc-js repository). citeproc is an unmodified dependency, installed by npm and loaded only
-by the command-line build (kit/build.mjs, when a book cites references). It is not included in the output: built
-lessons, single files (.ega.html) and the editor app carry only the formatted citation text, and this repository and
-the npm package egatari do not contain or bundle citeproc. The Attribution Information of its Exhibit B is:
+and the file CPAL in the citeproc-js repository). citeproc is an unmodified dependency, installed by npm and loaded by
+the command-line build (kit/build.mjs, when a book cites references) and by the editor app when it shows or saves a
+book that cites references. Built lessons and single files (.ega.html) carry only the formatted citation text, and
+this repository and the npm package egatari do not contain or bundle citeproc. The editor app does not bundle it in
+app.js: the hosted editor serves the npm file citeproc_commonjs.js unmodified, with its LICENSE and package.json, as
+vendor/citeproc/ next to the app, and loads it only for a book with references; the Offline editor (dist/editor.html)
+carries the same unmodified file text and runs it only then. The source of this Covered Code is that file itself
+(JavaScript as published on npm) and the citeproc-js repository. The Attribution Information of its Exhibit B is:
 "(c) Frank Bennett", "citeproc-js implements the Citation Style Language", https://citationstyles.org/.
 This attribution is displayed wherever citeproc runs behind something the user sees: the command-line build and
 pack print it ("Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style
-Language — https://citationstyles.org/") whenever citeproc formatted citations. The dev server preview builds the
-slides only and does not run citeproc. The editor app does not run citeproc yet; when it formats citations (book
-editing, v0.6.5 E4) it will show the same attribution. CPAL section 15 (network use) does not apply: Egatari Studio
-does not run builds as a hosted service, and the hosted editor app does not include citeproc.
+Language — https://citationstyles.org/") whenever citeproc formatted citations, and the editor app shows the same
+line under the book and in its Book panel whenever citeproc formatted the book's citations. The dev server preview
+builds the slides only and does not run citeproc. CPAL section 15 (network use): citeproc runs in the user's own
+browser, and the hosted editor makes the unmodified source available as served (vendor/citeproc/); Egatari Studio
+does not run builds as a hosted service.
+The editor app's book tools (dist/article-tools.js, loaded only for lessons with a book) bundle myst-parser,
+myst-transforms, myst-ext-proof, myst-ext-exercise (MIT, Executable Books) and their dependencies (markdown-it,
+unified, js-yaml, he and others; MIT, ISC or BSD licenses), and the CSL styles and locales of vendor/csl/.
 The citation styles and locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
 from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
 in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file

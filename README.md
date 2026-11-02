@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=5a63ac56a7957046 -->
+<!-- i18n: pair=README.ja.md sha256=36940c6c4d6630d1 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -170,7 +170,7 @@ The same editing as the dev server, as a web page that opens an Egatari file (`.
 - **Script audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the script changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with “Make AI voice on this computer” (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#script-audio-audio-panel)). In an Egatari file this is saved without rebuilding
 - **Work with an AI coding tool:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
-- **Toolbar:** File ▾ (New…, Open…, Save, Save as…, Export ▸ For participants (play-only)… / Print / PDF, File info…, Work in a folder…), Slide ▾ (Insert slide…, Duplicate, Delete, Revise…), Quality check (with a warning count), Preview ▾ (check as a slide show or as a video, show later steps faintly, or in presenter view with the script and the next step).
+- **Toolbar:** File ▾ (New…, Open…, Save, Save as…, Export ▸ For participants (play-only)… / Print slides / Print book (Print script without a book), File info…, Work in a folder…), Slide ▾ (Insert slide…, Duplicate, Delete, Revise…), Quality check (with a warning count), Preview ▾ (check as a slide show or as a video, show later steps faintly, or in presenter view with the script and the next step).
 
 Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the command quality checker) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The browser quality checker covers a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full quality check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository parts and themes are the ones bundled when the editor was built; parts and themes inside the working folder are read from the folder.
 

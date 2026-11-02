@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.ja.md sha256=b32b823219d1a923 -->
+<!-- i18n: pair=article.ja.md sha256=583fc6834d9cc306 -->
 # Writing a book (article.md)
 
 English | [日本語](article.ja.md)
@@ -85,7 +85,7 @@ A locator (`p. 3`, `3 頁`) is printed as you wrote it. Works in `references.jso
 
 ### Citations and licences
 
-Citations are formatted by [citeproc-js](https://github.com/Juris-M/citeproc-js), used under the CPAL-1.0. It runs only when you build or pack on your computer; lessons and Egatari files carry the formatted text, not citeproc. When it formats citations, the build and `pack` print its attribution:
+Citations are formatted by [citeproc-js](https://github.com/Juris-M/citeproc-js), used under the CPAL-1.0. It runs when you build or pack on your computer, and in the editor app when it shows or saves a book that cites references (the app loads the unmodified citeproc file only then); lessons and Egatari files carry the formatted text, not citeproc. When it formats citations, the build and `pack` print its attribution, and the editor app shows it under the book:
 
 > Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/
 
@@ -97,4 +97,4 @@ A slide and a section are linked when the slide's `data-article` names the secti
 
 ## The Egatari file
 
-`npm run portable -- pack <working folder>` (and `node kit/build.mjs <deck.html> --portable`) puts the book into the Egatari file: the chapter files, `references.json` and the book's images go into the archive, and the rendered book is the last part of the file's readable text (`#egatari-article`), so it can be read without script. A book with errors is not written; fix what the check lists first. Sections without an id get one, written back to the working folder. `unpack` gives back the same files and the reading order in `egatari.json`. The editor app keeps the book when it saves script and audio edits; it cannot yet edit the book or export a working folder that has one.
+`npm run portable -- pack <working folder>` (and `node kit/build.mjs <deck.html> --portable`) puts the book into the Egatari file: the chapter files, `references.json` and the book's images go into the archive, and the rendered book is the last part of the file's readable text (`#egatari-article`), so it can be read without script. A book with errors is not written; fix what the check lists first. Sections without an id get one, written back to the working folder. `unpack` gives back the same files and the reading order in `egatari.json`. The editor app shows, checks, edits and prints the book ([Editor app](editor.md#book-draft)); when only the book changed it saves an Egatari file by rebuilding the book alone, and it exports a working folder that has one.

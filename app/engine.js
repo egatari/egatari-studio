@@ -36,7 +36,10 @@ const dec = new TextDecoder();
 
 // res = {version, text: {path: 文字列}, b64: {path: base64}, lazy: [path…]}
 // loadLazy(path) → Promise<base64>：字の分割ファイル（配信版は fetch、1 ファイル版は同梱）
-export function createEngine(res, loadLazy, { renderAbc } = {}) {
+// article() → {tools, csl, steps} | null：本（format spec §9C）の道具（読み込んであれば。app/article-loader.js）。tools：本文の道具、
+//   csl：引用の書式（citeproc。文献を引く本だけ。なければ null）、steps(links) → Promise<{リンク → 行き先}>：本文のステップへのリンクの行き先（プレビューの再生器）。
+//   あれば書き出し（exportPortable）の env に articleTools・csl・articleSteps を入れる（本のある教材を作り直せる）
+export function createEngine(res, loadLazy, { renderAbc, article = null } = {}) {
   // The core remains synchronous. Collect score work, resolve it via RPC, then retry,
   // just as for missing files. Keep successes and failures for this build only.
   const scores = new Map(), pendingScores = new Map();
@@ -230,6 +233,15 @@ export function createEngine(res, loadLazy, { renderAbc } = {}) {
     };
     await Promise.all(Array.from({ length: Math.min(READ_CONCURRENCY, list.length) }, one));
   }
+  // 本の道具を env に入れる（読み込んでいなければ入れない：本のある教材は kit/core/portable.mjs が article-unsupported で断る）
+  const withArticle = (xenv) => {
+    const A = article ? article() : null;
+    if (!A || !A.tools) return null;
+    xenv.articleTools = async () => A.tools;
+    if (A.csl) xenv.csl = () => A.csl;
+    if (A.steps) xenv.articleSteps = (html, links) => A.steps(links);   // 書いた文書ではなく、同じ作業場所から組んだプレビューで確かめる
+    return A;
+  };
   const tallyOf = (opts) => ({ n: 0, max: (opts.limits && opts.limits.readChars) || BUILD_LIMITS.readChars });
   const liveOf = (opts) => () => !(opts.signal && opts.signal.aborted);
   // 一覧から消えたファイルの読んだ中身を捨てる
@@ -307,6 +319,7 @@ export function createEngine(res, loadLazy, { renderAbc } = {}) {
       await refreshThemes();
       const miss = new Set();
       const xenv = mkEnv(() => full, miss);
+      withArticle(xenv);
       const { signal, ...o } = opts;
       if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);
@@ -320,6 +333,53 @@ export function createEngine(res, loadLazy, { renderAbc } = {}) {
         await loadMissing(miss, full, tally, live);
       }
       throw new Error('could not read all files');
+    },
+    // 本（format spec §9C）：本文を読み、点検し、組む（kit/core/article-page.mjs の renderedArticle。書き出しと同じ組み方）。
+    // opts：lang・title（組んだデッキの <html lang> と <title>。書き出しと同じ）・themeCss（読むための頁の色）・uiLang（知らせの言葉 'ja' | 'en'）・checkSteps（false で確かめない）。
+    // 返すもの：本文がなければ null。あれば {html（<article id="egatari-article">）, page（読むための 1 枚の HTML）, problems: [{sev, code, text, file, line}],
+    //   index, files（本文のファイル）, citeproc（citeproc で組んだか）, links: {pairs, current, recorded, states}, sections: [{id, heading, file, line}], slides: [{key, id, title}]}
+    async article(file, opts = {}) {
+      const full = await ws.list();
+      const miss = new Set();
+      const xenv = mkEnv(() => full, miss);
+      const A = withArticle(xenv);
+      if (!A) throw Object.assign(new Error('the book tools are not loaded'), { code: 'article-unsupported' });
+      const T = A.tools, src = DECK + '/' + file;
+      const tally = tallyOf(opts), live = liveOf(opts);
+      const ro = { lang: opts.lang || '', title: opts.title || '' };
+      let R = null;
+      for (let i = 0; i < 40; i++) {
+        miss.clear();
+        let err = null;
+        try {
+          R = T.renderedArticle(xenv, src, ro);
+          // つながりの古さが読む口述原稿（kit/core/article-page.mjs の articleLinkReport）も、ここで読んでおく
+          if (R && R.L && R.L.rels && R.L.rels.includes('narration.md')) xenv.readText(DECK + '/narration.md');
+        } catch (e) { err = e; }
+        if (!miss.size) { if (err) throw err; break; }
+        await loadMissing(miss, full, tally, live);
+        R = null;
+      }
+      if (!R) return null;
+      const L = R.L, lang = opts.uiLang === 'en' ? 'en' : 'ja';
+      let problems = R.problems.slice();
+      if (L.index && opts.checkSteps !== false && A.steps) {
+        const links = T.stepLinksOf(L.article);
+        if (links.length) {
+          const res2 = await A.steps(links);
+          problems = problems.filter((x) => x.code !== 'articleStep');
+          problems.push(...T.validateArticle(L.article, { ...L.ctx, resolveStep: T.stepResolver(res2) }).problems.filter((x) => x.code === 'articleStep'));
+        }
+      }
+      const report = L.index ? await T.articleLinkReport(L) : null;
+      const page = L.index ? T.articlePageOf(xenv, R, { ...ro, themeCss: opts.themeCss || '' }) : null;
+      const sections = R.sections ? [...R.sections].map(([id, x]) => ({ id, heading: x.heading || '', file: x.file || null, line: x.line || null })) : [];
+      return {
+        html: R.html, page: page ? page.html : '', index: L.index, files: L.index ? T.articleFiles(L.index) : [], citeproc: !!R.citeproc,
+        problems: problems.map((p) => ({ sev: p.sev, code: p.code, file: p.file || null, line: p.line || null, text: T.articleMessage(lang, p) })),
+        links: report ? { pairs: report.pairs, current: report.current, recorded: report.recorded, states: report.states } : null,
+        sections, slides: [...(L.slides || new Map())].map(([key, x]) => ({ key, id: x.id || null, title: x.title || key })),
+      };
     },
   };
 }

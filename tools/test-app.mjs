@@ -576,7 +576,7 @@ try {
 
   // ---------------------------------------------------------------- 8. 書き出し（ui-redesign）：「組み立てた HTML」は編集アプリから外した（コマンドの node kit/build.mjs に残す）
   ok(await page.evaluate(() => !document.getElementById('b-export') && ![...document.querySelectorAll('#tools button')].some((b) => /組み立てた HTML|built HTML/i.test(b.textContent))), 'export: no “built HTML” export in the editor (CLI only)');
-  ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-print', 'export: File ▸ Export ▸ has For participants (play only)… and Print / PDF (folder)');
+  ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-print,b-print-book', 'export: File ▸ Export ▸ has For participants (play only)…, Print slides and Print script (folder without a book)');
 
   // ---------------------------------------------------------------- 8b. 授業の部屋を付けて配る（tools/test-app-live.mjs）
   await testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame: f, shot });
@@ -1598,7 +1598,7 @@ try {
           ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'true', `preview (${lang}): 先のステップを薄く見せる turns the option on (internal mode lecture); the slide show stays the chosen mode`);
           await clickCommand(pt, '#b-lecturemode');
         }
-        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '動画で確かめる', '先のステップを薄く見せる (l)', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
+        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.filter((x) => !x.hidden).map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '動画で確かめる', '先のステップを薄く見せる (l)', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
       }
       // 狭い幅では 2 行に折り返し、はみ出さない
       await pt.setViewportSize({ width: 900, height: 860 });

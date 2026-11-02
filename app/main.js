@@ -51,6 +51,8 @@ import { mountVersionUi } from './version-ui.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from './theme-zip.js';
 import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, deleteMyTheme } from './my-themes.js';
+import { createArticleLoader } from './article-loader.js';
+import { createBook } from './book.js';
 // プレビューの中の仲立ち：品質チェックの体裁の検査（kit/core/layout-scan.mjs。コマンド版と同じ関数）を渡す形に包む
 const SHIM = withLayoutScan(SHIM_SRC);
 
@@ -67,10 +69,13 @@ const loadLazy = async (p) => {
   if (!r.ok) throw new Error('font not found: ' + p);
   return bytesToBase64(new Uint8Array(await r.arrayBuffer()));
 };
-const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job) });
+// 本（format spec §9C。app/book.js）：本のある教材を開いたときにだけ、本の道具を読み込む（app/article-loader.js）
+const articleLoader = createArticleLoader(RES);
+let book = null;
+const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job), article: () => (book ? book.engineArticle() : null) });
 // 開いたデッキの組み立てと判定は Worker で（app/build-client.js。ページを固めず、期限を過ぎたら止める）。保存・書き出しの組み立ては
 // このページの engine で（確かめた後のデッキ。組み立ての上限は同じ）
-const builder = createBuildClient(RES, loadLazy);
+const builder = createBuildClient(RES, loadLazy, { steps: (links) => askSteps(links) });
 const buildTimeout = () => (window.__APP_TEST && window.__APP_TEST.buildTimeout) || BUILD_TIMEOUT_MS;
 // ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
 //   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, tierAOnly（段 A の編集だけ：理由か null）, rightsOk, extended,
@@ -200,6 +205,7 @@ function resetDeck(ws, portable) {
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
+  if (book) book.reset();
   engine.setWorkspace(ws);
   rec.reset();
   audio.reset();
@@ -508,6 +514,8 @@ async function rebuild(reason) {
         S.allowed = allow;
         if (allow && (changed || !S.loads || S.fresh)) refreshFrame();
         if (allow && changed && S.presWin && !S.presWin.closed) loadPresenter();
+        // 本（E2〜E4）：本文を組み直す（待たない。本文のステップへのリンクは読み込んだプレビューで確かめる）
+        book.refresh();
       } catch (e) {
         failed = true;
         // 選んだカタログにない要素（kit/core/parts2.mjs）：画面の言葉で、何をどう直すかだけを出す（コマンドの build・check と同じ言葉）
@@ -953,13 +961,18 @@ new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d
 window.addEventListener('message', (e) => {
   const m = e.data || {};
   const frame = $('preview').contentWindow;
+  if (book && book.message(e)) return;   // 本の枠（app/book.js）
   if (e.source === frame) {
     ui.message(e);
     // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
     if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
-    else if (m.type === 'app-check-result' && S.checks.has(m.id)) {
+    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result') && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
-      if (m.load === w.load && w.load === S.loads) { S.checks.delete(m.id); w.res(Array.isArray(m.results) ? m.results : []); }
+      if (m.load === w.load && w.load === S.loads) {
+        S.checks.delete(m.id);
+        if (m.type === 'app-steps-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
+        else w.res(Array.isArray(m.results) ? m.results : []);
+      }
     }
     else if (typeof m.type === 'string' && /^deck-/.test(m.type)) {
       // 読み込み直した直後の最初の位置（1 枚目）は、戻す位置に動くまで見ている位置にしない（server/editor-ui.js と同じ。スライド ▾ の対象・一覧の選択が 1 枚目に跳ばない）
@@ -1027,14 +1040,24 @@ $('panel-close').onclick = closePanel;
 // 読み込み中の iframe に送った頼みは前の文書に届いて消えるので、答えの来ないうちに読み込みが替わったら、新しい文書に送り直す
 // （答えは頼んだ読み込みのものだけを受け取る。期限は全体で 20 秒）
 const CHECK_MS = 20000;
-async function askCheck() {
+let askSeq = 0;
+const askCheck = () => askFrame('app-check');
+// 本文のステップへのリンクの行き先（format spec §9C.8 の 1）：今のプレビューの再生器で確かめる（kit/core/article.mjs の STEP_PROBE と同じ。
+// app/frame-shim.js の resolveSteps）。プレビューが答えなければ断る（本のある教材を書き出さない）
+async function askSteps(links) {
+  if (!links.length) return {};
+  const r = await askFrame('app-steps', { links });
+  if (!r) throw Object.assign(new Error(T.book.noPlayer), { code: 'article-unsupported' });
+  return r;
+}
+async function askFrame(type, extra = {}) {
   const t0 = Date.now(), tick = () => new Promise((r) => setTimeout(r, 50));
   while (Date.now() - t0 < CHECK_MS) {
     if (S.building || !S.allowed || !S.loads || S.frameLoaded !== S.loads) { await tick(); continue; }
-    const f = $('preview').contentWindow, load = S.loads, id = 'q' + Date.now() + '-' + load;
+    const f = $('preview').contentWindow, load = S.loads, id = 'q' + Date.now() + '-' + load + '-' + (++askSeq);
     if (!f) { await tick(); continue; }
     const got = new Promise((res) => S.checks.set(id, { res, load }));
-    f.postMessage({ type: 'app-check', id }, '*');
+    f.postMessage({ type, id, ...extra }, '*');
     for (;;) {
       const r = await Promise.race([got, tick().then(() => undefined)]);
       if (r !== undefined) return r;
@@ -1396,7 +1419,9 @@ async function openPortableNow(input) {
   // （contracts は {source} だけ。実行系の約束の版 contracts.runtime は 1.0 の形で外した：作り直しは再生器を替える。format spec §4.1・§7.1）
   {
     try {
-      const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index }, { timeout: buildTimeout() });
+      // 本のある教材（§9C）：本の道具を読み込んでから試す（読み込めなければ作り直せない：段 A だけ）。ステップへのリンクは試しでは確かめない
+      if (book.has(r.files)) await book.ensure(book.hasRefs(r.files));
+      const dry = await builder.exportIndex(S.ws, S.deckFile, { carry: r.index, checkSteps: false }, { timeout: buildTimeout() });
       const probs = registryProblems(r.index, dry.index, dry.registryEquivalent);
       if (probs.length) { P.tierAOnly = T.roRegistry(probs.join('; ')); P.tierAReg = true; }
       P.yankedRecorded = dry.yanked || [];
@@ -1406,7 +1431,8 @@ async function openPortableNow(input) {
       if (e.code === 'component-requires-missing') {
         P.requiresMissing = e.requiresMissing;
         P.tierAOnly = T.roRequiresMissing(P.requiresMissing);
-      } else P.readOnly = T.roBuild(buildErrorText(e) || String(e.message || e));
+      } else if (/^article-/.test(e.code || '')) P.tierAOnly = T.book.tierAOnly(String(e.message || e));   // 本の道具が読み込めない・本文に誤り：組み直さずに直せる所だけ
+      else P.readOnly = T.roBuild(buildErrorText(e) || String(e.message || e));
     }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
@@ -1578,8 +1604,21 @@ async function savePortableBound(mode) {
   }
   let html, index, deckMeta, tier, narrB = null;
   try {
-    const a = await tierA(P.original, files, { identity, fonts: engine.fonts });
+    let a = await tierA(P.original, files, { identity, fonts: engine.fonts });
     if (!live()) { cancelled(); return; }
+    // 本文を直した（§9C.1）：本文だけを組み直して入れる（スライドは組み直さない）。本文に誤り（§9C.8）があれば保存しない
+    if (!a.ok && a.code === 'article-changed') {
+      const rs = await book.renderForSave();
+      if (!live()) { cancelled(); return; }
+      if (ws.revision !== rev) rev = null;   // 組んでいる間に編集があった：保存したものに入っていないかもしれない
+      if (rs.errors) {
+        status('');
+        await ask({ title: T.book.saveErrTitle, kind: 'warn', body: [el('p', { id: 'book-save-errors', text: T.book.saveErrLead }), el('ul', {}, rs.errors.slice(0, 12).map((x) => el('li', { text: x.text })))], buttons: [{ id: 'ok', label: T.ok, pri: true }] });
+        return;
+      }
+      a = await tierA(P.original, files, { identity, fonts: engine.fonts, article: { html: rs.html } });
+      if (!live()) { cancelled(); return; }
+    }
     if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; saveWarnings = a.warnings || []; if (typeof a.config === 'string') cfgText = a.config; }
     else {
       P.lastRefusal = { code: a.code, reason: a.reason };
@@ -1599,6 +1638,7 @@ async function savePortableBound(mode) {
       rev = ws.revision;
       narrB = await ws.readText('narration.md', { max: READ_LIMITS.narration });
       if (ws.revision !== rev || !live()) { if (!live()) { cancelled(); return; } rev = null; }
+      if (P.index.article || book.present()) await book.ensure();   // 本のある教材を作り直す（本の道具がページに要る）
       const r = await engine.exportPortable(S.deckFile, { carry: P.index, identity, originalNarration: P.narr0 });
       if (ws.revision !== rev) rev = null;
       // 組み直すと、ファイルのプレーヤーがこの Studio のものに替わる（format spec §4.1：保存の前に、どのプレーヤーが入るかを言う）。
@@ -1689,7 +1729,10 @@ async function exportPortableFile() {
   const ws0 = S.ws, g0 = S.gen;
   status(T.exporting);
   let r;
-  try { r = await engine.exportPortable(S.deckFile, { fromFolder: true }); }   // 作業フォルダからの書き出し：書き出しの印（exportedFrom、§3.1）を書く
+  try {
+    if (book.present()) await book.ensure();   // 本のある作業フォルダ（本の道具がページに要る）
+    r = await engine.exportPortable(S.deckFile, { fromFolder: true });   // 作業フォルダからの書き出し：書き出しの印（exportedFrom、§3.1）を書く
+  }
   catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
   const live = () => S.ws === ws0 && S.gen === g0;
   if (!live()) { status(''); toast(T.api.cancelled, true); return; }
@@ -1735,7 +1778,7 @@ async function exportPlayOnlyFile(room = null, opts = {}) {
   let html, name, writes = {}, srcSha = null;
   try {
     if (P) { html = playOnly(P.original); name = P.name; srcSha = P.index && P.index.sourceSha256; }
-    else { const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    else { if (book.present()) await book.ensure(); const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
     // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
     if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
@@ -1916,7 +1959,27 @@ $('b-lecturemode').onclick = () => setPreviewMode(S.previewMode === 'lecture' ? 
 $('b-comments').onclick = () => ui.toggleComments();
 $('b-audio').onclick = async () => { ui.mark('audio', await audio.toggle()); };
 $('b-check').onclick = quickCheck;
-$('b-print').onclick = () => { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print' }, '*'); };
+$('b-print').onclick = () => { setView('slides'); const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print', what: 'slides' }, '*'); };
+// 本（format spec §9C。app/book.js）：表示（スライド・本）、「本」の板、「本を印刷」（本のない教材は「台本を印刷」）
+book = createBook({
+  S, $, el, T: T.book, EN, loader: articleLoader, builder, buildTimeout, toast, status, ask, askSteps,
+  openPanel: (title, body) => openPanel(title, body),
+  rebuild: (reason) => rebuild(reason),
+  afterWrite: () => updateName(),
+  goFragment: (f) => { const w = $('preview').contentWindow; if (w) w.postMessage({ type: 'app-goto', f }, '*'); },
+  setView: (v) => setView(v), viewMode: () => S.view || 'slides',
+});
+function setView(v) {
+  S.view = v === 'book' && book.present() ? 'book' : 'slides';
+  $('b-view-slides').setAttribute('aria-checked', S.view === 'slides' ? 'true' : 'false');
+  $('b-view-book').setAttribute('aria-checked', S.view === 'book' ? 'true' : 'false');
+  book.view();
+  if (S.view === 'slides') focusPreview();
+}
+$('b-view-slides').onclick = () => setView('slides');
+$('b-view-book').onclick = () => setView('book');
+$('b-book').onclick = () => book.togglePanel().catch((e) => toast(String(e.message || e), true));
+$('b-print-book').onclick = () => { if (book.present()) setView('book'); book.print(); };
 $('b-presenter').onclick = openPresenter;
 $('b-full').onclick = () => { fullScreen(); setPreviewMode(S.previewMode === 'lecture' ? 'lecture' : 'talk'); };
 // 道具の列のボタンをマウスで押したら、フォーカスを残さない（Space で同じボタンを押し直さない。矢印・b などはプレビューへ送る：server/editor-ui.js）。
@@ -2027,6 +2090,9 @@ window.__APP_TEST = {
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
+  book: () => book.state(),
+  bookPanel: (on) => book.togglePanel(on),
+  setView: (v) => setView(v),
   attachBusy: () => attach.isBusy(),
   saved: () => (S.portable ? S.portable.saved : null),
   save: (mode) => savePortable(mode || 'save'),

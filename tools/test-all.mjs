@@ -128,6 +128,8 @@ const steps = [
   ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
   // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
+  // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5）：あとで読み込む本の道具・本の表示・本文の欄・合っていないかもしれない組・本だけを組み直す保存・印刷
+  ['test-app-book', ['tools/test-app-book.mjs', path.join(tmp, 'app-book')]],
   // 手で書き換えた・崩れた書き出しの印（format spec §3.1）：断る窓か開くか（どちらもページは答える）、食い違う写しは「書き出したあと直した」
   ['test-app-exported-marker', ['tools/test-app-exported-marker.mjs', path.join(tmp, 'exported-marker')]],
   // 組み直す保存の確かめ：まだ保存していない文書は聞かない・テーマを変えただけならそのわけだけ（日本語と英語）

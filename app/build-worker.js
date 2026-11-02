@@ -7,12 +7,23 @@
 //         {id, op: 'exportIndex', ws, file, opts}               持ち運べる形式に書き出したときの索引だけ（部品庫の照合に使う）
 //         {id, op: 'exportHtml', ws, file, opts}                持ち運べる形式に書き出した文書（AI の返事の貼り付け。app/llm.js）
 //         {id, op: 'scan', files, entry}                        取り出した原稿の全体の理由（codeReasons）
+//         {id, op: 'article', ws, file, opts}                   本（app/engine.js の article。本の道具をつなげた Worker だけ：app/build-client.js の setExtra）
 //         {id, op: 'probe', name}                               試験：Worker の大域変数
 // 作業場所のファイルは親に問い合わせて読む（{rpc, gen, op: 'read' | 'list' | 'lazy', arg} → 親が {rpcReply, gen, ok, value}）。
 // read・list の arg には、その読み出しを要る要求の番号（req）を付ける（親はその要求の作業場所だけを読む）。代（gen）の違う答えは捨てる
 // 利用者のテーマのフォルダ（要求の themes：親が選んだフォルダの番号か null。app/theme-folder.js）も同じく親に問い合わせて読む（'tlist' | 'tread'。読むだけ）
 import { createEngine } from './engine.js';
 import { documentReasons, codeReasons } from '../kit/core/code-scan.mjs';
+import { setArticleHost } from './article-host.js';
+
+// 本の道具（app/article-tools.js）は、この字の後ろにつなげられて動く（app/build-client.js の setExtra）：その前に、道具が使う部品を置く
+setArticleHost();
+// 本の道具と citeproc（つなげたときだけある）。本文のステップへのリンクの行き先は親に聞く（プレビューの再生器）
+const articleOf = () => {
+  const tools = self.__egatariArticle || null;
+  if (!tools) return null;
+  return { tools, csl: self.__egatariCSL ? tools.cslWith(self.__egatariCSL) : null, steps: (links) => rpc('steps', links) };
+};
 
 let engine = null, wsId = null, seq = 0, gen = 0, proxy = null, themesId = null, tproxy = null;
 const pend = new Map();
@@ -43,7 +54,7 @@ self.onmessage = async (e) => {
     if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }, Number.isFinite(m.error.n) ? { n: m.error.n } : {}));
     return;
   }
-  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p), { renderAbc: (job) => rpc('abcjs', job) }); return; }
+  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p), { renderAbc: (job) => rpc('abcjs', job), article: articleOf }); return; }
   try {
     let value = null;
     if (m.op === 'probe') value = self[m.name] === undefined ? null : String(self[m.name]);
@@ -65,6 +76,8 @@ self.onmessage = async (e) => {
         // 持ち運べる 1 ファイルそのもの（AI の返事の貼り付け：メモリの上の原稿を、開く前に 1 ファイルにする。app/llm.js）
         const r = await engine.exportPortable(m.file, m.opts || {});
         value = { html: r.html };
+      } else if (m.op === 'article') {
+        value = await engine.article(m.file, m.opts || {});
       } else throw new Error('unknown op ' + m.op);
     }
     self.postMessage({ id: m.id, ok: true, value });
