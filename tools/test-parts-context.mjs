@@ -71,7 +71,7 @@ const authored = [{ i: 0, k: 1, dur: 2 }, { i: 0, k: 2, dur: 3 }];
 Object.assign(scope, {
   performance: { now: () => now }, raf: 0, auto: null, REDUCE: false, CAP: { on: false },
   POS: { i: 0, k: 1, setT() {}, publish() {}, setPlaying() {}, setCause() {} },
-  T: { morph: 0 }, animDur: () => 2, marksEnd: () => 0, morphSrc: () => -1, announce() {}, legacy() {},
+  T: { morph: 0 }, capTurns: () => [], timing: () => ({}), animDur: () => 2, marksEnd: () => 0, morphSrc: () => -1, announce() {}, legacy() {},
   requestAnimationFrame: (fn) => { frames.set(++serial, fn); return serial; },
   cancelAnimationFrame: (id) => frames.delete(id),
   setTimeout: (fn, ms) => { timers.set(++serial, { fn, ms }); return serial; },
@@ -84,6 +84,7 @@ Object.assign(scope, {
   },
 });
 scope.document.documentElement = { classList: { add() {}, remove() {} } };
+scope.document.dispatchEvent = () => true; scope.CustomEvent = class { constructor(type, o) { this.type = type; this.detail = o && o.detail; } };   // deck:turn
 deck.timeline = () => authored.map((g) => ({ ...g }));
 vm.runInContext(source.slice(source.indexOf('function stopLoop(){'), source.indexOf('function go(i, k, animate')), scope);
 vm.runInContext(source.slice(source.indexOf('var audioEl = null;'), source.indexOf('// ---------------------------------------------------------------- 発表者ビューとの連携')), scope);
