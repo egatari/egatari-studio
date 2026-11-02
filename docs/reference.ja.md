@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=902347bb5b76073f -->
+<!-- i18n: pair=reference.md sha256=88fd67a7f3de429b -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -258,6 +258,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 | `#<スライドの id>` / `#<スライドの id>:<ステップの鍵>` | そのスライド（ステップ 0）かステップ（`0`・`1`・… か `concl`）の最終状態で開く（[contract §9](contract.ja.md#9-スライドへのリンク)） |
 | `?embed=1` | iframe の中で：ステップが変わるたびに親へ `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く |
 | `?links=0` | `?embed=1` と一緒に：スライドへのリンクで動かず、代わりに `{egatari:"linkRefused", slideKey, stepKey}` を送る |
+| `?layout=slides` / `flow` / `split` | スライドだけ・本だけ・スライドと本を並べて開く（[スライドと本](#スライドと本)）。`pages` は今は本をスクロールで開く。この端末で覚えた並べ方より優先。`?embed=1` では親が `{egatari:"layout", id?, layout}` を送ってもよく、同じ形で今の並べ方を答える |
 
 ### キー
 
@@ -276,6 +277,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 | s | 字幕の入り切り：今のステップの台本（表示用の文字）をスライドの下に出す |
 | Shift+s | 字幕の大きさ：S → M → L（22 / 27 / 34px）。上に短く知らせ、最後に選んだ大きさを覚える（localStorage） |
 | o | 一覧（矢印・Home/End で選び、Enter・Space・クリックで移る。Esc か o で閉じる） |
+| r | 表示：スライド → スライドと本 → 本（本がなければ スライドと台本 → 台本で読む）。この端末に覚える。開発サーバーのプレビューでは使わない |
 | x | レーザーポインター（マウスが 2 秒止まると消える） |
 | d | ペン（筆圧に対応。線はスライドごとに残る） |
 | v | 消えるペン（書き終えて 0.7 秒後から 0.5 秒で消える） |
@@ -293,6 +295,20 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 ボタン：前へ、次へ、自動再生・停止、レーザーポインター、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、先のステップを薄く見せる、字幕、**読み上げで聞く（音声ファイルにはなりません）**（ブラウザに音声合成があり、台本があって音声のないステップがあるときだけ。[読み上げで聞く](#読み上げで聞く)）、発表者ビュー、全画面、キーの一覧、どこかのステップの音声が TTS なら小さな札「AI 音声」（format spec §7.3）。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（例：`v0.2.0`）がある。版（プレーヤーの版。ファイルを作った Studio の版が違えば context に添える）・ブラウザ・OS・教材の言語・モードだけを入れたフィードバックの form を開く。教材の中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
+
+### スライドと本
+
+授業は 3 つの並べ方で見られる（Player P2）：**スライド**（舞台だけ）・**スライドと本**（左にスライド、右に本。縦書きでも同じ）・**本**（本だけ）。本は授業の本文（format spec §9C）。本文がなければ本の窓は **台本で読む**：スライドを小さく並べ、その後ろに各ステップの台本（並べると **スライドと台本**）。**表示**（ツールバーと本の上）か `r` で選ぶ。
+
+- **開いたときの並べ方**：`?layout=`（埋め込みの親の指定も）→ この端末でこの授業に前に選んだもの（`localStorage`。ファイルには書かない）→ `deck-meta` の `offer.open` → `metadata.primary`（`"read"` なら本）→ スライド。幅が 609px より狭いと、スライドと本は本だけになる。
+- **位置は 1 つ**：どの並べ方でも同じスライドとステップで、替えても変わらない。スライドを動かすと、本はそのスライドの節（台本ならそのステップ）が画面の外にあるときだけそこへ動く。本をスクロールすると、スライドはその節のスライドのステップ 0 へ、読み進めてそのスライドへのステップのリンクを過ぎるとそのステップへ動く（スライドとつながらない節では動かない）。今の節・ステップには行の初め（左。縦書きは上）の線と `aria-current`。
+- **自動再生の間**は本が付いてくる。本をスクロールすると付いていくのをやめ（再生と位置はそのまま進む）、本の下に **再生中の所に戻る** が出る。押すと再生中の所へ戻って、また付いていく。再生を始め直したときも同じ。
+- **本で読む**（スライドの並べ方で、節のあるスライドの右上）：スライドと本にして、その節を開く（狭い画面では本だけ）。本の上の **戻る** で元に戻る。
+- **スライドで見る**（本の並べ方で、スライドにつながる節の見出しの後ろ。本の中のステップのリンクと小さいスライドも）：そのスライドを本の上に画面の 8 割（スマートフォンでは画面いっぱい）で重ね、そのステップを動かす。← / → でステップ、自動再生のボタンで音声。Esc・**閉じる**・外を押すと閉じて、読んでいた所へ戻る。フォーカスは中（名前の付いたダイアログ）へ移り、閉じると押したボタンへ戻る。スライドと本の並べ方では、ステップのリンクはスライドを動かす。
+- **仕切り**（スライドと本）：ドラッグ、またはフォーカスして ← / →（Shift で大きく）・Home / End。ダブルクリックか Enter で元に戻す（スライドが高さいっぱい、幅の 6 割まで）。スライドは 280px、本は 320px より狭くしない。この端末に覚える。
+- **本の中**では矢印・Space・PageUp / PageDown・Home / End で本をスクロールする。縦書き（`writing-mode: vertical-rl`）の本は右から始まり、マウスのホイールと ↓・←・PageDown・Space で先（左）へ、→ で前へ。相互参照・引用・脚注のリンクは本の中で動き、**戻る**（Backspace も）で戻る。
+- **台本で読む（本だけ）**：台本を読んでいる間、そのスライドは上に残り、スクロールで入ったステップを一度だけ動かす（その文が画面の外へ出きるまで再び動かさない）。動きを減らす設定なら最後の形だけ。
+- ページ分けと見開き・別の窓・目次・検索・字の大きさと背景は後で。
 
 ### 字幕
 
@@ -325,7 +341,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 ### 実行時の API（スクリプトと品質チェック用）
 
-`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`（パーツを mount し、開いたときの位置を描いたら true。並んでいないうちに起動した教材は舞台に大きさが付くまで待つ。[contract §3](contract.ja.md#3-パーツweb-components)）、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（動いているプレーヤーの版：Egatari ファイルでは `deck-meta` の `player.version`。1.0 より前のファイルでは `generator.version`。ふつうの build では `package.json` の `version`）、`MADE_WITH`（`generator.version`。なければ空）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color, readAloud}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える。`readAloud()` は読み上げ中か、`readAloud(true / false)` で読む・止める）、`ReadAloud`（`kit/core/read-aloud.mjs`：`spokenTurns`・`pickVoices` など）、`TtsNormalize`、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）。`document` のイベントには `deck:captions`（`detail = {on}`）、`deck:tool`（`detail = {mode}`：`"laser"`・`"pen"`・`"vpen"` か `null`。発表の道具が変わったとき）、`deck:edit`（`detail = {on}`。開発サーバーと編集アプリのプレビューだけが、編集モードが変わったときに送る。実行系は発表の道具を切る。[開発サーバー](dev-server.ja.md)）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
+`DECK.seek(i, k, t, from)`、`go(i, k, animate)`、`next()`、`prev()`、`state()` → `{slide, step, max, key, mode}`、`timeline()`、`autoplay(on)`、`stepKey(i, k)`、`marks(i, k)`、`morph(i)`、`slides`、`mode`、`ready`（パーツを mount し、開いたときの位置を描いたら true。並んでいないうちに起動した教材は舞台に大きさが付くまで待つ。[contract §3](contract.ja.md#3-パーツweb-components)）、`NARRATION`、`AUDIO`、`MARKS`、`TIMING`、`VERSION`（動いているプレーヤーの版：Egatari ファイルでは `deck-meta` の `player.version`。1.0 より前のファイルでは `generator.version`。ふつうの build では `package.json` の `version`）、`MADE_WITH`（`generator.version`。なければ空）、`FEEDBACK_URL`（または `null`）、`feedbackUrl()`（欄を埋めた form の URL。または `null`）、`tools.{mode, setMode, clear, help, overview, color, readAloud}`（`color()` はペンの色の番号 0〜2、`color(n)` で変える。`readAloud()` は読み上げ中か、`readAloud(true / false)` で読む・止める）、`ReadAloud`（`kit/core/read-aloud.mjs`：`spokenTurns`・`pickVoices` など）、`TtsNormalize`、`captions(on)`（引数なしなら入か切か）、`captionSize(z)`（`"s"` / `"m"` / `"l"`。引数なしなら今の大きさ、動画では `null`）、`captionRate`（字/秒）、`toast(msg)`（短い知らせ）、`caption()`（出ている字幕の文字。無ければ `null`）、`announce()`（aria-live の領域の文字）、`resolveFragment(f)`（→ `{i, k, key, id}` か `{error}`）、`fragment(i, k)`、`follow(f)`、`back()`、`links()`（→ `{depth, follow, back}`）、`visited(i | 鍵)`（[contract §9](contract.ja.md#9-スライドへのリンク)）、`move(i, k, animate, cause)`（位置の `cause` を付けてそこへ。本の窓が使う）、`fit()`（舞台を置き直す）、`stageBox`（並べ方が置く：舞台を置く箱）、`panes.{layout(name), state(), watch(i, k), close(), menu(el), order()}`（[スライドと本](#スライドと本)。`layout()` で読み、`layout("split")` で替えて覚える。`state()` → `{layout, detached, playing, overlay, article, vertical, ratio, marked}`）。`document` のイベントには `deck:captions`（`detail = {on}`）、`deck:tool`（`detail = {mode}`：`"laser"`・`"pen"`・`"vpen"` か `null`。発表の道具が変わったとき）、`deck:edit`（`detail = {on}`。開発サーバーと編集アプリのプレビューだけが、編集モードが変わったときに送る。実行系は発表の道具を切る。[開発サーバー](dev-server.ja.md)）もある。`document` のイベント：`deck:ready`、`deck:pos`（`detail = {i, k, max, n, key, nextKey, auto, cause, back}`。`cause` は `control`・`link`・`seek`・`play`、`back` は「戻る」の戻り先のスライドの見出しか `null`）。
 
 ## 開発サーバー
 

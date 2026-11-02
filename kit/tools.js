@@ -42,6 +42,7 @@ var ICON = {
   vpen: SVG(PEN + '<path d="M2 14h12" stroke-dasharray="1.4 2.2"/>'),
   clear: SVG('<path d="M7.4 13.5H14"/><path d="M5.6 13.5L2.6 10.5a1.2 1.2 0 0 1 0-1.7l6-6a1.2 1.2 0 0 1 1.7 0l3 3a1.2 1.2 0 0 1 0 1.7L7.4 13.5z"/><path d="M5.4 6.2l4.4 4.4"/>'),
   over: SVG('<rect x="2" y="2.8" width="5" height="4" rx=".8"/><rect x="9" y="2.8" width="5" height="4" rx=".8"/><rect x="2" y="9.2" width="5" height="4" rx=".8"/><rect x="9" y="9.2" width="5" height="4" rx=".8"/>'),
+  view: SVG('<rect x="1.8" y="3" width="12.4" height="10" rx="1.2"/><path d="M8 3v10M9.8 6h2.6M9.8 8.4h2.6M9.8 10.8h1.6"/>'),
   lect: SVG('<rect x="2" y="6.3" width="8.5" height="3.4" rx=".6" fill="currentColor" stroke="none" opacity=".4"/><path d="M2.5 4h11M2.5 8h7.5M2.5 12h11"/>'),
   pres: SVG('<rect x="1.5" y="2.5" width="13" height="8.8" rx="1.2"/><path d="M8 11.3v2.4M5 13.7h6M4.2 5.6h4.6M4.2 8.1h2.8"/>'),
   full: SVG('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
@@ -762,14 +763,14 @@ if (RA){
 function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {key: k, shiftKey: !!shift, bubbles: true, cancelable: true})); }
 var JA = DECK.ja !== false;
 var TIP = JA
-  ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
+  ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧", view: "表示",
      lect: "先のステップを薄く見せる", cap: "字幕", mute: "効果音を消す", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
-  : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
+  : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview", view: "View",
      lect: "Show later steps faintly", cap: "Captions", mute: "Mute sound effects", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
 var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
-  ["over", "o", "o"], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+  ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "mute", "full", "help"];
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
@@ -792,6 +793,7 @@ function buildBar(){
     if (!b){ var s = document.createElement("i"); s.className = "sep" + (cb.querySelector('[data-b="clear"]') && !cb.querySelector(".dt-tsep") ? " dt-tsep" : ""); s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
     if (b[0] === "read" && !RA) return;   // 読み上げ：端末で読めないとき・読めるステップがないときは出さない
     if (b[0] === "mute" && !(DECK.hasComponentSounds && DECK.hasComponentSounds())) return;
+    if (b[0] === "view" && !DECK.panes) return;   // 表示（並べ方。kit/panes.js）：動画・発表者ビューの中の画面にはない
     var e = document.createElement("button"); e.type = "button";
     e.setAttribute("data-b", b[0]);
     e.title = TIP[b[0]] + (b[1] ? kk(b[1]) : "");
@@ -842,7 +844,7 @@ function buildBar(){
     act(b, e.detail === 0);
   });
   function act(b, keyboard){
-    if (typeof b._act === "function") b._act(); else press(b._act);
+    if (typeof b._act === "function") b._act(b); else press(b._act);
     // マウス・指で押したらフォーカスを残さない（矢印キーがそのまま効く）。キーボード（Enter / Space、detail = 0）なら残す
     if (!keyboard){
       b.blur();
@@ -871,9 +873,13 @@ function buildBar(){
   if (!hintSeen()) showHint();
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
+// 舞台を置く箱（kit/deck.js の fit と同じ。窓の並べ方で左の欄だけになる：kit/panes.js の DECK.stageBox）
+function sbox(){ var b = DECK.stageBox && DECK.stageBox(); return b || {x: 0, y: 0, w: innerWidth, h: innerHeight}; }
 function placeBar(){
   if (!cb) return;
-  var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
+  var sb = sbox(), k = Math.min(sb.w / W, sb.h / H), m = (sb.h - H * k) / 2;
+  cb.style.left = Math.round(sb.x + sb.w / 2) + "px";
+  cb.style.maxWidth = Math.max(160, sb.w - 16) + "px";
   // 帯の高さ（狭い画面では 2 行になる）。隠れていても大きさは測れる
   cb.classList.remove("dt-wrap");
   var bh = cb.offsetHeight || 38;
@@ -887,7 +893,7 @@ function placeBar(){
 function liftCaptions(){
   var cap = document.getElementById("deck-cap"), lift = 0;
   if (cb && cb.classList.contains("show") && cap && !cap.hidden){
-    var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
+    var sb = sbox(), k = Math.min(sb.w / W, sb.h / H), m = (sb.h - H * k) / 2;
     var need = (parseFloat(cb.style.bottom) || 0) + cb.offsetHeight + 6 - (m + (parseFloat(getComputedStyle(cap).bottom) || 0) * k);
     if (need > 0) lift = Math.ceil(need / k);
   }
@@ -932,7 +938,7 @@ function showHint(){
   placeHint();
   try { localStorage.setItem(HINT_KEY, "1"); } catch (e) {}
 }
-function placeHint(){ if (hint && cb) hint.style.bottom = Math.round((parseFloat(cb.style.bottom) || 10) + (cb.offsetHeight || 38) + 8) + "px"; }
+function placeHint(){ if (hint && cb) hint.style.left = cb.style.left || "50%"; if (hint && cb) hint.style.bottom = Math.round((parseFloat(cb.style.bottom) || 10) + (cb.offsetHeight || 38) + 8) + "px"; }
 // 帯が隠れている間の取っ手：左下の小さく薄いボタン（スライドの字にかからない）。押すと帯を出す。Tab で選べ、読み上げソフトには名前で読まれる。
 // マウス・指で押してもフォーカスは移さない（矢印キーはスライドに効いたまま）。キーボードで押したら帯の最初のボタンへ
 // マウスを近づけると帯が出て取っ手は見えなくなるが、押せるままにする（押しても帯をもう一度出すだけ）
@@ -1003,10 +1009,10 @@ function helpHtml(){
       row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Slide overview"),
       row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
     sec(j ? "表示" : "View", [
-      row(K("a"), j ? "自動再生" : "Autoplay"), row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
+      row(K("a"), j ? "自動再生" : "Autoplay")].concat(DECK.panes && !isDev() ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
       row(K("b"), j ? "黒い画面" : "Black screen"), row(K("f"), j ? "全画面" : "Fullscreen"), row(K("p"), j ? "発表者ビュー" : "Presenter view"),
-      row(K("?"), j ? "このキーの一覧" : "This help")]),
+      row(K("?"), j ? "このキーの一覧" : "This help")])),
     sec(j ? "道具" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
       row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),

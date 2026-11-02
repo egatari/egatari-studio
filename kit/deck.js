@@ -1624,6 +1624,12 @@ function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false, true);
 // 起動の前（部品の mount の前）の go は開く位置にする（最後の 1 つ。その前に頼まれた seek は捨てる）。送り・戻しは何もしない
 DECK.go = function(i, k, animate){ if (!started){ pendingGo = [i, k]; pendingSeek = null; return; } go(i, k, animate); };
 DECK.next = function(){ if (started) next(); }; DECK.prev = function(){ if (started) prev(); };
+// 窓（kit/panes.js）からの移動：本の窓のスクロール（cause "seek"、Player P8）・「スライドで見る」（"link"）。同じスライドの中なら跳ばない（ctx.entered）。
+// animate：その段階の動きを初めから見せる（スクロールで入った段階・重ねて見せるとき）
+DECK.move = function(i, k, animate, cause){
+  if (!started) return;
+  POS.setCause(cause || "seek"); go(i, k, !!animate, i === POS.i); POS.setCause(null);
+};
 DECK.state = function(){ var i = POS.i, k = POS.k; return {slide: i + 1, step: k, max: slides[i]._max, key: DECK.stepKey(i, k), mode: DECK.mode}; };
 
 // ---------------------------------------------------------------- 自動再生（音声があれば流し、タイムラインで進む）
@@ -1985,11 +1991,23 @@ function syncBack(){
 }
 
 // ---------------------------------------------------------------- 起動
+// 舞台を置く箱：ふつうは窓全体。窓（ペイン）の並べ方（kit/panes.js の DECK.stageBox）が {x, y, w, h, clip?} を返せばその箱
+// （スライドと本の横並びの左、「スライドで見る」の重ね、台本の縮図の場所）。clip は箱の外に出る分を舞台の座標（1280×720）で切る {top, bottom}
 function fit(){
-  var k = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
   var st = document.getElementById("stage");
-  if (st) st.style.transform = "translate(-50%,-50%) scale(" + k + ")";
+  if (!st) return;
+  var b = typeof DECK.stageBox === "function" ? DECK.stageBox() : null;
+  if (!b){
+    st.style.left = st.style.top = st.style.clipPath = "";
+    st.style.transform = "translate(-50%,-50%) scale(" + Math.min(window.innerWidth / 1280, window.innerHeight / 720) + ")";
+    return;
+  }
+  var k = Math.max(.01, Math.min(b.w / 1280, b.h / 720));
+  st.style.left = (b.x + b.w / 2) + "px"; st.style.top = (b.y + b.h / 2) + "px";
+  st.style.transform = "translate(-50%,-50%) scale(" + k + ")";
+  st.style.clipPath = b.clip ? "inset(" + Math.max(0, b.clip.top / k).toFixed(1) + "px 0 " + Math.max(0, b.clip.bottom / k).toFixed(1) + "px 0)" : "";
 }
+DECK.fit = function(){ fit(); };
 function init(){
   if (Q.get("presenter") && DECK.presenterView){ DECK.presenterView(); return; }
   slides = [].slice.call(document.querySelectorAll("#stage > .slide"));

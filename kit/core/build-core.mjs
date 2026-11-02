@@ -986,8 +986,11 @@ export function build(env0, srcPath, opts = {}) {
   // 実行系（deck.js など）の UI の文字列は全部は入れない（英語のデッキで和文の分割ファイルが増える）。スライドに出る字は RUNTIME_GLYPHS で足す
   const lang = html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
   // 字の絞り込みは見える字だけ（ttsParts の読みは画面に出ない）
-  const textForFont = glyphText(html, narrationMap(segs, !!opts.dev, false), compJs, lang);
-  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs), warn,
+  // opts.articleHtml：再生器の本の窓に出す本文（format spec §9C.6 の <article id="egatari-article">。入れるのは呼び手で、runtimePrefix の中）。
+  // その字も絞り込みに数え、縦書き（明朝で組む）なら明朝の字を入れる。opts.articleCss はその体裁（kit/core/article-render.mjs の ARTICLE_CSS）
+  const articleHtml = opts.articleHtml || '';
+  const textForFont = glyphText(html + articleHtml, narrationMap(segs, !!opts.dev, false), compJs, lang);
+  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs) || /class="egatari-vertical"/.test(articleHtml), warn,
     { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: italicText(html, compJs, isJapanese(lang)), body: bodyFont(theme.css, theme.cfg && theme.cfg.fonts) });
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
@@ -995,7 +998,7 @@ export function build(env0, srcPath, opts = {}) {
   // 読む順：字 → KaTeX → 実行系（base.css）→ 体裁（layouts.css）→ テーマ（tokens.css。extends の親から順に）→ 英語など（latin.css）。
   // テーマは体裁の後に読むので、同じ詳細度の規則ならテーマが勝つ（表紙の題名の位置や本文の欄の余白などをテーマが替えられる。html を前に付けて詳細度で勝たなくてよい）。
   // latin.css はテーマの後のまま（日本語以外のデッキの字の既定。docs/reference.md「Themes」）
-  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
+  const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${opts.articleCss || ''}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   const scriptList = [
     // 通常の build の原稿の控え。持ち運べる形式は索引の archive にだけ原稿を持つ。
@@ -1008,6 +1011,7 @@ export function build(env0, srcPath, opts = {}) {
     `<script>\nwindow.DECK = window.DECK || {}; DECK.VIEWER_INPUT = ${JSON.stringify(viewerInputs)}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${parts2 && !parts2.legacy.length ? '' : scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(parts2 && !parts2.legacy.length ? playerWithoutPartBase(read(KIT, 'deck.js')) : read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
+    `<script>\n${scriptSafe(read(KIT, 'panes.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
   ].filter(Boolean);
   const scripts = scriptList.join('\n');

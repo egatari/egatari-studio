@@ -76,6 +76,7 @@ const steps = [
   ['test-blackout', ['tools/test-blackout.mjs', MIN]],
   // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・品質チェック
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
+  ['test-panes', ['tools/test-panes.mjs', path.join(tmp, 'panes')]],   // 窓の並べ方と同期（kit/panes.js。Player P2・§9C.5）：横書き・縦書きの本・台本で読む
   // 授業の外へ出るリンク（format spec §11）：決まり（kit/core/link-policy.mjs）の単体と、確認の箱・開かない scheme・動画・sandbox の枠
   ['test-extlinks', ['tools/test-extlinks.mjs', path.join(tmp, 'extlinks')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
