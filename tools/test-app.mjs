@@ -1887,6 +1887,9 @@ try {
       await po.waitForSelector('#theme-load[open] #theme-load-folder');
       await po.click('#theme-load-folder');
       await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 30000 });
+      // 選んだフォルダ（名前）はハンドルを IndexedDB に残す前に決まり、知らせはその後に出る（app/main.js の chooseThemeFolder）。知らせが出るまで待つ
+      //（名前だけを待って読むと、ほかの段と同時に走る CI では前の知らせを読んで落ちた）
+      await po.waitForFunction(() => (document.getElementById('toast').textContent || '').startsWith('テーマのフォルダ「thm-user」を使います'), null, { timeout: 30000 }).catch(() => {});
       const tt = await po.textContent('#toast');
       ok(tt.includes('同じ名前のテーマ「evil」が、このブラウザにも保存してあります。フォルダのものを使います。') && !tt.includes('置き換えました') && JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: choosing a folder with a theme named like a saved one says the folder one is used (the saved one is kept)');
       await po.evaluate(() => { window.__APP_TEST.themePicker = null; });

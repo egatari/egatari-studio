@@ -4,3 +4,4 @@
 ### Fixed
 - `node tools/test-all.mjs --help` prints the usage instead of running every test, and `--only` with names that match no step says so and exits 1 (it crashed at the summary table).
 - test-parts-host waits for autoplay to advance after shortening the step, instead of a fixed 80 ms (failed on slow macOS CI).
+- test-app waits for the theme folder notice before reading it (it read the previous notice when steps ran in parallel).
