@@ -1,9 +1,11 @@
 // 部品庫の部品の写し（vendor/components/sha256/<hash>/）のうち、components.lock.json の既定の版のフォルダの一覧（Node の道具と試験が使う）
 //   vendorComponents(root?) → [{name, version, dir}]（名前の順）
+//   vendorComponents2(root?) → {catalogue, parts: [{name, version, dir}]}（2.x 専用の要素パーツ。名前の順。下の注記）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LOCK_FILE, VENDOR_COMPONENTS, parseLock, resolveComponent } from '../kit/core/components-lock.mjs';
+import { LOCK2_FILE, parseLock2 } from '../kit/core/parts2.mjs';
 
 export const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const vendorBase = (root = ROOT) => path.join(root, ...VENDOR_COMPONENTS);
@@ -13,6 +15,45 @@ export function vendorComponents(root = ROOT) {
     const version = lock.components[name].default;
     return { name, version, dir: resolveComponent(path, root, lock, name, version) };
   });
+}
+
+// components2.lock.json の既定のカタログのうち、1.x の目録（vendorComponents）に出ない要素パーツ：
+// components.lock.json でその部品が catalogue: "2"（1.x の目録から外れている）、かつ components2.lock.json の
+// その版が kind: "element"（kind: "library" の土台パーツ（base・expr・markup-reader・plot・shape・icons …）は含めない）。
+// 写しの場所は components.lock.json の content 表で引く（kit/core/parts2.mjs 冒頭の注記のとおり、パーツのコードは
+// components2.lock.json ではなく components.lock.json 側で解決する）。
+// 返すもの：{catalogue, parts: [{name, version, dir}]}（名前の順）
+export function vendorComponents2(root = ROOT) {
+  const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
+  const lock2 = parseLock2(fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8'));
+  const catalogue = lock2.default;
+  const cat = lock2.catalogues[catalogue];
+  const parts = Object.keys(cat.parts).filter((name) => {
+    const c = lock.components[name];
+    if (!c || c.catalogue !== '2') return false;
+    const version = cat.parts[name];
+    const part = lock2.parts[name] && lock2.parts[name][version];
+    return !!part && part.kind === 'element';
+  }).sort().map((name) => {
+    const version = cat.parts[name];
+    return { name, version, dir: resolveComponent(path, root, lock, name, version) };
+  });
+  return { catalogue, parts };
+}
+
+// components2.lock.json の既定のカタログの、名前で指定した土台パーツ（kind: "library"）の写しの場所。
+// 1.x の目録にない（components.lock.json で catalogue: "2"）ものだけ返す。ないか kind が違えば null
+// （例：icons の README への 1 行の言及に使う。CATALOG.md の表には土台パーツを出さない）
+export function vendorLibrary2(root = ROOT, name) {
+  const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
+  const lock2 = parseLock2(fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8'));
+  const cat = lock2.catalogues[lock2.default];
+  const version = cat.parts[name];
+  if (!version) return null;
+  const part = lock2.parts[name] && lock2.parts[name][version];
+  const c = lock.components[name];
+  if (!part || part.kind !== 'library' || !c || c.catalogue !== '2') return null;
+  return { name, version, dir: resolveComponent(path, root, lock, name, version) };
 }
 
 // 編集アプリに入れるもの：[アプリの中の場所 /repo/…, ファイル] の配列。固定のファイルと、取り込んだすべての版の index.js
