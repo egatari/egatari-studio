@@ -515,7 +515,7 @@ async function rebuild(reason) {
         if (allow && (changed || !S.loads || S.fresh)) refreshFrame();
         if (allow && changed && S.presWin && !S.presWin.closed) loadPresenter();
         // 本（E2〜E4）：本文を組み直す（待たない。本文のステップへのリンクは読み込んだプレビューで確かめる）
-        book.refresh();
+        book.refresh(listing);
       } catch (e) {
         failed = true;
         // 選んだカタログにない要素（kit/core/parts2.mjs）：画面の言葉で、何をどう直すかだけを出す（コマンドの build・check と同じ言葉）

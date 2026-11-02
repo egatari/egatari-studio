@@ -77,11 +77,14 @@ export function createBook(ctx) {
   }
 
   // ---------------------------------------------------------------- 組み直した後
-  async function refresh() {
+  // listing：組み立てが読んだ作業場所の一覧（app/main.js の rebuild。もう一度フォルダを歩かない）
+  async function refresh(listing0 = null) {
     const ws = S.ws, g = ++B.gen;
-    let listing = null;
-    try { listing = ws ? await ws.list() : null; } catch { listing = null; }
+    let listing = listing0;
+    if (!listing) { try { listing = ws ? await ws.list() : null; } catch { listing = null; } }
     if (S.ws !== ws || g !== B.gen) return;
+    // 本のない教材：本の道具に触れずに終える（読み込まない・Worker を作り直さない）
+    if (!(listing && has(listing)) && !B.present && !B.last) { B.present = false; B.cite = false; showControls(); return; }
     B.present = !!listing && has(listing);
     B.cite = !!listing && hasRefs(listing);
     showControls();
