@@ -2,7 +2,9 @@
 // 試験ページ lab/ も dist/lab/ にそのまま写す（lab/irodori.html：ブラウザだけで Irodori-TTS を動かす）
 // dist/editor/index.html は、前の場所（/editor/）からの古いリンクを根へ送る（問い合わせと # はそのまま）。
 // どのパスも相対なので、サイトの根（https://studio.egatari.org/）でも下のパス（https://egatari.github.io/egatari-studio/）でも動く
-//   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples]
+//   node tools/build-app.mjs [--out dist] [--no-single] [--no-examples] [--parts]
+// --parts：パーツのサンプルのページ（tools/parts-gallery.mjs。既定のパーツライブラリの版）を dist/parts/v<版>/index.html に組み、dist/parts/index.html（版の一覧）と
+// dist/parts/versions.json を書く（約 40 秒・10 MB。pages のワークフローと site-versions.mjs asset が付ける。試験の組み立ては付けない）
 // 見本：examples/ の見本を持ち運べる 1 ファイルに組んで dist/examples/<名前><FORMAT.FILE_EXT> に置き（tools/examples-portable.mjs）、
 // その一覧をアプリに入れる（はじめの画面の「見本の教材」が同じ場所から読み、ほかのファイルと同じ道で開く）
 // アプリに入れるもの：kit/core（組み立ての本体と持ち運べる 1 ファイルの読み書き）・持ち運べる 1 ファイルを読む Worker・KaTeX・parse5・kit の実行系・部品庫の写し（vendor/components/sha256/*/index.js と components.lock.json）・themes/*（と前の版の写し vendor/themes/、themes.lock.json）・
@@ -23,6 +25,8 @@ import { buildExamples } from './examples-portable.mjs';
 import { vendorComponents, appComponentFiles, componentLicenseFiles } from './vendor-components.mjs';
 import { excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
 import { generate, makeSkillZip } from './make-llm-guide.mjs';
+import { buildPartsGallery, writePartsIndex } from './parts-gallery.mjs';
+import { PARTS_DIR, PARTS_CATALOGUE } from '../app/parts-gallery.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const require = createRequire(import.meta.url);
@@ -31,6 +35,7 @@ const oi = args.indexOf('--out');
 const OUT = path.resolve(oi >= 0 ? args[oi + 1] : path.join(ROOT, 'dist'));
 const SINGLE = !args.includes('--no-single');
 const EXAMPLES = !args.includes('--no-examples');
+const PARTS = args.includes('--parts');
 const rel = (...p) => path.join(ROOT, ...p);
 
 // ---------------------------------------------------------------- 資源を集める（場所はアプリの中の仮の場所 /repo/…）
@@ -176,7 +181,7 @@ const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
 for (const f of fs.readdirSync(ED)) if (/^egatari-make-.*-(ja|en)\.zip$/.test(f)) fs.rmSync(path.join(ED, f));
 for (const [lang, bytes] of Object.entries(makeSkillZips)) fs.writeFileSync(path.join(ED, `egatari-make-${version}-${lang}.zip`), bytes);
-for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_ICONS-->', () => iconLinks((f) => f) + '\n<link rel="icon" href="favicon.svg" type="image/svg+xml">\n<link rel="manifest" href="manifest.webmanifest">')
@@ -237,6 +242,11 @@ fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
 <body><p>The editor has moved to <a href="../">the top of this site</a>. / 編集器は<a href="../">このサイトの最上位</a>に移りました。</p></body>
 </html>
 `);
+// パーツのサンプルのページ（--parts。backlog #158）：/parts/v<版>/。前の版のページは公開のときに tools/site-versions.mjs assemble が前のリリースから足す
+if (PARTS) {
+  const g = buildPartsGallery({ out: path.join(OUT, PARTS_DIR, 'v' + PARTS_CATALOGUE), catalogue: PARTS_CATALOGUE });
+  writePartsIndex(OUT, g.catalogue);
+}
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 if (examples.length) console.log(`dist/examples/: ${examples.map((x) => `${x.file} ${kb(x.bytes)}`).join(', ')}`);
 console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);

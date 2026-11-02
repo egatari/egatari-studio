@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=0e7aa648093b79c3 -->
+<!-- i18n: pair=editor.md sha256=0866ac61e3af0145 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -273,7 +273,7 @@ Egatari ファイルは、`npm run build -- <deck.html> --portable`（または�
 
 ## GitHub Pages で配る
 
-`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site` で組み、GitHub Pages に置く（編集アプリは根 `/`、オフライン版のエディタは `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://studio.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のはリリースのタグだけ：タグ `vX.Y.Z`（数 3 つ。`v0.5.0-rc.1` などの rc のタグは置かない）を push したときと、そのタグで workflow を走らせたとき（その版を置き直す）。`main` への push と pull request は組むだけで（リリースの前に組み立ての壊れに気づくため）、ブランチで走らせると組むだけの試し。リリースの手順は [RELEASING.ja.md](../RELEASING.ja.md)。Pages を設定するまでは何も置かない
+`.github/workflows/pages.yml` が `node tools/build-app.mjs --out _site --parts` で組み、GitHub Pages に置く（編集アプリは根 `/`、オフライン版のエディタは `/editor.html`、試験ページは `/lab/irodori.html`。前に編集アプリがあった `/editor/` は、問い合わせと `#` を残して `/` へ移すページ）。パスはどれも相対なので、同じファイルが独自ドメイン <https://studio.egatari.org/>（Settings → Pages → Custom domain で設定し、サイト全体に効く）でも <https://egatari.github.io/egatari-studio/>（独自ドメインへ移る）でも動く。置く（deploy）のはリリースのタグだけ：タグ `vX.Y.Z`（数 3 つ。`v0.5.0-rc.1` などの rc のタグは置かない）を push したときと、そのタグで workflow を走らせたとき（その版を置き直す）。`main` への push と pull request は組むだけで（リリースの前に組み立ての壊れに気づくため）、ブランチで走らせると組むだけの試し。リリースの手順は [RELEASING.ja.md](../RELEASING.ja.md)。Pages を設定するまでは何も置かない
 
 1. Settings → Pages → Build and deployment → Source を **GitHub Actions** にする
 2. Settings → Secrets and variables → Actions → Variables に `EDITOR_PAGES` = `true` を足す（なければ組むだけで、何も置かない）
@@ -283,6 +283,10 @@ Egatari ファイルは、`npm run build -- <deck.html> --portable`（または�
 組み立てはサンプルも Egatari ファイルにして `examples/<名前>.ega.html` に置き（`tools/examples-portable.mjs`。合わせて約 14 MB。`--no-examples` で入れない）、編集アプリの最初の画面に並べる。組むのはサンプルのフォルダの一時的な写しから（`examples/` には何も書かない）。`egatari.json` のないサンプル（テンプレートとして写してよい `minimal` など）には名前から決めた `docId` を与えるので、組むたびに同じ文書になる
 
 組み立ては make の生成元から `egatari-make-<version>-ja.zip` と `egatari-make-<version>-en.zip` を `dist/` に書く。ダウンロードはこのサイト内のファイルを使い、単体の `editor.html` はオフラインでも使えるよう両言語の ZIP を埋め込む。凍結した `/vX.Y.Z/` と編集アプリのサイトのアーカイブも、`dist/` のほかのファイルと一緒に ZIP を持つ。
+
+### すべてのパーツのサンプル（`/parts/`）
+
+`--parts` を付けると、組み立てはすべてのパーツのサンプルのページも作る（`tools/parts-gallery.mjs`。約 40 秒・10 MB）：`components2.lock.json` の既定（`default`）のパーツライブラリの版のすべてのパーツを、説明の 1 枚と動くサンプルのスライドで、「新規作成…」の ④ と同じく伝えたいことごとに並べ、前の版と比べて新しい・変わった・サンプルが変わったの印を付ける。置く場所は `/parts/v<パーツライブラリの版>/`（たとえば <https://studio.egatari.org/parts/v2.1.1/>）で、`/parts/index.html` が版を並べ（いまの版が先）、`/parts/versions.json` も書く。編集アプリの使い方と「新規作成…」の ④ は絶対の URL で張るので、オフライン版のエディタ・`file://`・Colab からも開ける。ページは取り込んだリリースの写しだけから、git もネットワークも使わずに組む：その版のファイルを `vendor/components/sha256/` から tarball と同じ形に並べ（`vendor/components-2/manifest-<版>.json` とファイルごとに照らす）、パーツライブラリ自身の `gallery.mjs --pack` でまとめ、`kit/build.mjs` で組む。その道具は egatari/components の決まったコミットの写しを `vendor/components-gallery/` に持つ（`SOURCE.json` がリポジトリ・コミット・各ファイルの sha256 を記録。`node tools/parts-gallery.mjs --verify` が確かめ、`--sync <checkout>` が取り直す）ので、タグから組むリリースのアーカイブも同じページを作る。編集アプリと同じく、公開した版は凍結する：組み立ては前の各リリースのアーカイブの `parts/` を `/parts/` に移し（`/vX.Y.Z/` の下には置かない）、同じパーツライブラリの版は最初に公開したリリースのページを残す。いま組んだものは、前に公開していない版にだけ使う
 
 ### リリースに添えるファイル
 

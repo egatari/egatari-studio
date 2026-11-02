@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=97803bd8885b930b -->
+<!-- i18n: pair=editor.ja.md sha256=69b5cd8e9bae6c64 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -275,7 +275,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 
 ## Publishing on GitHub Pages
 
-`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site` and deploys it to GitHub Pages: the editor at the root (`/`), the Offline editor at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://studio.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only release tags deploy: pushing a tag `vX.Y.Z` (three numbers; `v0.5.0-rc.1` and other rc tags do not), or running the workflow on such a tag to deploy that release again. Pushes to `main` and pull requests only build (so a broken build shows up before a release), and running the workflow on a branch is a dry build. The release steps are in [RELEASING.md](../RELEASING.md). It deploys nothing until Pages is set up:
+`.github/workflows/pages.yml` builds `dist/` with `node tools/build-app.mjs --out _site --parts` and deploys it to GitHub Pages: the editor at the root (`/`), the Offline editor at `/editor.html`, the lab page at `/lab/irodori.html`, and at `/editor/` a page that redirects to `/` keeping the query and `#` (the editor used to live there). All paths are relative, so the same files work at the custom domain <https://studio.egatari.org/> (set in Settings → Pages → Custom domain, covering the whole site) and at <https://egatari.github.io/egatari-studio/> (which redirects to the custom domain). Only release tags deploy: pushing a tag `vX.Y.Z` (three numbers; `v0.5.0-rc.1` and other rc tags do not), or running the workflow on such a tag to deploy that release again. Pushes to `main` and pull requests only build (so a broken build shows up before a release), and running the workflow on a branch is a dry build. The release steps are in [RELEASING.md](../RELEASING.md). It deploys nothing until Pages is set up:
 
 1. Settings → Pages → Build and deployment → Source: **GitHub Actions**.
 2. Settings → Secrets and variables → Actions → Variables: add `EDITOR_PAGES` = `true` (without it, builds still run but nothing deploys).
@@ -285,6 +285,10 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 The build also writes the samples as Egatari files to `examples/<name>.ega.html` (`tools/examples-portable.mjs`, about 14 MB together; `--no-examples` leaves them out), and the editor's first screen lists them. They are built from a temporary copy of each sample folder (nothing is written into `examples/`); a sample without `egatari.json` (such as `minimal`, which may be copied as a template) gets a `docId` derived from its name, so every build is the same document.
 
 The build writes `egatari-make-<version>-ja.zip` and `egatari-make-<version>-en.zip` to `dist/` from the make generator. Downloads use these site files; the single file `editor.html` embeds both ZIPs for offline use. Frozen `/vX.Y.Z/` copies and the editor site archive carry the ZIPs with the rest of `dist/`.
+
+### Samples of all parts (`/parts/`)
+
+With `--parts` the build also makes the page of samples of all parts (`tools/parts-gallery.mjs`, about 40 seconds and 10 MB): every part of the parts library version in `components2.lock.json` (`default`), each with an introduction and its working sample slides, grouped by what to convey as in step 4 of “New…”, and marked new, changed or sample changed against the previous version. It goes to `/parts/v<parts library version>/` (for example <https://studio.egatari.org/parts/v2.1.1/>), with `/parts/index.html` listing the versions (the current one first) and `/parts/versions.json`. The editor's help and step 4 of “New…” link to it with an absolute URL, so the link works from the Offline editor, `file://` and Colab too. The page is built from the vendored release alone, with no git and no network: the files of that version from `vendor/components/sha256/` laid out as its tarball (checked file by file against `vendor/components-2/manifest-<version>.json`), assembled by the parts library's own `gallery.mjs --pack` and built with `kit/build.mjs`. That tool is vendored from a pinned commit of egatari/components in `vendor/components-gallery/` (`SOURCE.json` records the repository, the commit and each file's sha256; `node tools/parts-gallery.mjs --verify` checks it, `--sync <checkout>` refreshes it), so the release asset built from a tag makes the same page. Like the editor, a published version is frozen: the assembly moves the `parts/` of each earlier release's asset to `/parts/` (not under `/vX.Y.Z/`), and a parts library version keeps the page of the first release that published it; the new build fills only versions not published before.
 
 ### Release assets
 

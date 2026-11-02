@@ -28,6 +28,7 @@ import { missingParts2Requirement } from './parts2-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
+import { PARTS_GALLERY } from '../app/parts-gallery.js';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
@@ -2044,6 +2045,7 @@ try {
     await pq.waitForFunction(() => /Irodori-TTS/.test((document.getElementById('model-cache-info') || {}).textContent || ''));
     const info = await pq.textContent('#model-cache-info');
     ok(await pq.isVisible('#panel-body #help-kinds') && (await pq.$$eval('#help-kinds th', (x) => x.length)) === 4, 'help: the four kinds of files (moved from the first screen) are in the help');
+    ok(await pq.$$eval('#panel-body a', (xs, u) => xs.some((a) => a.getAttribute('href') === u && a.target === '_blank'), PARTS_GALLERY), `help: links to the samples of all parts (${PARTS_GALLERY})`);
     await shot(pq, 'help-model-cache.png');
     ok(/保存領域を [\d.]+ [MG]B 使っています/.test(info) && info.includes('版 000000000000') && !(await pq.isDisabled('#b-model-delete')), 'model cache: Help shows storage use and the stored model');
     await pq.click('#b-model-delete');

@@ -7,6 +7,9 @@
 //   node tools/site-versions.mjs assemble --site _site [--current vX.Y.Z] [--repo owner/name]
 //       pages のワークフローが使う：_site（いま組んだ版。根に置く）に、その写しを _site/v<今の版>/ に、前の各リリースの tar.gz を取って
 //       確かめて _site/vX.Y.Z/ に広げ、_site/versions.json を書く。案内を持たない古い写しには ../version-notice.js を読み込ませる
+//       パーツのサンプルのページ（_site/parts/v<パーツライブラリの版>/。build-app.mjs --parts、backlog #158）：版の写し（/vX.Y.Z/）には入れず、
+//       前のリリースの tar.gz の parts/v<版>/ を _site/parts/ に移す。同じパーツライブラリの版は、最初に公開したリリース（Studio の版の小さいもの）のページを
+//       残し（凍結）、いま組んだものは前のリリースにない版にだけ使う。_site/parts/index.html（版の一覧）と versions.json を書き直す
 // リリースの説明の sha256 の行：「editor-site-vX.Y.Z.tar.gz sha256: <64 字>」（shaLine）。tar.gz のないリリース（v0.4.0 まで）は飛ばす。
 // tar.gz があるのに sha256 の行がない・合わない・中身に変なパスがあれば失敗（その版を置かずに公開しない）
 import fs from 'node:fs';
@@ -17,6 +20,8 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { cmpVersion, MARK } from '../app/version-ui.js';
+import { PARTS_DIR } from '../app/parts-gallery.js';
+import { writePartsIndex, partsCurrent } from './parts-gallery.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const VERSION_DIR = /^v(\d+\.\d+\.\d+)$/;
@@ -153,29 +158,55 @@ export function assemble({ site, current, releases = [], log = console.log }) {
   if (!/^\d+\.\d+\.\d+$/.test(current)) throw new Error(`bad current version ${current}`);
   for (const e of fs.readdirSync(site)) if (VERSION_DIR.test(e)) fs.rmSync(path.join(site, e), { recursive: true, force: true });
   fs.rmSync(path.join(site, 'versions.json'), { force: true });
-  const rootFiles = fs.readdirSync(site);
+  const rootFiles = fs.readdirSync(site).filter((e) => e !== PARTS_DIR);
   const cur = path.join(site, 'v' + current);
   fs.mkdirSync(cur);
   for (const e of rootFiles) fs.cpSync(path.join(site, e), path.join(cur, e), { recursive: true });
   const versions = [current], sizes = { [current]: dirBytes(cur) }, injected = {};
+  // パーツのサンプルのページ：版 → それを公開した Studio の版（いま組んだものは current）
+  const partsDir = path.join(site, PARTS_DIR), partsNow = partsCurrent(site);
+  const partsFrom = {};
+  for (const v of partsVersions(partsDir)) partsFrom[v] = current;
   for (const r of releases) {
     if (r.version === current || versions.includes(r.version)) continue;
     verifyAsset(r.buf, r);
     const d = path.join(site, 'v' + r.version);
     const n = unpackSite(r.buf, d);
     if (!fs.existsSync(path.join(d, 'index.html'))) throw new Error(`v${r.version}: ${assetName(r.version)} has no index.html`);
+    const moved = takeParts(d, partsDir, r.version, partsFrom);
     const inj = injectNotice(d);
     if (inj.length) injected[r.version] = inj;
     versions.push(r.version); sizes[r.version] = dirBytes(d);
-    log(`v${r.version}: ${n} files, ${(sizes[r.version] / 1048576).toFixed(1)} MB${inj.length ? ` (version notice added to ${inj.join(', ')})` : ''}`);
+    log(`v${r.version}: ${n} files, ${(sizes[r.version] / 1048576).toFixed(1)} MB${inj.length ? ` (version notice added to ${inj.join(', ')})` : ''}${moved.length ? ` (parts ${moved.map((v) => 'v' + v).join(', ')})` : ''}`);
   }
+  const parts = writePartsIndex(site, partsNow, partsFrom);
+  if (parts) log(`parts: ${parts.versions.map((v) => `v${v} (from Studio v${partsFrom[v]})`).join(', ')}; current v${parts.current}`);
   versions.sort(cmpVersion);
   fs.writeFileSync(path.join(site, 'versions.json'), JSON.stringify({ root: current, versions }, null, 1) + '\n');
   const total = dirBytes(site);
   log(`site: root v${current} + ${versions.map((v) => 'v' + v).join(', ')}: ${(total / 1048576).toFixed(0)} MB`);
   if (total > SITE_MAX) throw new Error(`site is ${(total / 1048576).toFixed(0)} MB, over the GitHub Pages limit (1 GB): leave out the oldest versions`);
   if (total > SITE_WARN) log(`warning: site is ${(total / 1048576).toFixed(0)} MB; GitHub Pages allows 1 GB`);
-  return { versions, sizes, injected, total };
+  return { versions, sizes, injected, total, parts };
+}
+// dir/v<版>/index.html のある版
+function partsVersions(dir) {
+  return fs.existsSync(dir) ? fs.readdirSync(dir).filter((e) => VERSION_DIR.test(e) && fs.existsSync(path.join(dir, e, 'index.html'))).map((e) => VERSION_DIR.exec(e)[1]) : [];
+}
+// 前のリリースの写し d の parts/ を、サイトの parts/ に移す（その版をまだ誰も公開していないか、後の Studio の版が公開したものしかないときだけ）。
+// 写しの parts/ は消す（/vX.Y.Z/parts/ は置かない）→ 移した版
+export function takeParts(d, partsDir, studio, from) {
+  const src = path.join(d, PARTS_DIR), moved = [];
+  for (const v of partsVersions(src)) {
+    if (from[v] && cmpVersion(from[v], studio) >= 0) continue;   // もっと前（か同じ）の Studio が公開した（cmpVersion は新しい順）
+    fs.rmSync(path.join(partsDir, 'v' + v), { recursive: true, force: true });
+    fs.mkdirSync(partsDir, { recursive: true });
+    fs.cpSync(path.join(src, 'v' + v), path.join(partsDir, 'v' + v), { recursive: true });
+    from[v] = studio;
+    moved.push(v);
+  }
+  fs.rmSync(src, { recursive: true, force: true });
+  return moved;
 }
 
 // ---------------------------------------------------------------- GitHub（gh）
@@ -224,7 +255,7 @@ function cmdAsset(args) {
       const v = JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8')).version;
       if (v !== version) throw new Error(`${tag}: package.json says ${v}`);
       run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], src);   // インストールのスクリプトは走らせない（SECURITY.md）
-      run(process.execPath, [path.join(src, 'tools', 'build-app.mjs'), '--out', site], src);
+      run(process.execPath, [path.join(src, 'tools', 'build-app.mjs'), '--out', site, '--parts'], src);   // --parts：パーツのサンプルのページも（前の版の build-app は知らない引数を無視する）
       const gz = packSite(site), file = path.join(OUT, assetName(version)), hex = sha256(gz);
       fs.writeFileSync(file, gz);
       fs.writeFileSync(path.join(OUT, `editor-site-v${version}.sha256.txt`), shaLine(version, hex) + '\n');   // リリースの説明に足す行

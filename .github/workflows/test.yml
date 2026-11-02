@@ -239,6 +239,10 @@ jobs:
         with:
           enable-cache: true
           cache-dependency-glob: tts/uv.lock
+      - name: Samples of all parts (tools/test-parts-gallery.mjs --build)
+        # build-app --parts: the gallery of the default parts library from the vendored release, /parts/ in the site, and kit/check.mjs error 0 (#158)
+        if: runner.os == 'Linux'
+        run: node tools/test-parts-gallery.mjs --build
       - name: TTS --dry-run on a copy of examples/minimal
         run: |
           D="$RUNNER_TEMP/deck"

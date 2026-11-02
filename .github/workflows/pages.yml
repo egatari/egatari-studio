@@ -8,6 +8,10 @@
 #                 and every earlier release's editor-site-vX.Y.Z.tar.gz (a release asset, RELEASING.md) is downloaded, checked against
 #                 the sha256 line in its release notes (and GitHub's digest) and unpacked (tools/site-versions.mjs assemble)
 #   /versions.json  the root version and the frozen copies (the editor shows a version list and, in a copy, a notice)
+#   /parts/vX.Y.Z/  samples of all parts (the gallery) of a parts library version (components2.lock.json's default; tools/parts-gallery.mjs, #158),
+#                 built by build-app --parts. Frozen too: a version first published by an earlier release keeps that release's page
+#                 (assemble takes it from that release's editor-site tarball); the new build fills only versions not published before
+#   /parts/         the list of those versions (index.html, versions.json; current first)
 # All paths are relative: the site works at the custom domain https://studio.egatari.org/ (whole site)
 # and at https://egatari.github.io/egatari-studio/.
 # Only release tags deploy: a push of vX.Y.Z (three numbers; v0.6.0-rc.1 and other rc tags do not), or "Run workflow" on such a tag
@@ -31,6 +35,10 @@ on:
       - 'kit/**'
       - 'vendor/components/**'
       - 'components.lock.json'
+      - 'vendor/components-2/**'
+      - 'components2.lock.json'
+      - 'vendor/components-gallery/**'
+      - 'tools/parts-gallery.mjs'
       - 'tools/vendor-components.mjs'
       - 'themes/**'
       - 'vendor/themes/**'
@@ -54,6 +62,10 @@ on:
       - 'kit/**'
       - 'vendor/components/**'
       - 'components.lock.json'
+      - 'vendor/components-2/**'
+      - 'components2.lock.json'
+      - 'vendor/components-gallery/**'
+      - 'tools/parts-gallery.mjs'
       - 'tools/vendor-components.mjs'
       - 'themes/**'
       - 'vendor/themes/**'
@@ -97,9 +109,9 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Build the editor
-        run: node tools/build-app.mjs --out _site
+        run: node tools/build-app.mjs --out _site --parts
       - name: Check the build
-        run: test -s _site/index.html && test -s _site/editor.html && ls -la _site
+        run: test -s _site/index.html && test -s _site/editor.html && test -s _site/parts/index.html && ls -la _site _site/parts
       - name: Add the frozen copies (/vX.Y.Z/)
         # on a release tag the tag must equal package.json's version; other refs use package.json's version (the same steps as a dry run).
         # A release without the asset is skipped (v0.4.0 and earlier); a wrong sha256 or a missing sha256 line fails the build

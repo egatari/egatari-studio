@@ -1,6 +1,7 @@
 // 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
 import { FORMAT } from '../kit/core/format.mjs';
 import { COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
+import { PARTS_GALLERY, PARTS_CATALOGUE } from './parts-gallery.js';
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
 // 新しい教材として保存するときの名前の案（<元の名前>-new<拡張子>）
 const newLessonName = (n) => (n.toLowerCase().endsWith(FX) ? n.slice(0, -FX.length) : n.replace(/\.html?$/i, '')) + '-new' + FX;
@@ -303,6 +304,7 @@ const ja = {
       '作業フォルダは Chrome / Edge だけ（Safari・Firefox はフォルダを開く仕組みがありません。Egatari ファイルはどのブラウザでも開けます）']],
     ['参加者に配る', ['配るのは Egatari ファイル（再生専用は --play-only）。Google ドライブでは、プレビューでは動かないので「ダウンロードしてからブラウザで開く」と添えます。メールの添付、LMS（Moodle・Google Classroom など）のファイルとしても配れます',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
+    ['パーツ', [`<a href="${PARTS_GALLERY}" target="_blank" rel="noopener">すべてのパーツのサンプル</a>（パーツライブラリ v${PARTS_CATALOGUE}）：パーツごとに動くサンプルを、伝えたいことごとに並べています。「新規作成…」の ④ でパーツを選ぶときの参考に`]],
     ['Claude で教材を作る', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.ja.md" target="_blank" rel="noopener">Claude Code や Cowork で教材を作る手引き</a>`]],
     ['自分のテーマ', ['教材のテーマが作業フォルダにも同梱のテーマにもないときは、知らせの「テーマを読み込む…」で、テーマのフォルダを圧縮した ZIP ファイルか、自分のテーマのフォルダ（~/.egatari/themes など）から読み込めます。ZIP ファイルのテーマは中身ごとこのブラウザに保存し、どのブラウザ（Safari・iPad も）でも使えます。フォルダは読むだけで、書き込みません（フォルダを選べるのは Chrome・Edge）。はじめの画面の「自分のテーマ…」で、保存したテーマの削除やフォルダを忘れることができます']],
   ],
@@ -671,6 +673,7 @@ const en = {
       'Working folders need Chrome / Edge (Safari and Firefox cannot open folders; Egatari files open in any browser).']],
     ['Hand out to participants', ['Hand out the Egatari file (a play-only copy with --play-only). On Google Drive the preview does not run it, so tell participants to download it first and open it in a browser. An email attachment or a file in an LMS (Moodle, Google Classroom …) works too.',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
+    ['Parts', [`<a href="${PARTS_GALLERY}" target="_blank" rel="noopener">Samples of all parts</a> (parts library v${PARTS_CATALOGUE}): every part in motion, grouped by what to convey. Useful when choosing parts in step 4 of “New…”.`]],
     ['Make lessons with Claude', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.md" target="_blank" rel="noopener">Guide: making lessons with Claude Code or Cowork</a>`]],
     ['My themes', ['When the lesson’s theme is neither in the working folder nor bundled, load it with “Load theme…” in the notice, from a ZIP file of the theme folder or from your own theme folder (for example ~/.egatari/themes). Themes from a ZIP file are saved in this browser, contents included, and work in every browser (Safari and iPad too). A folder is only read, never written (choosing folders needs Chrome or Edge). “My themes…” on the first screen deletes saved themes or forgets the folder.']],
   ],

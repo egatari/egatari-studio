@@ -22,6 +22,7 @@ import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS
 import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
+import { PARTS_GALLERY } from './parts-gallery.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -101,6 +102,7 @@ const TX = {
     seriesHint: (name) => `データの分布の図（ヒストグラム・箱ひげ図）を使うなら「${name}」を選ぶ。棒・折れ線・円などのグラフはいつも入る`,
     // 新規作成 ④ のパーツの一覧（kit/core/new-deck.mjs の partsList・recommend）
     partsLegend: 'AI にどのパーツを使わせますか',
+    partsGallery: 'すべてのパーツのサンプルを見る',
     partsHint: '伝えたいことごとに並べています。標準パーツは全部選んであります。外したパーツは AI が使わず、要るときは近い形を HTML で描きます。表・画像・数式・図形は、選ばなくてもいつも使えます',
     whySub: (sub, names) => `① の使う場面が${sub}なので、${names}も選びました`,
     whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
@@ -248,6 +250,7 @@ const TX = {
     seriesLegend: 'Will the slides need any of these? (subjects)',
     seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
     partsLegend: 'Which parts may the AI use?',
+    partsGallery: 'See samples of all parts',
     partsHint: 'Grouped by what to convey. All standard parts are chosen. The AI won’t use a part you untick; if it needs one, it draws something close in HTML. Tables, images, equations and shapes are always available.',
     whySub: (sub, names) => `Also chose ${names}, because the setting in step 1 is ${sub}.`,
     whyWord: (word, names) => `Also chose ${names}, because step 2 mentions ${word}.`,
@@ -712,7 +715,9 @@ export function setupLlm(app) {
     const planNote = el('p', { id: 'paste-plan-note', cls: 'hint', text: X.planNote });   // プランは使う人のチャットの AI のもの（Egatari にプランはない）
     const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint(capKb('free'), capKb('paid')) });
     const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
-      el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }), why, groups, count]);
+      el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }),
+      // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
+      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), why, groups, count]);
     // 指示の大きさ：プランの目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
     const total = el('span', { id: 'paste-pack-size', cls: 'hint', tabindex: '-1' });
     const fill = el('span', { cls: 'meter-fill' });
