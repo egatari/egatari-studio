@@ -5,6 +5,7 @@
 // renderedArticle で本文を組み、#egatari-readable の最後に入れる（§9C.6・§9C.12）。
 import { articleLayout, articleFiles, readArticle, validateArticle, referenceKeys, dataArticleOf, parseStep, assignSectionIds } from './article.mjs';
 import { renderArticle, ARTICLE_CSS, esc } from './article-render.mjs';
+export { ARTICLE_CSS };   // 再生器の本の窓の体裁（組み立てが articleCss で入れる。kit/core/portable.mjs も）
 import { citationSettings } from './article-cite.mjs';
 import { linkedPairs, currentLinkHashes, linkStates, pruneLinks, articleLinksProblems } from './article-links.mjs';
 import { ARTICLE_LIMITS, visit } from './article-text.mjs';

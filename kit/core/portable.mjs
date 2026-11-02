@@ -847,7 +847,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (tl) themeVersions = themePinsForIndex(tl, opts.carry.themes).pins;
   }
   // ファイルの決まり（§4.2）：基準のまま（外へは繋がらない）。授業の部屋の派生だけが行き先を足す（kit/core/live.mjs の addLive）
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, policyMeta: policyMeta(policyText()) });
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, ...(AT && AT.ARTICLE_CSS ? { articleCss: AT.ARTICLE_CSS } : {}), policyMeta: policyMeta(policyText()) });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
