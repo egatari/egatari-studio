@@ -37,6 +37,7 @@ var ICON = {
   next: SVG('<path d="M6 3.2L10.8 8 6 12.8"/>'),
   play: SVG('<path d="M5 3.2l8 4.8-8 4.8z" fill="currentColor"/>'),
   stop: SVG('<rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor"/>'),
+  pause: SVG('<rect x="4" y="3.5" width="2.6" height="9" rx=".8" fill="currentColor"/><rect x="9.4" y="3.5" width="2.6" height="9" rx=".8" fill="currentColor"/>'),
   laser: SVG('<circle cx="8" cy="8" r="2.4" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="5.6" opacity=".5"/>'),
   pen: SVG(PEN + '<path d="M2 14h12"/>'),
   vpen: SVG(PEN + '<path d="M2 14h12" stroke-dasharray="1.4 2.2"/>'),
@@ -167,6 +168,8 @@ css(
   "#dt-cb svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}" +
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
+  // 再生速度（自習）：字で今の速さを見せる
+  "#dt-cb button[data-b=rate]{width:auto;min-width:40px;padding:0 4px;font:600 12px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}" +
   // 編集モードの間は、発表の道具（自動再生・レーザー・ペン・消えるペン・色・消す・一覧・全画面）のボタンを隠す
   "#dt-cb.dt-edit [data-b=auto],#dt-cb.dt-edit [data-b=laser],#dt-cb.dt-edit [data-b=vpen],#dt-cb.dt-edit [data-b=pen] .dt-dot,#dt-cb.dt-edit .dt-sw," +
   "#dt-cb.dt-edit [data-b=clear],#dt-cb.dt-edit [data-b=over],#dt-cb.dt-edit [data-b=full],#dt-cb.dt-edit .dt-tsep{display:none!important}" +
@@ -593,7 +596,7 @@ window.addEventListener("message", function(e){
   else if (m.cmd === "key" && m.key === "l"){
     // 授業モード：本体はキーとして押し、「今の画面」は自分で切り替える（deck.js は埋め込みのキーを受けない）
     if (!FOLLOW) press("l");
-    else { DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); var s = DECK.state(); DECK.seek(s.slide - 1, s.step, Infinity); }
+    else DECK.togglePreview();
   }
   else if (m.cmd === "key" && m.key === "o" && !FOLLOW && !EDIT){ if (ov) closeOverview(); else openOverview(); }
 });
@@ -767,10 +770,18 @@ var TIP = JA
      lect: "先のステップを薄く見せる", cap: "字幕", mute: "効果音を消す", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
   : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview", view: "View",
      lect: "Show later steps faintly", cap: "Captions", mute: "Mute sound effects", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
+// 自習（?mode=learn。Player P1）：再生・一時停止と再生速度。発表者の道具（レーザー・ペン・消えるペン・発表者ビュー）は出さない
+var LEARN = DECK.mode === "learn";
+var PLAY = JA ? {play: "再生", pause: "一時停止", rate: "再生速度"} : {play: "Play", pause: "Pause", rate: "Playback speed"};
+function rateNext(){ var R = DECK.RATES || [1], j = R.indexOf(DECK.rate()); DECK.rate(R[(j + 1) % R.length]); }
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
-var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
+var BTNS = LEARN
+  ? [["prev", "←", "ArrowLeft"], ["auto", "a", "a"], ["next", "→", "ArrowRight"], ["rate", "", rateNext], null,
+    ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["full", "f", "f"], null, ["help", "?", "?"]]
+  : [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
   ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+if (LEARN){ TIP.auto = PLAY.play; TIP.rate = PLAY.rate; }
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "mute", "full", "help"];
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
@@ -864,6 +875,7 @@ function buildBar(){
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("deck:pos", syncBar);
   document.addEventListener("deck:sounds", syncBar);
+  document.addEventListener("deck:rate", syncBar);
   new MutationObserver(syncBar).observe(document.documentElement, {attributes: true, attributeFilter: ["class", "data-mode"]});
   buildHandle();
   // 開いたときに 5 秒見せて、あることを知らせる。その端末で初めてなら、出し方の 1 行も
@@ -982,15 +994,22 @@ function syncBar(){
     [].forEach.call(sw.children, function(x, j){ x.setAttribute("aria-pressed", j === color ? "true" : "false"); });
   }
   [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = PEN_COLOR[COLORS[color]]; });
-  on("lect", DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
+  on("lect", DECK.previewOn ? DECK.previewOn() : DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
   on("mute", DECK.muteSounds && DECK.muteSounds());
   if (RA) raSync(on("read", RA.key !== null));
   var playing = document.documentElement.classList.contains("autoplay"), a = on("auto", playing);
   if (a && a._p !== playing){
     a._p = playing;
-    a.innerHTML = (playing ? ICON.stop : ICON.play) + "<kbd>a</kbd>";
-    a.title = (playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto) + kk("a");
-    a.setAttribute("aria-label", playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto);
+    var stopName = LEARN ? PLAY.pause : (JA ? "自動再生を止める" : "Stop autoplay");
+    a.innerHTML = (playing ? (LEARN ? ICON.pause : ICON.stop) : ICON.play) + "<kbd>a</kbd>";
+    a.title = (playing ? stopName : TIP.auto) + kk("a");
+    a.setAttribute("aria-label", playing ? stopName : TIP.auto);
+  }
+  var rb = cb.querySelector('[data-b="rate"]'), rv = DECK.rate ? DECK.rate() : 1;
+  if (rb && rb._r !== rv){
+    rb._r = rv; rb.textContent = rv + "×";
+    rb.title = PLAY.rate + (JA ? "：" : ": ") + rv + "×" + kk("< >");
+    rb.setAttribute("aria-label", PLAY.rate + (JA ? "：" : ": ") + rv + "×");
   }
   // ボタンの数が変わって（ペンの色・編集モード）帯の行の数が変わったら、置き直す
   if (cb.offsetHeight !== cb._h){ cb._h = cb.offsetHeight; placeBar(); }
@@ -1008,12 +1027,12 @@ function helpHtml(){
       row(K("Shift") + "+" + K("←", "→"), j ? "スライド単位" : "By slide"), row(K("Home", "End"), j ? "最初 / 最後" : "First / last"),
       row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Slide overview"),
       row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
-    sec(j ? "表示" : "View", [
-      row(K("a"), j ? "自動再生" : "Autoplay")].concat(DECK.panes && !isDev() ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
+    sec(j ? "表示" : "View", (LEARN ? [row(K("a"), PLAY.play + " / " + PLAY.pause), row(K("<") + " " + K(">"), PLAY.rate + (j ? "（遅く / 速く）" : " (slower / faster)"))] : [
+      row(K("a"), j ? "自動再生" : "Autoplay")]).concat(DECK.panes && !isDev() ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
-      row(K("b"), j ? "黒い画面" : "Black screen"), row(K("f"), j ? "全画面" : "Fullscreen"), row(K("p"), j ? "発表者ビュー" : "Presenter view"),
-      row(K("?"), j ? "このキーの一覧" : "This help")])),
-    sec(j ? "道具" : "Tools", [
+      row(K("b"), j ? "黒い画面" : "Black screen"), row(K("f"), j ? "全画面" : "Fullscreen")].concat(LEARN ? [] : [row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
+      row(K("?"), j ? "このキーの一覧" : "This help")]))),
+    LEARN ? "" : sec(j ? "道具" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
       row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
       row(K("Esc"), j ? "道具を解除" : "Exit tool")])
@@ -1106,6 +1125,7 @@ window.addEventListener("keydown", function(e){
   else if (k === "?") toggleHelp();
   else if (k === "Escape" && helpBox && helpBox.classList.contains("show")) toggleHelp(false);
   else if (k === "o") openOverview();
+  else if (LEARN && (k === "x" || k === "d" || k === "v" || k === "D")) done = false;   // 自習：発表者の道具はない
   else if (k === "x") toggle("laser");
   else if (k === "d") toggle("pen");
   else if (k === "v") toggle("vpen");

@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=dbb6e75243a25293 -->
+<!-- i18n: pair=contract.md sha256=651105dc5dcd96e3 -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -29,7 +29,7 @@
 
 ## 2. 表示モード
 
-モードと「先のステップを薄く見せる」は Player P1。Studio の実行系では：`?mode=talk|video`（既定は `talk`。または `<html data-mode>`）。`learn` はまだない。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
+モードと「先のステップを薄く見せる」は Player P1。Studio の実行系では：`?mode=talk|learn|video`（既定は `talk`。または `<html data-mode>`）。`learn` では学習者が再生・一時停止・送り・跳ぶを操り、再生速度は 0.75・1・1.25・1.5・2 倍（`DECK.rate`）。声の高さは保ち、タイムラインの時計も同じ速さで進む（画面は `(i, k, t)` のまま）。一時停止は同じ所から続き、再生中に送っても再生を続け、発表者の道具（発表者ビュー・レーザーポインター・ペン）は出さない。文書が隠れたら再生を止める（Player P3）。進行状況は `kit/track.js` が記録する（Player P6、[reference](reference.ja.md#自習と進行状況)）。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
 
 ## 3. パーツ（Web Components）
 

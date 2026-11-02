@@ -72,7 +72,7 @@ var ICON = {
 var ART = null, HAS_ART = false, T = null;
 // 画面の言葉（docs/terms.json：book・read-with-script・slides-and-book・read-in-book・watch-on-slides・back-to-playing）
 function words(){
-  return {view: L("表示", "View"), slides: L("スライド", "Slides"),
+  var w = {view: L("表示", "View"), slides: L("スライド", "Slides"),
     book: HAS_ART ? L("本", "Book") : L("台本で読む", "Read with script"),
     split: HAS_ART ? L("スライドと本", "Slides and book") : L("スライドと台本", "Slides and script"),
     divider: HAS_ART ? L("スライドと本の境目", "Divider between slides and book") : L("スライドと台本の境目", "Divider between slides and script"),
@@ -88,6 +88,9 @@ function words(){
     bg: L("背景", "Background"), white: L("白", "White"), sepia: L("セピア", "Sepia"), black: L("黒", "Black"),
     resumed: L("前回の続きから", "Resumed where you left off"), fromStart: L("最初から", "Start over"),
     progress: L("進行状況", "Progress"), enlarge: L("拡大", "Enlarge")};
+  // 自習（learn）では再生・一時停止（kit/tools.js の帯と同じ言葉）
+  if (DECK.mode === "learn"){ w.play = L("再生", "Play"); w.stop = L("一時停止", "Pause"); }
+  return w;
 }
 function stepTarget(a){
   var v = a.getAttribute("data-egatari-step") || "", r = v && DECK.resolveFragment ? DECK.resolveFragment(v) : {error: "none"};
@@ -926,9 +929,11 @@ function saveNow(){
   store(rKey(), JSON.stringify(r));
 }
 function initResume(first){
-  // 埋め込み・編集のプレビュー・# で場所を指して開いた（読み込み直しは除く）ときは使わない。スライドだけで開いたとき（発表）も使わない
+  // 埋め込み・LMS・編集のプレビュー・# で場所を指して開いた（読み込み直しは除く）ときは使わない。スライドだけで開いたとき（発表）も使わない
   var nav = null; try { nav = performance.getEntriesByType("navigation")[0]; } catch (e) {}
   var ok = !EMBED && !window.DECK_DEV && (!DECK.openHash || (nav && nav.type === "reload"));
+  // LMS（SCORM 1.2。kit/track.js）が見つかったときは LMS の位置が勝つ：この端末の続きからは使わず、知らせも出さない
+  if (DECK.trackingAdapter && DECK.trackingAdapter() !== "local") ok = false;
   if (!ok) return;
   P.resume = {restoring: true};
   addEventListener("pagehide", saveNow);
@@ -1251,7 +1256,33 @@ DECK.panes = {
   // キーの一覧（kit/tools.js の ?）の r の行：並べ方の名前の順
   order: function(){ return T ? [T.slides, T.split, T.book].join(" → ") : ""; },
   watch: function(i, k){ if (T) openOverlay(i, k || 0, null); },
-  close: function(){ closeOverlay(); }
+  close: function(){ closeOverlay(); },
+  // 読んだかを見る所（kit/track.js。Player P6 の via "text"）：本の窓の本文の欄と、読む単位 {el, steps: [[i, k]…]}。
+  // 本文：スライドの節（§9C.5）ごとに、その節のスライドの全ステップ。台本で読む：各ステップの台本、台本のないステップはそのスライドの縮図
+  readable: function(){ return P.pane ? {body: P.body, vertical: P.vertical, units: readUnits()} : null; }
 };
+function readUnits(){
+  if (P.units) return P.units;
+  var S = slides(), out = [];
+  if (HAS_ART){
+    var bySec = [];
+    P.secOf.forEach(function(sec, i){
+      if (!sec) return;
+      var u = bySec.find(function(x){ return x.el === sec; });
+      if (!u){ u = {el: sec, steps: []}; bySec.push(u); }
+      for (var k = 0; k <= S[i]._max; k++) u.steps.push([i, k]);
+    });
+    out = bySec;
+  } else {
+    var has = Object.create(null);
+    P.anchors.forEach(function(a){ if (a.el.classList.contains("dx-step")){ out.push({el: a.el, steps: [[a.i, a.k]]}); has[a.i + ":" + a.k] = 1; } });
+    S.forEach(function(s, i){
+      var rest = [], th = P.body.querySelector('.dx-thumb[data-i="' + i + '"]');
+      for (var k = 0; k <= s._max; k++) if (!has[i + ":" + k]) rest.push([i, k]);
+      if (rest.length && th) out.push({el: th, steps: rest});
+    });
+  }
+  return (P.units = out);
+}
 if (DECK.ready) init(); else document.addEventListener("deck:ready", init);
 })();

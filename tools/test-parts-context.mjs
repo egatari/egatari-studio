@@ -17,7 +17,7 @@ const c = { _v2: true, _slide: s, _i: 2, tagName: 'M-PROBE', getAttribute: () =>
   }, mount() { assert.fail('a layout report must keep the part drawing'); } };
 const deck = { mode: 'talk', componentErrors: [] };
 const events = {};
-const scope = { ASIDE: 0, started: true, slides: [s], document: { addEventListener: (name, fn) => { events[name] = fn; } }, DECK: deck, ctxMode: () => 'talk', console: { warn: (m) => warnings.push(m) },
+const scope = { ASIDE: 0, started: true, slides: [s], document: { addEventListener: (name, fn) => { events[name] = fn; } }, DECK: deck, ctxMode: () => 'talk', previewOn: () => false, RATE: 1, EMBED: false, LEARN: false, console: { warn: (m) => warnings.push(m) },
   compFail: () => assert.fail('a report does not fail the part') };
 vm.createContext(scope);
 vm.runInContext(source.slice(source.indexOf('var CTX_SLIDES ='), source.indexOf('// 大きさ・字が変わった：')), scope);

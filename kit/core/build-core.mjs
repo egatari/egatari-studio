@@ -1012,6 +1012,7 @@ export function build(env0, srcPath, opts = {}) {
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'panes.js'))}\n</script>`,
+    `<script>\n${scriptSafe(read(KIT, 'track.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
   ].filter(Boolean);
   const scripts = scriptList.join('\n');

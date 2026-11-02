@@ -78,6 +78,7 @@ const steps = [
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
   ['test-panes', ['tools/test-panes.mjs', path.join(tmp, 'panes')]],   // 窓の並べ方と同期（kit/panes.js。Player P2・§9C.5）：横書き・縦書きの本・台本で読む
   ['test-reading', ['tools/test-reading.mjs', path.join(tmp, 'reading')]],   // 本の窓の読むための道具（kit/panes.js。Player P2 Reading aids）：目次・検索・戻る・前の続きから・文字と背景・図の拡大
+  ['test-tracking', ['tools/test-tracking.mjs', path.join(tmp, 'tracking')]],   // 自習（learn）と進み具合の記録（kit/track.js。Player P1・P6・§9.2・SCORM 1.2）：再生速度・舞台と本で読む・終えた判定・postMessage・SCORM の模型
   // 授業の外へ出るリンク（format spec §11）：決まり（kit/core/link-policy.mjs）の単体と、確認の箱・開かない scheme・動画・sandbox の枠
   ['test-extlinks', ['tools/test-extlinks.mjs', path.join(tmp, 'extlinks')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
