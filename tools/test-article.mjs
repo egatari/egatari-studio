@@ -234,6 +234,19 @@ t('vertical writing: tate-chu-yoko for 1-2 digits', () => {
   for (const w of ['128', '3.14', '2026', '12:30', 'A4', 'H2O', '50%']) assert.ok(h.includes(w) && !h.includes(`<span class="egatari-tcy">${w}`) && !/egatari-tcy">\d+<\/span>(?:\.|:|%)/.test(h), w);
   assert.equal((h.match(/egatari-tcy/g) || []).length, 3);
 });
+t('vertical writing: numbers the producer writes are upright too (headings, captions, cross-references)', () => {
+  // §9C.6（spec 6af9eb3）：見出しの番号「1」・章の「第 4 章」の 4・図の題・相互参照も縦中横。「1.2」「4.1」は丸ごと横に倒す
+  const one = render({ 'article.md': '---\nwriting-mode: vertical-rl\n---\n(sec-aaaaaa)=\n## 春の朝\n\n[](#sec-aaaaaa) と [](#fig-a)\n\n:::{figure} a.png\n:label: fig-a\n:alt: a\n\n題\n:::\n\n### 小見出し\n' }, { path: 'article.md' });
+  assert.ok(one.includes('<h2><span class="egatari-num"><span class="egatari-tcy">1</span></span> 春の朝</h2>'), 'h2 number upright');
+  assert.ok(/<span class="egatari-num">1\.1<\/span> 小見出し/.test(one), '1.1 stays rotated whole');
+  assert.ok(/class="egatari-xref"><span class="egatari-tcy">1<\/span>/.test(one) && /class="egatari-xref">図 ?<span class="egatari-tcy">1<\/span><\/a>/.test(one), 'cross-references upright');
+  assert.ok(/<figcaption><span class="egatari-num">図 ?<span class="egatari-tcy">1<\/span><\/span>/.test(one), 'caption number upright');
+  const ch = render({ 'article/4.md': '---\ntitle: 章\nchapter: 4\nwriting-mode: vertical-rl\n---\n(sec-aaaaaa)=\n## 節\n' });
+  assert.ok(/<h1><span class="egatari-num">第 ?<span class="egatari-tcy">4<\/span> ?章<\/span>/.test(ch), 'chapter number upright: ' + ch.slice(0, 300));
+  assert.ok(/<span class="egatari-num">4\.1<\/span> 節/.test(ch), '4.1 rotated whole');
+  const h = render({ 'article.md': '(sec-aaaaaa)=\n## 横\n' }, { path: 'article.md' });
+  assert.ok(!h.includes('egatari-tcy'), 'horizontal: no tate-chu-yoko');
+});
 t('safety: no script, no handlers, no foreign HTML, no javascript: links', () => {
   const h = render({ 'article.md': 'x <script>alert(1)</script> [a](javascript:alert(1)) [b](https://e.org/) ![c](a.png "t")\n\n:::{table} t\n<table>\n<tr><td>&lt;img onerror=x&gt;</td></tr>\n</table>\n:::\n' }, { path: 'article.md' }, { image: () => 'data:image/png;base64,AA' });
   assert.ok(!/<script|onerror=|href="javascript:/i.test(h.replace(/&lt;[^&]*&gt;/g, '')), h);

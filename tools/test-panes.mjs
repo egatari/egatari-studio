@@ -216,7 +216,7 @@ const markColor = (p) => p.evaluate(() => { const m = document.querySelector('#d
   ok(Math.abs((await st(p)).ratio - 280 / 1280) < .01, 'the divider position is remembered on this device');
   await p.dblclick('#deck-split');
   ok(Math.abs((await st(p)).ratio - r0) < .01, 'double-click resets the divider');
-  ok(await p.evaluate(() => { const d = document.getElementById('deck-split'); return d.getAttribute('role') === 'separator' && +d.getAttribute('aria-valuenow') > 0; }), 'the divider is a separator with a value');
+  ok(await p.evaluate(() => { const d = document.getElementById('deck-split'); return d.getAttribute('role') === 'separator' && +d.getAttribute('aria-valuenow') > 0 && d.getAttribute('aria-label') === 'スライドと本の境目'; }), 'the divider is a separator named スライドと本の境目 with a value');
   await p.context().close();
 }
 
@@ -228,6 +228,7 @@ const markColor = (p) => p.evaluate(() => { const m = document.querySelector('#d
   const mc = await markColor(p);
   ok(mc && mc.tw === '4px' && !/rgba\(0, 0, 0, 0\)/.test(mc.top), 'vertical: the mark is the rule at the line start (top)');
   ok((await scrollPos(p)).left === 0, 'vertical: the book opens at its right edge');
+  ok(await p.evaluate(() => getComputedStyle(document.querySelector('#sec-pa2aaa h2 .egatari-num .egatari-tcy')).textCombineUpright === 'all'), 'vertical: the section number in the heading is upright (§9C.6)');
   await shot(p, '03-v-split');
   await p.evaluate(() => DECK.go(2, 0)); await wait(p, 900);
   const a3 = await along(p, '#sec-pa4ccc');

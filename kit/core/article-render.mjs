@@ -118,7 +118,7 @@ export function renderArticle(article, opts = {}) {
     const r = fileRenderer(f, info);
     if (book) out.push(`<section data-egatari-chapter="${esc(info.chapterAttr || '')}" data-egatari-kind="${esc(f.kind)}">`);
     const h = info.header;
-    if (h.head || h.title) out.push(`<header><h1>${h.head ? `<span class="egatari-num">${esc(h.head)}</span>${h.title ? ' ' : ''}` : ''}${r.text(h.title)}</h1>${h.subtitle ? `<p class="egatari-subtitle">${r.text(h.subtitle)}</p>` : ''}</header>`);
+    if (h.head || h.title) out.push(`<header><h1>${h.head ? `<span class="egatari-num">${r.text(h.head)}</span>${h.title ? ' ' : ''}` : ''}${r.text(h.title)}</h1>${h.subtitle ? `<p class="egatari-subtitle">${r.text(h.subtitle)}</p>` : ''}</header>`);
     out.push(r.body());
     if (C && C.chapters.has(fi)) out.push(C.chapters.get(fi));
     if (book) out.push('</section>');
@@ -177,7 +177,7 @@ export function renderArticle(article, opts = {}) {
         case 'heading': {
           const x = num(n);
           const id = n.label ? ` id="${esc(n.label)}"` : '';
-          return `<h${n.depth}${n.depth === 2 ? '' : id}>${x.num ? `<span class="egatari-num">${esc(x.num)}</span> ` : ''}${inline(n.children)}</h${n.depth}>`;
+          return `<h${n.depth}${n.depth === 2 ? '' : id}>${x.num ? `<span class="egatari-num">${text(x.num)}</span> ` : ''}${inline(n.children)}</h${n.depth}>`;
         }
         case 'blockquote': return `<blockquote>${block(n.children)}</blockquote>`;
         case 'thematicBreak': return '<hr>';
@@ -191,7 +191,7 @@ export function renderArticle(article, opts = {}) {
           const url = String(n.url || '');
           if (url.startsWith('#')) {
             const t = nums.targets.get(url.slice(1).toLowerCase());
-            const kids = n.children && n.children.length ? inline(n.children) : esc(t ? t.text || t.title || url.slice(1) : url.slice(1));
+            const kids = n.children && n.children.length ? inline(n.children) : text(t ? t.text || t.title || url.slice(1) : url.slice(1));
             return `<a href="${esc(url)}" class="egatari-xref">${kids}</a>`;
           }
           if (/^(https?:|mailto:)/i.test(url)) return `<a href="${esc(url)}"${n.title ? ` title="${esc(n.title)}"` : ''}>${inline(n.children)}</a>`;
@@ -201,7 +201,7 @@ export function renderArticle(article, opts = {}) {
         case 'inlineMath': return math(n.value, false);
         case 'math': {
           const x = num(n);
-          return `<div class="egatari-math"${n.label ? ` id="${esc(n.label)}"` : ''}>${math(n.value, true)}${x.num ? `<span class="egatari-eqno">(${esc(x.num)})</span>` : ''}</div>`;
+          return `<div class="egatari-math"${n.label ? ` id="${esc(n.label)}"` : ''}>${math(n.value, true)}${x.num ? `<span class="egatari-eqno">(${text(x.num)})</span>` : ''}</div>`;
         }
         case 'container': return container(n);
         case 'table': return table(n);
@@ -210,14 +210,14 @@ export function renderArticle(article, opts = {}) {
           const cls = ['egatari-aside', ...String(n.class || '').split(/\s+/).filter(Boolean).map((c) => `egatari-aside-${c}`)].join(' ');
           const [t, ...body] = n.children || [];
           const title = t && t.type === 'admonitionTitle' ? inline(t.children) : '';
-          return `<aside class="${esc(cls)}"${n.label ? ` id="${esc(n.label)}"` : ''}><p class="egatari-aside-title">${x.text ? `<span class="egatari-num">${esc(x.text)}</span> ` : ''}${title}</p>\n${block(t && t.type === 'admonitionTitle' ? body : n.children)}</aside>`;
+          return `<aside class="${esc(cls)}"${n.label ? ` id="${esc(n.label)}"` : ''}><p class="egatari-aside-title">${x.text ? `<span class="egatari-num">${text(x.text)}</span> ` : ''}${title}</p>\n${block(t && t.type === 'admonitionTitle' ? body : n.children)}</aside>`;
         }
         case 'proof': {
           const x = num(n);
           const [t, ...rest] = n.children || [];
           const hasT = t && t.type === 'admonitionTitle';
           const body = hasT ? rest : n.children || [];
-          const head = `<p class="egatari-proof-head"><strong>${esc(x.text || '')}</strong>${hasT ? W.paren(inline(t.children)) : ''}</p>`;
+          const head = `<p class="egatari-proof-head"><strong>${text(x.text || '')}</strong>${hasT ? W.paren(inline(t.children)) : ''}</p>`;
           let html = block(body);
           if (n.kind === 'proof') {
             const qed = '<span class="egatari-qed">∎</span>';
@@ -229,7 +229,7 @@ export function renderArticle(article, opts = {}) {
           const x = num(n);
           const [t, ...rest] = n.children || [];
           const hasT = t && t.type === 'admonitionTitle';
-          return `<div class="egatari-exercise"${n.label ? ` id="${esc(n.label)}"` : ''}><p class="egatari-exercise-head"><strong>${esc(x.text || W.exercise)}</strong>${hasT ? ' ' + inline(t.children) : ''}</p>\n${block(hasT ? rest : n.children)}</div>`;
+          return `<div class="egatari-exercise"${n.label ? ` id="${esc(n.label)}"` : ''}><p class="egatari-exercise-head"><strong>${text(x.text || W.exercise)}</strong>${hasT ? ' ' + inline(t.children) : ''}</p>\n${block(hasT ? rest : n.children)}</div>`;
         }
         case 'solution': {
           const [t, ...rest] = n.children || [];
@@ -237,7 +237,7 @@ export function renderArticle(article, opts = {}) {
           const label = ref ? String(ref.label || ref.identifier) : '';
           const target = nums.targets.get(label.toLowerCase());
           const name = target && target.text ? target.text : label;
-          const head = `<p class="egatari-solution-head"><strong>${W.solution(`<a href="#${esc(label)}" class="egatari-xref">${esc(name)}</a>`)}</strong></p>`;
+          const head = `<p class="egatari-solution-head"><strong>${W.solution(`<a href="#${esc(label)}" class="egatari-xref">${text(name)}</a>`)}</strong></p>`;
           return `<div class="egatari-solution"${n.label ? ` id="${esc(n.label)}"` : ''}${exerciseBefore.has(n) ? ' data-egatari-after-exercise=""' : ''}>${head}\n${block(t && t.type === 'admonitionTitle' ? rest : n.children)}</div>`;
         }
         case 'footnoteReference': {
@@ -291,7 +291,7 @@ export function renderArticle(article, opts = {}) {
       const x = num(n);
       const caption = captionOf(n, 'caption')[0], legend = captionOf(n, 'legend')[0];
       const capInline = caption ? (caption.children || []).map((p) => (p.type === 'paragraph' ? inline(p.children) : node(p))).join(' ') : '';
-      const numSpan = x.text ? `<span class="egatari-num">${esc(x.text)}</span>${capInline ? ' ' : ''}` : '';
+      const numSpan = x.text ? `<span class="egatari-num">${text(x.text)}</span>${capInline ? ' ' : ''}` : '';
       const legendHtml = legend ? `<div class="egatari-legend">${block(legend.children)}</div>` : '';
       const id = n.label ? ` id="${esc(n.label)}"` : '';
       if (n.kind === 'table') {
@@ -300,7 +300,7 @@ export function renderArticle(article, opts = {}) {
       }
       if (n.subcontainer) {
         const im = (n.children || []).find((c) => c.type === 'image');
-        return `<figure class="egatari-subfigure"${id}>${im ? img(im) : ''}<figcaption><span class="egatari-num">${esc(x.num || '')}</span>${capInline ? ' ' + capInline : ''}</figcaption></figure>`;
+        return `<figure class="egatari-subfigure"${id}>${im ? img(im) : ''}<figcaption><span class="egatari-num">${text(x.num || '')}</span>${capInline ? ' ' + capInline : ''}</figcaption></figure>`;
       }
       const parts = (n.children || []).filter((c) => c.type === 'image' || (c.type === 'container' && c.subcontainer)).map((c) => (c.type === 'image' ? img(c) : container(c)));
       return `<figure class="egatari-figure"${id}>${parts.join('\n')}${caption || x.text ? `<figcaption>${numSpan}${capInline}</figcaption>` : ''}${legendHtml}</figure>`;
@@ -349,6 +349,7 @@ export function renderArticle(article, opts = {}) {
 
 // 縦書きの縦中横（§9C.6）。
 // 数は ASCII の英字・数字と . , : / % の続きを 1 つとして取り、数字 1〜2 字だけのものを縦中横にする（第3章・10月。3.14・2026・12:30・A4 は横に寝かせる）
+// 縦書きの数字（§9C.6）：本文の字も、組み立てが書く番号（見出し・図表の題・相互参照・式の番号）も、英数字の続きが 1〜2 字の数字だけなら縦中横
 function tcy(s) { return String(s).split(/([A-Za-z0-9.,:/%]+)/).map((part, i) => (i % 2 && /^[0-9]{1,2}$/.test(part) ? `<span class="egatari-tcy">${part}</span>` : esc(part))).join(''); }
 export function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
