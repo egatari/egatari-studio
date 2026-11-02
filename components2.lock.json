@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.1.0",
+  "default": "2.1.1",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -147,6 +147,62 @@
         "menu": "2.0.0",
         "numberline": "2.0.0",
         "orbit": "2.0.0",
+        "pie": "2.0.0",
+        "plot": "1.0.0",
+        "predict": "2.0.1",
+        "quad": "2.0.1",
+        "scatter": "2.0.0",
+        "score": "2.0.0",
+        "seq": "2.0.0",
+        "shape": "1.0.0",
+        "sweep": "2.0.0",
+        "syntax": "2.0.0",
+        "tape": "2.0.0",
+        "timeline": "2.0.0",
+        "timer": "2.0.1",
+        "tree": "2.0.0",
+        "venn": "2.0.0"
+      }
+    },
+    "2.1.1": {
+      "tag": "v2.1.1",
+      "tarballSha256": "29cfc2c344ddf4b785469e8634a7f7cf31e3d307e3bcf71ec4b6ed0166b9a6a7",
+      "manifestSha256": "fe7d165827e4ab6226cdb0d343db07f4304134af178edf7735e3a0eed760fe1f",
+      "parts": {
+        "bars": "2.0.0",
+        "base": "1.0.0",
+        "boxplot": "2.0.0",
+        "boxplot-core": "1.0.0",
+        "cards": "2.0.0",
+        "codetree": "2.0.0",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.0",
+        "compare": "2.0.0",
+        "curves": "2.0.0",
+        "cycle": "2.0.1",
+        "expr": "1.0.0",
+        "fishbone": "2.0.0",
+        "flow": "2.0.1",
+        "gendai": "2.0.0",
+        "heatmap": "2.0.0",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.0",
+        "hist": "2.0.0",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.0",
+        "kanbun": "2.0.0",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.1",
+        "kobun": "2.0.0",
+        "kpi": "2.0.0",
+        "map-japan": "2.0.0",
+        "map-world": "2.0.0",
+        "market": "2.0.0",
+        "markup-reader": "1.0.0",
+        "menu": "2.0.0",
+        "numberline": "2.0.0",
+        "orbit": "2.0.1",
         "pie": "2.0.0",
         "plot": "1.0.0",
         "predict": "2.0.1",
@@ -637,6 +693,15 @@
     "orbit": {
       "2.0.0": {
         "sha256": "6440523fdf4b08fe23bda918d6db8c4656a58a74bb81d4de8b205113483316a8",
+        "kind": "element",
+        "tag": "m-orbit",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "dbbd262ab28045a0f5e0cbec09b6068a0343668bf21e61bb02f8d0c4c1bc2ea7",
         "kind": "element",
         "tag": "m-orbit",
         "requires": {

@@ -26,7 +26,9 @@ let fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fail++; };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// 取り込みも同じ content 表に書く。1.x の既定と、先に取り込んだ同じ版の写しを残す。
+// 取り込みも同じ content 表に書く。1.x の既定と、先に取り込んだ同じ版の index.js は残す。ほかのファイル（README・demo など）だけが
+// カタログの間で変わったときは、per-file の sha256（manifest.json、format spec §6）から作った content hash の違いで見分けて直す
+// （「無印の版替え」のような申告には頼らない）。index.js 自体が同じ版で違えば、版を付け替えずに中身を変えた部品庫側の誤りとして断る。
 {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-parts-store-'));
   try {
@@ -35,18 +37,33 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     fs.writeFileSync(path.join(root, 'components.lock.json'), JSON.stringify(legacy));
     const code = Buffer.from('egatariParts.define({name: "base", version: "1.0.0", requires: {}}, function(){ return {}; });\n');
     const record = { sha256: crypto.createHash('sha256').update(code).digest('hex'), kind: 'library', requires: {}, license: 'MIT' };
-    const release = (version, readme) => ({ version, tag: 'v' + version, tarballSha256: version === '2.0.0' ? 'a'.repeat(64) : 'b'.repeat(64), manifest: Buffer.from('{}'), license: Buffer.from('MIT'),
-      parts: { base: { version: '1.0.0', record, files: new Map([['index.js', code], ['README.md', Buffer.from(readme)]]) } } });
+    const tarballs = { '2.0.0': 'a', '2.0.1': 'b', '2.0.2': 'c' };
+    const release = (version, readme, { code: c = code } = {}) => ({ version, tag: 'v' + version, tarballSha256: tarballs[version].repeat(64), manifest: Buffer.from('{}'), license: Buffer.from('MIT'),
+      parts: { base: { version: '1.0.0', record: c === code ? record : { ...record, sha256: crypto.createHash('sha256').update(c).digest('hex') },
+        files: new Map([['index.js', c], ['README.md', Buffer.from(readme)]]) } } });
     applyRelease2(release('2.0.0', 'first'), { root });
     const first = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
     const dir = resolveComponent(path, root, first, 'base', '1.0.0');
     ok(dir.split(path.sep).join('/').includes('/vendor/components/sha256/') && fs.existsSync(path.join(dir, 'index.js')), '2.0 import writes content-addressed code, resolved through the shared lock');
     ok(first.components.bars.default === '1.13.1' && checkVendor2(root).length === 0, '2.0 import preserves 1.x defaults and does not apply release-wide 1.x withdrawals to library versions');
+
+    // case 1: 同じ版・同じ index.js・違う README → 直す（written ではなく refreshed。前の写しは宙に浮いたら消える）
     const second = applyRelease2(release('2.0.1', 'changed documentation'), { root });
     const next = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
-    ok(second.written.length === 0 && resolveComponent(path, root, next, 'base', '1.0.0') === dir && fs.readFileSync(path.join(dir, 'README.md'), 'utf8') === 'first', 'another catalogue keeps the original content of an already imported part version');
-    fs.appendFileSync(path.join(dir, 'README.md'), 'tampered');
+    const dir2 = resolveComponent(path, root, next, 'base', '1.0.0');
+    ok(second.written.length === 0 && eq(second.refreshed, ['base@1.0.0']), 'another catalogue with the same index.js but a changed README is reported as refreshed, not written, and not silently kept as before');
+    ok(dir2 !== dir && fs.readFileSync(path.join(dir2, 'README.md'), 'utf8') === 'changed documentation', 'the refresh moves the content pointer to the new release’s files (index.js stays byte-identical)');
+    ok(fs.readFileSync(path.join(dir2, 'index.js')).equals(code) && !fs.existsSync(dir), 'the code is unchanged and the orphaned previous copy is removed once nothing else points to it');
+    ok(checkVendor2(root).length === 0, 'the refreshed store still matches components2.lock.json and components.lock.json');
+    fs.appendFileSync(path.join(dir2, 'README.md'), 'tampered');
     ok(checkVendor2(root).some((e) => /content hash mismatch/.test(e)), '2.0 storage check covers the whole content object, including documentation');
+
+    // case 2: 同じ版・違う index.js → 断る（版を付け替えずに中身（コード）を変えた部品庫側の誤り）
+    const badCode = Buffer.from('egatariParts.define({name: "base", version: "1.0.0", requires: {}}, function(){ return {x: 1}; });\n');
+    let threw = null;
+    try { applyRelease2(release('2.0.2', 'changed documentation again', { code: badCode }), { root }); } catch (e) { threw = e; }
+    ok(threw && /base@1\.0\.0: index\.js differs/.test(threw.message), 'the same version with a different index.js is refused, not silently vendored, even though only the README also changed');
+    ok(JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8')).catalogues['2.0.2'] === undefined, 'a refused import writes nothing (no partial catalogue)');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -345,12 +362,19 @@ for (const [code, what] of [
   ok(v2 && v2.tag === 'v2.0.0' && v2.tarballSha256 === 'a6bf864ca7b4034af2125f2c8f67d51bb6671a9f7a8c543ca16d288f283bd7db' &&
     v2.manifestSha256 === 'b8e117f4e67cc292200d4fae4752a3c6a38c597a6ce951ad2e766d731503095f' &&
     ['timer', 'predict', 'flow', 'quad', 'cycle'].every((n) => v2.parts[n] === '2.0.1'), 'components 2.0.0 is pinned to the verified release (timer/predict/flow/quad/cycle 2.0.1)');
-  // 2.1.0（#142 のアイコンと札の並び・m-keyboard 2.0.1・m-orbit）：既定。配布物と manifest の sha256 は部品庫のリリースのもの
+  // 2.1.0（#142 のアイコンと札の並び・m-keyboard 2.0.1・m-orbit）：配布物と manifest の sha256 は部品庫のリリースのもの
   const v21 = lock2.catalogues['2.1.0'];
-  ok(lock2.default === '2.1.0' && v21 && v21.tag === 'v2.1.0' && v21.tarballSha256 === '53b86b055b6905b3aad26e88ab0222ab76f518c0ba4a005e6bb237b2e14760cc' &&
+  ok(v21 && v21.tag === 'v2.1.0' && v21.tarballSha256 === '53b86b055b6905b3aad26e88ab0222ab76f518c0ba4a005e6bb237b2e14760cc' &&
     v21.manifestSha256 === '38757400260bbed882befb19144d18f30147c9256bb4e3551b8f6c39529c1334' &&
     v21.parts.cards === '2.0.0' && v21.parts.icons === '1.0.0' && v21.parts.keyboard === '2.0.1' && v21.parts.orbit === '2.0.0' &&
-    lock2.parts.icons['1.0.0'].build.subset[0].match === 'name', 'components 2.1.0 is the default and pinned to the verified release (cards, icons with subset by name, keyboard 2.0.1, orbit)');
+    lock2.parts.icons['1.0.0'].build.subset[0].match === 'name', 'components 2.1.0 is pinned to the verified release (cards, icons with subset by name, keyboard 2.0.1, orbit)');
+  // 2.1.1（m-orbit 2.0.1 の直し・timer と tape の demo.html の直し。他の部品は 2.1.0 と同じ版・同じ sha256）：既定。配布物と manifest の sha256 は部品庫のリリースのもの
+  const v211 = lock2.catalogues['2.1.1'];
+  ok(lock2.default === '2.1.1' && v211 && v211.tag === 'v2.1.1' && v211.tarballSha256 === '29cfc2c344ddf4b785469e8634a7f7cf31e3d307e3bcf71ec4b6ed0166b9a6a7' &&
+    v211.manifestSha256 === 'fe7d165827e4ab6226cdb0d343db07f4304134af178edf7735e3a0eed760fe1f' &&
+    v211.parts.orbit === '2.0.1' && lock2.parts.orbit['2.0.1'].sha256 === 'dbbd262ab28045a0f5e0cbec09b6068a0343668bf21e61bb02f8d0c4c1bc2ea7' &&
+    Object.keys(v211.parts).filter((n) => n !== 'orbit').every((n) => v211.parts[n] === v21.parts[n]),
+    'components 2.1.1 is the default and pinned to the verified release (m-orbit 2.0.1 fix; every other part the same version as 2.1.0)');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
