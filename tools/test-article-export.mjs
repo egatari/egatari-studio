@@ -87,6 +87,14 @@ t('list: chapter (a book): a list at the end of each chapter, ids ref-<chapter>-
   assert.ok(!/data-egatari-references|<a class="egatari-cite"/.test(n));
   assert.match(n, /<span class="egatari-cite">Shannon, 1948<\/span>/);
 });
+t('list: chapter ids use the footnote token: ref-preface1-key, ref-4-key, ref-A-key, and citations link to them (§9C.6)', () => {
+  const files = { 'article/00.md': '---\ntitle: P\nkind: preface\n---\nSee [@aho1974].\n', 'article/04.md': '---\ntitle: C\nchapter: 4\n---\n## A\n\nSee @shannon1948.\n', 'article/90.md': '---\ntitle: X\nkind: appendix\n---\n## B\n\nSee [@yamada2020].\n' };
+  const a = readArticle({ chapters: Object.keys(files), references: 'references.json' }, (p) => files[p], { lang: 'en' });
+  const h = html(a, 'apa', 'chapter');
+  assert.deepEqual([...h.matchAll(/<li id="([^"]+)">/g)].map((m) => m[1]), ['ref-preface1-aho1974', 'ref-4-shannon1948', 'ref-A-yamada2020']);
+  assert.deepEqual([...h.matchAll(/class="egatari-cite" href="#([^"]+)"/g)].map((m) => m[1]), ['ref-preface1-aho1974', 'ref-4-shannon1948', 'ref-A-yamada2020']);
+  assert.equal((h.match(/<section data-egatari-references=""><h2>References<\/h2>\n<ul class="egatari-references/g) || []).length, 3, 'each list: unnumbered h2, then a ul');
+});
 t('citeproc output is filtered: no markup from references.json reaches the article', () => {
   const evil = [{ id: 'x', type: 'webpage', title: 'evil <script>alert(1)</script> <img src=x onerror=alert(1)> <a href="javascript:alert(1)">y</a>', URL: 'javascript:alert(1)', author: [{ family: '"><svg onload=alert(1)>' }], issued: { 'date-parts': [[2020]] } }];
   const a = one('## A\n\nSee [@x] and @x.\n');
@@ -187,6 +195,11 @@ t('working folder: articlePage formats citations with metadata.citations and war
 });
 
 // ---------------------------------------------------------------- 1 ファイル（§9C.1・§9C.6・§9C.7・§9C.12）
+// 1 ファイルへの書き出しはステップへのリンクを再生器で確かめる（nodeEnv.articleSteps。ブラウザは tools/test-article-steps.mjs で）。
+// ここでは再生器の答えを置き換える：probe(link) → DECK.resolveFragment の結果
+const stepCalls = [];
+const envWith = (probe) => ({ ...nodeEnv, articleSteps: async (html, links) => { stepCalls.push({ html, links }); return Object.fromEntries(links.map((l) => [l, probe(l)])); } });
+const packEnv = envWith((l) => ({ legacy: false, id: l.split(':')[0] }));
 const indexOf = (html) => { const m = html.match(new RegExp(`<script type="[^"]*" id="${FORMAT.INDEX_ID}"[^>]*>([\\s\\S]*?)</script>`)); return JSON.parse(m[1]); };
 const egatariArticle = (html) => { const i = html.indexOf('<article id="egatari-article"'); return html.slice(i, html.indexOf('</article>\n</section>', i) + '</article>'.length); };
 t('pack: article files, references and images go into files; index.article and articleLinks; #egatari-article is the last child of #egatari-readable', async () => {
@@ -194,7 +207,7 @@ t('pack: article files, references and images go into files; index.article and a
   const L = loadArticle(nodeEnv, path.join(d, 'deck.html'), {});
   const lr = await articleLinkReport(L);
   fs.writeFileSync(path.join(d, 'egatari.json'), JSON.stringify({ articleLinks: { ...recordLinks(null, lr.current, lr.pairs).links, 's-gone': { 'sec-h7q2xz': { article: 'a'.repeat(64), slide: 'b'.repeat(64) } } } }, null, 2) + '\n');
-  const r = await PF.exportPortable(nodeEnv, path.join(d, 'deck.html'), { fromFolder: true });
+  const r = await PF.exportPortable(packEnv, path.join(d, 'deck.html'), { fromFolder: true });
   const ix = r.index;
   assert.deepEqual(PF.validateIndex(ix), []);
   for (const p of ['article/00-preface.md', 'article/01.md', 'article/09-answers.md', 'references.json', 'images/loss.svg']) assert.ok(ix.files[p], `files has ${p}`);
@@ -225,7 +238,7 @@ t('unpack writes the article files and egatari.json article/articleLinks; packin
   for (const p of ['article/01.md', 'references.json', 'images/loss.svg']) assert.ok(u.written.includes(p), p);
   const conf = JSON.parse(fs.readFileSync(path.join(out, 'egatari.json'), 'utf8'));
   assert.ok(conf.article && conf.articleLinks);
-  const again = await PF.exportPortable(nodeEnv, path.join(out, 'deck.html'), { fromFolder: true });
+  const again = await PF.exportPortable(packEnv, path.join(out, 'deck.html'), { fromFolder: true });
   assert.equal(again.html, fs.readFileSync(f, 'utf8'));
   // ほかの書き手の 1 ファイル（egatari.json に article がない）でも、展開は読む順を書く（§9C.7 MUST）
   const ix = indexOf(again.html);
@@ -235,12 +248,24 @@ t('unpack writes the article files and egatari.json article/articleLinks; packin
 });
 t('pack: an article with errors (§9C.8) is not written; a ## heading without an id is given one and written back', async () => {
   const bad = copyBook('bad', (dir) => fs.appendFileSync(path.join(dir, 'article', '01.md'), '\nSee [](#fig-nowhere).\n'));
-  await assert.rejects(PF.exportPortable(nodeEnv, path.join(bad, 'deck.html'), { fromFolder: true }), (e) => e.code === 'article-invalid' && /fig-nowhere/.test(e.message));
+  await assert.rejects(PF.exportPortable(packEnv, path.join(bad, 'deck.html'), { fromFolder: true }), (e) => e.code === 'article-invalid' && /fig-nowhere/.test(e.message));
   const noid = copyBook('noid', (dir) => fs.appendFileSync(path.join(dir, 'article', '01.md'), '\n## 新しい節\n\n本文。\n'));
-  const r = await PF.exportPortable(nodeEnv, path.join(noid, 'deck.html'), { fromFolder: true });
+  const r = await PF.exportPortable(packEnv, path.join(noid, 'deck.html'), { fromFolder: true });
   assert.match(r.writes['article/01.md'], /\n\(sec-[a-z2-7]{6}\)=\n## 新しい節\n/);
   assert.equal(dec.decode(r.files['article/01.md']), r.writes['article/01.md']);
   assert.ok(r.warnings.some((w) => /gave 1 article section/.test(w)));
+});
+t('pack checks step links in the player on the written file, and refuses a link to a step the slide does not have (§9C.8 1)', async () => {
+  const d = copyBook('steps');
+  stepCalls.length = 0;
+  const r = await PF.exportPortable(packEnv, path.join(d, 'deck.html'), { fromFolder: true });
+  assert.deepEqual(stepCalls.map((c) => c.links), [['s-k3f9q2:1']]);
+  assert.equal(stepCalls[0].html, r.html, 'the check runs on the document that is written');
+  const bad = envWith((l) => ({ error: 'no such step', max: 2 }));
+  await assert.rejects(PF.exportPortable(bad, path.join(d, 'deck.html'), { fromFolder: true }), (e) => e.code === 'article-invalid' && e.details.some((x) => x.code === 'articleStep' && x.data.why === 'step' && x.data.max === 2));
+  const { articleSteps, ...noSteps } = packEnv;
+  void articleSteps;
+  await assert.rejects(PF.exportPortable(noSteps, path.join(d, 'deck.html'), { fromFolder: true }), (e) => e.code === 'article-unsupported');
 });
 t('an editor without the article tools refuses a working folder with an article rather than dropping it', async () => {
   const d = copyBook('noart');

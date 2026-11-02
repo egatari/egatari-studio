@@ -197,6 +197,20 @@ export function validateArticle(article, ctx = {}) {
   return { problems, labels, sections };
 }
 
+// 再生器でステップへのリンクの行き先を確かめた結果（"<slideKey>:<stepKey>" → DECK.resolveFragment の {error, max} か {legacy, id}。
+// kit/article-steps.mjs の STEP_PROBE）から、validateArticle の resolveStep を作る。check と 1 ファイルへの書き出しが同じものを使う（§9C.8 の 1）
+export const STEP_PROBE = (ls) => Object.fromEntries(ls.map((f) => { const r = DECK.resolveFragment(f); return [f, r.error ? { error: r.error, max: r.max } : { legacy: !!r.legacy, id: r.id }]; }));   // eslint-disable-line no-undef
+export function stepResolver(res) {
+  return (s, k) => {
+    const r = res[`${s}:${k}`];
+    if (!r) return null;
+    if (r.error === 'unknown slide' || r.error === 'slide number out of range') return { why: 'slide' };
+    if (r.error === 'no concl step') return { why: 'concl' };
+    if (r.error) return { why: 'step', ...(Number.isInteger(r.max) ? { max: r.max } : {}) };
+    return r.legacy || !r.id ? { why: 'not-id' } : null;
+  };
+}
+
 // {step}`s-k3f9q2:3` / {step}`字 <s-k3f9q2:3>` → {text, slideKey, stepKey}（書き方が違えば null）
 export function parseStep(value) {
   const v = String(value || '').trim();

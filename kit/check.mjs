@@ -358,19 +358,12 @@ phase = 'J リンク';
 phase = 'M 本文';
 if (hasArticle(src)) {
   const { loadArticle, stepLinksOf, articleLinkReport } = await import('./core/article-page.mjs');
-  const { validateArticle } = await import('./core/article.mjs');
+  const { validateArticle, stepResolver, STEP_PROBE } = await import('./core/article.mjs');
   const L = loadArticle(nodeEnv, src, { lang });
   if (L) {
     const links = stepLinksOf(L.article);
-    const res = await page.evaluate((ls) => Object.fromEntries(ls.map((f) => { const r = DECK.resolveFragment(f); return [f, r.error ? { error: r.error, max: r.max } : { legacy: !!r.legacy, id: r.id }]; })), links);
-    const resolveStep = (s, k) => {
-      const r = res[`${s}:${k}`];
-      if (!r) return null;
-      if (r.error === 'unknown slide' || r.error === 'slide number out of range') return { why: 'slide' };
-      if (r.error === 'no concl step') return { why: 'concl' };
-      if (r.error) return { why: 'step', ...(Number.isInteger(r.max) ? { max: r.max } : {}) };
-      return r.legacy || !r.id ? { why: 'not-id' } : null;
-    };
+    const res = await page.evaluate(STEP_PROBE, links);
+    const resolveStep = stepResolver(res);
     const v = validateArticle(L.article, { ...L.ctx, resolveStep });
     for (const p of [...L.problems, ...v.problems]) report(null, p.sev, p.code, { ...p.data, file: p.file || null, line: p.line || null, spec: p.spec });
     // スライドと節のつながりの古さ（§9C.7）：記録の hash と今が違えば「スライドと本が合っていないかもしれません」。記録のない組はまとめて 1 行

@@ -1357,6 +1357,17 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 書いたものが §4.2 の決まりに合うこと（置き場所と中身。合わなければ書かない）
   { const pp = checkFilePolicy(html);
     if (pp.length) fail('file-policy', 'the file policy (§4.2) is not in place: ' + pp.join('; '), pp); }
+  // 本文のステップへのリンク（§9C.8 の 1：ないスライド・ないステップへのリンクは誤りで、書き出さない）：書いた文書を再生器で開き、check と同じに確かめる
+  // （env.articleSteps。Node の組み立てだけが持つ。持たなければ書き出さない）
+  if (art) {
+    const links = AT.stepLinksOf(art.L.article);
+    if (links.length) {
+      if (typeof env0.articleSteps !== 'function') fail('article-unsupported', 'the article has step links, and this producer cannot check them in the player (§9C.8): export it with the CLI (npm run portable -- pack)');
+      const res = await env0.articleSteps(html, links);
+      const errs = AT.validateArticle(art.L.article, { ...art.L.ctx, resolveStep: AT.stepResolver(res) }).problems.filter((x) => x.code === 'articleStep');
+      if (errs.length) { const ml = /^ja\b/i.test(lang) ? 'ja' : 'en'; fail('article-invalid', `the article has ${errs.length} error(s) (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs); }
+    }
+  }
   const size = utf8Length(html);
   if (size > WARN_BYTES) warnings.push(`${LOG}: the file is ${(size / MiB).toFixed(1)} MiB (over ${WARN_BYTES / MiB} MiB): consider splitting the lesson into chapters`);
   if (size > LIMITS.fileBytes) warnings.push(`${LOG}: the file is over ${LIMITS.fileBytes / MiB} MiB; editors may refuse it`);

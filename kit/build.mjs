@@ -177,7 +177,9 @@ export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex, abcjs,
   csl: cslNode,   // 関数（env を写す { ...env } で citeproc を読み込まないように）
   // 本文の道具（format spec §9C。1 ファイルへの書き出し kit/core/portable.mjs が、本文があるときだけ読み込む。myst-parser が重いので）
-  articleTools: async () => ({ ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')) }),
+  articleTools: async () => ({ ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')), ...(await import('./core/article.mjs')) }),
+  // 本文のステップへのリンクの行き先を再生器で確かめる（§9C.8 の 1。kit/article-steps.mjs。ブラウザを起動するので、リンクがあるときだけ）
+  articleSteps: async (html, links) => (await import('./article-steps.mjs')).resolveStepLinks(html, links),
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir,
