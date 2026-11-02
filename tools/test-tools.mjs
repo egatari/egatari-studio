@@ -1,4 +1,5 @@
 // 発表中の道具（kit/tools.js）の確認：node tools/test-tools.mjs <built.html> [画面の保存先]
+// test-all: serial（消えるペンが 2 秒・レーザーが 2 秒で消えるのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 // 一覧・ペン（スライドごとに残る）・消えるペン・レーザー・動画モード・印刷・発表者ビューからの書き込み
 import { launch, fileUrl } from '../kit/browser.mjs';
 import fs from 'node:fs';

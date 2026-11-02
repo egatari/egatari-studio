@@ -1,4 +1,5 @@
 // 編集アプリ（app/）の音声の板の確認（app/audio-panel.js）
+// test-all: serial（音声の板：偽のマイクの録音と再生の進み。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-audio.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // Chromium の偽のマイク（--use-fake-device-for-media-stream と、作った音声のファイル --use-file-for-fake-audio-capture）で録音し、
 // TTS は差し替え（モデルを取りに行かない）。録音は録音モードだけ（#82）：板の「● 録音 (r)」がその段階で録音モードを開き、

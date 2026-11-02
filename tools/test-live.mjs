@@ -461,7 +461,12 @@ console.log('stage rendering');
     return { b, h: crypto.createHash('sha256').update(await o.p.screenshot({ clip: b })).digest('hex') };
   };
   let same = 0;
-  for (const pos of positions) { const a = await shot(A, pos), b = await shot(B, pos); if (a.h === b.h && a.b.width === b.b.width) same++; else console.log('    differs at', pos, a.b, b.b); }
+  // 同じ状態なら 2 つの絵は止まった同じ絵になる：違えば 5 秒まで撮り直す（ほかの段と同時に走る CI では描き終わりが遅れた。違いが残れば失敗）
+  for (const pos of positions) {
+    let a = await shot(A, pos), b = await shot(B, pos);
+    for (const t0 = Date.now(); !(a.h === b.h && a.b.width === b.b.width) && Date.now() - t0 < 5000;) { await sleep(200); a = await shot(A, pos); b = await shot(B, pos); }
+    if (a.h === b.h && a.b.width === b.b.width) same++; else console.log('    differs at', pos, a.b, b.b);
+  }
   ok(same === positions.length, `stage-only frames are identical with and without the live room at ${positions.length} (i, k, t)`);
   ok(!(await st(B.p)).open && await B.p.$eval('#stage', (e) => Math.abs(e.getBoundingClientRect().height - 720) < 0.5), 'collapsed: the stage uses the full window (720 px high in a 1640 × 720 window)');
   await openMark(B.p);

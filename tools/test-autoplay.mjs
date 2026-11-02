@@ -1,4 +1,5 @@
 // 自動再生と発表者ビュー：a で始め、発表者ビューから送ると止まり、ボタンの表示が変わる
+// test-all: serial（自動再生：始まって進むのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-autoplay.mjs <built.html>
 import { launch, fileUrl } from '../kit/browser.mjs';
 const file = process.argv[2];

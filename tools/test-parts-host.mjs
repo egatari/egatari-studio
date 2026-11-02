@@ -1,4 +1,5 @@
 // 部品庫 2.0 の受け口（format spec §6.1・§6.2・§8.4。backlog #123）：同梱の再生器が 2.0 のパーツを動かすか
+// test-all: serial（部品の時計（ctx.extend の実時間・自動再生が段階の終わりを待つ）を数百ミリ秒の待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-parts-host.mjs [出力先]
 // 教材 tools/fixtures/parts2/（egatari.json の componentsCatalogue で 2.0。m-bars・m-flow・m-kakijun は content 表で引く写し、
 // m-probe・m-boom・m-orphan は作業フォルダの埋め込みのパーツ）を組んで開き、確かめること：

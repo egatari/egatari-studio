@@ -44,6 +44,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     # Linux: npm test now runs past 45 min (test 24 on v0.6-integration was cancelled at 45 min while still passing; test-components alone takes about 545 s), so the job and each test-all step get more time
+    # With npm test -- --jobs 3 (backlog #156) the tests took 22-33 min here in the green runs of the v0.6.4-ci-parallel branch (39 min one at a time in run 41300438072); the cap is unchanged
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -68,7 +69,8 @@ jobs:
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           TEST_STEP_TIMEOUT_S: '900'
-        run: npm test
+        # --jobs 3: three test-all steps at a time on the 4-vCPU runner, timing-sensitive tests (// test-all: serial) last and alone (backlog #156)
+        run: npm test -- --jobs 3
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
@@ -88,6 +90,7 @@ jobs:
     runs-on: windows-latest
     # Windows: npm test now runs past 45 min (cancelled at 45 min on v0.6-integration while still passing; test-components alone takes about 575 s, near the default 600 s step cap), so the job and each test-all step get more time
     # 60 min became too short: main took 56 min (run 41300438072) and a branch with more tests reached the cap still passing (run 41320179850). #156 runs the steps in parallel
+    # With npm test -- --jobs 3 (backlog #156) the tests took 26-34 min here in the green runs of the v0.6.4-ci-parallel branch (55 min one at a time in run 41300438072); the cap is unchanged
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -102,7 +105,8 @@ jobs:
           TMP: ${{ runner.temp }}
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           TEST_STEP_TIMEOUT_S: '900'
-        run: npm test
+        # --jobs 3 (backlog #156): see the test job
+        run: npm test -- --jobs 3
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
@@ -123,6 +127,9 @@ jobs:
     # macOS runners are slow: npm test now runs past 45 min here, so the job and each test-all step get more time (clean on macOS takes under 2 min; its 25 min is enough).
     # test-components reached the 1200 s step cap here (1190.8 s, then 1200 s in run 40594677324): it now runs the quality checks alongside the browser checks and is split into two test-all steps
     # 75 min was too short once v0.6.3 joined its branches: green runs took 55-68 min, and run 41210305228 reached the cap in test-audio, still progressing (every test 10-30 % slower, plus the new viewer-input and sounds tests)
+    # --jobs 1 here (backlog #156): the macOS arm64 runner has 3 vCPUs and 7 GB, and each browser test already uses more than one. With --jobs 3 green runs took 38-41 min,
+    # but other runs slowed every step about 2x (test-app reached the 1200 s step cap); with --jobs 2 they took 55-57 min, no faster than one at a time, and test-app's
+    # audio checks (autoplay plays, currentTime advances) failed. Running these steps in parallel here needs test-app's audio checks in a serial step first
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -135,7 +142,8 @@ jobs:
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           TEST_STEP_TIMEOUT_S: '1200'
-        run: npm test
+        # --jobs 1 (backlog #156): see the comment on the job
+        run: npm test -- --jobs 1
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
