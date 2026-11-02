@@ -18,3 +18,5 @@ plugins/egatari/** text eol=lf
 skills/studio/SKILL.md text eol=lf
 # 名前で絞る試験の写し（部品庫の参照の実装が作った期待値）：バイトのまま（Windows の checkout で CRLF になると sha256 が合わない）
 tools/fixtures/subset-names/** -text
+# パーツのサンプルのページを組む道具の写し（egatari/components の決まったコミット。tools/parts-gallery.mjs）：バイトのまま（SOURCE.json の sha256）
+vendor/components-gallery/** -text

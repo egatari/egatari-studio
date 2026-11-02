@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { packKb, partsPackOpts } from '../kit/core/llm-pack.mjs';
 import { initialParts } from '../kit/core/new-deck.mjs';
+import { PARTS_GALLERY } from '../app/parts-gallery.js';
 import { clickUntil, clickDlg, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -207,6 +208,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(JSON.stringify(await ticks()) === JSON.stringify([...initialParts([]), ...stats].sort()) && (await pk.textContent('#paste-parts-why')) === '① の使う場面が「学会の口頭発表」なので、ヒートマップ・ヒストグラム・箱ひげ図・分布の更新も選びました'
       && (await pk.textContent('#paste-parts-hint')).endsWith('表・画像・数式・図形は、選ばなくてもいつも使えます'),
       'new parts: a conference talk ticks every standard part and the statistics set, says why, and says tables, images, equations and shapes are always available');
+    const gl = await pk.$eval('#paste-parts-gallery', (a) => ({ href: a.getAttribute('href'), target: a.target, rel: a.rel, text: a.textContent }));
+    ok(gl.href === PARTS_GALLERY && gl.target === '_blank' && /noopener/.test(gl.rel) && gl.text === 'すべてのパーツのサンプルを見る',
+      'new parts: links to the samples of all parts on studio.egatari.org (absolute, new tab) ' + JSON.stringify(gl));
     const c1 = await copy();
     // 標準と統計の図で無料のプランの目安を越えるので、中核の 4 つの説明も短くなる（一覧の 1 行は残る。backlog #125）
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('| `<m-flow>` |') && !c1.includes('### `<m-flow>`') && c1.includes('### `<m-hist>`') && !c1.includes('使わない言いたいこと')

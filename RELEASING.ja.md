@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=effd30c6b70b4fd5 -->
+<!-- i18n: pair=RELEASING.md sha256=371d2c22d591dbcc -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -64,5 +64,5 @@
    node tools/site-versions.mjs verify vX.Y.Z         # 添えたファイルを取り、説明と GitHub の digest に合うか確かめる
    ```
 
-8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/>・<https://studio.egatari.org/vX.Y.Z/>・前のリリースの `/v…/` を開く（その記録に、置いた凍結した写しが並ぶ）。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
+8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/>・<https://studio.egatari.org/vX.Y.Z/>・前のリリースの `/v…/`・<https://studio.egatari.org/parts/>（すべてのパーツのサンプル）を開く（その記録に、置いた凍結した写しと、各版のページをどのリリースから取ったかが並ぶ）。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
    ブラウザが受け取る圧縮した応答も確かめる：`curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` が `200` を出すこと（圧縮した 404 がキャッシュに残り、ドメインを替えても消えないことがある）

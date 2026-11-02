@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=a07b61aa115fe138 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=7eb71cbf91677eaa -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -64,5 +64,5 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    node tools/site-versions.mjs verify vX.Y.Z         # downloads the asset and checks it against the notes and GitHub's digest
    ```
 
-8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>, <https://studio.egatari.org/vX.Y.Z/> and the previous release's `/v…/` (its log lists the frozen copies it added). To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
+8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>, <https://studio.egatari.org/vX.Y.Z/>, the previous release's `/v…/` (its log lists the frozen copies it added) and <https://studio.egatari.org/parts/> (the samples of all parts; the log also says which release each version's page came from). To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
    Also check the compressed response, which a browser gets: `curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` must print `200` (a cached compressed 404 can survive a domain change).

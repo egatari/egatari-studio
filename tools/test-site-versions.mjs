@@ -1,7 +1,8 @@
 // 版ごとの編集アプリ（tools/site-versions.mjs・app/version-ui.js）の単体の試験。ブラウザもネットワークも使わない
 // test-all: unit
 //   URL のパス → 凍結した写しの版・tar.gz の往復（並びと時刻を固定して同じバイト・長いパス・GNU tar でも読める）・変なパスやリンクを断る・
-//   リリースの説明の sha256 の行と GitHub の digest・サイトの組み立て（根・/v<今の版>/・前の版・versions.json・古い写しへの案内の読み込み）
+//   リリースの説明の sha256 の行と GitHub の digest・サイトの組み立て（根・/v<今の版>/・前の版・versions.json・古い写しへの案内の読み込み）・
+//   パーツのサンプルのページ（/parts/v<版>/ を版の写しから出す・最初に公開したリリースのページを残す・/parts/index.html と versions.json）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -112,6 +113,35 @@ const bad = rel('0.4.0', OLD); bad.body = shaLine('0.4.0', 'f'.repeat(64));
 throws(() => assemble({ site: SITE, current: '0.4.3', releases: [bad], log: () => {} }), /does not match/, 'assemble: a release whose asset does not match its notes fails the build');
 const noIndex = path.join(tmp, 'noindex'); put(noIndex, 'app.js', 'x');
 throws(() => assemble({ site: SITE, current: '0.4.3', releases: [rel('0.3.0', noIndex)], log: () => {} }), /no index\.html/, 'assemble: an asset without index.html fails');
+
+
+// ---------------------------------------------------------------- パーツのサンプルのページ（/parts/。backlog #158）
+// 前のリリース 0.6.4（2.1.1 を公開）・0.6.5（2.1.1 と 2.2.0 を持つ）、いま組んだ 0.6.6（2.2.0 と 2.3.0）：2.1.1 は 0.6.4 の、2.2.0 は 0.6.5 のページを残し、2.3.0 だけいま組んだもの
+const P4 = path.join(tmp, 'p4'), P5 = path.join(tmp, 'p5'), PS = path.join(tmp, 'psite');
+put(P4, 'index.html', 'v0.6.4'); put(P4, 'app.js', `var MARK="${MARK}";`); put(P4, 'parts/v2.1.1/index.html', 'gallery 2.1.1 from 0.6.4'); put(P4, 'parts/index.html', 'list 0.6.4');
+put(P5, 'index.html', 'v0.6.5'); put(P5, 'app.js', `var MARK="${MARK}";`); put(P5, 'parts/v2.1.1/index.html', 'gallery 2.1.1 from 0.6.5'); put(P5, 'parts/v2.2.0/index.html', 'gallery 2.2.0 from 0.6.5');
+put(PS, 'index.html', 'root'); put(PS, 'parts/v2.2.0/index.html', 'gallery 2.2.0 from 0.6.6'); put(PS, 'parts/v2.3.0/index.html', 'gallery 2.3.0 from 0.6.6');
+put(PS, 'parts/versions.json', JSON.stringify({ current: '2.3.0', versions: ['2.2.0', '2.3.0'] }));
+const pr = assemble({ site: PS, current: '0.6.6', releases: [rel('0.6.5', P5), rel('0.6.4', P4)], log: () => {} });
+const pg = (v) => fs.readFileSync(path.join(PS, 'parts', 'v' + v, 'index.html'), 'utf8');
+ok(pg('2.1.1') === 'gallery 2.1.1 from 0.6.4' && pg('2.2.0') === 'gallery 2.2.0 from 0.6.5' && pg('2.3.0') === 'gallery 2.3.0 from 0.6.6',
+  'assemble parts: each parts library version keeps the page of the first release that published it; the new build fills the rest');
+ok(['v0.6.6', 'v0.6.5', 'v0.6.4'].every((d) => !fs.existsSync(path.join(PS, d, 'parts'))) && fs.readFileSync(path.join(PS, 'v0.6.4', 'index.html'), 'utf8') === 'v0.6.4',
+  'assemble parts: no /vX.Y.Z/parts/ (the pages live only under /parts/); the copies are otherwise as unpacked');
+const pj = JSON.parse(fs.readFileSync(path.join(PS, 'parts', 'versions.json'), 'utf8'));
+ok(pj.current === '2.3.0' && pj.versions.join() === '2.1.1,2.2.0,2.3.0' && pj.studio['2.1.1'] === '0.6.4' && pj.studio['2.2.0'] === '0.6.5' && pj.studio['2.3.0'] === '0.6.6' && pr.parts.current === '2.3.0',
+  'assemble parts: parts/versions.json lists the versions, the current one (the root editor\'s) and which Studio published each ' + JSON.stringify(pj));
+const li = fs.readFileSync(path.join(PS, 'parts', 'index.html'), 'utf8');
+const at = (v) => li.indexOf(`href="v${v}/"`);
+ok(at('2.3.0') > 0 && at('2.3.0') < at('2.2.0') && at('2.2.0') < at('2.1.1') && /<html lang="ja">/.test(li), 'assemble parts: parts/index.html links every version, current first, then newest first');
+// 前のリリースが前に組んだ版を、置き直し（Run workflow でいまより前のタグ）でも残す：いま組んだ 0.6.4 より後の 0.6.5 の 2.1.1 は使わない
+const PR = path.join(tmp, 'predeploy'); put(PR, 'index.html', 'root'); put(PR, 'parts/v2.1.1/index.html', 'gallery 2.1.1 from 0.6.4 (rebuilt)');
+put(PR, 'parts/versions.json', JSON.stringify({ current: '2.1.1', versions: ['2.1.1'] }));
+assemble({ site: PR, current: '0.6.4', releases: [rel('0.6.5', P5)], log: () => {} });
+ok(fs.readFileSync(path.join(PR, 'parts', 'v2.1.1', 'index.html'), 'utf8') === 'gallery 2.1.1 from 0.6.4 (rebuilt)' && fs.existsSync(path.join(PR, 'parts', 'v2.2.0', 'index.html')),
+  'assemble parts: deploying an earlier tag again keeps its own page and takes only versions it did not have from later releases');
+const NP = path.join(tmp, 'noparts'); put(NP, 'index.html', 'root');
+ok(assemble({ site: NP, current: '0.4.3', releases: [rel('0.4.1', OLD)], log: () => {} }).parts === null && !fs.existsSync(path.join(NP, 'parts')), 'assemble parts: no parts pages anywhere writes no /parts/');
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(fails ? `${fails} failed` : 'all passed');
