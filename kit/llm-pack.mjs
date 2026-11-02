@@ -1,15 +1,19 @@
 // チャットの AI への指示を組み立てて出す（kit/core/llm-pack.mjs の buildPack。編集アプリの「AI への指示を写す」と同じ文章）
 //   node kit/llm-pack.mjs --sets stats,math --lang ja         共通の本体（標準の部品）+ 束（'all' で全部、指定なしで共通の本体だけ）
 //   node kit/llm-pack.mjs --plan paid [--sets …]             有料のプラン（どの部品も詳しく。--sets all --plan paid で指示の全体）
-//   node kit/llm-pack.mjs --list [--lang ja]                   束・その部品・大きさ（無料のプランの共通の本体 + その束。最後に有料のプラン）。--lang がなければ en と ja の両方の列
+//   node kit/llm-pack.mjs --no-fit [--sets …]                無料のプランで目安に収めない（下の fit をしない。比べる・調べる用）
+//   node kit/llm-pack.mjs --list [--lang ja]                   束・その部品・大きさ（無料のプランは収めた大きさと収める前の大きさ。最後に有料のプラン）
 //   node kit/llm-pack.mjs --help | -h                          使い方
+// 無料のプランは、編集アプリの新規作成と同じに目安（PACK_CAP_KB.free）に収める（kit/core/llm-pack.mjs の fitPack。backlog #125）：
+//   越えたら中核の 4 つの説明を短くし、それでも越えれば専門のパーツを大きい順に外す。短くした・外したときは、何をなぜしたかを stderr に出す
+//   （黙って外さない。毎晩の評価・スキルが無料のプランで使う指示が、利用者が編集アプリで貼るものと同じになるように）。生の指示は --no-fit
 // 前の --series（系列）と --tools（道具）は 1 版のあいだ読む：系列は束に読み替え（SERIES_SETS。info は特殊になったので何も足さない）、道具は束 tools
-import { buildPack, SETS, membersOfSet, packKb, BRIEF, STANDARD } from './core/llm-pack.mjs';
+import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, loadedParts, partsPackOpts, fitPack } from './core/llm-pack.mjs';
 
 // 前の系列 → 束
 const SERIES_SETS = { academic: ['stats', 'math'], business: ['business'], kokugo: ['kokugo'], english: ['english'], info: [], social: ['maps'], music: ['music'] };
 
-const USAGE = `usage: node kit/llm-pack.mjs [--sets <name,…|all>] [--lang en|ja] [--plan free|paid]
+const USAGE = `usage: node kit/llm-pack.mjs [--sets <name,…|all>] [--lang en|ja] [--plan free|paid] [--no-fit]
        node kit/llm-pack.mjs --list [--lang en|ja]
        node kit/llm-pack.mjs --help
 
@@ -20,9 +24,14 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
 --plan   the user's chat AI: free (default; the standard parts other than
          the four core ones get only their catalogue line: ${BRIEF.join(', ')})
          or paid (every part described in full)
+         On the free plan the pack is fitted to ${PACK_CAP_KB.free} KB as the editor's New… does:
+         over the limit, the core four (${FREE_CORE.join(', ')}) get only their
+         catalogue line too; if still over, specialized parts are left out,
+         largest first. stderr says what was shortened or left out
+--no-fit the free-plan pack as assembled, without fitting it to the limit
 --list   lists the part sets, their components and the size of the common
-         body with that set (KB = UTF-8 bytes / 1024), free plan, then the
-         paid plan; without --lang, en and ja sizes
+         body with that set (KB = UTF-8 bytes / 1024): the free plan fitted,
+         then before fitting, then the paid plan; without --lang, en and ja
 --series, --tools  the former options, read for one version: a series is
          read as its part sets (${Object.entries(SERIES_SETS).map(([s, x]) => `${s} = ${x.join('+') || 'none'}`).join(', ')}),
          and any tool as the tools set
@@ -40,19 +49,30 @@ if (langArg !== undefined && !['en', 'ja'].includes(langArg)) { console.error(`-
 const planArg = arg('--plan');
 if (planArg !== undefined && !['free', 'paid'].includes(planArg)) { console.error(`--plan must be free or paid (got ${planArg})\n\n${USAGE}`); process.exit(2); }
 const VALUED = ['--sets', '--series', '--tools', '--lang', '--plan'];
-const known = new Set([...VALUED, '--list']);
+const known = new Set([...VALUED, '--list', '--no-fit']);
 const bad = argv.filter((a, i) => a.startsWith('-') && !known.has(a.split('=')[0]) && !(i > 0 && VALUED.includes(argv[i - 1])));
 if (bad.length) { console.error(`unknown option ${bad[0]}\n\n${USAGE}`); process.exit(2); }
 
+// 無料のプランの指示を目安に収める（編集アプリと同じ fitPack。頼みたいことは記入欄のまま）→ {text, fit}
+function fittedPack(sets, lang) {
+  const sizeOf = (tags, short) => packSize(buildPack({ ...partsPackOpts(tags, 'free', { short }), lang }));
+  const fit = fitPack(loadedParts(sets), 'free', { sizeOf, capBytes: PACK_CAP_KB.free * 1024 });
+  return { text: buildPack({ ...partsPackOpts(fit.tags, 'free', { short: fit.short }), lang }), fit };
+}
+
 if (argv.includes('--list')) {
   const langs = langArg ? [langArg] : ['en', 'ja'];
-  const cols = (sets, plan = 'free') => langs.map((lang) => packKb(buildPack({ sets, lang, plan })) + ' KB').join('\t');
-  console.log(['set', ...langs.map((l) => `${l} (free: standard + set)`), 'components'].join('\t'));
-  console.log(`standard\t${cols([])}\t${membersOfSet(STANDARD).join(', ')}`);
-  for (const s of SETS) console.log(`${s}\t${cols([s])}\t${membersOfSet(s).join(', ')}`);
-  console.log(`all\t${cols('all')}`);
-  console.log(`paid standard\t${cols([], 'paid')}`);
-  console.log(`paid all\t${cols('all', 'paid')}`);
+  const cols = (f) => langs.map((lang) => f(lang)).join('\t');
+  const fitted = (sets) => cols((lang) => { const { text, fit } = fittedPack(sets, lang); return packKb(text) + ' KB' + (fit.dropped.length ? ` (core four shortened; left out ${fit.dropped.join(', ')})` : fit.short ? ' (core four shortened)' : ''); });
+  const raw = (sets, plan = 'free') => cols((lang) => packKb(buildPack({ sets, lang, plan })) + ' KB');
+  console.log(['set', ...langs.map((l) => `${l} free, fitted to ${PACK_CAP_KB.free} KB`), ...langs.map((l) => `${l} free, before fitting`), 'components'].join('\t'));
+  console.log(`${STANDARD}\t${fitted([])}\t${raw([])}\t${membersOfSet(STANDARD).join(', ')}`);
+  for (const s of SETS) console.log(`${s}\t${fitted([s])}\t${raw([s])}\t${membersOfSet(s).join(', ')}`);
+  console.log(`all\t${fitted('all')}\t${raw('all')}`);
+  console.log(['', ...langs.map((l) => `${l} paid (cap ${PACK_CAP_KB.paid} KB)`)].join('\t'));
+  console.log(`paid standard\t${raw([], 'paid')}`);
+  // 有料のプランのすべての束（いちばん大きいとき）は上限を越えても知らせるだけ（npm run gen は止めない）
+  console.log(`paid all\t${cols((lang) => { const b = packSize(buildPack({ sets: 'all', lang, plan: 'paid' })); return kbOf(b) + ' KB' + (b > PACK_CAP_KB.paid * 1024 ? ` (over ${PACK_CAP_KB.paid} KB: every set at once, a warning only)` : ''); })}`);
 } else {
   try {
     let sets = arg('--sets');
@@ -68,6 +88,15 @@ if (argv.includes('--list')) {
       console.error(`note: --series and --tools are read as --sets ${[...want].join(',') || '(none)'}`);
       sets = [...want];
     }
-    process.stdout.write(buildPack({ sets: sets === undefined ? [] : sets, lang: langArg || 'en', plan: planArg || 'free' }));
+    sets = sets === undefined ? [] : sets;
+    const lang = langArg || 'en', plan = planArg || 'free';
+    if (plan === 'paid' || argv.includes('--no-fit')) process.stdout.write(buildPack({ sets, lang, plan }));
+    else {
+      const { text, fit } = fittedPack(sets, lang);
+      if (fit.short) console.error(`note: free plan: over ${PACK_CAP_KB.free} KB, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
+      if (fit.dropped.length) console.error(`note: free plan: still over ${PACK_CAP_KB.free} KB, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
+      if (fit.over) console.error(`warning: free plan: ${kbOf(fit.bytes)} KB is still over ${PACK_CAP_KB.free} KB`);
+      process.stdout.write(text);
+    }
   } catch (e) { console.error(e.message); process.exit(2); }
 }

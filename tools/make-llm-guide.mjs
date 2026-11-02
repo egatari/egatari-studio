@@ -33,7 +33,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { parseLock, resolveComponent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
-import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, partSpans, STANDARD, FREE_CORE } from '../kit/core/llm-pack-assemble.mjs';
+import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -653,11 +653,16 @@ export function generate(opts = {}) {
   const PAIRS = pairsOf(SETS);
   for (const lang of ['en', 'ja']) {
     const kb = (sets, plan, short = false) => KB(assemble(data, { sets, lang, plan, short }));
-    // 無料のプランの標準＋束：越えるなら中核の 4 つも短くした大きさ（新規作成と同じ。kit/core/new-deck.mjs の fitPlan）。freeShort はそうした束
-    const full = Object.fromEntries(SETS.map((s) => [s, kb([s], 'free')]));
-    const freeShort = SETS.filter((s) => full[s] > LIMITS.free);
+    // 無料のプラン：新規作成とコマンド（kit/llm-pack.mjs）が写すのと同じ、目安に収めた指示（llm-pack-assemble.mjs の fitPack：越えたら中核の 4 つを短く、
+    // それでも越えれば専門のパーツを外す）。freeFit は束ごとの {short, dropped}
+    const bytesOf = (tags, short) => Buffer.byteLength(assemble(data, { ...packOptsOf(data, tags, 'free', { short }), lang }), 'utf8');
+    const fitted = (sets) => fitPack(data, [...membersOf(data[lang], STANDARD), ...sets.flatMap((s) => membersOf(data[lang], s))], 'free', { sizeOf: bytesOf, capBytes: LIMITS.free * 1024 });
+    const std = fitted([]);
+    const fits = Object.fromEntries(SETS.map((s) => [s, fitted([s])]));
     sizes[lang] = {
-      free: kb([], 'free'), freeSets: Object.fromEntries(SETS.map((s) => [s, freeShort.includes(s) ? kb([s], 'free', true) : full[s]])), freeShort,
+      free: std.bytes / 1024, freeStandardShort: std.short || std.dropped.length > 0,
+      freeSets: Object.fromEntries(SETS.map((s) => [s, fits[s].bytes / 1024])), freeFit: Object.fromEntries(SETS.map((s) => [s, { short: fits[s].short, dropped: fits[s].dropped }])),
+      freeShort: SETS.filter((s) => fits[s].short),
       paid: kb([], 'paid'), paidSets: Object.fromEntries(SETS.map((s) => [s, kb([s], 'paid')])),
       paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), kb(p, 'paid')])), paidAll: kb('all', 'paid'),
     };
@@ -673,8 +678,8 @@ export function generate(opts = {}) {
     const z = sizes[lang];
     const core = FREE_CORE.map((t) => '`' + t + '`').join(ja ? '・' : ', ');
     const rows = ja
-      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free], ...SETS.map((s) => [`無料のプラン：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ）' : ''}`, z.freeSets[s], LIMITS.free]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], ['有料のプラン：すべての束（このファイルとすべての束の指示）', z.paidAll, LIMITS.paid]]
-      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free], ...SETS.map((s) => [`Free plan: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too)' : ''}`, z.freeSets[s], LIMITS.free]), ['Paid plan: every standard part', z.paid, LIMITS.paid], ['Paid plan: every part set (this file and every set pack)', z.paidAll, LIMITS.paid]];
+      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free], ...SETS.map((s) => [`無料のプラン：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], [`有料のプラン：すべての束（このファイルとすべての束の指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
+      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free], ...SETS.map((s) => [`Free plan: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too' + (z.freeFit[s].dropped.length ? `; ${z.freeFit[s].dropped.join(', ')} left out` : '') + ')' : ''}`, z.freeSets[s], LIMITS.free]), ['Paid plan: every standard part', z.paid, LIMITS.paid], [`Paid plan: every part set (this file and every set pack)${z.paidAll > LIMITS.paid ? '; over the cap it is a warning only' : ''}`, z.paidAll, LIMITS.paid]];
     const table = (ja ? '| 指示 | 大きさ | 上限 |\n|---|---:|---:|\n' : '| Pack | Size | Cap |\n|---|---:|---:|\n') + rows.map(([w, kb, cap]) => `| ${w} | ${f1(kb)} | ${cap} KB |`).join('\n');
     const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SETS_LIST}}', list);
     files[commonFile(lang)] = preamble + commonOf(data, lang, { sets: [], plan: 'paid' }) + '\n\n' + requestOf(data, lang) + '\n';
@@ -746,8 +751,9 @@ export function writeMakeSkillZip(out, files = generate().files) {
 export function sizeReport(sizes) {
   const out = [];
   for (const [lang, z] of Object.entries(sizes)) {
-    out.push({ lang, what: 'free standard', plan: 'free', sets: [], kb: z.free, max: LIMITS.fail, level: z.free > LIMITS.fail ? 'fail' : z.free > LIMITS.warn ? 'warn' : 'ok' });
-    for (const [s, kb] of Object.entries(z.freeSets)) out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, short: (z.freeShort || []).includes(s), kb, max: LIMITS.free, level: kb > LIMITS.free ? 'over' : 'ok' });
+    // 標準すべては、短くも外しもせずに収まること（越えて短くしたら失敗）
+    out.push({ lang, what: 'free standard', plan: 'free', sets: [], kb: z.free, max: LIMITS.fail, level: z.free > LIMITS.fail || z.freeStandardShort ? 'fail' : z.free > LIMITS.warn ? 'warn' : 'ok' });
+    for (const [s, kb] of Object.entries(z.freeSets)) out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, short: (z.freeShort || []).includes(s), dropped: ((z.freeFit || {})[s] || {}).dropped || [], kb, max: LIMITS.free, level: kb > LIMITS.free ? 'over' : 'ok' });
     out.push({ lang, what: 'paid standard', plan: 'paid', sets: [], kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'fail' : 'ok' });
     for (const [p, kb] of Object.entries(z.paidPairs)) out.push({ lang, what: 'paid standard+' + p, plan: 'paid', sets: p.split('+'), paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
     out.push({ lang, what: 'paid every set', plan: 'paid', sets: 'all', worst: true, kb: z.paidAll, max: LIMITS.paid, level: z.paidAll > LIMITS.paid ? 'warn' : 'ok' });
@@ -833,7 +839,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // 有料のプランの 2 つの束の組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
   const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid standard+' + largestPair(z.paidPairs)[0]]));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.freeSet ? ` (cap ${r.max} KB${r.short ? '; the core four shortened too' : ''}; over it, the new-lesson meter suggests specialized parts to untick)` : ''}`;
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (every set at once on the paid plan; cap ${r.max} KB, a warning only, never a failure)` : r.freeSet ? ` (fitted to ${r.max} KB as New… and kit/llm-pack.mjs copy it${r.short ? ': the core four shortened too' : ''}${r.dropped.length ? `; left out ${r.dropped.join(', ')}` : ''})` : ''}`;
     if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
     if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
     else if (r.level === 'warn' && r.worst) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }

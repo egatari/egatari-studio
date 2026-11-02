@@ -22,7 +22,7 @@
 //   capKb(plan)                        指示の大きさの上限（KB。kit/core/llm-pack.mjs の PACK_CAP_KB：無料 free、有料 paid）
 //   trimCandidates(ticked, {sizeOf, capBytes, keep})  上限を越えたときの外す候補（keep を除き、大きい順に、越えた分に届くまで）
 //   fitPlan(ticked, plan, {sizeOf, capBytes})  → {short, candidates}：無料のプランで越えたら、まず中核の 4 つの説明を短くし（short）、
-//                                      それでも越えれば専門のパーツだけを外す候補に（標準のパーツは外さない）
+//                                      それでも越えれば専門のパーツだけを外す候補に（標準のパーツは外さない）。kit/core/llm-pack.mjs から出し直す
 //   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方と、choice.purposesOff があれば外した伝えたいこと。P は PURPOSES）。何もなければ ''。
 //                                      外した伝えたいことの行が名前を出す部品は choice.parts（指示に入るパーツ）にあるものだけ
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
@@ -195,26 +195,8 @@ export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
 export const capKb = (plan) => (plan === 'paid' ? PACK_CAP_KB.paid : PACK_CAP_KB.free);
-// 外す候補：sizeOf(tags) は選んだパーツで組んだ指示のバイト数。keep（理由のあるおすすめ・自分で付けたもの）は候補にしない。
-// 1 つずつ外したときに減る大きさの大きい順に、越えた分に届くまで（届かなければ候補の全部）
-export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {
-  const all = sizeOf(ticked), over = all - capBytes;
-  if (over <= 0) return [];
-  const gain = ticked.filter((t) => !keep.has(t)).map((t) => [t, all - sizeOf(ticked.filter((x) => x !== t))]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
-  const out = [];
-  let sum = 0;
-  for (const [t, g] of gain) { if (sum >= over) break; out.push(t); sum += g; }
-  return out;
-}
-
-// 目安に収める（backlog #125）：無料のプランで目安を越えたら、まず中核の 4 つ（棒グラフ・流れ図・目次・予想と答え）の説明も短くする（short）。
-// それでも越えるなら、外す候補は印の付いた専門のパーツだけ（外したときに減る大きさの大きい順。標準のパーツは候補にしない）。
-// sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。→ {short, candidates}
-export function fitPlan(ticked, plan, { sizeOf, capBytes }) {
-  const short = plan !== 'paid' && sizeOf(ticked, false) > capBytes;
-  const keep = new Set(ticked.filter((t) => !PARTS[t] || PARTS[t].tier === 'standard'));
-  return { short, candidates: trimCandidates(ticked, { sizeOf: (tags) => sizeOf(tags, short), capBytes, keep }) };
-}
+// 外す候補（trimCandidates）と目安に収める決め方（fitPlan）は kit/core/llm-pack.mjs にある（コマンドの kit/llm-pack.mjs と同じ関数）
+export { trimCandidates, fitPlan } from './llm-pack.mjs';
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
 export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }

@@ -23,7 +23,8 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, setPart, requestBody, SETS, setOf, setsForDeck, componentsIn, packSize, packKb, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, setPart, requestBody, SETS, setOf, setsForDeck, componentsIn, packSize, packKb, FREE_CORE, partsPackOpts } from '../kit/core/llm-pack.mjs';
+import { initialParts, fitPlan, capKb } from '../kit/core/new-deck.mjs';
 import { partOf } from '../kit/core/llm-pack-assemble.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
@@ -79,22 +80,52 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     assert.equal(buildPack({ sets: 'all', lang }), buildPack({ sets: SETS, lang }));
   }
   assert.throws(() => buildPack({ sets: ['academic'], lang: 'en' }), /unknown part set "academic"/);
-  const cli = node('kit/llm-pack.mjs', '--sets', 'kokugo,stats', '--lang', 'ja');
+  // --no-fit：組み立てたままの指示
+  const cli = node('kit/llm-pack.mjs', '--sets', 'kokugo,stats', '--lang', 'ja', '--no-fit');
   assert.equal(cli.status, 0, cli.stderr); assert.equal(cli.stdout, buildPack({ sets: ['stats', 'kokugo'], lang: 'ja' }));
   const paidCli = node('kit/llm-pack.mjs', '--sets', 'all', '--plan', 'paid');
   assert.equal(paidCli.status, 0, paidCli.stderr); assert.equal(paidCli.stdout, buildPack({ sets: 'all', lang: 'en', plan: 'paid' }));
   // 前の --series（系列）と --tools は 1 版のあいだ束に読み替える（毎晩の評価が使う）
-  const old = node('kit/llm-pack.mjs', '--series', 'academic,social', '--tools', 'timer', '--lang', 'ja');
+  const old = node('kit/llm-pack.mjs', '--series', 'academic,social', '--tools', 'timer', '--lang', 'ja', '--no-fit');
   assert.ok(old.status === 0 && old.stdout === buildPack({ sets: ['stats', 'math', 'maps', 'tools'], lang: 'ja' }) && /read as --sets/.test(old.stderr), old.stderr);
-  assert.equal(node('kit/llm-pack.mjs', '--series', 'info').stdout, buildPack({ sets: [], lang: 'en' }), 'info is extra now: the standard pack');
-  // --list：--lang がなければ en と ja の両方の列、あれば その言語の大きさ（UTF-8 のバイト数 / 1024。編集アプリと同じ packKb）
-  const kbx = (sets, lang) => packKb(buildPack({ sets, lang })) + ' KB';
+  assert.equal(node('kit/llm-pack.mjs', '--series', 'info', '--no-fit').stdout, buildPack({ sets: [], lang: 'en' }), 'info is extra now: the standard pack');
+  // 無料のプランは、編集アプリの新規作成で同じパーツを選んで［候補を外す］を押したときと同じ指示（同じ fitPlan。backlog #125）。何をしたかは stderr
+  const editorFitted = (sets, lang) => {
+    const sizeOf = (t, short) => packSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }));
+    const cap = capKb('free') * 1024, tags = initialParts(sets.map((x) => ({ set: x })));
+    const first = fitPlan(tags, 'free', { sizeOf, capBytes: cap });
+    const rest = tags.filter((t) => !first.candidates.includes(t));
+    const { short } = fitPlan(rest, 'free', { sizeOf, capBytes: cap });
+    return { text: packWithRequest({ ...partsPackOpts(rest, 'free', { short }), lang }), dropped: first.candidates, short };
+  };
+  for (const lang of ['ja', 'en']) {
+    const fitCli = node('kit/llm-pack.mjs', '--sets', 'stats,math', '--lang', lang);
+    const e = editorFitted(['stats', 'math'], lang);
+    assert.ok(e.short && e.dropped.length && e.dropped.every((t) => setOf(t) === 'stats' || setOf(t) === 'math'), `${lang}: stats+math is shortened and drops specialized parts (${e.dropped})`);
+    assert.ok(fitCli.status === 0 && fitCli.stdout === e.text, `${lang}: the free CLI pack for stats+math is the editor's, byte for byte`);
+    assert.ok(packSize(fitCli.stdout) <= 40 * 1024, `${lang}: ${packSize(fitCli.stdout)} B`);
+    assert.ok(fitCli.stderr.includes('core four') && fitCli.stderr.includes('left out, largest first: ' + e.dropped.join(', ')) && fitCli.stderr.includes('--no-fit'), fitCli.stderr);
+    for (const s of SETS) assert.equal(node('kit/llm-pack.mjs', '--sets', s, '--lang', lang).stdout, editorFitted([s], lang).text, `${lang} ${s}: the free CLI pack is the editor's`);
+  }
+  // --list：無料のプランは目安に収めた大きさ（編集アプリと同じ）と収める前の大きさ、--lang がなければ en と ja の両方の列
+  const raw = (sets, lang) => packKb(buildPack({ sets, lang })) + ' KB';
+  const fit = (sets, lang) => packKb(editorFitted(sets, lang).text) + ' KB';
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && list.stdout.includes(`standard\t${kbx([], 'en')}\t${kbx([], 'ja')}\tm-bars, m-cards, m-compare`) && list.stdout.includes(`kokugo\t${kbx(['kokugo'], 'en')}\t${kbx(['kokugo'], 'ja')}\tm-gendai, m-kakijun, m-kanbun, m-kobun\n`) && /^all\t/m.test(list.stdout) && /^paid all\t/m.test(list.stdout), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.startsWith('set\ten free, fitted to 40 KB\tja free, fitted to 40 KB\ten free, before fitting\tja free, before fitting\tcomponents\n'), list.stdout);
+  assert.ok(list.stdout.includes(`standard\t${fit([], 'en')}\t${fit([], 'ja')}\t${raw([], 'en')}\t${raw([], 'ja')}\tm-bars, m-cards, m-compare`), list.stdout);
+  assert.ok(list.stdout.includes(`kokugo\t${fit(['kokugo'], 'en')} (core four shortened)\t${fit(['kokugo'], 'ja')} (core four shortened)\t${raw(['kokugo'], 'en')}\t${raw(['kokugo'], 'ja')}\tm-gendai, m-kakijun, m-kanbun, m-kobun\n`), list.stdout);
+  // 無料のプランのどの束も、収めた大きさは 40 KB まで
+  for (const s of SETS) {
+    const row = list.stdout.split('\n').find((l) => l.startsWith(s + '\t')).split('\t');
+    for (const c of row.slice(1, 3)) assert.ok(parseFloat(c) <= 40, `--list ${s}: ${c}`);
+  }
+  // 有料のプランのすべての束（いちばん大きいとき）は上限を越えても知らせるだけで、そう書く
+  const paidAll = packSize(buildPack({ sets: 'all', lang: 'ja', plan: 'paid' }));
+  assert.ok(/^paid all\t/m.test(list.stdout) && (paidAll <= 120 * 1024 || /a warning only/.test(list.stdout.split('\n').find((l) => l.startsWith('paid all')))), list.stdout);
   const listJa = node('kit/llm-pack.mjs', '--list', '--lang', 'ja');
-  assert.ok(listJa.status === 0 && listJa.stdout.includes(`standard\t${kbx([], 'ja')}\tm-bars`) && listJa.stdout.includes(`stats\t${kbx(['stats'], 'ja')}\t`) && kbx([], 'ja') !== kbx([], 'en'), listJa.stdout);
+  assert.ok(listJa.status === 0 && listJa.stdout.includes(`standard\t${fit([], 'ja')}\t${raw([], 'ja')}\tm-bars`) && listJa.stdout.includes(`stats\t${fit(['stats'], 'ja')} (core four shortened)\t${raw(['stats'], 'ja')}\t`) && raw([], 'ja') !== raw([], 'en'), listJa.stdout);
   const listEn = node('kit/llm-pack.mjs', '--list', '--lang=en');
-  assert.ok(listEn.status === 0 && listEn.stdout.includes(`standard\t${kbx([], 'en')}\tm-bars`), listEn.stdout);
+  assert.ok(listEn.status === 0 && listEn.stdout.includes(`standard\t${fit([], 'en')}\t${raw([], 'en')}\tm-bars`), listEn.stdout);
   // --help / -h：使い方を出す（指示の文章ではない）
   for (const h of ['--help', '-h']) {
     const r = node('kit/llm-pack.mjs', h);
