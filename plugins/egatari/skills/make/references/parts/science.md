@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # science のパーツ
 
-指示の版：bee180c0
+指示の版：4aa0bf5c
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
