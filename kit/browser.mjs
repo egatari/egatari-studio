@@ -4,10 +4,12 @@
 //   3. Microsoft Edge（channel 'msedge'。Windows には最初から入っている）
 //   4. Playwright の Chromium（`npx playwright-core install chromium` で入れたもの）
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 export async function launch(opts = {}) {
+  // 試験が shareBrowser() で起動した 1 つのブラウザがあれば、起動せずにつなぐ（引数のない launch() だけ。close はつなぎを切るだけで、ページは新しい context に入る）
+  if (process.env[SHARED_WS] && !Object.keys(opts).length) return chromium.connect(process.env[SHARED_WS]);
   return (await launchWhich(opts)).browser;
 }
 // launch と同じ順で探し、どれで起動したかも返す：{browser, via}（via は 'CHROME_PATH' | 'chrome' | 'msedge' | 'chromium'。egatari doctor）
@@ -24,6 +26,43 @@ export async function launchWhich(opts = {}) {
   }
 }
 export { chromium };
+
+// ---- 試験で 1 つのブラウザを使い回す（backlog #156）：ブラウザの起動は CI の遅い runner で 1 回数秒かかり、
+// 品質チェック（kit/check.mjs）・abcjs の描画（kit/abcjs-node.mjs）・コンタクトシートなどの子のプロセスはそれぞれ起動していた。
+// shareBrowser() は別のプロセス（このファイルを --serve で）にブラウザのサーバーを起こし、環境変数 SHARED_WS に場所を置く。
+// 以後このプロセスと子のプロセスの引数のない launch() はそこにつなぐ。サーバーを別のプロセスにするのは、試験が spawnSync・execFileSync で
+// 待っている間も子のプロセスがつなげるように（同じプロセスに置くと、止まったイベントループの上のサーバーを子が待ち続ける）。
+// 試験のプロセスが終われば（標準入力が閉じれば）サーバーも終わる。返す関数で先に止められる
+const SHARED_WS = 'EGATARI_TEST_BROWSER_WS';
+export async function shareBrowser() {
+  if (process.env[SHARED_WS]) return async () => {};
+  const { spawn } = await import('node:child_process');
+  const ch = spawn(process.execPath, [fileURLToPath(import.meta.url), '--serve'], { stdio: ['pipe', 'pipe', 'inherit'] });
+  const ws = await new Promise((resolve, reject) => {
+    let out = '';
+    ch.stdout.on('data', (d) => { out += d; const m = out.match(/^ws:\/\/\S+$/m); if (m) resolve(m[0]); });
+    ch.on('exit', (code) => reject(new Error('shareBrowser: the browser server exited (' + code + ')')));
+  });
+  ch.stdout.resume();
+  ch.unref(); ch.stdin.unref?.(); ch.stdout.unref?.();
+  process.env[SHARED_WS] = ws;
+  return async () => {
+    delete process.env[SHARED_WS];
+    if (ch.exitCode !== null) return;
+    ch.ref();   // 止まるまで待つ間はこのプロセスを終えない
+    await new Promise((r) => { ch.once('exit', r); ch.stdin.end(); });
+  };
+}
+if (process.argv[2] === '--serve' && process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const opts = {};
+  let server = null;
+  if (process.env.CHROME_PATH) server = await chromium.launchServer({ ...opts, executablePath: process.env.CHROME_PATH });
+  for (const channel of ['chrome', 'msedge']) { if (server) break; try { server = await chromium.launchServer({ ...opts, channel }); } catch { /* 次へ */ } }
+  if (!server) server = await chromium.launchServer(opts);
+  process.stdout.write(server.wsEndpoint() + '\n');
+  process.stdin.resume();
+  process.stdin.on('end', async () => { await server.kill().catch(() => {}); process.exit(0); });   // close は Chrome を待って数秒かかる。試験の後なので落とす
+}
 // 相対パスでも file:// の URL にする
 export const fileUrl = (f) => pathToFileURL(path.resolve(f)).href;
 

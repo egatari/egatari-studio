@@ -191,70 +191,7 @@ async function previewBlank(p = page) {
   try { inner = fr ? await fr.evaluate(() => ({ deck: typeof window.DECK !== 'undefined', kids: document.body ? document.body.childElementCount : 0, url: location.href })) : null; } catch { inner = null; }
   return !attr.srcdoc && !attr.src && (!inner || (!inner.deck && inner.kids === 0));
 }
-// プレビューで音声が鳴る（backlog #49）：deck-audio の src がプレビューの文書の blob: になり、自動再生で鳴って時刻が進む
-// （キーの操作のない再生はブラウザが止めるので、試験では音を消して鳴らす）
-async function previewAudioPlays(fr, tag) {
-  let srcs = [];
-  for (let i = 0; i < 100; i++) {
-    srcs = await fr.evaluate(() => Object.values(DECK.AUDIO).map((a) => a.src));
-    if (srcs.length && srcs.every((s) => s.startsWith('blob:'))) break;
-    await page.waitForTimeout(100);
-  }
-  ok(srcs.length > 0 && srcs.every((s) => s.startsWith('blob:')), `${tag}: every deck-audio src is a blob: URL of the preview document (${srcs.length})`);
-  await fr.evaluate(() => { const pl = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__au = this; this.muted = true; return pl.call(this); }; DECK.go(0, 0, false); });
-  await fr.evaluate(() => DECK.autoplay(true));
-  let st = null;
-  for (let i = 0; i < 60; i++) {
-    st = await fr.evaluate(() => (window.__au ? { src: window.__au.src, t: window.__au.currentTime, err: window.__au.error && window.__au.error.code } : { auto: document.documentElement.classList.contains('autoplay') }));
-    if (st && st.t > 0) break;   // st.auto：まだ鳴らしていない（自動再生の状態だけ）
-    await page.waitForTimeout(100);
-  }
-  ok(!!st && !!st.src && st.src.startsWith('blob:') && st.t > 0 && !st.err, `${tag}: autoplay plays the audio (currentTime advances) ${JSON.stringify(st)}`);
-  await fr.evaluate(() => { DECK.autoplay(false); DECK.go(0, 0, false); });
-}
-// 発表者ビューから自動再生を始めると、プレビュー（本体）の音声が鳴る（音は消さない：キーを押したのは発表者ビューの窓なので、
-// プレビューの枠に allow="autoplay" がないとブラウザが NotAllowedError で止める）。発表者ビューの中のデッキ（発表者の画面・今と次の画面）は
-// 何も鳴らさない（二重に鳴らない）。Playwright の evaluate はその枠をユーザーが操作したことにする（以後は再生を許す）ので、新しい context で、
-// 鳴らす前にはプレビューの枠で evaluate しない：再生の見張りは addInitScript で入れ、結果は鳴らした後で読む
-async function presenterAudioPlays(html, tag) {
-  const cx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
-  await cx.addInitScript(() => {
-    const pl = HTMLMediaElement.prototype.play;
-    // 結果は最後の play() のものだけ：前の play() は、次の play()・load で中断されると AbortError で終わる（メディアのふつうの動き。ほかの段と同時に走る CI で起きた）
-    HTMLMediaElement.prototype.play = function () { const id = window.__plays = (window.__plays || 0) + 1; window.__au = this; window.__auRes = null; const r = pl.call(this); r.then(() => { if (window.__plays === id) window.__auRes = 'ok'; }, (e) => { if (window.__plays === id) window.__auRes = e.name; }); return r; };
-  });
-  const pg = await cx.newPage();
-  watch(pg, tag);
-  try {
-    await pg.goto(BASE);
-    await pg.waitForSelector('#drop');
-    const l0 = await pg.evaluate(() => window.__APP_TEST.state().loads);
-    await pg.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'min' + ext }); }, [Buffer.from(html).toString('base64'), FORMAT.FILE_EXT]);
-    await pg.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 30000 });
-    await pg.waitForTimeout(2500);   // 音声のバイトがプレビューに届き、blob: になるまで
-    const [pop] = await Promise.all([cx.waitForEvent('page'), clickCommand(pg, '#b-presenter')]);
-    watch(pop, tag + ' presenter');
-    let pv = null;
-    for (let i = 0; i < 200 && !pv; i++) { const x = pop.frames().find((y) => y.parentFrame() === pop.mainFrame()); try { if (x && await x.evaluate(() => !!document.getElementById('pv'))) pv = x; } catch { /* 読み込み中 */ } if (!pv) await pop.waitForTimeout(100); }
-    if (!pv) { ok(false, `${tag}: presenter view did not load`); return; }
-    await pop.waitForTimeout(800);
-    await pv.click('#pv-notes');
-    await pop.keyboard.press('a');
-    const fr = pg.frames().find((y) => y.parentFrame() === pg.mainFrame());
-    let st = null;
-    // AbortError（読み込み直しなどで中断された play()）では止めず、次の play() を待つ。ほかの失敗（NotAllowedError など）はすぐ落とす
-    for (let i = 0; i < 150; i++) {
-      await pg.waitForTimeout(100);
-      st = await fr.evaluate(() => ({ res: window.__auRes || null, src: window.__au ? window.__au.src : null, t: window.__au ? window.__au.currentTime : 0, muted: window.__au ? window.__au.muted : null, plays: window.__plays || 0 }));
-      if ((st.res && st.res !== 'ok' && st.res !== 'AbortError') || (st.res === 'ok' && st.t > 0)) break;
-    }
-    ok(st.res === 'ok' && st.t > 0 && st.muted === false && /^blob:/.test(st.src || ''), `${tag}: autoplay started in the presenter view plays the preview's audio (not muted) ${JSON.stringify(st)}`);
-    const plays = [];
-    for (const x of [pv, ...pv.childFrames()]) plays.push(await x.evaluate(() => window.__plays || 0).catch(() => -1));
-    ok(plays.length === 3 && plays.every((n) => n === 0), `${tag}: the presenter view itself plays nothing (no double playback) ${JSON.stringify(plays)}`);
-    await pop.keyboard.press('a');
-  } finally { await cx.close(); }
-}
+// プレビューで音声が鳴ること（backlog #49）は tools/test-app-audio.mjs（時間に敏感なので、ほかの段と同時に走らせない別の段。backlog #156）
 // 口述原稿の板・編集の窓の「保存」を押す。板は開いた直後で、プレビューの枠が狭まったところ：macOS の CI では、押したものが下のプレビューの iframe に届き、
 // 何も保存されずに次の読み込みを待って 15 秒で落ちた（tools/click-retry.mjs）。効果（保存を始めてボタンが押せなくなった・板が閉じた・口述原稿が未保存でなくなった）が出るまで押し直す
 async function clickSave(sel) {
@@ -760,8 +697,6 @@ try {
     let ps = await pstate();
     ok(ps.kind === 'memory' && ps.portable.docId === pmin.index.docId && !ps.error, `portable: in-memory workspace, docId ${ps.portable.docId}`);
     ok(await f.evaluate(() => DECK.slides.length) === 6, 'portable: slides render in the preview');
-    await previewAudioPlays(f, 'preview audio (single file in memory)');
-    await presenterAudioPlays(pmin.html, 'presenter audio');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
     // コメントの欄：1 ファイルではコメントは保存されない（閉じると消える）と知らせる
     await page.click('#b-comments');
@@ -939,7 +874,7 @@ try {
     // 書き出したフォルダを開き、持ち運べる 1 ファイルに書き出す（フォルダの「1 ファイルを書き出す」）→ 同じ文書
     n = await loads();
     ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dirs.unpacked)) === true, 'export folder: the exported folder opens as a folder');
-    await previewAudioPlays(await waitLoads(n), 'preview audio (folder)');
+    await waitLoads(n);
     await clickMenuOpen(page, '#b-filemenu');
     ok(await page.isVisible('#b-export-portable') && (await page.textContent('#b-export-portable')) === '名前を付けて保存…' && await page.isHidden('#b-saveas') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'true', 'folder: File ▾ → Save as… makes the Egatari file (editable); Save is shown but disabled');
     await page.keyboard.press('Escape');

@@ -129,7 +129,7 @@ jobs:
     # 75 min was too short once v0.6.3 joined its branches: green runs took 55-68 min, and run 41210305228 reached the cap in test-audio, still progressing (every test 10-30 % slower, plus the new viewer-input and sounds tests)
     # --jobs 1 here (backlog #156): the macOS arm64 runner has 3 vCPUs and 7 GB, and each browser test already uses more than one. With --jobs 3 green runs took 38-41 min,
     # but other runs slowed every step about 2x (test-app reached the 1200 s step cap); with --jobs 2 they took 55-57 min, no faster than one at a time, and test-app's
-    # audio checks (autoplay plays, currentTime advances) failed. Running these steps in parallel here needs test-app's audio checks in a serial step first
+    # audio checks (autoplay plays, currentTime advances) failed. Those checks are now their own serial step (test-app-audio), so this runs --jobs 2 again
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
@@ -142,8 +142,8 @@ jobs:
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           TEST_STEP_TIMEOUT_S: '1200'
-        # --jobs 1 (backlog #156): see the comment on the job
-        run: npm test -- --jobs 1
+        # --jobs 2 (backlog #156): see the comment on the job
+        run: npm test -- --jobs 2
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()

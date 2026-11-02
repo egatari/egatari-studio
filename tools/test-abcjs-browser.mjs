@@ -8,12 +8,14 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { execFileSync } from 'node:child_process';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { build, nodeEnv } from '../kit/build.mjs';
 import { build as coreBuild } from '../kit/core/build-core.mjs';
 import { exportPortable } from '../kit/core/portable.mjs';
 import { ABCJS_OPTIONS, renderScore } from '../kit/core/abcjs.mjs';
 import { ROOT, fixtures, scoreDeck, scoreData } from './test-abcjs-fixtures.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abcjs-browser-'));
 const site = path.join(tmp, 'site'), src = path.join(tmp, 'deck.html');
 const markup = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor/egatari-spec/schema/rendered-markup-1.json'), 'utf8'));

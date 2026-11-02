@@ -405,7 +405,9 @@ for (const mode of ['talk', 'learn']) {
   await cp.waitForTimeout(350);
   ok(await cp.evaluate(() => DECK.state().step === 1 && document.querySelector('#input-clock')._ctx.extend(0) === 60), `${mode}: autoplay waits past the authored step end`);
   await cp.locator('[data-extend="-60"]').click();
-  await cp.waitForTimeout(80);
+  // 縮めると自動再生の終わりの時計が残り 0 で掛け直され（kit/deck.js の scheduleAutoEnd）、次の段階へ進む。進むまで待つ（固定の 80 ms では、遅い macOS の CI で
+  // 時計と描画が間に合わずに落ちた）。縮めなければ 60 秒待つので、5 秒の期限で「縮めると進む」を見分けられる
+  await cp.waitForFunction(() => DECK.state().step === 2, null, { timeout: 5000 }).catch(() => {});
   ok(await cp.evaluate(() => DECK.state().step === 2), `${mode}: shortening the elapsed autoplay wait advances`);
   await cp.evaluate(() => DECK.autoplay(false));
 

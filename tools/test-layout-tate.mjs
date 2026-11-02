@@ -12,8 +12,10 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-layout-tate-'));
