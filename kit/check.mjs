@@ -452,7 +452,11 @@ let voiceLang;
 try { voiceLang = JSON.parse(readRegular(path.join(path.dirname(path.resolve(src)), 'voice.json'), { max: READ_LIMITS.json }).toString('utf8'))?.lang; } catch { /* なし・読めない */ }
 const NL = narrationLang({ voiceLang, deckLang: lang, texts: narrInfo.flatMap((n) => n.turns.map((t) => t.text)) });
 if (isJapanese(NL.lang) !== JA) report(null, 'info', 'narrLang', { lang: NL.lang, deck: lang || 'ja', source: NL.source });
+// 部品のデータが合わず描けないスライド（compData）：その部品の段階は 0 になり、段階の数がデータと合わない。そこで数えた口述原稿の抜け・余り
+// （narrMissing・narrOrphan）は出さない（修正依頼が正しい口述原稿を消させないように）。代わりに、データを直した後に確かめ直すと 1 行で知らせる
+for (const [i, comps] of badComps) if (i !== null && i !== undefined && meta[i]) report(i, 'info', 'narrRecheck', { comps: [...new Set(comps)] });
 for (const { i, stepKey, turns } of narrInfo) {
+  if (badComps.has(i)) continue;
   if (turns.length === 0) { report(i, 'warn', 'narrMissing', { step: stepKey }, stepKey); continue; }
   for (const t of turns) {
     const tl = textLang(t.text, NL.lang);
@@ -469,6 +473,7 @@ try { narrText = readRegular(path.join(path.dirname(path.resolve(src)), 'narrati
 const stepMeta = meta.map((m) => ({ key: m.key, max: m.smax, cstep: m.scstep, static: m.static }));
 for (const o of orphanSteps(built.segs, stepMeta)) {
   const i = meta.findIndex((m) => m.key === o.slideKey);
+  if (badComps.has(i)) continue;   // 上の narrRecheck
   const max = stepMeta[i].max, hasConcl = !meta[i].static && stepMeta[i].cstep >= 0;
   const st = meta[i].static ? '（static）' : '', stEn = meta[i].static ? ' (static)' : '';
   const range = hasConcl ? { ja: (max > 1 ? `0〜${max - 1} と concl` : '0 と concl') + st, en: (max > 1 ? `steps 0–${max - 1} and concl` : 'step 0 and concl') + stEn }

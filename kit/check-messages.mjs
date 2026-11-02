@@ -213,6 +213,9 @@ export const MESSAGES = {
   narrFormula: { rule: 'R-formula', ja: (a) => `口述原稿が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the narration reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
   narrLang: { ja: (a) => `口述原稿の言語（${a.lang}。${a.source === 'voice.json' ? 'voice.json の lang' : '発言の文字から'}）がスライドの言語（${a.deck}）と違う：式の読み上げと長い発言は、発言ごとにその言語の規則で見た`, en: (a) => `the narration language (${a.lang}, ${a.source === 'voice.json' ? 'from lang in voice.json' : 'from the text'}) differs from the slide language (${a.deck}): equations read aloud and long turns were checked with the rules of each turn's language` },
   turnLong: { ja: (a) => `1 回の発言が長い（${a.n} ${a.unit}）：2 つの発言か 2 つの段階に分けるとよい`, en: (a) => `a long turn (${a.n} ${a.unit === '字' ? 'characters' : 'words'}): consider splitting it into two turns or two steps` },
+  // 部品のデータが合わないスライド：口述原稿と段階の数は、データを直してから確かめ直す（narrMissing・narrOrphan はそのスライドでは出さない）
+  narrRecheck: { ja: (a) => `このスライドの部品 ${(a.comps || []).map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、口述原稿と段階の数はデータを直してから確かめ直す（口述原稿は消さない）`,
+    en: (a) => `the component ${(a.comps || []).map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so the narration and the step count are checked again after its data is fixed (keep the narration)` },
   // a = {step, line, end, range, static, keys, n, concl, target, lines: [{n, text}], comps: [部品の名前…]}（keys 以下は narration-lint の orphanDetail）
   narrOrphan: { rule: 'R-narr-steps',
     ja: (a) => {
