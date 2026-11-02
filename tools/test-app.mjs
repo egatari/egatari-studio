@@ -556,11 +556,16 @@ try {
     const et = await page.textContent('#errtext');
     ok(et.includes('<m-score> は、この教材が使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
       'catalogue: a 1.x lesson using <m-score> fails to build with the same message as build and check, in the editor\'s language: ' + et.slice(0, 120));
+    ok(await page.isVisible('#err-fix') && (await page.textContent('#err-fix')) === 'パーツライブラリ 2 を使う', 'catalogue: the error offers 「パーツライブラリ 2 を使う」 (a working folder whose only problem is parts library 2)');
+    await shot(page, 'catalogue-error.png');
     n = await loads();
-    await opfs.write('egatari.json', JSON.stringify({ ...(conf0 ? JSON.parse(conf0) : {}), componentsCatalogue: '2' }));
+    await page.click('#err-fix');
     await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 15000 });
     f = await waitLoads(n);
-    ok(await f.evaluate(() => !!customElements.get('m-score') && DECK.componentErrors.every((e) => e.tag !== 'm-score')), 'catalogue: with "componentsCatalogue": "2" in egatari.json it builds and <m-score> runs');
+    const conf1 = await opfs.read('egatari.json');
+    ok(JSON.parse(conf1).componentsCatalogue === '2' && (conf0 === null || conf1.startsWith(conf0.replace(/\s*\}\s*$/, ''))),
+      'catalogue: the button writes "componentsCatalogue": "2" into egatari.json, keeping the other members as written: ' + conf1.slice(0, 120));
+    ok(await f.evaluate(() => !!customElements.get('m-score') && DECK.componentErrors.every((e) => e.tag !== 'm-score')), 'catalogue: rebuilt on parts library 2, <m-score> runs');
     n = await loads();
     await opfs.write('deck.html', deck2);
     f = await waitLoads(n);

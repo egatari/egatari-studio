@@ -132,3 +132,9 @@ export function updateConfig(oldText, patch) {
   for (const e of edits) { out += oldText.slice(at, e.start) + e.text; at = Math.max(at, e.end); }
   return out + oldText.slice(at);
 }
+
+// 新しい教材のカタログ（設定のファイルの componentsCatalogue。"2" は components2.lock.json の既定の 2.x のカタログ。kit/core/parts2.mjs の pickCatalogue）。
+// 新規作成（編集アプリの「新規作成…」・npx egatari new・make スキルの作業フォルダ）は、AI への指示（既定の 2.x のカタログの manifest から作る）と同じ 2.x で組む。
+// componentsCatalogue のない今までの教材は 1.x のまま（黙って変えない）
+export const NEW_LESSON_CATALOGUE = '2';
+export const withNewLessonCatalogue = (configText) => updateConfig(configText || null, { componentsCatalogue: NEW_LESSON_CATALOGUE });

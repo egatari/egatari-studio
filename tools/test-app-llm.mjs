@@ -248,6 +248,11 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
     ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', parts: [...initialParts([]), ...stats].filter((t) => t !== 'm-flow' && t !== 'm-menu').sort() }),
       `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the tick changed after copying)`);
+    // 新しい教材はパーツライブラリ 2 で組む（指示のカタログと同じ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）。
+    // 新規作成は 1 ファイルとして開くので、索引は組んだカタログの版（components2.lock.json の既定）を記録し、取り出した egatari.json もその版になる
+    const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
+    ok(JSON.parse(F1['egatari.json'] || '{}').componentsCatalogue === lock2.default && !(await pk.evaluate(() => window.__APP_TEST.state().error)),
+      `new create: egatari.json selects parts library 2 (the default 2.x catalogue ${lock2.default}) and the lesson builds: ${(F1['egatari.json'] || '').slice(0, 160)}`);
     // 修正…：出力が前のシード値を持たなければ、足さない（誰も読まない属性）
     await pasteReplace(pk, replyOf(worked('kokugo', 'deck.html').replace('<title>', '<title>改 '), worked('kokugo', 'narration.md')));
     await pk.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<title>改 '); }, null, { timeout: 30000 });

@@ -201,10 +201,15 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
 // 要素に使う、のどれも組まずに断る（黙って落とすと、再生器は動かない部品を出し、動画は段階が減る）。どの部品庫にもない名前は今までどおり知らせだけ
 // （作業フォルダの components/ に置き忘れた部品かもしれない。組み立てはどのパーツが要るかを言えない）
 export const NOT_IN_CATALOGUE = 'component-not-in-catalogue';
+// 選んだカタログにない要素のうち、componentsCatalogue を "2" にすれば組めるものだけか（編集アプリの「パーツライブラリ 2 を使う」）
+export const fixableBy2 = (list) => Array.isArray(list) && list.length > 0 && list.every((a) => a && a.catalogue === '1.x' && (a.hint === 'select2' || a.hint === 'pin') && a.value === '2');
 // 原稿の中で要素として使う m-… の名前（elements。注釈・<script>・<style> の中の字は数えない。<template> の中は数える）と、
 // 原稿自身の <script> が定義する名前（defined：DECK.define・customElements.define の最初の引数の字、egatariParts.define の meta の element）
+// legacyApi：原稿の <script> が再生器の 1.x 用の補助（DECK.define・DECK.MotionElement・DECK.el など。2.0 だけの教材では外す）を使うか
+export const LEGACY_API_RE = /\bDECK\s*\.\s*(?:define|MotionElement|el|mtext|Plot|svgMath|color|ANIM|tween|ease|prog|lerp|clamp01|shape)\b/;
 export function deckElements(html) {
   const elements = new Set(), defined = new Set();
+  let legacyApi = false;
   const DEF = /\b(?:DECK|customElements)\s*\.\s*define\s*\(\s*["'`](m-[a-z0-9-]+)["'`]/g;
   const EL = /\belement\s*:\s*["'](m-[a-z0-9-]+)["']/g;
   const walk = (n) => {
@@ -213,6 +218,7 @@ export function deckElements(html) {
       if (!isJsonScript(n) && !(n.attrs || []).some((a) => a.name === 'src')) {
         const body = (n.childNodes || []).map((c) => c.value || '').join('');
         for (const m of body.matchAll(DEF)) defined.add(m[1]);
+        if (LEGACY_API_RE.test(body)) legacyApi = true;
         if (DEFINE_RE.test(body)) for (const m of body.matchAll(EL)) defined.add(m[1]);
       }
       return;
@@ -221,7 +227,7 @@ export function deckElements(html) {
     if (n.content) walk(n.content);
   };
   walk(parse(String(html), { scriptingEnabled: true }));
-  return { elements, defined };
+  return { elements, defined, legacyApi };
 }
 const versionKey = (v) => String(v).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? x.padStart(6, '0') : '~' + x));
 const newest = (vs) => [...vs].sort((a, b) => { const x = versionKey(a), y = versionKey(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] ?? '', q = y[i] ?? ''; if (p !== q) return p < q ? -1 : 1; } return 0; }).pop();

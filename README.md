@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=5a63ac56a7957046 -->
+<!-- i18n: pair=README.ja.md sha256=790df57bc3cb2764 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -112,7 +112,7 @@ npm run dev -- talks/mytalk/deck.html      # edit in the browser
 npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
 ```
 
-`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
+`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. It also writes `egatari.json` with `"componentsCatalogue": "2"`: new lessons are built with parts library 2, the parts the chat AI's instructions describe (a folder without that setting, such as an older lesson, keeps parts library 1). Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
 
 Every slide of a new lesson has a stable id (`<section class="slide" id="s-k3f9q2">`), and its script heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking the script, audio or timing. For a lesson made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
 
@@ -121,7 +121,7 @@ Every slide of a new lesson has a stable id (`<section class="slide" id="s-k3f9q
 The npm package `egatari` has the same tools as one command, `egatari`:
 
 ```bash
-npx egatari new mytalk --lang en      # creates mytalk/deck.html and mytalk/narration.md
+npx egatari new mytalk --lang en      # creates mytalk/deck.html, mytalk/narration.md and mytalk/egatari.json
 npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html (--portable, --play-only and the other build options work too)
 npx egatari dev mytalk/deck.html      # edit in the browser
 npx egatari check mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
