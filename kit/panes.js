@@ -28,7 +28,7 @@ var SPEC_IN = {slides: "slides", flow: "book", pages: "book", split: "split", bo
 var SPEC_OUT = {slides: "slides", book: "flow", split: "split"};
 
 var P = {layout: "slides", vertical: false, pane: null, body: null, head: null, div: null,
-  anchors: [], secOf: [], marked: null, detached: false, playing: false, userAt: 0, progUntil: 0, fromText: false,
+  anchors: [], secOf: [], marked: null, detached: false, playing: false, userAt: 0, progAt: 0, progUntil: 0, fromText: false,
   ratio: null, splitStage: null, ov: null, back: [], readBack: null, live: null, menu: null, menuFrom: null, bp: null, readIn: null, pos: {i: 0, k: 0}};
 
 function store(k, v){ try { if (v === null) localStorage.removeItem(KEY + k); else localStorage.setItem(KEY + k, v); } catch (e) {} }
@@ -360,7 +360,7 @@ function targetOf(i, k){
 }
 function scrollToEl(e, smooth){
   var d = along(e, rectOf(P.body)) - 12, o = {behavior: smooth && !REDUCE ? "smooth" : "auto"};
-  P.progUntil = Date.now() + (o.behavior === "smooth" ? 900 : 150);
+  P.progAt = Date.now(); P.progUntil = P.progAt + (o.behavior === "smooth" ? 900 : 150);
   if (P.vertical) o.left = P.body.scrollLeft - d; else o.top = P.body.scrollTop + d;
   P.body.scrollTo(o);
 }
@@ -393,7 +393,7 @@ function scrolled(){
   if (P.ov || P.layout === "slides") return;
   var now = Date.now();
   // 見る人が動かしたスクロールだけを見る（ホイール・指・つまみ・キーの直後）。付いていくための（再生器の）スクロールや、窓の大きさが変わって動いたのは見ない
-  if (!(now - P.userAt < 1200)) return;
+  if (!(now - P.userAt < 1200) || P.userAt < P.progAt) return;
   if (P.playing){
     // 再生中に見る人がスクロールした：付いていくのをやめる（再生は続け、位置も動かさない）
     if (!P.detached){ P.detached = true; P.bp.hidden = false; placeBackPlay(); }
@@ -454,8 +454,8 @@ function paneClick(e){
   // 本文の中の参照（図・式・節・文献・脚注）：その所へ。「戻る」でリンクの所へ
   e.preventDefault(); e.stopPropagation();
   P.back.push({left: P.body.scrollLeft, top: P.body.scrollTop, el: a});
-  P.userAt = Date.now();
   scrollToEl(t, false);
+  P.userAt = Date.now();   // 見る人が選んだ移動：読む所が動いたものとして舞台も付いてくる
   syncBackBtn();
 }
 function paneBack(){
@@ -564,7 +564,7 @@ function closeOverlay(){
   setLive();
   window.dispatchEvent(new Event("resize"));
   // 読んでいた所へ戻す（位置は重ねの中で動いたままでも、本の窓は動かさない）
-  if (P.body){ P.progUntil = Date.now() + 150; P.body.scrollTo({left: o.left, top: o.top}); }
+  if (P.body){ P.progAt = Date.now(); P.progUntil = P.progAt + 150; P.body.scrollTo({left: o.left, top: o.top}); }
   mark(P.pos.i, P.pos.k);
   if (o.from && o.from.isConnected && o.from !== document.body) try { o.from.focus({preventScroll: true}); } catch (e) {}
   else if (P.body && P.layout !== "slides") P.body.focus({preventScroll: true});
