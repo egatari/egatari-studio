@@ -1,0 +1,77 @@
+// Browser regression: live autoplay keeps musical steps on time (m-score by="measure", 2/4 at ♩=88).
+// test-all: serial（音の時刻：AudioContext の予定の時刻を 8 小節にわたって計画と比べる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
+//   node tools/test-music-timing.mjs
+// Onsets are the times passed to OscillatorNode.start on a real AudioContext (its clock, not the wall clock).
+// Each must be within 2 ms of the plan (first onset + the measure's planned start + the note's beat), across 8 measures.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import { build } from '../kit/build.mjs';
+import { launch } from '../kit/browser.mjs';
+
+const MEASURES = 8, BPM = 88, SPB = 60 / BPM, SPM = 2 * SPB;
+const bars = Array.from({ length: MEASURES }, (_, m) => m % 2 ? 'GG GG' : 'GG G2').join(' | ');
+const abc = `X:1\nM:2/4\nL:1/8\nQ:1/4=${BPM}\nK:C\n${bars} |]`;
+
+const work = fs.mkdtempSync(path.join(os.tmpdir(), 'music-timing-'));
+const src = path.join(work, 'deck.html');
+fs.writeFileSync(src, `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Measures</title></head><body><div id="stage">
+<section class="slide" id="score"><h2>Score</h2><div class="body"><m-score by="measure" style="height:400px" aria-label="Score"><script type="application/json">${JSON.stringify({ abc }).replace(/</g, '\\u003c')}</script></m-score></div></section>
+</div></body></html>`);
+const html = build(src, { subset: false, componentsCatalogue: '2' }).html;
+const server = http.createServer((req, res) => { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' }); res.end(html); });
+await new Promise((r) => server.listen(0, '127.0.0.1', r));
+let browser;
+try {
+  browser = await launch();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    window.__onsets = []; window.__steps = [];
+    document.addEventListener('deck:pos', (e) => window.__steps.push({ k: e.detail.k, at: performance.now() }));
+    const start = OscillatorNode.prototype.start;
+    OscillatorNode.prototype.start = function (when) {
+      // Each note is two voices (sine + triangle) at one time: keep one onset per time.
+      if (this.type === 'sine') window.__onsets.push({ when, at: this.context.currentTime });
+      return start.apply(this, arguments);
+    };
+  });
+  await page.goto(`http://127.0.0.1:${server.address().port}/`);
+  await page.waitForFunction(() => window.DECK && DECK.ready);
+  const tl = await page.evaluate(() => DECK.timeline().map((g) => ({ k: g.k, dur: g.dur })));
+  assert.equal(tl.length, MEASURES + 1, 'step 0 and one step per measure');
+  for (const g of tl.slice(1)) assert.ok(Math.abs(g.dur - SPM) < 1e-5, `measure step lasts ${SPM} s (${g.dur})`);
+  // Planned onsets in seconds from the first measure's start: the timeline's step starts plus the beat (eighth = half a beat).
+  const plan = [];
+  let start = 0;
+  tl.slice(1).forEach((g, m) => { for (const b of m % 2 ? [0, .5, 1, 1.5] : [0, .5, 1]) plan.push(start + b * SPB); start += g.dur; });
+  // Start on step 0 so that autoplay enters measure 1 through an ordinary forward step; 'a' is a trusted gesture (audio).
+  await page.keyboard.press('a');
+  await page.waitForFunction((n) => window.__onsets.length >= n, plan.length, { timeout: (tl.reduce((a, g) => a + g.dur, 0) + 10) * 1000 });
+  await page.waitForFunction(() => !document.documentElement.classList.contains('autoplay'), null, { timeout: 10000 });
+  const onsets = await page.evaluate(() => window.__onsets);
+  assert.equal(onsets.length, plan.length, `one onset per note (${onsets.length})`);
+  // Measure 1 starts at the first onset; every later onset is planned from there.
+  const t0 = onsets[0].when;
+  const errs = onsets.map((o, n) => (o.when - t0 - plan[n]) * 1000);
+  const worst = Math.max(...errs.map(Math.abs));
+  console.log(`onset error vs plan (ms): ${errs.map((e) => e.toFixed(2)).join(' ')}`);
+  console.log(`worst ${worst.toFixed(2)} ms, last measure ${errs.at(-1).toFixed(2)} ms; ahead of the clock by ${(onsets.reduce((a, o) => Math.min(a, o.when - o.at), Infinity) * 1000).toFixed(1)}..${(onsets.reduce((a, o) => Math.max(a, o.when - o.at), -Infinity) * 1000).toFixed(1)} ms`);
+  assert.ok(worst <= 2, `every onset within 2 ms of the plan over ${MEASURES} measures (worst ${worst.toFixed(2)} ms)`);
+  // Step changes (wall clock): each within one late timer of the plan, not adding up over the measures.
+  const steps = (await page.evaluate(() => window.__steps)).filter((x, n, a) => x.k >= 1 && (n === 0 || a[n - 1].k !== x.k));
+  assert.deepEqual(steps.map((x) => x.k), tl.slice(1).map((g) => g.k), 'autoplay visits every measure in order');
+  let planned = 0;
+  const late = steps.map((x, n) => { const e = x.at - steps[0].at - planned * 1000; planned += tl[n + 1].dur; return e; });
+  console.log(`step change vs plan (ms, wall clock): ${late.map((e) => e.toFixed(1)).join(' ')}`);
+  assert.ok(Math.max(...late.map(Math.abs)) < 30, 'step changes stay on the absolute plan');
+  assert.deepEqual(errors, []);
+  console.log(`ok   live autoplay: ${plan.length} onsets over ${MEASURES} measures within 2 ms of the plan on the AudioContext clock`);
+} finally {
+  if (browser) await browser.close();
+  await new Promise((r) => server.close(r));
+  fs.rmSync(work, { recursive: true, force: true });
+}
