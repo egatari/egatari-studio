@@ -325,7 +325,7 @@ if (jobs === 1) {
   for (let more = true; more;) { more = false; for (const s of todo) if (!s.serial && s.deps.some((d) => todo.find((x) => x.name === d)?.serial)) { s.serial = true; more = true; } }
   const parallel = todo.filter((s) => !s.serial).sort((a, b) => hintOf(b.name) - hintOf(a.name) || order.get(a.name) - order.get(b.name));
   const serialSteps = todo.filter((s) => s.serial);
-  console.log(`test-all: ${parallel.length} steps with --jobs ${jobs} (longest first), then ${serialSteps.length} timing-sensitive steps one at a time`);
+  console.log(`test-all: ${parallel.length} steps with --jobs ${jobs} (longest first), then ${serialSteps.length} timing-sensitive steps one at a time (${os.availableParallelism ? os.availableParallelism() : os.cpus().length} CPUs, ${Math.round(os.totalmem() / 2 ** 30)} GiB)`);
   const report = (s, r) => {
     const tag = r.code === 0 ? 'PASS' : 'FAIL';
     if (verbose) {

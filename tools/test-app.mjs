@@ -242,10 +242,11 @@ async function presenterAudioPlays(html, tag) {
     await pop.keyboard.press('a');
     const fr = pg.frames().find((y) => y.parentFrame() === pg.mainFrame());
     let st = null;
-    for (let i = 0; i < 80; i++) {
+    // AbortError（読み込み直しなどで中断された play()）では止めず、次の play() を待つ。ほかの失敗（NotAllowedError など）はすぐ落とす
+    for (let i = 0; i < 150; i++) {
       await pg.waitForTimeout(100);
       st = await fr.evaluate(() => ({ res: window.__auRes || null, src: window.__au ? window.__au.src : null, t: window.__au ? window.__au.currentTime : 0, muted: window.__au ? window.__au.muted : null, plays: window.__plays || 0 }));
-      if ((st.res && st.res !== 'ok') || (st.res === 'ok' && st.t > 0)) break;
+      if ((st.res && st.res !== 'ok' && st.res !== 'AbortError') || (st.res === 'ok' && st.t > 0)) break;
     }
     ok(st.res === 'ok' && st.t > 0 && st.muted === false && /^blob:/.test(st.src || ''), `${tag}: autoplay started in the presenter view plays the preview's audio (not muted) ${JSON.stringify(st)}`);
     const plays = [];

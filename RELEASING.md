@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=cd0359b3924093e3 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=db521d4055c84a20 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -20,7 +20,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 2. **Evaluation.** Check the maintainers' nightly evaluation (run with the format spec's experiment tools; ask the maintainer for the summary of the candidate commit): tier A (re-scoring saved replies) shows **0 changed** — if not 0, confirm every difference is an intended change — and tier B (new generation) shows no large drop in the pass rate after fixes compared with recent nights. Otherwise fix on `main` and make a new candidate.
 3. **CI green on `main`.** The `test` and `pages` (build only) workflows pass for the candidate's commit: `gh run list --branch main --limit 5`.
    The `test` workflow includes the self-containment checks (backlog #50); all must be green:
-   - `npm test -- --jobs 3` on Linux (Node 22 and 24), Windows and **macOS** (`test`, `windows`, `macos` jobs; three steps at a time, timing-sensitive tests last and alone). If a test fails there but passes alone, run `npm test -- --jobs 1` to tell a test that does not tolerate running alongside others from a real failure
+   - `npm test` on Linux (Node 22 and 24), Windows and **macOS** (`test`, `windows`, `macos` jobs; three steps at a time, two on macOS, timing-sensitive tests last and alone). If a test fails there but passes alone, run `npm test -- --jobs 1` to tell a test that does not tolerate running alongside others from a real failure
    - `tools/test-selfcontained.mjs` (in `npm test`): no personal paths, private addresses, secrets locations or personal voice names in tracked files; `localhost:8882` only as the default of `IRODORI_URL`; `skills/` names only the bundled skills; the paths, links and `npm run` scripts that documents name exist; `kit/` and `server/` do not import `tts/` or `render/`
    - the `clean` job on Linux, Windows and macOS: `node tools/clean-env.mjs` with an empty `HOME` and no TTS server builds, quality-checks and exports (`--portable`, `--play-only`) every example, runs `tts/synth.py --dry-run` and builds with its audio, and builds a deck from `npm run new`. Run it locally too: `node tools/clean-env.mjs`
    - the `pack` job on Linux, Windows and macOS: `node tools/test-npm-pack.mjs` packs the npm package `egatari`, installs the tarball outside the repository and runs `npx egatari` (`--version`, `doctor`, `new`, `check`, `build`, `build --portable`)
