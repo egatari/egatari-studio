@@ -357,7 +357,7 @@ phase = 'J リンク';
 // 部分集合の外の書き方・名前・章の決まり・相互参照・解答・用語・引用の鍵・画像・data-article。ステップへのリンクの行き先は再生器（DECK.resolveFragment）で確かめる
 phase = 'M 本文';
 if (hasArticle(src)) {
-  const { loadArticle, stepLinksOf } = await import('./core/article-page.mjs');
+  const { loadArticle, stepLinksOf, articleLinkReport } = await import('./core/article-page.mjs');
   const { validateArticle } = await import('./core/article.mjs');
   const L = loadArticle(nodeEnv, src, { lang });
   if (L) {
@@ -373,6 +373,18 @@ if (hasArticle(src)) {
     };
     const v = validateArticle(L.article, { ...L.ctx, resolveStep });
     for (const p of [...L.problems, ...v.problems]) report(null, p.sev, p.code, { ...p.data, file: p.file || null, line: p.line || null, spec: p.spec });
+    // スライドと節のつながりの古さ（§9C.7）：記録の hash と今が違えば「スライドと本が合っていないかもしれません」。記録のない組はまとめて 1 行
+    if (L.index) {
+      const lr = await articleLinkReport(L);
+      for (const p of lr.problems) report(null, p.sev, p.code, { ...p.data, file: p.file, line: null, spec: p.spec });
+      for (const x of lr.states) if (x.state !== 'ok' && x.state !== 'unconfirmed') {
+        const sec = v.sections.get(x.section);
+        report(null, 'warn', 'articleLinkStale', { slide: x.slide, section: x.section, heading: sec ? sec.heading.slice(0, 40) : '', changed: x.state, file: sec ? sec.file : null, line: sec ? sec.line : null, spec: '§9C.7' });
+      }
+      const un = lr.states.filter((x) => x.state === 'unconfirmed');
+      if (un.length) report(null, 'info', 'articleLinkUnconfirmed', { count: un.length, pairs: un.slice(0, 10).map((x) => `${x.slide}↔${x.section}`), spec: '§9C.7' });
+      if (lr.removed.length) report(null, 'info', 'articleLinkUnlinked', { count: lr.removed.length, pairs: lr.removed.slice(0, 10).map((x) => `${x.slide}↔${x.section}`), spec: '§9C.7' });
+    }
     report(null, 'info', 'articleSummary', { files: L.article.files.length, sections: v.sections.size, labels: v.labels.size });
   }
 }

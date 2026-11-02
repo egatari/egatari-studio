@@ -14,3 +14,5 @@ vendor/themes/** -text
 themes.lock.json text eol=lf
 # 本の試験の見本：本文は LF（§9C.2。Windows の checkout で CRLF になると articleEncoding の誤りになる）
 tools/fixtures/article-book/** text eol=lf
+# 引用の書式と言語の写し（citation-style-language の styles・locales。vendor/csl/SOURCE.json）：バイトのまま
+vendor/csl/** -text

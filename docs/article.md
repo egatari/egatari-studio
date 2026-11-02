@@ -1,11 +1,11 @@
-<!-- i18n: pair=article.ja.md sha256=6af158fd03489971 -->
+<!-- i18n: pair=article.ja.md sha256=04b4530f5c966457 -->
 # Writing a book (article.md)
 
 English | [日本語](article.ja.md)
 
 A lesson can carry a **book**: long-form text (a textbook chapter, a paper) beside its slides and script. The book is written in **Egatari Text 1**, a small, frozen part of MyST Markdown defined by the [format specification §9C](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#9c-article-layer-feature-article-v1-draft) (draft). This page is Studio's short guide; the specification is the normative text.
 
-> Work in progress (v0.6.5). Studio reads, checks and renders the book as a separate page. Not yet: showing it in the player beside the slides, formatted citations and reference lists, putting it into the Egatari file (.ega.html), and links between slides and sections with staleness.
+> Work in progress (v0.6.5). Studio reads, checks and renders the book as a separate page, formats citations, puts the book into the Egatari file (.ega.html) and tells you when linked slides and sections may no longer match. Not yet: showing it in the player beside the slides.
 
 ## Files in the working folder
 
@@ -67,3 +67,26 @@ Every figure, `:::{table}`, box, theorem-like block and exercise is numbered, wi
 ## Not allowed
 
 Raw HTML (other than the table above), other directives and roles (admonitions such as `{note}`, `{margin}`, `{list-table}`, `{numref}`, `{eq}`, `{cite:p}`, `{math}`, …), directives fenced with backticks, `%` comments, `+++`, `{{ … }}`, strikethrough, task lists, bare URLs and `#` / `#####` headings. The check names each one with its line and says what to write instead (for example `{numref}`fig-a`` → `[](#fig-a)`, `{note}` → `:::{aside} Title`). Write `\%` and `\@` when you mean the characters.
+
+## Citations
+
+Cite with `[@key]`, `[@key, p. 3]`, `[@a; @b]`, or `@key` in a sentence; keys are the `id`s of `references.json`. The build formats them with the Citation Style Language (citeproc-js) and writes the reference list. Choose the style and where the list goes in `egatari.json`:
+
+```json
+{ "metadata": { "citations": { "style": "ieee", "list": "chapter" } } }
+```
+
+| Member | Values |
+|---|---|
+| `style` | `apa` (author–date, the default), `ieee` (numeric), `sist02` (numeric, Japanese). Another name is kept, the book is set in `apa`, and the check warns |
+| `list` | `end` (one list at the end, the default), `chapter` (a list at the end of each chapter, only with `article/` chapters), `none` |
+
+A locator (`p. 3`, `3 頁`) is printed as you wrote it. Works in `references.json` that are never cited are not listed, and the check warns about them.
+
+## Links between slides and sections
+
+A slide and a section are linked when the slide's `data-article` names the section's id, or when the section has a `{step}` link to the slide. `npm run ids -- <working folder>` records each new link in `egatari.json` (`articleLinks`: a hash of the section's text and of the slide with its script). When one side changes later, the check says “slides and book may not match” for that pair; nothing is changed automatically. Compare the two, edit what needs it, then run `npm run ids -- <working folder> --confirm-links` to record that they agree again.
+
+## The Egatari file
+
+`npm run portable -- pack <working folder>` (and `node kit/build.mjs <deck.html> --portable`) puts the book into the Egatari file: the chapter files, `references.json` and the book's images go into the archive, and the rendered book is the last part of the file's readable text (`#egatari-article`), so it can be read without script. A book with errors is not written; fix what the check lists first. Sections without an id get one, written back to the working folder. `unpack` gives back the same files and the reading order in `egatari.json`. The editor app keeps the book when it saves script and audio edits; it cannot yet edit the book or export a working folder that has one.

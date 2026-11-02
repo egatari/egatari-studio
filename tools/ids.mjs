@@ -12,9 +12,14 @@
 // - 改行（CRLF / LF）はそのまま。2 回目は何も変えない
 // - 鍵が重なる・id がほかの id と重なる・id の書式が誤っているデッキでは何もしない（先に手で直す）
 // - 本文（article.md・article/<名前>.md、format spec §9C.3）の id のない「## 見出し」の前の行に (sec-xxxxxx)= を足す
+// - スライドと本文の節のつながり（§9C.5）で記録のない組の hash を egatari.json の articleLinks に記録する（§9C.7。もうつながっていない組の記録は外す）。
+//   --confirm-links：つながっているすべての組を今の hash で記録し直す（読み比べて「合っている」と確かめたとき。check の「スライドと本が
+//   合っていないかもしれません」を消す）
 import fs from 'node:fs';
 import path from 'node:path';
-import { analyzeSlideIds } from '../kit/build.mjs';
+import { analyzeSlideIds, nodeEnv } from '../kit/build.mjs';
+import { loadArticle, articleLinkReport } from '../kit/core/article-page.mjs';
+import { recordLinks } from '../kit/core/article-links.mjs';
 import { splitKey, isSlideId } from '../kit/narration.mjs';
 import { planIds, rewriteDeckIds, rewriteNarrationIds } from '../kit/core/slide-ids.mjs';
 import { safeWriteFile, readContained, checkWritable, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
@@ -24,7 +29,7 @@ import { configObject, updateConfig } from '../kit/core/config-file.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { ARTICLE_LIMITS } from '../kit/core/article-text.mjs';
 
-const USAGE = 'usage: npm run ids -- <working folder | deck.html> [--dry-run]';
+const USAGE = 'usage: npm run ids -- <working folder | deck.html> [--dry-run] [--confirm-links]';
 const KEEP_EDITS = 30;
 const fail = (msg) => { console.error(`ids: ${msg}`); process.exit(1); };
 const shown = (p) => { const r = path.relative(process.env.INIT_CWD || process.cwd(), p); return !r || r.startsWith('..') || path.isAbsolute(r) ? p : r; };
@@ -32,7 +37,8 @@ const shown = (p) => { const r = path.relative(process.env.INIT_CWD || process.c
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
 const dry = args.includes('--dry-run');
-const rest = args.filter((a) => a !== '--dry-run');
+const confirmLinks = args.includes('--confirm-links');
+const rest = args.filter((a) => a !== '--dry-run' && a !== '--confirm-links');
 if (args.includes('-h') || args.includes('--help')) { console.log(USAGE); process.exit(0); }
 if (rest.length !== 1 || rest[0].startsWith('--')) fail(USAGE);
 const base = process.env.INIT_CWD || process.cwd();
@@ -87,7 +93,6 @@ const articleWrites = [], articleSummary = [];
     if (r.added.length) articleWrites.push([file, r.out, rel, r.added.length]);
   }
 }
-if (!rename.size && !articleWrites.length) { console.log(`ids: ${shown(SRC)}: どのスライドにも id がある。変えるものはない / every slide already has an id; nothing to do`); process.exit(0); }
 
 // ---------------------------------------------------------------- 2・3. deck.html（id を足し、data-morph の参照を付け替える）と narration.md（「## 見出し {#id}」に）
 const rewriteDeck = (text) => rewriteDeckIds(text, plan);
@@ -177,6 +182,28 @@ if (has(FILES.comments)) {
   const after = analyzeSlideIds(deck.out);
   if (after.problems.length || after.slides.some((s) => !isSlideId(s.id || ''))) fail('書き換えた原稿の検査に失敗した（何も書いていない）: ' + after.problems.map((p) => p.msg).join(' / '));
 }
+
+// ---------------------------------------------------------------- 5A. スライドと節のつながりの記録（§9C.7）：書き換えた後の原稿で求める
+{
+  const overlay = new Map(writes.map(([f, t]) => [path.resolve(f), t]));
+  const env = { ...nodeEnv, readText: (p, max) => (overlay.has(path.resolve(p)) ? overlay.get(path.resolve(p)) : nodeEnv.readText(p, max)) };
+  let L = null;
+  try { L = loadArticle(env, SRC, {}); } catch (e) { fail(`article: ${e.message}`); }
+  if (L && L.index) {
+    const lr = await articleLinkReport(L);
+    const rec = recordLinks(lr.recorded, lr.current, lr.pairs, { mode: confirmLinks ? 'all' : 'missing' });
+    const cfgFile = path.join(DIR, FORMAT.CONFIG_FILE);
+    if (rec.added.length || rec.removed.length) {
+      const i = writes.findIndex(([f]) => path.resolve(f) === path.resolve(cfgFile));
+      const cfgText = i >= 0 ? writes[i][1] : rd(cfgFile);
+      const text = updateConfig(cfgText, { articleLinks: rec.links || undefined });
+      if (i >= 0) writes[i][1] = text; else writes.push([cfgFile, text]);
+      if (rec.added.length) summary.push(`${FORMAT.CONFIG_FILE}: スライドと節のつながり ${rec.added.length} 組を${confirmLinks ? '確かめた印として記録し直した' : '記録した'} / ${confirmLinks ? 'confirmed' : 'recorded'} ${rec.added.length} slide–section link(s): ${rec.added.map((x) => `${x.slide}↔${x.section}`).join(', ')}`);
+      if (rec.removed.length) summary.push(`${FORMAT.CONFIG_FILE}: もうつながっていない組の記録 ${rec.removed.length} 個を外した / dropped ${rec.removed.length} record(s) of pairs no longer linked`);
+    } else if (confirmLinks) summary.push(`${FORMAT.CONFIG_FILE}: つながりの記録はどれも今の原稿と同じ / every link record already matches`);
+  } else if (confirmLinks) summary.push('本文がない / no article: --confirm-links has nothing to confirm');
+}
+if (!writes.length) { console.log(`ids: ${shown(SRC)}: どのスライドにも id がある。変えるものはない / every slide already has an id; nothing to do${summary.length ? '\n' + summary.filter((x) => !/変えるものはない/.test(x)).join('\n') : ''}`.trimEnd()); process.exit(0); }
 
 // ---------------------------------------------------------------- 6. 控えを残して書く
 // 控えも書き込みも、リンクを通らない（kit/safe-fs.mjs）。どれか 1 つでも断るなら、何も書かないうちに断る

@@ -240,6 +240,8 @@ export function parseArticleText(src, opts = {}) {
     if (htmls.length > 1 || tables.length > 1) { add('error', 'articleHtmlTable', '§9C.2', node, { why: 'more than one table or HTML block in the directive' }); return; }
     const errs = checkHtmlTable(htmls[0].value);
     if (errs.length) add('error', 'articleHtmlTable', '§9C.2', node, { why: errs.join('; ') });
+    // セルをつながない HTML の表はパイプの表で書ける（§9C.8 の SHOULD）
+    else if (!/\b(?:colspan|rowspan)\s*=\s*["']?0*(?:[2-9]|[1-9][0-9]+)/i.test(htmls[0].value)) add('warn', 'articleHtmlTableNoSpan', '§9C.8', node, {});
     node.__htmlTable = htmls[0];   // この 1 つだけは HTML の表として許す（子を見るとき）
   }
   function rawRole(node) {

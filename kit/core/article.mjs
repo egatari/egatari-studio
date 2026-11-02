@@ -2,7 +2,8 @@
 // ファイルをまたぐ決まり（章の番号・種類の順・lang・writing-mode・bibliography）と、文書全体の点検（§9C.8：名前の重なり・相互参照・
 // 解答の問・用語・ステップへのリンク・引用の鍵・画像・スライドの data-article）を行う。番号と HTML は kit/core/article-render.mjs。
 // 編集アプリと共有する（node: の読み込み・fs を使わない。読むのは渡された read・exists を通す）。
-import { parseArticleText, visit, plain, ARTICLE_LIMITS } from './article-text.mjs';
+import { parseArticleText, visit, plain, ARTICLE_LIMITS, CITE_KEY_RE } from './article-text.mjs';
+import { citationSettings } from './article-cite.mjs';
 
 export const ARTICLE_FILE = 'article.md';
 export const CHAPTER_DIR = 'article';
@@ -106,6 +107,7 @@ export function readArticle(index, read, opts = {}) {
 //   dataArticle：[{slide, ids: [...]}]（スライドの data-article）
 //   references：引用の鍵の Set（references.json の id）。null は「文献のファイルがない」、undefined は見ない
 //   exists(path)：画像が作業フォルダにあるか
+//   citations：metadata.citations（egatari.json。§9C.4。undefined なら書式と一覧の決まりは見ない。null は「書いていない」）
 export function validateArticle(article, ctx = {}) {
   const problems = [];
   const labels = new Map();   // 小文字にした名前 → {label, file, line, type, kind}
@@ -139,6 +141,7 @@ export function validateArticle(article, ctx = {}) {
   }
   // 2 回目：参照
   const linkedSections = new Set();
+  const cited = new Set();
   for (const f of article.files) {
     let section = null;
     for (const top of f.tree.children || []) {
@@ -170,6 +173,7 @@ export function validateArticle(article, ctx = {}) {
             if (r) problems.push(D('error', 'articleStep', '§9C.8', f.path, line, { value: `${s.slideKey}:${s.stepKey}`, ...r }));
           }
         }
+        if (n.type === 'cite') cited.add(String(n.label || n.identifier || ''));
         if (n.type === 'cite' && ctx.references !== undefined) {
           const key = String(n.label || n.identifier || '');
           if (ctx.references === null) problems.push(D('error', 'articleCite', '§9C.8', f.path, line, { key, why: 'no-references' }));
@@ -179,6 +183,9 @@ export function validateArticle(article, ctx = {}) {
       });
     }
   }
+  // 引用の書式と一覧（§9C.4・§9C.8 の 7）：ない書式は既定で組んで警告、list: chapter は chapters のときだけ。引いていない文献は警告（§9C.4）
+  if (ctx.citations !== undefined) for (const p of citationSettings(ctx.citations === null ? undefined : ctx.citations, { book: !!(article.index && article.index.chapters) }).problems) problems.push({ ...p, file: 'egatari.json' });
+  if (ctx.references) { const un = [...ctx.references].filter((k) => !cited.has(k)); if (un.length) problems.push(D('warn', 'articleUncited', '§9C.4', article.index && article.index.references || 'references.json', null, { keys: un.slice(0, 20), count: un.length })); }
   // スライドの data-article（§9C.5・§9C.8 の 4）
   for (const d of ctx.dataArticle || []) for (const id of d.ids) {
     if (!sections.has(id)) problems.push(D('error', 'articleDataArticle', '§9C.8', null, null, { slide: d.slide, section: id }));
@@ -198,14 +205,20 @@ export function parseStep(value) {
   m = v.match(/^([\s\S]*?\S)\s*<([A-Za-z][A-Za-z0-9_-]{0,63}):(0|[1-9][0-9]{0,2}|concl)>$/);
   return m ? { text: m[1], slideKey: m[2], stepKey: m[3] } : null;
 }
-// references.json（CSL-JSON の配列）の鍵。読めなければ {keys: null, problem}
-export function referenceKeys(text) {
+// references.json（CSL-JSON の配列）の鍵と項目。読めなければ {keys: 空, items: [], problem}。
+// 項目の id は重ならず、鍵の書式（§9C.4）に合うこと（合わないものは誤り。組むときは使わない）
+export function referenceKeys(text, file = REFERENCES_FILE) {
   let j;
-  try { j = JSON.parse(text); } catch (e) { return { keys: new Set(), problem: D('error', 'articleReferences', '§9C.4', REFERENCES_FILE, null, { why: 'not JSON' }) }; }
-  if (!Array.isArray(j)) return { keys: new Set(), problem: D('error', 'articleReferences', '§9C.4', REFERENCES_FILE, null, { why: 'not an array' }) };
-  const keys = new Set();
-  for (const it of j) if (it && typeof it.id === 'string') keys.add(it.id);
-  return { keys, problem: null };
+  try { j = JSON.parse(text); } catch (e) { return { keys: new Set(), items: [], problem: D('error', 'articleReferences', '§9C.4', file, null, { why: 'not JSON' }) }; }
+  if (!Array.isArray(j)) return { keys: new Set(), items: [], problem: D('error', 'articleReferences', '§9C.4', file, null, { why: 'not an array' }) };
+  const keys = new Set(), items = [], bad = [];
+  for (const it of j) {
+    if (!it || typeof it !== 'object' || Array.isArray(it) || typeof it.id !== 'string') { bad.push('(no id)'); continue; }
+    if (!CITE_KEY_RE.test(it.id) || it.id.length > 64) { bad.push(it.id.slice(0, 40)); continue; }
+    if (keys.has(it.id)) { bad.push(`${it.id} (twice)`); continue; }
+    keys.add(it.id); items.push(it);
+  }
+  return { keys, items, problem: bad.length ? D('error', 'articleReferences', '§9C.4', file, null, { why: `bad ids: ${bad.slice(0, 5).join(', ')}` }) : null };
 }
 // スライドの原稿（deck.html）の data-article="sec-… sec-…"（§9C.5）。返すもの：[{slide, ids}]
 export function dataArticleOf(slides) {

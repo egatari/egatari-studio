@@ -287,10 +287,11 @@ t('section ids are added by the tool', () => {
 });
 t('every problem code has words in both languages', () => {
   const codes = new Set();
-  for (const f of ['article-text.mjs', 'article.mjs', 'article-page.mjs']) for (const m of fs.readFileSync(path.join(ROOT, 'kit', 'core', f), 'utf8').matchAll(/'(article[A-Z][A-Za-z]+)'/g)) codes.add(m[1]);
+  for (const f of ['core/article-text.mjs', 'core/article.mjs', 'core/article-page.mjs', 'core/article-cite.mjs', 'check.mjs']) for (const m of fs.readFileSync(path.join(ROOT, 'kit', ...f.split('/')), 'utf8').matchAll(/'(article[A-Z][A-Za-z]+)'/g)) codes.add(m[1]);
+  codes.delete('articleLinks');   // egatari.json・index の項目の名前（知らせのコードでない）
   for (const c of codes) {
     assert.ok(ARTICLE_MESSAGES[c], `no words for ${c}`);
-    for (const l of ['ja', 'en']) assert.ok(!/undefined/.test(articleMessage(l, { code: c, data: new Proxy({ why: { articleSubfigure: 'alt', articleGlossary: 'body', articleLabel: 'pattern', articleSolution: 'missing', articleStep: 'slide', articleConfig: 'missing' }[c] || 'both', what: 'bom', expected: 'string', depth: 1, outer: 'aside', values: [] }, { get: (o, k) => (k in o ? o[k] : typeof k === 'string' ? 'x' : undefined) }), file: 'a.md', line: 1, spec: '§9C' })), `${c} ${l}`);
+    for (const l of ['ja', 'en']) assert.ok(!/undefined/.test(articleMessage(l, { code: c, data: new Proxy({ why: { articleSubfigure: 'alt', articleGlossary: 'body', articleLabel: 'pattern', articleSolution: 'missing', articleStep: 'slide', articleConfig: 'missing' }[c] || 'both', what: 'bom', expected: 'string', depth: 1, outer: 'aside', values: [], keys: ['k'], pairs: ['s↔sec'], styles: ['apa'], count: 1 }, { get: (o, k) => (k in o ? o[k] : typeof k === 'string' ? 'x' : undefined) }), file: 'a.md', line: 1, spec: '§9C' })), `${c} ${l}`);
   }
 });
 

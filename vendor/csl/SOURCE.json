@@ -1,0 +1,17 @@
+{
+  "styles": {
+    "repository": "https://github.com/citation-style-language/styles",
+    "commit": "6ba2e9c6aa6e0dab87d3a20b833ed8ff6500f698",
+    "date": "2026-10-13",
+    "files": ["apa.csl", "ieee.csl", "sist02.csl"]
+  },
+  "locales": {
+    "repository": "https://github.com/citation-style-language/locales",
+    "commit": "a89adece41013402236e2c9020972d7e931fbab8",
+    "date": "2026-09-10",
+    "files": ["locales-en-US.xml", "locales-ja-JP.xml"]
+  },
+  "license": "CC-BY-SA-3.0",
+  "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+  "note": "Unmodified copies. Each file states its licence in <rights>. Used by kit/core/article-cite.mjs through citeproc-js (npm citeproc, CPAL-1.0 OR AGPL-3.0) when building an article's citations (format spec §9C.4). Do not edit; replace the files from the repositories above and update this record."
+}

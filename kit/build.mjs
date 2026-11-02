@@ -163,8 +163,21 @@ function fontDir(pkg) {
   return fs.existsSync(path.join(v, 'package.json')) ? v : path.dirname(require.resolve(`${pkg}/package.json`));
 }
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
+// 本文の引用を組む CSL（format spec §9C.4。kit/core/article-cite.mjs）：citeproc-js と同梱の書式・言語のファイル（vendor/csl）。
+// 読み込みが重いので、本文が文献を引くときに初めて読む
+let cslCache = null;
+function cslNode() {
+  if (cslCache) return cslCache;
+  const dir = path.join(ROOT, 'vendor', 'csl');
+  const file = (sub, name) => { const p = path.join(dir, sub, name); return fs.existsSync(p) ? readRegular(p, 1 << 20).toString('utf8') : null; };   // 同梱の書式は 100 KB ほど
+  cslCache = { CSL: require('citeproc'), style: (id) => (/^[a-z0-9-]+$/.test(id) ? file('styles', `${id}.csl`) : null), locale: (tag) => (/^[A-Za-z-]+$/.test(tag) ? file('locales', `locales-${tag}.xml`) : null) };
+  return cslCache;
+}
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex, abcjs,
+  csl: cslNode,   // 関数（env を写す { ...env } で citeproc を読み込まないように）
+  // 本文の道具（format spec §9C。1 ファイルへの書き出し kit/core/portable.mjs が、本文があるときだけ読み込む。myst-parser が重いので）
+  articleTools: async () => ({ ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')) }),
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir,
@@ -330,8 +343,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);
     if (lw) console.warn('  ⚠ portable: ' + lw);
-    // 本文（format spec §9C）はまだ 1 ファイルに書き出さない（v0.6.5 の作業中）：あれば知らせる
-    if (hasArticle(src)) console.warn('  ⚠ portable: the article (article.md or article/*.md) is not written into the single file yet');
   } else {
     const out = opts.out || defaultOut(src);
     let r;

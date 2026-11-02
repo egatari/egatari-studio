@@ -1,9 +1,10 @@
 // 本文の実行時の形（format spec §9C.6）：番号を振り（§9C.1A）、木（kit/core/article.mjs の readArticle）から HTML を書く。
 // 原稿の HTML は通さない（表も木から書く）。script・イベントの属性・埋め込みの要素は書かない。リンクは http(s)・mailto と # だけ。
-// 引用（§9C.4）は鍵の字のまま（CSL での整形と文献の一覧はまだ。v0.6.5 の A4）。
+// 引用（§9C.4）は opts.csl（citeproc と同梱の書式）があれば CSL で組み、文献の一覧を書く（kit/core/article-cite.mjs）。なければ鍵の字のまま。
 // 編集アプリと共有する（node: の読み込み・fs を使わない。KaTeX と画像は opts で渡す）。
 import { visit, plain } from './article-text.mjs';
 import { parseStep } from './article.mjs';
+import { renderCitations } from './article-cite.mjs';
 
 // 言語ごとの言葉（§9C.6）。日本語のほかは英語
 const WORDS = {
@@ -96,12 +97,16 @@ const titleOf = (n) => (n.children && n.children[0] && n.children[0].type === 'a
 
 // ---------------------------------------------------------------- HTML
 // opts：lang（metadata.lang）・title（metadata.title。本の題）・katex（renderToString を持つもの）・macros・image(url) → src か null・
-//       slides（Map：スライドの鍵 → {title}）。返すもの：{html, warnings}
+//       slides（Map：スライドの鍵 → {title}）・
+//       references（references.json の項目の配列）・csl（kit/core/article-cite.mjs の renderCitations の csl）・citations（{style, list}：citationSettings の結果）。
+//       返すもの：{html, warnings, problems（引用を組むときの知らせ）}
 export function renderArticle(article, opts = {}) {
   const lang = opts.lang || article.lang || '';
   const W = wordsOf(lang);
   const nums = numberArticle({ ...article, title: opts.title }, lang);
   const warnings = [];
+  const cit = opts.citations || {};
+  const C = opts.csl && Array.isArray(opts.references) ? renderCitations(article, opts.references, { csl: opts.csl, lang, style: cit.style, list: cit.list, tokens: nums.files.map((x) => x.chapterAttr) }) : null;
   const vertical = article.writingMode === 'vertical-rl';
   const cjk = /^(ja|zh)\b/i.test(lang);
   const book = !!(article.index && article.index.chapters);
@@ -115,10 +120,12 @@ export function renderArticle(article, opts = {}) {
     const h = info.header;
     if (h.head || h.title) out.push(`<header><h1>${h.head ? `<span class="egatari-num">${esc(h.head)}</span>${h.title ? ' ' : ''}` : ''}${r.text(h.title)}</h1>${h.subtitle ? `<p class="egatari-subtitle">${r.text(h.subtitle)}</p>` : ''}</header>`);
     out.push(r.body());
+    if (C && C.chapters.has(fi)) out.push(C.chapters.get(fi));
     if (book) out.push('</section>');
   });
+  if (C && C.end) out.push(C.end);
   out.push('</article>');
-  return { html: out.join('\n'), warnings };
+  return { html: out.join('\n'), warnings, problems: C ? C.problems : [] };
 
   function fileRenderer(f, info) {
     const fnNum = new Map();   // 脚注の名前 → 番号（最初に参照した順。§9C.6）
@@ -254,8 +261,9 @@ export function renderArticle(article, opts = {}) {
           }
           return inline(n.children);
         }
-        case 'citeGroup': return `<span class="egatari-cite-group">(${(n.children || []).map(node).join('; ')})</span>`;
-        case 'cite': return `<span class="egatari-cite" data-egatari-cite="${esc(n.label || n.identifier)}">${esc(n.label || n.identifier)}${n.suffix ? `, ${text(n.suffix)}` : ''}</span>`;
+        case 'citeGroup': return `<span class="egatari-cite-group">${C && C.groups.has(n) ? C.groups.get(n) : `(${(n.children || []).map(node).join('; ')})`}</span>`;
+        case 'cite': if (C && C.narratives.has(n)) return C.narratives.get(n);
+          return `<span class="egatari-cite" data-egatari-cite="${esc(n.label || n.identifier)}">${esc(n.label || n.identifier)}${n.suffix ? `, ${text(n.suffix)}` : ''}</span>`;
         case 'mystRole': {
           if (n.name === 'ruby') {
             const v = String(n.value || ''), k = v.indexOf('|');
@@ -360,6 +368,8 @@ export const ARTICLE_CSS = `#egatari-article{max-width:42em;margin:0 auto;paddin
 #egatari-article .egatari-proof{margin:1.2em 0}#egatari-article .egatari-qed{float:right;padding-left:1em}
 #egatari-article .egatari-footnotes{font-size:.85em;border-top:1px solid var(--line,GrayText);padding-top:.4em}
 #egatari-article .egatari-tex{font-family:monospace}
+#egatari-article .egatari-references{list-style:none;padding-left:0}#egatari-article .egatari-references li{margin:.3em 0}#egatari-article .egatari-references-author-date li{padding-left:2em;text-indent:-2em}
+#egatari-article .egatari-references-numeric li{display:flex;gap:.5em}#egatari-article .egatari-ref-label{flex:none;min-width:2.5em}#egatari-article .egatari-sc{font-variant:small-caps}#egatari-article .egatari-upright{font-style:normal}#egatari-article .egatari-unbold{font-weight:normal}#egatari-article .egatari-underline{text-decoration:underline}
 #egatari-article:lang(ja) em,#egatari-article :lang(ja) em{font-style:normal;text-emphasis:filled sesame;-webkit-text-emphasis:filled sesame;text-emphasis-position:over right;-webkit-text-emphasis-position:over right}
 #egatari-article.egatari-vertical{writing-mode:vertical-rl;max-width:none;max-height:40em;overflow-x:auto}
 #egatari-article.egatari-vertical figure,#egatari-article.egatari-vertical table,#egatari-article.egatari-vertical .egatari-math{writing-mode:horizontal-tb}

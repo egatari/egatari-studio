@@ -34,6 +34,7 @@
     "vendor/components-2/",
     "vendor/themes/",
     "vendor/egatari-spec/schema/",
+    "vendor/csl/",
     "vendor/egatari-spec/LICENSE",
     "vendor/egatari-spec/SOURCE.json",
     "fonts/OFL.txt",
@@ -85,6 +86,7 @@
   },
   "dependencies": {
     "abcjs": "6.7.2",
+    "citeproc": "2.4.63",
     "katex": "0.19.1",
     "lame-wasm": "0.3.0",
     "myst-ext-exercise": "1.0.10",

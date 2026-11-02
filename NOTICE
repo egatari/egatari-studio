@@ -47,6 +47,16 @@ built with) is not covered by the MIT license in LICENSE. You may use it unmodif
 Egatari or to software that reads or writes Egatari files (Egatari-compatible software). Do not
 alter it or use it in a way that suggests endorsement. See assets/logo/README.md.
 
+Book citations (format spec §9C.4) are formatted at build time by citeproc-js (npm package citeproc 2.4.63,
+https://github.com/Juris-M/citeproc-js, Copyright (c) 2009-2019 Frank Bennett), which is licensed under the Common
+Public Attribution License 1.0 or (at your option) the GNU Affero General Public License 3.0
+(node_modules/citeproc/LICENSE). It is an unmodified dependency loaded by the build only; this repository does not
+contain or bundle it, and built lessons and Egatari files carry only the formatted text. The citation styles and
+locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
+from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
+in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file
+states in its <rights> element.
+
 abcjs 6.7.2 renders score symbols at build time (MIT). The editor bundles abcjs
 for rendering only; built lessons carry the SVG and no abcjs runtime.
 
