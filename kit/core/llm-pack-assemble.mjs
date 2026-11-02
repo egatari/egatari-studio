@@ -10,6 +10,7 @@
 //   {{PURPOSES}}：言いたいこと → パーツ → ステップの表を、組み立てのときに作る（材料の purposes・parts・partsSrc。入っている束・exclude・外した札 off に合わせる）
 //   plan：お使いの AI のプラン。'free'（既定）では、標準の部品のうち中核の 4 つ（FREE_CORE）だけを詳しく書き、ほかの標準の部品は一覧の 1 行だけにする
 //     （標準すべてが無料のプランの上限に収まるように。backlog #125）。'paid' はどの部品も詳しく書く。専門の部品はどちらのプランでも詳しく書く
+//   short：無料のプランで、中核の 4 つも一覧の 1 行だけにする（束を足して上限を越えたとき、新規作成が外す候補より先に使う。kit/core/new-deck.mjs の fitPlan）
 import { purposesTable } from './purposes.mjs';
 
 // 指示の大きさの上限（KB = 1024 バイト。生成した指示で、頼みたいことは記入欄のまま。写す文に入る内容・場面の節は数えない）。
@@ -26,10 +27,10 @@ export const PLANS = Object.freeze(['free', 'paid']);
 // 中核の 4 つ：無料のプランでも詳しく書く標準の部品
 export const FREE_CORE = Object.freeze(['m-bars', 'm-flow', 'm-menu', 'm-predict']);
 export const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
-// 一覧の 1 行だけにする部品（無料のプランの、中核の 4 つ以外の標準の部品）
-export function briefParts(data, plan = 'free') {
+// 一覧の 1 行だけにする部品（無料のプランの、中核の 4 つ以外の標準の部品。short なら中核の 4 つも）
+export function briefParts(data, plan = 'free', short = false) {
   if (planName(plan) === 'paid') return [];
-  return Object.keys(data.en.components).sort().filter((t) => data.en.components[t].set === STANDARD && !FREE_CORE.includes(t));
+  return Object.keys(data.en.components).sort().filter((t) => data.en.components[t].set === STANDARD && (short || !FREE_CORE.includes(t)));
 }
 export function normalizeSets(sets, data) {
   if (sets === undefined || sets === null) return [];
@@ -68,13 +69,13 @@ export function goneParts(data, lang, exclude, sets) {
 export const membersOf = (D, set) => Object.keys(D.components).sort().filter((n) => D.components[n].set === set);
 
 // 共通の本体（標準の部品の一覧と説明・言いたいことの表）。sets：入っている束（表が指す部品を決める。既定 [] は標準だけ。null ならすべて）。off：外した札
-export function commonOf(data, lang, { exclude = [], sets = [], off = [], plan = 'free' } = {}) {
+export function commonOf(data, lang, { exclude = [], sets = [], off = [], plan = 'free', short = false } = {}) {
   const D = langOf(data, lang);
   const ss = sets === null ? [...data.sets] : normalizeSets(sets, data);
   const gone = goneParts(data, lang, exclude, ss);
   const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, sets: ss, off }) : '');
   return tidy(partSpans(D.common, exclude).replace('{{PURPOSES}}', table)
-    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, briefParts(data, plan))));
+    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, briefParts(data, plan, short))));
 }
 // 1 つの束の指示。sets：一緒に入る束（説明の中の名前を残す部品を決める。既定はこの束だけ）
 export function partOf(data, name, lang, { exclude = [], sets = [name] } = {}) {
@@ -88,11 +89,11 @@ export function partOf(data, name, lang, { exclude = [], sets = [name] } = {}) {
 export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
 
 // sets：選んだ束（'a,b'・配列・'all'）。plan：'free'（既定）| 'paid'（詳しさだけが変わる）
-export function packParts(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}) {
+export function packParts(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}) {
   const ss = normalizeSets(sets, data);
-  return [commonOf(data, lang, { exclude, sets: ss, off, plan }), ...ss.map((s) => partOf(data, s, lang, { exclude, sets: ss }))];
+  return [commonOf(data, lang, { exclude, sets: ss, off, plan, short }), ...ss.map((s) => partOf(data, s, lang, { exclude, sets: ss }))];
 }
-export function assemble(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}) {
-  const parts = [...packParts(data, { sets, lang, exclude, off, plan }), requestOf(data, lang)].filter(Boolean);
+export function assemble(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}) {
+  const parts = [...packParts(data, { sets, lang, exclude, off, plan, short }), requestOf(data, lang)].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }

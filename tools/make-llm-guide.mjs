@@ -22,8 +22,8 @@
 //   vendor/components-2/manifest-<版>.json         部品の tier・set と {{PURPOSES}}：言いたいこと → パーツ → ステップの表（版を固定した URL 付き）。
 //                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK。どちらを使ったかは材料の purposes.source
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
-// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・40 KB を超えれば失敗。標準と 1 つの束は 40 KB を超えれば知らせるだけ
-// （新規作成のメーターが外す候補を出す）。有料のプランは標準と 2 つの束のどの組も 120 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
+// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・40 KB を超えれば失敗。標準と 1 つの束は、越えるなら中核の 4 つも
+// 短くした大きさで、40 KB を超えれば知らせるだけ（新規作成のメーターが専門のパーツを外す候補に出す）。有料のプランは標準と 2 つの束のどの組も 120 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -652,9 +652,12 @@ export function generate(opts = {}) {
   const sizes = {};
   const PAIRS = pairsOf(SETS);
   for (const lang of ['en', 'ja']) {
-    const kb = (sets, plan) => KB(assemble(data, { sets, lang, plan }));
+    const kb = (sets, plan, short = false) => KB(assemble(data, { sets, lang, plan, short }));
+    // 無料のプランの標準＋束：越えるなら中核の 4 つも短くした大きさ（新規作成と同じ。kit/core/new-deck.mjs の fitPlan）。freeShort はそうした束
+    const full = Object.fromEntries(SETS.map((s) => [s, kb([s], 'free')]));
+    const freeShort = SETS.filter((s) => full[s] > LIMITS.free);
     sizes[lang] = {
-      free: kb([], 'free'), freeSets: Object.fromEntries(SETS.map((s) => [s, kb([s], 'free')])),
+      free: kb([], 'free'), freeSets: Object.fromEntries(SETS.map((s) => [s, freeShort.includes(s) ? kb([s], 'free', true) : full[s]])), freeShort,
       paid: kb([], 'paid'), paidSets: Object.fromEntries(SETS.map((s) => [s, kb([s], 'paid')])),
       paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), kb(p, 'paid')])), paidAll: kb('all', 'paid'),
     };
@@ -670,8 +673,8 @@ export function generate(opts = {}) {
     const z = sizes[lang];
     const core = FREE_CORE.map((t) => '`' + t + '`').join(ja ? '・' : ', ');
     const rows = ja
-      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free], ...SETS.map((s) => [`無料のプラン：標準＋${s}`, z.freeSets[s], LIMITS.free]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], ['有料のプラン：すべての束（このファイルとすべての束の指示）', z.paidAll, LIMITS.paid]]
-      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free], ...SETS.map((s) => [`Free plan: standard + ${s}`, z.freeSets[s], LIMITS.free]), ['Paid plan: every standard part', z.paid, LIMITS.paid], ['Paid plan: every part set (this file and every set pack)', z.paidAll, LIMITS.paid]];
+      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free], ...SETS.map((s) => [`無料のプラン：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ）' : ''}`, z.freeSets[s], LIMITS.free]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], ['有料のプラン：すべての束（このファイルとすべての束の指示）', z.paidAll, LIMITS.paid]]
+      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free], ...SETS.map((s) => [`Free plan: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too)' : ''}`, z.freeSets[s], LIMITS.free]), ['Paid plan: every standard part', z.paid, LIMITS.paid], ['Paid plan: every part set (this file and every set pack)', z.paidAll, LIMITS.paid]];
     const table = (ja ? '| 指示 | 大きさ | 上限 |\n|---|---:|---:|\n' : '| Pack | Size | Cap |\n|---|---:|---:|\n') + rows.map(([w, kb, cap]) => `| ${w} | ${f1(kb)} | ${cap} KB |`).join('\n');
     const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SETS_LIST}}', list);
     files[commonFile(lang)] = preamble + commonOf(data, lang, { sets: [], plan: 'paid' }) + '\n\n' + requestOf(data, lang) + '\n';
@@ -744,7 +747,7 @@ export function sizeReport(sizes) {
   const out = [];
   for (const [lang, z] of Object.entries(sizes)) {
     out.push({ lang, what: 'free standard', plan: 'free', sets: [], kb: z.free, max: LIMITS.fail, level: z.free > LIMITS.fail ? 'fail' : z.free > LIMITS.warn ? 'warn' : 'ok' });
-    for (const [s, kb] of Object.entries(z.freeSets)) out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, kb, max: LIMITS.free, level: kb > LIMITS.free ? 'over' : 'ok' });
+    for (const [s, kb] of Object.entries(z.freeSets)) out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, short: (z.freeShort || []).includes(s), kb, max: LIMITS.free, level: kb > LIMITS.free ? 'over' : 'ok' });
     out.push({ lang, what: 'paid standard', plan: 'paid', sets: [], kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'fail' : 'ok' });
     for (const [p, kb] of Object.entries(z.paidPairs)) out.push({ lang, what: 'paid standard+' + p, plan: 'paid', sets: p.split('+'), paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
     out.push({ lang, what: 'paid every set', plan: 'paid', sets: 'all', worst: true, kb: z.paidAll, max: LIMITS.paid, level: z.paidAll > LIMITS.paid ? 'warn' : 'ok' });
@@ -766,7 +769,7 @@ export function largestSections(text, n = 3) {
 }
 // 上限を越えた指示の知らせ：どの指示か（プラン・言語・束）、何バイト越えたか、大きい節 3 つ
 export function overMessage(r, data) {
-  const text = assemble(data, { sets: r.sets, lang: r.lang, plan: r.plan });
+  const text = assemble(data, { sets: r.sets, lang: r.lang, plan: r.plan, short: !!r.short });
   const bytes = Buffer.byteLength(text, 'utf8'), over = bytes - r.max * 1024;
   const top = largestSections(text).map((x) => `${x.head} (${x.bytes} B)`).join('; ');
   const sets = r.sets === 'all' ? 'every set' : r.sets.length ? r.sets.join('+') : '(none)';
@@ -830,7 +833,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // 有料のプランの 2 つの束の組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
   const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid standard+' + largestPair(z.paidPairs)[0]]));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.freeSet ? ` (cap ${r.max} KB; over it, the new-lesson meter suggests parts to untick)` : ''}`;
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (worst case; cap ${r.max} KB, a warning only)` : r.freeSet ? ` (cap ${r.max} KB${r.short ? '; the core four shortened too' : ''}; over it, the new-lesson meter suggests specialized parts to untick)` : ''}`;
     if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
     if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
     else if (r.level === 'warn' && r.worst) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }

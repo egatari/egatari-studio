@@ -25,8 +25,8 @@
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
 //   loadedParts(sets)                            その束で組み立てに入る部品（標準と、選んだ束の部品）
-//   partsPackOpts(tags, plan)                    選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan}（buildPack・packWithRequest に渡す。
-//                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える）
+//   partsPackOpts(tags, plan, {short})           選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?}（buildPack・packWithRequest に渡す。
+//                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
 import { PACK } from './llm-pack-data.mjs';
 import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD, briefParts, planName } from './llm-pack-assemble.mjs';
 
@@ -40,13 +40,14 @@ export function loadedParts(sets = []) {
   const ss = norm(sets, PACK);
   return Object.keys(PACK.en.components).sort().filter((t) => { const s = PACK.en.components[t].set; return s === STANDARD || ss.includes(s); });
 }
-export function partsPackOpts(tags, plan = 'free') {
+export function partsPackOpts(tags, plan = 'free', { short = false } = {}) {
   const want = new Set(tags || []), all = Object.keys(PACK.en.components);
   const on = all.filter((t) => want.has(t));
   return {
     sets: PACK.sets.filter((s) => on.some((t) => PACK.en.components[t].set === s)),
     exclude: all.filter((t) => !want.has(t)).sort(),
     plan: planName(plan),
+    ...(short && planName(plan) === 'free' ? { short: true } : {}),
   };
 }
 export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）

@@ -171,7 +171,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S1 ④: the plan question (free by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
     // 標準のパーツを全部選んだ無料のプランの指示は目安の中から始まる（中核の 4 つのほかは一覧の 1 行だけ。backlog #125）
     const bytes1 = +(await p1.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
+    ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && await p1.isHidden('#paste-shortened') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
       `S1 ④: with every standard part ticked, the free plan's meter starts within the 40 KB limit (${bytes1} B), not striped`);
     await checkSkillDownload(p1, { lang: 'ja', selector: '#paste-download-skill', ok, base: BASE });
     const c1 = await copy(p1);
@@ -480,14 +480,18 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S8 ④: a part is a checkbox in its label with a thumbnail made from its demo (light and dark), alt text naming the picture, the name and a one-line description: ' + thumb8.alt);
     // 目安を越える：越えた分と外す候補（おすすめは候補にしない）と［候補を外す］
     const over8 = await text(p8, '#paste-over-text');
-    ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、チャットの AI が最後まで読めないことがあります。外す候補：/.test(over8) && !over8.includes('筆算') && !over8.includes('地図')
+    // 無料のプランで越えたら、まず中核の 4 つの説明を短くし（知らせる）、それでも越えれば専門のパーツだけを外す候補に（標準のパーツは外さない。backlog #125）
+    ok(await p8.isVisible('#paste-shortened') && (await text(p8, '#paste-shortened')) === '無料のプランの目安に収めるため、棒グラフ・流れ図・目次・予想と答えの説明を短くしました',
+      'S8 ④: over the free limit, the core four are shortened first, and the meter says so: ' + await text(p8, '#paste-shortened'));
+    ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、チャットの AI が最後まで読めないことがあります。外す候補：/.test(over8) && !['棒グラフ', '流れ図', '目次', '予想と答え', '折れ線'].some((w) => over8.includes(w))
       && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '40'
       && (await text(p8, '#paste-trim')) === '候補を外す',
-      'S8 ④: over the free plan’s 40 KB the meter is striped, says by how much and lists candidates (not the suggested parts), with 「候補を外す」: ' + over8);
+      'S8 ④: still over the free plan’s 40 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);
     await p8.click('#paste-trim');
+    const ticks8 = await ticks(p8);
     const bytes8 = +(await p8.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(bytes8 <= PACK_CAP_KB.free * 1024 && await p8.isHidden('#paste-over') && (await ticks(p8)).includes('m-hissan') && await p8.evaluate(() => document.activeElement && document.activeElement.id === 'paste-pack-size'),
-      `S8 ④: 「候補を外す」 unticks the candidates; the instructions fit (${bytes8} B), the suggested parts stay, and the focus moves to the size`);
+    ok(bytes8 <= PACK_CAP_KB.free * 1024 && await p8.isHidden('#paste-over') && STD.every((t) => (ticks8).split(',').includes(t)) && (ticks8).includes('m-hissan') && await p8.evaluate(() => document.activeElement && document.activeElement.id === 'paste-pack-size'),
+      `S8 ④: 「候補を外す」 unticks the candidates; the instructions fit (${bytes8} B), every standard part stays ticked, and the focus moves to the size`);
     const after8 = await ticks(p8);
     // 推し直しても、外した印は戻らない
     await p8.click('#paste-change-content');

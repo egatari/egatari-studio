@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan } from '../kit/core/new-deck.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
@@ -141,6 +141,38 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   const c = trimCandidates(all, { sizeOf, capBytes: 40 * 1024, keep: new Set(kokugo) });
   assert.ok(c.length && c.every((t) => !kokugo.includes(t)), c.join());
   assert.ok(sizeOf(all.filter((t) => !c.includes(t))) < sizeOf(all));
+});
+ok('fitting the free plan (#125): over 40 KB, the core four are shortened first (never unticked); still over, only specialized parts are candidates, largest first; the paid plan never shortens', () => {
+  const sizeOf = (lang) => (tags, short) => packSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang }));
+  const cap = capKb('free') * 1024;
+  for (const lang of ['en', 'ja']) {
+    const size = sizeOf(lang);
+    // 標準だけ：収まるので短くしない
+    assert.deepEqual(fitPlan(initialParts([]), 'free', { sizeOf: size, capBytes: cap }), { short: false, candidates: [] }, lang + ' standard only');
+    // 国語：中核の 4 つを短くすれば収まる。外す候補はない
+    const kok = initialParts([{ set: 'kokugo' }]);
+    assert.ok(size(kok, false) > cap, `${lang} kokugo over the limit before shortening (${size(kok, false)} B)`);
+    const fk = fitPlan(kok, 'free', { sizeOf: size, capBytes: cap });
+    assert.deepEqual(fk, { short: true, candidates: [] }, lang + ' kokugo');
+    const tk = packWithRequest({ ...partsPackOpts(kok, 'free', { short: true }), lang });
+    assert.ok(packSize(tk) <= cap, `${lang} kokugo shortened: ${packSize(tk)} B`);
+    assert.deepEqual(described(tk), partsOfSet('kokugo').sort(), lang + ': shortened, only the kokugo parts are described');
+    assert.deepEqual(rowsOf(tk), [...kok].sort(), lang + ': every ticked part keeps its catalogue line');
+    assert.ok(FREE_CORE.every((t) => tk.includes('| `<' + t + '>` |')), lang + ': the core four stay in the catalogue');
+    // 算数・数学と地図：短くしても越える。外す候補は専門のパーツだけで、外せば収まる
+    for (const sets of [['math', 'maps'], ['stats', 'kokugo']]) {
+      const tags = initialParts(sets.map((x) => ({ set: x })));
+      const f = fitPlan(tags, 'free', { sizeOf: size, capBytes: cap });
+      assert.ok(f.short && f.candidates.length && f.candidates.every((t) => TIERS.parts[t].tier === 'specialized' && sets.includes(TIERS.parts[t].set)), `${lang} ${sets.join('+')}: ${f.candidates.join()}`);
+      const gains = f.candidates.map((t) => size(tags, true) - size(tags.filter((x) => x !== t), true));
+      assert.deepEqual(gains, [...gains].sort((a, b) => b - a), lang + ': largest first');
+      assert.ok(size(tags.filter((t) => !f.candidates.includes(t)), true) <= cap, `${lang} ${sets.join('+')}: fits after unticking the candidates`);
+    }
+    // 有料のプランは短くしない
+    const paidSize = (tags, short) => packSize(packWithRequest({ ...partsPackOpts(tags, 'paid', { short }), lang }));
+    assert.equal(fitPlan(kok, 'paid', { sizeOf: paidSize, capBytes: capKb('paid') * 1024 }).short, false);
+    assert.equal(partsPackOpts(kok, 'paid', { short: true }).short, undefined, 'short is for the free plan only');
+  }
 });
 ok('free plan (#125): every standard part fits 40 KB, with only the four core parts described; extra parts are in no pack; specialized parts only when their set is ticked; m-cards and m-orbit are described', () => {
   assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu', 'm-predict']);
@@ -434,13 +466,20 @@ ok('gen: the size rows (free standard fails over 40 KB, free + a set is only rep
   for (const lang of ['en', 'ja']) {
     const std = rep.find((x) => x.lang === lang && x.what === 'free standard');
     assert.ok(std && std.max === 40 && std.level !== 'fail', `${lang} free standard: ${std && std.kb} KB`);
-    for (const s of SETS) { const x = rep.find((y) => y.lang === lang && y.what === 'free standard+' + s); assert.ok(x && x.freeSet && x.max === 40 && ['ok', 'over'].includes(x.level), `${lang} free + ${s}`); }
+    for (const s of SETS) {
+      const x = rep.find((y) => y.lang === lang && y.what === 'free standard+' + s);
+      assert.ok(x && x.freeSet && x.max === 40 && ['ok', 'over'].includes(x.level), `${lang} free + ${s}`);
+      // 越えるときだけ中核の 4 つも短くした大きさ（新規作成の fitPlan と同じ）
+      assert.equal(x.short, Buffer.byteLength(buildPack({ sets: [s], lang })) > 40 * 1024, `${lang} free + ${s}: shortened only when over`);
+      assert.ok(Math.abs(x.kb * 1024 - Buffer.byteLength(buildPack({ sets: [s], lang, short: x.short }))) < 1, `${lang} free + ${s}: the reported size`);
+    }
     for (const p of pairsOf(SETS)) { const x = rep.find((y) => y.lang === lang && y.what === `paid standard+${p.join('+')}`); assert.ok(x && x.paidPair && x.max === 120 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
     const w = rep.find((y) => y.lang === lang && y.worst);
     assert.ok(w && w.what === 'paid every set' && w.max === 120 && w.level !== 'fail', `${lang} paid worst case never fails`);
   }
   const r = rep.find((x) => x.lang === 'ja' && x.what === 'free standard+kokugo');
-  const m = overMessage({ ...r, max: 40 }, g.data);
+  assert.ok(r.short && r.level === 'ok', 'free + kokugo is reported with the core four shortened, within 40 KB');
+  const m = overMessage({ ...r, short: false, max: 40 }, g.data);
   const bytes = Buffer.byteLength(buildPack({ sets: ['kokugo'], lang: 'ja' }));
   assert.match(m, new RegExp(`^pack over the cap: plan free, lang ja, part sets kokugo: ${bytes} B, ${bytes - 40 * 1024} B over 40 KB \\(40960 B\\)\\. Largest sections: `));
   assert.equal((m.split('Largest sections: ')[1].match(/\(\d+ B\)/g) || []).length, 3, m);
