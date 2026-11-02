@@ -5,7 +5,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { LOCK_FILE, VENDOR_COMPONENTS, parseLock, resolveComponent } from '../kit/core/components-lock.mjs';
-import { LOCK2_FILE, parseLock2 } from '../kit/core/parts2.mjs';
+
+// components2.lock.json の名前（kit/core/parts2.mjs の LOCK2_FILE と同じ値）。parts2.mjs 自体は import しない：
+// parts2.mjs は parse5 に依存し、この道具（tools/vendor-components.mjs）は tools/make-llm-guide.mjs から
+// 使われる（kit/llm-pack.mjs が組む AI への指示の材料）。tools/test-llm.mjs は node_modules なしで tools・kit を
+// 書き出して動かすので、ここから parse5 の import 連鎖を引き込むと落ちる。固定のファイルの形の確かめ
+// （lock2Problems）が要るときは、呼ぶ側で kit/core/parts2.mjs の parseLock2 を使う：ここでは素の JSON として読む
+const LOCK2_FILE = 'components2.lock.json';
 
 export const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const vendorBase = (root = ROOT) => path.join(root, ...VENDOR_COMPONENTS);
@@ -25,7 +31,7 @@ export function vendorComponents(root = ROOT) {
 // 返すもの：{catalogue, parts: [{name, version, dir}]}（名前の順）
 export function vendorComponents2(root = ROOT) {
   const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
-  const lock2 = parseLock2(fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8'));
+  const lock2 = JSON.parse(fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8'));
   const catalogue = lock2.default;
   const cat = lock2.catalogues[catalogue];
   const parts = Object.keys(cat.parts).filter((name) => {
@@ -46,7 +52,7 @@ export function vendorComponents2(root = ROOT) {
 // （例：icons の README への 1 行の言及に使う。CATALOG.md の表には土台パーツを出さない）
 export function vendorLibrary2(root = ROOT, name) {
   const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
-  const lock2 = parseLock2(fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8'));
+  const lock2 = JSON.parse(fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8'));
   const cat = lock2.catalogues[lock2.default];
   const version = cat.parts[name];
   if (!version) return null;

@@ -75,6 +75,7 @@ const ALLOW = [
   ['tools/catalog.mjs', "fs.readFileSync(OUT, 'utf8')", '部品庫の一覧：作り直したものと比べるために、このツールが書く vendor/components/CATALOG.md を読む（--check）'],
   ['tools/make-llm-guide.mjs', "fs.readFileSync(rel(...p), 'utf8')", 'AI への指示を作る：リポジトリの tools/llm-guide/・docs/contract・vendor/components/ の README と index.js を読む（開発者の道具）'],
   ['tools/vendor-components.mjs', "fs.readFileSync(path.join(root, LOCK_FILE), 'utf8')", '部品庫の写しの一覧：リポジトリの components.lock.json を読む（開発者の道具と試験）'],
+  ['tools/vendor-components.mjs', "fs.readFileSync(path.join(root, LOCK2_FILE), 'utf8')", '部品庫 2.0 の目録（CATALOG.md の 2.x の表）：リポジトリの components2.lock.json を素の JSON として読む（parts2.mjs を import すると parse5 を引き込むので避ける）'],
   ['tools/portable.mjs', "fs.readFileSync(path.join(root, LOCK_FILE), 'utf8')", '部品庫の照合：リポジトリの components.lock.json を読む（文書の部品は名前と sha256 で引くだけ。写しの index.js は readContained で読む）'],
   ['tools/themes-lock.mjs', 'fs.readFileSync(', '同梱のテーマの版の固定を確かめる道具：リポジトリの themes.lock.json・themes/・vendor/themes/ を読む'],
   ['kit/build.mjs', "parseThemesLock(fs.readFileSync(path.join(ROOT, THEMES_LOCK_FILE), 'utf8'))", 'リポジトリの themes.lock.json（同梱のテーマの版の固定）を読む'],
