@@ -49,7 +49,7 @@ Ask the user to add audio in Studio's audio panel (make AI voice on this compute
 
 ## When you finish
 
-If you can write files, write `deck.html` and `narration.md` into a new folder. Deliver these files instead of the fenced blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building. Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into “New…” (新規作成…).
+If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the fenced blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building. Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into “New…” (新規作成…).
 
 If you cannot write files, return the two fenced blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's “New…”.
 

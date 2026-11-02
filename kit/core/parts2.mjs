@@ -201,6 +201,8 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
 // 要素に使う、のどれも組まずに断る（黙って落とすと、再生器は動かない部品を出し、動画は段階が減る）。どの部品庫にもない名前は今までどおり知らせだけ
 // （作業フォルダの components/ に置き忘れた部品かもしれない。組み立てはどのパーツが要るかを言えない）
 export const NOT_IN_CATALOGUE = 'component-not-in-catalogue';
+// 選んだカタログにない要素のうち、componentsCatalogue を "2" にすれば組めるものだけか（編集アプリの「パーツライブラリ 2 を使う」）
+export const fixableBy2 = (list) => Array.isArray(list) && list.length > 0 && list.every((a) => a && a.catalogue === '1.x' && (a.hint === 'select2' || a.hint === 'pin') && a.value === '2');
 // 原稿の中で要素として使う m-… の名前（elements。注釈・<script>・<style> の中の字は数えない。<template> の中は数える）と、
 // 原稿自身の <script> が定義する名前（defined：DECK.define・customElements.define の最初の引数の字、egatariParts.define の meta の element）
 export function deckElements(html) {

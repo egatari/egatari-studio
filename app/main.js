@@ -29,7 +29,7 @@ import { rightsOf } from './rights.js';
 import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason } from '../kit/core/portable.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
-import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
+import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
@@ -512,6 +512,8 @@ async function rebuild(reason) {
         failed = true;
         // 選んだカタログにない要素（kit/core/parts2.mjs）：画面の言葉で、何をどう直すかだけを出す（コマンドの build・check と同じ言葉）
         S.error = buildErrorText(e) || String((e && (e.stack || e.message)) || e);
+        // 「パーツライブラリ 2 を使う」：作業フォルダで、egatari.json に "componentsCatalogue": "2" と書けば組めるときだけ（利用者が押したときだけ書く）
+        S.errorFix = !S.portable && !!e && e.code === NOT_IN_CATALOGUE && fixableBy2(e.notInCatalogue);
         showError(S.error);
         status(T.buildFailedAt(time()));
         console.warn('[editor] build failed', e);
@@ -540,6 +542,26 @@ function buildErrorText(e) {
 function showError(err) {
   $('errbox').hidden = !err;
   $('errtext').textContent = err || '';
+  let b = $('err-fix');
+  if (!b) {
+    b = el('button', { type: 'button', id: 'err-fix', cls: 'pri', text: T.useCatalogue2, onclick: useCatalogue2 });
+    $('errtext').after(b);
+  }
+  b.hidden = !(err && S.errorFix);
+}
+// 選んだカタログにない要素（kit/core/parts2.mjs）を、作業フォルダの egatari.json の componentsCatalogue を "2" にして組み直す
+// （ほかの項目はバイトのまま。読めないファイルは上書きせずに断る。kit/core/config-file.mjs）。前のファイルは .cache/edits/ に控える
+async function useCatalogue2() {
+  const ws = S.ws;
+  if (!ws || S.portable) return;
+  try {
+    const CFG = FORMAT.CONFIG_FILE;
+    const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { componentsCatalogue: '2' });
+    if (await ws.exists(CFG)) await ws.backup(CFG, { max: READ_LIMITS.json });
+    await ws.writeText(CFG, text);
+    S.errorFix = false;
+    await rebuild('components');
+  } catch (e) { toast(T.useCatalogue2Failed(String((e && e.message) || e)), true); }
 }
 // 組み立ての警告（と保存の警告）の数を、道具の列の「品質チェック」の札に出す（一覧は品質チェックの板の先頭）
 // 道具の列の「品質チェック」の札：ブラウザ版の品質チェックの数（エラーと警告）。エラーがあればエラーの色。組み立てと保存の警告（build。一覧は板の先頭）も

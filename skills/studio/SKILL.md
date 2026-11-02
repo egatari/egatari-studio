@@ -54,6 +54,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 <deck>/
   deck.html       スライド（雛形は `npx egatari@0.6.x new <deck>` が作る）
   narration.md    台本（人が読んで直す。雛形も new が作る）
+  egatari.json    教材の設定。new が {"componentsCatalogue": "2"}（パーツライブラリ 2 で組む）で作る。自分でフォルダを作るときも同じものを書く。今ある教材の値は変えない
   data/  figs/    検算済みスクリプトの出力（JSON）、matplotlib の SVG
   scripts/        数値と図を作るスクリプト（uv で実行）
   macros.tex      論文の \newcommand（あれば）

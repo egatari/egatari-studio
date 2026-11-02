@@ -34,6 +34,8 @@ import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { withNewLessonCatalogue } from '../kit/core/config-file.mjs';
+import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
 
@@ -1159,13 +1161,15 @@ export function setupLlm(app) {
     const a = assignIds(deck, narration || '', { byOrder: true });
     return { deck: a.deck, narration: a.narration, added: a.added.length, problems: a.problems };
   }
+  // 組み立ての失敗の言葉：選んだカタログにない要素（kit/core/parts2.mjs。1.x の教材に 2.x だけのパーツを貼った、など）は画面の言葉で直し方まで
+  const buildFailText = (e) => (e && e.code === NOT_IN_CATALOGUE && Array.isArray(e.notInCatalogue) ? e.notInCatalogue.map((a) => catalogueMessage(LANG, a)).join(' ') : String((e && e.message) || e).slice(0, 300));
   const nameOf = (deck) => exportName(titleOf(deck), 'ai-draft', FORMAT.FILE_EXT);   // 題名から（kit/core/export-name.mjs）
   // メモリの上の原稿 → Worker で1 ファイル（.ega.html）（組み立てと同じ期限）→ 開く（中身からコードを探し、あれば確かめる）
   async function openFiles(files, name, extra) {
     const ws = memoryWorkspace('pasted', files);
     let html;
     try { html = (await app.builder.exportHtml(ws, 'deck.html', {}, { timeout: app.buildTimeout() })).html; }
-    catch (e) { return `${X.buildFailed}: ${String((e && e.message) || e).slice(0, 300)}`; }
+    catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
     const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name, fresh: true, ...extra });
     if (!ok) return null;   // 取り消した（コードの確かめ・未保存の変更）：窓は閉じる
     // 保存するまでファイルには書いていない（閉じる前に知らせる）
@@ -1184,10 +1188,11 @@ export function setupLlm(app) {
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）。
     // 新規作成で選んだもの（場面・分野・外した言いたいこと）を studio.newDeck に。どちらも updateConfig を通る（kit/core/config-file.mjs）
-    let cfg = null;
+    // 新しい教材はパーツライブラリ 2.x で組む（指示が出すパーツと同じカタログ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）
+    let cfg = withNewLessonCatalogue(null);
     if (outlineRows) cfg = withOutline(cfg, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
     if (newChoice) cfg = withChoice(cfg, newChoice());
-    if (cfg) files[FORMAT.CONFIG_FILE] = cfg;
+    files[FORMAT.CONFIG_FILE] = cfg;
     const name = nameOf(ids.deck);
     const err = await openFiles(files, name, {});
     if (err) return err;
@@ -1222,7 +1227,7 @@ export function setupLlm(app) {
       const ws = memoryWorkspace('pasted', files);
       let html;
       try { html = (await app.builder.exportHtml(ws, file, { carry: P.index }, { timeout: app.buildTimeout() })).html; }
-      catch (e) { return `${X.buildFailed}: ${String((e && e.message) || e).slice(0, 300)}`; }
+      catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
       const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name: P.name, handle: P.handle, fresh: P.rightsOk, replacing: true });
       if (!ok) return null;
       try { await S.ws.writeText('narration.md', ids.narration); } catch { /* 無視 */ }

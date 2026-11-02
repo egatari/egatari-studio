@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=a30f152109b38620 -->
+<!-- i18n: pair=reference.ja.md sha256=4054d844769712f1 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -525,7 +525,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 
 | Command | Purpose |
 |---|---|
-| `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new working folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
+| `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new working folder (`deck.html` + `narration.md`, and `egatari.json` with `"componentsCatalogue": "2"`) from a clean template; refuses a non-empty folder |
 | `npm run ids -- <working folder \| deck.html> [--dry-run]` | give every slide without an id a new id (`s-` + 6 random base32 characters), rewrite `narration.md` headings to `## heading {#id}`, rename the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph="…"`; audio is not re-synthesized. Backups go to `.cache/edits/`, line endings are kept, a second run changes nothing. Refuses a lesson with duplicate keys, id collisions or invalid ids |
 | `npm run portable -- unpack <file> <dir> [--force]`, `npm run portable -- pack <dir> [-o file] [--play-only] [--without-live-results]`, `npm run portable -- attach <dir> <results.json>`, `npm run portable -- compare <file> <dir>` | Egatari file ↔ folder; see [Egatari file](#egatari-file---portable) |
 | `npm run player:check [-- --strict]`, `npm run player:bump -- patch\|minor\|major` | the bundled player (Egatari Player): compare its files (`PLAYER_FILES` in `kit/core/player.mjs`) with the release in `kit/player.lock.json` (information only; `--strict` fails when they differ, for the release candidate); bump writes the new version to `kit/player.json` and the lock and adds `changes/player-<version>.md`. See [RELEASING.md](../RELEASING.md) |

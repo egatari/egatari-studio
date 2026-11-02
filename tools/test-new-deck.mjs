@@ -17,6 +17,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan } from '../kit/core/new-deck.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
+import { NEW_LESSON_CATALOGUE, withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
@@ -579,6 +580,16 @@ ok('variant attributes and an old data-egatari-seed survive a single-file round 
     const written = fs.readFileSync(path.join(src, 'deck.html'), 'utf8');
     assert.equal(fs.readFileSync(path.join(back, 'deck.html'), 'utf8'), written, 'the unpacked source is byte for byte the same, the old seed included');
     assert.match(written, /<html\b[^>]*\sdata-egatari-seed="2718281828"/, 'writing the ids back keeps the old seed attribute');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+// 新しい教材はパーツライブラリ 2 で組む（指示のカタログと同じ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）。今ある教材の設定は書き換えない
+ok('new lessons select parts library 2: npm run new writes egatari.json with "componentsCatalogue": "2"; the helper keeps other members byte for byte', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-new-cat2-'));
+  try {
+    execFileSync(process.execPath, [path.join(ROOT, 'tools/new.mjs'), path.join(dir, 'd'), '--lang', 'en'], { stdio: 'pipe' });
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'd', 'egatari.json'), 'utf8')), { componentsCatalogue: NEW_LESSON_CATALOGUE });
+    assert.equal(NEW_LESSON_CATALOGUE, '2');
+    assert.equal(withNewLessonCatalogue('{"docId": "x",  "studio": {"a": 1}}'), '{"docId": "x",  "studio": {"a": 1}, "componentsCatalogue": "2"}');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 console.log(`new-deck: ${n} ok`);
