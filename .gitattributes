@@ -22,3 +22,5 @@ plugins/egatari/** text eol=lf
 skills/studio/SKILL.md text eol=lf
 # 名前で絞る試験の写し（部品庫の参照の実装が作った期待値）：バイトのまま（Windows の checkout で CRLF になると sha256 が合わない）
 tools/fixtures/subset-names/** -text
+# citeproc-js の CPAL の写し（vendor/citeproc/SOURCE.json）：バイトのまま
+vendor/citeproc/** -text

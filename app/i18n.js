@@ -28,7 +28,7 @@ const ja = {
   // 本（format spec §9C。app/book.js。言葉は用語集の book・book-may-not-match・read-with-script）
   viewGroup: '表示', viewSlides: 'スライド', viewBook: '本', bookBtn: '本', printSlides: 'スライドを印刷', printScript: '台本を印刷',
   book: {
-    panelTitle: '本', printBook: '本を印刷', printScript: '台本を印刷', printTo: '→ スライド {n}',
+    panelTitle: '本', printBook: '本を印刷', printScript: '台本を印刷',
     mayNotMatch: 'スライドと本が合っていないかもしれません',
     mayNotMatchLead: 'つないだ後に、どちらかが変わりました。読み比べて、合っていれば「確認済みにする」を押してください（スライドも本も、自動では直しません）。',
     changedSection: '本の節が変わりました', changedSlide: 'スライドか台本が変わりました', changedBoth: 'スライドと本の両方が変わりました', unconfirmed: 'まだ確認していません',
@@ -426,7 +426,7 @@ const en = {
   check: 'Quality check', helpBtn: '?', helpTip: 'Help',
   viewGroup: 'View', viewSlides: 'Slides', viewBook: 'Book', bookBtn: 'Book', printSlides: 'Print slides', printScript: 'Print script',
   book: {
-    panelTitle: 'Book', printBook: 'Print book', printScript: 'Print script', printTo: '→ Slide {n}',
+    panelTitle: 'Book', printBook: 'Print book', printScript: 'Print script',
     mayNotMatch: 'Slides and book may not match',
     mayNotMatchLead: 'One of them changed after they were linked. Compare them; if they still agree, choose “Mark as checked” (neither the slides nor the book is changed automatically).',
     changedSection: 'The book section changed', changedSlide: 'The slide or its script changed', changedBoth: 'Both the slide and the book changed', unconfirmed: 'Not checked yet',

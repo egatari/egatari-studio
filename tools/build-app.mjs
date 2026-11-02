@@ -156,10 +156,22 @@ const ART = await esbuild.build({
   minify: true, plugins: [articleHostPlugin], alias: { punycode: rel('app', 'punycode-shim.js') },
 });
 const articleJs = ARTICLE_NOTICE + ART.outputFiles[0].text;
-// citeproc-js（CPAL-1.0。NOTICE）：組み込まず、npm のファイルを手を加えずに vendor/citeproc/ に写す（LICENSE・package.json も）。本が文献を引くときにだけ読み込む
+// citeproc-js（CPAL-1.0。NOTICE）：組み込まず（縮めず・変換せず）、npm のファイルを手を加えずに dist/vendor/citeproc/ に写す（LICENSE・package.json と、
+// 上流の CPAL の全文（Exhibit A・B つき）・出どころ vendor/citeproc/）。本が文献を引くときにだけ読み込む。写す前に、npm のファイルが出どころの記録
+// （vendor/citeproc/SOURCE.json：citeproc 2.4.63 = Juris-M/citeproc-js 73bc1b4）とバイトまで同じかを確かめ、違えば組まない
 const CITEPROC_DIR = path.dirname(require.resolve('citeproc/package.json'));
+const CITEPROC_SRC = JSON.parse(fs.readFileSync(rel('vendor', 'citeproc', 'SOURCE.json'), 'utf8'));
+for (const [f, want] of Object.entries(CITEPROC_SRC.sha256)) {
+  const file = f === 'CPAL' ? rel('vendor', 'citeproc', 'CPAL') : path.join(CITEPROC_DIR, f);
+  const got = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  if (got !== want) throw new Error(`citeproc ${f}: sha256 ${got} is not the recorded ${want} (vendor/citeproc/SOURCE.json)`);
+}
+if (JSON.parse(fs.readFileSync(path.join(CITEPROC_DIR, 'package.json'), 'utf8')).version !== CITEPROC_SRC.version) throw new Error('citeproc: the installed version is not ' + CITEPROC_SRC.version + ' (vendor/citeproc/SOURCE.json)');
 const citeprocJs = fs.readFileSync(path.join(CITEPROC_DIR, 'citeproc_commonjs.js'), 'utf8');
-resourcesSingle.lazyJs = { article: articleJs, citeproc: citeprocJs };   // 1 ファイル版：別のファイルを読めない（file://）ので字として持ち、使うときに動かす
+// 1 ファイル版：別のファイルを読めない（file://）ので、citeproc は手を加えない字のまま <script type="text/plain" id="egatari-citeproc"> に入れる（app.js の外。
+// 縮める道具を通さない。app/article-loader.js がその字を読む）。その字が script の要素を閉じたり開いたりしないこと
+if (/<\/?script/i.test(citeprocJs)) throw new Error('citeproc_commonjs.js contains a script tag; it cannot be carried as is in editor.html');
+resourcesSingle.lazyJs = { article: articleJs };
 // res：アプリに入れる資源（配信版は resources、1 ファイル版は明朝を除いた resourcesSingle）
 const plugin = (res) => ({
   name: 'app',
@@ -212,6 +224,7 @@ fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'article-tools.js'), articleJs);
 fs.mkdirSync(path.join(ED, 'vendor', 'citeproc'), { recursive: true });
 for (const f of ['citeproc_commonjs.js', 'LICENSE', 'package.json']) fs.copyFileSync(path.join(CITEPROC_DIR, f), path.join(ED, 'vendor', 'citeproc', f));
+for (const f of ['CPAL', 'SOURCE.json']) fs.copyFileSync(rel('vendor', 'citeproc', f), path.join(ED, 'vendor', 'citeproc', f));
 fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_ICONS-->', () => iconLinks((f) => f) + '\n<link rel="icon" href="favicon.svg" type="image/svg+xml">\n<link rel="manifest" href="manifest.webmanifest">')
   .replace('<!--APP_CSS-->', '<link rel="stylesheet" href="app.css">').replace('<!--APP_JS-->', '<script src="app.js"></script>'));
 for (const f of [...ICON_FILES, 'favicon.svg']) fs.copyFileSync(LOGO(f), path.join(ED, f));
@@ -283,7 +296,7 @@ if (SINGLE) {
   const one = html
     .replace('<!--APP_ICONS-->', () => iconLinks((f) => dataUri(f)))
     .replace('<!--APP_CSS-->', () => `<style>\n${css}</style>`)
-    .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script>${inline(NOTICE + jsSingle)}</script>`);
+    .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script type="text/plain" id="egatari-citeproc">${citeprocJs}</script>\n<script>${inline(NOTICE + jsSingle)}</script>`);
   fs.writeFileSync(path.join(OUT, 'editor.html'), one);
   console.log(`dist/editor.html: ${kb(one.length)} (fonts embedded)`);
 }

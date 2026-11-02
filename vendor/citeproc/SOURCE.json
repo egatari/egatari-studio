@@ -1,0 +1,13 @@
+{
+  "package": "citeproc",
+  "version": "2.4.63",
+  "repository": "https://github.com/Juris-M/citeproc-js",
+  "commit": "73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9",
+  "commitUrl": "https://github.com/Juris-M/citeproc-js/tree/73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9",
+  "note": "citeproc 2.4.63 on npm has no git tag; 73bc1b4 ('Bump package version', 2023-04-16) is the commit whose package.json says 2.4.63 and whose citeproc_commonjs.js and LICENSE are byte-identical to the npm files. CPAL is that commit's CPAL file (the license text with Exhibits A and B), copied unmodified; the npm package does not carry it. tools/build-app.mjs serves it next to the unmodified citeproc_commonjs.js and LICENSE in dist/vendor/citeproc/.",
+  "sha256": {
+    "citeproc_commonjs.js": "55abba1a8b8b48c14323fd053f9646013b4b7a0c977938064ecf5195a502b9f1",
+    "LICENSE": "b96ca8e1716f93449b480083c7510c18d129fa9afa4644d62c6347c06177ce30",
+    "CPAL": "a953615139d8c767eb5e95f14215bf5c356ea23397a15137f6e119babf3fe69b"
+  }
+}

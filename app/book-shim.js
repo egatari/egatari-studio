@@ -1,7 +1,8 @@
 // 本の枠（app/book.js の #book-view。sandbox の srcdoc）の中の信頼する仲立ち。読むための頁（kit/core/article-page.mjs）はスクリプトを持たないので、
 // 編集アプリが文書の信頼する先頭部分に入れる（app/preview-doc.js の previewDocument。script の閉じタグとコメントの始まりの字を書かないこと）。
 // ステップへのリンクを押すと、親にそのステップを知らせる（スライドの表示にしてそのステップへ）。
-// 印刷の頼み（slides：スライドの鍵と id → 番号、word：「→ スライド {n}」）で、ステップへのリンクの後ろに番号を足して印刷し（A4 縦）、終われば外す
+// 印刷の頼み（slides：スライドの鍵と id → 番号、words：{slide, step, concl}。教材の言葉で「→ スライド {n}」「→ スライド {n}・ステップ {k}」）で、
+// ステップへのリンクの後ろにそれを足して印刷し（A4 縦。format spec §9C.13：ステップ 0 へのリンクはスライドだけ）、終われば外す
 (function(){
 var P = window.parent;
 document.addEventListener("click", function(e){
@@ -19,11 +20,12 @@ window.addEventListener("message", function(e){
   document.head.appendChild(css);
   var added = [];
   [].forEach.call(document.querySelectorAll("a[data-egatari-step]"), function(a){
-    var key = String(a.getAttribute("data-egatari-step") || "").split(":")[0], n = (m.slides || {})[key];
-    if (!n) return;
+    var t = String(a.getAttribute("data-egatari-step") || ""), i = t.lastIndexOf(":"), key = t.slice(0, i), k = t.slice(i + 1), n = (m.slides || {})[key];
+    var W = m.words || {};
+    if (!n || i < 1) return;
     var s = document.createElement("span");
     s.className = "egatari-print-to";
-    s.textContent = " " + String(m.word || "→ スライド {n}").replace("{n}", n);
+    s.textContent = " " + String(k === "0" ? W.slide : k === "concl" ? W.concl : W.step).replace("{n}", n).replace("{k}", k);
     a.after(s); added.push(s);
   });
   var done = function(){ added.forEach(function(s){ s.remove(); }); css.remove(); window.removeEventListener("afterprint", done); };

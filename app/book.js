@@ -24,6 +24,12 @@ import { previewDocument } from './preview-doc.js';
 import BOOK_SHIM from './book-shim.js?text';
 
 const CFG = FORMAT.CONFIG_FILE;
+// 刷った本のステップへのリンク（format spec §9C.13）：教材の言葉で、スライドと、ステップ 0 でなければステップ（用語集の step：ステップ）。
+// 日本語のほかは英語（kit/core/article-render.mjs の言葉と同じ決め方）
+const PRINT_TO = {
+  ja: { slide: '→ スライド {n}', step: '→ スライド {n}・ステップ {k}', concl: '→ スライド {n}・結論' },
+  en: { slide: '→ slide {n}', step: '→ slide {n}, step {k}', concl: '→ slide {n}, conclusion' },
+};
 const ARTICLE_RE = /^(?:article\.md|article\/[^/]+\.md)$/;
 const ARTICLE_MAX = 1 << 20;   // kit/core/article-text.mjs の ARTICLE_LIMITS.fileBytes
 const filesOf = (x) => (!x ? [] : x.files instanceof Map ? [...x.files.keys()] : x instanceof Map ? [...x.keys()] : Array.isArray(x) ? x : Object.keys(x));
@@ -163,7 +169,7 @@ export function createBook(ctx) {
     if (!B.present) { const f = $('preview').contentWindow; if (f) f.postMessage({ type: 'app-print', what: 'script' }, '*'); return; }
     const f = $('book-view');
     if (!B.last || !B.last.page || !f || !f.contentWindow) { ctx.toast(B.error ? T.renderFailed(B.error) : T.notReady, true); return; }
-    f.contentWindow.postMessage({ type: 'book-print', slides: slideNumbers(), word: T.printTo }, '*');
+    f.contentWindow.postMessage({ type: 'book-print', slides: slideNumbers(), words: PRINT_TO[/^ja\b/i.test(deckLang()) ? 'ja' : 'en'] }, '*');
   }
 
   // ---------------------------------------------------------------- 「本」の板（E3・E4）

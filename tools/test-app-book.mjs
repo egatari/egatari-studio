@@ -6,9 +6,10 @@
 //   「本」の板：本文を文字の欄で直して保存 → 本が組み直る・「スライドと本が合っていないかもしれません」→ 確認済みにする（egatari.json の articleLinks）
 //   1 ファイルの保存：本文だけを組み直す（段 A の決まり。スライドの部分のバイトはそのまま）。スライドを直したら組み直す保存（段 B）も本を残す
 //   本の誤り（§9C.8）は保存しない
-//   「本を印刷」：ステップへのリンクの後ろに「→ スライド N」。本のない教材は「台本を印刷」（小さなスライドと台本）
+//   「本を印刷」：ステップへのリンクの後ろに教材の言葉で「→ スライド N・ステップ K」（ステップ 0 は「→ スライド N」。§9C.13）。本のない教材は「台本を印刷」（小さなスライドと台本）
 //   作業フォルダ：本文の欄の保存はフォルダのファイルに書き、前の中身を .cache/edits/ に控える
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
@@ -47,7 +48,17 @@ execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out',
 const appJs = fs.readFileSync(path.join(DIST, 'app.js'), 'utf8');
 const toolsJs = fs.readFileSync(path.join(DIST, 'article-tools.js'), 'utf8');
 ok(!/mystDirective|mystRole/.test(appJs) && !appJs.includes('CSL.Engine.prototype') && /mystDirective/.test(toolsJs) && !toolsJs.includes('CSL.Engine.prototype'), 'dist: myst-parser and citeproc are not in app.js; article-tools.js carries the book tools (not citeproc)');
-ok(fs.readFileSync(path.join(DIST, 'vendor', 'citeproc', 'citeproc_commonjs.js'), 'utf8') === fs.readFileSync(path.join(ROOT, 'node_modules', 'citeproc', 'citeproc_commonjs.js'), 'utf8') && fs.existsSync(path.join(DIST, 'vendor', 'citeproc', 'LICENSE')), 'dist: citeproc is copied unmodified with its LICENSE (vendor/citeproc/)');
+// citeproc（CPAL-1.0）：配る字は npm の citeproc 2.4.63 の citeproc_commonjs.js とバイトまで同じ（縮めず・変換せず、app.js の外）。横に上流の LICENSE と CPAL の全文
+const sha = (b) => crypto.createHash('sha256').update(b).digest('hex');
+const npmCiteproc = fs.readFileSync(path.join(ROOT, 'node_modules', 'citeproc', 'citeproc_commonjs.js'));
+const CSRC = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'citeproc', 'SOURCE.json'), 'utf8'));
+ok(sha(fs.readFileSync(path.join(DIST, 'vendor', 'citeproc', 'citeproc_commonjs.js'))) === sha(npmCiteproc) && sha(npmCiteproc) === CSRC.sha256['citeproc_commonjs.js'] && CSRC.version === '2.4.63', 'dist: the served citeproc_commonjs.js has the sha256 of node_modules/citeproc (2.4.63)');
+const cpal = fs.readFileSync(path.join(DIST, 'vendor', 'citeproc', 'CPAL'), 'utf8');
+ok(sha(fs.readFileSync(path.join(DIST, 'vendor', 'citeproc', 'LICENSE'))) === sha(fs.readFileSync(path.join(ROOT, 'node_modules', 'citeproc', 'LICENSE'))) && /EXHIBIT A\. Common Public Attribution License/.test(cpal) && /EXHIBIT B\. Attribution Information/.test(cpal), 'dist: the upstream LICENSE and the CPAL text with Exhibits A and B are next to it');
+// Offline editor：citeproc は <script type="text/plain" id="egatari-citeproc"> の中に、元の字のまま（見出しの注記も）
+const single = fs.readFileSync(path.join(DIST, 'editor.html'));
+const OPEN = Buffer.from('<script type="text/plain" id="egatari-citeproc">'), at = single.indexOf(OPEN) + OPEN.length, end = single.indexOf(Buffer.from('</script>'), at);
+ok(at > OPEN.length && sha(single.subarray(at, end)) === sha(npmCiteproc) && single.subarray(at, at + 40).toString('utf8').startsWith('/*\nCopyright (c) 2009-2019 Frank Bennett'), 'offline: editor.html carries citeproc byte for byte, header comment included');
 
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json' };
 const fetched = [];
@@ -129,11 +140,11 @@ try {
   ok((await page.textContent('#book-credit')).includes('(c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/'), 'view: the attribution has the owner’s line');
   await page.screenshot({ path: path.join(work, 'book-view.png') });
 
-  // E5：本を印刷（ステップへのリンクは「→ スライド N」）
+  // E5：本を印刷（ステップへのリンクは「→ スライド N・ステップ K」、ステップ 0 は「→ スライド N」）
   await inBook(page, () => { window.__p = null; window.print = () => { window.__p = [...document.querySelectorAll('.egatari-print-to')].map((x) => x.textContent); }; return true; });
   await page.evaluate(() => document.getElementById('b-print-book').click());
   const printed = await inBook(page, () => window.__p);
-  ok(Array.isArray(printed) && printed.length > 0 && printed.every((t) => /^ → スライド \d+$/.test(t)), `print book: step links print as → スライド N (${JSON.stringify(printed)})`);
+  ok(Array.isArray(printed) && printed.length > 0 && printed.every((t) => /^ → スライド \d+(・ステップ (\d+|結論))?$/.test(t) && !/・ステップ 0$/.test(t)) && printed.includes(' → スライド 1・ステップ 1'), `print book: step links print as → スライド N・ステップ K in the lesson language (${JSON.stringify(printed)})`);
   ok(await inBook(page, () => [...document.querySelectorAll('style')].some((x) => /size:\s*A4 portrait/.test(x.textContent))), 'print book: A4 portrait');
 
   // E3：記録のないつながり（まだ確認していません）→ すべて確認済みにする
@@ -290,6 +301,7 @@ try {
   await po.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: 120000 });
   b = await bk(po);
   ok(b.present && !b.error && b.loaded.tools && b.loaded.citeproc && b.citeproc, `offline: the bundled book tools and citeproc run from file:// (${b.error || ''})`);
+  ok(sha(Buffer.from(await po.evaluate(() => document.getElementById('egatari-citeproc').textContent), 'utf8')) === sha(npmCiteproc), 'offline: the page reads the same citeproc text it runs');
   await co.close();
 } catch (e) {
   console.error(e);

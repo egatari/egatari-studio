@@ -2,7 +2,7 @@
 //   本文の道具 app/article-tools.js（myst-parser など。tools/build-app.mjs が 1 本にまとめる）
 //   citeproc-js（npm の citeproc_commonjs.js を手を加えずに。CPAL-1.0、NOTICE）：本が文献を引くときだけ
 // 字の出どころ：配信版は同じサイトのファイル（dist/article-tools.js・dist/vendor/citeproc/citeproc_commonjs.js）、1 ファイル版（file://）は
-// 同梱の字（RES.lazyJs。別のファイルを読めないので）。動かし方：ページはその字の <script> を入れる（決まりの 'unsafe-inline'。eval はしない）、
+// 同梱の字（本文の道具は RES.lazyJs、citeproc はページの #egatari-citeproc。別のファイルを読めないので）。動かし方：ページはその字の <script> を入れる（決まりの 'unsafe-inline'。eval はしない）、
 // 組み立ての Worker は Worker の字の後ろにつなげて作り直す（worker-src blob:。app/build-client.js の setExtra。字は Worker の字の後ろ：Worker の字が先に道具の使う部品を置く）
 //   const L = createArticleLoader(RES)
 //   await L.tools()          → 本文の道具（ページ）
@@ -23,6 +23,9 @@ export function createArticleLoader(res, { doc = typeof document !== 'undefined'
     if (src.has(name)) return src.get(name);
     const p = (async () => {
       if (res.lazyJs && typeof res.lazyJs[name] === 'string') return res.lazyJs[name];
+      // 1 ファイル版の citeproc：手を加えない字のまま、ページの <script type="text/plain" id="egatari-citeproc"> にある（tools/build-app.mjs）
+      const inPage = name === 'citeproc' && doc.getElementById('egatari-citeproc');
+      if (inPage) return inPage.textContent;
       // 大きさは読む前（Content-Length）と読みながら上限と比べる（app/bounded-read.js）
       try { return new TextDecoder().decode(await fetchBounded(new URL(FILES[name], doc.baseURI), { max: MAX[name], what: FILES[name] })); }
       catch (e) { throw Object.assign(new Error(`${FILES[name]}: ${(e && e.message) || e}`), { code: 'article-tools' }); }
