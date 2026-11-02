@@ -10,6 +10,12 @@
 export async function clickUntil(page, selector, effect, { tries = 5 } = {}) {
   let last;
   for (let i = 0; i < tries; i++) {
+    // 前の押しが届いていて、効果が EFFECT_MS より遅れて出た（ほかの段と同時に走る CI で、窓が閉じたあとに押し直して 30 秒待った）：もう押さずに効果を待つ
+    if (i > 0 && !(await page.isVisible(selector).catch(() => false))) {
+      await effect();
+      console.log(`click-retry: ${selector} took effect late (${i} click(s))`);
+      return i - 1;
+    }
     await page.click(selector);
     try {
       await effect();
