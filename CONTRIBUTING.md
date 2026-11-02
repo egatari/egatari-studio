@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=a2e14abbd7bb0e63 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=9dae7bbef43e35de -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -32,7 +32,7 @@ npm test -- --jobs 1     # one step at a time, in the order of the step table
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-`npm test` runs several steps at once: `--jobs N` (default: the number of CPUs minus 1, at most 6) starts the longest steps first and prints each step's output when it finishes. `--jobs 1` runs them one after another as before. Timing-sensitive tests (audio, recording, autoplay, part clocks, and those that wait for the control bar or a notice to hide on a timer) carry the line `// test-all: serial` near the top: they run last, one at a time, with nothing else running. Add it to a new test that asserts on wall-clock time. A test must not write to a fixed place that another step uses (use the folder it is given, or `fs.mkdtempSync`); steps that do share files are ordered in `tools/test-all.mjs` (`after`, `lock`).
+`npm test` runs several steps at once: `--jobs N` (default: the number of CPUs minus 1, at most 6) starts the longest steps first and prints each step's output when it finishes. `--jobs 1` runs them one after another as before. Timing-sensitive tests (audio, recording, autoplay, part clocks, those that wait for the control bar or a notice to hide on a timer, and time budgets such as test-security's "refused quickly") carry the line `// test-all: serial` near the top: they run last, one at a time, with nothing else running. Add it to a new test that asserts on wall-clock or CPU time. Otherwise prefer waiting for a condition (with a generous timeout only against hangs) over fixed sleeps: steps run slower when they share the CPU. A test must not write to a fixed place that another step uses (use the folder it is given, or `fs.mkdtempSync`); steps that do share files are ordered in `tools/test-all.mjs` (`after`, `lock`).
 
 CI runs `npm test -- --jobs 3` on Node 22 and 24 (Linux), on Windows and on macOS for every push and pull request, and `node tools/clean-env.mjs` (an empty `HOME`, no TTS server) on all three. `node tools/test-all.mjs --list` prints every step and its arguments.
 

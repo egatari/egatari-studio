@@ -1,4 +1,5 @@
 // 守りの試験（npm test の test-security）：プレビューの決まり（CSP）が、デッキの文書（信頼しないバイト）より先に効くこと
+// test-all: serial（組み立ての上限で「すぐ断る」を子の CPU の時間 5 秒で確かめる。Windows の CI では、ほかの段と同時だと 1 万個のファイルを数えるだけで CPU の時間も 6.8 秒に延びた。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-security.mjs
 // 編集アプリと同じ決まりのページ（app/index.html の CSP。同じ origin への接続はできる）を立て、その中の sandbox の iframe に
 // app/preview-doc.js の previewDocument で組んだ文書を srcdoc で入れる。デッキの側には、決まりを飲み込む・追い越す・緩める・

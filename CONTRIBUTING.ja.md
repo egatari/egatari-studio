@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=c257ec2952ef9e39 -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=2c832054faa3c5a8 -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -32,7 +32,7 @@ npm test -- --jobs 1     # 1 つずつ、段の表の順に
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-`npm test` はいくつかの段を同時に走らせる：`--jobs N`（既定は CPU の数 − 1、多くて 6）で長い段から始め、段ごとの出力はその段が終わったときに出す。`--jobs 1` は今までどおり 1 つずつ。時間に敏感な試験（音声・録音・自動再生・部品の時計、帯や知らせが時計で消えるのを待つもの）は先頭の近くに `// test-all: serial` の行を持ち、最後に、ほかに何も走らせずに 1 つずつ走る。実時間で確かめる新しい試験にはこの行を足す。試験は、ほかの段が使う決まった場所に書かない（渡されたフォルダか `fs.mkdtempSync` を使う）。同じファイルを使う段は `tools/test-all.mjs` で並びを決める（`after`・`lock`）。
+`npm test` はいくつかの段を同時に走らせる：`--jobs N`（既定は CPU の数 − 1、多くて 6）で長い段から始め、段ごとの出力はその段が終わったときに出す。`--jobs 1` は今までどおり 1 つずつ。時間に敏感な試験（音声・録音・自動再生・部品の時計、帯や知らせが時計で消えるのを待つもの、test-security の「すぐ断る」のような時間の上限）は先頭の近くに `// test-all: serial` の行を持ち、最後に、ほかに何も走らせずに 1 つずつ走る。実時間や CPU の時間で確かめる新しい試験にはこの行を足す。そうでなければ、決まった時間だけ待たずに状態を待つ（期限は固まったときのためだけに長めに）：CPU を分け合うと段は遅くなる。試験は、ほかの段が使う決まった場所に書かない（渡されたフォルダか `fs.mkdtempSync` を使う）。同じファイルを使う段は `tools/test-all.mjs` で並びを決める（`after`・`lock`）。
 
 CI は push と PR ごとに Node 22 と 24（Linux）・Windows・macOS で `npm test -- --jobs 3` を回し、3 つの OS で `node tools/clean-env.mjs`（空の `HOME`・TTS のサーバーなし）も走らせる。`node tools/test-all.mjs --list` はすべての段とその引数を出す。
 
