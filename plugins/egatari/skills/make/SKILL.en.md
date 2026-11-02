@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 9a0b9faa**
+**Instruction version: bee180c0**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`.
@@ -25,16 +25,18 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Read only the standard and specialized sets you need. Extra parts have README pointers only. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
 
-- [common](references/parts/en/common.md)
-- [academic](references/parts/en/academic.md)
-- [business](references/parts/en/business.md)
+- [standard](references/parts/en/standard.md)
+- [stats](references/parts/en/stats.md)
+- [math](references/parts/en/math.md)
+- [maps](references/parts/en/maps.md)
 - [kokugo](references/parts/en/kokugo.md)
 - [english](references/parts/en/english.md)
-- [info](references/parts/en/info.md)
-- [social](references/parts/en/social.md)
 - [music](references/parts/en/music.md)
+- [business](references/parts/en/business.md)
+- [tools](references/parts/en/tools.md)
+- [science](references/parts/en/science.md)
 - [extra](references/parts/en/extra.md)
 
 ## Book (article pane) and layout
@@ -55,7 +57,7 @@ In both cases, do not write slide ids in a first draft (R-noids). Studio or the 
 
 # Instructions for the AI
 
-Pack version: `9a0b9faa`
+Pack version: `bee180c0`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -101,7 +103,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
-- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo series pack, which describes it), and the `data-morph` attribute (§2.5).
+- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
 - Inside `.body`: `<p class="sub">` sub-heading, `<div class="big">` main equation, `<p class="note">` note, `<div class="thm">` theorem box, `<div class="cols">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
 - **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the narration section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
@@ -130,7 +132,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ### 2.7 Choosing a representation
 
-- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table lists every part; use only those described in the text you were given (§3, and the packs included). If a part of another pack would fit better, say so in a one-line note.
+- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table lists every part; use only those in the text you were given (§3, and the part sets included). If a part that is not included would fit better, say so in a one-line note.
 
 Choose candidate parts from the set references.
 
@@ -145,7 +147,7 @@ Choose candidate parts from the set references.
 
 ## 3. Component catalog
 
-These components may be used in any lesson; a series pack, when it is included after §6, adds the components of its subject. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
+These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
 
 Read only the parts you need from the set references above.
 
@@ -181,7 +183,7 @@ When the user pastes a **fix request** (a list of findings with the ids of the s
 
 ## 6. Worked example
 
-A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`; the `m-flow` with 4 boxes gives steps 1–4. The static cover has `[0]` only. Each series pack ends with an example of its own.
+A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`; the `m-flow` with 4 boxes gives steps 1–4. The static cover has `[0]` only. Some part sets end with an example of their own.
 
 ### Common (English, default theme, marks, m-flow)
 

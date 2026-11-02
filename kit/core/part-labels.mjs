@@ -45,6 +45,9 @@ export const PART_LABELS = Object.freeze({
   'm-syntax': { ja: '英文の構造', en: 'Sentence structure', icon: 'syntax', desc: { ja: '英文の S V O C M と句・節', en: 'S V O C M, phrases and clauses of a sentence' } },
   'm-heatmap': { ja: 'ヒートマップ', en: 'Heatmap', icon: 'heatmap', desc: { ja: '表の値を色の濃さで', en: 'Values in a grid, as shades' } },
   'm-map-world': { ja: '世界地図', en: 'World map', icon: 'mapworld', desc: { ja: '国や地域を塗り分け、点や矢印を置く', en: 'Countries shaded, with points and arrows' } },
+  'm-cards': { ja: 'カード', en: 'Cards', icon: 'menu', desc: { ja: 'アイコン付きのカードを並べて 1 枚ずつ出す', en: 'Cards with icons, shown one at a time' } },
+  'm-score': { ja: '楽譜', en: 'Score', icon: 'keyboard', desc: { ja: '五線譜を 1 音ずつ出して鳴らす', en: 'Staff notation, one note at a time, with sound' } },
+  'm-orbit': { ja: '月の満ち欠け', en: 'Moon phases', icon: 'cycle', desc: { ja: '月の位置と見える形を並べて動かす', en: 'The Moon’s position and its visible shape, moving together' } },
 });
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partDesc = (tag, lang) => (PART_LABELS[tag] && PART_LABELS[tag].desc ? PART_LABELS[tag].desc[lang === 'ja' ? 'ja' : 'en'] : '');

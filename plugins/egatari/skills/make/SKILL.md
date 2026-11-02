@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：9a0b9faa**
+**指示の版：bee180c0**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では `/plugin update egatari@egatari`。
@@ -25,16 +25,18 @@ Claude Code では `/plugin update egatari@egatari`。
 
 ## パーツを選ぶ
 
-標準・専門のパーツは必要なセットだけ読む。特殊（extra）は README への道だけを載せる。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
-- [common](references/parts/common.md)
-- [academic](references/parts/academic.md)
-- [business](references/parts/business.md)
+- [standard](references/parts/standard.md)
+- [stats](references/parts/stats.md)
+- [math](references/parts/math.md)
+- [maps](references/parts/maps.md)
 - [kokugo](references/parts/kokugo.md)
 - [english](references/parts/english.md)
-- [info](references/parts/info.md)
-- [social](references/parts/social.md)
 - [music](references/parts/music.md)
+- [business](references/parts/business.md)
+- [tools](references/parts/tools.md)
+- [science](references/parts/science.md)
 - [extra](references/parts/extra.md)
 
 ## 本（本文の窓・article）と配置
@@ -55,7 +57,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 # AI への指示
 
-指示の版：`9a0b9faa`
+指示の版：`bee180c0`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -101,7 +103,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
-- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の系列の指示があるときだけ）、属性 `data-morph`（§2.5）
+- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の束があるときだけ）、属性 `data-morph`（§2.5）
 - `.body` の中：`<p class="sub">` 小見出し、`<div class="big">` 主要な式、`<p class="note">` 補足、`<div class="thm">` 定理の枠、`<div class="cols">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`
 - 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
 - **R-headings** スライドの見出し（表紙と扉は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を足す）。そのスライドの台本の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）
@@ -130,7 +132,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ### 2.7 表し方を選ぶ
 
-- **R-purpose** 表し方は習慣でなく、そのスライドで伝えたいことから選ぶ。作者がグラフの種類を言っていればそれに従う。表は全パーツの一覧を兼ねる。使うのは渡された文章に説明のあるパーツだけ（§3 と、入っている系列）。ほかの系列のパーツの方が合うときは、1 行のメモでそう伝える
+- **R-purpose** 表し方は習慣でなく、そのスライドで伝えたいことから選ぶ。作者がグラフの種類を言っていればそれに従う。表は全パーツの一覧を兼ねる。使うのは渡された文章にあるパーツだけ（§3 と、入っている束）。入っていないパーツの方が合うときは、1 行のメモでそう伝える
 
 パーツの候補はセットごとの参照ファイルで選ぶ。
 
@@ -145,7 +147,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 3. パーツの一覧
 
-どの教材でも使えるパーツ。§6 の後に系列の指示があれば、その分野のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。
+どの教材でも使える標準のパーツ。§6 の後に束の指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。
 
 パーツは上のセットごとの参照ファイルから、必要なものだけ読む。
 
@@ -181,7 +183,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 6. 見本
 
-小さな教材の見本（架空。形を見るためで、中身は写さない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`、箱が 4 つの `m-flow` はステップ 1〜4。系列の指示の最後にもそれぞれ見本がある。
+小さな教材の見本（架空。形を見るためで、中身は写さない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`、箱が 4 つの `m-flow` はステップ 1〜4。いくつかの束の指示の最後にも見本がある。
 
 ### 共通（英語・default テーマ・強調・m-flow）
 

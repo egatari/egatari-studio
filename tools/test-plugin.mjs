@@ -135,18 +135,22 @@ for (const f of ['README.md', 'README.ja.md', 'docs/with-claude.md', 'docs/with-
 for (const ref of ['audio-local', 'video', 'parts']) assert.ok(studio.includes(`(references/${ref}.md)`));
 assert.ok(make.includes('egatari-studio') && make.includes('https://studio.egatari.org/') && make.includes('Safari'));
 for (const tag of Object.keys(data.ja.components)) assert.ok(Object.entries(generated).some(([f, t]) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && t.includes(`### \`<${tag}>\``)), tag);
-// 特殊が入っても本文や props を複製しない。セット名も manifest から読む。
-const sample = skillFiles(data, { 'm-bars': { tier: 'extra' }, 'm-flow': { set: 'custom' } });
+// 束（セット）ごとの参照ファイル：標準・材料の束（manifest の set）・特殊。特殊は README への道だけで、本文や props を複製しない（backlog #125）
+const refFiles = Object.keys(generated).filter((f) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && !f.includes('/en/')).map((f) => path.basename(f)).sort();
+assert.deepEqual(refFiles, ['standard', ...data.sets, 'extra'].map((x) => x + '.md').sort());
+const extraRef = generated[`${MAKE_SKILL_DIR}/references/parts/extra.md`];
+assert.ok(data.extra.includes('m-codetree') && data.extra.includes('m-collect'));
+for (const t of data.extra) assert.ok(extraRef.includes(`${t.replace(/^m-/, '')}/README.md`) && !data.ja.components[t], t);
+assert.ok(generated[`${MAKE_SKILL_DIR}/references/parts/standard.md`].includes('### `<m-timeline>`'), 'the skill describes every standard part (no free-plan brevity)');
+assert.ok(Buffer.byteLength(generated[`${MAKE_SKILL_DIR}/references/parts/standard.md`]) > 40 * 1024, 'skill references have no paste-in cap');
+// 材料を替える：m-bars を特殊に、m-flow を新しい束 custom に
+const moved = (D) => ({ ...D, components: Object.fromEntries(Object.entries(D.components).filter(([t]) => t !== 'm-bars').map(([t, c]) => [t, t === 'm-flow' ? { ...c, set: 'custom' } : c])) });
+const sample = skillFiles({ ...data, sets: [...data.sets, 'custom'], extra: [...data.extra, 'm-bars'], ja: moved(data.ja), en: moved(data.en) });
 const extra = sample[`${MAKE_SKILL_DIR}/references/parts/extra.md`];
 assert.ok(extra.includes('bars/README.md'));
 assert.ok(!extra.includes(data.ja.components['m-bars'].entry));
-assert.ok(!sample[`${MAKE_SKILL_DIR}/references/parts/common.md`].includes('### `<m-bars>`'));
+assert.ok(!sample[`${MAKE_SKILL_DIR}/references/parts/standard.md`].includes('### `<m-bars>`'));
 assert.ok(sample[`${MAKE_SKILL_DIR}/references/parts/custom.md`].includes('### `<m-flow>`'));
-assert.ok(Buffer.byteLength(generated[`${MAKE_SKILL_DIR}/references/parts/common.md`]) > 40 * 1024, 'skill references have no paste-in cap');
-const standard = skillFiles(data, { 'm-bars': { tier: 'standard', set: 'ignored' } });
-assert.ok(standard[`${MAKE_SKILL_DIR}/references/parts/standard.md`].includes('### `<m-bars>`'));
-const tiers = skillFiles(data, { ...Object.fromEntries(Object.keys(data.ja.components).map((tag) => [tag, { tier: 'standard' }])), 'm-flow': { tier: 'specialized', set: 'custom' }, 'm-bars': { tier: 'extra' } });
-assert.deepEqual(Object.keys(tiers).filter((f) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && !f.includes('/en/')).map((f) => path.basename(f)).sort(), ['custom.md', 'extra.md', 'standard.md']);
 for (const language of ['ja', 'en']) {
   const text = generated[`${MAKE_SKILL_DIR}/${language === 'ja' ? 'SKILL.md' : 'SKILL.en.md'}`];
   assert.ok(text.indexOf(language === 'ja' ? '## 書き終えたら' : '## When you finish') < text.indexOf(language === 'ja' ? '# AI への指示' : '# Instructions for the AI'));

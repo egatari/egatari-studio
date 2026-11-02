@@ -18,8 +18,8 @@
 //     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { SERIES, membersOfSeries, seriesForDeck, packSize, packKb, kbOf, seriesPart, TIERS, partsPackOpts } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SUBJECTS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, trimCandidates, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
+import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS, partsPackOpts, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
@@ -98,7 +98,7 @@ const TX = {
     planNote: 'Egatari は無料です。ここで聞くのは、お使いのチャットの AI のプランです',
     // スライドの挿入の「指示の全体も付ける」の分野
     seriesLegend: 'スライドに出てくるものはありますか（内容の分野）',
-    seriesHint: (name) => `数式・グラフ・データの図を使うなら「${name}」を選ぶ`,
+    seriesHint: (name) => `データの分布の図（ヒストグラム・箱ひげ図）を使うなら「${name}」を選ぶ。棒・折れ線・円などのグラフはいつも入る`,
     // 新規作成 ④ のパーツの一覧（kit/core/new-deck.mjs の partsList・recommend）
     partsLegend: 'AI にどのパーツを使わせますか',
     partsHint: '伝えたいことごとに並べています。標準パーツは全部選んであります。外したパーツは AI が使わず、要るときは近い形を HTML で描きます。表・画像・数式・図形は、選ばなくてもいつも使えます',
@@ -112,6 +112,7 @@ const TX = {
     packMeter: (kb, cap) => `指示の大きさ：${kb} KB（目安は ${cap} KB まで）`,
     overCap: (kb, names) => `目安より ${kb} KB 大きいので、チャットの AI が最後まで読めないことがあります。${names ? `外す候補：${names}` : '外すパーツを選んでください'}`,
     trim: '候補を外す',
+    shortened: (names) => `無料のプランの目安に収めるため、${names}の説明を短くしました`,
     packTotal: (kb) => `指示の大きさ：${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: '指示をコピー',
     copied: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。長いので、貼るとファイルの添付の形になることがありますが、そのまま送ってかまいません。AI が書き終えたら ⑤ へ`,
@@ -245,7 +246,7 @@ const TX = {
     planHint: (free, paid) => `The plan sets the suggested size limit for the instructions (free plan ${free} KB, paid plan ${paid} KB). A chat AI may not read instructions that are too long to the end.`,
     planNote: 'Egatari is free. This asks about your chat AI\'s plan.',
     seriesLegend: 'Will the slides need any of these? (subjects)',
-    seriesHint: (name) => `Using formulas, graphs or data charts? Choose “${name}”.`,
+    seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
     partsLegend: 'Which parts may the AI use?',
     partsHint: 'Grouped by what to convey. All standard parts are chosen. The AI won’t use a part you untick; if it needs one, it draws something close in HTML. Tables, images, equations and shapes are always available.',
     whySub: (sub, names) => `Also chose ${names}, because the setting in step 1 is ${sub}.`,
@@ -258,6 +259,7 @@ const TX = {
     packMeter: (kb, cap) => `Instructions: ${kb} KB (suggested limit ${cap} KB)`,
     overCap: (kb, names) => `${kb} KB over the suggested limit, so your chat AI may not read it to the end. ${names ? `Parts you could untick: ${names}` : 'Untick some parts.'}`,
     trim: 'Untick these',
+    shortened: (names) => `To fit the free plan’s limit, the descriptions of ${names} are shortened.`,
     packTotal: (kb) => `Instructions: ${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: 'Copy the instructions',
     copied: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. It is long, so it may turn into an attached file; just send it. When the AI has finished, go to step 5.`,
@@ -342,8 +344,8 @@ export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
-  // 分野の名前（挿入の分野の一覧）：中の図と分野の名前（kit/core/new-deck.mjs の SUBJECTS の inside・label）
-  const seriesName = Object.fromEntries(SUBJECTS.map((x) => [x.series, LANG === 'ja' ? `${x.inside.ja}（${x.label.ja}）` : `${x.inside.en} (${x.label.en})`]));
+  // 束の名前（挿入の「指示の全体も付ける」の一覧）：中の図と、教科・用途の名前（kit/core/new-deck.mjs の SET_LABELS の inside・label）
+  const setName = Object.fromEntries(SET_LABELS.map((x) => [x.set, LANG === 'ja' ? `${x.inside.ja}（${x.label.ja}）` : `${x.inside.en} (${x.label.en})`]));
   // 品質チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
   const base = T.checkMsg;
   // ほかのコマンド版の code（体裁の検査が kit/core/layout-scan.mjs になって増えたもの：縦組みの限り・図の中の字・切れる字など）はコマンド版の言葉
@@ -656,19 +658,19 @@ export function setupLlm(app) {
     };
   }
 
-  // ---------------------------------------------------------------- ② 指示：共通の本体（必ず入る。外せない札）＋ 系列（必要なときだけ足す）＋ 最後の頼み
-  // 系列の既定：デッキを開いていればその部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）。開いていなければ（か、推せなければ）足さない
-  async function defaultSeries() {
+  // ---------------------------------------------------------------- ② 指示：共通の本体（標準の部品。必ず入る）＋ 束（必要なときだけ足す）＋ 最後の頼み
+  // 束の既定：デッキを開いていればその部品・テーマから推したもの（kit/core/llm-pack.mjs の setsForDeck）。開いていなければ（か、推せなければ）足さない
+  async function defaultSets() {
     let deck = '';
     if (S.ws && S.deckFile) { try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) || ''; } catch { /* 読めなければ推さない */ } }
-    return seriesForDeck(deck);
+    return setsForDeck(deck);
   }
 
   // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る（handoff/parts-tiers-2026-10-27.md §2）
   // 問い「無料のプランですか、有料のプランですか」→「AI にどのパーツを使わせますか」（パーツの一覧：伝えたいことごとのまとまり、教科の形は最後。
   // kit/core/new-deck.mjs の partsList）→ 指示の大きさ（プランの目安と比べるメーター）→［指示をコピー］。
   // 初めの選び方：標準のパーツは全部、専門のパーツは ① の小分類と ② の言葉から決めた束だけ（recommend。理由を一覧の上に出し、パーツに「おすすめ」）。
-  // 特殊（extra）のパーツは出さない。プランが変えるのは目安だけ（選べる数は限らない）：越えたら、越えた分と外す候補（trimCandidates）と［候補を外す］。
+  // 特殊（extra）のパーツは出さない。プランが変えるのは目安だけ（選べる数は限らない）：越えたら、無料のプランはまず中核の 4 つの説明を短くし（fitPlan）、それでも越えれば越えた分と外す候補（専門のパーツだけ）と［候補を外す］。
   // 自分で替えた印は、推し直しで上書きしない。新規作成はいつも初めの選び方から（開いている教材の studio.newDeck は読まない）
   // パーツの見本の小さな絵（app/part-thumbs.js。tools/part-thumbs.mjs がパーツの見本 demo.html から作る）：明るい画面と暗い画面の 2 枚を <picture> で。
   // alt は何の絵か（パーツの名前と、日本語の画面では見本の見出し）。絵のないパーツは線画（ICONS）
@@ -719,8 +721,12 @@ export function setupLlm(app) {
     const trim = el('button', { type: 'button', id: 'paste-trim', text: X.trim });
     const over = el('p', { id: 'paste-over', cls: 'paste-over', role: 'status', hidden: '' }, [overText, ' ', trim]);
     const meter = el('div', { id: 'paste-size', cls: 'paste-size' }, [total, bar]);
+    const shortened = el('p', { id: 'paste-shortened', cls: 'hint', role: 'status', hidden: '', text: X.shortened(names(FREE_CORE)) });
     const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
-    const textNow = (tags = chosen()) => packWithRequest({ ...partsPackOpts(tags), lang: LANG, request: request() });
+    // プランは上限と詳しさを変える（無料のプランは、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
+    // 無料のプランで目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
+    let shortNow = false;
+    const textNow = (tags = chosen(), short = shortNow) => packWithRequest({ ...partsPackOpts(tags, draft.plan, { short }), lang: LANG, request: request() });
     // 推した印：① の小分類と ② のタイトル・内容・そのほかの希望の言葉（recommend）。自分で替えたパーツはそのまま。標準のパーツは、替えていなければいつも印
     const guessNow = () => {
       rec = recommend({ sub: draft.sub || null, text: [draft.title, givenContent(), draft.wishes].join('\n'), lang: LANG });
@@ -739,22 +745,25 @@ export function setupLlm(app) {
       groups.replaceChildren(...partsList(draft.sub || null).map((g) => groupNodes.get(g.id)));
     };
     let candidates = [];
-    const sizeOf = (tags) => packSize(textNow(tags));
+    const sizeOf = (tags, short) => packSize(textNow(tags, short));
     const update = () => {
       for (const [t, cb] of boxes) { cb.checked = ticked.has(t); picks.get(t).badge.hidden = !(isRec(t) && TIERS.parts[t].tier !== 'standard'); }
       setRadios(planSet, 'paste-plan', draft.plan);
       count.textContent = X.partsCount(chosen().length, listed.length);
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
-      const t = textNow(), bytes = packSize(t), cap = capKb(draft.plan), capBytes = cap * 1024;
+      const cap = capKb(draft.plan), capBytes = cap * 1024;
+      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：無料のプランで越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に
+      const fit = fitPlan(chosen(), draft.plan, { sizeOf, capBytes });
+      shortNow = fit.short;
+      shortened.hidden = !shortNow;
+      const t = textNow(), bytes = packSize(t);
       total.textContent = X.packMeter(kb(t), cap); total.dataset.bytes = String(bytes);
       bar.setAttribute('aria-valuemax', String(cap)); bar.setAttribute('aria-valuenow', kb(t)); bar.setAttribute('aria-valuetext', X.packMeter(kb(t), cap));
       fill.style.width = Math.min(100, (bytes / capBytes) * 100).toFixed(1) + '%';
       const isOver = bytes > capBytes;
       meter.classList.toggle('over', isOver);
-      // 外す候補：理由のあるおすすめと、自分で付けたパーツは候補にしない
-      const keep = new Set(chosen().filter((x) => (touched.has(x) && ticked.has(x)) || (isRec(x) && TIERS.parts[x].tier !== 'standard')));
-      candidates = isOver ? trimCandidates(chosen(), { sizeOf, capBytes, keep }) : [];
+      candidates = isOver ? fit.candidates : [];
       over.hidden = !isOver;
       overText.textContent = isOver ? X.overCap(kbOf(bytes - capBytes), candidates.length ? names(candidates) : '') : '';
       trim.hidden = !candidates.length;
@@ -778,20 +787,20 @@ export function setupLlm(app) {
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg]);
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
-  // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ分野）も付ける
-  // 分野の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の seriesForDeck）
+  // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ束）も付ける
+  // 束の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の setsForDeck）
   async function packStep(copyMsg, req, { title, copyLabel, copiedMsg, onCopied, onChange }) {
-    const initial = await defaultSeries();
+    const initial = await defaultSets();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
-    const boxes = SERIES.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
+    const boxes = SETS.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
     const withPack = el('input', { type: 'checkbox', id: 'paste-with-pack' });
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
-    const textNow = async () => { const r = await req.request(); return withPack.checked ? packWithRequest({ series: chosen(), lang: LANG, request: r }) : r; };
-    const partBytes = (s) => packSize(seriesPart(s, LANG));
+    const textNow = async () => { const r = await req.request(); return withPack.checked ? packWithRequest({ sets: chosen(), lang: LANG, request: r }) : r; };
+    const partBytes = (s) => packSize(setPart(s, LANG));
     const update = async () => { const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); };
     for (const b of boxes) b.addEventListener('change', update);
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
@@ -801,8 +810,8 @@ export function setupLlm(app) {
       if (ok && onCopied) onCopied();
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
-      ...SERIES.map((s, i) => el('label', { title: membersOfSeries(s).join(', ') }, [boxes[i], el('span', { text: seriesName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
-    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(seriesName.academic) })]);
+      ...SETS.map((s, i) => el('label', { title: membersOfSet(s).join(', ') }, [boxes[i], el('span', { text: setName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
+    const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(setName.stats) })]);
     withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
     await update();
     const summary = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, onChange);

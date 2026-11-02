@@ -208,7 +208,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
       && (await pk.textContent('#paste-parts-hint')).endsWith('表・画像・数式・図形は、選ばなくてもいつも使えます'),
       'new parts: a conference talk ticks every standard part and the statistics set, says why, and says tables, images, equations and shapes are always available');
     const c1 = await copy();
-    ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('### `<m-flow>`') && c1.includes('### `<m-hist>`') && !c1.includes('使わない言いたいこと'), 'new copy: the request has the setting and its structure; every ticked part is described');
+    // 標準と統計の図で無料のプランの目安を越えるので、中核の 4 つの説明も短くなる（一覧の 1 行は残る。backlog #125）
+    ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('| `<m-flow>` |') && !c1.includes('### `<m-flow>`') && c1.includes('### `<m-hist>`') && !c1.includes('使わない言いたいこと')
+      && !(await pk.$eval('#paste-shortened', (x) => x.hidden)), 'new copy: the request has the setting and its structure; the statistics parts are described, and over the free limit the core four are shortened (the meter says so)');
     const size1 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
     // コピーすると ⑤ が開く。④ は［変更］で開き直す
     ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer'), 'new copy: copying opens ⑤ and folds ④ to its answer');
@@ -219,12 +221,16 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(offStyle < 1 && (await pk.textContent('#paste-parts-count')).startsWith(`選んだパーツ：${initialParts([]).length + stats.length - 2} 種類`), 'new parts: an unticked part is faded (and its checkbox is clear); the count follows');
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(!/m-flow(?![a-z-])/.test(c2) && !/m-menu(?![a-z-])/.test(c2) && size2 < size1, `new copy: the unticked parts leave the copied pack, named nowhere (${size1} → ${size2} bytes)`);
+    // 外したぶん目安に収まれば、残る中核のパーツの説明は短くしない（大きさはかえって増えることがある）
+    ok(!/m-flow(?![a-z-])/.test(c2) && !/m-menu(?![a-z-])/.test(c2) && size2 <= 40 * 1024 && c2.includes('### `<m-bars>`'), `new copy: the unticked parts leave the copied pack, named nowhere, and back within the limit the remaining core parts are described in full (${size1} → ${size2} bytes)`);
     if (shotDir) { await pk.evaluate(() => document.getElementById('paste-parts').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-parts-ja.png') }); }
     await pk.click('#paste-change-send');
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
-    ok(c3 === c2, 'new plan: the paid plan copies the same parts (the plan changes only the suggested limit)');
+    // 有料のプランは同じパーツを、どれも詳しく（無料のプランは中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
+    const rowsIn = (t) => [...t.matchAll(/^\| `<(m-[a-z]+(?:-[a-z]+)*)>` \|/gm)].map((m) => m[1]).sort().join();
+    ok(rowsIn(c3) === rowsIn(c2) && !c2.includes('### `<m-timeline>`') && c3.includes('### `<m-timeline>`') && c3.length > c2.length,
+      'new plan: the paid plan copies the same parts, each described in full (the free plan gives the standard parts other than the core four one catalogue line)');
     // 写した後に印を変えても、egatari.json に残すのは写したときの選び方
     await pk.click('#paste-change-send');
     await pk.uncheck('#paste-part-timeline');
