@@ -1524,7 +1524,7 @@ DECK.toast = function(msg){
 var soundContext = null, soundHandles = [], soundForced = false, soundResuming = false;
 // Events are scheduled a little ahead on the Web Audio clock at their exact times (not "now" when a frame passes them).
 // Each handle remembers its run and step time so that a step change, extension or pause can cancel what has not sounded.
-var SOUND_AHEAD = .1, soundClock = null, soundNext = null, autoGo = null;
+var SOUND_AHEAD = .25, soundClock = null, soundNext = null, autoGo = null;
 var soundMute = DECK.SoundPreferences ? DECK.SoundPreferences.createMuteSetting() : null;
 DECK.hasComponentSounds = function(){
   return !!slides && slides.some(function(s){ return s._comps.some(function(c){ return !!(c.constructor && c.constructor.sounds) || typeof c.events === "function"; }); });
