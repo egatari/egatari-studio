@@ -350,8 +350,8 @@ for (const mode of ['talk', 'learn']) {
   await cp.waitForTimeout(350);
   ok(await cp.evaluate(() => DECK.state().step === 1 && document.querySelector('#input-clock')._ctx.extend(0) === 60), `${mode}: autoplay waits past the authored step end`);
   await cp.locator('[data-extend="-60"]').click();
-  await cp.waitForTimeout(80);
-  ok(await cp.evaluate(() => DECK.state().step === 2), `${mode}: shortening the elapsed autoplay wait advances`);
+  // 残りが 0 なのですぐ進む。遅い CI（macOS）で 80 ms の固定の待ちが足りなかったので、1 秒まで待つ
+  ok(await cp.waitForFunction(() => DECK.state().step === 2, null, { timeout: 1000 }).then(() => true, () => false), `${mode}: shortening the elapsed autoplay wait advances`);
   await cp.evaluate(() => DECK.autoplay(false));
 
   // Stub the live layer with its real aggregate store; no connection, service or server is involved.
