@@ -173,6 +173,22 @@ class MotionElement extends HTMLElement {
 }
 DECK.MotionElement = MotionElement;
 function isLegacyPart(e){ return e instanceof MotionElement; }
+// 登録簿のない 2.0 のパーツ（手で作ったファイルだけ。組み立ては 1.x の教材に 2.0 のパーツを書かずに断る：kit/core/parts2.mjs の catalogueHint）：
+// egatariParts.define を投げずに受け（ReferenceError で後ろの部品の定義まで止めない）、要素を定義せずに失敗として記録する。
+// partFailures がその要素を字の代わりにし、DECK.componentErrors に積む。本物の登録簿（kit/parts-registry.js）が後から書かれれば、これを置き換える
+if (!window.egatariParts) (function(){
+  var failed = [];
+  var guard = {define: function(meta){
+    var m = meta && typeof meta === "object" ? meta : {};
+    var f = {name: String(m.name), version: String(m.version), reason: "registry", why: "no parts registry in this file: a parts library 2.x part needs a file built with \"componentsCatalogue\": \"2\" in egatari.json"};
+    if (typeof m.element === "string") f.element = m.element;
+    failed.push(f);
+    try { console.warn("[deck] " + f.name + "@" + f.version + ": " + f.why); } catch (e) { /* 知らせに失敗しても続ける */ }
+  }};
+  Object.defineProperty(guard, "status", {value: function(){ return {defined: [], failed: failed.map(function(f){ return Object.assign({}, f); })}; }});
+  Object.defineProperty(guard, "playerGuard", {value: true});
+  Object.defineProperty(window, "egatariParts", {value: guard, configurable: true, writable: true, enumerable: false});
+})();
 // @legacy-part-base:end
 
 // ---------------------------------------------------------------- 部品のデータの形（static shape。確かめるのは kit/shape.js の DECK.shape）
@@ -303,6 +319,7 @@ function parts2(){
   if (!R || typeof R.status !== "function") return null;
   var st;
   try { st = R.status(); } catch (e) { return null; }
+  if (R.playerGuard && !(st && st.failed && st.failed.length)) return null;   // 登録簿の代わりの受け（上）が何も受けていない：1.x だけのファイル
   return st && Array.isArray(st.defined) && Array.isArray(st.failed) ? st : null;
 }
 var P2 = null;   // init で読む：登録簿の status()
@@ -324,7 +341,7 @@ function partFailures(s, i){
       if (e._partFailed) return;
       e._partFailed = true;
       var rec = {slide: i, key: s._key || s.getAttribute("data-key") || s.id || ("s" + (i + 1)), id: s.id || null, tag: tag, label: e.getAttribute("aria-label") || "",
-        index: [].indexOf.call(list, e), phase: "define", kind: "exception", reason: f.reason, msg: f.name + "@" + f.version + ": " + f.reason};
+        index: [].indexOf.call(list, e), phase: "define", kind: "exception", reason: f.reason, msg: f.name + "@" + f.version + ": " + f.reason + (f.why ? " (" + f.why + ")" : "")};
       DECK.componentErrors.push(rec);
       console.warn("[deck] " + tag + " (" + (s.id || rec.key) + "): " + rec.msg);
       [].slice.call(e.childNodes).forEach(function(n){ if (!(n.nodeType === 1 && n.localName === "script")) e.removeChild(n); });

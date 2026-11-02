@@ -541,6 +541,30 @@ try {
   await opfs.write('deck.html', deck2);
   await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 10000 });
   ok(await page.isHidden('#errbox'), 'error: overlay disappears after the fix');
+  // 選んだカタログにない要素（#165）：組み立てと同じエラーを画面の言葉で出す（黙って落とさない）。egatari.json で 2.x を選べば組める
+  {
+    const conf0 = await opfs.read('egatari.json');
+    const scoreDeck = deck2.replace('<h2>学習率と収束（外で変更）</h2>', '<h2>学習率と収束（外で変更）</h2><m-score aria-label="音階"><script type="application/json">{"abc":"X:1\\nK:C\\nCDEF|"}</script></m-score>');
+    ok(scoreDeck !== deck2, 'catalogue: test edit applies');
+    await opfs.write('deck.html', scoreDeck);
+    await page.waitForSelector('#errbox:not([hidden])', { timeout: 15000 });
+    const et = await page.textContent('#errtext');
+    ok(et.includes('<m-score> は、この教材が使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
+      'catalogue: a 1.x lesson using <m-score> fails to build with the same message as build and check, in the editor\'s language: ' + et.slice(0, 120));
+    n = await loads();
+    await opfs.write('egatari.json', JSON.stringify({ ...(conf0 ? JSON.parse(conf0) : {}), componentsCatalogue: '2' }));
+    await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 15000 });
+    f = await waitLoads(n);
+    ok(await f.evaluate(() => !!customElements.get('m-score') && DECK.componentErrors.every((e) => e.tag !== 'm-score')), 'catalogue: with "componentsCatalogue": "2" in egatari.json it builds and <m-score> runs');
+    n = await loads();
+    await opfs.write('deck.html', deck2);
+    f = await waitLoads(n);
+    n = await loads();
+    if (conf0 !== null) await opfs.write('egatari.json', conf0);
+    else await page.evaluate(() => window.__testDir.removeEntry('egatari.json'));
+    f = await waitLoads(n);
+    ok(await page.isHidden('#errbox'), 'catalogue: back to the original lesson');
+  }
 
   // ---------------------------------------------------------------- 7. 品質チェック
   await page.click('#b-check');
