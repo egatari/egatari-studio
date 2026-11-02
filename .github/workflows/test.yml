@@ -44,7 +44,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     # Linux: npm test now runs past 45 min (test 24 on v0.6-integration was cancelled at 45 min while still passing; test-components alone takes about 545 s), so the job and each test-all step get more time
-    # With npm test -- --jobs 3 (backlog #156) the tests are expected to take about 17-22 min here (39 min one at a time in run 41300438072); the cap is unchanged
+    # With npm test -- --jobs 3 (backlog #156) the tests took 22-33 min here in the green runs of the v0.6.4-ci-parallel branch (39 min one at a time in run 41300438072); the cap is unchanged
     timeout-minutes: 60
     strategy:
       fail-fast: false
@@ -90,7 +90,7 @@ jobs:
     runs-on: windows-latest
     # Windows: npm test now runs past 45 min (cancelled at 45 min on v0.6-integration while still passing; test-components alone takes about 575 s, near the default 600 s step cap), so the job and each test-all step get more time
     # 60 min became too short: main took 56 min (run 41300438072) and a branch with more tests reached the cap still passing (run 41320179850). #156 runs the steps in parallel
-    # With npm test -- --jobs 3 (backlog #156) the tests are expected to take about 24-30 min here (55 min one at a time in run 41300438072); the cap is unchanged
+    # With npm test -- --jobs 3 (backlog #156) the tests took 26-34 min here in the green runs of the v0.6.4-ci-parallel branch (55 min one at a time in run 41300438072); the cap is unchanged
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v7
