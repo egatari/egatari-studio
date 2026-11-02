@@ -3,6 +3,7 @@
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値。rule は規格の名前の文字列か、a から決める関数（ruleOf）
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 import { CLIP_ATTR } from './core/layout-scan.mjs';
+import { catalogueMessage } from './core/parts2.mjs';
 import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
 
 // 値にないときの既定（テーマの寸法の既定。kit/core/theme-metrics.mjs）：結論の行の上端・1 行の高さ・横の右の限り
@@ -74,6 +75,11 @@ export const MESSAGES = {
   'component-requires-missing': {
     ja: (a) => `パーツ ${a.part} が必要とする ${a.requires} がありません。パーツを更新してください`,
     en: (a) => `Part ${a.part} requires ${a.requires}, which is not available. Update the parts.`,
+  },
+  // 選んだカタログ（既定は部品庫 1.x、egatari.json の componentsCatalogue で 2.x）にない要素。言葉は kit/core/parts2.mjs と共有（編集アプリ・組み立ても使う）
+  'component-not-in-catalogue': {
+    ja: (a) => catalogueMessage('ja', a),
+    en: (a) => catalogueMessage('en', a),
   },
   // ---------------------------------------------------------------- 組み立て・id・鍵
   build: { rule: (a) => (/^narration: スライドが見つからない/.test(a.w) ? 'R-headings' : null), ja: (a) => a.w + (/^narration: スライドが見つからない/.test(a.w) ? '：narration.md の「## 見出し」をスライドの見出しと同じ文字にするか、見出しの後ろに {#スライドの id} を書く（R-headings）' : ''),

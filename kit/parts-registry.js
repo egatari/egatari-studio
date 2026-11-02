@@ -19,7 +19,7 @@
 //   element は meta のとおり：再生器が、どの要素を最後の状態の絵か字の代わりにするかを知る）
 (function(){
 "use strict";
-if (globalThis.egatariParts) return;   // 2 回書き込まれても、最初のものだけ
+if (globalThis.egatariParts && !globalThis.egatariParts.playerGuard) return;   // 2 回書き込まれても、最初のものだけ（再生器の登録簿の代わりの受け（kit/deck.js）は置き換える）
 var NAME = /^[a-z][a-z0-9-]{0,63}$/;
 var VERSION = /^\d{1,6}\.\d{1,6}\.\d{1,6}(?:-[0-9A-Za-z][0-9A-Za-z.-]{0,31})?(?:\+[0-9A-Za-z.-]{1,32})?$/;
 var ELEMENT = /^[a-z][a-z0-9._-]*-[a-z0-9._-]*$/;

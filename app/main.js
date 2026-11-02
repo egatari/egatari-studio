@@ -29,6 +29,7 @@ import { rightsOf } from './rights.js';
 import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason } from '../kit/core/portable.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
+import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
 import { tierA } from '../kit/core/tier-a.mjs';
@@ -509,7 +510,8 @@ async function rebuild(reason) {
         if (allow && changed && S.presWin && !S.presWin.closed) loadPresenter();
       } catch (e) {
         failed = true;
-        S.error = String((e && (e.stack || e.message)) || e);
+        // 選んだカタログにない要素（kit/core/parts2.mjs）：画面の言葉で、何をどう直すかだけを出す（コマンドの build・check と同じ言葉）
+        S.error = buildErrorText(e) || String((e && (e.stack || e.message)) || e);
         showError(S.error);
         status(T.buildFailedAt(time()));
         console.warn('[editor] build failed', e);
@@ -530,6 +532,11 @@ function loadFrame() {
   f.srcdoc = previewHtml(S.base);
 }
 $('preview').addEventListener('load', onPreviewLoad);
+// 組み立ての失敗のうち、画面の言葉で出すもの（なければ null）
+function buildErrorText(e) {
+  if (e && e.code === NOT_IN_CATALOGUE && Array.isArray(e.notInCatalogue)) return e.notInCatalogue.map((a) => catalogueMessage(EN ? 'en' : 'ja', a)).join('\n');
+  return null;
+}
 function showError(err) {
   $('errbox').hidden = !err;
   $('errtext').textContent = err || '';
@@ -1399,7 +1406,7 @@ async function openPortableNow(input) {
       if (e.code === 'component-requires-missing') {
         P.requiresMissing = e.requiresMissing;
         P.tierAOnly = T.roRequiresMissing(P.requiresMissing);
-      } else P.readOnly = T.roBuild(String(e.message || e));
+      } else P.readOnly = T.roBuild(buildErrorText(e) || String(e.message || e));
     }
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);

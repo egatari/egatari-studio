@@ -7,6 +7,7 @@
 //   名前で絞る（match: "name"。tools/fixtures/subset-names の部品庫の参照の実装が出したものとバイトまで同じ、語の切り方、keep、names の記録）・
 //   教材の字（lessonText：char も name も同じ字。parse5 で文書として読み、木の順に。参照の実装の §9・§10・parse-cases.json）・形の悪い宣言（パーツを全部のまま、subset を記録しない）
 //   写し：vendor/components/sha256 と components2.lock.json が合っている（tools/components2-update.mjs --check と同じ）
+//   選んだカタログにない要素（#165）：deckElements（要素として使う名前・原稿の <script> が定義する名前）と catalogueHint（どこにあるか・直し方）。登録簿は再生器の代わりの受けを置き換える
 import fs from 'node:fs';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
 import path from 'node:path';
@@ -14,7 +15,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import vm from 'node:vm';
 import { fileURLToPath } from 'node:url';
-import { parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lessonText, lessonTokens, htmlPieces, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
+import { deckElements, catalogueHint, catalogueMessage, parseLock2, resolveParts, pickCatalogue, readDefineMeta, metaMismatch, eachField, renderFields, subsetCode, lessonText, lessonTokens, htmlPieces, lock2Problems, renderedFieldNames } from '../kit/core/parts2.mjs';
 import { applyRelease2, checkVendor2 } from './components2-update.mjs';
 import { validateIndex } from '../kit/core/portable.mjs';
 
@@ -354,6 +355,29 @@ for (const [code, what] of [
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
   ok(uses.length === 0, `no 2.0 part reads DECK (${uses.join(', ') || 'none'})`);
+}
+// ---------------------------------------------------------------- 選んだカタログにない要素（#165。format spec §6）
+{
+  const u = deckElements(`<html><body><m-a></m-a><!-- <m-b></m-b> --><template><m-c></m-c></template><pre>&lt;m-d&gt;</pre>
+<script>DECK.define("m-e", class {}); customElements.define('m-f', class {}); egatariParts.define({name: "g", version: "1.0.0", element: "m-g"}, () => class {}); var s = "<m-h>";</script>
+<script type="application/json">{"x": "<m-i>"}</script></body></html>`);
+  ok(eq([...u.elements].sort(), ['m-a', 'm-c']) && eq([...u.defined].sort(), ['m-e', 'm-f', 'm-g']),
+    `deckElements: elements outside comments, scripts and text; names the deck's scripts define (${JSON.stringify([[...u.elements], [...u.defined]])})`);
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8')), lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
+  ok(eq(catalogueHint(lock, lock2, 'm-score'), { tag: 'm-score', catalogue: '1.x', hint: 'select2', value: '2' }), '1.x lesson, 2.x-only element: select "componentsCatalogue": "2"');
+  ok(catalogueHint(lock, lock2, 'm-bars', null, '2.0.0').hint === 'pin' && catalogueHint(lock, lock2, 'm-bars', null, '1.13.0').hint === 'pin', 'a pinned element in a 1.x lesson names the pin (only asked when the pinned file is a 2.x part)');
+  ok(eq(catalogueHint(lock, lock2, 'm-cards', '2.0.0'), { tag: 'm-cards', catalogue: '2.0.0', hint: 'select2', value: '2' }), '2.0.0 lesson, element added in 2.1.0: select the default catalogue');
+  ok(catalogueHint(lock, lock2, 'm-plot').hint === 'library' && catalogueHint(lock, lock2, 'm-plot', '2.1.0').hint === 'library', 'a library part name is not an element in either catalogue');
+  ok(catalogueHint(lock, lock2, 'm-nowhere').hint === 'unknown' && catalogueHint(lock, null, 'm-score').value === '2', 'unknown names stay unknown; without components2.lock.json the 1.x lock still points to 2.x');
+  for (const a of [catalogueHint(lock, lock2, 'm-score'), catalogueHint(lock, lock2, 'm-cards', '2.0.0'), catalogueHint(lock, lock2, 'm-plot'), catalogueHint(lock, lock2, 'm-bars', null, '2.0.0')])
+    ok(['ja', 'en'].every((l) => { const m = catalogueMessage(l, a); return m.includes('<' + a.tag + '>') && (a.hint === 'library' || m.includes('"componentsCatalogue": "2"')); }), `the ${a.hint} message names the element and the fix in ja and en`);
+  // 登録簿は、再生器（kit/deck.js）の代わりの受け（playerGuard）を置き換える。ほかのものがあれば最初のものを残す
+  const ctx = { HTMLElement: class {}, console: { warn() {} }, customElements: { get: () => undefined, define() {} } };
+  ctx.globalThis = ctx;
+  Object.defineProperty(ctx, 'egatariParts', { value: { define() {}, playerGuard: true }, configurable: true, writable: true });
+  vm.createContext(ctx);
+  vm.runInContext(REG, ctx);
+  ok(!ctx.egatariParts.playerGuard && typeof ctx.egatariParts.status === 'function', "the registry replaces the player's guard");
 }
 console.log(fail ? `${fail} failed` : 'all ok');
 process.exit(fail ? 1 : 0);

@@ -26,7 +26,7 @@ const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runti
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
-import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText } from './parts2.mjs';
+import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError } from './parts2.mjs';
 import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
@@ -845,6 +845,12 @@ export function build(env0, srcPath, opts = {}) {
   const componentVersions = {};
   // Manifest input capability also travels with the built player and portable index.
   const viewerInputs = {};
+  // 選んだカタログにない要素（parts2.mjs の catalogueHint。format spec §6）：集めて、最後に組まずに断る。
+  // deckUse：原稿で要素として使う名前と、原稿自身の <script> が定義する名前（そちらは部品庫に求めない）
+  const deckUse = used.length ? deckElements(html) : { elements: new Set(), defined: new Set() };
+  const notInCatalogue = [];
+  let lock2Hint;
+  const hintLock2 = () => (lock2Hint === undefined ? (lock2Hint = readLock2(env, ROOT)) : lock2Hint);
   const manifestInput = (file, name) => {
     if (!env.exists(file)) return false;
     try { return JSON.parse(env.readText(file)).components?.[name]?.viewerInput === true; } catch { return false; }
@@ -869,6 +875,13 @@ export function build(env0, srcPath, opts = {}) {
         // パーツの glyphs は buildParts2 がパーツごとに足す
         const slideSource = raw.replace(/\{\{JSON:([^}]+?)\}\}/g, (m) => (jsonIncluded.has(m) ? jsonIncluded.get(m) : m));
         parts2 = buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue: pc.catalogue, pins, warn, macros, lessonSources: [{ html: slideSource }, { narration: narrText }] });
+        lock2Hint = lock2;
+        for (const t of parts2.missing) {
+          if (deckUse.defined.has(t)) continue;   // 原稿の <script> が定義する
+          const h = catalogueHint(readLock(env, ROOT), lock2, t, pc.catalogue);
+          if (h.hint !== 'unknown' && deckUse.elements.has(t)) notInCatalogue.push(h);
+          else warn.push(`component not found: ${t} (not in the components ${pc.catalogue} catalogue)`);
+        }
         html = parts2.html;
         compJs = parts2.js;
         for (const p of parts2.parts) {
@@ -900,7 +913,19 @@ export function build(env0, srcPath, opts = {}) {
     const pick = pickVersion(lock, name, Object.prototype.hasOwnProperty.call(pins, name) ? pins[name] : undefined);
     const resolved = pick.version ? resolveComponent(P, ROOT, lock, name, pick.version) : null;
     const lib = resolved ? P.join(resolved, 'index.js') : null;
-    let file = null;
+    let file = null, libText = null;
+    if (!parts2 && !env.exists(local)) {
+      // 1.x の教材（既定）：部品庫 1.x で組めない要素（2.x だけのパーツ・ライブラリのパーツ・2.x の版への固定）は書かない。
+      // 書くと登録簿のない 2.x のパーツが再生器で投げ、部品が黙って動かない（#165）
+      if (lib && env.exists(lib) && env.within(lib, compRoot)) libText = env.readText(lib);
+      const two = libText !== null && readDefineMeta(libText) !== null;
+      if (two || !pick.version) {
+        if (deckUse.defined.has(tag)) continue;   // 原稿の <script> が定義する
+        const h = catalogueHint(lock, hintLock2(), tag, null, Object.prototype.hasOwnProperty.call(pins, name) ? pins[name] : undefined);
+        if (h.hint !== 'unknown' && deckUse.elements.has(tag)) { notInCatalogue.push(h); continue; }
+        if (two) { warn.push(`component not found: ${tag} (not in components 1.x)`); continue; }
+      }
+    }
     if (env.exists(local)) {
       if (env.within(local, deckDir)) file = local;
       else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
@@ -922,8 +947,9 @@ export function build(env0, srcPath, opts = {}) {
       : componentVersions[name] ? `vendor/components/${name}/${componentVersions[name]}/index.js` : P.relative(ROOT, file);
     if (env.within(file, deckDir)) localComps.push(where.split(P.sep).join('/'));
     if (componentVersions[name] && manifestInput(P.join(ROOT, 'vendor', 'components', 'manifest.json'), name)) viewerInputs[tag] = true;
-    compJs += `\n// ---- ${tag} (${where.split(P.sep).join('/')})\n` + env.readText(file).replace(/<\/script/gi, '<\\/script');
+    compJs += `\n// ---- ${tag} (${where.split(P.sep).join('/')})\n` + (file === lib && libText !== null ? libText : env.readText(file)).replace(/<\/script/gi, '<\\/script');
   }
+  if (notInCatalogue.length) throw notInCatalogueError(notInCatalogue);
   // 原稿の中の <script> の部品定義も含めて、SVG の中の式（svgMath）を使うなら KaTeX を実行時にも読み込む
   const needKatexJs = /svgMath/.test(compJs) || /DECK\.svgMath/.test(html.replace(/<script[^>]*src=[^>]*>/g, ''));
 
@@ -1116,7 +1142,7 @@ export function defaultOut(P, srcPath) {
 // 絞り込み（build.subset）は教材の字（原稿の全部の字・口述原稿・パーツに渡すデータ・パーツの glyphs）に出てくるキーだけを、宣言ごとに宣言した順に残す
 // （match: "name" の宣言は、同じ字を a–z・0–9・- 以外で切った語にちょうど等しいキーだけ。索引に subset.names。字は parts2.mjs の lessonText）。
 // meta は字で読む（§6.1：式のない object の字。読めないパーツは書かない）。同じ要素の名前を定義するパーツが 2 つ要るなら断る（resolveParts の conflicts）。
-// 返すもの：{html, js, legacy: [1.x として読む要素], localFiles, catalogue, parts: [{name, version, source, tag?, requires, license?, sha256?, subset?, renderers?}]}
+// 返すもの：{html, js, legacy: [1.x として読む要素], localFiles, catalogue, missing: [カタログにない要素], parts: [{name, version, source, tag?, requires, license?, sha256?, subset?, renderers?}]}
 function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins, warn, macros, lessonSources }) {
   const local = {}, legacy = [], localFiles = [], refused = new Set();
   for (const tag of used) {
@@ -1137,7 +1163,6 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
     code: 'component-requires-missing', requiresMissing: r.requiresMissing,
   });
   warn.push(...r.warn);
-  for (const t of r.missing) warn.push(`component not found: ${t} (not in the components ${catalogue} catalogue)`);
   const base = vendorDir(P, ROOT), contentLock = readLock(env, ROOT), parts = [];
   const katex = env.katex;
   const renderers = katex ? { katex: { version: katex.version, defaults: { output: 'htmlAndMathml' }, render: (src, opt, key) => {
@@ -1186,7 +1211,7 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
   }
   if (renderTags.size) html = renderBuildFields(html, renderTags, renderers, warn);
 
-  return { html, js: js.replace(/<\/script/gi, '<\\/script'), legacy, localFiles, catalogue, parts };
+  return { html, js: js.replace(/<\/script/gi, '<\\/script'), legacy, localFiles, catalogue, parts, missing: r.missing };
 }
 // 要素の子の <script type="application/json"> を読み、宣言した欄を描いて書き戻す（後ろから。位置をずらさない）
 function renderBuildFields(html, renderTags, renderers, warn) {

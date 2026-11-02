@@ -327,7 +327,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else {
     const out = opts.out || defaultOut(src);
     let r;
-    try { r = build(src, { ...opts, out }); } catch (e) { if (e.code !== 'build-too-large' && e.code !== 'build-not-a-file') throw e; console.error(e.message); process.exit(1); }
+    try { r = build(src, { ...opts, out }); } catch (e) { if (!['build-too-large', 'build-not-a-file', 'component-requires-missing', 'component-not-in-catalogue'].includes(e.code)) throw e; console.error(e.message); process.exit(1); }
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);

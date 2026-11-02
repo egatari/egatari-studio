@@ -14,6 +14,9 @@
 //   ctx.go：スライドへのリンクと同じに動く。知らないスライドは false
 //   DECK なし：登録簿と shape・base・bars だけのページ（deck.js なし）で m-bars が mount・render できる（Appendix A 1A）
 //   1.x：componentsCatalogue のない教材（examples/minimal）には登録簿が入らず、部品は DECK.MotionElement のまま
+//   選んだカタログにない要素（#165。format spec §6）：1.x の教材の <m-score>（2.x だけ）・ライブラリの名前・2.x の版への固定・2.0.0 の教材の <m-cards>（2.1.0 から）は
+//   組まずに断り、check --json は component-not-in-catalogue（ja・en）。2.x を選べば組める。原稿の <script> が定義する名前・注釈の中の名前・どこにもない名前は断らない。
+//   手で作ったファイル（1.x の再生器に登録簿なしの 2.0 のパーツ）は ReferenceError を出さず、その要素を DECK.componentErrors に知らせ、後ろの部品は動く
 import fs from 'node:fs';
 import { resolveComponent } from '../kit/core/components-lock.mjs';
 import os from 'node:os';
@@ -104,6 +107,57 @@ ok(!/component not found|is not in components2/.test(log), 'no part is missing f
   fs.writeFileSync(src, fs.readFileSync(src, 'utf8').replaceAll('m-needs', 'm-uncatalogued'));
   const unknown = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '-o', dst], { encoding: 'utf8' });
   ok(unknown.status === 0 && /component not found: m-uncatalogued/.test(unknown.stderr) && fs.existsSync(dst), 'an unknown top-level part still warns and builds');
+}
+// 選んだカタログにない要素（#165）：組まずに断り、直し方（egatari.json の "componentsCatalogue"）を言う。check も同じ言葉のエラー
+const catDir = path.join(out, 'catalogue-src'), catSrc = path.join(catDir, 'deck.html'), catDst = path.join(out, 'catalogue.html');
+{
+  fs.rmSync(catDir, { recursive: true, force: true });
+  fs.rmSync(catDst, { force: true });
+  fs.mkdirSync(catDir, { recursive: true });
+  const deckOf = (body, lang = 'en') => `<!DOCTYPE html><html lang="${lang}" data-theme="default"><head><meta charset="utf-8"><title>Catalogue</title></head>
+<body><div id="stage"><section class="slide" id="score"><h2>Score</h2><div class="body">${body}</div></section></div>
+<script>DECK.define("m-mine", class extends DECK.MotionElement {});</script></body></html>`;
+  const SCORE = '<m-score aria-label="a scale"><script type="application/json">{"abc":"X:1\\nK:C\\nCDEF|"}</script></m-score>';
+  const BARS = '<m-bars aria-label="b"><script type="application/json">{"groups":[{"label":"A","value":1}]}</script></m-bars>';
+  const run = (tool, extra = []) => spawnSync(process.execPath, [path.join(ROOT, tool), catSrc, ...extra], { encoding: 'utf8' });
+  const conf = (o) => { if (o) fs.writeFileSync(path.join(catDir, 'egatari.json'), JSON.stringify(o)); else fs.rmSync(path.join(catDir, 'egatari.json'), { force: true }); };
+  // 1.x（既定）の教材が 2.x だけの <m-score> を使う
+  fs.writeFileSync(catSrc, deckOf(`${SCORE}${BARS}<m-mine aria-label="mine"></m-mine><!-- <m-cards></m-cards> --><m-nowhere aria-label="n"></m-nowhere>`));
+  conf(null);
+  let rc = run('kit/build.mjs', ['-o', catDst]);
+  ok(rc.status === 1 && rc.stderr.includes('<m-score> is not in parts library 1.x (the default)') && rc.stderr.includes('set "componentsCatalogue": "2" in egatari.json') && !/at build|\n\s+at /.test(rc.stderr) && !fs.existsSync(catDst),
+    `1.x lesson using <m-score>: the build refuses, says what to set in egatari.json and writes nothing (${rc.status}; ${rc.stderr.split('\n')[0]})`);
+  ok(!/m-mine|m-cards|m-nowhere/.test(rc.stderr.split('\n').filter((l) => !/^\s*⚠/.test(l)).join('\n')), 'the deck\'s own element, a name inside a comment and a name in no catalogue are not refused');
+  rc = run('kit/build.mjs', ['-o', catDst, '--portable']);
+  ok(rc.status === 1 && rc.stderr.includes('<m-score> is not in parts library 1.x') && !fs.existsSync(catDst), 'the portable export refuses it the same way');
+  for (const lang of ['en', 'ja']) {
+    rc = run('kit/check.mjs', ['--json', '--lang', lang]);
+    let r; try { r = JSON.parse(rc.stdout); } catch { /* checked below */ }
+    const want = lang === 'en' ? 'Set "componentsCatalogue": "2"' : 'egatari.json に "componentsCatalogue": "2" と書いて';
+    const want2 = lang === 'en' ? 'set "componentsCatalogue": "2" in egatari.json' : want;
+    ok(rc.status === 1 && r?.ok === false && r.counts.error === 1 && r.results[0].code === 'component-not-in-catalogue' && r.results[0].sev === 'error'
+      && r.results[0].data.tag === 'm-score' && r.results[0].data.hint === 'select2' && r.results[0].data.value === '2' && r.results[0].msg.includes(want2),
+    `check --json (${lang}) reports component-not-in-catalogue with the fix (${r ? r.results.map((x) => x.code + ': ' + x.msg).join(' | ') : rc.stdout.slice(0, 200)})`);
+  }
+  // 2.x を選べば組める
+  conf({ componentsCatalogue: '2' });
+  rc = run('kit/build.mjs', ['-o', catDst]);
+  ok(rc.status === 0 && fs.existsSync(catDst) && /\/\/ ---- score@/.test(fs.readFileSync(catDst, 'utf8')), `the same lesson with "componentsCatalogue": "2" builds with the score part (${rc.status} ${rc.stderr.split('\n')[0]})`);
+  // 2.0.0 を選んだ教材の <m-cards>（2.1.0 から）、ライブラリのパーツの名前、1.x の教材の 2.x の版への固定
+  fs.writeFileSync(catSrc, deckOf('<m-cards aria-label="c"></m-cards><m-plot aria-label="p"></m-plot>'));
+  conf({ componentsCatalogue: '2.0.0' });
+  rc = run('kit/check.mjs', ['--json', '--lang', 'en']);
+  let r2; try { r2 = JSON.parse(rc.stdout); } catch { /* checked below */ }
+  const by = (t) => r2 && r2.results.find((x) => x.data && x.data.tag === t);
+  ok(rc.status === 1 && by('m-cards')?.data.hint === 'select2' && by('m-cards').msg.includes('not in parts library 2.0.0') && by('m-cards').msg.includes('"componentsCatalogue": "2"')
+    && by('m-plot')?.data.hint === 'library' && /plot is a library part/.test(by('m-plot').msg), `2.0.0 lesson: <m-cards> (2.1.0) and <m-plot> (a library part) are errors (${r2 ? r2.results.map((x) => x.msg).join(' | ') : ''})`);
+  fs.writeFileSync(catSrc, deckOf(BARS));
+  conf({ components: { bars: '2.0.0' } });
+  rc = run('kit/build.mjs', ['-o', catDst]);
+  ok(rc.status === 1 && rc.stderr.includes('<m-bars> is pinned to 2.0.0') && rc.stderr.includes('remove the "bars" pin'), `1.x lesson pinning a 2.x version: refused (${rc.stderr.split('\n')[0]})`);
+  conf(null);
+  rc = run('kit/build.mjs', ['-o', catDst]);
+  ok(rc.status === 0, 'without the pin the 1.x lesson builds');
 }
 // 2.0 の教材も持ち運べる 1 ファイルにする（索引の照合・往復は test-parts-portable）。
 {
@@ -421,8 +475,28 @@ for (const mode of ['talk', 'learn']) {
   const mh = fs.readFileSync(min, 'utf8');
   ok(!/egatariParts registry/.test(mh) && !mh.includes('defineProperty(globalThis, "egatariParts"') && /DECK\.define\("m-sweep"/.test(mh), 'a 1.x lesson gets no registry and keeps DECK.define');
   const m = await open(fileUrl(min));
-  const x = await m.p.evaluate(() => { const c = DECK.slides.flatMap((s) => s._comps)[0]; return { v1: c instanceof DECK.MotionElement, v2: c._v2, reg: typeof window.egatariParts }; });
-  ok(x.v1 && x.v2 === false && x.reg === 'undefined' && m.errs.length === 0, `1.x parts stay DECK.MotionElement (${JSON.stringify(x)})`);
+  const x = await m.p.evaluate(() => { const c = DECK.slides.flatMap((s) => s._comps)[0]; return { v1: c instanceof DECK.MotionElement, v2: c._v2, reg: window.egatariParts ? (window.egatariParts.playerGuard ? 'guard' : 'registry') : 'none', errors: DECK.componentErrors.length }; });
+  ok(x.v1 && x.v2 === false && x.reg === 'guard' && x.errors === 0 && m.errs.length === 0, `1.x parts stay DECK.MotionElement; only the player's guard stands in for the registry (${JSON.stringify(x)})`);
+  await m.p.close();
+}
+// 手で作ったファイル：1.x の再生器に、登録簿なしで 2.0 のパーツ（score）を足す。ReferenceError を出さず、要素を知らせ、後ろの 1.x の部品は動く
+{
+  const hand = path.join(out, 'hand-made.html');
+  fs.writeFileSync(catSrc, `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Hand</title></head>
+<body><div id="stage"><section class="slide" id="hand"><h2>Hand</h2><div class="body"><m-sweep aria-label="s"></m-sweep></div></section></div></body></html>`);
+  fs.rmSync(path.join(catDir, 'egatari.json'), { force: true });
+  build(catSrc, hand);
+  let h = fs.readFileSync(hand, 'utf8');
+  const at2 = h.indexOf('// ---- m-sweep');
+  h = h.slice(0, at2) + '// ---- m-score (hand-made)\n' + fs.readFileSync(partFile('score', '2.0.0'), 'utf8').replace(/<\/script/gi, '<\\/script') + '\n' + h.slice(at2);
+  h = h.replace('<m-sweep aria-label="s">', '<m-score aria-label="a scale"></m-score><m-sweep aria-label="s">');
+  fs.writeFileSync(hand, h);
+  const m = await open(fileUrl(hand));
+  const x = await m.p.evaluate(() => ({ errs: DECK.componentErrors.map((e) => ({ tag: e.tag, phase: e.phase, reason: e.reason, msg: e.msg })), score: !!customElements.get('m-score'), sweep: !!customElements.get('m-sweep'),
+    box: (document.querySelector('m-score [data-part-failure]') || {}).textContent || '' }));
+  const e0 = x.errs.find((e) => e.tag === 'm-score');
+  ok(m.errs.length === 0 && e0 && e0.phase === 'define' && e0.reason === 'registry' && /componentsCatalogue/.test(e0.msg) && !x.score && x.sweep && x.box === 'a scale',
+    `hand-made 1.x file with a 2.x part: no ReferenceError, the element is reported in DECK.componentErrors and the parts after it still run (${JSON.stringify(x)}${m.errs.length ? ' ' + m.errs.join(' | ') : ''})`);
   await m.p.close();
 }
 await b.close();

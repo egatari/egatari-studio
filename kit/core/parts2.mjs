@@ -196,6 +196,91 @@ export function resolveParts(lock2, catalogue, used, { local = {}, pins = {} } =
   return { ...r, conflicts };
 }
 
+// ---------------------------------------------------------------- 選んだカタログにない要素（format spec §6：運べないパーツは組まずに断り、パーツと直し方を言う）
+// 1.x の教材（既定）が 2.x だけのパーツの要素（<m-score> など）を使う・2.x の教材が別のカタログにしかない要素を使う・ライブラリのパーツの名前を
+// 要素に使う、のどれも組まずに断る（黙って落とすと、再生器は動かない部品を出し、動画は段階が減る）。どの部品庫にもない名前は今までどおり知らせだけ
+// （作業フォルダの components/ に置き忘れた部品かもしれない。組み立てはどのパーツが要るかを言えない）
+export const NOT_IN_CATALOGUE = 'component-not-in-catalogue';
+// 原稿の中で要素として使う m-… の名前（elements。注釈・<script>・<style> の中の字は数えない。<template> の中は数える）と、
+// 原稿自身の <script> が定義する名前（defined：DECK.define・customElements.define の最初の引数の字、egatariParts.define の meta の element）
+export function deckElements(html) {
+  const elements = new Set(), defined = new Set();
+  const DEF = /\b(?:DECK|customElements)\s*\.\s*define\s*\(\s*["'`](m-[a-z0-9-]+)["'`]/g;
+  const EL = /\belement\s*:\s*["'](m-[a-z0-9-]+)["']/g;
+  const walk = (n) => {
+    if (n.tagName && /^m-[a-z0-9-]+$/.test(n.tagName)) elements.add(n.tagName);
+    if (n.tagName === 'script') {
+      if (!isJsonScript(n) && !(n.attrs || []).some((a) => a.name === 'src')) {
+        const body = (n.childNodes || []).map((c) => c.value || '').join('');
+        for (const m of body.matchAll(DEF)) defined.add(m[1]);
+        if (DEFINE_RE.test(body)) for (const m of body.matchAll(EL)) defined.add(m[1]);
+      }
+      return;
+    }
+    for (const c of n.childNodes || []) walk(c);
+    if (n.content) walk(n.content);
+  };
+  walk(parse(String(html), { scriptingEnabled: true }));
+  return { elements, defined };
+}
+const versionKey = (v) => String(v).split(/[.-]/).map((x) => (/^\d+$/.test(x) ? x.padStart(6, '0') : '~' + x));
+const newest = (vs) => [...vs].sort((a, b) => { const x = versionKey(a), y = versionKey(b); for (let i = 0; i < Math.max(x.length, y.length); i++) { const p = x[i] ?? '', q = y[i] ?? ''; if (p !== q) return p < q ? -1 : 1; } return 0; }).pop();
+// 要素 tag が選んだカタログにないとき、どこにあるか・どう直すか。lock：components.lock.json、lock2：components2.lock.json、
+// selected：選んだ 2.x のカタログの版（1.x なら null）、pin：設定のファイルの components の固定の版（1.x の教材だけ）
+// 返すもの：{tag, catalogue: '1.x' | <版>, hint, value?, part?, pin?}
+//   hint：select2（value の componentsCatalogue を書く）・select1（componentsCatalogue を外す）・pin（1.x の教材で 2.x の版に固定している）・
+//         library（ライブラリのパーツの名前。要素ではない）・unknown（どこにもない。知らせだけ）
+export function catalogueHint(lock, lock2, tag, selected = null, pin = undefined) {
+  const name = tag.slice(2), base = { tag, catalogue: selected || '1.x' };
+  const c = lock && isObj(lock.components) && own(lock.components, name) ? lock.components[name] : null;
+  const in1 = !!c && c.catalogue !== '2' && Array.isArray(c.versions) && c.versions.some((v) => /^1\./.test(v));
+  const cats = [], lib = [];
+  if (lock2 && isObj(lock2.catalogues) && isObj(lock2.parts)) {
+    for (const [cv, cat] of Object.entries(lock2.catalogues)) {
+      const v = isObj(cat) && isObj(cat.parts) ? cat.parts[name] : undefined;
+      const p = v !== undefined && isObj(lock2.parts[name]) ? lock2.parts[name][v] : null;
+      if (p && p.kind === 'element' && p.tag === tag) { if (cv !== selected) cats.push(cv); }
+      else if (p && p.kind === 'library') lib.push(cv);
+    }
+  } else if (c && c.catalogue === '2') cats.push('2');
+  const value = !cats.length ? null : lock2 && cats.includes(lock2.default) ? '2' : newest(cats);
+  if (!selected) {
+    if (in1 && typeof pin === 'string') return { ...base, hint: 'pin', part: name, pin, value: value || '2' };
+    if (cats.length) return { ...base, hint: 'select2', value };
+  } else {
+    if (cats.length) return { ...base, hint: 'select2', value };
+    if (in1) return { ...base, hint: 'select1' };
+  }
+  if (lib.length) return { ...base, hint: 'library', part: name };
+  return { ...base, hint: 'unknown' };
+}
+// 知らせの言葉（品質チェック kit/check-messages.mjs・編集アプリ・組み立ての例外が同じものを使う）
+export function catalogueMessage(lang, a) {
+  const ja = lang === 'ja';
+  const cat = a.catalogue === '1.x' ? (ja ? 'パーツライブラリ 1.x（既定）' : 'parts library 1.x (the default)') : (ja ? `パーツライブラリ ${a.catalogue}` : `parts library ${a.catalogue}`);
+  const key = `"componentsCatalogue": "${a.value}"`;
+  switch (a.hint) {
+    case 'select2': return a.catalogue === '1.x'
+      ? (ja ? `<${a.tag}> は、この教材が使う${cat}にないパーツです（パーツライブラリ 2.x のパーツ）。egatari.json に ${key} と書いて、パーツライブラリ 2.x を選んでください`
+        : `<${a.tag}> is not in ${cat}, which this lesson uses; it is a parts library 2.x part. Select parts library 2.x: set ${key} in egatari.json.`)
+      : (ja ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです。egatari.json に ${key} と書いてください`
+        : `<${a.tag}> is not in ${cat}, which egatari.json selects. Set ${key} in egatari.json.`);
+    case 'pin': return ja
+      ? `<${a.tag}> は egatari.json の components で ${a.pin}（パーツライブラリ 2.x の版）に固定されていますが、この教材は${cat}を使います。egatari.json に ${key} と書くか、"${a.part}" の固定を外してください`
+      : `<${a.tag}> is pinned to ${a.pin} (a parts library 2.x version) under components in egatari.json, but this lesson uses ${cat}. Set ${key} in egatari.json, or remove the "${a.part}" pin.`;
+    case 'select1': return ja
+      ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです（パーツライブラリ 1.x のパーツ）。1.x を使うには egatari.json から "componentsCatalogue" を外してください`
+      : `<${a.tag}> is not in ${cat}, which egatari.json selects; it is a parts library 1.x part. Remove "componentsCatalogue" from egatari.json to use parts library 1.x.`;
+    case 'library': return ja
+      ? `<${a.tag}> は要素ではありません：${a.part} はほかのパーツが使うライブラリのパーツで、<${a.tag}> を定義しません。パーツの一覧にある要素を使うか、<${a.tag}> を外してください`
+      : `<${a.tag}> is not an element: ${a.part} is a library part that other parts use, and it defines no <${a.tag}>. Use an element from the parts list, or remove <${a.tag}>.`;
+    default: return ja ? `<${a.tag}> は${cat}にありません` : `<${a.tag}> is not in ${cat}.`;
+  }
+}
+export function notInCatalogueError(list) {
+  return Object.assign(new Error(list.map((a) => catalogueMessage('en', a)).join('\n')), { code: NOT_IN_CATALOGUE, notInCatalogue: list });
+}
+
 // ---------------------------------------------------------------- 組み立てのときの描画（§6.2 Render）
 // path：nodes[].tex・center.tex・abc。手続き fn(holder, key) を、その欄を持つ object ごとに呼ぶ
 export function eachField(data, path, fn) {
