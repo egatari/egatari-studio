@@ -220,7 +220,8 @@ async function presenterAudioPlays(html, tag) {
   const cx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
   await cx.addInitScript(() => {
     const pl = HTMLMediaElement.prototype.play;
-    HTMLMediaElement.prototype.play = function () { window.__plays = (window.__plays || 0) + 1; window.__au = this; const r = pl.call(this); r.then(() => { window.__auRes = 'ok'; }, (e) => { window.__auRes = e.name; }); return r; };
+    // 結果は最後の play() のものだけ：前の play() は、次の play()・load で中断されると AbortError で終わる（メディアのふつうの動き。ほかの段と同時に走る CI で起きた）
+    HTMLMediaElement.prototype.play = function () { const id = window.__plays = (window.__plays || 0) + 1; window.__au = this; window.__auRes = null; const r = pl.call(this); r.then(() => { if (window.__plays === id) window.__auRes = 'ok'; }, (e) => { if (window.__plays === id) window.__auRes = e.name; }); return r; };
   });
   const pg = await cx.newPage();
   watch(pg, tag);
