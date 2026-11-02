@@ -1639,7 +1639,26 @@ function stopAuto(){
   clearTimeout(auto.timer); clearTimeout(auto.atimer);
   if (audioEl){ audioEl.pause(); }
   auto = null; POS.setPlaying(false); document.documentElement.classList.remove("autoplay");
-  POS.publish();
+  POS.publish(); turnTick();
+}
+// 読み上げ中の話（台本のステップの中の 1 つの話。字数の割合を音声の時刻に当てる。字幕の capIndex と同じ考え）。
+// 変わったら deck:turn {i, k, j}（再生していなければ j = -1）。kit/panes.js が本の窓（台本で読む）で強調する（Player P2）
+var turnNow = null;
+function turnTick(){
+  var g = auto && auto.tl[auto.idx], j = -1;
+  if (g && g.i === POS.i && g.k === POS.k){
+    var ts = capTurns(POS.i, POS.k), tm = timing(POS.i, POS.k), a = tm.audio;
+    j = 0;
+    if (ts.length > 1 && a && a.dur && audioEl && auto.playing === tm.key){
+      var total = ts.reduce(function(n, t){ return n + String(t.text || "").length; }, 0), acc = 0;
+      var x = Math.max(0, (audioEl.currentTime || 0) - audioOffset(a)) / a.dur * total;
+      for (j = 0; j < ts.length - 1; j++){ acc += String(ts[j].text || "").length; if (x < acc) break; }
+    }
+  }
+  var key = j < 0 ? null : POS.i + ":" + POS.k + ":" + j;
+  if (key === turnNow) return;
+  turnNow = key;
+  document.dispatchEvent(new CustomEvent("deck:turn", {detail: {i: POS.i, k: POS.k, j: j}}));
 }
 function startAuto(){
   stopAuto();
@@ -1658,10 +1677,11 @@ function runSeg(){
   if (!(g.i === POS.i && g.k === POS.k && auto.started)){ var c0 = POS.cause; POS.setCause(c0 || "play"); go(g.i, g.k, true, true); POS.setCause(c0); }
   auto.started = true;
   auto.segStart = performance.now();
+  turnTick();
   if (g.audio){
     if (!audioEl){
       audioEl = new Audio();
-      audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); });
+      audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); turnTick(); });
     }
     auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
   }
@@ -2067,6 +2087,7 @@ function start(){
   // 開いたときの位置：#N（番号、範囲の外は端へ）、#<スライドの id>、#<id>:<段階の鍵>（format spec §9.1A）
   var hs = (location.hash || "").slice(1), h0 = /^[0-9]+$/.test(hs) ? {i: Math.max(1, +hs) - 1, k: 0} : hs ? resolveFragment(hs) : {i: 0, k: 0};
   if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
+  DECK.openHash = hs;   // 開いたときの #（kit/panes.js の「前の続きから」は、# で場所を指して開いたときには使わない）
   if (pendingGo){ h0 = {i: pendingGo[0], k: pendingGo[1]}; pendingGo = null; }
   POS.setCause("seek"); go(h0.i, h0.k, false); POS.setCause(null);
   if (pendingSeek){ var ps = pendingSeek; pendingSeek = null; seek.apply(null, ps); }
