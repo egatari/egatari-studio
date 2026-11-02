@@ -42,6 +42,7 @@ import { safeWriteFile, backupFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounded-read.mjs';
 import { userThemeDirs } from './theme-dirs.mjs';
 import { draftLeftovers, leftoverLines } from './core/template-text.mjs';
+import { CITEPROC_CREDIT } from './core/citeproc-credit.mjs';
 import { THEMES_LOCK_FILE, parseThemesLock, configThemePins, themeUpdate } from './core/themes-lock.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
@@ -343,6 +344,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (idw.length) console.log(`  slide ids written back to the working folder (backups in .cache/edits/): ${idw.join(', ')}`);
     console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live session ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
+    if (r.stats.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);
     if (lw) console.warn('  ⚠ portable: ' + lw);
   } else {
@@ -366,6 +368,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       console.log(`article: files: ${st.files}, sections: ${st.sections}, figures: ${st.figures}, tables: ${st.tables}, equations: ${st.equations}, errors: ${errs} -> ${ao}`);
       for (const p of ap.problems) console.warn(`  ${p.sev === 'error' ? '✗' : '⚠'} article: ${articleMessage(ml, p)}`);
       for (const w of ap.warnings) console.warn('  ⚠ article: ' + w);
+      if (ap.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
     }
   }
 }

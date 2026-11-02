@@ -10,11 +10,13 @@
 // citeproc の出力の HTML は許可した要素（i・b・sup・sub と飾りの span）だけを通す（字は citeproc が実体参照にしている）。
 // 編集アプリと共有する（node: の読み込み・fs を使わない）。citeproc と書式のファイルは opts.csl で渡す：
 //   {CSL: citeproc の名前空間, style(id) → CSL の XML の字か null, locale(tag) → 言語の XML の字か null}
+// 返す citeproc（true なら citeproc で組んだ）を見て、呼び手は CITEPROC_CREDIT を出す
 import { visit } from './article-text.mjs';
 
 // 同梱の書式（§9C.4：著者と年の書式 1 つと番号の書式 1 つ以上）。format は CSL の citation-format
 export const CITATION_STYLES = Object.freeze({ apa: 'author-date', ieee: 'numeric', sist02: 'numeric' });
 export const DEFAULT_CITATION_STYLE = 'apa';
+export { CITEPROC_CREDIT } from './citeproc-credit.mjs';   // citeproc で組んだときに出す帰属の 1 行（NOTICE）
 export const CITATION_LISTS = Object.freeze(['end', 'chapter', 'none']);
 const LIST_TITLE = { ja: '参考文献', en: 'References' };
 // CSL の言語のファイル（vendor/csl/locales）。ほかの言語は en-US（citeproc の既定）
@@ -48,7 +50,7 @@ export function citationSettings(citations, { book = false, styles = Object.keys
 export function renderCitations(article, items, opts) {
   const { csl, lang = '', style = DEFAULT_CITATION_STYLE, list = 'end', tokens = [] } = opts;
   const groups = new Map(), narratives = new Map(), chapters = new Map(), problems = [];
-  let end = '';
+  let end = '', engineUsed = false;
   const byId = new Map();
   for (const it of Array.isArray(items) ? items : []) if (it && typeof it === 'object' && typeof it.id === 'string' && !byId.has(it.id)) byId.set(it.id, it);
   const book = !!(article.index && article.index.chapters);
@@ -79,6 +81,7 @@ export function renderCitations(article, items, opts) {
         const sys = { retrieveLocale: (tag) => (csl.locale && csl.locale(tag)) || false, retrieveItem: (id) => byId.get(id) };
         engine = new csl.CSL.Engine(sys, styleXml, locale, true);
         engine.updateItems(keys);
+        engineUsed = true;
       } catch (e) { problems.push(D('warn', 'articleCiteEngine', '§9C.4', { why: String(e && e.message || e).split('\n')[0].slice(0, 120) })); engine = null; }
     }
     for (const u of uses) {
@@ -108,7 +111,7 @@ export function renderCitations(article, items, opts) {
       }
     }
   }
-  return { groups, narratives, end, chapters, problems, rendered: true };
+  return { groups, narratives, end, chapters, problems, rendered: true, citeproc: engineUsed };
 }
 const citeOf = (n) => ({ key: String(n.label || n.identifier || ''), suffix: n.suffix ? String(n.suffix) : '' });
 

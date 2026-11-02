@@ -126,7 +126,7 @@ export function renderedArticle(env, srcPath, opts = {}) {
   const cs = citationSettings(L.citations === null ? undefined : L.citations, { book: !!(L.index && L.index.chapters) });
   const r = renderArticle(L.article, { lang, title: opts.title || '', katex: env.katex, macros, image, slides: L.slides, references: L.items, csl: L.items.length && typeof env.csl === 'function' ? env.csl() : null, citations: cs });
   problems.push(...r.problems);
-  return { L, html: r.html, problems, warnings: r.warnings, lang, sections: v.sections };
+  return { L, html: r.html, problems, warnings: r.warnings, lang, sections: v.sections, citeproc: r.citeproc };
 }
 
 // 読むための 1 枚の HTML。opts：lang・title（metadata.title）。返すもの：本文がなければ null。あれば {html, problems, warnings, stats}
@@ -158,7 +158,7 @@ ${r.html}
 `;
   const count = (t) => { let n = 0; for (const f of L.article.files) visit(f.tree, (x) => { if (t(x)) n++; }); return n; };
   return {
-    html, problems, warnings: r.warnings, index: L.index,
+    html, problems, warnings: r.warnings, index: L.index, citeproc: R.citeproc,
     stats: { files: L.article.files.length, sections: count((x) => x.type === 'heading' && x.depth === 2), figures: count((x) => x.type === 'container' && x.kind === 'figure' && !x.subcontainer), tables: count((x) => x.type === 'container' && x.kind === 'table'), equations: count((x) => x.type === 'math' && x.label) },
   };
 }

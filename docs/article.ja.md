@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.md sha256=36209ae6e51f8c36 -->
+<!-- i18n: pair=article.md sha256=e52c7c4035e1d95a -->
 # 本を書く（article.md）
 
 [English](article.md) | 日本語
@@ -82,6 +82,14 @@ HTML（上の表のほか）、ほかの指令と役割（`{note}` などの囲�
 | `list` | `end`（終わりに 1 つ。既定）、`chapter`（章の終わりごと。`article/` の章のときだけ）、`none` |
 
 所在（`p. 3`・`3 頁`）は書いたとおりに出ます。`references.json` のうち本文で引いていない文献は一覧に出ず、点検が警告します。
+
+### 引用とライセンス
+
+引用は [citeproc-js](https://github.com/Juris-M/citeproc-js) で組みます（CPAL-1.0 で使います）。動くのは手元で組み立てるときと `pack` のときだけで、教材と Egatari ファイルに入るのは組んだ字だけです。citeproc で引用を組んだとき、組み立てと `pack` は帰属の表示を出します（英語のまま）。
+
+> Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/
+
+`vendor/csl/` の書式と言語のファイルは Citation Style Language のもの（CC BY-SA 3.0）です。[NOTICE](../NOTICE) を見てください。
 
 ## スライドと節のつながり
 

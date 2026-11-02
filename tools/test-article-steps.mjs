@@ -9,6 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as PF from '../kit/core/portable.mjs';
 import { nodeEnv } from '../kit/build.mjs';
+import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BOOK = path.join(ROOT, 'tools', 'fixtures', 'article-book');
@@ -43,6 +44,22 @@ await ok('pack: a link to a missing conclusion step is refused', async () => {
   const n = path.join(path.dirname(src), 'narration.md');
   fs.writeFileSync(n, fs.readFileSync(n, 'utf8').replace('[concl] ズレの測り方で代表値が決まります。\n', ''));
   await assert.rejects(PF.exportPortable(nodeEnv, src, { fromFolder: true }), (e) => e.code === 'article-invalid' && e.details.some((x) => x.code === 'articleStep' && x.data.why === 'concl'));
+});
+await ok('npm run portable -- pack prints the citeproc-js credit when citeproc formatted citations (not as a warning), and the file does not carry it', async () => {
+  const src = copy('credit', 's-k3f9q2:1');
+  const out = path.join(work, 'credit.ega.html');
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', path.dirname(src), '-o', out], { encoding: 'utf8', maxBuffer: 64 << 20 });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.split('\n').filter((l) => l === CITEPROC_CREDIT).length, 1, r.stdout);
+  assert.ok(!r.stderr.includes('citeproc'), 'not on the warning stream');
+  assert.ok(!fs.readFileSync(out, 'utf8').includes('citeproc'), 'the file carries no credit');
+  const n = copy('credit-none', 's-k3f9q2:1');
+  const f = path.join(path.dirname(n), 'article', '01.md');
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(' [@doe2001, p. 3]', ''));
+  fs.rmSync(path.join(path.dirname(n), 'references.json'));
+  const rn = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', path.dirname(n), '-o', path.join(work, 'none.ega.html')], { encoding: 'utf8', maxBuffer: 64 << 20 });
+  assert.equal(rn.status, 0, rn.stderr);
+  assert.ok(!rn.stdout.includes('citeproc'), 'no credit without citations');
 });
 if (!process.argv[2]) fs.rmSync(work, { recursive: true, force: true });
 console.log(failed ? `article steps: ${failed} failed` : 'article steps: all ok');

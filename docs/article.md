@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.ja.md sha256=04b4530f5c966457 -->
+<!-- i18n: pair=article.ja.md sha256=b32b823219d1a923 -->
 # Writing a book (article.md)
 
 English | [日本語](article.ja.md)
@@ -82,6 +82,14 @@ Cite with `[@key]`, `[@key, p. 3]`, `[@a; @b]`, or `@key` in a sentence; keys ar
 | `list` | `end` (one list at the end, the default), `chapter` (a list at the end of each chapter, only with `article/` chapters), `none` |
 
 A locator (`p. 3`, `3 頁`) is printed as you wrote it. Works in `references.json` that are never cited are not listed, and the check warns about them.
+
+### Citations and licences
+
+Citations are formatted by [citeproc-js](https://github.com/Juris-M/citeproc-js), used under the CPAL-1.0. It runs only when you build or pack on your computer; lessons and Egatari files carry the formatted text, not citeproc. When it formats citations, the build and `pack` print its attribution:
+
+> Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/
+
+The styles and locales in `vendor/csl/` are from the Citation Style Language projects (CC BY-SA 3.0). See [NOTICE](../NOTICE).
 
 ## Links between slides and sections
 

@@ -10,6 +10,7 @@
   the reading order into `egatari.json`. A book with errors is not exported; sections without an id get one. Tier A edits keep the book
 - `npm run portable -- pack` opens the written file in the player and refuses a book whose step links point to a slide or step that
   does not exist (`articleStep`, as `check` reports it; §9C.8)
+- The build and `pack` print the citeproc-js attribution (CPAL-1.0 Exhibit B) when citeproc formatted citations; built files do not carry it
 - `check` warns about an HTML table in the book that merges no cells (`articleHtmlTableNoSpan`: a pipe table would do, §9C.8)
 
 ### Changed

@@ -99,7 +99,7 @@ const titleOf = (n) => (n.children && n.children[0] && n.children[0].type === 'a
 // opts：lang（metadata.lang）・title（metadata.title。本の題）・katex（renderToString を持つもの）・macros・image(url) → src か null・
 //       slides（Map：スライドの鍵 → {title}）・
 //       references（references.json の項目の配列）・csl（kit/core/article-cite.mjs の renderCitations の csl）・citations（{style, list}：citationSettings の結果）。
-//       返すもの：{html, warnings, problems（引用を組むときの知らせ）}
+//       返すもの：{html, warnings, problems（引用を組むときの知らせ）, citeproc（citeproc で引用を組んだか。CITEPROC_CREDIT を出す）}
 export function renderArticle(article, opts = {}) {
   const lang = opts.lang || article.lang || '';
   const W = wordsOf(lang);
@@ -125,7 +125,7 @@ export function renderArticle(article, opts = {}) {
   });
   if (C && C.end) out.push(C.end);
   out.push('</article>');
-  return { html: out.join('\n'), warnings, problems: C ? C.problems : [] };
+  return { html: out.join('\n'), warnings, problems: C ? C.problems : [], citeproc: !!(C && C.citeproc) };
 
   function fileRenderer(f, info) {
     const fnNum = new Map();   // 脚注の名前 → 番号（最初に参照した順。§9C.6）

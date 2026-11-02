@@ -1381,7 +1381,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag || `${c.name}@${c.version}`);
     }
   }
-  return { registryEquivalent, playerChange, ids: { added: idFix.added, orphans: idFix.orphans }, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
+  return { registryEquivalent, playerChange, ids: { added: idFix.added, orphans: idFix.orphans }, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, citeproc: !!(art && art.citeproc), bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
 }
 
 // ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）

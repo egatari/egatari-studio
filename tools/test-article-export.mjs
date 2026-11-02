@@ -18,6 +18,8 @@ import { tierA, scanLayout } from '../kit/core/tier-a.mjs';
 import { nodeEnv } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { spawnSync } from 'node:child_process';
+import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BOOK = path.join(ROOT, 'tools', 'fixtures', 'article-book');
@@ -300,6 +302,37 @@ t('tier A edits keep the article: #egatari-article, the article files, index.art
   ws2.set('article/01.md', enc.encode(dec.decode(ws2.get('article/01.md')) + '\n追記。\n'));
   const b = await tierA(html, ws2);
   assert.equal(b.ok, false, 'an article edit is not a tier A edit (§9C.1: tier B)');
+});
+
+// citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）：citeproc で引用を組んだときだけ、組み立てのコマンドが 1 行出す。文書には入れない
+const runNode = (args) => spawnSync(process.execPath, args, { encoding: 'utf8', maxBuffer: 64 << 20 });
+t('build prints the citeproc-js credit only when citeproc formatted citations, and the built files do not carry it', () => {
+  assert.equal(CITEPROC_CREDIT, 'Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/');
+  const d = copyBook('credit');
+  const r = runNode([path.join(ROOT, 'kit', 'build.mjs'), path.join(d, 'deck.html')]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.split('\n').filter((l) => l === CITEPROC_CREDIT).length, 1, 'one credit line');
+  assert.ok(!/warn|⚠/i.test(r.stdout.split('\n').find((l) => l.includes('citeproc-js'))), 'not a warning');
+  for (const f of ['deck.html', 'deck.article.html']) assert.ok(!fs.readFileSync(path.join(d, 'out', f), 'utf8').includes('citeproc'), `${f} carries no credit`);
+  // 引用のない本・本のない教材：出さない
+  const n = copyBook('nocite', (dir) => { const f = path.join(dir, 'article', '01.md'); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace(' [@doe2001, p. 3]', '')); fs.rmSync(path.join(dir, 'references.json')); });
+  const rn = runNode([path.join(ROOT, 'kit', 'build.mjs'), path.join(n, 'deck.html')]);
+  assert.equal(rn.status, 0, rn.stderr);
+  assert.ok(!rn.stdout.includes('citeproc') && !rn.stderr.includes('citeproc'), 'no credit without citations');
+  const rm = runNode([path.join(ROOT, 'kit', 'build.mjs'), path.join(ROOT, 'examples', 'minimal', 'deck.html'), '--out', path.join(work, 'minimal.html')]);
+  assert.ok(!rm.stdout.includes('citeproc'), 'no credit without a book');
+});
+t('the dev server preview builds slides only and never loads citeproc (so it has no credit to show)', () => {
+  const d = copyBook('dev');
+  const code = `import { build } from ${JSON.stringify(new URL('../kit/build.mjs', import.meta.url).href)};
+import { createRequire } from 'node:module';
+build(${JSON.stringify(path.join(d, 'deck.html'))});
+const req = createRequire(${JSON.stringify(new URL('../kit/build.mjs', import.meta.url).href)});
+console.log(Object.keys(req.cache).some((k) => /[\\/]citeproc[\\/]/.test(k)) ? 'loaded' : 'not loaded');`;
+  const r = runNode(['--input-type=module', '-e', code]);
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.trim().split('\n').pop(), 'not loaded');
+  assert.match(fs.readFileSync(path.join(ROOT, 'server', 'dev.mjs'), 'utf8'), /\)\.build; needReimport/, 'the dev server still uses build() (slides only)');
 });
 
 for (const [name, fn] of tests) {

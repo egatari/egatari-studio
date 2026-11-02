@@ -56,6 +56,12 @@ by the command-line build (kit/build.mjs, when a book cites references). It is n
 lessons, single files (.ega.html) and the editor app carry only the formatted citation text, and this repository and
 the npm package egatari do not contain or bundle citeproc. The Attribution Information of its Exhibit B is:
 "(c) Frank Bennett", "citeproc-js implements the Citation Style Language", https://citationstyles.org/.
+This attribution is displayed wherever citeproc runs behind something the user sees: the command-line build and
+pack print it ("Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style
+Language — https://citationstyles.org/") whenever citeproc formatted citations. The dev server preview builds the
+slides only and does not run citeproc. The editor app does not run citeproc yet; when it formats citations (book
+editing, v0.6.5 E4) it will show the same attribution. CPAL section 15 (network use) does not apply: Egatari Studio
+does not run builds as a hosted service, and the hosted editor app does not include citeproc.
 The citation styles and locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
 from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
 in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file
