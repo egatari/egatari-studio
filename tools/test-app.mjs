@@ -355,6 +355,9 @@ try {
   n = await loads();
   await clickSave('#dev-narr .dv-foot button.dv-pri');
   f = await waitLoads(n);
+  // 保存の書き込みで組み直しが始まり、新しい画面の読み込みが保存の返事（未保存の印を消して鍵を外す。server/editor-ui.js の doSave）より先に済むことがある。
+  // 返事が届く（未保存でなくなる）まで待ってから見る（ほかの段と同時に走る CI で落ちた）
+  await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty, null, { timeout: 30000 }).catch(() => {});
   ok(await page.evaluate(() => !document.getElementById('preview').inert && !window.__APP_TEST.ui().editing), 'narration: after Save the preview takes input again');
   const narr1 = await opfs.read('narration.md');
   ok(narr1.includes('アプリから書き直した口述原稿です。') && narr1.includes('足した発言です。'), 'narration: narration.md changed (turn added)');
