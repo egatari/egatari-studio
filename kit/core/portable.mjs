@@ -859,7 +859,16 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (tl) themeVersions = themePinsForIndex(tl, opts.carry.themes).pins;
   }
   // ファイルの決まり（§4.2）：基準のまま（外へは繋がらない）。授業の部屋の派生だけが行き先を足す（kit/core/live.mjs の addLive）
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, policyMeta: policyMeta(policyText()) });
+  // 本文（§9C.6）は組む前に読む：再生器の本の窓のために、本文の字を字の絞り込みに、体裁（ARTICLE_CSS）を組み立てに渡す（言語と題は原稿から）
+  let art0 = null;
+  if (AT) {
+    let src0 = '';
+    try { src0 = env.readText(srcPath); } catch { /* 組み立てが知らせる */ }
+    const lang0 = (src0.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
+    const title0 = plain(src0.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '') || plain(src0.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] || '');
+    art0 = AT.renderedArticle(env, srcPath, { lang: lang0, title: title0 });
+  }
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, ...(AT && AT.ARTICLE_CSS ? { articleCss: AT.ARTICLE_CSS } : {}), ...(art0 && art0.html ? { articleHtml: art0.html } : {}), policyMeta: policyMeta(policyText()) });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
@@ -867,8 +876,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   let art = null;
   if (AT) {
     const lang0 = (r.html.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
-    const title0 = plain(r.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '') || plain(r.slides[0]?.title || '');
-    art = AT.renderedArticle(env, srcPath, { lang: lang0, title: title0 });
+    art = art0;
     if (art && art.L.index) {
       const ml = /^ja\b/i.test(lang0) ? 'ja' : 'en';
       const errs = art.problems.filter((x) => x.sev === 'error');

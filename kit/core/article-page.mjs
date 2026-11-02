@@ -5,6 +5,7 @@
 // renderedArticle で本文を組み、#egatari-readable の最後に入れる（§9C.6・§9C.12）。
 import { articleLayout, articleFiles, readArticle, validateArticle, referenceKeys, dataArticleOf, parseStep, assignSectionIds } from './article.mjs';
 import { renderArticle, ARTICLE_CSS, esc } from './article-render.mjs';
+export { ARTICLE_CSS };   // 再生器の本の窓の体裁（組み立てが articleCss で入れる。kit/core/portable.mjs も）
 import { citationSettings } from './article-cite.mjs';
 import { linkedPairs, currentLinkHashes, linkStates, pruneLinks, articleLinksProblems } from './article-links.mjs';
 import { ARTICLE_LIMITS, visit } from './article-text.mjs';
@@ -162,11 +163,13 @@ ${r.html}
   const count = (t) => { let n = 0; for (const f of L.article.files) visit(f.tree, (x) => { if (t(x)) n++; }); return n; };
   return {
     html, problems, warnings: r.warnings, index: L.index, citeproc: R.citeproc,
+    // 再生器の本の窓に入れる本文（§9C.6 の <article>）とその体裁・言語（kit/build.mjs が組んだデッキに入れる）
+    article: r.html, css: ARTICLE_CSS, lang,
     stats: { files: L.article.files.length, sections: count((x) => x.type === 'heading' && x.depth === 2), figures: count((x) => x.type === 'container' && x.kind === 'figure' && !x.subcontainer), tables: count((x) => x.type === 'container' && x.kind === 'table'), equations: count((x) => x.type === 'math' && x.label) },
   };
 }
 // 組んだデッキの :root の色の変数（--fg・--bg・--muted・--line・--accent2・--term・--emph）だけを写す（色を直接書かない）
-function themeTokens(css) {
+export function themeTokens(css) {
   const decl = [];
   for (const m of String(css).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/:root\s*\{([^{}]*)\}/g)) for (const d of m[1].split(';')) if (/^\s*--(fg|bg|muted|line|accent2|term|emph|emph-from-hue|base|complement)\s*:/.test(d)) decl.push(d.trim());
   return decl.length ? `:root{${decl.join(';')}}` : '';

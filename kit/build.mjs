@@ -349,21 +349,31 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (lw) console.warn('  ⚠ portable: ' + lw);
   } else {
     const out = opts.out || defaultOut(src);
+    // 本文（article.md・article/<名前>.md、format spec §9C）：組む前に読み（言語と題は原稿から）、再生器の本の窓のために出力にも入れる
+    // （§9C.6 の形：<section id="egatari-readable"> の中の <article id="egatari-article">。実行系の前。再生器は始めにこの層を隠し、本の窓に移す）。
+    // 読むための頁も出力の横に <名前>.article.html で書き、点検（§9C.8）の結果を出す
+    let ap = null;
+    const A = hasArticle(src) ? { ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')) } : null;
+    const { articlePage, articlePageOut, articleMessage, themeTokens } = A || {};
+    if (A) {
+      let srcHtml = '';
+      try { srcHtml = readRegularText(src, { max: READ_LIMITS.source }).text; } catch { /* 組み立てが知らせる */ }
+      const lang0 = srcHtml.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
+      try { ap = articlePage(nodeEnv, src, { lang: lang0, title: titleOf(srcHtml) }); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
+    }
+    const withArticle = ap && ap.article ? { articleHtml: ap.article, articleCss: ap.css, runtimePrefix: `<section id="${FORMAT.READABLE_ID}" lang="${ap.lang.replace(/[&"<>]/g, '')}">\n${ap.article}\n</section>\n` } : {};
     let r;
-    try { r = build(src, { ...opts, out }); } catch (e) { if (!['build-too-large', 'build-not-a-file', 'component-requires-missing', 'component-not-in-catalogue'].includes(e.code)) throw e; console.error(e.message); process.exit(1); }
+    try { r = build(src, { ...opts, ...withArticle, out }); } catch (e) { if (!['build-too-large', 'build-not-a-file', 'component-requires-missing', 'component-not-in-catalogue'].includes(e.code)) throw e; console.error(e.message); process.exit(1); }
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
     for (const w of s.warn) console.warn('  ⚠ ' + w);
-    // 本文（article.md・article/<名前>.md、format spec §9C）：読むための頁を出力の横に <名前>.article.html で書き、点検（§9C.8）の結果を出す
     const lang = r.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
-    let ap = null;
-    const A = hasArticle(src) ? { ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')) } : null;
-    const { articlePage, articlePageOut, articleMessage } = A || {};
-    try { if (A) ap = articlePage(nodeEnv, src, { lang, title: titleOf(r.html), themeCss: r.html }); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
     if (ap) {
       const ao = articlePageOut(path, path.resolve(out));
-      try { writeOutput(src, ao, ap.html); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
+      // 読むための頁の色：組んだデッキの :root の色の変数を写す
+      const page = ap.html.replace('<style>', () => '<style>' + themeTokens(r.html));
+      try { writeOutput(src, ao, page); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
       const ml = core.isJapanese(lang) ? 'ja' : 'en', st = ap.stats, errs = ap.problems.filter((p) => p.sev === 'error').length;
       console.log(`article: files: ${st.files}, sections: ${st.sections}, figures: ${st.figures}, tables: ${st.tables}, equations: ${st.equations}, errors: ${errs} -> ${ao}`);
       for (const p of ap.problems) console.warn(`  ${p.sev === 'error' ? '✗' : '⚠'} article: ${articleMessage(ml, p)}`);
