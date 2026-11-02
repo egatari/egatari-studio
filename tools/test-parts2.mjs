@@ -165,14 +165,15 @@ const lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'
   const r3 = resolveParts(two, cat, ['m-bars', 'm-pie'], { pins: { pie: '2.1.0' } });
   const ids3 = r3.parts.map((p) => `${p.name}@${p.version}`);
   ok(ids3.includes('base@1.0.0') && ids3.includes('base@1.1.0') && ids3.indexOf('base@1.1.0') < ids3.indexOf('pie@2.1.0'), `two versions of base side by side: ${ids3.join(' ')}`);
+  const barsDefault = lock2.catalogues[cat].parts.bars;
   const r4 = resolveParts(lock2, cat, ['m-bars'], { pins: { bars: '7.0.0' } });
-  ok(r4.parts.some((p) => p.name === 'bars' && p.version === '2.0.0') && r4.warn.some((w) => /bars: version "7\.0\.0" is not in/.test(w)), 'a pin that is not vendored falls back to the catalogue with a warning');
+  ok(r4.parts.some((p) => p.name === 'bars' && p.version === barsDefault) && r4.warn.some((w) => /bars: version "7\.0\.0" is not in/.test(w)), 'a pin that is not vendored falls back to the catalogue with a warning');
   // 要素の名前は 1 つ（§6.1 Order）：同じ要素の名前を定義するパーツが 2 つ要る → conflicts（組み立ては断る）
   const three = JSON.parse(JSON.stringify(lock2));
-  three.parts.bars['2.1.0'] = { ...three.parts.bars['2.0.0'] };
+  three.parts.bars['2.1.0'] = { ...three.parts.bars[barsDefault] };
   const localB = { 'm-y': { meta: { name: 'y', version: '0.1.0', requires: { bars: '2.1.0' }, element: 'm-y' }, code: '', where: 'components/y/index.js' } };
   const r5 = resolveParts(three, cat, ['m-bars', 'm-y'], { local: localB });
-  ok(r5.conflicts.length === 1 && /<m-bars> is defined by bars@2\.0\.0 and bars@2\.1\.0/.test(r5.conflicts[0]), `two versions of one element part are a conflict (${r5.conflicts[0]})`);
+  ok(r5.conflicts.length === 1 && new RegExp(`<m-bars> is defined by bars@${barsDefault.replace(/\./g, '\\.')} and bars@2\\.1\\.0`).test(r5.conflicts[0]), `two versions of one element part are a conflict (${r5.conflicts[0]})`);
   const localC = { 'm-pie': { meta: { name: 'mypie', version: '0.1.0', requires: {}, element: 'm-pie' }, code: '', where: 'components/pie/index.js' },
     'm-z': { meta: { name: 'z', version: '0.1.0', requires: { pie: '2.0.0' }, element: 'm-z' }, code: '', where: 'components/z/index.js' } };
   const r6 = resolveParts(lock2, cat, ['m-pie', 'm-z'], { local: localC });
@@ -368,13 +369,30 @@ for (const [code, what] of [
     v21.manifestSha256 === '38757400260bbed882befb19144d18f30147c9256bb4e3551b8f6c39529c1334' &&
     v21.parts.cards === '2.0.0' && v21.parts.icons === '1.0.0' && v21.parts.keyboard === '2.0.1' && v21.parts.orbit === '2.0.0' &&
     lock2.parts.icons['1.0.0'].build.subset[0].match === 'name', 'components 2.1.0 is pinned to the verified release (cards, icons with subset by name, keyboard 2.0.1, orbit)');
-  // 2.1.1（m-orbit 2.0.1 の直し・timer と tape の demo.html の直し。他の部品は 2.1.0 と同じ版・同じ sha256）：既定。配布物と manifest の sha256 は部品庫のリリースのもの
+  // 2.1.1（m-orbit 2.0.1 の直し・timer と tape の demo.html の直し。他の部品は 2.1.0 と同じ版・同じ sha256）：配布物と manifest の sha256 は部品庫のリリースのもの
   const v211 = lock2.catalogues['2.1.1'];
-  ok(lock2.default === '2.1.1' && v211 && v211.tag === 'v2.1.1' && v211.tarballSha256 === '29cfc2c344ddf4b785469e8634a7f7cf31e3d307e3bcf71ec4b6ed0166b9a6a7' &&
+  ok(v211 && v211.tag === 'v2.1.1' && v211.tarballSha256 === '29cfc2c344ddf4b785469e8634a7f7cf31e3d307e3bcf71ec4b6ed0166b9a6a7' &&
     v211.manifestSha256 === 'fe7d165827e4ab6226cdb0d343db07f4304134af178edf7735e3a0eed760fe1f' &&
     v211.parts.orbit === '2.0.1' && lock2.parts.orbit['2.0.1'].sha256 === 'dbbd262ab28045a0f5e0cbec09b6068a0343668bf21e61bb02f8d0c4c1bc2ea7' &&
     Object.keys(v211.parts).filter((n) => n !== 'orbit').every((n) => v211.parts[n] === v21.parts[n]),
-    'components 2.1.1 is the default and pinned to the verified release (m-orbit 2.0.1 fix; every other part the same version as 2.1.0)');
+    'components 2.1.1 is pinned to the verified release (m-orbit 2.0.1 fix; every other part the same version as 2.1.0)');
+  // 2.1.2（38 の要素のパーツの監査からの直し。コードだけで、README・demo の文言・doc・static shape は変えない。m-kakijun だけ版そのまま、
+  // ほかの 37 はパッチが上がる。各パーツの sha256 は egatari/components のリリースの published.json から）：既定。配布物と manifest の
+  // sha256 は部品庫のリリースのもの
+  const v212 = lock2.catalogues['2.1.2'];
+  const LIBRARIES_212 = ['base', 'boxplot-core', 'codetree-core', 'expr', 'heatmap-core', 'hist-core', 'icons', 'kanbun-core', 'markup-reader', 'plot', 'shape'];
+  const bumped212 = Object.keys(v212.parts).filter((n) => n !== 'kakijun' && !LIBRARIES_212.includes(n));
+  ok(lock2.default === '2.1.2' && v212 && v212.tag === 'v2.1.2' && v212.tarballSha256 === '7204e2a70cfa725405bd68025976f463019f73ac9932d519ff2afa97d7d9f21e' &&
+    v212.manifestSha256 === '454c03bd99ee12b9ad84ba97cb46981508c3f276f7a808c160cfc65cec7ac517',
+    'components 2.1.2 is the default and pinned to the verified release');
+  ok(v212.parts.kakijun === v211.parts.kakijun && LIBRARIES_212.every((n) => v212.parts[n] === v211.parts[n]),
+    'm-kakijun and every library part keep the same version as 2.1.1 (unaudited / unchanged code)');
+  ok(bumped212.length === 37 && bumped212.every((n) => v212.parts[n] !== v211.parts[n]),
+    '37 element parts (every element but m-kakijun) get a new patch version in 2.1.2');
+  ok(v212.parts.hissan === '2.0.1' && lock2.parts.hissan['2.0.1'].sha256 === '46b986360d7ff3b688c071a850fed436eec264cf5c7b36ba6c7047735b15c806' &&
+    v212.parts.boxplot === '2.0.1' && lock2.parts.boxplot['2.0.1'].sha256 === '91dbe36e346e2601a70b7b80fc2c56b6bd675cd390eb2f6c55947cbdfee3545d' &&
+    v212.parts.orbit === '2.0.2' && lock2.parts.orbit['2.0.2'].sha256 === '7dbbb3852a77a1a3dcfba8c69574d2a87e6b87adbfa84f30c0359e2bae0afb2b',
+    'components 2.1.2 fixes land in the pinned code (m-hissan products past 2^53, m-boxplot quartile rounding, m-orbit lit/shadow sides; sha256 from published.json)');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
