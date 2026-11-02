@@ -1,11 +1,11 @@
 <!-- generated; do not edit by hand -->
 # tools のパーツ
 
-指示の版：4aa0bf5c
+指示の版：97c10ee5
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
-| `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?: {title?, text?}, phases: [{title, short?, text?, sec, bells?: [{left, count?}, …]}, …], bells?: [{left, count?}, …], done?, labels?: {ready?, total?, remaining?, done?, start?, next?, end?, min?, sec?, plus?, minus?}}` — phases は {"title", "sec"} の並び（sec は秒の整数。"3分" のような字ではない）。区切り 1 つが 1 ステップ |
+| `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?:{title?:str,text?:str},phases:{title:str,short?:str,text?:str,sec:int,bells?:{left:int,count?:int}[]}[],bells?:{left:int,count?:int}[],done?:str,labels?:{ready?:str,total?:str,remaining?:str,done?:str,start?:str,next?:str,end?:str,min?:str,sec?:str,plus?:str,minus?:str}}` — phases は {"title", "sec"} の並び（sec は秒の整数。"3分" のような字ではない）。区切り 1 つが 1 ステップ |
 
 ### `<m-timer>`
 

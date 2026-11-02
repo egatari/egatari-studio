@@ -43,7 +43,12 @@ const SH = ctx.DECK.shape;
   ok(e3 && e3.why === 'anyOf' && e3.expected === 'f or pts', 'shape: anyOf f or pts');
   const e4 = SH.check({ type: 'object', required: ['cards'], properties: { cards: { type: 'array', items: { type: 'object', properties: { value: { type: 'number' } } } } } }, { cards: [{ value: '12' }] });
   ok(e4 && e4.path === 'cards[0].value' && e4.expected === 'number' && e4.got === 'string "12"', 'shape: path and expected/got for a nested number');
-  ok(SH.brief(s) === '[{label?, f?, pts?} (f or pts), …]', 'shape: brief form for the guide');
+  ok(SH.brief(s) === '[{label?:str,f?:str,pts?:any[]} (f or pts),…]', 'shape: brief form for the guide (every field typed, optional too)');
+  const t = { type: 'object', required: ['rows'], properties: { rows: { type: 'array', items: { type: 'object', properties: { diff: { type: 'string' }, values: { type: 'array', items: { type: ['string', 'number'] } } } } }, dash: { type: 'boolean' }, n: { type: 'integer' }, k: { enum: ['a', 'b'] }, ks: { type: 'array', items: { enum: ['a', 'b'] } }, xr: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 }, any: {}, o: { type: 'object' } } };
+  ok(SH.brief(t) === '{rows:{diff?:str,values?:(str|num)[]}[],dash?:bool,n?:int,k?:"a"|"b",ks?:("a"|"b")[],xr?:[num,num],any?:any,o?:object}', 'shape: brief types optional fields (bool, str, enums, T[], tuples)');
+  ok(SH.brief({ type: 'object', properties: { label: { type: 'string' }, step: { type: 'integer' }, dash: { type: 'boolean' }, at: { type: 'string' } } }, { label: 'str', step: 'int', at: 'num' }) === '{label?,step?,dash?:bool,at?:str}', 'shape: brief with the conventional types names those fields only, and still types a field whose type differs');
+  const one = { type: 'object', properties: { fit: { enum: ['linear'] } } };
+  ok(SH.brief({ type: ['string', 'object', 'array'], properties: one.properties, items: one }) === 'str|{fit?:"linear"}|[the same {…},…]', 'shape: brief writes an object that may also be a list once');
 }
 {
   const raw = `[読み込み] M-CURVES TypeError: S.map is not a function
