@@ -2,7 +2,7 @@
 //   node tools/test-reading.mjs [作業フォルダ] [--shots]
 // 章のある本（tools/fixtures/article-book）・横書きと縦書き（国語）の本・本のない教材（台本で読む）を組み、
 // 目次（章と節、今の所の印、キー、戻る）・本の中の検索（要素をまたぐ・ルビ・縦書き・Ctrl+F・Esc）・相互参照の後の戻る（縦書き）・
-// 前の続きから（この端末、一度だけの知らせ、最初から、# で開いたときと発表のときは使わない）・進み具合・
+// 前回の続きから（この端末、一度だけの知らせ、最初から、# で開いたときと発表のときは使わない）・進行状況・
 // 文字サイズと行間と背景（この端末に覚える、横にはみ出さない、スライドの色は変えない）・図の拡大・読み上げている話の強調
 // --shots：作業フォルダに画面の PNG を残す（目で見る用）
 import fs from 'node:fs';
@@ -175,7 +175,7 @@ const active = (p) => p.evaluate(() => { const a = document.activeElement; retur
   await p.context().close();
 }
 
-// ---------------------------------------------------------------- 3. 前の続きから（この端末）
+// ---------------------------------------------------------------- 3. 前回の続きから（この端末）
 for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 720 } });
   let p = await open(file, { ctx, q: '?layout=book' });
@@ -190,7 +190,7 @@ for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   let s = await st(p);
   const a1 = await along(p, '#sec-ra4ccc');
   ok(s.i === 2 && Math.abs(a1 - a0) < 4, `${name}: reopening continues where you left off (slide ${s.i + 1}, ${a0} → ${a1})`);
-  ok(s.resumed && (await p.textContent('#deck-resume')).includes('前の続きから') && (await p.getAttribute('#deck-resume', 'role')) === 'status', `${name}: a one-time notice 前の続きから`);
+  ok(s.resumed && (await p.textContent('#deck-resume')).includes('前回の続きから') && (await p.getAttribute('#deck-resume', 'role')) === 'status', `${name}: a one-time notice 前回の続きから`);
   await shot(p, `03-${name}-resume`);
   await p.click('#deck-resume button:has-text("最初から")'); await wait(p, 600);
   s = await st(p);
@@ -212,7 +212,7 @@ for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   await ctx.close();
 }
 
-// ---------------------------------------------------------------- 4. 進み具合
+// ---------------------------------------------------------------- 4. 進行状況
 for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   const p = await open(file, { q: '?layout=book' });
   ok((await st(p)).progress === 0 && (await p.getAttribute('#deck-text .dx-prog', 'role')) === 'progressbar', `${name}: progress starts at 0 (a progressbar)`);

@@ -144,3 +144,23 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | export | Export | エクスポート | Save the lesson in another form (menu action). Its messages use the same word: エクスポートしました. One word per action: the message repeats the word of the button or menu that triggered it. 書き出す is only the audio panel’s own 台本を書き出す (export-script). | 書き出し（メニュー名で） ・ 書き出しました（エクスポートの知らせで） |  | 2026-10-24 (owner) |
 | device | Device | 端末 | The computer or tablet a person views or edits a lesson on (the school word, as in 1人1台端末). Use パソコン only when it really means a PC. 機械 stays in 機械学習 and in the 4M (人・機械・方法・材料) of the m-fishbone example; list those in docs/terms-allow.json. | 機械（端末の意味で） / machine |  | 2026-10-28 (owner) |
 | viewer-person | Participant / Learner | 参加者／学習者 | The person who opens a lesson. 参加者 for a person in a session or receiving a play-only file (see participant); 学習者 when the point is learning (self-study, pedagogy). When the device is meant, say 端末 and name no person (e.g. 開く端末の明朝で表示されます). The spec keeps its English word viewer; it is not shown in the UI, where Viewer is the app name Egatari Viewer. Owner, 10/28; follows the 10/22 host/participant decision. | 見る人 / viewer (a person, UI) | viewer (spec) | 2026-10-28 (owner) |
+
+## Reading aids
+
+| id | English | 日本語 | definition | avoid (ja / en) | internal | decided |
+|---|---|---|---|---|---|---|
+| contents | Contents | 目次 | List of the book's sections (or the slide titles) at the top of the book pane. Decided 2026-10-29 (standards); copied into this file with the reading aids. | もくじ ・ アウトライン（本で） / TOC (in the UI) | reading aids (Player P2) | 2026-11-03 (standards) |
+| book-background | Background: White / Sepia / Black | 背景：白・セピア・黒 | Learner's per-device choice for the book pane only; the slides keep the theme colours. Kindle / Apple Books wording. Decided 2026-10-29 (standards). 白 keeps the theme's own light ground. | テーマ（この意味で） ・ ダークモード（この意味で） ・ 生成り（本の背景で） / Theme (in this sense) | text-pane background (Player P2) | 2026-11-03 (standards) |
+| search | Search | 検索 | Button at the top of the book pane that opens its own search box (also Ctrl+F / ⌘F in the book). Usual wording. | サーチ | reading aids (Player P2) | 2026-11-03 (standards) |
+| search-in-book | Search in the book / Search in the script | 本の中を検索／台本の中を検索 | Name and placeholder of the search box; the second form for a lesson without a book (Read with script). |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| search-result | Previous result / Next result | 前の検索結果／次の検索結果 | Buttons of the search box (Shift+Enter / Enter). Chrome find-bar wording. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| no-results | No results | 見つかりません | Shown in the search box when nothing matches. | 該当なし（検索で） | reading aids (Player P2) | 2026-11-03 (standards) |
+| text-and-background | Text and background | 文字と背景 | The Aa button of the book pane: text size, line spacing and background, per device, never in the file. | 表示の設定（この意味で） | reading aids (Player P2) | 2026-11-03 (standards) |
+| text-size | Text size | 文字サイズ | Size of the book's text in steps (Readium CSS user setting); the slides keep their size. | 字の大きさ（設定の名前で） ・ フォントサイズ（本で） / Font size (in the book) | reading aids (Player P2) | 2026-11-03 (standards) |
+| text-smaller-larger | Smaller text / Larger text | 文字を小さく／文字を大きく | The two buttons of Text size. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| line-spacing | Line spacing | 行間 | Space between the lines of the book, Normal or Wide. | 行の間隔 | reading aids (Player P2) | 2026-11-03 (standards) |
+| line-spacing-values | Normal / Wide | 標準／広い | The two steps of Line spacing. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| resumed | Resumed where you left off | 前回の続きから | One-time notice when a lesson reopens in the book at the place last read on this device. | 前の続きから / Continuing where you left off | reading aids (Player P2) | 2026-11-03 (standards) |
+| start-over | Start over | 最初から | Button of the resume notice: go to the beginning. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| reading-progress | Progress | 進行状況 | Accessible name of the thin bar under the top of the book pane (how far the book is scrolled). No page numbers. | 進み具合（本の窓で） | reading aids (Player P2) | 2026-11-03 (standards) |
+| enlarge | Enlarge | 拡大 | Clicking a figure in the book shows it large; accessible name 拡大：<figure>. |  | reading aids (Player P2) | 2026-11-03 (standards) |

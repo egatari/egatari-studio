@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=b5031ae69c514554 -->
+<!-- i18n: pair=reference.ja.md sha256=3799e7f9c902575b -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -310,7 +310,7 @@ A lesson can be shown in three layouts (Player P2): **Slides** (the stage alone)
 - **Read with script, book alone**: the current slide stays at the top while you read its script, and each step plays once as you scroll into it (again only after its text has left the view); with `prefers-reduced-motion`, final states only.
 - **Reading aids** at the top of the book (Player P2): **Contents** lists the chapters and sections (without a book, the slide titles) and marks the one you are reading (bold, a rule, `aria-current`); ↑ / ↓, Home / End and Enter choose, Esc closes. **Search** (also Ctrl+F / ⌘F in the book) searches the whole text, also in vertical writing and across emphasis and ruby, ignoring spaces, case and full-width / half-width; Enter / Shift+Enter go to the next / previous result, Esc closes. After a jump from the contents, a cross-reference, a citation or a footnote, **Back** (also Backspace) returns. A thin bar under the top shows how far you have scrolled (no page numbers).
 - **Text and background** (the **Aa** button): text size in six steps (85–175%, the text reflows, the slides keep their size), line spacing Normal or Wide, and background White, Sepia or Black for the book only (the slides keep the theme colours; White is the theme's own light ground). Remembered on this device for every lesson (`localStorage`), never written into the file. These follow the user settings of EPUB reading systems (Readium CSS).
-- **Continuing where you left off.** On this device, a lesson that opens in Slides and book or Book returns to the slide, step and place in the book you were reading, with a one-time notice **Continuing where you left off** (ja 「前の続きから」) and **Start over**. Not when the lesson opens at a `#` place (other than a reload), opens in Slides, is embedded or is in the editor's preview.
+- **Resuming where you left off.** On this device, a lesson that opens in Slides and book or Book returns to the slide, step and place in the book you were reading, with a one-time notice **Resumed where you left off** (ja 「前回の続きから」) and **Start over**. Not when the lesson opens at a `#` place (other than a reload), opens in Slides, is embedded or is in the editor's preview.
 - **Figures** in the book enlarge on a click (or Enter / Space): a labelled dialog with the figure's caption; Esc, **Close** or a click outside returns to the figure. A small slide in Read with script opens Watch on slides.
 - **During autoplay**, Read with script highlights the turn of the script being read (a tint; the step keeps its rule).
 - Pages and two-page view and a second window come later.

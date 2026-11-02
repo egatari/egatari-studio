@@ -2087,7 +2087,7 @@ function start(){
   // 開いたときの位置：#N（番号、範囲の外は端へ）、#<スライドの id>、#<id>:<段階の鍵>（format spec §9.1A）
   var hs = (location.hash || "").slice(1), h0 = /^[0-9]+$/.test(hs) ? {i: Math.max(1, +hs) - 1, k: 0} : hs ? resolveFragment(hs) : {i: 0, k: 0};
   if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
-  DECK.openHash = hs;   // 開いたときの #（kit/panes.js の「前の続きから」は、# で場所を指して開いたときには使わない）
+  DECK.openHash = hs;   // 開いたときの #（kit/panes.js の「前回の続きから」は、# で場所を指して開いたときには使わない）
   if (pendingGo){ h0 = {i: pendingGo[0], k: pendingGo[1]}; pendingGo = null; }
   POS.setCause("seek"); go(h0.i, h0.k, false); POS.setCause(null);
   if (pendingSeek){ var ps = pendingSeek; pendingSeek = null; seek.apply(null, ps); }

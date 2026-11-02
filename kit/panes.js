@@ -10,7 +10,7 @@
 // - 台本で読む（本だけ）では、スクロールで入ったステップを一度だけ動かす（今のスライドの縮図の場所に本物の舞台を置く）。動きを減らす設定なら最後の形だけ
 // - 選んだ並べ方と仕切りの位置は、この端末に覚える（localStorage）。ファイルには書かない
 // - 読むための道具（Player P2 Reading aids、v0.6.5 C）：目次・本の中の検索（縦書きでも、本の全体から）・リンクで飛んだ後の「戻る」・
-//   この端末で「前の続きから」・進み具合の細い線・文字サイズ（6 段）と行間（2 段）と背景（白・セピア・黒。本の窓だけ。Readium CSS の
+//   この端末で「前回の続きから」・進行状況の細い線・文字サイズ（6 段）と行間（2 段）と背景（白・セピア・黒。本の窓だけ。Readium CSS の
 //   ユーザー設定にならう。この端末に覚え、ファイルには書かない）・図を押して拡大・再生中に読み上げている話を台本で読むで強調
 // - 動画・発表者ビュー（とその中の画面）では何も作らない。(i, k, t) の描画（deck.js の seek）は変えない：舞台を置く箱（DECK.stageBox）だけを渡す
 (function(){
@@ -86,8 +86,8 @@ function words(){
     text: L("文字と背景", "Text and background"), size: L("文字サイズ", "Text size"), smaller: L("文字を小さく", "Smaller text"), larger: L("文字を大きく", "Larger text"),
     spacing: L("行間", "Line spacing"), normal: L("標準", "Normal"), wide: L("広い", "Wide"),
     bg: L("背景", "Background"), white: L("白", "White"), sepia: L("セピア", "Sepia"), black: L("黒", "Black"),
-    resumed: L("前の続きから", "Continuing where you left off"), fromStart: L("最初から", "Start over"),
-    progress: L("進み具合", "Progress"), enlarge: L("拡大", "Enlarge")};
+    resumed: L("前回の続きから", "Resumed where you left off"), fromStart: L("最初から", "Start over"),
+    progress: L("進行状況", "Progress"), enlarge: L("拡大", "Enlarge")};
 }
 function stepTarget(a){
   var v = a.getAttribute("data-egatari-step") || "", r = v && DECK.resolveFragment ? DECK.resolveFragment(v) : {error: "none"};
@@ -222,7 +222,7 @@ function ensurePane(){
   [back, toc, find, el("span", "dx-gap"), play, text, view].forEach(function(x){ head.appendChild(x); });
   pane.appendChild(head);
   pane.appendChild(findBar());
-  // 進み具合（C3）：本の窓の上の細い線。ページの番号は出さない（ページ分けは GA の後。番号は窓だけのもの、Player P2）
+  // 進行状況（C3）：本の窓の上の細い線。ページの番号は出さない（ページ分けは GA の後。番号は窓だけのもの、Player P2）
   var pr = P.prog = el("div", "dx-prog"); pr.setAttribute("role", "progressbar"); pr.setAttribute("aria-label", T.progress);
   pr.setAttribute("aria-valuemin", "0"); pr.setAttribute("aria-valuemax", "100"); pr.appendChild(el("span"));
   pane.appendChild(pr);
@@ -812,7 +812,7 @@ function paint(cur){
   H.set("dx-find-cur", new Highlight(cur));
 }
 
-// ---- 進み具合（C3）
+// ---- 進行状況（C3）
 function progress(){
   if (!P.prog || !P.body) return;
   var b = P.body, max = P.vertical ? b.scrollWidth - b.clientWidth : b.scrollHeight - b.clientHeight;
@@ -911,7 +911,7 @@ function closeFig(){
   if (f.from.isConnected) try { f.from.focus({preventScroll: true}); } catch (e) {}
 }
 
-// ---- 前の続きから（C2）：この端末に、教材ごとに読んでいた所（スライドとステップ、本の窓の目印とそこからの距離）を覚える
+// ---- 前回の続きから（C2）：この端末に、教材ごとに読んでいた所（スライドとステップ、本の窓の目印とそこからの距離）を覚える
 var saveT = 0;
 function rKey(){ return "resume:" + docId(); }
 function saveSoon(){ if (!P.resume || P.resume.restoring) return; clearTimeout(saveT); saveT = setTimeout(saveNow, 400); }
@@ -1179,7 +1179,7 @@ function css(){
   "#deck-text[data-dx-bg=black] :is(.dx-head,.dx-findbar,#egatari-article,.dx-stitle,.dx-step){--bg:#000;--fg:#ececec;--muted:#b3b3b3;--line:rgba(255,255,255,.35);--emph:#ffb454;--term:#ffd27a;--accent:#8cc8ff;--accent2:#8cc8ff}" +
   "#deck-text[data-dx-bg=black] #egatari-article a{color:#8cc8ff}#deck-text[data-dx-bg=black] figure img{background:#fff}" +
   "#deck-text[data-dx-bg=black] .dx-thumb{outline-color:rgba(255,255,255,.4)}" +
-  // 進み具合の線（縦書きは右から）
+  // 進行状況の線（縦書きは右から）
   "#deck-text .dx-prog{flex:none;height:3px;background:var(--line,rgba(127,127,127,.25));overflow:hidden}#deck-text .dx-prog>span{display:block;height:100%;background:currentColor;opacity:.55;transform-origin:left;transform:scaleX(0)}" +
   "#deck-text[data-dx-v] .dx-prog>span{transform-origin:right}" +
   // 検索
@@ -1206,7 +1206,7 @@ function css(){
   "#deck-fig button{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;border-radius:8px;cursor:pointer;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);" + F + "}" +
   "#deck-fig button:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}#deck-fig svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round}#deck-fig .dx-figimg{background:#fff;border-radius:4px;max-width:92vw}" +
   "#deck-text img.dx-zoom{cursor:zoom-in}#deck-text img.dx-zoom:focus-visible{outline:3px solid #2563eb;outline-offset:3px}" +
-  // 前の続きから（本の窓の下。再生中の所に戻ると同じ形）
+  // 前回の続きから（本の窓の下。再生中の所に戻ると同じ形）
   "#deck-resume{position:fixed;bottom:18px;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:6px 6px 6px 14px;border-radius:999px;color:#fff;background:rgba(20,20,20,.88);box-shadow:0 2px 12px rgba(0,0,0,.25);" + F + "}" +
   "#deck-resume button{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;min-height:30px;padding:4px 12px;border-radius:999px;cursor:pointer;background:rgba(255,255,255,.16);" + F + "}#deck-resume button:focus-visible{outline:3px solid #93c5fd}" +
   "#deck-resume svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}.deck-ov-open #deck-resume,html[data-deck-layout=slides] #deck-resume{display:none}" +
