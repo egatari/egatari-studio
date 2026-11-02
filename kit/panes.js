@@ -201,7 +201,8 @@ function ensurePane(){
     P.userAt = Date.now();
     if (P.userAt < P.progUntil){ P.progUntil = 0; body.scrollTo({left: body.scrollLeft, top: body.scrollTop, behavior: "auto"}); }
   };
-  ["pointerdown", "touchstart", "keydown"].forEach(function(n){ body.addEventListener(n, mine, {passive: true}); });
+  ["pointerdown", "touchstart", "touchmove", "keydown"].forEach(function(n){ body.addEventListener(n, mine, {passive: true}); });
+  body.addEventListener("pointermove", function(e){ if (e.buttons) P.userAt = Date.now(); }, {passive: true});   // つまみを押したまま動かす
   body.addEventListener("wheel", function(e){
     mine();
     // 縦書き：縦のホイールで横に送る（先へ進む向きは左）
@@ -391,7 +392,8 @@ function onScroll(){
 function scrolled(){
   if (P.ov || P.layout === "slides") return;
   var now = Date.now();
-  if (!(now - P.userAt < 1200 || now >= P.progUntil)) return;   // 付いていくための（再生器の）スクロール
+  // 見る人が動かしたスクロールだけを見る（ホイール・指・つまみ・キーの直後）。付いていくための（再生器の）スクロールや、窓の大きさが変わって動いたのは見ない
+  if (!(now - P.userAt < 1200)) return;
   if (P.playing){
     // 再生中に見る人がスクロールした：付いていくのをやめる（再生は続け、位置も動かさない）
     if (!P.detached){ P.detached = true; P.bp.hidden = false; placeBackPlay(); }
