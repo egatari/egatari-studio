@@ -13,5 +13,5 @@
   },
   "license": "CC-BY-SA-3.0",
   "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
-  "note": "Unmodified copies. Each file states its licence in <rights>. Used by kit/core/article-cite.mjs through citeproc-js (npm citeproc, CPAL-1.0 OR AGPL-3.0) when building an article's citations (format spec §9C.4). Do not edit; replace the files from the repositories above and update this record."
+  "note": "Unmodified copies. Each file states its licence in <rights>. Used by kit/core/article-cite.mjs through citeproc-js (npm citeproc, used under CPAL-1.0; see NOTICE) when building an article's citations (format spec §9C.4). Do not edit; replace the files from the repositories above and update this record."
 }

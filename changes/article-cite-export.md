@@ -14,5 +14,5 @@
 
 ### Changed
 
-- Dependencies: `citeproc` 2.4.63 (citeproc-js, CPAL-1.0 OR AGPL-3.0; build only), and the CSL styles `apa`, `ieee`, `sist02` and
+- Dependencies: `citeproc` 2.4.63 (citeproc-js, used under CPAL-1.0 from its CPAL-1.0+ OR AGPL-3.0+ choice; build only, not in any output), and the CSL styles `apa`, `ieee`, `sist02` and
   the `en-US` and `ja-JP` locales (CC BY-SA 3.0) in `vendor/csl/`

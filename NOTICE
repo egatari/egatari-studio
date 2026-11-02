@@ -48,11 +48,15 @@ Egatari or to software that reads or writes Egatari files (Egatari-compatible so
 alter it or use it in a way that suggests endorsement. See assets/logo/README.md.
 
 Book citations (format spec §9C.4) are formatted at build time by citeproc-js (npm package citeproc 2.4.63,
-https://github.com/Juris-M/citeproc-js, Copyright (c) 2009-2019 Frank Bennett), which is licensed under the Common
-Public Attribution License 1.0 or (at your option) the GNU Affero General Public License 3.0
-(node_modules/citeproc/LICENSE). It is an unmodified dependency loaded by the build only; this repository does not
-contain or bundle it, and built lessons and Egatari files carry only the formatted text. The citation styles and
-locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
+https://github.com/Juris-M/citeproc-js, Copyright (c) 2009-2019 Frank Bennett). Its LICENSE offers the Common Public
+Attribution License 1.0 or any later version, or the GNU Affero General Public License 3.0 or any later version
+("CPAL-1.0+ OR AGPL-3.0+"); Egatari Studio uses it under the CPAL-1.0 (text: https://opensource.org/licenses/CPAL-1.0
+and the file CPAL in the citeproc-js repository). citeproc is an unmodified dependency, installed by npm and loaded only
+by the command-line build (kit/build.mjs, when a book cites references). It is not included in the output: built
+lessons, single files (.ega.html) and the editor app carry only the formatted citation text, and this repository and
+the npm package egatari do not contain or bundle citeproc. The Attribution Information of its Exhibit B is:
+"(c) Frank Bennett", "citeproc-js implements the Citation Style Language", https://citationstyles.org/.
+The citation styles and locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
 from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
 in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file
 states in its <rights> element.
