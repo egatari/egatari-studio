@@ -132,7 +132,10 @@ export function renderedArticle(env, srcPath, opts = {}) {
 // 読むための 1 枚の HTML。opts：lang・title（metadata.title）。返すもの：本文がなければ null。あれば {html, problems, warnings, stats}
 export function articlePage(env, srcPath, opts = {}) {
   const R = renderedArticle(env, srcPath, opts);
-  if (!R) return null;
+  return R ? articlePageOf(env, R, opts) : null;
+}
+// renderedArticle の結果 R から読むための 1 枚の HTML を作る（編集アプリのプレビューの本も同じ：本文を 2 度読まない）
+export function articlePageOf(env, R, opts = {}) {
   const { L, problems, lang } = R;
   if (!L.index) return { html: '', problems, warnings: [], index: null, stats: { files: 0, sections: 0, figures: 0, tables: 0, equations: 0 } };
   const r = { html: R.html, warnings: R.warnings };

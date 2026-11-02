@@ -27,7 +27,7 @@ import { PLAYER, PLAYER_FILES, PLAYER_JSON, PLAYER_LOCK, playerHash, playerVersi
 import { BASELINE, policyText, policyMeta, policyDiff, placementProblems, checkFilePolicy, extensionSources, findPolicies } from '../kit/core/file-policy.mjs';
 import { addLive } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
-import { buildPortable, liveRuntimeText } from '../kit/build.mjs';
+import { buildPortable, liveRuntimeText, nodeEnv } from '../kit/build.mjs';
 import { makeDeck } from './portable-fixtures.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { withLayoutScan } from '../kit/core/layout-scan.mjs';
@@ -455,7 +455,7 @@ ok('品質チェック：data-steps・data-anim・data-mode="lecture"・blue/red
 });
 
 // ---------------------------------------------------------------- 記事だけの教材（§9C・§4）
-ok('記事だけの教材：index.article があれば entry はいらない。どちらもなければ断る。記事のある教材は作り直さない（article-v1 を持たない）', async () => {
+ok('記事だけの教材：index.article があれば entry はいらない。どちらもなければ断る。本文の道具を持たない書き手は記事のある教材を作り直さない', async () => {
   const fx = (k, f) => PF.parseJsonStrict(fs.readFileSync(path.join(SPEC, 'fixtures', 'index', k, f), 'utf8'));
   assert.deepEqual(PF.validateIndex(fx('valid', 'book-only.json')), []);
   assert.ok(PF.validateIndex(fx('invalid', 'no-entry-no-article.json')).some((e) => /missing "entry" \(or "article"/.test(e)));
@@ -467,7 +467,10 @@ ok('記事だけの教材：index.article があれば entry はいらない。�
   assert.equal(r.index.article.path, 'narration.md');
   ix.article = { path: 'article.md' };
   await assert.rejects(PF.readPortable(await PF.replaceIndexText(base.html, JSON.stringify(ix, null, 1))), (e) => e.code === 'invalid-index');
-  await assert.rejects(buildPortable(path.join(D, 'deck.html'), { carry: { ...plainJson(base.index), article: { path: 'article.md' } } }), (e) => e.code === 'article-unsupported');
+  // 本文の道具（env.articleTools）を持たない書き手は作り直さない（作り直すと記事が落ちる：§7.2）。持つ書き手（CLI・本のある教材を開いた編集アプリ）は作り直せる
+  const { articleTools, ...noArticle } = nodeEnv;
+  void articleTools;
+  await assert.rejects(PF.exportPortable(noArticle, path.join(D, 'deck.html'), { carry: { ...plainJson(base.index), article: { path: 'article.md' } } }), (e) => e.code === 'article-unsupported');
 });
 
 // ---------------------------------------------------------------- 編集アプリのプレビュー（信頼する先頭部分 + ファイル自身の決まり）

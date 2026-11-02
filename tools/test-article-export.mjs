@@ -302,6 +302,56 @@ t('tier A edits keep the article: #egatari-article, the article files, index.art
   ws2.set('article/01.md', enc.encode(dec.decode(ws2.get('article/01.md')) + '\n追記。\n'));
   const b = await tierA(html, ws2);
   assert.equal(b.ok, false, 'an article edit is not a tier A edit (§9C.1: tier B)');
+  assert.equal(b.code, 'article-changed');
+});
+
+t('an article edit re-renders only #egatari-article (§9C.1): tier A asks for it (article-changed), then replaces the element and the article file; other bytes stay', async () => {
+  const f = path.join(work, 'pack.ega.html'), html = fs.readFileSync(f, 'utf8');
+  const out = path.join(work, 'artedit');
+  await unpack(f, out);
+  const fp = path.join(out, 'article', '01.md');
+  const src = fs.readFileSync(fp, 'utf8');
+  const para = src.split('\n').find((l) => /^[^#(:!\-|$\s].{8,}/.test(l));   // 本文の段落を 1 つ写す（字はみな今の文書にある）
+  fs.writeFileSync(fp, src + '\n' + para + '\n');
+  const r = await PF.readPortable(enc.encode(html));
+  const ws = new Map(Object.entries(r.files));
+  ws.set('article/01.md', enc.encode(fs.readFileSync(fp, 'utf8')));
+  const a = await tierA(html, ws);
+  assert.deepEqual([a.ok, a.code, a.details], [false, 'article-changed', ['article/01.md']]);
+  const full = await PF.exportPortable(packEnv, path.join(out, 'deck.html'), { fromFolder: true });
+  const art = egatariArticle(full.html);
+  assert.notEqual(art, egatariArticle(html));
+  const b = await tierA(html, ws, { article: { html: art } });
+  assert.ok(b.ok, `refused: [${b.code}] ${b.reason}`);
+  assert.equal(egatariArticle(b.html), art);
+  assert.deepEqual(b.changes.article, ['article/01.md']);
+  assert.equal(b.changes.supplement, null, 'no new characters');
+  const head = (h) => h.slice(0, h.indexOf('<section id="egatari-readable"'));
+  assert.equal(head(b.html), head(html), 'the runtime before the readable layer is unchanged');
+  const rb = await PF.readPortable(enc.encode(b.html));
+  assert.ok(rb.sourceMatches);
+  assert.equal(dec.decode(rb.files['article/01.md']), fs.readFileSync(fp, 'utf8'));
+  // 本文のファイルを消す・本文の要素でないもの：段 B か断る
+  const gone = new Map(ws); gone.delete('article/01.md');
+  assert.equal((await tierA(html, gone, { article: { html: art } })).code, 'source-changed');
+  assert.equal((await tierA(html, ws, { article: { html: '<div>x</div>' } })).code, 'layout');
+});
+t('confirming links in egatari.json (articleLinks, §9C.7) is a tier A edit that writes the same value into the index', async () => {
+  const html = fs.readFileSync(path.join(work, 'pack.ega.html'), 'utf8');
+  const r = await PF.readPortable(enc.encode(html));
+  const ws = new Map(Object.entries(r.files));
+  const conf = JSON.parse(dec.decode(ws.get('egatari.json')));
+  const ix0 = indexOf(html);
+  const links = JSON.parse(JSON.stringify(ix0.articleLinks || {}));
+  const sk = Object.keys(links)[0] || 's-k3f9q2', sec = Object.keys(links[sk] || {})[0] || 'sec-aaaaaa';
+  links[sk] = { ...(links[sk] || {}), [sec]: { article: 'a'.repeat(64), slide: 'b'.repeat(64) } };
+  ws.set('egatari.json', enc.encode(JSON.stringify({ ...conf, articleLinks: links }, null, 2) + '\n'));
+  const a = await tierA(html, ws);
+  assert.ok(a.ok, `refused: [${a.code}] ${a.reason}`);
+  assert.deepEqual(indexOf(a.html).articleLinks, links);
+  assert.equal(egatariArticle(a.html), egatariArticle(html));
+  const bad = new Map(ws); bad.set('egatari.json', enc.encode(JSON.stringify({ ...conf, articleLinks: { [sk]: { [sec]: { article: 'x' } } } })));
+  assert.equal((await tierA(html, bad)).code, 'config-changed');
 });
 
 // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）：citeproc で引用を組んだときだけ、組み立てのコマンドが 1 行出す。文書には入れない

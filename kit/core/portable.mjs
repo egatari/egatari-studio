@@ -771,14 +771,15 @@ function sectionTags(html) { return (html.match(/<section\b[^>]*>/gi) || []).fil
 //   idRand                 id のないスライドに付ける id の乱数（rand(n) → n バイト。見本を組むたびに同じ文書にする。kit/core/narration-core.mjs の newSlideId）
 //   withoutLiveResults     授業の部屋の結果（kit/core/live-results.mjs。学ぶ人の質問と答え）の添付を入れない（人に渡す 1 ファイル）。
 //                          入れたものは stats.liveResults（パスの配列。1 ファイルを書き出す呼び手が知らせる）
+//   checkSteps             false：本文のステップへのリンクを再生器で確かめない（索引だけを見る試しの書き出し。編集アプリが開くときの exportIndex。書いた文書は使わない）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE と、id を付けたときの
 //   原稿・口述原稿・記録の JSON）, warnings, stats, playerChange（carry の再生器の名前が違うとき {from, to}、ほかは null）, ids: {added, orphans}}
 export async function exportPortable(env0, srcPath, opts = {}) {
   const P = env0.path;
-  // 記事（§9C）のある教材は作り直さない（この書き手は article-v1 を持たない。作り直すと記事が落ちる：§7.2）
-  if (isObj(opts.carry) && own(opts.carry, 'article')) fail('article-unsupported', 'the lesson has an article (§9C), which this editor does not implement: only tier A edits are possible');
+  // 記事（§9C）のある教材は、本文の道具（env.articleTools）を持たない書き手では作り直さない（作り直すと記事が落ちる：§7.2）
+  if (isObj(opts.carry) && own(opts.carry, 'article') && typeof env0.articleTools !== 'function') fail('article-unsupported', 'the lesson has an article (§9C), which this editor does not implement: only tier A edits are possible');
   const deckDir = P.dirname(P.resolve(srcPath));
   const rel = (p) => P.relative(deckDir, p).split(P.sep).join('/');
   const warnings = [], writes = dict();
@@ -790,8 +791,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   for (const w of idFix.warnings) warnings.push(w);
   const overlay = new Map();   // 絶対パス → 付け替えた字（組み立ても書き出しもこれを読む）
   for (const [rp, text] of Object.entries(idFix.writes)) { overlay.set(P.resolve(deckDir, ...rp.split('/')), text); writes[rp] = text; }
-  // 本文（format spec §9C）：本文の道具（env.articleTools()：kit/core/article-page.mjs と article-messages.mjs。Node の組み立てだけが持つ。
-  // 編集アプリは本文の読み手を持たないので、本文のある作業フォルダは断る：黙って本文を落とさない。§7.2）
+  // 本文（format spec §9C）：本文の道具（env.articleTools()：kit/core/article-page.mjs と article-messages.mjs。Node の組み立てと、本文のある教材を
+  // 開いた編集アプリ（あとで読み込む app/article-tools.js）が持つ。持たない書き手は、本文のある作業フォルダを断る：黙って本文を落とさない。§7.2）
   let AT = null;
   if (await articlePresent(env0, deckDir)) {
     if (typeof env0.articleTools !== 'function') fail('article-unsupported', 'the working folder has an article (§9C), which this editor cannot write into the single file yet: export it with the CLI (npm run portable -- pack)');
@@ -1369,8 +1370,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   { const pp = checkFilePolicy(html);
     if (pp.length) fail('file-policy', 'the file policy (§4.2) is not in place: ' + pp.join('; '), pp); }
   // 本文のステップへのリンク（§9C.8 の 1：ないスライド・ないステップへのリンクは誤りで、書き出さない）：書いた文書を再生器で開き、check と同じに確かめる
-  // （env.articleSteps。Node の組み立てだけが持つ。持たなければ書き出さない）
-  if (art) {
+  // （env.articleSteps。Node の組み立ては kit/article-steps.mjs、編集アプリはプレビューの再生器。持たなければ書き出さない）
+  if (art && opts.checkSteps !== false) {
     const links = AT.stepLinksOf(art.L.article);
     if (links.length) {
       if (typeof env0.articleSteps !== 'function') fail('article-unsupported', 'the article has step links, and this producer cannot check them in the player (§9C.8): export it with the CLI (npm run portable -- pack)');
