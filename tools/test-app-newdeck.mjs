@@ -385,7 +385,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p4, 'flow-s4-more.png', 'paste-step-content');
     await p4.click('#paste-next-content');
     await p4.click('#paste-next-theme');
-    ok((await ticks(p4)) === sorted([...STD, ...['m-gendai', 'm-kakijun', 'm-kanbun', 'm-kobun']]) && (await text(p4, '#paste-parts-why')) === '② に「漢文」とあるので、漢文・古文・現代文の読解・書き順も選びました' && (await badges(p4)) === sorted(['m-gendai', 'm-kakijun', 'm-kanbun', 'm-kobun']),
+    ok((await ticks(p4)) === sorted([...STD, ...['m-gendai', 'm-kanbun', 'm-kobun']]) && (await text(p4, '#paste-parts-why')) === '② に「漢文」とあるので、漢文・古文・現代文の読解も選びました' && (await badges(p4)) === sorted(['m-gendai', 'm-kanbun', 'm-kobun']),
       'S4 ④: 漢文 in step 2 ticks the kokugo set, and says why: ' + await text(p4, '#paste-parts-why'));
     // ［変更］で ② を直す：④ ⑤ は出たまま。答えの 1 行も新しくなる
     await p4.click('#paste-change-content');
@@ -464,13 +464,13 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.check('#paste-cat-teaching');
     await p8.check('#paste-sub-class');
     await p8.click('#paste-next-kind');
-    await p8.fill('#paste-title', 'わり算の筆算と世界の人口');
+    await p8.fill('#paste-title', 'わり算の筆算とデータの分布');
     await p8.click('#paste-next-content');
     await p8.click('#paste-next-theme');
-    const math = ['m-hissan', 'm-numberline', 'm-sweep', 'm-tape'], maps = ['m-map-japan', 'm-map-world'];
-    ok((await ticks(p8)) === sorted([...STD, ...math, ...maps]) && (await badges(p8)) === sorted([...math, ...maps])
-      && (await text(p8, '#paste-parts-why')) === `② に「筆算」とあるので、${['m-numberline', 'm-tape', 'm-hissan', 'm-sweep'].map((t) => label(t, 'ja')).join('・')}も選びました。② に「世界」とあるので、日本地図・世界地図も選びました`,
-      'S8 ④: two sets from the words of step 2 (math, maps), one reason each, and a Suggested badge on each: ' + await text(p8, '#paste-parts-why'));
+    const math = ['m-hissan', 'm-numberline', 'm-sweep', 'm-tape'], stats = ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq'];
+    ok((await ticks(p8)) === sorted([...STD, ...math, ...stats]) && (await badges(p8)) === sorted([...math, ...stats])
+      && (await text(p8, '#paste-parts-why')) === `② に「分布」とあるので、${['m-heatmap', 'm-hist', 'm-boxplot', 'm-seq'].map((t) => label(t, 'ja')).join('・')}も選びました。② に「筆算」とあるので、${['m-numberline', 'm-tape', 'm-hissan', 'm-sweep'].map((t) => label(t, 'ja')).join('・')}も選びました`,
+      'S8 ④: two sets from the words of step 2 (stats, math), one reason each, and a Suggested badge on each: ' + await text(p8, '#paste-parts-why'));
     ok((await groupIds(p8)).split(',')[0] === 'subject' && (await p8.$$eval('#paste-pgroup-subject .pick', (xs) => xs.map((x) => x.dataset.part))).slice(0, 2).join() === 'm-map-japan,m-map-world'
       && (await p8.getAttribute('#paste-pgroup-subject', 'role')) === 'group' && (await text(p8, '#paste-pgroup-subject-h')) === '教科の形'
       && !(await p8.$('#paste-part-codetree')) && !(await p8.$('#paste-part-collect')),
@@ -501,7 +501,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const after8 = await ticks(p8);
     // 推し直しても、外した印は戻らない
     await p8.click('#paste-change-content');
-    await p8.fill('#paste-title', 'わり算の筆算と世界の人口（2）');
+    await p8.fill('#paste-title', 'わり算の筆算とデータの分布（2）');
     await p8.click('#paste-next-content');
     ok((await ticks(p8)) === after8, 'S8 ④: a new guess does not tick again what was unticked');
     // 有料のプランは目安だけが変わる（印はそのまま）
