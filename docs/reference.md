@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=60ec8f94b22b542f -->
+<!-- i18n: pair=reference.ja.md sha256=6bf6e7e02316e4fc -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -542,7 +542,7 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 | `--out dir` | required |
 | `--fps n` | default 30 |
 | `--scale x` | default 1.5 (1920×1080) |
-| `--only key,…` | only these steps; the rest stay as they are |
+| `--only key,…` | only these slides or steps; the rest stay as they are. Each item is a slide key or id (all of that slide's steps) or `slideKey:step` (one step). An item that matches nothing is an error that lists the valid slide keys |
 | `--full` | also `full.mp4`, and with two or more chapters `chapter_NN.mp4` and `chapters.json` (needs all clips) |
 | `--force` | ignore `.render-cache.json` |
 | `--captions` | burn the script captions into the video (`?captions=1`); part of the cache key |

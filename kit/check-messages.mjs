@@ -5,6 +5,7 @@
 import { CLIP_ATTR } from './core/layout-scan.mjs';
 import { catalogueMessage } from './core/parts2.mjs';
 import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
+import { quoteJa } from './core/quote-ja.mjs';
 import { ARTICLE_MESSAGES, articleMessage } from './core/article-messages.mjs';
 
 // 値にないときの既定（テーマの寸法の既定。kit/core/theme-metrics.mjs）：結論の行の上端・1 行の高さ・横の右の限り
@@ -49,7 +50,7 @@ export function where(lang, { n, id, title, step }) {
   const st = step === null || step === undefined ? '' : (lang === 'en' ? ', ' + stepEn(step) : '、' + stepJa(step));
   return lang === 'en'
     ? `Slide ${n}${title ? ` “${title}”` : ''}${id ? ` (${id})` : ''}${st}`
-    : `スライド ${n}${title ? `「${title}」` : ''}${id ? `（${id}）` : ''}${st}`;
+    : `スライド ${n}${title ? quoteJa(title) : ''}${id ? `（${id}）` : ''}${st}`;
 }
 
 // テーマの寸法のずれ（themeMetricsDrift）の項目：{field, declared, measured, by}。measured は数か [下, 上]（body.floor・tate.floor）
@@ -102,7 +103,7 @@ export const MESSAGES = {
     en: (a) => `${a.what} is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): the number of steps and the motion come from data-step and data-at on elements, class="draw" on strokes and the steps of parts (format spec §8.0); remove ${a.what}` },
   legacyLectureMode: { ja: (a) => `<html data-mode="lecture"> は 1.0 の語彙にない（${a.line} 行目）：見せ方は再生の設定の「先のステップを薄く見せる」で選ぶ。原稿からは外す`,
     en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the participant chooses “Show later steps faintly” in the player; remove it from the source` },
-  narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し「${a.heading}」がスライドの見出し「${a.slide}」と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
+  narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し${quoteJa(a.heading)}がスライドの見出し${quoteJa(a.slide)}と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
   // ---------------------------------------------------------------- リンク
   linkFileMissing: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のファイル ${a.file} が作業フォルダから見つからない：ファイルを置くか、リンクを直す（1 ファイル（.ega.html）には入らない）`, en: (a) => `the link “${a.text}” (href="${a.href}") points to ${a.file}, which is not in the working folder: add the file or fix the link (it is not packed into the single file (.ega.html))` },
   linkEmpty: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）に行き先がない（# だけ）：href="#<スライドの id>" にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has no target (only #): use href="#<slide id>"` },
@@ -155,12 +156,12 @@ export const MESSAGES = {
   attachCount: { ja: (a) => `添付が多すぎる（${a.max} 個まで）：「${a.path}」は 1 ファイルに入らない`, en: (a) => `too many attachments (at most ${a.max}): “${a.path}” is not packed` },
   attachList: { ja: (a) => `添付：${a.n} 個（${a.size}。読み手の一覧に ${a.listed} 個）。1 ファイル（.ega.html）の再生ではダウンロードだけで、再生専用（--play-only）には入らない`, en: (a) => `attachments: ${a.n} (${a.size}; ${a.listed} listed for readers). In the single file (.ega.html) they are download-only; play-only files (--play-only) do not carry them` },
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
-  titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：「${a.t}」を短くするか、言いたいことを結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
-  titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英語は 60 文字まで）：「${a.t}」を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },
-  titleColon: { rule: 'R-title', ja: (a) => `見出し「${a.t}」がコロンで終わっている：コロンを取り、見出しだけで言い切る`, en: (a) => `the heading “${a.t}” ends with a colon: remove it and let the heading stand on its own` },
+  titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：${quoteJa(a.t)}を短くするか、言いたいことを結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
+  titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英語は 60 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },
+  titleColon: { rule: 'R-title', ja: (a) => `見出し${quoteJa(a.t)}がコロンで終わっている：コロンを取り、見出しだけで言い切る`, en: (a) => `the heading “${a.t}” ends with a colon: remove it and let the heading stand on its own` },
   tateTitle: { rule: 'R-title', ja: (a) => `縦組みの見出しが列に収まらない（${a.h}px > ${a.max}px。14 字ほどまで）：見出しを短くする`, en: (a) => `the vertical heading does not fit its column (${a.h}px > ${a.max}px, about 14 characters): shorten it` },
   conclLong: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 字で長い（35 字まで）：「${a.t}」を 1 つの短い文にする`, en: (a) => `the conclusion line has ${a.n} units, over 35: make “${a.t}” one short sentence` },
-  conclLongEn: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 文字で長い（英語は 70 文字まで）：「${a.t}」を短くする`, en: (a) => `the conclusion line has ${a.n} characters, over 70: shorten “${a.t}”` },
+  conclLongEn: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 文字で長い（英語は 70 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the conclusion line has ${a.n} characters, over 70: shorten “${a.t}”` },
   conclOverflow: { rule: 'R-concl', ja: () => '結論の行が枠からはみ出す：結論の行を短くして 1 行に収める', en: () => 'the conclusion line overflows its box: shorten it to one line' },
   // 結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）はテーマの寸法（metrics）が既定と違うときだけ値にある（なければ既定の値）
   bodyBottom: { rule: 'R-fit',
@@ -183,7 +184,7 @@ export const MESSAGES = {
   fontNotEmbedded: {
     ja: (a) => `ファイルに入っていない字体です（${(a.fonts || []).join('・')}）。開く端末によって見え方が変わります：どの端末でも同じに見せるには、ファイルに入る字体（docs/reference.ja.md「字体」の一覧）から選ぶ`,
     en: (a) => `This font is not embedded in the file (${(a.fonts || []).join(', ')}), so it looks different on each device: to look the same everywhere, choose a font that goes into the file (the list in docs/reference.md, “Fonts”)` },
-  secHeading: { ja: (a) => `章の扉の題が h2 で書かれている（「${a.t}」）：章の扉（<section class="slide sec">）の題は h1 にする`, en: (a) => `the chapter divider's title is written with h2 (“${a.t}”): write the title of a divider (<section class="slide sec">) as h1` },
+  secHeading: { ja: (a) => `章の扉の題が h2 で書かれている（${quoteJa(a.t)}）：章の扉（<section class="slide sec">）の題は h1 にする`, en: (a) => `the chapter divider's title is written with h2 (“${a.t}”): write the title of a divider (<section class="slide sec">) as h1` },
   textContrast: { rule: 'R-colors', ja: (a) => `字と地のコントラストが低い（${a.ratio}:1 < ${a.min}:1、<${a.tag}>「${a.t}」）：テーマの色に戻す（スライドに書いた色・地の色を消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between text and background (${a.ratio}:1 < ${a.min}:1, <${a.tag}> “${a.t}”): go back to the theme colors (remove colors and backgrounds written on the slide; use only theme classes and variables)` },
   smallText: { rule: 'R-fit', ja: (a) => `字が小さい（${a.px}px：「${a.t}」。本文は 27px、表・図は 24px から）：font-size を書かず既定の大きさに戻し、入らなければスライドを分ける`, en: (a) => `text is too small (${a.px}px: “${a.t}”; body text needs 27px, tables and figures 24px): remove the font-size and split the slide if it does not fit` },
   smallSvgText: { rule: 'R-fit', ja: (a) => `図の中の字が小さい（${a.px}px、24px から）：字を 24px 以上に上げる。その場の <svg> なら viewBox を表示する画素で書く（viewBox の幅 = 表示の幅）か、font-size を 24 × viewBox の幅 ÷ 表示の幅 以上にする`, en: (a) => `text inside a figure is too small (${a.px}px, at least 24px): raise it to 24px or more; for an inline <svg>, write the viewBox in the pixels it is shown at (viewBox width = displayed width) or use font-size ≥ 24 × viewBox width ÷ displayed width` },

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=19a8d9b3abe967f3 -->
+<!-- i18n: pair=reference.md sha256=41714790109fc426 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -541,7 +541,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `--out フォルダ` | 必須 |
 | `--fps n` | 既定 30 |
 | `--scale x` | 既定 1.5（1920×1080） |
-| `--only 鍵,…` | このステップだけ。ほかはそのまま |
+| `--only 鍵,…` | このスライドかステップだけ。ほかはそのまま。スライドの鍵か id（そのスライドの全ステップ）、または `スライドの鍵:ステップ`（1 ステップ）。どれにも当たらないものはエラーで、使えるスライドの鍵を示す |
 | `--full` | `full.mp4` も。章が 2 つ以上なら `chapter_NN.mp4` と `chapters.json` も（全部のクリップが要る） |
 | `--force` | `.render-cache.json` を無視する |
 | `--captions` | 台本の字幕を映像に焼き込む（`?captions=1`）。キャッシュの鍵に入る |

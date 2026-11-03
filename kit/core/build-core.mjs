@@ -18,6 +18,7 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
+import { innerJa } from './quote-ja.mjs';
 import { applyMetrics, DEFAULT_METRICS } from './theme-metrics.mjs';
 import { RUNTIME_FORMAT, FORMAT } from './format.mjs';
 import { runtimeAttachTypes } from './attach-content.mjs';
@@ -961,7 +962,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const w of segs.warnings || []) warn.push(`narration: ${w}`);
   const keySet = new Set(slides.map((s) => s.key));
   // 鍵がどのスライドにも合わない節（## 見出し）。段階のない節も知らせる
-  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${s.heading || s.key || s.slideKey}」（鍵「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
+  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${innerJa(s.heading || s.key || s.slideKey)}」（鍵「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
   const narration = narrationMap(segs, !!opts.dev);
   const marks = marksMap(segs);
   checkMarks(html, segs, warn);

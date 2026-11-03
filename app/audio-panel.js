@@ -38,6 +38,7 @@ import { narrationLang } from '../kit/core/narration-lint.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
+import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { readAloud, stopReadAloud, readingAloud, readAloudSupported } from './read-aloud.js';
 import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, expectedCues, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
@@ -67,7 +68,7 @@ const STR = {
     more: 'ほかの声', voiceSaved: (r, n) => r + 'を「' + n + '」にしました（voice.json）。次に AI 音声を作るときから使います', voiceMem: (r, n) => r + 'を「' + n + '」にしました。Egatari ファイルでは、この画面を開いている間だけ覚えます（作った音声の記録には声の名前が残ります）',
     voiceUnknown: (r, n, fb) => '声「' + n + '」はこのエディタでは使えません。既定の声「' + fb + '」で作ります',
     // C. このステップ
-    stepHead: (n, t, k) => `スライド ${n}「${t}」・ステップ ${k}`, place: (n, k) => `スライド ${n}・ステップ ${k}`, none: 'まだ音声がありません',
+    stepHead: (n, t, k) => `スライド ${n}${quoteJa(t)}・ステップ ${k}`, place: (n, k) => `スライド ${n}・ステップ ${k}`, none: 'まだ音声がありません',
     kind: { recorded: '録音', tts: 'AI 音声', imported: '取り込み' }, sec: (s) => s.toFixed(1) + ' 秒',
     stale: '更新が必要', staleT: 'この音声を作った後に台本が変わっています（または、どの台本から作ったか分かりません）。音声は消さずに残します',
     play: '▶ 聞く', playStop: '■ 止める', rec: '● 録音 (r)', importBtn: 'ファイルから取り込む…', local: 'この PC で作り直す',
