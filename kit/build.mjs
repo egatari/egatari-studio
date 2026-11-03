@@ -23,6 +23,7 @@
 //   narration.md（口述原稿）、timeline.json（秒数の調整）、audio/manifest.json（TTS の出力）、macros.tex（数式のマクロ）
 //
 // 組む本体は kit/core/build-core.mjs（ブラウザの編集アプリと共有）。ここは Node の読み書き・字の絞り込み（fonttools）・音声の圧縮（ffmpeg）・CLI
+import { cliHints } from './cli-hint.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -376,7 +377,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       try { writeOutput(src, ao, page); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
       const ml = core.isJapanese(lang) ? 'ja' : 'en', st = ap.stats, errs = ap.problems.filter((p) => p.sev === 'error').length;
       console.log(`article: files: ${st.files}, sections: ${st.sections}, figures: ${st.figures}, tables: ${st.tables}, equations: ${st.equations}, errors: ${errs} -> ${ao}`);
-      for (const p of ap.problems) console.warn(`  ${p.sev === 'error' ? '✗' : '⚠'} article: ${articleMessage(ml, p)}`);
+      for (const p of ap.problems) console.warn(`  ${p.sev === 'error' ? '✗' : '⚠'} article: ${cliHints(articleMessage(ml, p))}`);
       for (const w of ap.warnings) console.warn('  ⚠ article: ' + w);
       if (ap.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
     }

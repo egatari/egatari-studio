@@ -30,6 +30,7 @@
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 //       口述原稿の言語はスライドと別に決め（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）、式らしさと長いターンは発言ごとにその言語の規則で見る
+import { cliHints } from './cli-hint.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -101,7 +102,7 @@ catch (e) {
       msg: where(ml, { n: null }) + (ml === 'en' ? ': ' : '：') + message(ml, e.code, data),
     }));
     if (asJson) console.log(JSON.stringify({ ok: false, lang: ml, counts: { error: findings.length, warn: 0, info: 0 }, results: findings }, null, 2));
-    else for (const f of findings) console.log(`[${ml === 'en' ? 'error' : 'エラー'}] ${f.msg}`);
+    else for (const f of findings) console.log(`[${ml === 'en' ? 'error' : 'エラー'}] ${cliHints(f.msg)}`);
     await new Promise((resolve) => process.stdout.write('', resolve));
     process.exit(1);
   }
@@ -729,7 +730,7 @@ if (asJson) {
     code: r.code,
     rule: ruleOf(r.code, r.a),
     data: r.a,
-    msg: r.msg,
+    msg: cliHints(r.msg),
   }));
   console.log(JSON.stringify({ ok, lang: ML, counts, results: out }, null, 2));
 } else {
@@ -749,7 +750,7 @@ if (asJson) {
     const label = key === -1 ? (EN ? '■ Whole deck' : '■ デッキ全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;
     console.log(label);
     const items = groups.get(key).sort((a, b) => SEV_RANK[a.sev] - SEV_RANK[b.sev]);
-    for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${r.what}`);
+    for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${cliHints(r.what)}`);
   }
   console.log('');
   console.log(EN ? `${counts.error} errors, ${counts.warn} warnings, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
