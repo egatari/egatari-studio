@@ -205,7 +205,9 @@ async function scrollToSec(p, sel) {
   await t.context().close();
   // 声：再生速度と声の高さを保つこと（audio 要素の playbackRate・preservesPitch）
   const a = await open(AUD, { q: '?mode=learn&layout=slides', init: { fn: () => {
-    window.__audio = [];
+    window.__audio = []; window.__srcSets = 0;
+    const d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
+    Object.defineProperty(HTMLMediaElement.prototype, 'src', { configurable: true, get() { return d.get.call(this); }, set(v) { window.__srcSets++; d.set.call(this, v); } });
     const play = HTMLMediaElement.prototype.play;
     HTMLMediaElement.prototype.play = function(){ window.__el = this; window.__audio.push({ rate: this.playbackRate, pitch: this.preservesPitch, t: this.currentTime, src: this.src.split('/').pop() }); return play.call(this); };
   } } });
@@ -213,9 +215,12 @@ async function scrollToSec(p, sel) {
   await a.waitForFunction(() => window.__audio.length > 0, null, { timeout: 5000 });
   const au = await a.evaluate(() => window.__audio[0]);
   ok(au.rate === 1.5 && au.pitch === true && au.src === 'silent.wav', `narration plays at the chosen speed with the pitch kept (${JSON.stringify(au)})`);
-  await wait(a, 400); await a.keyboard.press('a'); await wait(a, 300); await a.keyboard.press('a'); await wait(a, 200);
-  const au2 = await a.evaluate(() => window.__audio[window.__audio.length - 1]);
-  ok(au2.t > 0.2, `resume continues the narration where it paused (at ${au2.t.toFixed(2)} s)`);
+  await wait(a, 400); await a.keyboard.press('a'); await wait(a, 300);
+  const before = await a.evaluate(() => [window.__audio.length, window.__srcSets]);
+  await a.keyboard.press('a'); await wait(a, 200);
+  const after = await a.evaluate(() => [window.__audio.length, window.__srcSets]);
+  // 声の所はそのまま（src を入れ直さずに play し直す。CI の端末によっては声が進まないので時刻は見ない）
+  ok(after[0] === before[0] + 1 && after[1] === before[1], `resume continues the narration where it paused: play again without reloading it (plays ${before[0]}→${after[0]}, src set ${before[1]}→${after[1]})`);
   await a.evaluate(() => DECK.rate(2));
   ok(await a.evaluate(() => window.__el.playbackRate) === 2, 'changing the speed while playing changes the narration speed too');
   await a.context().close();
@@ -230,7 +235,7 @@ async function scrollToSec(p, sel) {
   ok(hasNone((await tr(p)).text, ords(0)), 'after 1.5 s the first section is not read yet');
   await wait(p, 2200);
   let t = await tr(p);
-  ok(hasAll(t.text, ords(0)), `reading the first section for 3 s marks its slide's steps read via text (${t.text})`);
+  ok(hasAll(t.text, ords(0)), `reading the first section for 3 s marks its slide's steps read via text (${t.text})` + (hasAll(t.text, ords(0)) ? '' : ' ' + JSON.stringify(t.reading)));
   ok(hasNone(t.stage, ords(0)), 'in the book alone nothing counts as played on the stage');
   // 2 節目を 1 秒だけ見て 4 節目へ：2 節目は読んだことにならない
   await scrollToSec(p, '[data-section-id="sec-tr3bbb"]'); await wait(p, 1000);
@@ -257,7 +262,7 @@ async function scrollToSec(p, sel) {
   const p = await open(V, { q: '?layout=flow' });
   ok(await p.evaluate(() => DECK.panes.state().vertical), 'the kokugo book is vertical');
   await wait(p, 3700);
-  ok(hasAll((await tr(p)).text, ords(0)), 'vertical writing: the first section read after 3 s');
+  { const t0 = await tr(p); ok(hasAll(t0.text, ords(0)), 'vertical writing: the first section read after 3 s' + (hasAll(t0.text, ords(0)) ? '' : ' ' + JSON.stringify(t0.reading))); }
   await scrollToSec(p, '[data-section-id="sec-tr4ccc"]'); await wait(p, 3700);
   const t = await tr(p);
   ok(hasAll(t.text, ords(2)) && hasNone(t.text, ords(1)), `vertical writing: the section scrolled to is read, the one skipped is not (${t.text})`);

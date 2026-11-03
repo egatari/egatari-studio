@@ -228,7 +228,7 @@ function inView(el, b, vertical){
 function tick(){
   tickT = 0;
   var rd = textShown() && DECK.panes.readable && DECK.panes.readable();
-  if (!rd || !rd.body){ since.clear(); return; }
+  if (!rd || !rd.body){ since.clear(); schedule(); return; }
   var b = rd.body.getBoundingClientRect(), now = Date.now(), seen = new Set();
   rd.units.forEach(function(u){
     if (!inView(u.el, b, rd.vertical)) return;
@@ -239,7 +239,16 @@ function tick(){
   since.forEach(function(v, u){ if (!seen.has(u)) since.delete(u); });
   schedule();
 }
-function schedule(){ if (!tickT && textShown()) tickT = setTimeout(tick, TICK); }
+// 試験と調べ物の口：本の窓の大きさと、読む単位の見え方（読む向きの範囲と、見え始めてからの時間）
+function readingView(){
+  var rd = DECK.panes && DECK.panes.readable && DECK.panes.readable();
+  if (!rd || !rd.body) return {shown: textShown(), visibility: document.visibilityState};
+  var b = rd.body.getBoundingClientRect(), now = Date.now();
+  return {shown: textShown(), visibility: document.visibilityState, body: [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)],
+    units: rd.units.map(function(u){ var r = u.el.getBoundingClientRect(); return {steps: u.steps.length, rect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], inView: inView(u.el, b, rd.vertical), ms: since.has(u) ? now - since.get(u) : null}; })};
+}
+// 文書が見えている間は 0.5 秒ごとに見る（本の窓が後から開く・並べ方が替わるのを出来事に頼らない）
+function schedule(){ if (!tickT && document.visibilityState !== "hidden") tickT = setTimeout(tick, TICK); }
 
 // ---------------------------------------------------------------- 起動
 function notice(){
@@ -282,7 +291,7 @@ DECK.trackingAdapter = function(){ return window.DECK_DEV ? null : LMS_API ? "sc
 DECK.tracking = function(){
   var list = function(a){ var o = []; if (a) for (var j = 0; j < a.length; j++) if (a[j]) o.push(j); return o; };
   return {adapter: adapter ? adapter.name : null, total: N, hash: H8, rule: rule, stage: list(stage), text: list(text), completed: done, started: began,
-    suspendData: N ? suspendData() : null};
+    suspendData: N ? suspendData() : null, reading: readingView()};
 };
 // 試験の手前の口：読む単位を見る間（3 秒）
 DECK.tracking.DWELL = DWELL;
