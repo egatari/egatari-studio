@@ -39,9 +39,13 @@ Choose the parts for the outline from the standard parts and the specialized set
 - [science](references/parts/en/science.md)
 - [extra](references/parts/en/extra.md)
 
-## Book (article pane) and layout
+## Book (article)
 
-The book's body is text to read; the script is what is spoken at each step. Do not force the body into the script (R-article). Layouts are slides, flow (continuous reading), pages and split (slides and body). This version of Studio supports creating slides. The article pane and other layouts cannot be created yet. If needed, explain the limitation and review the body with the user as a separate draft. Do not promise that Studio can open unsupported output.
+A lesson can have a **book** (a textbook chapter, a paper or a reading) beside its slides and script. The book's body is text to read; the script is what is spoken at each step. Do not force the body into the script (R-article).
+
+When a book is requested, read [references/book.md](references/en/book.md) before writing the outline. Write the book in Claude Code (where files can be written). There is no form to paste into chat. Studio's editor can read a book, fix its text, check its links and print it, but it does not create a book from scratch or reorganize its chapters.
+
+The layouts are slides and split (slides and book). Flow and pages do not exist yet.
 
 ## Add audio
 

@@ -39,9 +39,13 @@ Claude Code では `/plugin update egatari@egatari`。
 - [science](references/parts/science.md)
 - [extra](references/parts/extra.md)
 
-## 本（本文の窓・article）と配置
+## 本（article）
 
-本の本文は読む文章、台本はステップごとに話す言葉。本文を台本へ押し込まない（R-article）。配置は slides（スライド）・flow（続けて読む）・pages（ページ）・split（スライドと本文）。この版の Studio は slides の作成に対応する。本文の窓・article とほかの配置はまだ作れないので、必要なら制限を伝え、本文は別の下書きとして利用者と確認する。未対応の出力が Studio で開けると約束しない。
+教材は、スライドと台本の横に**本**（教科書の章・論文・読み物）を持てる。本の本文は読む文章、台本はステップごとに話す言葉。本文を台本へ押し込まない（R-article）。
+
+本を頼まれたら、[references/book.md](references/book.md) を読んでから構成案を作る。本は Claude Code（ファイルを書ける所）で書く。チャットに貼り付ける形はない。Studio の編集アプリは、本を読む・文字を直す・つながりを確かめる・印刷することはできるが、本を一から作ったり、章を組み直したりはしない。
+
+配置は slides（スライド）と split（スライドと本）。flow・pages はまだない。
 
 ## 音声を付ける
 

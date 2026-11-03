@@ -13,6 +13,7 @@
 // 材料（どれかを直したら作り直す）：
 //   tools/llm-guide/template.md・template.ja.md   共通の本体（英語が正本）。{{…}} を下の中身で置き換える
 //   docs/llm-book.md・llm-book.ja.md              make の「本と配置」（手書きの正本）。スキルの頭にそのまま差し込む
+//   docs/llm-book-ref.md・llm-book-ref.ja.md      make の references/book.md（本を頼まれたときだけ読む。en は references/en/book.md）
 //   tools/llm-guide/sets/<束>.md・.ja.md          束ごとの部分。{{CATALOG}}（その束の部品）・{{EXTENSIONS}}（標準の部品のその束向けの節）・{{WORKED …}}
 //   docs/contract.md・contract.ja.md              {{contract §N "頭の字"}}：その節の箇条書きのうち、その字で始まる 1 つ（見つからなければ失敗）
 //   vendor/components/sha256/<hash>/README.md・index.js  既定のカタログの部品の写し（components.lock.json の content 表で引く）。frontmatter の name・summary・steps・props と、
@@ -423,6 +424,15 @@ const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原�
 
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
 
+// Docs links pinned to the release tag (package.json version; the release step sets it, then re-runs gen).
+export const docUrl = (name, anchor = '') => `https://github.com/egatari/egatari-studio/blob/v${JSON.parse(read('package.json')).version}/docs/${name}${anchor ? '#' + anchor : ''}`;
+// {{DOC name#anchor}} in a source text becomes the pinned URL
+const docLinks = (text) => text.replace(/\{\{DOC ([\w.-]+)(?:#(\S+?))?\}\}/g, (_, n, a) => docUrl(n, a));
+// Hand-written skill text: <!-- generated: doc name#anchor -->…<!-- /generated: doc --> gets the pinned URL
+export function studioDocs(text) {
+  return text.replace(/(<!-- generated: doc ([\w.-]+)(?:#(\S+?))? -->)[^<]*(<!-- \/generated: doc -->)/g, (_, o, n, a, c) => o + docUrl(n, a) + c);
+}
+
 // Studio is hand-written. Only this marked version line belongs to the generator.
 export function studioVersion(text, version) {
   const marker = /(?<=<!-- generated: instruction-version -->\n)\*\*指示の版：[a-f0-9]{8}\*\*(?=\n<!-- \/generated: instruction-version -->)/g;
@@ -451,6 +461,7 @@ export function skillFiles(data, lang = 'ja') {
       .replace('{{CATALOG}}', ja ? 'パーツは上のセットごとの参照ファイルから、必要なものだけ読む。' : 'Read only the parts you need from the set references above.')
       .replace('{{PURPOSES}}', ja ? 'パーツの候補はセットごとの参照ファイルで選ぶ。' : 'Choose candidate parts from the set references.'));
     const book = splitStamp(read('docs', ja ? 'llm-book.ja.md' : 'llm-book.md')).body.trim();
+    files[`${MAKE_SKILL_DIR}/references/${ja ? '' : 'en/'}book.md`] = skillTerms(head + docLinks(splitStamp(read('docs', ja ? 'llm-book-ref.ja.md' : 'llm-book-ref.md')).body.trim()) + '\n');
     const text = ja ? `---
 name: make
 description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
@@ -689,7 +700,7 @@ export function generate(opts = {}) {
     }
   }
   Object.assign(files, skillFiles(data, opts.skillLang));
-  files['skills/studio/SKILL.md'] = studioVersion(read('skills/studio/SKILL.md'), data.version);
+  files['skills/studio/SKILL.md'] = studioDocs(studioVersion(read('skills/studio/SKILL.md'), data.version));
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
   return { files, sizes, data, warnings };

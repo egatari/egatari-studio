@@ -152,6 +152,7 @@ if (args.includes('--release')) {
   setVersion(path.join(ROOT, 'package.json'), v);
   setVersion(path.join(ROOT, 'package-lock.json'), v);
   for (const f of files) fs.rmSync(path.join(DIR, f));
+  if (fs.existsSync(path.join(ROOT, 'tools', 'make-llm-guide.mjs'))) execFileSync(process.execPath, [path.join(ROOT, 'tools', 'make-llm-guide.mjs')], { stdio: 'inherit' }); // skills pin docs links to the version
   console.log(`CHANGELOG.md: [${v}] - ${date} from ${files.length} fragment(s); package.json and package-lock.json set to ${v}; fragments removed`);
   process.exit(0);
 }

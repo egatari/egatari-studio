@@ -99,6 +99,41 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 
 初稿にはスライドの id を書かず、書き終えたら `npx egatari@0.6.x ids <deck>` で付ける。スライドを足すたびに動かす。今ある id と台本の `{#…}` は保つ。
 
+## CLI：本のある教材
+
+本（`article.md` か `article/`）のある教材は、id とつなぎの順番が大事。本の書き方は egatari:make の references/book.md。
+
+1. 本・スライド・台本を書く（つなぎはまだ書かない）。
+2. `npx egatari@0.6.x ids <deck>`：スライドの id と節の id（`(sec-…)=`）を付け、本の読む順を `egatari.json` に書く。
+3. つなぎを書く：節の中の ``{step}`…<s-xxxxxx:k>` ``、スライドの `data-article="sec-…"`。
+4. もう一度 `ids`（新しいつなぎを `egatari.json` の `articleLinks` に記録する）。
+5. 点検（`npx egatari@0.6.x check <deck>/deck.html`）と組み立て（`npx egatari@0.6.x build <deck>/deck.html`）。本は `out/deck.article.html` にも出る。縦書きの本は開いて確かめる。
+6. **書き終えてから** `npx egatari@0.6.x ids <deck> --confirm-links`：つないだ組を読み比べて合っていることを記録する。書いている途中で記録すると、直すたびに「スライドと本が合っていないかもしれません」が出る（直した後に出たら、読み比べてから記録し直す）。
+7. Egatari ファイルにするとき（`--portable`）は、本・`references.json`・本の画像が中に入る。
+
+`--portable` の `.ega.html` と `sheet` の画像は作業フォルダに書かれる。git に入れないなら `.gitignore` に足す。
+
+## CLI：テーマを作る（自分のテーマ）
+
+機関の色やロゴで教材をそろえたいと言われたら、同梱のテーマを受け継ぐ小さなテーマを作る。
+
+1. **聞く**：テーマの名前（英小文字。`tml` など）、基調色（`--base`。1 色）、強調の色（なければ同梱の式から導く）、ロゴの画像（png・jpg・svg・webp。使ってよいかを確かめる。機関のロゴは使用の条件がある）、置き場所（この教材だけ → `<deck>/themes/<名前>/`、自分の教材すべて → `~/.egatari/themes/<名前>/`）。
+2. **作る**：
+   ```
+   <名前>/
+     theme.json   {"name": "<名前>", "extends": "default", "logos": ["logos/cover.png"]}
+     tokens.css   :root{ --base: #0A2D92; --emph: #D7000F; --cover-bg: #F6F9F6; --logo-h: 128px; }
+     logos/cover.png
+     LICENSE      ロゴ・字体の使用の条件（Egatari ファイルに一緒に入る）
+   ```
+   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.3/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
+   - 字体を替えるなら `theme.json` の `fonts`（Studio が入れられる一覧から）。
+   - 表紙の背景に画像を敷くには、画像をテーマのフォルダに置き、`tokens.css` で相対の `url()` を書く（例：`--cover-bg: url(cover.png) center/cover no-repeat;`）。組み立てが画像を埋め込み、テーマの hash と Egatari ファイルにも入る。テーマのフォルダの外のファイルは使えない（警告が出て拒まれる）。ないファイルは警告が出て `url()` のまま残る。ロゴは `theme.json` の `logos`。
+3. **確かめる**：サンプルの教材を `--theme <名前>` で組み、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
+4. **使う**：教材は `<html data-theme="<名前>">`。Egatari ファイルに書き出すと、テーマ（と LICENSE）が教材の中に入り、どこでも同じに組める。
+5. **Studio で使う**：テーマのフォルダを ZIP にして（`cd ~/.egatari/themes && zip -r <名前>.zip <名前>`）、編集アプリの「テーマを読み込む…」→「ZIP ファイルを選ぶ…」。Chrome・Edge ならフォルダのまま「フォルダを選ぶ…」でもよい。
+6. 手本：作者のテーマ集（tml・tcue・wsd・ohte）。どれも `extends: default` に色とロゴだけ。
+
 ## CLI：ファイルの情報
 
 題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（license・copyright・creators・attribution）。分からなければ利用者に聞き、作らない。参加者の名前・成績・回答・顔写真・提出物は例にも入れない。必要な例は架空と書く。
