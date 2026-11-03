@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=19a8d9b3abe967f3 -->
+<!-- i18n: pair=reference.md sha256=d753d29610323006 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -270,7 +270,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 | Shift+→ / Shift+↓、Shift+← / Shift+↑ | 次 / 前のスライド（ステップ 0） |
 | Home / End | 最初 / 最後のスライド |
 | 数字＋Enter | そのページへ |
-| f | 全画面 |
+| f | 全画面（ブラウザに要素の全画面があるとき。iPhone の Safari や、全画面を許さない枠の中では、帯に全画面のボタンを出さず、キーの一覧にも f を載せない。ブラウザが断ったら「全画面にできませんでした」） |
 | p | 発表者ビュー（もう一度 p で閉じる。発表者ビューでは Esc か p で閉じる。全画面のときは全画面をやめるだけ） |
 | a | 今のステップから自動再生（音声があれば流す）。移動のキーで止まる |
 | l | 先のステップを薄く見せる（入／切） |
@@ -379,7 +379,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-llms.ja.md)の `R-fit`・`R-steps` など）、それに照らして**指摘**を出す**品質チェック**、指摘を AI に渡す**修正依頼**からなる。品質チェックにはコマンド版（`npm run check`。下。すべての項目）とブラウザ版（[編集アプリ](editor.ja.md)。一部の項目）がある。
 
-`node kit/check.mjs <deck.html | 作業フォルダ> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーがなければ終了コード 0、エラーが 1 つでもあれば 1、ヘッドレスのブラウザが起動できないか途中で落ちて検査が終わらなかったときは 2（理由は stderr だけ。`--json` では `{"ok": false, "status": "crashed", "counts": {…すべて 0}, "results": []}` で、「エラー 0」とは見分けがつき、指摘にもならない）。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告の指摘は、どこか（スライドの番号・見出し・id・ステップ）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の規格があればその名前（`（R-title）` など）を添える。そのまま修正依頼に貼れる。`--lang` は指摘の言語（既定は教材の `<html lang>`。`ja` かなければ日本語、ほかは英語）。
+`node kit/check.mjs <deck.html> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーがなければ終了コード 0、エラーが 1 つでもあれば 1、ヘッドレスのブラウザが起動できないか途中で落ちて検査が終わらなかったときは 2（理由は stderr だけ。`--json` では `{"ok": false, "status": "crashed", "counts": {…すべて 0}, "results": []}` で、「エラー 0」とは見分けがつき、指摘にもならない）。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告の指摘は、どこか（スライドの番号・見出し・id・ステップ）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の規格があればその名前（`（R-title）` など）を添える。そのまま修正依頼に貼れる。`--lang` は指摘の言語（既定は教材の `<html lang>`。`ja` かなければ日本語、ほかは英語）。
 
 `--json` の形：
 
@@ -552,7 +552,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 
 | コマンド | 用途 |
 |---|---|
-| `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいなテンプレートから新しい作業フォルダ（`deck.html` と `narration.md`、`"componentsCatalogue": "2"` の `egatari.json`）を作る。空でないフォルダには書かない |
+| `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいなテンプレートから新しい作業フォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
 | `npm run ids -- <作業フォルダ \| deck.html> [--dry-run]` | id のないスライドに新しい id（`s-` と base32 の 6 字、乱数）を付け、`narration.md` の見出しを `## 見出し {#id}` にし、`audio/manifest.json`・`timeline.json`・`comments.json` と `data-morph="…"` の鍵を付け替える。音声は作り直さない。控えは `.cache/edits/`、改行はそのまま、2 回目は何も変えない。鍵の重なり・id の衝突・規則に合わない id のある教材では何もしない |
 | `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only] [--without-live-results]`・`npm run portable -- attach <フォルダ> <results.json>`・`npm run portable -- compare <ファイル> <フォルダ>` | Egatari ファイル ↔ フォルダ。[Egatari ファイル](#egatari-ファイル--portable) |
 | `npm run player:check [-- --strict]`・`npm run player:bump -- patch\|minor\|major` | 同梱のプレーヤー（Egatari Player）：そのファイル（`kit/core/player.mjs` の `PLAYER_FILES`）を `kit/player.lock.json` のリリースと比べる（知らせるだけ。`--strict` は違えば失敗。リリース候補の前に）。bump は新しい版を `kit/player.json` と lock に書き、`changes/player-<版>.md` を足す。[RELEASING.ja.md](../RELEASING.ja.md) |

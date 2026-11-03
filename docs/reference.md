@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=60ec8f94b22b542f -->
+<!-- i18n: pair=reference.ja.md sha256=6db925fabc656b03 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -270,7 +270,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Shift+→ / Shift+↓, Shift+← / Shift+↑ | next / previous slide (step 0) |
 | Home / End | first / last slide |
 | digits + Enter | go to that slide |
-| f | fullscreen |
+| f | fullscreen (where the browser has element fullscreen; on iPhone Safari, or framed without the fullscreen permission, the bar has no fullscreen button and the key list leaves f out; when the browser refuses, the player says “Could not go fullscreen”) |
 | p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | show later steps faintly (on/off) |
@@ -379,7 +379,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps`, … in the [authoring guide](authoring-with-llms.md)), the **quality check** that reports **findings** against them, and the **fix request** that hands the findings to an AI. The quality checker comes as a command (`npm run check`, below, with every check) and in the browser ([editor app](editor.md), a subset).
 
-`node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the lesson's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
+`node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the lesson's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
 
 `--json` prints:
 
@@ -553,7 +553,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sc
 
 | Command | Purpose |
 |---|---|
-| `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new working folder (`deck.html` + `narration.md`, and `egatari.json` with `"componentsCatalogue": "2"`) from a clean template; refuses a non-empty folder |
+| `npm run new -- <folder> [--lang en\|ja] [--theme name] [--title "…"]` | new working folder (`deck.html` + `narration.md`) from a clean template; refuses a non-empty folder |
 | `npm run ids -- <working folder \| deck.html> [--dry-run]` | give every slide without an id a new id (`s-` + 6 random base32 characters), rewrite `narration.md` headings to `## heading {#id}`, rename the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `data-morph="…"`; audio is not re-synthesized. Backups go to `.cache/edits/`, line endings are kept, a second run changes nothing. Refuses a lesson with duplicate keys, id collisions or invalid ids |
 | `npm run portable -- unpack <file> <dir> [--force]`, `npm run portable -- pack <dir> [-o file] [--play-only] [--without-live-results]`, `npm run portable -- attach <dir> <results.json>`, `npm run portable -- compare <file> <dir>` | Egatari file ↔ folder; see [Egatari file](#egatari-file---portable) |
 | `npm run player:check [-- --strict]`, `npm run player:bump -- patch\|minor\|major` | the bundled player (Egatari Player): compare its files (`PLAYER_FILES` in `kit/core/player.mjs`) with the release in `kit/player.lock.json` (information only; `--strict` fails when they differ, for the release candidate); bump writes the new version to `kit/player.json` and the lock and adds `changes/player-<version>.md`. See [RELEASING.md](../RELEASING.md) |

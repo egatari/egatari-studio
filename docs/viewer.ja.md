@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.md sha256=0fccfada980331f9 -->
+<!-- i18n: pair=viewer.md sha256=033a121981e4af91 -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語
@@ -32,6 +32,7 @@ Egatari ファイルを Web ページとして開けない場面があるため�
 - `srcdoc` の文書は、ページ自身の決まりも受け継ぎ、両方が効きます。そのため、ページの決まりはインラインのスクリプトとスタイルを許します（教材が使うため）。ページ自身はインラインを使わず、スクリプトはすべてファイルで、ファイルやサービスから来た字（題・ファイル名・ライブの字・リンクのアドレス）はどれも字として入れ、マークアップにはしません。ほかはできるだけ狭くし、`tools/test-play.mjs` がそのまま確かめます：`default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src data: blob:; connect-src 'self' https://live.egatari.org wss://live.egatari.org; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`（`connect-src 'self'` は service worker が入るときのため。Android の共有はシステムからの POST で、ページのフォームではないので `form-action 'none'`）。**次の案：**教材の枠を専用のパス（例 `/frame`）から見出しの CSP つきで配り、`srcdoc` でなく知らせで中身を渡せば、ページの決まりが教材に受け継がれなくなり、`'unsafe-inline'` を外せます。ページの `connect-src` にはライブの部屋の endpoint がありますが、教材の先頭部分がそれを `'none'` に絞るので、部屋につなげるのはページだけです。
 - **ファイル自身の CSP の `<meta>`**（ライブを付けた再生専用のファイルに入るもの。live §2.4。形式の 1.0 からはすべてのファイルに入る：format spec §4.2）は、先頭部分の後の教材の `<head>` の中に入り、これも効きます。ブラウザはすべての決まりを満たすことを求めるので、教材には 3 つのうちいちばん狭いものが効きます。その `connect-src`（ライブの endpoint）は枠の中では意味を持ちません。**`deck-extensions` のブロック**はデータで、ページが何も実行しない解析（`play/scan.mjs`。上限つきの parse5）で自分で読みます。教材の中のライブの部分（`kit/live.js`）は、枠の中にいるのでつなぎません（live §2.1）。ライブはページの側に出すので、教材の中のライブの印と板は、先頭部分の規則で隠します（「ここからは参加できません」としか言えないため）。`tools/test-play.mjs` は、§4.2 の基本の決まり（`connect-src 'none'` と `liveCsp` の形）を持たせた試験用のファイルの写しを再生し、教材からの fetch がファイルの決まりと先頭部分の決まりの両方に引っかかることを確かめます。
 - 枠からの知らせは信頼しない頼みです。その枠（`event.source`）から、origin が `"null"` のものだけを、次の形だけ受けます：位置の知らせ（仕様 §9.4 の `position`、またはプレーヤーの前からの `deck-pos`）と、リンクの頼み `{egatari: "openLink", href, text, download?}`（仕様 §9.4。この項目だけ、`text` は 200 字まで、`download` は `true` だけで、`download` 属性のあるリンクのときに付く）。ほかは無視します。仲立ちが `openLink` を送るのは、参加者自身の操作（枠に一時的な操作の印がある本物のクリック）のときだけで、教材のスクリプトが作ったクリックでは何も送りません。教材のコードが自分でこの知らせを送ることはできるので、ページは信頼せず、§11 を自分で当て、自分の箱で押されるまで何も開きません。（Studio の編集のプレビューにはこの知らせはなく、プレーヤーが行き先を見せるだけで開く手段は出しません。§11 (g)）
+- **全画面。** 枠には全画面の許可がありません（`allow` に `fullscreen` がなく、ページの `Permissions-Policy` は `fullscreen=(self)`）。教材が自分で画面を取ることはできません。それでも、プレーヤーの「全画面」のボタンと `f` は使えます。仲立ちが教材の文書の全画面の API（`requestFullscreen`・`exitFullscreen`・`fullscreenElement`・`fullscreenEnabled`、`webkit` の付いた名前と `fullscreenchange` の出来事）を、ページに `{egaViewer: "fullscreen", on}` と頼むものに置き換えます。ページは枠の要素そのものを全画面にし（`requestFullscreen`、古い iPadOS では `webkitRequestFullscreen`）、`{egaViewer: "fullscreen-state", on, enabled, refused?}` を返します。参加者が Esc や端末の操作で抜けたときも返します。そのため、ファイルの中のどのプレーヤー（古い版も）でも、入る・抜ける・ボタンの表示が正しく動きます。ブラウザが全画面にするのは参加者自身の操作のとき（枠の中のタップがページに届く）だけなので、教材のスクリプトだけでは全画面にできません。ページは、その枠からの、この形のままの頼みだけを受けます。`allow="fullscreen"` にしないわけ：Safari（iPad のエンジン）は opaque origin の `srcdoc` の枠ではこれを無視し（`allow="fullscreen *"` が要る）、しかも教材にページとは別の自分の全画面を与えてしまうからです。要素の全画面がないブラウザ（iPhone の Safari）では、プレーヤーは全画面のボタンを出さず、キーの一覧にも `f` を載せません。画面を広く使う方法は、最初の画面の「ホーム画面に追加」の 1 行がすでに案内しています。`tools/test-fullscreen.mjs` がこれらを Chromium と WebKit で確かめます。
 
 ## リンク
 
@@ -121,5 +122,5 @@ node tools/build-play.mjs [--out _play] [--live-endpoint https://live.example.or
 
 - iOS のラッパーのアプリ（後で）。
 - 質問に付けてスライドに丸を描くことを、ページを通して行うこと。
-- 教材からの印刷と添付の保存（枠に `allow-modals` も `allow-downloads` もない）。ページ自身の全画面のボタン。
+- 教材からの印刷と添付の保存（枠に `allow-modals` も `allow-downloads` もない）。ページ自身の帯の全画面のボタン（プレーヤーのボタンと `f` は、上のとおりページを通して使える）。
 - OS からファイルを直接開くこと（パソコンの `file_handlers`）。
