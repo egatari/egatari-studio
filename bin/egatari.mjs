@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { readHead } from '../kit/bounded-read.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -96,7 +97,7 @@ function oldSkillLinks(home = os.homedir()) {
     let dead = false;
     try { fs.statSync(p); } catch { dead = true; }
     if (dead) { out.push({ path: p, why: 'dead link / 切れたリンク' }); continue; }
-    try { if (fs.readFileSync(path.join(p, 'SKILL.md'), 'utf8').includes(STUB_MARK)) out.push({ path: p, why: 'moved notice / 移動のお知らせ' }); } catch { /* 他のスキルは対象外 */ }
+    try { if (readHead(path.join(p, 'SKILL.md'), 4096).toString('utf8').includes(STUB_MARK)) out.push({ path: p, why: 'moved notice / 移動のお知らせ' }); } catch { /* 他のスキルは対象外 */ }
   }
   return out;
 }
