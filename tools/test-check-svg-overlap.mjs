@@ -1,6 +1,7 @@
 // 図の中の重なる字（backlog #139）。元デッキの P5・P7 と、座標・逆向きの辺を直した対。
 // コマンド版とプレビュー版、段階の可視性、意図した重ね字、空白・複数行の空所、既存の部品の見本を確かめる。
 //   node tools/test-check-svg-overlap.mjs [作業フォルダ]
+import { innerJa } from '../kit/core/quote-ja.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -112,7 +113,7 @@ try {
       expectPairs(j.results, (x) => x.id, (x) => x.data);
       for (const x of overlaps(j.results)) {
         assert.equal(x.rule, 'R-fit');
-        assert.ok(x.msg.includes(x.title), x.msg);
+        assert.ok(x.msg.includes(lang === 'ja' ? innerJa(x.title) : x.title), x.msg);   // 日本語では見出しの中の「」が『』になる（kit/core/quote-ja.mjs）
         expectHint(x.msg, lang, x.data.component);
       }
     }
