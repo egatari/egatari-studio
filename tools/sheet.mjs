@@ -35,11 +35,13 @@ export async function sheet(arg, o = {}) {
   let page = null, tmp = null, base;
   const st = (() => { try { return fs.statSync(arg); } catch { return null; } })();
   if (!st) throw new Error(`${arg}: no such file or folder`);
-  if (st.isDirectory()) base = path.join(arg, 'out', o.steps ? 'steps.png' : 'sheet.png');
-  else base = path.join(path.dirname(arg), path.basename(arg).replace(/(\.ega)?\.html?$/i, '') + (o.steps ? '.steps.png' : '.sheet.png'));
   // 組んだ HTML（実行部分を含む）と .ega.html はそのまま開く。デッキの原稿（deck.html）は組んでから開く
+  const source = st.isDirectory() || (!/\.ega\.html$/i.test(arg) && !/DECK\.ready/.test(readRegular(arg, { max: READ_LIMITS.source }).toString('utf8')));
+  // 出力：作業フォルダと原稿は <作業フォルダ>/out/（組んだものの置き場。原稿の横に書かない）、組んだ HTML と .ega.html はその横
+  if (source) base = path.join(st.isDirectory() ? arg : path.dirname(arg), 'out', o.steps ? 'steps.png' : 'sheet.png');
+  else base = path.join(path.dirname(arg), path.basename(arg).replace(/(\.ega)?\.html?$/i, '') + (o.steps ? '.steps.png' : '.sheet.png'));
   let target = arg;
-  if (st.isDirectory() || (!/\.ega\.html$/i.test(arg) && !/DECK\.ready/.test(readRegular(arg, { max: READ_LIMITS.source }).toString('utf8')))) {
+  if (source) {
     const r = build(resolveDeckArg(arg), {});
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-sheet-'));
     target = path.join(tmp, 'deck.html');
