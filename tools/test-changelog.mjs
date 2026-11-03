@@ -120,7 +120,7 @@ ok('--release refuses entries under Unreleased, rc versions, and no fragments', 
 
 ok('--rc sets only the versions; npm.yml\'s tag check accepts the rc tag, then the release tag', () => {
   // npm.yml の「tag equals package.json version」の手順そのものを取り出して、一時のリポジトリで走らせる
-  const yml = fs.readFileSync(path.join(path.dirname(TOOL), '..', '.github', 'workflows', 'npm.yml'), 'utf8');
+  const yml = fs.readFileSync(path.join(path.dirname(TOOL), '..', '.github', 'workflows', 'npm.yml'), 'utf8').replace(/\r\n/g, '\n');   // Windows の CRLF
   const m = /- name: tag equals package\.json version\n\s+run: \|\n((?:[ ]{10}.*\n)+)/.exec(yml);
   assert.ok(m, 'npm.yml has the tag check step');
   const script = m[1].replace(/^ {10}/gm, '');
