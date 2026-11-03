@@ -7,8 +7,11 @@
 // 1 つの教材の部品庫の要素は全部 1.x か全部 2.0（同じ要素の名前 m-bars を 2 つの土台で定義できないため）。
 //
 // components2.lock.json：
-//   {source, default: <カタログの版>, catalogues: {<カタログの版>: {tag, tarballSha256, manifestSha256, parts: {名前: パーツの版}}},
+//   {source, default: <カタログの版>, catalogues: {<カタログの版>: {tag, tarballSha256, manifestSha256, parts: {名前: パーツの版}, content?: {名前: <フォルダの content hash>}}},
 //    parts: {名前: {<パーツの版>: {sha256, kind: "element" | "library", tag?, requires: {名前: 版}, build?, glyphs?, license}}}}
+//   catalogues.<版>.content：そのリリースの manifest の files とちょうど同じバイトの写し（vendor/components/sha256/<hash>/）。部品庫は版を
+//   上げずに README・demo だけを直すことがあるので、カタログごとに持つ（resolveCatalogueContent で引く）。ない古い固定は版の写しに戻る。
+//   組み立てが読む index.js は、同じ版ならどの写しでも同じ（components.lock.json の content.<版> の写しを使い続ける：組んだ教材は変わらない）
 import { parse } from 'parse5';
 export const LOCK2_FILE = 'components2.lock.json';
 // カタログの manifest と使用条件だけの場所。パーツのコードは resolveComponent で引く。
@@ -29,6 +32,13 @@ export function lock2Problems(lock) {
     if (!VERSION_RE.test(cv)) e.push(`catalogue ${cv}: not a version`);
     if (!isObj(c) || !isObj(c.parts)) { e.push(`catalogue ${cv}: no parts`); continue; }
     for (const [n, v] of Object.entries(c.parts)) if (!isObj(lock.parts[n]) || !isObj(lock.parts[n][v])) e.push(`catalogue ${cv}: ${n}@${v} is not in parts`);
+    if (own(c, 'content')) {
+      if (!isObj(c.content)) e.push(`catalogue ${cv}: content is not an object`);
+      else {
+        for (const n of Object.keys(c.parts)) if (!own(c.content, n) || !/^[0-9a-f]{64}$/.test(String(c.content[n]))) e.push(`catalogue ${cv}: content.${n} is not a sha256`);
+        for (const n of Object.keys(c.content)) if (!own(c.parts, n)) e.push(`catalogue ${cv}: content.${n} is not a part of the catalogue`);
+      }
+    }
   }
   for (const [n, vs] of Object.entries(lock.parts)) {
     if (!NAME_RE.test(n)) { e.push(`part ${n}: not a part name`); continue; }

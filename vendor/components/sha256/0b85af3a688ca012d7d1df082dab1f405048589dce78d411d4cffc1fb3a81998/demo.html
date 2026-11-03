@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-collect の見本</title>
+<!-- 組み方：node kit/build.mjs components/collect/demo.html -o components/collect/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>観測の要約</h2>
+  <div class="body">
+    <p data-step="1">8 回の観測は，事後分布の 2 つのモーメントにまとまる</p>
+    <!-- 見本の数値：8 回のコイン投げ（表なら 1：1 1 0 1 1 0 1 1）から、一様な事前分布 Beta(1,1) のもとでの事後平均 7/10 と事後分散 21/1100。
+         式（tex）は組み立てのときに描く（spec §6.2）ので、データは原稿に書く（再生のときにスクリプトで作ったデータの式は描かれない） -->
+    <m-collect data-from="2" box-w="300" box-h="120" style="height:340px">
+      <script type="application/json">{"cols": 4,
+        "chips": [{"label": "試行 1：表", "to": [0, 1]}, {"label": "試行 2：表", "to": [0, 1]}, {"label": "試行 3：裏", "to": [0, 1]}, {"label": "試行 4：表", "to": [0, 1]},
+                  {"label": "試行 5：表", "to": [0, 1]}, {"label": "試行 6：裏", "to": [0, 1]}, {"label": "試行 7：表", "to": [0, 1]}, {"label": "試行 8：表", "to": [0, 1]}],
+        "targets": [{"label": "事後平均", "tex": "\\mathrm{E}[\\theta\\mid D]", "value": "0.700"},
+                    {"label": "事後分散", "tex": "\\mathrm{Var}[\\theta\\mid D]", "value": "0.0191"}]}</script>
+    </m-collect>
+  </div>
+  <div class="concl"><span>→ 次の予測には，この 2 つの値だけ持てばよい</span></div>
+</section>
+
+</div>
+</body>
+</html>

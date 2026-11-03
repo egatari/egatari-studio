@@ -1,6 +1,6 @@
 // パーツのサンプルのページ（tools/parts-gallery.mjs、backlog #158）の試験
 // test-all: unit
-//   node tools/test-parts-gallery.mjs            ブラウザなし・ネットワークなし（数秒）：道具の写しが SOURCE.json と合う・前の版の選び方・
+//   node tools/test-parts-gallery.mjs            ブラウザなし・ネットワークなし（数秒）：道具の写しが SOURCE.json と合う・前の版の選び方・取り込んだどのカタログも組める・
 //                                                取り込んだ 2.1.1 の写しだけから gallery.mjs --pack が教材を書く（パーツ・まとまり・枚数・2.1.0 と比べた印）・
 //                                                写しが manifest と違えば断る・編集アプリのリンクの URL・版の一覧のページ
 //   node tools/test-parts-gallery.mjs --build    組み立てと検査（約 2〜5 分、ブラウザが要る。CI の tier2）：build-app --parts の出力に /parts/v<版>/index.html と
@@ -43,6 +43,13 @@ ok(deck.includes('m-hissan（変わった') && deck.includes('m-boxplot（変わ
   !deck.includes('m-kakijun（変わった') && !deck.includes('m-kakijun（サンプルが変わった') &&
   deck.includes('<title>パーツのサンプル（v2.1.2）</title>') && !deck.includes('（新しい'),
   'marks against 2.1.1: every element but m-kakijun changed (code-only audit fixes across 37 parts), nothing new; Studio\'s words (パーツのサンプル)');
+// 取り込んだどのカタログも、そのカタログの写しから組める（gallery.mjs --pack は写しを manifest の各ファイルの sha256 と照らす。後のリリースが
+// 版を上げずに README・demo だけ直しても、前のカタログは前のバイトのまま：components2.lock.json の catalogues.<版>.content）
+for (const cv of Object.keys(lock2.catalogues).sort()) {
+  let gv = null, err = null;
+  try { gv = galleryDeck({ work: path.join(tmp, 'work-' + cv), catalogue: cv }); } catch (e) { err = e; }
+  ok(gv && gv.parts > 30 && gv.slides > 150, `catalogue ${cv}: the gallery builds from its own vendored copy${gv ? ` (${gv.parts} parts, ${gv.slides} slides)` : ': ' + String(err && err.message).slice(0, 300)}`);
+}
 const g0 = galleryDeck({ work: path.join(tmp, 'work0'), catalogue: '2.1.2', previous: 'none' });
 ok(g0.slides === 175 && !fs.readFileSync(path.join(tmp, 'work0', 'deck.html'), 'utf8').includes('（変わった'), '--previous none: no marks');
 // 写しが manifest と違えば gallery.mjs が断る（取り込みの写しを手で直していないことの確かめ）

@@ -13,7 +13,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
-import { resolveComponent } from '../kit/core/components-lock.mjs';
+import { resolveCatalogueContent } from '../kit/core/components-lock.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -39,7 +39,7 @@ const decks = [];
 for (const tag of picked) {
   const name = nameOf(tag);
   if (!name) continue;
-  const dir = resolveComponent(path, ROOT, lock, name, cat.parts[name]);
+  const dir = resolveCatalogueContent(path, ROOT, lock, lock2, lock2.default, name, cat.parts[name]);
   const demo = dir && path.join(dir, 'demo.html');
   if (!demo || !fs.existsSync(demo)) { ok(false, `${tag}: catalogue ${lock2.default} has a demo (${name}@${cat.parts[name]})`); continue; }
   const d = path.join(out, name);

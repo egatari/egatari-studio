@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { LOCK_FILE, VENDOR_COMPONENTS, parseLock, resolveComponent } from '../kit/core/components-lock.mjs';
+import { LOCK_FILE, VENDOR_COMPONENTS, parseLock, resolveComponent, resolveCatalogueContent } from '../kit/core/components-lock.mjs';
 
 // components2.lock.json の名前（kit/core/parts2.mjs の LOCK2_FILE と同じ値）。parts2.mjs 自体は import しない：
 // parts2.mjs は parse5 に依存し、この道具（tools/vendor-components.mjs）は tools/make-llm-guide.mjs から
@@ -26,8 +26,8 @@ export function vendorComponents(root = ROOT) {
 // components2.lock.json の既定のカタログのうち、1.x の目録（vendorComponents）に出ない要素パーツ：
 // components.lock.json でその部品が catalogue: "2"（1.x の目録から外れている）、かつ components2.lock.json の
 // その版が kind: "element"（kind: "library" の土台パーツ（base・expr・markup-reader・plot・shape・icons …）は含めない）。
-// 写しの場所は components.lock.json の content 表で引く（kit/core/parts2.mjs 冒頭の注記のとおり、パーツのコードは
-// components2.lock.json ではなく components.lock.json 側で解決する）。
+// 写しの場所はそのカタログの写し（components2.lock.json の catalogues.<版>.content。README・demo がそのリリースのバイト）。
+// content のない古い固定なら components.lock.json の content 表（版の写し）に戻る（resolveCatalogueContent）。
 // 返すもの：{catalogue, parts: [{name, version, dir}]}（名前の順）
 export function vendorComponents2(root = ROOT) {
   const lock = parseLock(fs.readFileSync(path.join(root, LOCK_FILE), 'utf8'));
@@ -42,7 +42,7 @@ export function vendorComponents2(root = ROOT) {
     return !!part && part.kind === 'element';
   }).sort().map((name) => {
     const version = cat.parts[name];
-    return { name, version, dir: resolveComponent(path, root, lock, name, version) };
+    return { name, version, dir: resolveCatalogueContent(path, root, lock, lock2, catalogue, name, version) };
   });
   return { catalogue, parts };
 }
@@ -59,7 +59,7 @@ export function vendorLibrary2(root = ROOT, name) {
   const part = lock2.parts[name] && lock2.parts[name][version];
   const c = lock.components[name];
   if (!part || part.kind !== 'library' || !c || c.catalogue !== '2') return null;
-  return { name, version, dir: resolveComponent(path, root, lock, name, version) };
+  return { name, version, dir: resolveCatalogueContent(path, root, lock, lock2, lock2.default, name, version) };
 }
 
 // 編集アプリに入れるもの：[アプリの中の場所 /repo/…, ファイル] の配列。固定のファイルと、取り込んだすべての版の index.js

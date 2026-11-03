@@ -31,7 +31,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
-import { parseLock, resolveComponent, LOCK_FILE } from '../kit/core/components-lock.mjs';
+import { parseLock, resolveCatalogueContent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom } from '../kit/core/purposes.mjs';
@@ -59,7 +59,7 @@ export function catalogue() {
   const lock2 = JSON.parse(read('components2.lock.json'));
   const v = lock2.default, cat = lock2.catalogues[v];
   if (!cat) throw new Error(`components2.lock.json: default ${v} is not a catalogue`);
-  return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts };
+  return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts, lock2 };
 }
 // 束の並び：manifest の専門の部品の set を SET_ORDER の順に
 export function setsOf(manifest) {
@@ -268,7 +268,7 @@ function components(cat, sets) {
     if (c.kind !== 'element' || !c.tag) continue;
     const v = cat.parts[name];
     if (!v) throw new Error(`components2.lock.json: catalogue ${cat.version} has no version of ${name}`);
-    const dir = resolveComponent(path, ROOT, lock, name, v);
+    const dir = resolveCatalogueContent(path, ROOT, lock, cat.lock2, cat.version, name, v);
     const file = `${name}@${v} (${path.relative(ROOT, dir).split(path.sep).join('/')}/README.md)`;
     if (!fs.existsSync(path.join(dir, 'README.md'))) throw new Error(`${file} is missing (npm run components:update)`);
     const [fm, body] = frontmatter(read(path.relative(ROOT, path.join(dir, 'README.md'))));

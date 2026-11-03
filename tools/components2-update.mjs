@@ -8,8 +8,11 @@
 // 書くもの：vendor/components/sha256/<hash>/（components.lock.json の content 表で引く）、vendor/components-2/LICENSE、
 // vendor/components-2/manifest-<カタログの版>.json（バイトのまま）、components2.lock.json（kit/core/parts2.mjs）。
 // 同じパーツの同じ版がもうあれば：index.js の同一性の sha256（manifest の components.<名前>.sha256）が前と同じなら、ほかのファイル
-// （README・demo など）だけが違ってもそのリリースの写しに直し、components.lock.json の content の行き先を書き替える（「refreshed」と出す。
-// 版は付け替えていない：index.js は同じ、変わるのは参考・見本の文書だけ）。index.js の sha256 が前と違えば断る（版を付け替えずに中身を
+// （README・demo など）だけが違っても受け入れ、このリリースのバイトの写しを別に置く（「refreshed」と出す。版は付け替えていない：index.js は
+// 同じ、変わるのは参考・見本の文書だけ）。どの写しを使うかはカタログごとに components2.lock.json の catalogues.<版>.content に書く：
+// 前に取り込んだカタログは前のリリースのバイトのまま（そのカタログの manifest の files と合う。凍結した gallery もそのまま組める）。
+// components.lock.json の content.<版>（組み立てが index.js を読む写し）は最初に取り込んだときのまま変えない（組んだ教材のバイトを変えない）。
+// どのカタログも使わなくなった写しは消さない（取り込みは足すだけ）。index.js の sha256 が前と違えば断る（版を付け替えずに中身を
 // 変えた部品庫側の誤り。format spec §6.1）。どちらで決めるかは常にファイルの中身の sha256（manifest.json の各ファイルの値、format spec §6）
 // から作った hash で、部品庫がどこかに書くかもしれない「無印の版替え」の印など、申告には頼らない。
 // 既定のカタログ（default）は、初めての取り込みか --default のときだけ変える（教材は既定で 1.x のまま。2.0 を選ぶのは教材の設定）
@@ -93,7 +96,7 @@ export function applyRelease2(rel, { root = ROOT, makeDefault = false } = {}) {
   if (prev && prev.tarballSha256 !== rel.tarballSha256) throw new Error(`${rel.tag} was imported before with tarball sha256 ${prev.tarballSha256}; now ${rel.tarballSha256}. Ask the components maintainer (a moved tag must not change what an imported catalogue means)`);
   const contentFile = path.join(root, LOCK_FILE);
   const contentLock = fs.existsSync(contentFile) ? parseLock(fs.readFileSync(contentFile, 'utf8')) : { source: SOURCE, components: {} };
-  const plan = [], refreshed = [];
+  const plan = [], refreshed = [], catContent = {};
   for (const [name, p] of Object.entries(rel.parts)) {
     const c = contentLock.components[name] ||= { default: p.version, versions: [], sha256: {}, content: {}, catalogue: '2' };
     // 同じ版の index.js は変わらない約束（format spec §6.1）：違えば、版を付け替えずに中身を変えた部品庫側の誤り
@@ -101,13 +104,14 @@ export function applyRelease2(rel, { root = ROOT, makeDefault = false } = {}) {
     const had = lock.parts[name] && lock.parts[name][p.version];
     if (had && had.sha256 !== p.record.sha256) throw new Error(`${name}@${p.version} is already vendored with index.js sha256 ${had.sha256}; this release has ${p.record.sha256}. A part version is never replaced`);
     for (const f of p.files.keys()) if (safePath(f)) throw new Error(`${name}/${f}: ${safePath(f)}`);
-    // 中身の行き先は、この版の index.js がまだ記録どおりの、いまのリリースのファイル（README・demo なども含む、format spec §6 の各ファイルの
-    // 同一性の sha256 から作る一つの hash）。index.js は変わらないが、ほかのファイルだけがカタログの間で変わることがある（取り下げではない直し）。
+    // このカタログの写しは、このリリースのファイル（README・demo なども含む、format spec §6 の各ファイルの同一性の sha256 から作る一つの hash）。
+    // index.js は変わらないが、ほかのファイルだけがカタログの間で変わることがある（取り下げではない直し）。前のカタログの行き先は変えない
     const newHash = contentHash(p.files), oldHash = c.content && c.content[p.version];
     const dest = path.join(vendorDir(path, root), 'sha256', newHash);
     if (!c.versions.includes(p.version)) c.versions.push(p.version);
     c.sha256[p.version] = p.record.sha256;
-    (c.content ||= {})[p.version] = newHash;
+    if (!oldHash) (c.content ||= {})[p.version] = newHash;
+    catContent[name] = newHash;
     const isRefresh = Boolean(oldHash && oldHash !== newHash);
     if (isRefresh) refreshed.push({ name, version: p.version, oldHash, newHash });
     if (fs.existsSync(dest)) {
@@ -117,7 +121,7 @@ export function applyRelease2(rel, { root = ROOT, makeDefault = false } = {}) {
       if (contentHash(new Map(have.map((f) => [f, fs.readFileSync(path.join(dest, f))]))) === newHash) continue;
       throw new Error(`${dest}: content hash mismatch`);
     }
-    plan.push([name, dest, p, isRefresh]);
+    if (!plan.some(([, d]) => d === dest)) plan.push([name, dest, p, isRefresh]);
   }
   for (const [, dest, p] of plan) {
     const tmp = dest + '.tmp-' + process.pid;
@@ -127,18 +131,13 @@ export function applyRelease2(rel, { root = ROOT, makeDefault = false } = {}) {
     fs.mkdirSync(path.dirname(dest), { recursive: true });
     fs.renameSync(tmp, dest);
   }
-  // 直した版の前の写しは、消す前にほかのパーツ・版がまだ使っていないか確かめる（content-addressed の置き場は共有される）
-  if (refreshed.length) {
-    const stillUsed = new Set();
-    for (const cc of Object.values(contentLock.components)) for (const h of Object.values(cc.content || {})) stillUsed.add(h);
-    for (const r of refreshed) if (!stillUsed.has(r.oldHash)) fs.rmSync(path.join(vendorDir(path, root), 'sha256', r.oldHash), { recursive: true, force: true });
-  }
   fs.mkdirSync(base, { recursive: true });
   if (rel.license) fs.writeFileSync(path.join(base, 'LICENSE'), rel.license);
   fs.writeFileSync(path.join(base, `manifest-${rel.version}.json`), rel.manifest);
   lock.source = SOURCE;
   lock.catalogues[rel.version] = { tag: rel.tag, tarballSha256: rel.tarballSha256, manifestSha256: sha(rel.manifest),
-    parts: Object.fromEntries(Object.keys(rel.parts).sort().map((n) => [n, rel.parts[n].version])) };
+    parts: Object.fromEntries(Object.keys(rel.parts).sort().map((n) => [n, rel.parts[n].version])),
+    content: Object.fromEntries(Object.keys(rel.parts).sort().map((n) => [n, catContent[n]])) };
   for (const [name, p] of Object.entries(rel.parts)) (lock.parts[name] ||= {})[p.version] = p.record;
   if (makeDefault || !lock.default || !lock.catalogues[lock.default]) lock.default = rel.version;
   const ordered = {
@@ -176,6 +175,25 @@ export function checkVendor2(root = ROOT) {
         const files = new Map(listFiles(dir).map((f) => [f, fs.readFileSync(path.join(dir, f))]));
         if (contentHash(files) !== contentLock.components[name].content[v]) e.push(`${name}@${v}: content hash mismatch`);
       } catch (err) { e.push(err.message); }
+    }
+  }
+  // カタログごとの写し：そのリリースの manifest の files（パーツのフォルダの各ファイルの同一性の sha256）とちょうど同じか
+  for (const [cv, cat] of Object.entries(lock.catalogues)) {
+    if (!isObj(cat.content)) { e.push(`${LOCK2_FILE}: catalogue ${cv} has no content (run node tools/components2-update.mjs v${cv} again)`); continue; }
+    let m = null;
+    try { m = JSON.parse(fs.readFileSync(path.join(base, `manifest-${cv}.json`), 'utf8')); } catch { /* 下で manifest がないと言う */ }
+    const want = isObj(m) && isObj(m.files) ? m.files : null;
+    for (const [name, v] of Object.entries(cat.parts)) {
+      const hash = cat.content[name], dir = path.join(vendorDir(path, root), 'sha256', hash);
+      if (!fs.existsSync(dir) || fs.lstatSync(dir).isSymbolicLink()) { e.push(`catalogue ${cv}: ${name}@${v}: vendor/components/sha256/${hash} is missing`); continue; }
+      let files;
+      try { files = new Map(listFiles(dir).map((f) => [f, fs.readFileSync(path.join(dir, f))])); } catch (err) { e.push(err.message); continue; }
+      if (contentHash(files) !== hash) { e.push(`catalogue ${cv}: ${name}@${v}: content hash mismatch`); continue; }
+      if (!files.has('index.js') || sha(normalizeEol(files.get('index.js'))) !== lock.parts[name][v].sha256) e.push(`catalogue ${cv}: ${name}@${v}: index.js does not match ${LOCK2_FILE}`);
+      if (!want) continue;
+      const listed = Object.keys(want).filter((f) => f.startsWith(name + '/')).map((f) => f.slice(name.length + 1));
+      for (const f of listed) if (!files.has(f) || sha(identityBytes(`${name}/${f}`, files.get(f))) !== want[`${name}/${f}`]) e.push(`catalogue ${cv}: ${name}/${f} does not match manifest-${cv}.json`);
+      for (const f of files.keys()) if (!listed.includes(f)) e.push(`catalogue ${cv}: ${name}/${f} is not in manifest-${cv}.json`);
     }
   }
   for (const d of fs.existsSync(base) ? fs.readdirSync(base, { withFileTypes: true }) : []) {
