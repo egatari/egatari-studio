@@ -15,6 +15,8 @@ All files are 48 kHz mono at −20 LUFS (the TTS models expect 48 kHz; a 16 kHz 
 
 They may be used and redistributed with this project (MIT). Label audio made with them as AI-generated.
 
+The npm package `egatari` does not carry these wav files: `egatari tts` downloads the ones it needs from this repository at the tag in `../voices.json`, checks each against the sha256 there, and keeps them in the user's cache folder (`<cache>/egatari/voices/<tag>/`). A checkout uses the files here. When a voice changes, update its sha256 and the tag in `../voices.json` (`tools/test-tts-voices.mjs` checks them).
+
 Put your own voices here as `<name>.wav` (and `<name>_en.wav` for English decks); other files in this folder are gitignored. Use only voices you have the right to use.
 
 Tip for a phone recording (20–30 s, a quiet room without echo): convert it to 16 kHz and back to 48 kHz. This removes the compression noise above 8 kHz, and the cloned voice sounds clearer:
@@ -28,6 +30,8 @@ For English decks, make `me_en.wav` by having VoxCPM2 read a fixed English text 
 ---
 
 既定の声。どれも合成した声で、実在の人の声を録ったりクローンしたりしたものではなく、特定の人やキャラクターに似せて作ったものでもない。上の表のモデルで作った（bob の元の声は Qwen3-TTS の VoiceDesign、alice の元の声は Irodori-TTS で、どちらも声の特徴を文章で指定して作った。その声をまねて、日本語は Irodori-TTS v4.1 Small に上の決まった文を、英語は VoxCPM2 に "Please call Stella" を読ませ、何回か作った中から耳で選んだ。Qwen3-TTS と VoxCPM2 は Apache-2.0、Irodori-TTS は MIT）。どれも 48 kHz・モノラル・−20 LUFS（TTS のモデルは 48 kHz を前提にする。16 kHz の参照音声だと mlx のサーバーで読む速さが変わった）。このプロジェクトと一緒に使い、配ってよい（MIT）。作った音声は AI で生成したものと分かるようにする。
+
+npm の包み `egatari` にはこの wav を入れていない。`egatari tts` が要るものを `../voices.json` のタグのこのリポジトリから取り寄せ、そこの sha256 と比べて、利用者のキャッシュのフォルダ（`<キャッシュ>/egatari/voices/<タグ>/`）に置く。checkout ではここのファイルを使う。声を変えたら `../voices.json` の sha256 とタグも直す（`tools/test-tts-voices.mjs` が確かめる）。
 
 自分の声は `<名前>.wav`（英語のデッキ用に `<名前>_en.wav`）としてここに置く。ほかのファイルは git 管理外。使う権利のある声だけを使うこと。
 

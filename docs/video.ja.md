@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=09c4c162b2bd968c -->
+<!-- i18n: pair=video.md sha256=c3e9fc6ce601cc88 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -14,7 +14,7 @@ TTS・動画のエクスポートの選択肢と環境変数の一覧は [refere
   - `POST {IRODORI_URL}/v1/audio/speech`：1 行ずつ合成。本体は JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<文>", "ref_audio": "<参照音声の wav のパス>", "response_format": "wav"}`。
     `ref_audio` はサーバーが読むパス（サーバーが別のマシンならそちらのパス）
-- 既定の参照音声 `bob` と `alice`（と `alice_en`・`bob_en`）は合成した声で、`tts/voices/` に入っている（[出どころ](../tts/voices/README.md)）。ほかの声は、wav を `<参照音声のフォルダ>/<名前>.wav` に置き、名前で指定する
+- 既定の参照音声 `bob` と `alice`（と `alice_en`・`bob_en`）は合成した声で、リポジトリの `tts/voices/` にある（[出どころ](../tts/voices/README.md)）。checkout ではそのファイルを使う。npm の包みには入れておらず、使う声がなければ初めての `egatari tts` が `https://raw.githubusercontent.com/egatari/egatari-studio/<タグ>/tts/voices/<名前>.wav` から取り寄せ（タグとファイルごとの sha256 は `tts/voices.json` に固定）、sha256 が合わなければ使わずに断り、合えば利用者のキャッシュのフォルダ（macOS は `~/Library/Caches/egatari/voices/`、Linux は `~/.cache/egatari/voices/`、Windows は `%LOCALAPPDATA%\egatari\voices\`）に置く。オフラインなら、手で落とす URL と置き場所を言って止まる。ほかの声は、wav を `<参照音声のフォルダ>/<名前>.wav` に置き、名前で指定する
 
 | 環境変数 | 意味 | 既定 |
 |---|---|---|

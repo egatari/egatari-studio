@@ -1,0 +1,7 @@
+# npm の包み egatari に入れないもの（package.json の files の中で。npm は README* を files の除外より優先して入れるので、ここで外す）。
+# 部品庫の写しのうち、組み立て・dev・check が読まない文書と見本。リポジトリの写しは全部のまま（編集アプリ・サンプルのページが使う）。
+# 包みでは index.js を固定と manifest のファイルごとの sha256 で確かめる（kit/vendor-verify.mjs、egatari doctor）。
+# Left out of the npm package: the parts' README, demo and changelog (the build, dev and check read only index.js).
+/components/sha256/*/README.md
+/components/sha256/*/demo.html
+/components/sha256/*/CHANGELOG.md

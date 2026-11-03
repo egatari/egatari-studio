@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=7403efc46897562d -->
+<!-- i18n: pair=README.md sha256=4a70df4369c4e884 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -84,7 +84,7 @@ Edge は最初からあるので、Chrome がなくても品質チェックと P
 - ffmpeg と ffprobe（`PATH` に置く）
 - uv（`tts/` の小さな Python プロジェクトを動かす）
 - OpenAI 互換の音声合成 API を持つ TTS のサーバー。たとえば [mlx-audio](https://github.com/Blaizzy/mlx-audio) で `mlx-community/Irodori-TTS-v4.1-Small-fp16`（日本語）か `mlx-community/VoxCPM2-8bit`（英語など）を動かす。場所は `IRODORI_URL`（既定 `http://localhost:8882`）。mlx-audio は Apple silicon の Mac でだけ動く。Windows・Linux では[ほかの TTS サーバー](docs/video.ja.md#tts-のサーバーmacwindowslinux)
-- 参照音声：既定の声 `bob` と `alice`（合成した声。日本語と英語）は `tts/voices/` に入っている（[詳しく](tts/voices/README.md)）。自分の声は `<名前>.wav` としてそこ（git 管理外）か `IRODORI_REF_DIR` に置く
+- 参照音声：既定の声 `bob` と `alice`（合成した声。日本語と英語）はリポジトリの `tts/voices/` にある（[詳しく](tts/voices/README.md)）。npm の包みには入れていない。使う声がなければ、初めての `egatari tts` がこのリポジトリの決まったタグから取り寄せ、`tts/voices.json` の sha256 と比べて利用者のキャッシュのフォルダ（macOS は `~/Library/Caches/egatari/voices/`、Linux は `~/.cache/egatari/voices/`、Windows は `%LOCALAPPDATA%\egatari\voices\`）に置く。自分の声は `<名前>.wav` としてそこ（git 管理外）か `IRODORI_REF_DIR` に置く
 
 ## はじめ方（段 1：スライド）
 
@@ -125,10 +125,10 @@ npx egatari new mytalk --lang ja      # mytalk/deck.html・mytalk/narration.md�
 npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html（--portable・--play-only などの組み立ての選択肢もそのまま使える）
 npx egatari dev mytalk/deck.html      # ブラウザで直す
 npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」になればよい
-npx egatari doctor                    # Node・uv・ffmpeg・ブラウザがあるか、ないものの入れ方
+npx egatari doctor                    # Node・uv・ffmpeg・ブラウザ・部品の写しがあるか、ないものの入れ方
 ```
 
-ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
+ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。パーツライブラリの写しは、組み立てが読む `index.js` と使用条件だけを入れる（README・見本・変更の記録は入れない。`egatari doctor` が `index.js` を `components.lock.json` と manifest のファイルごとの sha256 で確かめる）。TTS の既定の声は初めての `egatari tts` で取り寄せる（上の「要るもの」）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
 
 ## ブラウザで直す（開発サーバー）
 

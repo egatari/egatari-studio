@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=4054d844769712f1 -->
+<!-- i18n: pair=reference.ja.md sha256=2f4a82561ccd9278 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -489,7 +489,7 @@ Attachments are archive entries, so adding, removing or renaming files under `at
 | Option | Meaning |
 |---|---|
 | `--voices expert=a,novice=b` | voices (over `voice.json`) |
-| `--ref-dir DIR` | reference voice folder (over `IRODORI_REF_DIR`; default `tts/voices/`) |
+| `--ref-dir DIR` | reference voice folder (over `IRODORI_REF_DIR`; default `tts/voices/`, where the npm package downloads a missing default voice to the cache on first use; `tts/voices.json`) |
 | `--engine irodori\|voxcpm2` | over `voice.json` `engine` and the lesson language |
 | `--yomi FILE` | reading dictionary (over `MOTION_YOMI`; default `tts/yomi.yaml`). Japanese only |
 | `--only key,…` | only these steps (`slideKey:step`) |

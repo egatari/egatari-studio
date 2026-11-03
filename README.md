@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=790df57bc3cb2764 -->
+<!-- i18n: pair=README.ja.md sha256=ebc62d1130a5f6df -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -84,7 +84,7 @@ Edge is already there, so the quality checker and PDF work without Chrome. Run t
 - ffmpeg and ffprobe on `PATH`
 - uv (runs the small Python project in `tts/`)
 - A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`). mlx-audio runs only on a Mac with Apple silicon; on Windows and Linux, see [other TTS servers](docs/video.md#tts-server-mac-windows-linux)
-- Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are included in `tts/voices/` ([details](tts/voices/README.md)). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
+- Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are in `tts/voices/` of the repository ([details](tts/voices/README.md)). The npm package does not carry them: the first `egatari tts` that needs one downloads it from this repository at a pinned tag, checks its sha256 against `tts/voices.json` and keeps it in your cache folder (`~/Library/Caches/egatari/voices/` on macOS, `~/.cache/egatari/voices/` on Linux, `%LOCALAPPDATA%\egatari\voices\` on Windows). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
 
 ## Quick start (tier 1: slides)
 
@@ -125,10 +125,10 @@ npx egatari new mytalk --lang en      # creates mytalk/deck.html, mytalk/narrati
 npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html (--portable, --play-only and the other build options work too)
 npx egatari dev mytalk/deck.html      # edit in the browser
 npx egatari check mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
-npx egatari doctor                    # Node, uv, ffmpeg and a browser: what is there and how to install what is missing
+npx egatari doctor                    # Node, uv, ffmpeg, a browser and the parts: what is there and how to install what is missing
 ```
 
-`npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
+`npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`) and, of each vendored part, the `index.js` the build reads and its licence (not its README, demo or changelog; `egatari doctor` checks every `index.js` against `components.lock.json` and the manifests' per-file sha256). The default TTS voices are downloaded on the first `egatari tts` (see Requirements above). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
 
 ## Editing in the browser (dev server)
 

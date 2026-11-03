@@ -1,0 +1,11 @@
+{
+  "comment": "Default reference voices. The npm package does not carry the wav files: egatari tts downloads them from url (the files at a release tag of this repository) on first use, checks each against sha256 and keeps them in the user's cache folder (tts/refvoices.py). A checkout uses tts/voices/ directly. When a voice changes, set tag to a tag that has the new file and update its sha256 (tools/test-tts-voices.mjs checks that they match tts/voices/).",
+  "tag": "v0.6.3",
+  "url": "https://raw.githubusercontent.com/egatari/egatari-studio/{tag}/tts/voices/{file}",
+  "files": {
+    "alice.wav": "d7a4d3238b8cc101222de4d6c0198a7e8904e1d106efa9df5153cb58eb43007c",
+    "alice_en.wav": "400cc47b32224391e6e706d24e7b26da10694d87cb463b412e97805b2165756e",
+    "bob.wav": "e7aacde0b8c844d45ddf05ccb906b395f91f99d1f8de1117e7439b51b2c9a579",
+    "bob_en.wav": "a63fa1f53850d72457020e7a9470c43ad8211c9d5a47815a0edc92a8f45beeb1"
+  }
+}

@@ -7,7 +7,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { readHead } from '../kit/bounded-read.mjs';
+import { readHead, readRegular } from '../kit/bounded-read.mjs';
+import { verifyVendorIndex } from '../kit/vendor-verify.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -34,7 +35,7 @@ function help() {
 
 ${Object.entries(SCRIPTS).map(([k, [, d, u]]) => line(k, d, u)).join('\n')}
 ${line('tts', '口述原稿を AI 音声にする（uv が要る）/ synthesize the script with TTS (needs uv)', '<folder> [--dry-run] [--voices expert=bob,novice=alice] …')}
-${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか調べる / check Node, uv, ffmpeg and a browser', '')}
+${line('doctor', 'Node・uv・ffmpeg・ブラウザ・部品の写しを調べる / check Node, uv, ffmpeg, a browser and the parts', '')}
 
   --version  版を出す / print the version
   --help     この説明 / this help
@@ -101,6 +102,20 @@ function oldSkillLinks(home = os.homedir()) {
   }
   return out;
 }
+// 既定の声（tts/voices.json）の在りか：tts/voices/（checkout）→ 利用者のキャッシュ（取り寄せたもの。tts/refvoices.py と同じ場所）。
+// ないものは初めての egatari tts が取り寄せる。返すもの：{tag, local, cached, missing, dir}
+function defaultVoices() {
+  const lock = JSON.parse(readRegular(path.join(ROOT, 'tts', 'voices.json'), { max: 1 << 16 }).toString('utf8'));
+  const dir = path.join(cacheDir(), 'egatari', 'voices', lock.tag);
+  const out = { tag: lock.tag, local: 0, cached: 0, missing: 0, dir };
+  for (const f of Object.keys(lock.files)) {
+    if (fs.existsSync(path.join(ROOT, 'tts', 'voices', f))) out.local++;
+    else if (fs.existsSync(path.join(dir, f))) out.cached++;
+    else out.missing++;
+  }
+  return out;
+}
+
 const MIGRATE_STEPS = '~/.claude/skills/motion-* を消して、Claude Code で次を実行 / delete ~/.claude/skills/motion-* and run in Claude Code:\n'
   + '/plugin marketplace add egatari/egatari-studio\n/plugin install egatari@egatari\n/plugin install egatari-studio@egatari';
 
@@ -133,6 +148,15 @@ async function doctor() {
       'Google Chrome か Microsoft Edge を入れる、`npx playwright-core install chromium`、または CHROME_PATH=/path/to/chrome\n'
       + 'install Google Chrome or Microsoft Edge, run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome', true);
   }
+  // 部品の写し：組み立てが読む index.js を、固定（components.lock.json）と manifest のファイルごとの sha256 で（kit/vendor-verify.mjs）
+  const vv = verifyVendorIndex(ROOT);
+  show(!vv.problems.length, 'parts', vv.problems.length ? `部品の写しが固定と合わない / the vendored parts do not match their pins: ${vv.problems.slice(0, 3).join('; ')}${vv.problems.length > 3 ? ` (+${vv.problems.length - 3})` : ''}`
+    : `index.js ${vv.versions} 版、固定と manifest の sha256 に合う / ${vv.versions} versions match the lock and the manifests`, '包みを入れ直す / reinstall the package (`npm install egatari`)', true);
+  try {
+    const dv = defaultVoices();
+    show(!dv.missing, 'voices', dv.missing ? `既定の声 ${dv.missing} 本は初めての egatari tts で取り寄せる / ${dv.missing} default voices are downloaded on the first egatari tts (to ${dv.dir})`
+      : dv.local ? '既定の声は tts/voices/ に / the default voices are in tts/voices/' : `既定の声は取り寄せ済み / the default voices are downloaded (${dv.dir})`, '', false);
+  } catch (e) { show(false, 'voices', `tts/voices.json: ${e.message}`, '', false); }
   const old = oldSkillLinks();
   show(!old.length, 'skills', old.length ? `古いスキルの置き場が残っている / old skill entries left: ${old.map((o) => `${o.path} (${o.why})`).join(', ')}` : '古いスキルの置き場なし / no old skill entries', MIGRATE_STEPS, false);
   console.log(bad ? `足りないもの ${bad} / ${bad} required missing` : 'ok');

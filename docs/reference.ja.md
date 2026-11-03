@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=2b83b9d68cfa5d0c -->
+<!-- i18n: pair=reference.md sha256=fc491d414ad962af -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -488,7 +488,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | 選択肢 | 意味 |
 |---|---|
 | `--voices expert=a,novice=b` | 声（`voice.json` より優先） |
-| `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`） |
+| `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`。npm の包みでは、ない既定の声を初めて使うときにキャッシュへ取り寄せる。`tts/voices.json`） |
 | `--engine irodori\|voxcpm2` | `voice.json` の `engine` と教材の言語より優先 |
 | `--yomi FILE` | 読み辞書（`MOTION_YOMI` より優先。既定 `tts/yomi.yaml`）。日本語だけ |
 | `--only 鍵,…` | このステップ（`スライドの鍵:ステップ`）だけ |
