@@ -1548,11 +1548,24 @@ function soundCancelAhead(r, t){
 }
 // performance.now() (ms) → AudioContext time (s). One mapping, renewed only when the clocks drift apart
 // (a suspended context, a long run), so that times planned on one clock keep their spacing on the other.
-// Returns whether the mapping was renewed (an audio clock that starts late after resume(), a suspended context).
+// Returns whether the mapping was renewed; the caller then schedules what is pending again, on the new grid.
+// The grid of scheduled notes is kept whenever it can be: an audio clock that falls behind (a stalled device
+// callback) still plays them in order and on time relative to each other, so the mapping stays while notes are
+// pending and the lag is under a second. It is renewed when the audio clock is ahead (notes would be in the past),
+// when nothing is pending, when the lag is long (a suspended context), and once the clock first moves after
+// resume() (a mapping made while it still read 0).
 function soundClockCheck(){
   var now = performance.now(), ct = soundContext.currentTime;
-  if (soundClock && Math.abs(soundClock.ctx + (now - soundClock.perf) / 1000 - ct) <= .05) return false;
-  soundClock = {perf: now, ctx: ct};
+  if (soundClock){
+    var lag = soundClock.ctx + (now - soundClock.perf) / 1000 - ct;
+    // The first reading after the clock moves settles a mapping made while it read 0: either it agrees, or it is renewed.
+    var first = soundClock.zero && ct > 0;
+    if (first) soundClock.zero = false;
+    if (Math.abs(lag) <= .05) return false;
+    var pending = soundHandles.some(function(h){ return h.start > ct; });
+    if (lag > 0 && lag < 1 && pending && !first) return false;
+  }
+  soundClock = {perf: now, ctx: ct, zero: ct === 0};
   return true;
 }
 function soundTime(ms){ return soundClock.ctx + (ms - soundClock.perf) / 1000; }
@@ -1583,7 +1596,7 @@ function soundPlay(events, at, run, next){
   });
   groups.forEach(function(g){
     var end = Math.max.apply(null, g.events.map(function(e){ return e.sound === "note" ? e.dur : e.sound === "bell" ? (e.count - 1) * .6 + .95 : .82; }));
-    soundHandles.push({end: g.when + end, t: g.t, run: run, next: !!next, handle: DECK.Sounds.schedule(soundContext, g.events, g.when)});
+    soundHandles.push({start: g.when, end: g.when + end, t: g.t, run: run, next: !!next, handle: DECK.Sounds.schedule(soundContext, g.events, g.when)});
   });
 }
 DECK.muteSounds = function(value){
