@@ -31,3 +31,6 @@ _play/
 
 # Egatari Live の試験が作る一時ファイル
 .tmp-live-*
+# 別の包み @egatari/fonts-extra の字の写し（tools/fonts-vendor.mjs が作る）
+packages/fonts-extra/@fontsource/
+packages/fonts-extra/.@fontsource-*/

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=fc491d414ad962af -->
+<!-- i18n: pair=reference.md sha256=7a7275b905f7711f -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -214,6 +214,8 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 英語 | Source Sans 3（既定）、Source Serif 4、Andika、Atkinson Hyperlegible Next（どれも斜体あり） |
 | 等幅 | Source Code Pro |
 
+npm の包み `egatari` についてくるのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）だけ。ほかの字体（しっぽり明朝・Zen Maru Gothic・Klee One・Source Serif 4・Andika・Atkinson Hyperlegible Next・Source Code Pro。テーマ `asagi` も）は別の包み `@egatari/fonts-extra` にあり、`egatari` と一緒に入れる（`npm i -D @egatari/fonts-extra`、または `npx -p egatari -p @egatari/fonts-extra egatari …`）。組み立ては `egatari` の包みと今いるフォルダからそれを探す。ないと、組み立ては `fonts-extra: …` と知らせ、品質チェックは入れ方つきのエラー `fontsExtraMissing` を出す。黙ってほかの字体にはしない。リポジトリの checkout にはどの字体もある（`npm ci`）。
+
 CSS はほかの字体（端末に入っている字体など）も書けるが、ファイルには入らない。開く端末ごとに、その字体か、並びの次の字体で出る。品質チェックは `fontNotEmbedded` で名前を挙げて知らせる（教材に 1 回。スライドの字の `font-family` の計算した値の最初の名前が、埋め込んだ字体でも総称でもないもの）。オフライン版のエディタ（`editor.html`）が持つのは BIZ UDPゴシックと Source Sans 3 だけで、ほかの字体を選んだ教材はその字体なしで組み、知らせる。
 
 | 変数 | 意味 |
@@ -408,6 +410,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 台本の言語がスライドの言語と違う（`narrLang`） | 情報 |
 | `--fg --term --emph --title --accent2` と `--bg` のコントラストが 4.5:1 未満。`--muted` が 3:1 未満 | エラー。警告 |
 | スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
+| 教材が `@egatari/fonts-extra` の字体を選んでいる（テーマか CSS）のに、その包みが npm の包み `egatari` と一緒に入っていないので、その字体が入らない — `fontsExtraMissing`（入れ方を言う） | エラー |
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
 | パーツの描画が呼び出し順で変わる | エラー |

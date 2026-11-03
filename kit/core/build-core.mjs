@@ -179,19 +179,25 @@ export const FONTS = {
 // ファイルに入るのは、教材が選んだ字体だけ（テーマの theme.json の fonts、テーマ・スライドの CSS が名指した字体）。使っている字の分割ファイルだけ。
 //   group：ja（日本語）・en（英語）・mono（等幅）　weights：太さ（Klee One の太字は 600）　italic：斜体もある（英語の字体は斜体も入れる）
 // 既定の 3 つ（BIZ UDPゴシック・Source Sans 3・BIZ UDP明朝）はこれまでどおり上の FONTS の決まりで入る（明朝は使うときだけ）。
+// extra：npm の包み egatari には入れず、別の包み @egatari/fonts-extra に入れる字体（選んだ教材だけが使う 7 つ。#176。kit/build.mjs の fontDir が探す）。
+// その包みがなくて字がないときは、組み立ても品質チェックも知らせる（黙って端末の字体にしない。FONTS_EXTRA_*）
 // 一覧にない字体を CSS が名指してもよいが、ファイルには入らない（開く端末にあればその字体。品質チェックが fontNotEmbedded で知らせる）
 export const FONT_LIST = Object.freeze([
   { family: 'BIZ UDPGothic', pkg: '@fontsource/biz-udpgothic', group: 'ja', weights: [400, 700], default: true },
   { family: 'BIZ UDPMincho', pkg: '@fontsource/biz-udpmincho', group: 'ja', weights: [400, 700] },
-  { family: 'Shippori Mincho', pkg: '@fontsource/shippori-mincho', group: 'ja', weights: [400, 700] },
-  { family: 'Zen Maru Gothic', pkg: '@fontsource/zen-maru-gothic', group: 'ja', weights: [400, 700] },
-  { family: 'Klee One', pkg: '@fontsource/klee-one', group: 'ja', weights: [400, 600] },
+  { family: 'Shippori Mincho', pkg: '@fontsource/shippori-mincho', group: 'ja', weights: [400, 700], extra: true },
+  { family: 'Zen Maru Gothic', pkg: '@fontsource/zen-maru-gothic', group: 'ja', weights: [400, 700], extra: true },
+  { family: 'Klee One', pkg: '@fontsource/klee-one', group: 'ja', weights: [400, 600], extra: true },
   { family: 'Source Sans 3', pkg: '@fontsource/source-sans-3', group: 'en', weights: [400, 700], italic: true, default: true },
-  { family: 'Source Serif 4', pkg: '@fontsource/source-serif-4', group: 'en', weights: [400, 700], italic: true },
-  { family: 'Andika', pkg: '@fontsource/andika', group: 'en', weights: [400, 700], italic: true },
-  { family: 'Atkinson Hyperlegible Next', pkg: '@fontsource/atkinson-hyperlegible-next', group: 'en', weights: [400, 700], italic: true },
-  { family: 'Source Code Pro', pkg: '@fontsource/source-code-pro', group: 'mono', weights: [400, 700] },
+  { family: 'Source Serif 4', pkg: '@fontsource/source-serif-4', group: 'en', weights: [400, 700], italic: true, extra: true },
+  { family: 'Andika', pkg: '@fontsource/andika', group: 'en', weights: [400, 700], italic: true, extra: true },
+  { family: 'Atkinson Hyperlegible Next', pkg: '@fontsource/atkinson-hyperlegible-next', group: 'en', weights: [400, 700], italic: true, extra: true },
+  { family: 'Source Code Pro', pkg: '@fontsource/source-code-pro', group: 'mono', weights: [400, 700], extra: true },
 ].map((f) => Object.freeze(f)));
+export const FONTS_EXTRA_PKG = '@egatari/fonts-extra';
+export const FONTS_EXTRA_INSTALL = `npm i -D ${FONTS_EXTRA_PKG}`;
+// 組み立ての知らせの頭（kit/check.mjs がこれで見分けて fontsExtraMissing にする）
+export const FONTS_EXTRA_WARN = 'fonts-extra: ';
 export const fontByFamily = (name) => FONT_LIST.find((f) => f.family.toLowerCase() === String(name || '').trim().replace(/^["']|["']$/g, '').toLowerCase()) || null;
 // 教材が選んだ一覧の字体（既定の 3 つは除く）：テーマの theme.json の fonts（{body, heading} の字体の名前）と、テーマ・スライドの CSS に名前が出てくるもの
 const reEsc = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -367,7 +373,12 @@ function fontCss(env, text, subset, lang, mincho = false, warn = [], more = {}) 
     if (it.n) g = add(g, isJapanese(lang) ? { ...it, css: it.css + `:is(em,i,cite){font-family:"${FONTS.sans3.family}",var(--font-sans)}\n` } : it);
   }
   for (const f of more.chosen || []) {
-    if (!hasFont(env, f)) { warn.push(`字体「${f.family}」の字がないので埋め込まない（開く端末の字体で出る）。npm ci`); continue; }
+    if (!hasFont(env, f)) {
+      // 別の包みの字体（f.extra）で、その包みを入れていない（env.fontsExtraMissing。Node の組み立て）：入れ方を言う
+      if (f.extra && env.fontsExtraMissing) warn.push(`${FONTS_EXTRA_WARN}字体「${f.family}」は ${FONTS_EXTRA_PKG} にあり、入っていないので埋め込まない（開く端末の字体で出る）：${FONTS_EXTRA_INSTALL}（npx なら npx -p egatari -p ${FONTS_EXTRA_PKG} egatari …）/ the font "${f.family}" is in ${FONTS_EXTRA_PKG}, which is not installed, so it is not embedded: ${FONTS_EXTRA_INSTALL} (with npx: npx -p egatari -p ${FONTS_EXTRA_PKG} egatari …)`);
+      else warn.push(`字体「${f.family}」の字がないので埋め込まない（開く端末の字体で出る）。npm ci`);
+      continue;
+    }
     g = add(g, rangeCss(env, [f], text));
     if (f.italic) g = add(g, rangeCss(env, [f], text, true));
   }

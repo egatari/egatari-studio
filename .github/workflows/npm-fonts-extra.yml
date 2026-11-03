@@ -1,0 +1,48 @@
+# The npm package @egatari/fonts-extra (#176): the 7 optional fonts that the package egatari leaves out, from packages/fonts-extra.
+# A pushed tag fonts-extra-vX.Y.Z publishes it with provenance through npm trusted publishing (OIDC; no token is stored), on the
+# "latest" dist-tag. The tag must equal "fonts-extra-v" + packages/fonts-extra/package.json "version"; its version is its own
+# (egatari lists it as an optional peer dependency, ^1.0.0). Its prepack (tools/fonts-vendor.mjs) builds the font copy from the
+# repository's @fontsource devDependencies, so the root npm ci comes first and nothing is published with --ignore-scripts.
+# Needs: the first version published by hand (RELEASING.md, "@egatari/fonts-extra"); then on npmjs.com, package @egatari/fonts-extra ->
+# Settings -> Trusted publishing: GitHub Actions, egatari/egatari-studio, workflow npm-fonts-extra.yml, environment npm; and the
+# repository variable NPM_PUBLISH = true (until then nothing publishes; the job is skipped).
+name: npm-fonts-extra
+
+on:
+  push:
+    tags: ['fonts-extra-v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-fonts-extra-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: vars.NPM_PUBLISH == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write   # trusted publishing and provenance
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '>=24.22.1 <25'   # npm 11 (trusted publishing needs npm >= 11.5.1)
+          registry-url: 'https://registry.npmjs.org'
+      - name: tag equals packages/fonts-extra/package.json version
+        run: |
+          v="fonts-extra-v$(node -p "require('./packages/fonts-extra/package.json').version")"
+          test "$v" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != packages/fonts-extra/package.json $v"; exit 1; }
+      - run: npm ci
+      - run: node tools/fonts-vendor.mjs && node tools/fonts-vendor.mjs --check
+      - run: node tools/test-npm-pack.mjs   # packs it and builds a lesson with an optional font from it
+      - name: publish
+        working-directory: packages/fonts-extra
+        run: npm publish --provenance --access public

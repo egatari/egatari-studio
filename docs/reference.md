@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=2f4a82561ccd9278 -->
+<!-- i18n: pair=reference.ja.md sha256=6f37834f5cea2d9f -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -214,6 +214,8 @@ The fonts a file can carry are a fixed list, all under the SIL Open Font License
 | English | Source Sans 3 (default), Source Serif 4, Andika, Atkinson Hyperlegible Next (each with italic) |
 | Monospace | Source Code Pro |
 
+From the npm package `egatari`, only the default fonts (BIZ UDPGothic, BIZ UDPMincho, Source Sans 3) come with it. The others (Shippori Mincho, Zen Maru Gothic, Klee One, Source Serif 4, Andika, Atkinson Hyperlegible Next, Source Code Pro; this includes the theme `asagi`) are in the separate package `@egatari/fonts-extra`: install it next to `egatari` (`npm i -D @egatari/fonts-extra`, or `npx -p egatari -p @egatari/fonts-extra egatari …`). The build finds it from the `egatari` package and from the current folder. Without it, the build warns `fonts-extra: …` and the checker reports the error `fontsExtraMissing` with the install command; the font is never replaced silently. A repository checkout has every font (`npm ci`).
+
 CSS may name any other font (one installed on the device, for example), but it is not embedded: each device shows its own font, or the next one in the list. The checker warns `fontNotEmbedded` once per lesson with the names (the first family of the computed `font-family` of slide text that is neither embedded nor generic). The offline editor (`editor.html`) carries only BIZ UDPGothic and Source Sans 3; a lesson that chooses another font is built there without it, with a warning.
 
 | Token | Meaning |
@@ -409,6 +411,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | the script language differs from the slide language (`narrLang`) | info |
 | contrast of `--fg --term --emph --title --accent2` vs `--bg` < 4.5:1; `--muted` < 3:1 | error; warn |
 | on each slide, text of a heading or the body against the background behind it (computed colours; not over images or gradients, not faint text) < 4.5:1, the lowest one per slide — `textContrast` | warn |
+| the lesson chooses a font of `@egatari/fonts-extra` (theme or CSS) and that package is not installed next to the npm package `egatari`, so the font is not embedded — `fontsExtraMissing`, with the install command | error |
 | slide text in a font that is not embedded in the file (the first family of its computed `font-family` is neither embedded nor generic), so it looks different on each device — `fontNotEmbedded`, once per lesson with the names | warn |
 | a chapter divider (`class="slide sec"`) with an `<h2>` and no `<h1>` (the title of a divider is `<h1>`; an `<h2>` is shown the same way) — `secHeading` | warn |
 | part drawing depends on call order | error |

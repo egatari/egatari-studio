@@ -1,0 +1,25 @@
+{
+  "name": "@egatari/fonts-extra",
+  "version": "1.0.0",
+  "description": "The optional fonts of Egatari Studio (npm package egatari): Shippori Mincho, Zen Maru Gothic, Klee One, Source Serif 4, Andika, Atkinson Hyperlegible Next and Source Code Pro, as the build embeds them",
+  "license": "OFL-1.1",
+  "homepage": "https://studio.egatari.org/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/egatari/egatari-studio.git",
+    "directory": "packages/fonts-extra"
+  },
+  "bugs": {
+    "url": "https://github.com/egatari/egatari-studio/issues"
+  },
+  "files": [
+    "@fontsource/",
+    "README.md"
+  ],
+  "scripts": {
+    "prepack": "node ../../tools/fonts-vendor.mjs"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -49,6 +49,7 @@ import { audioState } from './core/audio-core.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from './core/layout-scan.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
+import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -114,7 +115,9 @@ const ML = langArg === 'en' || langArg === 'ja' ? langArg : JA ? 'ja' : 'en';
 // テーマの寸法の宣言（theme.json の metrics。kit/core/theme-metrics.mjs）：本文の場所の限りに使い、描いた箱と比べる（A）
 const themeInfo = built.theme || { name: built.stats.theme, metrics: null, declared: false };
 const metricsWarn = [];
+const extraMissing = [];   // 別の包み @egatari/fonts-extra の字体で、その包みがないので入らなかったもの（kit/core/build-core.mjs の fontCss）
 for (const w of built.stats.warn) {
+  if (w.startsWith(FONTS_EXTRA_WARN)) { const m = w.match(/「([^」]+)」/); if (m) extraMissing.push(m[1]); continue; }
   // 目印の有無は F で、部品が作った要素も含めて実際の画面で調べる（build は原稿の文字列だけを見る）
   if (/^mark: 目印/.test(w)) continue;
   // 読めない寸法の宣言は、デッキに 1 回の themeMetricsInvalid にまとめる
@@ -125,6 +128,8 @@ for (const w of built.stats.warn) {
   report(null, /^narration:/.test(w) ? 'error' : 'warn', 'build', { w });
 }
 if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: themeInfo.name, list: metricsWarn });
+// 黙って端末の字体にしない：入れ方を言うエラー（同じ字体は fontNotEmbedded に重ねて出さない）
+if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: extraMissing, pkg: FONTS_EXTRA_PKG, install: FONTS_EXTRA_INSTALL });
 
 // ================================================================ I. スライドの id と鍵
 {
@@ -415,7 +420,8 @@ await page.evaluate(`window.__metricsProbe = ${metricsProbe}; window.__metricsFo
 const mfonts = await page.evaluate(async () => { try { return await window.__metricsFonts(document); } catch (e) { return { ok: false, missing: [String(e && e.message || e)] }; } });
 const probe = mfonts.ok ? await page.evaluate((M) => { try { return window.__metricsProbe(document, M); } catch { return { items: [] }; } }, themeInfo.metrics) : { items: [] };
 if (!mfonts.ok) report(null, 'warn', 'metricsFontLoad', { theme: themeInfo.name, fonts: mfonts.missing });
-if (mfonts.foreign && mfonts.foreign.length) report(null, 'warn', 'fontNotEmbedded', { fonts: mfonts.foreign });
+const foreign = (mfonts.foreign || []).filter((f) => !extraMissing.some((x) => x.toLowerCase() === String(f).toLowerCase()));
+if (foreign.length) report(null, 'warn', 'fontNotEmbedded', { fonts: foreign });
 if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: themeInfo.name, declared: !!themeInfo.declared, items: probe.items });
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);

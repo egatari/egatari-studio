@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=ebc62d1130a5f6df -->
+<!-- i18n: pair=README.ja.md sha256=f8333a2b62ddb74d -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,7 +128,7 @@ npx egatari check mytalk/deck.html    # the last line should read "エラー 0" 
 npx egatari doctor                    # Node, uv, ffmpeg, a browser and the parts: what is there and how to install what is missing
 ```
 
-`npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`) and, of each vendored part, the `index.js` the build reads and its licence (not its README, demo or changelog; `egatari doctor` checks every `index.js` against `components.lock.json` and the manifests' per-file sha256). The default TTS voices are downloaded on the first `egatari tts` (see Requirements above). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
+`npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the default fonts the build embeds (no `get-fonts`); the optional fonts, such as Zen Maru Gothic of the theme `asagi`, are in the separate package `@egatari/fonts-extra` (`npm i -D @egatari/fonts-extra`, or `npx -p egatari -p @egatari/fonts-extra egatari …`; `egatari build` and `check` say so when a lesson needs it) and, of each vendored part, the `index.js` the build reads and its licence (not its README, demo or changelog; `egatari doctor` checks every `index.js` against `components.lock.json` and the manifests' per-file sha256). The default TTS voices are downloaded on the first `egatari tts` (see Requirements above). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
 
 ## Editing in the browser (dev server)
 

@@ -173,6 +173,9 @@ export const MESSAGES = {
   themeMetricsInvalid: {
     ja: (a) => `テーマ「${a.theme}」の寸法の宣言（theme.json の metrics）に使えない値がある：${a.list.join('；')}。その値は親のテーマ（なければ既定）の値で検査した：theme.json の metrics を直す（docs/contract.md §12、node tools/theme-metrics.mjs measure <テーマ> で描いた箱の値を出せる）`,
     en: (a) => `the theme “${a.theme}” declares geometry (metrics in theme.json) that cannot be used: ${a.list.join('; ')}. Those values were checked with the parent theme's (or the default) values: fix metrics in theme.json (docs/contract.md §12; node tools/theme-metrics.mjs measure <theme> prints the rendered values)` },
+  fontsExtraMissing: {
+    ja: (a) => `字体（${(a.fonts || []).join('・')}）は別の包み ${a.pkg} にあり、入っていないのでファイルに入らない（開く端末の字体で出る）：${a.install} で入れて組み直す（npx なら npx -p egatari -p ${a.pkg} egatari …）。または既定の字体のテーマにする`,
+    en: (a) => `the fonts (${(a.fonts || []).join(', ')}) are in the separate package ${a.pkg}, which is not installed, so they are not embedded (each device shows its own font): install it with ${a.install} and build again (with npx: npx -p egatari -p ${a.pkg} egatari …), or use a theme with the default fonts` },
   fontNotEmbedded: {
     ja: (a) => `ファイルに入っていない字体です（${(a.fonts || []).join('・')}）。開く端末によって見え方が変わります：どの端末でも同じに見せるには、ファイルに入る字体（docs/reference.ja.md「字体」の一覧）から選ぶ`,
     en: (a) => `This font is not embedded in the file (${(a.fonts || []).join(', ')}), so it looks different on each device: to look the same everywhere, choose a font that goes into the file (the list in docs/reference.md, “Fonts”)` },

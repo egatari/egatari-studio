@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=4a70df4369c4e884 -->
+<!-- i18n: pair=README.md sha256=234e0f95fd109a50 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,7 +128,7 @@ npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」にな�
 npx egatari doctor                    # Node・uv・ffmpeg・ブラウザ・部品の写しがあるか、ないものの入れ方
 ```
 
-ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。パーツライブラリの写しは、組み立てが読む `index.js` と使用条件だけを入れる（README・見本・変更の記録は入れない。`egatari doctor` が `index.js` を `components.lock.json` と manifest のファイルごとの sha256 で確かめる）。TTS の既定の声は初めての `egatari tts` で取り寄せる（上の「要るもの」）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
+ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む既定の字体は包みに入っている（`get-fonts` は要らない）。選べる字体（テーマ `asagi` の Zen Maru Gothic など）は別の包み `@egatari/fonts-extra` にある（`npm i -D @egatari/fonts-extra`、または `npx -p egatari -p @egatari/fonts-extra egatari …`。要る教材なら `egatari build` と `check` が知らせる）。パーツライブラリの写しは、組み立てが読む `index.js` と使用条件だけを入れる（README・見本・変更の記録は入れない。`egatari doctor` が `index.js` を `components.lock.json` と manifest のファイルごとの sha256 で確かめる）。TTS の既定の声は初めての `egatari tts` で取り寄せる（上の「要るもの」）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
 
 ## ブラウザで直す（開発サーバー）
 
