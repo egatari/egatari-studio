@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=8f355b6f5a756f71 -->
+<!-- i18n: pair=editor.md sha256=6e7c1fbd41d91a24 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語

@@ -89,6 +89,6 @@ export function sampleStructureRequest(sample, title, lang) {
   const head = ja ? '## 倣うサンプルの構成' : '## Structure of the sample to follow';
   const lead = ja
     ? `サンプル「${name}」の構成と見せ方に倣って作ってください。題材は上の答えに替え、サンプルの文・例・数字は使わないでください。これは構成案ではないので、枚数は上の長さ（なければ短く）に合わせ、流れを保って縮めたり伸ばしたりしてください。スライドごとの見出しと要点：`
-    : `Follow the structure and presentation of the sample “${name}”. Use the topic from the answers above instead, and do not reuse the sample’s text, examples or numbers. This is not an outline: fit the number of slides to the length above (short if none), keeping the flow while shortening or extending it. The heading and key point of each slide:`;
+    : `Follow the structure and presentation of the sample “${name}”. Use the topic from the answers above instead, and do not reuse the sample’s text, examples or numbers. This is not an outline: fit the number of slides to the length above (short if none), keeping the flow while shortening or extending it. The heading and point of each slide:`;
   return [head, lead, rows.join('\n')].join('\n\n') + '\n';
 }

@@ -14,6 +14,11 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | export-script | Export script | 台本を書き出す | Save the script of the steps that need audio as one file, for generating audio in the cloud. | 声の依頼ファイル ・ tts-job.json（画面で） | tts-job.json | 2026-10-24 (owner) |
 | file-info | File info | ファイルの情報 | Title, license, creators and attachments of the file. | 教材の情報 / Lesson info | metadata | 2026-10-24 (owner) |
 | sample | Samples | サンプル | Example lessons shipped with the editor. | 見本 ・ 見本の教材 / examples |  | 2026-10-24 (owner) |
+| play-sample | Play | 再生 | Button of a sample on the first screen: plays the sample large in a window (backlog #130). | 見る（このボタンで） | playExample | 2026-11-03 (standards) |
+| make-like-sample | Make one like this sample | このサンプルのように作る | Main button of the sample window (and the link on egatari.org's samples page): opens New… with the sample's setting, theme and parts filled in; only step 2 is empty. |  | ?from-sample=<name> | 2026-11-03 (standards) |
+| from-sample | From the sample | サンプルから | Badge on an answer or a part in New… that came from the sample; it disappears once the answer is changed. |  | draft.from | 2026-11-03 (standards) |
+| open-copy | Open a copy to edit | コピーを開いて編集 | Small button of the sample window: opens the sample file like any file, to edit a copy. | 写しを開いて直す | openPortable | 2026-11-03 (standards) |
+| heading-and-point | Heading and point | 見出しと要点 | What the sample's structure gives for each slide, added to the instructions in New… (sample.json structure). | 言いたいこと | structure: [{heading, point}] | 2026-11-03 (standards) |
 | template | Template | テンプレート | A slide layout used when inserting a slide, and the starting set of slides for a new lesson. | 雛形 |  | 2026-10-24 (owner) |
 | zip-file | ZIP file | ZIP ファイル | A compressed archive (theme import, cloud audio result). | zip / zip |  | 2026-10-25 (standards) |
 | offline-editor | Offline editor | オフライン版のエディタ | The editor saved as one HTML file to use without a network. | 1 つの HTML にしたエディタ ・ 1 ファイル版 |  | 2026-10-25 (standards) |

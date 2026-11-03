@@ -400,16 +400,16 @@
       "reason": "A CSS class name of the audio badge (stale audio), not a word shown to the user."
     },
     {
-      "file": "app/*.js",
-      "pattern": "like this sample|list of samples|Sample “|the sample’s|From the sample|from the sample|the sample “|structure of the sample",
-      "term": "voice-sample",
-      "reason": "The sample lessons (the sample term) in Make one like this sample (backlog #130), not the voice preview."
+      "file": "docs/viewer*.md",
+      "pattern": "参加しないで見る",
+      "term": "play-sample",
+      "reason": "The Live start screen's 参加しないで見る (Watch without joining), not the Play button of a sample."
     },
     {
-      "file": "docs/editor.md",
-      "pattern": "Make one like this sample",
+      "file": "app/*.js",
+      "pattern": "Sample “|the sample “|the sample’s",
       "term": "voice-sample",
-      "reason": "Quotes the button and link Make one like this sample (the sample term, backlog #130), not the voice preview."
+      "reason": "The sample lessons (the sample term) in the sample window and New… from a sample (backlog #130), not the voice preview."
     }
   ]
 }

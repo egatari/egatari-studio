@@ -1,5 +1,5 @@
 {
- "version": "2026-10-29",
+ "version": "2026-11-03",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -158,6 +158,87 @@
    "internal": "",
    "decided": "2026-10-24",
    "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "play-sample",
+   "group": "Format and files",
+   "en": "Play",
+   "ja": "再生",
+   "definition": "Button of a sample on the first screen: plays the sample large in a window (backlog #130).",
+   "avoid": {
+    "ja": [
+     "見る（このボタンで）"
+    ],
+    "en": []
+   },
+   "internal": "playExample",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "make-like-sample",
+   "group": "Format and files",
+   "en": "Make one like this sample",
+   "ja": "このサンプルのように作る",
+   "definition": "Main button of the sample window (and the link on egatari.org's samples page): opens New… with the sample's setting, theme and parts filled in; only step 2 is empty.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "?from-sample=<name>",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "from-sample",
+   "group": "Format and files",
+   "en": "From the sample",
+   "ja": "サンプルから",
+   "definition": "Badge on an answer or a part in New… that came from the sample; it disappears once the answer is changed.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "draft.from",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "open-copy",
+   "group": "Format and files",
+   "en": "Open a copy to edit",
+   "ja": "コピーを開いて編集",
+   "definition": "Small button of the sample window: opens the sample file like any file, to edit a copy.",
+   "avoid": {
+    "ja": [
+     "写しを開いて直す"
+    ],
+    "en": []
+   },
+   "internal": "openPortable",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "heading-and-point",
+   "group": "Format and files",
+   "en": "Heading and point",
+   "ja": "見出しと要点",
+   "definition": "What the sample's structure gives for each slide, added to the instructions in New… (sample.json structure).",
+   "avoid": {
+    "ja": [
+     "言いたいこと"
+    ],
+    "en": []
+   },
+   "internal": "structure: [{heading, point}]",
+   "decided": "2026-11-03",
+   "by": "standards",
    "note": ""
   },
   {

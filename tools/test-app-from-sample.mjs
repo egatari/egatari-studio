@@ -176,7 +176,7 @@ try {
   await p3.context().close();
   const p3b = await open('en', 'f3b', '&from-sample=no-such-sample');
   await p3b.waitForSelector('#toast.show');
-  ok((await text(p3b, '#toast')) === 'Sample “no-such-sample” is not in this version of Studio. Choose one from Samples on the first screen.' && !(await p3b.$('#dlg[open]')) && await p3b.isVisible('#welcome'),
+  ok((await text(p3b, '#toast')) === 'Sample “no-such-sample” is not in this version of Studio. Choose one in the list of Samples on the first screen.' && !(await p3b.$('#dlg[open]')) && await p3b.isVisible('#welcome'),
     'F3: an unknown sample name is reported, and the first screen stays');
   await p3b.context().close();
 

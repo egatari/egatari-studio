@@ -260,7 +260,7 @@ const TX = {
     suggested: 'Suggested',
     fromSample: 'From the sample',
     fromSampleLead: (t) => `Starting from the sample “${t}”. The setting, look and parts are the same as the sample’s, and you can change them. Fill in step 2 for your own lesson.`,
-    useStructure: (t, n) => `Add the structure of the sample “${t}” (the headings and key points of its ${n} slides) to the instructions`,
+    useStructure: (t, n) => `Add the structure of the sample “${t}” (the heading and point of each of its ${n} slides) to the instructions`,
     thumbAlt: (name) => `Example: ${name}`,
     partsCount: (n, all) => `Parts chosen: ${n} of ${all}`,
     partsShort: (n) => `${n} parts`,
