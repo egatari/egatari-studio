@@ -27,7 +27,7 @@ import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
 import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError } from './parts2.mjs';
-import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash } from './themes-lock.mjs';
+import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash, CSS_URL_RE, themeUrlRel } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
@@ -489,7 +489,23 @@ function themeAssets(env, t, warn, depth = 0, ud = [], tctx = null) {
   const tok = P.join(dir, 'tokens.css');
   // resolveTheme が確かめたが、読む直前にもう一度（同じ根で）
   if (!inRoot(tok)) { warn.push(`refused: テーマの tokens.css（${P.basename(dir)}）が許した場所の外を指している（読まない）`); return { css: par ? par.css : '', logos, cfg, metrics, declared }; }
-  return { css: (par ? par.css + '\n' : '') + env.readText(tok), logos, cfg, metrics, declared };
+  return { css: (par ? par.css + '\n' : '') + themeCssUrls(env, env.readText(tok), dir, inRoot, warn), logos, cfg, metrics, declared };
+}
+// テーマの tokens.css の url(…)（直接でも --cover-bg: url(cover.png) のような変数でも）：テーマのフォルダからの相対の参照を data: URI にする
+// （書き出したどのファイルでも画像が出る。組み立てが読むので、テーマの sha256・持ち運べる 1 ファイルの themes/<名前>/ に入る。format spec §6）。
+// data:・http(s):・絶対のパス・#断片は触らない。ロゴと同じ根の決まり（テーマのフォルダの外は読まず、知らせて元のまま）。読みは env（上限つき）を通す
+function themeCssUrls(env, text, dir, inRoot, warn) {
+  const P = env.path, name = P.basename(dir);
+  return text.replace(CSS_URL_RE, (m, q, ref) => {
+    if (ref === undefined) return m;                                   // コメント
+    const rel = themeUrlRel(ref), r = String(ref).trim();
+    if (!rel) return m;
+    const f = P.resolve(dir, rel);
+    if (!env.exists(f) || !env.isFile(f)) { warn.push(`missing: テーマ「${name}」の tokens.css の url(${r}) が見つからない（元のまま残す）`); return m; }
+    if (!inRoot(f)) { warn.push(`refused: テーマ「${name}」の tokens.css の url(${r}) が許した場所の外にある（読まない）`); return m; }
+    if (excludedFromThemeHash(P.relative(dir, f).split(P.sep).join('/'))) { warn.push(`theme: 「${r}」は文書（README・LICENSE・.md）なので埋め込まない（読まない）`); return m; }
+    return `url("${dataUri(env, f)}")`;
+  });
 }
 export const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon',
   wav: 'audio/wav', mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', opus: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
