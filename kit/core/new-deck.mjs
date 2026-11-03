@@ -96,7 +96,7 @@ export const SET_LABELS = [
   { set: 'stats', label: { ja: '統計の図', en: 'Statistics charts' }, inside: { ja: 'ヒストグラム・箱ひげ図・ヒートマップ', en: 'Histograms, box plots, heatmaps' } },
   { set: 'math', label: { ja: '算数・数学', en: 'Arithmetic and mathematics' }, inside: { ja: '筆算・数直線・テープ図・関数', en: 'Column arithmetic, number lines, tape diagrams, functions' } },
   { set: 'maps', label: { ja: '地図', en: 'Maps' }, inside: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' } },
-  { set: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・書き順・縦書き', en: 'Kanbun, kobun, modern texts, stroke order, vertical writing' } },
+  { set: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' } },
   { set: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' } },
   { set: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤・楽譜（音階・和音）', en: 'Keyboard and score (scales, chords)' } },
   { set: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: '市場規模の円・お金の流れ', en: 'Market size circles, money flows' } },

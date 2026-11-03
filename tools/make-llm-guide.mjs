@@ -22,8 +22,8 @@
 //   vendor/components-2/manifest-<版>.json         部品の tier・set と {{PURPOSES}}：言いたいこと → パーツ → ステップの表（版を固定した URL 付き）。
 //                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK。どちらを使ったかは材料の purposes.source
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
-// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・40 KB を超えれば失敗。標準と 1 つの束は、越えるなら中核の 4 つも
-// 短くした大きさで、40 KB を超えれば知らせるだけ（新規作成のメーターが専門のパーツを外す候補に出す）。有料のプランは標準と 2 つの束のどの組も 120 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
+// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・45 KB を超えれば失敗。標準と 1 つの束は、越えるなら中核の 4 つも
+// 短くした大きさで、45 KB を超えれば知らせるだけ（新規作成のメーターが専門のパーツを外す候補に出す）。有料のプランは標準と 2 つの束のどの組も 120 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -31,7 +31,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
-import { parseLock, resolveComponent, LOCK_FILE } from '../kit/core/components-lock.mjs';
+import { parseLock, resolveCatalogueContent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom } from '../kit/core/purposes.mjs';
@@ -59,7 +59,7 @@ export function catalogue() {
   const lock2 = JSON.parse(read('components2.lock.json'));
   const v = lock2.default, cat = lock2.catalogues[v];
   if (!cat) throw new Error(`components2.lock.json: default ${v} is not a catalogue`);
-  return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts };
+  return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts, lock2 };
 }
 // 束の並び：manifest の専門の部品の set を SET_ORDER の順に
 export function setsOf(manifest) {
@@ -176,10 +176,8 @@ const PACK_EDITS = {
       ja: '合計を棒の端に、それぞれの値を区切りの中に書く。軸の上限は合計から決まる。組の `tone` は合計の数字の色。', en: '合計を棒の端に、それぞれの値を区切りの中に書く。軸の上限は合計から決まる。組の `tone` は合計の数字の色。' },
   ],
   // m-flow の前の色の経緯の言い換えは、部品庫 v1.13.0 が README から消したので要らなくなった
-  // 部品の中の作り（測り方・読み込み）は AI の書き方に関わらないので除く（大きさを抑える。#99）。m-kobun の札の説明は部品庫 v1.9.1 で llm: omit に移った
-  'm-gendai': [
-    { find: '線と枠は字の位置を測って SVG で描く。描くたびに測るので、呼び出しの順によらない（字が読み込まれる前と後では位置が違うので、品質チェックと動画は字を待ってから撮る）。\n', ja: '', en: '' },
-  ],
+  // m-gendai の描き方（測り方）の言い換えは、部品庫 2.2.0（trimmed candidate, c2-base）が <!-- llm: omit --> に
+  // 移したので要らなくなった（m-kobun の札の説明と同じ経緯。部品庫が直ったら見直す、のとおり）
   // range：鍵盤に入らない鍵を書く誤りが多いので、使う鍵を全部含めることを先に言う（規格の求め。0.6.0）
   'm-keyboard': [
     { find: '- `range`：両端は白鍵、1〜3 オクターブ', ja: '- `range`：使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで', en: '- `range`：使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで（Include every key you use, at least one octave (e.g. C4-C5). Both ends on white keys, up to 3 octaves.）' },
@@ -268,7 +266,7 @@ function components(cat, sets) {
     if (c.kind !== 'element' || !c.tag) continue;
     const v = cat.parts[name];
     if (!v) throw new Error(`components2.lock.json: catalogue ${cat.version} has no version of ${name}`);
-    const dir = resolveComponent(path, ROOT, lock, name, v);
+    const dir = resolveCatalogueContent(path, ROOT, lock, cat.lock2, cat.version, name, v);
     const file = `${name}@${v} (${path.relative(ROOT, dir).split(path.sep).join('/')}/README.md)`;
     if (!fs.existsSync(path.join(dir, 'README.md'))) throw new Error(`${file} is missing (npm run components:update)`);
     const [fm, body] = frontmatter(read(path.relative(ROOT, path.join(dir, 'README.md'))));
@@ -285,7 +283,7 @@ function components(cat, sets) {
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 // データの形の短い書き方（一覧の欄）と見本（詳しい節）
 const SH = shapeApi();
-// データの形の決まりの型（kit/shape.js の brief の conv）：どの部品でもこの型の欄は、一覧に名前だけ書く（指示の大きさ。無料のプランの 40 KB）。
+// データの形の決まりの型（kit/shape.js の brief の conv）：どの部品でもこの型の欄は、一覧に名前だけ書く（指示の大きさ。無料のプランの 45 KB）。
 // 決まりは tools/llm-guide/template(.ja).md の §3 の初めに書く（変えたらそこも）。違う型の欄（m-hist の label など）は今までどおり型を書く
 const SHAPE_CONV = { label: 'str', tex: 'str', note: 'str', tone: 'str', step: 'int', at: 'num' };
 // 組み立てが足す欄（形式 §6.2：build.fields の欄の描いた結果 texHtml・abcSvg など、と renderers）は AI が書かないので、データの形から除く

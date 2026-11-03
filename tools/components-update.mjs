@@ -255,6 +255,15 @@ export function checkVendor(root = ROOT) {
     if (!d.isDirectory()) { if (!['LICENSE', 'CATALOG.md', 'manifest.json'].includes(d.name)) e.push(`vendor/components/${d.name}: not expected`); continue; }
     if (d.name === 'sha256') {
       const hashes = new Set(Object.values(lock.components).flatMap((c) => Object.values(c.content || {})));
+      // パーツライブラリ 2.x のカタログごとの写し（components2.lock.json の catalogues.<版>.content。版を上げずに README・demo だけ直した
+      // リリースの前のバイトも、それを指すカタログがあれば残す。中身の確かめは tools/components2-update.mjs --check）
+      const lock2File = path.join(root, 'components2.lock.json');
+      if (fs.existsSync(lock2File)) {
+        try {
+          const lock2 = JSON.parse(fs.readFileSync(lock2File, 'utf8'));
+          for (const cat of Object.values(isObj(lock2.catalogues) ? lock2.catalogues : {})) if (isObj(cat) && isObj(cat.content)) for (const h of Object.values(cat.content)) hashes.add(h);
+        } catch (err) { e.push(`components2.lock.json: ${err.message}`); }
+      }
       for (const obj of fs.readdirSync(path.join(base, d.name), { withFileTypes: true })) {
         if (!hashes.has(obj.name) || !obj.isDirectory()) e.push(`vendor/components/sha256/${obj.name}: not in ${LOCK_FILE} or not a directory`);
       }

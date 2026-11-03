@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=93ae4308e3c90bda -->
+<!-- i18n: pair=template.ja.md sha256=ad9dad6a8d43ef39 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -122,7 +122,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 ## 3. Component catalog
 
-These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num.
+These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 {{CATALOG}}
 

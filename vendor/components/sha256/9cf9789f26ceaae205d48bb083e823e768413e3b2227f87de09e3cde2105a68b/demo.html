@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-map-world の見本</title>
+<!-- 組み方：node kit/build.mjs components/map-world/demo.html -o components/map-world/out/demo.html
+     地図データ：Natural Earth（パブリックドメイン）を加工。
+     2 枚目の値はすべて架空（実在の統計ではない）。3 枚目の都市の位置は公知の事実からのおおよその経度・緯度 -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>世界の六つの州</h2>
+  <div class="body">
+    <m-map-world aria-label="六州の地図" style="height:440px">
+      <script type="application/json">{
+        "regions": [
+          {"group": "asia", "tone": "series-1", "step": 1},
+          {"group": "europe", "tone": "series-2", "step": 2},
+          {"group": "africa", "tone": "series-3", "step": 3},
+          {"group": "north-america", "tone": "series-4", "step": 4},
+          {"group": "south-america", "tone": "series-1", "step": 5},
+          {"group": "oceania", "tone": "series-2", "step": 6}
+        ]
+      }</script>
+    </m-map-world>
+  </div>
+  <div class="concl"><span>→ 六つの州に分けて世界を見る</span></div>
+</section>
+
+<section class="slide">
+  <h2>国別の値の塗り分け（架空の値）</h2>
+  <div class="body">
+    <m-map-world aria-label="架空の値の塗り分け" legend="架空の指標" unit="点" style="height:440px">
+      <script type="application/json">{
+        "classes": [0, 20, 40, 60],
+        "values": {"JPN": 72, "CHN": 48, "TWN": 66, "KOR": 61, "IND": 18, "IDN": 27, "AUS": 64, "NZL": 58, "USA": 75, "CAN": 69,
+          "MEX": 33, "BRA": 36, "ARG": 41, "CHL": 45, "GBR": 67, "FRA": 63, "DEU": 70, "ITA": 52, "ESP": 49, "RUS": 38,
+          "TUR": 31, "SAU": 44, "EGY": 15, "NGA": 9, "ZAF": 29, "KEN": 12, "ETH": 6, "VNM": 24, "THA": 35, "PHL": 22}
+      }</script>
+    </m-map-world>
+  </div>
+  <div class="concl"><span>→ 値は架空。台湾は台湾自身の値で塗る</span></div>
+</section>
+
+<section class="slide">
+  <h2>東京から世界の都市へ</h2>
+  <div class="body">
+    <m-map-world aria-label="東京と世界の都市を結ぶ矢印" labels="none" grid="equator" style="height:440px">
+      <script type="application/json">{
+        "points": [
+          {"lon": 139.69, "lat": 35.69, "label": "東京", "anchor": "above", "step": 1},
+          {"lon": -118.24, "lat": 34.05, "label": "ロサンゼルス", "anchor": "below", "step": 2},
+          {"lon": 103.82, "lat": 1.35, "label": "シンガポール", "anchor": "left", "step": 3},
+          {"lon": 151.21, "lat": -33.87, "label": "シドニー", "anchor": "right", "step": 4},
+          {"lon": -0.13, "lat": 51.51, "label": "ロンドン", "anchor": "above", "step": 5}
+        ],
+        "flows": [
+          {"from": [139.69, 35.69], "to": [-118.24, 34.05], "step": 2},
+          {"from": [139.69, 35.69], "to": [103.82, 1.35], "bend": -0.2, "step": 3},
+          {"from": [139.69, 35.69], "to": [151.21, -33.87], "bend": -0.15, "step": 4},
+          {"from": [103.82, 1.35], "to": [-0.13, 51.51], "step": 5}
+        ]
+      }</script>
+    </m-map-world>
+  </div>
+  <div class="concl"><span>→ 太平洋が中央の地図では、日本が真ん中に来る</span></div>
+</section>
+
+</div>
+</body>
+</html>
