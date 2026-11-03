@@ -6,7 +6,8 @@ import * as buildCore from '../kit/core/build-core.mjs';
 import * as configFile from '../kit/core/config-file.mjs';
 import * as format from '../kit/core/format.mjs';
 import * as narrationParse from '../kit/core/narration-parse.mjs';
+import * as quoteJa from '../kit/core/quote-ja.mjs';
 
 export function setArticleHost() {
-  if (!globalThis.__egatariArticleHost) globalThis.__egatariArticleHost = { katex, 'build-core': buildCore, 'config-file': configFile, format, 'narration-parse': narrationParse };
+  if (!globalThis.__egatariArticleHost) globalThis.__egatariArticleHost = { katex, 'build-core': buildCore, 'config-file': configFile, format, 'narration-parse': narrationParse, 'quote-ja': quoteJa };
 }

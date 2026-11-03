@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=14d544483947e603 -->
+<!-- i18n: pair=video.ja.md sha256=227a0dbe8a4834c0 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -40,7 +40,7 @@ node kit/build.mjs $D/deck.html
 
 # 2. TTS (Irodori-TTS)
 uv run --project tts python tts/synth.py $D --voices expert=bob,novice=alice
-#    To try the pipeline offline, --dry-run (silence, length estimated at 7.5 characters/s). For only some steps, --only "更新の式:2,更新の式:concl"
+#    To try the pipeline offline, --dry-run (silence, length estimated at 7.5 characters/s). For only some steps, --only "更新の式:2,更新の式:concl"; for all steps of a slide, --only 更新の式 (a slide key or id)
 
 # 3. build again (reads audio/manifest.json and puts the audio lengths and cues into the timeline)
 node kit/build.mjs $D/deck.html

@@ -1,6 +1,6 @@
 // build 済みのデッキ（out/deck.html）→ 段階ごとの動画（clip_NNNN.mp4）と最終状態の静止画（clip_NNNN.png）
 //
-//   node render/render.mjs <built.html> --out <dir> [--fps 30] [--scale 1.5] [--only key,...] [--full] [--force]
+//   node render/render.mjs <built.html> --out <dir> [--fps 30] [--scale 1.5] [--only key|id|key:step,...] [--full] [--force]
 //
 // - 画面は DECK.seek(i, k, t) だけで描く（docs/contract.md §1）。仮想の時刻 t = f/fps でコマを撮る
 // - 動きのある区間 [0, motion)（motion = max(anim, 注目の演出の終わり)）だけを fps で撮り、残り（dur - anim）は最終状態（t = Infinity）の 1 枚を伸ばす
@@ -23,6 +23,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { encodeWav } from '../kit/core/wav-core.mjs';
+import { resolveOnly, unknownOnlyMessage } from './only.mjs';
 import { collectVideoEvents, videoSoundEvents, renderStepSounds, frameStarts } from './sounds.mjs';
 
 const RENDER_VERSION = 5;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
@@ -42,12 +43,12 @@ function parseArgs(argv) {
     else o.src = a;
   }
   if (!o.src || !o.out) {
-    console.error('usage: node render/render.mjs <built.html> --out <dir> [--fps 30] [--scale 1.5] [--only key,...] [--full] [--force]');
+    console.error('usage: node render/render.mjs <built.html> --out <dir> [--fps 30] [--scale 1.5] [--only key|id|key:step,...] [--full] [--force]');
     process.exit(1);
   }
   if (!Number.isInteger(o.fps) || o.fps < 1 || o.fps > 120) { console.error(`--fps は 1〜120 の整数 / --fps must be an integer in 1..120（${o.fps}）`); process.exit(1); }
   if (!Number.isFinite(o.scale) || o.scale < 0.25 || o.scale > 4) { console.error(`--scale は 0.25〜4 / --scale must be in 0.25..4（${o.scale}）`); process.exit(1); }
-  if (o.only && !o.only.size) { console.error('--only に鍵がない / --only needs at least one key'); process.exit(1); }
+  if (o.only && !o.only.size) { console.error('--only に鍵がない / --only needs at least one slide key, id or step key'); process.exit(1); }
   return o;
 }
 
@@ -158,7 +159,8 @@ async function main() {
     await page.goto(htmlUrl + '?mode=video' + (o.captions ? '&captions=1' : ''));
     await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 30000 });
     await page.evaluate(() => document.fonts.ready.then(() => true));
-    const { tl, narration } = await page.evaluate(() => ({ tl: DECK.timeline(), narration: DECK.NARRATION }));
+    const { tl, narration, ids } = await page.evaluate(() => ({ tl: DECK.timeline(), narration: DECK.NARRATION, ids: DECK.slides.map((x) => x.id || null) }));
+    let onlyKeys = null;
     const soundEvents = videoSoundEvents(tl, await page.evaluate(collectVideoEvents), o.fps);
     // 音色の変更・前の段階からの余韻もキャッシュの入力にする。
     const soundHash = sha(JSON.stringify(soundEvents), readRegular(fileURLToPath(new URL('../kit/core/sounds.mjs', import.meta.url)), { max: READ_LIMITS.built }));
@@ -185,8 +187,9 @@ async function main() {
     }, htmlText);
     if (!inputs.ok) console.warn('  ⚠ build 済みの HTML のスライドが数えられない。HTML 全体を全段階の入力にする（キャッシュが効きにくい）');
     if (o.only) {
-      const unknown = [...o.only].filter((k) => !tl.some((g) => g.key === k));
-      if (unknown.length) console.warn(`  ⚠ --only の鍵がタイムラインにない: ${unknown.join(', ')}`);
+      const r = resolveOnly([...o.only], tl, ids);
+      if (r.unknown.length) throw Object.assign(new Error(unknownOnlyMessage(r.unknown, r.valid)), { clean: true });
+      onlyKeys = r.keys;
     }
     const globalHash = sha(String(RENDER_VERSION), inputs.global, String(inputs.n));
     const slideHash = inputs.slideHtml.map((h) => sha(h));
@@ -237,7 +240,7 @@ async function main() {
         slides: inputs.ok ? per.deps.map((j) => slideHash[j]) : null, data: per.data, key: s.key, i: s.i, k: s.k,
         dur: s.dur, lead: s.lead, anim: s.anim, motion, frames: N, nA, fps: o.fps, scale: o.scale, captions: o.captions }));
       rec.input = input;
-      if (o.only && !o.only.has(s.key)) { fs.rmSync(tmp, { recursive: true, force: true }); continue; }
+      if (onlyKeys && !onlyKeys.has(s.key)) { fs.rmSync(tmp, { recursive: true, force: true }); continue; }
 
       const final = path.join(tmp, 'final.png');
       const finalBuf = await shot(s.i, s.k, Infinity, final);
@@ -330,4 +333,4 @@ async function main() {
   if (errs.length) { console.warn('ページのエラー:'); for (const e of errs) console.warn('  ' + e); }
 }
 
-main().catch((e) => { console.error(e.stack || e.message); process.exit(1); });
+main().catch((e) => { console.error(e.clean ? e.message : e.stack || e.message); process.exit(1); });

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=0fd1bcf023be26ba -->
+<!-- i18n: pair=README.ja.md sha256=5173bb88e93bec14 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -215,7 +215,7 @@ D=examples/minimal
 uv run --project tts python tts/synth.py $D --dry-run    # silent placeholder audio, to try the pipeline offline
 uv run --project tts python tts/synth.py $D              # real TTS (needs the server and the voices)
 node kit/build.mjs $D/deck.html                          # rebuild so the audio lengths enter the timeline
-node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step, --full for one file
+node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step (or --only 更新の式 for a whole slide), --full for one file
 ```
 
 - Voices: `--voices expert=bob,novice=alice`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English lesson `<name>_en.wav` is used when it exists

@@ -5,13 +5,14 @@
 import { visit, plain } from './article-text.mjs';
 import { parseStep } from './article.mjs';
 import { renderCitations } from './article-cite.mjs';
+import { quoteJa } from './quote-ja.mjs';
 
 // 言語ごとの言葉（§9C.6）。日本語のほかは英語
 const WORDS = {
   ja: {
     figure: '図', table: '表', aside: 'コラム', exercise: '問', equation: '式', section: (n) => `${n} 節`,
     chapter: (n) => `第 ${n} 章`, appendix: (l) => `付録 ${l}`, proof: '証明', solution: (x) => `${x} の解答`, eq: (n) => `式 (${n})`,
-    step: (title, k) => `スライド「${title}」${k === '0' ? '' : k === 'concl' ? 'の結論' : `のステップ ${k}`}`,
+    step: (title, k) => `スライド${quoteJa(title)}${k === '0' ? '' : k === 'concl' ? 'の結論' : `のステップ ${k}`}`,
     kinds: { theorem: '定理', lemma: '補題', proposition: '命題', corollary: '系', definition: '定義', example: '例', remark: '注意', proof: '証明', axiom: '公理', assumption: '仮定', conjecture: '予想', criterion: '規準', property: '性質', observation: '観察', algorithm: 'アルゴリズム' },
     paren: (t) => `（${t}）`, sp: ' ', notes: '注', back: '本文へ戻る',
   },

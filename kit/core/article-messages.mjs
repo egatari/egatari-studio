@@ -1,5 +1,6 @@
 // 本文の点検（kit/core/article-text.mjs・article.mjs）の知らせの言葉（日本語・英語）。何が違うかと、どう直すか。
 // 場所（ファイル・行）は articleWhere が前に付け、仕様の節（§9C.x）は後ろに付ける。check（kit/check-messages.mjs の MESSAGES）と build が使う
+import { quoteJa } from './quote-ja.mjs';
 const hintJa = (a) => (a.hint ? `：${a.hint} と書く` : '');
 const hintEn = (a) => (a.hint ? `: write ${a.hint}` : '');
 const WHY_SUBFIG = {
@@ -41,7 +42,7 @@ export const ARTICLE_MESSAGES = {
   articleBareUrl: { ja: (a) => `URL「${a.url}」がリンクになっていない：<${a.url}> か [字](${a.url}) と書く`, en: (a) => `the URL ${a.url} is not a link: write <${a.url}> or [text](${a.url})` },
   articleTaskList: { ja: () => 'チェックの付く箇条書き（- [ ]）は書けない：普通の箇条書きにする', en: () => 'task lists (- [ ]) are not allowed: use a plain list' },
   articleHeadingLevel: { ja: (a) => (a.depth === 1 ? '「#」（第 1 段の見出し）は書けない：題は前付けの title に書き、節は ## から' : `「${'#'.repeat(a.depth)}」（第 ${a.depth} 段の見出し）は書けない：見出しは ##・###・#### まで`), en: (a) => (a.depth === 1 ? 'a level-1 heading (#) is not allowed: put the title in the front matter title and start sections at ##' : `a level-${a.depth} heading is not allowed: use ##, ### or ####`) },
-  articleSectionId: { ja: (a) => `節「${a.heading}」（## の見出し）に id がない：npm run ids で (sec-…)= の行を付ける（自分で書かない）`, en: (a) => `the section “${a.heading}” (a ## heading) has no id: run npm run ids to add its (sec-…)= line (do not write ids by hand)` },
+  articleSectionId: { ja: (a) => `節${quoteJa(a.heading)}（## の見出し）に id がない：npm run ids で (sec-…)= の行を付ける（自分で書かない）`, en: (a) => `the section “${a.heading}” (a ## heading) has no id: run npm run ids to add its (sec-…)= line (do not write ids by hand)` },
   articleSectionIdForm: { ja: (a) => `節の id「${a.label}」が決まりの形（sec- と英小文字・2〜7 の 6 字）でない：その (…)= の行を消して npm run ids で付け直す（参照も直す）`, en: (a) => `the section id “${a.label}” is not of the required form (sec- and 6 characters a–z, 2–7): delete its (…)= line, run npm run ids and update references to it` },
   articleLabel: { ja: (a) => `名前「${a.label}」：${WHY_LABEL.ja[a.why]}`, en: (a) => `the label “${a.label}” ${WHY_LABEL.en[a.why]}` },
   articleCiteKey: { ja: (a) => `引用の鍵「${a.key}」が鍵の書式に合わない（英数字と _、間に . : - 。64 字まで）`, en: (a) => `the citation key “${a.key}” does not match the key pattern (letters, digits, _, separated by . : -; up to 64)` },
@@ -93,11 +94,11 @@ export const ARTICLE_MESSAGES = {
   articleCiteEngine: { ja: (a) => `引用を書式で組めなかった（${a.why}）：鍵の字のまま書いた。references.json の項目を確かめる`, en: (a) => `could not format citations (${a.why}); wrote the keys instead: check the items in references.json` },
   articleUncited: { ja: (a) => `本文で引いていない文献が ${a.count} 件ある（${a.keys.join('・')}${a.count > a.keys.length ? ' …' : ''}）：一覧には出ない`, en: (a) => `${a.count} reference(s) never cited (${a.keys.join(', ')}${a.count > a.keys.length ? ', …' : ''}); they are not listed` },
   articleLinksShape: { ja: (a) => `egatari.json の articleLinks の形が違う（${a.why}）：その項目を消し、npm run ids で付け直す`, en: (a) => `egatari.json articleLinks has the wrong shape (${a.why}): remove it and run npm run ids to record the links again` },
-  articleLinkStale: { ja: (a) => `スライドと本が合っていないかもしれません：スライド ${a.slide} と節「${a.heading || a.section}」（${a.section}）。つないだ後に${a.changed === 'article' ? '節' : a.changed === 'slide' ? 'スライドか口述原稿' : '節とスライドの両方'}が変わった。読み比べて、合っていれば npm run ids -- --confirm-links で確かめた印を付ける（字は自動では直さない）`, en: (a) => `slides and book may not match: slide ${a.slide} and the section “${a.heading || a.section}” (${a.section}); ${a.changed === 'article' ? 'the section' : a.changed === 'slide' ? 'the slide or its narration' : 'both the section and the slide'} changed after they were linked. Compare them; if they still agree, run npm run ids -- --confirm-links (nothing is changed automatically)` },
+  articleLinkStale: { ja: (a) => `スライドと本が合っていないかもしれません：スライド ${a.slide} と節${quoteJa(a.heading || a.section)}（${a.section}）。つないだ後に${a.changed === 'article' ? '節' : a.changed === 'slide' ? 'スライドか口述原稿' : '節とスライドの両方'}が変わった。読み比べて、合っていれば npm run ids -- --confirm-links で確かめた印を付ける（字は自動では直さない）`, en: (a) => `slides and book may not match: slide ${a.slide} and the section “${a.heading || a.section}” (${a.section}); ${a.changed === 'article' ? 'the section' : a.changed === 'slide' ? 'the slide or its narration' : 'both the section and the slide'} changed after they were linked. Compare them; if they still agree, run npm run ids -- --confirm-links (nothing is changed automatically)` },
   articleLinkUnconfirmed: { ja: (a) => `スライドと節のつながり ${a.count} 組がまだ記録されていない（${a.pairs.join('、')}${a.count > a.pairs.length ? ' …' : ''}）：npm run ids で記録すると、後でどちらかが変わったときに知らせる`, en: (a) => `${a.count} slide–section link(s) are not recorded yet (${a.pairs.join(', ')}${a.count > a.pairs.length ? ', …' : ''}): run npm run ids to record them, so that later changes on either side are reported` },
   articleLinkUnlinked: { ja: (a) => `egatari.json の articleLinks に、もうつながっていない組が ${a.count} 組ある（${a.pairs.join('、')}${a.count > a.pairs.length ? ' …' : ''}）：1 ファイルに書き出すときに外す`, en: (a) => `egatari.json articleLinks records ${a.count} pair(s) that are no longer linked (${a.pairs.join(', ')}${a.count > a.pairs.length ? ', …' : ''}); they are dropped when the single file is written` },
   articleSummary: { ja: (a) => `本文：ファイル ${a.files}、節 ${a.sections}、名前 ${a.labels}`, en: (a) => `article: ${a.files} file(s), ${a.sections} section(s), ${a.labels} label(s)` },
-  articleSectionUnlinked: { ja: (a) => `節「${a.heading}」（${a.section}）がどのスライドともつながっていない（{step} のリンクか、スライドの data-article で結ぶ）`, en: (a) => `the section “${a.heading}” (${a.section}) is linked to no slide (add a {step} link or name it in a slide's data-article)` },
+  articleSectionUnlinked: { ja: (a) => `節${quoteJa(a.heading)}（${a.section}）がどのスライドともつながっていない（{step} のリンクか、スライドの data-article で結ぶ）`, en: (a) => `the section “${a.heading}” (${a.section}) is linked to no slide (add a {step} link or name it in a slide's data-article)` },
 };
 
 // 1 つの知らせの言葉：場所（ファイル・行）＋言葉＋（§…）

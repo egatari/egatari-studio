@@ -31,6 +31,7 @@ import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
+import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -149,7 +150,7 @@ const TX = {
     batchTitle: '構成案の続き', batchWhere: (a, b, n, left) => `構成案の ${a}〜${b} 枚目（全 ${n} 枚。残り ${left} 枚）を、最後のスライドの後ろに入れます`,
     batchDone: (left) => (left ? `構成案：残り ${left} 枚` : '構成案のスライドをすべて作りました'),
     // 挿入
-    insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
+    insertWhere: (n, h) => `挿入する場所：スライド ${n}${quoteJa(h)}の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}${quoteJa(h)}）の後ろ`,
     insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：練習問題を 1 つ',
     insertHint: '指示には、今のスライドの見出しの一覧と、挿入する場所の前のスライドだけを入れます（短く済みます）',
     withPack: 'この教材を作ったのとは別のチャットに送る（指示の全体も付けます）',

@@ -1,5 +1,6 @@
 // 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
 import { FORMAT } from '../kit/core/format.mjs';
+import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
 import { PARTS_GALLERY, PARTS_CATALOGUE } from './parts-gallery.js';
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
@@ -35,7 +36,7 @@ const ja = {
     changedSection: '本の節が変わりました', changedSlide: 'スライドか台本が変わりました', changedBoth: 'スライドも本も変わりました', unconfirmed: 'まだ確認していません',
     confirm: '確認済みにする', confirmTip: 'このスライドと節が合っていることを記録します（egatari.json）', confirmAll: 'すべて確認済みにする',
     confirmed: (n) => `${n} 組を確認済みにしました`,
-    slideName: (n, t) => `スライド ${n}「${t}」`, sectionName: (h) => `節「${h}」`,
+    slideName: (n, t) => `スライド ${n}${quoteJa(t)}`, sectionName: (h) => `節${quoteJa(h)}`,
     problems: (e, w) => `本の点検：エラー ${e} · 警告 ${w}`,
     fileLabel: '直す本文のファイル', fileLabelShort: 'ファイル', textLabel: (f) => `本文（${f}）`,
     save: '保存', revert: '元に戻す', revertTip: '編集前に戻す', unsaved: '保存していない変更があります',
@@ -58,7 +59,7 @@ const ja = {
   modeOn: { lecture: '先のステップを薄く見せています（プレビュー ▾ の「先のステップを薄く見せる」で戻す）', video: '動画のモードで表示しています（プレビュー ▾ の「スライドショーで確かめる」で戻る）' },
   saveFolderAuto: `作業フォルダは、編集するたびにその場で保存されます（「保存」は要りません）。${FX} のファイルにするには「名前を付けて保存…」`,
   checkBuildWarn: (n) => `組み立ての警告（${n}）`, bwMark: '強調：', bwScript: '台本：', checkBadge: (e, w) => [e ? `エラー ${e}` : '', w ? `警告 ${w}` : ''].filter(Boolean).join(' · '),
-  insertTitle: 'スライドの挿入', insertLead: (n, h) => (n ? `スライド ${n}${h ? '「' + h + '」' : ''}の後ろに入れます。どの方法で作りますか` : '最後に入れます。どの方法で作りますか'),
+  insertTitle: 'スライドの挿入', insertLead: (n, h) => (n ? `スライド ${n}${h ? quoteJa(h) : ''}の後ろに入れます。どの方法で作りますか` : '最後に入れます。どの方法で作りますか'),
   noSlide: 'スライドがありません',
   playTitle: '参加者用（再生専用）にエクスポート', playLead: `参加者に配る Egatari ファイル（再生専用・${FORMAT.PLAY_EXT}）をエクスポートします。ブラウザで開けば再生でき、編集はできません`,
   playLive: 'ライブ（質問・投票）を付ける', playGo: 'エクスポート…', liveMark: (d) => `（ライブ ${d}）`,
@@ -343,7 +344,7 @@ const ja = {
     noSteps: '音声の要るステップはありません',
     exported: (n) => `台本を書き出しました（${n} ステップ）。次は「Colab を開く」`,
     importing: 'ZIP ファイルを読んでいます…', zipFail: (m) => 'ZIP ファイルを取り込めません：' + m,
-    wrong: 'この ZIP ファイルには、この教材の音声が入っていません。この教材で書き出した台本から作った ZIP ファイルを選んでください', wrongOf: (t) => `（「${t}」の台本から作った ZIP ファイルです）`,
+    wrong: 'この ZIP ファイルには、この教材の音声が入っていません。この教材で書き出した台本から作った ZIP ファイルを選んでください', wrongOf: (t) => `（${quoteJa(t)}の台本から作った ZIP ファイルです）`,
     rejectRecords: (w) => 'この ZIP ファイルは取り込めません（' + w + '）',
     done: (k) => `${k} ステップに AI 音声を付けました`,
     partial: (k, m) => `${k} ステップに AI 音声を付けました。${m} ステップは、書き出した後に台本が変わっているので使っていません`,
@@ -392,8 +393,8 @@ const ja = {
   leftTitleTts: 'テンプレートのままの台本があります', leftTitleExport: 'テンプレートのままのところがあります',
   leftLeadTts: '次のステップの台本は、スライド一覧のテンプレートの仮の行（✎）のままです。このまま作ると、AI 音声がこの文を読み上げます。',
   leftLeadExport: '次のところは、スライド一覧のテンプレートのままです。このままエクスポートすると、仮の文がスライド・字幕・読める層に入ります。',
-  leftSlide: (n, h, list) => `スライド ${n}「${h}」：テンプレートの字 ${list.map((x) => '「' + x + '」').join('')}`,
-  leftStep: (n, h, k, t) => `スライド ${n}「${h}」のステップ [${k}]：${t}`,
+  leftSlide: (n, h, list) => `スライド ${n}${quoteJa(h)}：テンプレートの字 ${list.map(quoteJa).join('')}`,
+  leftStep: (n, h, k, t) => `スライド ${n}${quoteJa(h)}のステップ [${k}]：${t}`,
   leftMore: (n) => `ほか ${n} か所`, leftHint: '直すには、品質チェックの警告からそのスライドへ行き、台本（n）か編集（e）で書き換えます。続けることもできます。',
   leftGoTts: 'このまま作る', leftGoExport: 'このままエクスポート',
   // スライド一覧（app/slides-panel.js。backlog #79）
@@ -404,7 +405,7 @@ const ja = {
     del: '削除', delTip: '選んだスライドを消します（確かめます）', upTip: '前へ移す（Alt+↑）', downTip: '後ろへ移す（Alt+↓）', undo: '元に戻す',
     keys: '↑↓ で選ぶ · Alt+↑↓ で移す · Delete で消す · ドラッグでも並べ替えられます',
     tpl: { 'title-body': '見出しと本文', 'two-cols': '2 列', figure: '図', section: '章の扉', quote: '引用' },
-    untitled: '（見出しなし）', slideName: (n, h) => `スライド ${n}「${h}」`,
+    untitled: '（見出しなし）', slideName: (n, h) => `スライド ${n}${quoteJa(h)}`,
     optionLabel: (n, N, h, d) => `${n} / ${N}：${h}${d ? '。' + d : ''}`,
     needAudio: (n) => `音声が要るステップ ${n}`, staleAudio: (n) => `音声の更新が必要なステップ ${n}`,
     notReady: 'スライドを組み終えてから操作してください', busy: 'スライドの操作の途中です。終わるまでお待ちください', editing: '開いている編集の欄（HTML・台本・コメント）か音声の作業を、先に保存するか閉じてください', cancelled: '別の教材を開いたので、取り消しました',
@@ -413,14 +414,14 @@ const ja = {
     added: (n, k) => `${n} 枚目に「${k}」のスライドを足しました。台本に節を足しました`,
     duplicated: (a, b) => `スライド ${a} を複製して ${b} 枚目に入れました。台本は写し、音声は写していません`,
     deleted: (name) => `${name}を消しました。台本の節と音声も消しました。「元に戻す」で戻せます`,
-    moved: (h, a, b, N) => `「${h}」を ${a} 枚目から ${b} 枚目へ移しました（${N} 枚中）`,
+    moved: (h, a, b, N) => `${quoteJa(h)}を ${a} 枚目から ${b} 枚目へ移しました（${N} 枚中）`,
     delTitle: (name) => `${name}を消す`, delLead: (name) => `${name}を消します。一緒に次のものも消えます：`,
     delNarr: (n) => `台本の節（ステップ ${n} 個）`, delAudio: (n, f) => n ? `音声の記録 ${n} 個（audio/ の音声のファイル ${f} 個）` : '音声はありません',
     delTakes: (n) => `録ってまだ使っていない音声 ${n} 個`,
     delWarn: 'このスライドの音声（録音したものも、まだ使っていないものも）は消えます。もう一度録るか作り直さないと、音声は戻りません。ほかのスライドの音声はそのままです',
     delUndo: 'すぐ後なら「元に戻す」で、スライド・台本・音声をまとめて戻せます（次のスライドの操作か、Egatari ファイルの保存まで）。控えは .cache/edits/ にも残ります',
     delGo: '消す', cancel: 'キャンセル',
-    undoAdd: (h) => `「${h}」の追加`, undoDup: (name) => `${name}の複製`, undoDel: (name) => `${name}の削除`, undoMove: (name) => `${name}の移動`,
+    undoAdd: (h) => `${quoteJa(h)}の追加`, undoDup: (name) => `${name}の複製`, undoDel: (name) => `${name}の削除`, undoMove: (name) => `${name}の移動`,
     undone: (what) => `${what}を元に戻しました`, undoChanged: 'その後にファイルが変わったので、元に戻せません（控えは .cache/edits/ にあります）',
   },
 };

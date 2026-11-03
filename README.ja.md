@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=5b75cb7c2a905296 -->
+<!-- i18n: pair=README.md sha256=4fad109206d1e9ed -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -215,7 +215,7 @@ D=examples/minimal
 uv run --project tts python tts/synth.py $D --dry-run    # 無音の仮の音声（オフラインで流れを試す）
 uv run --project tts python tts/synth.py $D              # 本番の TTS（サーバーと参照音声が要る）
 node kit/build.mjs $D/deck.html                          # 組み直して、音声の長さをタイムラインに入れる
-node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら --only "更新の式:2"、1 本にまとめるなら --full
+node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら --only "更新の式:2"（スライド 1 枚分なら --only 更新の式）、1 本にまとめるなら --full
 ```
 
 - 声：`--voices expert=bob,novice=alice` か `<教材>/voice.json`（`{"expert": "me"}`、または wav のパス）。既定は 1 人なら `bob`、掛け合いなら `bob`（Expert）と `alice`（Novice）で、`tts/voices/<名前>.wav` を探す。英語の教材では `<名前>_en.wav` があればそちらを使う
