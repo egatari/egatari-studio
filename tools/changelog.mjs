@@ -69,6 +69,7 @@ function render(sections) {
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const SEMVER = /^\d+\.\d+\.\d+$/;
+const RC = /^\d+\.\d+\.\d+-rc\.\d+$/;
 
 function fail(msg) { console.error(`changelog: ${msg}`); process.exit(1); }
 
@@ -140,7 +141,7 @@ if (args.includes('--preview')) {
 
 if (args.includes('--release')) {
   const v = opt('--release');
-  if (!v || !SEMVER.test(v)) fail('usage: --release X.Y.Z (three numbers; rc versions are tags only, not CHANGELOG sections)');
+  if (!v || !SEMVER.test(v)) fail('usage: --release X.Y.Z (three numbers; an rc has no CHANGELOG section: --rc X.Y.Z-rc.N only sets the version)');
   const date = opt('--date') || today();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail('--date must be YYYY-MM-DD');
   if (errors.length) fail(errors.join('\n'));
@@ -156,5 +157,15 @@ if (args.includes('--release')) {
   process.exit(0);
 }
 
-console.error('usage: node tools/changelog.mjs --check [--base <ref>] | --preview [X.Y.Z] | --release X.Y.Z [--date YYYY-MM-DD]  [--root <dir>]');
+// 候補：package.json と package-lock.json の版だけ X.Y.Z-rc.N にする（npm.yml はタグ = "v" + 版を求める）。CHANGELOG と changes/ は触らない
+if (args.includes('--rc')) {
+  const v = opt('--rc');
+  if (!v || !RC.test(v)) fail('usage: --rc X.Y.Z-rc.N');
+  setVersion(path.join(ROOT, 'package.json'), v);
+  setVersion(path.join(ROOT, 'package-lock.json'), v);
+  console.log(`package.json and package-lock.json set to ${v}; CHANGELOG.md and changes/ untouched`);
+  process.exit(0);
+}
+
+console.error('usage: node tools/changelog.mjs --check [--base <ref>] | --preview [X.Y.Z] | --release X.Y.Z [--date YYYY-MM-DD] | --rc X.Y.Z-rc.N  [--root <dir>]');
 process.exit(1);

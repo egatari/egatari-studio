@@ -118,7 +118,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [[ "$GITHUB_REF" =~ ^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+)$ ]]; then cur=(--current "${BASH_REMATCH[1]}"); else cur=(); fi
+          if [[ "$GITHUB_REF" =~ ^refs/tags/(v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?)$ ]]; then cur=(--current "${BASH_REMATCH[1]}"); else cur=(); fi
           node tools/site-versions.mjs assemble --site _site "${cur[@]}" --repo "$GITHUB_REPOSITORY"
           cat _site/versions.json
       - uses: actions/configure-pages@v5

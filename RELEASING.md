@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=2892dae5ad7e789b -->
+<!-- i18n: pair=RELEASING.ja.md sha256=de493382549e7534 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -13,9 +13,16 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
    **The spec snapshot.** Before tagging an rc, `vendor/egatari-spec` must equal the latest `wd-*` snapshot of egatari-spec (`vendor/egatari-spec/SOURCE.json` has `"snapshot": "wd-YYYY-MM-DD"`, and `node tools/spec-snapshot.mjs --check` prints `ok`). Sync with `node tools/sync-spec.mjs <spec clone> --ref wd-YYYY-MM-DD`. If the spec has changed since its latest snapshot, ask the spec maintainer to cut a new snapshot first.
 
+   **The version in `package.json`.** `npm.yml` publishes only when the tag equals `v` + `package.json`'s `version`, so set the version to the candidate's before tagging (the candidate is published to the `next` dist-tag; `latest` stays on the last release). `--rc` changes only the version in `package.json` and `package-lock.json`; `CHANGELOG.md` and `changes/` stay as they are:
+
    ```bash
-   git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
+   node tools/changelog.mjs --rc X.Y.Z-rc.N
+   npm run gen:check
+   git commit -am "vX.Y.Z-rc.N：版を X.Y.Z-rc.N にする"
+   git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin main vX.Y.Z-rc.N
    ```
+
+   A later candidate repeats this with the next N. Step 4 (`--release X.Y.Z`) then sets the version to the plain `X.Y.Z`. The editor site treats an rc version as "not a release": `tools/site-versions.mjs assemble` accepts it, makes no `/v…/` folder for it, and lists only full releases (and a "Run workflow" on an rc tag only does the dry run; `pages.yml` never deploys it).
 
 2. **Evaluation.** Check the maintainers' nightly evaluation (run with the format spec's experiment tools; ask the maintainer for the summary of the candidate commit): tier A (re-scoring saved replies) shows **0 changed** — if not 0, confirm every difference is an intended change — and tier B (new generation) shows no large drop in the pass rate after fixes compared with recent nights. Otherwise fix on `main` and make a new candidate.
 3. **CI green on `main`.** The `test` and `pages` (build only) workflows pass for the candidate's commit: `gh run list --branch main --limit 5`.

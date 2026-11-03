@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=cd7dfbf3bad96b79 -->
+<!-- i18n: pair=RELEASING.md sha256=ebd5a29dbeeaad42 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -13,9 +13,16 @@
 
    **仕様の日付の版。** 候補のタグを付ける前に、`vendor/egatari-spec` が egatari-spec の最新の `wd-*` の版と同じであること（`vendor/egatari-spec/SOURCE.json` に `"snapshot": "wd-YYYY-MM-DD"` があり、`node tools/spec-snapshot.mjs --check` が `ok` と出す）。写すには `node tools/sync-spec.mjs <仕様の clone> --ref wd-YYYY-MM-DD`。最新の版のあとで仕様が変わっていたら、先に仕様の担当者に新しい版を切ってもらう。
 
+   **`package.json` の版。** `npm.yml` は、タグが `v` + `package.json` の `version` に等しいときだけ公開する。そこで候補のタグを付ける前に、版を候補の版にする（候補は dist-tag `next` に出て、`latest` は直近のリリースのまま）。`--rc` は `package.json` と `package-lock.json` の版だけを変え、`CHANGELOG.md` と `changes/` には触らない：
+
    ```bash
-   git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
+   node tools/changelog.mjs --rc X.Y.Z-rc.N
+   npm run gen:check
+   git commit -am "vX.Y.Z-rc.N：版を X.Y.Z-rc.N にする"
+   git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin main vX.Y.Z-rc.N
    ```
+
+   次の候補はこれを次の N で繰り返す。手順 4（`--release X.Y.Z`）で版が候補でない `X.Y.Z` に戻る。編集アプリのサイトは、候補の版を「リリースでない」ものとして扱う：`tools/site-versions.mjs assemble` は受け付けるが `/v…/` の写しは作らず、版の一覧はリリースだけにする（候補のタグへの「Run workflow」は組み立ての試走だけ。`pages.yml` は候補を置かない）。
 
 2. **評価。** 管理者の夜ごとの評価（形式の仕様の実験の道具で回すもの。候補の commit の要約を管理者に頼む）で、段 A（保存した返答の採点し直し）の差分が **0**（0 でなければ、差分がどれも意図した変更か確かめる）、段 B（新しく作らせたもの）の直し後の通過率が、直近の晩より大きく下がっていないこと。そうでなければ `main` で直して、新しい候補を作る
 3. **`main` の CI が緑。** 候補のコミットで `test` と `pages`（組むだけ）の workflow が通っている：`gh run list --branch main --limit 5`
