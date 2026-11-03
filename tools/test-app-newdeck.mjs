@@ -170,15 +170,15 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-answered.png', 'paste-step-kind');
     // ④ プランの問い（無料が既定）→ パーツの一覧（標準は全部。てこからは専門の束を推さない：理由なし。授業（小・中・高）は教科の形が一番上）→ メーター → コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
-      && (await text(p1, '#paste-plan-hint')) === 'プランで、指示の大きさの目安が変わります（無料のプランは 40 KB、有料のプランは 120 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
+      && (await text(p1, '#paste-plan-hint')) === 'プランで、指示の大きさの目安が変わります（無料のプランは 45 KB、有料のプランは 120 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
       && (await text(p1, '#paste-parts legend')) === 'AI にどのパーツを使わせますか' && (await ticks(p1)) === sorted(STD) && await p1.isHidden('#paste-parts-why') && (await badges(p1)) === ''
       && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null).flatMap((g) => g.parts).length} 種類）`
-      && /^指示の大きさ：[\d.]+ KB（目安は 40 KB まで）$/.test(await text(p1, '#paste-pack-size')),
+      && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
     // 標準のパーツを全部選んだ無料のプランの指示は目安の中から始まる（中核の 4 つのほかは一覧の 1 行だけ。backlog #125）
     const bytes1 = +(await p1.getAttribute('#paste-pack-size', 'data-bytes'));
     ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && await p1.isHidden('#paste-shortened') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
-      `S1 ④: with every standard part ticked, the free plan's meter starts within the 40 KB limit (${bytes1} B), not striped`);
+      `S1 ④: with every standard part ticked, the free plan's meter starts within the 45 KB limit (${bytes1} B), not striped`);
     await checkSkillDownload(p1, { lang: 'ja', selector: '#paste-download-skill', ok, base: BASE });
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -490,9 +490,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(await p8.isVisible('#paste-shortened') && (await text(p8, '#paste-shortened')) === '無料のプランの目安に収めるため、棒グラフ・流れ図・目次・予想と答えの説明を短くしました',
       'S8 ④: over the free limit, the core four are shortened first, and the meter says so: ' + await text(p8, '#paste-shortened'));
     ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、チャットの AI が最後まで読めないことがあります。外す候補：/.test(over8) && !['棒グラフ', '流れ図', '目次', '予想と答え', '折れ線'].some((w) => over8.includes(w))
-      && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '40'
+      && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '45'
       && (await text(p8, '#paste-trim')) === '候補を外す',
-      'S8 ④: still over the free plan’s 40 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);
+      'S8 ④: still over the free plan’s 45 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);
     await p8.click('#paste-trim');
     const ticks8 = await ticks(p8);
     const bytes8 = +(await p8.getAttribute('#paste-pack-size', 'data-bytes'));

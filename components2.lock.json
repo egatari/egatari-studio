@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.1.2",
+  "default": "2.2.0",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -524,6 +524,113 @@
         "tree": "03ad8f02fe39c4adc55aae617b79763bd7880af6786126e358f8c02ad7fb7dd8",
         "venn": "df17b0c9aa191c1fcd4d89cb4ec6a0d2cb24dac320ad2133ba918eeee88ec489"
       }
+    },
+    "2.2.0": {
+      "tag": "v2.2.0",
+      "tarballSha256": "abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2",
+      "manifestSha256": "26b3e9b50956ac0f70f6f132cf2af2de0de3d684f3df8c2181b6c2eb4d878ec1",
+      "parts": {
+        "bars": "2.0.2",
+        "base": "1.1.0",
+        "boxplot": "2.0.2",
+        "boxplot-core": "1.0.0",
+        "cards": "2.0.2",
+        "codetree": "2.0.2",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.2",
+        "compare": "2.0.2",
+        "curves": "2.0.2",
+        "cycle": "2.0.3",
+        "expr": "1.0.0",
+        "fishbone": "2.0.2",
+        "flow": "2.0.3",
+        "gendai": "2.0.2",
+        "heatmap": "2.0.2",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.2",
+        "hist": "2.0.2",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.1",
+        "kanbun": "2.0.2",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.3",
+        "kobun": "2.0.2",
+        "kpi": "2.0.2",
+        "map-japan": "2.0.2",
+        "map-world": "2.0.2",
+        "market": "2.0.2",
+        "markup-reader": "1.0.1",
+        "menu": "2.0.2",
+        "numberline": "2.0.2",
+        "orbit": "2.0.3",
+        "pie": "2.0.2",
+        "plot": "1.0.1",
+        "predict": "2.0.3",
+        "quad": "2.0.3",
+        "scatter": "2.0.2",
+        "score": "2.1.0",
+        "seq": "2.0.2",
+        "shape": "1.0.0",
+        "sweep": "2.0.2",
+        "syntax": "2.0.2",
+        "tape": "2.0.2",
+        "timeline": "2.0.2",
+        "timer": "2.0.3",
+        "tree": "2.0.2",
+        "venn": "2.0.2"
+      },
+      "content": {
+        "bars": "149e8ddefbc384aafa8b961d48f8f56ad68ff75cc2429bd8c1ad6d8da661f5f6",
+        "base": "577008a069e7eb08057705a0800d975e82c8dfe0d0ba5fbf4f8974af7b298a7f",
+        "boxplot": "12704ccb92a1f864a18cce824a2400e8e3141e8dba7db34805cb1d8522aae08e",
+        "boxplot-core": "fadd24868e2730ec14b8f3f1e9cb75b8577a48b8d71beaa12ef089f7a3ba0a7d",
+        "cards": "68c9e866e3cd3e2f8179ede44a005c7f31cef0ed07fd5770ec33f0cc3aa80a41",
+        "codetree": "ed44804fc14b2755a82960d94cb0322858732ad789fd9a46704ee88955bd65e6",
+        "codetree-core": "bd590a6619f80d659299e4e558f770e75244360450939d504a4eaf7989b0eb97",
+        "collect": "e6bbe784ee452d52d534b8fb3a0924e65c49bbb5926139ef5eabd9193500b357",
+        "compare": "ae4f864445dff17a19df30c528cb44741558217080f8e6563e0c364025a4d0a6",
+        "curves": "a6ad6867e21b4ffab426919d62f4293cbb447c7307f8f92e4a8c8d7c285fca6a",
+        "cycle": "d159f55bb5a72bc67c4ffa856bf9e1735d3c37f5cad9673accffc1e1953182e0",
+        "expr": "faf6a2f0b5df589639de624e75c5b20594f517e4426f6415d152809249b00b92",
+        "fishbone": "75a20673474b3104da24a7cb0d0483394bed380ff1c108a9a529bcdd1de0f1fb",
+        "flow": "3395706f819e0e70b4047da33486a4b59e65118faf8f918677061e397dae408c",
+        "gendai": "3c36a26fd78dffdfa114bd7c9ca5cae494117bbcdda14bee5c2a01351e5f2eb2",
+        "heatmap": "2a6b20b93f1169ef2435cdf3bfca57d24c9111fe9aaf8e61f0d049cf8a70e9df",
+        "heatmap-core": "de9607f86221006e7bad43f1f661c751d9a6f8f9c62da5c7e0d7f1249b9afcd6",
+        "hissan": "328a440e91684524068076e96cba5771cdceaa274d4b90033656259f05467135",
+        "hist": "a6486154cbfe25c500a64cbb2128be45c2e2365e848c34d4c5c10e9a93f6e73c",
+        "hist-core": "07013c263cc595382dbcfd4931ca8b016f9dfb673440adf28911c95bd465cf9d",
+        "icons": "fc74310c1964554e53b0cf2f0c58bdd87fc997cec8201f23eaef487e310059a3",
+        "kakijun": "8af8e00fd248f55ce84fe9989e531ae60bf0eb5d0f059f3a28aa3d9c92a8e1d8",
+        "kanbun": "556e7d45a761c4fa749cde186fb53f6c526ba6ede0b8f0f0bba5ac9e25e0d6f4",
+        "kanbun-core": "f268cf809438c8af63a42f9c9121110fc7263e4d705c40c6206ce46cf7ec167b",
+        "keyboard": "3dba49cbbf7853212a6e5c393de030430d02b8b1a2ba4c8b722db2bb8afad12f",
+        "kobun": "de611e2477042b14eb9c04bb98ad0bbe6d7b44ca829213dd1a7a2b94d8f946ae",
+        "kpi": "c252d5ceed6735b7ca8095ac8ef035dfc79f8492b2624d7d2eb94d2a27fafe2b",
+        "map-japan": "00e4bdbb7b9964c92809177fe7bb574e7184ed603dbc5008a485d82603d9a7bf",
+        "map-world": "9cf9789f26ceaae205d48bb083e823e768413e3b2227f87de09e3cde2105a68b",
+        "market": "5b44b272b917246219d2709f1b001964f87a3e07786cc9950087bbb8add3c721",
+        "markup-reader": "03550bb20d425aa926258bab18b03bbc0cee292072e01bb6c78c429b3ae92c34",
+        "menu": "b9ee9d0f48ab61977d3aa618e6155ccc3453dbf452235f438fa15db6f554f961",
+        "numberline": "4e0e5eb48fc20ffc554786a7db66c4f5cee0c42eb0554bdc8c98323cdb168eb4",
+        "orbit": "37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09",
+        "pie": "40452368224bdcd8c4910222285e6af9e120df17dbd1c3177c0abe9cb69075d1",
+        "plot": "d4159ba1206d094364b7735750e5e2532aeabbc299e0d6858e3a0edb84495e11",
+        "predict": "2c9490ac960a5bb04ebc0c8fa0622392775f85ef8b8ebe93065991ce40afc097",
+        "quad": "eb5efa15920d9883af15d105cc0f7a9b2c781d792faae34a43d44738138b219f",
+        "scatter": "6c25dc07f75697e7388564ad689303c370d49142aab9e6672baec15a0313a2fa",
+        "score": "abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f",
+        "seq": "ef969fa27f1e11aa52a174874292366c7c8201c7c0d8236a7aef7d7eacf6a177",
+        "shape": "d92842c606795528d1246ddb050ac275e1b72659629185750a6e9ac7fdb763a3",
+        "sweep": "027a8fea4060337ccc0a926c1488066f1ae7a6c102a15032eae974304e12cb3b",
+        "syntax": "0eca723150eb30db0b3d3fdbd35b973d5344ac0d0e2ea8ab89d143a0870ab4fd",
+        "tape": "693e2aa59e822d38c48eca7271cc020f8e0a6f6189f2409895318ed2a3f0b809",
+        "timeline": "6b24ab9b90b4f2275af9f61073fe9d65b8b9d16573d639ae07352f29b8b067a1",
+        "timer": "9043427ed434c76fba5b11ddd863c40d99b6157e194cfc729895cbaa4940496c",
+        "tree": "9bec862c19d5442f80a2a548a5c24911219469332a6b7fc63689a56f1f3209f4",
+        "venn": "cd714d22f82d64c80db8fdef33ca03aa618803e8114662ee2692fc7c6ac7168c"
+      }
     }
   },
   "parts": {
@@ -545,11 +652,28 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "fe2fc40790ceb5aab2972a55f541b82e5b5007fb0159c98cfddafe4283410bbf",
+        "kind": "element",
+        "tag": "m-bars",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "base": {
       "1.0.0": {
         "sha256": "dc24b118732fe3ee24bda383f65e3a4ff1cbcac8bd2eb79930a67ba330b3feb9",
+        "kind": "library",
+        "requires": {
+          "shape": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "1.1.0": {
+        "sha256": "1a2d752bfea7b9c23871a46a77afd3585d71a9b041c078135195eccc0b347f85",
         "kind": "library",
         "requires": {
           "shape": "1.0.0"
@@ -577,6 +701,17 @@
           "base": "1.0.0",
           "boxplot-core": "1.0.0",
           "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "b9820bf24fe7ac072f7eff870ec99101c63a0d543d881fac1597eff271190af7",
+        "kind": "element",
+        "tag": "m-boxplot",
+        "requires": {
+          "base": "1.1.0",
+          "boxplot-core": "1.0.0",
+          "plot": "1.0.1"
         },
         "license": "MIT"
       }
@@ -609,6 +744,16 @@
           "icons": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "ca73c8a2811a1165326725a2d4686657f1cab2a1a387af1e91aa35d1aabafb7e",
+        "kind": "element",
+        "tag": "m-cards",
+        "requires": {
+          "base": "1.1.0",
+          "icons": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "codetree": {
@@ -628,6 +773,16 @@
         "tag": "m-codetree",
         "requires": {
           "base": "1.0.0",
+          "codetree-core": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948",
+        "kind": "element",
+        "tag": "m-codetree",
+        "requires": {
+          "base": "1.1.0",
           "codetree-core": "1.0.0"
         },
         "license": "MIT"
@@ -681,6 +836,26 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "d5c7352bb3b750c9e42a3e90f7098bdc4de9a997686018678513fce149f95aa6",
+        "kind": "element",
+        "tag": "m-collect",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "targets[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "compare": {
@@ -699,6 +874,15 @@
         "tag": "m-compare",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "d19469525912d0503c994957717318f9260ad65ee4dd9878c2b32b9bacb01867",
+        "kind": "element",
+        "tag": "m-compare",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -723,6 +907,17 @@
           "base": "1.0.0",
           "expr": "1.0.0",
           "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "59519c0484932a018a8adf13999b5c198a1c06974607bd331793b5e379d2a2b9",
+        "kind": "element",
+        "tag": "m-curves",
+        "requires": {
+          "base": "1.1.0",
+          "expr": "1.0.0",
+          "plot": "1.0.1"
         },
         "license": "MIT"
       }
@@ -790,6 +985,27 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "d0f1c284b24a91ae4201dacab257279967211862c58b64f64dd9b69cf0a7bad9",
+        "kind": "element",
+        "tag": "m-cycle",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex",
+            "center.tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "expr": {
@@ -829,6 +1045,27 @@
         "requires": {
           "base": "1.0.0",
           "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "effect.tex": "katex",
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "252a6185e5f4fcf04326ba424ea367cc3640be0d50eeac205443930581689f56",
+        "kind": "element",
+        "tag": "m-fishbone",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
         },
         "build": {
           "fields": {
@@ -904,6 +1141,26 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "ad6cb79c15b5131c2ba9076ce14124d643936bcf997d19428e57717eda224f1f",
+        "kind": "element",
+        "tag": "m-flow",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "gendai": {
@@ -922,6 +1179,15 @@
         "tag": "m-gendai",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "ed1e828c5cc6224a9e1618467a19293cd2c923d52d6b7bc46f33b61b6e4bae6c",
+        "kind": "element",
+        "tag": "m-gendai",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -943,6 +1209,16 @@
         "tag": "m-heatmap",
         "requires": {
           "base": "1.0.0",
+          "heatmap-core": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "16b7d23d4e83c0849417100b495dfd7843a98af735169b1c9f4f21b707fef57b",
+        "kind": "element",
+        "tag": "m-heatmap",
+        "requires": {
+          "base": "1.1.0",
           "heatmap-core": "1.0.0"
         },
         "license": "MIT"
@@ -974,6 +1250,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "c0f30150cb5689beb3e333141f0d334511ccd85b18e870f4e55e8c3cd1e8fbc5",
+        "kind": "element",
+        "tag": "m-hissan",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "hist": {
@@ -996,6 +1281,17 @@
           "base": "1.0.0",
           "hist-core": "1.0.0",
           "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "6472a7ba18a8bff9d2e4d388b80e38bba5975baaf1820f1266fc0b547a0ca056",
+        "kind": "element",
+        "tag": "m-hist",
+        "requires": {
+          "base": "1.1.0",
+          "hist-core": "1.0.0",
+          "plot": "1.0.1"
         },
         "license": "MIT"
       }
@@ -1047,6 +1343,28 @@
         },
         "glyphs": "0123456789とめはねらい",
         "license": "MIT AND OFL-1.1"
+      },
+      "2.0.1": {
+        "sha256": "5560e0b72fb55f574165d7bc915b511897a830ca7c6d0b7a06d61aed3bfae5f1",
+        "kind": "element",
+        "tag": "m-kakijun",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "build": {
+          "subset": [
+            {
+              "data": "block:strokes",
+              "key": "char"
+            },
+            {
+              "data": "block:stroke-meta",
+              "key": "char"
+            }
+          ]
+        },
+        "glyphs": "0123456789とめはねらい",
+        "license": "MIT AND OFL-1.1"
       }
     },
     "kanbun": {
@@ -1066,6 +1384,16 @@
         "tag": "m-kanbun",
         "requires": {
           "base": "1.0.0",
+          "kanbun-core": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "4903336082fcd79679835c83dbafac3eba8eda58822e5afbe6ab8e326d64c2df",
+        "kind": "element",
+        "tag": "m-kanbun",
+        "requires": {
+          "base": "1.1.0",
           "kanbun-core": "1.0.0"
         },
         "license": "MIT"
@@ -1106,6 +1434,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "e3e478a33546b2f87e32f59c867b8d45a9b9ca7d3358655a95e9a4757ca7173f",
+        "kind": "element",
+        "tag": "m-keyboard",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "kobun": {
@@ -1124,6 +1461,15 @@
         "tag": "m-kobun",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "185ed8d9a9c564abdef0471679fc223304114c7e620433bb287c28655eff9007",
+        "kind": "element",
+        "tag": "m-kobun",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1146,6 +1492,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "ebfdbe90122bbd0cffc5515a7ff1be644a2fade92a646f54cc5a8e5a0c539bbd",
+        "kind": "element",
+        "tag": "m-kpi",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "map-japan": {
@@ -1164,6 +1519,15 @@
         "tag": "m-map-japan",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "44a7178cd4bfcb4ab9837c5cc12caffe26c7f89ededb3b627d53717dc051d24e",
+        "kind": "element",
+        "tag": "m-map-japan",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1186,6 +1550,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "da117cd38b81381dd7479c2839812f2c6776a9b4b3262e5c665043b8501bee0b",
+        "kind": "element",
+        "tag": "m-map-world",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "market": {
@@ -1206,6 +1579,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "6933616d229b5c56e19f7492b4e852a17d0b99544861e6004ceace27c45770cf",
+        "kind": "element",
+        "tag": "m-market",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "markup-reader": {
@@ -1214,6 +1596,14 @@
         "kind": "library",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "1.0.1": {
+        "sha256": "097c867caba016f546459a7090fcaa70f76b26ed26833f4a72963bf0228499ee",
+        "kind": "library",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1236,6 +1626,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "a66af8f2835664175adfba7e628f3ffe4fbeb99c32fa9b2501456cae306f4cb0",
+        "kind": "element",
+        "tag": "m-menu",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "numberline": {
@@ -1254,6 +1653,15 @@
         "tag": "m-numberline",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "978be854620b477f4bea3536b57f890e28ecf72f87c219d0abf6c48d728fdc61",
+        "kind": "element",
+        "tag": "m-numberline",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1285,6 +1693,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "d93729f39a0753001c9eef8ad2c12827aff99ff1807cb6891afb9e29b5c3491d",
+        "kind": "element",
+        "tag": "m-orbit",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "pie": {
@@ -1305,6 +1722,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "931aec3b6c27a56d21fe039cd742a6b52d03459bb006d4d586a180fb23a49def",
+        "kind": "element",
+        "tag": "m-pie",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "plot": {
@@ -1313,6 +1739,14 @@
         "kind": "library",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "1.0.1": {
+        "sha256": "29b7c9913176a362189054fa42862bb1c0b80bbf55fca748c87f60f9320d043a",
+        "kind": "library",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1344,6 +1778,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "c6d88aca60f261322cfc0a0bf9f6bb98111d6a0c674460f45e9d691cfa9b4aa1",
+        "kind": "element",
+        "tag": "m-predict",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "quad": {
@@ -1373,6 +1816,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "2c550f2107875eddf8266f9756b671d6615c1bb794739838cee671af341f276b",
+        "kind": "element",
+        "tag": "m-quad",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "scatter": {
@@ -1393,6 +1845,16 @@
         "requires": {
           "base": "1.0.0",
           "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "40115e96c1c63933c518e4fdc7b3b57a59800a51c012a69976232cfbff2c64db",
+        "kind": "element",
+        "tag": "m-scatter",
+        "requires": {
+          "base": "1.1.0",
+          "plot": "1.0.1"
         },
         "license": "MIT"
       }
@@ -1427,6 +1889,21 @@
           }
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "31ffe74f29d89955647c87e91c880de140853149f68713ae9cf59f0f53327013",
+        "kind": "element",
+        "tag": "m-score",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "abc": "abcjs"
+          }
+        },
+        "license": "MIT"
       }
     },
     "seq": {
@@ -1447,6 +1924,16 @@
         "requires": {
           "base": "1.0.0",
           "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "b60234f05f5453a7a4678b68446e496fcd1a0eea4edb6dbb1cafc9647eba41a4",
+        "kind": "element",
+        "tag": "m-seq",
+        "requires": {
+          "base": "1.1.0",
+          "plot": "1.0.1"
         },
         "license": "MIT"
       }
@@ -1481,6 +1968,17 @@
           "plot": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "82afb42dad9d818fd2effeb5d4f897e07e57702a70f09f1d21270d9231dc533d",
+        "kind": "element",
+        "tag": "m-sweep",
+        "requires": {
+          "base": "1.1.0",
+          "expr": "1.0.0",
+          "plot": "1.0.1"
+        },
+        "license": "MIT"
       }
     },
     "syntax": {
@@ -1501,6 +1999,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "bc96adbf3bcd7701e1c5789481403a7e4292f7cc1431cfb4506a4c0da7f0e06f",
+        "kind": "element",
+        "tag": "m-syntax",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "license": "MIT"
       }
     },
     "tape": {
@@ -1519,6 +2026,15 @@
         "tag": "m-tape",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "430dccf40c18d6f3c76eb7fbf5e8b34929f35c09bb49099ae1cfb8cc12436c7c",
+        "kind": "element",
+        "tag": "m-tape",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1563,6 +2079,26 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "bbd0fdeeff2b4ec3bd9a858161eb4447c044505e5ff0950cb0f7bd60fa3a5f9b",
+        "kind": "element",
+        "tag": "m-timeline",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "timer": {
@@ -1590,6 +2126,15 @@
         "tag": "m-timer",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "13a640b8b1c8cb6522b0318f696dcf7d9b2f7c5f4c8b577f6163b95bacbeac24",
+        "kind": "element",
+        "tag": "m-timer",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }
@@ -1634,6 +2179,26 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "c13117dc7980f87df324e4590673aa93f3ccfcd95f3e1496d970400d30d9744d",
+        "kind": "element",
+        "tag": "m-tree",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "venn": {
@@ -1652,6 +2217,15 @@
         "tag": "m-venn",
         "requires": {
           "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "88070e78ab6990ea677cb3fef12b9ef68a1e8aef5f9e515aae29541c9662f39c",
+        "kind": "element",
+        "tag": "m-venn",
+        "requires": {
+          "base": "1.1.0"
         },
         "license": "MIT"
       }

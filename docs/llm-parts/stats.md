@@ -67,8 +67,8 @@ Data example (child `<script type="application/json">`): `{"rows":["ねこ","い
 | `rotate` | string | `"auto"` | 列の名前：auto・0・90 |
 | `xl` | string | `""` | 列の見出し |
 | `yl` | string | `""` | 行の見出し |
-| `unit` | string |  |  |
-| `digits` | number |  |  |
+| `unit` | string |  | セルの数字の後ろに付ける単位（JSON の unit より先） |
+| `digits` | number |  | セルの数字の小数桁（既定は値の桁、2 桁まで。割合は 0） |
 
 `highlight: [[行, 列], …]`（0 から。3 つ目に段階）で --emph の枠。
 

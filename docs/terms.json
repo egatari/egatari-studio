@@ -1133,7 +1133,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Free plan (of the chat AI)",
    "ja": "無料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a free plan; the suggested size limit of the instructions is 40 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
+   "definition": "The user's chat AI is on a free plan; the suggested size limit of the instructions is 45 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
    "avoid": {
     "ja": [
      "無料版"
@@ -1141,9 +1141,9 @@
     "en": []
    },
    "internal": "plan: free",
-   "decided": "2026-10-25",
+   "decided": "2026-11-03",
    "by": "owner",
-   "note": ""
+   "note": "backlog #169: raised from 40 KB to 45 KB"
   },
   {
    "id": "paid-plan",

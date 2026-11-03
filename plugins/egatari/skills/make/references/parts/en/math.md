@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # math parts
 
-Instruction version: b47ccdba
+Instruction version: 73eb43a5
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
@@ -50,9 +50,10 @@ Data example (child `<script type="application/json">`): `{"lines":[{"from":0,"t
 - marks：`{at, kind: "dot" | "open" | "box", label}`。box は □
 - jumps：`{from, to, label}`（左向きも）
 - ranges：`{from, to, incl: [true, false]}`。端がなければ矢印。重なれば共通部分を塗る
-- link（2 本）：`[[上の値, 下の値]]` か `{at, label: "×3"}`
+- link（2 本）：`[[上の値, 下の値]]`（破線）か `{at: [上の値, 下の値], label: "×3"}`（上の線から下の線への矢印。`dir: "up"` なら下から上へ）
 - magnify：`{from, to, step}`。区間を下の線に広げる（既定 10 等分）
 - 項目の `line`（0 か 1。拡大の線は 1, 2, …）、`show`（ステップ）
+- `tone`（marks・jumps・ranges・名前のある link）：`term`・`emph`・`muted`・`accent2`・`fg`・`series-1..4`。既定は `term`、範囲は `series-1..4` の順
 - `arrow="on"`：右端を矢印に
 
 ### `<m-sweep>`
@@ -91,4 +92,5 @@ Data example (child `<script type="application/json">`): `{"rows":[{"label":"み
 - times：`{from, to, label: "2 倍"}`（行の番号）
 - `kind="line"`：線分図
 - 項目の `show`：出すステップ
+- 行の `tone`：行の色（`term`・`emph`・`muted`・`accent2`・`fg`・`series-1..4`。既定は `series-1` から順に）
 - 行の名前に色の名前（赤・白）を使わない。色はテーマで変わる

@@ -10,7 +10,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ `/plugin install egatari@egatari` を案内する。
 
 <!-- generated: instruction-version -->
-**指示の版：b47ccdba**
+**指示の版：73eb43a5**
 <!-- /generated: instruction-version -->
 
 make の版の行と違えば、両方のプラグインを更新するよう利用者に伝える。

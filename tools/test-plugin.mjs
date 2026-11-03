@@ -142,7 +142,7 @@ const extraRef = generated[`${MAKE_SKILL_DIR}/references/parts/extra.md`];
 assert.ok(data.extra.includes('m-codetree') && data.extra.includes('m-collect'));
 for (const t of data.extra) assert.ok(extraRef.includes(`${t.replace(/^m-/, '')}/README.md`) && !data.ja.components[t], t);
 assert.ok(generated[`${MAKE_SKILL_DIR}/references/parts/standard.md`].includes('### `<m-timeline>`'), 'the skill describes every standard part (no free-plan brevity)');
-assert.ok(Buffer.byteLength(generated[`${MAKE_SKILL_DIR}/references/parts/standard.md`]) > 40 * 1024, 'skill references have no paste-in cap');
+assert.ok(Buffer.byteLength(generated[`${MAKE_SKILL_DIR}/references/parts/standard.md`]) > 45 * 1024, 'skill references have no paste-in cap');
 // 材料を替える：m-bars を特殊に、m-flow を新しい束 custom に
 const moved = (D) => ({ ...D, components: Object.fromEntries(Object.entries(D.components).filter(([t]) => t !== 'm-bars').map(([t, c]) => [t, t === 'm-flow' ? { ...c, set: 'custom' } : c])) });
 const sample = skillFiles({ ...data, sets: [...data.sets, 'custom'], extra: [...data.extra, 'm-bars'], ja: moved(data.ja), en: moved(data.en) });

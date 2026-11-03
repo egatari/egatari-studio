@@ -101,8 +101,8 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
-// 取り込んだカタログに、README だけ直した新しいリリース（2.2.0 の形）を足しても、前のカタログはどれも前のバイトのまま
-// （写しの複製に、2.1.2 の写しから作ったリリースを当てる。boxplot-core・shape の README だけを変え、版はそのまま）
+// 取り込んだカタログに、README だけ直した新しいリリース（合成の版 2.9.9。実在のどのカタログの版ともぶつからない）を足しても、
+// 前のカタログはどれも前のバイトのまま（写しの複製に、2.1.2 の写しから作ったリリースを当てる。boxplot-core・shape の README だけを変え、版はそのまま）
 {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-parts-refresh-'));
   try {
@@ -120,19 +120,19 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
       const files = new Map();
       const walk = (rel) => { for (const e of fs.readdirSync(path.join(d, rel), { withFileTypes: true })) { const r = rel ? `${rel}/${e.name}` : e.name; if (e.isDirectory()) walk(r); else files.set(r, fs.readFileSync(path.join(d, r))); } };
       walk('');
-      if (name === 'boxplot-core' || name === 'shape') files.set('README.md', Buffer.concat([files.get('README.md'), Buffer.from('\nA documentation fix in 2.2.0.\n')]));
+      if (name === 'boxplot-core' || name === 'shape') files.set('README.md', Buffer.concat([files.get('README.md'), Buffer.from('\nA documentation fix in 2.9.9.\n')]));
       for (const [f, b] of files) mfiles[`${name}/${f}`] = crypto.createHash('sha256').update(identityBytes(`${name}/${f}`, b)).digest('hex');
       parts[name] = { version: v, record: lockA2.parts[name][v], files };
     }
-    const manifest = Buffer.from(JSON.stringify({ ...m212, version: '2.2.0', tag: 'v2.2.0', files: mfiles }, null, 2));
-    const r = applyRelease2({ version: '2.2.0', tag: 'v2.2.0', tarballSha256: 'f'.repeat(64), manifest, license: fs.readFileSync(path.join(root, 'vendor', 'components-2', 'LICENSE')), parts }, { root });
+    const manifest = Buffer.from(JSON.stringify({ ...m212, version: '2.9.9', tag: 'v2.9.9', files: mfiles }, null, 2));
+    const r = applyRelease2({ version: '2.9.9', tag: 'v2.9.9', tarballSha256: 'f'.repeat(64), manifest, license: fs.readFileSync(path.join(root, 'vendor', 'components-2', 'LICENSE')), parts }, { root });
     ok(eq(r.refreshed.sort(), ['boxplot-core@1.0.0', 'shape@1.0.0']) && r.written.length === 0, `a README-only release is reported as refreshed (${r.refreshed.join(', ')})`);
     const now = resolvedAll();
     const moved = Object.keys(was).filter((k) => was[k] !== now[k]);
     ok(moved.length === 0, `every older catalogue resolves the same folders as before (${Object.keys(was).length} parts in ${Object.keys(lockA2.catalogues).length} catalogues)${moved.length ? ': moved ' + moved.join(', ') : ''}`);
     ok(fs.readFileSync(path.join(root, 'components.lock.json')).equals(lock1Bytes), 'components.lock.json is byte-for-byte unchanged (the build reads and records the same code paths)');
     const lockB2 = JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8'));
-    ok(/A documentation fix in 2\.2\.0/.test(fs.readFileSync(path.join(resolveCatalogueContent(path, root, lockA, lockB2, '2.2.0', 'boxplot-core'), 'README.md'), 'utf8')) &&
+    ok(/A documentation fix in 2\.9\.9/.test(fs.readFileSync(path.join(resolveCatalogueContent(path, root, lockA, lockB2, '2.9.9', 'boxplot-core'), 'README.md'), 'utf8')) &&
       !/A documentation fix/.test(fs.readFileSync(path.join(resolveCatalogueContent(path, root, lockA, lockB2, '2.1.2', 'boxplot-core'), 'README.md'), 'utf8')), 'the new catalogue resolves the new README; 2.1.2 keeps its own');
     const e = checkVendor2(root);
     ok(e.length === 0, `every catalogue, old and new, matches its own manifest after the import${e.length ? ': ' + e.slice(0, 5).join('; ') : ''}`);
@@ -223,20 +223,23 @@ const lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'
   const available = { ...local, 'm-localbase': { meta: { name: 'base', version: '9.9.9', requires: {}, element: 'm-localbase' }, code: '', where: 'components/localbase/index.js' } };
   const resolvedLocal = resolveParts(lock2, cat, ['m-x'], { local: available });
   ok(resolvedLocal.requiresMissing.length === 0 && resolvedLocal.parts[0].version === '9.9.9', 'an exact embedded requirement needs no catalogue entry');
+  // bars・pie が既定のカタログで要る base の版（固定の文字列にしない：既定のカタログが変わっても通る）
+  const barsBase = lock2.parts.bars[lock2.catalogues[cat].parts.bars].requires.base;
+  const pieVersion = lock2.catalogues[cat].parts.pie;
   const broken = structuredClone(lock2);
-  broken.parts.base['1.0.0'].requires = { absent: '1.0.0' };
-  ok(eq(resolveParts(broken, cat, ['m-bars']).requiresMissing, [{ part: 'base@1.0.0', requires: 'absent@1.0.0' }]), 'transitive requirements name the part that needs them');
+  broken.parts.base[barsBase].requires = { absent: '1.0.0' };
+  ok(eq(resolveParts(broken, cat, ['m-bars']).requiresMissing, [{ part: `base@${barsBase}`, requires: 'absent@1.0.0' }]), 'transitive requirements name the part that needs them');
   const cyclic = { 'm-x': { ...local['m-x'], meta: { ...local['m-x'].meta, requires: { x: '0.1.0' } } } };
   const cycle = resolveParts(lock2, cat, ['m-x'], { local: cyclic });
   ok(cycle.requiresMissing.length === 0 && cycle.warn.some((w) => /cycle/.test(w)), 'cycles keep their existing warning without a missing requirement');
-  // 2 つの版が並ぶ（試しの固定のファイル）
+  // 2 つの版が並ぶ（試しの固定のファイル。合成の版 9.9.9 は既定のカタログの実在の版とぶつからない）
   const two = JSON.parse(JSON.stringify(lock2));
-  two.parts.base['1.1.0'] = { ...two.parts.base['1.0.0'] };
-  two.parts.pie['2.1.0'] = { ...two.parts.pie['2.0.0'], requires: { base: '1.1.0' } };
+  two.parts.base['9.9.9'] = { ...two.parts.base[barsBase] };
+  two.parts.pie['9.9.9'] = { ...two.parts.pie[pieVersion], requires: { base: '9.9.9' } };
   ok(lock2Problems(two).length === 0, 'test lock with two base versions is well formed');
-  const r3 = resolveParts(two, cat, ['m-bars', 'm-pie'], { pins: { pie: '2.1.0' } });
+  const r3 = resolveParts(two, cat, ['m-bars', 'm-pie'], { pins: { pie: '9.9.9' } });
   const ids3 = r3.parts.map((p) => `${p.name}@${p.version}`);
-  ok(ids3.includes('base@1.0.0') && ids3.includes('base@1.1.0') && ids3.indexOf('base@1.1.0') < ids3.indexOf('pie@2.1.0'), `two versions of base side by side: ${ids3.join(' ')}`);
+  ok(ids3.includes(`base@${barsBase}`) && ids3.includes('base@9.9.9') && ids3.indexOf('base@9.9.9') < ids3.indexOf('pie@9.9.9'), `two versions of base side by side: ${ids3.join(' ')}`);
   const barsDefault = lock2.catalogues[cat].parts.bars;
   const r4 = resolveParts(lock2, cat, ['m-bars'], { pins: { bars: '7.0.0' } });
   ok(r4.parts.some((p) => p.name === 'bars' && p.version === barsDefault) && r4.warn.some((w) => /bars: version "7\.0\.0" is not in/.test(w)), 'a pin that is not vendored falls back to the catalogue with a warning');
@@ -468,9 +471,9 @@ for (const [code, what] of [
   const v212 = lock2.catalogues['2.1.2'];
   const LIBRARIES_212 = ['base', 'boxplot-core', 'codetree-core', 'expr', 'heatmap-core', 'hist-core', 'icons', 'kanbun-core', 'markup-reader', 'plot', 'shape'];
   const bumped212 = Object.keys(v212.parts).filter((n) => n !== 'kakijun' && !LIBRARIES_212.includes(n));
-  ok(lock2.default === '2.1.2' && v212 && v212.tag === 'v2.1.2' && v212.tarballSha256 === '7204e2a70cfa725405bd68025976f463019f73ac9932d519ff2afa97d7d9f21e' &&
+  ok(v212 && v212.tag === 'v2.1.2' && v212.tarballSha256 === '7204e2a70cfa725405bd68025976f463019f73ac9932d519ff2afa97d7d9f21e' &&
     v212.manifestSha256 === '454c03bd99ee12b9ad84ba97cb46981508c3f276f7a808c160cfc65cec7ac517',
-    'components 2.1.2 is the default and pinned to the verified release');
+    'components 2.1.2 is pinned to the verified release');
   ok(v212.parts.kakijun === v211.parts.kakijun && LIBRARIES_212.every((n) => v212.parts[n] === v211.parts[n]),
     'm-kakijun and every library part keep the same version as 2.1.1 (unaudited / unchanged code)');
   ok(bumped212.length === 37 && bumped212.every((n) => v212.parts[n] !== v211.parts[n]),
@@ -479,6 +482,29 @@ for (const [code, what] of [
     v212.parts.boxplot === '2.0.1' && lock2.parts.boxplot['2.0.1'].sha256 === '91dbe36e346e2601a70b7b80fc2c56b6bd675cd390eb2f6c55947cbdfee3545d' &&
     v212.parts.orbit === '2.0.2' && lock2.parts.orbit['2.0.2'].sha256 === '7dbbb3852a77a1a3dcfba8c69574d2a87e6b87adbfa84f30c0359e2bae0afb2b',
     'components 2.1.2 fixes land in the pinned code (m-hissan products past 2^53, m-boxplot quartile rounding, m-orbit lit/shadow sides; sha256 from published.json)');
+  // 候補 2.2.0（components 側はまだタグ・リリースなし。branch c2-base、5 度目の取り直し：bcb6c70 → 364e27f（14 の README から
+  // 共通の表記の説明を抜く）→ b2711f8（国語の README をさらに削り、ライブラリの README の「2.0 alpha; not for lessons」の行も消す）
+  // → 8d566f2（評価 B 向けのさらなる調整）→ 8b14bd5（リリース形。m-kakijun の README の frontmatter だけ tier: extra・set
+  // （kokugo）を外す。コードは変えず 2.0.1 のまま）。標準化チームの評価用）：base 1.1.0 が下付き・上付きを 24px 以上・幅を測った
+  // 推定に直し、要素パーツ 41 個（m-kakijun も含め全要素）がそれを求めて版が上がる（8 つのライブラリの土台は index.js そのまま、
+  // README だけ refreshed）。manifest・tarball の sha256 は manifest.json のもの（まだ GitHub のリリースはないので published.json
+  // との突き合わせはできない）
+  const v220 = lock2.catalogues['2.2.0'];
+  const LIBRARIES_220 = ['boxplot-core', 'codetree-core', 'expr', 'heatmap-core', 'hist-core', 'icons', 'kanbun-core', 'shape'];
+  const bumped220 = Object.keys(v220.parts).filter((n) => !LIBRARIES_220.includes(n));
+  ok(lock2.default === '2.2.0' && v220 && v220.tag === 'v2.2.0' && v220.tarballSha256 === 'abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2' &&
+    v220.manifestSha256 === '26b3e9b50956ac0f70f6f132cf2af2de0de3d684f3df8c2181b6c2eb4d878ec1',
+    'CANDIDATE components 2.2.0 is the default and pinned to the tarball verified here (not yet a components release)');
+  ok(LIBRARIES_220.every((n) => v220.parts[n] === v212.parts[n]),
+    'the 8 untouched library parts keep their 2.1.2 version in the 2.2.0 candidate (README-only refresh, index.js unchanged)');
+  ok(bumped220.length === 41 && bumped220.every((n) => v220.parts[n] !== v212.parts[n]) && v220.parts.kakijun === '2.0.1' && v220.parts.kakijun !== v212.parts.kakijun,
+    'CANDIDATE 2.2.0: 41 parts get a new version, m-kakijun included this time (base 1.1.0 requires it everywhere)');
+  ok(v220.parts.base === '1.1.0' && lock2.parts.base['1.1.0'].sha256 === '1a2d752bfea7b9c23871a46a77afd3585d71a9b041c078135195eccc0b347f85' &&
+    v220.parts.kakijun === '2.0.1' && lock2.parts.kakijun['2.0.1'].sha256 === '5560e0b72fb55f574165d7bc915b511897a830ca7c6d0b7a06d61aed3bfae5f1',
+    'CANDIDATE 2.2.0: base 1.1.0 (measured sub/superscript width, 24px floor) and m-kakijun 2.0.1 land in the pinned code (sha256 from the tarball; unchanged across every README-only rebuild)');
+  ok(v220.parts.base === '1.1.0' && v220.parts['markup-reader'] === '1.0.1' && v220.parts.plot === '1.0.1' &&
+    v220.parts.score === '2.1.0' && lock2.parts.score['2.1.0'].requires.base === '1.1.0',
+    'CANDIDATE 2.2.0: base 1.1.0 / markup-reader 1.0.1 / plot 1.0.1 bump together; m-score 2.1.0 adds per-step (by="measure") and requires both');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
