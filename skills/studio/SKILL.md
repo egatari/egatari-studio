@@ -127,7 +127,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
    ```
    - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
    - 字体を替えるなら `theme.json` の `fonts`（Studio が入れられる一覧から）。
-   - 表紙の背景に画像は敷けない（`tokens.css` の `url()` は組み立てが埋め込まない。#171）。画像はロゴとして入れる。
+   - 表紙の背景に画像を敷くには、画像をテーマのフォルダに置き、`tokens.css` で相対の `url()` を書く（例：`--cover-bg: url(cover.png) center/cover no-repeat;`）。組み立てが画像を埋め込み、テーマの hash と Egatari ファイルにも入る。テーマのフォルダの外のファイルは使えない（警告が出て拒まれる）。ないファイルは警告が出て `url()` のまま残る。ロゴは `theme.json` の `logos`。
 3. **確かめる**：サンプルの教材を `--theme <名前>` で組み、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
 4. **使う**：教材は `<html data-theme="<名前>">`。Egatari ファイルに書き出すと、テーマ（と LICENSE）が教材の中に入り、どこでも同じに組める。
 5. **Studio で使う**：テーマのフォルダを ZIP にして（`cd ~/.egatari/themes && zip -r <名前>.zip <名前>`）、編集アプリの「テーマを読み込む…」→「ZIP ファイルを選ぶ…」。Chrome・Edge ならフォルダのまま「フォルダを選ぶ…」でもよい。
