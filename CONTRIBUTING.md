@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=7778276fcffdb254 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=c635722b7dad2bf3 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -65,7 +65,7 @@ Each change that users or callers will notice adds a fragment instead of editing
 - Editor app: **Export single file** keeps the attachments of the opened file
 ```
 
-The sections are `Added`, `Changed (API)` (a change to the shapes in [Interface shapes](#interface-shapes) or another interface callers use), `Changed`, `Removed`, `Fixed` and `Security`; one fragment may have several. Entries are in English, like the rest of `CHANGELOG.md`. `## [Unreleased]` in `CHANGELOG.md` stays empty. At a release, `node tools/changelog.mjs --release X.Y.Z` puts the fragments (in that section order, by file name within a section) under `## [X.Y.Z] - <date>`, updates the compare links, sets the version in `package.json` and `package-lock.json` and deletes the fragments; `--preview` prints the section without writing anything, and `--check` (in `npm test`) checks the fragments. In CI, a pull request that changes code (`app/`, `kit/`, `vendor/components/`, `components.lock.json`, `server/`, `render/`, `tts/`, `themes/`, `lab/`, `skills/`, `package.json`) without adding a fragment gets a warning; it does not fail. Releasing is described in [RELEASING.md](RELEASING.md).
+The sections are `Migration` (steps a user must take to keep working; it comes first), `Added`, `Changed (API)` (a change to the shapes in [Interface shapes](#interface-shapes) or another interface callers use), `Changed`, `Removed`, `Fixed` and `Security`; one fragment may have several. Entries are in English, like the rest of `CHANGELOG.md`. `## [Unreleased]` in `CHANGELOG.md` stays empty. At a release, `node tools/changelog.mjs --release X.Y.Z` puts the fragments (in that section order, by file name within a section) under `## [X.Y.Z] - <date>`, updates the compare links, sets the version in `package.json` and `package-lock.json` and deletes the fragments; `--preview` prints the section without writing anything, and `--check` (in `npm test`) checks the fragments. In CI, a pull request that changes code (`app/`, `kit/`, `vendor/components/`, `components.lock.json`, `server/`, `render/`, `tts/`, `themes/`, `lab/`, `skills/`, `package.json`) without adding a fragment gets a warning; it does not fail. Releasing is described in [RELEASING.md](RELEASING.md).
 
 ## Coding rules
 
