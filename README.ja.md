@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=57347eb5f550ee60 -->
+<!-- i18n: pair=README.md sha256=87b958b9073641aa -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -202,7 +202,7 @@ codex plugin add egatari@egatari
 codex plugin add egatari-studio@egatari
 ```
 
-教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
+教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。Codex の workspace-write サンドボックスはネットとブラウザを塞ぐので、`check` と `build` はサンドボックスの外で、またはネットとブラウザを許して動かす。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
 
 チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 

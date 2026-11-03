@@ -423,6 +423,7 @@ const PACK_VERSION = '{{PACK_VERSION}}';
 // スキルには貼り付け用の大きさの上限を掛けない。パーツの説明は同じ材料から束（セット）ごとに分ける：標準・束ごと（専門）と、特殊は README への道だけ
 const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
 
+const CLI_MINOR = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
 
 // Studio is hand-written. Only this marked version line belongs to the generator.
@@ -468,12 +469,14 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 **指示の版：${data.version}**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-更新：Claude Code は \`/plugin update egatari@egatari\`、Codex は \`codex plugin marketplace upgrade egatari\` のあと \`codex plugin add egatari@egatari\`。
+Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egatari@${CLI_MINOR}.x skills update\`。更新の道がない道具では案内を省き、\`egatari --version\` の版を利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
+
+構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の返事を受けてから（\`codex exec\` なら resume で）。
 
 下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
@@ -497,6 +500,8 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
 
+頼まれていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
+
 ${common}
 ` : `---
 name: make
@@ -513,12 +518,14 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 **Instruction version: ${data.version}**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
-To update: in Claude Code run \`/plugin update egatari@egatari\`; in Codex run \`codex plugin marketplace upgrade egatari\` and then \`codex plugin add egatari@egatari\`.
+In Claude Code, use \`/plugin update egatari@egatari\`. In Codex, use \`npx egatari@${CLI_MINOR}.x skills update\`. If a tool has no update path, leave out the instruction and tell the user the version from \`egatari --version\`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
 
 First confirm the materials, audience, length, language and theme, and show an outline. Each item has a heading, what to convey, a recommended part and why, a conclusion line and materials. Never invent numbers. Write after the user approves the outline and parts. Use one speaker by default; write a dialogue only when asked.
+
+After showing the outline, stop until the user approves it (write no files). Continue after the user's reply (with \`codex exec\`, by resuming the session).
 
 Follow the shared writing rules below. When finished, use “When you finish” to deliver files or code blocks, according to your capabilities. For a fix request, fix the findings and return the result.
 
@@ -541,6 +548,8 @@ If you can write files, write \`deck.html\`, \`narration.md\` and an \`egatari.j
 If you cannot write files, return the two fenced blocks \`deck.html\` and \`narration.md\` following R-output below, ready to paste into Studio's “New…”.
 
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
+
+Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
 
 ${common}
 `;

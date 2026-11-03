@@ -14,12 +14,14 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 **指示の版：b47ccdba**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-更新：Claude Code は `/plugin update egatari@egatari`、Codex は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari`。
+Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がない道具では案内を省き、`egatari --version` の版を利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
+
+構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の返事を受けてから（`codex exec` なら resume で）。
 
 下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
@@ -54,6 +56,8 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 ファイルを書けなければ、Studio の「新規作成…」に貼り付けられるように、下の R-output に従い、`deck.html` と `narration.md` の 2 つのコードの囲みを返す。
 
 どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
+
+頼まれていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
 
 # AI への指示
 

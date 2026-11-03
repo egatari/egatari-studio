@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=f784bc667190d120 -->
+<!-- i18n: pair=README.ja.md sha256=8ad015c259be19b5 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -202,7 +202,7 @@ codex plugin add egatari@egatari
 codex plugin add egatari-studio@egatari
 ```
 
-Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a lesson. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
+Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a lesson. Codex's workspace-write sandbox blocks the network and the browser, so run `check` and `build` outside it, or with network and browser access allowed. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
 
 For a chat AI, upload `egatari-make-skill.zip`. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 

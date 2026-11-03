@@ -93,6 +93,7 @@ assert.doesNotMatch(make, /ffmpeg|動画|\bvideo\b/i);
 // Every make file is safe to read in a chat with no local environment.
 const makeForbidden = ['<repo>', 'npm', 'node ', 'npx', 'tools/', 'kit/', '/' + 'Users/', '100.' + '64', '8882', 'brew', 'LaunchAgent', 'gen' + 'do'];   // split so the self-contained scan does not flag this list
 function checkMake(text, file) {
+  text = text.replaceAll(`npx egatari@${JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.')}.x skills update`, '');   // the one command a make skill may name: the update for tools without a plugin update command (#172)
   for (const token of makeForbidden) assert.ok(!text.includes(token), `${file}: forbidden ${token}`);
 }
 for (const f of walk(MAKE_SKILL_DIR)) checkMake(read(f), f);
