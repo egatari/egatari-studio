@@ -105,6 +105,19 @@ function setVersion(file, version) {
   fs.writeFileSync(file, JSON.stringify(j, null, 2) + '\n');
 }
 
+// プラグインの版（Claude・Codex の更新の手がかり）を package.json の版にそろえる：各 plugin.json と 2 つの marketplace.json の項目
+function setPluginVersions(version) {
+  for (const f of ['.claude-plugin/plugin.json', 'plugins/egatari/.claude-plugin/plugin.json']) setVersion(path.join(ROOT, f), version);
+  for (const f of ['.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json']) {
+    const file = path.join(ROOT, f);
+    if (!fs.existsSync(file)) continue;
+    const raw = read(file), j = JSON.parse(raw);
+    if (JSON.stringify(j, null, 2) + '\n' !== raw) fail(`${f} is not in 2-space JSON format: set the versions by hand`);
+    for (const p of j.plugins) p.version = version;
+    fs.writeFileSync(file, JSON.stringify(j, null, 2) + '\n');
+  }
+}
+
 function changedFiles(base) {
   const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' });
   const mb = git('merge-base', base, 'HEAD').trim();
@@ -151,8 +164,9 @@ if (args.includes('--release')) {
   fs.writeFileSync(CL, text);
   setVersion(path.join(ROOT, 'package.json'), v);
   setVersion(path.join(ROOT, 'package-lock.json'), v);
+  setPluginVersions(v);
   for (const f of files) fs.rmSync(path.join(DIR, f));
-  console.log(`CHANGELOG.md: [${v}] - ${date} from ${files.length} fragment(s); package.json and package-lock.json set to ${v}; fragments removed`);
+  console.log(`CHANGELOG.md: [${v}] - ${date} from ${files.length} fragment(s); package.json, package-lock.json and the plugin manifests and marketplaces set to ${v}; fragments removed`);
   process.exit(0);
 }
 

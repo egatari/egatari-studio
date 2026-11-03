@@ -7,7 +7,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 # egatari-studio:studio：教材をローカルで確かめて組む
 
-書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ `/plugin install egatari@egatari` を案内する。
+書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ、Claude Code は `/plugin install egatari@egatari`、Codex は `codex plugin add egatari@egatari` を案内する。
 
 <!-- generated: instruction-version -->
 **指示の版：b47ccdba**
@@ -23,7 +23,9 @@ make の版の行と違えば、両方のプラグインを更新するよう利
 /plugin install egatari-studio@egatari
 ```
 
-更新は `/plugin update egatari-studio@egatari`。make の更新は `/plugin update egatari@egatari`。
+Codex の入れ方（Codex のターミナルで）：`codex plugin marketplace add egatari/egatari-studio`、`codex plugin add egatari@egatari`、`codex plugin add egatari-studio@egatari`。
+
+更新は、Claude Code では `/plugin update egatari-studio@egatari` と `/plugin update egatari@egatari`。Codex では `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari-studio@egatari` と `codex plugin add egatari@egatari` をもう一度。どちらの道具でも、ターミナルで `npx egatari@0.6.x skills update` を実行すると、入っている道具すべてを更新する。更新したら道具を再起動する。
 
 必要な作業の参照だけ読む：
 

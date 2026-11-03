@@ -468,7 +468,7 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 **指示の版：${data.version}**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-Claude Code では \`/plugin update egatari@egatari\`。
+更新：Claude Code は \`/plugin update egatari@egatari\`、Codex は \`codex plugin marketplace upgrade egatari\` のあと \`codex plugin add egatari@egatari\`。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
@@ -513,7 +513,7 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 **Instruction version: ${data.version}**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
-In Claude Code, use \`/plugin update egatari@egatari\`.
+To update: in Claude Code run \`/plugin update egatari@egatari\`; in Codex run \`codex plugin marketplace upgrade egatari\` and then \`codex plugin add egatari@egatari\`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
@@ -547,7 +547,7 @@ ${common}
     files[`${MAKE_SKILL_DIR}/${ja ? 'SKILL.md' : 'SKILL.en.md'}`] = skillTerms(text);
   }
   if (lang === 'en') files[`${MAKE_SKILL_DIR}/SKILL.md`] = files[`${MAKE_SKILL_DIR}/SKILL.en.md`];
-  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', description: 'Make Egatari lessons with the make skill.' }, null, 2) + '\n';
+  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', version: JSON.parse(read('package.json')).version, description: 'Make Egatari lessons with the make skill.', skills: './skills/' }, null, 2) + '\n';
   return files;
 }
 
@@ -691,6 +691,7 @@ export function generate(opts = {}) {
     }
   }
   Object.assign(files, skillFiles(data, opts.skillLang));
+  files['kit/instruction-version.json'] = JSON.stringify({ instruction: data.version }, null, 2) + '\n';   // egatari doctor が、入れたスキルの指示の版と比べる
   files['skills/studio/SKILL.md'] = studioVersion(read('skills/studio/SKILL.md'), data.version);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);

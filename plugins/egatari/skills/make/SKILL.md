@@ -14,7 +14,7 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 **指示の版：b47ccdba**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-Claude Code では `/plugin update egatari@egatari`。
+更新：Claude Code は `/plugin update egatari@egatari`、Codex は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari`。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方

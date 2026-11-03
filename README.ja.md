@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=7403efc46897562d -->
+<!-- i18n: pair=README.md sha256=57347eb5f550ee60 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -190,7 +190,19 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れている道具（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、道具を再起動する。手間をかけたくなければ、Claude Code で `/plugin` → Marketplaces → egatari → Enable auto-update（自動更新）を入れておく。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+
+## Codex で使う
+
+Codex も同じリポジトリの同じスキルを読む。ターミナルで：
+
+```bash
+codex plugin marketplace add egatari/egatari-studio
+codex plugin add egatari@egatari
+codex plugin add egatari-studio@egatari
+```
+
+教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
 
 チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 

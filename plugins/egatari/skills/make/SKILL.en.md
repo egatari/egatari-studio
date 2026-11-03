@@ -14,7 +14,7 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 **Instruction version: b47ccdba**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
-In Claude Code, use `/plugin update egatari@egatari`.
+To update: in Claude Code run `/plugin update egatari@egatari`; in Codex run `codex plugin marketplace upgrade egatari` and then `codex plugin add egatari@egatari`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow

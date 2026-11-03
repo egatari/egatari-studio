@@ -28,7 +28,7 @@ for (const s of forbidden) assert.ok(environmentHits(s).length, s);
 assert.ok(environmentHits('8882').length);
 assert.ok(environmentHits('IRODORI_URL http://localhost:8882').length);
 assert.deepEqual(environmentHits('IRODORI_URL default http://localhost:8882'), []);
-const files = [...walk('.claude-plugin'), ...walk('skills'), ...walk('plugins/egatari'), 'README.md', 'README.ja.md', ...walk('docs')].filter((f) => /\.(md|json)$/.test(f));
+const files = [...walk('.claude-plugin'), ...walk('.agents'), ...walk('skills'), ...walk('plugins/egatari'), 'README.md', 'README.ja.md', ...walk('docs')].filter((f) => /\.(md|json)$/.test(f));
 const hits = files.flatMap((f) => environmentHits(read(f)).map((h) => `${f}:${h}`));
 assert.deepEqual(hits, [], 'personal environment references');
 console.log(`ok environment scan: ${files.length} files`);
@@ -38,7 +38,19 @@ const light = JSON.parse(read('plugins/egatari/.claude-plugin/plugin.json'));
 const market = JSON.parse(read('.claude-plugin/marketplace.json'));
 assert.equal(plugin.name, 'egatari-studio');
 assert.equal(light.name, 'egatari');
-for (const p of [plugin, light]) assert.ok(!Object.hasOwn(p, 'version'));
+// 更新は版に従う：plugin.json と 2 つの marketplace（Claude・Codex）の項目の版は package.json の版と同じ（リリースで changelog.mjs --release がそろえる）
+const pkgVersion = JSON.parse(read('package.json')).version;
+for (const p of [plugin, light]) { assert.equal(p.version, pkgVersion, `${p.name}: plugin.json version`); assert.equal(p.skills, './skills/'); }
+const codexMarket = JSON.parse(read('.agents/plugins/marketplace.json'));
+assert.equal(codexMarket.name, 'egatari');
+assert.deepEqual(codexMarket.plugins.map((p) => [p.name, p.source]), [['egatari', { source: 'local', path: './plugins/egatari' }], ['egatari-studio', { source: 'local', path: './' }]]);
+for (const p of codexMarket.plugins) {
+  assert.equal(p.version, pkgVersion, `.agents marketplace: ${p.name} version`);
+  assert.deepEqual(p.policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });
+  assert.ok(p.category);
+}
+for (const p of market.plugins) assert.equal(p.version, pkgVersion, `.claude-plugin marketplace: ${p.name} version`);
+assert.equal(JSON.parse(read('kit/instruction-version.json')).instruction, read('plugins/egatari/skills/make/SKILL.md').match(/^\*\*指示の版：([a-f0-9]{8})\*\*$/m)[1]);
 assert.equal(market.name, 'egatari');
 assert.ok(market.owner.name);
 assert.deepEqual(market.plugins.map((p) => [p.name, p.source]), [['egatari', './plugins/egatari'], ['egatari-studio', './']]);
