@@ -1,0 +1,27 @@
+{
+  "v": 1,
+  "request": "Make the slides for a 15-minute conference talk on our TMLR 2026 paper on Bayes-optimal calibration under a logit-noise model. Build the main theorem up step by step, show that it reduces to temperature scaling and Platt scaling, and end with when it helps and when it breaks.",
+  "category": "research",
+  "subcategory": "conference",
+  "theme": "default",
+  "parts": ["m-bars", "m-flow"],
+  "structure": [
+    { "heading": "A Theoretical Analysis of Bayes-Optimal Calibration under the Logit-Noise Model", "point": "cover: venue, title, authors" },
+    { "heading": "Confident, but wrong", "point": "the problem and the standard fix" },
+    { "heading": "The question", "point": "one question the talk answers" },
+    { "heading": "The logit-noise model", "point": "the model, term by term" },
+    { "heading": "Noise creates overconfidence", "point": "a curve that bends as the noise grows" },
+    { "heading": "Calibration as an inverse problem", "point": "what the optimal correction is" },
+    { "heading": "Main theorem: a sigmoid averaged over the posterior", "point": "the result, built up step by step" },
+    { "heading": "It is temperature scaling", "point": "the theorem morphs into the known method" },
+    { "heading": "Gaussian prior: Platt scaling", "point": "a second special case" },
+    { "heading": "A synthetic check", "point": "points before and after the fix" },
+    { "heading": "Real learners bend the assumption", "point": "four departures from the model" },
+    { "heading": "When it helps, when it breaks", "point": "results side by side" },
+    { "heading": "Takeaways", "point": "three claims" },
+    { "heading": "Paper and code", "point": "links and authors" }
+  ],
+  "book": false,
+  "lang": "en",
+  "rights": { "license": "CC-BY-4.0", "attribution": "Noriaki Abe and Gendo Kumoi" }
+}

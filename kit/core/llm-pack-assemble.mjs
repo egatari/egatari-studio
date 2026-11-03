@@ -126,20 +126,20 @@ export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {
 
 // 目安に収める（backlog #125）：無料のプランで目安を越えたら、まず中核の 4 つ（棒グラフ・流れ図・目次・予想と答え）の説明も短くする（short）。
 // それでも越えるなら、外す候補は印の付いた専門のパーツだけ（外したときに減る大きさの大きい順。標準のパーツは候補にしない）。
-// sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。→ {short, candidates}
-export function fitPlan(data, ticked, plan, { sizeOf, capBytes }) {
+// sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。keep：ほかに候補にしないパーツ（サンプルから引き継いだパーツ。backlog #130）。→ {short, candidates}
+export function fitPlan(data, ticked, plan, { sizeOf, capBytes, keep: also = [] }) {
   const short = planName(plan) === 'free' && sizeOf(ticked, false) > capBytes;
-  const keep = new Set(ticked.filter((t) => !data.en.components[t] || data.en.components[t].set === STANDARD));
+  const keep = new Set(ticked.filter((t) => !data.en.components[t] || data.en.components[t].set === STANDARD || also.includes(t)));
   return { short, candidates: trimCandidates(ticked, { sizeOf: (tags) => sizeOf(tags, short), capBytes, keep }) };
 }
 
 // 目安に収めた後の選び方（コマンドの kit/llm-pack.mjs と npm run gen の大きさの表が使う。編集アプリで［候補を外す］を押した後と同じ）：fitPlan の候補を外し、
 // 外した後でもう一度 fitPlan で short を決める（外して収まれば、中核の 4 つの説明は詳しいまま）。
 // → {tags: 残るパーツ, short, dropped: 外したパーツ, bytes, over: まだ目安を越えるか}
-export function fitPack(data, ticked, plan, { sizeOf, capBytes }) {
-  const first = fitPlan(data, ticked, plan, { sizeOf, capBytes });
+export function fitPack(data, ticked, plan, { sizeOf, capBytes, keep = [] }) {
+  const first = fitPlan(data, ticked, plan, { sizeOf, capBytes, keep });
   const tags = ticked.filter((t) => !first.candidates.includes(t));
-  const { short } = first.candidates.length ? fitPlan(data, tags, plan, { sizeOf, capBytes }) : first;
+  const { short } = first.candidates.length ? fitPlan(data, tags, plan, { sizeOf, capBytes, keep }) : first;
   const bytes = sizeOf(tags, short);
   return { tags, short, dropped: first.candidates, bytes, over: bytes > capBytes };
 }

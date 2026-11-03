@@ -1,6 +1,8 @@
 // 画面の言葉：URL の ?lang=ja|en > 前に選んだもの（localStorage）> ブラウザの言語（日本語なら日本語、それ以外は英語）
 import { FORMAT } from '../kit/core/format.mjs';
 import { COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
+// SPDX のライセンスの名前を、ふつうに書く形に（CC-BY-4.0 → CC BY 4.0）。ほかの名前はそのまま
+const ccName = (lic) => (/^CC-/i.test(lic) ? lic.replace(/-/g, ' ') : lic);
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
 // 新しい教材として保存するときの名前の案（<元の名前>-new<拡張子>）
 const newLessonName = (n) => (n.toLowerCase().endsWith(FX) ? n.slice(0, -FX.length) : n.replace(/\.html?$/i, '')) + '-new' + FX;
@@ -222,10 +224,14 @@ const ja = {
   sourceOnlyNotice: 'deck.html だけを開いています（台本・音声・その教材だけのパーツは入っていません）。まだどこにも保存していません',
   saveWhereTitle: '保存先を選ぶ', saveWhereLead: `この教材はまだ保存していません。Egatari ファイル（${FX}）に保存するか、空のフォルダに作業フォルダとしてエクスポートします`,
   saveAsFile: `Egatari ファイル（${FX}）に保存…`, saveToFolder: '作業フォルダにエクスポート…',
-  // はじめの画面の見本（サイトに置いた 1 ファイル。tools/build-app.mjs）
-  examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。開いて再生したり、直したりできます。', exampleOpen: '開く',
+  // はじめの画面のサンプル（サイトに置いた 1 ファイル。tools/build-app.mjs）。「再生」で大きく再生する窓（app/main.js の playExample。backlog #130）
+  examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。再生して、同じ作り方で自分の教材を作れます。', examplePlay: '再生',
+  exampleLike: 'このサンプルのように作る', exampleCopy: 'コピーを開いて編集', exampleRequest: 'AI への頼み方：',
+  exampleRights: (lic, who) => `ライセンス：${ccName(lic)}（${who}）`,
+  exampleChanged: 'ファイルがサンプルの一覧と合いません。ページを読み込み直してください',
+  exampleUnknown: (n) => `サンプル「${n}」は、この版の Studio にありません。はじめの画面のサンプルから選んでください`,
   exampleFailed: 'サンプルを読み込めませんでした',
-  exampleMeta: (n, mb, code) => `${n} 枚 · ${mb} MB${code ? ' · 独自のコードを含む（開くときに確認します）' : ''}`,
+  exampleMeta: (n, mb, code) => `${n} 枚 · ${mb} MB${code ? ' · 独自のコードを含む（編集で開くときに確認します）' : ''}`,
   unsavedTitle: '保存していない変更', unsavedLead: '開いているファイルに、保存していない変更があります。捨てて先へ進みますか？',
   unsavedLang: '保存していない変更は消えます。言葉を切り替えますか？',
   saving: '保存しています…', saveFailed: '保存できませんでした',
@@ -616,9 +622,13 @@ const en = {
   sourceOnlyNotice: 'Only deck.html is open (no script, audio or the lesson’s own parts). It has not been saved anywhere yet.',
   saveWhereTitle: 'Choose where to save', saveWhereLead: `This lesson has not been saved yet. Save it as an Egatari file (${FX}), or export it to an empty folder as a working folder.`,
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
-  examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Open one to play it or edit it.', exampleOpen: 'Open',
+  examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Play one, then make your own lesson the same way.', examplePlay: 'Play',
+  exampleLike: 'Make one like this sample', exampleCopy: 'Open a copy to edit', exampleRequest: 'Request to the AI:',
+  exampleRights: (lic, who) => `License: ${ccName(lic)} (${who})`,
+  exampleChanged: 'The file does not match the list of samples. Reload the page.',
+  exampleUnknown: (n) => `Sample “${n}” is not in this version of Studio. Choose one from Samples on the first screen.`,
   exampleFailed: 'Could not load the sample',
-  exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asks before opening)' : ''}`,
+  exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asks before opening it to edit)' : ''}`,
   unsavedTitle: 'Unsaved changes', unsavedLead: 'The open file has unsaved changes. Discard them and continue?',
   unsavedLang: 'Unsaved changes will be lost. Switch the language?',
   saving: 'Saving…', saveFailed: 'Could not save',

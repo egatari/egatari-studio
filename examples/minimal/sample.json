@@ -1,0 +1,19 @@
+{
+  "v": 1,
+  "request": "大学 2 年の「機械学習入門」第 3 回で、勾配降下法の基本を 10 分で説明するスライドを作ってください。更新の式を 1 項ずつ見せ、二次関数で 1 歩ずつ動かして、学習率で収束が変わることを曲線で示してください。",
+  "category": "teaching",
+  "subcategory": "lecture",
+  "theme": "default",
+  "parts": ["m-sweep"],
+  "structure": [
+    { "heading": "勾配降下法の基本", "point": "表紙。科目と回、講師" },
+    { "heading": "何を最小化するか", "point": "学習は損失を小さくするパラメータ探し。式で解けないので傾きを使う" },
+    { "heading": "更新の式", "point": "1 歩の式を項ごとに色分けして積み上げる" },
+    { "heading": "二次関数で確かめる", "point": "同じ式を二次関数に当て、点が 1 歩ずつ動く" },
+    { "heading": "学習率と収束", "point": "学習率を動かすと収束の速さが変わる曲線" },
+    { "heading": "まとめ", "point": "要点 3 つと次回の予告" }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": { "license": "CC-BY-4.0", "attribution": "雲居玄道（Egatari Studio）" }
+}

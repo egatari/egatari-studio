@@ -140,8 +140,9 @@ async function showWelcome() {
     ]));
   }
 }
-// 見本の教材（配信版の dist/examples/。tools/build-app.mjs が組んで一覧を RES.examples に入れる）：同じサイトから読み、
-// ほかのファイルと同じ道（openPortable：Worker で検査して取り出し、中身からコードを探す）で開く。file://（1 ファイル版）では出さない
+// サンプルの教材（配信版の dist/examples/。tools/build-app.mjs が組んで一覧を RES.examples に入れる）：同じサイトから読む。file://（1 ファイル版）では出さない。
+// 「再生」で大きく再生する窓（playExample）を開き、そこから「このサンプルのように作る」（新規作成に場面・見た目・パーツと構成を入れる。backlog #130）か
+// 「コピーを開いて編集」（ほかのファイルと同じ道 openPortable：Worker で検査して取り出し、中身からコードを探す）
 function showExamples() {
   const list = Array.isArray(RES.examples) ? RES.examples : [];
   const on = list.length > 0 && /^https?:$/.test(location.protocol);
@@ -154,20 +155,49 @@ function showExamples() {
         el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
         el('span', { cls: 'meta', text: `${x.file} · ` + T.exampleMeta(x.slides, (x.bytes / 1048576).toFixed(1), x.profile === 'extended') }),
       ]),
-      el('button', { type: 'button', text: T.exampleOpen, 'aria-label': `${T.exampleOpen}: ${x.title}`, onclick: () => openExample(x) }),
+      el('button', { type: 'button', text: T.examplePlay, 'aria-label': `${T.examplePlay}: ${x.title}`, onclick: () => playExample(x) }),
     ]));
   }
 }
-async function openExample(x) {
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+// サンプルのファイルのバイト。大きさは読む前（Content-Length）と読みながら、開ける上限（LIMITS.fileBytes）と比べる（app/bounded-read.js）。
+// 一覧の sha256（組み立てのときの値）と比べ、違えば使わない（このサイトが配ったサンプルそのものだけを、たずねずに再生の枠で動かす）
+async function exampleBytes(x) {
   const end = wait.begin();
-  try { return await openExampleNow(x); } finally { end(); }
+  try {
+    const bytes = await fetchBounded(new URL('examples/' + encodeURIComponent(x.file), document.baseURI), { max: LIMITS.fileBytes, what: x.file });
+    if (x.sha256 && crypto.subtle && hex(await crypto.subtle.digest('SHA-256', bytes)) !== x.sha256) throw new Error(T.exampleChanged);
+    return bytes;
+  } catch (e) { toast(T.exampleFailed + ': ' + (e.message || e), true); return null; }
+  finally { end(); }
 }
-async function openExampleNow(x) {
-  let bytes;
-  // 大きさは読む前（Content-Length）と読みながら、開ける上限（LIMITS.fileBytes）と比べる（app/bounded-read.js）
-  try { bytes = await fetchBounded(new URL('examples/' + encodeURIComponent(x.file), document.baseURI), { max: LIMITS.fileBytes, what: x.file }); }
-  catch (e) { toast(T.exampleFailed + ': ' + (e.message || e), true); return false; }
-  return openPortable({ bytes, name: x.file });
+// 大きく再生する窓：ファイルそのもの（自分のプレーヤー）を sandbox の枠で再生する（プレビューと同じ決まり。origin を持たず、外へ繋がらない）。
+// 下に頼み方の文と権利の表示。ボタンは「このサンプルのように作る」（主）・「コピーを開いて編集」（小さく）・「閉じる」
+async function playExample(x) {
+  const bytes = await exampleBytes(x);
+  if (!bytes) return false;
+  const s = x.sample || null;
+  const frame = el('iframe', { id: 'sample-frame', title: x.title, sandbox: 'allow-scripts', allow: 'autoplay' });
+  frame.srcdoc = previewDocument(new TextDecoder().decode(bytes));
+  const info = s ? [
+    el('p', { id: 'sample-request', cls: 'hint', ...(s.lang ? { lang: s.lang } : {}) }, [el('span', { cls: 'sample-label', text: T.exampleRequest }), ' ', s.request]),
+    el('p', { id: 'sample-rights', cls: 'hint', text: T.exampleRights(s.rights.license, s.rights.attribution) }),
+  ] : [];
+  const v = await ask({ title: x.title, kind: 'sample', body: [el('div', { cls: 'sample-stage' }, [frame]), ...info],
+    buttons: [{ id: 'copy', label: T.exampleCopy, cls: 'ghost small' }, { id: 'cancel', label: T.close }, ...(s ? [{ id: 'like', label: T.exampleLike, pri: true }] : [])] });
+  if (v === 'copy') return openPortable({ bytes, name: x.file });
+  if (v === 'like') { await llm.newWithAi({ sample: { name: x.name, title: x.title, ...s } }); return true; }
+  return false;
+}
+// egatari.org のサンプルのページの「Studio でこのサンプルのように作る」：?from-sample=<名前> で新規作成を同じ形で開く（一覧にない名前は知らせて、はじめの画面）
+async function openFromSampleParam() {
+  let name = null;
+  try { name = new URLSearchParams(location.search).get('from-sample'); } catch { return; }
+  if (name === null) return;
+  try { const u = new URL(location.href); u.searchParams.delete('from-sample'); history.replaceState(history.state, '', u.href); } catch { /* 残っても開き直すだけ */ }
+  const x = (Array.isArray(RES.examples) ? RES.examples : []).find((e) => e.name === name && e.sample);
+  if (!x) { toast(T.exampleUnknown(name), true); return; }
+  await llm.newWithAi({ sample: { name: x.name, title: x.title, ...x.sample } });
 }
 async function pickFolder() {
   try { return await window.showDirectoryPicker({ id: 'motion-deck', mode: 'readwrite' }); }
@@ -1222,7 +1252,7 @@ function ask({ title, body, buttons, confirmText = null, kind = '', validate = n
     if (confirmText) { cb = el('input', { type: 'checkbox', id: 'dlg-confirm' }); b.append(el('label', { cls: 'confirm' }, [cb, el('span', { text: confirmText })])); }
     const row = $('dlg-buttons'); row.innerHTML = '';
     for (const x of buttons) {
-      const btn = el('button', { type: 'button', id: 'dlg-' + x.id, cls: x.pri ? 'pri' : '', text: x.label, onclick: async () => { if (validate && !(await validate(x.id))) return; if (askPending === resolve) d.close(x.id); } });
+      const btn = el('button', { type: 'button', id: 'dlg-' + x.id, cls: x.pri ? 'pri' : x.cls || '', text: x.label, onclick: async () => { if (validate && !(await validate(x.id))) return; if (askPending === resolve) d.close(x.id); } });
       if (x.needsConfirm && cb) { btn.disabled = true; cb.addEventListener('change', () => { btn.disabled = !cb.checked; }); }
       row.append(btn);
     }
@@ -1917,7 +1947,7 @@ function fullScreen() { const f = $('preview'); (f.requestFullscreen ? f.request
 
 // ---------------------------------------------------------------- 新規作成…：チャットの AI に書いてもらう（app/llm.js）。白紙とスライドの形のテンプレートは新規作成から外した
 // （テンプレートはスライドの挿入に残す。作業フォルダの新しいデッキはコマンドの npm run new）
-async function newChoice() { await llm.newWithAi(); }
+async function newChoice() { await llm.newWithAi(); }   // 引数なし：サンプルから始めない
 // Claude Code・Cowork で作る人への案内の行き先（説明のページか README かは未定。ここだけを直す）
 const WITH_CLAUDE_URL = 'https://github.com/egatari/egatari-studio/blob/main/docs/' + (EN ? 'with-claude.md' : 'with-claude.ja.md');
 
@@ -2147,7 +2177,8 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
     const r = (await recentList())[0];
     if (r && r.handle.kind === 'directory' && (await hasPermission(r.handle).catch(() => false))) { openFolder(r.handle); return; }
   }
-  showWelcome();
+  await showWelcome();
+  await openFromSampleParam();
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
