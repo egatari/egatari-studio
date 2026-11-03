@@ -784,6 +784,7 @@ var BTNS = LEARN
 if (LEARN){ TIP.auto = PLAY.play; TIP.rate = PLAY.rate; }
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "mute", "full", "help"];
+function canFull(){ return DECK.canFullscreen ? DECK.canFullscreen() : true; }
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
 // 開いたときは帯を 5 秒見せる。その端末で初めてなら、帯の上に出し方の 1 行（hint）。帯が隠れている間は、左下に薄い取っ手（handle）
@@ -805,6 +806,7 @@ function buildBar(){
     if (b[0] === "read" && !RA) return;   // 読み上げ：端末で読めないとき・読めるステップがないときは出さない
     if (b[0] === "mute" && !(DECK.hasComponentSounds && DECK.hasComponentSounds())) return;
     if (b[0] === "view" && !DECK.panes) return;   // 表示（並べ方。kit/panes.js）：動画・発表者ビューの中の画面にはない
+    if (b[0] === "full" && !canFull()) return;   // 全画面：要素の全画面がない所（iPhone の Safari・全画面を許さない枠の中）では出さない（deck.js）
     var e = document.createElement("button"); e.type = "button";
     e.setAttribute("data-b", b[0]);
     e.title = TIP[b[0]] + (b[1] ? kk(b[1]) : "");
@@ -873,6 +875,7 @@ function buildBar(){
   window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wakeByPointer(); }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
+  document.addEventListener("webkitfullscreenchange", function(){ if (!("onfullscreenchange" in document)){ placeBar(); syncBar(); } });   // 古い iPadOS の Safari
   document.addEventListener("deck:pos", syncBar);
   document.addEventListener("deck:sounds", syncBar);
   document.addEventListener("deck:rate", syncBar);
@@ -994,7 +997,7 @@ function syncBar(){
     [].forEach.call(sw.children, function(x, j){ x.setAttribute("aria-pressed", j === color ? "true" : "false"); });
   }
   [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = PEN_COLOR[COLORS[color]]; });
-  on("lect", DECK.previewOn ? DECK.previewOn() : DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
+  on("lect", DECK.previewOn ? DECK.previewOn() : DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", DECK.isFullscreen ? DECK.isFullscreen() : !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
   on("mute", DECK.muteSounds && DECK.muteSounds());
   if (RA) raSync(on("read", RA.key !== null));
   var playing = document.documentElement.classList.contains("autoplay"), a = on("auto", playing);
@@ -1030,7 +1033,7 @@ function helpHtml(){
     sec(j ? "表示" : "View", (LEARN ? [row(K("a"), PLAY.play + " / " + PLAY.pause), row(K("<") + " " + K(">"), PLAY.rate + (j ? "（遅く / 速く）" : " (slower / faster)"))] : [
       row(K("a"), j ? "自動再生" : "Autoplay")]).concat(DECK.panes && !isDev() ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
-      row(K("b"), j ? "黒い画面" : "Black screen"), row(K("f"), j ? "全画面" : "Fullscreen")].concat(LEARN ? [] : [row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
+      row(K("b"), j ? "黒い画面" : "Black screen")].concat(canFull() ? [row(K("f"), j ? "全画面" : "Fullscreen")] : []).concat(LEARN ? [] : [row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
       row(K("?"), j ? "このキーの一覧" : "This help")]))),
     LEARN ? "" : sec(j ? "道具" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),

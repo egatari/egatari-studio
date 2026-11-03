@@ -125,6 +125,9 @@ const steps = [
   ['test-play', ['tools/test-play.mjs', path.join(tmp, 'play')]],
   // Egatari Viewer を Playwright の WebKit で iPad の大きさに（WebKit が入っていなければ skip で通る：npx playwright-core install webkit）
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
+  // 全画面（f・帯の「全画面」）：Viewer のページが枠そのものを全画面にし状態を教材に戻す・教材だけでは全画面にできない・要素の全画面がない所（iPhone）で
+  // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
+  ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // 前の版のファイル・作業フォルダ（format spec §7.1）：知らせと 2 つのボタン（前の版の Studio の URL・移し替えの手引き）、ファイルそのものの再生、編集・保存を断る、1.0 のファイルは知らせなし

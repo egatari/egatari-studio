@@ -2263,8 +2263,34 @@ document.addEventListener("deck:edit", function(e){
   buf = ""; var j = document.getElementById("jump"); if (j) j.textContent = "";
   setBlack(false);
   extClose();
-  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+  if (fsOn()) fsExit();
 });
+// 全画面（f・帯の「全画面」）：documentElement を全画面にする。古い iPadOS の Safari は接頭辞付きの API（webkitRequestFullscreen）だけ。
+// 断られたら（枠の中で許されていない・ブラウザが断った）短い知らせ。要素の全画面がない所（iPhone の Safari、全画面を許さない枠の中）では
+// DECK.canFullscreen() が false：帯は全画面のボタンを出さず、キーの一覧にも f を載せない（tools.js）。Egatari Viewer の中では
+// Viewer の先頭部分（play/lesson-shim.js）がこの API を Viewer のページへの頼みに置き換え、枠そのものを全画面にする
+function fsOn(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function fsRefused(){ if (DECK.toast) DECK.toast(L10N("全画面にできませんでした", "Could not go fullscreen")); }
+function fsExit(){
+  var ex = document.exitFullscreen || document.webkitExitFullscreen;
+  try { var p = ex && ex.call(document); if (p && p.catch) p.catch(function(){}); } catch (e) { /* already left */ }
+}
+var fsNoPromise = false;
+DECK.canFullscreen = function(){
+  var d = document.documentElement, en = document.fullscreenEnabled;
+  if (en === undefined) en = document.webkitFullscreenEnabled;
+  return !!(d.requestFullscreen || d.webkitRequestFullscreen) && en !== false;
+};
+DECK.isFullscreen = fsOn;
+DECK.toggleFullscreen = function(){
+  if (fsOn()){ fsExit(); return; }
+  var d = document.documentElement, go = d.requestFullscreen || d.webkitRequestFullscreen, p;
+  if (!go || !DECK.canFullscreen()){ fsRefused(); return; }
+  try { p = go.call(d); } catch (e){ fsRefused(); return; }
+  if (p && p.then) p.then(null, fsRefused); else fsNoPromise = true;   // 古い Safari：何も返さず、webkitfullscreenerror が届く
+};
+document.addEventListener("webkitfullscreenchange", function(){ fsNoPromise = false; });
+document.addEventListener("webkitfullscreenerror", function(){ if (fsNoPromise){ fsNoPromise = false; fsRefused(); } });
 // 送りのキー（矢印・PageUp/PageDown・Home・End）。押したら true
 function navKey(k, shift){
   var nav = true, was = !!auto;
@@ -2315,7 +2341,7 @@ document.addEventListener("keydown", function(e){
   buf = ""; if (j) j.textContent = "";
   if (navKey(k, e.shiftKey)){ e.preventDefault(); return; }
   if (EDIT && (k === "a" || k === "b" || k === "f")) return;
-  if (k === "f"){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
+  if (k === "f") DECK.toggleFullscreen();
   else if (k === "p"){ if (!LEARN) openPresenter(); }
   else if (k === "a") DECK.autoplay();
   else if (k === "l") DECK.togglePreview();

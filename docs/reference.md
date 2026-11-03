@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=ddbca54b5b7043f2 -->
+<!-- i18n: pair=reference.ja.md sha256=6db925fabc656b03 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -270,7 +270,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Shift+→ / Shift+↓, Shift+← / Shift+↑ | next / previous slide (step 0) |
 | Home / End | first / last slide |
 | digits + Enter | go to that slide |
-| f | fullscreen |
+| f | fullscreen (where the browser has element fullscreen; on iPhone Safari, or framed without the fullscreen permission, the bar has no fullscreen button and the key list leaves f out; when the browser refuses, the player says “Could not go fullscreen”) |
 | p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | show later steps faintly (on/off) |
