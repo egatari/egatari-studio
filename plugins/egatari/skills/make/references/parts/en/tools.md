@@ -1,11 +1,11 @@
 <!-- generated; do not edit by hand -->
 # tools parts
 
-Instruction version: 3a6226c6
+Instruction version: b47ccdba
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
-| `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?: {title?, text?}, phases: [{title, short?, text?, sec, bells?: [{left, count?}, …]}, …], bells?: [{left, count?}, …], done?, labels?: {ready?, total?, remaining?, done?, start?, next?, end?, min?, sec?, plus?, minus?}}` — phases is a list of {"title", "sec"} (sec: whole seconds, not "3分"); one phase per step |
+| `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?:{title?:str,text?:str},phases:{title:str,short?:str,text?:str,sec:int,bells?:{left:int,count?:int}[]}[],bells?:{left:int,count?:int}[],done?:str,labels?:{ready?:str,total?:str,remaining?:str,done?:str,start?:str,next?:str,end?:str,min?:str,sec?:str,plus?:str,minus?:str}}` — phases is a list of {"title", "sec"} (sec: whole seconds, not "3分"); one phase per step |
 
 ### `<m-timer>`
 

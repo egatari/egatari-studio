@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 3a6226c6**
+**Instruction version: b47ccdba**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`.
@@ -57,7 +57,7 @@ In both cases, do not write slide ids in a first draft (R-noids). Studio or the 
 
 # Instructions for the AI
 
-Pack version: `3a6226c6`
+Pack version: `b47ccdba`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -147,7 +147,7 @@ Choose candidate parts from the set references.
 
 ## 3. Component catalog
 
-These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`).
+These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num.
 
 Read only the parts you need from the set references above.
 

@@ -1,11 +1,11 @@
 <!-- generated; do not edit by hand -->
 # business のパーツ
 
-指示の版：3a6226c6
+指示の版：b47ccdba
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
-| `<m-market>` | 市場規模の入れ子の円（TAM / SAM / SOM）。外の円から 1 つずつ、前の円の大きさから縮んで現れる | rings の数 | `{rings: [{key?, value, basis?, tone?}, …]}` |
+| `<m-market>` | 市場規模の入れ子の円（TAM / SAM / SOM）。外の円から 1 つずつ、前の円の大きさから縮んで現れる | rings の数 | `{rings:{key?:str,value:num,basis?:str,tone?}[]}` |
 
 ### `<m-market>`
 

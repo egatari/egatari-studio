@@ -1,11 +1,11 @@
 <!-- generated; do not edit by hand -->
 # science parts
 
-Instruction version: 3a6226c6
+Instruction version: b47ccdba
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
-| `<m-orbit>` | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 ステップ。visit で決める） | `{positions?, start?, visit?, labels?, notes?, eclipse?}` |
+| `<m-orbit>` | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 ステップ。visit で決める） | `{positions?:int,start?:int,visit?:int[],labels?:(str\|null)[],notes?:(str\|null)[],eclipse?:bool}` |
 
 ### `<m-orbit>`
 

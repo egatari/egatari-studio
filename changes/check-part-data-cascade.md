@@ -1,0 +1,2 @@
+### Fixed
+- Quality check (CLI and the editor): on a slide where a component cannot draw its data (`compData`), its steps are unknown, so the check no longer reports missing or orphan narration there (`narrMissing`/`narrOrphan`, in the editor `noNarration`/`orphanNarration`). It says once, as info (`narrRecheck`), that the narration and step count are checked again after the data is fixed. The fix request therefore no longer asks the AI to delete correct narration.

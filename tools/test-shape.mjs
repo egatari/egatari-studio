@@ -45,7 +45,12 @@ const SH = ctx.DECK.shape;
   ok(e3 && e3.why === 'anyOf' && e3.expected === 'f or pts', 'shape: anyOf f or pts');
   const e4 = SH.check({ type: 'object', required: ['cards'], properties: { cards: { type: 'array', items: { type: 'object', properties: { value: { type: 'number' } } } } } }, { cards: [{ value: '12' }] });
   ok(e4 && e4.path === 'cards[0].value' && e4.expected === 'number' && e4.got === 'string "12"', 'shape: path and expected/got for a nested number');
-  ok(SH.brief(s) === '[{label?, f?, pts?} (f or pts), …]', 'shape: brief form for the guide');
+  ok(SH.brief(s) === '[{label?:str,f?:str,pts?:any[]} (f or pts),…]', 'shape: brief form for the guide (every field typed, optional too)');
+  const t = { type: 'object', required: ['rows'], properties: { rows: { type: 'array', items: { type: 'object', properties: { diff: { type: 'string' }, values: { type: 'array', items: { type: ['string', 'number'] } } } } }, dash: { type: 'boolean' }, n: { type: 'integer' }, k: { enum: ['a', 'b'] }, ks: { type: 'array', items: { enum: ['a', 'b'] } }, xr: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 }, any: {}, o: { type: 'object' } } };
+  ok(SH.brief(t) === '{rows:{diff?:str,values?:(str|num)[]}[],dash?:bool,n?:int,k?:"a"|"b",ks?:("a"|"b")[],xr?:[num,num],any?:any,o?:object}', 'shape: brief types optional fields (bool, str, enums, T[], tuples)');
+  ok(SH.brief({ type: 'object', properties: { label: { type: 'string' }, step: { type: 'integer' }, dash: { type: 'boolean' }, at: { type: 'string' } } }, { label: 'str', step: 'int', at: 'num' }) === '{label?,step?,dash?:bool,at?:str}', 'shape: brief with the conventional types names those fields only, and still types a field whose type differs');
+  const one = { type: 'object', properties: { fit: { enum: ['linear'] } } };
+  ok(SH.brief({ type: ['string', 'object', 'array'], properties: one.properties, items: one }) === 'str|{fit?:"linear"}|[the same {…},…]', 'shape: brief writes an object that may also be a list once');
 }
 {
   const raw = `[読み込み] M-CURVES TypeError: S.map is not a function
@@ -204,14 +209,83 @@ try {
   try { j = JSON.parse(c.stdout); } catch { /* 下で失敗 */ }
   ok(j && c.status === 1, 'check: the fixture has errors');
   if (j) {
-    const orphans = j.results.filter((x) => x.code === 'narrOrphan').map((x) => x.step);
-    ok(JSON.stringify(orphans) === '["3"]', 'check: steps counted from data-step and .concl although the component fails ([0] [1] [2] [concl] are fine, only [3]) — ' + JSON.stringify(orphans));
+    const narr = j.results.filter((x) => x.code === 'narrOrphan' || x.code === 'narrMissing');
+    ok(narr.length === 0, 'check: no narrOrphan/narrMissing on the slide whose component cannot draw its data (its steps are not known) — ' + JSON.stringify(narr.map((x) => x.code + ' ' + x.step)));
     const cd = j.results.filter((x) => x.code === 'compData');
     ok(cd.length === 1 && cd[0].slide === 1 && cd[0].rule === 'R-components' && clean(cd[0].msg), 'check: one shape message for the slide, rule R-components, no stack or path');
     ok(!j.results.some((x) => x.code === 'consoleError'), 'check: no raw console error');
-    const o = j.results.find((x) => x.code === 'narrOrphan');
-    ok(o && /\[0\] \[1\] \[2\] \[concl\]/.test(o.msg) && o.msg.includes('[3] Expert: この行はスライドにない段階です。') && o.msg.includes('[2]'), 'check: the orphan message lists the keys, the lines and the target');
+    const re = j.results.filter((x) => x.code === 'narrRecheck');
+    ok(re.length === 1 && re[0].sev === 'info' && re[0].slide === 1 && re[0].msg.includes('<m-curves>'), 'check: one info line says the narration is checked again after the data is fixed');
   }
+  // 段階の数の出し方（部品が描けなくても data-step と .concl は数える）は、ほかのスライドでは今までどおり：orphan の言葉
+  const d = orphanDetail({ stepKey: '3', line: 5, end: 6 }, { max: 3, cstep: 3, static: false }, fs.readFileSync(path.join(ROOT, 'tools/fixtures/bad-curves/narration.md'), 'utf8'));
+  const o = message('ja', 'narrOrphan', { step: '3', line: 5, end: 6, static: false, ...d, comps: [] });
+  ok(/\[0\] \[1\] \[2\] \[concl\]/.test(o) && o.includes('[2]'), 'check: the orphan message lists the keys and the target');
+}
+
+// ---------------------------------------------------------------- 3b. 品質チェック：1 つの部品の欄の書き間違い（"lable"）が、口述原稿の段階の誤りを連ねない
+//   書き間違いのまま → compData 1 つ・narrOrphan/narrMissing 0・narrRecheck の info 1 つ。修正依頼は口述原稿を消させない。直した → きれい
+{
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-part-typo-'));
+  const deck = (field) => `<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Typo in a part</title>
+</head>
+<body>
+<div id="stage">
+<section class="slide" id="s-intro">
+  <h2>Three curves</h2>
+  <div class="body">
+    <m-curves style="height:380px" xr="[0,10]" yr="[0,10]" xl="x" yl="y" aria-label="three lines">
+      <script type="application/json">[
+        {"label": "a", "f": "x"},
+        {"${field}": "b", "f": "x / 2"},
+        {"label": "c", "f": "x / 4"}
+      ]</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>Steeper lines rise faster</span></div>
+</section>
+</div>
+</body>
+</html>
+`;
+  const narration = `# Narration
+
+## Three curves {#s-intro}
+[0] Here are three straight lines on the same axes.
+[1] The first line rises by one for every step to the right.
+[2] The second line rises half as fast.
+[3] The third line rises a quarter as fast.
+[concl] So the steeper the line, the faster it rises.
+`;
+  const run = () => {
+    const c = spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8' });
+    try { return JSON.parse(c.stdout); } catch { return null; }
+  };
+  try {
+    fs.writeFileSync(path.join(dir, 'narration.md'), narration);
+    fs.writeFileSync(path.join(dir, 'deck.html'), deck('lable'));
+    let j = run();
+    const of = (code) => (j ? j.results.filter((x) => x.code === code) : []);
+    ok(j && of('compData').length === 1 && of('compData')[0].sev === 'error', 'check (typo): one compData error — ' + JSON.stringify(j && of('compData').map((x) => x.msg)));
+    ok(j && of('narrOrphan').length === 0 && of('narrMissing').length === 0, 'check (typo): no narrOrphan / narrMissing for the 3 narrated steps of the part — ' + JSON.stringify(j && [...of('narrOrphan'), ...of('narrMissing')].map((x) => x.step)));
+    ok(j && of('narrRecheck').length === 1 && of('narrRecheck')[0].sev === 'info', 'check (typo): the info line narrRecheck is there');
+    if (j) {
+      // 修正依頼（error と warn だけを載せる。編集アプリと同じ）：口述原稿を消す・動かす言葉がない
+      const problems = j.results.filter((x) => x.sev === 'error' || x.sev === 'warn').map((x) => ({ sev: x.sev, i: x.slide === null ? null : x.slide - 1, title: '', code: x.code, rule: x.rule, data: x.data, text: x.msg }));
+      const req = buildFixRequest({ problems, deck: deck('lable'), narration, lang: 'en' });
+      const from = req.text.indexOf('## '), head = req.text.slice(from, req.text.indexOf('## ', from + 3));
+      ok(problems.length === 1 && !/delete|remove|merge|narration\.md line/i.test(head), 'check (typo): the fix request asks only to fix the data, not to delete narration — ' + head.slice(0, 600));
+    }
+    fs.writeFileSync(path.join(dir, 'deck.html'), deck('label'));
+    j = run();
+    const bad = j ? j.results.filter((x) => x.sev !== 'info' || x.code === 'narrRecheck') : null;
+    ok(j && bad.length === 0, 'check (typo fixed): clean — ' + JSON.stringify(bad && bad.map((x) => x.code + ' ' + x.step)));
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 }
 
 // ---------------------------------------------------------------- 4. 品質チェック：口述原稿の言語はスライドと別（日本語のスライドに英語の口述原稿。#37・#38）

@@ -1110,7 +1110,7 @@ async function quickCheck() {
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length + S.warn.length;
   showBadge(errs, warns - S.warn.length);
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
-    el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : T.sevWarn }),
+    el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : r.sev === 'info' ? T.sevInfo : T.sevWarn }),
     el('span', { text: T.checkMsg(r.code, r.arg) }),
     el('div', { cls: 'where', text: r.i === null ? T.wholeDeck : T.slideN(r.i + 1, r.title) }),
   ]));
