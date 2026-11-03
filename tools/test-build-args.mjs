@@ -76,5 +76,15 @@ assert.ok(fs.statSync(f1).size > 100, 'an existing .ega.html is replaced');
 r = run(d4, '--portable', '-o', path.join(tmp, 'o.ega.html'));
 assert.equal(r.status, 0, r.stderr);
 assert.ok(fs.existsSync(path.join(tmp, 'o.ega.html')));
+// 5. check も作業フォルダを受ける（その中の deck.html）。deck.html のないフォルダは同じ言葉で断る
+const CHECK = path.join(ROOT, 'kit/check.mjs');
+r = spawnSync(process.execPath, [CHECK, deck, '--json'], { cwd: ROOT, encoding: 'utf8' });
+assert.equal(r.status, 0, r.stderr);
+assert.equal(JSON.parse(r.stdout).counts.error, 0);
+const emptyC = path.join(tmp, "empty-check"); fs.mkdirSync(emptyC);
+r = spawnSync(process.execPath, [CHECK, emptyC], { cwd: ROOT, encoding: 'utf8' });
+assert.equal(r.status, 1);
+assert.match(r.stderr, /^check: .*expected a deck\.html file or a folder containing one/);
+assert.ok(!/FIFO/.test(r.stderr));
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('test-build-args: ok');

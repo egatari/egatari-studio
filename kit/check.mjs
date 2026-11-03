@@ -36,7 +36,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
 import { compareRenders, domSnapshot } from './render-compare.mjs';
-import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv, hasArticle } from './build.mjs';
+import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv, hasArticle, resolveDeckArg } from './build.mjs';
 import { referenceVoices, matchReference } from './core/ref-voice.mjs';
 import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
@@ -56,11 +56,14 @@ const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const ti = args.indexOf('--theme'), theme = ti >= 0 ? args[ti + 1] : undefined;
 const li = args.indexOf('--lang'), langArg = li >= 0 ? args[li + 1] : undefined;   // 知らせの言葉（ja | en。既定はデッキの言語）
-const src = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1) && !(li >= 0 && i === li + 1));
-if (!src) {
-  console.error('usage: node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]');
+const arg0 = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1) && !(li >= 0 && i === li + 1));
+if (!arg0) {
+  console.error('usage: node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]');
   process.exit(1);
 }
+// 作業フォルダを渡したら、その中の deck.html（組み立てと同じ。フォルダは「通常のファイルでない」と紛らわしく断られていた）
+let src;
+try { src = resolveDeckArg(arg0); } catch (e) { console.error(`check: ${e.message}`); process.exit(1); }
 
 // ---------------------------------------------------------------- 結果の置き場
 // slide: null（デッキ全体）または {i, title}。sev: 'error' | 'warn' | 'info'
