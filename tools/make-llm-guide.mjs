@@ -285,6 +285,9 @@ function components(cat, sets) {
 const cell = (s) => String(s ?? '').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 // データの形の短い書き方（一覧の欄）と見本（詳しい節）
 const SH = shapeApi();
+// データの形の決まりの型（kit/shape.js の brief の conv）：どの部品でもこの型の欄は、一覧に名前だけ書く（指示の大きさ。無料のプランの 40 KB）。
+// 決まりは tools/llm-guide/template(.ja).md の §3 の初めに書く（変えたらそこも）。違う型の欄（m-hist の label など）は今までどおり型を書く
+const SHAPE_CONV = { label: 'str', tex: 'str', note: 'str', tone: 'str', step: 'int', at: 'num' };
 // 組み立てが足す欄（形式 §6.2：build.fields の欄の描いた結果 texHtml・abcSvg など、と renderers）は AI が書かないので、データの形から除く
 function withoutBuilt(schema, build) {
   if (!build || !build.fields || !schema) return schema;
@@ -319,7 +322,7 @@ function shapeBrief(c, lang) {
   }
   // note は {en, ja} か、1 つの言語の字（部品庫 v1.2.0 の m-tree など）
   const note = !sh.note ? '' : typeof sh.note === 'string' ? sh.note : sh.note[lang] || sh.note.en || sh.note.ja || '';
-  return '`' + SH.brief(withoutBuilt(sh.schema, c.build)) + '`' + (note ? ' — ' + note : '');
+  return '`' + SH.brief(withoutBuilt(sh.schema, c.build), SHAPE_CONV) + '`' + (note ? ' — ' + note : '');
 }
 function shapeExample(c, lang) {
   const sh = c.shape;

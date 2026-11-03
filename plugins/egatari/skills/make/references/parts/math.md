@@ -1,14 +1,14 @@
 <!-- generated; do not edit by hand -->
 # math のパーツ
 
-指示の版：3a6226c6
+指示の版：97c10ee5
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
 | `<m-hissan>` | 筆算（たし算・ひき算・かけ算・わり算、小数も）。式を書けば、パーツが教科書の手順で計算して書く | ＋−は位ごと、×は 1 段ごと（fine で 1 けたずつ）→たす、÷は商 1 けたごと（per="phase" で たてる・かける・ひく・おろす ごと） | 属性だけ（JSON の子なし）: `digits="2"` |
-| `<m-numberline>` | 数直線。点・□・ジャンプ・不等式の範囲・0.1 の拡大。2 本で比例数直線 | build の順（既定 ticks,marks,links,jumps,ranges,magnify）に項目 1 つ = 1 ステップ。whole：全部で 1 ステップ | `{lines: [{from, to, step?, sub?, unit?, label?, labels?}, …], marks?: [{at, line?, label?, kind?, tone?, show?}, …], jumps?: [{from, to, line?, label?, tone?, show?}, …], ranges?: [{from?, to?, incl?, line?, label?, tone?, show?} (from or to), …], link?, magnify?: [{from, to, step?, labels?, show?}, …]}` — lines [{from, to, step, sub, unit, label, labels}]（1 本か 2 本）、marks [{at, kind: dot\|open\|box, label}]、jumps [{from, to, label}]、ranges [{from, to, incl: [真偽, 真偽]}]、link [[上の値, 下の値]]、magnify [{from, to, step}]。値は数か "1/3" |
+| `<m-numberline>` | 数直線。点・□・ジャンプ・不等式の範囲・0.1 の拡大。2 本で比例数直線 | build の順（既定 ticks,marks,links,jumps,ranges,magnify）に項目 1 つ = 1 ステップ。whole：全部で 1 ステップ | `{lines:{from:num\|str,to:num\|str,step?:num\|str,sub?:int,unit?:str,label?,labels?:str\|any[]}[],marks?:{at:num\|str,line?:int,label?,kind?:"dot"\|"open"\|"box",tone?,show?:int}[],jumps?:{from:num\|str,to:num\|str,line?:int,label?,tone?,show?:int}[],ranges?:[{from?:num\|str,to?:num\|str,incl?:[bool,bool],line?:int,label?,tone?,show?:int} (from or to),…],link?:(any[]\|object)[],magnify?:{from:num\|str,to:num\|str,step?:num\|str,labels?:str\|any[],show?:int}[]}` — lines [{from, to, step, sub, unit, label, labels}]（1 本か 2 本）、marks [{at, kind: dot\|open\|box, label}]、jumps [{from, to, label}]、ranges [{from, to, incl: [真偽, 真偽]}]、link [[上の値, 下の値]]、magnify [{from, to, step}]。値は数か "1/3" |
 | `<m-sweep>` | パラメータを動かして関数の形の変化を見せる（前の形は灰色で残す） | values の数 − 1 | 属性だけ（JSON の子なし）: `values="[0,0.5,1]"` |
-| `<m-tape>` | テープ図・線分図。全体や部分を括弧で括り、わからない量は □ か ?。行から行へ「2 倍」の矢印 | steps（既定）：行 → 括弧 → 倍の矢印を 1 つずつ。rows：行 1 つ = 1 ステップ。whole：全部で 1 ステップ | `{rows: [{label?, tone?, show?, segs: [{v, label?, unknown?}, …]}, …], brace?: [{row, from, to, label?, side?, show?}, …], times?: [{from, to, label?, show?}, …]}` — rows [{label, segs: [{v, label, unknown: "?" か "□"}]}]、brace [{row, from, to, label, side: above\|below}]（from・to は 0 から数えた区切りの番号）、times [{from, to, label}]（行の番号） |
+| `<m-tape>` | テープ図・線分図。全体や部分を括弧で括り、わからない量は □ か ?。行から行へ「2 倍」の矢印 | steps（既定）：行 → 括弧 → 倍の矢印を 1 つずつ。rows：行 1 つ = 1 ステップ。whole：全部で 1 ステップ | `{rows:{label?,tone?,show?:int,segs:{v:num,label?,unknown?:str}[]}[],brace?:{row:int,from:int,to:int,label?,side?:"above"\|"below",show?:int}[],times?:{from:int,to:int,label?,show?:int}[]}` — rows [{label, segs: [{v, label, unknown: "?" か "□"}]}]、brace [{row, from, to, label, side: above\|below}]（from・to は 0 から数えた区切りの番号）、times [{from, to, label}]（行の番号） |
 
 ### `<m-hissan>`
 

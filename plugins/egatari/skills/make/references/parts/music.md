@@ -1,12 +1,12 @@
 <!-- generated; do not edit by hand -->
 # music のパーツ
 
-指示の版：3a6226c6
+指示の版：97c10ee5
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
-| `<m-keyboard>` | ピアノの鍵盤。音階・和音・半音と全音を光らせる | steps の 1 つ = 1 ステップ（鍵盤は t でずらして順に光る） | `{range, names?, cumulative?, dur?, steps: [{keys, label?, t?, tone?, dur?}, …]}` — range "C4-C6"（使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで）、steps [{keys: ["C4", "E4"], label, t: [鍵盤ごとの秒], tone, dur}] |
-| `<m-score>` | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 ステップ。by="measure" なら 1 小節＝1 ステップ | `{abc}` — abc だけを書く（abcSvg・abcMap・renderers は組み立てが足す） |
+| `<m-keyboard>` | ピアノの鍵盤。音階・和音・半音と全音を光らせる | steps の 1 つ = 1 ステップ（鍵盤は t でずらして順に光る） | `{range:str,names?:"solfa"\|"abc"\|"iroha"\|"none",cumulative?:bool,dur?:num,steps:{keys:str[],label?,t?:num[],tone?,dur?:num}[]}` — range "C4-C6"（使う鍵を全部含め、1 オクターブ以上（例 C4-C5）。両端は白鍵、3 オクターブまで）、steps [{keys: ["C4", "E4"], label, t: [鍵盤ごとの秒], tone, dur}] |
+| `<m-score>` | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 ステップ。by="measure" なら 1 小節＝1 ステップ | `{abc:str}` — abc だけを書く（abcSvg・abcMap・renderers は組み立てが足す） |
 
 ### `<m-keyboard>`
 

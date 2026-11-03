@@ -8,7 +8,7 @@
 <body>
 <div id="stage">
 <!-- 試験の見本（tools/test-shape.mjs）：AI が書いた形のまま、m-curves のデータが配列でなく {"series": …} になっている。
-     data-step の 2 つと結論の行は数えられ、口述原稿の [0] [1] [2] [concl] は「スライドにない段階」にならないこと。[3] だけが段階の外 -->
+     部品が描けないスライドは段階の数がわからないので、口述原稿の抜け・余り（narrOrphan・narrMissing）を出さず、データを直した後に確かめ直すと 1 行（narrRecheck）知らせること -->
 <section class="slide" id="s-ygij2b">
   <h2>市場均衡：交点で決まる価格</h2>
   <div class="body">
