@@ -1,4 +1,4 @@
-<!-- i18n: pair=llm-book-ref.ja.md sha256=af75fb39dc9d91d4 -->
+<!-- i18n: pair=llm-book-ref.ja.md sha256=1649174538b5bc01 -->
 # Writing a book
 
 The rules themselves are in Studio's docs/article.md (Egatari Text 1, spec §9C). This page is the author's procedure and the places that are easy to trip on.

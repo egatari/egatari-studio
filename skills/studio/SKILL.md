@@ -108,7 +108,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 4. もう一度 `ids`（新しいつなぎを `egatari.json` の `articleLinks` に記録する）。
 5. 点検（`npx egatari@0.6.x check <deck>/deck.html`）と組み立て（`npx egatari@0.6.x build <deck>/deck.html`）。本は `out/deck.article.html` にも出る。縦書きの本は開いて確かめる。
 6. **書き終えてから** `npx egatari@0.6.x ids <deck> --confirm-links`：つないだ組を読み比べて合っていることを記録する。書いている途中で記録すると、直すたびに「スライドと本が合っていないかもしれません」が出る（直した後に出たら、読み比べてから記録し直す）。
-7. 1 ファイルにするとき（`--portable`）は、本・`references.json`・本の画像が中に入る。
+7. Egatari ファイルにするとき（`--portable`）は、本・`references.json`・本の画像が中に入る。
 
 `--portable` の `.ega.html` と `sheet` の画像は作業フォルダに書かれる。git に入れないなら `.gitignore` に足す。
 
@@ -128,7 +128,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
    - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
    - 字体を替えるなら `theme.json` の `fonts`（Studio が入れられる一覧から）。
    - 表紙の背景に画像は敷けない（`tokens.css` の `url()` は組み立てが埋め込まない。#171）。画像はロゴとして入れる。
-3. **確かめる**：見本の教材を `--theme <名前>` で組み、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
+3. **確かめる**：サンプルの教材を `--theme <名前>` で組み、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
 4. **使う**：教材は `<html data-theme="<名前>">`。Egatari ファイルに書き出すと、テーマ（と LICENSE）が教材の中に入り、どこでも同じに組める。
 5. **Studio で使う**：テーマのフォルダを ZIP にして（`cd ~/.egatari/themes && zip -r <名前>.zip <名前>`）、編集アプリの「テーマを読み込む…」→「ZIP ファイルを選ぶ…」。Chrome・Edge ならフォルダのまま「フォルダを選ぶ…」でもよい。
 6. 手本：作者のテーマ集（tml・tcue・wsd・ohte）。どれも `extends: default` に色とロゴだけ。
