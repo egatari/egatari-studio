@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.ja.md sha256=051430ad5afe79f5 -->
+<!-- i18n: pair=CONTRIBUTING.ja.md sha256=7778276fcffdb254 -->
 # Contributing
 
 English | [日本語](CONTRIBUTING.ja.md)
@@ -28,10 +28,13 @@ Components live in their own repository, **[egatari/components](https://github.c
 ```bash
 npm install
 npm test                 # all tests (needs Chrome, or Playwright's Chromium)
+npm test -- --jobs 1     # one step at a time, in the order of the step table
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-CI runs `npm test` on Node 22 and 24 (Linux), on Windows and on macOS for every push and pull request, and `node tools/clean-env.mjs` (an empty `HOME`, no TTS server) on all three. `node tools/test-all.mjs --list` prints every step and its arguments.
+`npm test` runs several steps at once: `--jobs N` (default: the number of CPUs minus 1, at most 6) starts the longest steps first and prints each step's output when it finishes. `--jobs 1` runs them one after another as before. Timing-sensitive tests (audio, recording, autoplay, part clocks, those that wait for the control bar or a notice to hide on a timer, and time budgets such as test-security's "refused quickly") carry the line `// test-all: serial` near the top: they run last, one at a time, with nothing else running. Add it to a new test that asserts on wall-clock or CPU time, or move such checks into a small serial step of their own (as test-app-audio holds test-app's audio checks). A browser test that starts child processes which each launch a browser (`kit/check.mjs`, `kit/abcjs-node.mjs`, `tools/sheet.mjs`) calls `await shareBrowser()` from `kit/browser.mjs` first: one browser is started for the whole test and every `launch()` without options connects to it. Otherwise prefer waiting for a condition (with a generous timeout only against hangs) over fixed sleeps: steps run slower when they share the CPU. A test must not write to a fixed place that another step uses (use the folder it is given, or `fs.mkdtempSync`); steps that do share files are ordered in `tools/test-all.mjs` (`after`, `lock`).
+
+CI runs `npm test -- --jobs 3` on Node 22 and 24 (Linux) and on Windows, and `npm test -- --jobs 2` on macOS (3 vCPUs and 7 GB), for every push and pull request, and `node tools/clean-env.mjs` (an empty `HOME`, no TTS server) on all three. `node tools/test-all.mjs --list` prints every step and its arguments.
 
 Unit tests are found, not listed: a `tools/test-*.mjs` with the line `// test-all: unit` near the top runs with no arguments (it must not need a browser). Tests that need arguments, a built deck or a fixed place in the order are steps written out in `tools/test-all.mjs`. A test that another test imports says `// test-all: part of <step>`. `npm test` fails before running anything if a `tools/test-*.mjs` is none of these, so a new test is not forgotten.
 

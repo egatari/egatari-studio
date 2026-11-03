@@ -461,3 +461,4 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-answered .pick-badge:not([hidden]){display:inline-block}
 #dlg .paste-answered .pick-badge{position:static;margin:0 8px;vertical-align:1px}
 #dlg .paste-from{margin:0 0 10px}
+#err-fix{margin-top:14px}

@@ -229,6 +229,9 @@ function quickCheck(fonts){
     });
     if (s.querySelector(".body .katex-error")) add(i, "error", "katexError");
     // 口述原稿：段階ごと（static のスライドは段階 0 だけ）。スライドにない段階の口述原稿（[k] が段階を超える・結論のない [concl]）はエラー
+    // 部品のデータが合わず描けないスライド：その部品の段階は 0 になるので、口述原稿の抜け・余りは出さず、データを直した後に確かめ直すと知らせる（kit/check.mjs の narrRecheck）
+    var bad = (DECK.componentErrors || []).filter(function(r){ return r.slide === i; }).map(function(r){ return r.tag; });
+    if (bad.length) { add(i, "info", "narrRecheck", {comps: bad.filter(function(t, n){ return bad.indexOf(t) === n; })}); return; }
     var valid = {}, isStatic = s.classList.contains("static");
     for (var kk = 0; kk <= (isStatic ? 0 : s._max); kk++) {
       var full = DECK.stepKey(i, kk), sk = full.slice(s._key.length + 1);
@@ -245,7 +248,6 @@ function quickCheck(fonts){
     for (var q = 0; q <= num && !isStatic; q++) { keys.push(String(q)); valid[String(q)] = true; }
     if (isStatic) keys.push("0");
     if (hasC) { keys.push("concl"); valid.concl = true; }
-    var bad = (DECK.componentErrors || []).filter(function(r){ return r.slide === i; }).map(function(r){ return r.tag; });
     Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", {step: sk, max: smax, cstep: hasC ? smax : -1, static: isStatic, keys: keys, comps: bad}); });
   }); });
   // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）

@@ -9,11 +9,13 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile, execFileSync } from 'node:child_process';
-import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import assert from 'node:assert/strict';
 import { parseLock, resolveComponent } from '../kit/core/components-lock.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 // 品質チェックの既知のエラー（部品庫の見本の問題。egatari/components で直して新しい版を取り込んだら消す）：{名前: [規則の名前 | {code, title} …]}
 // 今は項目なし（部品庫 v1.11.0 が m-numberline の見本の 3 枚目のはみ出しを直したので消した）

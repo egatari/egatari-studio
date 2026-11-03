@@ -1,4 +1,5 @@
 // 部品庫 2.0 の受け口（format spec §6.1・§6.2・§8.4。backlog #123）：同梱の再生器が 2.0 のパーツを動かすか
+// test-all: serial（部品の時計（ctx.extend の実時間・自動再生が段階の終わりを待つ）を数百ミリ秒の待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-parts-host.mjs [出力先]
 // 教材 tools/fixtures/parts2/（egatari.json の componentsCatalogue で 2.0。m-bars・m-flow・m-kakijun は content 表で引く写し、
 // m-probe・m-boom・m-orphan は作業フォルダの埋め込みのパーツ）を組んで開き、確かめること：
@@ -404,8 +405,10 @@ for (const mode of ['talk', 'learn']) {
   await cp.waitForTimeout(350);
   ok(await cp.evaluate(() => DECK.state().step === 1 && document.querySelector('#input-clock')._ctx.extend(0) === 60), `${mode}: autoplay waits past the authored step end`);
   await cp.locator('[data-extend="-60"]').click();
-  // 残りが 0 なのですぐ進む。遅い CI（macOS）で 80 ms の固定の待ちが足りなかったので、1 秒まで待つ
-  ok(await cp.waitForFunction(() => DECK.state().step === 2, null, { timeout: 1000 }).then(() => true, () => false), `${mode}: shortening the elapsed autoplay wait advances`);
+  // 縮めると自動再生の終わりの時計が残り 0 で掛け直され（kit/deck.js の scheduleAutoEnd）、次の段階へ進む。進むまで待つ（固定の 80 ms では、遅い macOS の CI で
+  // 時計と描画が間に合わずに落ちた）。縮めなければ 60 秒待つので、5 秒の期限で「縮めると進む」を見分けられる
+  await cp.waitForFunction(() => DECK.state().step === 2, null, { timeout: 5000 }).catch(() => {});
+  ok(await cp.evaluate(() => DECK.state().step === 2), `${mode}: shortening the elapsed autoplay wait advances`);
   await cp.evaluate(() => DECK.autoplay(false));
 
   // Stub the live layer with its real aggregate store; no connection, service or server is involved.
@@ -478,6 +481,26 @@ for (const mode of ['talk', 'learn']) {
   const x = await m.p.evaluate(() => { const c = DECK.slides.flatMap((s) => s._comps)[0]; return { v1: c instanceof DECK.MotionElement, v2: c._v2, reg: window.egatariParts ? (window.egatariParts.playerGuard ? 'guard' : 'registry') : 'none', errors: DECK.componentErrors.length }; });
   ok(x.v1 && x.v2 === false && x.reg === 'guard' && x.errors === 0 && m.errs.length === 0, `1.x parts stay DECK.MotionElement; only the player's guard stands in for the registry (${JSON.stringify(x)})`);
   await m.p.close();
+}
+// "componentsCatalogue": "2" の教材でも、原稿自身の <script> が使う 1.x の補助（DECK.define・DECK.MotionElement・DECK.el）は残す（黙って動かなくならない）
+{
+  const inl = path.join(out, 'inline-define.html');
+  fs.writeFileSync(catSrc, `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Inline</title></head>
+<body><div id="stage"><section class="slide" id="inl"><h2>Inline</h2><div class="body"><m-mine aria-label="mine" style="display:block;height:100px"></m-mine>
+<m-bars aria-label="b" style="height:300px"><script type="application/json">{"groups":[{"label":"A","value":1},{"label":"B","value":2}]}</script></m-bars></div></section></div>
+<script>DECK.define("m-mine", class extends DECK.MotionElement { static steps = 1; mount(){ this.appendChild(DECK.el("svg", {width: 10, height: 10})); } });</script></body></html>`);
+  fs.writeFileSync(path.join(catDir, 'egatari.json'), JSON.stringify({ componentsCatalogue: '2' }));
+  build(catSrc, inl);
+  const ih = fs.readFileSync(inl, 'utf8');
+  ok(/egatariParts registry/.test(ih) && /DECK\.define = function/.test(ih), 'catalogue 2 with the deck\'s own DECK.define: the registry and the 1.x helpers are both written');
+  const m = await open(fileUrl(inl));
+  const x = await m.p.evaluate(() => ({ mine: !!customElements.get('m-mine') && !!document.querySelector('m-mine svg'), bars: !!document.querySelector('m-bars svg'), reg: window.egatariParts && !window.egatariParts.playerGuard, errors: DECK.componentErrors.length }));
+  ok(x.mine && x.bars && x.reg && x.errors === 0 && m.errs.length === 0, `catalogue 2: the deck's inline DECK.define part and the 2.x part both run (${JSON.stringify(x)}${m.errs.length ? ' ' + m.errs.join(' | ') : ''})`);
+  await m.p.close();
+  // 補助を使わない 2.x だけの教材は今までどおり外す
+  fs.writeFileSync(catSrc, fs.readFileSync(catSrc, 'utf8').replace(/<script>DECK\.define[\s\S]*?<\/script>/, '').replace(/<m-mine[^>]*><\/m-mine>/, ''));
+  build(catSrc, inl);
+  ok(!/DECK\.define = function/.test(fs.readFileSync(inl, 'utf8')), 'catalogue 2 without the 1.x helpers in the deck: the player stays without them');
 }
 // 手で作ったファイル：1.x の再生器に、登録簿なしで 2.0 のパーツ（score）を足す。ReferenceError を出さず、要素を知らせ、後ろの 1.x の部品は動く
 {

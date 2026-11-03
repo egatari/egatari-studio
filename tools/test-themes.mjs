@@ -20,10 +20,12 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { contrast, deUnder, VISION, rgb2hex } from '../kit/core/color-check.mjs';
 import { SHAPES, DEFAULT_LOOK, lookIn } from '../kit/core/theme-shapes.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);

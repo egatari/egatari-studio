@@ -3,6 +3,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
 // SPDX のライセンスの名前を、ふつうに書く形に（CC-BY-4.0 → CC BY 4.0）。ほかの名前はそのまま
 const ccName = (lic) => (/^CC-/i.test(lic) ? lic.replace(/-/g, ' ') : lic);
+import { PARTS_GALLERY, PARTS_CATALOGUE } from './parts-gallery.js';
 const FX = FORMAT.FILE_EXT;   // 拡張子は kit/core/format.mjs だけに書く
 // 新しい教材として保存するときの名前の案（<元の名前>-new<拡張子>）
 const newLessonName = (n) => (n.toLowerCase().endsWith(FX) ? n.slice(0, -FX.length) : n.replace(/\.html?$/i, '')) + '-new' + FX;
@@ -91,19 +92,20 @@ const ja = {
   recentFolder: '作業フォルダ', recentFile: 'Egatari ファイル', cannotOpenRecentFile: 'このファイルは開けません（移動・削除された？）',
   saveNote: '注意：このブラウザでは、Egatari ファイルの「保存」はダウンロードになり、保存するたびに、ダウンロードのフォルダに新しいファイルができます（名前に番号が付くことがあります）。次に開くときは、いちばん新しいものを選んでください',
   privacy: `ファイルは、開いたファイルと選んだフォルダだけを読み書きし、どこにもアップロードしません。「${AI_VOICE_LABELS.ja.local}」では、初めに音声のプログラムとモデルをダウンロードします。「${AI_VOICE_LABELS.ja.cloud}」では、台本を自分で Colab にアップロードします。`,
-  buildFailed: 'スライドを組み立てられませんでした', buildFailedHint: 'スライドを直して保存すると、自動で組み直します（AI のコーディング道具やほかのエディタで直してもかまいません）', building: '組み立て中…',
+  buildFailed: 'スライドを組み立てられませんでした', useCatalogue2: 'パーツライブラリ 2 を使う', useCatalogue2Failed: (e) => `egatari.json に書けませんでした（${e}）`,
+  buildFailedHint: 'スライドを直して保存すると、自動で組み直します（AI のコーディング道具やほかのエディタで直してもかまいません）', building: '組み立て中…',
   noPermission: 'フォルダを読み書きする許可がありません', cannotOpen: 'このフォルダは開けません（移動・削除された？）', dropFolder: 'ファイルではなくフォルダを選んでください',
   noDeck: 'このフォルダにスライドの HTML（deck.html）がありません', popupBlocked: '新しい窓を開けませんでした（ポップアップを許可してください）', noFullscreen: '全画面にできませんでした',
   slidesN: (n) => `${n} 枚`, rebuilt: (t, why) => `${t} ${why === 'poll' ? '外での変更を読み込みました' : why === 'save' ? '保存して組み直しました' : '組み立てました'}`,
   buildFailedAt: (t) => `${t} 組み立てに失敗しました`, warnings: (n) => `警告 ${n}`, warnTitle: '組み立ての警告',
   checkTitle: '品質チェック', checking: '確かめています…', checkFailed: '確かめられませんでした（プレビューが応答しません）',
   checkSummary: (e, w) => `エラー ${e} · 警告 ${w}`, checkNote: (fix, any) => `ブラウザ版の品質チェックです（大きさ・長さ・台本の抜け・色の差）。${any ? `エラーがあれば、下の「${fix}」で AI に直してもらえます。` : `エラーがあると、ここに「${fix}」のボタンが出て、AI に直してもらえます。`}`,
-  sevError: 'エラー', sevWarn: '警告', wholeDeck: '教材全体', slideN: (n, t) => `スライド ${n}${t ? '：' + t : ''}`,
+  sevError: 'エラー', sevWarn: '警告', sevInfo: '情報', wholeDeck: '教材全体', slideN: (n, t) => `スライド ${n}${t ? '：' + t : ''}`,
   checkMsg: (c, a) => ({
     titleLong: `タイトル ${a} 字（26 字まで）`, titleLongEn: `タイトル ${a} 文字（60 文字まで）`, conclLong: `結論の行 ${a} 字（35 字まで）`, conclLongEn: `結論の行 ${a} 文字（70 文字まで）`,
     conclOverflow: '結論の行が枠からはみ出す', overflowBottom: `本文が下にはみ出す（${a}px）`, overflowRight: `本文が右にはみ出す（${a}px）`, smallText: `文字が小さい ${a}`,
     narrPlaceholder: `台本がテンプレートの仮の行（✎）のまま（ステップ ${a}。AI 音声はこのまま読み、字幕にも出る）`, templateText: `テンプレートの字のまま：「${a}」`,
-    katexError: 'KaTeX エラーが残っている', noNarration: `台本が無い（ステップ ${a}）`, contrast: `コントラストが低い：${a}`, audioStale: `音声の更新が必要（ステップ ${a}。「音声」で録り直すか更新する）`,
+    katexError: 'KaTeX エラーが残っている', noNarration: `台本が無い（ステップ ${a}）`, narrRecheck: `パーツのデータが合わず描けないので、台本とステップの数はデータを直してから確かめ直す（台本は消さない）`, contrast: `コントラストが低い：${a}`, audioStale: `音声の更新が必要（ステップ ${a}。「音声」で録り直すか更新する）`,
     refVoice: `参照音声（AI 音声が声をまねる元の録音）の ${a} が作業フォルダの中にある。教材には入らない（スライドで使うとエクスポートできない）。作業フォルダの外に置く`,
   }[c] || c),
   exporting: 'エクスポート中…', exportFailed: 'エクスポートできませんでした',
@@ -334,6 +336,7 @@ const ja = {
       '作業フォルダは Chrome / Edge だけ（Safari・Firefox はフォルダを開く仕組みがありません。Egatari ファイルはどのブラウザでも開けます）']],
     ['参加者に配る', ['配るのは Egatari ファイル（再生専用は --play-only）。Google ドライブでは、プレビューでは動かないので「ダウンロードしてからブラウザで開く」と添えます。メールの添付、LMS（Moodle・Google Classroom など）のファイルとしても配れます',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.ja.md" target="_blank" rel="noopener">配り方の手引き</a>`]],
+    ['パーツ', [`<a href="${PARTS_GALLERY}" target="_blank" rel="noopener">すべてのパーツのサンプル</a>（パーツライブラリ v${PARTS_CATALOGUE}）：パーツごとに動くサンプルを、伝えたいことごとに並べています。「新規作成…」の ④ でパーツを選ぶときの参考に`]],
     ['Claude で教材を作る', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.ja.md" target="_blank" rel="noopener">Claude Code や Cowork で教材を作る手引き</a>`]],
     ['自分のテーマ', ['教材のテーマが作業フォルダにも同梱のテーマにもないときは、知らせの「テーマを読み込む…」で、テーマのフォルダを圧縮した ZIP ファイルか、自分のテーマのフォルダ（~/.egatari/themes など）から読み込めます。ZIP ファイルのテーマは中身ごとこのブラウザに保存し、どのブラウザ（Safari・iPad も）でも使えます。フォルダは読むだけで、書き込みません（フォルダを選べるのは Chrome・Edge）。はじめの画面の「自分のテーマ…」で、保存したテーマの削除やフォルダを忘れることができます']],
   ],
@@ -491,19 +494,20 @@ const en = {
   recentFolder: 'working folder', recentFile: 'Egatari file', cannotOpenRecentFile: 'This file cannot be opened (moved or deleted?)',
   saveNote: 'Note: in this browser, Save for an Egatari file is a download, and each save makes a new file in your downloads (the name may get a number). Next time, open the newest one.',
   privacy: `Only the file you open and the folder you choose are read and written; nothing is uploaded. “${AI_VOICE_LABELS.en.local}” first downloads the voice program and model. “${AI_VOICE_LABELS.en.cloud}” has you upload the script to Colab yourself.`,
-  buildFailed: 'The slides could not be built', buildFailedHint: 'Fix the slides and save; it rebuilds automatically (fixing it in an AI coding tool or another editor works too).', building: 'Building…',
+  buildFailed: 'The slides could not be built', useCatalogue2: 'Use parts library 2', useCatalogue2Failed: (e) => `Could not write egatari.json (${e})`,
+  buildFailedHint: 'Fix the slides and save; it rebuilds automatically (fixing it in an AI coding tool or another editor works too).', building: 'Building…',
   noPermission: 'No permission to read and write this folder', cannotOpen: 'This folder cannot be opened (moved or deleted?)', dropFolder: 'Please choose a folder, not a file',
   noDeck: 'No slides HTML (deck.html) in this folder', popupBlocked: 'Could not open a new window (allow pop-ups)', noFullscreen: 'Could not go fullscreen',
   slidesN: (n) => `${n} slides`, rebuilt: (t, why) => `${t} ${why === 'poll' ? 'reloaded outside changes' : why === 'save' ? 'saved and rebuilt' : 'built'}`,
   buildFailedAt: (t) => `${t} build failed`, warnings: (n) => `${n} warning${n === 1 ? '' : 's'}`, warnTitle: 'Build warnings',
   checkTitle: 'Quality check', checking: 'Checking…', checkFailed: 'Could not run the quality check (the preview did not answer)',
   checkSummary: (e, w) => `${e} errors · ${w} warnings`, checkNote: (fix, any) => `The browser quality checker (size, length, missing script, color contrast). ${any ? `If there are errors, press “${fix}” below to have your AI fix them.` : `If there are errors, a “${fix}” button appears here, so your AI can fix them.`}`,
-  sevError: 'error', sevWarn: 'warning', wholeDeck: 'whole lesson', slideN: (n, t) => `slide ${n}${t ? ': ' + t : ''}`,
+  sevError: 'error', sevWarn: 'warning', sevInfo: 'info', wholeDeck: 'whole lesson', slideN: (n, t) => `slide ${n}${t ? ': ' + t : ''}`,
   checkMsg: (c, a) => ({
     titleLong: `title is ${a} units (max 26)`, titleLongEn: `title is ${a} characters (max 60)`, conclLong: `conclusion is ${a} units (max 35)`, conclLongEn: `conclusion is ${a} characters (max 70)`,
     conclOverflow: 'conclusion overflows its box', overflowBottom: `body overflows at the bottom (${a}px)`, overflowRight: `body overflows to the right (${a}px)`, smallText: `text too small ${a}`,
     narrPlaceholder: `script is still the template placeholder (✎) (step ${a}; AI voice reads it as is and it shows in the captions)`, templateText: `template text left: “${a}”`,
-    katexError: 'KaTeX error left in the slide', noNarration: `no script (step ${a})`, contrast: `low contrast: ${a}`, audioStale: `audio needs updating (step ${a}; record it again or update it in Audio)`,
+    katexError: 'KaTeX error left in the slide', noNarration: `no script (step ${a})`, narrRecheck: `a part cannot draw its data, so the script and the step count are checked again after its data is fixed (keep the script)`, contrast: `low contrast: ${a}`, audioStale: `audio needs updating (step ${a}; record it again or update it in Audio)`,
     refVoice: `the reference voice ${a} (the recording an AI voice imitates) is inside the working folder. A lesson never carries it (if the slides use it, export is refused). Keep it outside the working folder`,
   }[c] || c),
   exporting: 'Exporting…', exportFailed: 'Could not export',
@@ -730,6 +734,7 @@ const en = {
       'Working folders need Chrome / Edge (Safari and Firefox cannot open folders; Egatari files open in any browser).']],
     ['Hand out to participants', ['Hand out the Egatari file (a play-only copy with --play-only). On Google Drive the preview does not run it, so tell participants to download it first and open it in a browser. An email attachment or a file in an LMS (Moodle, Google Classroom …) works too.',
       `<a href="https://github.com/egatari/egatari-studio/blob/main/docs/distributing.md" target="_blank" rel="noopener">Distribution guide</a>`]],
+    ['Parts', [`<a href="${PARTS_GALLERY}" target="_blank" rel="noopener">Samples of all parts</a> (parts library v${PARTS_CATALOGUE}): every part in motion, grouped by what to convey. Useful when choosing parts in step 4 of “New…”.`]],
     ['Make lessons with Claude', [`<a href="https://github.com/egatari/egatari-studio/blob/main/docs/with-claude.md" target="_blank" rel="noopener">Guide: making lessons with Claude Code or Cowork</a>`]],
     ['My themes', ['When the lesson’s theme is neither in the working folder nor bundled, load it with “Load theme…” in the notice, from a ZIP file of the theme folder or from your own theme folder (for example ~/.egatari/themes). Themes from a ZIP file are saved in this browser, contents included, and work in every browser (Safari and iPad too). A folder is only read, never written (choosing folders needs Chrome or Edge). “My themes…” on the first screen deletes saved themes or forgets the folder.']],
   ],

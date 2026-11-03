@@ -28,6 +28,7 @@ import { missingParts2Requirement } from './parts2-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
+import { PARTS_GALLERY } from '../app/parts-gallery.js';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
@@ -197,75 +198,16 @@ async function previewBlank(p = page) {
   try { inner = fr ? await fr.evaluate(() => ({ deck: typeof window.DECK !== 'undefined', kids: document.body ? document.body.childElementCount : 0, url: location.href })) : null; } catch { inner = null; }
   return !attr.srcdoc && !attr.src && (!inner || (!inner.deck && inner.kids === 0));
 }
-// プレビューで音声が鳴る（backlog #49）：deck-audio の src がプレビューの文書の blob: になり、自動再生で鳴って時刻が進む
-// （キーの操作のない再生はブラウザが止めるので、試験では音を消して鳴らす）
-async function previewAudioPlays(fr, tag) {
-  let srcs = [];
-  for (let i = 0; i < 100; i++) {
-    srcs = await fr.evaluate(() => Object.values(DECK.AUDIO).map((a) => a.src));
-    if (srcs.length && srcs.every((s) => s.startsWith('blob:'))) break;
-    await page.waitForTimeout(100);
-  }
-  ok(srcs.length > 0 && srcs.every((s) => s.startsWith('blob:')), `${tag}: every deck-audio src is a blob: URL of the preview document (${srcs.length})`);
-  await fr.evaluate(() => { const pl = HTMLMediaElement.prototype.play; HTMLMediaElement.prototype.play = function () { window.__au = this; this.muted = true; return pl.call(this); }; DECK.go(0, 0, false); });
-  await fr.evaluate(() => DECK.autoplay(true));
-  let st = null;
-  for (let i = 0; i < 60; i++) {
-    st = await fr.evaluate(() => (window.__au ? { src: window.__au.src, t: window.__au.currentTime, err: window.__au.error && window.__au.error.code } : { auto: document.documentElement.classList.contains('autoplay') }));
-    if (st && st.t > 0) break;   // st.auto：まだ鳴らしていない（自動再生の状態だけ）
-    await page.waitForTimeout(100);
-  }
-  ok(!!st && !!st.src && st.src.startsWith('blob:') && st.t > 0 && !st.err, `${tag}: autoplay plays the audio (currentTime advances) ${JSON.stringify(st)}`);
-  await fr.evaluate(() => { DECK.autoplay(false); DECK.go(0, 0, false); });
-}
-// 発表者ビューから自動再生を始めると、プレビュー（本体）の音声が鳴る（音は消さない：キーを押したのは発表者ビューの窓なので、
-// プレビューの枠に allow="autoplay" がないとブラウザが NotAllowedError で止める）。発表者ビューの中のデッキ（発表者の画面・今と次の画面）は
-// 何も鳴らさない（二重に鳴らない）。Playwright の evaluate はその枠をユーザーが操作したことにする（以後は再生を許す）ので、新しい context で、
-// 鳴らす前にはプレビューの枠で evaluate しない：再生の見張りは addInitScript で入れ、結果は鳴らした後で読む
-async function presenterAudioPlays(html, tag) {
-  const cx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
-  await cx.addInitScript(() => {
-    const pl = HTMLMediaElement.prototype.play;
-    HTMLMediaElement.prototype.play = function () { window.__plays = (window.__plays || 0) + 1; window.__au = this; const r = pl.call(this); r.then(() => { window.__auRes = 'ok'; }, (e) => { window.__auRes = e.name; }); return r; };
-  });
-  const pg = await cx.newPage();
-  watch(pg, tag);
-  try {
-    await pg.goto(BASE);
-    await pg.waitForSelector('#drop');
-    const l0 = await pg.evaluate(() => window.__APP_TEST.state().loads);
-    await pg.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'min' + ext }); }, [Buffer.from(html).toString('base64'), FORMAT.FILE_EXT]);
-    await pg.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 30000 });
-    await pg.waitForTimeout(2500);   // 音声のバイトがプレビューに届き、blob: になるまで
-    const [pop] = await Promise.all([cx.waitForEvent('page'), clickCommand(pg, '#b-presenter')]);
-    watch(pop, tag + ' presenter');
-    let pv = null;
-    for (let i = 0; i < 200 && !pv; i++) { const x = pop.frames().find((y) => y.parentFrame() === pop.mainFrame()); try { if (x && await x.evaluate(() => !!document.getElementById('pv'))) pv = x; } catch { /* 読み込み中 */ } if (!pv) await pop.waitForTimeout(100); }
-    if (!pv) { ok(false, `${tag}: presenter view did not load`); return; }
-    await pop.waitForTimeout(800);
-    await pv.click('#pv-notes');
-    await pop.keyboard.press('a');
-    const fr = pg.frames().find((y) => y.parentFrame() === pg.mainFrame());
-    let st = null;
-    for (let i = 0; i < 80; i++) {
-      await pg.waitForTimeout(100);
-      st = await fr.evaluate(() => ({ res: window.__auRes || null, src: window.__au ? window.__au.src : null, t: window.__au ? window.__au.currentTime : 0, muted: window.__au ? window.__au.muted : null, plays: window.__plays || 0 }));
-      if ((st.res && st.res !== 'ok') || (st.res === 'ok' && st.t > 0)) break;
-    }
-    ok(st.res === 'ok' && st.t > 0 && st.muted === false && /^blob:/.test(st.src || ''), `${tag}: autoplay started in the presenter view plays the preview's audio (not muted) ${JSON.stringify(st)}`);
-    const plays = [];
-    for (const x of [pv, ...pv.childFrames()]) plays.push(await x.evaluate(() => window.__plays || 0).catch(() => -1));
-    ok(plays.length === 3 && plays.every((n) => n === 0), `${tag}: the presenter view itself plays nothing (no double playback) ${JSON.stringify(plays)}`);
-    await pop.keyboard.press('a');
-  } finally { await cx.close(); }
-}
+// プレビューで音声が鳴ること（backlog #49）は tools/test-app-audio.mjs（時間に敏感なので、ほかの段と同時に走らせない別の段。backlog #156）
 // 口述原稿の板・編集の窓の「保存」を押す。板は開いた直後で、プレビューの枠が狭まったところ：macOS の CI では、押したものが下のプレビューの iframe に届き、
 // 何も保存されずに次の読み込みを待って 15 秒で落ちた（tools/click-retry.mjs）。効果（保存を始めてボタンが押せなくなった・板が閉じた・口述原稿が未保存でなくなった）が出るまで押し直す
 async function clickSave(sel) {
   const h = await page.waitForSelector(sel);
   return clickUntil(page, sel, () => page.waitForFunction((b) => !b.isConnected || b.disabled || (!!b.closest('#dev-narr') && !window.__APP_TEST.ui().narrDirty), h, { timeout: 2500 }));
 }
-async function waitLoads(n, timeout = 15000) {
+// 期限は固まったときのためだけ（外での変更は 1.5 秒ごとに見つけ、組み立ては Worker。ほかの段と同時に走る CI では組み立てに 10 秒を超えることがある）。
+// 状態を待つほかの waitFor も同じわけで 30 秒まで（10 秒では、並べて走らせた macOS の CI で組み立てを待ちきれなかった）
+async function waitLoads(n, timeout = 30000) {
   await page.waitForFunction((n) => window.__APP_TEST.state().loads > n, n, { timeout }).catch(async (e) => {
     // 読み込みが来なかったわけ（組み立て中か・組み立ての回数・エラー・板の状態）を出して落とす
     const d = await page.evaluate(() => { const s = window.__APP_TEST.state(), u = window.__APP_TEST.ui(); return { loads: s.loads, builds: s.builds, error: s.error, narrKey: u.narrKey, narrDirty: u.narrDirty, pos: u.pos && u.pos.key,
@@ -389,7 +331,7 @@ try {
   n = await loads();
   const deckExt = deck1.replace('<h2>更新の式</h2>', '<h2>更新の式（外で）</h2>');
   await opfs.write('deck.html', deckExt);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
   ok((await page.inputValue('#dev-editor textarea')) === '書きかけ', 'edit conflict: the open editor keeps unsaved input across the reload');
   await page.press('#dev-editor textarea', 'Meta+Enter');
   await page.waitForSelector('#dev-editor .dev-msg.dv-err');
@@ -397,13 +339,13 @@ try {
   await page.press('#dev-editor textarea', 'Escape');
   n = await loads();
   await opfs.write('deck.html', deck1);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
 
   // ---------------------------------------------------------------- 4. 口述原稿（narration.md を CRLF にして、書き戻しが CRLF のままか）
   // （改行だけの違いは組み立ての結果を変えないので、プレビューは読み込み直さない。組み直しを待つ）
   const b0 = await page.evaluate(() => window.__APP_TEST.state().builds);
   await opfs.write('narration.md', (await opfs.read('narration.md')).replace(/\r?\n/g, '\r\n'));
-  await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: 10000 });
+  await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: 30000 });   // 期限は固まったときのため（waitLoads と同じ）
   await f.locator('body').press('e');   // 編集モードを切る（デッキで押した e は知らせとしてアプリに届く）
   await page.waitForFunction(() => !window.__APP_TEST.ui().edit);
   ok(!(await f.evaluate(() => document.documentElement.classList.contains('dev-edit'))), 'edit: e pressed in the preview turns edit mode off (forwarded hint)');
@@ -420,6 +362,9 @@ try {
   n = await loads();
   await clickSave('#dev-narr .dv-foot button.dv-pri');
   f = await waitLoads(n);
+  // 保存の書き込みで組み直しが始まり、新しい画面の読み込みが保存の返事（未保存の印を消して鍵を外す。server/editor-ui.js の doSave）より先に済むことがある。
+  // 返事が届く（未保存でなくなる）まで待ってから見る（ほかの段と同時に走る CI で落ちた）
+  await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty, null, { timeout: 30000 }).catch(() => {});
   ok(await page.evaluate(() => !document.getElementById('preview').inert && !window.__APP_TEST.ui().editing), 'narration: after Save the preview takes input again');
   const narr1 = await opfs.read('narration.md');
   ok(narr1.includes('アプリから書き直した口述原稿です。') && narr1.includes('足した発言です。'), 'narration: narration.md changed (turn added)');
@@ -461,7 +406,7 @@ try {
   n = await loads();
   const narrExt = narr1.replace('足した発言です。', '外で直した発言です。');
   await opfs.write('narration.md', narrExt);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
   await page.press('#dev-narr .dev-turn textarea >> nth=0', 'Meta+Enter');
   await page.waitForSelector('#dev-narr .dev-msg.dv-err');
   ok(/台本が変わっています/.test(await page.textContent('#dev-narr .dev-msg')) && (await opfs.read('narration.md')) === narrExt, 'narration: stale revision is rejected (409), file untouched');
@@ -482,7 +427,7 @@ try {
       const s = document.getElementById('stage').getBoundingClientRect(), k = Math.min(innerWidth / 1280, innerHeight / 720);
       res(Math.abs(s.width - 1280 * k) < 0.5 && s.left === s0.left && s.top === s0.top && s.width === s0.width);
     }));
-  }), null, { timeout: 10000 });
+  }), null, { timeout: 30000 });
   const cwant = await target.evaluate((el) => {
     const r = el.getBoundingClientRect(), s = document.getElementById('stage').getBoundingClientRect();
     return { x: (r.left + 20 - s.left) * 1280 / s.width, y: (r.top + r.height / 2 - s.top) * 720 / s.height, h: r.height, unit: 1280 / s.width };
@@ -514,8 +459,8 @@ try {
   ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
   await page.click('#dev-comments .dev-c');
   // 移った知らせ（deck-pos）が届いて印が光るまで待つ（決まった時間では、遅い CI で印がまだない・前の段階の位置のことがある）
-  await f.waitForFunction((key) => DECK.state().key === key, `${K('何を最小化するか')}:0`, { timeout: 10000 });
-  await page.waitForFunction(() => !!document.querySelector('#dev-pins .dev-pin.dv-flash'), null, { timeout: 10000 });
+  await f.waitForFunction((key) => DECK.state().key === key, `${K('何を最小化するか')}:0`, { timeout: 30000 });
+  await page.waitForFunction(() => !!document.querySelector('#dev-pins .dev-pin.dv-flash'), null, { timeout: 30000 });
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));   // 枠の大きさの変化（ResizeObserver）で描き直した後
   const appPin = await page.evaluate(() => { const e = document.querySelector('#dev-pins .dev-pin'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, flash: e.classList.contains('dv-flash') }; });
   const appWant = await page.evaluate(() => { const r = document.getElementById('preview').getBoundingClientRect(); return { l: r.left, t: r.top }; });
@@ -533,19 +478,19 @@ try {
   const deck2 = (await opfs.read('deck.html')).replace('<h2>学習率と収束</h2>', '<h2>学習率と収束（外で変更）</h2>');
   ok(deck2.includes('外で変更'), 'external: test edit applies');
   await opfs.write('deck.html', deck2);
-  f = await waitLoads(n, 10000);
+  f = await waitLoads(n);
   ok(await f.evaluate(() => document.querySelector('#stage .slide.active h2').textContent.includes('外で変更')), 'external: change detected, rebuilt and reloaded');
   const st2 = await f.evaluate(() => DECK.state());
   ok(st2.slide === 5 && st2.step === 1, `external: slide and step kept (${st2.slide}:${st2.step})`);
 
   // 組み立ての失敗 → 重ね表示、直すと消える
   await opfs.write('deck.html', deck2.replace(/<head>[\s\S]*?<\/head>/, ''));
-  await page.waitForSelector('#errbox:not([hidden])', { timeout: 10000 });
+  await page.waitForSelector('#errbox:not([hidden])', { timeout: 30000 });
   ok((await page.textContent('#errtext')).includes('<head>'), 'error: build failure shown over the preview');
   await shot(page, 'error.png');
   n = await loads();
   await opfs.write('deck.html', deck2);
-  await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 10000 });
+  await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 30000 });
   ok(await page.isHidden('#errbox'), 'error: overlay disappears after the fix');
   // 選んだカタログにない要素（#165）：組み立てと同じエラーを画面の言葉で出す（黙って落とさない）。egatari.json で 2.x を選べば組める
   {
@@ -557,11 +502,16 @@ try {
     const et = await page.textContent('#errtext');
     ok(et.includes('<m-score> は、この教材が使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
       'catalogue: a 1.x lesson using <m-score> fails to build with the same message as build and check, in the editor\'s language: ' + et.slice(0, 120));
+    ok(await page.isVisible('#err-fix') && (await page.textContent('#err-fix')) === 'パーツライブラリ 2 を使う', 'catalogue: the error offers 「パーツライブラリ 2 を使う」 (a working folder whose only problem is parts library 2)');
+    await shot(page, 'catalogue-error.png');
     n = await loads();
-    await opfs.write('egatari.json', JSON.stringify({ ...(conf0 ? JSON.parse(conf0) : {}), componentsCatalogue: '2' }));
+    await page.click('#err-fix');
     await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 15000 });
     f = await waitLoads(n);
-    ok(await f.evaluate(() => !!customElements.get('m-score') && DECK.componentErrors.every((e) => e.tag !== 'm-score')), 'catalogue: with "componentsCatalogue": "2" in egatari.json it builds and <m-score> runs');
+    const conf1 = await opfs.read('egatari.json');
+    ok(JSON.parse(conf1).componentsCatalogue === '2' && (conf0 === null || conf1.startsWith(conf0.replace(/\s*\}\s*$/, ''))),
+      'catalogue: the button writes "componentsCatalogue": "2" into egatari.json, keeping the other members as written: ' + conf1.slice(0, 120));
+    ok(await f.evaluate(() => !!customElements.get('m-score') && DECK.componentErrors.every((e) => e.tag !== 'm-score')), 'catalogue: rebuilt on parts library 2, <m-score> runs');
     n = await loads();
     await opfs.write('deck.html', deck2);
     f = await waitLoads(n);
@@ -726,7 +676,7 @@ try {
     await page.waitForSelector('#toast.show.bad');
     ok(!(await dlgOpen()) && (await page.textContent('#toast')) === 'このファイルではスライドを編集できません（台本・音声・秒数だけ）', 'portable: missing requirements refuse slide editing with tierAOnlyNoSlides');
     ok((await page.getAttribute('#b-theme-switch', 'aria-disabled')) === 'true', 'portable: missing requirements disable theme switching');
-    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 30000 });
     await f.evaluate(() => DECK.go(0, 0, false));
     await page.click('#b-narr');
     await page.waitForSelector('#dlg[open] #dlg-ok');
@@ -762,8 +712,6 @@ try {
     let ps = await pstate();
     ok(ps.kind === 'memory' && ps.portable.docId === pmin.index.docId && !ps.error, `portable: in-memory workspace, docId ${ps.portable.docId}`);
     ok(await f.evaluate(() => DECK.slides.length) === 6, 'portable: slides render in the preview');
-    await previewAudioPlays(f, 'preview audio (single file in memory)');
-    await presenterAudioPlays(pmin.html, 'presenter audio');
     ok(ps.portable.profile === 'core' && await page.isHidden('#notice-extended'), 'portable: core profile → no code notice');
     // コメントの欄：1 ファイルではコメントは保存されない（閉じると消える）と知らせる
     await page.click('#b-comments');
@@ -936,12 +884,12 @@ try {
     await menuClick('#b-unpack');
     await page.waitForSelector('#toast.show.bad');
     ok((await page.textContent('#toast')).includes('空ではありません') && Object.keys(await dirFiles('unpacked')).length === Object.keys(out1).length, 'export folder: a non-empty folder is refused');
-    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 30000 });
 
     // 書き出したフォルダを開き、持ち運べる 1 ファイルに書き出す（フォルダの「1 ファイルを書き出す」）→ 同じ文書
     n = await loads();
     ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dirs.unpacked)) === true, 'export folder: the exported folder opens as a folder');
-    await previewAudioPlays(await waitLoads(n), 'preview audio (folder)');
+    await waitLoads(n);
     await clickMenuOpen(page, '#b-filemenu');
     ok(await page.isVisible('#b-export-portable') && (await page.textContent('#b-export-portable')) === '名前を付けて保存…' && await page.isHidden('#b-saveas') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'true', 'folder: File ▾ → Save as… makes the Egatari file (editable); Save is shown but disabled');
     await page.keyboard.press('Escape');
@@ -1096,7 +1044,7 @@ try {
     await page.waitForSelector('#toast.show.bad');
     ok(!(await page.evaluate(() => document.getElementById('dlg').open)) && (await page.textContent('#toast')).includes('スライドを編集できません'), 'tier A only: slide editing is refused (no rights prompt)');
     await shot(page, 'portable-tier-a-only.png');
-    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 10000 });
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 30000 });
     // 口述原稿は直せる（権利を見せてから）。保存は段 A
     let of = deckFrame();
     await of.evaluate(() => DECK.go(1, 1, false));
@@ -1712,7 +1660,7 @@ try {
     // 保存：どこにも保存していないので、1 ファイルか空のフォルダかを選ぶ
     await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('source-only' + '.ega.html', { create: true }); });
     await clickCommand(po, '#b-save');
-    await po.waitForSelector('#dlg[open] #save-where', { timeout: 10000 });
+    await po.waitForSelector('#dlg[open] #save-where', { timeout: 30000 });
     await po.waitForSelector('#dlg[open] #save-where');
     ok(!!(await po.$('#dlg-file')) && !!(await po.$('#dlg-folder')), 'source only: Save asks where (a single file or a folder)');
     if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'save-where.png') });
@@ -1844,7 +1792,7 @@ try {
       // 残す：読み込み直しても同じフォルダ（IndexedDB）
       await po.goto(BASE);
       await po.waitForSelector('#drop');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 10000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 30000 });
       ok((await tst()).state === 'granted' && (await po.textContent('#w-themes-state')).includes('thm-user'), 'theme folder: remembered after a reload (handle in IndexedDB), shown on the first screen');
       // 許可の求め直し：次の訪問では許可が切れている（prompt）。知らせの「「thm-user」を使う」で求め直し、許せば組み直す
       await po.evaluate(async () => {
@@ -1876,6 +1824,9 @@ try {
       n0 = await builds();
       await clickDlg(po, '#dlg-forget');
       await afterBuild(n0);
+      // 先に始まっていた組み立て（外での変更を見張る poll など）が先に終わることがある。忘れたあとの組み立てが済み、知らせが出るまで待つ（期限は固まったときのため）
+      await po.waitForFunction(() => { const s = window.__APP_TEST.state(), t = window.__APP_TEST.themeFolder(), b = document.querySelector('#notice-theme #b-theme-load');
+        return !s.error && t.name === null && !t.inBuild && s.warn.some((w) => w.startsWith('theme not found: "mytml"')) && !!b && b.getClientRects().length > 0; }, null, { timeout: 30000 }).catch(() => {});
       s = await pst();
       ok(!!themeWarn(s) && (await tst()).name === null && !(await tst()).inBuild && await po.isVisible('#notice-theme #b-theme-load'), 'theme folder: Forget → the deck builds without it again and the notice is back');
       await po.goto(BASE);
@@ -1911,7 +1862,7 @@ try {
       // 残す：読み込み直しても（IndexedDB に中身）
       await po.goto(BASE);
       await po.waitForSelector('#drop');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 2, null, { timeout: 10000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 2, null, { timeout: 30000 });
       ok((await po.textContent('#w-themes-state')).includes('mytml'), 'theme zip: remembered after a reload (contents in IndexedDB), shown on the first screen');
       // 同じ名前のテーマをもう一度読み込む：置き換えたと知らせる
       await pickZip(zipOf('egatari-themes-main/themes/', themeFiles), 'egatari-themes-main.zip');
@@ -1920,7 +1871,7 @@ try {
       await clickDlg(po, '#dlg-load');
       await po.waitForSelector('#theme-load[open] #theme-load-zip');
       await po.click('#theme-load-zip');
-      await po.waitForFunction(() => /同じ名前のテーマ「evil」「mytml」があったので、今読み込んだものに置き換えました。/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
+      await po.waitForFunction(() => /同じ名前のテーマ「evil」「mytml」があったので、今読み込んだものに置き換えました。/.test(document.getElementById('toast').textContent), null, { timeout: 30000 });
       ok((await tst()).mine.length === 2, 'theme zip: loading a theme with the same name again replaces it and says so');
       // 「自分のテーマ」の窓：テーマごとに見せる名前と「削除」。削除は確かめてから、1 つだけ
       await po.evaluate(() => document.getElementById('w-themes').click());
@@ -1931,7 +1882,7 @@ try {
       await po.waitForSelector('#dlg[open] #dlg-delete');
       ok((await po.textContent('#theme-delete-msg')) === '「mytml」をこのブラウザから削除します。読み込んだ ZIP ファイルは残ります。', 'theme zip: Delete asks first and says the ZIP file is kept');
       await clickDlg(po, '#dlg-delete');
-      await po.waitForFunction(() => JSON.stringify(window.__APP_TEST.themeFolder().mine) === '["evil"]', null, { timeout: 10000 });
+      await po.waitForFunction(() => JSON.stringify(window.__APP_TEST.themeFolder().mine) === '["evil"]', null, { timeout: 30000 });
       await po.waitForSelector('#dlg[open] #theme-mine li[data-theme="evil"]');
       ok(!(await po.$('#theme-mine li[data-theme="mytml"]')), 'theme zip: only that theme is deleted, and the dialog shows the rest');
       await clickDlg(po, '#dlg-close');
@@ -1942,7 +1893,7 @@ try {
       ok(!!themeWarn(await pst()) && /このブラウザに保存したテーマにありません（削除したか、まだ読み込んでいません）。「テーマを読み込む…」/.test(await po.textContent('#notice-theme')), 'theme zip: a deck whose theme was deleted says it is not in this browser and to load it again with 「テーマを読み込む…」');
       await po.goto(BASE);
       await po.waitForSelector('#drop');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 10000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 30000 });
       ok(JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: the deletion holds after a reload');
       // フォルダを選ぶと、保存したテーマと同じ名前（evil）があれば、フォルダのものを使うと知らせる（保存したテーマは消さない）
       await po.evaluate(async () => { const u = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-user'); window.__APP_TEST.themePicker = async () => u; document.getElementById('w-themes').click(); });
@@ -1950,7 +1901,10 @@ try {
       await clickDlg(po, '#dlg-load');
       await po.waitForSelector('#theme-load[open] #theme-load-folder');
       await po.click('#theme-load-folder');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 10000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 30000 });
+      // 選んだフォルダ（名前）はハンドルを IndexedDB に残す前に決まり、知らせはその後に出る（app/main.js の chooseThemeFolder）。知らせが出るまで待つ
+      //（名前だけを待って読むと、ほかの段と同時に走る CI では前の知らせを読んで落ちた）
+      await po.waitForFunction(() => (document.getElementById('toast').textContent || '').startsWith('テーマのフォルダ「thm-user」を使います'), null, { timeout: 30000 }).catch(() => {});
       const tt = await po.textContent('#toast');
       ok(tt.includes('同じ名前のテーマ「evil」が、このブラウザにも保存してあります。フォルダのものを使います。') && !tt.includes('置き換えました') && JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: choosing a folder with a theme named like a saved one says the folder one is used (the saved one is kept)');
       await po.evaluate(() => { window.__APP_TEST.themePicker = null; });
@@ -1966,7 +1920,7 @@ try {
         await clickDlg(po, '#dlg-load');
         await po.waitForSelector('#theme-load[open] #theme-load-zip');
         await po.click('#theme-load-zip');
-        await po.waitForFunction((src) => new RegExp(src).test(document.getElementById('toast').textContent), re.source, { timeout: 10000 });
+        await po.waitForFunction((src) => new RegExp(src).test(document.getElementById('toast').textContent), re.source, { timeout: 30000 });
         ok((await tst()).mine.length === 0, `theme zip: ${what} is refused with its message`);
       }
       await po.evaluate(() => { window.__APP_TEST.themeZipPicker = null; });
@@ -2043,6 +1997,7 @@ try {
     await pq.waitForFunction(() => /Irodori-TTS/.test((document.getElementById('model-cache-info') || {}).textContent || ''));
     const info = await pq.textContent('#model-cache-info');
     ok(await pq.isVisible('#panel-body #help-kinds') && (await pq.$$eval('#help-kinds th', (x) => x.length)) === 4, 'help: the four kinds of files (moved from the first screen) are in the help');
+    ok(await pq.$$eval('#panel-body a', (xs, u) => xs.some((a) => a.getAttribute('href') === u && a.target === '_blank'), PARTS_GALLERY), `help: links to the samples of all parts (${PARTS_GALLERY})`);
     await shot(pq, 'help-model-cache.png');
     ok(/保存領域を [\d.]+ [MG]B 使っています/.test(info) && info.includes('版 000000000000') && !(await pq.isDisabled('#b-model-delete')), 'model cache: Help shows storage use and the stored model');
     await pq.click('#b-model-delete');
@@ -2081,7 +2036,7 @@ try {
     await ps.selectOption('#paste-theme', { label: 'テーマを読み込む…' });
     await ps.waitForSelector('#theme-load[open] #theme-load-zip');
     await ps.click('#theme-load-zip');
-    await ps.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 10000 });
+    await ps.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 30000 });
     await ps.waitForSelector('#paste-theme optgroup', { state: 'attached' });
     ok((await ps.$$eval('#paste-theme optgroup[label="自分のテーマ"] option', (xs) => xs.map((x) => x.textContent))).includes('My theme'), 'safari: a theme loaded from a zip is offered in the new-deck theme select under 「自分のテーマ」 (by its title)');
     await ps.click('#dlg-cancel');
@@ -2185,7 +2140,7 @@ try {
     await ps.waitForSelector('#drop');
     ok(await ps.evaluate(() => [...document.styleSheets].some((x) => x.href && x.href.endsWith('/app.css')) && document.title === 'Egatari Studio'), `site (${tag}): the editor loads at ${base}`);
     await ps.goto(base + 'editor/?lang=en#x');
-    await ps.waitForURL(base + '?lang=en#x', { timeout: 10000 }).catch(() => {});
+    await ps.waitForURL(base + '?lang=en#x', { timeout: 30000 }).catch(() => {});
     await ps.waitForSelector('#drop');
     ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#w-openfile')) === 'Open a file (.ega.html)…', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
     // スクリプトが動かなくても行ける：meta refresh とリンク（ページを開くと移ってしまうので、HTML を読んで確かめる）
@@ -2259,19 +2214,19 @@ try {
       pv.on('request', (q) => reqs.push(q.url()));
       // 根：はじめの画面の下に版の一覧。凍結の知らせはない
       await pv.goto(SB + '?lang=' + lang);
-      await pv.waitForSelector('#version-line select', { timeout: 10000 }).catch(() => {});
+      await pv.waitForSelector('#version-line select', { timeout: 30000 }).catch(() => {});
       const root = await pv.evaluate(() => ({ line: document.getElementById('version-line')?.textContent || '', opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')), note: !!document.getElementById('version-note') }));
       ok(root.line.includes('v' + cur) && root.opts.join() === `${cur}*,0.0.1` && !root.note, `versions (${lang}): the root shows v${cur} and a list of versions, no frozen notice ${JSON.stringify(root)}`);
       // 根で古い版を選ぶ → /v0.0.1/（?lang は残す）
-      await Promise.all([pv.waitForURL(SB + 'v0.0.1/?lang=' + lang, { timeout: 10000 }).catch(() => {}), pv.selectOption('#version-pick', '0.0.1')]);
-      await pv.waitForSelector('#version-note', { timeout: 10000 }).catch(() => {});
+      await Promise.all([pv.waitForURL(SB + 'v0.0.1/?lang=' + lang, { timeout: 30000 }).catch(() => {}), pv.selectOption('#version-pick', '0.0.1')]);
+      await pv.waitForSelector('#version-note', { timeout: 30000 }).catch(() => {});
       const old = await pv.evaluate(() => ({ url: location.href, text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '' }));
       ok(old.url === SB + 'v0.0.1/?lang=' + lang && old.text.includes('v0.0.1') && old.href === SB + '?lang=' + lang, `versions (${lang}): choosing v0.0.1 opens the old copy; its added notice says v0.0.1 and links to the latest ${JSON.stringify(old)}`);
       // 今の版の写し：編集アプリそのもの（資源はその下から読む）。知らせは「これが最新」
       reqs.length = 0;
       await pv.goto(SB + `v${cur}/?lang=` + lang);
       await pv.waitForSelector('#drop');
-      await pv.waitForSelector('#version-note', { timeout: 10000 }).catch(() => {});
+      await pv.waitForSelector('#version-note', { timeout: 30000 }).catch(() => {});
       const fz = await pv.evaluate(() => ({ text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '', line: !!document.getElementById('version-line'), opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')) }));
       const own = reqs.filter((u) => /\/(app\.js|app\.css)$/.test(u));
       ok(fz.text.includes('v' + cur) && fz.href === SB + '?lang=' + lang && !fz.line && fz.opts.join() === `${cur}*,0.0.1` && own.length === 2 && own.every((u) => u.startsWith(SB + `v${cur}/`)),

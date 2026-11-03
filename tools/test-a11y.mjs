@@ -1,4 +1,5 @@
 // 読み上げソフト・キーボード・字幕の確認（kit/deck.js・kit/tools.js・kit/presenter.js・kit/check.mjs）
+// test-all: serial（帯が隠れない・字幕が時間で次へ進むのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-a11y.mjs <built.html> [画面の保存先]
 // aria-live の領域が次へ・前へで変わる・隠れたスライドは aria-hidden と inert・ボタンに名前と aria-pressed・
 // Tab で帯に入り Esc で戻る・一覧はフォーカスが縮図に付いてくる・ペンでもフォーカスが閉じ込められない・

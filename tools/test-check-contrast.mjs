@@ -45,7 +45,7 @@ await t('h2 だけの章の扉は読める：h2 は扉の字の色（--sec-fg）
     const r = await page.evaluate(() => {
       DECK.go(0, 0, false);
       const s = document.getElementById('s-sech2'), h = s.querySelector('h2'), h1 = document.querySelector('#s-sech1 h1');
-      const cv = document.createElement('canvas'); cv.width = 1; cv.height = 1; const cx = cv.getContext('2d');
+      const cv = document.createElement('canvas'); cv.width = 1; cv.height = 1; const cx = cv.getContext('2d', { willReadFrequently: true });   // CPU の canvas（kit/core/layout-scan.mjs と同じ。GPU の canvas は負荷の高い macOS の CI で 0 を読み返し、字と地が同じ色に見えた）
       const rgb = (c) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = c; cx.fillRect(0, 0, 1, 1); return [...cx.getImageData(0, 0, 1, 1).data].slice(0, 3); };
       const L = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
       const fg = rgb(getComputedStyle(h).color), bg = rgb(getComputedStyle(s).backgroundColor);

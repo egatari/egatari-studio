@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import { normalize, midiPitch, crossed, retime, schedule, renderPCM } from '../kit/core/sounds.mjs';
 import { createMuteSetting, MUTE_KEY, MUTE_LABEL } from '../kit/core/sound-preferences.mjs';
 import { classicNamespace } from '../kit/core/build-core.mjs';
-import { collectVideoEvents, videoSoundEvents, renderStepSounds } from '../render/sounds.mjs';
+import { collectVideoEvents, videoSoundEvents, renderStepSounds, frameStarts } from '../render/sounds.mjs';
 
 let count = 0;
 function test(name, fn) { fn(); count++; console.log('ok   ' + name); }
@@ -161,6 +161,24 @@ test('動画：部品の段階・作者の時刻、境目の余韻、区間の P
   }
   assert.ok(peak(renderStepSounds([note(.75, 60, .75)], 1, .5, 6000)) > .05);
   assert.deepEqual(videoSoundEvents([{ dur: .51 }], [[note(.52), note(.5)]], 30), [note(.5, 60)]);
+});
+
+test('動画：段階の境目のコマは累積の時刻から。50 段階でずれが 1 コマ以内、音は正しい時刻', () => {
+  // 1.364 s は 1 段階ごとに丸めると +0.08 コマ、2.308 s は −0.24 コマずつずれがたまっていた。♩=88 の 2/4 の 1 小節も
+  for (const fps of [24, 30, 60]) for (const dur of [1.364, 2.308, 120 / 88, .51]) {
+    const tl = Array.from({ length: 50 }, () => ({ dur }));
+    const f = frameStarts(tl, fps);
+    assert.equal(f.length, 51);
+    for (let n = 0; n <= 50; n++) assert.ok(Math.abs(f[n] - n * dur * fps) <= 1, `${dur} s @ ${fps}: step ${n} starts at frame ${f[n]} (${(n * dur * fps).toFixed(2)})`);
+    for (let n = 0; n < 50; n++) assert.ok(f[n + 1] - f[n] >= 1 && Math.abs(f[n + 1] - f[n] - dur * fps) < 1 + 1e-9);
+    // 音は丸めない累積の時刻：50 段階目の頭の音もちょうど 49 × dur
+    const ev = videoSoundEvents(tl, tl.map(() => [{ t: 0, sound: 'chime' }]), fps);
+    assert.ok(Math.abs(ev.at(-1).t - 49 * dur) < 1e-9);
+  }
+  // 長さが 1 コマに満たない段階も 1 コマはある（後ろはそのぶん詰めて追いつく）
+  assert.deepEqual(frameStarts([{ dur: .01 }, { dur: .01 }, { dur: 1 }], 30), [0, 1, 2, 31]);
+  // 割り切れる長さは前と同じ
+  assert.deepEqual(frameStarts([{ dur: .5 }, { dur: 2 }, { dur: 1.5 }], 30), [0, 15, 75, 120]);
 });
 
 test('同梱できる形：import なしで DECK.Sounds に収まる', () => {

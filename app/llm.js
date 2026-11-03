@@ -22,6 +22,7 @@ import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS
 import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
+import { PARTS_GALLERY } from './parts-gallery.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -34,6 +35,8 @@ import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { withNewLessonCatalogue } from '../kit/core/config-file.mjs';
+import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
 import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf } from '../kit/core/new-deck-pack.mjs';
@@ -102,6 +105,7 @@ const TX = {
     seriesHint: (name) => `データの分布の図（ヒストグラム・箱ひげ図）を使うなら「${name}」を選ぶ。棒・折れ線・円などのグラフはいつも入る`,
     // 新規作成 ④ のパーツの一覧（kit/core/new-deck.mjs の partsList・recommend）
     partsLegend: 'AI にどのパーツを使わせますか',
+    partsGallery: 'すべてのパーツのサンプルを見る',
     partsHint: '伝えたいことごとに並べています。標準パーツは全部選んであります。外したパーツは AI が使わず、要るときは近い形を HTML で描きます。表・画像・数式・図形は、選ばなくてもいつも使えます',
     whySub: (sub, names) => `① の使う場面が${sub}なので、${names}も選びました`,
     whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
@@ -253,6 +257,7 @@ const TX = {
     seriesLegend: 'Will the slides need any of these? (subjects)',
     seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
     partsLegend: 'Which parts may the AI use?',
+    partsGallery: 'See samples of all parts',
     partsHint: 'Grouped by what to convey. All standard parts are chosen. The AI won’t use a part you untick; if it needs one, it draws something close in HTML. Tables, images, equations and shapes are always available.',
     whySub: (sub, names) => `Also chose ${names}, because the setting in step 1 is ${sub}.`,
     whyWord: (word, names) => `Also chose ${names}, because step 2 mentions ${word}.`,
@@ -728,7 +733,9 @@ export function setupLlm(app) {
     const planNote = el('p', { id: 'paste-plan-note', cls: 'hint', text: X.planNote });   // プランは使う人のチャットの AI のもの（Egatari にプランはない）
     const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint(capKb('free'), capKb('paid')) });
     const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
-      el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }), why, groups, count]);
+      el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }),
+      // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
+      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), why, groups, count]);
     // 指示の大きさ：プランの目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
     const total = el('span', { id: 'paste-pack-size', cls: 'hint', tabindex: '-1' });
     const fill = el('span', { cls: 'meter-fill' });
@@ -1186,13 +1193,15 @@ export function setupLlm(app) {
     const a = assignIds(deck, narration || '', { byOrder: true });
     return { deck: a.deck, narration: a.narration, added: a.added.length, problems: a.problems };
   }
+  // 組み立ての失敗の言葉：選んだカタログにない要素（kit/core/parts2.mjs。1.x の教材に 2.x だけのパーツを貼った、など）は画面の言葉で直し方まで
+  const buildFailText = (e) => (e && e.code === NOT_IN_CATALOGUE && Array.isArray(e.notInCatalogue) ? e.notInCatalogue.map((a) => catalogueMessage(LANG, a)).join(' ') : String((e && e.message) || e).slice(0, 300));
   const nameOf = (deck) => exportName(titleOf(deck), 'ai-draft', FORMAT.FILE_EXT);   // 題名から（kit/core/export-name.mjs）
   // メモリの上の原稿 → Worker で1 ファイル（.ega.html）（組み立てと同じ期限）→ 開く（中身からコードを探し、あれば確かめる）
   async function openFiles(files, name, extra) {
     const ws = memoryWorkspace('pasted', files);
     let html;
     try { html = (await app.builder.exportHtml(ws, 'deck.html', {}, { timeout: app.buildTimeout() })).html; }
-    catch (e) { return `${X.buildFailed}: ${String((e && e.message) || e).slice(0, 300)}`; }
+    catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
     const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name, fresh: true, ...extra });
     if (!ok) return null;   // 取り消した（コードの確かめ・未保存の変更）：窓は閉じる
     // 保存するまでファイルには書いていない（閉じる前に知らせる）
@@ -1211,10 +1220,11 @@ export function setupLlm(app) {
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）。
     // 新規作成で選んだもの（場面・分野・外した言いたいこと）を studio.newDeck に。どちらも updateConfig を通る（kit/core/config-file.mjs）
-    let cfg = null;
+    // 新しい教材はパーツライブラリ 2.x で組む（指示が出すパーツと同じカタログ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）
+    let cfg = withNewLessonCatalogue(null);
     if (outlineRows) cfg = withOutline(cfg, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
     if (newChoice) cfg = withChoice(cfg, newChoice());
-    if (cfg) files[FORMAT.CONFIG_FILE] = cfg;
+    files[FORMAT.CONFIG_FILE] = cfg;
     const name = nameOf(ids.deck);
     const err = await openFiles(files, name, {});
     if (err) return err;
@@ -1249,7 +1259,7 @@ export function setupLlm(app) {
       const ws = memoryWorkspace('pasted', files);
       let html;
       try { html = (await app.builder.exportHtml(ws, file, { carry: P.index }, { timeout: app.buildTimeout() })).html; }
-      catch (e) { return `${X.buildFailed}: ${String((e && e.message) || e).slice(0, 300)}`; }
+      catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
       const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name: P.name, handle: P.handle, fresh: P.rightsOk, replacing: true });
       if (!ok) return null;
       try { await S.ws.writeText('narration.md', ids.narration); } catch { /* 無視 */ }

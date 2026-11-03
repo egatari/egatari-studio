@@ -1,4 +1,5 @@
 // ツールバーの見つけ方（kit/tools.js、backlog #122）
+// test-all: serial（帯と出し方の 1 行が約 5 秒で隠れるのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-bar-hint.mjs <built.html> [画面の保存先]
 // - 開くと帯を 5 秒ほど見せる。その端末で初めてなら、帯の上に出し方の 1 行。隠れると 1 行も消える
 // - 2 回目に開いたときは 1 行を出さない（localStorage に覚える）。localStorage が使えなければ毎回出す
@@ -37,15 +38,21 @@ async function open(ctx, q = '') {
 // ---- 初めて開く → 帯と 1 行。5 秒ほどで隠れて取っ手。2 回目は 1 行なし
 {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } });
+  // 帯が出た時刻（ページの時計）。5 秒は帯を出したときから数える（kit/tools.js の openUntil）ので、「3.6 s でまだ出ている」もそこから数える
+  //（試験の側で 3.6 秒待つと、開く・撮るのにかかった時間が足され、遅い macOS の CI では 5 秒を越えて落ちた）
+  await ctx.addInitScript(() => {
+    new MutationObserver((ms, mo) => { const cb = document.getElementById('dt-cb'); if (cb && cb.classList.contains('show')) { window.__barAt = Date.now(); mo.disconnect(); } })
+      .observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+  });
   let p = await open(ctx);
   let s = await st(p);
   ok(s.bar && s.hint === HINT_JA, `first open: the bar and the hint line are shown (${s.hint})`);
   ok(s.hintRole === null && s.hintAria === 'true', `the hint line is not announced to screen readers (no role, aria-hidden) ${JSON.stringify([s.hintRole, s.hintAria])}`);
   ok(!s.handle && s.handleTab === -1 && s.handleAria === 'true', 'first open: no handle while the bar is shown (not in the Tab order)');
   await p.screenshot({ path: path.join(outdir, 'first-open.png') });
-  await p.waitForTimeout(3600);
+  const at = await p.evaluate(() => new Promise((r) => setTimeout(() => r(Date.now() - window.__barAt), Math.max(0, window.__barAt + 3600 - Date.now()))));
   s = await st(p);
-  ok(s.bar && s.hint === HINT_JA, 'first open: still shown after 3.6 s (about 5 s)');
+  ok(s.bar && s.hint === HINT_JA, `first open: still shown after 3.6 s (about 5 s) (checked ${(at / 1000).toFixed(1)} s after the bar was shown)`);
   await p.waitForTimeout(2000);
   s = await st(p);
   ok(!s.bar && s.hint === null, 'first open: the bar and the hint hide after about 5 s');

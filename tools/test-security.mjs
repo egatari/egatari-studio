@@ -1,4 +1,5 @@
 // 守りの試験（npm test の test-security）：プレビューの決まり（CSP）が、デッキの文書（信頼しないバイト）より先に効くこと
+// test-all: serial（組み立ての上限で「すぐ断る」を子の CPU の時間 5 秒で確かめる。Windows の CI では、ほかの段と同時だと 1 万個のファイルを数えるだけで CPU の時間も 6.8 秒に延びた。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-security.mjs
 // 編集アプリと同じ決まりのページ（app/index.html の CSP。同じ origin への接続はできる）を立て、その中の sandbox の iframe に
 // app/preview-doc.js の previewDocument で組んだ文書を srcdoc で入れる。デッキの側には、決まりを飲み込む・追い越す・緩める・
@@ -400,12 +401,14 @@ try {
     { const f = deckOf('audbig', ''); const a = path.join(path.dirname(f), 'audio'); sparse(path.join(a, 'big.mp3'), 1024 * MiB);
       fs.writeFileSync(path.join(a, 'manifest.json'), JSON.stringify({ segments: { 'x:0': { file: 'big.mp3', dur: 1, cues: [] } } }));
       CASES2.push(['embedded audio 1 GiB', f, /files read/, { embedAudio: true }]); }
+    // 「すぐ断る」は子の process の CPU の時間（user + system）で見る：断る前に重い仕事をしていないこと。壁の時計は、npm test がほかの段を
+    // 同時に走らせると CPU の取り合いで延びる（固まることは spawnSync の timeout が見る。FIFO の「固まらない」は下で壁の時計のまま）
     for (const [name, file, re, extra] of CASES2) {
-      const code = `import { build } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra || {})} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+      const code = `import { build } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(), c0 = process.cpuUsage(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra || {})} }); } catch (e) { m = e.code + ': ' + e.message; } const c = process.cpuUsage(c0); console.log(JSON.stringify({ m, ms: Date.now() - t0, cpu: Math.round((c.user + c.system) / 1000), rss: process.resourceUsage().maxRSS }));`;
       const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
       let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
       const maxRss = extra || /GiB|x10001/.test(name) ? 300 * 1024 : 1024 * 1024;   // 読まずに断るもの：大きなファイルの中身を確保しない
-      ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < maxRss, `build limits: ${name} -> refused quickly with bounded memory (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
+      ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.cpu < 5000 && o.rss < maxRss, `build limits: ${name} -> refused quickly with bounded memory (${o.m}; CPU ${o.cpu} ms, ${o.ms} ms on the clock; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
     }
     // 上限は変えられる。小さくすれば普通のデッキも断り、大きくすれば通る
     let small = null; try { build(deckOf('low', '/*INCLUDE:dep.txt*/'.repeat(10), { 'dep.txt': 'x' }), { subset: false, limits: { includes: 5 } }); } catch (e) { small = e.code; }
@@ -419,10 +422,10 @@ try {
         const f = deckOf(name, ''); const d = path.dirname(f);
         fs.writeFileSync(path.join(d, 'narration.md'), '# n\n\n## x\n[0] hello\n');
         prep(d);
-        const code = `import { buildPortable } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(); let m = 'built'; try { await buildPortable(${JSON.stringify(f)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } console.log(JSON.stringify({ m, ms: Date.now() - t0, rss: process.resourceUsage().maxRSS }));`;
+        const code = `import { buildPortable } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(), c0 = process.cpuUsage(); let m = 'built'; try { await buildPortable(${JSON.stringify(f)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } const c = process.cpuUsage(c0); console.log(JSON.stringify({ m, ms: Date.now() - t0, cpu: Math.round((c.user + c.system) / 1000), rss: process.resourceUsage().maxRSS }));`;
         const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
         let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
-        ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.ms < 5000 && o.rss < 300 * 1024 && !fs.existsSync(path.join(d, 'out')), `portable limits: ${name} -> refused before allocating (${o.m}; ${o.ms} ms; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
+        ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.cpu < 5000 && o.rss < 300 * 1024 && !fs.existsSync(path.join(d, 'out')), `portable limits: ${name} -> refused before allocating (${o.m}; CPU ${o.cpu} ms, ${o.ms} ms on the clock; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
       };
       const manifest = (d, file) => { fs.mkdirSync(path.join(d, 'audio'), { recursive: true }); fs.writeFileSync(path.join(d, 'audio', 'manifest.json'), JSON.stringify({ segments: { 'x:0': { file, dur: 1, cues: [] } } })); };
       portableCase('voice.json 1 GiB', (d) => sparse(path.join(d, 'voice.json'), 1024 * MiB), /files read/);

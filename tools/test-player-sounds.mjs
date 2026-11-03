@@ -19,8 +19,8 @@ class AudioContext {
   get currentTime() { return now / 1000; }
   resume() { resumed++; this.state = 'running'; return Promise.resolve(); }
 }
-const deck = { mode: 'talk', view: '', Sounds: { ...Sounds, schedule(ctx, events) {
-  const item = { at: ctx.currentTime, events: structuredClone(events) }; scheduled.push(item);
+const deck = { mode: 'talk', view: '', Sounds: { ...Sounds, schedule(ctx, events, when) {
+  const item = { at: ctx.currentTime, when, events: structuredClone(events) }; scheduled.push(item);
   return { stop() { stopped.push(item); } };
 } }, SoundPreferences: { createMuteSetting: () => createMuteSetting(() => storage) },
   timeline: () => [0, 1, 2].map((k) => ({ i: 0, k, dur: 1 })), stepExtension: () => extension };
@@ -60,9 +60,10 @@ scope.seek = draw;
 scope.next(); tick(2900); assert.equal(scheduled.length, 3, 'ordinary navigation after seek works');
 deck.seek(0, 1, .8); assert.equal(stopped.length, 3); assert.equal(scheduled.length, 3, 'seeking does not sound events');
 
-scope.go(0, 0, false); extension = 1; scope.next(); tick(3500);
-assert.equal(scheduled.length, 3, 'extension moves .5 to 1 second');
-tick(3900); assert.equal(scheduled.length, 4); assert.equal(scheduled.at(-1).events[0].dur, 5);
+// The step's events are scheduled ahead on the audio clock when it starts: the time, not the call, moves.
+scope.go(0, 0, false); extension = 1; const extStart = now; scope.next();
+assert.equal(scheduled.length, 4); assert.equal(scheduled.at(-1).events[0].dur, 5);
+assert.equal(scheduled.at(-1).when, extStart / 1000 + 1, 'extension moves .5 to 1 second');
 extension = 0;
 for (const mode of ['talk', 'learn', 'lecture']) {
   deck.mode = mode; scope.go(0, 0, false); scope.next(); tick(now + 600);

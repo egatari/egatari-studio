@@ -1,0 +1,6 @@
+{
+  "repository": "https://github.com/egatari/egatari-studio",
+  "ref": "main",
+  "commit": "03eaf0607598b993eb020f8e619caa53526bc771",
+  "note": "The tests build each demo with this commit of Egatari Studio (its build, runtime, checker and browser launcher). commit is a full sha and is what is fetched and checked; ref only says where it came from (a branch, or a tag in \"tag\")."
+}

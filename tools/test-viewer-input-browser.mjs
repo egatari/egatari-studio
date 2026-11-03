@@ -56,7 +56,17 @@ let browser;
 const errors = [];
 const ready = (f) => f.waitForFunction(() => window.DECK && DECK.ready);
 const counts = (f) => f.evaluate(() => document.querySelector('m-predict').counts());
-const waitCounts = (f, expected) => f.waitForFunction((v) => JSON.stringify(document.querySelector('m-predict').counts()) === JSON.stringify(v), expected);
+// On a timeout, say where each pane stands (Linux CI timed out here intermittently, at the first wait after typing in the follow pane)
+const panes = [];
+const paneState = (f) => f.evaluate(() => ({ url: location.search, state: DECK.state(), counts: document.querySelector('m-predict').counts(),
+  field: document.querySelector('m-predict .pd-num')?.value ?? null, focus: document.activeElement ? document.activeElement.className || document.activeElement.localName : null })).catch((e) => String(e.message).split('\n')[0]);
+const waitCounts = (f, expected) => f.waitForFunction((v) => JSON.stringify(document.querySelector('m-predict').counts()) === JSON.stringify(v), expected).catch(async (e) => {
+  const seen = [];
+  for (const [name, x] of panes) seen.push(name + (x === f ? ' (waited)' : '') + ': ' + JSON.stringify(await paneState(x)));
+  // console.error: the stack of the thrown error was already made, so a longer message would not be printed
+  console.error(`waiting for counts ${JSON.stringify(expected)} timed out\n  ` + seen.join('\n  '));
+  throw e;
+});
 const waitTotal = (f, expected) => f.waitForFunction((n) => document.querySelector('m-timer')._ctx.extend(0) === n, expected);
 const suite = async (ctx, stage, pv, presenterFrame, label) => {
   await ready(stage);
@@ -65,6 +75,7 @@ const suite = async (ctx, stage, pv, presenterFrame, label) => {
   const follow = presenterFrame.childFrames().find((f) => /view=follow/.test(f.url())) || await (await presenterFrame.$('#f-cur')).contentFrame();
   const next = await (await presenterFrame.$('#f-next')).contentFrame();
   await ready(follow); await ready(next);
+  panes.length = 0; panes.push(['stage', stage], ['follow', follow], ['next', next]);
   await follow.waitForFunction(() => DECK.state().step === 1);
   const originalTimeline = await stage.evaluate(() => JSON.stringify(DECK.timeline()));
   // Real field events travel follow -> presenter -> trusted stage, never navigating while typing.

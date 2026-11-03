@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.1.0",
+  "default": "2.1.2",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -163,12 +163,133 @@
         "tree": "2.0.0",
         "venn": "2.0.0"
       }
+    },
+    "2.1.1": {
+      "tag": "v2.1.1",
+      "tarballSha256": "29cfc2c344ddf4b785469e8634a7f7cf31e3d307e3bcf71ec4b6ed0166b9a6a7",
+      "manifestSha256": "fe7d165827e4ab6226cdb0d343db07f4304134af178edf7735e3a0eed760fe1f",
+      "parts": {
+        "bars": "2.0.0",
+        "base": "1.0.0",
+        "boxplot": "2.0.0",
+        "boxplot-core": "1.0.0",
+        "cards": "2.0.0",
+        "codetree": "2.0.0",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.0",
+        "compare": "2.0.0",
+        "curves": "2.0.0",
+        "cycle": "2.0.1",
+        "expr": "1.0.0",
+        "fishbone": "2.0.0",
+        "flow": "2.0.1",
+        "gendai": "2.0.0",
+        "heatmap": "2.0.0",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.0",
+        "hist": "2.0.0",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.0",
+        "kanbun": "2.0.0",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.1",
+        "kobun": "2.0.0",
+        "kpi": "2.0.0",
+        "map-japan": "2.0.0",
+        "map-world": "2.0.0",
+        "market": "2.0.0",
+        "markup-reader": "1.0.0",
+        "menu": "2.0.0",
+        "numberline": "2.0.0",
+        "orbit": "2.0.1",
+        "pie": "2.0.0",
+        "plot": "1.0.0",
+        "predict": "2.0.1",
+        "quad": "2.0.1",
+        "scatter": "2.0.0",
+        "score": "2.0.0",
+        "seq": "2.0.0",
+        "shape": "1.0.0",
+        "sweep": "2.0.0",
+        "syntax": "2.0.0",
+        "tape": "2.0.0",
+        "timeline": "2.0.0",
+        "timer": "2.0.1",
+        "tree": "2.0.0",
+        "venn": "2.0.0"
+      }
+    },
+    "2.1.2": {
+      "tag": "v2.1.2",
+      "tarballSha256": "7204e2a70cfa725405bd68025976f463019f73ac9932d519ff2afa97d7d9f21e",
+      "manifestSha256": "454c03bd99ee12b9ad84ba97cb46981508c3f276f7a808c160cfc65cec7ac517",
+      "parts": {
+        "bars": "2.0.1",
+        "base": "1.0.0",
+        "boxplot": "2.0.1",
+        "boxplot-core": "1.0.0",
+        "cards": "2.0.1",
+        "codetree": "2.0.1",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.1",
+        "compare": "2.0.1",
+        "curves": "2.0.1",
+        "cycle": "2.0.2",
+        "expr": "1.0.0",
+        "fishbone": "2.0.1",
+        "flow": "2.0.2",
+        "gendai": "2.0.1",
+        "heatmap": "2.0.1",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.1",
+        "hist": "2.0.1",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.0",
+        "kanbun": "2.0.1",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.2",
+        "kobun": "2.0.1",
+        "kpi": "2.0.1",
+        "map-japan": "2.0.1",
+        "map-world": "2.0.1",
+        "market": "2.0.1",
+        "markup-reader": "1.0.0",
+        "menu": "2.0.1",
+        "numberline": "2.0.1",
+        "orbit": "2.0.2",
+        "pie": "2.0.1",
+        "plot": "1.0.0",
+        "predict": "2.0.2",
+        "quad": "2.0.2",
+        "scatter": "2.0.1",
+        "score": "2.0.1",
+        "seq": "2.0.1",
+        "shape": "1.0.0",
+        "sweep": "2.0.1",
+        "syntax": "2.0.1",
+        "tape": "2.0.1",
+        "timeline": "2.0.1",
+        "timer": "2.0.2",
+        "tree": "2.0.1",
+        "venn": "2.0.1"
+      }
     }
   },
   "parts": {
     "bars": {
       "2.0.0": {
         "sha256": "f826e31ccc7fce690b1060027722d79fee0f83b4837426dfe7e4f8af125858cc",
+        "kind": "element",
+        "tag": "m-bars",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "42b3fbffebfe35237e64234dbcb973df5cfa3a8f3964a9aeee9c84f1cfce4506",
         "kind": "element",
         "tag": "m-bars",
         "requires": {
@@ -198,6 +319,17 @@
           "plot": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "91dbe36e346e2601a70b7b80fc2c56b6bd675cd390eb2f6c55947cbdfee3545d",
+        "kind": "element",
+        "tag": "m-boxplot",
+        "requires": {
+          "base": "1.0.0",
+          "boxplot-core": "1.0.0",
+          "plot": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "boxplot-core": {
@@ -218,11 +350,31 @@
           "icons": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "f60b83abe37f37f76e5dd49d852ade459a9bed138115144e9a55e979eeac8ee9",
+        "kind": "element",
+        "tag": "m-cards",
+        "requires": {
+          "base": "1.0.0",
+          "icons": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "codetree": {
       "2.0.0": {
         "sha256": "21f5e95ee0d45bd05c56a56a32da0f286adefef1f79fc51813cc216c0613bc7a",
+        "kind": "element",
+        "tag": "m-codetree",
+        "requires": {
+          "base": "1.0.0",
+          "codetree-core": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "3af5292c8b58e2ad4ec0ec62da934fc2513f33ecb9ab3035fd75f55f9603217a",
         "kind": "element",
         "tag": "m-codetree",
         "requires": {
@@ -260,6 +412,26 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "de87e0e1ae13f5f45e764329a9ea5f747e8c9e6cebd0512e1391dc9728fa0790",
+        "kind": "element",
+        "tag": "m-collect",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "targets[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "compare": {
@@ -271,11 +443,31 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "084924310d00acc39fccf599509b300951074a4f014d50fcc49059d65e40a938",
+        "kind": "element",
+        "tag": "m-compare",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "curves": {
       "2.0.0": {
         "sha256": "306dd53657d8c43ffef6d6b9e67889fb10a842e6a9f997d8d1e1ad4dc09e6542",
+        "kind": "element",
+        "tag": "m-curves",
+        "requires": {
+          "base": "1.0.0",
+          "expr": "1.0.0",
+          "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "c932e8c83bc2b9a8199bdf9c56e39e7bf5b9ed6980cb1b46bdcbefd20be81126",
         "kind": "element",
         "tag": "m-curves",
         "requires": {
@@ -328,6 +520,27 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "8953ed98e4d7a23fd7f537e5aa0149c58d2db754373974c893e65dca0ae39f4c",
+        "kind": "element",
+        "tag": "m-cycle",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex",
+            "center.tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "expr": {
@@ -341,6 +554,27 @@
     "fishbone": {
       "2.0.0": {
         "sha256": "dbcdaee2f4f718e4d4ffc2fbeb72e4310494cc522bdf0e9307f21aa74410c2b1",
+        "kind": "element",
+        "tag": "m-fishbone",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "effect.tex": "katex",
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "cf605313d1d0a0d6673c09a25d35b2e3ada6ca6d48413c1c68bfbdb67eccbfdc",
         "kind": "element",
         "tag": "m-fishbone",
         "requires": {
@@ -401,6 +635,26 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "f72c8087d3b5bd4331207bbb91c8bae1abfbe00fa98ee1c942b44a77fd7e1e32",
+        "kind": "element",
+        "tag": "m-flow",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "gendai": {
@@ -412,11 +666,30 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "ac16a4e4fd09f01fdbac6dd0b58f08c52825348641fae2a72ff0c46753ab607d",
+        "kind": "element",
+        "tag": "m-gendai",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "heatmap": {
       "2.0.0": {
         "sha256": "c844ab07f0e76a9b96f2449fa1474dd1105b61b67e7a0c9517bfb651e01b6621",
+        "kind": "element",
+        "tag": "m-heatmap",
+        "requires": {
+          "base": "1.0.0",
+          "heatmap-core": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "bbc58a845901f748f00c3617eafe2a37a1bccddc7adb30472627db42e838c35d",
         "kind": "element",
         "tag": "m-heatmap",
         "requires": {
@@ -443,11 +716,31 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "46b986360d7ff3b688c071a850fed436eec264cf5c7b36ba6c7047735b15c806",
+        "kind": "element",
+        "tag": "m-hissan",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "hist": {
       "2.0.0": {
         "sha256": "c0b426b3e4d94022c13bc5103e16962181f4f71f3f05ecd506e9c992f98fc588",
+        "kind": "element",
+        "tag": "m-hist",
+        "requires": {
+          "base": "1.0.0",
+          "hist-core": "1.0.0",
+          "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "feb6fb2dc88709913d2a9c26d5b3183934602607f5c1612bdfb6e6ef0aa88928",
         "kind": "element",
         "tag": "m-hist",
         "requires": {
@@ -517,6 +810,16 @@
           "kanbun-core": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "a0ab40959ecf6efe7f9b5653ebdb192d761600b9403c61b8354933ad3db41d98",
+        "kind": "element",
+        "tag": "m-kanbun",
+        "requires": {
+          "base": "1.0.0",
+          "kanbun-core": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "kanbun-core": {
@@ -545,11 +848,29 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "0cfccf3610f2de8a94281c792abb748292d910e9116afbc95d886d4d4e45a68b",
+        "kind": "element",
+        "tag": "m-keyboard",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "kobun": {
       "2.0.0": {
         "sha256": "9d113d8227a24397d669b51fc89050f8b40949b42a90e50bf0d886b18d02294f",
+        "kind": "element",
+        "tag": "m-kobun",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "17ca8b245478e7c5725efe71d4cedcdb1d0bc6d50e2373e03e3cbefafe84e140",
         "kind": "element",
         "tag": "m-kobun",
         "requires": {
@@ -567,11 +888,29 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "71ef38e3ad6d13b41ff0c07077897f1ea574fd46b9502e88a8ff602294786a3d",
+        "kind": "element",
+        "tag": "m-kpi",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "map-japan": {
       "2.0.0": {
         "sha256": "e0e962973ef9a827fef970626a50504fd0e528d82e9639a30d64287dd70b6ae2",
+        "kind": "element",
+        "tag": "m-map-japan",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "935248166f98f68452d323954ca92eb5780fc08f0d7e95121613cb1548289b81",
         "kind": "element",
         "tag": "m-map-japan",
         "requires": {
@@ -589,11 +928,29 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "e957f03a40e6c28c482ce5857009b3a5f0b491c71fad8e1843c582d3f7b715dd",
+        "kind": "element",
+        "tag": "m-map-world",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "market": {
       "2.0.0": {
         "sha256": "a5e21bb4f7c3c07f61842ee14cadcef44a35408db0ae2cd29e62dff39a59d4c2",
+        "kind": "element",
+        "tag": "m-market",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "cb41d7ee0f8d73fdaecab94b9f310c56b3e831e95677b025e744cb3cda7c2afb",
         "kind": "element",
         "tag": "m-market",
         "requires": {
@@ -621,11 +978,29 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "f1857d0170abff2563ad54e2b3ad631f190eed5be5f9474b8cb2047bf84836e7",
+        "kind": "element",
+        "tag": "m-menu",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "numberline": {
       "2.0.0": {
         "sha256": "9db36dad76a3f2d68299a434e700c0cf716cc1f5d97286ce060c9adbac4e58c2",
+        "kind": "element",
+        "tag": "m-numberline",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "0d58f8f32b100b2d2587f21d9247543fbeb1a38097b165f3ee5971f2bf280f8a",
         "kind": "element",
         "tag": "m-numberline",
         "requires": {
@@ -643,11 +1018,38 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "dbbd262ab28045a0f5e0cbec09b6068a0343668bf21e61bb02f8d0c4c1bc2ea7",
+        "kind": "element",
+        "tag": "m-orbit",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "7dbbb3852a77a1a3dcfba8c69574d2a87e6b87adbfa84f30c0359e2bae0afb2b",
+        "kind": "element",
+        "tag": "m-orbit",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "pie": {
       "2.0.0": {
         "sha256": "879c6a9536dddf2822aa15f3815d7e5417dead3d36f02d53bb3e1d17f2f53346",
+        "kind": "element",
+        "tag": "m-pie",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "80844cc4d0c00acfd2730dbecd8ca4038dbc4e4fece530f76bb798c0b5f3eb1a",
         "kind": "element",
         "tag": "m-pie",
         "requires": {
@@ -684,6 +1086,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "bbe72d9268c240e4b5b4e9b4005f4ee66aa2a2d12b8c5c3de86f6ac9379b4100",
+        "kind": "element",
+        "tag": "m-predict",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "quad": {
@@ -704,11 +1115,30 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "252d3477a6a8e9a5eae1ac0ad82b577c4aa99ad23cbabbeb8cf9096518ec9f4c",
+        "kind": "element",
+        "tag": "m-quad",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "scatter": {
       "2.0.0": {
         "sha256": "61912b8301256cdff038c992298b0800577e37e7a6c8b2308000e5c601cc8aee",
+        "kind": "element",
+        "tag": "m-scatter",
+        "requires": {
+          "base": "1.0.0",
+          "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "e23997fff74fb7f89e1a29ca0dcfd369ca0b51db84214da2ac3fbcf956d2e1bd",
         "kind": "element",
         "tag": "m-scatter",
         "requires": {
@@ -733,11 +1163,36 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "cc1c0221e9dff3cbdb2568fcef24c229f03831b926bcc6cef0e72a442a5f7c86",
+        "kind": "element",
+        "tag": "m-score",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "abc": "abcjs"
+          }
+        },
+        "license": "MIT"
       }
     },
     "seq": {
       "2.0.0": {
         "sha256": "53380022b03defc6d938c5bc5f705da02572e435c6e4293c4725f1b6359855ef",
+        "kind": "element",
+        "tag": "m-seq",
+        "requires": {
+          "base": "1.0.0",
+          "plot": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "024a9c14b79a1975dbe997490df9fc77c7cdb071ea58784221a349b1fa36b4df",
         "kind": "element",
         "tag": "m-seq",
         "requires": {
@@ -766,11 +1221,31 @@
           "plot": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "35f4dbd162e68bd4814dc0fbb5356c5dc34420d8d68d1098ba37a3546872925e",
+        "kind": "element",
+        "tag": "m-sweep",
+        "requires": {
+          "base": "1.0.0",
+          "expr": "1.0.0",
+          "plot": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "syntax": {
       "2.0.0": {
         "sha256": "72f7b47cd9eac48f585fa77673c5713bb5da70e37831c4ef4499e57f86f835d6",
+        "kind": "element",
+        "tag": "m-syntax",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "505cb9599b8d6aa6d891c770243d8521d9de761051a42514f9c6ce2d1c510fba",
         "kind": "element",
         "tag": "m-syntax",
         "requires": {
@@ -788,11 +1263,40 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "ccf8f0ca9c74d84863f19a80aa622eb12233f67f6634104a1859d82d906bdfeb",
+        "kind": "element",
+        "tag": "m-tape",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "timeline": {
       "2.0.0": {
         "sha256": "f16938e22ef429d2e400e65dd52b3708be4df6d75266f520d4b360e6cec07de1",
+        "kind": "element",
+        "tag": "m-timeline",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "7a592133c221d671422a6d5a2d1f01a95138dabaed391a220e5ed882452ad5fe",
         "kind": "element",
         "tag": "m-timeline",
         "requires": {
@@ -830,6 +1334,15 @@
           "base": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "5dff770971556b8a6ff1c895ee07f3a7140564f8105d1831327c267bebb8daec",
+        "kind": "element",
+        "tag": "m-timer",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "tree": {
@@ -852,11 +1365,40 @@
           }
         },
         "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "18cbe8b22a67688bc0a5be412e059066ed648c0e6c16a6397723bbf8d20dc65d",
+        "kind": "element",
+        "tag": "m-tree",
+        "requires": {
+          "base": "1.0.0",
+          "markup-reader": "1.0.0"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "venn": {
       "2.0.0": {
         "sha256": "5b00a100075b36fa82538cec47f6d5c8cb3519c832a431506626058bf1f56cad",
+        "kind": "element",
+        "tag": "m-venn",
+        "requires": {
+          "base": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.1": {
+        "sha256": "6d78c6a1e0811a3afd48db57039846df37b748c4b8a93bafe8589bff00558b62",
         "kind": "element",
         "tag": "m-venn",
         "requires": {

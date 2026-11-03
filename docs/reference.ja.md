@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=c5ef9163b291291a -->
+<!-- i18n: pair=reference.md sha256=48b0612ec49dd4e7 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -552,7 +552,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 
 | コマンド | 用途 |
 |---|---|
-| `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいなテンプレートから新しい作業フォルダ（`deck.html` と `narration.md`）を作る。空でないフォルダには書かない |
+| `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいなテンプレートから新しい作業フォルダ（`deck.html` と `narration.md`、`"componentsCatalogue": "2"` の `egatari.json`）を作る。空でないフォルダには書かない |
 | `npm run ids -- <作業フォルダ \| deck.html> [--dry-run]` | id のないスライドに新しい id（`s-` と base32 の 6 字、乱数）を付け、`narration.md` の見出しを `## 見出し {#id}` にし、`audio/manifest.json`・`timeline.json`・`comments.json` と `data-morph="…"` の鍵を付け替える。音声は作り直さない。控えは `.cache/edits/`、改行はそのまま、2 回目は何も変えない。鍵の重なり・id の衝突・規則に合わない id のある教材では何もしない |
 | `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only] [--without-live-results]`・`npm run portable -- attach <フォルダ> <results.json>`・`npm run portable -- compare <ファイル> <フォルダ>` | Egatari ファイル ↔ フォルダ。[Egatari ファイル](#egatari-ファイル--portable) |
 | `npm run player:check [-- --strict]`・`npm run player:bump -- patch\|minor\|major` | 同梱のプレーヤー（Egatari Player）：そのファイル（`kit/core/player.mjs` の `PLAYER_FILES`）を `kit/player.lock.json` のリリースと比べる（知らせるだけ。`--strict` は違えば失敗。リリース候補の前に）。bump は新しい版を `kit/player.json` と lock に書き、`changes/player-<版>.md` を足す。[RELEASING.ja.md](../RELEASING.ja.md) |
