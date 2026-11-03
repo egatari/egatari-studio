@@ -1,7 +1,7 @@
-<!-- i18n: pair=llm-book-ref.ja.md sha256=1649174538b5bc01 -->
+<!-- i18n: pair=llm-book-ref.ja.md sha256=f99b5641496f0959 -->
 # Writing a book
 
-The rules themselves are in Studio's docs/article.md (Egatari Text 1, spec §9C). This page is the author's procedure and the places that are easy to trip on.
+The rules themselves are in Studio's [docs/article.md]({{DOC article.md}}) (Egatari Text 1, spec §9C). This page is the author's procedure and the places that are easy to trip on.
 
 ## 1. Decide the book's shape first
 

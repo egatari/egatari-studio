@@ -1,7 +1,7 @@
-<!-- i18n: pair=llm-book-ref.md sha256=98d27c7bc82e9de6 -->
+<!-- i18n: pair=llm-book-ref.md sha256=001528053b96d872 -->
 # 本を書く
 
-決まりの本文は Studio の docs/article.ja.md（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
+決まりの本文は Studio の [docs/article.ja.md]({{DOC article.ja.md}})（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
 
 ## 1. 先に決める：本の形
 

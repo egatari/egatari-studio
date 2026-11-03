@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=0ea8bb107ba81e40 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=c271e5ad28cece4d -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -24,7 +24,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    - `tools/test-selfcontained.mjs` (in `npm test`): no personal paths, private addresses, secrets locations or personal voice names in tracked files; `localhost:8882` only as the default of `IRODORI_URL`; `skills/` names only the bundled skills; the paths, links and `npm run` scripts that documents name exist; `kit/` and `server/` do not import `tts/` or `render/`
    - the `clean` job on Linux, Windows and macOS: `node tools/clean-env.mjs` with an empty `HOME` and no TTS server builds, quality-checks and exports (`--portable`, `--play-only`) every example, runs `tts/synth.py --dry-run` and builds with its audio, and builds a deck from `npm run new`. Run it locally too: `node tools/clean-env.mjs`
    - the `pack` job on Linux, Windows and macOS: `node tools/test-npm-pack.mjs` packs the npm package `egatari`, installs the tarball outside the repository and runs `npx egatari` (`--version`, `doctor`, `new`, `check`, `build`, `build --portable`)
-4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json` and `package-lock.json` and deletes `changes/*.md`):
+4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json` and `package-lock.json`, deletes `changes/*.md` and re-runs `node tools/make-llm-guide.mjs`, because the skills link the docs pinned to `v<version>`):
 
    ```bash
    node tools/changelog.mjs --preview X.Y.Z
@@ -33,7 +33,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git commit -am "vX.Y.Z：CHANGELOG を版にまとめ、版を X.Y.Z にする"
    ```
 
-   Only `CHANGELOG.md`, `changes/` and the version change between the candidate and this commit.
+   Only `CHANGELOG.md`, `changes/`, the version and the skills' pinned docs links (`plugins/egatari/skills/make/references/book.md`, `references/en/book.md`, `skills/studio/SKILL.md`) change between the candidate and this commit.
 5. **No session links.** Before every push (commits and tags):
 
    ```bash
