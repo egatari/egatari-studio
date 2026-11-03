@@ -39,7 +39,7 @@
     }
   },
   "buildPack": {
-    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { series = [], tools = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}",
+    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { series = [], tools = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null } = {}",
     "params": "opts",
     "returns": "string"
   },

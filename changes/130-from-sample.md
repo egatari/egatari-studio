@@ -6,3 +6,7 @@
 - `node kit/llm-pack.mjs --from-sample <name> [--request …]` prints exactly the instructions the editor copies for that sample (shared `kit/core/new-deck-pack.mjs`)
 - New… from a sample: the sample's parts keep their full descriptions on the free plan; over the limit, the other core parts are shortened first,
   then specialized parts the sample does not use are left out, and only last the sample's own parts are shortened (`fitSample`, editor and command alike)
+
+### Changed (API)
+
+- `buildPack`, `assemble` and `packWithRequest` (and `partsPackOpts`) take `full`: on the free plan, the standard parts described in full (default the core four; `short` means none). New `fitSample` (`kit/core/llm-pack.mjs`) fits a New… from a sample in the order above
