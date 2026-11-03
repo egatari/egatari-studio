@@ -4,7 +4,7 @@
 // F1 高校の国語の先生（ja）：はじめの画面のサンプルは「再生」→ 大きく再生する窓（sandbox の枠でファイルそのものが動く・頼み方・権利・ボタン 3 つ）→
 //    「このサンプルのように作る」→ 新規作成：① ③ は答えた形で「サンプルから」の札、② だけが空で開いて字を待つ、④ はサンプルのパーツに印と札、
 //    構成を添える印 → 写した指示にサンプルの構成（見出しと言いたいこと）・テーマ・場面。印を外すと指示が小さくなり構成が消える。
-//    ① を変えると札が消える。［作成］→ egatari.json の studio.newDeck に fromSample
+//    ① を変えると札が消える。［作成］→ egatari.json の studio.newDeck に fromSample、componentsCatalogue は 2.x の既定のカタログ
 // F2 同じ人が、ふつうの新規作成…：サンプルの知らせ・構成の印・札は出ない
 // F3 会社員（en）：egatari.org の「Studio でこのサンプルのように作る」（?from-sample=pitch-fictional）→ 同じ流れがすぐ開き、URL から引数が消える。
 //    知らない名前は知らせて、はじめの画面のまま
@@ -150,12 +150,21 @@ try {
   await p1.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d && s.loads > 0; }, before, { timeout: 30000 });
   const F1 = await files(p1);
   const nd = (JSON.parse(F1['egatari.json'] || '{}').studio || {}).newDeck || {};
+  const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
+  const cat1 = JSON.parse(F1['egatari.json'] || '{}').componentsCatalogue;
+  ok(cat1 === lock2.default, `F1: the lesson made from the sample is built with parts library 2, the catalogue the instructions describe (egatari.json componentsCatalogue ${JSON.stringify(cat1)}, the default 2.x catalogue ${lock2.default})`);
   ok(nd.fromSample === 'kokugo-kanbun' && nd.category === 'teaching' && nd.subcategory === 'class' && KS.parts.every((t) => nd.parts.includes(t)), 'F1: 「作成」 keeps fromSample in studio.newDeck: ' + JSON.stringify(nd));
 
   // ================================================================ F2 ふつうの新規作成…：サンプルのものは出ない
-  await clickMenuOpen(p1, '#b-filemenu');
-  await p1.click('#b-new');
-  await p1.waitForSelector('#dlg[open] #paste-step-kind');
+  // 窓が開いたか確かめ、開かなければ一覧を開き直して押し直す（macOS の CI で、作成の直後に押した「新規作成…」がプレビューの iframe に届いて窓が開かなかった。
+  // run 41613617977。tools/click-retry.mjs の説明と同じこと）
+  for (let i = 0; ; i++) {
+    if (i && await p1.isVisible('#dlg[open] #paste-step-kind')) break;   // 前の押しが遅れて効いた
+    if (!(await p1.isVisible('#b-new'))) await clickMenuOpen(p1, '#b-filemenu');
+    await p1.click('#b-new');
+    if (await p1.waitForSelector('#dlg[open] #paste-step-kind', { timeout: 2500 }).then(() => true, () => false)) { if (i) console.log(`click-retry: #b-new needed ${i + 1} clicks`); break; }
+    if (i >= 4) throw new Error('F2: New… did not open after 5 clicks');
+  }
   ok(!(await p1.$('#ai-from-sample')) && !(await p1.$('#paste-use-structure')) && !(await badgeOn(p1, 'kind')) && await p1.getAttribute('#paste-step-kind-btn', 'aria-current') === 'step',
     'F2: plain New… has no sample notice, no structure tick and no 「サンプルから」, and opens at ①');
   await p1.keyboard.press('Escape');

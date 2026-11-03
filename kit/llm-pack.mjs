@@ -5,7 +5,8 @@
 //   node kit/llm-pack.mjs --from-sample <名前> [--request <文|ファイル>] [--plan …] [--lang …]
 //                                                            「このサンプルのように作る」で ② を書いて ④ で写す指示と同じバイト（backlog #130。kit/core/new-deck-pack.mjs の fromSamplePack）：
 //                                                            examples/<名前>/sample.json の場面・テーマ・パーツ（外す候補にしない）と構成。--request の 1 行目は ② のタイトル、残りは内容（なければ空）。
-//                                                            無料のプランも有料のプランも、目安に収めた後（［候補を外す］を押した後と同じ）
+//                                                            無料のプランも有料のプランも、目安に収めた後（［候補を外す］を押した後と同じ）。サンプルのパーツは詳しく書き、
+//                                                            越えたら ① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く（fitSample）
 //   node kit/llm-pack.mjs --list [--lang ja]                   束・その部品・大きさ（無料のプランは収めた大きさと収める前の大きさ。最後に有料のプラン）
 //   node kit/llm-pack.mjs --help | -h                          使い方
 // 無料のプランは、編集アプリの新規作成と同じに目安（PACK_CAP_KB.free）に収める（kit/core/llm-pack.mjs の fitPack。backlog #125）：
@@ -41,9 +42,12 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
 --no-fit the free-plan pack as assembled, without fitting it to the limit
 --from-sample  exactly what the editor copies in New… after “Make one like this
          sample” (examples/<name>/sample.json): its setting, theme and parts (never
-         suggested for unticking), plus its structure; fitted to the plan as after
-         “Untick these”. --request: the first line is the title of step 2, the rest
-         its content (a file name reads that file; none: step 2 left empty)
+         suggested for unticking, described in full), plus its structure; fitted to
+         the plan as after “Untick these”: over the limit, first the core parts the
+         sample does not use are shortened, then specialized parts it does not use
+         are left out, and only then its own parts are shortened. --request: the
+         first line is the title of step 2, the rest its content (a file name
+         reads that file; none: step 2 left empty)
 --list   lists the part sets, their components and the size of the common
          body with that set (KB = UTF-8 bytes / 1024): the free plan fitted,
          then before fitting, then the paid plan; without --lang, en and ja
@@ -100,8 +104,10 @@ if (argv.includes('--from-sample')) {
     if (argv.includes('--no-fit') || arg('--sets') !== undefined || argv.includes('--list')) throw new Error('--from-sample cannot be used with --sets, --list or --no-fit');
     const lang = langArg || 'en', plan = planArg || 'free';
     const r = samplePack(String(arg('--from-sample') || ''), lang, plan);
-    if (r.short) console.error(`note: free plan: over ${PACK_CAP_KB.free} KB, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too`);
-    if (r.dropped.length) console.error(`note: ${plan} plan: still over the limit, so these specialized parts were left out, largest first: ${r.dropped.join(', ')} (the sample's own parts stay)`);
+    // 収め方（kit/core/llm-pack-assemble.mjs の fitSample）：サンプルのパーツは詳しいまま。① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く
+    if (r.shortened.length) console.error(`note: free plan: over ${PACK_CAP_KB.free} KB, so these core parts the sample does not use get only their catalogue line: ${r.shortened.join(', ')} (the sample's own parts stay in full)`);
+    if (r.dropped.length) console.error(`note: ${plan} plan: still over the limit, so these specialized parts the sample does not use were left out, largest first: ${r.dropped.join(', ')} (the sample's own parts stay)`);
+    if (r.ownShortened.length) console.error(`note: free plan: still over the limit with nothing else to leave out, so these parts of the sample get only their catalogue line too: ${r.ownShortened.join(', ')}`);
     if (r.over) console.error(`warning: ${plan} plan: ${kbOf(r.bytes)} KB is still over the limit`);
     process.stdout.write(r.text);
   } catch (e) { console.error(e.message); process.exit(2); }

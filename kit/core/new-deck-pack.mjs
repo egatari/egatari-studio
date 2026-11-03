@@ -5,16 +5,18 @@
 //   newDeckRequest({kind, values, theme, category, subcategory, sample, useStructure, content, outlineN, lang})
 //                                       → 頼みたいことの節（記入欄 → テーマの行 → 場面・構成の型・見せ方 → サンプルの構成 → 内容 → 2 回に分けて頼む節）
 //   sampleTicks(sample, rec)            → 初めの印（標準のパーツと、おすすめの束と、サンプルのパーツ。④ の一覧の順）
-//   packText({tags, plan, lang, request, short}) → 写す指示の全文
+//   packText({tags, plan, lang, request, short, full}) → 写す指示の全文（full：無料のプランで詳しく書く標準のパーツ。kit/core/llm-pack-assemble.mjs）
 //   newDeckPack({tags, plan, lang, request, keep, trim}) → {text, bytes, short, candidates, dropped, over}
 //                                       目安に収める：trim なしは ④ を開いたとき（無料のプランで越えたら中核の 4 つを短くし、外す候補を出すだけ）、
 //                                       trim は［候補を外す］を押した後（fitPack。コマンドの指示と同じ）
 //   sampleProblems(obj)                 → sample.json の誤り（validateSample に、分類・④ のパーツ・新しく選べるテーマを照らしたもの）
-//   fromSamplePack({sample, title, lang, plan, second, useStructure}) → newDeckPack の結果 ＋ {request, tags}。
-//                                       「このサンプルのように作る」で ② だけを書いて（second：{title, content}）④ で写すもの（無料のプランも有料のプランも trim の後）
+//   samplePackFit({tags, plan, lang, request, own}) → fitSample の結果 ＋ {text：収めた後の指示, sizeOf}。「このサンプルのように作る」の収め方：
+//                                       サンプルのパーツ（own）は詳しいまま、越えたら ① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く
+//   fromSamplePack({sample, title, lang, plan, second, useStructure}) → {text, bytes, short, shortened, dropped, ownShortened, over, tags, full, candidates, request}。
+//                                       「このサンプルのように作る」で ② だけを書いて（second：{title, content}）④ で写すもの（無料のプランも有料のプランも［候補を外す］の後）
 import { filledRequest, packWithRequest } from './llm-request.mjs';
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, fitPlan } from './new-deck.mjs';
-import { partsPackOpts, fitPack, packSize } from './llm-pack.mjs';
+import { partsPackOpts, fitPack, fitSample, packSize } from './llm-pack.mjs';
 import { sampleStructureRequest, validateSample } from './sample-info.mjs';
 import { outlineRequest, slideCountOf, OUTLINE_OVER } from './llm-outline.mjs';
 import { CHOOSABLE } from './themes-list.mjs';
@@ -58,7 +60,7 @@ export function sampleTicks(sample, rec = []) {
   return LISTED().filter((t) => want.has(t));
 }
 
-export const packText = ({ tags, plan = 'free', lang = 'en', request, short = false }) => packWithRequest({ ...partsPackOpts(tags, plan, { short }), lang, request });
+export const packText = ({ tags, plan = 'free', lang = 'en', request, short = false, full = null }) => packWithRequest({ ...partsPackOpts(tags, plan, { short, full }), lang, request });
 
 export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = [], trim = false }) {
   const sizeOf = (t, short) => packSize(packText({ tags: t, plan, lang, request, short }));
@@ -90,5 +92,12 @@ export function fromSamplePack({ sample, lang = 'en', plan = 'free', second = {}
   const request = newDeckRequest({ kind: 'A', values, theme: sample.theme, category: sample.category, subcategory: sample.subcategory, sample, useStructure, content, outlineN: longOf(values.length), lang });
   const rec = recommend({ sub: sample.subcategory || null, text: [title, content, ''].join('\n'), lang });
   const tags = sampleTicks(sample, rec);
-  return { ...newDeckPack({ tags, plan, lang, request, keep: sample.parts.filter((t) => tags.includes(t)), trim: true }), request };
+  const f = samplePackFit({ tags, plan, lang, request, own: sample.parts });
+  return { text: f.text, bytes: packSize(f.text), short: f.short, shortened: f.shortened, dropped: f.dropped, ownShortened: f.ownShortened, over: f.over, tags: f.tags, full: f.full, candidates: [], request };
+}
+
+export function samplePackFit({ tags, plan = 'free', lang = 'en', request, own = [] }) {
+  const sizeOf = (t, full) => packSize(packText({ tags: t, plan, lang, request, full }));
+  const f = fitSample(tags, plan, { sizeOf, capBytes: capKb(plan) * 1024, own });
+  return { ...f, sizeOf, text: packText({ tags: f.tags, plan, lang, request, full: f.full }) };
 }

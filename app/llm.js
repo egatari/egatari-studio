@@ -39,7 +39,7 @@ import { withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
-import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf } from '../kit/core/new-deck-pack.mjs';
+import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf, samplePackFit } from '../kit/core/new-deck-pack.mjs';
 
 
 // 画面の言葉（handoff/new-deck-flow-2026-10-25.md の文言の表。表にないものは handoff/ux-wording-principles.md の決まりで決めた）
@@ -753,8 +753,9 @@ export function setupLlm(app) {
     const structRow = draft.from ? el('label', { id: 'paste-structure-row', cls: 'paste-with-pack', for: 'paste-use-structure' }, [structCb, el('span', { text: X.useStructure(draft.from.title, draft.from.structure.length) })]) : null;
     // プランは上限と詳しさを変える（無料のプランは、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
     // 無料のプランで目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
-    let shortNow = false;
-    const textNow = (tags = chosen(), short = shortNow) => packText({ tags, plan: draft.plan, lang: LANG, request: request(), short });
+    // サンプルから始めたとき（draft.from）は、サンプルのパーツを詳しく書く（fullNow。kit/core/new-deck-pack.mjs の samplePackFit がコマンドと同じに決める）
+    let shortNow = false, fullNow = null;
+    const textNow = (tags = chosen(), short = shortNow, full = fullNow) => packText({ tags, plan: draft.plan, lang: LANG, request: request(), short, full });
     // 推した印：① の小分類と ② のタイトル・内容・そのほかの希望の言葉（recommend）。自分で替えたパーツはそのまま。標準のパーツは、替えていなければいつも印
     const guessNow = () => {
       rec = recommend({ sub: draft.sub || null, text: [draft.title, givenContent(), draft.wishes].join('\n'), lang: LANG });
@@ -784,10 +785,23 @@ export function setupLlm(app) {
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
       const cap = capKb(draft.plan), capBytes = cap * 1024;
-      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：無料のプランで越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に
-      const fit = fitPlan(chosen(), draft.plan, { sizeOf, capBytes, keep: fromParts });
-      shortNow = fit.short;
-      shortened.hidden = !shortNow;
+      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：無料のプランで越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に。
+      // サンプルから始めたとき（samplePackFit）：サンプルのパーツは詳しいまま、① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す候補に →
+      // ③ 外す候補がなくなっても越えるときだけサンプルのパーツを短く。候補を見せている間の指示は ① の後のもの（［候補を外す］の後はコマンドと同じ指示）
+      let fit, cut;
+      if (draft.from) {
+        const f = samplePackFit({ tags: chosen(), plan: draft.plan, lang: LANG, request: request(), own: fromParts });
+        fit = { candidates: f.dropped };
+        shortNow = false; fullNow = f.dropped.length ? f.step1Full : f.full;
+        cut = f.dropped.length ? f.step1Shortened : [...f.shortened, ...f.ownShortened];
+      } else {
+        fullNow = null;
+        fit = fitPlan(chosen(), draft.plan, { sizeOf, capBytes, keep: fromParts });
+        shortNow = fit.short;
+        cut = shortNow ? FREE_CORE : [];
+      }
+      shortened.hidden = !cut.length;
+      shortened.textContent = X.shortened(names(cut.length ? cut : FREE_CORE));
       const t = textNow(), bytes = packSize(t);
       total.textContent = X.packMeter(kb(t), cap); total.dataset.bytes = String(bytes);
       bar.setAttribute('aria-valuemax', String(cap)); bar.setAttribute('aria-valuenow', kb(t)); bar.setAttribute('aria-valuetext', X.packMeter(kb(t), cap));

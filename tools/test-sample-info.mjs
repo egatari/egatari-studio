@@ -6,12 +6,17 @@
 //   （原稿のテーマが新しく選べないものなら、選べるテーマ）。本は article/ があるときだけ
 // - 構成を添えた指示：無料のプランで目安に収まる（サンプルのパーツは外す候補にしない）。添える節は約 300 トークン（字数の上限）
 // - 正しくない sample.json を断る（形・分類・パーツ・字数・権利）
+// - 「このサンプルのように作る」の収め方（fitSample・fromSamplePack）：pitch の無料のプランの指示は m-bars・m-flow の説明を詳しいまま目安に収まる。
+//   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateSample, sampleStructureRequest, SAMPLE_LIMITS } from '../kit/core/sample-info.mjs';
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, withChoice, choiceOf } from '../kit/core/new-deck.mjs';
-import { partsPackOpts, fitPack, PACK_CAP_KB } from '../kit/core/llm-pack.mjs';
+import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { fitSample } from '../kit/core/llm-pack-assemble.mjs';
+import { fromSamplePack, samplePackFit } from '../kit/core/new-deck-pack.mjs';
+import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
 import { EXAMPLES, readSample } from './examples-portable.mjs';
@@ -99,6 +104,49 @@ const cases = [
 for (const [what, o, want] of cases) ok(codes(o) === want, `rejects ${what}: ${codes(o) || '(nothing)'}`);
 ok(validateSample({ ...good(), category: 'other', subcategory: null }, ctx).length === 0 && validateSample({ ...good(), subcategory: null }, ctx).length === 0, 'accepts subcategory null (Other, None of these)');
 ok(validateSample({ ...good(), category: 'nope', parts: ['m-nope'] }).length === 0, 'without categories and parts, only the shape is checked');
+
+// ---------------------------------------------------------------- 「このサンプルのように作る」の収め方（kit/core/llm-pack-assemble.mjs の fitSample）
+// pitch：m-bars・m-flow は中核の 4 つ、m-kpi・m-quad はほかの標準のパーツ。無料のプランでもサンプルのパーツは詳しく（説明の節 ### `<m-…>` がある）
+const entryOf = (t, L) => PACK[L].components[t].entry.trim().split('\n')[0];
+for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
+  const P = readSample('pitch-fictional');
+  const r = fromSamplePack({ sample: { ...P, title: 'Pitch', name: 'pitch-fictional' }, lang: L, plan, second: { title: L === 'ja' ? '新しい事業の提案' : 'A new business' } });
+  const fullIn = P.parts.filter((t) => PACK[L].components[t].set === 'standard').every((t) => r.text.includes(entryOf(t, L)));
+  ok(r.bytes <= PACK_CAP_KB[plan] * 1024 && !r.over && P.parts.every((t) => r.tags.includes(t)) && fullIn && r.text.includes(entryOf('m-bars', L)) && r.text.includes(entryOf('m-flow', L)) && !r.ownShortened.length,
+    `pitch from-sample (${L}, ${plan}): ${(r.bytes / 1024).toFixed(2)} KB under ${PACK_CAP_KB[plan]} KB, the sample's parts kept with their full descriptions (m-bars, m-flow, m-kpi, m-quad)` +
+    (r.shortened.length ? `; shortened ${r.shortened.join(', ')}` : '') + (r.dropped.length ? `; left out ${r.dropped.join(', ')}` : ''));
+  if (plan === 'free') ok(!r.shortened.some((t) => P.parts.includes(t)) && r.shortened.every((t) => FREE_CORE.includes(t)), `pitch from-sample (${L}): only core parts the sample does not use are shortened (${r.shortened.join(', ') || 'none'})`);
+  // 編集アプリ：［候補を外す］の後（外したパーツを除いた印）でもう一度収めても同じ指示（外すものはもうない）
+  const again = samplePackFit({ tags: r.tags, plan, lang: L, request: r.request, own: P.parts });
+  ok(again.text === r.text && !again.dropped.length, `pitch from-sample (${L}, ${plan}): fitting again after unticking gives the same instructions (the editor after Untick these)`);
+}
+// 越えたときの順：作った材料（標準 6 つ：中核の 4 つ ＋ s-a・s-b、専門 x-a・x-b・x-own）。大きさは詳しい標準 100・1 行だけの標準 10・専門 200（x-a）・150（x-b）・50（x-own）
+const FAKE = { en: { components: Object.fromEntries([...FREE_CORE.map((t) => [t, { set: 'standard' }]), ['s-a', { set: 'standard' }], ['s-b', { set: 'standard' }],
+  ['x-a', { set: 'xs' }], ['x-b', { set: 'xs' }], ['x-own', { set: 'xs' }]]) } };
+const SPEC = { 'x-a': 200, 'x-b': 150, 'x-own': 50 };
+const fsize = (tags, full) => tags.reduce((n, t) => n + (SPEC[t] || ((full || FREE_CORE.concat(['s-a', 's-b'])).includes(t) ? 100 : 10)), 0);
+const ALL = [...FREE_CORE, 's-a', 's-b', 'x-a', 'x-b', 'x-own'];
+const OWN = ['m-bars', 'm-flow', 's-a', 'x-own'];   // サンプルのパーツ：中核の 2 つ・ほかの標準 1 つ・専門 1 つ
+const fit = (cap, plan = 'free') => fitSample(FAKE, ALL, plan, { sizeOf: fsize, capBytes: cap, own: OWN });
+// 詳しい：中核の 4 つ ＋ s-a = 500、s-b = 10、専門 400 → 910
+let f = fit(1000);
+ok(!f.shortened.length && !f.dropped.length && !f.ownShortened.length && f.bytes === 910 && f.full.join() === [...FREE_CORE, 's-a'].sort().join(), 'fitSample: under the cap nothing is cut; the sample\'s standard parts (s-a too) are in full');
+f = fit(850);
+ok(f.shortened.length === 1 && ['m-menu', 'm-predict'].includes(f.shortened[0]) && !f.dropped.length && !f.ownShortened.length && f.bytes <= 850,
+  `fitSample step 1: a little over, one core part the sample does not use is shortened (${f.shortened.join(', ')}), nothing else`);
+f = fit(700);
+ok(f.step1Shortened.slice().sort().join() === 'm-menu,m-predict' && f.dropped.join() === 'x-a' && !f.ownShortened.length && f.tags.includes('x-own') && f.bytes <= 700,
+  `fitSample step 2: with the other core parts shortened and still over, specialized parts the sample does not use are left out, largest first (${f.dropped.join(', ')})`);
+f = fit(350);
+ok(f.dropped.slice().sort().join() === 'x-a,x-b' && f.tags.includes('x-own') && f.ownShortened.length > 0 && f.ownShortened.every((t) => OWN.includes(t)) && f.shortened.slice().sort().join() === 'm-menu,m-predict' && f.bytes <= 350 && f.step1Shortened.slice().sort().join() === 'm-menu,m-predict',
+  `fitSample step 3: only with nothing else to cut are the sample's own standard parts shortened (${f.ownShortened.join(', ')}); its specialized part stays`);
+f = fit(100);
+ok(f.over && f.tags.includes('x-own') && f.ownShortened.slice().sort().join() === ['m-bars', 'm-flow', 's-a'].sort().join(), 'fitSample: far over, every cut is made and the sample\'s parts stay ticked; still over is reported');
+f = fit(850, 'paid');
+ok(f.full === null && !f.shortened.length && !f.ownShortened.length && f.dropped.join() === 'x-a' && f.tags.includes('x-own'), 'fitSample (paid): nothing is shortened; specialized parts the sample does not use are left out');
+// 1 で短くした分は、外した後に収まれば戻る（外した後の印でもう一度 1 から）
+f = fitSample(FAKE, ALL, 'free', { sizeOf: (tags, full) => fsize(tags, full) + (tags.includes('x-a') ? 300 : 0), capBytes: 900, own: OWN });
+ok(f.dropped.join() === 'x-a' && !f.shortened.length && f.step1Shortened.length === 2 && f.bytes <= 900, 'fitSample: once a part is left out, the core parts are described in full again if they fit');
 
 console.log(fails ? `test-sample-info: ${fails} failed` : 'test-sample-info: all passed');
 process.exit(fails ? 1 : 0);

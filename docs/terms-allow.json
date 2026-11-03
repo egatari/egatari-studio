@@ -398,6 +398,12 @@
       "pattern": "Sample “|the sample “|the sample’s",
       "term": "voice-sample",
       "reason": "The sample lessons (the sample term) in the sample window and New… from a sample (backlog #130), not the voice preview."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "すべてのパーツのサンプルを見る",
+      "term": "play-sample",
+      "reason": "The link to every part's demo in New… step 4 (backlog #158), not the Play button of a sample."
     }
   ]
 }
