@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # music parts
 
-Instruction version: 4aa0bf5c
+Instruction version: 3a6226c6
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|

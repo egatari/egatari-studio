@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-seq の見本</title>
+<!-- 組み方：node kit/build.mjs components/seq/demo.html -o components/seq/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<script>
+// 見本の数値：分散 1 が既知の正規モデルで、平均 θ の事後分布 N(μ_n, σ_n^2) を観測 1 個ずつ更新する（事前 N(0, 1.5^2)）
+document.addEventListener("DOMContentLoaded", function(){
+  var ys = [1.8, 0.9, 1.4, 2.1, 1.2, 1.6], m0 = 0, s0 = 1.5, xs = [];
+  for (var i = 0; i <= 280; i++) xs.push(+(-3 + 7 * i / 280).toFixed(4));
+  var pdf = function(m, s){ return xs.map(function(x){ return +(Math.exp(-0.5 * Math.pow((x - m) / s, 2)) / (s * Math.sqrt(2 * Math.PI))).toFixed(5); }); };
+  var steps = [], prec = 1 / (s0 * s0), num = m0 / (s0 * s0);
+  steps.push({dens: pdf(m0, s0), readout: {"*n*": 0, "*μ*_n": m0, "*σ*_n": s0}});
+  ys.forEach(function(y, n){
+    prec += 1; num += y;
+    var m = num / prec, s = 1 / Math.sqrt(prec);
+    steps.push({dens: pdf(m, s), readout: {"*n*": n + 1, "*μ*_n": m, "*σ*_n": s}, mark: y});
+  });
+  document.getElementById("seq-data").textContent = JSON.stringify({xs: xs, steps: steps, digits: {"*n*": 0}, markLabel: "*y*_n"});
+});
+</script>
+<div id="stage">
+
+<section class="slide">
+  <h2>逐次更新</h2>
+  <div class="body">
+    <m-seq per-step="2" xr="[-3,4]" yr="[0,1.25]" xt="[-2,0,2,4]" yt="[0,0.5,1]" yf="1" xl="平均 *θ*" yl="密度" style="height:420px">
+      <script type="application/json" id="seq-data">{}</script>
+    </m-seq>
+  </div>
+  <div class="concl"><span>→ 観測が増えるほど，事後分布は狭くなる</span></div>
+</section>
+
+</div>
+</body>
+</html>
