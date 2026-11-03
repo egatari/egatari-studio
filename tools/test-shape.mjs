@@ -11,7 +11,7 @@ import path from 'node:path';
 import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { message } from '../kit/check-messages.mjs';
 import { cleanErrorText, componentError } from '../kit/core/error-text.mjs';
 import { readingProblems, orphanSteps, orphanDetail } from '../kit/core/narration-lint.mjs';
@@ -19,6 +19,8 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { extractBlocks } from '../kit/core/llm-import.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { vendorComponents } from './vendor-components.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-shape-')));

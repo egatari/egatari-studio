@@ -7,11 +7,13 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { build } from '../kit/build.mjs';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { layoutScan, withLayoutScan, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from '../kit/core/layout-scan.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-check-svg-overlap-'));
 fs.mkdirSync(work, { recursive: true });
