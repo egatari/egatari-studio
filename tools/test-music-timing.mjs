@@ -2,7 +2,8 @@
 // test-all: serial（音の時刻：AudioContext の予定の時刻を 8 小節にわたって計画と比べる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
 //   node tools/test-music-timing.mjs
 // Onsets are the times passed to OscillatorNode.start on a real AudioContext (its clock, not the wall clock).
-// Each must be within 2 ms of the plan (first onset + the measure's planned start + the note's beat), across 8 measures.
+// Each must be within 2 ms of the plan (first onset + the measure's planned start + the note's beat), across 8 measures,
+// including across a 600 ms main-thread stall in measure 4.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -31,12 +32,25 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   await page.addInitScript(() => {
     window.__onsets = []; window.__steps = [];
-    document.addEventListener('deck:pos', (e) => window.__steps.push({ k: e.detail.k, at: performance.now() }));
-    const start = OscillatorNode.prototype.start;
+    document.addEventListener('deck:pos', (e) => {
+      window.__steps.push({ k: e.detail.k, at: performance.now() });
+      // A stalled main thread (no frames, no timers) in the middle of measure 4, as a loaded CI runner can do:
+      // notes must not depend on a frame arriving shortly before them.
+      if (e.detail.k === 4 && !window.__stalled) {
+        window.__stalled = true;
+        setTimeout(() => { const end = performance.now() + 600; while (performance.now() < end); }, 250);
+      }
+    });
+    const start = OscillatorNode.prototype.start, stop = OscillatorNode.prototype.stop;
     OscillatorNode.prototype.start = function (when) {
       // Each note is two voices (sine + triangle) at one time: keep one onset per time.
-      if (this.type === 'sine') window.__onsets.push({ when, at: this.context.currentTime });
+      if (this.type === 'sine') window.__onsets.push(this.__onset = { when, at: this.context.currentTime, stops: [] });
       return start.apply(this, arguments);
+    };
+    // A voice stopped at or before its start never sounds (scheduled ahead, then cancelled and scheduled again).
+    OscillatorNode.prototype.stop = function (when) {
+      if (this.__onset) this.__onset.stops.push(when);
+      return stop.apply(this, arguments);
     };
   });
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
@@ -50,9 +64,9 @@ try {
   tl.slice(1).forEach((g, m) => { for (const b of m % 2 ? [0, .5, 1, 1.5] : [0, .5, 1]) plan.push(start + b * SPB); start += g.dur; });
   // Start on step 0 so that autoplay enters measure 1 through an ordinary forward step; 'a' is a trusted gesture (audio).
   await page.keyboard.press('a');
-  await page.waitForFunction((n) => window.__onsets.length >= n, plan.length, { timeout: (tl.reduce((a, g) => a + g.dur, 0) + 10) * 1000 });
+  await page.waitForFunction((n) => window.__onsets.filter((o) => !o.stops.some((x) => x <= o.when)).length >= n, plan.length, { timeout: (tl.reduce((a, g) => a + g.dur, 0) + 10) * 1000 });
   await page.waitForFunction(() => !document.documentElement.classList.contains('autoplay'), null, { timeout: 10000 });
-  const onsets = await page.evaluate(() => window.__onsets);
+  const onsets = (await page.evaluate(() => window.__onsets)).filter((o) => !o.stops.some((x) => x <= o.when));
   assert.equal(onsets.length, plan.length, `one onset per note (${onsets.length})`);
   // Measure 1 starts at the first onset; every later onset is planned from there.
   const t0 = onsets[0].when;
