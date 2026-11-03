@@ -75,6 +75,8 @@ const NOT_HERE = {
 };
 const PLACEHOLDER = /(^|\/)(name|名前|…)(\/|$)|…/;
 // CHANGELOG.md と changes/ は過去のことも書くので見ない。tools/llm-guide/ は docs/ に入る型（リンクは docs/ から見たもの）
+// docs/llm-book(.ja).md は make の SKILL.md にそのまま差し込む正本なので、リンクはスキルのフォルダから見る
+const LINK_BASE = { 'docs/llm-book.md': 'plugins/egatari/skills/make', 'docs/llm-book.ja.md': 'plugins/egatari/skills/make' };
 const docs = tracked.filter((f) => f.endsWith('.md') && !f.startsWith('vendor/') && !f.startsWith('changes/') && !f.startsWith('tools/llm-guide/') && f !== 'CHANGELOG.md');
 for (const f of docs) {
   const t = read(f);
@@ -98,7 +100,7 @@ for (const f of docs) {
     for (const m of l.matchAll(/\]\(([^)\s]+)\)/g)) {
       const u = m[1];
       if (/^[a-z][a-z0-9+.-]*:/i.test(u) || u.startsWith('#') || u.startsWith('/') || /[<>{}$]/.test(u)) continue;
-      const p = path.posix.normalize(path.posix.join(path.posix.dirname(f), decodeURIComponent(u.replace(/#.*$/, '').replace(/\?.*$/, ''))));
+      const p = path.posix.normalize(path.posix.join(LINK_BASE[f] ?? path.posix.dirname(f), decodeURIComponent(u.replace(/#.*$/, '').replace(/\?.*$/, ''))));
       if (p && !p.startsWith('..') && ++nLinks && !exists(p)) docHits.push(`${at}: link ${u} does not exist`);
     }
   });
