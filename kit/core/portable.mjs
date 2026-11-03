@@ -41,6 +41,8 @@ export const FORMAT_VERSION = Object.freeze({ major: 1, minor: 0 });
 // contracts は {source} だけ（format spec §7.1。実行系の約束の版 runtime は 1.0 の形で外した：再生器は player が名指す）
 export const CONTRACTS = Object.freeze({ source: 1 });
 export const FEATURES = Object.freeze(['sources-v1', 'audio-v1']);
+// 同梱の再生器が持つ記録の口（Player P6。kit/track.js）：deck-meta.tracking に書く（SCORM 1.2 の包み手はここに scorm12 があるかを見る）
+export const TRACKING = Object.freeze(['scorm12', 'postmessage', 'local']);
 // generator：ファイルを書いたソフト（Egatari Studio と、その版 = package.json の version）。同梱の再生器は player（kit/core/player.mjs）
 export const GENERATOR = 'egatari-studio';
 export const GENERATOR_TITLE = 'Egatari Studio';   // 人に見せる名前（generator.title。spec §3.1）
@@ -537,10 +539,12 @@ function metadataCheck(m, w, e) {
     if (!isObj(x) || !(typeof x.id === 'string' && x.id.length) || !(typeof x.title === 'string' && x.title.length) || (own(x, 'part') && !(Number.isInteger(x.part) && x.part >= 1))) e.push(`${w}.series: not {id, title, part?}`);
   }
 }
+// 終えた判定（§9.2）：visitedFraction か reachedEnd のどちらか 1 つまでと、played: true（舞台で再生したものだけを数える）。知らない決まりは残す
 function completionCheck(c, w, e) {
   if (!isObj(c)) { e.push(`${w}: not an object`); return; }
-  const n = Object.keys(c).length;
-  if (n !== 1) e.push(`${w}: needs exactly one rule`);
+  if (!Object.keys(c).length) e.push(`${w}: needs a rule`);
+  if (own(c, 'visitedFraction') && own(c, 'reachedEnd')) e.push(`${w}: visitedFraction and reachedEnd together`);
+  if (own(c, 'played') && c.played !== true) e.push(`${w}.played: not true`);
   if (own(c, 'visitedFraction') && !(typeof c.visitedFraction === 'number' && c.visitedFraction > 0 && c.visitedFraction <= 1)) e.push(`${w}.visitedFraction: not in (0, 1]`);
   if (own(c, 'reachedEnd') && c.reachedEnd !== true) e.push(`${w}.reachedEnd: not true`);
 }
@@ -1316,7 +1320,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (ie.length) fail('invalid-index', 'produced index is invalid: ' + ie.join('; '), ie);
   const deckMeta = {
     format: FID, version: { ...FORMAT_VERSION }, contracts: { ...CONTRACTS }, player, generator, docId, title: metadata.title, lang,
-    portable: true, sourceSha256: srcSha, tracking: [],
+    portable: true, sourceSha256: srcSha, tracking: [...TRACKING],
     ...(metadata.completion ? { completion: metadata.completion } : {}),
     ...Object.fromEntries(['license', 'copyright', 'attribution'].filter((k) => own(metadata, k)).map((k) => [k, metadata[k]])),
   };

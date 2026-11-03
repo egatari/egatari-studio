@@ -1026,11 +1026,19 @@ export function build(env0, srcPath, opts = {}) {
   // latin.css はテーマの後のまま（日本語以外のデッキの字の既定。docs/reference.md「Themes」）
   const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${opts.articleCss || ''}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
+  // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）
+  const folderCompletion = () => {
+    const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
+    if (!env.exists(cfg) || !inDeck(cfg)) return {};
+    let c = null; try { c = JSON.parse(env.readText(cfg)); } catch { return {}; }
+    const m = c && typeof c === 'object' && c.metadata && typeof c.metadata === 'object' ? c.metadata.completion : null;
+    return m && typeof m === 'object' && !Array.isArray(m) ? { completion: m } : {};
+  };
   const scriptList = [
     // 通常の build の原稿の控え。持ち運べる形式は索引の archive にだけ原稿を持つ。
     !opts.runtimePrefix && narrSource.includes('{note:') ? j('studio-script-source', narrSource) : '',
     j('deck-narration', narration), j('deck-marks', marks), j('deck-audio', audio), j('deck-timing', timing),
-    j('deck-meta', opts.deckMeta || { version: env.version }),
+    j('deck-meta', opts.deckMeta || { version: env.version, ...folderCompletion() }),
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
@@ -1038,6 +1046,7 @@ export function build(env0, srcPath, opts = {}) {
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'panes.js'))}\n</script>`,
+    `<script>\n${scriptSafe(read(KIT, 'track.js'))}\n</script>`,
     compJs ? `<script>${scriptSafe(compJs)}\n</script>` : '',
   ].filter(Boolean);
   const scripts = scriptList.join('\n');

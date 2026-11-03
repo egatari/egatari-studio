@@ -31,7 +31,7 @@ const ja = {
     panelTitle: '本', printBook: '本を印刷', printScript: '台本を印刷',
     mayNotMatch: 'スライドと本が合っていないかもしれません',
     mayNotMatchLead: 'つないだ後に、どちらかが変わりました。読み比べて、合っていれば「確認済みにする」を押してください（スライドも本も、自動では直しません）。',
-    changedSection: '本の節が変わりました', changedSlide: 'スライドか台本が変わりました', changedBoth: 'スライドと本の両方が変わりました', unconfirmed: 'まだ確認していません',
+    changedSection: '本の節が変わりました', changedSlide: 'スライドか台本が変わりました', changedBoth: 'スライドも本も変わりました', unconfirmed: 'まだ確認していません',
     confirm: '確認済みにする', confirmTip: 'このスライドと節が合っていることを記録します（egatari.json）', confirmAll: 'すべて確認済みにする',
     confirmed: (n) => `${n} 組を確認済みにしました`,
     slideName: (n, t) => `スライド ${n}「${t}」`, sectionName: (h) => `節「${h}」`,

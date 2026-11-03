@@ -27,9 +27,9 @@ ok('noPairs: ["book"] skips the pair check for book only; other terms are still 
   assert.deepEqual(pairs({ allow: [], noPairs: ['book'] }), ['slide s']);
   assert.ok(loadRules(root).noPairs.has('book'));
 });
-ok('the repository lists book and format-version in noPairs', () => {
+ok('the repository lists book, format-version and no-results (見つかりません is generic) in noPairs', () => {
   const cfg = JSON.parse(fs.readFileSync(new URL('../docs/terms-allow.json', import.meta.url), 'utf8'));
-  assert.deepEqual(cfg.noPairs, ['book', 'format-version']);
+  assert.deepEqual(cfg.noPairs, ['book', 'format-version', 'no-results']);
 });
 fs.rmSync(root, { recursive: true, force: true });
 console.log(`lint-terms: ${n} ok`);

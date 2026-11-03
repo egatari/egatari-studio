@@ -23,7 +23,7 @@ export const PLAYER_FILES = Object.freeze([
   'kit/shape.js',
   ...Object.keys(RUNTIME_MODULES).map((f) => 'kit/' + f),
   ...Object.keys(RUNTIME_NAMESPACES).map((f) => 'kit/' + f),
-  'kit/deck.js', 'kit/presenter.js', 'kit/tools.js', 'kit/panes.js',
+  'kit/deck.js', 'kit/presenter.js', 'kit/tools.js', 'kit/panes.js', 'kit/track.js',
   'kit/base.css', 'kit/layouts.css', 'kit/latin.css',
   'kit/live.js', 'kit/core/live-policy.mjs',
 ].sort());

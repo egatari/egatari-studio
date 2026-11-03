@@ -2095,6 +2095,7 @@ window.__APP_TEST = {
   book: () => book.state(),
   bookPanel: (on) => book.togglePanel(on),
   setView: (v) => setView(v),
+  previewMode: (m) => setPreviewMode(m),   // 試験：learn（自習。画面の名前は未定で、メニューにはまだない）も
   attachBusy: () => attach.isBusy(),
   saved: () => (S.portable ? S.portable.saved : null),
   save: (mode) => savePortable(mode || 'save'),
