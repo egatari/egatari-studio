@@ -27,16 +27,19 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 let browser;
 try {
   browser = await launch();
+  // real: the browser's own audio clock (with a main-thread stall). skewed: an audio clock that starts late from 0
+  // and later falls behind (both seen on CI runners), reproduced the same way on every machine.
+  for (const scenario of ['real', 'skewed']) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript(() => {
+  await page.addInitScript((skewed) => {
     window.__onsets = []; window.__steps = [];
     document.addEventListener('deck:pos', (e) => {
       window.__steps.push({ k: e.detail.k, at: performance.now() });
       // A stalled main thread (no frames, no timers) in the middle of measure 4, as a loaded CI runner can do:
       // notes must not depend on a frame arriving shortly before them.
-      if (e.detail.k === 5) window.__skew = .124;
+      if (skewed && e.detail.k === 5) window.__skew = .124;
       if (e.detail.k === 4 && !window.__stalled) {
         window.__stalled = true;
         setTimeout(() => { const end = performance.now() + 600; while (performance.now() < end); }, 250);
@@ -45,8 +48,15 @@ try {
     // The audio clock can fall behind performance.now() for a moment (a device callback stalls on a loaded runner):
     // from measure 5 on, the context reports a time 124 ms behind. Notes must stay on the grid already scheduled.
     window.__skew = 0;
-    const clock = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'currentTime');
-    Object.defineProperty(BaseAudioContext.prototype, 'currentTime', { configurable: true, get() { return clock.get.call(this) - window.__skew; } });
+    // A context that has just resumed reads 0 for a moment, then its clock moves from 0 about 20 ms late (under the
+    // 50 ms that renews the mapping), as on Linux and Windows runners. The clock is derived from performance.now() so
+    // that this start is the same on every machine; the times recorded below are on it.
+    if (skewed) Object.defineProperty(BaseAudioContext.prototype, 'currentTime', { configurable: true, get() {
+      if (this.state === 'running' && window.__base === undefined) window.__base = performance.now() + 20;
+      if (window.__base === undefined) return 0;
+      const t = (performance.now() - window.__base) / 1000;
+      return t > 0 ? Math.floor((t - window.__skew) * 375) / 375 : 0;   // 128-sample steps at 48 kHz
+    } });
     const start = OscillatorNode.prototype.start, stop = OscillatorNode.prototype.stop;
     OscillatorNode.prototype.start = function (when) {
       // Each note is two voices (sine + triangle) at one time: keep one onset per time.
@@ -58,7 +68,7 @@ try {
       if (this.__onset) this.__onset.stops.push(when);
       return stop.apply(this, arguments);
     };
-  });
+  }, scenario === 'skewed');
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await page.waitForFunction(() => window.DECK && DECK.ready);
   const tl = await page.evaluate(() => DECK.timeline().map((g) => ({ k: g.k, dur: g.dur })));
@@ -78,18 +88,20 @@ try {
   const t0 = onsets[0].when;
   const errs = onsets.map((o, n) => (o.when - t0 - plan[n]) * 1000);
   const worst = Math.max(...errs.map(Math.abs));
-  console.log(`onset error vs plan (ms): ${errs.map((e) => e.toFixed(2)).join(' ')}`);
-  console.log(`worst ${worst.toFixed(2)} ms, last measure ${errs.at(-1).toFixed(2)} ms; ahead of the clock by ${(onsets.reduce((a, o) => Math.min(a, o.when - o.at), Infinity) * 1000).toFixed(1)}..${(onsets.reduce((a, o) => Math.max(a, o.when - o.at), -Infinity) * 1000).toFixed(1)} ms`);
-  assert.ok(worst <= 2, `every onset within 2 ms of the plan over ${MEASURES} measures (worst ${worst.toFixed(2)} ms)`);
+  console.log(`${scenario}: onset error vs plan (ms): ${errs.map((e) => e.toFixed(2)).join(' ')}`);
+  console.log(`${scenario}: worst ${worst.toFixed(2)} ms, last measure ${errs.at(-1).toFixed(2)} ms; ahead of the clock by ${(onsets.reduce((a, o) => Math.min(a, o.when - o.at), Infinity) * 1000).toFixed(1)}..${(onsets.reduce((a, o) => Math.max(a, o.when - o.at), -Infinity) * 1000).toFixed(1)} ms`);
+  assert.ok(worst <= 2, `${scenario}: every onset within 2 ms of the plan over ${MEASURES} measures (worst ${worst.toFixed(2)} ms)`);
   // Step changes (wall clock): each within one late timer of the plan, not adding up over the measures.
   const steps = (await page.evaluate(() => window.__steps)).filter((x, n, a) => x.k >= 1 && (n === 0 || a[n - 1].k !== x.k));
   assert.deepEqual(steps.map((x) => x.k), tl.slice(1).map((g) => g.k), 'autoplay visits every measure in order');
   let planned = 0;
   const late = steps.map((x, n) => { const e = x.at - steps[0].at - planned * 1000; planned += tl[n + 1].dur; return e; });
-  console.log(`step change vs plan (ms, wall clock): ${late.map((e) => e.toFixed(1)).join(' ')}`);
+  console.log(`${scenario}: step change vs plan (ms, wall clock): ${late.map((e) => e.toFixed(1)).join(' ')}`);
   assert.ok(Math.max(...late.map(Math.abs)) < 30, 'step changes stay on the absolute plan');
   assert.deepEqual(errors, []);
-  console.log(`ok   live autoplay: ${plan.length} onsets over ${MEASURES} measures within 2 ms of the plan on the AudioContext clock`);
+  console.log(`ok   live autoplay (${scenario} clock): ${plan.length} onsets over ${MEASURES} measures within 2 ms of the plan on the AudioContext clock`);
+  await page.close();
+  }
 } finally {
   if (browser) await browser.close();
   await new Promise((r) => server.close(r));

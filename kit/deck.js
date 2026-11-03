@@ -1558,11 +1558,14 @@ function soundClockCheck(){
   var now = performance.now(), ct = soundContext.currentTime;
   if (soundClock){
     var lag = soundClock.ctx + (now - soundClock.perf) / 1000 - ct;
+    // The first reading after the clock moves settles a mapping made while it read 0: either it agrees, or it is renewed.
+    var first = soundClock.zero && ct > 0;
+    if (first) soundClock.zero = false;
     if (Math.abs(lag) <= .05) return false;
     var pending = soundHandles.some(function(h){ return h.start > ct; });
-    if (lag > 0 && lag < 1 && pending && !(soundClock.ctx === 0 && ct > 0)) return false;
+    if (lag > 0 && lag < 1 && pending && !first) return false;
   }
-  soundClock = {perf: now, ctx: ct};
+  soundClock = {perf: now, ctx: ct, zero: ct === 0};
   return true;
 }
 function soundTime(ms){ return soundClock.ctx + (ms - soundClock.perf) / 1000; }
