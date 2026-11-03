@@ -1522,9 +1522,11 @@ DECK.toast = function(msg){
 
 // Component sounds (§8.4): only the live clock crosses events. Drawing/seek never schedules audio.
 var soundContext = null, soundHandles = [], soundForced = false, soundResuming = false;
-// Events are scheduled a little ahead on the Web Audio clock at their exact times (not "now" when a frame passes them).
+// Events are scheduled ahead on the Web Audio clock at their exact times (not "now" when a frame passes them):
+// the whole step when it starts (up to SOUND_AHEAD seconds ahead, rolling for longer steps), and in autoplay the next
+// step as well, so a stalled main thread (no frames for a while) never makes a note late.
 // Each handle remembers its run and step time so that a step change, extension or pause can cancel what has not sounded.
-var SOUND_AHEAD = .25, soundClock = null, soundNext = null, autoGo = null;
+var SOUND_AHEAD = 30, soundClock = null, soundNext = null, autoGo = null;
 var soundMute = DECK.SoundPreferences ? DECK.SoundPreferences.createMuteSetting() : null;
 DECK.hasComponentSounds = function(){
   return !!slides && slides.some(function(s){ return s._comps.some(function(c){ return !!(c.constructor && c.constructor.sounds) || typeof c.events === "function"; }); });
@@ -1546,11 +1548,14 @@ function soundCancelAhead(r, t){
 }
 // performance.now() (ms) → AudioContext time (s). One mapping, renewed only when the clocks drift apart
 // (a suspended context, a long run), so that times planned on one clock keep their spacing on the other.
-function soundTime(ms){
+// Returns whether the mapping was renewed (an audio clock that starts late after resume(), a suspended context).
+function soundClockCheck(){
   var now = performance.now(), ct = soundContext.currentTime;
-  if (!soundClock || Math.abs(soundClock.ctx + (now - soundClock.perf) / 1000 - ct) > .05) soundClock = {perf: now, ctx: ct};
-  return soundClock.ctx + (ms - soundClock.perf) / 1000;
+  if (soundClock && Math.abs(soundClock.ctx + (now - soundClock.perf) / 1000 - ct) <= .05) return false;
+  soundClock = {perf: now, ctx: ct};
+  return true;
 }
+function soundTime(ms){ return soundClock.ctx + (ms - soundClock.perf) / 1000; }
 // The step's events in step time (lead, audio cues and the viewer's extension applied).
 function stepSoundEvents(i, k, base, extension){
   var ac = compCues(i, k), lead = timing(i, k).lead || 0, events = [];
@@ -1614,12 +1619,14 @@ function soundTick(r, t){
   var prev = r.soundT;
   if (!r.sounds || !soundEnabled() || soundForced || DECK.muteSounds() || !soundContext || soundContext.state !== "running"){ r.soundT = t; return; }
   var ext = DECK.stepExtension(r.i, r.k), end = Math.max(0, r.base + ext);
-  // Crossings are (prev, horizon]: the clock's time plus a short look-ahead, never past the step's end.
+  // Crossings are (prev, horizon]: the clock's time plus the look-ahead, never past the step's end.
+  // A renewed mapping would put later events off the grid of those already scheduled: schedule them all again.
+  if (soundClockCheck()){ soundCancelAhead(r, t); prev = r.soundT; }
   var h = Math.max(t, Math.min(end, t + SOUND_AHEAD)), at = soundTime(r.start), now = soundContext.currentTime;
   r.soundT = Math.max(prev, h);
   soundHandles = soundHandles.filter(function(x){ return x.end > now; });
   soundPlay(DECK.Sounds.crossed(stepSoundEvents(r.i, r.k, r.base, ext), prev, r.soundT), at, r, false);
-  // Autoplay: the next step starts exactly at this step's planned end, so its first events are scheduled from here.
+  // Autoplay: the next step starts exactly at this step's planned end, so its events are scheduled from here too.
   var p = r.plan;
   if (!p || !p.next) return;
   var ends = Math.max(0, p.dur + ext), n = p.next, hn = Math.min(t + SOUND_AHEAD - ends, n.dur);
@@ -1730,9 +1737,10 @@ function runSeg(){
   if (!g){ stopAuto(); return; }
   // Step ends are on one absolute clock: autoplay's start plus the planned lengths (and extensions) of the steps before.
   // A timer that fires late shortens the next step instead of delaying everything after it. After a long stall
-  // (a background tab throttles timers), start again from now rather than rushing through steps.
+  // (a background tab throttles timers), start again from now rather than rushing through steps, unless this
+  // step's sounds are already scheduled on the plan (then the screen catches up with the sound).
   var now = performance.now();
-  if (auto.segStart === undefined || now - auto.segStart > 250) auto.segStart = now;
+  if (auto.segStart === undefined || (now - auto.segStart > 250 && !(soundNext && soundNext.i === g.i && soundNext.k === g.k))) auto.segStart = now;
   if (!(g.i === POS.i && g.k === POS.k && auto.started)){
     var c0 = POS.cause; POS.setCause(c0 || "play");
     autoGo = {i: g.i, k: g.k, start: auto.segStart, dur: g.dur, next: auto.tl[auto.idx + 1] || null};
