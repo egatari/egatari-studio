@@ -13,7 +13,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const SECTIONS = ['Added', 'Changed (API)', 'Changed', 'Removed', 'Fixed', 'Security'];
+const SECTIONS = ['Migration', 'Added', 'Changed (API)', 'Changed', 'Removed', 'Fixed', 'Security'];
 // コードが変わったと見なす場所（--check --base）。文書・試験・CI だけの変更には断片は要らない
 const CODE = /^(app|kit|vendor\/components|vendor\/themes|server|render|tts|themes|lab|skills)\/|^(package|components\.lock|themes\.lock)\.json$/;
 const FRAG = /^[a-z0-9][a-z0-9._-]*\.md$/;

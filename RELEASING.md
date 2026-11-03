@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=15122a47cb7e2648 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=f8150c88571e53df -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -66,3 +66,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
 8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>, <https://studio.egatari.org/vX.Y.Z/>, the previous release's `/v…/` (its log lists the frozen copies it added) and <https://studio.egatari.org/parts/> (the samples of all parts; the log also says which release each version's page came from). To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
    Also check the compressed response, which a browser gets: `curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` must print `200` (a cached compressed 404 can survive a domain change).
+
+## Before v0.6.5
+
+Delete the moved-notice stubs `skills/motion-slides`, `skills/motion-slides-video` and `skills/motion-components` (kept for v0.6.4 only) and their assertions in `tools/test-plugin.mjs`. `egatari doctor` keeps checking for old `~/.claude/skills/motion-*` entries.

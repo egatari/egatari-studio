@@ -61,7 +61,16 @@ for (const p of market.plugins) {
 for (const dir of ['kit', 'vendor', 'themes']) assert.ok(fs.statSync(path.join(ROOT, dir)).isDirectory());
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari')).sort(), ['.claude-plugin', 'skills']);
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari/skills')), ['make']);
-assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')), ['studio']);
+assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')).sort(), ['motion-components', 'motion-slides', 'motion-slides-video', 'studio']); // motion-* は旧名の移動のお知らせ（1 版だけ）
+// 旧名の移動のお知らせ（1 版だけ。v0.6.5 で消す）：プラグインの中から読まれても害がないよう、説明と本文の両方に見張りの文を持つ
+for (const n of ['motion-slides', 'motion-slides-video', 'motion-components']) {
+  const t = read(`skills/${n}/SKILL.md`);
+  const fm = t.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  assert.ok(fm[1].includes(`name: ${n}\n`), n);
+  for (const w of ['egatari:make', 'egatari-studio:studio', 'Do NOT use this to make lessons']) assert.ok(fm[1].includes(w), `${n} description: ${w}`);
+  for (const w of ['egatari-studio:motion-*', 'ignore this skill', 'egatari:make', 'egatari-studio:studio', '無視', '/plugin install egatari@egatari']) assert.ok(fm[2].includes(w), `${n} body: ${w}`);
+  assert.ok(fm[2].indexOf('egatari-studio:motion-*') < fm[2].indexOf('# '), `${n}: guard comes first`);
+}
 for (const dir of ['make', 'parts', 'video']) assert.ok(!fs.existsSync(path.join(ROOT, 'skills', dir)));
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'parts.md', 'video.md']);
 for (const [f, name, triggers] of [

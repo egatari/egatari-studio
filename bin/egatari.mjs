@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { readHead } from '../kit/bounded-read.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -164,6 +165,26 @@ const firstLine = (cmd, args) => {
   return r.status === 0 ? (r.stdout || r.stderr).split('\n')[0].replace(/\s+Copyright.*/, '').trim() : null;
 };
 
+// 旧 README のシンボリックリンク ~/.claude/skills/motion-*（motion-slides など）が、プラグインへの移行後に切れていないか。
+// 切れたリンク、または移動のお知らせ（SKILL.md に下の STUB_MARK）だけの項目を返す。読むだけで、何も消さない
+const STUB_MARK = 'This skill moved into the egatari plugin.';
+function oldSkillLinks(home = os.homedir()) {
+  const dir = path.join(home, '.claude', 'skills');
+  let names = [];
+  try { names = fs.readdirSync(dir).filter((n) => n.startsWith('motion-')).sort(); } catch { return []; }
+  const out = [];
+  for (const n of names) {
+    const p = path.join(dir, n);
+    let dead = false;
+    try { fs.statSync(p); } catch { dead = true; }
+    if (dead) { out.push({ path: p, why: 'dead link / 切れたリンク' }); continue; }
+    try { if (readHead(path.join(p, 'SKILL.md'), 4096).toString('utf8').includes(STUB_MARK)) out.push({ path: p, why: 'moved notice / 移動のお知らせ' }); } catch { /* 他のスキルは対象外 */ }
+  }
+  return out;
+}
+const MIGRATE_STEPS = '~/.claude/skills/motion-* を消して、Claude Code で次を実行 / delete ~/.claude/skills/motion-* and run in Claude Code:\n'
+  + '/plugin marketplace add egatari/egatari-studio\n/plugin install egatari@egatari\n/plugin install egatari-studio@egatari';
+
 async function doctor() {
   let bad = 0;
   const show = (ok, name, what, hint, required) => {
@@ -193,6 +214,8 @@ async function doctor() {
       'Google Chrome か Microsoft Edge を入れる、`npx playwright-core install chromium`、または CHROME_PATH=/path/to/chrome\n'
       + 'install Google Chrome or Microsoft Edge, run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome', true);
   }
+  const old = oldSkillLinks();
+  show(!old.length, 'skills', old.length ? `古いスキルの置き場が残っている / old skill entries left: ${old.map((o) => `${o.path} (${o.why})`).join(', ')}` : '古いスキルの置き場なし / no old skill entries', MIGRATE_STEPS, false);
   skillsCheck();
   console.log(bad ? `足りないもの ${bad} / ${bad} required missing` : 'ok');
   process.exit(bad ? 1 : 0);

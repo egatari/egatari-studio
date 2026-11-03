@@ -97,7 +97,11 @@ try {
   let planned = 0;
   const late = steps.map((x, n) => { const e = x.at - steps[0].at - planned * 1000; planned += tl[n + 1].dur; return e; });
   console.log(`${scenario}: step change vs plan (ms, wall clock): ${late.map((e) => e.toFixed(1)).join(' ')}`);
-  assert.ok(Math.max(...late.map(Math.abs)) < 30, 'step changes stay on the absolute plan');
+  // Slow macOS runners fire timers up to ~40 ms late (run 41629700452: -38..+23 ms). The point is that the
+  // error does not add up, so allow one late timer per change and check the drift separately.
+  assert.ok(Math.max(...late.map(Math.abs)) < 60, `step changes stay within one late timer of the absolute plan (${late.map((e) => e.toFixed(1)).join(' ')})`);
+  const half = Math.floor(late.length / 2), mean = (a) => a.reduce((x, y) => x + y, 0) / a.length;
+  assert.ok(Math.abs(mean(late.slice(half)) - mean(late.slice(0, half))) < 25, 'step changes do not drift over the measures');
   assert.deepEqual(errors, []);
   console.log(`ok   live autoplay (${scenario} clock): ${plan.length} onsets over ${MEASURES} measures within 2 ms of the plan on the AudioContext clock`);
   await page.close();

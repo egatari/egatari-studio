@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=a9d757f4f9075213 -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=e024d8e989aaa6bd -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -65,7 +65,7 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows で `npm test -
 - Editor app: **Export single file** keeps the attachments of the opened file
 ```
 
-節は `Added`・`Changed (API)`（[口の形](#口の形)の形や、呼び出す側が使うほかの口の変更）・`Changed`・`Removed`・`Fixed`・`Security`。1 つの断片に節がいくつあってもよい。項目は英語で書く（CHANGELOG は英語）。`CHANGELOG.md` の `## [Unreleased]` は空のままにする。リリースのとき `node tools/changelog.mjs --release X.Y.Z` が断片を（この節の順、節の中はファイル名の順で）`## [X.Y.Z] - <日付>` にまとめ、比べるリンクを直し、`package.json` と `package-lock.json` の版を変え、断片を消す。`--preview` は書かずに節を出すだけ、`--check`（`npm test` に入っている）は断片を確かめる。CI では、コード（`app/`・`kit/`・`vendor/components/`・`components.lock.json`・`server/`・`render/`・`tts/`・`themes/`・`lab/`・`skills/`・`package.json`）を変えたのに断片を足していない pull request に警告を出す（失敗にはしない）。リリースの手順は [RELEASING.ja.md](RELEASING.ja.md)。
+節は `Migration`（使う人が動かし続けるためにする手順。いちばん先に出る）・`Added`・`Changed (API)`（[口の形](#口の形)の形や、呼び出す側が使うほかの口の変更）・`Changed`・`Removed`・`Fixed`・`Security`。1 つの断片に節がいくつあってもよい。項目は英語で書く（CHANGELOG は英語）。`CHANGELOG.md` の `## [Unreleased]` は空のままにする。リリースのとき `node tools/changelog.mjs --release X.Y.Z` が断片を（この節の順、節の中はファイル名の順で）`## [X.Y.Z] - <日付>` にまとめ、比べるリンクを直し、`package.json` と `package-lock.json` の版を変え、断片を消す。`--preview` は書かずに節を出すだけ、`--check`（`npm test` に入っている）は断片を確かめる。CI では、コード（`app/`・`kit/`・`vendor/components/`・`components.lock.json`・`server/`・`render/`・`tts/`・`themes/`・`lab/`・`skills/`・`package.json`）を変えたのに断片を足していない pull request に警告を出す（失敗にはしない）。リリースの手順は [RELEASING.ja.md](RELEASING.ja.md)。
 
 ## 書き方の決まり
 
