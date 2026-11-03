@@ -442,6 +442,105 @@
    "note": ""
   },
   {
+   "id": "slides-and-book",
+   "group": "Structure and playback",
+   "en": "Slides and book",
+   "ja": "スライドと本",
+   "definition": "Layout with the slides and the book side by side (spec split). Without a book: スライドと台本 / Slides and script.",
+   "avoid": {
+    "ja": [
+     "分割表示",
+     "スプリット"
+    ],
+    "en": [
+     "Split view"
+    ]
+   },
+   "internal": "split (Player P2)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "read-in-book",
+   "group": "Structure and playback",
+   "en": "Read in the book",
+   "ja": "本で読む",
+   "definition": "Link on a slide to the section of the book that goes with it; opens Slides and book (or the book alone on narrow screens).",
+   "avoid": {
+    "ja": [
+     "続きを読む",
+     "本文へ"
+    ],
+    "en": [
+     "Continue reading"
+    ]
+   },
+   "internal": "stage→article link (spec §9C.5)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "watch-on-slides",
+   "group": "Structure and playback",
+   "en": "Watch on slides",
+   "ja": "スライドで見る",
+   "definition": "Link in the book that shows the slide's step over the text with its motion; closing returns to the place being read.",
+   "avoid": {
+    "ja": [
+     "この部分を見る",
+     "動きを見る"
+    ],
+    "en": [
+     "See this part"
+    ]
+   },
+   "internal": "article→stage link (spec §9C.5)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "back-to-playing",
+   "group": "Structure and playback",
+   "en": "Back to the playing part",
+   "ja": "再生中の所に戻る",
+   "definition": "Shown when the viewer scrolls the book away while narration plays; brings the book back to the current turn and resumes following.",
+   "avoid": {
+    "ja": [
+     "同期に戻る"
+    ],
+    "en": [
+     "Resync"
+    ]
+   },
+   "internal": "detach sync (Player P2)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": "Kindle / lyrics wording."
+  },
+  {
+   "id": "book-may-not-match",
+   "group": "Structure and playback",
+   "en": "Slides and book may not match",
+   "ja": "スライドと本が合っていないかもしれません",
+   "definition": "Editor notice when a linked section or step changed after the link was checked (spec §9C.7).",
+   "avoid": {
+    "ja": [
+     "古いかも",
+     "不整合"
+    ],
+    "en": [
+     "stale (in the UI)"
+    ]
+   },
+   "internal": "articleLinks staleness (spec §9C.7)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
    "id": "toolbar",
    "group": "Structure and playback",
    "en": "Toolbar",

@@ -428,6 +428,12 @@
       "term": "no-upload",
       "pairs": true,
       "reason": "The English privacy line says 'nothing is uploaded' (owner-decided wording) for ja アップロードしません."
+    },
+    {
+      "file": "app/slides-panel.js",
+      "pattern": "sl-badge stale",
+      "term": "book-may-not-match",
+      "reason": "A CSS class name of the audio badge (stale audio), not a word shown to the user."
     }
   ]
 }
