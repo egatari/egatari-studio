@@ -102,6 +102,7 @@ try {
   await shot(p1, 'from-sample-play.png');
   await clickDlg(p1, '#dlg-like');
   await p1.waitForSelector('#dlg[open] #paste-step-kind');
+  ok(!(await p1.$('#sample-frame')) && !(await p1.$('iframe[title="漢文を読む――返り点から書き下し文へ"]')), 'F1: closing the window removes the sample’s frame (its player stops)');
   ok((await text(p1, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。',
     'F1: New… says it starts from the sample and what was filled in');
   ok((await answer(p1, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await badgeOn(p1, 'kind') && (await answer(p1, 'theme')).startsWith('テーマ：') && await badgeOn(p1, 'theme')

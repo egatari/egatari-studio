@@ -185,6 +185,7 @@ async function playExample(x) {
   ] : [];
   const v = await ask({ title: x.title, kind: 'sample', body: [el('div', { cls: 'sample-stage' }, [frame]), ...info],
     buttons: [{ id: 'copy', label: T.exampleCopy, cls: 'ghost small' }, { id: 'cancel', label: T.close }, ...(s ? [{ id: 'like', label: T.exampleLike, pri: true }] : [])] });
+  frame.remove();   // 閉じた窓の中でプレーヤーを動かし続けない（次の窓が本体を入れ替えるまで残っていた）
   if (v === 'copy') return openPortable({ bytes, name: x.file });
   if (v === 'like') { await llm.newWithAi({ sample: { name: x.name, title: x.title, ...s } }); return true; }
   return false;
