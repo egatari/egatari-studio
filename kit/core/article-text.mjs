@@ -153,6 +153,25 @@ export function checkHtmlTable(html) {
   return [...new Set(errs)];
 }
 
+// 段落の頭の全角の空白（U+3000。青空文庫などの字下げ）を残す。CommonMark が段落の頭と終わりから外すのは半角の空白とタブだけだが、
+// markdown-it（myst-parser の下）は String.prototype.trim で U+3000 も外す。読む前に行の頭の U+3000 を印（U+FDD0。非文字）に替え、木の字で戻す
+const IDEO_MARK = '\uFDD0';
+function protectIdeographicSpaces(body) { return body.replace(/^\u3000+/gm, (m) => IDEO_MARK.repeat(m.length)); }
+function keepIdeographicSpaces(tree) {
+  const seen = new Set();
+  const walk = (x) => {
+    if (!x || typeof x !== 'object' || seen.has(x)) return;
+    seen.add(x);
+    for (const k of Object.keys(x)) {
+      const v = x[k];
+      if (typeof v === 'string') { if (v.includes(IDEO_MARK)) x[k] = v.split(IDEO_MARK).join('\u3000'); }
+      else if (v && typeof v === 'object') walk(v);
+    }
+  };
+  walk(tree);
+  return tree;
+}
+
 // ---------------------------------------------------------------- 本体
 // 返すもの：{fm, tree, problems, conversions}。problems は {sev: 'error'|'warn', code, spec, line, data}（line は原稿の行、1 から）
 export function parseArticleText(src, opts = {}) {
@@ -167,7 +186,7 @@ export function parseArticleText(src, opts = {}) {
   const lines = front.body.split('\n');
   const lineOf = (n) => (n && n.position ? n.position.start.line + off : null);
   const add = (sev, code, spec, node, data = {}) => problems.push(P(sev, code, spec, typeof node === 'number' ? node : lineOf(node), data));
-  const tree = mystParse(front.body, { directives: [proofDirective, ...exerciseDirectives] });
+  const tree = keepIdeographicSpaces(mystParse(protectIdeographicSpaces(front.body), { directives: [proofDirective, ...exerciseDirectives] }));
 
   // ---- 変換の前の木：指令・役割・生の HTML・コメント・区切り・字
   const rawWalk = (node, parents) => {

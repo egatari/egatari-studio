@@ -22,6 +22,16 @@ const errorsOf = (ps) => ps.filter((p) => p.sev === 'error');
 // 1 つの原稿を article.md として読み、ファイルの点検と文書全体の点検（文脈のいらないもの）をかける
 const whole = (src, ctx = {}) => { const a = readArticle({ path: 'article.md' }, () => src); const v = validateArticle(a, ctx); return { a, problems: [...a.problems, ...v.problems] }; };
 
+// 段落の頭の全角の空白（青空文庫の字下げ）：CommonMark が外すのは半角の空白とタブだけ。markdown-it の trim が U+3000 を外していた
+t('a leading U+3000 of a paragraph is kept (CommonMark strips only spaces and tabs)', () => {
+  const r = parseArticleText('---\ntitle: t\n---\n\n　ある日の暮方の事である。\n　二行目。\n\n「せりふ」\n\n```\n　code\n```\n');
+  assert.deepStrictEqual(errorsOf(r.problems), []);
+  assert.equal(r.tree.children[0].children[0].value, '　ある日の暮方の事である。\n　二行目。');
+  assert.equal(r.tree.children[1].children[0].value, '「せりふ」');
+  assert.equal(r.tree.children[2].value, '　code');
+  assert.ok(!JSON.stringify(r.tree).includes('﷐'), 'no placeholder is left in the tree');
+});
+
 // ---------------------------------------------------------------- 仕様の fixtures
 // 仕様の側の食い違い（仕様の持ち主に知らせ済み）：拒む例のうち、今の §9C.2 の本文では正しい書き方になっているもの
 const SPEC_CONFLICT = {};
