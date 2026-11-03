@@ -15,8 +15,8 @@ export function cliCommand(name, env = process.env, cwd = env.INIT_CWD || proces
   if (!rel || (!rel.startsWith('..') && !path.isAbsolute(rel))) return `npm run ${name} --`;
   const abs = path.join(ROOT, ...SCRIPTS[name].split('/'));
   let script = path.relative(path.resolve(cwd), abs).split(path.sep).join('/');
-  if (/^(\.\.\/){3,}/.test(script)) script = abs;   // 遠いときは絶対パス
-  return `node ${/\s/.test(script) ? JSON.stringify(script) : script}`;
+  if (/^(\.\.\/){3,}/.test(script)) script = abs;   // 遠いときは絶対パス（その OS の書き方のまま）
+  return `node ${/\s/.test(script) ? `"${script}"` : script}`;
 }
 // 「npm run <名前> -- 」「npm run <名前>」を今の形に替える
 export function cliHints(text, env, cwd) {

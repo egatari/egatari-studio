@@ -16,7 +16,7 @@ const side = path.join(path.dirname(ROOT), 'books');
 assert.equal(cliCommand('ids', {}, side), `node ../${path.basename(ROOT)}/tools/ids.mjs`, 'a neighbouring folder: a relative path to the script');
 assert.equal(cliHints(msg, {}, side), `run node ../${path.basename(ROOT)}/tools/ids.mjs --confirm-links; add ids with node ../${path.basename(ROOT)}/tools/ids.mjs`);
 const far = path.join(path.dirname(ROOT), 'x', 'y', 'z');
-assert.equal(cliCommand('check', {}, far), `node ${path.join(ROOT, 'kit', 'check.mjs').split(path.sep).join('/')}`, 'far away (three folders up or more): an absolute path');
+assert.equal(cliCommand('check', {}, far), `node ${path.join(ROOT, 'kit', 'check.mjs')}`, 'far away (three folders up or more): an absolute path');
 // check.mjs run from outside the repository says how to run ids from there
 const deck = path.join(ROOT, 'tools', 'fixtures', 'article-book', 'deck.html');
 const r = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), deck, '--json'], { cwd: path.dirname(ROOT), encoding: 'utf8', env: { ...process.env, INIT_CWD: '' } });
