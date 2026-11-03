@@ -7,7 +7,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 # egatari-studio:studio：教材をローカルで確かめて組む
 
-書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ `/plugin install egatari@egatari` を案内する。
+書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ、Claude Code は `/plugin install egatari@egatari`、Codex は `codex plugin add egatari@egatari` を案内する。
 
 <!-- generated: instruction-version -->
 **指示の版：73eb43a5**
@@ -23,7 +23,9 @@ make の版の行と違えば、両方のプラグインを更新するよう利
 /plugin install egatari-studio@egatari
 ```
 
-更新は `/plugin update egatari-studio@egatari`。make の更新は `/plugin update egatari@egatari`。
+Codex の入れ方（Codex のターミナルで）：`codex plugin marketplace add egatari/egatari-studio`、`codex plugin add egatari@egatari`、`codex plugin add egatari-studio@egatari`。
+
+更新は、Claude Code では `/plugin update egatari-studio@egatari` と `/plugin update egatari@egatari`。Codex では `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari-studio@egatari` と `codex plugin add egatari@egatari` をもう一度。どちらの道具でも、ターミナルで `npx egatari@0.6.x skills update` を実行すると、入っている道具すべてを更新する。更新したら道具を再起動する。
 
 必要な作業の参照だけ読む：
 
@@ -36,6 +38,8 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 ## コマンド：egatari（npm の包み）
 
 コマンドはすべて npm の包み egatari で動かす：`npx egatari@0.6.x <コマンド>`（Studio の 0.6 系に版を固定する）。リポジトリの clone も `npm ci` も要らない。要るのは Node.js（と npm。Node.js に付いてくる）だけ。初めて動かすときに npx が包みを取ってくる。
+
+`npx egatari@0.6.x` が使えない（ネットのないサンドボックスなど）ときは、入れてある Studio の `bin/egatari.mjs` を `node` で動かす（プラグインの写しの中にある）。同じコマンドと引数で動く。
 
 作業の初めに 1 回 `npx egatari@0.6.x doctor` を動かし、表示を読む：
 
@@ -93,7 +97,9 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 
 ## CLI：品質チェック
 
-`npx egatari@0.6.x check <deck>/deck.html` のエラーが 0 になるまで直す。終了コード 2 は検査が終わっていない印で、エラー 0 ではない。全スライドの最終状態と図のステップを画像で確かめる。チャットではコマンドを頼まず、Studio の品質チェックと「AI への修正依頼をコピー」を使ってもらう。
+`npx egatari@0.6.x check <deck>/deck.html` のエラーが 0 になるまで直す。終了コード 2 は検査が終わっていない印で、エラー 0 ではない。
+
+品質チェックはヘッドレスブラウザを使う。ブラウザが起動できず終了コード 2 なら、検査は終わっていない。『検査は未完了』と伝え、サンドボックスの外で `check` を動かしてもらう。通ったとは書かない。全スライドの最終状態と図のステップを画像で確かめる。チャットではコマンドを頼まず、Studio の品質チェックと「AI への修正依頼をコピー」を使ってもらう。
 
 ## CLI：id
 

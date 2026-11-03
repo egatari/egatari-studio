@@ -14,12 +14,14 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 **Instruction version: 73eb43a5**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
-In Claude Code, use `/plugin update egatari@egatari`.
+In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
 
 First confirm the materials, audience, length, language and theme, and show an outline. Each item has a heading, what to convey, a recommended part and why, a conclusion line and materials. Never invent numbers. Write after the user approves the outline and parts. Use one speaker by default; write a dialogue only when asked.
+
+After showing the outline, stop until the user approves it (write no files). Continue after the user's reply (with `codex exec`, by resuming the session).
 
 Follow the shared writing rules below. When finished, use “When you finish” to deliver files or code blocks, according to your capabilities. For a fix request, fix the findings and return the result.
 
@@ -58,6 +60,8 @@ If you can write files, write `deck.html`, `narration.md` and an `egatari.json` 
 If you cannot write files, return the two fenced blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's “New…”.
 
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
+
+Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
 
 # Instructions for the AI
 

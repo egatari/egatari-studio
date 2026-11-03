@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=371d2c22d591dbcc -->
+<!-- i18n: pair=RELEASING.md sha256=51f1ed541a3634a8 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -24,7 +24,7 @@
    - `tools/test-selfcontained.mjs`（`npm test` に入っている）：追跡しているファイルに個人のパス・私的な網の番地・秘密の置き場所・個人の声の名前がない。`localhost:8882` は `IRODORI_URL` の既定としてだけ書く。`skills/` が挙げるのは同梱のスキルだけ。文書が挙げるパス・リンク・`npm run` の script が実在する。`kit/` と `server/` が `tts/` と `render/` を import しない
    - `clean` のジョブを Linux・Windows・macOS で：空の `HOME`・TTS のサーバーなしで `node tools/clean-env.mjs` が、見本ごとに組む・品質チェックをかける・書き出す（`--portable`・`--play-only`）、`tts/synth.py --dry-run` の音声で組む、`npm run new` のデッキを組む。手元でも走らせる：`node tools/clean-env.mjs`
    - `pack` のジョブを Linux・Windows・macOS で：`node tools/test-npm-pack.mjs` が npm の包み `egatari` を作り、リポジトリの外に入れて `npx egatari`（`--version`・`doctor`・`new`・`check`・`build`・`build --portable`）を動かす
-4. **CHANGELOG。** 節を確かめてからまとめる（`package.json` と `package-lock.json` の版も変え、`changes/*.md` を消す）：
+4. **CHANGELOG。** 節を確かめてからまとめる（`package.json` と `package-lock.json` のほか、2 つの `plugin.json` と `.claude-plugin/marketplace.json`・`.agents/plugins/marketplace.json` のプラグインの項目の版も変える。入れた Claude Code・Codex はこの版を見て更新する。`changes/*.md` を消し、`node tools/make-llm-guide.mjs` を動かし直す。スキルが docs へのリンクを `v<版>` の札に固定し、更新のコマンドに CLI の小版を書いているため。どれかの版が `package.json` と違えば `tools/test-plugin.mjs` が失敗する）：
 
    ```bash
    node tools/changelog.mjs --preview X.Y.Z
@@ -33,7 +33,7 @@
    git commit -am "vX.Y.Z：CHANGELOG を版にまとめ、版を X.Y.Z にする"
    ```
 
-   候補とこのコミットの違いは `CHANGELOG.md`・`changes/`・版だけにする
+   候補とこのコミットの違いは、`CHANGELOG.md`・`changes/`・版（`package.json`・`package-lock.json`・`.claude-plugin/plugin.json`・`plugins/egatari/.claude-plugin/plugin.json`・`.claude-plugin/marketplace.json`・`.agents/plugins/marketplace.json`）と、`make-llm-guide.mjs` が版から作り直すもの（スキルの docs へのリンク：`plugins/egatari/skills/make/references/book.md`・`references/en/book.md`・`skills/studio/SKILL.md`。更新のコマンドの CLI の小版：`plugins/egatari/skills/make/SKILL.md`・`SKILL.en.md`）だけにする
 5. **セッションのリンクを入れない。** push の前に毎回（コミットもタグも）：
 
    ```bash

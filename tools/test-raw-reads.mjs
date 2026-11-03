@@ -38,6 +38,8 @@ const ALLOW = [
   ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'sw.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/sw.js を読む'],
   ['kit/build.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
   ['bin/egatari.mjs', "JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))", 'egatari コマンド：自分の包みの package.json（版と engines）を読む'],
+  ['bin/egatari.mjs', "'instruction-version.json'", 'egatari doctor：自分の包みの kit/instruction-version.json（指示の版）を読む'],
+  ['bin/egatari.mjs', "try { t = fs.readFileSync(f, 'utf8'); }", 'egatari doctor：利用者が入れたスキルの SKILL.md を読んで指示の版の行を拾う（読むだけ・先頭の数 KB で足りるが、大きさの上限は SKILL.md の通常の大きさ）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, `${w}${sfx}.css`))", '字の写し：node_modules の @fontsource の CSS を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'files', m[1]))", '字の写し：その CSS が指す woff2 を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'LICENSE'))", '字の写し：@fontsource の LICENSE を読む（開発者の道具）'],
