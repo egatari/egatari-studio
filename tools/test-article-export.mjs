@@ -11,7 +11,7 @@ import { parseArticleText } from '../kit/core/article-text.mjs';
 import { renderArticle } from '../kit/core/article-render.mjs';
 import { citationSettings, renderCitations, cslHtml, CITATION_STYLES } from '../kit/core/article-cite.mjs';
 import { linkedPairs, sectionSources, slideElementText, narrationBlockText, currentLinkHashes, linkStates, pruneLinks, recordLinks, sha256HexText, articleLinksProblems } from '../kit/core/article-links.mjs';
-import { articlePage, loadArticle, articleLinkReport } from '../kit/core/article-page.mjs';
+import { articlePage, loadArticle, articleLinkReport, ARTICLE_CSS } from '../kit/core/article-page.mjs';
 import { ARTICLE_MESSAGES } from '../kit/core/article-messages.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { tierA, scanLayout } from '../kit/core/tier-a.mjs';
@@ -76,6 +76,39 @@ t('sist02 in Japanese: numeric, the list heading in Japanese', () => {
   assert.match(h, /\(<a class="egatari-cite" href="#ref-yamada2020">1<\/a>\)/);
   assert.match(h, /<h2>参考文献<\/h2>/);
   assert.match(h, /<li id="ref-yamada2020"><span class="egatari-ref-label">\(1\)<\/span> <span class="egatari-ref-body">山田太郎\. 統計の教科書\. 架空社, 2020\.<\/span>/);
+});
+t('sist02 in Japanese: SIST02 abbreviations vol./p., 「」 quotes, an editor stands in for a missing author (adapted in memory)', () => {
+  const items = [
+    { id: 'j2004', type: 'article-journal', title: '「羅生門」論', author: [{ family: '池上', given: '貴子' }], 'container-title': '日本文学研究', volume: '39', page: '84-93', issued: { 'date-parts': [[2004]] } },
+    { id: 'web', type: 'webpage', title: '羅生門', author: [{ family: '芥川', given: '龍之介' }], 'container-title': '青空文庫' },
+    { id: 'ed', type: 'book', title: '統計学入門', editor: [{ literal: '東京大学教養学部統計学教室' }], publisher: '東京大学出版会', issued: { 'date-parts': [[1991]] } },
+  ];
+  const a = readArticle({ path: 'article.md', references: 'references.json' }, () => '## 節\n\n[@j2004] と [@web] と [@ed]。\n', { lang: 'ja' });
+  const h = renderArticle(a, { lang: 'ja', title: 'T', references: items, csl, citations: { style: 'sist02', list: 'end' } }).html;
+  const text = h.replace(/<[^>]+>/g, '');
+  assert.match(text, /日本文学研究\. 2004, vol\. 39, p\. 84–93\./);
+  assert.ok(!/巻|ページ|“|”/.test(text), text);
+  assert.match(text, /芥川龍之介\. 「羅生門」\. 青空文庫/);
+  assert.match(text, /東京大学教養学部統計学教室 編\. 統計学入門\./);
+  // 英語の本は元の書式のまま（引用符は “ ”）。編者の代わりは英語でも
+  const e = readArticle({ path: 'article.md', references: 'references.json' }, () => '## A\n\n[@web] [@ed].\n', { lang: 'en' });
+  const he = renderArticle(e, { lang: 'en', title: 'T', references: items, csl, citations: { style: 'sist02', list: 'end' } }).html.replace(/<[^>]+>/g, '');
+  assert.match(he, /東京大学教養学部統計学教室/);
+});
+t('vertical book: citation numbers upright, footnote numbers written upright, tables right to left, the page opens at its start (§9C.6)', () => {
+  const a = readArticle({ path: 'article.md', references: 'references.json' }, () => '---\ntitle: 縦\nwriting-mode: vertical-rl\n---\n\n## 節\n\n本文[^a]と引用 [@yamada2020, p. 12]。\n\n[^a]: 注。\n', { lang: 'ja' });
+  const h = renderArticle(a, { lang: 'ja', title: 'T', references: ITEMS, csl, citations: { style: 'sist02', list: 'end' } }).html;
+  assert.match(h, /href="#ref-yamada2020"><span class="egatari-tcy">1<\/span>, p\. <span class="egatari-tcy">12<\/span><\/a>/);
+  assert.match(h, /<ol class="egatari-footnotes egatari-fn-numbered"><li id="fn-1"><span class="egatari-fn-no"><span class="egatari-tcy">1<\/span><\/span>注。/);
+  const hh = renderArticle(readArticle({ path: 'article.md' }, () => '## A\n\nText[^a].\n\n[^a]: Note.\n', { lang: 'en' }), { lang: 'en', title: 'T' }).html;
+  assert.match(hh, /<ol class="egatari-footnotes"><li id="fn-1">Note\./, 'horizontal books keep the list numbers');
+  assert.match(ARTICLE_CSS, /#egatari-article\.egatari-vertical table\{direction:rtl\}/);
+  const d = path.join(work, 'vpage'); fs.mkdirSync(d, { recursive: true });
+  fs.writeFileSync(path.join(d, 'deck.html'), '<!DOCTYPE html><html lang="ja"><head><title>t</title></head><body><div id="stage"><section class="slide" id="s-aaaaaa"><h2>a</h2></section></div></body></html>');
+  fs.writeFileSync(path.join(d, 'article.md'), '---\ntitle: 縦\nwriting-mode: vertical-rl\n---\n\n## 節\n\n本文。\n');
+  assert.match(articlePage(nodeEnv, path.join(d, 'deck.html'), { lang: 'ja' }).html, /<html lang="ja" class="egatari-vertical-page">[\s\S]*html\.egatari-vertical-page\{writing-mode:vertical-rl\}/);
+  fs.writeFileSync(path.join(d, 'article.md'), '---\ntitle: 横\n---\n\n## 節\n\n本文。\n');
+  assert.ok(!/egatari-vertical-page"/.test(articlePage(nodeEnv, path.join(d, 'deck.html'), { lang: 'ja' }).html));
 });
 t('list: chapter (a book): a list at the end of each chapter, ids ref-<chapter>-<key>, numbers restart; none: spans and no list', () => {
   const files = { 'article/01.md': '---\ntitle: One\nchapter: 1\n---\n## A\n\nSee [@shannon1948] and [@aho1974].\n', 'article/02.md': '---\ntitle: Two\nchapter: 2\n---\n## B\n\nSee [@aho1974].\n' };

@@ -78,7 +78,10 @@ unified, js-yaml, he and others; MIT, ISC or BSD licenses), and the CSL styles a
 The citation styles and locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
 from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
 in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file
-states in its <rights> element.
+states in its <rights> element. When it formats citations, kit/core/article-cite.mjs (adaptStyle) adapts sist02.csl in memory
+(the file stays unmodified): an editor or translator stands in for a missing author, and for Japanese books the volume,
+issue and page terms are the SIST02 abbreviations vol., no., p. and titles are quoted with 「」『』. The adapted style is
+licensed under the same CC BY-SA 3.0 License.
 
 abcjs 6.7.2 renders score symbols at build time (MIT). The editor bundles abcjs
 for rendering only; built lessons carry the SVG and no abcjs runtime.

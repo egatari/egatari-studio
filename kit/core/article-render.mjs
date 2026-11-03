@@ -140,6 +140,8 @@ export function renderArticle(article, opts = {}) {
     children.forEach((c, i) => { if (c.type === 'solution' && i > 0 && children[i - 1].type === 'exercise') exerciseBefore.add(c); });
 
     const text = (s) => (vertical ? tcy(String(s)) : esc(String(s)));
+    // 書式で組んだ引用の HTML：縦書きでは字の中の 1〜2 桁の数（(1)・(1, p. 12) の番号）を縦中横に。タグと文字参照には触れない
+    const citeHtml = (h) => (vertical ? String(h).replace(/(<[^>]*>|&[#A-Za-z0-9]+;)|(?<![0-9])([0-9]{1,2})(?![0-9])/g, (m, keep, d) => (keep ? keep : `<span class="egatari-tcy">${d}</span>`)) : h);
     const inline = (ns) => (ns || []).map(node).join('');
     const block = (ns) => (ns || []).map(node).filter((x) => x !== '').join('\n');
     const num = (n) => info.nodes.get(n) || {};
@@ -159,10 +161,12 @@ export function renderArticle(article, opts = {}) {
       const start = pendingNotes[0].n;
       const items = pendingNotes.map(({ n, def }) => {
         const body = (def.children || []).map((p, j, a) => (p.type === 'paragraph' ? inline(p.children) + (j < a.length - 1 ? '<br>' : '') : '')).join('');
-        return `<li id="${fnId(n)}">${body} <a class="egatari-fn-back" href="#${fnId(n)}-ref" aria-label="${esc(W.back)}">↩</a></li>`;
+        // 縦書きでは番号を字で書く（リストの印は横に寝て、縦中横にできない。§9C.6 の組み立てが書く番号と同じく 1〜2 桁を縦中横に）
+        const no = vertical ? `<span class="egatari-fn-no">${text(String(n))}</span>` : '';
+        return `<li id="${fnId(n)}">${no}${body} <a class="egatari-fn-back" href="#${fnId(n)}-ref" aria-label="${esc(W.back)}">↩</a></li>`;
       });
       pendingNotes = [];
-      return `<ol class="egatari-footnotes"${start > 1 ? ` start="${start}"` : ''}>${items.join('')}</ol>`;
+      return `<ol class="egatari-footnotes${vertical ? ' egatari-fn-numbered' : ''}"${start > 1 ? ` start="${start}"` : ''}>${items.join('')}</ol>`;
     };
     function node(n) {
       switch (n.type) {
@@ -261,8 +265,8 @@ export function renderArticle(article, opts = {}) {
           }
           return inline(n.children);
         }
-        case 'citeGroup': return `<span class="egatari-cite-group">${C && C.groups.has(n) ? C.groups.get(n) : `(${(n.children || []).map(node).join('; ')})`}</span>`;
-        case 'cite': if (C && C.narratives.has(n)) return C.narratives.get(n);
+        case 'citeGroup': return `<span class="egatari-cite-group">${C && C.groups.has(n) ? citeHtml(C.groups.get(n)) : `(${(n.children || []).map(node).join('; ')})`}</span>`;
+        case 'cite': if (C && C.narratives.has(n)) return citeHtml(C.narratives.get(n));
           return `<span class="egatari-cite" data-egatari-cite="${esc(n.label || n.identifier)}">${esc(n.label || n.identifier)}${n.suffix ? `, ${text(n.suffix)}` : ''}</span>`;
         case 'mystRole': {
           if (n.name === 'ruby') {
@@ -374,5 +378,7 @@ export const ARTICLE_CSS = `#egatari-article{max-width:42em;margin:0 auto;paddin
 #egatari-article:lang(ja) em,#egatari-article :lang(ja) em{font-style:normal;text-emphasis:filled sesame;-webkit-text-emphasis:filled sesame;text-emphasis-position:over right;-webkit-text-emphasis-position:over right}
 #egatari-article.egatari-vertical{writing-mode:vertical-rl;max-width:none;max-height:40em;overflow-x:auto}
 #egatari-article.egatari-vertical figure,#egatari-article.egatari-vertical table,#egatari-article.egatari-vertical .egatari-math{writing-mode:horizontal-tb}
+#egatari-article.egatari-vertical table{direction:rtl}#egatari-article.egatari-vertical th,#egatari-article.egatari-vertical td{direction:ltr}
+#egatari-article .egatari-fn-numbered{list-style:none;padding-inline-start:0}#egatari-article .egatari-fn-no{margin-inline-end:.5em;font-weight:bold}
 #egatari-article .egatari-tcy{text-combine-upright:all;-webkit-text-combine:horizontal}
 @media print{#egatari-article figure,#egatari-article .egatari-math{break-inside:avoid}#egatari-article h2,#egatari-article h3,#egatari-article h4{break-after:avoid}}`;
