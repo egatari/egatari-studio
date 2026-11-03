@@ -71,7 +71,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#paste-copy-guide');
   await page.waitForFunction(() => window.__APP_TEST.lastCopy);
   const c0 = await page.evaluate(() => window.__APP_TEST.lastCopy);
-  ok((await page.textContent('#paste-pack-size')) === `Instructions: ${packKb(c0)} KB (suggested limit 40 KB)` && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.') && c0 === packWithRequest({ ...partsPackOpts(initialParts([])), lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }),
+  ok((await page.textContent('#paste-pack-size')) === `Instructions: ${packKb(c0)} KB (suggested limit 45 KB)` && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.') && c0 === packWithRequest({ ...partsPackOpts(initialParts([])), lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }),
     'llm: the size shown is that of the copied text, which starts at “Instructions for the AI”');
   ok((await clip()) === c0, 'llm: the instructions are on the clipboard');
   // 閉じていないコードブロック（スライドの途中で切れた）：スライドの欄に知らせ、作成は押せない、送り直しを頼む文
@@ -226,7 +226,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const c2 = await copy();
     const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
     // 外したぶん目安に収まれば、残る中核のパーツの説明は短くしない（大きさはかえって増えることがある）
-    ok(!/m-flow(?![a-z-])/.test(c2) && !/m-menu(?![a-z-])/.test(c2) && size2 <= 40 * 1024 && c2.includes('### `<m-bars>`'), `new copy: the unticked parts leave the copied pack, named nowhere, and back within the limit the remaining core parts are described in full (${size1} → ${size2} bytes)`);
+    ok(!/m-flow(?![a-z-])/.test(c2) && !/m-menu(?![a-z-])/.test(c2) && size2 <= 45 * 1024 && c2.includes('### `<m-bars>`'), `new copy: the unticked parts leave the copied pack, named nowhere, and back within the limit the remaining core parts are described in full (${size1} → ${size2} bytes)`);
     if (shotDir) { await pk.evaluate(() => document.getElementById('paste-parts').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-parts-ja.png') }); }
     await pk.click('#paste-change-send');
     await pk.check('#paste-plan-paid');

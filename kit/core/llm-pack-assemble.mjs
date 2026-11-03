@@ -14,11 +14,13 @@
 import { purposesTable } from './purposes.mjs';
 
 // 指示の大きさの上限（KB = 1024 バイト。生成した指示で、頼みたいことは記入欄のまま。写す文に入る内容・場面の節は数えない）。
-//   free：無料のプラン。目安は Gemini の無料アカウント・教育用アカウント（32K トークン）。標準の部品すべて（束なし）が収まること（越えたら npm run gen が止まる）。
-//         束を足して越えたら、新規作成のメーターが外す候補を出す（kit/core/new-deck.mjs）
+//   free：無料のプラン。目安は Gemini の無料アカウント・教育用アカウント（32K トークン）。Gemini の count_tokens で測ると
+//         1,000 トークン ≈ 3.2 KB なので、45 KB ≈ 14K トークン。32K の窓に、ふつうの返事（4K トークン ほど）と
+//         修正のやりとり 2 回分（1.5K トークン ほど ずつ）を残せる（owner 決定、2026-11-03、backlog #169）。
+//         標準の部品すべて（束なし）が収まること（越えたら npm run gen が止まる）。束を足して越えたら、新規作成のメーターが外す候補を出す（kit/core/new-deck.mjs）
 //   paid：有料のプラン。PAID_PACK_KB まで
 export const PAID_PACK_KB = 120;   // 有料のプランの上限（仮の値。変えるならここだけ）
-export const FREE_PACK_KB = 40;
+export const FREE_PACK_KB = 45;
 export const PACK_CAP_KB = Object.freeze({ free: FREE_PACK_KB, paid: PAID_PACK_KB });
 
 // 標準の部品の段の名前（材料の部品の set）

@@ -41,15 +41,15 @@
 | [`<m-tree>`](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/README.md) | 1.13.1 | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置は部品が決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | orient, by, link, size, fade, draw | [demo](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/demo.html) |
 | [`<m-venn>`](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/README.md) | 1.13.1 | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数） | size, dur, spread, overlaps | [demo](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/demo.html) |
 
-## 2.x のパーツ（components2.lock.json の既定の版 2.1.2）
+## 2.x のパーツ（components2.lock.json の既定の版 2.2.0）
 
 1.x の目録にない、2.x 専用の要素パーツ（`kind: "element"`）。土台パーツ（`kind: "library"`：base・boxplot-core・codetree-core・
 expr・heatmap-core・hist-core・icons・kanbun-core・markup-reader・plot・shape）は教材の作者が直接書かないので一覧には出さない。
 
 | 部品 | 版 | 内容 | 段階の数 | 受け取る値 | 見本 |
 |---|---|---|---|---|---|
-| [`<m-cards>`](sha256/d0941d711b56714b766f470eb9fbc82e0b5d69a0ad35876b215730fd92f0dcc7/README.md) | 2.0.1 | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、段階ごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 段階。per-step で n 枚ずつ） | layout, arrows, nums, hilite, per-step, stagger, dur | [demo](sha256/d0941d711b56714b766f470eb9fbc82e0b5d69a0ad35876b215730fd92f0dcc7/demo.html) |
-| [`<m-orbit>`](sha256/6177d9adeb09f8c72c4105e521f723202623d8887ee9e03e53aec51073d33123/README.md) | 2.0.2 | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 段階。visit で決める） | mode, hemisphere, sun, earth, moon, observer, size, dur | [demo](sha256/6177d9adeb09f8c72c4105e521f723202623d8887ee9e03e53aec51073d33123/demo.html) |
-| [`<m-score>`](sha256/513ffe334833d2f6c32627089f5f77e40d9a37b8e17e237106c1c78a4a8f7ee5/README.md) | 2.0.1 | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 段階。by="measure" なら 1 小節＝1 段階 | by, names | [demo](sha256/513ffe334833d2f6c32627089f5f77e40d9a37b8e17e237106c1c78a4a8f7ee5/demo.html) |
+| [`<m-cards>`](sha256/68c9e866e3cd3e2f8179ede44a005c7f31cef0ed07fd5770ec33f0cc3aa80a41/README.md) | 2.0.2 | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、段階ごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 段階。per-step で n 枚ずつ） | layout, arrows, nums, hilite, per-step, stagger, dur | [demo](sha256/68c9e866e3cd3e2f8179ede44a005c7f31cef0ed07fd5770ec33f0cc3aa80a41/demo.html) |
+| [`<m-orbit>`](sha256/37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09/README.md) | 2.0.3 | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 段階。visit で決める） | mode, hemisphere, sun, earth, moon, observer, size, dur | [demo](sha256/37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09/demo.html) |
+| [`<m-score>`](sha256/abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f/README.md) | 2.1.0 | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 段階。by="measure" なら 1 小節＝1 段階（per-step="N" なら N 小節。弱起の小節は次の段階に入る） | by, names, per-step | [demo](sha256/abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f/demo.html) |
 
 名前で引く線のアイコン（土台パーツ `icons`）は[この README](sha256/fc74310c1964554e53b0cf2f0c58bdd87fc997cec8201f23eaef487e310059a3/README.md) を見る。

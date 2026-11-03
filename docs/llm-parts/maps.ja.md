@@ -28,9 +28,9 @@
 地理・歴史の授業で場所を示すときに使う。子の JSON（どれも `step` `at` `tone` を持てる）：
 
 - `regions`：`id`（`"01"`〜`"47"`）か `group`（`hokkaido` `tohoku` `kanto` `chubu` `kinki` `chugoku` `shikoku` `kyushu`）。`label`
-- `values`：`{"13": 1406, …}` と `classes`（階級の下限、既定は 4 階級、5 つまで）で塗り分け。凡例に階級を書く
+- `values`：`{"13": 1406, …}` と `classes`（階級の下限、既定は 4 階級、5 つまで）で塗り分け。凡例に階級を書く。塗り分けの段階は `valuesStep`（既定 1。`values` は `step` を持てない）
 - `points`：`lon` `lat`（または `code` で県庁の位置）、`label`、`anchor`
-- `flows`：`from` `to`（番号か `[経度, 緯度]`）の矢印。`via`（通る点 `[[経度, 緯度], …]`。海の道は沖に）、`label` `labelAt` `value`
+- `flows`：`from` `to`（番号か `[経度, 緯度]`）の矢印。`via`（通る点 `[[経度, 緯度], …]`。海の道は沖に）、`label` `labelAt` `value`（数。線の太さが値で変わる：いちばん大きい値で 10 px、0 で 3 px、ないと 4 px）
 - `shapes`：`polygon` か `line`（`[[経度, 緯度], …]`）。`label` `dash`
 
 `labels`：`focus`（既定）・`all`・`none`。`show="value"` で入る地域に値を書く（既定は書かない）。
@@ -56,9 +56,10 @@
 
 - `regions`：`id`（`"JPN"` など ISO の 3 文字か国名）か `group`（六州）。`label`
 - `categories`：`label` と `ids`（国か州）。凡例に出す。4 区分まで
-- `values`：`{"JPN": 72, …}` と `classes`（階級の下限）
+- `values`：`{"JPN": 72, …}` と `classes`（階級の下限）。塗り分けの段階は `valuesStep`（既定 1）
 - `points`：`lon` `lat`、`label`、`anchor`
-- `flows`：`from` `to`（`[経度, 緯度]` か国）、`via` `label` `value` `bend`
+- `flows`：`from` `to`（`[経度, 緯度]` か国）、`via` `label` `bend`、`value`（数。線の太さが値で変わる：いちばん大きい値で 10 px）、`labelAt`（名前を置く `[経度, 緯度]`）
+- `shapes`：重ね描き。`polygon`（3 点以上の `[[経度, 緯度], …]`、薄く塗る）か `line`（2 点以上）。`label` `labelAt` `dash`
 
 継ぎ目は 30°W（大西洋を横切る矢印は描けない）。
 
