@@ -173,7 +173,7 @@ function buildScript(){
         var b = el("div", "dx-step"); b.setAttribute("data-step-key", s._key + ":" + stepKeyOf(i, k));
         turns.forEach(function(t){
           var p = el("p");
-          if (nr > 1 && t.role){ p.appendChild(el("b", "dx-role", t.role)); p.appendChild(document.createTextNode(" ")); }
+          if (nr > 1 && t.role){ p.appendChild(el("b", "dx-role", t.role === "novice" ? L("質問する人", "Questioner") : L("説明する人", "Explainer"))); p.appendChild(document.createTextNode(" ")); }
           p.appendChild(document.createTextNode(t.text || ""));
           b.appendChild(p);
         });
