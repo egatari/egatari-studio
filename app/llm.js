@@ -18,14 +18,14 @@
 //     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS, partsPackOpts, FREE_CORE } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
+import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
-import { filledRequest, packWithRequest } from '../kit/core/llm-request.mjs';
+import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
-import { slideCountOf, outlineRequest, parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, OUTLINE_OVER, BATCH } from '../kit/core/llm-outline.mjs';
+import { parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, BATCH } from '../kit/core/llm-outline.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
@@ -36,7 +36,7 @@ import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
-import { sampleStructureRequest } from '../kit/core/sample-info.mjs';
+import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf } from '../kit/core/new-deck-pack.mjs';
 
 
 // 画面の言葉（handoff/new-deck-flow-2026-10-25.md の文言の表。表にないものは handoff/ux-wording-principles.md の決まりで決めた）
@@ -71,15 +71,15 @@ const TX = {
     discussedShort: '内容はチャットの AI に渡してある',
     audienceLegend: 'だれ向け', audienceAi: 'AI に任せる（① の使う場面から考えます）', audienceWrite: '書く', audienceLabel: 'だれ向けか',
     lengthLegend: '長さ', lengthAi: 'AI に任せる（5〜8 枚くらいにします）', lengthSet: '指定する', lengthNLabel: '長さの数', lengthUnitLabel: '長さの単位',
-    unit: { slides: '枚', min: '分' }, lengthReq: (n, u) => (u === 'min' ? `${n} 分` : `${n} 枚`),
+    unit: { slides: '枚', min: '分' }, lengthReq: REQUEST_WORDS.ja.lengthReq,
     contentLegend: '内容', contentAi: 'AI に任せる（タイトルだけで考えます）', contentGive: 'ここに書く・貼る（授業のメモや教科書の文をそのまま貼れます）', contentGiven: 'チャットの AI に渡してある（PDF などの資料を添付した、または内容を話し合った）',
     contentGivenNote: '指示は、その資料を渡したチャットに貼り付けてください', contentLabel: '内容',
-    contentHead: '## 内容（要点・メモ・元の資料）',
+    contentHead: REQUEST_WORDS.ja.contentHead,
     more: (l, s, w) => `詳しく：${l}・${s}${w ? '・そのほかの希望あり' : ''}`,
     langLegend: '言語', langOpt: { ja: '日本語', en: 'English', other: 'その他' }, langOtherLabel: '言語の名前', langOtherPh: '例：中国語',
-    langReq: { ja: '日本語', en: '英語' },
+    langReq: REQUEST_WORDS.ja.langReq,
     speakersLegend: '話す人', speakers: { 1: '1 人で説明する', 2: '2 人（説明する人と、質問する人）' }, speakersShort: { 1: '1 人で説明', 2: '2 人で説明と質問' },
-    speakersReq: { 1: '1 人', 2: '2 人（Expert と Novice の掛け合い）' },
+    speakersReq: REQUEST_WORDS.ja.speakersReq,
     wishesLabel: 'そのほかの希望（なくてもよい）', wishesNote: '話す人は 2 人まで',
     needTopic: '② の「タイトル」を書いてください',
     ph: {
@@ -91,7 +91,7 @@ const TX = {
     },
     // ③ 見た目
     themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ',
-    themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
+    themeLine: REQUEST_WORDS.ja.themeLine,
     // ④ AI に送る
     planLegend: 'お使いのチャットの AI は、無料のプランですか、有料のプランですか',
     plan: { free: '無料のプラン（わからなければこちら）', paid: '有料のプラン' },
@@ -226,15 +226,15 @@ const TX = {
     discussedShort: 'content already given to the chat AI',
     audienceLegend: 'Audience', audienceAi: 'Leave it to the AI (it works from the setting in step 1)', audienceWrite: 'Write it', audienceLabel: 'Who it is for',
     lengthLegend: 'Length', lengthAi: 'Leave it to the AI (about 5–8 slides)', lengthSet: 'Set it', lengthNLabel: 'Length', lengthUnitLabel: 'Unit',
-    unit: { slides: 'slides', min: 'minutes' }, lengthReq: (n, u) => (u === 'min' ? `${n} minutes` : `${n} slides`),
+    unit: { slides: 'slides', min: 'minutes' }, lengthReq: REQUEST_WORDS.en.lengthReq,
     contentLegend: 'Content', contentAi: 'Leave it to the AI (from the title alone)', contentGive: 'Write or paste it here (your notes or source text as it is)', contentGiven: 'Already given to the chat AI (you attached a PDF or other material, or discussed it)',
     contentGivenNote: 'Paste the instructions into the chat where you gave the material.', contentLabel: 'Content',
-    contentHead: '## Content (key points, notes, source material)',
+    contentHead: REQUEST_WORDS.en.contentHead,
     more: (l, s, w) => `More: ${l}, ${s}${w ? ', other wishes' : ''}`,
     langLegend: 'Language', langOpt: { ja: '日本語', en: 'English', other: 'Other' }, langOtherLabel: 'Which language', langOtherPh: 'e.g. French',
-    langReq: { ja: 'Japanese', en: 'English' },
+    langReq: REQUEST_WORDS.en.langReq,
     speakersLegend: 'Speakers', speakers: { 1: 'One person explains', 2: 'Two (an explainer and a questioner)' }, speakersShort: { 1: 'one speaker', 2: 'two speakers' },
-    speakersReq: { 1: 'one narrator', 2: 'two (an Expert and Novice dialogue)' },
+    speakersReq: REQUEST_WORDS.en.speakersReq,
     wishesLabel: 'Other wishes (optional)', wishesNote: 'At most two speakers',
     needTopic: 'Write the title in step 2.',
     ph: {
@@ -245,7 +245,7 @@ const TX = {
       other: { title: 'e.g. Neighbourhood summer festival', audience: 'e.g. Families in the neighbourhood', content: 'e.g. Date, time, place, what to bring', wishes: 'e.g. A cheerful tone' },
     },
     themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load theme…', themeMine: 'My themes',
-    themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
+    themeLine: REQUEST_WORDS.en.themeLine,
     planLegend: 'Is your chat AI on a free plan or a paid plan?',
     plan: { free: 'Free plan (choose this if unsure)', paid: 'Paid plan' },
     planHint: (free, paid) => `The plan sets the suggested size limit for the instructions (free plan ${free} KB, paid plan ${paid} KB). A chat AI may not read instructions that are too long to the end.`,
@@ -452,7 +452,7 @@ export function setupLlm(app) {
   }
   const givenContent = () => (draft.conMode === 'give' ? draft.content.trim() : '');
   // 2 回に分けて頼むか（9 枚から）：長さの数（分は 1 分 ≒ 1 枚。kit/core/llm-outline.mjs の slideCountOf）
-  const longN = () => { const v = requestValues().values.length; const n = v ? slideCountOf(v) : null; return n && n > OUTLINE_OVER ? n : null; };
+  const longN = () => longOf(requestValues().values.length);
 
   const radio = (name, value, label, checked) => el('label', {}, [el('input', { type: 'radio', name, value, id: `${name}-${value}`, ...(checked ? { checked: '' } : {}) }), el('span', { text: label })]);
   const setRadios = (box, name, v) => { for (const r of box.querySelectorAll(`input[name="${name}"]`)) r.checked = r.value === String(v); };
@@ -697,7 +697,7 @@ export function setupLlm(app) {
     const listed = partsList(null).flatMap((g) => g.parts);
     // サンプルから始めたとき：サンプルのパーツ（一覧にあるもの）に印を付けて「サンプルから」の札。推し直しで外さず、目安に収めるときも外す候補にしない
     const fromParts = draft.from ? draft.from.parts.filter((t) => listed.includes(t)) : [];
-    const ticked = new Set([...initialParts([]), ...fromParts]);
+    const ticked = new Set(sampleTicks(draft.from, []));   // 推し直し（guessNow）の前の印（kit/core/new-deck-pack.mjs。コマンドと同じ）
     const touched = new Set(fromParts);   // 自分で印を替えたパーツ（推し直しで上書きしない）
     let rec = [];                // おすすめの束と理由（recommend）
     const recSets = () => new Set(rec.map((r) => r.set));
@@ -747,7 +747,7 @@ export function setupLlm(app) {
     // プランは上限と詳しさを変える（無料のプランは、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
     // 無料のプランで目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
     let shortNow = false;
-    const textNow = (tags = chosen(), short = shortNow) => packWithRequest({ ...partsPackOpts(tags, draft.plan, { short }), lang: LANG, request: request() });
+    const textNow = (tags = chosen(), short = shortNow) => packText({ tags, plan: draft.plan, lang: LANG, request: request(), short });
     // 推した印：① の小分類と ② のタイトル・内容・そのほかの希望の言葉（recommend）。自分で替えたパーツはそのまま。標準のパーツは、替えていなければいつも印
     const guessNow = () => {
       rec = recommend({ sub: draft.sub || null, text: [draft.title, givenContent(), draft.wishes].join('\n'), lang: LANG });
@@ -1017,17 +1017,9 @@ export function setupLlm(app) {
         reopen(k) { F.open(k); },
       };
       Qs = [kindQuestion(titles[0], ctl), contentQuestion(titles[1], ctl), await themeQuestion(titles[2], ctl)];
-      const request = () => {
-        let t = filledRequest(requestValues(), LANG).replace(/\n*$/, '\n') + X.themeLine(newTheme) + '\n';
-        const cr = choiceRequest({ category: draft.category, subcategory: draft.sub || null }, null, LANG);
-        if (cr) t += cr + '\n';
-        if (draft.from && draft.useStructure) t += '\n' + sampleStructureRequest(draft.from, draft.from.title, LANG);
-        const c = givenContent();
-        if (c) t += '\n' + X.contentHead + '\n\n' + c + '\n';
-        const n = longN();
-        if (n) t += '\n' + outlineRequest({ n, lang: LANG });
-        return t;
-      };
+      // 頼みたいこと（kit/core/new-deck-pack.mjs の newDeckRequest。コマンドの kit/llm-pack.mjs --from-sample と同じ組み立て）
+      const request = () => newDeckRequest({ ...requestValues(), theme: newTheme, category: draft.category, subcategory: draft.sub || null,
+        sample: draft.from, useStructure: draft.useStructure, content: givenContent(), outlineN: longN(), lang: LANG });
       const missing = () => {
         if (!kindOk()) { return { text: X.needKind, focus: () => F.open(0) }; }
         if (!titleOk()) { return { text: X.needTopic, focus: () => { F.open(1, { focus: false }); Qs[1].node.scrollIntoView({ block: 'start' }); Qs[1].titleIn.focus(); } }; }

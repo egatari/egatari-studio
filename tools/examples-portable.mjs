@@ -13,9 +13,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { buildPortable, writeOutput } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
-import { validateSample } from '../kit/core/sample-info.mjs';
-import { CATEGORIES, partsList } from '../kit/core/new-deck.mjs';
-import { CHOOSABLE } from '../kit/core/themes-list.mjs';
+import { sampleProblems } from '../kit/core/new-deck-pack.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // 並べる順（はじめの画面の一覧もこの順）
@@ -44,9 +42,7 @@ export function readSample(name) {
   const file = path.join(ROOT, 'examples', name, 'sample.json');
   if (!fs.existsSync(file)) throw new Error(`example ${name}: ${file} not found`);
   const obj = JSON.parse(fs.readFileSync(file, 'utf8'));
-  const errs = validateSample(obj, { categories: CATEGORIES, parts: partsList(null).flatMap((g) => g.parts) });
-  // テーマは新しく選べるもの（サンプルの原稿が選べなくしたテーマ（business）なら、その代わりのテーマ）
-  if (!errs.length && !CHOOSABLE.some((t) => t.name === obj.theme)) errs.push({ path: 'theme', code: 'not-choosable' });
+  const errs = sampleProblems(obj);   // 分類・④ のパーツ・新しく選べるテーマに照らす（kit/core/new-deck-pack.mjs。コマンドの --from-sample と同じ）
   if (errs.length) throw new Error(`example ${name}: sample.json: ${errs.map((e) => `${e.path || '(root)'} ${e.code}`).join(', ')}`);
   return obj;
 }

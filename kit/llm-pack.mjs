@@ -2,18 +2,28 @@
 //   node kit/llm-pack.mjs --sets stats,math --lang ja         共通の本体（標準の部品）+ 束（'all' で全部、指定なしで共通の本体だけ）
 //   node kit/llm-pack.mjs --plan paid [--sets …]             有料のプラン（どの部品も詳しく。--sets all --plan paid で指示の全体）
 //   node kit/llm-pack.mjs --no-fit [--sets …]                無料のプランで目安に収めない（下の fit をしない。比べる・調べる用）
+//   node kit/llm-pack.mjs --from-sample <名前> [--request <文|ファイル>] [--plan …] [--lang …]
+//                                                            「このサンプルのように作る」で ② を書いて ④ で写す指示と同じバイト（backlog #130。kit/core/new-deck-pack.mjs の fromSamplePack）：
+//                                                            examples/<名前>/sample.json の場面・テーマ・パーツ（外す候補にしない）と構成。--request の 1 行目は ② のタイトル、残りは内容（なければ空）。
+//                                                            無料のプランも有料のプランも、目安に収めた後（［候補を外す］を押した後と同じ）
 //   node kit/llm-pack.mjs --list [--lang ja]                   束・その部品・大きさ（無料のプランは収めた大きさと収める前の大きさ。最後に有料のプラン）
 //   node kit/llm-pack.mjs --help | -h                          使い方
 // 無料のプランは、編集アプリの新規作成と同じに目安（PACK_CAP_KB.free）に収める（kit/core/llm-pack.mjs の fitPack。backlog #125）：
 //   越えたら中核の 4 つの説明を短くし、それでも越えれば専門のパーツを大きい順に外す。短くした・外したときは、何をなぜしたかを stderr に出す
 //   （黙って外さない。毎晩の評価・スキルが無料のプランで使う指示が、利用者が編集アプリで貼るものと同じになるように）。生の指示は --no-fit
 // 前の --series（系列）と --tools（道具）は 1 版のあいだ読む：系列は束に読み替え（SERIES_SETS。info は特殊になったので何も足さない）、道具は束 tools
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { fromSamplePack, sampleProblems } from './core/new-deck-pack.mjs';
+import { readRegularText, READ_LIMITS } from './bounded-read.mjs';
 import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, loadedParts, partsPackOpts, fitPack } from './core/llm-pack.mjs';
 
 // 前の系列 → 束
 const SERIES_SETS = { academic: ['stats', 'math'], business: ['business'], kokugo: ['kokugo'], english: ['english'], info: [], social: ['maps'], music: ['music'] };
 
 const USAGE = `usage: node kit/llm-pack.mjs [--sets <name,…|all>] [--lang en|ja] [--plan free|paid] [--no-fit]
+       node kit/llm-pack.mjs --from-sample <name> [--request <text|file>] [--lang en|ja] [--plan free|paid]
        node kit/llm-pack.mjs --list [--lang en|ja]
        node kit/llm-pack.mjs --help
 
@@ -29,6 +39,11 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
          catalogue line too; if still over, specialized parts are left out,
          largest first. stderr says what was shortened or left out
 --no-fit the free-plan pack as assembled, without fitting it to the limit
+--from-sample  exactly what the editor copies in New… after “Make one like this
+         sample” (examples/<name>/sample.json): its setting, theme and parts (never
+         suggested for unticking), plus its structure; fitted to the plan as after
+         “Untick these”. --request: the first line is the title of step 2, the rest
+         its content (a file name reads that file; none: step 2 left empty)
 --list   lists the part sets, their components and the size of the common
          body with that set (KB = UTF-8 bytes / 1024): the free plan fitted,
          then before fitting, then the paid plan; without --lang, en and ja
@@ -48,7 +63,7 @@ const langArg = arg('--lang');
 if (langArg !== undefined && !['en', 'ja'].includes(langArg)) { console.error(`--lang must be en or ja (got ${langArg})\n\n${USAGE}`); process.exit(2); }
 const planArg = arg('--plan');
 if (planArg !== undefined && !['free', 'paid'].includes(planArg)) { console.error(`--plan must be free or paid (got ${planArg})\n\n${USAGE}`); process.exit(2); }
-const VALUED = ['--sets', '--series', '--tools', '--lang', '--plan'];
+const VALUED = ['--sets', '--series', '--tools', '--lang', '--plan', '--from-sample', '--request'];
 const known = new Set([...VALUED, '--list', '--no-fit']);
 const bad = argv.filter((a, i) => a.startsWith('-') && !known.has(a.split('=')[0]) && !(i > 0 && VALUED.includes(argv[i - 1])));
 if (bad.length) { console.error(`unknown option ${bad[0]}\n\n${USAGE}`); process.exit(2); }
@@ -60,7 +75,37 @@ function fittedPack(sets, lang) {
   return { text: buildPack({ ...partsPackOpts(fit.tags, 'free', { short: fit.short }), lang }), fit };
 }
 
-if (argv.includes('--list')) {
+// 「このサンプルのように作る」の指示（編集アプリの新規作成 ④ と同じ組み立て）
+function samplePack(name, lang, plan) {
+  if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new Error(`--from-sample: not a sample name: ${name}`);
+  const dir = path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'examples', name);
+  const file = path.join(dir, 'sample.json');
+  if (!fs.existsSync(file)) throw new Error(`--from-sample: ${file} not found`);
+  const obj = JSON.parse(readRegularText(file, { max: READ_LIMITS.json }).text);
+  const errs = sampleProblems(obj);
+  if (errs.length) throw new Error(`--from-sample: ${file}: ${errs.map((e) => `${e.path || '(root)'} ${e.code}`).join(', ')}`);
+  // サンプルの題名：原稿の <title>（編集アプリのサンプルの一覧と同じ）
+  const m = readRegularText(path.join(dir, 'deck.html'), { max: READ_LIMITS.source }).text.match(/<title>([^<]*)<\/title>/);
+  const title = m ? m[1].trim() : name;
+  let req = arg('--request');
+  if (req !== undefined && req !== '' && fs.existsSync(req) && fs.statSync(req).isFile()) req = readRegularText(req, { max: READ_LIMITS.json }).text;
+  const lines = String(req || '').replace(/\r\n?/g, '\n').split('\n');
+  const at = lines.findIndex((l) => l.trim());
+  const second = at < 0 ? {} : { title: lines[at].trim(), content: lines.slice(at + 1).join('\n').trim() };
+  return fromSamplePack({ sample: { ...obj, title, name }, lang, plan, second });
+}
+
+if (argv.includes('--from-sample')) {
+  try {
+    if (argv.includes('--no-fit') || arg('--sets') !== undefined || argv.includes('--list')) throw new Error('--from-sample cannot be used with --sets, --list or --no-fit');
+    const lang = langArg || 'en', plan = planArg || 'free';
+    const r = samplePack(String(arg('--from-sample') || ''), lang, plan);
+    if (r.short) console.error(`note: free plan: over ${PACK_CAP_KB.free} KB, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too`);
+    if (r.dropped.length) console.error(`note: ${plan} plan: still over the limit, so these specialized parts were left out, largest first: ${r.dropped.join(', ')} (the sample's own parts stay)`);
+    if (r.over) console.error(`warning: ${plan} plan: ${kbOf(r.bytes)} KB is still over the limit`);
+    process.stdout.write(r.text);
+  } catch (e) { console.error(e.message); process.exit(2); }
+} else if (argv.includes('--list')) {
   const langs = langArg ? [langArg] : ['en', 'ja'];
   const cols = (f) => langs.map((lang) => f(lang)).join('\t');
   const fitted = (sets) => cols((lang) => { const { text, fit } = fittedPack(sets, lang); return packKb(text) + ' KB' + (fit.dropped.length ? ` (core four shortened; left out ${fit.dropped.join(', ')})` : fit.short ? ' (core four shortened)' : ''); });

@@ -1,0 +1,94 @@
+// 新規作成の ④ で写す指示（AI への指示の本体 ＋ 頼みたいこと）を組む、編集アプリ（app/llm.js）とコマンド（kit/llm-pack.mjs --from-sample）が共有する所。
+// Node にもブラウザにも依存しない（純粋な ESM）。backlog #130：コマンドが「このサンプルのように作る」で写す指示と同じバイトを出せるように（毎晩の評価・規格の評価 B）
+//
+//   REQUEST_WORDS[lang]                 頼みたいことの欄に入れる言葉（長さ・言語・話す人・テーマの行・内容の見出し）。画面の言葉（app/llm.js の X）もこれを使う
+//   newDeckRequest({kind, values, theme, category, subcategory, sample, useStructure, content, outlineN, lang})
+//                                       → 頼みたいことの節（記入欄 → テーマの行 → 場面・構成の型・見せ方 → サンプルの構成 → 内容 → 2 回に分けて頼む節）
+//   sampleTicks(sample, rec)            → 初めの印（標準のパーツと、おすすめの束と、サンプルのパーツ。④ の一覧の順）
+//   packText({tags, plan, lang, request, short}) → 写す指示の全文
+//   newDeckPack({tags, plan, lang, request, keep, trim}) → {text, bytes, short, candidates, dropped, over}
+//                                       目安に収める：trim なしは ④ を開いたとき（無料のプランで越えたら中核の 4 つを短くし、外す候補を出すだけ）、
+//                                       trim は［候補を外す］を押した後（fitPack。コマンドの指示と同じ）
+//   sampleProblems(obj)                 → sample.json の誤り（validateSample に、分類・④ のパーツ・新しく選べるテーマを照らしたもの）
+//   fromSamplePack({sample, title, lang, plan, second, useStructure}) → newDeckPack の結果 ＋ {request, tags}。
+//                                       「このサンプルのように作る」で ② だけを書いて（second：{title, content}）④ で写すもの（無料のプランも有料のプランも trim の後）
+import { filledRequest, packWithRequest } from './llm-request.mjs';
+import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, fitPlan } from './new-deck.mjs';
+import { partsPackOpts, fitPack, packSize } from './llm-pack.mjs';
+import { sampleStructureRequest, validateSample } from './sample-info.mjs';
+import { outlineRequest, slideCountOf, OUTLINE_OVER } from './llm-outline.mjs';
+import { CHOOSABLE } from './themes-list.mjs';
+
+export const REQUEST_WORDS = Object.freeze({
+  ja: {
+    lengthReq: (n, u) => (u === 'min' ? `${n} 分` : `${n} 枚`),
+    langReq: { ja: '日本語', en: '英語' },
+    speakersReq: { 1: '1 人', 2: '2 人（Expert と Novice の掛け合い）' },
+    themeLine: (t) => `- テーマ：${t}（<html data-theme="${t}">）`,
+    contentHead: '## 内容（要点・メモ・元の資料）',
+  },
+  en: {
+    lengthReq: (n, u) => (u === 'min' ? `${n} minutes` : `${n} slides`),
+    langReq: { ja: 'Japanese', en: 'English' },
+    speakersReq: { 1: 'one narrator', 2: 'two (an Expert and Novice dialogue)' },
+    themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,
+    contentHead: '## Content (key points, notes, source material)',
+  },
+});
+const W = (lang) => (lang === 'ja' ? REQUEST_WORDS.ja : REQUEST_WORDS.en);
+
+// 2 回に分けて頼む枚数（9 枚から）か null。length は記入欄の長さの言葉
+export const longOf = (length) => { const n = length ? slideCountOf(length) : null; return n && n > OUTLINE_OVER ? n : null; };
+
+export function newDeckRequest({ kind = 'A', values = {}, theme, category = null, subcategory = null, sample = null, useStructure = true, content = '', outlineN = null, lang = 'en' }) {
+  const w = W(lang);
+  let t = filledRequest({ kind, values }, lang).replace(/\n*$/, '\n') + w.themeLine(theme) + '\n';
+  const cr = choiceRequest({ category, subcategory }, null, lang);
+  if (cr) t += cr + '\n';
+  if (sample && useStructure) t += '\n' + sampleStructureRequest(sample, sample.title, lang);
+  const c = String(content || '').trim();
+  if (c) t += '\n' + w.contentHead + '\n\n' + c + '\n';
+  if (outlineN) t += '\n' + outlineRequest({ n: outlineN, lang });
+  return t;
+}
+
+const LISTED = () => partsList(null).flatMap((g) => g.parts);
+export function sampleTicks(sample, rec = []) {
+  const want = new Set([...initialParts(rec), ...(sample ? sample.parts : [])]);
+  return LISTED().filter((t) => want.has(t));
+}
+
+export const packText = ({ tags, plan = 'free', lang = 'en', request, short = false }) => packWithRequest({ ...partsPackOpts(tags, plan, { short }), lang, request });
+
+export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = [], trim = false }) {
+  const sizeOf = (t, short) => packSize(packText({ tags: t, plan, lang, request, short }));
+  const capBytes = capKb(plan) * 1024;
+  if (trim) {
+    const f = fitPack(tags, plan, { sizeOf, capBytes, keep });
+    const text = packText({ tags: f.tags, plan, lang, request, short: f.short });
+    return { text, bytes: packSize(text), short: f.short, candidates: [], dropped: f.dropped, over: f.over, tags: f.tags };
+  }
+  const f = fitPlan(tags, plan, { sizeOf, capBytes, keep });
+  const text = packText({ tags, plan, lang, request, short: f.short });
+  const bytes = packSize(text);
+  return { text, bytes, short: f.short, candidates: bytes > capBytes ? f.candidates : [], dropped: [], over: bytes > capBytes, tags };
+}
+
+export function sampleProblems(obj) {
+  const errs = validateSample(obj, { categories: CATEGORIES, parts: LISTED() });
+  // テーマは新しく選べるもの（サンプルの原稿が選べなくしたテーマ（business）なら、その代わりのテーマ）
+  if (!errs.length && !CHOOSABLE.some((t) => t.name === obj.theme)) errs.push({ path: 'theme', code: 'not-choosable' });
+  return errs;
+}
+
+// 「このサンプルのように作る」：① ③ ④ はサンプルから、② は second（タイトルと内容。ほかの項目は AI に任せる。言語は画面の言語、話す人は 1 人）。
+// sample には title（サンプルの題名）も入れる
+export function fromSamplePack({ sample, lang = 'en', plan = 'free', second = {}, useStructure = true }) {
+  const w = W(lang);
+  const title = String(second.title || ''), content = String(second.content || '').trim();
+  const values = { title, audience: '', length: '', language: w.langReq[lang] || '', speakers: w.speakersReq[1], wishes: '' };
+  const request = newDeckRequest({ kind: 'A', values, theme: sample.theme, category: sample.category, subcategory: sample.subcategory, sample, useStructure, content, outlineN: longOf(values.length), lang });
+  const rec = recommend({ sub: sample.subcategory || null, text: [title, content, ''].join('\n'), lang });
+  const tags = sampleTicks(sample, rec);
+  return { ...newDeckPack({ tags, plan, lang, request, keep: sample.parts.filter((t) => tags.includes(t)), trim: true }), request };
+}

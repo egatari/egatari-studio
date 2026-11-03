@@ -8,12 +8,14 @@
 // F2 同じ人が、ふつうの新規作成…：サンプルの知らせ・構成の印・札は出ない
 // F3 会社員（en）：egatari.org の「Studio でこのサンプルのように作る」（?from-sample=pitch-fictional）→ 同じ流れがすぐ開き、URL から引数が消える。
 //    知らない名前は知らせて、はじめの画面のまま
+// F6 コマンドの kit/llm-pack.mjs --from-sample（規格の評価 B が使う）は、画面で写す指示とバイトまで同じ：4 つのサンプル × 無料・有料 × ja・en
+//    （② にタイトルを書き、［候補を外す］があれば押してから写す）。内容も書いたもの（--request のファイルの 2 行目から）も 1 つ
 // F4 「コピーを開いて編集」：ふつうのファイルと同じ道で開く（minimal）。一覧と sha256 の合わないファイルは再生しない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { initialParts } from '../kit/core/new-deck.mjs';
@@ -194,6 +196,37 @@ try {
   await p5.waitForSelector('#toast.show');
   ok((await text(p5, '#toast')).startsWith('サンプルを読み込めませんでした: ファイルがサンプルの一覧と合いません') && !(await p5.$('#dlg[open]')), 'F5: a file that does not match the list’s sha256 is not played');
   await p5.context().close();
+
+  // ================================================================ F6 コマンドの --from-sample と画面の指示が同じ
+  const cli = (name, lang, plan, request) => {
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'llm-pack.mjs'), '--from-sample', name, '--lang', lang, '--plan', plan, '--request', request], { encoding: 'utf8' });
+    if (r.status !== 0) throw new Error(`llm-pack --from-sample ${name}: ${r.stderr}`);
+    return r.stdout;
+  };
+  const reqFile = path.join(work, 'request-ja.txt');
+  fs.writeFileSync(reqFile, '論語を読む\n「学而」の章を、書き下し文と現代語訳で\n');
+  const cases = [];
+  for (const lang of ['ja', 'en']) for (const name of EXAMPLES) for (const plan of ['free', 'paid']) cases.push({ lang, name, plan, title: lang === 'ja' ? '論語を読む' : 'Reading the Analects' });
+  cases.push({ lang: 'ja', name: 'kokugo-kanbun', plan: 'free', title: '論語を読む', content: '「学而」の章を、書き下し文と現代語訳で', file: reqFile });
+  for (const lang of ['ja', 'en']) {
+    const p6 = await open(lang, 'f6-' + lang);
+    for (const c of cases.filter((x) => x.lang === lang)) {
+      await p6.goto(BASE + `?lang=${lang}&from-sample=${c.name}`);
+      await p6.waitForSelector('#dlg[open] #paste-step-content.current');
+      await p6.fill('#paste-title', c.title);
+      if (c.content) { await p6.check('#paste-content-mode-write'); await p6.fill('#paste-content', c.content); }
+      await p6.click('#paste-next-content');
+      await p6.waitForSelector('#paste-step-send.current');
+      await p6.check('#paste-plan-' + c.plan);
+      const trimmed = await p6.isVisible('#paste-trim');
+      if (trimmed) await p6.click('#paste-trim');
+      const ui = await copy(p6);
+      const out = cli(c.name, lang, c.plan, c.file || c.title);
+      ok(ui === out, `F6 ${lang} ${c.plan} ${c.name}${c.content ? ' (with content)' : ''}: kit/llm-pack.mjs --from-sample prints exactly the copied instructions (${(Buffer.byteLength(out) / 1024).toFixed(2)} KB${trimmed ? ', after Untick these' : ''})`);
+      if (ui !== out) { let i = 0; while (i < ui.length && ui[i] === out[i]) i++; console.log('    first difference at ' + i + ': ' + JSON.stringify(ui.slice(Math.max(0, i - 60), i + 60)) + ' vs ' + JSON.stringify(out.slice(Math.max(0, i - 60), i + 60))); }
+    }
+    await p6.context().close();
+  }
 } catch (e) {
   console.error(e);
   fails++;
