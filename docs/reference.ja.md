@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=d0280cc1223bb739 -->
+<!-- i18n: pair=reference.md sha256=6f822ebf09d82b60 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -299,7 +299,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 `?mode=learn`（仕様の `learn`。自習と LMS 向け。画面での名前はまだ決めていない）は、広い画面ではスライドと本で開く。ツールバーは前へ・**再生** / **一時停止**（`a`）・次へ・**再生速度**（ボタンに `1×` と出し、押すと 0.75・1・1.25・1.5・2 倍の順に替わる。`<` / `>` で遅く / 速く）、そのあと一覧・表示・先のステップを薄く見せる・字幕・読み上げで聞く・全画面・キーの一覧。レーザーポインター・ペン・発表者ビューはなく、`x`・`d`・`v`・`p` は効かない。声は選んだ速さで、高さを保って流れ、ステップも同じ速さで進む。一時停止してもう一度再生すると同じ所から続き、再生中に送ったり跳んだりしても再生を続ける。`?embed=1` では親が `{egatari:"play"}`・`{egatari:"pause"}`・`{egatari:"rate", value}` を送ってよく、`{egatari:"state", playing, rate}`（と `playBlocked`）を受け取る。
 
-進行状況（Player P6、format spec §9.2）は 1 つの口で記録する。探す順は、SCORM 1.2 の `API`（この窓と親の窓 7 段まで、次に開いた窓。[SCORM 1.2 の包み方](https://github.com/egatari/egatari-spec/blob/main/bindings/scorm12.md)）、`?embed=1` の枠の親（`postMessage`）、この端末（`localStorage`）。ステップは、スライドが見えているとき（スライド・スライドと本・スライドで見る。本だけでは台本の今のスライドが再生している間だけ）にそこへ来たら**再生した**（`via: "stage"`）、本のその節（台本で読むではその台本）が 3 秒見えていたら**読んだ**（`via: "text"`）とする。スクロールで通り過ぎただけでは数えない。2 つは別々に持つ。すべてのステップを再生したか読んだら、または `metadata.completion` の決まり（`visitedFraction`・`reachedEnd`、再生したものだけを数える `played: true`）を満たしたら終えたことになる。出来事：`started`・`step` `{slideKey, stepKey, index, total, via}`・`completed`・`suspend` `{location, data}`。SCORM の `cmi.suspend_data` は `{"v":1,"n","h","seen","stage","text"}`：`seen` は包み方のとおり（再生したか読んだか）、`stage` と `text` はその 2 つ。編集のプレビュー・動画・発表者ビューでは記録せず、ファイルには何も書かない。Egatari ファイルは `deck-meta.tracking` に `["scorm12","postmessage","local"]` を書く。
+進行状況（Player P6、format spec §9.2）は 1 つの口で記録する。探す順は、SCORM 1.2 の `API`（この窓と親の窓 7 段まで、次に開いた窓。[SCORM 1.2 の包み方](https://github.com/egatari/egatari-spec/blob/main/bindings/scorm12.md)）、`?embed=1` の枠の親（`postMessage`）、この端末（`localStorage`）。ステップは、スライドが見えているとき（スライド・スライドと本・スライドで見る。本だけでは台本の今のスライドが再生している間だけ）に、舞台が自分で（再生・次へ・スライドのクリック・ステップへのリンクで）そこへ来たら**再生した**（`via: "stage"`）。舞台が本に付いていって動いただけの所は再生したことにしない。ステップは、本のその節（台本で読むではその台本）が 3 秒見えていたら**読んだ**（`via: "text"`）とする。スクロールで通り過ぎただけでは数えない。2 つは別々に持つ。すべてのステップを再生したか読んだら、または `metadata.completion` の決まり（`visitedFraction`・`reachedEnd`、再生したものだけを数える `played: true`）を満たしたら終えたことになる。出来事：`started`・`step` `{slideKey, stepKey, index, total, via}`・`completed`・`suspend` `{location, data}`。SCORM の `cmi.suspend_data` は `{"v":1,"n","h","seen","stage","text"}`：`seen` は包み方のとおり（再生したか読んだか）、`stage` と `text` はその 2 つ（省かない）。SCORM の API か埋め込みの親が見つかったときは、その位置が勝ち、この端末の**前回の続きから**は使わない。編集のプレビュー・動画・発表者ビューでは記録せず、ファイルには何も書かない。Egatari ファイルは `deck-meta.tracking` に `["scorm12","postmessage","local"]` を書く。どの組み立ても（作業フォルダの `out/deck.html` も）`egatari.json` の `metadata.completion` を `deck-meta.completion` に写す。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（例：`v0.2.0`）がある。版（プレーヤーの版。ファイルを作った Studio の版が違えば context に添える）・ブラウザ・OS・教材の言語・モードだけを入れたフィードバックの form を開く。教材の中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
 

@@ -3,12 +3,14 @@
 //   埋め込みでない枠には {egatari: …} を送らない：Player P8）→ この端末（localStorage）
 // - 出来事：started（見る人の最初の操作）・step {slideKey, stepKey, index, total, via}・completed・suspend {location, data}
 //   via "stage"：舞台で再生した（スライド・スライドと本・「スライドで見る」の重ね。本だけの並べ方では台本で読むの縮図で再生している間だけ）。
+//   舞台が本の窓に付いていっただけ（本の窓のスクロールで動いた：DECK.panes.state().fromText）の所は再生したことにしない（Player P6、spec 9873b9a）。
+//   再生したことになるのは、舞台の再生・送り・舞台のクリック・ステップへのリンクで来た所
 //   via "text"：本の窓で読んだ（その読む単位（kit/panes.js の DECK.panes.readable()）が 3 秒続けて見えていた。見えなくなったら数え直す＝読み飛ばしは数えない）
 //   舞台の step は位置が変わるたび（舞台が見えているとき）、本の step はそのステップを初めて読んだときに送る
 // - 舞台で再生したステップと読んだステップは別々に持つ。終えた判定（deck-meta.completion。なければ索引の metadata.completion）：
 //   既定は全ステップ、{visitedFraction} はその割合、{reachedEnd} は最後のステップ。played: true なら舞台で再生したものだけを数える
 // - SCORM の再開データ（cmi.suspend_data）：{"v":1,"n","h","seen","stage","text"}。seen は再生か読んだかのどちらか（包み方 §2.2 のまま）、
-//   stage・text はその内訳（同じ bitset の形）。4096 字を超えるなら内訳を省く
+//   stage・text はその内訳（同じ bitset の形。省かない：spec 9873b9a）
 // - 動画・発表者ビュー（とその中の画面）・編集のプレビュー（DECK_DEV）では何もしない。習う人のデータはファイルに書かない（format spec §9.1B）
 (function(){
 "use strict";
@@ -16,7 +18,7 @@ var DECK = window.DECK;
 var Q = new URLSearchParams(location.search);
 if (!DECK || DECK.mode === "video" || DECK.view || Q.get("presenter")) return;
 var JA = DECK.ja !== false;
-var DWELL = 3000, TICK = 500, COMMIT_GAP = 30000, SUSPEND_MAX = 4096;
+var DWELL = 3000, TICK = 500, COMMIT_GAP = 30000;
 
 // ---------------------------------------------------------------- SHA-256（同期。file:// や安全でない枠では crypto.subtle がないことがある）
 var K256 = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
@@ -93,9 +95,8 @@ function complete(){
 }
 function suspendData(){
   var seen = new Uint8Array(N); for (var j = 0; j < N; j++) seen[j] = stage[j] | text[j];
-  var d = {v: 1, n: N, h: H8, seen: packBits(seen), stage: packBits(stage), text: packBits(text)}, s = JSON.stringify(d);
-  if (s.length > SUSPEND_MAX){ delete d.stage; delete d.text; s = JSON.stringify(d); }
-  return s;
+  // 内訳（stage・text）は省かない：包み手が 3 つの bitset で 4096 字を超えうる教材を断る（包み方 §2.2）
+  return JSON.stringify({v: 1, n: N, h: H8, seen: packBits(seen), stage: packBits(stage), text: packBits(text)});
 }
 // 再開データを読む：v・n・h が今の教材と合うときだけ（合わなければ教材が変わった：使わない）。内訳がなければ seen を舞台で再生したものとする
 function restore(s){
@@ -209,8 +210,9 @@ function textShown(){
   var ps = DECK.panes && DECK.panes.state ? DECK.panes.state() : null;
   return !!ps && !ps.overlay && (ps.layout === "book" || ps.layout === "split");
 }
+var followed = false;   // 今の所は、舞台が本の窓に付いていって来ただけ
 function onStage(){
-  if (!stageShown()) return;
+  if (followed || !stageShown()) return;
   var st = DECK.state(), j = ORD[st.key];
   if (j === undefined || st.key === lastStageKey) return;
   lastStageKey = st.key;
@@ -253,7 +255,7 @@ function schedule(){ if (!tickT && document.visibilityState !== "hidden") tickT 
 // ---------------------------------------------------------------- 起動
 function notice(){
   var d = document.createElement("div"); d.id = "deck-track-notice"; d.setAttribute("role", "status");
-  d.textContent = JA ? "進行状況はもう記録されていません。記録するには、LMS から開き直してください" : "Progress is no longer being recorded. To record it, reopen the lesson from your LMS";
+  d.textContent = JA ? "進行状況を記録できなくなりました。記録するには、この教材を開いた学習サイト（LMS）から開き直してください。" : "Progress can no longer be recorded. To record it, reopen this lesson from your learning platform (LMS).";
   d.style.cssText = "position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:60;max-width:min(92vw,560px);padding:8px 14px;border-radius:8px;" +
     "background:rgba(20,20,20,.9);color:#fff;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Segoe UI',sans-serif";
   document.body.appendChild(d);
@@ -272,7 +274,14 @@ function init(){
   adapter.init();
   if (adapter.resumeAt !== null && adapter.resumeAt !== undefined){ var g = TL[adapter.resumeAt]; DECK.go(g.i, g.k, false); }
   ["pointerdown", "keydown"].forEach(function(n){ window.addEventListener(n, begin, {capture: true, passive: true}); });
-  document.addEventListener("deck:pos", function(e){ if (e.detail && e.detail.auto) begin(); onStage(); schedule(); });
+  document.addEventListener("deck:pos", function(e){
+    if (e.detail && e.detail.auto) begin();
+    var ps = DECK.panes && DECK.panes.state ? DECK.panes.state() : null, st = DECK.state();
+    // 本の窓のスクロールで舞台が動いた：再生したことにしない。同じ所で舞台が自分で動く（再生・送り）までそのまま
+    if (ps && ps.fromText){ followed = true; lastStageKey = st.key; }
+    else if (followed && (st.key !== lastStageKey || (e.detail && e.detail.auto) || (e.detail && e.detail.cause && e.detail.cause !== "seek"))) followed = false;
+    onStage(); schedule();
+  });
   new MutationObserver(function(){ lastStageKey = stageShown() ? lastStageKey : null; onStage(); schedule(); })
     .observe(document.documentElement, {attributes: true, attributeFilter: ["data-deck-layout", "class"]});
   document.addEventListener("scroll", schedule, {capture: true, passive: true});

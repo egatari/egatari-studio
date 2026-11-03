@@ -1248,7 +1248,7 @@ DECK.panes = {
   layout: function(name){ if (name && T) setLayout(SPEC_IN[name] || name, {persist: true}); return P.layout; },
   state: function(){
     return {reading: {size: P.rs.size, lh: P.rs.lh, bg: P.rs.bg}, find: P.find && !P.find.bar.hidden ? {hits: P.find.hits.length, cur: P.find.cur} : null,
-      progress: P.prog ? +P.prog.getAttribute("aria-valuenow") || 0 : null, resumed: !!P.resumeN, figure: !!P.fig,
+      progress: P.prog ? +P.prog.getAttribute("aria-valuenow") || 0 : null, resumed: !!P.resumeN, figure: !!P.fig, fromText: P.fromText,
       layout: P.layout, detached: P.detached, playing: P.playing, overlay: !!P.ov, article: HAS_ART, vertical: P.vertical,
       ratio: P.layout === "split" && P.splitStage ? P.splitStage.w / innerWidth : null,
       marked: P.marked ? (P.marked.getAttribute("data-section-id") || P.marked.getAttribute("data-step-key") || "") : null};

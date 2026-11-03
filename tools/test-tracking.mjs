@@ -303,6 +303,16 @@ async function scrollToSec(p, sel) {
   await wait(p, 200);
   ok((await tr(p)).completed === true, 'played: true — playing every step on the stage completes');
   await p.context().close();
+  // スライドと本：本の窓をスクロールすると舞台は付いていくが、それは舞台で再生したことにならない（Player P6）。読んだことにはなる
+  p = await open(PLAYED, { q: '?layout=split' });
+  await readAll(p);
+  t = await tr(p);
+  ok(t.text.length === nSteps && t.stage.join() === '0' && t.completed === false, `slides and book: the stage following the book is not played on the stage (stage ${t.stage}; ${t.text.length} read; played: true not met)`);
+  await p.evaluate(() => DECK.panes.layout('slides')); await wait(p, 200);
+  ok((await tr(p)).stage.join() === '0', 'switching to slides at a followed step does not count it as played');
+  await p.keyboard.press('ArrowRight'); await wait(p, 100);
+  ok((await tr(p)).stage.length === 2, 'stepping on the stage from there counts as played');
+  await p.context().close();
   p = await open(H, { q: '?layout=flow' });
   await readAll(p);
   ok((await tr(p)).completed === true, 'without played: reading every step completes');
@@ -387,7 +397,7 @@ f.src = 'deck.html' + location.search;
     await p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
     const note = await p.evaluate(() => { const n = document.getElementById('deck-track-notice'); return n ? n.textContent : null; });
     await c.close();
-    if (!vals.noNote) ok(/記録されていません/.test(note || ''), `back/forward cache after finishing: a notice that progress is no longer recorded (${note})`), vals.noNote = 1;
+    if (!vals.noNote) ok(note === '進行状況を記録できなくなりました。記録するには、この教材を開いた学習サイト（LMS）から開き直してください。', `back/forward cache after finishing: a notice that progress is no longer recorded (${note})`), vals.noNote = 1;
     return { calls, state, pos };
   };
   const sets = (calls, k) => calls.filter((x) => x[0] === 'LMSSetValue' && x[1] === k).map((x) => x[2]);
@@ -458,15 +468,22 @@ f.src = 'deck.html' + location.search;
   fs.writeFileSync(hostR, '<!doctype html><meta charset="utf-8"><body style="margin:0"><iframe id="f" style="width:1280px;height:720px;border:0" src="deck.html?embed=1&layout=flow#s-tr3bbb:1"></iframe>');
   const p5 = await c.newPage();
   await p5.goto(fileUrl(hostR));
-  await p5.waitForFunction(() => { const w = document.getElementById('f').contentWindow; return w.DECK && w.DECK.ready && w.DECK.tracking && w.DECK.tracking().adapter; }, null, { timeout: 15000 });
+  let fr5 = null;
+  for (let j = 0; j < 150 && !(fr5 = p5.frame({ url: /deck\.html/ })); j++) await wait(p5, 100);
+  await fr5.waitForFunction(() => window.DECK && DECK.ready && DECK.tracking && DECK.tracking().adapter, null, { timeout: 15000 });
   await wait(p5, 300);
-  const r5 = await p5.frame({ url: /deck\.html/ }).evaluate(() => ({ adapter: DECK.tracking().adapter, resumed: DECK.panes.state().resumed, notice: !!document.getElementById('deck-resume'), key: DECK.state().key }));
+  const r5 = await fr5.evaluate(() => ({ adapter: DECK.tracking().adapter, resumed: DECK.panes.state().resumed, notice: !!document.getElementById('deck-resume'), key: DECK.state().key }));
   ok(r5.adapter === 'postmessage' && !r5.resumed && !r5.notice && r5.key === `${SLIDES[1][0]}:1`, `embedded: the host's position wins over the device's resume, no notice (${JSON.stringify(r5)})`);
   await c.close();
 }
 
-// ---------------------------------------------------------------- 7. 1 ファイル：deck-meta.tracking と completion
+// ---------------------------------------------------------------- 7. 1 ファイル：deck-meta.tracking と completion。作業フォルダの組み立ても completion を書く
 {
+  const F = makeDeck('folder-completion', { completion: { reachedEnd: true, played: true } });
+  const fm = JSON.parse(/<script type="application\/json" id="deck-meta">([\s\S]*?)<\/script>/.exec(fs.readFileSync(F, 'utf8'))[1]);
+  ok(fm.completion && fm.completion.reachedEnd === true && fm.completion.played === true, `folder build (out/deck.html): deck-meta.completion from egatari.json (${JSON.stringify(fm.completion)})`);
+  const H0 = JSON.parse(/<script type="application\/json" id="deck-meta">([\s\S]*?)<\/script>/.exec(fs.readFileSync(H, 'utf8'))[1]);
+  ok(!('completion' in H0), 'without metadata.completion the folder build writes none');
   const P = makeDeck('portable', { portable: true, completion: { visitedFraction: 0.9, played: true } });
   const meta = JSON.parse(/<script type="application\/json" id="deck-meta">([\s\S]*?)<\/script>/.exec(fs.readFileSync(P, 'utf8'))[1]);
   ok(JSON.stringify(meta.tracking) === '["scorm12","postmessage","local"]', `deck-meta.tracking lists the adapters (${JSON.stringify(meta.tracking)})`);
