@@ -109,6 +109,8 @@ const nSteps = SLIDES.length * 3;
 const ords = (slide) => [slide * 3, slide * 3 + 1, slide * 3 + 2];
 const hasAll = (list, want) => want.every((j) => list.includes(j));
 const hasNone = (list, want) => want.every((j) => !list.includes(j));
+// 読んだことになるまで待つ（3 秒の後、0.5 秒ごとに見るので遅い CI では少し遅れる。8 秒まで）
+const untilRead = (p, want, ms = 8000) => p.waitForFunction((w) => w.every((j) => DECK.tracking().text.includes(j)), want, { timeout: ms }).catch(() => {});
 // 本の窓を、ある節が窓の初めに来るまでスクロールする（見る人のスクロール）
 async function scrollToSec(p, sel) {
   await p.evaluate((sel) => {
@@ -233,13 +235,13 @@ async function scrollToSec(p, sel) {
   ok((await tr(p)).adapter === 'local', 'a top-level file uses the local adapter');
   await wait(p, 1500);
   ok(hasNone((await tr(p)).text, ords(0)), 'after 1.5 s the first section is not read yet');
-  await wait(p, 2200);
+  await untilRead(p, ords(0));
   let t = await tr(p);
   ok(hasAll(t.text, ords(0)), `reading the first section for 3 s marks its slide's steps read via text (${t.text})` + (hasAll(t.text, ords(0)) ? '' : ' ' + JSON.stringify(t.reading)));
   ok(hasNone(t.stage, ords(0)), 'in the book alone nothing counts as played on the stage');
   // 2 節目を 1 秒だけ見て 4 節目へ：2 節目は読んだことにならない
   await scrollToSec(p, '[data-section-id="sec-tr3bbb"]'); await wait(p, 1000);
-  await scrollToSec(p, '[data-section-id="sec-tr5ddd"]'); await wait(p, 3700);
+  await scrollToSec(p, '[data-section-id="sec-tr5ddd"]'); await untilRead(p, ords(3));
   t = await tr(p);
   ok(hasNone(t.text, ords(1)), `scrolling past a section quickly does not mark it read (${t.text})`);
   ok(hasAll(t.text, ords(3)), 'the section where the reader stopped is read');
@@ -261,9 +263,9 @@ async function scrollToSec(p, sel) {
   // 縦書きの本：右から読み、3 秒で読んだことになる。左の節へ送って読む
   const p = await open(V, { q: '?layout=flow' });
   ok(await p.evaluate(() => DECK.panes.state().vertical), 'the kokugo book is vertical');
-  await wait(p, 3700);
+  await untilRead(p, ords(0));
   { const t0 = await tr(p); ok(hasAll(t0.text, ords(0)), 'vertical writing: the first section read after 3 s' + (hasAll(t0.text, ords(0)) ? '' : ' ' + JSON.stringify(t0.reading))); }
-  await scrollToSec(p, '[data-section-id="sec-tr4ccc"]'); await wait(p, 3700);
+  await scrollToSec(p, '[data-section-id="sec-tr4ccc"]'); await untilRead(p, ords(2));
   const t = await tr(p);
   ok(hasAll(t.text, ords(2)) && hasNone(t.text, ords(1)), `vertical writing: the section scrolled to is read, the one skipped is not (${t.text})`);
   await shot(p, '03-book-vertical');
@@ -272,7 +274,7 @@ async function scrollToSec(p, sel) {
 {
   // 台本で読む（本のない教材）：各ステップの台本の段が単位
   const p = await open(S, { q: '?layout=flow' });
-  await wait(p, 3700);
+  await untilRead(p, [0]);
   const t = await tr(p);
   ok(t.text.includes(0), `read with script: the first step's script read after 3 s (${t.text})`);
   ok(hasNone(t.text, ords(3)), 'read with script: far steps are not read');
@@ -281,7 +283,7 @@ async function scrollToSec(p, sel) {
 {
   // スライドと本：舞台は見えている（stage）、本の窓も読める（text）
   const p = await open(H, { q: '?layout=split' });
-  await wait(p, 3700);
+  await untilRead(p, ords(0));
   const t = await tr(p);
   ok(t.stage.includes(0) && hasAll(t.text, ords(0)), `slides and book: the current step via stage and the visible section via text (stage ${t.stage}, text ${t.text})`);
   await p.context().close();
@@ -289,7 +291,7 @@ async function scrollToSec(p, sel) {
 
 // ---------------------------------------------------------------- 4. 終えた判定：played・visitedFraction・reachedEnd
 {
-  const readAll = async (p) => { for (const [, sec] of SLIDES) { await scrollToSec(p, `[data-section-id="${sec}"]`); await wait(p, 3600); } };
+  const readAll = async (p) => { for (const [j, [, sec]] of SLIDES.entries()) { await scrollToSec(p, `[data-section-id="${sec}"]`); await untilRead(p, ords(j)); } };
   let p = await open(PLAYED, { q: '?layout=flow' });
   ok((await tr(p)).rule.played === true, 'played: true is read from deck-meta.completion');
   await readAll(p);
@@ -336,7 +338,8 @@ f.src = 'deck.html' + location.search;
   await p.waitForFunction(() => window.msgs.some((m) => m.egatari === 'step'), null, { timeout: 10000 });
   ok(await fr().evaluate(() => DECK.tracking().adapter) === 'postmessage', 'in a frame without a SCORM API the postMessage adapter is used');
   await fr().click('#stage', { position: { x: 200, y: 300 } });
-  await wait(p, 3800);
+  await p.waitForFunction(() => window.msgs.filter((x) => x.egatari === 'step' && x.via === 'text').length >= 3, null, { timeout: 8000 }).catch(() => {});
+  await wait(p, 300);
   const m = await p.evaluate(() => window.msgs);
   ok(m.some((x) => x.egatari === 'started'), 'started after the first user gesture');
   const s0 = m.find((x) => x.egatari === 'step' && x.via === 'stage');
@@ -427,7 +430,7 @@ f.src = 'deck.html' + location.search;
   const vs = v.calls.filter((y) => y[0] === 'LMSSetValue').map((y) => y[1]);
   ok(vs.join() === 'cmi.core.session_time,cmi.core.exit' && sets(v.calls, 'cmi.core.exit')[0] === '', `review: nothing written except at termination (${vs.join(', ')})`);
   // 読んだステップも再開データの text に入る
-  const t = await run(base, async (p) => { await p.evaluate(() => DECK.panes.layout('book')); await wait(p, 3700); });
+  const t = await run(base, async (p) => { await p.evaluate(() => DECK.panes.layout('book')); await untilRead(p, ords(0)); });
   const td = JSON.parse(sets(t.calls, 'cmi.suspend_data').pop());
   const tb = Buffer.from(td.text.replace(/-/g, '+').replace(/_/g, '/'), 'base64');
   ok(tb[0] === 0x07, `steps read in the book go into suspend_data.text (${tb[0].toString(2)})`);
