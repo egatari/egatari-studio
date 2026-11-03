@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=8e8618f74da25034 -->
+<!-- i18n: pair=video.ja.md sha256=14d544483947e603 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -60,7 +60,7 @@ node kit/build.mjs $D --portable      # or --play-only for a play-only copy for 
 | render.mjs | `clip_NNNN.mp4` (H.264 yuv420p, constant frame rate, faststart, AAC 44.1 kHz), `clip_NNNN.png` (final state), `timeline.out.json`. With `--full`, `full.mp4`; if there are two or more chapters (`sec` slides), `chapter_NN.mp4` |
 
 - NNNN is the serial number in the timeline (starting at 0). 1 step = 1 clip
-- `start_ms` / `end_ms` / `text` in `timeline.out.json` are times on the joined video (the cumulative lengths rounded to whole frames), usable for subtitles or chapter marks
+- `start_ms` / `end_ms` / `text` in `timeline.out.json` are times on the joined video (the cumulative start times rounded to whole frames), usable for subtitles or chapter marks
 
 ## Voices
 
@@ -100,4 +100,4 @@ The length of each step is decided by `DECK.timeline()` (the same for autoplay a
 
 - `pad_after` / `hold` / `lead` lengthen the step while keeping its relation to the audio. `dur` is fixed (if the audio exceeds lead + dur, the end is cut and render warns)
 - Only the motion part (anim) is captured at fps; the rest stretches a single still of the final state. Changing the length does not increase the number of frames captured
-- The audio is placed after lead seconds of silence and padded with silence up to dur. The clip length is dur rounded to 1/fps
+- The audio is placed after lead seconds of silence and padded with silence up to dur. Clip boundaries are the cumulative start times rounded to whole frames, so each clip is within one frame of its dur and the timing never drifts over many steps (a short step still gets at least one frame). Part sounds are placed at the exact cumulative time, not the rounded boundary

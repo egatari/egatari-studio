@@ -97,11 +97,19 @@ try {
     if (kind === 'print') await page.evaluate(() => window.dispatchEvent(new Event('afterprint')));
   }
   // Retiming: extension moves the .2 bell beyond its original crossing; zero note still sounds.
-  await reset(); await forward();
-  const afterZero = await voices();
+  // Sounds are scheduled ahead on the audio clock, so compare scheduled times: a bell scheduled ahead for .2 is
+  // stopped before it starts, and the bell sounds later (each bell is 3 voices, 660 Hz the lowest).
+  await reset();
+  const before = await voices(), t0 = await page.evaluate(() => performance.now() / 1000);
+  await forward();
   await page.evaluate(() => document.querySelector('m-probe')._ctx.extend(2));
-  await page.waitForTimeout(350); assert.equal(await voices(), afterZero);
-  await page.waitForFunction((n) => __sound.voices.length === n + 3, afterZero);
+  await page.waitForFunction(([n, t0]) => __sound.voices.slice(n).some((v) => v.freq === 660 && v.start >= t0 + .3), [before, t0]);
+  await page.waitForTimeout(100);
+  const bells = (await page.evaluate((n) => __sound.voices.slice(n), before)).filter((v) => v.freq === 660);
+  const sounding = bells.filter((v) => !v.stops.some((x) => x <= v.start));
+  assert.equal(sounding.length, 1, 'one bell sounds after the extension');
+  assert.ok(sounding[0].start >= t0 + .3, `the bell moved beyond .2 (${(sounding[0].start - t0).toFixed(3)} s)`);
+  assert.ok(bells.length <= 2, 'at most one bell scheduled ahead, then cancelled');
   // Keyboard-only toggle; aria-pressed mirrors the saved choice, including reload.
   const mute = page.locator('[data-b="mute"]');
   await mute.focus(); await page.keyboard.press('Space');

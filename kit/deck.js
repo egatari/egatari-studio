@@ -700,6 +700,8 @@ function ctxExtend(s, seconds, c){
   }
   if (total !== before){
     queueInputState();
+    // Events scheduled ahead were timed for the old length: drop them and cross again with the new timing.
+    soundCancelAhead(liveRun && liveRun.i === i && liveRun.k === k ? liveRun : null, elapsed);
     // A finished/manual step can start its clock again; an active clock keeps its elapsed time.
     if (!liveRun) liveRun = {i: i, k: k, base: animDur(i, k), start: performance.now(), t: 0, first: false, from: -1};
     if (liveRun.i === i && liveRun.k === k && !raf){
@@ -1520,6 +1522,9 @@ DECK.toast = function(msg){
 
 // Component sounds (§8.4): only the live clock crosses events. Drawing/seek never schedules audio.
 var soundContext = null, soundHandles = [], soundForced = false, soundResuming = false;
+// Events are scheduled a little ahead on the Web Audio clock at their exact times (not "now" when a frame passes them).
+// Each handle remembers its run and step time so that a step change, extension or pause can cancel what has not sounded.
+var SOUND_AHEAD = .25, soundClock = null, soundNext = null, autoGo = null;
 var soundMute = DECK.SoundPreferences ? DECK.SoundPreferences.createMuteSetting() : null;
 DECK.hasComponentSounds = function(){
   return !!slides && slides.some(function(s){ return s._comps.some(function(c){ return !!(c.constructor && c.constructor.sounds) || typeof c.events === "function"; }); });
@@ -1528,7 +1533,53 @@ function soundEnabled(){
   return !ASIDE && !printAside && !Q.get("presenter") && !DECK.view && (ctxMode() === "talk" || ctxMode() === "learn");
 }
 function soundStop(){
-  soundHandles.forEach(function(h){ h.handle.stop(); }); soundHandles = [];
+  soundHandles.forEach(function(h){ h.handle.stop(); }); soundHandles = []; soundNext = null;
+}
+// Stop what was scheduled ahead: run r's events after step time t, and the next step's pre-scheduled start (autoplay).
+function soundCancelAhead(r, t){
+  soundHandles = soundHandles.filter(function(h){
+    if (!(h.next || (r && h.run === r && h.t > t + 1e-9))) return true;
+    h.handle.stop(); return false;
+  });
+  soundNext = null;
+  if (r && r.soundT > t) r.soundT = t;
+}
+// performance.now() (ms) → AudioContext time (s). One mapping, renewed only when the clocks drift apart
+// (a suspended context, a long run), so that times planned on one clock keep their spacing on the other.
+function soundTime(ms){
+  var now = performance.now(), ct = soundContext.currentTime;
+  if (!soundClock || Math.abs(soundClock.ctx + (now - soundClock.perf) / 1000 - ct) > .05) soundClock = {perf: now, ctx: ct};
+  return soundClock.ctx + (ms - soundClock.perf) / 1000;
+}
+// The step's events in step time (lead, audio cues and the viewer's extension applied).
+function stepSoundEvents(i, k, base, extension){
+  var ac = compCues(i, k), lead = timing(i, k).lead || 0, events = [];
+  if (ac) ac = ac.map(function(x){ return x + lead; });
+  slides[i]._comps.forEach(function(c){
+    var kk = k - c.from + 1;
+    if (c._bad || kk < 1 || kk > c.steps || typeof c.events !== "function") return;
+    try {
+      var es = DECK.Sounds.normalize(c.events(kk)).map(function(e){ return Object.assign({}, e, {t: compRealTime(c, kk, e.t, ac)}); });
+      // Recompute from authored times, never compound the last extension. Sound durations do not stretch.
+      if (base > 0) es = DECK.Sounds.retime(es, {duration: base, extension: extension});
+      events = events.concat(es);
+    } catch (e) { reporter(c)("error", "[" + c.tagName.toLowerCase() + "] events: " + errText(e)); }
+  });
+  return events;
+}
+// Schedule events {t: step time} for a step whose t = 0 is AudioContext time `at`. Same-time events (a chord) share one call.
+// An event whose time has already passed (a late frame, a resume) sounds now, whole, without replaying an earlier tail.
+function soundPlay(events, at, run, next){
+  var now = soundContext.currentTime, groups = [];
+  DECK.Sounds.normalize(events).forEach(function(e){
+    var when = Math.max(now, at + e.t), g = groups.find(function(x){ return x.when === when; });
+    if (!g) groups.push(g = {when: when, t: e.t, events: []});
+    g.events.push(Object.assign({}, e, {t: 0}));
+  });
+  groups.forEach(function(g){
+    var end = Math.max.apply(null, g.events.map(function(e){ return e.sound === "note" ? e.dur : e.sound === "bell" ? (e.count - 1) * .6 + .95 : .82; }));
+    soundHandles.push({end: g.when + end, t: g.t, run: run, next: !!next, handle: DECK.Sounds.schedule(soundContext, g.events, g.when)});
+  });
 }
 DECK.muteSounds = function(value){
   if (soundMute && value !== undefined){ soundMute.set(value); if (soundMute.get()) soundStop(); document.dispatchEvent(new CustomEvent("deck:sounds")); }
@@ -1560,26 +1611,23 @@ function soundGesture(){
 window.addEventListener("pagehide", function(){ soundStop(); stopLoop(); });
 function soundTick(r, t){
   if (r.sounds && soundEnabled() && !soundForced && !DECK.muteSounds() && soundContext && soundContext.state === "suspended" && soundResuming) return;
-  var prev = r.soundT; r.soundT = t;
-  if (!r.sounds || !soundEnabled() || soundForced || DECK.muteSounds() || !soundContext || soundContext.state !== "running") return;
-  var ac = compCues(r.i, r.k), lead = timing(r.i, r.k).lead || 0, events = [];
-  if (ac) ac = ac.map(function(x){ return x + lead; });
-  slides[r.i]._comps.forEach(function(c){
-    var k = r.k - c.from + 1;
-    if (c._bad || k < 1 || k > c.steps || typeof c.events !== "function") return;
-    try {
-      var es = DECK.Sounds.normalize(c.events(k)).map(function(e){ return Object.assign({}, e, {t: compRealTime(c, k, e.t, ac)}); });
-      // Recompute from authored times, never compound the last extension. Sound durations do not stretch.
-      if (r.base > 0) es = DECK.Sounds.retime(es, {duration: r.base, extension: DECK.stepExtension(r.i, r.k)});
-      events = events.concat(DECK.Sounds.crossed(es, prev, t));
-    } catch (e) { reporter(c)("error", "[" + c.tagName.toLowerCase() + "] events: " + errText(e)); }
-  });
-  var now = soundContext.currentTime;
-  soundHandles = soundHandles.filter(function(h){ return h.end > now; });
-  if (!events.length) return;
-  // A delayed frame sounds all newly crossed events now, without replaying an earlier note's tail.
-  var end = Math.max.apply(null, events.map(function(e){ return e.sound === "note" ? e.dur : e.sound === "bell" ? (e.count - 1) * .6 + .95 : .82; }));
-  soundHandles.push({end: now + end, handle: DECK.Sounds.schedule(soundContext, events.map(function(e){ return Object.assign({}, e, {t: 0}); }), now)});
+  var prev = r.soundT;
+  if (!r.sounds || !soundEnabled() || soundForced || DECK.muteSounds() || !soundContext || soundContext.state !== "running"){ r.soundT = t; return; }
+  var ext = DECK.stepExtension(r.i, r.k), end = Math.max(0, r.base + ext);
+  // Crossings are (prev, horizon]: the clock's time plus a short look-ahead, never past the step's end.
+  var h = Math.max(t, Math.min(end, t + SOUND_AHEAD)), at = soundTime(r.start), now = soundContext.currentTime;
+  r.soundT = Math.max(prev, h);
+  soundHandles = soundHandles.filter(function(x){ return x.end > now; });
+  soundPlay(DECK.Sounds.crossed(stepSoundEvents(r.i, r.k, r.base, ext), prev, r.soundT), at, r, false);
+  // Autoplay: the next step starts exactly at this step's planned end, so its first events are scheduled from here.
+  var p = r.plan;
+  if (!p || !p.next) return;
+  var ends = Math.max(0, p.dur + ext), n = p.next, hn = Math.min(t + SOUND_AHEAD - ends, n.dur);
+  if (!(hn >= 0) || DECK.stepExtension(n.i, n.k)) return;
+  var prevN = soundNext && soundNext.i === n.i && soundNext.k === n.k ? soundNext.t : -1;
+  if (hn <= prevN) return;
+  soundNext = {i: n.i, k: n.k, t: hn};
+  soundPlay(DECK.Sounds.crossed(stepSoundEvents(n.i, n.k, n.dur, 0), prevN, hn), at + ends, null, true);
 }
 
 // ---------------------------------------------------------------- 実時間での再生
@@ -1612,7 +1660,15 @@ function play(i, k, animate, from, sounds){
     var segment = DECK.timeline().find(function(g){ return g.i === i && g.k === k; });
     if (segment) d = Math.max(d, segment.dur);
   }
-  liveRun = {i: i, k: k, base: d, start: performance.now(), t: 0, first: true, from: from, sounds: !!sounds, soundT: -1};
+  // Autoplay starts the step at its planned (absolute) time, so that timing errors never add up from step to step.
+  var ag = autoGo && autoGo.i === i && autoGo.k === k ? autoGo : null;
+  liveRun = {i: i, k: k, base: d, start: ag ? ag.start : performance.now(), t: 0, first: true, from: from, sounds: !!sounds, soundT: -1, plan: ag && sounds ? ag : null};
+  if (ag && sounds && soundNext && soundNext.i === i && soundNext.k === k){
+    // The previous step already scheduled this one's first events.
+    liveRun.soundT = soundNext.t;
+    soundHandles.forEach(function(h){ if (h.next){ h.next = false; h.run = liveRun; } });
+  }
+  soundNext = null;
   tickLive();
   POS.publish();
 }
@@ -1624,6 +1680,9 @@ function go(i, k, animate, stepMove){
   // Autoplay's end timer can beat the final animation frame: include its endpoint crossing.
   if (sounds && DECK.Sounds && liveRun) soundTick(liveRun, Math.min((performance.now() - liveRun.start) / 1000, Math.max(0, liveRun.base + DECK.stepExtension(liveRun.i, liveRun.k))));
   if (!sounds) soundStop();
+  // A forward step keeps the tails that already sound, but not what was scheduled ahead, unless autoplay reaches its planned next step.
+  else if (!(autoGo && autoGo.i === i && autoGo.k === k && soundNext && soundNext.i === i && soundNext.k === k))
+    soundCancelAhead(liveRun, liveRun ? Math.min((performance.now() - liveRun.start) / 1000, liveRun.soundT) : 0);
   LINKS.seen[i] = true;
   play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1, sounds);
   // 履歴の項目の state（リンクの深さ）は残し、その項目の中の今の位置（at：ブラウザの「進む」で戻る先）を書く（format spec §9.1A の「戻る」）
@@ -1649,6 +1708,9 @@ function stopAuto(){
   if (!auto) return;
   clearTimeout(auto.timer); clearTimeout(auto.atimer);
   if (audioEl){ audioEl.pause(); }
+  // The current step plays on; the next step's events scheduled ahead do not.
+  if (liveRun) liveRun.plan = null;
+  soundHandles = soundHandles.filter(function(h){ if (h.next) h.handle.stop(); return !h.next; }); soundNext = null;
   auto = null; POS.setPlaying(false); document.documentElement.classList.remove("autoplay");
   POS.publish();
 }
@@ -1666,15 +1728,24 @@ function runSeg(){
   if (audioEl) audioEl.pause();
   var g = auto.tl[auto.idx];
   if (!g){ stopAuto(); return; }
-  if (!(g.i === POS.i && g.k === POS.k && auto.started)){ var c0 = POS.cause; POS.setCause(c0 || "play"); go(g.i, g.k, true, true); POS.setCause(c0); }
+  // Step ends are on one absolute clock: autoplay's start plus the planned lengths (and extensions) of the steps before.
+  // A timer that fires late shortens the next step instead of delaying everything after it. After a long stall
+  // (a background tab throttles timers), start again from now rather than rushing through steps.
+  var now = performance.now();
+  if (auto.segStart === undefined || now - auto.segStart > 250) auto.segStart = now;
+  if (!(g.i === POS.i && g.k === POS.k && auto.started)){
+    var c0 = POS.cause; POS.setCause(c0 || "play");
+    autoGo = {i: g.i, k: g.k, start: auto.segStart, dur: g.dur, next: auto.tl[auto.idx + 1] || null};
+    try { go(g.i, g.k, true, true); } finally { autoGo = null; }
+    POS.setCause(c0);
+  }
   auto.started = true;
-  auto.segStart = performance.now();
   if (g.audio){
     if (!audioEl){
       audioEl = new Audio();
       audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); });
     }
-    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, g.lead * 1000);
+    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, Math.max(0, auto.segStart + g.lead * 1000 - performance.now()));
   }
   scheduleAutoEnd();
 }
@@ -1688,6 +1759,7 @@ function scheduleAutoEnd(){
     if (!auto) return;
     // Long extensions may exceed a browser timer's maximum delay.
     if (remaining > 2147483){ scheduleAutoEnd(); return; }
+    auto.segStart += Math.max(0, g.dur + DECK.stepExtension(g.i, g.k)) * 1000;
     auto.idx++; runSeg();
   }, Math.min(remaining * 1000, 2147483000));
 }

@@ -63,6 +63,8 @@ const steps = [
   // 部品の音（#114）：純粋な音源・通過・延長・ミュートと、動画へ続く余韻。Node だけ
   ['test-sounds', ['tools/test-sounds.mjs']],
   ['test-sounds-player', ['tools/test-sounds-player.mjs']],
+  // 音の時刻（m-score の小節ごとの自動再生）：AudioContext の予定の時刻が計画と 2 ms 以内
+  ['test-music-timing', ['tools/test-music-timing.mjs']],
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
   // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
   ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],

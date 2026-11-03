@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=1ed26b986a9a34a5 -->
+<!-- i18n: pair=video.md sha256=09c4c162b2bd968c -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -60,7 +60,7 @@ node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写し�
 | render.mjs | `clip_NNNN.mp4`（H.264 yuv420p・固定フレームレート・faststart、AAC 44.1kHz）、`clip_NNNN.png`（最終状態）、`timeline.out.json`。`--full` で `full.mp4`、章（`sec` スライド）が 2 つ以上なら `chapter_NN.mp4` |
 
 - NNNN はタイムラインの通し番号（0 始まり）。1 ステップ = 1 クリップ
-- `timeline.out.json` の `start_ms` / `end_ms` / `text` は、繋いだ動画の上の時刻（コマ数に丸めた長さの累積）。字幕やチャプターの印に使える
+- `timeline.out.json` の `start_ms` / `end_ms` / `text` は、繋いだ動画の上の時刻（累積の開始時刻をコマ数に丸めたもの）。字幕やチャプターの印に使える
 
 ## 声
 
@@ -100,4 +100,4 @@ node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写し�
 
 - `pad_after` / `hold` / `lead` は音声との関係を保って伸ばす。`dur` は固定（音声が lead + dur を超えると末尾を切り、render が警告する）
 - 動きの区間（anim）だけを fps で撮り、残りは最終状態の 1 枚を伸ばす。長さを変えても撮るコマは増えない
-- 音声は lead 秒の無音のあとに置き、dur まで無音で埋める。クリップの長さは dur を 1/fps に丸めたもの
+- 音声は lead 秒の無音のあとに置き、dur まで無音で埋める。クリップの境目は累積の開始時刻をコマに丸めたもの。どのクリップも dur と 1 コマ以内で、ステップが多くてもずれがたまらない（短いステップも 1 コマはある）。パーツの音は丸めない累積の時刻に置く

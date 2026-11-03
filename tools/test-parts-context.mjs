@@ -76,6 +76,8 @@ Object.assign(scope, {
   cancelAnimationFrame: (id) => frames.delete(id),
   setTimeout: (fn, ms) => { timers.set(++serial, { fn, ms }); return serial; },
   clearTimeout: (id) => timers.delete(id),
+  // Sound scheduling state that play()/stopAuto() read (the sound hook itself is not loaded here).
+  autoGo: null, soundNext: null, soundHandles: [], soundCancelAhead() {},
   seek(i, k, t, from, cont) {
     scope.viewerAt(i, k, !cont && scope.jump);
     scope.jump = false;
