@@ -1,0 +1,2 @@
+### Fixed
+- Part sounds in live playback stay on one grid when the audio clock falls behind for a moment (a stalled audio device callback): the player keeps the mapping from its clock to the Web Audio clock while notes are scheduled and the lag is under a second, instead of renewing it and moving every later note (seen as a uniform 124 ms shift mid-piece on a loaded macOS runner). It still renews it when the audio clock runs ahead, after a long suspension, when nothing is scheduled, and once the clock first moves after resuming. Player files change.

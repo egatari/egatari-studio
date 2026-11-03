@@ -3,7 +3,7 @@
 //   node tools/test-music-timing.mjs
 // Onsets are the times passed to OscillatorNode.start on a real AudioContext (its clock, not the wall clock).
 // Each must be within 2 ms of the plan (first onset + the measure's planned start + the note's beat), across 8 measures,
-// including across a 600 ms main-thread stall in measure 4.
+// including across a 600 ms main-thread stall in measure 4 and an audio clock that falls 124 ms behind from measure 5.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -36,11 +36,17 @@ try {
       window.__steps.push({ k: e.detail.k, at: performance.now() });
       // A stalled main thread (no frames, no timers) in the middle of measure 4, as a loaded CI runner can do:
       // notes must not depend on a frame arriving shortly before them.
+      if (e.detail.k === 5) window.__skew = .124;
       if (e.detail.k === 4 && !window.__stalled) {
         window.__stalled = true;
         setTimeout(() => { const end = performance.now() + 600; while (performance.now() < end); }, 250);
       }
     });
+    // The audio clock can fall behind performance.now() for a moment (a device callback stalls on a loaded runner):
+    // from measure 5 on, the context reports a time 124 ms behind. Notes must stay on the grid already scheduled.
+    window.__skew = 0;
+    const clock = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'currentTime');
+    Object.defineProperty(BaseAudioContext.prototype, 'currentTime', { configurable: true, get() { return clock.get.call(this) - window.__skew; } });
     const start = OscillatorNode.prototype.start, stop = OscillatorNode.prototype.stop;
     OscillatorNode.prototype.start = function (when) {
       // Each note is two voices (sine + triangle) at one time: keep one onset per time.
