@@ -26,7 +26,9 @@ let fail = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fail++; };
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-// 取り込みも同じ content 表に書く。1.x の既定と、先に取り込んだ同じ版の写しを残す。
+// 取り込みも同じ content 表に書く。1.x の既定と、先に取り込んだ同じ版の index.js は残す。ほかのファイル（README・demo など）だけが
+// カタログの間で変わったときは、per-file の sha256（manifest.json、format spec §6）から作った content hash の違いで見分けて直す
+// （「無印の版替え」のような申告には頼らない）。index.js 自体が同じ版で違えば、版を付け替えずに中身を変えた部品庫側の誤りとして断る。
 {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-parts-store-'));
   try {
@@ -35,18 +37,33 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
     fs.writeFileSync(path.join(root, 'components.lock.json'), JSON.stringify(legacy));
     const code = Buffer.from('egatariParts.define({name: "base", version: "1.0.0", requires: {}}, function(){ return {}; });\n');
     const record = { sha256: crypto.createHash('sha256').update(code).digest('hex'), kind: 'library', requires: {}, license: 'MIT' };
-    const release = (version, readme) => ({ version, tag: 'v' + version, tarballSha256: version === '2.0.0' ? 'a'.repeat(64) : 'b'.repeat(64), manifest: Buffer.from('{}'), license: Buffer.from('MIT'),
-      parts: { base: { version: '1.0.0', record, files: new Map([['index.js', code], ['README.md', Buffer.from(readme)]]) } } });
+    const tarballs = { '2.0.0': 'a', '2.0.1': 'b', '2.0.2': 'c' };
+    const release = (version, readme, { code: c = code } = {}) => ({ version, tag: 'v' + version, tarballSha256: tarballs[version].repeat(64), manifest: Buffer.from('{}'), license: Buffer.from('MIT'),
+      parts: { base: { version: '1.0.0', record: c === code ? record : { ...record, sha256: crypto.createHash('sha256').update(c).digest('hex') },
+        files: new Map([['index.js', c], ['README.md', Buffer.from(readme)]]) } } });
     applyRelease2(release('2.0.0', 'first'), { root });
     const first = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
     const dir = resolveComponent(path, root, first, 'base', '1.0.0');
     ok(dir.split(path.sep).join('/').includes('/vendor/components/sha256/') && fs.existsSync(path.join(dir, 'index.js')), '2.0 import writes content-addressed code, resolved through the shared lock');
     ok(first.components.bars.default === '1.13.1' && checkVendor2(root).length === 0, '2.0 import preserves 1.x defaults and does not apply release-wide 1.x withdrawals to library versions');
+
+    // case 1: 同じ版・同じ index.js・違う README → 直す（written ではなく refreshed。前の写しは宙に浮いたら消える）
     const second = applyRelease2(release('2.0.1', 'changed documentation'), { root });
     const next = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
-    ok(second.written.length === 0 && resolveComponent(path, root, next, 'base', '1.0.0') === dir && fs.readFileSync(path.join(dir, 'README.md'), 'utf8') === 'first', 'another catalogue keeps the original content of an already imported part version');
-    fs.appendFileSync(path.join(dir, 'README.md'), 'tampered');
+    const dir2 = resolveComponent(path, root, next, 'base', '1.0.0');
+    ok(second.written.length === 0 && eq(second.refreshed, ['base@1.0.0']), 'another catalogue with the same index.js but a changed README is reported as refreshed, not written, and not silently kept as before');
+    ok(dir2 !== dir && fs.readFileSync(path.join(dir2, 'README.md'), 'utf8') === 'changed documentation', 'the refresh moves the content pointer to the new release’s files (index.js stays byte-identical)');
+    ok(fs.readFileSync(path.join(dir2, 'index.js')).equals(code) && !fs.existsSync(dir), 'the code is unchanged and the orphaned previous copy is removed once nothing else points to it');
+    ok(checkVendor2(root).length === 0, 'the refreshed store still matches components2.lock.json and components.lock.json');
+    fs.appendFileSync(path.join(dir2, 'README.md'), 'tampered');
     ok(checkVendor2(root).some((e) => /content hash mismatch/.test(e)), '2.0 storage check covers the whole content object, including documentation');
+
+    // case 2: 同じ版・違う index.js → 断る（版を付け替えずに中身（コード）を変えた部品庫側の誤り）
+    const badCode = Buffer.from('egatariParts.define({name: "base", version: "1.0.0", requires: {}}, function(){ return {x: 1}; });\n');
+    let threw = null;
+    try { applyRelease2(release('2.0.2', 'changed documentation again', { code: badCode }), { root }); } catch (e) { threw = e; }
+    ok(threw && /base@1\.0\.0: index\.js differs/.test(threw.message), 'the same version with a different index.js is refused, not silently vendored, even though only the README also changed');
+    ok(JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8')).catalogues['2.0.2'] === undefined, 'a refused import writes nothing (no partial catalogue)');
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -148,14 +165,15 @@ const lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'
   const r3 = resolveParts(two, cat, ['m-bars', 'm-pie'], { pins: { pie: '2.1.0' } });
   const ids3 = r3.parts.map((p) => `${p.name}@${p.version}`);
   ok(ids3.includes('base@1.0.0') && ids3.includes('base@1.1.0') && ids3.indexOf('base@1.1.0') < ids3.indexOf('pie@2.1.0'), `two versions of base side by side: ${ids3.join(' ')}`);
+  const barsDefault = lock2.catalogues[cat].parts.bars;
   const r4 = resolveParts(lock2, cat, ['m-bars'], { pins: { bars: '7.0.0' } });
-  ok(r4.parts.some((p) => p.name === 'bars' && p.version === '2.0.0') && r4.warn.some((w) => /bars: version "7\.0\.0" is not in/.test(w)), 'a pin that is not vendored falls back to the catalogue with a warning');
+  ok(r4.parts.some((p) => p.name === 'bars' && p.version === barsDefault) && r4.warn.some((w) => /bars: version "7\.0\.0" is not in/.test(w)), 'a pin that is not vendored falls back to the catalogue with a warning');
   // 要素の名前は 1 つ（§6.1 Order）：同じ要素の名前を定義するパーツが 2 つ要る → conflicts（組み立ては断る）
   const three = JSON.parse(JSON.stringify(lock2));
-  three.parts.bars['2.1.0'] = { ...three.parts.bars['2.0.0'] };
+  three.parts.bars['2.1.0'] = { ...three.parts.bars[barsDefault] };
   const localB = { 'm-y': { meta: { name: 'y', version: '0.1.0', requires: { bars: '2.1.0' }, element: 'm-y' }, code: '', where: 'components/y/index.js' } };
   const r5 = resolveParts(three, cat, ['m-bars', 'm-y'], { local: localB });
-  ok(r5.conflicts.length === 1 && /<m-bars> is defined by bars@2\.0\.0 and bars@2\.1\.0/.test(r5.conflicts[0]), `two versions of one element part are a conflict (${r5.conflicts[0]})`);
+  ok(r5.conflicts.length === 1 && new RegExp(`<m-bars> is defined by bars@${barsDefault.replace(/\./g, '\\.')} and bars@2\\.1\\.0`).test(r5.conflicts[0]), `two versions of one element part are a conflict (${r5.conflicts[0]})`);
   const localC = { 'm-pie': { meta: { name: 'mypie', version: '0.1.0', requires: {}, element: 'm-pie' }, code: '', where: 'components/pie/index.js' },
     'm-z': { meta: { name: 'z', version: '0.1.0', requires: { pie: '2.0.0' }, element: 'm-z' }, code: '', where: 'components/z/index.js' } };
   const r6 = resolveParts(lock2, cat, ['m-pie', 'm-z'], { local: localC });
@@ -345,12 +363,36 @@ for (const [code, what] of [
   ok(v2 && v2.tag === 'v2.0.0' && v2.tarballSha256 === 'a6bf864ca7b4034af2125f2c8f67d51bb6671a9f7a8c543ca16d288f283bd7db' &&
     v2.manifestSha256 === 'b8e117f4e67cc292200d4fae4752a3c6a38c597a6ce951ad2e766d731503095f' &&
     ['timer', 'predict', 'flow', 'quad', 'cycle'].every((n) => v2.parts[n] === '2.0.1'), 'components 2.0.0 is pinned to the verified release (timer/predict/flow/quad/cycle 2.0.1)');
-  // 2.1.0（#142 のアイコンと札の並び・m-keyboard 2.0.1・m-orbit）：既定。配布物と manifest の sha256 は部品庫のリリースのもの
+  // 2.1.0（#142 のアイコンと札の並び・m-keyboard 2.0.1・m-orbit）：配布物と manifest の sha256 は部品庫のリリースのもの
   const v21 = lock2.catalogues['2.1.0'];
-  ok(lock2.default === '2.1.0' && v21 && v21.tag === 'v2.1.0' && v21.tarballSha256 === '53b86b055b6905b3aad26e88ab0222ab76f518c0ba4a005e6bb237b2e14760cc' &&
+  ok(v21 && v21.tag === 'v2.1.0' && v21.tarballSha256 === '53b86b055b6905b3aad26e88ab0222ab76f518c0ba4a005e6bb237b2e14760cc' &&
     v21.manifestSha256 === '38757400260bbed882befb19144d18f30147c9256bb4e3551b8f6c39529c1334' &&
     v21.parts.cards === '2.0.0' && v21.parts.icons === '1.0.0' && v21.parts.keyboard === '2.0.1' && v21.parts.orbit === '2.0.0' &&
-    lock2.parts.icons['1.0.0'].build.subset[0].match === 'name', 'components 2.1.0 is the default and pinned to the verified release (cards, icons with subset by name, keyboard 2.0.1, orbit)');
+    lock2.parts.icons['1.0.0'].build.subset[0].match === 'name', 'components 2.1.0 is pinned to the verified release (cards, icons with subset by name, keyboard 2.0.1, orbit)');
+  // 2.1.1（m-orbit 2.0.1 の直し・timer と tape の demo.html の直し。他の部品は 2.1.0 と同じ版・同じ sha256）：配布物と manifest の sha256 は部品庫のリリースのもの
+  const v211 = lock2.catalogues['2.1.1'];
+  ok(v211 && v211.tag === 'v2.1.1' && v211.tarballSha256 === '29cfc2c344ddf4b785469e8634a7f7cf31e3d307e3bcf71ec4b6ed0166b9a6a7' &&
+    v211.manifestSha256 === 'fe7d165827e4ab6226cdb0d343db07f4304134af178edf7735e3a0eed760fe1f' &&
+    v211.parts.orbit === '2.0.1' && lock2.parts.orbit['2.0.1'].sha256 === 'dbbd262ab28045a0f5e0cbec09b6068a0343668bf21e61bb02f8d0c4c1bc2ea7' &&
+    Object.keys(v211.parts).filter((n) => n !== 'orbit').every((n) => v211.parts[n] === v21.parts[n]),
+    'components 2.1.1 is pinned to the verified release (m-orbit 2.0.1 fix; every other part the same version as 2.1.0)');
+  // 2.1.2（38 の要素のパーツの監査からの直し。コードだけで、README・demo の文言・doc・static shape は変えない。m-kakijun だけ版そのまま、
+  // ほかの 37 はパッチが上がる。各パーツの sha256 は egatari/components のリリースの published.json から）：既定。配布物と manifest の
+  // sha256 は部品庫のリリースのもの
+  const v212 = lock2.catalogues['2.1.2'];
+  const LIBRARIES_212 = ['base', 'boxplot-core', 'codetree-core', 'expr', 'heatmap-core', 'hist-core', 'icons', 'kanbun-core', 'markup-reader', 'plot', 'shape'];
+  const bumped212 = Object.keys(v212.parts).filter((n) => n !== 'kakijun' && !LIBRARIES_212.includes(n));
+  ok(lock2.default === '2.1.2' && v212 && v212.tag === 'v2.1.2' && v212.tarballSha256 === '7204e2a70cfa725405bd68025976f463019f73ac9932d519ff2afa97d7d9f21e' &&
+    v212.manifestSha256 === '454c03bd99ee12b9ad84ba97cb46981508c3f276f7a808c160cfc65cec7ac517',
+    'components 2.1.2 is the default and pinned to the verified release');
+  ok(v212.parts.kakijun === v211.parts.kakijun && LIBRARIES_212.every((n) => v212.parts[n] === v211.parts[n]),
+    'm-kakijun and every library part keep the same version as 2.1.1 (unaudited / unchanged code)');
+  ok(bumped212.length === 37 && bumped212.every((n) => v212.parts[n] !== v211.parts[n]),
+    '37 element parts (every element but m-kakijun) get a new patch version in 2.1.2');
+  ok(v212.parts.hissan === '2.0.1' && lock2.parts.hissan['2.0.1'].sha256 === '46b986360d7ff3b688c071a850fed436eec264cf5c7b36ba6c7047735b15c806' &&
+    v212.parts.boxplot === '2.0.1' && lock2.parts.boxplot['2.0.1'].sha256 === '91dbe36e346e2601a70b7b80fc2c56b6bd675cd390eb2f6c55947cbdfee3545d' &&
+    v212.parts.orbit === '2.0.2' && lock2.parts.orbit['2.0.2'].sha256 === '7dbbb3852a77a1a3dcfba8c69574d2a87e6b87adbfa84f30c0359e2bae0afb2b',
+    'components 2.1.2 fixes land in the pinned code (m-hissan products past 2^53, m-boxplot quartile rounding, m-orbit lit/shadow sides; sha256 from published.json)');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
@@ -363,6 +405,8 @@ for (const [code, what] of [
 <script type="application/json">{"x": "<m-i>"}</script></body></html>`);
   ok(eq([...u.elements].sort(), ['m-a', 'm-c']) && eq([...u.defined].sort(), ['m-e', 'm-f', 'm-g']),
     `deckElements: elements outside comments, scripts and text; names the deck's scripts define (${JSON.stringify([[...u.elements], [...u.defined]])})`);
+  ok(u.legacyApi === true && deckElements('<p>DECK.el in text</p><script type="application/json">"DECK.define"</script><script>egatariParts.define({name: "a", version: "1.0.0"}, () => ({}));</script>').legacyApi === false,
+    "deckElements: legacyApi only when the deck's own code uses the player's 1.x helpers");
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8')), lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
   ok(eq(catalogueHint(lock, lock2, 'm-score'), { tag: 'm-score', catalogue: '1.x', hint: 'select2', value: '2' }), '1.x lesson, 2.x-only element: select "componentsCatalogue": "2"');
   ok(catalogueHint(lock, lock2, 'm-bars', null, '2.0.0').hint === 'pin' && catalogueHint(lock, lock2, 'm-bars', null, '1.13.0').hint === 'pin', 'a pinned element in a 1.x lesson names the pin (only asked when the pinned file is a 2.x part)');

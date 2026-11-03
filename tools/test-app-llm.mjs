@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { packKb, partsPackOpts } from '../kit/core/llm-pack.mjs';
 import { initialParts } from '../kit/core/new-deck.mjs';
+import { PARTS_GALLERY } from '../app/parts-gallery.js';
 import { clickUntil, clickDlg, clickCommand } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -207,6 +208,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     ok(JSON.stringify(await ticks()) === JSON.stringify([...initialParts([]), ...stats].sort()) && (await pk.textContent('#paste-parts-why')) === '① の使う場面が「学会の口頭発表」なので、ヒートマップ・ヒストグラム・箱ひげ図・分布の更新も選びました'
       && (await pk.textContent('#paste-parts-hint')).endsWith('表・画像・数式・図形は、選ばなくてもいつも使えます'),
       'new parts: a conference talk ticks every standard part and the statistics set, says why, and says tables, images, equations and shapes are always available');
+    const gl = await pk.$eval('#paste-parts-gallery', (a) => ({ href: a.getAttribute('href'), target: a.target, rel: a.rel, text: a.textContent }));
+    ok(gl.href === PARTS_GALLERY && gl.target === '_blank' && /noopener/.test(gl.rel) && gl.text === 'すべてのパーツのサンプルを見る',
+      'new parts: links to the samples of all parts on studio.egatari.org (absolute, new tab) ' + JSON.stringify(gl));
     const c1 = await copy();
     // 標準と統計の図で無料のプランの目安を越えるので、中核の 4 つの説明も短くなる（一覧の 1 行は残る。backlog #125）
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('| `<m-flow>` |') && !c1.includes('### `<m-flow>`') && c1.includes('### `<m-hist>`') && !c1.includes('使わない言いたいこと')
@@ -244,6 +248,11 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
     ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', parts: [...initialParts([]), ...stats].filter((t) => t !== 'm-flow' && t !== 'm-menu').sort() }),
       `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the tick changed after copying)`);
+    // 新しい教材はパーツライブラリ 2 で組む（指示のカタログと同じ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）。
+    // 新規作成は 1 ファイルとして開くので、索引は組んだカタログの版（components2.lock.json の既定）を記録し、取り出した egatari.json もその版になる
+    const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
+    ok(JSON.parse(F1['egatari.json'] || '{}').componentsCatalogue === lock2.default && !(await pk.evaluate(() => window.__APP_TEST.state().error)),
+      `new create: egatari.json selects parts library 2 (the default 2.x catalogue ${lock2.default}) and the lesson builds: ${(F1['egatari.json'] || '').slice(0, 160)}`);
     // 修正…：出力が前のシード値を持たなければ、足さない（誰も読まない属性）
     await pasteReplace(pk, replyOf(worked('kokugo', 'deck.html').replace('<title>', '<title>改 '), worked('kokugo', 'narration.md')));
     await pk.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<title>改 '); }, null, { timeout: 30000 });

@@ -847,7 +847,7 @@ export function build(env0, srcPath, opts = {}) {
   const viewerInputs = {};
   // 選んだカタログにない要素（parts2.mjs の catalogueHint。format spec §6）：集めて、最後に組まずに断る。
   // deckUse：原稿で要素として使う名前と、原稿自身の <script> が定義する名前（そちらは部品庫に求めない）
-  const deckUse = used.length ? deckElements(html) : { elements: new Set(), defined: new Set() };
+  const deckUse = used.length || /\bDECK\s*\./.test(html) ? deckElements(html) : { elements: new Set(), defined: new Set(), legacyApi: false };
   const notInCatalogue = [];
   let lock2Hint;
   const hintLock2 = () => (lock2Hint === undefined ? (lock2Hint = readLock2(env, ROOT)) : lock2Hint);
@@ -1034,6 +1034,9 @@ export function build(env0, srcPath, opts = {}) {
     const m = c && typeof c === 'object' && c.metadata && typeof c.metadata === 'object' ? c.metadata.completion : null;
     return m && typeof m === 'object' && !Array.isArray(m) ? { completion: m } : {};
   };
+  // 2.0 だけの教材は再生器の 1.x 用の土台と公開の補助（DECK.define・DECK.MotionElement・DECK.el …）を外す。ただし作業フォルダの 1.x の部品（legacy）か、
+  // 原稿自身の <script> がその補助を使うなら残す（"componentsCatalogue": "2" でも原稿の DECK.define が黙って動かなくならないように）
+  const leanPlayer = !!parts2 && !parts2.legacy.length && !deckUse.legacyApi;
   const scriptList = [
     // 通常の build の原稿の控え。持ち運べる形式は索引の archive にだけ原稿を持つ。
     !opts.runtimePrefix && narrSource.includes('{note:') ? j('studio-script-source', narrSource) : '',
@@ -1042,7 +1045,7 @@ export function build(env0, srcPath, opts = {}) {
     // マクロは原稿（macros.tex・<script type="text/x-tex-macros">）から来る。< を \u003c にして </script で抜けられないように
     needKatexJs ? `<script>${scriptSafe(read(env.katexDir, 'katex.min.js'))}\nkatex.__macros=${JSON.stringify(macros).replace(/</g, '\\u003c')};</script>` : '',
     // DECK.FORMAT：形式の識別子（kit/core/format.mjs。deck.js は形式の名前を書かずにここから読む）
-    `<script>\nwindow.DECK = window.DECK || {}; DECK.VIEWER_INPUT = ${JSON.stringify(viewerInputs)}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${parts2 && !parts2.legacy.length ? '' : scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(parts2 && !parts2.legacy.length ? playerWithoutPartBase(read(KIT, 'deck.js')) : read(KIT, 'deck.js'))}\n</script>`,
+    `<script>\nwindow.DECK = window.DECK || {}; DECK.VIEWER_INPUT = ${JSON.stringify(viewerInputs)}; DECK.FORMAT = ${JSON.stringify(RUNTIME_FORMAT_ALL).replace(/</g, '\\u003c')};\n${leanPlayer ? '' : scriptSafe(read(KIT, 'shape.js'))}\n${Object.entries(RUNTIME_MODULES).map(([f, name]) => scriptSafe(classicModule(read(KIT, f), name))).join('\n')}\n${Object.entries(RUNTIME_NAMESPACES).map(([f, name]) => scriptSafe(classicNamespace(read(KIT, f), name))).join('\n')}\n${scriptSafe(leanPlayer ? playerWithoutPartBase(read(KIT, 'deck.js')) : read(KIT, 'deck.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'presenter.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'tools.js'))}\n</script>`,
     `<script>\n${scriptSafe(read(KIT, 'panes.js'))}\n</script>`,

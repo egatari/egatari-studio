@@ -1,13 +1,16 @@
 // 新しいデッキのフォルダを、きれいな雛形から作る（npm run new）
 //   npm run new -- <folder> [--lang en|ja] [--theme name] [--title "…"]
 //   node tools/new.mjs <folder> [--lang en|ja] [--theme name] [--title "…"]
-// 作るもの：<folder>/deck.html（表紙＋見本 3 枚：段階・数式と注目の演出・部品）と <folder>/narration.md（全段階ぶん）
+// 作るもの：<folder>/deck.html（表紙＋見本 3 枚：段階・数式と注目の演出・部品）と <folder>/narration.md（全段階ぶん）と
+//   <folder>/egatari.json（"componentsCatalogue": "2"：新しい教材はパーツライブラリ 2.x で組む。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）
 // 空でないフォルダには書かない。依存なし（Node の標準だけ）。雛形の中身は kit/templates/new-deck.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { choosableOf, RETIRED } from '../kit/core/themes-list.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
+import { withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const USAGE = 'usage: npm run new -- <folder> [--lang en|ja] [--theme name] [--title "…"]';
@@ -57,6 +60,8 @@ const files = newDeckFiles({ ...opts, title });
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(path.join(dir, 'deck.html'), files['deck.html']);
 fs.writeFileSync(path.join(dir, 'narration.md'), files['narration.md']);
+// 新しい教材はパーツライブラリ 2.x で組む（AI への指示と同じカタログ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）
+fs.writeFileSync(path.join(dir, FORMAT.CONFIG_FILE), withNewLessonCatalogue(null));
 
 // ---------------------------------------------------------------- 次の手順（リポジトリの根から打つ形で出す。egatari コマンドから呼ばれたら（EGATARI_CLI）今いる場所から打つ形）
 const CLI = process.env.EGATARI_CLI;
@@ -65,7 +70,7 @@ const shown = (!relp || relp.startsWith('..') || path.isAbsolute(relp) ? dir : r
 const q = (s) => (/[^\w./-]/.test(s) ? `'${s.replace(/'/g, "'\\''")}'` : s);
 const d = q(shown + '/deck.html');
 const run = (c) => (CLI ? `${CLI} ${c}` : `npm run ${c} --`);
-console.log(`Created ${shown}/ (deck.html, narration.md; lang=${opts.lang}, theme=${opts.theme})
+console.log(`Created ${shown}/ (deck.html, narration.md, ${FORMAT.CONFIG_FILE}; lang=${opts.lang}, theme=${opts.theme})
 
 Next steps${CLI ? '' : ` (from ${ROOT})`}:
   ${run('build')} ${d}     # -> ${shown}/out/deck.html, open it in a browser

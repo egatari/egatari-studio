@@ -78,10 +78,11 @@ await t('egatari doctor：Node・uv・ffmpeg・ブラウザを出し、要るも
 
 // 一時フォルダの中に別のリポジトリ（外側の利用者のリポジトリの代わり）を作り、その中で教材を作る
 const user = path.join(proj, 'lessons');
-await t('egatari new deck（cwd から解く）：deck.html と narration.md、次の手順は egatari の形', () => {
+await t('egatari new deck（cwd から解く）：deck.html と narration.md と egatari.json（パーツライブラリ 2）、次の手順は egatari の形', () => {
   fs.mkdirSync(user, { recursive: true });
   const r = must(egatari(['new', 'deck', '--lang', 'en'], user), 'new');
   assert.ok(fs.existsSync(path.join(user, 'deck', 'deck.html')) && fs.existsSync(path.join(user, 'deck', 'narration.md')));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(user, 'deck', 'egatari.json'), 'utf8')).componentsCatalogue, '2');
   assert.match(r.stdout, /egatari build deck\/deck\.html/);
 });
 

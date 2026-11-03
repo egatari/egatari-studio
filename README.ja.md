@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=a77259bd0928d50f -->
+<!-- i18n: pair=README.md sha256=5b75cb7c2a905296 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -112,7 +112,7 @@ npm run dev -- talks/mytalk/deck.html      # ブラウザで直す
 npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」になればよい
 ```
 
-`npm run new -- <フォルダ>` は、きれいなテンプレートから `deck.html` と `narration.md` を作る（表紙と、ステップ・数式・強調・パーツの見本のスライド。台本は全ステップぶん）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` の教材は本文の字が Source Sans 3 になり、品質チェックも英語の規格になる。もっと作り込んだ見本は `examples/minimal/`。
+`npm run new -- <フォルダ>` は、きれいなテンプレートから `deck.html` と `narration.md` を作る（表紙と、ステップ・数式・強調・パーツの見本のスライド。台本は全ステップぶん）。`"componentsCatalogue": "2"` の `egatari.json` も書く：新しい教材は、チャットの AI への指示が説明するパーツライブラリ 2 で組む（その設定のないフォルダ、たとえば前からの教材は、パーツライブラリ 1 のまま）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` の教材は本文の字が Source Sans 3 になり、品質チェックも英語の規格になる。もっと作り込んだ見本は `examples/minimal/`。
 
 新しい教材のスライドにはどれも変わらない id（`<section class="slide" id="s-k3f9q2">`）があり、台本の見出しがそれを指す（`## 見出し {#s-k3f9q2}`）。見出しを直しても、台本・音声・秒数の対応は崩れない。id のない頃に作った教材は、一度 `npm run ids -- talks/mytalk` を打つ：id を付け、`narration.md`・`audio/manifest.json`・`timeline.json`・`comments.json` の鍵を付け替える（控えは `.cache/edits/`）。
 
@@ -121,7 +121,7 @@ npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」に
 npm の包み `egatari` は、同じ道具を 1 つのコマンド `egatari` にまとめたもの：
 
 ```bash
-npx egatari new mytalk --lang ja      # mytalk/deck.html と mytalk/narration.md を作る
+npx egatari new mytalk --lang ja      # mytalk/deck.html・mytalk/narration.md・mytalk/egatari.json を作る
 npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html（--portable・--play-only などの組み立ての選択肢もそのまま使える）
 npx egatari dev mytalk/deck.html      # ブラウザで直す
 npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」になればよい

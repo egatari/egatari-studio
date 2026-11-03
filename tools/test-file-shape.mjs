@@ -31,7 +31,9 @@ import { buildPortable, liveRuntimeText, nodeEnv } from '../kit/build.mjs';
 import { makeDeck } from './portable-fixtures.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { withLayoutScan } from '../kit/core/layout-scan.mjs';
-import { launch } from '../kit/browser.mjs';
+import { shareBrowser, launch } from '../kit/browser.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 // EGATARI_TEST_NO_BROWSER=1：Node の検査だけ。ブラウザを使う部分は SKIP と明記する。
 const NO_BROWSER = process.env.EGATARI_TEST_NO_BROWSER === '1';

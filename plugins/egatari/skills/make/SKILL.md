@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：bee180c0**
+**指示の版：b47ccdba**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では `/plugin update egatari@egatari`。
@@ -49,7 +49,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 書き終えたら
 
-ファイルを書けるなら、新しいフォルダに `deck.html` と `narration.md` を書く。この場合は、下の R-output の囲みの代わりにファイルで渡す。`egatari-studio:studio` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
+ファイルを書けるなら、新しいフォルダに `deck.html` と `narration.md` と、`{"componentsCatalogue": "2"}` だけの `egatari.json` を書く（新しい教材はパーツライブラリ 2 で組む。ここに出てくるパーツは 2 のもの。`egatari.json` がないと前の 1 のまま組まれ、2 だけのパーツが組み立てのエラーになる）。この場合は、下の R-output の囲みの代わりにファイルで渡す。`egatari-studio:studio` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
 
 ファイルを書けなければ、Studio の「新規作成…」に貼り付けられるように、下の R-output に従い、`deck.html` と `narration.md` の 2 つのコードの囲みを返す。
 
@@ -57,7 +57,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 # AI への指示
 
-指示の版：`bee180c0`
+指示の版：`b47ccdba`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -147,7 +147,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 3. パーツの一覧
 
-どの教材でも使える標準のパーツ。§6 の後に束の指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。
+どの教材でも使える標準のパーツ。§6 の後に束の指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。
 
 パーツは上のセットごとの参照ファイルから、必要なものだけ読む。
 

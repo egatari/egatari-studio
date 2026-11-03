@@ -450,3 +450,4 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-info{margin:0 0 6px}
 #dlg .paste-go-note{align-self:center;font-size:13px;color:var(--muted)}
 #panel .buildwarn li.go{cursor:pointer}#panel .buildwarn li.go:hover{color:var(--accent)}#panel .buildwarn .where{color:var(--muted);font-size:12px}
+#err-fix{margin-top:14px}

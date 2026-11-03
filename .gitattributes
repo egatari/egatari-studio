@@ -24,3 +24,5 @@ skills/studio/SKILL.md text eol=lf
 tools/fixtures/subset-names/** -text
 # citeproc-js の CPAL の写し（vendor/citeproc/SOURCE.json）：バイトのまま
 vendor/citeproc/** -text
+# パーツのサンプルのページを組む道具の写し（egatari/components の決まったコミット。tools/parts-gallery.mjs）：バイトのまま（SOURCE.json の sha256）
+vendor/components-gallery/** -text

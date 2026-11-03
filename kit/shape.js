@@ -12,7 +12,7 @@
 //     path：違うところ（"groups[0].value"。全体は ""）、why：type | required | anyOf | enum | minItems | maxItems | unknown
 //     expected：期待する形の短い言葉（describe）、got：実際の値の種類（gotOf）
 //   describe(schema, depth) → "[{label?: string, f?: string, …}, …]" のような短い書き方
-//   brief(schema) → 指示の部品の一覧に書く短い形（欄の名前だけ）
+//   brief(schema, conv?) → 指示の部品の一覧に書く短い形（欄の名前と型。任意の欄にも型を書く。conv は下）
 //   gotOf(value) → "object {lines}"・"string \"1.2\""・"array (3)" など
 (function(root){
 "use strict";
@@ -88,25 +88,44 @@ function lev(a, b){
   }
   return p[b.length];
 }
-// 指示の部品の一覧に書く短い形：欄の名前と、配列・object の中だけ（"{groups: [{label?, value?} (value or values), …], max?}"）
-function brief(s){
+// 指示の部品の一覧に書く短い形：どの欄にも型を書く（任意の欄も。型がないと AI が当て推量する：dash? に "dashed"、diff? に true）
+//   "{groups:[{label?:str,value?:num} (value or values),…],max?:num}"。型は短く（str・num・int・bool。指示の大きさ）、列挙は "a"|"b"、
+//   並びは T[]（型の組・列挙の並びは (…)[]）、型のない欄は any。1 つか並びの object（{…} か [{…}, …]）は object を 1 度だけ書く
+//   conv（任意）：{欄の名前: 型} の決まりの型。型がその決まりと同じ欄は名前だけ書く（指示の §3 の初めに決まりを書く。tools/make-llm-guide.mjs）。
+//   品質チェックの言葉（kit/deck.js）は conv なしで、どの欄にも型を書く
+var SHORT = {string: "str", number: "num", integer: "int", boolean: "bool"};
+function brief(s, conv){
   if (!s) return "any";
-  if (s.enum) return describe(s);
+  if (s.enum) return s.enum.map(function(x){ return JSON.stringify(x); }).join("|");
   var types = Array.isArray(s.type) ? s.type : s.type ? [s.type] : [];
-  if (types.length === 1 && types[0] === "array"){
-    if (s.items && s.minItems && s.minItems === s.maxItems) return describe(s, 2);
-    return "[" + (s.items ? brief(s.items) : "any") + ", …]";
-  }
-  if (types.length === 1 && types[0] === "object" && s.properties){
-    var P = s.properties;
-    var body = Object.keys(P).map(function(n){
-      var t = Array.isArray(P[n].type) ? P[n].type : [P[n].type];
-      var deep = t.length === 1 && ((t[0] === "array" && P[n].items && (P[n].items.properties || P[n].items.type === "array")) || (t[0] === "object" && P[n].properties));
-      return keyName(n) + (req(s, n) ? "" : "?") + (deep ? ": " + brief(P[n]) : "");
-    }).join(", ");
-    return "{" + body + "}" + (s.anyOf ? " (" + s.anyOf.map(function(x){ return (x.required || []).join(" + "); }).join(" or ") + ")" : "");
-  }
-  return describe(s, 1);
+  if (!types.length) return "any";
+  var objB = null;
+  return types.map(function(t){
+    if (t === "array"){
+      if (s.items && s.minItems && s.minItems === s.maxItems && s.minItems <= 4){
+        var one = brief(s.items, conv), a = [];
+        for (var i = 0; i < s.minItems; i++) a.push(one);
+        return "[" + a.join(",") + "]";
+      }
+      if (!s.items) return "any[]";
+      var I = s.items, it = brief(I, conv);
+      if (objB !== null && it === objB) return "[the same {…},…]";
+      // 「どれか 1 つの欄」（anyOf）のある object の並びは [{…} (f or pts),…]
+      if (I.anyOf && !I.enum) return "[" + it + ",…]";
+      var union = (I.enum && I.enum.length > 1) || (Array.isArray(I.type) && I.type.length > 1);
+      return (union ? "(" + it + ")" : it) + "[]";
+    }
+    if (t === "object"){
+      var P = s.properties;
+      if (!P || !Object.keys(P).length) return "object";
+      var body = Object.keys(P).map(function(n){
+        var b = brief(P[n], conv);
+        return keyName(n) + (req(s, n) ? "" : "?") + (conv && conv[n] === b ? "" : ":" + b);
+      }).join(",");
+      return objB = "{" + body + "}" + (s.anyOf ? " (" + s.anyOf.map(function(x){ return (x.required || []).join(" + "); }).join(" or ") + ")" : "");
+    }
+    return SHORT[t] || t;
+  }).join("|");
 }
 function req(s, n){ return (s.required || []).indexOf(n) >= 0; }
 function at(path, k){ return typeof k === "number" ? path + "[" + k + "]" : (path ? path + "." : "") + k; }

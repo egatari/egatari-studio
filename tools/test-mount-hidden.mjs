@@ -66,7 +66,9 @@ for (const [name, given] of CASES) {
   for (const [i, k] of pos) {
     for (const f of [pn, fr]) { await f.evaluate(([i, k]) => DECK.seek(i, k, Infinity), [i, k]); await settle(f); }
     let A = await pn.screenshot({ clip: CLIP }), B = await ph.screenshot({ clip: CLIP });
-    if (!A.equals(B)) { await settle(pn); await settle(fr); A = await pn.screenshot({ clip: CLIP }); B = await ph.screenshot({ clip: CLIP }); }
+    // 描き終わるまで待つ：同じ状態なら 2 つの絵は止まった同じ絵になる。ほかの段と同時に走る CI では、字や画像の描き終わりが遅れて 1 回の撮り直しでは足りなかった。
+    // 待つのは 5 秒まで（違いが残れば失敗。止まらない違いは隠さない）
+    for (const t0 = Date.now(); !A.equals(B) && Date.now() - t0 < 5000;) { await settle(pn); await settle(fr); await pn.waitForTimeout(100); A = await pn.screenshot({ clip: CLIP }); B = await ph.screenshot({ clip: CLIP }); }
     const same = A.equals(B) || await pn.evaluate(async ([a, b]) => {
       const load = (s) => new Promise((r) => { const im = new Image(); im.onload = () => r(im); im.src = 'data:image/png;base64,' + s; });
       const [ia, ib] = await Promise.all([load(a), load(b)]);

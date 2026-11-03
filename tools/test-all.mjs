@@ -1,12 +1,18 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
-//   node tools/test-all.mjs [--only 名前,名前] [--keep] [--list]
+//   node tools/test-all.mjs [--only 名前,名前] [--jobs N] [--verbose] [--list] [--help]
+//   --help：使い方を出して終わる
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-pack-catalogue（指示が出すパーツが新しい教材のカタログ 2 で組めて動く）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-audio（編集アプリのプレビューの音声）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0。npm の包み（test-npm-pack）
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
 // どれかでなければならない（どれでもなければ、走らせずに終了コード 1。新しい試験を忘れないように）
+// 同時に走らせる（backlog #156）：--jobs N（既定は CPU の数 − 1、上限 JOBS_MAX）。--jobs 1 は今までどおり表の順に 1 つずつ。
+//   N > 1 では、長い段から先に（下の HINT_S）N 本まで同時に走らせ、出力は段が終わったときにまとめて出す（CI でも混ざらない）。
+//   先頭の 40 行に「// test-all: serial」の行がある試験（時間に敏感なもの：音声・録音・自動再生・部品の時計・帯や知らせが消える時計を待つもの・時間の上限を確かめるもの）は、
+//   ほかの段がすべて終わったあと、何も同時に走らせずに表の順に 1 つずつ走らせる。
+//   同じものを書き換える段（examples/*/out・同じ作業フォルダ）は、下の after（先に終わっている段）と lock（重ならない組）で並びを決める
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,9 +21,26 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
+// 同時に走らせる段の数。ブラウザの試験は 1 本で Chromium の process をいくつも使うので、CPU が多くても JOBS_MAX まで
+const JOBS_MAX = 6;
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`usage: node tools/test-all.mjs [--only name,name] [--jobs N] [--verbose] [--list]
+  --only name,name  run only these steps (and the builds they need); "test-components" selects both shards
+  --jobs N          run up to N steps at once, longest first (default: CPUs - 1, at most ${JOBS_MAX}); steps marked
+                    "// test-all: serial" run last, one at a time. --jobs 1 runs the steps in table order
+  --verbose         stream every step's output (also when CI is set)
+  --list            print every step and its arguments, and exit
+  --help            print this and exit
+env: TEST_STEP_TIMEOUT_S (per-step cap, default 600), MOTION_TEST_ARTIFACTS (folder for screenshots and work dirs)`);
+  process.exit(0);
+}
 const oi = args.indexOf('--only');
+if (oi >= 0 && !(args[oi + 1] && !args[oi + 1].startsWith('--'))) { console.error('test-all: --only needs step names (name,name); --list prints them'); process.exit(2); }
 const only = oi >= 0 ? new Set(args[oi + 1].split(',')) : null;
 const verbose = args.includes('--verbose') || !!process.env.CI;
+const ji = args.indexOf('--jobs');
+const jobs = ji >= 0 ? Number(args[ji + 1]) : Math.max(1, Math.min(JOBS_MAX, (os.availableParallelism ? os.availableParallelism() : os.cpus().length) - 1));
+if (!Number.isInteger(jobs) || jobs < 1) { console.error('test-all: --jobs must be a whole number of 1 or more'); process.exit(2); }
 // 環境変数 MOTION_TEST_ARTIFACTS があれば、一時フォルダの代わりにそのフォルダを使う（CI が失敗時の画面を決まった場所から拾うため）。なければ従来どおり
 const tmp = process.env.MOTION_TEST_ARTIFACTS
   ? (fs.mkdirSync(process.env.MOTION_TEST_ARTIFACTS, { recursive: true }), path.resolve(process.env.MOTION_TEST_ARTIFACTS))
@@ -29,7 +52,10 @@ const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');
 // test-plugin もここで実行（配布物の環境依存の文字列・名前・生成した参照ファイル）。
 // 単体の検査（ブラウザのいらないもの）：先頭に「// test-all: unit」の行がある tools/test-*.mjs を見つける
 const MARK = /^\/\/ test-all: (unit|part of [\w-]+)/m;
-const markOf = (f) => { const m = fs.readFileSync(rel('tools', f), 'utf8').split('\n').slice(0, 40).join('\n').match(MARK); return m ? m[1] : null; };
+const head40 = (f) => fs.readFileSync(rel('tools', f), 'utf8').split('\n').slice(0, 40).join('\n');
+const markOf = (f) => { const m = head40(f).match(MARK); return m ? m[1] : null; };
+// 時間に敏感な試験の印（--jobs が 2 以上のとき、最後に 1 つずつ走らせる）。登録の印（unit・part of）とは別の行
+const SERIAL = /^\/\/ test-all: serial\b/m;
 const testFiles = fs.readdirSync(rel('tools')).filter((f) => /^test-.+\.mjs$/.test(f) && f !== 'test-all.mjs').sort();
 const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace(/\.mjs$/, ''), ['tools/' + f]]);
 const steps = [
@@ -37,6 +63,8 @@ const steps = [
   // 部品の音（#114）：純粋な音源・通過・延長・ミュートと、動画へ続く余韻。Node だけ
   ['test-sounds', ['tools/test-sounds.mjs']],
   ['test-sounds-player', ['tools/test-sounds-player.mjs']],
+  // 音の時刻（m-score の小節ごとの自動再生）：AudioContext の予定の時刻が計画と 2 ms 以内
+  ['test-music-timing', ['tools/test-music-timing.mjs']],
   // 英語と日本語の文書の組（X.md と X.ja.md）：古い訳を知らせるだけ（--strict を付けないので終了コードは 0）。CI の注記は test.yml の専用の段で出す
   // 写した仕様が日付の付いた版（wd-* のタグ）か：違っても知らせるだけ（終了コードは 0。ブランチでは普通）
   ['spec snapshot', ['tools/spec-snapshot.mjs', '--check']],
@@ -103,6 +131,8 @@ const steps = [
   // 部品庫 2.0 の受け口（format spec §6.1・§6.2・§8.4、backlog #123）：登録簿・ctx・2 段の守り・layout・印刷と縮図の entered・組み立てのときの描画と絞り込み・1.x は変わらない
   ['test-abcjs-browser', ['tools/test-abcjs-browser.mjs']],
   ['test-parts-host', ['tools/test-parts-host.mjs', path.join(tmp, 'parts-host')]],
+  // 指示が出すパーツ（標準とどの束も）が、新しい教材の既定のカタログ（パーツライブラリ 2）で組めて動く（見本ごとに組み立て・品質チェック・最後のステップまで）
+  ['test-pack-catalogue', ['tools/test-pack-catalogue.mjs', path.join(tmp, 'pack-catalogue')]],
   // 見ている人が手で変えた部品の状態（m-kobun の札など）は段階に入るたびに消え、宣言どおりの画面に戻る（format spec §8.4、contract §3）。発表者ビュー・印刷も
   ['test-step-reset', ['tools/test-step-reset.mjs', path.join(tmp, 'step-reset')]],
   // 画面を撮る共通の道具（stableCapture）：talk の操作の帯が写り込まず、読み込みの 0.5 秒後と 3 秒後で同じ絵
@@ -127,6 +157,8 @@ const steps = [
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
+  // 編集アプリのプレビューで音声が鳴ること（1 ファイル・発表者ビュー・展開したフォルダ）：時間に敏感なので test-app から分けた（serial。backlog #156）
+  ['test-app-audio', ['tools/test-app-audio.mjs', path.join(tmp, 'app-audio')]],
   // 前の版のファイル・作業フォルダ（format spec §7.1）：知らせと 2 つのボタン（前の版の Studio の URL・移し替えの手引き）、ファイルそのものの再生、編集・保存を断る、1.0 のファイルは知らせなし
   ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
   // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
@@ -226,45 +258,164 @@ if (args.includes('--list')) {
   process.exit(0);
 }
 
+// ---- 同時に走らせるときの決まり（--jobs 1 では使わない）
+// 時間の目安（秒）：長い段から先に始め、最後に長い段が 1 つだけ残らないように。windows-latest の main の CI（run 41300438072）の値。
+// 載っていない段は HINT_DEFAULT_S。目安が外れても結果は変わらない（終わる時刻が変わるだけ）
+const HINT_DEFAULT_S = 8;
+const HINT_S = {
+  'test-app': 444, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
+  'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
+  'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
+  'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35,
+  'test-check-overflow': 33, 'test-dev-server': 33, 'test-a11y': 30, 'check kokugo': 30, 'test-parts-host': 30, 'test-links': 29, 'test-config-preserve': 28,
+  'test-app-player-change': 27, 'test-bar-hint': 26, 'test-yanked': 26, 'test-llm': 26, 'test-live-results': 25, 'test-app-earlier': 24, 'test-exported-from': 24,
+  'test-controls': 24, 'test-read-aloud': 24, 'test-file-shape': 23, 'test-viewer-input-browser': 21, 'test-extlinks': 21, 'test-shape': 20, 'test-ref-voice': 20,
+  'test-colab': 17, 'test-blackout': 17, 'test-ink-comments': 16, 'check tmlr2026': 16, 'test-tools': 16, 'test-preview': 15, 'check pitch': 15, 'test-favicon': 12,
+  'test-sheet': 12, 'test-extension-versions': 10, 'test-mount-hidden': 10,
+};
+// 先に終わっていなければならない段（needs のほかに）。引数に組んだデッキ（examples/*/out/deck.html）があれば、それを組む段も自動で足す
+const after = {
+  // examples/minimal を out/ ごと写す（build minimal が書いている途中の out/deck.html を写さないように）
+  'test-live': ['build minimal'], 'test-play': ['build minimal'],
+};
+// 重ならないように走らせる組（同じ名前の組の段は同時に走らない）：同じファイルを書き換える段
+const lock = {
+  // 国語の見本：--portable は原稿のフォルダの egatari.json に docId を書くことがあり、組む・検査する段がそれを読む
+  'build kokugo': 'examples/kokugo-kanbun', 'build kokugo portable': 'examples/kokugo-kanbun', 'check kokugo': 'examples/kokugo-kanbun',
+};
+const builtBy = new Map([[MIN, 'build minimal'], [TMLR, 'build tmlr2026']]);
+const depsOf = (name, argv) => [...new Set([needs[name], ...(after[name] || []), ...argv.map((a) => builtBy.get(a))].filter(Boolean))];
+const lockOf = (name) => lock[name] || null;
+const isSerial = (name, argv) => argv.some((a) => /^tools\/test-.+\.mjs$/.test(a) && SERIAL.test(head40(a.slice('tools/'.length))));
+// 始める順の重み：自分の目安に、自分を待つ段の重みの一番大きいものを足す（短い組み立ての段が、それを待つ長い段より後回しにならないように）
+const weight = new Map();
+const hintOf = (name) => {
+  if (weight.has(name)) return weight.get(name);
+  weight.set(name, 0);   // 循環しても止まるように
+  const waiting = steps.filter(([n, argv]) => n !== name && depsOf(n, argv).includes(name)).map(([n]) => hintOf(n));
+  const w = (HINT_S[name] ?? HINT_DEFAULT_S) + Math.max(0, ...waiting);
+  weight.set(name, w);
+  return w;
+};
+
 const STEP_TIMEOUT_S = Number(process.env.TEST_STEP_TIMEOUT_S) > 0 ? Number(process.env.TEST_STEP_TIMEOUT_S) : 600;
-function run(name, argv) {
+// stream：出力をそのまま流す（--verbose・CI で、--jobs 1 のとき）。同時に走らせるときは流さず、終わってからまとめて出す
+function run(name, argv, stream = verbose) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     const ch = spawn(process.execPath, argv, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
     let out = '';
-    ch.stdout.on('data', (d) => { out += d; if (verbose) process.stdout.write(d); });
-    ch.stderr.on('data', (d) => { out += d; if (verbose) process.stderr.write(d); });
+    ch.stdout.on('data', (d) => { out += d; if (stream) process.stdout.write(d); });
+    ch.stderr.on('data', (d) => { out += d; if (stream) process.stderr.write(d); });
     // 1 つのテストが 10 分（遅い macOS の CI では TEST_STEP_TIMEOUT_S で延ばす）を超えたら止める（ブラウザが固まったとき）
     const timer = setTimeout(() => { out += `\n[test-all] timeout: killed after ${STEP_TIMEOUT_S} s\n`; ch.kill('SIGKILL'); }, STEP_TIMEOUT_S * 1000);
     ch.on('close', (code, sig) => { clearTimeout(timer); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }
+const selected = (name) => !only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, '')) || (name.startsWith('build') && [...only].some((n) => needs[n] === name));
+// 失敗したテストの出力を見せる（check は長いので、エラーの行と最後の行だけ）
+function showFailure(name, r) {
+  const lines = r.out.trimEnd().split('\n');
+  const shown = name.startsWith('check ') ? lines.filter((l) => /\[エラー\]|^■|^エラー|Error|error/.test(l)) : lines;
+  console.log(shown.slice(-80).map((l) => '    | ' + l).join('\n'));
+}
 
 const results = [];
 const byName = new Map();
-for (const [name, argv] of steps) {
-  if (only && !only.has(name) && !only.has(name.replace(/ \d+\/\d+$/, '')) && !(name.startsWith('build') && [...only].some((n) => needs[n] === name))) continue;
-  const dep = needs[name];
-  if (dep && byName.has(dep) && byName.get(dep).code !== 0) {
-    const r = { name, code: -1, out: `skipped: ${dep} failed`, sec: 0 };
-    results.push(r); byName.set(name, r); console.log(`SKIP ${name} (${dep} failed)`);
-    continue;
+const wall0 = Date.now();
+if (jobs === 1) {
+  // 今までどおり：表の順に 1 つずつ
+  for (const [name, argv] of steps) {
+    if (!selected(name)) continue;
+    const dep = needs[name];
+    if (dep && byName.has(dep) && byName.get(dep).code !== 0) {
+      const r = { name, code: -1, out: `skipped: ${dep} failed`, sec: 0 };
+      results.push(r); byName.set(name, r); console.log(`SKIP ${name} (${dep} failed)`);
+      continue;
+    }
+    const tty = !verbose && process.stdout.isTTY;
+    if (tty) process.stdout.write(`.... ${name}`);
+    else console.log(`\n==== ${name}: node ${argv.join(' ')}`);
+    const r = await run(name, argv);
+    results.push(r); byName.set(name, r);
+    const tag = r.code === 0 ? 'PASS' : 'FAIL';
+    if (tty) process.stdout.write(`\r${tag} ${name} (${r.sec.toFixed(1)} s)\n`);
+    else if (!verbose) console.log(`${tag} ${name} (${r.sec.toFixed(1)} s)`);
+    else console.log(`==== ${tag} ${name} (${r.sec.toFixed(1)} s)`);
+    if (r.code !== 0 && !verbose) showFailure(name, r);
   }
-  const tty = !verbose && process.stdout.isTTY;
-  if (tty) process.stdout.write(`.... ${name}`);
-  else console.log(`\n==== ${name}: node ${argv.join(' ')}`);
-  const r = await run(name, argv);
-  results.push(r); byName.set(name, r);
-  const tag = r.code === 0 ? 'PASS' : 'FAIL';
-  if (tty) process.stdout.write(`\r${tag} ${name} (${r.sec.toFixed(1)} s)\n`);
-  else if (!verbose) console.log(`${tag} ${name} (${r.sec.toFixed(1)} s)`);
-  else console.log(`==== ${tag} ${name} (${r.sec.toFixed(1)} s)`);
-  if (r.code !== 0 && !verbose) {
-    // 失敗したテストの出力を見せる（check は長いので、エラーの行と最後の行だけ）
-    const lines = r.out.trimEnd().split('\n');
-    const shown = name.startsWith('check ') ? lines.filter((l) => /\[エラー\]|^■|^エラー|Error|error/.test(l)) : lines;
-    console.log(shown.slice(-80).map((l) => '    | ' + l).join('\n'));
+} else {
+  // 同時に走らせる：まず時間に敏感でない段を長い順に jobs 本まで（after の段が終わり、同じ lock の段が走っていないもの）、
+  // そのあと時間に敏感な段（serial）を、何も同時に走らせずに表の順に 1 つずつ
+  const order = new Map(steps.map(([name], i) => [name, i]));
+  const todo = steps.filter(([name]) => selected(name)).map(([name, argv]) => ({ name, argv, serial: isSerial(name, argv), deps: depsOf(name, argv).filter((d) => d !== name && selected(d)) }));
+  // 時間に敏感な段を待つ段も、最後の 1 つずつの組に入れる
+  for (let more = true; more;) { more = false; for (const s of todo) if (!s.serial && s.deps.some((d) => todo.find((x) => x.name === d)?.serial)) { s.serial = true; more = true; } }
+  const parallel = todo.filter((s) => !s.serial).sort((a, b) => hintOf(b.name) - hintOf(a.name) || order.get(a.name) - order.get(b.name));
+  const serialSteps = todo.filter((s) => s.serial);
+  console.log(`test-all: ${parallel.length} steps with --jobs ${jobs} (longest first), then ${serialSteps.length} timing-sensitive steps one at a time (${os.availableParallelism ? os.availableParallelism() : os.cpus().length} CPUs, ${Math.round(os.totalmem() / 2 ** 30)} GiB)`);
+  const report = (s, r) => {
+    const tag = r.code === 0 ? 'PASS' : 'FAIL';
+    if (verbose) {
+      // 終わってから、その段の出力をまとめて（ほかの段の出力と混ざらないように）
+      console.log(`\n==== ${s.name}: node ${s.argv.join(' ')}`);
+      if (r.out) process.stdout.write(r.out.endsWith('\n') ? r.out : r.out + '\n');
+      console.log(`==== ${tag} ${s.name} (${r.sec.toFixed(1)} s)`);
+    } else {
+      console.log(`${tag} ${s.name} (${r.sec.toFixed(1)} s)`);
+      if (r.code !== 0) showFailure(s.name, r);
+    }
+  };
+  const skipIfDepFailed = (s) => {
+    const dep = needs[s.name];
+    if (!(dep && byName.has(dep) && byName.get(dep).code !== 0)) return false;
+    const r = { name: s.name, code: -1, out: `skipped: ${dep} failed`, sec: 0 };
+    results.push(r); byName.set(s.name, r); console.log(`SKIP ${s.name} (${dep} failed)`);
+    return true;
+  };
+  const running = new Map();   // 名前 → Promise
+  const held = new Set();      // 走っている段の lock
+  const pending = [...parallel];
+  while (pending.length || running.size) {
+    let started = false;
+    while (running.size < jobs) {
+      const i = pending.findIndex((s) => s.deps.every((d) => byName.has(d)) && !(lockOf(s.name) && held.has(lockOf(s.name))));
+      if (i < 0) break;
+      const [s] = pending.splice(i, 1);
+      if (skipIfDepFailed(s)) { started = true; continue; }
+      const lk = lockOf(s.name); if (lk) held.add(lk);
+      // CI では始めたことも 1 行（job ごと止められたとき、どの段が走っていたか分かるように）
+      if (verbose) console.log(`.... start ${s.name}`);
+      running.set(s.name, run(s.name, s.argv, false).then((r) => {
+        running.delete(s.name); if (lk) held.delete(lk);
+        results.push(r); byName.set(s.name, r); report(s, r);
+      }));
+      started = true;
+    }
+    if (running.size) await Promise.race(running.values());
+    else if (!started && pending.length) {
+      // 先に終わるべき段が表にない（--only で外した）など、走らせられない段が残った
+      for (const s of pending.splice(0)) { const r = { name: s.name, code: 1, out: `not run: waits for ${s.deps.filter((d) => !byName.has(d)).join(', ')}`, sec: 0 }; results.push(r); byName.set(s.name, r); report(s, r); }
+    }
   }
+  for (const s of serialSteps) {
+    if (skipIfDepFailed(s)) continue;
+    // ほかに何も走っていないので、--verbose・CI では出力をそのまま流す（固まったときに途中まで見えるように）
+    if (verbose) console.log(`\n==== ${s.name}: node ${s.argv.join(' ')}`);
+    const r = await run(s.name, s.argv, verbose);
+    results.push(r); byName.set(s.name, r);
+    if (verbose) console.log(`==== ${r.code === 0 ? 'PASS' : 'FAIL'} ${s.name} (${r.sec.toFixed(1)} s)`);
+    else report(s, r);
+  }
+  // 一覧は表の順に
+  results.sort((a, b) => order.get(a.name) - order.get(b.name));
+}
+const wall = (Date.now() - wall0) / 1000;
+// --only の名前がどの段にも当たらなかった
+if (!results.length) {
+  console.log(`test-all: no steps matched --only ${[...only || []].join(',')} (node tools/test-all.mjs --list prints the step names)`);
+  if (!process.env.MOTION_TEST_ARTIFACTS) fs.rmSync(tmp, { recursive: true, force: true });
+  process.exit(1);
 }
 
 const w = Math.max(...results.map((r) => r.name.length));
@@ -279,10 +430,12 @@ console.log('\nduration summary (slowest first)');
 const tw = Math.max(5, ...timed.map((r) => r.name.length));
 for (const r of timed) console.log(`  ${r.name.padEnd(tw)}  ${(r.sec.toFixed(1) + ' s').padStart(8)}${r.code === 0 ? '' : '  FAIL'}`);
 console.log(`  ${'total'.padEnd(tw)}  ${(total.toFixed(1) + ' s').padStart(8)}  (${(total / 60).toFixed(1)} min)`);
+// 同時に走らせたときは、かかった時間（壁の時計）も
+if (jobs > 1) console.log(`  ${'wall'.padEnd(tw)}  ${(wall.toFixed(1) + ' s').padStart(8)}  (${(wall / 60).toFixed(1)} min, --jobs ${jobs})`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   try {
     const md = [`### test-all durations (${process.platform}, node ${process.versions.node})`, '', '| test | result | seconds |', '|---|---|---:|',
-      ...timed.map((r) => `| ${r.name} | ${r.code === 0 ? 'PASS' : 'FAIL'} | ${r.sec.toFixed(1)} |`), `| **total** | | **${total.toFixed(1)}** |`, ''].join('\n');
+      ...timed.map((r) => `| ${r.name} | ${r.code === 0 ? 'PASS' : 'FAIL'} | ${r.sec.toFixed(1)} |`), `| **total** | | **${total.toFixed(1)}** |`, ...(jobs > 1 ? [`| **wall (--jobs ${jobs})** | | **${wall.toFixed(1)}** |`] : []), ''].join('\n');
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
   } catch (e) { console.log(`(could not write GITHUB_STEP_SUMMARY: ${e.message})`); }
 }
