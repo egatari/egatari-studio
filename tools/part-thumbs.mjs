@@ -12,7 +12,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { resolveComponent } from '../kit/core/components-lock.mjs';
+import { resolveCatalogueContent } from '../kit/core/components-lock.mjs';
 import { partsList } from '../kit/core/new-deck.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -32,7 +32,7 @@ const sources = listed.map((tag) => {
   const name = Object.keys(catalogue.parts).find((n) => lock2.parts[n][catalogue.parts[n]].tag === tag);
   const version = name && catalogue.parts[name];
   let dir = null;
-  try { dir = name ? resolveComponent(path, ROOT, lock, name, version) : null; } catch { dir = null; }
+  try { dir = name ? resolveCatalogueContent(path, ROOT, lock, lock2, lock2.default, name, version) : null; } catch { dir = null; }
   const demo = dir && fs.existsSync(path.join(dir, 'demo.html')) ? path.join(dir, 'demo.html') : null;
   return { tag, name, version, demo, src: demo ? createHash('sha256').update(fs.readFileSync(demo)).digest('hex').slice(0, 16) : null };
 });

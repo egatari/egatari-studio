@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=1f93c24b16cb642c -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=a9d757f4f9075213 -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -32,9 +32,9 @@ npm test -- --jobs 1     # 1 つずつ、段の表の順に
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-`npm test` はいくつかの段を同時に走らせる：`--jobs N`（既定は CPU の数 − 1、多くて 6）で長い段から始め、段ごとの出力はその段が終わったときに出す。`--jobs 1` は今までどおり 1 つずつ。時間に敏感な試験（音声・録音・自動再生・部品の時計、帯や知らせが時計で消えるのを待つもの、test-security の「すぐ断る」のような時間の上限）は先頭の近くに `// test-all: serial` の行を持ち、最後に、ほかに何も走らせずに 1 つずつ走る。実時間や CPU の時間で確かめる新しい試験にはこの行を足す。そうでなければ、決まった時間だけ待たずに状態を待つ（期限は固まったときのためだけに長めに）：CPU を分け合うと段は遅くなる。試験は、ほかの段が使う決まった場所に書かない（渡されたフォルダか `fs.mkdtempSync` を使う）。同じファイルを使う段は `tools/test-all.mjs` で並びを決める（`after`・`lock`）。
+`npm test` はいくつかの段を同時に走らせる：`--jobs N`（既定は CPU の数 − 1、多くて 6）で長い段から始め、段ごとの出力はその段が終わったときに出す。`--jobs 1` は今までどおり 1 つずつ。時間に敏感な試験（音声・録音・自動再生・部品の時計、帯や知らせが時計で消えるのを待つもの、test-security の「すぐ断る」のような時間の上限）は先頭の近くに `// test-all: serial` の行を持ち、最後に、ほかに何も走らせずに 1 つずつ走る。実時間や CPU の時間で確かめる新しい試験にはこの行を足すか、その確かめだけを小さな serial の段に分ける（test-app の音声の確かめを持つ test-app-audio のように）。子のプロセスがそれぞれブラウザを起動する（`kit/check.mjs`・`kit/abcjs-node.mjs`・`tools/sheet.mjs`）ブラウザの試験は、先に `kit/browser.mjs` の `await shareBrowser()` を呼ぶ：試験の間ブラウザを 1 つだけ起動し、引数のない `launch()` はどれもそこにつなぐ。そうでなければ、決まった時間だけ待たずに状態を待つ（期限は固まったときのためだけに長めに）：CPU を分け合うと段は遅くなる。試験は、ほかの段が使う決まった場所に書かない（渡されたフォルダか `fs.mkdtempSync` を使う）。同じファイルを使う段は `tools/test-all.mjs` で並びを決める（`after`・`lock`）。
 
-CI は push と PR ごとに Node 22 と 24（Linux）・Windows で `npm test -- --jobs 3`、macOS（3 vCPU。同時に走らせると段が遅くなり、音声の確かめが崩れた）で `npm test -- --jobs 1` を回し、3 つの OS で `node tools/clean-env.mjs`（空の `HOME`・TTS のサーバーなし）も走らせる。`node tools/test-all.mjs --list` はすべての段とその引数を出す。
+CI は push と PR ごとに Node 22 と 24（Linux）・Windows で `npm test -- --jobs 3`、macOS（3 vCPU・7 GB）で `npm test -- --jobs 2` を回し、3 つの OS で `node tools/clean-env.mjs`（空の `HOME`・TTS のサーバーなし）も走らせる。`node tools/test-all.mjs --list` はすべての段とその引数を出す。
 
 単体の試験は一覧に書かずに見つける：先頭の近くに `// test-all: unit` の行がある `tools/test-*.mjs` を引数なしで走らせる（ブラウザが要らないものに限る）。引数・組んだデッキ・決まった順番が要る試験は `tools/test-all.mjs` に段として書く。ほかの試験が読み込む試験には `// test-all: part of <段>` と書く。`tools/test-*.mjs` がどれにも当たらなければ、`npm test` は何も走らせずに失敗する（新しい試験を入れ忘れないように）。
 

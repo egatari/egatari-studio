@@ -9,7 +9,8 @@
 //   写し：vendor/components/sha256 と components2.lock.json が合っている（tools/components2-update.mjs --check と同じ）
 //   選んだカタログにない要素（#165）：deckElements（要素として使う名前・原稿の <script> が定義する名前）と catalogueHint（どこにあるか・直し方）。登録簿は再生器の代わりの受けを置き換える
 import fs from 'node:fs';
-import { resolveComponent } from '../kit/core/components-lock.mjs';
+import { resolveComponent, resolveCatalogueContent } from '../kit/core/components-lock.mjs';
+import { identityBytes } from '../kit/core/identity-hash.mjs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
@@ -27,8 +28,9 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fail++;
 const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // 取り込みも同じ content 表に書く。1.x の既定と、先に取り込んだ同じ版の index.js は残す。ほかのファイル（README・demo など）だけが
-// カタログの間で変わったときは、per-file の sha256（manifest.json、format spec §6）から作った content hash の違いで見分けて直す
-// （「無印の版替え」のような申告には頼らない）。index.js 自体が同じ版で違えば、版を付け替えずに中身を変えた部品庫側の誤りとして断る。
+// カタログの間で変わったときは、per-file の sha256（manifest.json、format spec §6）から作った content hash の違いで見分け、新しいカタログに
+// 新しい写しを置く。前のカタログは前のリリースのバイトのまま（components2.lock.json の catalogues.<版>.content）。版の写し
+// （components.lock.json の content.<版>：組み立てが index.js を読む）は変えない。index.js 自体が同じ版で違えば、部品庫側の誤りとして断る。
 {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-parts-store-'));
   try {
@@ -36,34 +38,104 @@ const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
       components: { bars: { default: '1.13.1', versions: ['1.13.1'], sha256: { '1.13.1': '1'.repeat(64) }, content: { '1.13.1': '2'.repeat(64) } } } };
     fs.writeFileSync(path.join(root, 'components.lock.json'), JSON.stringify(legacy));
     const code = Buffer.from('egatariParts.define({name: "base", version: "1.0.0", requires: {}}, function(){ return {}; });\n');
-    const record = { sha256: crypto.createHash('sha256').update(code).digest('hex'), kind: 'library', requires: {}, license: 'MIT' };
+    const h = (b) => crypto.createHash('sha256').update(b).digest('hex');
+    const record = { sha256: h(code), kind: 'library', requires: {}, license: 'MIT' };
     const tarballs = { '2.0.0': 'a', '2.0.1': 'b', '2.0.2': 'c' };
-    const release = (version, readme, { code: c = code } = {}) => ({ version, tag: 'v' + version, tarballSha256: tarballs[version].repeat(64), manifest: Buffer.from('{}'), license: Buffer.from('MIT'),
-      parts: { base: { version: '1.0.0', record: c === code ? record : { ...record, sha256: crypto.createHash('sha256').update(c).digest('hex') },
-        files: new Map([['index.js', c], ['README.md', Buffer.from(readme)]]) } } });
+    const release = (version, readme, { code: c = code } = {}) => {
+      const files = new Map([['index.js', c], ['README.md', Buffer.from(readme)]]);
+      // manifest の files：各ファイルの同一性の sha256（checkVendor2 がカタログの写しと照らす）
+      const manifest = Buffer.from(JSON.stringify({ version, files: Object.fromEntries([...files].map(([f, b]) => [`base/${f}`, h(b)])) }));
+      return { version, tag: 'v' + version, tarballSha256: tarballs[version].repeat(64), manifest, license: Buffer.from('MIT'),
+        parts: { base: { version: '1.0.0', record: c === code ? record : { ...record, sha256: h(c) }, files } } };
+    };
+    const lockOf = () => JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
+    const lock2Of = () => JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8'));
+    const readme = (cv) => fs.readFileSync(path.join(resolveCatalogueContent(path, root, lockOf(), lock2Of(), cv, 'base'), 'README.md'), 'utf8');
     applyRelease2(release('2.0.0', 'first'), { root });
-    const first = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
+    const first = lockOf();
     const dir = resolveComponent(path, root, first, 'base', '1.0.0');
     ok(dir.split(path.sep).join('/').includes('/vendor/components/sha256/') && fs.existsSync(path.join(dir, 'index.js')), '2.0 import writes content-addressed code, resolved through the shared lock');
     ok(first.components.bars.default === '1.13.1' && checkVendor2(root).length === 0, '2.0 import preserves 1.x defaults and does not apply release-wide 1.x withdrawals to library versions');
+    ok(lock2Of().catalogues['2.0.0'].content.base === first.components.base.content['1.0.0'], 'the catalogue records the content of each part (catalogues.<version>.content)');
 
-    // case 1: 同じ版・同じ index.js・違う README → 直す（written ではなく refreshed。前の写しは宙に浮いたら消える）
+    // case 1: 同じ版・同じ index.js・違う README → 新しいカタログに新しい写し（written ではなく refreshed）。前のカタログは前のバイトのまま
     const second = applyRelease2(release('2.0.1', 'changed documentation'), { root });
-    const next = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8'));
-    const dir2 = resolveComponent(path, root, next, 'base', '1.0.0');
-    ok(second.written.length === 0 && eq(second.refreshed, ['base@1.0.0']), 'another catalogue with the same index.js but a changed README is reported as refreshed, not written, and not silently kept as before');
-    ok(dir2 !== dir && fs.readFileSync(path.join(dir2, 'README.md'), 'utf8') === 'changed documentation', 'the refresh moves the content pointer to the new release’s files (index.js stays byte-identical)');
-    ok(fs.readFileSync(path.join(dir2, 'index.js')).equals(code) && !fs.existsSync(dir), 'the code is unchanged and the orphaned previous copy is removed once nothing else points to it');
-    ok(checkVendor2(root).length === 0, 'the refreshed store still matches components2.lock.json and components.lock.json');
+    const next = lockOf();
+    ok(second.written.length === 0 && eq(second.refreshed, ['base@1.0.0']), 'another catalogue with the same index.js but a changed README is reported as refreshed, not written');
+    ok(readme('2.0.1') === 'changed documentation' && readme('2.0.0') === 'first', 'the new catalogue resolves the new README; the older catalogue still resolves its own release’s README');
+    ok(eq(next.components.base, first.components.base) && resolveComponent(path, root, next, 'base', '1.0.0') === dir && fs.existsSync(dir),
+      'components.lock.json keeps the version’s content (the code the build reads and records stays where it was) and the older copy is kept');
+    const dir2 = resolveCatalogueContent(path, root, next, lock2Of(), '2.0.1', 'base');
+    ok(dir2 !== dir && fs.readFileSync(path.join(dir2, 'index.js')).equals(code), 'both copies hold the same index.js');
+    ok(checkVendor2(root).length === 0, 'the store still matches components2.lock.json, components.lock.json and each catalogue’s manifest');
+    // 取り直し（同じリリースをもう一度）は何も変えない
+    const before = fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8');
+    applyRelease2(release('2.0.0', 'first'), { root });
+    ok(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8') === before, 'importing an imported release again changes nothing');
     fs.appendFileSync(path.join(dir2, 'README.md'), 'tampered');
-    ok(checkVendor2(root).some((e) => /content hash mismatch/.test(e)), '2.0 storage check covers the whole content object, including documentation');
+    ok(checkVendor2(root).some((e) => /2\.0\.1: base@1\.0\.0: content hash mismatch/.test(e)), 'the storage check covers each catalogue’s whole content object, including documentation');
+    fs.writeFileSync(path.join(dir2, 'README.md'), 'changed documentation');
+    // カタログの写しと manifest の files が違えば言う（写しと記録した hash が一緒に書き替わっていても）
+    const m1 = path.join(root, 'vendor', 'components-2', 'manifest-2.0.1.json');
+    const lk = lock2Of();
+    lk.catalogues['2.0.1'].content.base = lk.catalogues['2.0.0'].content.base;
+    fs.writeFileSync(path.join(root, 'components2.lock.json'), JSON.stringify(lk));
+    ok(checkVendor2(root).some((e) => /catalogue 2\.0\.1: base\/README\.md does not match manifest-2\.0\.1\.json/.test(e)), 'a catalogue pointing at another release’s bytes is reported against its manifest');
+    fs.writeFileSync(path.join(root, 'components2.lock.json'), before);
+    ok(fs.existsSync(m1) && checkVendor2(root).length === 0, 'restored');
+    // content のない古い固定：版の写しに戻る（1.x の components.lock.json だけを読む人・前の Studio の固定）
+    const old2 = lock2Of();
+    for (const c of Object.values(old2.catalogues)) delete c.content;
+    ok(lock2Problems(old2).length === 0 && resolveCatalogueContent(path, root, next, old2, '2.0.1', 'base') === dir, 'a lock without catalogue content is valid and resolves the version’s content');
+    ok(resolveCatalogueContent(path, root, next, lock2Of(), '2.0.1', 'base', '9.9.9') === null && resolveCatalogueContent(path, root, next, lock2Of(), '9.9.9', 'base') === null,
+      'an unknown version or catalogue resolves nothing');
+    const badLock = lock2Of(); badLock.catalogues['2.0.0'].content = { base: 'x', extra: '0'.repeat(64) };
+    ok(lock2Problems(badLock).some((x) => /content\.base is not a sha256/.test(x)) && lock2Problems(badLock).some((x) => /content\.extra is not a part/.test(x)), 'lock2Problems checks catalogue content');
 
     // case 2: 同じ版・違う index.js → 断る（版を付け替えずに中身（コード）を変えた部品庫側の誤り）
     const badCode = Buffer.from('egatariParts.define({name: "base", version: "1.0.0", requires: {}}, function(){ return {x: 1}; });\n');
     let threw = null;
     try { applyRelease2(release('2.0.2', 'changed documentation again', { code: badCode }), { root }); } catch (e) { threw = e; }
     ok(threw && /base@1\.0\.0: index\.js differs/.test(threw.message), 'the same version with a different index.js is refused, not silently vendored, even though only the README also changed');
-    ok(JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8')).catalogues['2.0.2'] === undefined, 'a refused import writes nothing (no partial catalogue)');
+    ok(lock2Of().catalogues['2.0.2'] === undefined, 'a refused import writes nothing (no partial catalogue)');
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+}
+
+// 取り込んだカタログに、README だけ直した新しいリリース（2.2.0 の形）を足しても、前のカタログはどれも前のバイトのまま
+// （写しの複製に、2.1.2 の写しから作ったリリースを当てる。boxplot-core・shape の README だけを変え、版はそのまま）
+{
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-parts-refresh-'));
+  try {
+    for (const f of ['components.lock.json', 'components2.lock.json']) fs.copyFileSync(path.join(ROOT, f), path.join(root, f));
+    fs.cpSync(path.join(ROOT, 'vendor', 'components'), path.join(root, 'vendor', 'components'), { recursive: true });
+    fs.cpSync(path.join(ROOT, 'vendor', 'components-2'), path.join(root, 'vendor', 'components-2'), { recursive: true });
+    const lockA = JSON.parse(fs.readFileSync(path.join(root, 'components.lock.json'), 'utf8')), lockA2 = JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8'));
+    const lock1Bytes = fs.readFileSync(path.join(root, 'components.lock.json'));
+    const resolvedAll = () => Object.fromEntries(Object.entries(lockA2.catalogues).flatMap(([cv, c]) => Object.keys(c.parts).map((n) => [`${cv}/${n}`, resolveCatalogueContent(path, root, lockA, JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8')), cv, n)])));
+    const was = resolvedAll();
+    const m212 = JSON.parse(fs.readFileSync(path.join(root, 'vendor', 'components-2', 'manifest-2.1.2.json'), 'utf8'));
+    const cat = lockA2.catalogues['2.1.2'], parts = {}, mfiles = {};
+    for (const [name, v] of Object.entries(cat.parts)) {
+      const d = resolveCatalogueContent(path, root, lockA, lockA2, '2.1.2', name);
+      const files = new Map();
+      const walk = (rel) => { for (const e of fs.readdirSync(path.join(d, rel), { withFileTypes: true })) { const r = rel ? `${rel}/${e.name}` : e.name; if (e.isDirectory()) walk(r); else files.set(r, fs.readFileSync(path.join(d, r))); } };
+      walk('');
+      if (name === 'boxplot-core' || name === 'shape') files.set('README.md', Buffer.concat([files.get('README.md'), Buffer.from('\nA documentation fix in 2.2.0.\n')]));
+      for (const [f, b] of files) mfiles[`${name}/${f}`] = crypto.createHash('sha256').update(identityBytes(`${name}/${f}`, b)).digest('hex');
+      parts[name] = { version: v, record: lockA2.parts[name][v], files };
+    }
+    const manifest = Buffer.from(JSON.stringify({ ...m212, version: '2.2.0', tag: 'v2.2.0', files: mfiles }, null, 2));
+    const r = applyRelease2({ version: '2.2.0', tag: 'v2.2.0', tarballSha256: 'f'.repeat(64), manifest, license: fs.readFileSync(path.join(root, 'vendor', 'components-2', 'LICENSE')), parts }, { root });
+    ok(eq(r.refreshed.sort(), ['boxplot-core@1.0.0', 'shape@1.0.0']) && r.written.length === 0, `a README-only release is reported as refreshed (${r.refreshed.join(', ')})`);
+    const now = resolvedAll();
+    const moved = Object.keys(was).filter((k) => was[k] !== now[k]);
+    ok(moved.length === 0, `every older catalogue resolves the same folders as before (${Object.keys(was).length} parts in ${Object.keys(lockA2.catalogues).length} catalogues)${moved.length ? ': moved ' + moved.join(', ') : ''}`);
+    ok(fs.readFileSync(path.join(root, 'components.lock.json')).equals(lock1Bytes), 'components.lock.json is byte-for-byte unchanged (the build reads and records the same code paths)');
+    const lockB2 = JSON.parse(fs.readFileSync(path.join(root, 'components2.lock.json'), 'utf8'));
+    ok(/A documentation fix in 2\.2\.0/.test(fs.readFileSync(path.join(resolveCatalogueContent(path, root, lockA, lockB2, '2.2.0', 'boxplot-core'), 'README.md'), 'utf8')) &&
+      !/A documentation fix/.test(fs.readFileSync(path.join(resolveCatalogueContent(path, root, lockA, lockB2, '2.1.2', 'boxplot-core'), 'README.md'), 'utf8')), 'the new catalogue resolves the new README; 2.1.2 keeps its own');
+    const e = checkVendor2(root);
+    ok(e.length === 0, `every catalogue, old and new, matches its own manifest after the import${e.length ? ': ' + e.slice(0, 5).join('; ') : ''}`);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 }
 
@@ -357,6 +429,20 @@ for (const [code, what] of [
 {
   const e = checkVendor2(ROOT);
   ok(e.length === 0, `content-addressed parts match components2.lock.json${e.length ? ': ' + e.join('; ') : ''}`);
+  // カタログごとに、引いた写しのファイルがそのリリースの manifest の files（各ファイルの同一性の sha256）とちょうど同じ
+  for (const cv of Object.keys(lock2.catalogues).sort()) {
+    const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${cv}.json`), 'utf8'));
+    const bad = [], got = new Set();
+    for (const [name, v] of Object.entries(lock2.catalogues[cv].parts)) {
+      const d = resolveCatalogueContent(path, ROOT, contentLock, lock2, cv, name);
+      const walk = (rel) => { for (const x of fs.readdirSync(path.join(d, rel), { withFileTypes: true })) { const r = rel ? `${rel}/${x.name}` : x.name; if (x.isDirectory()) walk(r); else got.add(`${name}/${r}`); } };
+      walk('');
+      if (m.components[name].version !== v) bad.push(`${name}@${v} is ${m.components[name].version} in the manifest`);
+    }
+    for (const f of got) if (!m.files[f] || crypto.createHash('sha256').update(identityBytes(f, fs.readFileSync(path.join(resolveCatalogueContent(path, ROOT, contentLock, lock2, cv, f.split('/')[0]), ...f.split('/').slice(1))))).digest('hex') !== m.files[f]) bad.push(f);
+    for (const f of Object.keys(m.files)) if (f !== 'LICENSE' && !got.has(f)) bad.push(`${f} missing`);
+    ok(bad.length === 0, `catalogue ${cv}: every resolved file matches manifest-${cv}.json (${got.size} files)${bad.length ? ': ' + bad.slice(0, 8).join(', ') : ''}`);
+  }
   const rc = lock2.catalogues['2.0.0-rc.1'];
   ok(rc && rc.tarballSha256 === 'efc672e96c1842834eff4c1fcc3603bc2efa4ce4076768b4e27ad6df7a69cf1c' && rc.tag === 'v2.0.0-rc.1', 'components 2.0.0-rc.1 is pinned to the verified tarball');
   const v2 = lock2.catalogues['2.0.0'];

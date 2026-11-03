@@ -23,7 +23,7 @@ import { pathToFileURL, fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { encodeWav } from '../kit/core/wav-core.mjs';
-import { collectVideoEvents, videoSoundEvents, renderStepSounds } from './sounds.mjs';
+import { collectVideoEvents, videoSoundEvents, renderStepSounds, frameStarts } from './sounds.mjs';
 
 const RENDER_VERSION = 5;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
 const CACHE_FILE = '.render-cache.json';
@@ -84,8 +84,8 @@ function audioFile(src, htmlUrl, tmp, idx) {
 
 // 1 段階を mp4 にする。frames: 動きの区間のコマ（PNG のパス）、final: 最終状態の PNG
 // offset：音声の符号化の遅れ（format spec §5.2 startOffset）。その秒数を先頭から切ってから lead だけ遅らせる
-function encodeClip({ frames, final, audio, sounds, dur, lead, offset = 0, fps, out }) {
-  const N = Math.max(1, Math.round(dur * fps));           // 全体のコマ数（固定フレームレート）
+// N：クリップのコマ数（固定フレームレート。frameStarts の境目の差）
+function encodeClip({ frames, final, audio, sounds, N, lead, offset = 0, fps, out }) {
   const nA = Math.min(frames.length, N);
   const nH = N - nA;
   const args = [];
@@ -206,18 +206,20 @@ async function main() {
     };
 
     const segsOut = [];
+    // 境目のコマは累積の時刻から決める（段階ごとに丸めると、短い段階が続く曲でずれがたまる）
+    const starts = frameStarts(tl, o.fps);
     let made = 0, skipped = 0, clipT = 0;   // clipT：ここまでのコマ数
     for (let n = 0; n < tl.length; n++) {
       const s = tl[n];
       const stepKey = s.key.slice(s.slideKey.length + 1);
       const turns = (narration[s.slideKey] || {})[stepKey] || [];
       const clip = `clip_${pad4(n)}`;
-      const N = Math.max(1, Math.round(s.dur * o.fps));
+      const N = starts[n + 1] - starts[n];
       const rec = {
         index: n, clip: `${clip}.mp4`, still: `${clip}.png`, key: s.key, slideKey: s.slideKey, stepKey, i: s.i, k: s.k,
         title: s.title, chapter: s.chapter, start: +s.start.toFixed(3), dur: +s.dur.toFixed(3), anim: +s.anim.toFixed(3),
         lead: s.lead, audioDur: s.audioDur, audioOffset: s.audioOffset || 0,
-        // 実際のクリップの長さ（コマ数に丸めたもの）。繋いだ動画の上の時刻はこちらで数える
+        // 実際のクリップの長さ（累積の時刻をコマに丸めた境目の差）。繋いだ動画の上の時刻はこちらで数える
         frames: N, clipDur: +(N / o.fps).toFixed(6), clipStart: +(clipT / o.fps).toFixed(6),
         start_ms: Math.round(clipT / o.fps * 1000), end_ms: Math.round((clipT + N) / o.fps * 1000),
         transcript: turns, text: turns.map((t) => t.text).join(' '),
@@ -269,7 +271,7 @@ async function main() {
           fs.writeFileSync(sounds, encodeWav(pcm, 44100));
         }
       }
-      encodeClip({ frames, final, audio, sounds, dur: s.dur, lead: s.lead, offset: s.audioOffset || 0, fps: o.fps, out: mp4 });
+      encodeClip({ frames, final, audio, sounds, N, lead: s.lead, offset: s.audioOffset || 0, fps: o.fps, out: mp4 });
       fs.copyFileSync(final, png);
       cache.clips[clip] = { key: s.key, input, hash };
       saveCache();

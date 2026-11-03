@@ -17,11 +17,13 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { launch, fileUrl } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { build } from '../kit/build.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { withLayoutScan, CLIP_ATTR, ANNOT_ATTR } from '../kit/core/layout-scan.mjs';
 import { MESSAGES, message } from '../kit/check-messages.mjs';
+// ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
+await shareBrowser();
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-check-overflow-'));
