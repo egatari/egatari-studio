@@ -494,17 +494,17 @@ for (const [code, what] of [
   const bumped220 = Object.keys(v220.parts).filter((n) => !LIBRARIES_220.includes(n));
   ok(lock2.default === '2.2.0' && v220 && v220.tag === 'v2.2.0' && v220.tarballSha256 === 'abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2' &&
     v220.manifestSha256 === '26b3e9b50956ac0f70f6f132cf2af2de0de3d684f3df8c2181b6c2eb4d878ec1',
-    'CANDIDATE components 2.2.0 is the default and pinned to the tarball verified here (not yet a components release)');
+    'components 2.2.0 (release tag v2.2.0) is the default and pinned to its tarball');
   ok(LIBRARIES_220.every((n) => v220.parts[n] === v212.parts[n]),
-    'the 8 untouched library parts keep their 2.1.2 version in the 2.2.0 candidate (README-only refresh, index.js unchanged)');
+    'the 8 untouched library parts keep their 2.1.2 version in components 2.2.0 (README-only refresh, index.js unchanged)');
   ok(bumped220.length === 41 && bumped220.every((n) => v220.parts[n] !== v212.parts[n]) && v220.parts.kakijun === '2.0.1' && v220.parts.kakijun !== v212.parts.kakijun,
-    'CANDIDATE 2.2.0: 41 parts get a new version, m-kakijun included this time (base 1.1.0 requires it everywhere)');
+    'components 2.2.0: 41 parts get a new version, m-kakijun included this time (base 1.1.0 requires it everywhere)');
   ok(v220.parts.base === '1.1.0' && lock2.parts.base['1.1.0'].sha256 === '1a2d752bfea7b9c23871a46a77afd3585d71a9b041c078135195eccc0b347f85' &&
     v220.parts.kakijun === '2.0.1' && lock2.parts.kakijun['2.0.1'].sha256 === '5560e0b72fb55f574165d7bc915b511897a830ca7c6d0b7a06d61aed3bfae5f1',
-    'CANDIDATE 2.2.0: base 1.1.0 (measured sub/superscript width, 24px floor) and m-kakijun 2.0.1 land in the pinned code (sha256 from the tarball; unchanged across every README-only rebuild)');
+    'components 2.2.0: base 1.1.0 (measured sub/superscript width, 24px floor) and m-kakijun 2.0.1 land in the pinned code (sha256 from the tarball; unchanged across every README-only rebuild)');
   ok(v220.parts.base === '1.1.0' && v220.parts['markup-reader'] === '1.0.1' && v220.parts.plot === '1.0.1' &&
     v220.parts.score === '2.1.0' && lock2.parts.score['2.1.0'].requires.base === '1.1.0',
-    'CANDIDATE 2.2.0: base 1.1.0 / markup-reader 1.0.1 / plot 1.0.1 bump together; m-score 2.1.0 adds per-step (by="measure") and requires both');
+    'components 2.2.0: base 1.1.0 / markup-reader 1.0.1 / plot 1.0.1 bump together; m-score 2.1.0 adds per-step (by="measure") and requires both');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
