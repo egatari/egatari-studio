@@ -49,7 +49,7 @@ for (const p of market.plugins) {
 for (const dir of ['kit', 'vendor', 'themes']) assert.ok(fs.statSync(path.join(ROOT, dir)).isDirectory());
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari')).sort(), ['.claude-plugin', 'skills']);
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari/skills')), ['make']);
-assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')), ['studio']);
+assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')).sort(), ['motion-components', 'motion-slides', 'motion-slides-video', 'studio']); // motion-* は旧名の移動のお知らせ（1 版だけ）
 for (const dir of ['make', 'parts', 'video']) assert.ok(!fs.existsSync(path.join(ROOT, 'skills', dir)));
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'parts.md', 'video.md']);
 for (const [f, name, triggers] of [
