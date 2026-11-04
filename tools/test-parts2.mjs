@@ -492,9 +492,9 @@ for (const [code, what] of [
   const v220 = lock2.catalogues['2.2.0'];
   const LIBRARIES_220 = ['boxplot-core', 'codetree-core', 'expr', 'heatmap-core', 'hist-core', 'icons', 'kanbun-core', 'shape'];
   const bumped220 = Object.keys(v220.parts).filter((n) => !LIBRARIES_220.includes(n));
-  ok(lock2.default === '2.2.0' && v220 && v220.tag === 'v2.2.0' && v220.tarballSha256 === 'abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2' &&
+  ok(v220 && v220.tag === 'v2.2.0' && v220.tarballSha256 === 'abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2' &&
     v220.manifestSha256 === '26b3e9b50956ac0f70f6f132cf2af2de0de3d684f3df8c2181b6c2eb4d878ec1',
-    'components 2.2.0 (release tag v2.2.0) is the default and pinned to its tarball');
+    'components 2.2.0 (release tag v2.2.0) is pinned to its tarball');
   ok(LIBRARIES_220.every((n) => v220.parts[n] === v212.parts[n]),
     'the 8 untouched library parts keep their 2.1.2 version in components 2.2.0 (README-only refresh, index.js unchanged)');
   ok(bumped220.length === 41 && bumped220.every((n) => v220.parts[n] !== v212.parts[n]) && v220.parts.kakijun === '2.0.1' && v220.parts.kakijun !== v212.parts.kakijun,
@@ -505,6 +505,20 @@ for (const [code, what] of [
   ok(v220.parts.base === '1.1.0' && v220.parts['markup-reader'] === '1.0.1' && v220.parts.plot === '1.0.1' &&
     v220.parts.score === '2.1.0' && lock2.parts.score['2.1.0'].requires.base === '1.1.0',
     'components 2.2.0: base 1.1.0 / markup-reader 1.0.1 / plot 1.0.1 bump together; m-score 2.1.0 adds per-step (by="measure") and requires both');
+  // 候補 2.3.0（components 側はまだタグ・リリースなし。branch c2-base c427e76）：どのパーツの版も変わらない。版を上げずに変わったのは
+  // icons 1.0.0（README と、アイコンの名前の言葉 en.json・ja.json が新しく入る。編集アプリのアイコンの検索が使う）と
+  // m-predict 2.0.3（README：学ぶ人 → 学習者）だけで、どちらも index.js はそのまま（refreshed）。manifest・tarball の sha256 は manifest.json のもの
+  const v230 = lock2.catalogues['2.3.0'];
+  ok(lock2.default === '2.3.0' && v230 && v230.tag === 'v2.3.0' && v230.tarballSha256 === '7bd57223747243c3effaafa87c3db6d4ecf3f1fcfd6c2a45dc58c29fbd7d447a' &&
+    v230.manifestSha256 === 'd761f845e6bf7f98193a896e10177e7f154480352b64fd1c682dcbe2cda64397',
+    'CANDIDATE components 2.3.0 is the default and pinned to the tarball verified here (not yet a components release)');
+  ok(Object.keys(v230.parts).length === Object.keys(v220.parts).length && Object.keys(v220.parts).every((n) => v230.parts[n] === v220.parts[n]),
+    'CANDIDATE 2.3.0: no part version changes from 2.2.0');
+  const changed230 = Object.keys(v230.content).filter((n) => v230.content[n] !== v220.content[n]).sort();
+  ok(changed230.join() === 'icons,predict', `CANDIDATE 2.3.0: only icons@1.0.0 and predict@2.0.3 change without a version bump (${changed230.join(', ')})`);
+  const iconsDir = path.join(ROOT, 'vendor', 'components', 'sha256', v230.content.icons);
+  ok(['en.json', 'ja.json'].every((f) => fs.existsSync(path.join(iconsDir, f))) && ['en.json', 'ja.json'].every((f) => !fs.existsSync(path.join(ROOT, 'vendor', 'components', 'sha256', v220.content.icons, f))),
+    'CANDIDATE 2.3.0: icons 1.0.0 brings en.json and ja.json (icon words for the editor\'s icon search); the 2.2.0 copy has none');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

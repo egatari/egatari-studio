@@ -54,6 +54,25 @@ await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験�
   assert.deepEqual(bad, []);
 });
 
+// アイコンの名前の言葉（icons/en.json・ja.json、部品庫 2.3.0 から。合わせて約 580 KB）は編集アプリのアイコンの検索だけが使い、
+// 組み立て・dev・check（CLI）は読まない。リポジトリとサイトには残し、包みからは外す（package.json の files の "!vendor/components/sha256/*/en.json"・ja.json）
+await t('npm pack：icons の en.json・ja.json は入らず、icons の index.js は入る（リポジトリには残る）', () => {
+  const files = new Set(packed.files.map((f) => f.path));
+  const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
+  const iconDirs = new Set(Object.values(lock2.catalogues).map((c) => c.content && c.content.icons).filter(Boolean));
+  let withWords = 0;
+  for (const h of iconDirs) {
+    const dir = `vendor/components/sha256/${h}`;
+    assert.ok(files.has(`${dir}/index.js`), 'missing ' + dir + '/index.js');
+    for (const f of ['en.json', 'ja.json']) {
+      if (fs.existsSync(path.join(ROOT, dir, f))) withWords++;
+      assert.ok(!files.has(`${dir}/${f}`), `${dir}/${f} should not be in the npm package`);
+    }
+  }
+  assert.ok(withWords >= 2, 'the repository should keep icons/en.json and ja.json (from components 2.3.0)');
+  assert.deepEqual([...files].filter((f) => /^vendor\/components\/sha256\/[^/]+\/(en|ja)\.json$/.test(f)), []);
+});
+
 await t('npm install <tarball>：入れたものに @fontsource はなく、字は写しから', () => {
   fs.mkdirSync(proj, { recursive: true });
   fs.writeFileSync(path.join(proj, 'package.json'), JSON.stringify({ name: 'egatari-pack-test', version: '0.0.0', private: true }, null, 2));
