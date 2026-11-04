@@ -194,10 +194,12 @@ for (const [label, file] of [['bare-element theme', H.deck], ['default theme', D
   }
 }
 // 縦書きの本の表は天付き（作者、2026-11-04）
-const vAlign = (al, tag) => {
-  ok(Math.abs(al.tableTop) <= 1 && Math.abs(al.capTop) <= 1, `${tag}: the table and its caption start at the column top (table ${al.tableTop.toFixed(1)}px, caption ${al.capTop.toFixed(1)}px)`);
-  ok(al.cap === 'start' && al.td === 'start' && Math.abs(al.bodyStart) <= 1, `${tag}: the caption and body cells are start-aligned (${al.cap}, ${al.td}; a cell's text starts ${al.bodyStart.toFixed(1)}px below its padding)`);
-  ok(al.th === 'center' && al.label === 'center' && Math.abs(al.thSkew) <= 1.5 && Math.abs(al.labelSkew) <= 1.5, `${tag}: header cells and the bold first column are centred (${al.th}, ${al.label}; skew ${al.thSkew.toFixed(1)}, ${al.labelSkew.toFixed(1)}px)`);
+// glyphs: false：単独の本の頁は字を埋め込まない（ブラウザの字を使う）。CJK の字のない機械（CI の Linux）では字の外形が測れないので、置き方（表の上の端）と
+// 計算した text-align だけを見る。字の位置は、字を埋め込む教材の本の窓（book・split・WebKit）で見る
+const vAlign = (al, tag, { glyphs = true } = {}) => {
+  ok(Math.abs(al.tableTop) <= 1 && (!glyphs || Math.abs(al.capTop) <= 1), `${tag}: the table${glyphs ? ' and its caption' : ''} start${glyphs ? '' : 's'} at the column top (table ${al.tableTop.toFixed(1)}px${glyphs ? `, caption ${al.capTop.toFixed(1)}px` : ''})`);
+  ok(al.cap === 'start' && al.td === 'start' && (!glyphs || Math.abs(al.bodyStart) <= 1), `${tag}: the caption and body cells are start-aligned (${al.cap}, ${al.td}${glyphs ? `; a cell's text starts ${al.bodyStart.toFixed(1)}px below its padding` : ''})`);
+  ok(al.th === 'center' && al.label === 'center' && (!glyphs || (Math.abs(al.thSkew) <= 1.5 && Math.abs(al.labelSkew) <= 1.5)), `${tag}: header cells and the bold first column are centred (${al.th}, ${al.label}${glyphs ? `; skew ${al.thSkew.toFixed(1)}, ${al.labelSkew.toFixed(1)}px` : ''})`);
 };
 // ---------------------------------------------------------------- 2. 縦書きの本の表
 for (const lay of ['book', 'split']) {
@@ -219,7 +221,7 @@ for (const lay of ['book', 'split']) {
   const p = await open(browser, V.page);
   const m = await p.evaluate(measure);
   ok(m.shopWm === 'vertical-rl' && m.rowsRightToLeft && m.longWm === 'horizontal-tb', 'vertical standalone page: the table is vertical, first row on the right; horizontal class stays horizontal');
-  vAlign(await p.evaluate(tableAlign), 'vertical standalone page');
+  vAlign(await p.evaluate(tableAlign), 'vertical standalone page', { glyphs: false });
   await p.emulateMedia({ media: 'print' });
   const pr = await p.evaluate(measure);
   ok(pr.shopWm === 'vertical-rl' && pr.rowsRightToLeft && pr.longWm === 'horizontal-tb', 'vertical standalone page, print: the table stays vertical');
