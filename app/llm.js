@@ -188,7 +188,7 @@ const TX = {
     idProblems: 'id を付けられないスライドがあります（品質チェックの結果を見てください）',
     unsavedNote: '保存するまでファイルには書いていません',
     fix: 'AI への修正依頼をコピー', fixTitle: 'AI への修正依頼',
-    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今のスライドと台本'} をコピーしました。同じチャットに貼り付けて送り、AI の出力は「修正…」の ③ に貼り付けます`,
+    fixLead: (kb, n, partial) => `コピーしました（${kb} KB。指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今のスライドと台本'}）。同じチャットに貼り付けて送り、AI の出力は「修正…」の ③ に貼り付けます`,
     fixCopyFailed: '自動ではコピーできませんでした。下の文字を選んでコピーしてください',
     copyCutOff: 'AI に送り直しを頼む指示をコピー', cutOffCopied: 'コピーしました。チャットに貼り付けて送り、AI の出力をここに貼り付けてください',
     fixNone: '直す問題はありません', pasteReply: 'AI の出力を貼り付ける…', close: '閉じる',
@@ -331,7 +331,7 @@ const TX = {
     idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
     fix: 'Copy a fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current slides and script'}. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
+    fixLead: (kb, n, partial) => `Copied (${kb} KB: ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current slides and script'}). Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
     copyCutOff: 'Copy instructions to resend', cutOffCopied: 'Copied. Paste it into the chat and send, then paste the AI’s output here.',
     fixNone: 'No problems to fix.', pasteReply: 'Paste the AI’s output…', close: 'Close',
@@ -1330,13 +1330,17 @@ export function setupLlm(app) {
     if (!probs.length) { toast(X.fixNone); return; }
     const { deck, narration } = await readDeck();
     const req = buildFixRequest({ problems: probs, deck, narration, lang: LANG });
-    const area = el('textarea', { id: 'fix-text', readonly: '', rows: '12', spellcheck: 'false' });
+    const area = el('textarea', { id: 'fix-text', readonly: '', rows: '12', spellcheck: 'false', 'aria-label': X.fixTitle });
     area.value = req.text;
-    const ok = await copyText(req.text, area);
+    // 知らせ：新規作成の ④ と同じ（コピーしました（N KB）…。だめなら字の欄を選んで、自分でコピーしてもらう）
+    const lead = el('p', { id: 'fix-lead', role: 'status' });
+    const say = (ok) => { lead.textContent = ok ? X.fixLead(kb(req.text), probs.length, req.partial) : X.fixCopyFailed; };
+    say(await copyText(req.text, area));
+    // ［修正依頼をコピー］：何度でも写し直せる（開いた後に別のものをコピーしたとき）。修正… の ② と同じボタン
+    const copy = el('button', { type: 'button', id: 'fix-copy', cls: 'pri', text: X.copyRevise, onclick: async () => { lead.textContent = ''; say(await copyText(req.text, area)); } });
     // 窓を開いた後に頭を見せる（窓が字の欄にフォーカスを移すと、終わりへ送られることがある）
     setTimeout(() => { try { area.setSelectionRange(0, 0); area.scrollTop = 0; } catch { /* 無視 */ } }, 0);
-    const v = await ask({ title: X.fixTitle, kind: 'paste', body: [
-      el('p', { id: 'fix-lead', text: ok ? X.fixLead(probs.length, req.partial) : X.fixCopyFailed }), area],
+    const v = await ask({ title: X.fixTitle, kind: 'paste', body: [el('div', { cls: 'paste-guide' }, [copy]), lead, area],
       buttons: [{ id: 'cancel', label: X.close }, { id: 'paste', label: X.pasteReply, pri: true }] });
     if (v === 'paste') await aiDialog('replace', { results, focusPaste: true });
   }

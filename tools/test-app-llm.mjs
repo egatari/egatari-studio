@@ -163,7 +163,17 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(req.includes('## Components used in this deck') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
   ok((await clip()) === req, 'llm: the fix request is on the clipboard');
   ok(/narration \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req), 'llm: the fix request quotes the orphan narration lines');
-  ok(/^Copied \d+ finding\(s\), their standards and the current slides and script\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\.$/.test(await page.textContent('#fix-lead')), 'llm: the fix request dialog says where the output goes: ' + await page.textContent('#fix-lead'));
+  const leadRe = new RegExp(`^Copied \\(${packKb(req).replace('.', '\\.')} KB: \\d+ finding\\(s\\), their standards and the current slides and script\\)\\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\\.$`);
+  ok(leadRe.test(await page.textContent('#fix-lead')) && (await page.getAttribute('#fix-lead', 'role')) === 'status', 'llm: the fix request dialog says the size and where the output goes: ' + await page.textContent('#fix-lead'));
+  // ［Copy the fix request］：本文の横の主ボタン。クリップボードが上書きされても何度でも写し直せる
+  ok(await page.isVisible('#dlg[open] #fix-copy') && (await page.textContent('#fix-copy')) === 'Copy the fix request' && await page.$eval('#fix-copy', (b) => b.classList.contains('pri')), 'llm: the fix request dialog has a primary “Copy the fix request” button');
+  for (const round of [1, 2]) {
+    await page.evaluate(() => navigator.clipboard.writeText('something else').catch(() => {}));
+    await page.evaluate(() => { window.__APP_TEST.lastCopy = null; document.getElementById('fix-lead').textContent = ''; });
+    await page.click('#fix-copy');
+    await page.waitForFunction(() => window.__APP_TEST.lastCopy && document.getElementById('fix-lead').textContent);
+    ok((await page.evaluate(() => window.__APP_TEST.lastCopy)) === req && (await clip()) === req && leadRe.test(await page.textContent('#fix-lead')), `llm: “Copy the fix request” copies the request again (round ${round})`);
+  }
   await shot('fix-request.png');
   F = await files();
   const sid = F['deck.html'].match(/<section class="slide" id="(s-[a-z2-7]{6})">\s*<h2>新しい仕分け/)[1];
@@ -379,6 +389,19 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     ok(/^The browser quality checker \(size, length, missing script, color contrast\)\.( |$)/.test(note0) && /“Copy a fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
       'llm quality check: with no results, the note says the fix request button appears when there are errors: ' + note0);
 
+    // ② の［コピー］は主ボタンで、何度でも写し直せる（クリップボードが上書きされた後に［変更］で開き直して、もう一度）。新規作成の ④ と同じ
+    const copyAgain = async (want, label, what) => {
+      ok(await p.$eval('#paste-copy-guide', (b) => b.classList.contains('pri')) && (await p.textContent('#paste-copy-guide')) === label, `llm ${what}: step 2 has the primary “${label}” button`);
+      for (const round of [1, 2]) {
+        await p.evaluate(() => navigator.clipboard.writeText('something else').catch(() => {}));
+        await p.evaluate(() => { const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
+        await p.click('#paste-change2');
+        await p.click('#paste-copy-guide');
+        await p.waitForFunction(() => /^Copied \(\d+(\.\d)? KB/.test(document.getElementById('paste-copied').textContent), null, { timeout: 20000 });
+        const again = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
+        ok(again === want, `llm ${what}: “${label}” copies the same text again after the clipboard was overwritten (round ${round})`);
+      }
+    };
     // ---------------------------------------------------------------- 5c. 修正…：① 直してほしいこと・開いているメモ（comments.json）が修正依頼に入る。直すことがなければそう言う
     await openRevise(p, '#paste-wish');
     ok((await p.textContent('#dlg-title')) === 'Revise' && /^Write what to change to make a fix request/.test(await p.textContent('#ai-howto')) && !(await p.$('#dlg-body input[type=radio]')),
@@ -402,6 +425,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     const rev = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
     ok(rev.includes('## What I want changed\n\nMake the second slide shorter') && rev.includes('## Open notes (comments)') && rev.includes('“3 か月”: Use a bar chart here') && !rev.includes('Already done') && rev.includes('````deck.html') && /1 comment\(s\)/.test(await p.textContent('#paste-copied')),
       'llm revise: the fix request has what to change, the open notes (not resolved ones) and the current files');
+    await copyAgain(rev, 'Copy the fix request', 'revise');
     if (shotDir) await p.screenshot({ path: path.join(shotDir, 'revise.png') });
     await clickDlg(p, '#dlg-cancel');
 
@@ -430,6 +454,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       && insReq.includes(other(0)) && !insReq.includes(other(1)) && !insReq.includes(other(2)) && !insReq.includes('Instructions for the AI') && insReq.length < D3.length,
       `llm insert: the request asks for the next 2 slides after slide 1 with only the heading list and that slide (not the whole deck; ${insReq.length} vs ${D3.length} characters)`);
     ok((await p.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await p.isVisible('#paste-deck') && await p.isHidden('#paste-copy-guide'), 'llm insert: copying opens step 3 (the paste fields) and folds step 2');
+    await copyAgain(insReq, 'Copy the instructions', 'insert');
     await p.click('#paste-change2');
     await p.check('#paste-with-pack');
     ok(await p.isVisible('#paste-pack-parts'), 'llm insert: ticking “Send to a different chat” shows the subjects');
