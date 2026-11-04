@@ -55,7 +55,7 @@ export const KOKORO_GLUE_URL = `${KOKORO_ORT}ort-wasm-simd-threaded.jsep.mjs`;
 export const KOKORO_WASM_URL = `${KOKORO_ORT}ort-wasm-simd-threaded.jsep.wasm`;
 export const KOKORO_REPO = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 export const KOKORO_REV = '1939ad2a8e416c0acfeecc08a694d14ef25f2231';
-export const KOKORO_BYTES = 325532232 + 3497 + 113 + 44 + 2 * 522240;   // model.onnx・tokenizer・config と声 2 つ（kokoro-js は声を main から取る）
+export const KOKORO_BYTES = 325532232 + 3497 + 113 + 44 + 2 * 522240;   // model.onnx・tokenizer・config と声 2 つ（KOKORO_FILES の大きさと同じ。試験が比べる）
 export const kokoroModel = () => `Kokoro-82M-v1.0 onnx fp32 (${KOKORO_REPO}@${KOKORO_REV.slice(0, 12)})`;
 
 // ---------------------------------------------------------------- 中身の固定（Subresource Integrity）
@@ -75,6 +75,106 @@ export const SRI = Object.freeze({
   [KOKORO_GLUE_URL]: 'sha384-7GJqH5vc83Yt7VHwrMXTM8bNCrt/e/8eCtok8zlB2u5dwqmhzSakzCkQWrfYGRN4',
   [KOKORO_WASM_URL]: 'sha384-u/bDsx39c+wt0LbHmOCydxt4fyiig3118hQgOTfOvrfkgScM4hRo2IwTtlxyoI02',
 });
+// Kokoro の重み・設定・声：kokoro-js 1.2.1 は revision を先に渡さず、transformers.js も声も …/resolve/main/… を取る。
+// そこで Kokoro の repo への要求をこのページで受け（kokoroFetch）、KOKORO_REV の URL で取り直し、下の表の sha256 と大きさで確かめてから
+// バイトを渡す（WebAssembly の wasmBinary と同じ考え）。表にないファイル・ほかの版の要求は取りに行かずに断る（404）。キャッシュ（transformers-cache・kokoro-voices）に
+// 残っているものも、読み込みの前に表と比べ、合わなければ消す（verifyKokoroCaches）。表は HF の LFS の oid（sha256）とも一致を確かめた
+export const KOKORO_BASE = `https://huggingface.co/${KOKORO_REPO}/resolve/${KOKORO_REV}/`;
+export const KOKORO_FILES = Object.freeze({
+  'config.json': ['sha256-3zS0+TCyNEfNTcQQ+r+0LrPyToA+bD+X1hj7NZOAo28=', 44],
+  'tokenizer.json': ['sha256-d6AsjhZEEymbS0xAOxT44OHBtyfbTUagnWMnuGEGCjQ=', 3497],
+  'tokenizer_config.json': ['sha256-vhywZtbvawdLPxXmpt0hrIj/PNrt8yXwqu1obHD3XSA=', 113],
+  'onnx/model.onnx': ['sha256-j76lHqcR8q84LojIM9niiMbcgs5emEIephwFjOIaNMs=', 325532232],
+  'voices/af_heart.bin': ['sha256-1YPM/zzcovf65TXLmYrAfp/LkPCXN7mkH6JzTsRKjws=', 522240],
+  'voices/af_alloy.bin': ['sha256-xKa4dgR/1/tHLt9OvWPPrHw7lYp8rnwQbo8DjKYwjEU=', 522240],
+  'voices/af_aoede.bin': ['sha256-SgBMM0MHYuJGHu2yAT+tgI70qzEh9TAPVUR2yvWNg2E=', 522240],
+  'voices/af_bella.bin': ['sha256-9p2DYgm3jrjGbnXjzaSR4m6oOKNnQlfp1OVwPLr1XIs=', 522240],
+  'voices/af_jessica.bin': ['sha256-okCl48FbQ1Y9bpI73KjvVhOiNHHZt3ZTaUASQ13yO9g=', 522240],
+  'voices/af_kore.bin': ['sha256-m+UiG2qUHAS1YZWbj/CwboCURNzEq351p7I2BvaRgZ4=', 522240],
+  'voices/af_nicole.bin': ['sha256-zSGRqzG5FO17MYQWsORED985LdrZEGoGCBmqYApk9Zo=', 522240],
+  'voices/af_nova.bin': ['sha256-GHeCcsqg0O666iUcNf1jXwOENPnu5eaR0CoXS9MoQU8=', 522240],
+  'voices/af_river.bin': ['sha256-AKK8+CsdhujxmQLt5YxlzPbA5DtEt9dPrVTl2JM8nDA=', 522240],
+  'voices/af_sarah.bin': ['sha256-RAn7wSWvq6zGFdlNtTmNhHAGpzewJH1okrepoAB6Lwo=', 522240],
+  'voices/af_sky.bin': ['sha256-RDUlXJdE8/MWWeDXFKt2ib9l2ed+wczgYPCDkSYU8Lk=', 522240],
+  'voices/am_adam.bin': ['sha256-FisDXtkc/Ei2BGmCGExkX3LtzdG4KEM0f2Bde/exVxY=', 522240],
+  'voices/am_echo.bin': ['sha256-OWi5LDxM0cRBbb3tNsE+qjiKkNV4jQKhPk14H1+M88M=', 522240],
+  'voices/am_eric.bin': ['sha256-6LW+F+3R42NpAc51mLqv4tyN2P9wegwjv55GGt1+KDI=', 522240],
+  'voices/am_fenrir.bin': ['sha256-wnmJ90H37jTSc6OdillcwIN9NfXO2aKbfMFiYUYW30M=', 522240],
+  'voices/am_liam.bin': ['sha256-UkA74y/QR8akRRfLC81rE08qGLqnPnDvQWUeDquSGt4=', 522240],
+  'voices/am_michael.bin': ['sha256-HR8h3Y2jnDBwXNTHXQOdJl6bxKKpPtCbyeGxIl65W6E=', 522240],
+  'voices/am_onyx.bin': ['sha256-2l0TW0JBZJFtdaaP+0wqvOPX1czILdHubPRHzihhReY=', 522240],
+  'voices/am_puck.bin': ['sha256-/Pc8mJAz6SM+C5hxPspgDIx03MFhSzcAnVRQ/0oidKA=', 522240],
+  'voices/am_santa.bin': ['sha256-YRUM9yarbF7XqZ+QowT5H1pywAxZLonslOXfEcMZIno=', 522240],
+  'voices/bf_alice.bin': ['sha256-CK+muiTaYepejvoTnlqtyTjYPwptpakAra92OsHaVXM=', 522240],
+  'voices/bf_emma.bin': ['sha256-Zp/gZH+d0E/KuS8UOaQO60yLSrH4LkmW/j2RjOSmO3M=', 522240],
+  'voices/bf_isabella.bin': ['sha256-N1Q1LEqqRtF/J2VKt1GNZbYq1hY6D1Wl9DMMLaLE6U8=', 522240],
+  'voices/bf_lily.bin': ['sha256-Xg7jLr5kpGcSSXaxTmlZB0bxxM5BoStYelDIYu3+ozU=', 522240],
+  'voices/bm_daniel.bin': ['sha256-azGUu87/t0ZzPLwiyPWT3UTkAacdU4laLcqJG8WVoeg=', 522240],
+  'voices/bm_fable.bin': ['sha256-+IkIMZaAe0rbFekgQlIWX1A7jTPTmC5oHFJEPEnXmPE=', 522240],
+  'voices/bm_george.bin': ['sha256-xLI1pMHyzTuTn+0IuJnOk4Vji3Y/e3OllhbE/JvWybw=', 522240],
+  'voices/bm_lewis.bin': ['sha256-uPZxzvgoww5m/fCwdWp2u6WPa7M5jLvycFhkKsvO25c=', 522240],
+});
+const KOKORO_URL_RE = new RegExp(`^https://huggingface\\.co/${KOKORO_REPO.replace(/[.]/g, '\\.')}/resolve/([^/]+)/([^?#]+)(?:[?#].*)?$`);
+// Kokoro の repo の URL → 表のファイルの名前（main か KOKORO_REV のときだけ）。repo の外の URL は undefined、repo の中で固定できないものは null
+export function kokoroPath(url) {
+  if (!String(url).startsWith(`https://huggingface.co/${KOKORO_REPO}/`)) return undefined;
+  const m = KOKORO_URL_RE.exec(String(url));
+  if (!m || (m[1] !== 'main' && m[1] !== KOKORO_REV)) return null;
+  const f = decodeURIComponent(m[2]);
+  return Object.hasOwn(KOKORO_FILES, f) ? f : null;
+}
+const b64 = (buf) => { let s = ''; const u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000)); return btoa(s); };
+export async function sha256Sri(buf) { return 'sha256-' + b64(await crypto.subtle.digest('SHA-256', buf)); }
+// 表のファイルを固定の版から取り、大きさと sha256 を確かめる → ArrayBuffer。onBytes(読んだ合計, 全体)：進み具合
+export async function fetchKokoroFile(f, { onBytes = () => {}, fetchImpl = globalThis.fetch } = {}) {
+  const [sri, size] = KOKORO_FILES[f] || [];
+  if (!sri) throw new Error(`${f}: not a pinned Kokoro file`);
+  const res = await fetchImpl.call(globalThis, KOKORO_BASE + f, { mode: 'cors', credentials: 'omit', cache: 'no-store' });
+  if (!res.ok) throw new Error(`${f}: HTTP ${res.status}`);
+  const buf = new Uint8Array(size);
+  let off = 0;
+  if (res.body) {
+    const reader = res.body.getReader();
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (off + value.byteLength > size) throw new Error(`${f}: larger than the pinned ${size} bytes`);
+      buf.set(value, off); off += value.byteLength; onBytes(off, size);
+    }
+  } else { const a = new Uint8Array(await res.arrayBuffer()); if (a.byteLength > size) throw new Error(`${f}: larger than the pinned ${size} bytes`); buf.set(a); off = a.byteLength; onBytes(off, size); }
+  if (off !== size) throw new Error(`${f}: ${off} bytes (pinned ${size}); the download was cut`);
+  if ((await sha256Sri(buf)) !== sri) throw new Error(`${f}: the content does not match the pinned sha256 (${KOKORO_REV.slice(0, 12)})`);
+  return buf.buffer;
+}
+// kokoro-js（と中の transformers.js）が使う fetch：Kokoro の repo の要求は固定の版で取り直して確かめ、ほかはそのまま
+export function kokoroFetch(base, onProgress = () => {}) {
+  return async (input, init) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input && input.url;
+    const f = kokoroPath(url);
+    if (f === undefined) return base(input, init);
+    // 表にない・ほかの版：取りに行かず 404 と答える（なくてもよいファイルなら transformers.js は先へ進み、要るファイルならそこで止まる）
+    if (f === null) { console.warn(`${url}: not a pinned Kokoro file (${KOKORO_REPO}@${KOKORO_REV.slice(0, 12)}); refused`); return new Response(null, { status: 404, statusText: 'not pinned' }); }
+    const buf = await fetchKokoroFile(f, { fetchImpl: base, onBytes: (loaded, total) => onProgress({ status: 'progress', file: f, loaded, total }) });
+    return new Response(buf, { status: 200, headers: { 'content-type': f.endsWith('.json') ? 'application/json' : 'application/octet-stream', 'content-length': String(buf.byteLength) } });
+  };
+}
+// キャッシュに残っている Kokoro のファイルを表と比べ、合わないもの・表にないものを消す → 消した数
+export async function verifyKokoroCaches(cs = globalThis.caches) {
+  if (!cs) return 0;
+  let n = 0;
+  for (const name of ['transformers-cache', 'kokoro-voices']) {
+    let store;
+    try { if (!(await cs.has(name))) continue; store = await cs.open(name); } catch { continue; }
+    for (const req of await store.keys()) {
+      const url = typeof req === 'string' ? req : req.url, f = kokoroPath(url);
+      if (f === undefined) continue;
+      const hit = f && await store.match(req);
+      const ok = !!hit && (await sha256Sri(await hit.arrayBuffer())) === KOKORO_FILES[f][0];
+      if (!ok && (await store.delete(req))) n++;
+    }
+  }
+  return n;
+}
 // import map の中身（2 つのページに同じ文字列で書く。CSP の 'sha256-…' はこの文字列のハッシュ）。
 // "imports" の egatari-sri は印：CSP のハッシュが合わずに import map が止められると、integrity も黙って効かなくなるので、
 // 取る前に印が解決できるかを見る（importPinned）。解決できなければ jsDelivr のコードを読まない
@@ -201,15 +301,22 @@ export async function loadIrodori({ prec = 'fp16', adapter = null, onBytes = () 
 export async function releaseIrodori(tts) { if (tts) for (const s of Object.values(tts.s)) await s.release?.().catch(() => {}); }
 
 // ---------------------------------------------------------------- Kokoro を読み込む
+let kokoroProgress = null, kokoroFetchOn = false;
 export async function loadKokoro({ onProgress = () => {}, onLog = () => {} } = {}) {
   await tidyCaches(onLog);
+  const gone = await verifyKokoroCaches().catch(() => 0);
+  if (gone) onLog(`removed ${gone} cached Kokoro file(s) that do not match the pinned content`);
+  // kokoro-js と中の transformers.js は globalThis.fetch を呼ぶ（設定の口がない）。Kokoro の repo の要求だけを固定の版で取り直して確かめる。
+  // 声は合成のたびに（初めての声だけ）取るので、このページでは入れたままにする（ほかの要求はそのまま通す）
+  if (!kokoroFetchOn) { const base = globalThis.fetch.bind(globalThis); globalThis.fetch = kokoroFetch(base, (p) => kokoroProgress && kokoroProgress(p)); kokoroFetchOn = true; }
   const K = await importPinned(KOKORO_URL);
   // 中の onnxruntime-web に、確かめた WebAssembly を blob: の URL で渡す（kokoro-js の env は wasmPaths しか開けていない）
   const wasm = URL.createObjectURL(new Blob([await fetchVerified(KOKORO_WASM_URL)], { type: 'application/wasm' }));
   K.env.wasmPaths = { mjs: KOKORO_GLUE_URL, wasm };
-  // revision：kokoro-js 1.2.1 はこれを先に渡さない（重みも設定も main から取る。SECURITY.md）。上流が渡すようになったときのために残す
+  kokoroProgress = onProgress;
+  // revision は kokoro-js 1.2.1 が先に渡さないが、上の fetch がどの要求も KOKORO_REV で取る
   try { return await K.KokoroTTS.from_pretrained(KOKORO_REPO, { dtype: 'fp32', device: 'webgpu', revision: KOKORO_REV, progress_callback: onProgress }); }
-  finally { URL.revokeObjectURL(wasm); }   // 読み込み（セッションを作るまで）が終われば要らない
+  finally { URL.revokeObjectURL(wasm); kokoroProgress = null; }   // WebAssembly は読み込み（セッションを作るまで）が終われば要らない
 }
 
 // ---------------------------------------------------------------- 声（参照音声の WAV）
