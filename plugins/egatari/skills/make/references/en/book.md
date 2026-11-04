@@ -12,7 +12,7 @@ The rules themselves are in Studio's [docs/article.md](https://github.com/egatar
 
 - A `kind: chapter` file in `article/` needs `chapter:`. There is not yet a way to add preface or afterword files to a book without chapter numbers. Make such a book an `article.md`, and put records such as the source edition and the typist in the last `##` section.
 - The reading order is written to `article.chapters` in `egatari.json` by the build and ids tools. Do not write it by hand.
-- Vertical writing: `writing-mode: vertical-rl` in the front matter. Figures and equations stay horizontal. In a table the text stays horizontal, and the columns run in the reading direction (right to left).
+- Vertical writing: `writing-mode: vertical-rl` in the front matter. Tables are vertical too, by default. Figures, display math and code stay horizontal.
 
 ## 2. Outline
 
@@ -55,7 +55,9 @@ For each chapter and section: the heading, the point to convey, the figures, tab
 ## 7. Vertical books
 
 - Numbers of one or two digits become upright-in-line (tate-chu-yoko) automatically. Write years with four digits (2026, 1917).
-- In a table the text stays horizontal, and the columns run in the reading direction (right to left). Write the table in its original order (do not reverse left and right).
+- Tables are vertical by default, like the text. Write the table in its original order (do not reverse rows or columns).
+- A table of long numbers or Latin text: write it as `:::{table} caption` with `:class: horizontal`, and it stays horizontal.
+- Figures, display math and code stay horizontal.
 - Footnote numbers stay upright (they are not turned sideways).
 - Keep one column of a vertical slide (`layout-tate`) to about 17 characters (do not make a second column of one character).
 
