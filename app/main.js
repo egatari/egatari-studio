@@ -141,7 +141,7 @@ async function showWelcome() {
   }
 }
 // サンプルの教材（配信版の dist/examples/。tools/build-app.mjs が組んで一覧を RES.examples に入れる）：同じサイトから読む。file://（1 ファイル版）では出さない。
-// 「再生」で大きく再生する窓（playExample）を開き、そこから「このサンプルのように作る」（新規作成に場面・見た目・パーツと構成を入れる。backlog #130）か
+// 「再生」で大きく再生する窓（playExample）を開き、そこから「このサンプルを参考に作る」（新規作成に場面・見た目・パーツと構成を入れる。backlog #130）か
 // 「コピーを開いて編集」（ほかのファイルと同じ道 openPortable：Worker で検査して取り出し、中身からコードを探す）
 function showExamples() {
   const list = Array.isArray(RES.examples) ? RES.examples : [];
@@ -172,7 +172,7 @@ async function exampleBytes(x) {
   finally { end(); }
 }
 // 大きく再生する窓：ファイルそのもの（自分のプレーヤー）を sandbox の枠で再生する（プレビューと同じ決まり。origin を持たず、外へ繋がらない）。
-// 下に頼み方の文と権利の表示。ボタンは「このサンプルのように作る」（主）・「コピーを開いて編集」（小さく）・「閉じる」
+// 下に頼み方の文と権利の表示。ボタンは「このサンプルを参考に作る」（主）・「コピーを開いて編集」（小さく）・「閉じる」
 async function playExample(x) {
   const bytes = await exampleBytes(x);
   if (!bytes) return false;
@@ -183,14 +183,19 @@ async function playExample(x) {
     el('p', { id: 'sample-request', cls: 'hint', ...(s.lang ? { lang: s.lang } : {}) }, [el('span', { cls: 'sample-label', text: T.exampleRequest }), ' ', s.request]),
     el('p', { id: 'sample-rights', cls: 'hint', text: T.exampleRights(s.rights.license, s.rights.attribution) }),
   ] : [];
-  const v = await ask({ title: x.title, kind: 'sample', body: [el('div', { cls: 'sample-stage' }, [frame]), ...info],
-    buttons: [{ id: 'copy', label: T.exampleCopy, cls: 'ghost small' }, { id: 'cancel', label: T.close }, ...(s ? [{ id: 'like', label: T.exampleLike, pri: true }] : [])] });
+  // 「このサンプルを参考に作る」の下（ボタンの列の下）の 1 行：何を引き継ぎ、何を新しく作るか（ボタンの aria-describedby）。窓を閉じたら外す
+  const likeNote = s ? el('p', { id: 'sample-like-note', cls: 'hint sample-like-note', text: T.exampleLikeNote }) : null;
+  const asked = ask({ title: x.title, kind: 'sample', body: [el('div', { cls: 'sample-stage' }, [frame]), ...info],
+    buttons: [{ id: 'copy', label: T.exampleCopy, cls: 'ghost small' }, { id: 'cancel', label: T.close }, ...(s ? [{ id: 'like', label: T.exampleLike, pri: true, describedby: 'sample-like-note' }] : [])] });
+  if (likeNote) $('dlg-buttons').after(likeNote);
+  const v = await asked;
+  if (likeNote) likeNote.remove();
   frame.remove();   // 閉じた窓の中でプレーヤーを動かし続けない（次の窓が本体を入れ替えるまで残っていた）
   if (v === 'copy') return openPortable({ bytes, name: x.file });
   if (v === 'like') { await llm.newWithAi({ sample: { name: x.name, title: x.title, ...s } }); return true; }
   return false;
 }
-// egatari.org のサンプルのページの「Studio でこのサンプルのように作る」：?from-sample=<名前> で新規作成を同じ形で開く（一覧にない名前は知らせて、はじめの画面）
+// egatari.org のサンプルのページの「Studio でこのサンプルを参考に作る」：?from-sample=<名前> で新規作成を同じ形で開く（一覧にない名前は知らせて、はじめの画面）
 async function openFromSampleParam() {
   let name = null;
   try { name = new URLSearchParams(location.search).get('from-sample'); } catch { return; }
@@ -1275,7 +1280,7 @@ function ask({ title, body, buttons, confirmText = null, kind = '', validate = n
     if (confirmText) { cb = el('input', { type: 'checkbox', id: 'dlg-confirm' }); b.append(el('label', { cls: 'confirm' }, [cb, el('span', { text: confirmText })])); }
     const row = $('dlg-buttons'); row.innerHTML = '';
     for (const x of buttons) {
-      const btn = el('button', { type: 'button', id: 'dlg-' + x.id, cls: x.pri ? 'pri' : x.cls || '', text: x.label, onclick: async () => { if (validate && !(await validate(x.id))) return; if (askPending === resolve) d.close(x.id); } });
+      const btn = el('button', { type: 'button', id: 'dlg-' + x.id, cls: x.pri ? 'pri' : x.cls || '', text: x.label, ...(x.describedby ? { 'aria-describedby': x.describedby } : {}), onclick: async () => { if (validate && !(await validate(x.id))) return; if (askPending === resolve) d.close(x.id); } });
       if (x.needsConfirm && cb) { btn.disabled = true; cb.addEventListener('change', () => { btn.disabled = !cb.checked; }); }
       row.append(btn);
     }

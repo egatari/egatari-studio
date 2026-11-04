@@ -165,7 +165,7 @@ const steps = [
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
   // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5）：あとで読み込む本の道具・本の表示・本文の欄・合っていないかもしれない組・本だけを組み直す保存・印刷
   ['test-app-book', ['tools/test-app-book.mjs', path.join(tmp, 'app-book')]],
-  // 「このサンプルのように作る」（backlog #130）：サンプルを大きく再生する窓・新規作成に場面・見た目・パーツと構成・?from-sample=・コピーを開いて編集
+  // 「このサンプルを参考に作る」（backlog #130）：サンプルを大きく再生する窓・新規作成に場面・見た目・パーツと構成・?from-sample=・コピーを開いて編集
   ['test-app-from-sample', ['tools/test-app-from-sample.mjs', path.join(tmp, 'from-sample')]],
   // 手で書き換えた・崩れた書き出しの印（format spec §3.1）：断る窓か開くか（どちらもページは答える）、食い違う写しは「書き出したあと直した」
   ['test-app-exported-marker', ['tools/test-app-exported-marker.mjs', path.join(tmp, 'exported-marker')]],

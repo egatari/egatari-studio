@@ -3,7 +3,7 @@
 //   node kit/llm-pack.mjs --plan paid [--sets …]             有料のプラン（どの部品も詳しく。--sets all --plan paid で指示の全体）
 //   node kit/llm-pack.mjs --no-fit [--sets …]                無料のプランで目安に収めない（下の fit をしない。比べる・調べる用）
 //   node kit/llm-pack.mjs --from-sample <名前> [--request <文|ファイル>] [--plan …] [--lang …]
-//                                                            「このサンプルのように作る」で ② を書いて ④ で写す指示と同じバイト（backlog #130。kit/core/new-deck-pack.mjs の fromSamplePack）：
+//                                                            「このサンプルを参考に作る」で ② を書いて ④ で写す指示と同じバイト（backlog #130。kit/core/new-deck-pack.mjs の fromSamplePack）：
 //                                                            examples/<名前>/sample.json の場面・テーマ・パーツ（外す候補にしない）と構成。--request の 1 行目は ② のタイトル、残りは内容（なければ空）。
 //                                                            無料のプランも有料のプランも、目安に収めた後（［候補を外す］を押した後と同じ）。サンプルのパーツは詳しく書き、
 //                                                            越えたら ① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く（fitSample）
@@ -40,8 +40,8 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
          catalogue line too; if still over, specialized parts are left out,
          largest first. stderr says what was shortened or left out
 --no-fit the free-plan pack as assembled, without fitting it to the limit
---from-sample  exactly what the editor copies in New… after “Make one like this
-         sample” (examples/<name>/sample.json): its setting, theme and parts (never
+--from-sample  exactly what the editor copies in New… after “Make one based on
+         this sample” (examples/<name>/sample.json): its setting, theme and parts (never
          suggested for unticking, described in full), plus its structure; fitted to
          the plan as after “Untick these”: over the limit, first the core parts the
          sample does not use are shortened, then specialized parts it does not use
@@ -79,7 +79,7 @@ function fittedPack(sets, lang) {
   return { text: buildPack({ ...partsPackOpts(fit.tags, 'free', { short: fit.short }), lang }), fit };
 }
 
-// 「このサンプルのように作る」の指示（編集アプリの新規作成 ④ と同じ組み立て）
+// 「このサンプルを参考に作る」の指示（編集アプリの新規作成 ④ と同じ組み立て）
 function samplePack(name, lang, plan) {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(name)) throw new Error(`--from-sample: not a sample name: ${name}`);
   const dir = path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'examples', name);

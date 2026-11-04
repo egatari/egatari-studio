@@ -180,17 +180,21 @@
   {
    "id": "make-like-sample",
    "group": "Format and files",
-   "en": "Make one like this sample",
-   "ja": "このサンプルのように作る",
-   "definition": "Main button of the sample window (and the link on egatari.org's samples page): opens New… with the sample's setting, theme and parts filled in; only step 2 is empty.",
+   "en": "Make one based on this sample",
+   "ja": "このサンプルを参考に作る",
+   "definition": "Main button of the sample window (and the link on egatari.org's samples page): opens New… with the sample's structure, setting, theme and parts filled in; only step 2 is empty. The line under it: 「構成・テーマ・パーツを引き継ぎます。中身はあなたの題材で新しく作ります」 / “Keeps its structure, theme and parts; the content is new, from your topic.”",
    "avoid": {
-    "ja": [],
-    "en": []
+    "ja": [
+     "このサンプルのように作る"
+    ],
+    "en": [
+     "Make one like this sample"
+    ]
    },
    "internal": "?from-sample=<name>",
-   "decided": "2026-11-03",
-   "by": "standards",
-   "note": ""
+   "decided": "2026-11-05",
+   "by": "owner",
+   "note": "Renamed from このサンプルのように作る / Make one like this sample (2026-11-05, owner): the lesson follows the sample, it does not copy it. The noun stays サンプル."
   },
   {
    "id": "from-sample",

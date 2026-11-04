@@ -111,7 +111,7 @@ const TX = {
     whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
     whySep: '。',
     suggested: 'おすすめ',
-    // サンプルから始めた新規作成（backlog #130。app/main.js の「このサンプルのように作る」と ?from-sample=）
+    // サンプルから始めた新規作成（backlog #130。app/main.js の「このサンプルを参考に作る」と ?from-sample=）
     fromSample: 'サンプルから',
     fromSampleLead: (t) => `サンプル「${t}」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。`,
     useStructure: (t, n) => `サンプル「${t}」の構成（${n} 枚の見出しと要点）を指示に添える`,

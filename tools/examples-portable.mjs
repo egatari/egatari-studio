@@ -1,7 +1,7 @@
 // 見本（examples/）を持ち運べる 1 ファイル（--portable）に組む。編集アプリの配信版（tools/build-app.mjs の dist/examples/）と
 // リリースに添えるファイル（tools/release-assets.mjs の out/release/）が同じものを使う
 //   buildExamples(outDir) → [{name, file, title, lang, slides, bytes, profile, sha256, sample}]（outDir/<name><FORMAT.FILE_EXT> に書く）
-//   sample：サンプルのフォルダの sample.json（テーマは新規作成で選べるもの）（kit/core/sample-info.mjs。「このサンプルのように作る」で引き継ぐもの。backlog #130）。ないか正しくなければ組まない
+//   sample：サンプルのフォルダの sample.json（テーマは新規作成で選べるもの）（kit/core/sample-info.mjs。「このサンプルを参考に作る」で引き継ぐもの。backlog #130）。ないか正しくなければ組まない
 //   readSample(name) → sample.json の中身（確かめたもの）
 // 見本には音声がない（audio/ はリポジトリに入れない）ので、音声なしの 1 ファイルになる（再生は推定の秒数。TTS も dry-run の無音も作らない）。
 // 組むのは見本のフォルダの写し（一時フォルダ）から：リポジトリの見本に設定のファイル（egatari.json）を書かない。設定のファイルのない見本

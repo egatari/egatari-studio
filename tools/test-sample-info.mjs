@@ -6,16 +6,18 @@
 //   （原稿のテーマが新しく選べないものなら、選べるテーマ）。本は article/ があるときだけ
 // - 構成を添えた指示：無料のプランで目安に収まる（サンプルのパーツは外す候補にしない）。添える節は約 300 トークン（字数の上限）
 // - 正しくない sample.json を断る（形・分類・パーツ・字数・権利）
-// - 「このサンプルのように作る」の収め方（fitSample・fromSamplePack）：pitch の無料のプランの指示は m-bars・m-flow の説明を詳しいまま目安に収まる。
+// - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack）：pitch の無料のプランの指示は m-bars・m-flow の説明を詳しいまま目安に収まる。
 //   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる
+// - 本のあるサンプル（article/ と sample.json の book: true）：指示はちょうど 1 行（サンプルにも本があり、本は Claude Code で作る）だけ増える。同梱の 4 つは本がない
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateSample, sampleStructureRequest, SAMPLE_LIMITS } from '../kit/core/sample-info.mjs';
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, withChoice, choiceOf } from '../kit/core/new-deck.mjs';
 import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE } from '../kit/core/llm-pack.mjs';
 import { fitSample } from '../kit/core/llm-pack-assemble.mjs';
-import { fromSamplePack, samplePackFit } from '../kit/core/new-deck-pack.mjs';
+import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS } from '../kit/core/new-deck-pack.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
@@ -105,7 +107,7 @@ for (const [what, o, want] of cases) ok(codes(o) === want, `rejects ${what}: ${c
 ok(validateSample({ ...good(), category: 'other', subcategory: null }, ctx).length === 0 && validateSample({ ...good(), subcategory: null }, ctx).length === 0, 'accepts subcategory null (Other, None of these)');
 ok(validateSample({ ...good(), category: 'nope', parts: ['m-nope'] }).length === 0, 'without categories and parts, only the shape is checked');
 
-// ---------------------------------------------------------------- 「このサンプルのように作る」の収め方（kit/core/llm-pack-assemble.mjs の fitSample）
+// ---------------------------------------------------------------- 「このサンプルを参考に作る」の収め方（kit/core/llm-pack-assemble.mjs の fitSample）
 // pitch：m-bars・m-flow は中核の 4 つ、m-kpi・m-quad はほかの標準のパーツ。無料のプランでもサンプルのパーツは詳しく（説明の節 ### `<m-…>` がある）
 const entryOf = (t, L) => PACK[L].components[t].entry.trim().split('\n')[0];
 for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
@@ -147,6 +149,32 @@ ok(f.full === null && !f.shortened.length && !f.ownShortened.length && f.dropped
 // 1 で短くした分は、外した後に収まれば戻る（外した後の印でもう一度 1 から）
 f = fitSample(FAKE, ALL, 'free', { sizeOf: (tags, full) => fsize(tags, full) + (tags.includes('x-a') ? 300 : 0), capBytes: 900, own: OWN });
 ok(f.dropped.join() === 'x-a' && !f.shortened.length && f.step1Shortened.length === 2 && f.bytes <= 900, 'fitSample: once a part is left out, the core parts are described in full again if they fit');
+
+// ---------------------------------------------------------------- 本のあるサンプル：サンプルのフォルダの写しに article/ を足し、sample.json を book: true に
+ok(EXAMPLES.every((n) => readSample(n).book === false), 'none of the bundled samples has a book (their from-sample packs have no book line)');
+const bookTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-sample-book-'));
+try {
+  for (const name of EXAMPLES) {
+    const dir = path.join(bookTmp, name);
+    fs.cpSync(path.join(ROOT, 'examples', name), dir, { recursive: true, filter: (f) => !/[\\/](out|\.cache)$/.test(f) });
+    fs.mkdirSync(path.join(dir, 'article'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'article', 'chapter1.md'), '# 1\n\nText.\n');
+    const plain = JSON.parse(fs.readFileSync(path.join(dir, 'sample.json'), 'utf8'));
+    const withBook = { ...plain, book: true };
+    fs.writeFileSync(path.join(dir, 'sample.json'), JSON.stringify(withBook, null, 2) + '\n');
+    const read = JSON.parse(fs.readFileSync(path.join(dir, 'sample.json'), 'utf8'));
+    ok(!sampleProblems(read).length && read.book === fs.existsSync(path.join(dir, 'article')), `${name} with a book: sample.json is valid and book matches article/`);
+    for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
+      const second = { title: L === 'ja' ? '論語を読む' : 'Reading the Analects' };
+      const a = fromSamplePack({ sample: { ...plain, title: 'T', name }, lang: L, plan, second }).text.split('\n');
+      const b = fromSamplePack({ sample: { ...read, title: 'T', name }, lang: L, plan, second }).text.split('\n');
+      let i = 0; while (i < a.length && a[i] === b[i]) i++;
+      const one = b.length === a.length + 1 && JSON.stringify([...b.slice(0, i), ...b.slice(i + 1)]) === JSON.stringify(a);
+      ok(one && b[i] === REQUEST_WORDS[L].sampleBook && /Claude Code/.test(b[i]) && (L === 'ja' ? /本/.test(b[i]) : /\bbook\b/.test(b[i])),
+        `${name} (${L}, ${plan}) with a book: the from-sample pack changes by exactly one line, the book line: ${JSON.stringify(b[i])}`);
+    }
+  }
+} finally { fs.rmSync(bookTmp, { recursive: true, force: true }); }
 
 console.log(fails ? `test-sample-info: ${fails} failed` : 'test-sample-info: all passed');
 process.exit(fails ? 1 : 0);

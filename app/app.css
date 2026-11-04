@@ -456,6 +456,7 @@ main{flex:1;min-height:0;display:flex}
 #dlg.sample #sample-frame{width:100%;height:100%;border:0;display:block}
 #dlg.sample .sample-label{font-weight:600}
 #dlg.sample #sample-request,#dlg.sample #sample-rights{margin:6px 0 0}
+#dlg.sample .sample-like-note{margin:6px 0 0;text-align:end}
 #dlg button.small{font-size:12.5px;padding:3px 10px}
 #dlg .pick-badge.from-sample{background:var(--panel);color:var(--accent);border:1px solid var(--accent)}
 #dlg .paste-answered .pick-badge:not([hidden]){display:inline-block}

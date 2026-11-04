@@ -1,12 +1,12 @@
-// 「このサンプルのように作る」（backlog #130、handoff/samples-gallery-plan.md §1.4・§1.5）を、使う人として本物の画面で通して歩く
+// 「このサンプルを参考に作る」（backlog #130、handoff/samples-gallery-plan.md §1.4・§1.5）を、使う人として本物の画面で通して歩く
 //   node tools/test-app-from-sample.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // 編集アプリを tools/build-app.mjs で組み（サンプルの Egatari ファイルと sample.json の一覧も）、127.0.0.1 で配って：
 // F1 高校の国語の先生（ja）：はじめの画面のサンプルは「再生」→ 大きく再生する窓（sandbox の枠でファイルそのものが動く・頼み方・権利・ボタン 3 つ）→
-//    「このサンプルのように作る」→ 新規作成：① ③ は答えた形で「サンプルから」の札、② だけが空で開いて字を待つ、④ はサンプルのパーツに印と札、
+//    「このサンプルを参考に作る」→ 新規作成：① ③ は答えた形で「サンプルから」の札、② だけが空で開いて字を待つ、④ はサンプルのパーツに印と札、
 //    構成を添える印 → 写した指示にサンプルの構成（見出しと言いたいこと）・テーマ・場面。印を外すと指示が小さくなり構成が消える。
 //    ① を変えると札が消える。［作成］→ egatari.json の studio.newDeck に fromSample、componentsCatalogue は 2.x の既定のカタログ
 // F2 同じ人が、ふつうの新規作成…：サンプルの知らせ・構成の印・札は出ない
-// F3 会社員（en）：egatari.org の「Studio でこのサンプルのように作る」（?from-sample=pitch-fictional）→ 同じ流れがすぐ開き、URL から引数が消える。
+// F3 会社員（en）：egatari.org の「Studio でこのサンプルを参考に作る」（?from-sample=pitch-fictional）→ 同じ流れがすぐ開き、URL から引数が消える。
 //    知らない名前は知らせて、はじめの画面のまま
 // F6 コマンドの kit/llm-pack.mjs --from-sample（規格の評価 B が使う）は、画面で写す指示とバイトまで同じ：4 つのサンプル × 無料・有料 × ja・en
 //    （② にタイトルを書き、［候補を外す］があれば押してから写す）。内容も書いたもの（--request のファイルの 2 行目から）も 1 つ
@@ -98,13 +98,16 @@ try {
   const dlg = await p1.evaluate(() => ({ title: document.getElementById('dlg-title').textContent, req: document.getElementById('sample-request').textContent, rights: document.getElementById('sample-rights').textContent,
     buttons: [...document.querySelectorAll('#dlg-buttons button')].map((b) => [b.id, b.textContent, b.className]) }));
   ok(dlg.title === '漢文を読む――返り点から書き下し文へ' && dlg.req === 'AI への頼み方： ' + KS.request && dlg.rights === 'ライセンス：CC BY 4.0（雲居玄道（Egatari Studio））'
-    && JSON.stringify(dlg.buttons) === JSON.stringify([['dlg-copy', 'コピーを開いて編集', 'ghost small'], ['dlg-cancel', '閉じる', ''], ['dlg-like', 'このサンプルのように作る', 'pri']]),
-    'F1: the window shows the title, how the AI was asked, the license, and 「コピーを開いて編集」 (small) · 「閉じる」 · 「このサンプルのように作る」 (main): ' + JSON.stringify(dlg));
+    && JSON.stringify(dlg.buttons) === JSON.stringify([['dlg-copy', 'コピーを開いて編集', 'ghost small'], ['dlg-cancel', '閉じる', ''], ['dlg-like', 'このサンプルを参考に作る', 'pri']]),
+    'F1: the window shows the title, how the AI was asked, the license, and 「コピーを開いて編集」 (small) · 「閉じる」 · 「このサンプルを参考に作る」 (main): ' + JSON.stringify(dlg));
+  const note = await p1.evaluate(() => { const n = document.getElementById('sample-like-note'), b = document.getElementById('dlg-like'); return { text: n && n.textContent, after: !!n && n.previousElementSibling && n.previousElementSibling.id === 'dlg-buttons', by: b.getAttribute('aria-describedby') }; });
+  ok(note.text === '構成・テーマ・パーツを引き継ぎます。中身はあなたの題材で新しく作ります' && note.after && note.by === 'sample-like-note',
+    'F1: one line under the buttons says what 「このサンプルを参考に作る」 keeps and what is new (and describes the button): ' + JSON.stringify(note));
   ok(!(await p1.evaluate(() => document.body.innerText.includes('見本'))), 'F1: the screen never says 見本 (the termbase word is サンプル)');
   await shot(p1, 'from-sample-play.png');
   await clickDlg(p1, '#dlg-like');
   await p1.waitForSelector('#dlg[open] #paste-step-kind');
-  ok(!(await p1.$('#sample-frame')) && !(await p1.$('iframe[title="漢文を読む――返り点から書き下し文へ"]')), 'F1: closing the window removes the sample’s frame (its player stops)');
+  ok(!(await p1.$('#sample-frame')) && !(await p1.$('#sample-like-note')) && !(await p1.$('iframe[title="漢文を読む――返り点から書き下し文へ"]')), 'F1: closing the window removes the sample’s frame (its player stops)');
   ok((await text(p1, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。',
     'F1: New… says it starts from the sample and what was filled in');
   ok((await answer(p1, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await badgeOn(p1, 'kind') && (await answer(p1, 'theme')).startsWith('テーマ：') && await badgeOn(p1, 'theme')

@@ -404,6 +404,18 @@
       "pattern": "すべてのパーツのサンプルを見る",
       "term": "play-sample",
       "reason": "The link to every part's demo in New… step 4 (backlog #158), not the Play button of a sample."
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "中身はあなたの題材で新しく作ります|the content is new, from your topic",
+      "term": "title",
+      "reason": "The line under Make one based on this sample (owner wording, 2026-11-05): 題材 / topic is the subject of the new lesson, not the Title field."
+    },
+    {
+      "file": "docs/editor*.md",
+      "pattern": "中身はあなたの題材で新しく作ります|the content is new, from your topic",
+      "term": "title",
+      "reason": "The same line, quoted in the editor docs."
     }
   ]
 }

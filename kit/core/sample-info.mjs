@@ -1,4 +1,4 @@
-// サンプルの情報（sample.json。backlog #130、handoff/samples-gallery-plan.md §1.5）：サンプルから「このサンプルのように作る」で引き継ぐもの。
+// サンプルの情報（sample.json。backlog #130、handoff/samples-gallery-plan.md §1.5）：サンプルから「このサンプルを参考に作る」で引き継ぐもの。
 // Node にもブラウザにも依存しない（純粋な ESM）。サンプルのフォルダ（examples/<名前>/sample.json）に置き、tools/examples-portable.mjs が確かめて
 // 編集アプリのサンプルの一覧（RES.examples の sample）に入れる。画面は app/main.js（大きく再生する窓）と app/llm.js（新規作成に入れる）
 //

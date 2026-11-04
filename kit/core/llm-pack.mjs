@@ -25,7 +25,7 @@
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
 //   loadedParts(sets)                            その束で組み立てに入る部品（標準と、選んだ束の部品）
-//   trimCandidates・fitPlan・fitPack             無料のプランの目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。fitSample は「このサンプルのように作る」の収め方。編集アプリ（kit/core/new-deck.mjs が出し直す）と
+//   trimCandidates・fitPlan・fitPack             無料のプランの目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。fitSample は「このサンプルを参考に作る」の収め方。編集アプリ（kit/core/new-deck.mjs が出し直す）と
 //                                                コマンド（kit/llm-pack.mjs）が同じ関数を使う
 //   partsPackOpts(tags, plan, {short, full})     選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?, full?}（buildPack・packWithRequest に渡す。
 //                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
