@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=708861bd206db795 -->
+<!-- i18n: pair=RELEASING.md sha256=fd4b2edd97f14bbb -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -27,10 +27,10 @@
 2. **評価。** 管理者の夜ごとの評価（形式の仕様の実験の道具で回すもの。候補の commit の要約を管理者に頼む）で、段 A（保存した返答の採点し直し）の差分が **0**（0 でなければ、差分がどれも意図した変更か確かめる）、段 B（新しく作らせたもの）の直し後の通過率が、直近の晩より大きく下がっていないこと。そうでなければ `main` で直して、新しい候補を作る
 3. **`main` の CI が緑。** 候補のコミットで `test` と `pages`（組むだけ）の workflow が通っている：`gh run list --branch main --limit 5`
    `test` の workflow には自己完結の確認（backlog #50）が入っている。どれも緑であること：
-   - `npm test` を Linux（Node 22 と 24）・Windows・**macOS** で（`test`・`windows`・`macos` のジョブ。Linux と Windows は 3 つの段を同時に、macOS は 1 つずつ。時間に敏感な試験は最後に 1 つずつ）。そこで落ちて単独では通る試験があれば、`npm test -- --jobs 1` で、ほかと同時に走らせると崩れる試験か本当の失敗かを見分ける
+   - `npm test` を Linux（Node 22 と 24）・Windows・**macOS** で（`test`・`windows`・`macos` のジョブ。Linux と Windows は 3 つの段を同時に、macOS は 2 つずつでメモリを多く使う段どうしは重ねない。時間に敏感な試験は最後に 1 つずつ）。**どこで何を走らせるか：** Linux と Windows は毎回すべて。macOS ですべての `npm test`（と `clean`・`pack` の macOS の分）を走らせるのは、`main` への push、`v*` のタグ（リリースと rc）の push、`full=true` を付けた手動の実行（`gh workflow run test.yml --ref <ブランチ> -f full=true`）だけ。ブランチの手動の実行と PR では、macOS は OS に左右されるところだけを 1 つのジョブで走らせる（`npm test -- --platform`：組み立て・品質チェック・単体の検査と、`// test-all: platform` の印のある試験（パス・字体・WebKit・npm の包み）。そのあと `node tools/clean-env.mjs`）。**rc のタグには、そのコミットで 3 つの OS のすべての試験が 1 回通して緑の実行が要る**（`main` への push・タグ・`full=true` の実行のどれか。落ちたジョブの再実行は 1 回まで、落ちたものはすべて書き留める）。macOS の待ちの上限は 3 倍（`TEST_TIMEOUT_SCALE=3`、`tools/wait-scale.mjs`）。そこで落ちて単独では通る試験があれば、`npm test -- --jobs 1` で、ほかと同時に走らせると崩れる試験か本当の失敗かを見分ける
    - `tools/test-selfcontained.mjs`（`npm test` に入っている）：追跡しているファイルに個人のパス・私的な網の番地・秘密の置き場所・個人の声の名前がない。`localhost:8882` は `IRODORI_URL` の既定としてだけ書く。`skills/` が挙げるのは同梱のスキルだけ。文書が挙げるパス・リンク・`npm run` の script が実在する。`kit/` と `server/` が `tts/` と `render/` を import しない
-   - `clean` のジョブを Linux・Windows・macOS で：空の `HOME`・TTS のサーバーなしで `node tools/clean-env.mjs` が、見本ごとに組む・品質チェックをかける・書き出す（`--portable`・`--play-only`）、`tts/synth.py --dry-run` の音声で組む、`npm run new` のデッキを組む。手元でも走らせる：`node tools/clean-env.mjs`
-   - `pack` のジョブを Linux・Windows・macOS で：`node tools/test-npm-pack.mjs` が npm の包み `egatari` を作り、リポジトリの外に入れて `npx egatari`（`--version`・`doctor`・`new`・`check`・`build`・`build --portable`）を動かす
+   - `clean` のジョブを Linux・Windows・macOS で（macOS はすべての試験を走らせる実行だけ。ほかは `macos` のジョブが試験の後に走らせる）：空の `HOME`・TTS のサーバーなしで `node tools/clean-env.mjs` が、見本ごとに組む・品質チェックをかける・書き出す（`--portable`・`--play-only`）、`tts/synth.py --dry-run` の音声で組む、`npm run new` のデッキを組む。手元でも走らせる：`node tools/clean-env.mjs`
+   - `pack` のジョブを Linux・Windows・macOS で（macOS はすべての試験を走らせる実行だけ。ほかは `macos` のジョブの `test-npm-pack`）：`node tools/test-npm-pack.mjs` が npm の包み `egatari` を作り、リポジトリの外に入れて `npx egatari`（`--version`・`doctor`・`new`・`check`・`build`・`build --portable`）を動かす
 4. **CHANGELOG。** 節を確かめてからまとめる（`package.json` と `package-lock.json` のほか、2 つの `plugin.json` と `.claude-plugin/marketplace.json`・`.agents/plugins/marketplace.json` のプラグインの項目の版も変える。入れた Claude Code・Codex はこの版を見て更新する。`changes/*.md` を消し、`node tools/make-llm-guide.mjs` を動かし直す。スキルが docs へのリンクを `v<版>` の札に固定し、更新のコマンドに CLI の小版を書いているため。どれかの版が `package.json` と違えば `tools/test-plugin.mjs` が失敗する）：
 
    ```bash

@@ -1,4 +1,5 @@
 // 持ち運べる 1 ファイル（format spec。kit/core/portable.mjs）の試験
+// test-all: platform（--platform でも走らせる：file:// の URL・パス・リンクの先）
 //   node tools/test-portable.mjs [作業フォルダ]
 // 1. 仕様の写し（FORMAT.VENDOR_DIR）の Schema（ajv。ネットワークは使わない）と、依存のない検査器（validateIndex）が、仕様の試験用の索引で同じ判定をする。
 //    仕様の文書の試験用ファイル（fixtures/documents/）は読まない：1.0 の形より前のもの（player も決まりもない。Studio v0.3.1 が作った）で、
@@ -28,6 +29,7 @@ import { assignIds } from '../kit/core/slide-ids.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { earlierFile } from '../app/earlier-draft.js';
+import { scaled } from './wait-scale.mjs';
 
 // EGATARI_TEST_NO_BROWSER=1：Node の検査だけ。ブラウザを使う部分は SKIP と明記する。
 const NO_BROWSER = process.env.EGATARI_TEST_NO_BROWSER === '1';
@@ -516,7 +518,7 @@ ok('解析の上限：上限の大きさより小さいが小さな要素が何�
   const sf = path.join(work, 'bounded-probe.mjs'); fs.writeFileSync(sf, script);
   fs.writeFileSync(path.join(work, 'bounded.html'), base);
   for (const filler of ['<p>', '<div>', '<br a b c d e f g h>']) {
-    const r = spawnSync(process.execPath, [sf, path.join(work, 'bounded.html'), filler], { encoding: 'utf8', timeout: 120000 });
+    const r = spawnSync(process.execPath, [sf, path.join(work, 'bounded.html'), filler], { encoding: 'utf8', timeout: scaled(120000) });
     const m = JSON.parse(r.stdout.trim().split('\n').pop());
     console.log(`      ${filler}: ${m.mib.toFixed(0)} MiB → ${m.code} in ${m.ms} ms, peak RSS +${m.rssMiB} MiB`);
     assert.equal(m.code, 'too-complex', filler);
@@ -643,7 +645,7 @@ ok('1.0 の形の文書の試験用ファイル（fixtures/documents-1.0）：ex
       const errs = [];
       page.on('pageerror', (e) => errs.push(e.message));
       await page.goto(fileUrl(d.file));
-      await page.waitForFunction(() => window.DECK && DECK.ready && DECK.slides && DECK.slides.length > 0, null, { timeout: 30000 });
+      await page.waitForFunction(() => window.DECK && DECK.ready && DECK.slides && DECK.slides.length > 0, null, { timeout: scaled(30000) });
       assert.deepEqual(errs, [], `${d.name}: plays without page errors`);
       await page.close();
     }
@@ -659,7 +661,7 @@ ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生
       page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
       page.on('pageerror', (e) => errors.push(e.message));
       await page.goto(fileUrl(file));
-      await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+      await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
       return { page, errors };
     };
     const files = [path.join(MIN, 'out', 'deck' + FORMAT.FILE_EXT), path.join(MIN, 'out', 'deck' + FORMAT.PLAY_EXT),
@@ -743,8 +745,8 @@ ok('音声の kind（format spec §5.2・§7.3）：deck-audio にも写る（Sc
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(fileUrl(po));
-    await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
-    await page.waitForSelector('#dt-cb', { state: 'attached', timeout: 10000 });
+    await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
+    await page.waitForSelector('#dt-cb', { state: 'attached', timeout: scaled(10000) });
     const got = await page.evaluate((ks) => {
       DECK.captions(true);
       const cap = (k) => { const g = DECK.timeline().find((x) => x.key === k); DECK.go(g.i, g.k, false); return !!document.querySelector('#deck-cap .cap-ai') || !!document.getElementById('deck-ai'); };

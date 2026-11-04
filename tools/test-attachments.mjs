@@ -33,6 +33,7 @@ import * as F from './attach-fixtures.mjs';
 import { unpack } from './portable.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { clickUntil, clickDlg, clickCommand } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -440,7 +441,7 @@ const browser = await launch();
   const errs = [];
   pg.on('pageerror', (e) => errs.push(e.message)); pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.goto(fileUrl(OUT));
-  await pg.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: 15000 });
+  await pg.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: scaled(15000) });
   ok((await pg.getAttribute('#dt-cb [data-b="attach"]', 'aria-label')) === '添付ファイル（3）', 'player: the bar has an attachments button with the count');
   await pg.mouse.move(640, 760);
   await pg.click('#dt-cb [data-b="attach"]');
@@ -474,7 +475,7 @@ const browser = await launch();
   const p1 = await c1.newPage();
   let dls = 0; p1.on('download', () => dls++);
   await p1.goto(fileUrl(path.join(work, 'crafted.html')));
-  await p1.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: 15000 });
+  await p1.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: scaled(15000) });
   await p1.evaluate(() => DECK.tools.help(true));
   const crows = await p1.$$eval('#dt-help .dt-att li', (xs) => xs.map((x) => x.textContent));
   ok(crows.length === 5 && !crows.some((r) => /evil\.html|CSV as PDF|long\.txt|nl\.txt|run\.js|mime\.csv/.test(r)) && /fake\.txt/.test(crows[3]) && /tool\.mjs/.test(crows[4]),
@@ -498,7 +499,7 @@ const browser = await launch();
   const p2 = await c2.newPage();
   let downloads = 0; p2.on('download', () => downloads++);
   await p2.goto(fileUrl(path.join(work, 'bad.html')));
-  await p2.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: 15000 });
+  await p2.waitForFunction(() => document.querySelector('#dt-cb [data-b="attach"]'), null, { timeout: scaled(15000) });
   await p2.evaluate(() => DECK.tools.help(true));
   await p2.click('#dt-help [data-att="2"]');
   await p2.waitForTimeout(800);
@@ -506,7 +507,7 @@ const browser = await launch();
   // 再生専用・組んだ HTML：出ない
   for (const f of [path.join(work, 'p' + FORMAT.PLAY_EXT)]) {
     await p2.goto(fileUrl(f));
-    await p2.waitForFunction(() => document.getElementById('dt-cb'), null, { timeout: 15000 });
+    await p2.waitForFunction(() => document.getElementById('dt-cb'), null, { timeout: scaled(15000) });
     await p2.waitForTimeout(500);
     ok(!(await p2.$('#dt-cb [data-b="attach"]')), 'player: a play-only file shows no attachments');
   }
@@ -535,7 +536,7 @@ const browser = await launch();
   await page.waitForSelector('#drop');
   const st = () => page.evaluate(() => window.__APP_TEST.state());
   const toastText = async () => (await page.textContent('#toast')) || '';
-  const waitIdle = async () => { await page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy() && document.getElementById('attach-list'), null, { timeout: 30000 }); await page.waitForTimeout(200); };
+  const waitIdle = async () => { await page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy() && document.getElementById('attach-list'), null, { timeout: scaled(30000) }); await page.waitForTimeout(200); };
   const rowsOf = () => page.$$eval('#attach-list .attach-row', (xs) => xs.map((x) => x.getAttribute('data-attach')));
   // 1 ファイル（OPFS のハンドル）
   await page.evaluate(async (b64) => {
@@ -546,7 +547,7 @@ const browser = await launch();
     window.__ph = h; window.__APP_TEST.saveHandle = h;
   }, Buffer.from(HTML).toString('base64'));
   await page.evaluate(() => window.__APP_TEST.openFile({ handle: window.__ph }));
-  await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: scaled(30000) });
   // 添付は「ファイル ▾」→「ファイルの情報…」の中（ui-redesign：道具の列の「添付」はない）
   ok(!(await page.$('#b-attach')) && (await page.textContent('#b-info')) === 'ファイルの情報…', 'editor: attachments are under File ▾ → ファイルの情報… (no toolbar button)');
   await clickCommand(page, '#b-info');
@@ -574,7 +575,7 @@ const browser = await launch();
   const prefill = await page.inputValue('#attach-new-title-0');
   await page.fill('#attach-new-title-0', 'Slides (TeX)');
   await clickDlg(page, '#dlg-ok');
-  await page.waitForFunction(() => document.querySelector('#dlg[open]') && !document.getElementById('attach-new-title-0'), null, { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelector('#dlg[open]') && !document.getElementById('attach-new-title-0'), null, { timeout: scaled(15000) });
   await clickDlg(page, '#dlg-ok');
   await waitIdle();
   ok(prefill === 'slides', 'editor: adding asks for a title, prefilled from the file name: ' + prefill);
@@ -616,18 +617,18 @@ const browser = await launch();
   await page.press('[data-attach-title="attachments/code/run.py"]', 'Tab');
   await waitIdle();
   // 名前を替える・消す
-  await clickUntil(page, '[data-attach-rename="attachments/data.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: 2500 }));
+  await clickUntil(page, '[data-attach-rename="attachments/data.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #attach-rename-input');
   await page.fill('#attach-rename-input', 'table.csv');
   await clickDlg(page, '#dlg-ok');
   await waitIdle();
-  await clickUntil(page, '[data-attach-remove="attachments/notes.txt"]', () => page.waitForSelector('#dlg[open] #attach-remove-ask', { timeout: 2500 }));
+  await clickUntil(page, '[data-attach-remove="attachments/notes.txt"]', () => page.waitForSelector('#dlg[open] #attach-remove-ask', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #attach-remove-ask');
   await clickDlg(page, '#dlg-ok');
   await waitIdle();
   ok((await rowsOf()).join() === 'attachments/code/run.py,attachments/paper.pdf,attachments/slides.tex,attachments/table.csv', 'editor: rename and remove update the list: ' + (await rowsOf()).join());
   // 不正な名前・大きすぎるもの
-  await clickUntil(page, '[data-attach-rename="attachments/table.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: 2500 }));
+  await clickUntil(page, '[data-attach-rename="attachments/table.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #attach-rename-input');
   await page.fill('#attach-rename-input', '../deck.html');
   await clickDlg(page, '#dlg-ok');
@@ -637,7 +638,7 @@ const browser = await launch();
   await page.waitForTimeout(800);
   ok(/大きすぎ/.test(await toastText()) && !(await rowsOf()).includes('attachments/huge.txt'), 'editor: a file over the limit is refused before it is read');
   // 名前を替えて許されない型にする（.html）：断る
-  await clickUntil(page, '[data-attach-rename="attachments/table.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: 2500 }));
+  await clickUntil(page, '[data-attach-rename="attachments/table.csv"]', () => page.waitForSelector('#dlg[open] #attach-rename-input', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #attach-rename-input');
   await page.fill('#attach-rename-input', 'table.html');
   await clickDlg(page, '#dlg-ok');
@@ -645,7 +646,7 @@ const browser = await launch();
   ok(/断りました/.test(await toastText()) && (await rowsOf()).includes('attachments/table.csv'), 'editor: renaming to a forbidden type (.html) is refused');
   // 保存：段 A
   await page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
   const s1 = await st();
   ok(s1.portable.lastTier === 'A' && s1.portable.lastTierA && s1.portable.lastTierA.attachments, 'editor: Save is a tier A save (attachments only)' + JSON.stringify(s1.portable.lastRefusal));
   const saved = await page.evaluate(() => window.__APP_TEST.saved());
@@ -667,7 +668,7 @@ const browser = await launch();
     window.__fd = d;
   }, ff);
   await page.evaluate(() => window.__APP_TEST_OPEN(window.__fd));
-  await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder', null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder', null, { timeout: scaled(30000) });
   await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
   { const pv = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version; ok((await page.textContent('#info-studio')) === `この Studio：${pv}` && (await page.textContent('#info-format')).startsWith('形式：Egatari 1.'), `editor: File info of a working folder shows this Studio's version (${pv}) and the format it writes`); }
@@ -678,7 +679,7 @@ const browser = await launch();
   const fread = (rel) => page.evaluate(async (rel) => { try { const parts = rel.split('/'); const n = parts.pop(); let d = window.__fd; for (const x of parts) d = await d.getDirectoryHandle(x); return await (await (await d.getFileHandle(n)).getFile()).text(); } catch { return null; } }, rel);
   const conf1 = JSON.parse(await fread(CFG));
   ok((await fread('attachments/paper.pdf')) !== null && conf1[KEY].some((e) => e.path === 'attachments/paper.pdf' && e.role === 'pdf' && e.title === 'paper') && conf1.docId === CONF.docId && conf1.metadata.license === 'CC-BY-4.0', 'editor (folder): adding writes attachments/paper.pdf and its entry into egatari.json (other members kept)');
-  await clickUntil(page, '[data-attach-remove="attachments/paper.pdf"]', () => page.waitForSelector('#dlg[open] #attach-remove-ask', { timeout: 2500 }));
+  await clickUntil(page, '[data-attach-remove="attachments/paper.pdf"]', () => page.waitForSelector('#dlg[open] #attach-remove-ask', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #attach-remove-ask');
   await clickDlg(page, '#dlg-ok');
   await waitIdle();

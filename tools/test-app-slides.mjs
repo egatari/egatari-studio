@@ -21,6 +21,7 @@ import { spawnSync } from 'node:child_process';
 import { slideTemplate, insertSlide, insertSection, newIdFor } from '../kit/core/slide-ops.mjs';
 import { TEMPLATE_DEFAULTS } from '../kit/core/template-text.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const ID = /^s-[a-z2-7]{6}$/;
@@ -110,14 +111,14 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
     const segKeys = (man) => Object.keys(JSON.parse(man).segments);
     // 操作の後：組み直し・読み込み・品質チェックまで終わる（一覧の busy が下りる）
     const settle = async (b0) => {
-      await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: 30000 });
-      await page.waitForFunction(() => { const s = window.__APP_TEST.state(), x = window.__APP_TEST.slides(); return !x.busy && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+      await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: scaled(30000) });
+      await page.waitForFunction(() => { const s = window.__APP_TEST.state(), x = window.__APP_TEST.slides(); return !x.busy && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
     };
     const checkShown = () => page.evaluate(() => !document.getElementById('panel').hidden && !!document.querySelector('#panel-body .sum'));
-    const announced = () => page.waitForFunction(() => document.getElementById('sl-live').textContent.length > 0, null, { timeout: 5000 }).then(() => page.textContent('#sl-live'));
+    const announced = () => page.waitForFunction(() => document.getElementById('sl-live').textContent.length > 0, null, { timeout: scaled(5000) }).then(() => page.textContent('#sl-live'));
     // 一覧の行は縮図の枠（sandbox の iframe）の上に重なるので、プレビューの上の重ねと同じく、効くまで押し直す（tools/click-retry.mjs）
-    const selectRow = (i) => clickUntil(page, `#sl-list [data-i="${i}"]`, () => page.waitForFunction((i) => window.__APP_TEST.slides().sel === i, i, { timeout: 2500 }));
-    const thumbsReady = (n) => page.waitForFunction((n) => { const f = document.getElementById('sl-thumbs'); return !!f; }, n, { timeout: 20000 }).then(async () => {
+    const selectRow = (i) => clickUntil(page, `#sl-list [data-i="${i}"]`, () => page.waitForFunction((i) => window.__APP_TEST.slides().sel === i, i, { timeout: scaled(2500) }));
+    const thumbsReady = (n) => page.waitForFunction((n) => { const f = document.getElementById('sl-thumbs'); return !!f; }, n, { timeout: scaled(20000) }).then(async () => {
       const fr = page.frames().find((f) => f.name() === 'sl-thumbs');
       for (let t = 0; t < 200; t++) { try { const c = fr && await fr.evaluate(() => { const b = document.getElementById('egatari-strip'); return b ? b.children.length : -1; }); if (c === n) return true; } catch { /* 読み込み中 */ } await page.waitForTimeout(100); }
       return false;
@@ -131,7 +132,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await page.evaluate(([b64, name]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name }); },
           [Buffer.from(portable.html).toString('base64'), 'slides-min' + FORMAT.FILE_EXT]);
       }
-      await page.waitForFunction((m) => { const s = window.__APP_TEST.state(); return s.kind === (m === 'folder' ? 'folder' : 'memory') && s.loads > 0 && s.frameLoaded === s.loads; }, mode, { timeout: 30000 });
+      await page.waitForFunction((m) => { const s = window.__APP_TEST.state(); return s.kind === (m === 'folder' ? 'folder' : 'memory') && s.loads > 0 && s.frameLoaded === s.loads; }, mode, { timeout: scaled(30000) });
       // ---------------------------------------------------------------- 1. 一覧
       if (mode === 'folder') {
         ok(await page.getAttribute('#b-slides', 'aria-expanded') === 'false' && await page.isVisible('#b-slides'), `${tag}: the list is closed at first; its tab is at the left edge`);
@@ -153,7 +154,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
       await page.keyboard.press('Home');
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('ArrowDown');
-      await page.waitForFunction(() => { const p = window.__APP_TEST.state().pos; return p && p.i === 2 && window.__APP_TEST.slides().sel === 2; }, null, { timeout: 10000 }).catch(() => {});
+      await page.waitForFunction(() => { const p = window.__APP_TEST.state().pos; return p && p.i === 2 && window.__APP_TEST.slides().sel === 2; }, null, { timeout: scaled(10000) }).catch(() => {});
       const nav = { sel: (await sl()).sel, pos: ((await state()).pos || {}).i, active: await page.getAttribute('#sl-list', 'aria-activedescendant'), selected: await page.getAttribute('#sl-o-2', 'aria-selected'), focus: await page.evaluate(() => document.activeElement.id) };
       ok(nav.sel === 2 && nav.pos === 2 && nav.active === 'sl-o-2' && nav.selected === 'true',
         `${tag}: arrow keys move the selection (aria-activedescendant, aria-selected) and the preview follows ${JSON.stringify(nav)}`);
@@ -168,7 +169,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await clickMenuItem(page, `#sl-add-${kind}`);
         // 1 ファイル：最初の編集の前に権利の確認（format spec §7.3）
         if (mode === 'file' && kind === TEMPLATES[0]) {
-          await page.waitForSelector('#dlg[open] #rights-list', { timeout: 10000 });
+          await page.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(10000) });
           ok(true, `${tag}: the first slide action shows the rights prompt first`);
           await clickDlg(page, '#dlg-ok');
         }
@@ -198,10 +199,10 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         // TTS の前：仮の行の段階で「TTS で作る」を押すと窓が出る。取消なら合成しない
         await page.evaluate(() => { window.__synth = 0; window.__APP_TEST.tts = { info: () => ({ ok: true, label: 'stub' }), synth: async () => { window.__synth++; throw new Error('stub'); } }; });
         await page.evaluate((i) => window.__APP_TEST.state() && document.getElementById('preview').contentWindow.postMessage({ type: 'app-go', i, k: 0 }, '*'), keys(cur.deck).indexOf(id));
-        await page.waitForFunction((i) => (window.__APP_TEST.state().pos || {}).i === i, keys(cur.deck).indexOf(id), { timeout: 10000 });
+        await page.waitForFunction((i) => (window.__APP_TEST.state().pos || {}).i === i, keys(cur.deck).indexOf(id), { timeout: scaled(10000) });
         await page.click('#b-audio');
-        await page.waitForSelector('#dev-audio-tts:not([disabled])', { timeout: 10000 });
-        await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #left-list', { timeout: 2500 }));
+        await page.waitForSelector('#dev-audio-tts:not([disabled])', { timeout: scaled(10000) });
+        await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #left-list', { timeout: scaled(2500) }));
         const ttsDlg = await page.textContent('#dlg');
         ok(/テンプレートの仮の行（✎）のまま/.test(ttsDlg) && /ステップ \[0\]/.test(ttsDlg), `${tag}: TTS on a placeholder step shows the template warning first`);
         await clickDlg(page, '#dlg-cancel');
@@ -210,16 +211,16 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         // 書き出しの前：雛形の字と仮の行の一覧。取消なら書かない、「このまま書き出す」なら書く
         await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('slides-export.ega.html', { create: true }); const w = await window.__APP_TEST.saveHandle.createWritable(); await w.write(''); await w.close(); });
         await clickCommand(page, '#b-export-portable');
-        await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
+        await page.waitForSelector('#dlg[open] #left-list', { timeout: scaled(10000) });
         const exDlg = await page.$$eval('#left-list li', (xs) => xs.map((x) => x.textContent));
         ok(exDlg.some((t) => /テンプレートの字/.test(t)) && exDlg.some((t) => /ステップ \[0\]/.test(t)), `${tag}: exporting the Egatari file lists the template leftovers first (${exDlg.length} lines)`);
         await clickDlg(page, '#dlg-cancel');
         await page.waitForTimeout(300);
         ok(await page.evaluate(async () => (await window.__APP_TEST.saveHandle.getFile()).size) === 0, `${tag}: Cancel in the export warning writes nothing`);
         await clickCommand(page, '#b-export-portable');
-        await page.waitForSelector('#dlg[open] #left-list', { timeout: 10000 });
+        await page.waitForSelector('#dlg[open] #left-list', { timeout: scaled(10000) });
         await clickDlg(page, '#dlg-go');
-        await page.waitForFunction(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 0, null, { timeout: 30000 });
+        await page.waitForFunction(async () => (await window.__APP_TEST.saveHandle.getFile()).size > 0, null, { timeout: scaled(30000) });
         ok(true, `${tag}: “Export anyway” exports the file`);
         // 書き換える：その枚の雛形の字と仮の行をすべて自分の文に
         const T = await import('../kit/core/template-text.mjs');
@@ -231,7 +232,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
           for (const [rel, text] of [['deck.html', deck], ['narration.md', narr]]) { const w = await (await window.__sd.getFileHandle(rel)).createWritable(); await w.write(text); await w.close(); }
         }, [deck2, narr3]);
         await page.evaluate(() => window.__APP_TEST.rebuild());
-        await page.waitForFunction((b0) => { const s = window.__APP_TEST.state(); return s.builds > b0 && s.frameLoaded === s.loads; }, b0, { timeout: 30000 });
+        await page.waitForFunction((b0) => { const s = window.__APP_TEST.state(); return s.builds > b0 && s.frameLoaded === s.loads; }, b0, { timeout: scaled(30000) });
         await page.click('#b-check');
         await page.waitForSelector('#panel-body .sum');
         const left = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent).filter((t) => /雛形/.test(t)));
@@ -260,7 +261,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         const before = await snap(), victim = keys(before.deck)[1];
         const vFiles = Object.entries(JSON.parse(before.man).segments).filter(([k]) => k.startsWith(victim + ':')).map(([, e]) => 'audio/' + e.file);
         ok(vFiles.length === 5 && (await Promise.all(vFiles.map(exists))).every(Boolean), `${tag}: the slide to delete has 5 audio files`);
-        await clickUntil(page, '#sl-del', () => page.waitForSelector('#dlg[open] #dlg-delete', { timeout: 2500 }));
+        await clickUntil(page, '#sl-del', () => page.waitForSelector('#dlg[open] #dlg-delete', { timeout: scaled(2500) }));
         const dlg = await page.evaluate(() => ({ title: document.getElementById('dlg-title').textContent, what: document.getElementById('sl-del-what').textContent, warn: document.getElementById('sl-del-warn').textContent, list: document.getElementById('sl-del-list').textContent, kind: document.getElementById('dlg').className }));
         ok(/スライド 2「何を最小化するか」/.test(dlg.title) && /何を最小化するか/.test(dlg.what) && /音声/.test(dlg.warn) && /ステップ 5 個/.test(dlg.list) && /音声の記録 5 個/.test(dlg.list) && dlg.kind === 'warn',
           `${tag}: the delete dialog names the slide and warns that the audio goes too ${JSON.stringify(dlg)}`);
@@ -269,7 +270,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await clickDlg(page, '#dlg-cancel');
         ok(JSON.stringify(await snap()) === JSON.stringify(before), `${tag}: Cancel in the delete dialog changes nothing`);
         const b0 = (await state()).builds;
-        await clickUntil(page, '#sl-del', () => page.waitForSelector('#dlg[open] #dlg-delete', { timeout: 2500 }));
+        await clickUntil(page, '#sl-del', () => page.waitForSelector('#dlg[open] #dlg-delete', { timeout: scaled(2500) }));
         await clickDlg(page, '#dlg-delete');
         await settle(b0);
         const after = await snap();
@@ -317,13 +318,13 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
       if (mode === 'folder') {
         const n0 = (await state()).builds;
         await page.evaluate(() => window.__APP_TEST_OPEN(window.__sd));
-        await page.waitForFunction((n0) => { const s = window.__APP_TEST.state(); return s.builds > n0 && s.frameLoaded === s.loads; }, n0, { timeout: 30000 });
+        await page.waitForFunction((n0) => { const s = window.__APP_TEST.state(); return s.builds > n0 && s.frameLoaded === s.loads; }, n0, { timeout: scaled(30000) });
         const st = await state();
         ok(!st.error && (await sl()).rows.map((r) => r.key).join() === kf.join() && !(await sl()).undo, `${tag}: the folder reopens cleanly with the new order (undo cleared)`);
       } else {
         await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('slides-saved.ega.html', { create: true }); });
         const save = page.evaluate(() => window.__APP_TEST.save('save'));
-        await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+        await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
         ok(/組み直/.test(await page.textContent('#dlg')), `${tag}: Save asks to rebuild (tier B: the slide structure changed)`);
         await clickDlg(page, '#dlg-rebuild');
         await save;
@@ -340,7 +341,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         // 開き直す
         const n0 = (await state()).builds;
         await page.evaluate((b64) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'slides-saved.ega.html' }); }, Buffer.from(html).toString('base64'));
-        await page.waitForFunction((n0) => { const s = window.__APP_TEST.state(); return s.builds > n0 && s.frameLoaded === s.loads; }, n0, { timeout: 30000 });
+        await page.waitForFunction((n0) => { const s = window.__APP_TEST.state(); return s.builds > n0 && s.frameLoaded === s.loads; }, n0, { timeout: scaled(30000) });
         const st2 = await state();
         ok(!st2.error && !st2.portable.readOnly && !st2.portable.tierAOnly && (await sl()).rows.map((x) => x.key).join() === kf.join(), `${tag}: the saved file reopens cleanly (editable, same order)`);
         await page.click('#b-check');
@@ -354,7 +355,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         const before = await snap(), b0 = (await state()).builds;
         await clickCommand(page, '#b-dup');
         // 開き直した 1 ファイルは、最初の編集の前に権利を見せる
-        if (await page.waitForSelector('#dlg[open] #rights-list', { timeout: 3000 }).then(() => true, () => false)) await clickDlg(page, '#dlg-ok');
+        if (await page.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(3000) }).then(() => true, () => false)) await clickDlg(page, '#dlg-ok');
         await settle(b0);
         const after = await snap();
         ok(keys(after.deck).length === keys(before.deck).length + 1 && keys(after.deck)[0] === keys(before.deck)[0] && keys(after.deck)[2] === keys(before.deck)[1], `${tag}: Slide ▾ → Duplicate copies the slide selected in the list`);

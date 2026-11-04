@@ -19,6 +19,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { scanDocument, replaceIndexText, readPortable, GENERATOR } from '../kit/core/portable.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { earlierFile, earlierFolder, draftStudioVersion, draftStudioUrl, guideUrl, FIRST_1_0, LAST_DRAFT_STUDIO, STUDIO_SITE } from '../app/earlier-draft.js';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-earlier-')));
@@ -129,7 +130,7 @@ async function previewSlides(page, timeout = 20000) {
 async function toastAfter(page, fn) {
   await page.evaluate(() => { const t = document.getElementById('toast'); t.textContent = ''; t.className = ''; });
   await fn();
-  await page.waitForSelector('#toast.show', { timeout: 5000 }).catch(() => {});
+  await page.waitForSelector('#toast.show', { timeout: scaled(5000) }).catch(() => {});
   return page.textContent('#toast');
 }
 

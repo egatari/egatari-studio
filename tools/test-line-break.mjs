@@ -1,9 +1,11 @@
 // 日本語の行の分け方（format spec §8.0。kit/base.css の :root:lang(ja) {line-break: strict}）
+// test-all: platform（--platform でも走らせる：日本語の行頭禁則（字体と字の組み方））
 //   node tools/test-line-break.mjs <built.html（ja のデッキ）>
 // - スライドの本文・字幕・発表者ビューの台本で、計算された line-break が strict
 // - 幅を少しずつ変えた狭い箱で：strict では行の初めに「ゃ」「ー」が来ない（loose では来る幅があることも確かめ、試験が効いていることを示す）
 // - 「……」「――」・数字の並びが途中で切れないか（知らせ。切れる幅があれば note として出す。CSS だけでは止めない）
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const [file] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-line-break.mjs <built.html>'); process.exit(2); }
@@ -15,14 +17,14 @@ const p = await ctx.newPage();
 const errs = [];
 p.on('pageerror', (e) => errs.push(e.message));
 await p.goto(fileUrl(file) + '#2');
-await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
 ok(await p.evaluate(() => document.documentElement.lang) === 'ja', 'the deck is Japanese');
 ok(await p.evaluate(() => getComputedStyle(document.querySelector('.slide.active .body') || document.querySelector('.slide.active')).lineBreak) === 'strict', 'slide body: line-break strict');
 await p.keyboard.press('s'); await p.waitForTimeout(300);
 ok(await p.evaluate(() => { const c = document.querySelector('#deck-cap .cap-line'); return !!c && getComputedStyle(c).lineBreak === 'strict'; }), 'captions: line-break strict');
 await p.keyboard.press('s');
 const [pv] = await Promise.all([ctx.waitForEvent('page'), p.keyboard.press('p')]);
-await pv.waitForFunction(() => document.querySelector('#pv-text p'), null, { timeout: 20000 });
+await pv.waitForFunction(() => document.querySelector('#pv-text p'), null, { timeout: scaled(20000) });
 ok(await pv.evaluate(() => getComputedStyle(document.querySelector('#pv-text p')).lineBreak) === 'strict', 'presenter view script: line-break strict');
 await pv.close();
 

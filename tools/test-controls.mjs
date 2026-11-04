@@ -7,6 +7,7 @@ import { launch, fileUrl } from '../kit/browser.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { scaled } from './wait-scale.mjs';
 const [file, outdir = path.join(os.tmpdir(), 'test-controls')] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-controls.mjs <built.html> [outdir]'); process.exit(2); }
 fs.mkdirSync(outdir, { recursive: true });
@@ -20,7 +21,7 @@ const watch = (p, name) => {
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
 const shot = (p, name) => p.screenshot({ path: path.join(outdir, name + '.png') });
-const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
+const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(10000) });
 const shown = (p) => p.evaluate(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show') && +getComputedStyle(c).opacity > .5; });
 const pos = (p) => p.evaluate(() => { const s = DECK.state(); return s.slide * 100 + s.step; });
 const inked = (p) => p.evaluate(() => {
@@ -198,7 +199,7 @@ ok(!(await shown(r)), '重ねるときは、舞台の中ほどでマウスを動
 await r.keyboard.press('d');
 await r.mouse.move(640, 690, { steps: 3 });
 // 遅い機械（CI の macOS）では帯が出るまで 300 ms を超えることがあるので、出るのを最大 3 秒待つ（画素は見ない）
-await r.waitForFunction(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show') && +getComputedStyle(c).opacity > .5; }, null, { timeout: 3000 }).catch(() => {});
+await r.waitForFunction(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show') && +getComputedStyle(c).opacity > .5; }, null, { timeout: scaled(3000) }).catch(() => {});
 ok(await shown(r), '下のほうに来ると出る');
 // 出てから 350 ms（kit/tools.js の REVEAL_GUARD）の間のクリックは、帯を出した動きの続きとして押さない。人が狙って押すのと同じく、その後で押す
 await r.waitForTimeout(400);

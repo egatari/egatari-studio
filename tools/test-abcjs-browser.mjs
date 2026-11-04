@@ -112,6 +112,9 @@ try {
   // Deliberately hostile editor CSS must not affect score coordinates.
   await page.addStyleTag({ content: 'svg text { font-size:99px!important }' });
   for (const [name, f] of Object.entries(fixtures)) {
+    // 開く前の数：2 つ目からは前の見本の組み立てと読み込みが数に残るので、増えたことと今の読み込みが表示し終えたことを待つ
+    // （前は builds > 0 だけを待ち、前の見本の文書の frame を拾って、読み込みが替わると "Frame was detached" で落ちた。macOS の CI）
+    const s0 = await page.evaluate(() => { const s = window.__APP_TEST.state(); return { gen: s.gen || 0, builds: s.builds || 0, loads: s.loads || 0 }; });
     assert.equal(await page.evaluate(async ({ deck, name }) => {
       const root = await navigator.storage.getDirectory();
       const dir = await root.getDirectoryHandle('score-' + name, { create: true });
@@ -120,11 +123,11 @@ try {
       }
       return window.__APP_TEST_OPEN(dir);
     }, { deck: scoreDeck(f.abc), name }), true);
-    await page.waitForFunction(() => {
-      const p = document.getElementById('preview');
-      // sandboxed preview is read via Playwright below; wait for successful worker build here.
-      return p && window.__APP_TEST.state().builds > 0 && !window.__APP_TEST.state().error;
-    });
+    await page.waitForFunction((s0) => {
+      const p = document.getElementById('preview'), s = window.__APP_TEST.state();
+      // sandboxed preview is read via Playwright below; wait for this fixture's worker build and its preview load here.
+      return p && s.gen > s0.gen && s.builds > s0.builds && s.loads > s0.loads && s.frameLoaded === s.loads && !s.error;
+    }, s0);
     const preview = page.frames().find((f) => f.parentFrame() === page.mainFrame() && f.name() !== 'sl-thumbs');
     assert.ok(preview, 'preview frame exists');
     await preview.waitForFunction(() => !!document.querySelector('m-score [data-note]'));

@@ -1,4 +1,5 @@
 // 切れる字・外に出る字の検査（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（backlog #51）の試験
+// test-all: platform（--platform でも走らせる：切れる字・外に出る字（字体の寸法））
 //   node tools/test-check-overflow.mjs [作業フォルダ]
 // 1. 試験用のデッキ（tools/fixtures/check-overflow/deck.html。#52 の例 2 つ（s-fix52a・s-fix52b）を含む）を kit/check.mjs --json で検査し、
 //    スライドごとに出る体裁の知らせが決めたとおり：m-flow の箱からはみ出す字（svgTextBox）、印のない切れた箱（textClipped）、

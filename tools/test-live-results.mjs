@@ -22,6 +22,7 @@ import { readPortable } from '../kit/core/portable.mjs';
 import { parseResults, skippedNotice, isLiveResults, summarizeResults, summaryLines, resultsRecord, roomMatch, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
 import { titleProblem, descriptionProblem, roleProblem, inspectAttachment, blocking, ATTACH_LIMITS } from '../kit/core/attachments.mjs';
 import { clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PROTO = path.join(ROOT, ...FORMAT.LIVE_VENDOR_DIR.split('/'));
@@ -211,7 +212,7 @@ console.log('editor');
     await page.goto(BASE + '?lang=ja');
     await page.waitForSelector('#drop');
     const toastText = async () => (await page.textContent('#toast')) || '';
-    const waitIdle = async () => { await page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy() && document.getElementById('attach-list'), null, { timeout: 30000 }); await page.waitForTimeout(200); };
+    const waitIdle = async () => { await page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy() && document.getElementById('attach-list'), null, { timeout: scaled(30000) }); await page.waitForTimeout(200); };
     const ff = {};
     for (const f of ['deck.html', 'narration.md', CFG]) ff[f] = fs.readFileSync(path.join(deckDir, f)).toString('base64');
     await page.evaluate(async (files) => {
@@ -223,7 +224,7 @@ console.log('editor');
       window.__testDir = await root.getDirectoryHandle('lrout', { create: true });
     }, ff);
     await page.evaluate(() => window.__APP_TEST_OPEN(window.__fd));
-    await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder' && window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder' && window.__APP_TEST.state().loads > 0, null, { timeout: scaled(30000) });
     const fread = (rel) => page.evaluate(async (rel) => { try { const parts = rel.split('/'); const n = parts.pop(); let d = window.__fd; for (const x of parts) d = await d.getDirectoryHandle(x); return await (await (await d.getFileHandle(n)).getFile()).text(); } catch { return null; } }, rel);
     const outRead = (name) => page.evaluate(async (n) => { try { return await (await (await window.__testDir.getFileHandle(n)).getFile()).text(); } catch { return null; } }, name);
     const exportTo = async (sel, name) => {
@@ -242,13 +243,13 @@ console.log('editor');
     ok((await page.textContent('#attach-live')) === 'ライブの結果を取り込む…', 'editor: the attachments panel has 「ライブの結果を取り込む…」');
     // 断る：壊れた JSON・大きすぎる
     await page.setInputFiles('#attach-live-file', { name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"v":1,"room":') });
-    await page.waitForFunction(() => /取り込めません/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
+    await page.waitForFunction(() => /取り込めません/.test(document.getElementById('toast').textContent), null, { timeout: scaled(10000) });
     ok(/ライブの結果の JSON ではないので取り込めません/.test(await toastText()) && !(await page.$('#dlg[open]')) && (await fread('attachments/live-r-7k2q6xw4-2026-10-30.json')) === null, 'editor: bad JSON is refused with a clear message');
     await page.setInputFiles('#attach-live-file', { name: 'other.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ hello: 'world' })) });
     await page.waitForTimeout(400);
     ok(/ライブの結果の JSON ではないので取り込めません/.test(await toastText()) && !(await page.$('#dlg[open]')), 'editor: JSON that is not results is refused');
     await page.setInputFiles('#attach-live-file', { name: 'big.json', mimeType: 'application/json', buffer: Buffer.alloc(RESULTS_MAX_BYTES + 1, 0x20) });
-    await page.waitForFunction(() => /大きすぎて/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
+    await page.waitForFunction(() => /大きすぎて/.test(document.getElementById('toast').textContent), null, { timeout: scaled(10000) });
     ok(/10\.0 MB まで/.test(await toastText()), 'editor: an oversize file is refused (10 MiB)');
     // 取り込む：はじめての知らせ（部屋は合う）
     await page.setInputFiles('#attach-live-file', { name: 'results.json', mimeType: 'application/json', buffer: R1B });
@@ -278,7 +279,7 @@ console.log('editor');
     ok(!!(await page.$(`#attach-list [data-attach="${P2}"] .attach-live`)) && JSON.parse(await fread(CFG))[KEY].some((x) => x.path === P2 && x.role === 'data'), 'editor: the mismatched results are added after the warning; the attachments panel shows them');
     // 同じものをもう一度：知らせなしで（部屋が合う）、断る
     await page.setInputFiles('#attach-live-file', { name: 'results.json', mimeType: 'application/json', buffer: R1B });
-    await page.waitForFunction(() => /もう添付にあります/.test(document.getElementById('toast').textContent), null, { timeout: 10000 });
+    await page.waitForFunction(() => /もう添付にあります/.test(document.getElementById('toast').textContent), null, { timeout: scaled(10000) });
     ok(!(await page.$('#dlg[open]')), 'editor: the privacy notice is shown only once; the same results again are refused');
     // 1 ファイルを書き出す：知らせ → 結果を外して書き出す
     await exportTo('#b-export-portable', 'without.ega.html');

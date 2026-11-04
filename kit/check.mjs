@@ -535,7 +535,9 @@ for (const seg of built.segs) {
 // ================================================================ C. パレットのコントラスト
 phase = 'C パレット';
 // oklch() や color-mix() は getComputedStyle だけでは rgb に落ちないことがあるので、
-// 一度 1x1 の canvas に塗って画素として読み、実際に表示される sRGB 値を得る
+// 一度 1x1 の canvas に塗って画素として読み、実際に表示される sRGB 値を得る。rgb()・rgba() はそのまま数を読む（canvas を通しても同じ値）：
+// 込み合った macOS の CI で、canvas の読み戻しがどの色も 0,0,0 を返し、どの組も 1.00:1 の contrastLow になったことがある
+// （canvas は willReadFrequently で CPU に置く。kit/core/layout-scan.mjs・kit/tools.js と同じ）
 const palette = await page.evaluate(() => {
   const vars = ['--fg', '--term', '--emph', '--muted', '--title', '--accent2', '--bg'];
   const probe = document.createElement('div');
@@ -543,11 +545,13 @@ const palette = await page.evaluate(() => {
   document.body.appendChild(probe);
   const canvas = document.createElement('canvas');
   canvas.width = 1; canvas.height = 1;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const out = {};
   for (const v of vars) {
     probe.style.color = `var(${v})`;
     const css = getComputedStyle(probe).color;
+    const m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(css);
+    if (m) { out[v] = { css, rgb: [m[1], m[2], m[3]].map((x) => Math.round(+x)) }; continue; }
     ctx.clearRect(0, 0, 1, 1);
     ctx.fillStyle = css;
     ctx.fillRect(0, 0, 1, 1);
