@@ -2,6 +2,7 @@
 // kit/narration.mjs（build・TTS）、server/dev.mjs（開発サーバー）、app/（編集アプリ）が共有する
 // 書式は docs/contract.md §4
 import { short } from './sha1.mjs';
+import { findBare, applyReading, readingIn } from './readings.mjs';
 
 export * from './narration-parse.mjs';
 import { parseNarration, parseHeading, normalizeKey, headingLine, isStepKey, joinLines, parseExtLine } from './narration-parse.mjs';
@@ -139,3 +140,39 @@ export function rawTurns(text, slideKey, stepKey) {
 }
 // "鍵:段階" → [スライドの鍵, 段階]（スライドの鍵に : があってもよい）
 export function splitKey(key) { const p = String(key).lastIndexOf(':'); return p < 0 ? [String(key), '0'] : [key.slice(0, p), key.slice(p + 1)]; }
+
+// ---------------------------------------------------------------- 読み方（backlog #101）：台本のすべての発言の、読みの付いていない語
+// exceptKey（"鍵:段階"）の段階は数えない・書かない（台本の欄で直している段階。欄の中で当て、その段階の保存で書く）
+// 発言の行だけを見る：見出し・@x- の行・注（<!-- -->）・[k] と話者の印は触らない
+function eachTurnLine(lines, exceptKey, fn) {
+  const sections = scanNarration(lines);
+  for (const sec of sections) {
+    for (const b of sec.blocks) {
+      if (exceptKey && `${sec.key}:${b.step}` === exceptKey) continue;
+      let inComment = false;
+      for (let j = b.start; j < b.end; j++) {
+        const ln = lines[j];
+        if (inComment) { if (ln.includes('-->')) inComment = false; continue; }
+        if (/^\s*<!--/.test(ln)) { if (!ln.includes('-->')) inComment = true; continue; }
+        if (parseExtLine(ln)) continue;
+        const m = ln.match(/^(\s*(?:\[(?:\d+|concl)\]\s*)?(?:(?:Expert|Novice|E|N)\s*[:：]\s*)?)(.*)$/);
+        const r = fn(m[2], `${sec.key}:${b.step}`);
+        if (typeof r === 'string') lines[j] = m[1] + r;
+      }
+    }
+  }
+}
+export function narrationWord(text, word, exceptKey = null) {
+  const lines = String(text ?? '').split(/\r?\n/);
+  let count = 0, reading = null;
+  eachTurnLine(lines, exceptKey, (s) => { count += findBare(s, word).length; if (reading === null) reading = readingIn(s, word); });
+  return { count, reading };
+}
+export function applyNarrationReading(text, word, reading, exceptKey = null) {
+  const parts = String(text ?? '').split(/(\r?\n)/);
+  const lines = [], eols = [];
+  for (let j = 0; j < parts.length; j += 2) { lines.push(parts[j]); eols.push(parts[j + 1] ?? ''); }
+  let n = 0;
+  eachTurnLine(lines, exceptKey, (s) => { const r = applyReading(s, word, reading); if (!r.n) return null; n += r.n; return r.text; });
+  return { text: lines.map((l, j) => l + eols[j]).join(''), n };
+}

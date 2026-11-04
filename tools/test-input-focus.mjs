@@ -290,7 +290,7 @@ try {
     ok(e3.focus === 'b-edit' && e3.edit !== e1.edit, `#7 A: keyboard activation of a toolbar button still works and keeps focus ${JSON.stringify(e3)}`);
     await page.evaluate(() => document.activeElement && document.activeElement.blur());
     // 口述原稿の引き出しの中（ボタン）からは送らない
-    await page.keyboard.press('n'); await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: 10000 });
+    await page.keyboard.press('n'); await page.waitForSelector('#dev-narr .dev-turn .dv-text', { timeout: 10000 });
     const xb = await page.$('#dev-narr .dev-head button');
     await xb.focus();
     const n0 = await st(page);
@@ -298,7 +298,7 @@ try {
     const n1 = await st(page), nb = await fr(page, () => !!document.getElementById('deck-black'));
     ok(n1 === n0 && !nb, `#7 A: keys are not forwarded from the narration drawer ${JSON.stringify({ n0, n1, black: nb })}`);
     // 入力の欄からは送らない
-    await page.focus('#dev-narr .dev-turn textarea');
+    await page.focus('#dev-narr .dev-turn .dv-text');
     await page.keyboard.press('End'); await page.keyboard.press('ArrowRight'); await wait(page);
     ok(await st(page) === n0, '#7 A: keys are not forwarded from a text field');
     await page.keyboard.press('Escape'); await wait(page);
@@ -324,8 +324,8 @@ try {
     const { ctx, page } = await openA();
     await clickPrev(page);
     await page.keyboard.press('n');
-    await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: 10000 }); await wait(page, 300);
-    await clickApp(page, '#dev-narr .dev-turn textarea');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text', { timeout: 10000 }); await wait(page, 300);
+    await clickApp(page, '#dev-narr .dev-turn .dv-text');
     await page.keyboard.type('x'); await wait(page);
     await clickPrev(page);
     const n1 = await page.evaluate(() => { const b = document.querySelector('#dev-narr .dv-notice'); return b ? { text: b.textContent, role: b.getAttribute('role'), live: b.getAttribute('aria-live'), btns: [...b.querySelectorAll('button')].map((x) => x.textContent), vis: b.getBoundingClientRect().height > 0 } : null; });
@@ -352,8 +352,8 @@ try {
     const { ctx, page } = await openA();
     await clickPrev(page);
     await page.keyboard.press('n');
-    await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: 10000 }); await wait(page, 300);
-    await clickApp(page, '#dev-narr .dev-turn textarea');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text', { timeout: 10000 }); await wait(page, 300);
+    await clickApp(page, '#dev-narr .dev-turn .dv-text');
     await clickPrev(page);
     const foc = await frameFocused(page);
     const inert = await page.evaluate(() => document.getElementById('preview').inert);

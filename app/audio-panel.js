@@ -1034,8 +1034,28 @@ export function createAudioPanel(o) {
     view = null; open = false;
     ui.refresh();
   }
+  // 読み方の欄（#101）の「AI 音声で聞く」：1 つの語の読みだけを、この PC の AI 音声で作って鳴らす（ファイルにも記録にもしない）
+  let tryCtx = null;
+  async function tryVoice(text, lang) {
+    if (!o.tts) return { ok: false, reason: '' };
+    const info = o.tts.info(lang);
+    if (!info.ok) return { ok: false, reason: info.reason || '' };
+    const eng = /^ja\b/i.test(lang) ? 'irodori' : 'kokoro';
+    const voices = view && view.voice !== undefined && engineOf(view) === eng ? { expert: voiceOf(view, 'expert').name, novice: voiceOf(view, 'novice').name } : { ...DEFAULT_VOICES[eng] };
+    const stopWait = o.wait ? o.wait() : () => {};
+    try {
+      const r = await o.tts.synth({ lang, text: normalizeTtsText(text), role: 'expert', voices });
+      const p = processTake([r.pcm], r.sr);
+      if (!(p.dur > 0)) return { ok: false, reason: L.empty };
+      tryCtx = tryCtx || new win.AudioContext();
+      const buf = tryCtx.createBuffer(1, p.pcm.length, p.sr);
+      buf.copyToChannel(p.pcm, 0);
+      const src = tryCtx.createBufferSource(); src.buffer = buf; src.connect(tryCtx.destination); src.start();
+      return { ok: true };
+    } finally { stopWait(); }
+  }
   return {
-    toggle, reset, isOpen: () => open, isBusy: () => !!busyMsg,
+    toggle, reset, isOpen: () => open, isBusy: () => !!busyMsg, tryVoice,
     onPos: () => { if (open) follow(false); },
     // 1 ファイルの未保存が変わった（保存した・書いた）：A の 1 行を描き直す
     dirtyChanged: () => { const ws = o.ws(); const d = !!(ws && ws.kind === 'memory' && ws.dirty); if (open && view && !view.loading && !busyMsg && d !== lastDirty) draw(view); },

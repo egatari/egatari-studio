@@ -195,15 +195,15 @@ try {
   await deckKey('e');   // 編集モードを切る（引き出しは編集モードと独立）
   ok(!(await page.isVisible('#dev-badge')) && !(await dk().evaluate(() => document.documentElement.classList.contains('dev-edit'))), 'e again: edit mode off (badge hidden, no outlines)');
   await deckKey('n');
-  await page.waitForSelector('#dev-narr .dev-turn textarea');
-  const t0 = page.locator('#dev-narr .dev-turn textarea').first();
-  ok((await t0.inputValue()) === '{mark:eta|circle}{η|イータ} は学習率で、1 歩の大きさを決めます。', 'drawer (in the shell) shows raw narration');
+  await page.waitForSelector('#dev-narr .dev-turn .dv-text');
+  const t0 = page.locator('#dev-narr .dev-turn .dv-text').first();
+  ok((await t0.evaluate((e) => e.value)) === '{mark:eta|circle}{η|イータ} は学習率で、1 歩の大きさを決めます。', 'drawer (in the shell) shows raw narration');
   await t0.fill('η は、1 歩の{cue}大きさです。{φ|ファイ} とは違います。');
   await page.locator('#dev-narr button', { hasText: '発言を足す' }).click();
-  await page.locator('#dev-narr .dev-turn textarea').nth(1).fill('大きさ、ですか。');
+  await page.locator('#dev-narr .dev-turn .dv-text').nth(1).fill('大きさ、ですか。');
   await shot('4-narration.png');
   n = await loads();
-  await page.locator('#dev-narr .dev-turn textarea').nth(1).press('Meta+Enter');
+  await page.locator('#dev-narr .dev-turn .dv-text').nth(1).press('Meta+Enter');
   await reloaded(n); await page.waitForTimeout(400);
   const narr1 = fs.readFileSync(NARR, 'utf8');
   const exp1 = narr0.replace('[2] {mark:eta|circle}{η|イータ} は学習率で、1 歩の大きさを決めます。', nl('[2] Expert: η は、1 歩の{cue}大きさです。{φ|ファイ} とは違います。\n    Novice: 大きさ、ですか。'));
@@ -213,7 +213,7 @@ try {
   const seg = parseNarration(narr1).find((s) => s.slideKey === '更新の式' && s.stepKey === '2');
   ok(seg && seg.turns.length === 2 && seg.turns[1].role === 'novice' && seg.turns[0].raw.includes('{cue}'), 'parsed back as 2 turns');
   ok(await page.isVisible('#dev-narr'), 'drawer stays open after reload');
-  ok(/1 歩の/.test(await page.locator('#dev-narr .dev-turn textarea').first().inputValue()), 'drawer shows saved text');
+  ok(/1 歩の/.test(await page.locator('#dev-narr .dev-turn .dv-text').first().evaluate((e) => e.value)), 'drawer shows saved text');
   ok(await dk().evaluate(() => DECK.NARRATION['更新の式']['2'][0].text.includes('φ とは')), 'DECK.NARRATION shows display text');
 
   // 挿入：節がまだない「学習率と収束」（id="lr"）の段階、既存の節の途中の段階（外枠と同じ問い合わせを直接）
@@ -244,22 +244,22 @@ try {
   // 画面でも分かるか：引き出しで書きかけのあいだに、外から同じ段階を直す
   await dk().evaluate(() => DECK.go(2, 2, false));
   if (!(await page.isVisible('#dev-narr'))) await deckKey('n');
-  await page.waitForFunction(() => { const t = document.querySelector('#dev-narr .dev-turn textarea'); return t && t.value.includes('1 歩の'); });
-  await page.locator('#dev-narr .dev-turn textarea').first().fill('書きかけの下書き');
+  await page.waitForFunction(() => { const t = document.querySelector('#dev-narr .dev-turn .dv-text'); return t && t.value.includes('1 歩の'); });
+  await page.locator('#dev-narr .dev-turn .dv-text').first().fill('書きかけの下書き');
   const extNarr = fs.readFileSync(NARR, 'utf8').replace('大きさ、ですか。', '大きさ、ですね。');
   n = await loads();
   fs.writeFileSync(NARR, extNarr);
   await reloaded(n);
-  ok((await page.locator('#dev-narr .dev-turn textarea').first().inputValue()) === '書きかけの下書き', 'drawer keeps unsaved input across the reload');
-  await page.locator('#dev-narr .dev-turn textarea').first().press('Meta+Enter');
+  ok((await page.locator('#dev-narr .dev-turn .dv-text').first().evaluate((e) => e.value)) === '書きかけの下書き', 'drawer keeps unsaved input across the reload');
+  await page.locator('#dev-narr .dev-turn .dv-text').first().press('Meta+Enter');
   await page.waitForSelector('#dev-narr .dev-msg.dv-err');
   await shot('4b-narration-conflict.png');
   ok(/台本が変わっています/.test(await page.locator('#dev-narr .dev-msg').textContent()) && fs.readFileSync(NARR, 'utf8') === extNarr, 'narration conflict shown in drawer, file untouched');
   n = await loads();
   await page.locator('#dev-narr .dev-msg button', { hasText: '再読み込み' }).click();
   await reloaded(n); await page.waitForTimeout(300);
-  await page.waitForFunction(() => { const t = document.querySelector('#dev-narr .dev-turn textarea'); return t && t.value.includes('1 歩の'); });
-  ok((await page.locator('#dev-narr .dev-turn').count()) === 2 && (await page.locator('#dev-narr .dev-turn textarea').nth(1).inputValue()) === '大きさ、ですね。', 'reload after the conflict shows the current narration');
+  await page.waitForFunction(() => { const t = document.querySelector('#dev-narr .dev-turn .dv-text'); return t && t.value.includes('1 歩の'); });
+  ok((await page.locator('#dev-narr .dev-turn').count()) === 2 && (await page.locator('#dev-narr .dev-turn .dv-text').nth(1).evaluate((e) => e.value)) === '大きさ、ですね。', 'reload after the conflict shows the current narration');
 
   // ---- 4. Claude への指示（Alt+クリック）とコメントの一覧
   await dk().evaluate(() => DECK.go(1, 4, false));
@@ -627,16 +627,16 @@ try {
     const inert = () => hp.evaluate(() => document.getElementById('deck').inert);
     await hf.evaluate(() => DECK.go(1, 0, false));
     await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return s.narr && s.pos && s.narrKey === s.pos.key; });
-    await hp.waitForSelector('#dev-narr .dev-turn textarea');
+    await hp.waitForSelector('#dev-narr .dev-turn .dv-text');
     ok(!(await inert()), 'narration drawer open but not editing: the preview stays interactive (the drawer follows the slide)');
     const k0 = (await ui()).narrKey;
     // 入力の欄に入る（まだ変えていない）→ inert。デッキが動いても段階は替えない。欄から離れたら付いていく
-    await hp.locator('#dev-narr .dev-turn textarea').first().focus();
+    await hp.locator('#dev-narr .dev-turn .dv-text').first().focus();
     ok(await inert() && (await ui()).editing, 'focus in a narration field → the preview is inert');
     await hf.evaluate(() => DECK.go(2, 0, false));
     await hp.waitForFunction(() => window.__DEV_UI.state().pos.i === 2);
     ok((await ui()).narrKey === k0, 'while a narration field has the focus, a deck position change does not switch the step (received, deferred)');
-    await hp.locator('#dev-narr .dev-turn textarea').first().press('Escape');
+    await hp.locator('#dev-narr .dev-turn .dv-text').first().press('Escape');
     await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return s.narrKey === s.pos.key; });
     ok(!(await inert()) && (await ui()).narrKey !== k0, 'leaving the field → the preview is interactive again and the drawer follows to the current step');
     // 未保存の変更がある：欄から離れても inert のまま。デッキからの知らせ（n・c・Escape・コメント・位置）では何も替わらない
@@ -662,8 +662,8 @@ try {
     let release, held = 0;
     const gate = new Promise((r) => { release = r; });
     await hp.route('**/__dev/narration', async (route) => { if (route.request().method() === 'POST') { held++; await gate; } await route.continue(); });
-    await hp.waitForSelector('#dev-narr .dev-turn textarea');
-    const ta = hp.locator('#dev-narr .dev-turn textarea').first();
+    await hp.waitForSelector('#dev-narr .dev-turn .dv-text');
+    const ta = hp.locator('#dev-narr .dev-turn .dv-text').first();
     await ta.fill('保存する入力');
     await hp.click('#dev-narr .dv-foot button.dv-pri');
     await hp.waitForFunction(() => document.querySelector('#dev-narr .dv-foot button.dv-pri').disabled);
@@ -675,7 +675,7 @@ try {
     release();
     await hp.waitForFunction(() => !document.querySelector('#dev-narr .dv-foot button.dv-pri').disabled);
     await hp.waitForTimeout(400);
-    const s7 = await ui(), v = await hp.locator('#dev-narr .dev-turn textarea').first().inputValue().catch(() => null);
+    const s7 = await ui(), v = await hp.locator('#dev-narr .dev-turn .dv-text').first().evaluate((e) => e.value).catch(() => null);
     ok(held === 1 && s7.narrDirty && s7.narrKey === k && v === '保存する入力、その後の入力' && await inert() && s7.editing,
       'narration: typing again before the save response keeps the drawer dirty, keeps the newer input, does not follow the deck, and the preview stays inert ' + JSON.stringify({ held, dirty: s7.narrDirty, follow: s7.narrKey !== k, v }));
     await hp.unroute('**/__dev/narration');

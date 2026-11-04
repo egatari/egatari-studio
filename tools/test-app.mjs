@@ -346,11 +346,11 @@ try {
   ok(await f.evaluate(() => DECK.tools.mode()) === null && await page.evaluate(() => document.getElementById('dev-mode').textContent) === '表示', 'tools vs edit: leaving edit mode does not bring the pen back (footer: 表示)');
   await f.evaluate(() => DECK.go(1, 0, false));
   await page.click('#b-narr');
-  await page.waitForSelector('#dev-narr .dev-turn textarea');
-  const nta = page.locator('#dev-narr .dev-turn textarea').first();
+  await page.waitForSelector('#dev-narr .dev-turn .dv-text');
+  const nta = page.locator('#dev-narr .dev-turn .dv-text').first();
   await nta.fill('アプリから書き直した口述原稿です。');
   await page.click('#dev-narr button:has-text("発言を足す")');
-  await page.locator('#dev-narr .dev-turn textarea').last().fill('足した発言です。');
+  await page.locator('#dev-narr .dev-turn .dv-text').last().fill('足した発言です。');
   await shot(page, 'narration.png');
   ok(await page.evaluate(() => document.getElementById('preview').inert && window.__APP_TEST.ui().editing), 'narration: the preview is inert while a narration field is being edited (unsaved)');
   n = await loads();
@@ -373,7 +373,7 @@ try {
         return orig.apply(this, a);
       };
     });
-    const ta = page.locator('#dev-narr .dev-turn textarea').first();
+    const ta = page.locator('#dev-narr .dev-turn .dv-text').first();
     await ta.fill('保存する入力（アプリ）');
     await clickSave('#dev-narr .dv-foot button.dv-pri');
     await page.waitForFunction(() => !!window.__nGate);
@@ -384,7 +384,7 @@ try {
     f = await waitLoads(n);
     await page.waitForFunction(() => !document.querySelector('#dev-narr .dv-foot button.dv-pri').disabled);
     await page.waitForTimeout(300);
-    const st = await page.evaluate(() => ({ ui: window.__APP_TEST.ui(), inert: document.getElementById('preview').inert, v: document.querySelector('#dev-narr .dev-turn textarea').value }));
+    const st = await page.evaluate(() => ({ ui: window.__APP_TEST.ui(), inert: document.getElementById('preview').inert, v: document.querySelector('#dev-narr .dev-turn .dv-text').value }));
     ok(st.ui.narrDirty && st.ui.editing && st.inert && st.v === '保存する入力（アプリ）、その後の入力' && (await opfs.read('narration.md')).includes('保存する入力（アプリ）') && !(await opfs.read('narration.md')).includes('その後の入力'),
       'narration: typing again before the save finishes keeps the drawer dirty and the newer input, and the preview stays inert ' + JSON.stringify({ dirty: st.ui.narrDirty, inert: st.inert, v: st.v }));
     await page.evaluate(() => { FileSystemFileHandle.prototype.createWritable = window.__origCW; });
@@ -396,18 +396,18 @@ try {
   }
   ok(await page.isVisible('#dev-narr'), 'narration: drawer stays open after reload');
   // 外で変わった後の保存は 409（引き出しに出る）
-  await page.locator('#dev-narr .dev-turn textarea').first().fill('書きかけ');
+  await page.locator('#dev-narr .dev-turn .dv-text').first().fill('書きかけ');
   n = await loads();
   const narrExt = narr1.replace('足した発言です。', '外で直した発言です。');
   await opfs.write('narration.md', narrExt);
   f = await waitLoads(n);
-  await page.press('#dev-narr .dev-turn textarea >> nth=0', 'Meta+Enter');
+  await page.press('#dev-narr .dev-turn .dv-text >> nth=0', 'Meta+Enter');
   await page.waitForSelector('#dev-narr .dev-msg.dv-err');
   ok(/台本が変わっています/.test(await page.textContent('#dev-narr .dev-msg')) && (await opfs.read('narration.md')) === narrExt, 'narration: stale revision is rejected (409), file untouched');
   n = await loads();
   await page.click('#dev-narr .dev-msg button');
   f = await waitLoads(n);
-  await page.waitForFunction(() => [...document.querySelectorAll('#dev-narr .dev-turn textarea')].some((t) => t.value === '外で直した発言です。'));
+  await page.waitForFunction(() => [...document.querySelectorAll('#dev-narr .dev-turn .dv-text')].some((t) => t.value === '外で直した発言です。'));
   ok(true, 'narration: reload after the conflict shows the current text');
   await page.click('#b-narr');
 
@@ -675,9 +675,9 @@ try {
     await page.click('#b-narr');
     await page.waitForSelector('#dlg[open] #dlg-ok');
     await clickDlg(page, '#dlg-ok');
-    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text');
     const missingNarr = '残るパーツの台本を編集して保存します。';
-    await page.locator('#dev-narr .dev-turn textarea').first().fill(missingNarr);
+    await page.locator('#dev-narr .dev-turn .dv-text').first().fill(missingNarr);
     n = await loads();
     await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
@@ -744,8 +744,8 @@ try {
     // 段 A：口述原稿だけを直して保存 → 組み直さない。決まった場所の外は 1 バイトも変わらず、新しい字は字の補いで
     await f.evaluate(() => DECK.go(1, 0, false));
     await page.click('#b-narr');
-    await page.waitForSelector('#dev-narr .dev-turn textarea');
-    await page.locator('#dev-narr .dev-turn textarea').first().fill('まず、何を最小化するのかを確かめます。蒼穹の下で考えます。');   // 「蒼」「穹」は minimal が埋め込む字にない（fonts/*.ttf がなく @fontsource の分割ファイルを丸ごと埋め込んでも。「鬱」は入ってしまう。test-tier-a と同じ）
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text');
+    await page.locator('#dev-narr .dev-turn .dv-text').first().fill('まず、何を最小化するのかを確かめます。蒼穹の下で考えます。');   // 「蒼」「穹」は minimal が埋め込む字にない（fonts/*.ttf がなく @fontsource の分割ファイルを丸ごと埋め込んでも。「鬱」は入ってしまう。test-tier-a と同じ）
     n = await loads();
     await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
@@ -789,8 +789,8 @@ try {
     // 口述原稿を直す → その段階の音声は古い（消さない）
     await f.evaluate(() => DECK.go(1, 0, false));
     await page.click('#b-narr');
-    await page.waitForSelector('#dev-narr .dev-turn textarea');
-    await page.locator('#dev-narr .dev-turn textarea').first().fill('1 ファイルで書き直した口述原稿です。');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text');
+    await page.locator('#dev-narr .dev-turn .dv-text').first().fill('1 ファイルで書き直した口述原稿です。');
     n = await loads();
     await clickSave('#dev-narr .dv-foot button.dv-pri');
     f = await waitLoads(n);
@@ -928,7 +928,7 @@ try {
     await page.check('#dlg-confirm');
     ok(!(await page.isDisabled('#dlg-ok')), 'rights: confirmed → "Start editing" enabled');
     await clickDlg(page, '#dlg-ok');
-    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text');
     ok((await pstate()).portable.rightsOk, 'rights: ND license accepted after explicit confirmation');
     await page.click('#b-narr');
 
@@ -937,7 +937,7 @@ try {
     ok(!!pnd.index.audio[rk], 'removed step: it had audio');
     await f.evaluate(() => DECK.go(1, 3, false));
     await page.click('#b-narr');
-    await page.waitForSelector('#dev-narr .dev-turn textarea');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text');
     for (let i = 0; i < 10 && await page.locator('#dev-narr .dev-turn').count(); i++) await page.locator('#dev-narr .dev-turn').first().locator('button.dv-ghost').last().click();
     n = await loads();
     await clickSave('#dev-narr .dv-foot button.dv-pri');
@@ -990,8 +990,8 @@ try {
       await page.click('#b-narr');
       await page.waitForSelector('#dlg[open] #dlg-ok');
       await clickDlg(page, '#dlg-ok');
-      await page.waitForSelector('#dev-narr .dev-turn textarea');
-      await page.locator('#dev-narr .dev-turn textarea').first().fill('知らない項目を残す試験です。');
+      await page.waitForSelector('#dev-narr .dev-turn .dv-text');
+      await page.locator('#dev-narr .dev-turn .dv-text').first().fill('知らない項目を残す試験です。');
       n = await loads();
       await clickSave('#dev-narr .dv-foot button.dv-pri');
       f = await waitLoads(n);
@@ -1045,8 +1045,8 @@ try {
     await page.click('#b-narr');
     await page.waitForSelector('#dlg[open] #dlg-ok');
     await clickDlg(page, '#dlg-ok');
-    await page.waitForSelector('#dev-narr .dev-turn textarea');
-    await page.locator('#dev-narr .dev-turn textarea').first().fill('部品庫の違う文書でも口述原稿は直せます。');
+    await page.waitForSelector('#dev-narr .dev-turn .dv-text');
+    await page.locator('#dev-narr .dev-turn .dv-text').first().fill('部品庫の違う文書でも口述原稿は直せます。');
     const nn = await loads();
     await clickSave('#dev-narr .dv-foot button.dv-pri');
     of = await waitLoads(nn);
