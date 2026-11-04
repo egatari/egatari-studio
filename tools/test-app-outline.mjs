@@ -1,9 +1,9 @@
 // test-all: part of test-app
 // 新規作成の画面いっぱいのページ・② の内容の欄（大きさの目安は出さない）・長い教材の 2 回に分けた作り方（⑤ が構成案の欄から → 6 枚ずつ。kit/core/llm-outline.mjs）
 //   testAppOutline({browser, BASE, ok, watch, shotDir})
-//   画像（shotDir があれば）：new-page.png・new-content.png・new-outline.png・outline-progress.png
+//   画像（shotDir があれば）：copy-refused-outline.png・new-page.png・new-content.png・new-outline.png・outline-progress.png
 import path from 'node:path';
-import { replyOf, answerNew } from './test-app-llm.mjs';
+import { replyOf, answerNew, refusedCopy } from './test-app-llm.mjs';
 import { clickDlg, clickUntil } from './click-retry.mjs';
 
 const head = (i) => `見出し ${i}`;
@@ -83,6 +83,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 1〜6 枚目'));
     c = await copied();
     ok((await page.textContent('#paste-outline-copy')) === '1〜6 枚目を頼む指示をコピー' && c.includes('ちょうど 6 枚') && c.includes('| 24 | 見出し 24 | 要点 24 |') && c.includes('<!DOCTYPE html>'), 'outline: 「1〜6 枚目を頼む指示をコピー」 asks for slides 1–6 (a whole deck.html), with the outline');
+    await refusedCopy(page, ok, { want: c.replace(/\r\n/g, '\n'), what: 'outline 1〜6', button: '#paste-outline-copy', msg: 'paste-outline-copied', box: 'paste-outline-copy-text', lang: 'ja', shot: shotDir && path.join(shotDir, 'copy-refused-outline.png') });
     await page.evaluate(() => document.getElementById('paste-step-paste').scrollIntoView({ block: 'start' }));
     await shot('new-outline.png');
     // ［変更］で構成案を貼り直せる
