@@ -191,13 +191,15 @@ css(
   // キーの一覧（?）
   "#dt-help{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.32);padding:16px}" +
   "#dt-help.show{display:flex}" +
-  "#dt-help .dt-card{max-width:860px;width:fit-content;max-height:100%;overflow:auto;padding:18px 22px 14px;border-radius:14px;background:rgba(22,22,24,.94);" +
+  "#dt-help .dt-card{max-width:1000px;width:fit-content;max-height:100%;overflow:auto;padding:18px 22px 14px;border-radius:14px;background:rgba(22,22,24,.94);" +
   " color:#e8e8e8;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.45)}" +
   "#dt-help .dt-cols{display:grid;grid-auto-flow:column;align-items:start;gap:6px 36px}" +
   "@media (max-width:760px){#dt-help .dt-cols{grid-auto-flow:row}}" +
   "#dt-help .dt-sec{display:grid;grid-template-columns:auto auto;align-content:start;column-gap:10px}#dt-help h3{grid-column:1/-1}" +
   "#dt-help h3{margin:10px 0 4px;font-size:11.5px;font-weight:600;color:#9a9a9a;letter-spacing:.04em}" +
   "#dt-help .dt-row{display:contents}#dt-help .dt-row>span{padding:3px 0;white-space:nowrap}#dt-help .dt-row>span:first-child{text-align:right}" +
+  // 説明の欄は折り返す（キーの欄は折り返さない）：1280 の窓でも道具の列が窓の右で切れない。狭い画面（スマートフォン）でも横にはみ出さない
+  "#dt-help .dt-row>span:last-child{white-space:normal;min-width:0}#dt-help .dt-sec{grid-template-columns:auto minmax(0,1fr)}" +
   "#dt-help kbd{display:inline-block;min-width:20px;margin:0 1px;padding:1px 5px;border:1px solid rgba(255,255,255,.22);border-bottom-width:2px;border-radius:5px;" +
   " background:rgba(255,255,255,.07);font:600 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;color:#fff}" +
   "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}" +

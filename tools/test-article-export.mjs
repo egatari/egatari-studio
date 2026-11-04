@@ -126,6 +126,21 @@ t('table :class: (§9C.2, §9C.6): egatari-table-<name> on the figure; horizonta
   assert.deepEqual(codes(':::{table} T\n:class: Wide\n\n| a |\n|---|\n| 1 |\n:::\n'), ['articleTableClass']);
   assert.deepEqual(codes(':::{table} T\n:width: 3\n\n| a |\n|---|\n| 1 |\n:::\n'), ['articleOption']);
 });
+t('table :class: row-headers (§9C.6, spec fixture table-row-headers): the first cell of each body row is th scope="row"; the header row is unchanged; without the class, td', () => {
+  const FIX = path.join(ROOT, ...FORMAT.VENDOR_DIR.split('/'), 'fixtures', 'article-text', 'valid', 'table-row-headers', 'input.md');
+  const input = fs.readFileSync(FIX, 'utf8');
+  assert.deepEqual(parseArticleText(input).problems, [], 'the checker accepts :class: row-headers on {table}');
+  const html = (md, lang) => renderArticle(readArticle({ path: 'article.md' }, () => md, { lang }), { lang, title: 'T' }).html;
+  for (const [lang, md] of [['ja', `---\ntitle: 縦\nwriting-mode: vertical-rl\n---\n\n## 節\n\n${input}`], ['ja', `## 節\n\n${input}`]]) {
+    const h = html(md, lang), tb = h.slice(h.indexOf('<table>'), h.indexOf('</table>'));
+    assert.match(h, /<figure class="egatari-table egatari-table-row-headers" id="tbl-yuuki">/);
+    assert.match(tb, /<thead><tr><th><\/th><th>一　門の下<\/th><th>二　楼の上へ<\/th><\/tr><\/thead>/, 'header row unchanged');
+    assert.match(tb, /<tr><th scope="row">起きたこと<\/th><td>暇を出され、門の下で行き所がない<\/td><td>死人の髪を抜く老婆を見る<\/td><\/tr>/);
+    assert.match(tb, /<tr><th scope="row">勇気<\/th><td>盗人になる勇気が出ない<\/td><td>悪を憎む<\/td><\/tr>/);
+  }
+  const plain = html(`## 節\n\n${input.replace(':class: row-headers\n', '')}`, 'ja');
+  assert.ok(!/scope=/.test(plain) && /<tr><td>起きたこと<\/td>/.test(plain), 'no row headers without the class');
+});
 t('list: chapter (a book): a list at the end of each chapter, ids ref-<chapter>-<key>, numbers restart; none: spans and no list', () => {
   const files = { 'article/01.md': '---\ntitle: One\nchapter: 1\n---\n## A\n\nSee [@shannon1948] and [@aho1974].\n', 'article/02.md': '---\ntitle: Two\nchapter: 2\n---\n## B\n\nSee [@aho1974].\n' };
   const a = readArticle({ chapters: Object.keys(files), references: 'references.json' }, (p) => files[p], { lang: 'en' });

@@ -57,6 +57,7 @@ For each chapter and section: the heading, the point to convey, the figures, tab
 - Numbers of one or two digits become upright-in-line (tate-chu-yoko) automatically. Write years with four digits (2026, 1917).
 - Tables are vertical by default, like the text. Write the table in its original order (do not reverse rows or columns).
 - A table of long numbers or Latin text: write it as `:::{table} caption` with `:class: horizontal`, and it stays horizontal.
+- A table whose first column labels the rows: add `:class: row-headers`. Do not make the labels bold.
 - Figures, display math and code stay horizontal.
 - Footnote numbers stay upright (they are not turned sideways).
 - Keep one column of a vertical slide (`layout-tate`) to about 17 characters (do not make a second column of one character).

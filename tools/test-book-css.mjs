@@ -3,7 +3,7 @@
 // 1. 要素だけの規則を強く書いたテーマ（tools/fixtures/theme-bare-elements）の教材を組み、並べ方 book・split で、本の p と td・th・li・code・figcaption の
 //    字の大きさが本の大きさ（単独の本の頁と同じ）になること。スライドの表は体裁（28px）またはテーマの値のまま
 // 2. 縦書きの本：表は writing-mode: vertical-rl で、1 行目のセルがいちばん右の列。:class: horizontal の表は横組み。横書きの本の表は横組みのまま。
-//    縦書きの本の表は天付き（表と表題が行の頭から・本文のセルも頭から・見出しのセルと太字だけの 1 列目は中央）。横書きの本の表と表題は中央
+//    縦書きの本の表は天付き（表と表題が行の頭から・本文のセルも頭から・見出しのセルと行の見出し（:class: row-headers）は中央）。横書きの本の表と表題は中央
 //    印刷（単独の本の頁）でも縦。表のセルの 1〜2 桁の数は縦中横（横組みの表には付けない）
 // 3. WebKit（iPad の Safari と同じ組版の機械）でも縦書きの表が同じに組まれること（WebKit が入っていなければ skip）
 // --shots：作業フォルダに画面の PNG を残す（目で見る用。縦書きの根は CDP で撮る）
@@ -81,11 +81,12 @@ ${vertical ? 'writing-mode: vertical-rl\n' : ''}---
 
 :::{table} 行の見出しのある表
 :label: tbl-label
+:class: row-headers
 
 |  | 一の場面 | 二の場面 |
 |---|---|---|
-| **起きたこと** | 雨の門の下で行き所がない | 楼の上へのぼる |
-| **勇気** | 出ずにいた | 悪を憎む |
+| 起きたこと | 雨の門の下で行き所がない | 楼の上へのぼる |
+| 勇気 | 出ずにいた | 悪を憎む |
 :::
 
 (sec-bc3bbb)=
@@ -125,7 +126,7 @@ const measure = () => {
     slideTd: slideTd ? parseFloat(getComputedStyle(slideTd).fontSize) : null,
   };
 };
-// 表の置き方（tbl-label。列の揃えの指定のない表）：縦書きの本は天付き（表と表題は行の頭、本文のセルも頭から。見出しのセルと太字だけの 1 列目は中央）、
+// 表の置き方（tbl-label。列の揃えの指定のない表）：縦書きの本は天付き（表と表題は行の頭、本文のセルも頭から。見出しのセルと行の見出し（:class: row-headers）は中央）、
 // 横書きの本は中央。数はみな px の差（行の頭＝本文の段落の上の端、セルの字の頭＝セルの上の端＋padding）
 const tableAlign = () => {
   const A = document.querySelector('#deck-text #egatari-article') || document.querySelector('#egatari-article');
@@ -144,11 +145,15 @@ const tableAlign = () => {
   // 縦：セルの字の頭からの隙間と、尻までの隙間の差（中央なら 0）
   const vStart = (e) => ink(e).top - (r(e).top + pad(e).top + parseFloat(getComputedStyle(e).borderTopWidth));
   const vSkew = (e) => { const b = r(e), k = ink(e); return (k.top - b.top) - (b.bottom - k.bottom); };
-  const th = t.querySelector('thead th:nth-child(2)'), label = t.querySelector('tbody tr:nth-child(2) td:first-child'), body = t.querySelector('tbody tr:nth-child(2) td:nth-child(3)');   // 2 行目：その列の中でいちばん短いセル（揃えの違いが出る）
+  const th = t.querySelector('thead th:nth-child(2)'), label = t.querySelector('tbody tr:nth-child(2) > :first-child'), body = t.querySelector('tbody tr:nth-child(2) td:nth-child(3)');   // 2 行目：その列の中でいちばん短いセル（揃えの違いが出る）
   const p0 = r(A.querySelector('section > p')), contentMid = (p0.left + p0.right) / 2;   // 本文の段落の幅＝欄の幅
   return {
     tableTop: r(t).top - colTop, capTop: ink(cap).top - colTop, cap: getComputedStyle(cap).textAlign, td: getComputedStyle(body).textAlign,
     th: getComputedStyle(th).textAlign, label: getComputedStyle(label).textAlign,
+    // :class: row-headers（§9C.6）：行の見出しは th scope="row" で、見出しの行と同じ見た目（太さ・揃え）
+    labelTag: label.tagName.toLowerCase() + (label.getAttribute('scope') ? `[scope=${label.getAttribute('scope')}]` : ''),
+    labelLooks: getComputedStyle(label).fontWeight === getComputedStyle(th).fontWeight && getComputedStyle(label).textAlign === getComputedStyle(th).textAlign,
+    bodyWeight: getComputedStyle(body).fontWeight, thWeight: getComputedStyle(th).fontWeight,
     bodyStart: vStart(body), thSkew: vSkew(th), labelSkew: vSkew(label),
     // 横：表の中心と本文の欄の中心の差・表題の字の中心と欄の中心の差
     hCentre: (r(t).left + r(t).right) / 2 - contentMid, capCentre: (ink(cap).left + ink(cap).right) / 2 - contentMid,
@@ -188,6 +193,7 @@ for (const [label, file] of [['bare-element theme', H.deck], ['default theme', D
     ok(m.slideTd === (label === 'default theme' ? 28 : 31), `${label}, ${lay}: the slide table keeps its size (${m.slideTd}px: layouts.css 28px, or the theme's own 31px)`);
     ok(m.shopWm === 'horizontal-tb' && m.rowsTopToBottom && m.tcyInShop === 0, `${label}, ${lay}: a horizontal book's table is horizontal (rows top to bottom, no tate-chu-yoko)`);
     const al = await p.evaluate(tableAlign);
+    ok(al.labelTag === 'th[scope=row]' && al.labelLooks && al.label === 'center' && al.bodyWeight !== al.thWeight, `${label}, ${lay}: row-headers: the first cell of a body row is ${al.labelTag}, styled like the header row (${al.label}, weight ${al.thWeight}; body cells ${al.bodyWeight})`);
     ok(Math.abs(al.hCentre) <= 1 && Math.abs(al.capCentre) <= 1 && al.cap === 'center', `${label}, ${lay}: a horizontal book's table and caption are centred (table ${al.hCentre.toFixed(1)}px, caption ${al.capCentre.toFixed(1)}px off the column's centre)`);
     await shot(p, `h-${label.split(' ')[0]}-${lay}`);
     await p.context().close();
@@ -199,7 +205,8 @@ for (const [label, file] of [['bare-element theme', H.deck], ['default theme', D
 const vAlign = (al, tag, { glyphs = true } = {}) => {
   ok(Math.abs(al.tableTop) <= 1 && (!glyphs || Math.abs(al.capTop) <= 1), `${tag}: the table${glyphs ? ' and its caption' : ''} start${glyphs ? '' : 's'} at the column top (table ${al.tableTop.toFixed(1)}px${glyphs ? `, caption ${al.capTop.toFixed(1)}px` : ''})`);
   ok(al.cap === 'start' && al.td === 'start' && (!glyphs || Math.abs(al.bodyStart) <= 1), `${tag}: the caption and body cells are start-aligned (${al.cap}, ${al.td}${glyphs ? `; a cell's text starts ${al.bodyStart.toFixed(1)}px below its padding` : ''})`);
-  ok(al.th === 'center' && al.label === 'center' && (!glyphs || (Math.abs(al.thSkew) <= 1.5 && Math.abs(al.labelSkew) <= 1.5)), `${tag}: header cells and the bold first column are centred (${al.th}, ${al.label}${glyphs ? `; skew ${al.thSkew.toFixed(1)}, ${al.labelSkew.toFixed(1)}px` : ''})`);
+  ok(al.labelTag === 'th[scope=row]' && al.labelLooks, `${tag}: row-headers: the first cell of a body row is ${al.labelTag}, styled like the header row`);
+  ok(al.th === 'center' && al.label === 'center' && (!glyphs || (Math.abs(al.thSkew) <= 1.5 && Math.abs(al.labelSkew) <= 1.5)), `${tag}: header cells and row headers are centred (${al.th}, ${al.label}${glyphs ? `; skew ${al.thSkew.toFixed(1)}, ${al.labelSkew.toFixed(1)}px` : ''})`);
 };
 // ---------------------------------------------------------------- 2. 縦書きの本の表
 for (const lay of ['book', 'split']) {
@@ -247,6 +254,19 @@ if (wk) {
     vAlign(await p.evaluate(tableAlign), `WebKit, vertical, ${lay}`);
     // WebKit の画面全体の撮影は、縦書きの欄を送った位置を写さない。表の要素だけを撮る
     if (SHOTS) await p.locator('#deck-text #tbl-shop').screenshot({ path: path.join(work, `webkit-v-${lay}.png`) });
+    await c.close();
+  }
+  // 横書きの本（WebKit）：行の見出しは th scope="row" で見出しの行と同じ見た目、表と表題は中央
+  for (const lay of ['book', 'split']) {
+    const c = await wk.newContext({ viewport: { width: 1180, height: 820 } });
+    const p = await c.newPage();
+    p.on('pageerror', (e) => errors.push(`webkit: ${e.message}`));
+    await p.goto(fileUrl(H.deck) + `?layout=${lay}`);
+    await p.waitForFunction(() => window.DECK && DECK.ready && DECK.panes);
+    await p.waitForTimeout(150);
+    const al = await p.evaluate(tableAlign);
+    ok(al.labelTag === 'th[scope=row]' && al.labelLooks && al.label === 'center' && al.bodyWeight !== al.thWeight, `WebKit, horizontal, ${lay}: row-headers: ${al.labelTag}, styled like the header row (${al.label}, weight ${al.thWeight}; body ${al.bodyWeight})`);
+    ok(Math.abs(al.hCentre) <= 1 && Math.abs(al.capCentre) <= 1 && al.cap === 'center', `WebKit, horizontal, ${lay}: the table and caption are centred (${al.hCentre.toFixed(1)}, ${al.capCentre.toFixed(1)}px)`);
     await c.close();
   }
   await wk.close();

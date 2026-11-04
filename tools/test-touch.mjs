@@ -9,6 +9,7 @@
 // - 帯を起こすタップ（隠れた帯の「読み上げで聞く」・次への場所、取っ手）と、出てくる途中のマウスのクリックはボタンを押さない
 // - スマートフォンの幅（390×844 の縦と 844×390 の横。Chromium は isMobile も）：ページが広がらず、スライドは画面の幅に収まり、
 //   帯は画面からはみ出さない（縦では 2 行に折り返す）。出し方の 1 行はタップの言い方。iPad の幅では帯は 1 行
+// - キーの一覧（?）が 1280×800 の窓とスマートフォンの縦（390）で窓に収まり、中の字が右で切れない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -94,6 +95,28 @@ async function run(name, browser) {
   await ctx.close();
 }
 
+// キーの一覧（?）が窓に収まり、中の字が欄の右で切れないこと（1280×800 の窓、スマートフォンの縦 390 の幅）
+async function helpFits(p, label, W) {
+  await p.evaluate(() => DECK.tools.help(true));
+  await p.waitForTimeout(150);
+  const m = await p.evaluate(() => {
+    const c = document.querySelector('#dt-help .dt-card'), cr = c.getBoundingClientRect(), edge = cr.right - parseFloat(getComputedStyle(c).paddingRight);
+    let worst = 0, what = '';
+    for (const e of c.querySelectorAll('*')) { const r = e.getBoundingClientRect(); if (r.width && r.right - edge > worst) { worst = r.right - edge; what = e.textContent.slice(0, 24); } }
+    return { sw: c.scrollWidth, cw: c.clientWidth, worst, what, left: cr.left, right: cr.right };
+  });
+  ok(m.sw <= m.cw && m.worst <= 1 && m.left >= 0 && m.right <= W, `${label}: the ? panel fits (card ${Math.round(m.left)}–${Math.round(m.right)} of ${W}, scrollWidth ${m.sw} ≤ ${m.cw}, overflow ${m.worst.toFixed(1)}px${m.what ? ` at “${m.what}”` : ''})`);
+  await p.evaluate(() => DECK.tools.help(false));
+}
+async function desktopHelp(name, browser) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
+  const p = await ctx.newPage();
+  await p.goto(url);
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+  await helpFits(p, `${name} 1280×800`, 1280);
+  await ctx.close();
+}
+
 async function phone(name, browser) {
   for (const [tag, vp] of [['portrait', { width: 390, height: 844 }], ['landscape', { width: 844, height: 390 }], ['ipad', { width: 1024, height: 768 }]]) {
     const ctx = await browser.newContext({ viewport: vp, hasTouch: true, isMobile: tag !== 'ipad', locale: 'ja-JP' });
@@ -124,6 +147,7 @@ async function phone(name, browser) {
       const p1 = await p.evaluate(() => { const s = DECK.state(); return s.slide * 100 + s.step; });
       ok(p1 === p0 + 1, `${name} ${tag}: a tap on ▶ in the wrapped toolbar is one step (${p0} → ${p1})`);
     }
+    if (tag === 'portrait') await helpFits(p, `${name} ${tag}`, W);
     ok(errs.length === 0, `${name} ${tag}: no page errors` + (errs.length ? ': ' + errs.join(' | ') : ''));
     await ctx.close();
   }
@@ -132,9 +156,10 @@ async function phone(name, browser) {
 const cr = await launch();
 await run('chromium', cr);
 await phone('chromium', cr);
+await desktopHelp('chromium', cr);
 await cr.close();
 let wk = null;
 try { wk = await webkit.launch(); } catch (e) { console.log(`skip webkit: not installed (npx playwright-core install webkit): ${String(e.message || e).split('\n')[0]}`); }
-if (wk) { await run('webkit', wk); await phone('webkit', wk); await wk.close(); }
+if (wk) { await run('webkit', wk); await phone('webkit', wk); await desktopHelp('webkit', wk); await wk.close(); }
 console.log(fails ? `${fails} failed` : 'all passed', '→', outdir);
 process.exit(fails ? 1 : 0);

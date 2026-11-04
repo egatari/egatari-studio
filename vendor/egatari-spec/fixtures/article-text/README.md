@@ -56,6 +56,7 @@ A conforming parser written without MyST's tools should produce these trees; res
 | `table-plain` | GFM pipe table with alignment |
 | `table-wrapped` | pipe table in `:::{table}` with caption and `:label:` (Japanese) |
 | `table-class` | `:::{table}` with `:class: horizontal` (kept horizontal in a vertical article, §9C.6) |
+| `table-row-headers` | `:::{table}` with `:class: row-headers` (first cell of each body row is a row header, §9C.6) |
 | `crossref-empty`, `crossref-text` | cross-references with empty and given text |
 | `cite-single` | `[@key]` |
 | `cite-grouped-locator` | `[@a; @b, p. 3]` |

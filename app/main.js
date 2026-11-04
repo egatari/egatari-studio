@@ -900,7 +900,7 @@ const rec = createRecMode({
 // 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({
   lang: EN ? 'en' : 'ja', el, ask, toast, ws: () => S.ws, generation: () => S.gen,
-  // 「ファイル ▾」の「教材の情報…」：題・ライセンス・作り手の下に、添付の板
+  // 「ファイル ▾」の「教材の情報…」：題・ライセンス・作成者の下に、添付の板
   openPanel: (title, body) => openPanel(T.infoTitle, [infoSection(), el('h3', { cls: 'info-h', text: title }), ...[].concat(body)]), isOpen: () => !$('panel').hidden && !!$('attach-panel'),
   beforeWrite: async () => {
     if (earlierWhy()) return earlierWhy();
@@ -1569,7 +1569,7 @@ async function openSource(name, bytes) {
 
 // ---------------------------------------------------------------- 持ち運べる 1 ファイルを保存する
 // mode：'save'（同じファイルに。docId を変えず、derivedFrom を付けも変えもしない）・'copy'（別のファイルに。docId は同じ）・
-//       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作り手はそのまま。§3.6.1・§7.3）
+//       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作成者はそのまま。§3.6.1・§7.3）
 // 口述原稿・音声・秒数だけが変わったなら段 A（組み直さずに決まった場所だけを書き換える。kit/core/tier-a.mjs、§7.2）。
 // スライドの原稿が変わった（など段 A でできない）なら段 B（このエディタの版で組み直す）で、保存の前にそのことを知らせて確かめる
 // 保存は 1 つずつ。始めたときの作業場所と文書に結び付け、途中（組み直し・確かめの窓・書き込み）で別のものを開いたら、
@@ -1851,8 +1851,8 @@ async function participantExport() {
   await exportPlayOnlyFile(room, room ? { oneWay: livePanel.oneWay() } : {});
 }
 
-// ---------------------------------------------------------------- 教材の情報…（題・ライセンス・作り手・添付）
-// 題・ライセンス・作り手は設定のファイル（egatari.json の metadata）から読むだけ（ここでは書き換えない）。1 ファイルで設定のファイルになければ索引の metadata
+// ---------------------------------------------------------------- 教材の情報…（題・ライセンス・作成者・添付）
+// 題・ライセンス・作成者は設定のファイル（egatari.json の metadata）から読むだけ（ここでは書き換えない）。1 ファイルで設定のファイルになければ索引の metadata
 let INFO = null;
 async function readInfo() {
   let m = null;

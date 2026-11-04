@@ -142,7 +142,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 
 ## CLI：ファイルの情報
 
-題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作り手は `<deck>/egatari.json` の `metadata`（license・copyright・creators・attribution）。分からなければ利用者に聞き、作らない。参加者の名前・成績・回答・顔写真・提出物は例にも入れない。必要な例は架空と書く。
+題名は `<title>`、言語は `<html lang>`。ライセンス・著作権・作成者は `<deck>/egatari.json` の `metadata`（license・copyright・creators・attribution）。分からなければ利用者に聞き、作らない。参加者の名前・成績・回答・顔写真・提出物は例にも入れない。必要な例は架空と書く。
 
 ## CLI：パーツ
 

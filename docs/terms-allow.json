@@ -398,6 +398,32 @@
       "pattern": "sl-badge stale",
       "term": "book-may-not-match",
       "reason": "A CSS class name of the audio badge (stale audio), not a word shown to the user."
+    },
+    {
+      "file": "docs/contract.ja.md",
+      "pattern": "作り手がパーツを直す",
+      "term": "created-by",
+      "reason": "作り手 here means whoever makes the parts, not metadata.creators"
+    },
+    {
+      "file": "skills/studio/SKILL.md",
+      "pattern": "作り手の「確認しました」",
+      "term": "created-by",
+      "reason": "作り手 here means the person making the lesson, not metadata.creators"
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "作成者は",
+      "term": "created-by",
+      "pairs": true,
+      "reason": "English sentences name the list as \"creators\" (\"Copyright, attribution and creators are kept\"); only the label reads \"Created by\""
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "help: [",
+      "term": "created-by",
+      "pairs": true,
+      "reason": "The editor's help says the copyright and creators are kept on Save as a new file; en names the list \"creators\", the label is \"Created by\""
     }
   ]
 }
