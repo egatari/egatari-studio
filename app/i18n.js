@@ -225,6 +225,8 @@ const ja = {
   sourceOnlyNotice: 'deck.html だけを開いています（台本・音声・その教材だけのパーツは入っていません）。まだどこにも保存していません',
   saveWhereTitle: '保存先を選ぶ', saveWhereLead: `この教材はまだ保存していません。Egatari ファイル（${FX}）に保存するか、空のフォルダに作業フォルダとしてエクスポートします`,
   saveAsFile: `Egatari ファイル（${FX}）に保存…`, saveToFolder: '作業フォルダにエクスポート…',
+  // はじめの画面のパーツの一覧（/parts/ を新しいタブで。app/parts-gallery.js の partsIndexHref）
+  allParts: 'パーツの一覧',
   // はじめの画面の見本（サイトに置いた 1 ファイル。tools/build-app.mjs）
   examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。開いて再生したり、直したりできます。', exampleOpen: '開く',
   exampleFailed: 'サンプルを読み込めませんでした',
@@ -625,6 +627,7 @@ const en = {
   sourceOnlyNotice: 'Only deck.html is open (no script, audio or the lesson’s own parts). It has not been saved anywhere yet.',
   saveWhereTitle: 'Choose where to save', saveWhereLead: `This lesson has not been saved yet. Save it as an Egatari file (${FX}), or export it to an empty folder as a working folder.`,
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
+  allParts: 'All parts',
   examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Open one to play it or edit it.', exampleOpen: 'Open',
   exampleFailed: 'Could not load the sample',
   exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asks before opening)' : ''}`,

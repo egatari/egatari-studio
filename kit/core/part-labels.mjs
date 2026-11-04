@@ -1,6 +1,9 @@
 // 部品の画面の名前と絵と 1 行の説明（新規作成 ④ のパーツの一覧）。
-// 部品庫の manifest（vendor/components/manifest.json）には画面の名前がないので、ここにだけ置く。icon は app/llm.js の ICONS の名前。
-// 表にない部品は、名前は m-… のまま、絵は汎用（部品庫に部品が増えたら、ここに 1 行足す）
+// 名前の正本は部品庫 2.x の既定のカタログ（components2.lock.json の default）の manifest の display（vendor/components-2/manifest-<版>.json）。
+// ブラウザでは manifest を読めないので、npm run gen（tools/make-llm-guide.mjs の displayOf）が kit/core/llm-pack-data.mjs の tiers.parts.<タグ>.display に写す
+// （npm run gen:check が古い写しを見つけ、tools/part-labels-check.mjs が名前と manifest を比べる）。
+// ここに置くのは、絵（icon。app/llm.js の ICONS の名前）と 1 行の説明（desc）と、manifest に display のない部品の名前（ja・en）だけ。
+// 表にない部品は、名前は display（なければ m-… のまま）、絵は汎用（部品庫に部品が増えたら、ここに 1 行足す）
 //   PART_LABELS                 {タグ: {ja, en, icon, desc: {ja, en}}}（desc：新規作成 ④ のパーツの一覧の 1 行の説明。何を描くか）
 //   partLabel(tag, lang)        → 画面の名前
 //   partDesc(tag, lang)         → 1 行の説明（表にない部品は ''）
@@ -8,8 +11,14 @@
 //   standardParts(lang)         → 標準パーツ（FREE_CORE。無料のプランの共通の本体が説明する部品）の名前の並び
 //   partOrder(tags)             → 並べる順（標準パーツ、それから表の順）
 import { FREE_CORE } from './llm-pack-assemble.mjs';
+import { PACK } from './llm-pack-data.mjs';
 
-export const PART_LABELS = Object.freeze({
+// manifest の display：{タグ: {ja, en}}
+export const MANIFEST_NAMES = Object.freeze(Object.fromEntries(Object.entries((PACK.tiers && PACK.tiers.parts) || {})
+  .filter(([, x]) => x.display).map(([t, x]) => [t, Object.freeze({ ja: x.display.ja, en: x.display.en })])));
+
+// 絵と説明（と、display のない部品の名前）
+const LOCAL = {
   'm-bars': { ja: '棒グラフ', en: 'Bar chart', icon: 'bars', desc: { ja: '棒の長さで量を比べる', en: 'Compares amounts by bar length' } },
   'm-flow': { ja: '流れ図', en: 'Flow diagram', icon: 'flow', desc: { ja: '手順や工程を矢印でつなぐ', en: 'Steps of a process joined by arrows' } },
   'm-menu': { ja: '目次', en: 'Contents', icon: 'menu', desc: { ja: 'スライドへのリンクの札を並べた目次', en: 'A contents page of links to slides' } },
@@ -30,7 +39,7 @@ export const PART_LABELS = Object.freeze({
   'm-kanbun': { ja: '漢文', en: 'Kanbun', icon: 'kanbun', desc: { ja: '返り点を付けて訓読の順にたどり、書き下す', en: 'Return marks, reading order and the rendered text' } },
   'm-kobun': { ja: '古文', en: 'Kobun', icon: 'kobun', desc: { ja: '語に切って品詞を色分けし、現代語訳と並べる', en: 'Words split and coloured by part of speech, with a modern translation' } },
   'm-gendai': { ja: '現代文の読解', en: 'Modern text reading', icon: 'gendai', desc: { ja: '傍線・指す内容への矢印・段落の役割を図にする', en: 'Underlines, arrows to what words refer to, and paragraph roles' } },
-  'm-codetree': { ja: '符号の木', en: 'Code tree', icon: 'codetree', desc: { ja: '符号を木の枝でたどる', en: 'Codes traced along the branches of a tree' } },
+  'm-codetree': { icon: 'codetree', desc: { ja: '符号を木の枝でたどる', en: 'Codes traced along the branches of a tree' } },
   'm-map-japan': { ja: '日本地図', en: 'Map of Japan', icon: 'map', desc: { ja: '都道府県を塗り分け、点や矢印を置く', en: 'Prefectures shaded, with points and arrows' } },
   'm-predict': { ja: '予想と答え', en: 'Predict and check', icon: 'predict', desc: { ja: '予想を聞いてから答えを見せる', en: 'Asks for a guess, then shows the answer' } },
   'm-timer': { ja: 'タイマー', en: 'Timer', icon: 'timer', desc: { ja: '演習やグループワークの残り時間', en: 'Time left for an exercise or group work' } },
@@ -48,7 +57,10 @@ export const PART_LABELS = Object.freeze({
   'm-cards': { ja: 'カード', en: 'Cards', icon: 'menu', desc: { ja: 'アイコン付きのカードを並べて 1 枚ずつ出す', en: 'Cards with icons, shown one at a time' } },
   'm-score': { ja: '楽譜', en: 'Score', icon: 'keyboard', desc: { ja: '五線譜を 1 音ずつ出して鳴らす', en: 'Staff notation, one note at a time, with sound' } },
   'm-orbit': { ja: '月の満ち欠け', en: 'Moon phases', icon: 'cycle', desc: { ja: '月の位置と見える形を並べて動かす', en: 'The Moon’s position and its visible shape, moving together' } },
-});
+};
+// 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）
+export const PART_LABELS = Object.freeze(Object.fromEntries([...Object.keys(LOCAL), ...Object.keys(MANIFEST_NAMES).filter((t) => !LOCAL[t])]
+  .map((t) => [t, Object.freeze({ icon: 'other', ...LOCAL[t], ...MANIFEST_NAMES[t] })])));
 export const partLabel = (tag, lang) => (PART_LABELS[tag] ? PART_LABELS[tag][lang === 'ja' ? 'ja' : 'en'] : tag);
 export const partDesc = (tag, lang) => (PART_LABELS[tag] && PART_LABELS[tag].desc ? PART_LABELS[tag].desc[lang === 'ja' ? 'ja' : 'en'] : '');
 export const partIcon = (tag) => (PART_LABELS[tag] ? PART_LABELS[tag].icon : 'other');
