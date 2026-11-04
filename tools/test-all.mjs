@@ -238,6 +238,8 @@ steps.push(
   ['test-themes', ['tools/test-themes.mjs', path.join(tmp, 'themes'), '--shots', path.join(tmp, 'themes-shots')]],
   // 選べる字体（#133）：選んだ字体だけが入る・英語の斜体・fontNotEmbedded
   ['test-fonts', ['tools/test-fonts.mjs', path.join(tmp, 'fonts')]],
+  // 字の絞り込み（wasm、#178 (4)）：同じ字なら同じバイト・縦書きの機能・unicode-range は使う字だけ・RFN の字体は絞らない・字の範囲の点検
+  ['test-font-subset', ['tools/test-font-subset.mjs', path.join(tmp, 'font-subset')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
