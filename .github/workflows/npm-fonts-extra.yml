@@ -1,4 +1,4 @@
-# The npm package @egatari/fonts-extra (#176): the 7 optional fonts that the package egatari leaves out, from packages/fonts-extra.
+# The npm package @egatari/fonts-extra (#176): the 6 optional fonts that the package egatari leaves out (no bundled theme uses them), from packages/fonts-extra.
 # A pushed tag fonts-extra-vX.Y.Z publishes it with provenance through npm trusted publishing (OIDC; no token is stored), on the
 # "latest" dist-tag. The tag must equal "fonts-extra-v" + packages/fonts-extra/package.json "version"; its version is its own
 # (egatari lists it as an optional peer dependency, ^1.0.0). Its prepack (tools/fonts-vendor.mjs) builds the font copy from the

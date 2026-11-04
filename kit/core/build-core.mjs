@@ -179,14 +179,14 @@ export const FONTS = {
 // ファイルに入るのは、教材が選んだ字体だけ（テーマの theme.json の fonts、テーマ・スライドの CSS が名指した字体）。使っている字の分割ファイルだけ。
 //   group：ja（日本語）・en（英語）・mono（等幅）　weights：太さ（Klee One の太字は 600）　italic：斜体もある（英語の字体は斜体も入れる）
 // 既定の 3 つ（BIZ UDPゴシック・Source Sans 3・BIZ UDP明朝）はこれまでどおり上の FONTS の決まりで入る（明朝は使うときだけ）。
-// extra：npm の包み egatari には入れず、別の包み @egatari/fonts-extra に入れる字体（選んだ教材だけが使う 7 つ。#176。kit/build.mjs の fontDir が探す）。
+// extra：npm の包み egatari には入れず、別の包み @egatari/fonts-extra に入れる字体（同梱のテーマ（themes/・vendor/themes/）が使わない 6 つ。同梱のテーマの字体は npx egatari だけで組めるよう egatari に入れる。#176。tools/test-fonts.mjs が確かめる。kit/build.mjs の fontDir が探す）。
 // その包みがなくて字がないときは、組み立ても品質チェックも知らせる（黙って端末の字体にしない。FONTS_EXTRA_*）
 // 一覧にない字体を CSS が名指してもよいが、ファイルには入らない（開く端末にあればその字体。品質チェックが fontNotEmbedded で知らせる）
 export const FONT_LIST = Object.freeze([
   { family: 'BIZ UDPGothic', pkg: '@fontsource/biz-udpgothic', group: 'ja', weights: [400, 700], default: true },
   { family: 'BIZ UDPMincho', pkg: '@fontsource/biz-udpmincho', group: 'ja', weights: [400, 700] },
   { family: 'Shippori Mincho', pkg: '@fontsource/shippori-mincho', group: 'ja', weights: [400, 700], extra: true },
-  { family: 'Zen Maru Gothic', pkg: '@fontsource/zen-maru-gothic', group: 'ja', weights: [400, 700], extra: true },
+  { family: 'Zen Maru Gothic', pkg: '@fontsource/zen-maru-gothic', group: 'ja', weights: [400, 700] },
   { family: 'Klee One', pkg: '@fontsource/klee-one', group: 'ja', weights: [400, 600], extra: true },
   { family: 'Source Sans 3', pkg: '@fontsource/source-sans-3', group: 'en', weights: [400, 700], italic: true, default: true },
   { family: 'Source Serif 4', pkg: '@fontsource/source-serif-4', group: 'en', weights: [400, 700], italic: true, extra: true },
