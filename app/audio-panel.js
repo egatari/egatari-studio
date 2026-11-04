@@ -1,20 +1,22 @@
 // 音声の板（編集アプリの信頼する横の板 #dev-side の中。プレビューの外）。上から 3 つの区画（handoff/audio-flow-2026-10-25.md）：
 //   A. この教材の音声：状態の 1 行（音声のあるステップの数・更新が必要・声を変えた・1 ファイルで未保存）と、いま押すボタン 1 つ
-//      （「残りの音声を作る」「音声を更新」は前に使ったやり方で続ける。前のやり方は egatari.json の studio.audioMethod。なければ B を開く）
-//   B. 音声をどう付けますか：AI 音声をクラウドで作る（Google Colab。C1 台本を書き出す → C2 Colab を開く → C3 できた音声を取り込む）・
-//      AI 音声をこの PC で作る（WebGPU が使えるときだけ。そのときは既定）・自分の声で録音する（録音モード）。AI 音声の上に声の欄
+//      （「残りの音声を作る」「音声を更新」は、いちばん新しい音声のやり方で続ける。分からなければ B を開く）
+//   B. 音声をどう付けますか：自分の声で録音する（録音モード）・AI 音声をクラウドで作る（Google Colab。手順 1 台本を書き出す →
+//      手順 2 Colab で音声を作る → 手順 3 できた音声を取り込む）・AI 音声をこの PC で作る（作れる端末だけ。スマートフォン・タブレット・
+//      メモリの少ない端末では出すが選べない）。AI 音声の上に声の欄。開いたときの答えは、いちばん新しい音声のやり方（録音 → 録音、
+//      Colab の AI 音声 → クラウド、この PC の AI 音声 → この PC。この端末で作れなければクラウド）、音声がなければ録音。ほかは覚えない
 //   C. このステップ：聞く・読み上げで聞く・録音 (r)・ファイルから取り込む・前に戻す・この PC で作り直す、と台本（読むだけ）
 // 録音は録音モード（app/rec-mode.js）だけ（#82）。作った音声（録音・取り込み・AI 音声）はすぐにそのステップの音声にし、前の音声は「前に戻す」で戻せる（#45）。
 //
 // 守ること（SECURITY.md）：TTS はこのページ（信頼する編集の画面）だけで使う。プレビュー（sandbox の iframe）からは音声も
 // 頼みも受け取らない（どのステップを見せるかは編集の画面の位置 ui.pos() から決め、デッキの知らせで板の中身を替えるのは作っていないときだけ）。
-// 読み書きは作業場所（workspace.js）だけ：audio/<file>.mp3 と audio/manifest.json（書き換える前に .cache/edits/ に控え）、voice.json、egatari.json（studio.audioMethod）。
+// 読み書きは作業場所（workspace.js）だけ：audio/<file>.mp3 と audio/manifest.json（書き換える前に .cache/edits/ に控え）、voice.json。
 // 読む大きさには上限がある（manifest・台本は READ_LIMITS、音声は AUDIO_LIMITS.fileBytes）。
 // 後処理（モノラル・44.1 kHz・無音を削る・-20 LUFS）は kit/core/audio-core.mjs（tts/core.py と同じ数）、MP3 は kit/core/mp3.mjs（LAME）。
 // 作った音声はすぐに作業場所に書く（前の記録はステップごとにメモリの上に積み、「前に戻す」でその記録を manifest に戻す。音声のファイルは消さない）。
 // 書けなかったとき（読むだけ・権利の確認を断った）だけ、取り直し（take）として残し「この音声を使う」で書ける（録音モードで録ったものも）。
 // 1 ファイルでは作業場所はメモリの上なので、書いた後に「保存」で段 A（kit/core/tier-a.mjs）の保存になる。
-// 声の選択と前に使ったやり方は、作業フォルダでは voice.json・egatari.json に書き、1 ファイルではこの画面の間だけ覚える（書くと保存が要る変更になるため）
+// 声の選択は、作業フォルダでは voice.json に書き、1 ファイルではこの画面の間だけ覚える（書くと保存が要る変更になるため）。やり方は覚えない（#85 の後の決定）
 //
 // 声を変えた：inputHash は声を含まないので、AI 音声の記録の recipe.voice（役 → 声の名前）と今の声（1 ファイルの選択 > voice.json > 既定）を比べる。
 //   recipe.voice のない記録（声の分からない古い記録・dry-run）は数えない
@@ -23,7 +25,7 @@
 //   合わないステップは使わずに「音声を更新」を出す。台本を Google に渡す確かめは、このブラウザで初めての 1 回だけ（localStorage）
 //
 //   const panel = createAudioPanel({ui, ws(), generation(), lang, deckLang(), beforeOpen?(), beforeWrite(kind), afterWrite(), tts?, yomi?: {terms, sha256}, loadMp3?(), wait?() → stop(), sampleBase?,
-//     save?()（1 ファイルの「保存」）, configFile（egatari.json の名前）,
+//     save?()（1 ファイルの「保存」）,
 //     colab?: {t（app/i18n.js の T.colab）, docId() → 文字列 | null, title?(), version, confirm(題, 本文, 実行の名前, キャンセルの名前) → boolean},
 //     recMode?: {title, open({key, returnFocus()})}（録音モード。app/rec-mode.js）})
 //   panel.toggle(on?) / panel.reset() / panel.onPos(pos) / panel.isOpen() / panel.isBusy() / panel.state() / panel.dirtyChanged()
@@ -43,7 +45,6 @@ import { readAloud, stopReadAloud, readingAloud, readAloudSupported } from './re
 import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, expectedCues, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
 import { AI_VOICE_LABELS } from './i18n.js';
-import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { IRODORI_VOICES, KOKORO_VOICES, KOKORO_MAIN, DEFAULT_VOICES, VOICE_SAMPLES, bundledVoice } from '../lab/tts-voices.mjs';
 
 const STR = {
@@ -60,6 +61,7 @@ const STR = {
     // B. 音声の付け方
     how: {
       legend: '音声をどう付けますか', cloud: AI_VOICE_LABELS.ja.cloud, local: AI_VOICE_LABELS.ja.local,
+      localNo: 'この端末では AI 音声を作れません。クラウド（Google Colab）で作ってください',
       localHint: (size) => `初めてのときに音声のモデル（約 ${size}）を取得します`, localGo: (n) => `この PC で作る（${n} ステップ）`, localNone: '音声の要るステップはありません',
       rec: '自分の声で録音する', recBtn: '録音モードを開く (r)', recHint: '台本を大きく出して、キーボードだけで録れます。Space で録音と停止、Enter で次へ',
     },
@@ -102,6 +104,7 @@ const STR = {
     },
     how: {
       legend: 'How do you want to add audio?', cloud: AI_VOICE_LABELS.en.cloud, local: AI_VOICE_LABELS.en.local,
+      localNo: 'AI voice cannot be made on this device. Make it in the cloud (Google Colab)',
       localHint: (size) => `The first time, the voice model (about ${size}) is downloaded`, localGo: (n) => `Make on this computer (${n} step${n === 1 ? '' : 's'})`, localNone: 'No step needs audio',
       rec: 'Record your own voice', recBtn: 'Open recording mode (r)', recHint: 'Shows the script large; record with the keyboard only. Space starts and stops, Enter goes to the next',
     },
@@ -170,10 +173,17 @@ const CSS = [
   '#dev-audio .dv-how summary{cursor:pointer;font-weight:700;font-size:13px}',
   '#dev-audio .dv-how .dv-opt{display:flex;align-items:flex-start;gap:6px;margin:4px 0;font-size:13px;cursor:pointer}#dev-audio .dv-how .dv-opt input{margin-top:3px}',
   '#dev-audio .dv-body{margin:6px 0 4px 22px}',
-  '#dev-audio .dv-steps{list-style:none;margin:0;padding:0}#dev-audio .dv-steps>li{margin:0 0 8px}',
-  '#dev-audio .dv-steps .dv-c{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
-  '#dev-audio .dv-tick{display:inline-block;width:1.2em;text-align:center;color:#15803d;font-weight:700}',
-  '#dev-audio .dv-c2{margin:4px 0 0 1.4em;padding-left:1.2em;font-size:12px;line-height:1.5;color:#374151}#dev-audio .dv-c2 li{margin:0 0 2px}',
+  // クラウドの手順：新規作成の段（app.css の #dlg.page .paste-step：左の線・番号の見出し・いまの段は線を強く）と同じ見た目に、番号の札と ✓
+  '#dev-audio .dv-steps{list-style:none;margin:0;padding:0}',
+  '#dev-audio .dv-steps>li{border-left:3px solid var(--line,#e0e4ec);margin:0 0 6px 4px;padding:4px 0 8px 12px}',
+  '#dev-audio .dv-steps>li:focus-within{border-left-color:var(--accent,#2563eb)}#dev-audio .dv-steps>li[data-done="1"]{border-left-color:#15803d}',
+  '#dev-audio .dv-sh{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 4px;font-size:13.5px;font-weight:700}',
+  '#dev-audio .dv-num{display:inline-block;border-radius:999px;padding:0 8px;font-size:11.5px;font-weight:700;line-height:20px;background:var(--accent,#2563eb);color:#fff;white-space:nowrap}',
+  '#dev-audio .dv-steps>li[data-done="1"] .dv-num{background:#15803d}',
+  '#dev-audio .dv-tick{color:#15803d;font-weight:700}',
+  '#dev-audio .dv-steps .dv-c{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0}',
+  '#dev-audio .dv-c2{list-style:lower-alpha;margin:4px 0 4px;padding-left:1.6em;font-size:12px;line-height:1.5;color:#374151}#dev-audio .dv-c2 li{margin:0 0 2px}',
+  '#dev-audio .dv-opt.dv-off{color:#8a91a1;cursor:default}',
   '#dev-audio a.dv-btnlink{display:inline-block;border:1px solid #cfd4de;border-radius:6px;padding:3px 10px;font-size:13px;text-decoration:none;color:inherit;background:#fff}',
   // 音声を作っている間だけ（プレビューが inert のとき）知らせる
   '#dev-audio .dev-lock{display:none}#dev-side.dv-locked #dev-audio .dev-lock{display:block}',
@@ -185,7 +195,6 @@ const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 // manifest の file：audio/ の下の相対パスだけ（.. や先頭の / は使わない）
 const safeFile = (f) => typeof f === 'string' && f.length <= 200 && /^[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/.test(f) && !f.split('/').some((x) => x === '.' || x === '..');
 const MIME_OF = { mp3: 'audio/mpeg', m4a: 'audio/mp4', wav: 'audio/wav', ogg: 'audio/ogg', opus: 'audio/ogg', webm: 'audio/webm', aac: 'audio/aac', flac: 'audio/flac' };
-const METHODS = ['cloud', 'local', 'rec'];
 const PRIVACY_KEY = 'egatari-colab-privacy-ok';   // 台本を Google に渡す確かめ（このブラウザで 1 回だけ）
 const keyOf = (s) => `${s.slideKey}:${s.stepKey}`;
 // 取得するモデルの大きさ（app/tts-client.js の IRODORI_BYTES.fp16・KOKORO_BYTES を丸めたもの）
@@ -194,13 +203,12 @@ const MODEL_SIZE = { irodori: '1.3 GB', kokoro: '330 MB' };
 export function createAudioPanel(o) {
   const ui = o.ui, h = ui.h, doc = ui.side.ownerDocument, win = doc.defaultView;
   const L = o.lang === 'en' ? STR.en : STR.ja;
-  const CFG = o.configFile || 'egatari.json';
   if (!doc.getElementById('dev-audio-style')) { const st = doc.createElement('style'); st.id = 'dev-audio-style'; st.textContent = CSS; doc.head.appendChild(st); }
   let open = false, card = null, view = null, busyMsg = null, seq = 0;
   let focusRec = false;   // 録音モードを閉じた後：次に描いたとき「● 録音」にフォーカスを戻す
-  // 前に使ったやり方（この画面の間。作業フォルダでは egatari.json の studio.audioMethod にも書く）・B で選んでいる答え・B を開くか（人が開け閉めしたら覚える）
-  let methodMem = null, howSel = null, howOpenUser = null;
-  // クラウドの手順の ✓（この画面の間）
+  // この画面で最後に音声を書いたステップ（いちばん新しい音声）・B で選んでいる答え（この画面の間だけ）・B を開くか（人が開け閉めしたら覚える）
+  let lastKey = null, howSel = null, howOpenUser = null;
+  // クラウドの手順の ✓（この画面の間）：c1 台本を書き出した、c2・c3 ZIP ファイルを取り込んだ
   const ticks = { c1: false, c2: false, c3: false };
   let privacyOk = false;
   try { privacyOk = win.localStorage.getItem(PRIVACY_KEY) === '1'; } catch { /* 使えない環境 */ }
@@ -292,10 +300,7 @@ export function createAudioPanel(o) {
       const k = keyOf(x), e = own(segments, k) && isObj(segments[k]) ? segments[k] : null;
       if (e) { entries[k] = e; states[k] = k === key && state ? state : await audioState(e, x, null); }
     }
-    // 前に使ったやり方（egatari.json の studio.audioMethod）
-    const cfg = (await readJson(ws, CFG)).value;
-    const m = isObj(cfg) && isObj(cfg.studio) ? cfg.studio.audioMethod : null;
-    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, entries, states, method: METHODS.includes(m) ? m : null, manText: man.text };
+    return { key, g, seg, segs, entry, state, url, err, override, voice, roles, entries, states, manText: man.text };
   }
 
   // ---------------------------------------------------------------- 教材全体の状態（A の 1 行。声は描くたびに今の選択で比べる）
@@ -321,12 +326,32 @@ export function createAudioPanel(o) {
     const ws = o.ws();
     return { n: keys.length, has: keys.length - missing.length, missing, stale, voice, need: keys.filter((k) => set.has(k)), unsaved: !!(ws && ws.kind === 'memory' && ws.dirty) };
   }
-  const localOk = (v) => { const i = o.tts ? o.tts.info(ttsLang(v)) : null; return !!(i && i.ok); };
-  const methodOf = (v) => methodMem || (v && v.method) || null;
-  // B で選んでいる答え：選んだもの > 前に使ったやり方 > この PC（作れるなら）> クラウド
+  // この PC で作れるか（app/tts-client.js の info）：'ok'・'device'（WebGPU はあっても、スマートフォン・タブレット・メモリの少ない端末。出すが選べない）・null（出さない）
+  const localInfo = (v) => (o.tts ? o.tts.info(ttsLang(v)) : null);
+  const localOk = (v) => { const i = localInfo(v); return !!(i && i.ok); };
+  const localLimited = (v) => { const i = localInfo(v); return !!(i && !i.ok && i.device); };
+  // 記録のやり方：録音 → rec、AI 音声 → Colab で作ったもの（recipe.processing に +colab）は cloud、ほかは local。取り込み・分からないものは null
+  const methodOfEntry = (e) => {
+    if (!isObj(e)) return null;
+    const kind = e.kind || 'tts';
+    if (kind === 'recorded') return 'rec';
+    if (kind !== 'tts') return null;
+    const r = isObj(e.recipe) ? e.recipe : {};
+    return (typeof r.processing === 'string' && r.processing.includes('+colab')) || (typeof e.processing === 'string' && e.processing.includes('+colab')) ? 'cloud' : 'local';
+  };
+  // いちばん新しい音声のやり方：この画面で最後に書いたステップの記録。なければ（manifest に時刻はないので）台本の順で最後の、やり方の分かる記録
+  function methodOf(v) {
+    const E = (v && v.entries) || {};
+    if (lastKey && methodOfEntry(E[lastKey])) return methodOfEntry(E[lastKey]);
+    const keys = ((v && v.segs) || []).map(keyOf);
+    for (let i = keys.length - 1; i >= 0; i--) { const m = methodOfEntry(E[keys[i]]); if (m) return m; }
+    return null;
+  }
+  const usable = (v, m) => !!m && (m !== 'local' || localOk(v)) && (m !== 'cloud' || !!o.colab) && (m !== 'rec' || !!o.recMode);
+  // B で選んでいる答え：この画面で選んだもの > いちばん新しい音声のやり方（この PC の AI 音声で、この端末で作れなければクラウド）> 録音
   function howOf(v) {
-    const ok = (m) => m && (m !== 'local' || localOk(v)) && (m !== 'cloud' || o.colab) && (m !== 'rec' || o.recMode);
-    for (const m of [howSel, methodOf(v), localOk(v) ? 'local' : null, o.colab ? 'cloud' : null, 'rec']) if (ok(m)) return m;
+    const last = methodOf(v);
+    for (const m of [howSel, last === 'local' && !localOk(v) ? 'cloud' : last, 'rec', 'cloud']) if (usable(v, m)) return m;
     return null;
   }
 
@@ -428,30 +453,15 @@ export function createAudioPanel(o) {
     if (act) { if (busyMsg) act.disabled = true; box.appendChild(h('div', { cls: 'dv-act' }, [act])); }
     card.appendChild(box);
   }
-  // A のボタン（と取り込みの後の「音声を更新」）：前に使ったやり方で、keys のステップを続ける。前のやり方がなければ B を開く
+  // A のボタン（と取り込みの後の「音声を更新」）：いちばん新しい音声のやり方で、keys のステップを続ける。分からない・この端末で使えなければ B を開く
   async function runAction(keys) {
     if (busyMsg || !view || !keys.length) return;
     const m = methodOf(view);
-    const usable = m && (m !== 'local' || localOk(view)) && (m !== 'cloud' || o.colab) && (m !== 'rec' || o.recMode);
-    if (!usable) { howOpenUser = true; draw(view); const r = card && card.querySelector('#dev-audio-how input[type=radio]:checked, #dev-audio-how input[type=radio]'); if (r) try { r.focus({ preventScroll: false }); } catch { /* 無視 */ } return; }
+    if (!usable(view, m)) { howOpenUser = true; draw(view); const r = card && card.querySelector('#dev-audio-how input[type=radio]:checked, #dev-audio-how input[type=radio]'); if (r) try { r.focus({ preventScroll: false }); } catch { /* 無視 */ } return; }
     howSel = m;
     if (m === 'cloud') { howOpenUser = true; return exportJob(keys); }
     if (m === 'rec') return openRecMode(keys[0], true);
     return makeLocal(keys);
-  }
-  // 前に使ったやり方を覚える（作業フォルダでは egatari.json の studio.audioMethod。updateConfig でほかの項目はバイトのまま）
-  async function remember(m) {
-    methodMem = m;
-    const ws = o.ws(), g = o.generation();
-    if (!ws || ws.kind === 'memory' || (view && view.method === m)) return;
-    try {
-      const old = await ws.readText(CFG, { max: READ_LIMITS.json });
-      const text = updateConfig(old, { studio: configMerge({ audioMethod: m }) });
-      if (o.ws() !== ws || o.generation() !== g || text === old) return;
-      if (old !== null) await ws.backup(CFG, { max: READ_LIMITS.json });
-      await ws.writeText(CFG, text, { live: () => o.ws() === ws && o.generation() === g });
-      if (view) view.method = m;
-    } catch { /* 読めない設定のファイルは上書きしない（この画面の間だけ覚える） */ }
   }
   // ---------------------------------------------------------------- B. 音声をどう付けますか
   function drawHow(v, s) {
@@ -464,22 +474,29 @@ export function createAudioPanel(o) {
     const group = h('div', { role: 'radiogroup', 'aria-label': L.how.legend });
     // 声の欄は AI 音声の答えの上
     drawVoices(v, group);
-    const opt = (m, label) => {
+    const opt = (m, label, off = false) => {
       const r = h('input', { type: 'radio', name: 'dv-how', id: 'dev-audio-how-' + m, value: m });
-      if (m === sel) r.setAttribute('checked', '');
+      if (m === sel && !off) r.setAttribute('checked', '');
       r.addEventListener('change', () => { if (r.checked) { howSel = m; draw(view); } });
-      if (busyMsg) r.disabled = true;
-      return h('label', { cls: 'dv-opt', for: 'dev-audio-how-' + m }, [r, h('span', { text: label })]);
+      if (busyMsg || off) r.disabled = true;
+      if (off) r.setAttribute('aria-describedby', 'dev-audio-local-no');
+      return h('label', { cls: 'dv-opt' + (off ? ' dv-off' : ''), for: 'dev-audio-how-' + m }, [r, h('span', { text: label })]);
     };
+    // 並び：録音（既定）→ クラウド → この PC。この PC は、作れない端末（スマートフォン・タブレット・メモリの少ない端末）では出すが選べず、わけを 1 行
+    if (o.recMode) { group.appendChild(opt('rec', L.how.rec)); if (sel === 'rec') group.appendChild(recBody(v, s)); }
     if (o.colab) { group.appendChild(opt('cloud', L.how.cloud)); if (sel === 'cloud') group.appendChild(cloudBody(v, s)); }
     if (localOk(v)) { group.appendChild(opt('local', L.how.local)); if (sel === 'local') group.appendChild(localBody(v, s)); }
-    if (o.recMode) { group.appendChild(opt('rec', L.how.rec)); if (sel === 'rec') group.appendChild(recBody(v, s)); }
+    else if (localLimited(v)) {
+      const l = opt('local', L.how.local, true);
+      group.appendChild(l);
+      group.appendChild(h('div', { cls: 'dv-note dv-body', id: 'dev-audio-local-no', text: L.how.localNo }));
+    }
     det.appendChild(group);
     card.appendChild(det);
   }
   function localBody(v, s) {
     const info = o.tts.info(ttsLang(v));
-    const go = h('button', { cls: 'dv-pri', id: 'dev-audio-local', text: s.need.length ? L.how.localGo(s.need.length) : L.how.localNone, on: { click: () => { remember('local'); makeLocal(summary(view).need); } } });
+    const go = h('button', { cls: 'dv-pri', id: 'dev-audio-local', text: s.need.length ? L.how.localGo(s.need.length) : L.how.localNone, on: { click: () => makeLocal(summary(view).need) } });
     if (!s.need.length || busyMsg) go.disabled = true;
     return h('div', { cls: 'dv-body', id: 'dev-audio-local-body' }, [
       h('div', { cls: 'dv-note', id: 'dev-audio-local-hint', text: L.how.localHint(MODEL_SIZE[engineOf(v)]) }),
@@ -491,20 +508,22 @@ export function createAudioPanel(o) {
     if (busyMsg || !(v.segs || []).length) b.disabled = true;
     return h('div', { cls: 'dv-body', id: 'dev-audio-rec-body' }, [h('div', { cls: 'dv-tools' }, [b]), h('div', { cls: 'dv-note', text: L.how.recHint })]);
   }
-  // クラウド（Google Colab）：C1 台本を書き出す → C2 Colab を開く（手順を板に書く）→ C3 できた音声を取り込む。終わった手順に ✓
+  // クラウド（Google Colab）：番号の付いた 3 つの手順（番号の札・見出し・ボタン 1 つ）。手順 2 の下に Colab での手順（a. b. c. d.）。
+  // この画面で終わった手順に ✓（台本を書き出した → 手順 1、ZIP ファイルを取り込んだ → 手順 2・3）。どの手順もいつでも押せる
   function cloudBody(v, s) {
     const C = o.colab.t;
-    const tick = (on) => h('span', { cls: 'dv-tick', 'aria-hidden': 'true', text: on ? '✓' : '' });
-    const step = (id, done, ctl, kids) => h('li', { id, 'data-done': done ? '1' : '0' }, [h('div', { cls: 'dv-c' }, [tick(done), ctl]), ...kids]);
+    const step = (n, id, done, head, ctl, kids) => h('li', { id, 'data-done': done ? '1' : '0', 'aria-labelledby': id + '-h' }, [
+      h('div', { cls: 'dv-sh', id: id + '-h' }, [h('span', { cls: 'dv-num', text: C.stepNo(n) }), h('span', { cls: 'dv-st', text: head }), done ? h('span', { cls: 'dv-tick', role: 'img', 'aria-label': C.stepDone, text: '✓' }) : null]),
+      ...kids.before || [], h('div', { cls: 'dv-c' }, [ctl]), ...kids.after || []]);
     const exp = h('button', { id: 'dev-audio-colab-export', cls: 'dv-pri', text: C.c1, on: { click: () => exportJob(summary(view).need) } });
     if (busyMsg || !s.need.length) exp.disabled = true;
-    const opn = h('a', { id: 'dev-audio-colab-open', cls: 'dv-btnlink', href: colabUrl(), target: '_blank', rel: 'noopener', title: C.c2T, text: C.c2, on: { click: () => { ticks.c2 = true; setTimeout(() => { if (view) draw(view); }, 0); } } });
+    const opn = h('a', { id: 'dev-audio-colab-open', cls: 'dv-btnlink', href: colabUrl(), target: '_blank', rel: 'noopener', title: C.c2T, text: C.c2 });
     const imp = h('button', { id: 'dev-audio-colab-import', text: C.c3, on: { click: importZip } });
     if (busyMsg) imp.disabled = true;
     return h('div', { cls: 'dv-body', id: 'dev-audio-cloud-body' }, [h('ol', { cls: 'dv-steps' }, [
-      step('dev-audio-c1', ticks.c1, exp, [h('div', { cls: 'dv-note', text: s.need.length ? C.c1Hint(s.need.length) : C.c1None })]),
-      step('dev-audio-c2', ticks.c2, opn, [h('ol', { cls: 'dv-c2', id: 'dev-audio-c2-steps' }, C.steps.map((x) => h('li', { text: x }))), h('div', { cls: 'dv-note', id: 'dev-audio-c2-note', text: C.c2Note })]),
-      step('dev-audio-c3', ticks.c3, imp, [h('div', { cls: 'dv-note', text: C.c3Hint })]),
+      step(1, 'dev-audio-c1', ticks.c1, C.h1, exp, { before: [h('div', { cls: 'dv-note', text: s.need.length ? C.c1Hint(s.need.length) : C.c1None })] }),
+      step(2, 'dev-audio-c2', ticks.c2, C.h2, opn, { after: [h('ol', { cls: 'dv-c2', id: 'dev-audio-c2-steps', type: 'a' }, C.panelSteps.map((x) => h('li', { text: x }))), h('div', { cls: 'dv-note', id: 'dev-audio-c2-note', text: C.c2Note })] }),
+      step(3, 'dev-audio-c3', ticks.c3, C.h3, imp, { before: [h('div', { cls: 'dv-note', text: C.c3Hint })] }),
     ])]);
   }
   // 鍵（スライドの鍵:ステップの鍵）を、画面の言葉の場所（「スライド 3・ステップ 2」）にする。見つからなければ鍵のまま
@@ -557,7 +576,13 @@ export function createAudioPanel(o) {
     const back = history.get(v.key) || [];
     if (back.length) { const rb = h('button', { cls: 'dv-revert', id: 'dev-audio-revert', text: L.revert, title: L.revertT(back.length), on: { click: () => revert(v.key) } }); if (busyMsg) rb.disabled = true; tools.push(rb); }
     // この PC で作れるときだけ
-    if (localOk(v)) { const tb = h('button', { id: 'dev-audio-tts', text: L.local, title: o.tts.info(ttsLang(v)).label || '', on: { click: () => regenerate(v.key) } }); if (!v.seg || busyMsg) tb.disabled = true; tools.push(tb); }
+    // この PC で作れるときだけ。作れない端末（スマートフォン・タブレット・メモリの少ない端末）では出すが押せず、わけを title に
+    if (localOk(v) || localLimited(v)) {
+      const lim = !localOk(v);
+      const tb = h('button', { id: 'dev-audio-tts', text: L.local, title: lim ? L.how.localNo : o.tts.info(ttsLang(v)).label || '', on: { click: () => regenerate(v.key) } });
+      if (!v.seg || busyMsg || lim) tb.disabled = true;
+      tools.push(tb);
+    }
     sec.appendChild(h('div', { cls: 'dv-tools' }, tools));
     if (player) sec.appendChild(player);
     if (v.seg) {
@@ -717,7 +742,6 @@ export function createAudioPanel(o) {
   // fromHow：B の「録音モードを開く (r)」・A のボタンから（やり方として覚え、閉じたらそのボタンにフォーカスを戻す）
   function openRecMode(key, fromHow = false) {
     if (!o.recMode || busyMsg) return;
-    if (fromHow) remember('rec');
     const id = fromHow ? (card && card.contains(doc.activeElement) && doc.activeElement.id) || 'dev-audio-how-recbtn' : 'dev-audio-rec';
     o.recMode.open({ key, returnFocus: () => { focusRec = id; if (card && open) { const b = card.querySelector('#' + id) || card.querySelector('#dev-audio-rec'); if (b && !b.disabled) { focusRec = false; try { b.focus({ preventScroll: true }); } catch { /* 無視 */ } } } } });
   }
@@ -814,7 +838,6 @@ export function createAudioPanel(o) {
   async function makeLocal(keys) {
     if (busyMsg || !view || !o.tts || !keys.length) return 0;
     if (o.beforeTts && !(await o.beforeTts(keys))) return 0;
-    remember('local');
     let made = 0;
     for (let i = 0; i < keys.length; i++) {
       if (!(await regenerate(keys[i], { gate: false, label: L.making(i + 1, keys.length) }))) break;
@@ -832,7 +855,7 @@ export function createAudioPanel(o) {
     doc.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => { if (urls.has(u)) { URL.revokeObjectURL(u); urls.delete(u); } }, 60000);
   }
-  // C1：keys のステップの台本を書き出す。台本を Google に渡す確かめは、このブラウザで初めての 1 回だけ
+  // 手順 1：keys のステップの台本を書き出す。台本を Google に渡す確かめは、このブラウザで初めての 1 回だけ
   async function exportJob(keys) {
     if (busyMsg || !view || !o.colab) return;
     const C = o.colab.t, ws = o.ws(), g = o.generation(), v = view;
@@ -855,12 +878,11 @@ export function createAudioPanel(o) {
       ticks.c1 = true; ticks.c3 = false;
       howSel = 'cloud';
       colabNote = { lines: [{ text: C.exported(job.steps.length) }] };
-      await remember('cloud');
       if (view) draw(view);
     } catch (e) { say(L.fail + (e.message || e), true); }
   }
   const enc = new TextEncoder();
-  // C3：ふつうの <input type=file>（ZIP ファイル 1 つ）。フォルダを選ぶ仕組み（showDirectoryPicker など）は使わない（iPad の Safari・ファイル App でも選べるように）
+  // 手順 3：ふつうの <input type=file>（ZIP ファイル 1 つ）。フォルダを選ぶ仕組み（showDirectoryPicker など）は使わない（iPad の Safari・ファイル App でも選べるように）
   function importZip() {
     if (busyMsg || !view || !o.colab) return;
     const i = h('input', { type: 'file', accept: '.zip,application/zip,application/x-zip-compressed', hidden: '' });
@@ -910,7 +932,7 @@ export function createAudioPanel(o) {
       for (const x of skipped) lines.push({ text: C.skipped(x.key ? placeOf(x.key) : '?', C.skipWhy[x.why] || x.why), bad: true });
       if (plan.warnings.includes('dictionary')) lines.push({ text: C.warnDict, bad: true });
       if (plan.warnings.includes('processing')) lines.push({ text: C.warnProc, bad: true });
-      if (applied) { ticks.c3 = true; await remember('cloud'); }
+      if (applied) { ticks.c2 = ticks.c3 = true; }
       if (applied && o.afterWrite) await o.afterWrite();
     } catch (e) { lines.push({ text: C.zipFail(e.message || e), bad: true }); }
     finally {
@@ -944,6 +966,7 @@ export function createAudioPanel(o) {
       const entry = takeEntry({ file, dur: t.dur, cues: t.kind === 'tts' || t.sync === 'manual' ? t.cues : null, sync: t.sync || null, kind: t.kind, inputHash: t.inputHash, recipe: t.recipe, processing: (t.recipe && t.recipe.processing) || PROCESSING, startOffset: init ? MP3.startOffset : 0 });
       const prev = await writeEntry(ws, live, key, entry, { file, bytes });
       if (prev === undefined) return cancelled();
+      lastKey = key;   // いちばん新しい音声（B の既定と A のボタンのやり方）
       const back = history.get(key) || [];
       back.push(prev);
       history.set(key, back.slice(-20));
@@ -1026,7 +1049,7 @@ export function createAudioPanel(o) {
     stopSample();
     for (const list of takes.values()) for (const t of list) freeUrl(t.url);
     takes.clear(); history.clear(); colabNote = null; busyMsg = null; focusRec = false;
-    methodMem = null; howSel = null; howOpenUser = null; ticks.c1 = ticks.c2 = ticks.c3 = false; lastDirty = null;
+    lastKey = null; howSel = null; howOpenUser = null; ticks.c1 = ticks.c2 = ticks.c3 = false; lastDirty = null;
     for (const k of Object.keys(voiceMem)) delete voiceMem[k];
     if (card) { card.remove(); card = null; }
     if (view && view.url) freeUrl(view.url);

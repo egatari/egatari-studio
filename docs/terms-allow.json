@@ -18,6 +18,13 @@
   "allow": [
     {
       "file": "**",
+      "pattern": "手順 2[\\s　]*(\\*\\*)?Colab で音声を作る|h2: 'Colab で音声を作る'",
+      "term": "generate-cloud",
+      "reason": "The heading of step 2 inside the cloud method (owner's design, 2026-11-04): Colab is where step 2 happens, not the name of the method.",
+      "keep": true
+    },
+    {
+      "file": "**",
       "pattern": "(更新が必要|古い)[」*\\s]*の印",
       "term": "emphasis",
       "reason": "The mark on audio that needs updating is a different 印 (glossary-quality: other 印 stay).",

@@ -837,6 +837,7 @@ const ui = createEditorUI({
 // 音声の板（app/audio-panel.js）：信頼する横の板の中。マイク・TTS はこのページだけで動き、プレビューからは何も受け取らない
 const tts = createTtsClient({
   lang: EN ? 'en' : 'ja', test: () => window.__APP_TEST && window.__APP_TEST.tts,
+  device: () => window.__APP_TEST && window.__APP_TEST.ttsDevice,   // 試験：作れる端末かの差し替え（app/tts-client.js の deviceLimit）
   helperUrl: () => (window.__APP_TEST && window.__APP_TEST.ttsHelper) || 'lab/tts-helper.html',
   // 初めて TTS の窓を開く前に：何を取得するか（大きさ）と、窓に渡すもの（読む文と声の名前だけ）を見せて確かめる
   confirm: async (label) => (await ask({ title: T.ttsTitle, body: [el('p', { id: 'tts-what', text: label }), el('p', { cls: 'hint', text: T.ttsPrivacy })],
@@ -871,8 +872,8 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
-  // 1 ファイルの「保存」（A のボタン）と、前に使ったやり方を覚える設定のファイル（egatari.json の studio.audioMethod）
-  save: () => savePortable('save'), configFile: FORMAT.CONFIG_FILE,
+  // 1 ファイルの「保存」（A のボタン）
+  save: () => savePortable('save'),
   // クラウドで作る（Google Colab）：台本の文が Google の環境で処理されるので、このブラウザで初めて書き出す前に 1 度だけ確かめる
   colab: {
     t: T.colab, version: RES.version,
@@ -2143,6 +2144,7 @@ window.__APP_TEST = {
   menuOpen: () => { const M = openMenuOf(); return M ? M.list.id : null; },
   mp3: undefined,     // 試験：'off' で MP3 のエンコーダを読み込まない（1 ファイル版と同じく WAV で保存する）
   tts: null,          // 試験：ブラウザの TTS の代わり（{info(lang), synth({lang, text, role, voices, onProgress})}。モデルを取りに行かない）
+  ttsDevice: undefined,   // 試験：作れる端末か（{memory, coarseOnly, small}、または 'measure' で端末を測る。app/tts-client.js）
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);
 
