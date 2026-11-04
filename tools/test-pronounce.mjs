@@ -96,14 +96,14 @@ async function openApp(lang) {
   const readNarr = () => page.evaluate(async () => (await (await window.__testDir.getFileHandle('narration.md')).getFile()).text());
   const go = async (i, k) => {
     await page.evaluate(() => document.activeElement && document.activeElement.blur && document.activeElement.blur());   // 欄に入っている間は、引き出しはステップを替えない
-    // 保存の後はプレビューを組み直して読み込み直す：読み込み終わるまで待って動かす
-    await page.waitForFunction(() => !window.__APP_TEST.state().building, null, { timeout: 30000 });
+    // 保存の後はプレビューを組み直して読み込み直す（遅い CI では、読み込み直しが動かした後に来て 1 枚目に戻ることがある）：位置が合うまで動かし直す
+    const at = () => page.evaluate(([i, k]) => { const p = window.__APP_TEST.ui().pos || {}; return p.i === i && p.k === k && !window.__APP_TEST.state().building; }, [i, k]);
     for (let t = 0; ; t++) {
-      try { const f = deckFrame(); if (f && await f.evaluate(([i, k]) => { if (!(window.DECK && DECK.ready)) return false; DECK.go(i, k, false); return true; }, [i, k])) break; } catch { /* 読み込み中 */ }
-      if (t > 150) throw new Error('preview did not load');
-      await page.waitForTimeout(100);
+      try { const f = deckFrame(); if (f) await f.evaluate(([i, k]) => { if (window.DECK && DECK.ready) DECK.go(i, k, false); }, [i, k]); } catch { /* 読み込み中 */ }
+      await page.waitForTimeout(300);
+      if (await at()) { await page.waitForTimeout(500); if (await at()) break; }
+      if (t > 150) throw new Error('could not move the preview to ' + i + ',' + k);
     }
-    await page.waitForFunction(([i, k]) => { const p = window.__APP_TEST.ui().pos || {}; return p.i === i && p.k === k; }, [i, k]);
     if (!(await page.isVisible('#dev-narr'))) await page.click('#b-narr');
     await page.waitForFunction((key) => window.__APP_TEST.ui().narrKey === key && document.querySelector('#dev-narr .dev-turn .dv-text'), (await page.evaluate(() => window.__APP_TEST.ui().pos.key)));
   };
