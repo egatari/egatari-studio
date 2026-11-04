@@ -8,7 +8,7 @@
 // 4. 規格を破った出力 → 品質チェックのエラー → 修正依頼の文章 →「AI の出力を貼り付ける…」で修正の ③ → 直したスライドと台本を 2 つの欄に →［置き換える］
 // 5. ほかのデッキ（見本の 1 ファイル・作業フォルダ）の置き換え・直したスライドだけ・台本だけ・修正依頼の ①・スライドの挿入
 // 6. 新規作成の図の札・プラン（有料はすべての分野）・シード値（作るときに 1 回、修正で戻す、保存に残る）
-// 画像（shotDir があれば）：copy-refused-new.png・copy-refused-revise.png・paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・paste-replace.png・fix-replaced.png・revise.png・insert-ai.png・new-parts-ja.png
+// 画像（shotDir があれば）：copy-refused-new.png・copy-refused-revise.png・copy-refused-cutoff.png・paste-error.png・paste-cutoff.png・paste-opened.png・fix-check.png・fix-request.png・paste-replace.png・fix-replaced.png・revise.png・insert-ai.png・new-parts-ja.png
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,26 +43,28 @@ export async function answerNew(p, { cat = 'teaching', sub = 'class', title = 'H
 }
 
 // クリップボードに書けないとき（writeText を断る・execCommand もだめ）：［コピー］の知らせの下に全文の字の欄が出て、全部が選ばれ、段はたたまない。戻すと欄は消える
-export async function refusedCopy(p, ok, { want, change, stepBtn, what, shot = null }) {
+//   button・msg・box：ボタンと知らせと欄（既定は段の［コピー］）。change：ボタンが隠れていれば押して開く。stepBtn：開いたままの段の見出し（なければ見ない）
+const FAILED = { en: 'Could not copy automatically. Select the text below and copy it.', ja: '自動ではコピーできませんでした。下の文字を選んでコピーしてください' };
+export async function refusedCopy(p, ok, { want, change = null, stepBtn = null, what, shot = null, button = '#paste-copy-guide', msg = 'paste-copied', box = 'paste-copy-text', lang = 'en', copied = /^(Copied|コピーしました)/ }) {
   await p.evaluate(() => {
     window.__origCopy = { w: navigator.clipboard.writeText, e: document.execCommand };
     navigator.clipboard.writeText = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
     document.execCommand = () => false;
   });
-  if (await p.isHidden('#paste-copy-guide')) await p.click(change);
-  await p.click('#paste-copy-guide');
-  await p.waitForSelector('#dlg[open] #paste-copy-text:not([hidden])');
-  const r = await p.evaluate(() => { const b = document.getElementById('paste-copy-text'), m = document.getElementById('paste-copied');
-    return { value: b.value, start: b.selectionStart, end: b.selectionEnd, len: b.value.length, focused: document.activeElement === b, ro: b.readOnly, label: b.getAttribute('aria-label'), msg: m.hidden ? '' : m.textContent, under: m.nextElementSibling === b, visible: !!b.getClientRects().length }; });
+  if (change && await p.isHidden(button)) await p.click(change);
+  await p.click(button);
+  await p.waitForSelector(`#dlg[open] #${box}:not([hidden])`);
+  const r = await p.evaluate(([box, msg]) => { const b = document.getElementById(box), m = document.getElementById(msg);
+    return { value: b.value, start: b.selectionStart, end: b.selectionEnd, len: b.value.length, focused: document.activeElement === b, ro: b.readOnly, label: b.getAttribute('aria-label'), msg: m.hidden ? '' : m.textContent, under: m.nextElementSibling === b, visible: !!b.getClientRects().length }; }, [box, msg]);
   ok(r.value.replace(/\r\n/g, '\n') === want && r.start === 0 && r.end === r.len && r.focused && r.ro && r.label && r.under && r.visible,
-    `llm ${what}: when the clipboard is refused, the full text appears read-only under the message, all selected (${r.start}–${r.end} of ${r.len}, label “${r.label}”)`);
-  ok(r.msg === 'Could not copy automatically. Select the text below and copy it.', `llm ${what}: when the clipboard is refused, the message says to copy the text below: ${r.msg}`);
-  ok((await p.getAttribute(stepBtn, 'aria-current')) === 'step' && await p.isVisible('#paste-copy-guide'), `llm ${what}: the step stays open while the text is shown`);
-  if (shot) { await p.evaluate(() => document.getElementById('paste-copied').scrollIntoView({ block: 'center' })); await p.screenshot({ path: shot }); }
+    `${what}: when the clipboard is refused, the full text appears read-only under the message, all selected (${r.start}–${r.end} of ${r.len}, label “${r.label}”)`);
+  ok(r.msg === FAILED[lang], `${what}: when the clipboard is refused, the message says to copy the text below: ${r.msg}`);
+  if (stepBtn) ok((await p.getAttribute(stepBtn, 'aria-current')) === 'step' && await p.isVisible(button), `${what}: the step stays open while the text is shown`);
+  if (shot) { await p.evaluate((msg) => document.getElementById(msg).scrollIntoView({ block: 'center' }), msg); await p.screenshot({ path: shot }); }
   await p.evaluate(() => { navigator.clipboard.writeText = window.__origCopy.w; document.execCommand = window.__origCopy.e; delete navigator.clipboard.writeText; });
-  await p.click('#paste-copy-guide');
-  await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
-  ok(await p.isHidden('#paste-copy-text'), `llm ${what}: once copying works again, the text box is hidden`);
+  await p.click(button);
+  await p.waitForFunction(([msg, src, flags]) => new RegExp(src, flags).test(document.getElementById(msg).textContent), [msg, copied.source, copied.flags]);
+  ok(await p.isHidden('#' + box), `${what}: once copying works again, the text box is hidden`);
 }
 
 export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
@@ -97,7 +99,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok((await page.textContent('#paste-pack-size')) === `Instructions: ${packKb(c0)} KB (suggested limit 45 KB)` && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.') && c0 === packWithRequest({ ...partsPackOpts(initialParts([])), lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }),
     'llm: the size shown is that of the copied text, which starts at “Instructions for the AI”');
   ok((await clip()) === c0, 'llm: the instructions are on the clipboard');
-  await refusedCopy(page, ok, { want: c0, change: '#paste-change-send', stepBtn: '#paste-step-send-btn', what: 'new step 4', shot: shotDir && path.join(shotDir, 'copy-refused-new.png') });
+  await refusedCopy(page, ok, { want: c0, change: '#paste-change-send', stepBtn: '#paste-step-send-btn', what: 'llm new step 4', shot: shotDir && path.join(shotDir, 'copy-refused-new.png') });
   await page.click('#paste-step-paste-btn');
   // 閉じていないコードブロック（スライドの途中で切れた）：スライドの欄に知らせ、作成は押せない、送り直しを頼む文
   await page.fill('#paste-deck', 'Sure! Here is the deck:\n\n```deck.html\n<!DOCTYPE html>\n<html lang="en"><body><div id="stage">\n<section class="slide"><h2>Cut</h2>');
@@ -107,6 +109,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#paste-copy-cutoff');
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-cut-copied').textContent));
   ok(/Send the lesson again in a shorter form/.test(await clip()) && (await page.textContent('#paste-cut-copied')) === 'Copied. Paste it into the chat and send, then paste the AI’s output here.', 'llm: the resend request asks for a shorter lesson');
+  await refusedCopy(page, ok, { want: await clip(), what: 'llm resend', button: '#paste-copy-cutoff', msg: 'paste-cut-copied', box: 'paste-cut-text', shot: shotDir && path.join(shotDir, 'copy-refused-cutoff.png') });
   await shot('paste-error.png', 'paste-step-paste');
   await page.fill('#paste-deck', 'I could not do it, sorry.');
   s = await st();
@@ -451,7 +454,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     ok(rev.includes('## What I want changed\n\nMake the second slide shorter') && rev.includes('## Open notes (comments)') && rev.includes('“3 か月”: Use a bar chart here') && !rev.includes('Already done') && rev.includes('````deck.html') && /1 comment\(s\)/.test(await p.textContent('#paste-copied')),
       'llm revise: the fix request has what to change, the open notes (not resolved ones) and the current files');
     await copyAgain(rev, 'Copy the fix request', 'revise');
-    await refusedCopy(p, ok, { want: rev, change: '#paste-change2', stepBtn: '#paste-step2-btn', what: 'revise step 2', shot: shotDir && path.join(shotDir, 'copy-refused-revise.png') });
+    await refusedCopy(p, ok, { want: rev, change: '#paste-change2', stepBtn: '#paste-step2-btn', what: 'llm revise step 2', shot: shotDir && path.join(shotDir, 'copy-refused-revise.png') });
     if (shotDir) await p.screenshot({ path: path.join(shotDir, 'revise.png') });
     await clickDlg(p, '#dlg-cancel');
 
@@ -481,7 +484,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       `llm insert: the request asks for the next 2 slides after slide 1 with only the heading list and that slide (not the whole deck; ${insReq.length} vs ${D3.length} characters)`);
     ok((await p.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await p.isVisible('#paste-deck') && await p.isHidden('#paste-copy-guide'), 'llm insert: copying opens step 3 (the paste fields) and folds step 2');
     await copyAgain(insReq, 'Copy the instructions', 'insert');
-    await refusedCopy(p, ok, { want: insReq, change: '#paste-change2', stepBtn: '#paste-step2-btn', what: 'insert step 2' });
+    await refusedCopy(p, ok, { want: insReq, change: '#paste-change2', stepBtn: '#paste-step2-btn', what: 'llm insert step 2' });
     await p.click('#paste-change2');
     await p.check('#paste-with-pack');
     ok(await p.isVisible('#paste-pack-parts'), 'llm insert: ticking “Send to a different chat” shows the subjects');

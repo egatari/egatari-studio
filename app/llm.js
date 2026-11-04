@@ -366,6 +366,8 @@ export function setupLlm(app) {
   }
   // 段の［コピー］（新規作成の ④・挿入と修正の ②）：クリップボードに書けなければ、知らせの下の字の欄（copyMsg.box。品質チェックの修正依頼の窓と同じ見た目）に
   // 全文を出して全部を選び、fixCopyFailed（「下の文字を選んで…」）で自分でコピーしてもらう。欄を出している間は段をたたまない（ok を返さない）
+  // 知らせ msg の下に置く、コピーできなかったときの全文の欄（msg.box）。どの［コピー］も copyInStep を通し、写していないのに「コピーしました」と言わない
+  const withCopyBox = (msg, id, label) => { msg.box = el('textarea', { id, readonly: '', rows: '12', spellcheck: 'false', hidden: '', 'aria-label': label }); return msg; };
   async function copyInStep(text, copyMsg, label) {
     const box = copyMsg.box;
     box.hidden = true;
@@ -966,11 +968,10 @@ export function setupLlm(app) {
     const titles = opts.batch ? X.steps.batch : X.steps[mode];
     outlineRows = null; batchNow = null; newChoice = null;
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
-    const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
-    copyMsg.box = el('textarea', { id: 'paste-copy-text', readonly: '', rows: '12', spellcheck: 'false', hidden: '', 'aria-label': X.sendQ });   // コピーできなかったときの全文（copyInStep）
+    const copyMsg = withCopyBox(el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-copy-text', X.sendQ);
     // 出力が切れていた・コードブロックがなかったとき：AI に送り直しを頼む文を写すボタン
-    const cutMsg = el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' });
-    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
+    const cutMsg = withCopyBox(el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-cut-text', X.copyCutOff);
+    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyInStep(t, cutMsg, X.copyCutOff); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
     S.cutOff = null;
     const goNote = el('span', { id: 'paste-go-note', cls: 'hint paste-go-note', role: 'status' });
     let outlinePhase = () => false;   // 新規作成で構成案を待っているとき（作成は押せない）
@@ -984,6 +985,7 @@ export function setupLlm(app) {
       const b = document.getElementById('dlg-import');
       if (!howto.isConnected) return;
       cut.hidden = !S.cutOff;
+      if (!S.cutOff) cutMsg.box.hidden = true;
       if (!b || !fields || !b.closest('#dlg[open]')) return;
       // ボタンは同じ場所のまま。押せないときは、すぐ左に欠けているもののうち最初の 1 つを、押せるときは添え書き（台本なしで作成します など）を出す
       const pre = unanswered(), waiting = outlinePhase(), ready = fields.ready();
@@ -994,7 +996,7 @@ export function setupLlm(app) {
     };
     fields = pasteFields(mode, () => syncGo());
     const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
-      ...fields.nodes, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })];
+      ...fields.nodes, msg, cut, cutMsg, cutMsg.box, el('p', { cls: 'hint', text: X.untrusted })];
     let body, openPaste = () => {};
     if (mode === 'new') {
       // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。1 つだけ開く流れ（flow）：答えた問いは 1 行にたたみ、次の問いを開く。
@@ -1123,7 +1125,7 @@ export function setupLlm(app) {
           el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-outline-text', text: X.outlineLabel }), oText]), oMsg, el('div', { cls: 'paste-guide' }, [next]));
       } else if (as === 'got') {
         const rows = outlineRows, b = nextBatch({ rows, next: 1 });
-        const msgO = el('p', { id: 'paste-outline-copied', cls: 'hint', role: 'status', hidden: '' });
+        const msgO = withCopyBox(el('p', { id: 'paste-outline-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-outline-copy-text', X.outlineCopy(b.from, b.to));
         const change = el('button', { type: 'button', id: 'paste-change-outline', cls: 'ghost', text: X.change, onclick: () => { outlineRows = null; render(true); oText.focus(); } });
         h.textContent = titles[4];
         box.replaceChildren(
@@ -1132,8 +1134,8 @@ export function setupLlm(app) {
           el('ol', { id: 'paste-outline-list', cls: 'paste-outline' }, rows.map((r) => el('li', { text: r.point ? `${r.heading} — ${r.point}` : r.heading }))),
           el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-outline-copy', cls: 'pri', text: X.outlineCopy(b.from, b.to), onclick: async () => {
             const t = batchRequest({ rows, from: b.from, to: b.to, first: true, lang: LANG });
-            const ok = await copyText(t); msgO.hidden = false; msgO.textContent = ok ? X.batchCopied(kb(t)) : X.fixCopyFailed;
-          } })]), msgO, ...kids);
+            const ok = await copyInStep(t, msgO, X.outlineCopy(b.from, b.to)); msgO.hidden = false; msgO.textContent = ok ? X.batchCopied(kb(t)) : X.fixCopyFailed;
+          } })]), msgO, msgO.box, ...kids);
       } else {
         h.textContent = titles[4];
         box.replaceChildren(...kids);
