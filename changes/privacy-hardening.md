@@ -1,0 +1,7 @@
+### Security
+- Browser TTS window (`lab/tts-helper.html`): the code it loads from jsDelivr is pinned by content as well as by version. Modules (also those onnxruntime-web and kokoro-js import themselves) are checked by the `integrity` of an import map that the page's policy allows by its hash; the two WebAssembly files are fetched with `integrity` and handed over as bytes. If the import map is not active, nothing is loaded. `node tools/tts-sri.mjs` writes the pages from the table in `lab/tts-engine.mjs`; `--fetch` checks the table against jsDelivr.
+- The TTS window's policy drops `'unsafe-eval'` (`'wasm-unsafe-eval'` is enough for Irodori and Kokoro), sets `worker-src 'none'`, and connects only to `huggingface.co` and `us.aws.cdn.hf.co` (where the pinned files are redirected), not `*.huggingface.co` and `*.hf.co`. `tools/test-lab-csp.mjs` checks the policy and the pins.
+- Live: the player and the Egatari Viewer send the join code and the participant's random ID in the first message after connecting (`join`), not in the WebSocket address, so they do not end up in proxy or server logs. Needs the egatari/live server that accepts `join` (deploy it first). The vendored protocol is updated.
+
+### Changed
+- Egatari Viewer: one line under **ファイルを開く** says that a copy of each opened file is kept on this device (up to 10), or that nothing is kept, with a link to the 「共有の端末」 switch and 「すべて削除」.

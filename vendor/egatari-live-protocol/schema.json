@@ -483,6 +483,31 @@
    ],
    "additionalProperties": false
   },
+  "l.join": {
+   "type": "object",
+   "description": "the first message on a learner socket, within 10 s (PROTOCOL.md \u00a73); nothing else is accepted before it. The key and pid travel here, never in the socket URL",
+   "properties": {
+    "v": {
+     "const": 1
+    },
+    "t": {
+     "const": "join"
+    },
+    "key": {
+     "$ref": "#/$defs/key"
+    },
+    "pid": {
+     "$ref": "#/$defs/pid"
+    }
+   },
+   "required": [
+    "v",
+    "t",
+    "key",
+    "pid"
+   ],
+   "additionalProperties": false
+  },
   "l.ask": {
    "type": "object",
    "properties": {
@@ -1814,6 +1839,9 @@
   },
   "learnerToServer": {
    "oneOf": [
+    {
+     "$ref": "#/$defs/l.join"
+    },
     {
      "$ref": "#/$defs/l.ask"
     },

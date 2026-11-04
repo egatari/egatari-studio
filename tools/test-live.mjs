@@ -64,7 +64,11 @@ ok(LP.validate(L0, { key: false }).some((e) => /key/.test(e)), 'validate: a less
 ok(LP.validate({ ...L0, endpoint: 'http://live.example.org' }, { key: true }).length > 0 && LP.validate({ ...L0, endpoint: 'https://live.example.org/x' }, { key: true }).length > 0, 'validate: endpoint must be an https origin (no path)');
 ok(LP.validate({ ...L0, room: 'r-ABCDEFGH' }, { key: true }).length > 0 && LP.validate({ ...L0, key: 'short' }, { key: true }).length > 0, 'validate: room and key formats from the protocol');
 ok(LP.validate({ ...L0, activities: { 'x:1': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['only one'] }] } }, { key: true }).length > 0, 'validate: a poll needs 2 or more choices');
-ok(LP.socketUrl(L0, 'p7Hk2mQx9LwR4tZa') === 'wss://live.example.org/ws?room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD&pid=p7Hk2mQx9LwR4tZa', 'socketUrl: wss on the endpoint host');
+ok(LP.socketUrl(L0) === 'wss://live.example.org/ws?room=r-7k2q6xw4', 'socketUrl: wss on the endpoint host, the room only (no key, no pid)');
+ok(JSON.stringify(LP.joinMessage(L0, 'p7Hk2mQx9LwR4tZa')) === JSON.stringify({ v: 1, t: 'join', key: 'Q2xhc3Nyb29tS2V5MDAwMD', pid: 'p7Hk2mQx9LwR4tZa' })
+  && LP.joinMessage(L0, 'short') === null && LP.joinMessage({ ...L0, key: 'x' }, 'p7Hk2mQx9LwR4tZa') === null && LP.joinMessage({ ...L0, v: 2 }, 'p7Hk2mQx9LwR4tZa') === null,
+  'joinMessage: the first message carries the key and pid (PROTOCOL.md §3); null if either is malformed');
+ok(JSON.stringify(LP.joinMessage(L0, 'p7Hk2mQx9LwR4tZa')) === JSON.stringify(fixture('learner/join.json')), 'joinMessage: the shape of the vendored fixture learner/join.json');
 ok(!LP.sameEndpoint('wss://evil.example.org/ws', L0.endpoint) && !LP.sameEndpoint('ws://live.example.org/ws', L0.endpoint) && LP.sameEndpoint('wss://live.example.org/ws?x', L0.endpoint), 'sameEndpoint: origin must equal the declared endpoint (scheme and host)');
 ok(LP0.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).some((e) => /endpoint/.test(e)) && LP0.socketUrl({ ...L0, endpoint: 'http://127.0.0.1:8787' }, 'p7Hk2mQx9LwR4tZa') === null && LP0.connectSrc('http://localhost:1') === null, 'default policy: loopback http endpoints are refused (validate, socketUrl, CSP)');
 ok(LP.validate({ ...L0, endpoint: 'http://127.0.0.1:8787' }, { key: true }).length === 0 && LP.validate({ ...L0, endpoint: 'http://10.0.0.5:8787' }, { key: true }).length > 0, 'development policy: only loopback http is added');
@@ -100,7 +104,7 @@ const ajv = new Ajv({ allErrors: true, strict: false, loadSchema: () => { throw 
 const SCHEMA = JSON.parse(fs.readFileSync(path.join(PROTOCOL_DIR, 'schema.json'), 'utf8'));
 ajv.addSchema(SCHEMA);
 const sv = (def) => ajv.getSchema(SCHEMA.$id + '#/$defs/' + def);
-for (const f of ['ask', 'vote', 'name', 'ping']) ok(sv('learnerToServer')(fixture(`learner/${f}.json`)), `schema: fixture learner/${f}.json is a learnerToServer message`);
+for (const f of ['join', 'ask', 'vote', 'name', 'ping']) ok(sv('learnerToServer')(fixture(`learner/${f}.json`)), `schema: fixture learner/${f}.json is a learnerToServer message`);
 ok(sv('activities')(L0.activities), 'schema: the activities shape is the protocol\'s activities');
 // 活動の表示名（label）：スライドの番号（1 から）・見出し（約 24 字）・段階の番号（1 から）
 { const slides = [{ key: 'cover', heading: '表紙' }, { key: 's-a', heading: '' }, { key: 's-b', heading: 'B' }, { key: 's-cjatth', heading: 'XML の壁' }, { key: 's-long', heading: 'とても長い見出しがここに続いていて二十四字をこえてしまう' }];
@@ -349,8 +353,10 @@ const sent = () => fake.messages.slice();
   await joinNow(o.p);
   ok(await until(async () => (await st(o.p)).state === 'connected'), 'Join: connected');
   const c = fake.connections[0];
-  ok(fake.connections.length === 1 && c.origin === 'null' && c.query.room === 'r-7k2q6xw4' && c.query.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && LP.RE.pid.test(c.query.pid) && Object.keys(c.query).length === 3,
-    `file:// connects with Origin null and only room, key and pid in the address (origin ${c && c.origin})`);
+  ok(fake.connections.length === 1 && c.origin === 'null' && c.query.room === 'r-7k2q6xw4' && Object.keys(c.query).length === 1 && !c.url.includes('Q2xhc3Nyb29tS2V5MDAwMD'),
+    `file:// connects with Origin null and only the room in the address (origin ${c && c.origin}, ${c && c.url})`);
+  ok(c.join && c.join.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && LP.RE.pid.test(c.join.pid) && !c.url.includes(c.join.pid) && sv('learnerToServer')(c.join),
+    'the key and pid go in the first message (join), which the vendored schema accepts');
   ok(o.net.ws.length === 1 && o.net.ws[0].startsWith(fake.endpoint.replace('http', 'ws') + '/ws?'), 'the WebSocket goes to the declared endpoint');
   ok(await until(() => fake.messages.some((m) => m.t === 'name' && m.name === 'Aiko')), 'the typed name is sent (only because it was typed)');
   ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '参加中') && await o.p.$eval('#live-pane .lv-leave', (b) => !b.hidden), 'connected: live region says so; Leave is shown with the indicator');
@@ -391,7 +397,7 @@ const sent = () => fake.messages.slice();
   fake.drop(1011);
   ok(await until(async () => (await st(o.p)).state === 'retrying', 2000), 'after a network close (1011): retrying');
   ok(await until(() => fake.connections.length === n0 + 1, 4000) && await until(async () => (await st(o.p)).state === 'connected'), 'reconnects with backoff after 1011');
-  ok(fake.connections[fake.connections.length - 1].query.pid === c.query.pid, 'reconnect: the same pid (kept on the device)');
+  ok(fake.connections[fake.connections.length - 1].join.pid === c.join.pid, 'reconnect: the same pid (kept on the device)');
   // 切断する
   await o.p.click('#live-pane .lv-leave');
   ok(await until(() => fake.open === 0) && (await st(o.p)).state === 'off', 'Disconnect: closes the socket');
@@ -445,7 +451,7 @@ for (const [code, reason, rejoin] of [[4440, 'key_replaced', false], [4410, 'roo
   await o.p.addInitScript(() => { const bad = { get() { throw new Error('denied'); } }; Object.defineProperty(window, 'localStorage', bad); Object.defineProperty(window, 'sessionStorage', bad); });
   await o.p.goto(fileUrl(files['live.html'])); await o.p.waitForFunction(() => window.DECK && DECK.ready);
   await joinNow(o.p);
-  ok(await until(async () => (await st(o.p)).state === 'connected') && LP.RE.pid.test(fake.connections[0].query.pid), 'storage denied: joins with an in-memory pid');
+  ok(await until(async () => (await st(o.p)).state === 'connected') && LP.RE.pid.test(fake.connections[0].join.pid), 'storage denied: joins with an in-memory pid');
   ok(o.net.errors.length === 0, `storage denied: no page error (${o.net.errors.join('; ')})`);
   await o.close(); }
 
@@ -670,7 +676,7 @@ async function drawCircle(p, cx, cy, r) {
   // 次の welcome に返事を足す
   const w = fixture('server-learner/welcome-replies.json');
   ok(await until(async () => (await st(o.p)).state === 'connected', 5000), 'reconnected');
-  fake.send({ ...w, room: 'r-7k2q6xw4', pid: fake.connections[fake.connections.length - 1].query.pid });
+  fake.send({ ...w, room: 'r-7k2q6xw4', pid: fake.connections[fake.connections.length - 1].join.pid });
   ok(await until(async () => (await st(o.p)).replies === 1), 'replies in welcome (after a reconnect or a reload) are shown');
   await o.close(); }
 // 「?」の出ないところ：動画・印刷・窓の外（通信もしない）

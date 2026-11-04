@@ -56,6 +56,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 #file { position: absolute; width: 1px; height: 1px; opacity: 0; }
 #file:focus-visible + .hint, .pick:focus-within { outline: 3px solid var(--focus); }
 .hint { margin: 10px 0 0; color: var(--muted); font-size: 0.875rem; }
+#keep-line { margin: 8px 0 0; }
+button.linklike { background: none; border: 0; padding: 0; min-height: 0; line-height: inherit; vertical-align: baseline; color: var(--accent); text-decoration: underline; cursor: pointer; font-size: inherit; }
 #msg:empty { display: none; }
 #msg { color: var(--err); margin: 12px 0; }
 .notice strong { color: var(--fg); }

@@ -516,14 +516,14 @@ function clearTimers(){ clearTimeout(retryTimer); clearInterval(tickTimer); clea
 function connect(){
   clearTimers();
   if (CTX || left || phase() !== "open") { render(); return; }
-  var url = LP.socketUrl(live, pid());
-  if (!url || !LP.sameEndpoint(url, live.endpoint)){ setState("stopped", "bad_endpoint"); return; }
+  var url = LP.socketUrl(live), hello = LP.joinMessage(live, pid());   // 鍵と pid はアドレスに入れず、つないだ後の最初のメッセージで送る
+  if (!url || !hello || !LP.sameEndpoint(url, live.endpoint)){ setState("stopped", "bad_endpoint"); return; }
   var s;
   try { s = new WebSocket(url); } catch (e) { onClose({code: 1006}); return; }
   ws = s; admitted = false; pending = {}; clearPollResults();
   setState("connecting");
   s.onmessage = function(ev){ if (ws === s) onMessage(ev); };
-  s.onopen = function(){ if (ws !== s) return; pingTimer = setInterval(function(){ send({v: 1, t: "ping"}); }, 45000); };
+  s.onopen = function(){ if (ws !== s) return; send(hello); pingTimer = setInterval(function(){ send({v: 1, t: "ping"}); }, 45000); };
   s.onclose = function(ev){ if (ws !== s) return; ws = null; onClose(ev); };
   s.onerror = function(){};
   scheduleEnd();

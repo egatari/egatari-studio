@@ -32,13 +32,14 @@ const live = { v: 1, endpoint: 'https://live.example.org', room: 'r-7k2q6xw4', k
   activities: { '*': [{ id: 'qa', kind: 'qa', ...extra }] }, ...extra };
 const embed = { v: 1, items: { video: { src: 'https://www.youtube-nocookie.com/embed/example', title: 'Example', ...extra } }, ...extra };
 assert.deepEqual(LP.validate(live, { key: true }), []);
-assert.ok(LP.socketUrl(live, 'p7Hk2mQx9LwR4tZa'));
+assert.ok(LP.socketUrl(live) && LP.joinMessage(live, 'p7Hk2mQx9LwR4tZa'));
 assert.equal(LP.activitiesFor(live, '*').length, 1);
 assert.deepEqual(parseRoomBlock(JSON.stringify(live)), live);
 assert.deepEqual(lessonLive(live), (({ key, ...rest }) => rest)(live));
 const future = { ...live, v: 2 };
 assert.deepEqual(LP.validate({ v: 2 }, { key: true }).map((e) => e.code), ['version']);
-assert.equal(LP.socketUrl(future, 'p7Hk2mQx9LwR4tZa'), null);
+assert.equal(LP.socketUrl(future), null);
+assert.equal(LP.joinMessage(future, 'p7Hk2mQx9LwR4tZa'), null);
 assert.equal(LP.joinUrl(future), null);
 assert.deepEqual(LP.activitiesFor(future, '*'), []);
 assert.deepEqual(mergeLive(future, live), future);

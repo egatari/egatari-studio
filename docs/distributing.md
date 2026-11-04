@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=a268fe51c8b1847e -->
+<!-- i18n: pair=distributing.ja.md sha256=f28779247247da81 -->
 # Handing a lesson to participants
 
 English | [日本語](distributing.ja.md)
@@ -64,7 +64,7 @@ What the participant's copy does:
 - **Outside the stage.** When open, questions and polls appear in a pane at the right (at the bottom on tall screens) and the slides are fitted into the rest: the pane never covers a slide, at the cost of the slide shrinking while it is open. Slides, captions, marks, video frames and print are unchanged. A poll appears when its step is reached. Everything from the server is shown as text.
 - **Reconnects** only inside the live time, following the Live server's table: after network failures with increasing delays (1, 2, 4 … 30 s, ±20 %); when the host ended the Live (4423) slowly, after at least 30 s; when the Live is full (4430) or after “too many messages” (4429) after at least 60 s; when it is too early (4425) at the start time. It stops with a message, and does not reconnect by itself, when the join code was changed (4440), the live time is over or the Live is gone (4410, 4404), the join code is wrong (4403), the same participant joined elsewhere (4409) or the host did not admit the participant (4441; **Try again** is offered). While a participant is in the waiting room the pane says so.
 - **Size.** A Live on the reference server takes up to 60 participants at once and a live time of at most 3 hours; the editor refuses a longer live time.
-- **Restricted connections.** The copy has a content security policy whose `connect-src` is exactly the Live server (`https://` and `wss://` of its host); the player also checks that the WebSocket address has the declared origin. Nothing (scripts, styles, images) is loaded from the server.
+- **Restricted connections.** The copy has a content security policy whose `connect-src` is exactly the Live server (`https://` and `wss://` of its host); the player also checks that the WebSocket address has the declared origin. The address carries only the Live ID; the join code and the participant's random ID go in the first message after connecting, so they do not end up in proxy or server logs. Nothing (scripts, styles, images) is loaded from the server.
 
 The lesson itself keeps the settings without the join code (`extensions.live` in `egatari.json`, and in the Egatari file's index); the join code goes only into the exported copy. Anyone holding the copy can join during the Live; **Change join code** on the host page locks out copies that leaked (they then show a clear message). From the command line: `node kit/build.mjs <deck> --play-only --live room.json` (`room.json` is the settings from the host page's Copy button; polls come from `egatari.json`'s `extensions.live`, otherwise from `room.json`).
 

@@ -12,6 +12,9 @@ export const TRANSFORMERS_VERSION = '3.7.6';    // 同上（トークナイザ�
 export const ORT_URL = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/ort.webgpu.mjs`;
 export const ORT_WASM = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;
 export const TRANSFORMERS_URL = `https://cdn.jsdelivr.net/npm/@huggingface/transformers@${TRANSFORMERS_VERSION}/dist/transformers.min.js`;
+// onnxruntime-web が中で読む糊（import()）と WebAssembly（WebGPU の版は asyncify の組み立て）
+export const ORT_GLUE_URL = `${ORT_WASM}ort-wasm-simd-threaded.asyncify.mjs`;
+export const ORT_WASM_URL = `${ORT_WASM}ort-wasm-simd-threaded.asyncify.wasm`;
 export const HF_REPO = 'noguchis/irodori-tts-onnx';
 export const HF_REV = 'b75a9bbf2c10e12682d37e91e0efaf6d4e54bd29'; // 版を固定（重みが差し替わっても結果が変わらない）
 export const HF_BASE = `https://huggingface.co/${HF_REPO}/resolve/${HF_REV}`;
@@ -46,10 +49,60 @@ export const irodoriModel = (prec) => `Irodori-TTS-500M-v3 onnx ${prec} (${HF_RE
 // Kokoro（英語）：kokoro-js の 1 ファイル版（transformers.js を含む）。重みは fp32（WebGPU で勧められる精度）
 export const KOKORO_VERSION = '1.2.1';
 export const KOKORO_URL = `https://cdn.jsdelivr.net/npm/kokoro-js@${KOKORO_VERSION}/dist/kokoro.web.js`;
+// kokoro-js 1.2.1 が中に持つ transformers.js（3.5.1）の onnxruntime-web は、糊と WebAssembly をこの版の場所から読む
+export const KOKORO_ORT = 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/';
+export const KOKORO_GLUE_URL = `${KOKORO_ORT}ort-wasm-simd-threaded.jsep.mjs`;
+export const KOKORO_WASM_URL = `${KOKORO_ORT}ort-wasm-simd-threaded.jsep.wasm`;
 export const KOKORO_REPO = 'onnx-community/Kokoro-82M-v1.0-ONNX';
 export const KOKORO_REV = '1939ad2a8e416c0acfeecc08a694d14ef25f2231';
 export const KOKORO_BYTES = 325532232 + 3497 + 113 + 44 + 2 * 522240;   // model.onnx・tokenizer・config と声 2 つ（kokoro-js は声を main から取る）
 export const kokoroModel = () => `Kokoro-82M-v1.0 onnx fp32 (${KOKORO_REPO}@${KOKORO_REV.slice(0, 12)})`;
+
+// ---------------------------------------------------------------- 中身の固定（Subresource Integrity）
+// jsDelivr から取るコードは、版の番号だけでなく中身のハッシュでも固定する（配信元が書き換えられても、違う中身は動かさない）。
+//   モジュール（MODULE_URLS。ライブラリが中で import() するものも）：lab/tts-helper.html と lab/irodori.html の import map の "integrity"
+//     （<script> の integrity 属性は動的な import() に効かないため。import map は CSP のハッシュで許す）。ブラウザが確かめる
+//   WebAssembly（WASM_URLS）：ライブラリに取らせず、ここで fetch の integrity を付けて取ってから渡す（fetchVerified）
+// 版を替えたら node tools/tts-sri.mjs --write で、この表・2 つの import map・CSP のハッシュを作り直す（試験は tools/test-lab-csp.mjs）
+export const MODULE_URLS = [ORT_URL, ORT_GLUE_URL, TRANSFORMERS_URL, KOKORO_URL, KOKORO_GLUE_URL];
+export const WASM_URLS = [ORT_WASM_URL, KOKORO_WASM_URL];
+export const SRI = Object.freeze({
+  [ORT_URL]: 'sha384-N6f7mYiLljH5d73pdoSOdC9/RbEoHCXRvV843PaT93GuqTHybaxUQYzm7X247UQE',
+  [ORT_GLUE_URL]: 'sha384-gAZ5slMQ8I9PiSFh20nyJzT8bN7rQqPsciJTV1VeK1PNpeuTQ2QmHlZ6cKvTNN36',
+  [ORT_WASM_URL]: 'sha384-tmBFY2CpaRrjl0HjeBVZkFWrbmlX6LMXMWx13U5YVhP+eC0QtkGYNUStBvvc/84f',
+  [TRANSFORMERS_URL]: 'sha384-ypqDKlGaciPzMZFxk0iPx9blYGxbZIWTqZX7f6BuiicO9rTfnXfprLBev5KE5OfK',
+  [KOKORO_URL]: 'sha384-suR1TeKe6Fe8fT0n/uTWoohnPJrp1zu3z0bj4VH2anmmq739wlmFSnMFJyMYszAC',
+  [KOKORO_GLUE_URL]: 'sha384-7GJqH5vc83Yt7VHwrMXTM8bNCrt/e/8eCtok8zlB2u5dwqmhzSakzCkQWrfYGRN4',
+  [KOKORO_WASM_URL]: 'sha384-u/bDsx39c+wt0LbHmOCydxt4fyiig3118hQgOTfOvrfkgScM4hRo2IwTtlxyoI02',
+});
+// import map の中身（2 つのページに同じ文字列で書く。CSP の 'sha256-…' はこの文字列のハッシュ）。
+// "imports" の egatari-sri は印：CSP のハッシュが合わずに import map が止められると、integrity も黙って効かなくなるので、
+// 取る前に印が解決できるかを見る（importPinned）。解決できなければ jsDelivr のコードを読まない
+export const SRI_MARK = 'egatari-sri';
+export const importMapText = () => JSON.stringify({ imports: { [SRI_MARK]: './tts-engine.mjs' }, integrity: Object.fromEntries(MODULE_URLS.map((u) => [u, SRI[u]])) });
+export function sriActive() { try { import.meta.resolve(SRI_MARK); return true; } catch { return false; } }
+export async function importPinned(url) {
+  if (!SRI[url] || !MODULE_URLS.includes(url)) throw new Error(`${url}: no integrity pinned`);
+  if (!sriActive()) throw new Error('the import map that pins the TTS libraries is not active (blocked by the page policy?); not loading them');
+  return import(url);
+}
+// 中身を確かめて取る（違えば fetch が TypeError で断る）。返すのは ArrayBuffer
+export async function fetchVerified(url) {
+  if (!SRI[url]) throw new Error(`${url}: no integrity pinned`);
+  const res = await fetch(url, { integrity: SRI[url], mode: 'cors', credentials: 'omit' });
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  return res.arrayBuffer();
+}
+// onnxruntime-web を読み込む（試験ページ lab/irodori.js も使う）。WebAssembly は確かめたバイトを渡す
+export async function importOrt(adapter = null) {
+  const o = await importPinned(ORT_URL);
+  o.env.wasm.wasmPaths = ORT_WASM;
+  o.env.wasm.wasmBinary = await fetchVerified(ORT_WASM_URL);
+  o.env.webgpu.powerPreference = 'high-performance';
+  if (adapter) o.env.webgpu.adapter = adapter;
+  o.env.logLevel = 'error';
+  return o;
+}
 // 声の名前 → Kokoro の声：Kokoro の声の名前（af_heart など）ならそのまま、既定の bob・alice は近い声に、名前がなければ役の既定の声。
 // 入っていない名前は null（日本語と同じく断る。黙って別の声にしない。編集アプリは合成の前に知らせて既定の声に替える）
 export const kokoroVoice = (name, role) => (name ? bundledVoice('kokoro', name) : DEFAULT_VOICES.kokoro[role === 'novice' ? 'novice' : 'expert']);
@@ -118,13 +171,7 @@ async function tidyCaches(onLog) {
 let ort = null, tokenizer = null;
 export async function loadIrodori({ prec = 'fp16', adapter = null, onBytes = () => {}, onLog = () => {}, onCacheError = () => {} } = {}) {
   await tidyCaches(onLog);
-  if (!ort) {
-    ort = await import(ORT_URL);
-    ort.env.wasm.wasmPaths = ORT_WASM;
-    ort.env.webgpu.powerPreference = 'high-performance';
-    if (adapter) ort.env.webgpu.adapter = adapter;
-    ort.env.logLevel = 'error';
-  }
+  if (!ort) ort = await importOrt(adapter);
   const sizes = SIZES[prec], sessions = {}, files = [];
   for (const [k, name] of Object.entries(MODELS)) {
     const base = `${HF_BASE}/${folderOf(prec)}`;
@@ -140,7 +187,7 @@ export async function loadIrodori({ prec = 'fp16', adapter = null, onBytes = () 
     onLog(`${name}: ${m.cached && d.cached ? 'cache' : 'download'} ${((tf - ts) / 1000).toFixed(1)} s, session ${((performance.now() - tf) / 1000).toFixed(1)} s`);
   }
   if (!tokenizer) {
-    const T = await import(TRANSFORMERS_URL);
+    const T = await importPinned(TRANSFORMERS_URL);
     // tokenizer/llmjp_tok/ を「手元のモデル」として HF の固定版から読む（上流は同じ場所を自前で配っている）
     T.env.allowRemoteModels = false;
     T.env.allowLocalModels = true;
@@ -156,8 +203,13 @@ export async function releaseIrodori(tts) { if (tts) for (const s of Object.valu
 // ---------------------------------------------------------------- Kokoro を読み込む
 export async function loadKokoro({ onProgress = () => {}, onLog = () => {} } = {}) {
   await tidyCaches(onLog);
-  const K = await import(KOKORO_URL);
-  return K.KokoroTTS.from_pretrained(KOKORO_REPO, { dtype: 'fp32', device: 'webgpu', revision: KOKORO_REV, progress_callback: onProgress });
+  const K = await importPinned(KOKORO_URL);
+  // 中の onnxruntime-web に、確かめた WebAssembly を blob: の URL で渡す（kokoro-js の env は wasmPaths しか開けていない）
+  const wasm = URL.createObjectURL(new Blob([await fetchVerified(KOKORO_WASM_URL)], { type: 'application/wasm' }));
+  K.env.wasmPaths = { mjs: KOKORO_GLUE_URL, wasm };
+  // revision：kokoro-js 1.2.1 はこれを先に渡さない（重みも設定も main から取る。SECURITY.md）。上流が渡すようになったときのために残す
+  try { return await K.KokoroTTS.from_pretrained(KOKORO_REPO, { dtype: 'fp32', device: 'webgpu', revision: KOKORO_REV, progress_callback: onProgress }); }
+  finally { URL.revokeObjectURL(wasm); }   // 読み込み（セッションを作るまで）が終われば要らない
 }
 
 // ---------------------------------------------------------------- 声（参照音声の WAV）
