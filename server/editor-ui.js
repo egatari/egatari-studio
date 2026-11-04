@@ -56,7 +56,7 @@ const STR = {
     speaker: 'Speaker', expert: 'Explainer (Expert)', novice: 'Questioner (Novice)', tPlace: 'What to say. {cue} marks a sync point. To set how a word is read, select it and press “Pronunciation…”', tLabel: 'What to say',
     pron: 'Pronunciation…', pronT: 'Set how a word or symbol is read aloud (select it in the script first)', pTitle: (w) => 'Pronunciation of “' + w + '”', pLabel: 'Pronunciation', pPh: 'e.g. theta',
     pFrom: { step: 'Filled in from the same word elsewhere in this script', dict: 'Filled in from your dictionary' },
-    pAll: (n) => (n ? 'Apply to all in this script (' + n + ' more)' : 'Apply to all in this script (no others)'), pDict: 'Add to dictionary', pDictT: 'Remembered in this browser. When you select the same word in another script, the field opens with this pronunciation',
+    pAll: (n) => (n ? 'Apply to all in this script (' + n + ' more)' : 'Apply to all in this script (no others)'), pDict: 'Add to dictionary', pDictOff: 'The dictionary cannot be used in this browser (it does not keep data here, as in private browsing). You can still apply the pronunciation', pDictT: 'Remembered in this browser. When you select the same word in another script, the field opens with this pronunciation',
     pDevice: 'Listen with read-aloud', pAi: 'Listen with AI voice', pApply: 'Apply', pRemove: 'Remove pronunciation', pAiBusy: 'Making AI voice…', pAiFail: 'Could not make the AI voice: ', pNoVoice: 'This device has no read-aloud voice for this language. Make AI voice to hear it',
     pNoSel: 'Select a word in the script first', pNoY: 'Type the pronunciation', pBadY: 'A pronunciation cannot contain { or }, and is at most 64 characters',
     pWhy: { space: 'Select one word or symbol without spaces', expr: 'Select only one word or symbol (a pronunciation cannot go on an expression or a sentence)', mark: 'The selection covers a pronunciation or a mark such as {cue}. Select only one word', long: 'Too long. Select only one word (up to ' + MAX_WORD + ' characters)', turns: 'Select within one turn' },
@@ -83,7 +83,7 @@ const STR = {
     speaker: '話者', expert: '説明する人（Expert）', novice: '質問する人（Novice）', tPlace: '話す内容。{cue} で同期点。読み方は、語を選んで「読み方…」で付けます', tLabel: '話す内容',
     pron: '読み方…', pronT: '語や記号の読み方を付けます（台本の欄で語を選んでから押します）', pTitle: (w) => '「' + w + '」の読み方', pLabel: '読み方', pPh: '例：シータ',
     pFrom: { step: '同じ台本のほかの所と同じ読み方を入れました', dict: '辞書の読み方を入れました' },
-    pAll: (n) => (n ? 'この台本のすべてに（ほかに ' + n + ' か所）' : 'この台本のすべてに（ほかにはありません）'), pDict: '辞書に登録', pDictT: 'このブラウザに覚えます。ほかの台本で同じ語を選ぶと、この読み方が入った状態で開きます',
+    pAll: (n) => (n ? 'この台本のすべてに（ほかに ' + n + ' か所）' : 'この台本のすべてに（ほかにはありません）'), pDict: '辞書に登録', pDictOff: 'このブラウザでは辞書を使えません（プライベートウィンドウなど、データを残さない設定のため）。読み方はこのまま付けられます', pDictT: 'このブラウザに覚えます。ほかの台本で同じ語を選ぶと、この読み方が入った状態で開きます',
     pDevice: '読み上げで聞く', pAi: 'AI 音声で聞く', pApply: '付ける', pRemove: '読み方を外す', pAiBusy: 'AI 音声を作っています…', pAiFail: 'AI 音声を作れませんでした：', pNoVoice: 'この端末に、この言語の読み上げの声がありません。聞くには AI 音声で',
     pNoSel: '読み方を付ける語を、台本の欄で選んでください', pNoY: '読み方を入れてください', pBadY: '読み方に { と } は使えません（64 字まで）',
     pWhy: { space: '空白を含まない 1 つの語か記号を選んでください', expr: '1 つの語か記号だけを選んでください（式や文には付けられません）', mark: '読み方や {cue} の付いた所にかかっています。1 つの語だけを選んでください', long: '長すぎます。1 つの語だけを選んでください（' + MAX_WORD + ' 字まで）', turns: '1 つの発言の中で選んでください' },
@@ -306,14 +306,21 @@ export function createEditorUI(o) {
   }
   // 読み方の辞書（#101）：このブラウザの localStorage に、台本の言語ごとの {語: 読み}。原稿に {x|y} を書くための覚えで、音声には直接当てない
   const DICT_KEY = 'egatari.pronunciations.v1', DICT_MAX = 1000;
-  function dictAll() { try { const v = JSON.parse(win.localStorage.getItem(DICT_KEY) || 'null'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } }
-  function dictGet(lang, x) { const d = dictAll()[lang]; return d && typeof d === 'object' && Object.hasOwn(d, x) && typeof d[x] === 'string' ? d[x] : null; }
+  // 使えないブラウザ（プライベートウィンドウ・保存を止めた設定・localStorage の口が例外を投げる）では null。読み方の欄はそのまま使え、「辞書に登録」だけを止める
+  function dictAll() { try { const v = JSON.parse(win.localStorage.getItem(DICT_KEY) || 'null'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return null; } }
+  // 書けるか：試しの鍵を書いて消す（読めても書けない設定がある）
+  function dictUsable() {
+    try { const st = win.localStorage, k = DICT_KEY + '.probe'; st.setItem(k, '1'); st.removeItem(k); return dictAll() !== null; } catch { return false; }
+  }
+  function dictGet(lang, x) { const all = dictAll(); const d = all && all[lang]; return d && typeof d === 'object' && Object.hasOwn(d, x) && typeof d[x] === 'string' ? d[x] : null; }
   function dictSet(lang, x, y) {
-    const all = dictAll(), d = all[lang] && typeof all[lang] === 'object' ? all[lang] : {};
+    const all = dictAll();
+    if (!all) return false;
+    const d = all[lang] && typeof all[lang] === 'object' ? all[lang] : {};
     delete d[x];
     if (y !== null) { d[x] = y; const keys = Object.keys(d); for (const k of keys.slice(0, Math.max(0, keys.length - DICT_MAX))) delete d[k]; }
     all[lang] = d;
-    try { win.localStorage.setItem(DICT_KEY, JSON.stringify(all)); } catch { /* 使えない環境：覚えない */ }
+    try { win.localStorage.setItem(DICT_KEY, JSON.stringify(all)); return true; } catch { return false; }   // 使えない環境：覚えない
   }
   function h(tag, props, kids) {
     const e = doc.createElement(tag);
@@ -839,7 +846,7 @@ export function createEditorUI(o) {
       // ほかの所：このステップの欄の中（選んだ所は除く）＋ほかのステップ（開発サーバー・編集アプリに数えてもらう）
       const here = fields.reduce((n, g, k) => n + (g ? findBare(g.value, w.x).length : 0), 0) - (w.y ? 0 : 1);
       const hereY = w.y || fields.map((g) => g && readingIn(g.value, w.x)).find(Boolean) || null;
-      const dict = dictGet(lang, w.x);
+      const dictOk = dictUsable(), dict = dictOk ? dictGet(lang, w.x) : null;
       const input = h('input', { type: 'text', id: 'dev-pron-y', placeholder: L.pPh, 'aria-label': L.pLabel, maxlength: '64', spellcheck: 'false', lang });
       const from = h('div', { cls: 'dv-from', id: 'dev-pron-from' });
       const allBox = h('input', { type: 'checkbox', id: 'dev-pron-all' });
@@ -851,6 +858,7 @@ export function createEditorUI(o) {
       if (w.y) input.value = w.y; else fill(hereY, 'step');
       if (!input.value && dict) fill(dict, 'dict');
       dictBox.checked = !!dict && (!input.value || input.value === dict);
+      if (!dictOk) { dictBox.disabled = true; dictBox.checked = false; dictBox.setAttribute('aria-describedby', 'dev-pron-dict-off'); }
       const setAll = () => { const n = P.here + P.other; allText.textContent = L.pAll(n); allBox.disabled = !n; if (!n) allBox.checked = false; };
       setAll();
       api('GET', '/__dev/narration/word?text=' + encodeURIComponent(w.x) + '&except=' + encodeURIComponent(narr.key)).then((r) => {
@@ -890,18 +898,19 @@ export function createEditorUI(o) {
           if (P.other) narr.pendingAll.set(w.x, { y, n: P.other });
         }
         f.replace(0, f.value.length, v, c);
-        if (dictBox.checked) dictSet(P.lang, w.x, y); else if (P.dictHad) dictSet(P.lang, w.x, null);
+        if (dictOk) { if (dictBox.checked) dictSet(P.lang, w.x, y); else if (P.dictHad) dictSet(P.lang, w.x, null); }
         markDirty();
         closePron(false);
         f.el.focus();
       }
-      function remove() { f.replace(w.start, w.end, w.x); if (dictBox.checked === false && P.dictHad) dictSet(P.lang, w.x, null); markDirty(); closePron(false); f.el.focus(); }
+      function remove() { f.replace(w.start, w.end, w.x); if (dictOk && dictBox.checked === false && P.dictHad) dictSet(P.lang, w.x, null); markDirty(); closePron(false); f.el.focus(); }
       const box = P.box = h('div', { id: 'dev-pron', role: 'group', 'aria-label': L.pTitle(w.x) }, [
         h('div', { cls: 'dv-pt', text: L.pTitle(w.x) }),
         h('label', {}, [h('span', { text: L.pLabel }), input]), from,
         listen.length ? h('div', { cls: 'dv-row' }, listen) : null,
         h('label', {}, [allBox, allText]),
-        h('label', { title: L.pDictT }, [dictBox, h('span', { text: L.pDict })]), h('div', { cls: 'dv-note', text: L.pDictT }),
+        h('label', { title: dictOk ? L.pDictT : L.pDictOff }, [dictBox, h('span', { text: L.pDict })]),
+        dictOk ? h('div', { cls: 'dv-note', text: L.pDictT }) : h('div', { cls: 'dv-note', id: 'dev-pron-dict-off', text: L.pDictOff }),
         msg,
         h('div', { cls: 'dv-row' }, [w.y ? h('button', { id: 'dev-pron-remove', text: L.pRemove, on: { click: remove } }) : null, h('span', { cls: 'dv-sp' }),
           h('button', { id: 'dev-pron-cancel', text: L.cancel, on: { click: () => closePron(true) } }), h('button', { id: 'dev-pron-apply', cls: 'dv-pri', text: L.pApply, on: { click: apply } })]),

@@ -5,6 +5,7 @@
 //    断る選び方・「この台本のすべてに」（ほかのステップは保存のときに）・「辞書に登録」（このブラウザ。次に選んだときに入る）・
 //    読み上げで聞く（端末の声の差し替え）・AI 音声で聞く（TTS の差し替え）
 // 3. 編集アプリ（英語）：Pronunciation… で SQL → sequel、英語の声で聞く、空白を含む選び方を断る
+// 4. localStorage が例外を投げるブラウザ（プライベートウィンドウなど）：読み方は付けられ、「辞書に登録」だけが押せず、わけを 1 行で出す（日本語・英語）
 import { giveIds } from './portable-fixtures.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -73,9 +74,11 @@ const TTS = `window.__ttsCalls = []; window.__APP_TEST.tts = {
 };`;
 
 const browser = await launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
-async function openApp(lang) {
+async function openApp(lang, { noStorage = false } = {}) {
   const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 }, locale: lang === 'en' ? 'en-US' : 'ja-JP' });
   await ctx.addInitScript(SPEECH);
+  // 保存の場所が使えないブラウザ：localStorage の口そのものが例外を投げる
+  if (noStorage) await ctx.addInitScript(() => { Object.defineProperty(window, 'localStorage', { configurable: true, get() { throw new DOMException('The operation is insecure.', 'SecurityError'); } }); });
   const page = await ctx.newPage();
   const errs = [];
   page.on('pageerror', (e) => errs.push(e.message));
@@ -271,6 +274,29 @@ try {
     const dict = await page.evaluate(() => localStorage.getItem('egatari.pronunciations.v1'));
     ok(dict === null, 'en: nothing is added to the dictionary unless asked');
     ok(!errs.length, 'en: no page errors ' + errs.join(' | '));
+    await ctx.close();
+  }
+  // ---------------------------------------------------------------- 4. 辞書が使えないブラウザ
+  for (const lang of ['ja', 'en']) {
+    const { ctx, page, errs, go, selectText, field, save, readNarr } = await openApp(lang, { noStorage: true });
+    ok(await page.evaluate(() => { try { void window.localStorage; return false; } catch { return true; } }), lang + ' no storage: the localStorage accessor throws');
+    await go(1, 1);
+    await selectText('θ');
+    await page.click('#dev-pron-btn');
+    await page.waitForSelector('#dev-pron');
+    const off = await page.evaluate(() => ({ disabled: document.getElementById('dev-pron-dict').disabled, checked: document.getElementById('dev-pron-dict').checked, why: (document.getElementById('dev-pron-dict-off') || {}).textContent, desc: document.getElementById('dev-pron-dict').getAttribute('aria-describedby') }));
+    const WHY = lang === 'en' ? 'The dictionary cannot be used in this browser (it does not keep data here, as in private browsing). You can still apply the pronunciation' : 'このブラウザでは辞書を使えません（プライベートウィンドウなど、データを残さない設定のため）。読み方はこのまま付けられます';
+    ok(off.disabled && !off.checked && off.why === WHY && off.desc === 'dev-pron-dict-off', lang + ' no storage: 「辞書に登録」 is disabled with one line saying why ' + JSON.stringify(off));
+    await page.fill('#dev-pron-y', lang === 'en' ? 'theta' : 'シータ');
+    await page.click('#dev-pron-device');
+    await page.waitForFunction(() => window.__ra.spoken.length > 0);
+    await page.click('#dev-pron-apply');
+    await page.waitForSelector('#dev-pron', { state: 'detached' });
+    const y = lang === 'en' ? 'theta' : 'シータ';
+    ok((await field()).value.includes('{θ|' + y + '}'), lang + ' no storage: the pronunciation is still applied ' + (await field()).value);
+    await save();
+    ok((await readNarr()).includes('{θ|' + y + '}'), lang + ' no storage: and saved');
+    ok(!errs.length, lang + ' no storage: no page errors ' + errs.join(' | '));
     await ctx.close();
   }
 } finally {
