@@ -298,6 +298,12 @@ console.log('framed');
 // ---------------------------------------------------------------- 5. service worker
 console.log('service worker');
 { const o = await page();
+  // what each document of the Viewer saw of its service worker (kept across reloads in sessionStorage): printed when a takeover check fails
+  await o.ctx.addInitScript(() => { const L = (m) => { try { const a = JSON.parse(sessionStorage.getItem('__swlog') || '[]'); a.push(`${Date.now() % 1e6} ${m}`); sessionStorage.setItem('__swlog', JSON.stringify(a.slice(-30))); } catch { /* no log */ } };
+    L('document'); if (navigator.serviceWorker) { navigator.serviceWorker.addEventListener('message', (e) => L('message ' + JSON.stringify(e.data))); navigator.serviceWorker.addEventListener('controllerchange', () => L('controllerchange'));
+      const regState = async (when) => { try { const r = await navigator.serviceWorker.getRegistration(); L(`${when}: active ${r && r.active && r.active.state}, waiting ${r && r.waiting && r.waiting.state}, installing ${r && r.installing && r.installing.state}, controlled ${!!navigator.serviceWorker.controller}`); } catch { /* no log */ } };
+      addEventListener('DOMContentLoaded', () => { regState('loaded'); setTimeout(() => regState('1 s'), 1000); setTimeout(() => regState('5 s'), 5000); }); } });
+  const swDiag = async (p) => { try { return JSON.stringify(await p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return { log: JSON.parse(sessionStorage.getItem('__swlog') || '[]'), version: document.getElementById('version').textContent, active: r && r.active && r.active.state, waiting: r && r.waiting && r.waiting.state, caches: await caches.keys(), now: Date.now() % 1e6 }; })); } catch (e) { return 'no diagnostics: ' + e.message; } };
   await o.p.evaluate(() => navigator.serviceWorker.ready);
   await o.p.reload(); await o.p.waitForSelector('html[data-ready]');
   ok(await until(() => o.p.evaluate(() => !!navigator.serviceWorker.controller)), 'the service worker controls the page');
@@ -342,9 +348,10 @@ console.log('service worker');
   // another window launched while the first one plays: the new version still waits (the worker grants a takeover only to a lone window)
   const p2 = await o.ctx.newPage();
   await p2.goto(site.url); await p2.waitForSelector('html[data-ready]');
-  await sleep(2500);
+  // the new window asks again each second while it launches (play/main.js): wait past its whole launch (10 s from its registration)
+  await until(() => p2.evaluate(() => window.__play.state().sw), 15000); await sleep(10500);
   ok(await p2.textContent('#version') === v1 && await o.p.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting) && await f1.evaluate(() => DECK.state().slide) === 2,
-    'a second window while a lesson plays: the new version still waits; the playing lesson is untouched');
+    'a second window while a lesson plays: the new version still waits through the second window\'s launch; the playing lesson is untouched');
   await p2.close();
   // the next launch: every window of the Viewer closed, then opened again
   const NEXT_LAUNCH_MS = 90000;
@@ -373,17 +380,40 @@ console.log('service worker');
   ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
   // a launch at the start screen with a version waiting (a home-screen app that was never closed, then opened): taken over at once
   // (an update found more than 10 s after the launch waits even at the start screen: the Viewer is in use, not being launched)
-  await sleep(10500);
+  // The page's launch is the 10 s after its service worker registration resolves (play/main.js initSW), which can come well after
+  // html[data-ready] on a slow runner: count the 10 s from there (state().sw), or the update below is found while the page still launches
+  const inUse = async (p) => { await until(() => p.evaluate(() => window.__play.state().sw), 15000); await sleep(10500); };
+  await inUse(p3);
   await p3.evaluate(() => caches.open('egatari-play-0.4.8-0000000000'));   // a cache under the name before the rename
   const b3 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v3' });
   await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b2.version,
     'a third version found while the Viewer is in use: it waits (no reload)');
+  await p3.evaluate(() => { try { const a = JSON.parse(sessionStorage.getItem('__swlog') || '[]'); a.push(`${Date.now() % 1e6} goto`); sessionStorage.setItem('__swlog', JSON.stringify(a)); } catch { /* no log */ } });
   await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });   // as above: the takeover may be slow, and the page may reload once
-  ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000), `a launch at the start screen (the only window): the waiting version takes over (${b3.version})`);
+  { const took = await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000);
+    ok(took, `a launch at the start screen (the only window): the waiting version takes over (${b3.version})` + (took ? '' : ' ' + await swDiag(p3))); }
   ok(await until(async () => { const k = await p3.evaluate(() => caches.keys()); return k.length === 1 && k[0] === 'egatari-viewer-' + b3.version; }, 10000), 'activate: only the egatari-viewer- cache of this version remains (the old egatari-play- cache is deleted)');
+  // a launch while another window of the Viewer is still open: the worker answers 'busy'; the launching page asks again each second,
+  // so when the other window closes during the launch, the waiting version takes over (the previous page of the same tab, still
+  // unloading, is such a window for a moment on a slow device)
+  await inUse(p3);
+  const b4 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v4' });
+  await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
+  ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b3.version, 'a fourth version: it waits');
+  // the other window plays a lesson, so it never asks for the takeover itself
+  const p4 = await o.ctx.newPage();
+  await p4.goto(site.url); await p4.waitForSelector('html[data-ready]');
+  await openFixture(p4, 'lesson.play.ega.html'); await lessonFrame(p4);
+  await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });
+  await until(() => p3.evaluate(() => window.__play.state().sw), 15000);
+  await sleep(1500);
+  const waitedForP4 = await p3.textContent('#version') === b3.version;
+  await p4.close();
+  { const took = await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b4.version; }, 15000);
+    ok(waitedForP4 && took, `a launch while another window plays a lesson, which then closes: the version waits while it is open (${waitedForP4}), then takes over (${b4.version})` + (took ? '' : ' ' + await swDiag(p3))); }
   await o.ctx.close();
-  built.version = b3.version; built.files = b3.files; }
+  built.version = b4.version; built.files = b4.files; }
 
 // ---------------------------------------------------------------- 6. recent files
 console.log('recent files');

@@ -336,24 +336,36 @@ async function clearRecents() { if (S.recents) { try { await S.recents.clear(); 
 // Nothing is swapped while a lesson is open: no request is made while playing, and a takeover that races with opening a file does
 // not reload (the running page keeps its own scripts; every file it needs is already loaded).
 // Coming back to the Viewer (visibilitychange) counts as a launch only on the start screen, with no lesson open.
+// Two races at a launch (seen on slow CI runners, also possible on a slow phone): the window this page replaced (the same tab's previous
+// page, still unloading) can still be listed for a moment, so the worker answers 'busy': during a launch the page asks again after a second.
+// And a takeover granted just before this page loaded (asked by the previous page) arrives here as a new controller this page did not ask
+// for: during a launch, at the start screen, the page reloads for it too (not when the first worker claims a page that had none).
 async function initSW() {
   if (!('serviceWorker' in navigator)) return null;
   let reg;
   try { reg = await navigator.serviceWorker.register('./sw.js', { scope: './' }); } catch { return null; }
   if (!reg) return null;   // a browser that blocks service workers may resolve without a registration
-  let asked = false;
+  // a launch: the first seconds after the page started. Later, an update found while the Viewer is in use waits for the next launch
+  let launching = true;
+  setTimeout(() => { launching = false; }, 10000);
+  let asked = false, retry = 0, controlled = !!navigator.serviceWorker.controller;
   const takeOver = () => {
     if (S.playing || asked || !reg.waiting || !navigator.serviceWorker.controller) return;
     asked = true;
     reg.waiting.postMessage({ type: 'activate-if-idle' });
   };
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (asked && !S.playing) location.reload(); });
-  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'busy') asked = false; });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const replaced = controlled; controlled = true;
+    if ((asked || (launching && replaced)) && !S.playing) location.reload();
+  });
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (!(e.data && e.data.type === 'busy')) return;
+    asked = false;
+    clearTimeout(retry);
+    if (launching) retry = setTimeout(() => { if (launching) takeOver(); }, 1000);
+  });
   takeOver();
   reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && launching) takeOver(); }); });
-  // a launch: the first seconds after the page started. Later, an update found while the Viewer is in use waits for the next launch
-  let launching = true;
-  setTimeout(() => { launching = false; }, 10000);
   if (!S.playing) reg.update().catch(() => {});
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible' || S.playing) return;
