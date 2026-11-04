@@ -246,13 +246,15 @@ try {
     };
   }));
   const eId = await E.evaluate(() => window.__APP_TEST.draftState().id);
+  // E は F の後ろのタブ：前に出してから（macOS の CI では、後ろのタブの描き直しが遅れて 10 秒で足りなかった）
+  await E.bringToFront();
   await E.evaluate(() => window.__APP_TEST.help());
-  await E.waitForFunction(() => /件|ありません/.test((document.getElementById('drafts-help-info') || {}).textContent || ''), null, { timeout: 10000 });
+  await E.waitForFunction(() => /件|ありません/.test((document.getElementById('drafts-help-info') || {}).textContent || ''), null, { timeout: 30000 });
   const info = await E.textContent('#drafts-help-info');
   ok(/^1 件/.test(info) && /アップロードしません/.test(info), '8: help shows how many other sets of changes are kept: ' + info.slice(0, 50));
   await E.click('#b-drafts-delete');
   await clickDlg(E, '#dlg-delete');
-  await E.waitForFunction(() => /ありません/.test(document.getElementById('drafts-help-info').textContent), null, { timeout: 10000 });
+  await E.waitForFunction(() => /ありません/.test(document.getElementById('drafts-help-info').textContent), null, { timeout: 30000 });
   list = await draftsOf(E);
   ok(!list.some((m) => m.id === 'dother') && list.some((m) => m.id === eId), '8: Discard all deletes the others and keeps the open file’s changes');
   await E.close({ runBeforeUnload: false });
