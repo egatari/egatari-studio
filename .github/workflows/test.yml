@@ -157,12 +157,13 @@ jobs:
       - name: Install Playwright WebKit
         # test-viewer-webkit, test-touch, test-book-css, test-fullscreen and test-print-backgrounds also run in WebKit when it is installed (they skip otherwise)
         run: npx playwright-core install webkit
-      - name: npm test${{ (github.event_name == 'push' || inputs.full) && '' || ' -- --platform' }}
+      # (written as !full && '--platform' || '': an empty string after && is false and would always pick the second value)
+      - name: npm test${{ !(github.event_name == 'push' || inputs.full) && ' -- --platform' || '' }}
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           TEST_TIMEOUT_SCALE: '3'
           TEST_STEP_TIMEOUT_S: '1800'
-        run: npm test -- --jobs 2 ${{ (github.event_name == 'push' || inputs.full) && '' || '--platform' }}
+        run: npm test -- --jobs 2 ${{ !(github.event_name == 'push' || inputs.full) && '--platform' || '' }}
       - name: Clean environment (the clean job's macOS leg)
         # the same as the clean job: an empty HOME (so no Playwright browsers and no user theme folder) and no TTS server
         if: ${{ !(github.event_name == 'push' || inputs.full) }}
