@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.md sha256=6fb23a77e643df59 -->
+<!-- i18n: pair=article.md sha256=3f802b23f63ca507 -->
 # 本を書く（article.md）
 
 [English](article.md) | 日本語
@@ -35,7 +35,7 @@ chapter: 1
 | `chapter` | 章の番号（正の整数）。読む順に大きくなる。1 から始まらなくてよい |
 | `kind` | `preface`（前書き）・`chapter`（章。既定）・`appendix`（付録）・`afterword`（後書き）。ファイルはこの順に並べる。前書きと後書きは節の番号なし。付録は A・B…と記号が付き、`chapter` は書かない |
 | `numbering` | `false` でこのファイルの節の番号を付けない（図と式の番号は付く） |
-| `writing-mode` | `vertical-rl` で縦書き（国語など）。図・表・式は横組みのまま。表の列は、書いた順に右から左へ並ぶ。頁は初め（右端）を開く。段落の頭の全角の空白（U+3000）は残るので、青空文庫のように字下げした段落はそのまま字下げになる |
+| `writing-mode` | `vertical-rl` で縦書き（国語など）。表も縦組み（行が 1 列になり、1 行目が右端、行のセルは上から下へ。セルの 1〜2 桁の数字は縦中横）。図・式・コードは横組みのまま。頁は初め（右端）を開く。段落の頭の全角の空白（U+3000）は残るので、青空文庫のように字下げした段落はそのまま字下げになる |
 | `lang`・`bibliography` | 書くなら、教材の言語・`references.json` と同じにする。全部の章で同じ |
 
 ## 書けるもの
@@ -48,7 +48,7 @@ CommonMark の書き方（段落、`##`〜`####` の見出し、強調、箇条�
 | 数式 | `$x^2$`。別行は `$$ … $$`。名前を付けると番号が付く：`$$ … $$ (eq-loss)` |
 | 図 | `:::{figure} images/tree.png` に `:label: fig-tree` と `:alt: 図の説明`。最初の段落が図の題、残りは注 |
 | 小さな図を並べた図 | `::::{figure}` の中に `:::{figure} <パス>` を 2 つ以上（それぞれ `:alt:`） |
-| 表 | パイプの表か、それを `:::{table} 題` と `:label: tbl-…` で囲んだもの。表の後の段落は注・出典。セルを結合するときは `:::{table}` の中に HTML の `<table>`（`table thead tbody tr th td`、`colspan rowspan align`、セルの中は `em strong code sub sup br` だけ。空行・数式・Markdown は書けない） |
+| 表 | パイプの表か、それを `:::{table} 題` と `:label: tbl-…`・`:class: …` で囲んだもの（`:class: horizontal` は縦書きの本でもその表を横組みにする。長い数や欧文の表に。ほかの名前は英小文字・数字・`-` で、テーマに `egatari-table-<名前>` として渡る）。表の後の段落は注・出典。セルを結合するときは `:::{table}` の中に HTML の `<table>`（`table thead tbody tr th td`、`colspan rowspan align`、セルの中は `em strong code sub sup br` だけ。空行・数式・Markdown は書けない） |
 | コラム | `:::{aside} 題`。`:label: box-…` と `:class: goals` を付けられる（種類の例：`goals`・`inquiry`・`tryit`・`point`・`summary`・`advanced`・`note`・`warning`） |
 | 定理の類 | `:::{prf:theorem} 題` と `:label: thm-…`。`lemma`・`definition`・`example`・`remark`・`proof` など mystmd の種類。証明の終わりに ∎ が付く |
 | 問と解答 | `:::{exercise} 題`（`:label: exr-…`、`:nonumber:`）。`:::{solution} exr-…` |

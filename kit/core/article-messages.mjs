@@ -53,6 +53,7 @@ export const ARTICLE_MESSAGES = {
   articleAsideNested: { ja: () => 'コラムの中にコラムがある：入れ子にしない', en: () => 'an aside inside an aside: do not nest them' },
   articleNested: { ja: (a) => `${a.outer === 'aside' ? 'コラム' : '問'}の中に ${a.inner} は置けない`, en: (a) => `an ${a.outer} cannot hold a ${a.inner}` },
   articleAsideClass: { ja: (a) => `コラムの :class: の名前「${a.cls}」は英小文字・数字・- だけ（例：inquiry、goals）`, en: (a) => `the aside class “${a.cls}” must be lowercase letters, digits and - (e.g. inquiry, goals)` },
+  articleTableClass: { ja: (a) => `表の :class: の名前「${a.cls}」は英小文字・数字・- だけ（例：horizontal）`, en: (a) => `the table class “${a.cls}” must be lowercase letters, digits and - (e.g. horizontal)` },
   articleProofKind: { ja: (a) => `定理の類の種類 prf:${a.kind} は Egatari Text 1 にない（theorem・lemma・definition など 15 種）`, en: (a) => `prf:${a.kind} is not a theorem-like kind of Egatari Text 1 (theorem, lemma, definition, … 15 kinds)` },
   articleFootnoteContent: { ja: (a) => `脚注 [^${a.name}] の中に ${a.what} がある：脚注は段落だけ`, en: (a) => `the footnote [^${a.name}] holds a ${a.what}: footnotes hold paragraphs only` },
   articleFootnoteMissing: { ja: (a) => `脚注 [^${a.name}] の定義がない：[^${a.name}]: 本文 の行を足す`, en: (a) => `the footnote [^${a.name}] has no definition: add a line [^${a.name}]: text` },

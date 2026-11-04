@@ -102,13 +102,29 @@ t('vertical book: citation numbers upright, footnote numbers written upright, ta
   assert.match(h, /<ol class="egatari-footnotes egatari-fn-numbered"><li id="fn-1"><span class="egatari-fn-no"><span class="egatari-tcy">1<\/span><\/span>注。/);
   const hh = renderArticle(readArticle({ path: 'article.md' }, () => '## A\n\nText[^a].\n\n[^a]: Note.\n', { lang: 'en' }), { lang: 'en', title: 'T' }).html;
   assert.match(hh, /<ol class="egatari-footnotes"><li id="fn-1">Note\./, 'horizontal books keep the list numbers');
-  assert.match(ARTICLE_CSS, /#egatari-article\.egatari-vertical table\{direction:rtl\}/);
+  // 縦書きの本の表は縦組み（§9C.6）：前の direction: rtl の横組みの表はもうない。:class: horizontal は横組み
+  assert.ok(!/direction:rtl/.test(ARTICLE_CSS));
+  assert.match(ARTICLE_CSS, /#egatari-article\.egatari-vertical :is\(figure\.egatari-table,table\)\{writing-mode:vertical-rl\}/);
+  assert.match(ARTICLE_CSS, /#egatari-article\.egatari-vertical figure\.egatari-table-horizontal,#egatari-article\.egatari-vertical figure\.egatari-table-horizontal table\{writing-mode:horizontal-tb\}/);
   const d = path.join(work, 'vpage'); fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, 'deck.html'), '<!DOCTYPE html><html lang="ja"><head><title>t</title></head><body><div id="stage"><section class="slide" id="s-aaaaaa"><h2>a</h2></section></div></body></html>');
   fs.writeFileSync(path.join(d, 'article.md'), '---\ntitle: 縦\nwriting-mode: vertical-rl\n---\n\n## 節\n\n本文。\n');
   assert.match(articlePage(nodeEnv, path.join(d, 'deck.html'), { lang: 'ja' }).html, /<html lang="ja" class="egatari-vertical-page">[\s\S]*html\.egatari-vertical-page\{writing-mode:vertical-rl\}/);
   fs.writeFileSync(path.join(d, 'article.md'), '---\ntitle: 横\n---\n\n## 節\n\n本文。\n');
   assert.ok(!/egatari-vertical-page"/.test(articlePage(nodeEnv, path.join(d, 'deck.html'), { lang: 'ja' }).html));
+});
+t('table :class: (§9C.2, §9C.6): egatari-table-<name> on the figure; horizontal tables get no tate-chu-yoko; bad names and unknown options are errors', () => {
+  const src = (cls) => `---\ntitle: 縦\nwriting-mode: vertical-rl\n---\n\n## 節\n\n:::{table} 数\n:label: tbl-a\n${cls}\n| 年 | 数 |\n|---|---:|\n| 2020 | 12 |\n:::\n`;
+  const v = renderArticle(readArticle({ path: 'article.md' }, () => src(''), { lang: 'ja' }), { lang: 'ja', title: 'T' }).html;
+  assert.match(v, /<figure class="egatari-table" id="tbl-a">/);
+  assert.match(v, /<td class="egatari-align-right"><span class="egatari-tcy">12<\/span><\/td>/);
+  const h = renderArticle(readArticle({ path: 'article.md' }, () => src(':class: horizontal wide\n'), { lang: 'ja' }), { lang: 'ja', title: 'T' }).html;
+  assert.match(h, /<figure class="egatari-table egatari-table-horizontal egatari-table-wide" id="tbl-a">/);
+  assert.ok(!/egatari-tcy/.test(h.slice(h.indexOf('<figure'), h.indexOf('</figure>'))), 'no tate-chu-yoko inside a horizontal table');
+  assert.match(h, /<span class="egatari-tcy">1<\/span><\/span> 節/, 'the body outside keeps it');
+  const codes = (s) => parseArticleText(s).problems.map((p) => p.code);
+  assert.deepEqual(codes(':::{table} T\n:class: Wide\n\n| a |\n|---|\n| 1 |\n:::\n'), ['articleTableClass']);
+  assert.deepEqual(codes(':::{table} T\n:width: 3\n\n| a |\n|---|\n| 1 |\n:::\n'), ['articleOption']);
 });
 t('list: chapter (a book): a list at the end of each chapter, ids ref-<chapter>-<key>, numbers restart; none: spans and no list', () => {
   const files = { 'article/01.md': '---\ntitle: One\nchapter: 1\n---\n## A\n\nSee [@shannon1948] and [@aho1974].\n', 'article/02.md': '---\ntitle: Two\nchapter: 2\n---\n## B\n\nSee [@aho1974].\n' };

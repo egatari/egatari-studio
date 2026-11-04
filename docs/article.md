@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.ja.md sha256=f6c5c13be680ae15 -->
+<!-- i18n: pair=article.ja.md sha256=1c9c16d92ca81c55 -->
 # Writing a book (article.md)
 
 English | [日本語](article.ja.md)
@@ -35,7 +35,7 @@ chapter: 1
 | `chapter` | the chapter number (a positive integer); chapter numbers increase in reading order and need not start at 1 |
 | `kind` | `preface`, `chapter` (default), `appendix` or `afterword`. Files come in that order. Prefaces and afterwords have no section numbers; appendices are lettered A, B, … and take no `chapter` |
 | `numbering` | `false` turns off this file's section numbers (figures and equations stay numbered) |
-| `writing-mode` | `vertical-rl` for vertical writing (Japanese language arts); figures, tables and equations stay horizontal; a table's columns run from right to left in the order you write them, and the page opens at its start (the right edge). A full-width space (U+3000) at the start of a paragraph stays, so paragraphs indented as in Aozora Bunko keep their indent |
+| `writing-mode` | `vertical-rl` for vertical writing (Japanese language arts); tables are vertical too (each row becomes a column, the first row on the right, a row's cells top to bottom; 1–2 digit numbers in cells stand upright), while figures, equations and code stay horizontal; the page opens at its start (the right edge). A full-width space (U+3000) at the start of a paragraph stays, so paragraphs indented as in Aozora Bunko keep their indent |
 | `lang`, `bibliography` | when given, equal to the lesson's language and to `references.json`; the same in every chapter |
 
 ## What you can write
@@ -48,7 +48,7 @@ Everything from CommonMark (paragraphs, `##`–`####` headings, emphasis, lists,
 | Math | `$x^2$`; display `$$ … $$`, numbered when labelled: `$$ … $$ (eq-loss)` |
 | Figure | `:::{figure} images/tree.png` with `:label: fig-tree` and `:alt: description`; the first paragraph is the caption, the rest the legend |
 | Subfigures | `::::{figure}` holding two or more `:::{figure} <path>` (each with `:alt:`) |
-| Table | a pipe table, or `:::{table} Caption` with `:label: tbl-…` around it; paragraphs after the table are its notes. For merged cells, an HTML `<table>` inside `:::{table}` (only `table thead tbody tr th td`, `colspan rowspan align`, and `em strong code sub sup br` in cells; no blank lines, math or Markdown) |
+| Table | a pipe table, or `:::{table} Caption` with `:label: tbl-…` and `:class: …` around it (`:class: horizontal` keeps the table horizontal in a vertical book, for long numbers or Latin text; other names, lowercase letters, digits and `-`, go to the theme as `egatari-table-<name>`); paragraphs after the table are its notes. For merged cells, an HTML `<table>` inside `:::{table}` (only `table thead tbody tr th td`, `colspan rowspan align`, and `em strong code sub sup br` in cells; no blank lines, math or Markdown) |
 | Box (aside) | `:::{aside} Title` with optional `:label: box-…` and `:class: goals` (kinds such as `goals`, `inquiry`, `tryit`, `point`, `summary`, `advanced`, `note`, `warning`) |
 | Theorem-like | `:::{prf:theorem} Title` with `:label: thm-…`; also `lemma`, `definition`, `example`, `remark`, `proof` and the other kinds of mystmd. A proof ends with ∎ |
 | Exercise, solution | `:::{exercise} Title` (`:label: exr-…`, `:nonumber:`); `:::{solution} exr-…` |
