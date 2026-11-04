@@ -97,6 +97,8 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
       const edits = [...store.keys()].filter((k) => k.startsWith('.cache/edits/') && isBackupName(k.slice('.cache/edits/'.length))).sort();
       for (const k of edits.slice(0, Math.max(0, edits.length - KEEP_EDITS))) store.delete(k);
     },
+    // すべてのファイル（外すものも含む）の更新時刻：Map(rel → m)。保存していない変更をブラウザに残すとき（app/drafts.js）、開いた直後と比べて変わったものだけを残す
+    stamps() { return new Map([...store].map(([k, e]) => [k, e.m])); },
     // すべてのファイル（外すものも含む）：Map(rel → Uint8Array の写し)
     snapshot() { return new Map([...store].map(([k, e]) => [k, e.bytes.slice()])); },
   };
