@@ -2,8 +2,8 @@
 //   A. この教材の音声：状態の 1 行（音声のあるステップの数・更新が必要・声を変えた・1 ファイルで未保存）と、いま押すボタン 1 つ
 //      （「残りの音声を作る」「音声を更新」は、いちばん新しい音声のやり方で続ける。分からなければ B を開く）
 //   B. 音声をどう付けますか：自分の声で録音する（録音モード）・AI 音声をクラウドで作る（Google Colab。手順 1 台本を書き出す →
-//      手順 2 Colab で音声を作る → 手順 3 できた音声を取り込む）・AI 音声をこの PC で作る（作れる端末だけ。スマートフォン・タブレット・
-//      メモリの少ない端末では出すが選べない）。AI 音声の上に声の欄。開いたときの答えは、いちばん新しい音声のやり方（録音 → 録音、
+//      手順 2 Colab で実行する → 手順 3 できた音声を取り込む）・AI 音声をこの PC で作る（作れる端末だけ。スマートフォン・タブレット・
+//      メモリの少ない端末では出すが選べない）。声の欄（声・試聴）は、選んだ AI 音声のやり方の中の 1 行目（クラウドは手順 1 の上、この PC はボタンの上。録音では出さない）。開いたときの答えは、いちばん新しい音声のやり方（録音 → 録音、
 //      Colab の AI 音声 → クラウド、この PC の AI 音声 → この PC。この端末で作れなければクラウド）、音声がなければ録音。ほかは覚えない
 //   C. このステップ：聞く・読み上げで聞く・録音 (r)・ファイルから取り込む・前に戻す・この PC で作り直す、と台本（読むだけ）
 // 録音は録音モード（app/rec-mode.js）だけ（#82）。作った音声（録音・取り込み・AI 音声）はすぐにそのステップの音声にし、前の音声は「前に戻す」で戻せる（#45）。
@@ -472,8 +472,6 @@ export function createAudioPanel(o) {
     det.appendChild(h('summary', { text: L.how.legend }));
     const sel = howOf(v);
     const group = h('div', { role: 'radiogroup', 'aria-label': L.how.legend });
-    // 声の欄は AI 音声の答えの上
-    drawVoices(v, group);
     const opt = (m, label, off = false) => {
       const r = h('input', { type: 'radio', name: 'dv-how', id: 'dev-audio-how-' + m, value: m });
       if (m === sel && !off) r.setAttribute('checked', '');
@@ -498,10 +496,14 @@ export function createAudioPanel(o) {
     const info = o.tts.info(ttsLang(v));
     const go = h('button', { cls: 'dv-pri', id: 'dev-audio-local', text: s.need.length ? L.how.localGo(s.need.length) : L.how.localNone, on: { click: () => makeLocal(summary(view).need) } });
     if (!s.need.length || busyMsg) go.disabled = true;
-    return h('div', { cls: 'dv-body', id: 'dev-audio-local-body' }, [
+    // 声の欄（声・試聴）は、選んだ AI 音声のやり方の中の 1 行目だけ（録音では出さない）
+    const body = h('div', { cls: 'dv-body', id: 'dev-audio-local-body' });
+    drawVoices(v, body);
+    for (const x of [
       h('div', { cls: 'dv-note', id: 'dev-audio-local-hint', text: L.how.localHint(MODEL_SIZE[engineOf(v)]) }),
       h('div', { cls: 'dv-tools' }, [go]),
-      h('div', { cls: 'dv-prov', id: 'dev-audio-ttsinfo', text: info.label || '' })]);
+      h('div', { cls: 'dv-prov', id: 'dev-audio-ttsinfo', text: info.label || '' })]) body.appendChild(x);
+    return body;
   }
   function recBody(v, s) {
     const b = h('button', { cls: 'dv-rec', id: 'dev-audio-how-recbtn', text: L.how.recBtn, 'aria-keyshortcuts': 'r', 'aria-haspopup': 'dialog', on: { click: () => openRecMode(s.missing[0] || s.need[0] || v.key, true) } });
@@ -520,11 +522,14 @@ export function createAudioPanel(o) {
     const opn = h('a', { id: 'dev-audio-colab-open', cls: 'dv-btnlink', href: colabUrl(), target: '_blank', rel: 'noopener', title: C.c2T, text: C.c2 });
     const imp = h('button', { id: 'dev-audio-colab-import', text: C.c3, on: { click: importZip } });
     if (busyMsg) imp.disabled = true;
-    return h('div', { cls: 'dv-body', id: 'dev-audio-cloud-body' }, [h('ol', { cls: 'dv-steps' }, [
+    const body = h('div', { cls: 'dv-body', id: 'dev-audio-cloud-body' });
+    drawVoices(v, body);   // 声の欄は手順 1 の上
+    body.appendChild(h('ol', { cls: 'dv-steps' }, [
       step(1, 'dev-audio-c1', ticks.c1, C.h1, exp, { before: [h('div', { cls: 'dv-note', text: s.need.length ? C.c1Hint(s.need.length) : C.c1None })] }),
       step(2, 'dev-audio-c2', ticks.c2, C.h2, opn, { after: [h('ol', { cls: 'dv-c2', id: 'dev-audio-c2-steps', type: 'a' }, C.panelSteps.map((x) => h('li', { text: x }))), h('div', { cls: 'dv-note', id: 'dev-audio-c2-note', text: C.c2Note })] }),
       step(3, 'dev-audio-c3', ticks.c3, C.h3, imp, { before: [h('div', { cls: 'dv-note', text: C.c3Hint })] }),
-    ])]);
+    ]));
+    return body;
   }
   // 鍵（スライドの鍵:ステップの鍵）を、画面の言葉の場所（「スライド 3・ステップ 2」）にする。見つからなければ鍵のまま
   function placeOf(key) {

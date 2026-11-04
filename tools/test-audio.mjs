@@ -537,10 +537,10 @@ try {
     ok(JSON.stringify(lines) === JSON.stringify([['some', `${N} ステップのうち 2 ステップに音声があります`], ['stale', '1 ステップの音声の更新が必要です（台本が変わりました）'], ['voice', '声を変えたので、AI 音声の 1 ステップは前の声のままです']]), 'A: the status line counts steps with audio, stale steps and voice-changed steps ' + JSON.stringify(lines));
     ok(A.stale.join() === k1 && A.voice.join() === k0 && A.need.length === N, 'A: stale = the changed script, voice changed = recipe.voice alice ≠ bob, the action covers all ' + N);
     ok((await page.$$('#dev-audio-deck button')).length === 1 && (await page.textContent('#dev-audio-action')) === `残りの音声を作る（${N} ステップ）`, 'A: exactly one action, 残りの音声を作る (n)');
-    // B：答えは 3 つ、録音 → クラウド → この PC の順。開いたときは、いちばん新しい音声（台本の順で最後の、やり方の分かる記録 = k1 の録音）のやり方。声の欄は答えの上
+    // B：答えは 3 つ、録音 → クラウド → この PC の順。開いたときは、いちばん新しい音声（台本の順で最後の、やり方の分かる記録 = k1 の録音）のやり方。録音では声の欄を出さない
     const how = await page.evaluate(() => ({ legend: document.querySelector('#dev-audio-how summary').textContent, opts: [...document.querySelectorAll('#dev-audio-how .dv-opt')].map((e) => e.textContent), checked: document.querySelector('#dev-audio-how input:checked').value,
-      voicesFirst: !!(document.getElementById('dev-audio-voices').compareDocumentPosition(document.querySelector('#dev-audio-how .dv-opt')) & Node.DOCUMENT_POSITION_FOLLOWING) }));
-    ok(how.legend === '音声をどう付けますか' && how.opts.join('|') === '自分の声で録音する|AI 音声をクラウドで作る（Google Colab）|AI 音声をこの PC で作る' && how.checked === 'rec' && how.voicesFirst, 'B: the question, three answers in the order 録音 → クラウド → この PC, opening on the method of the newest audio (a recording), the voice field above ' + JSON.stringify(how));
+      voices: !!document.getElementById('dev-audio-voices') || !!document.querySelector('#dev-audio .dv-sample') }));
+    ok(how.legend === '音声をどう付けますか' && how.opts.join('|') === '自分の声で録音する|AI 音声をクラウドで作る（Google Colab）|AI 音声をこの PC で作る' && how.checked === 'rec' && !how.voices, 'B: the question, three answers in the order 録音 → クラウド → この PC, opening on the method of the newest audio (a recording), no voice field or preview while 録音 is chosen ' + JSON.stringify(how));
     // A：いちばん新しい音声のやり方（録音）で続ける：録音モードが要る最初のステップで開く（何も作らない）
     const calls0 = (await page.evaluate(() => window.__ttsCalls)).length;
     await clickUntil(page, '#dev-audio-action', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
@@ -612,21 +612,40 @@ try {
       await page.click('#b-audio');
       await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.deck && document.getElementById('dev-audio-how'); }, null, { timeout: 15000 });
       return page.evaluate(() => {
+        // 声の欄（声・試聴）の場所：どのやり方の中か、その 1 行目か（クラウドは手順 1 の上、この PC はボタンの上）。出ていなければ null
+        const voicesAt = () => {
+          const g = document.getElementById('dev-audio-voices');
+          if (!g) return document.querySelector('#dev-audio .dv-sample') ? 'stray-sample' : null;
+          const body = g.parentElement;
+          const first = body.firstElementChild === g;
+          const before = (sel) => { const t = body.querySelector(sel); return !!t && !!(g.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING); };
+          const hasSample = !!g.querySelector('.dv-sample');
+          return body.id + (first ? ':first' : ':not-first') + (body.id === 'dev-audio-cloud-body' ? (before('#dev-audio-c1') ? ':above-step1' : ':below') : body.id === 'dev-audio-local-body' ? (before('#dev-audio-local') ? ':above-button' : ':below') : '') + (hasSample ? ':sample' : ':no-sample');
+        };
         const b = document.getElementById('dev-audio-tts'), no = document.getElementById('dev-audio-local-no');
         return { how: window.__APP_TEST.audio().how, checked: (document.querySelector('#dev-audio-how input:checked') || {}).value || null,
           opts: [...document.querySelectorAll('#dev-audio-how input[name=dv-how]')].map((r) => r.value + (r.disabled ? ':off' : '')).join(),
-          no: no ? no.textContent : null, tts: b ? { off: b.disabled, title: b.title } : null };
+          no: no ? no.textContent : null, tts: b ? { off: b.disabled, title: b.title } : null, voices: voicesAt() };
       });
     };
     const [a0, a1, a2] = allKeys;
     let r = await openWith({});
     ok(r.opts === 'rec,cloud,local' && r.how === 'rec' && r.checked === 'rec', 'default: no audio → 録音 (order 録音 → クラウド → この PC) ' + JSON.stringify(r));
+    ok(r.voices === null, 'voice field: hidden (not shown at all) while 録音 is chosen ' + JSON.stringify(r.voices));
     r = await openWith({ [a0]: rec() });
     ok(r.how === 'rec' && r.checked === 'rec', 'default: newest audio recorded → 録音 ' + JSON.stringify(r));
     r = await openWith({ [a0]: tts(COLAB) });
     ok(r.how === 'cloud' && r.checked === 'cloud' && !!(await page.$('#dev-audio-cloud-body')), 'default: newest audio AI voice made in Colab (recipe.processing +colab) → クラウド ' + JSON.stringify(r));
+    ok(r.voices === 'dev-audio-cloud-body:first:above-step1:sample', 'voice field: in クラウド, the first line, above 手順 1, with 試聴 ' + r.voices);
     r = await openWith({ [a0]: tts(LOCAL) });
     ok(r.how === 'local' && r.checked === 'local' && r.tts && !r.tts.off, 'default: newest audio AI voice made on this PC → この PC ' + JSON.stringify(r));
+    ok(r.voices === 'dev-audio-local-body:first:above-button:sample', 'voice field: in この PC, the first line, above its controls, with 試聴 ' + r.voices);
+    await page.click('#dev-audio-how-rec');
+    await page.waitForSelector('#dev-audio-rec-body');
+    ok(!(await page.$('#dev-audio-voices')) && !(await page.$('#dev-audio .dv-sample')), 'voice field: switching to 録音 removes 声 and 試聴');
+    await page.click('#dev-audio-how-cloud');
+    await page.waitForSelector('#dev-audio-cloud-body #dev-audio-voices');
+    ok(true, 'voice field: switching to クラウド shows it again inside クラウド');
     r = await openWith({ [a0]: tts(COLAB), [a1]: rec(), [a2]: tts(LOCAL) });
     ok(r.how === 'local', 'default: with no times in the manifest, the newest is the last record in script order ' + JSON.stringify(r));
     r = await openWith({ [a0]: tts(LOCAL) }, { memory: 4, coarseOnly: false, small: false });
@@ -674,6 +693,10 @@ try {
   // 音声がそろっているので B はたたんである（開いてから声を選ぶ）
   ok(!(await page.evaluate(() => document.getElementById('dev-audio-how').open)), 'B: folded when every step has audio');
   await page.click('#dev-audio-how summary');
+  // 声の欄は AI 音声のやり方の中だけ（いちばん新しい音声は録音なので、クラウドを選んでから）
+  ok(!(await page.$('#dev-audio-voices')), 'voice field: hidden while 録音 is chosen (single file)');
+  await page.click('#dev-audio-how-cloud');
+  await page.waitForSelector('#dev-audio-cloud-body #dev-audio-voices');
   await page.selectOption('#dev-audio-voices select[data-role="expert"]', 'alice');
   await page.waitForFunction(() => window.__APP_TEST.audio().voices.expert === 'alice');
   await page.click('#dev-audio-action');
