@@ -505,17 +505,23 @@ for (const [code, what] of [
   ok(v220.parts.base === '1.1.0' && v220.parts['markup-reader'] === '1.0.1' && v220.parts.plot === '1.0.1' &&
     v220.parts.score === '2.1.0' && lock2.parts.score['2.1.0'].requires.base === '1.1.0',
     'components 2.2.0: base 1.1.0 / markup-reader 1.0.1 / plot 1.0.1 bump together; m-score 2.1.0 adds per-step (by="measure") and requires both');
-  // 候補 2.3.0（components 側はまだタグ・リリースなし。branch c2-base c427e76）：どのパーツの版も変わらない。版を上げずに変わったのは
-  // icons 1.0.0（README と、アイコンの名前の言葉 en.json・ja.json が新しく入る。編集アプリのアイコンの検索が使う）と
-  // m-predict 2.0.3（README：学ぶ人 → 学習者）だけで、どちらも index.js はそのまま（refreshed）。manifest・tarball の sha256 は manifest.json のもの
+  // 候補 2.3.0（components 側はまだタグ・リリースなし。branch c2-base d26231c）：版が上がるのは m-codetree 2.0.3 だけ（要素の
+  // aria-label を表示名のハフマン木 / Huffman tree に合わせる、#168）。版を上げずに変わったのは codetree-core 1.0.0（README）、
+  // icons 1.0.0（README と、アイコンの名前の言葉 en.json・ja.json が新しく入る。編集アプリのアイコンの検索が使う）、
+  // m-predict 2.0.3（README：学ぶ人 → 学習者）で、どれも index.js はそのまま（refreshed）。manifest・tarball の sha256 は manifest.json のもの
   const v230 = lock2.catalogues['2.3.0'];
-  ok(lock2.default === '2.3.0' && v230 && v230.tag === 'v2.3.0' && v230.tarballSha256 === '7bd57223747243c3effaafa87c3db6d4ecf3f1fcfd6c2a45dc58c29fbd7d447a' &&
-    v230.manifestSha256 === 'd761f845e6bf7f98193a896e10177e7f154480352b64fd1c682dcbe2cda64397',
+  ok(lock2.default === '2.3.0' && v230 && v230.tag === 'v2.3.0' && v230.tarballSha256 === '46480ea715b73ef01bed807501316df96f5aacb63a96fa01af5cf14ede7f0f39' &&
+    v230.manifestSha256 === 'da1c17682f3b6df228453e4acc0b90d3e9c4c71d3fe9cf2cf8fa3f7de4d8b205',
     'CANDIDATE components 2.3.0 is the default and pinned to the tarball verified here (not yet a components release)');
-  ok(Object.keys(v230.parts).length === Object.keys(v220.parts).length && Object.keys(v220.parts).every((n) => v230.parts[n] === v220.parts[n]),
-    'CANDIDATE 2.3.0: no part version changes from 2.2.0');
-  const changed230 = Object.keys(v230.content).filter((n) => v230.content[n] !== v220.content[n]).sort();
-  ok(changed230.join() === 'icons,predict', `CANDIDATE 2.3.0: only icons@1.0.0 and predict@2.0.3 change without a version bump (${changed230.join(', ')})`);
+  const bumped230 = Object.keys(v230.parts).filter((n) => v230.parts[n] !== v220.parts[n]);
+  ok(Object.keys(v230.parts).length === Object.keys(v220.parts).length && bumped230.join() === 'codetree' && v220.parts.codetree === '2.0.2' && v230.parts.codetree === '2.0.3' &&
+    lock2.parts.codetree['2.0.3'].sha256 === '3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3',
+    `CANDIDATE 2.3.0: only m-codetree gets a new version (2.0.2 → 2.0.3) (${bumped230.join(', ')})`);
+  const codetreeJs = fs.readFileSync(partFile('codetree', '2.0.3'), 'utf8');
+  ok(codetreeJs.includes('"ハフマン木で "') && codetreeJs.includes('" with the Huffman tree: "') && !/符号の木|code tree/i.test(codetreeJs),
+    'CANDIDATE 2.3.0: m-codetree 2.0.3 names itself ハフマン木 / Huffman tree in its aria-label (「ハフマン木で…を復号」 / "Decoding … with the Huffman tree")');
+  const changed230 = Object.keys(v230.content).filter((n) => !bumped230.includes(n) && v230.content[n] !== v220.content[n]).sort();
+  ok(changed230.join() === 'codetree-core,icons,predict', `CANDIDATE 2.3.0: only codetree-core@1.0.0, icons@1.0.0 and predict@2.0.3 change without a version bump (${changed230.join(', ')})`);
   const iconsDir = path.join(ROOT, 'vendor', 'components', 'sha256', v230.content.icons);
   ok(['en.json', 'ja.json'].every((f) => fs.existsSync(path.join(iconsDir, f))) && ['en.json', 'ja.json'].every((f) => !fs.existsSync(path.join(ROOT, 'vendor', 'components', 'sha256', v220.content.icons, f))),
     'CANDIDATE 2.3.0: icons 1.0.0 brings en.json and ja.json (icon words for the editor\'s icon search); the 2.2.0 copy has none');

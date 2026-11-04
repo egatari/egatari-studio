@@ -634,15 +634,15 @@
     },
     "2.3.0": {
       "tag": "v2.3.0",
-      "tarballSha256": "7bd57223747243c3effaafa87c3db6d4ecf3f1fcfd6c2a45dc58c29fbd7d447a",
-      "manifestSha256": "d761f845e6bf7f98193a896e10177e7f154480352b64fd1c682dcbe2cda64397",
+      "tarballSha256": "46480ea715b73ef01bed807501316df96f5aacb63a96fa01af5cf14ede7f0f39",
+      "manifestSha256": "da1c17682f3b6df228453e4acc0b90d3e9c4c71d3fe9cf2cf8fa3f7de4d8b205",
       "parts": {
         "bars": "2.0.2",
         "base": "1.1.0",
         "boxplot": "2.0.2",
         "boxplot-core": "1.0.0",
         "cards": "2.0.2",
-        "codetree": "2.0.2",
+        "codetree": "2.0.3",
         "codetree-core": "1.0.0",
         "collect": "2.0.2",
         "compare": "2.0.2",
@@ -693,8 +693,8 @@
         "boxplot": "12704ccb92a1f864a18cce824a2400e8e3141e8dba7db34805cb1d8522aae08e",
         "boxplot-core": "fadd24868e2730ec14b8f3f1e9cb75b8577a48b8d71beaa12ef089f7a3ba0a7d",
         "cards": "68c9e866e3cd3e2f8179ede44a005c7f31cef0ed07fd5770ec33f0cc3aa80a41",
-        "codetree": "ed44804fc14b2755a82960d94cb0322858732ad789fd9a46704ee88955bd65e6",
-        "codetree-core": "bd590a6619f80d659299e4e558f770e75244360450939d504a4eaf7989b0eb97",
+        "codetree": "a039412289506dde09a645016eac4cf7ce819f08e98a424f34f19e9dc84a89db",
+        "codetree-core": "bb139fb1c2e4d010aa82a2c50db120f95f12a0a251cded3130a71dd57dec0274",
         "collect": "e6bbe784ee452d52d534b8fb3a0924e65c49bbb5926139ef5eabd9193500b357",
         "compare": "ae4f864445dff17a19df30c528cb44741558217080f8e6563e0c364025a4d0a6",
         "curves": "a6ad6867e21b4ffab426919d62f4293cbb447c7307f8f92e4a8c8d7c285fca6a",
@@ -886,6 +886,16 @@
       },
       "2.0.2": {
         "sha256": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948",
+        "kind": "element",
+        "tag": "m-codetree",
+        "requires": {
+          "base": "1.1.0",
+          "codetree-core": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3",
         "kind": "element",
         "tag": "m-codetree",
         "requires": {

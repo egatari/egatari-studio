@@ -6,8 +6,8 @@
   "license": "MIT",
   "tarball": {
     "file": "egatari-components-v2.3.0.tar.gz",
-    "sha256": "7bd57223747243c3effaafa87c3db6d4ecf3f1fcfd6c2a45dc58c29fbd7d447a",
-    "bytes": 1013427
+    "sha256": "46480ea715b73ef01bed807501316df96f5aacb63a96fa01af5cf14ede7f0f39",
+    "bytes": 1013512
   },
   "purposes": [
     {
@@ -524,7 +524,7 @@
     "codetree": {
       "kind": "element",
       "tag": "m-codetree",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "tier": "extra",
       "display": "ハフマン木 / Huffman tree",
       "requires": {
@@ -538,12 +538,12 @@
         "process"
       ],
       "variants": [],
-      "sha256": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948",
+      "sha256": "3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3",
       "files": {
-        "CHANGELOG.md": "e6aa45b10b079761251813bacd0c4bb286e84b181943735b0d49573fe952a091",
-        "README.md": "94b49821df590a652662390c7a77d8b6c101b5bde833e5c234b0e9348564a924",
-        "demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
-        "index.js": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948"
+        "CHANGELOG.md": "cbda4f81bcef3c713e492f0620bbfda1e83aec0634d52cd47937e1d013a46199",
+        "README.md": "36dcab86890039adc51da95d0d77925427d2531e07b1ec4f7189dbe87b692c71",
+        "demo.html": "094b81bdc9e088fb2ddffb552818e4c370bff138497a492767d0b71377ee8be6",
+        "index.js": "3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3"
       }
     },
     "codetree-core": {
@@ -553,7 +553,7 @@
       "license": "MIT",
       "sha256": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
       "files": {
-        "README.md": "a7bd09bb2794d070cc2f47e1972676bc087723a0184ae9ea84a93a785bcfe89b",
+        "README.md": "a544b8348d8f5d7284cb1a95564b33fd958a39d75a0acf1685d4bd61c670f0dd",
         "index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d"
       }
     },
@@ -1669,12 +1669,12 @@
     "cards/README.md": "e983a2b8352d6ba16b8f1f4639a9bea7277fa1f1cf2ec69034ed4adad1138835",
     "cards/demo.html": "0b4439c806dc96230314d5f4bfa50922d53a185aeefd21f81b20d681ed04a4a3",
     "cards/index.js": "ca73c8a2811a1165326725a2d4686657f1cab2a1a387af1e91aa35d1aabafb7e",
-    "codetree-core/README.md": "a7bd09bb2794d070cc2f47e1972676bc087723a0184ae9ea84a93a785bcfe89b",
+    "codetree-core/README.md": "a544b8348d8f5d7284cb1a95564b33fd958a39d75a0acf1685d4bd61c670f0dd",
     "codetree-core/index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
-    "codetree/CHANGELOG.md": "e6aa45b10b079761251813bacd0c4bb286e84b181943735b0d49573fe952a091",
-    "codetree/README.md": "94b49821df590a652662390c7a77d8b6c101b5bde833e5c234b0e9348564a924",
-    "codetree/demo.html": "26e275332c8b51a0d1d32bb9de1e7f768c14771da2037e07d0e4252e498d2ffe",
-    "codetree/index.js": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948",
+    "codetree/CHANGELOG.md": "cbda4f81bcef3c713e492f0620bbfda1e83aec0634d52cd47937e1d013a46199",
+    "codetree/README.md": "36dcab86890039adc51da95d0d77925427d2531e07b1ec4f7189dbe87b692c71",
+    "codetree/demo.html": "094b81bdc9e088fb2ddffb552818e4c370bff138497a492767d0b71377ee8be6",
+    "codetree/index.js": "3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3",
     "collect/CHANGELOG.md": "14fb222abad957ca935d9e0db2f3ef3b454c0967ce9f2f7b88de7bcd5209631f",
     "collect/README.md": "a5d5929132652174d43339148798050edfbc91d51e77d3e1735444f6874bd2e4",
     "collect/demo.html": "bc503695034d43678c2c30ded24e90f43056b0fdcb5eefc51b688ac504313685",
@@ -1846,6 +1846,9 @@
   "changedWithoutBump": {
     "since": "2.2.0",
     "parts": {
+      "codetree-core": [
+        "README.md"
+      ],
       "icons": [
         "README.md",
         "en.json",
