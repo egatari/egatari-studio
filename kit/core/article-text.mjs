@@ -24,7 +24,7 @@ export const KINDS = Object.freeze(['preface', 'chapter', 'appendix', 'afterword
 // 前付けに書ける項目と型（§9C.2）
 const FM_MEMBERS = { title: 'string', subtitle: 'string', lang: 'lang', bibliography: 'string', 'writing-mode': 'mode', chapter: 'posint', kind: 'kind', numbering: 'boolean' };
 // 指令ごとに書ける option（§9C.2）
-const DIRECTIVES = { figure: ['label', 'alt'], table: ['label'], aside: ['label', 'class'], exercise: ['label', 'nonumber'], solution: ['label'], glossary: [] };
+const DIRECTIVES = { figure: ['label', 'alt'], table: ['label', 'class'], aside: ['label', 'class'], exercise: ['label', 'nonumber'], solution: ['label'], glossary: [] };
 const ROLES = new Set(['step', 'ruby', 'term', 'sub', 'sup']);
 const ADMONITIONS = new Set(['admonition', 'note', 'tip', 'hint', 'important', 'warning', 'caution', 'attention', 'danger', 'error', 'seealso', 'margin', 'sidebar', 'topic']);
 // 名前の決まり（§8.1・§9C.3・§9C.4）
@@ -370,6 +370,8 @@ export function parseArticleText(src, opts = {}) {
       if (node.depth === 2 && !node.label) add('error', 'articleSectionId', '§9C.3', node, { heading: plain(node).slice(0, 40) });
       if (node.label) checkLabel(node, node.depth === 2 ? 'section' : 'heading');
     } else if (['math', 'container', 'aside', 'proof', 'exercise', 'solution', 'table'].includes(t) && node.label && !(t === 'exercise' && node.hidden)) checkLabel(node, 'label');
+    // 表の :class:（§9C.2・§9C.6）：名前の形はコラムの種類と同じ。horizontal は縦書きの本でも横組みのまま、ほかはテーマに渡す
+    if (t === 'container' && node.kind === 'table') for (const c of String(node.class || '').split(/\s+/).filter(Boolean)) if (!CLASS_RE.test(c)) add('error', 'articleTableClass', '§9C.2', node, { cls: c });
     if (t === 'aside') {
       if (!(node.children && node.children[0] && node.children[0].type === 'admonitionTitle')) add('error', 'articleAsideTitle', '§9C.2', node);
       for (const c of String(node.class || '').split(/\s+/).filter(Boolean)) if (!CLASS_RE.test(c)) add('error', 'articleAsideClass', '§9C.2', node, { cls: c });

@@ -31,14 +31,15 @@
 .cols>*{flex:1;min-width:0}
 .thm{border:2px solid var(--term);border-radius:6px;padding:6px 16px;margin:4px 0 8px;background:var(--term-tint)}
 .box{border-radius:8px;padding:10px 18px;margin:4px 0 8px;background:var(--base-wash)}
-table{border-collapse:collapse;width:100%;font-size:28px;line-height:1.35}
-th,td{border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
-th{border-bottom:2px solid var(--rule);font-weight:700;color:var(--title)}
-td.r{text-align:right;font-variant-numeric:tabular-nums}
+/* 要素だけの規則はスライドの中だけ（:where(.slide) で詳細度は前と同じ 0,0,1。テーマが同じ詳細度で上書きできる）。本の窓（#egatari-article）に届かせない */
+:where(.slide) table{border-collapse:collapse;width:100%;font-size:28px;line-height:1.35}
+:where(.slide) :is(th,td){border-bottom:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+:where(.slide) th{border-bottom:2px solid var(--rule);font-weight:700;color:var(--title)}
+:where(.slide) td.r{text-align:right;font-variant-numeric:tabular-nums}
 .fig svg{display:block;width:100%;height:auto}
 .figcap{font-size:20px;margin:2px 0 0;text-align:center;color:var(--muted)}
-.katex{font-size:1em}
-.katex-display{margin:.25em 0}
+:where(.slide) .katex{font-size:1em}
+:where(.slide) .katex-display{margin:.25em 0}
 .big .katex-display{font-size:1.12em}
 
 /* 表紙・章の扉・付録の扉 */
@@ -60,9 +61,9 @@ td.r{text-align:right;font-variant-numeric:tabular-nums}
 .plot svg{display:block;width:100%;height:100%;overflow:visible}
 /* 部品のデータの形が違うときの札（kit/deck.js の compPlaceholder）。部品は描かず、何が違うかをその場に出す */
 .m-error{box-sizing:border-box;width:100%;min-height:100%;display:flex;align-items:center;padding:14px 18px;border:3px dashed var(--emph);border-radius:6px;color:var(--emph);font-size:27px;line-height:1.35;overflow-wrap:anywhere;writing-mode:horizontal-tb}
-svg text{font-family:var(--font-sans);font-weight:var(--weight-body,400)}
-svg text:not([fill]):not([style*="fill"]){fill:var(--fg)}
-svg .mi{font-family:KaTeX_Math,"Times New Roman",serif;font-style:italic}
+:where(.slide) svg text{font-family:var(--font-sans);font-weight:var(--weight-body,400)}
+:where(.slide) svg text:not([fill]):not([style*="fill"]){fill:var(--fg)}
+:where(.slide) svg .mi{font-family:KaTeX_Math,"Times New Roman",serif;font-style:italic}
 .smath{overflow:visible}
 .readout .num{font-family:KaTeX_Main,serif;font-variant-numeric:tabular-nums;display:inline-block;min-width:4.2em}
 
@@ -79,7 +80,7 @@ html[data-font="mincho"]{--font-sans:var(--font-mincho)}
 /* 縦中横（縦書きの中の 2 桁の数字など） */
 .tcy{text-combine-upright:all}
 /* ルビ：振り仮名は 0.5em（品質チェックは rt の字の大きさを数えない）。縦書きでは右に付く */
-rt{font-size:.5em;line-height:1}
+:where(.slide) rt{font-size:.5em;line-height:1}
 
 /* 縦組みのスライド（class="slide layout-tate"）：見出しは右端の列に縦書きで天付き、見出しの下線は列の左の縦の罫になる。
    本文（.body）は縦書き（右から左へ列が進む）で、見出しの左に組む。結論の行は左端の縦の列。ページ番号は右下のまま（見出しの列の下）。
