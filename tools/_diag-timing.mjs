@@ -56,13 +56,22 @@ for (let run = 0; run < RUNS; run++) {
   await page.waitForFunction(() => window.DECK && DECK.ready);
   const tl = await page.evaluate(() => DECK.timeline().map((g) => ({ k: g.k, dur: g.dur })));
   const tracePath = path.join(OUT, `trace-${run}.json`);
-  await browser.startTracing(page, { path: tracePath, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'v8', 'toplevel', 'cc', 'viz', 'gpu', 'benchmark', 'disabled-by-default-devtools.timeline.frame'] });
+  if (process.env.DIAG_TRACE !== '0') await browser.startTracing(page, { path: tracePath, categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink.user_timing', 'v8', 'toplevel', 'cc', 'viz', 'gpu', 'benchmark', 'disabled-by-default-devtools.timeline.frame'] });
   await page.evaluate(() => performance.mark('sync'));
   const syncPerf = await page.evaluate(() => performance.getEntriesByName('sync')[0].startTime);
+  // DIAG_OFFSETS: press 'a' so that the toolbar's 5 s hide lands this many ms after the planned start of measure 4 (negative: before).
+  const offsets = (process.env.DIAG_OFFSETS || '').split(',').filter(Boolean).map(Number);
+  if (offsets.length) {
+    const off = offsets[run % offsets.length];
+    const hideDue = await page.evaluate(() => (window.__timers.find((t) => t.d >= 4000 && t.d <= 5100) || {}).due);
+    // off: ms before the planned start of measure 3 (step 3)
+    const target = hideDue + off - 2 * 60 / 88 * 2 * 1000 - 1200 - Number(process.env.DIAG_LAG || 330);
+    await page.waitForFunction((t) => performance.now() >= t, target, { polling: 5, timeout: 20000 });
+  }
   const pressAt = await page.evaluate(() => performance.now());
   await page.keyboard.press('a');
   await page.waitForFunction(() => !document.documentElement.classList.contains('autoplay'), null, { timeout: 30000 });
-  await browser.stopTracing();
+  if (process.env.DIAG_TRACE !== '0') await browser.stopTracing();
   const d = await page.evaluate(() => ({ steps: window.__steps, timers: window.__timers, cb: window.__cb, long: window.__long, raf: window.__raf, mount: performance.getEntriesByType('navigation')[0]?.domContentLoadedEventEnd }));
   await browser.close();
 
@@ -72,6 +81,10 @@ for (let run = 0; run < RUNS; run++) {
   const late = steps.map((x, n) => x.at - t0 - planned[n]);
   console.log(`\n=== run ${run}${NOTOOLBAR ? ' (toolbar without transition/backdrop)' : ''}: step 0 ${(tl[0].dur * 1000).toFixed(0)} ms; 'a' pressed ${(pressAt - (d.mount || 0)).toFixed(0)} ms after DOMContentLoaded; step 1 change at ${(t0 - pressAt).toFixed(0)} ms after 'a'`);
   console.log(`late (ms, vs step 1): ${late.map((e) => e.toFixed(1)).join(' ')}`);
+  const hide = d.cb.find((c) => !c.show);
+  const nb = hide ? planned.findIndex((p) => t0 + p > hide.at) : -1;
+  const tf = d.timers.filter((t) => t.d > 1000 && t.d < 1500 && t.fire !== undefined).map((t) => t.fire - t.due);
+  console.log(`SUMMARY toolbar=${NOTOOLBAR ? 'plain' : 'shipped'} hide_before_next=${nb >= 0 ? (t0 + planned[nb] - hide.at).toFixed(0) : 'none'} next=${nb + 1} nextlate=${nb >= 0 ? late[nb].toFixed(1) : '?'} others_max=${Math.max(...late.filter((_, n) => n !== nb && n > 0).map(Math.abs)).toFixed(1)} all=${late.map((e) => e.toFixed(0)).join(',')} steptimers_late=${tf.map((x) => x.toFixed(0)).join(',')}`);
   console.log(`toolbar class changes (ms after step 1 change): ${d.cb.map((c) => (c.at - t0).toFixed(0) + (c.show ? '+' : '-')).join(' ')}`);
   console.log(`timers >= 400 ms (due rel. step 1 / fire late / callback ms): ${d.timers.filter((t) => t.fire !== undefined && t.due > t0 - 2000).map((t) => `[${(t.due - t0).toFixed(0)} +${(t.fire - t.due).toFixed(1)} ${(t.end - t.fire).toFixed(1)} d=${t.d.toFixed(0)}]`).join(' ')}`);
   console.log(`long tasks (start rel. step 1, dur): ${d.long.filter((l) => l.start > t0 - 2000).map((l) => `${(l.start - t0).toFixed(0)}/${l.dur.toFixed(0)}`).join(' ')}`);
@@ -84,6 +97,7 @@ for (let run = 0; run < RUNS; run++) {
   });
 
   // Trace: what each renderer/GPU/browser thread did in the 300 ms before each step change.
+  if (process.env.DIAG_TRACE === '0') continue;
   let trace;
   try { trace = JSON.parse(fs.readFileSync(tracePath, 'utf8')); } catch (e) { console.log('trace unreadable', e.message); continue; }
   const ev = trace.traceEvents || trace;

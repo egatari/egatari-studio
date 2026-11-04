@@ -7,7 +7,7 @@ permissions:
 jobs:
   macos:
     runs-on: macos-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -15,13 +15,18 @@ jobs:
           node-version: '>=22.23.4 <23'
           cache: npm
       - run: npm ci --ignore-scripts
-      - name: diag (as shipped)
-        run: node tools/_diag-timing.mjs 6 "$RUNNER_TEMP/diag"
-      - name: diag (toolbar without transition/backdrop)
-        env: { DIAG_NO_TOOLBAR: '1' }
-        run: node tools/_diag-timing.mjs 4 "$RUNNER_TEMP/diag-nt"
-      - name: test-music-timing x3
-        run: for i in 1 2 3; do node tools/test-music-timing.mjs 2>&1 | grep -vE "onset error" || true; done
+      - name: natural (hide where it falls), shipped toolbar
+        env: { DIAG_TRACE: '0' }
+        run: node tools/_diag-timing.mjs 8 "$RUNNER_TEMP/n" | grep SUMMARY
+      - name: hide 50-400 ms before step 3, shipped toolbar
+        env: { DIAG_TRACE: '0', DIAG_OFFSETS: '50,150,250,400', DIAG_LAG: '450' }
+        run: node tools/_diag-timing.mjs 24 "$RUNNER_TEMP/s" | grep SUMMARY
+      - name: hide 50-400 ms before step 3, toolbar without transition/backdrop
+        env: { DIAG_TRACE: '0', DIAG_OFFSETS: '50,150,250,400', DIAG_LAG: '450', DIAG_NO_TOOLBAR: '1' }
+        run: node tools/_diag-timing.mjs 24 "$RUNNER_TEMP/p" | grep SUMMARY
+      - name: traced, hide 150 ms before step 3, shipped toolbar
+        env: { DIAG_OFFSETS: '150', DIAG_LAG: '450' }
+        run: node tools/_diag-timing.mjs 3 "$RUNNER_TEMP/diag"
       - uses: actions/upload-artifact@v7
         if: always()
         with:
