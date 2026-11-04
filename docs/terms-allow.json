@@ -1,5 +1,5 @@
 {
-  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}. noPairs: term ids skipped by the ja↔en pair check (their ja word is too generic for substring pairing, e.g. 本 in 2 本 and 日本語).",
+  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}. noPairs: term ids skipped by the ja↔en pair check (their ja word is too generic for substring pairing, e.g. 本 in 2 本 and 日本語). aiDocsToo: avoid words also matched in the AI-instruction docs (docs/authoring-with-llms*), which otherwise use the spec's words and are not checked.",
   "uiOnly": [
     "決まり"
   ],
@@ -9,6 +9,10 @@
     "雛形",
     "縮図",
     "暗転"
+  ],
+  "aiDocsToo": [
+    "学ぶ人",
+    "再生器"
   ],
   "noPairs": [
     "book",
@@ -424,6 +428,18 @@
       "term": "created-by",
       "pairs": true,
       "reason": "The editor's help says the copyright and creators are kept on Save as a new file; en names the list \"creators\", the label is \"Created by\""
+    },
+    {
+      "file": "docs/authoring-with-llms*",
+      "pattern": "一人で学ぶ人は",
+      "term": "participant",
+      "reason": "from the m-predict 2.0.3 README in egatari/components; remove when components ships the fix (学習者)"
+    },
+    {
+      "file": "docs/authoring-with-llms*",
+      "pattern": "一人で学ぶ人は",
+      "term": "learner",
+      "reason": "from the m-predict 2.0.3 README in egatari/components; remove when components ships the fix (学習者)"
     }
   ]
 }

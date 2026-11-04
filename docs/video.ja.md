@@ -49,7 +49,7 @@ node kit/build.mjs $D/deck.html
 node render/render.mjs $D/out/deck.html --out $D/video [--fps 30] [--scale 1.5] [--full]
 
 # 5.（なくてよい）音声入りの 1 ファイル。配る・編集アプリで開き直すため
-node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写しは --play-only
+node kit/build.mjs $D --portable      # 参加者に配る再生専用の写しは --play-only
 ```
 
 ## 何ができるか
