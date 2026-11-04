@@ -364,6 +364,22 @@ export function setupLlm(app) {
       try { if (area) { area.focus(); area.select(); } return document.execCommand('copy'); } catch { return false; }
     }
   }
+  // 段の［コピー］（新規作成の ④・挿入と修正の ②）：クリップボードに書けなければ、知らせの下の字の欄（copyMsg.box。品質チェックの修正依頼の窓と同じ見た目）に
+  // 全文を出して全部を選び、fixCopyFailed（「下の文字を選んで…」）で自分でコピーしてもらう。欄を出している間は段をたたまない（ok を返さない）
+  async function copyInStep(text, copyMsg, label) {
+    const box = copyMsg.box;
+    box.hidden = true;
+    if (window.__APP_TEST) window.__APP_TEST.lastCopy = text;
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* 下の欄へ */ }
+    box.value = text; box.setAttribute('aria-label', label); box.hidden = false;
+    const selectAll = () => { try { box.focus(); box.select(); box.setSelectionRange(0, box.value.length); } catch { /* 無視 */ } };
+    selectAll();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    if (ok) { box.hidden = true; return true; }
+    box.scrollTop = 0; selectAll();
+    return false;
+  }
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
   const kb = (s) => packKb(s);
   // 段：見出しは押せるボタン（aria-expanded・aria-controls）、中身は本体（flow が開け閉めする）。after は本体の外（答えの 1 行・コピーの知らせ）
@@ -782,10 +798,10 @@ export function setupLlm(app) {
     const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, parts: chosen() });
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
       const miss = missing();
-      if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
+      if (miss) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
       const text = textNow();
       copied = choiceNow();
-      const ok = await copyText(text);
+      const ok = await copyInStep(text, copyMsg, title);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
@@ -795,7 +811,7 @@ export function setupLlm(app) {
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg]);
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg, copyMsg.box]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
@@ -813,18 +829,18 @@ export function setupLlm(app) {
     for (const b of boxes) b.addEventListener('change', update);
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
       const text = await textNow();
-      const ok = await copyText(text);
+      const ok = await copyInStep(text, copyMsg, title);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
       ...SETS.map((s, i) => el('label', { title: membersOfSet(s).join(', ') }, [boxes[i], el('span', { text: setName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
     const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(setName.stats) })]);
-    withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
+    withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; copyMsg.box.hidden = true; update(); });
     await update();
     const summary = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, onChange);
     const node = step('paste-step2', title, [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })]),
-      packParts, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg]);
+      packParts, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg, copyMsg.box]);
     return { node, summary, update };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
@@ -837,13 +853,13 @@ export function setupLlm(app) {
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyRevise, onclick: async () => {
       const results = results0 || (app.checkResults ? await app.checkResults() : []) || [];
       const r = await reviseRequest(results, wish.value);
-      if (!r) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; onChange(0); return; }
-      const ok = await copyText(r.text);
+      if (!r) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; onChange(0); return; }
+      const ok = await copyInStep(r.text, copyMsg, title[1]);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.revised(kb(r.text), r.problems, r.notes) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();
     } });
     const sum2 = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, () => onChange(1));
-    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy])], [sum2, copyMsg]);
+    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy])], [sum2, copyMsg, copyMsg.box]);
     return { s1, s2, sum1, sum2, wish };
   }
 
@@ -951,6 +967,7 @@ export function setupLlm(app) {
     outlineRows = null; batchNow = null; newChoice = null;
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
+    copyMsg.box = el('textarea', { id: 'paste-copy-text', readonly: '', rows: '12', spellcheck: 'false', hidden: '', 'aria-label': X.sendQ });   // コピーできなかったときの全文（copyInStep）
     // 出力が切れていた・コードブロックがなかったとき：AI に送り直しを頼む文を写すボタン
     const cutMsg = el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' });
     const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
