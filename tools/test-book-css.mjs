@@ -133,7 +133,13 @@ const tableAlign = () => {
   f.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   const r = (e) => e.getBoundingClientRect();
   const colTop = Math.min(...[...A.querySelectorAll('section > p')].map((e) => r(e).top));
-  const ink = (e) => { const g = document.createRange(); g.selectNodeContents(e); const rs = [...g.getClientRects()].filter((x) => x.width && x.height); return { top: Math.min(...rs.map((x) => x.top)), bottom: Math.max(...rs.map((x) => x.bottom)), left: Math.min(...rs.map((x) => x.left)), right: Math.max(...rs.map((x) => x.right)) }; };
+  // 字の外形：子孫の文字の節ごとの矩形を合わせる（なければ子の要素の矩形）
+  const ink = (e) => {
+    const rs = [], w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) { if (!n.data.trim()) continue; const g = document.createRange(); g.selectNodeContents(n); rs.push(...[...g.getClientRects()].filter((x) => x.width && x.height)); }
+    if (!rs.length) for (const c of e.querySelectorAll('*')) { const x = c.getBoundingClientRect(); if (x.width && x.height) rs.push(x); }
+    return { top: Math.min(...rs.map((x) => x.top)), bottom: Math.max(...rs.map((x) => x.bottom)), left: Math.min(...rs.map((x) => x.left)), right: Math.max(...rs.map((x) => x.right)) };
+  };
   const pad = (e) => { const c = getComputedStyle(e); return { top: parseFloat(c.paddingTop), bottom: parseFloat(c.paddingBottom) }; };
   // 縦：セルの字の頭からの隙間と、尻までの隙間の差（中央なら 0）
   const vStart = (e) => ink(e).top - (r(e).top + pad(e).top + parseFloat(getComputedStyle(e).borderTopWidth));
