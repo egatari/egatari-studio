@@ -377,6 +377,9 @@ export function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '
 // 本の要素は all:revert でブラウザの既定に戻してから、下の本の規則で組む（単独の本の頁と同じ）。詳細度は (1,0,1)：id を持たないテーマの規則には
 // 順によらず勝ち、本の規則（同じかそれより高い詳細度で、後に書く）には負ける。:where() で 0 にすると、要素だけの規則 (0,0,1) に負けるので使わない。
 // span・div は入れない（KaTeX の組版がクラスで決めている）
+// 縦書きの本の表（:class: horizontal でないもの）は天付き（作者、2026-11-04）：表と表題は行の頭（上）から、本文のセル（td）も頭から。見出しのセル（th）はセルの中で中央。
+// 1 列目が太字だけのセル（| **勇気** | …。原稿では td だが、読む人には行の見出し）も見出しと同じく中央。
+// td・th の規則は (1,0,1) にして、列の揃え（.egatari-align-*。原稿の |:---| など）には負ける。横書きの本の表は中央のまま
 export const ARTICLE_CSS = `#egatari-article,#egatari-article :is(section,header,footer,aside,nav,h1,h2,h3,h4,h5,h6,p,blockquote,pre,hr,ul,ol,li,dl,dt,dd,figure,figcaption,img,table,caption,colgroup,col,thead,tbody,tfoot,tr,th,td,a,em,strong,b,i,small,code,kbd,samp,sub,sup,ruby,rt,rp,mark){all:revert}
 #egatari-article{max-width:42em;margin:0 auto;padding:1.5em 1em;line-height:1.8;color:var(--fg,CanvasText);font-size:18px}
 #egatari-article .egatari-num{font-weight:bold}
@@ -399,6 +402,7 @@ export const ARTICLE_CSS = `#egatari-article,#egatari-article :is(section,header
 #egatari-article.egatari-vertical{writing-mode:vertical-rl;max-width:none;max-height:40em;overflow-x:auto}
 #egatari-article.egatari-vertical :is(figure,.egatari-math,pre){writing-mode:horizontal-tb}
 #egatari-article.egatari-vertical :is(figure.egatari-table,table){writing-mode:vertical-rl}#egatari-article.egatari-vertical table{margin-block:0;margin-inline:auto}#egatari-article.egatari-vertical :is(th,td){padding:.5em .25em}
+#egatari-article.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal){margin-block:1.2em;margin-inline:0;text-align:start}#egatari-article.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal) table{margin-inline:0}#egatari-article.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal) figcaption{margin:0;margin-block-end:.4em}#egatari-article :where(.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal)) td{text-align:start}#egatari-article :where(.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal)) th{text-align:center}#egatari-article :where(.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal)) td:where(:first-child:has(> strong:only-child)){text-align:center}
 #egatari-article.egatari-vertical figure.egatari-table-horizontal,#egatari-article.egatari-vertical figure.egatari-table-horizontal table{writing-mode:horizontal-tb}#egatari-article.egatari-vertical figure.egatari-table-horizontal :is(th,td){padding:.2em .6em}
 #egatari-article .egatari-fn-numbered{list-style:none;padding-inline-start:0}#egatari-article .egatari-fn-no{margin-inline-end:.5em;font-weight:bold}
 #egatari-article .egatari-tcy{text-combine-upright:all;-webkit-text-combine:horizontal}

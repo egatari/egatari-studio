@@ -206,6 +206,9 @@ css(
   "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}" +
   "#dt-help .dt-about{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:8px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;font-size:12px;color:#9a9a9a}" +
   "#dt-help .dt-about-v{color:#ddd;font-variant-numeric:tabular-nums}" +
+  // ファイルの情報（題名・作成者・著作権・ライセンス・クレジットの表示）
+  "#dt-help .dt-rights{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-rights dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px}" +
+  "#dt-help .dt-rights-r{display:contents}#dt-help .dt-rights dt{color:#9a9a9a;white-space:nowrap}#dt-help .dt-rights dd{margin:0;color:#e8e8e8;overflow-wrap:anywhere}" +
   // 添付（ダウンロードだけ）
   "#dt-help .dt-att{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-att ul{list-style:none;margin:0;padding:0}" +
   "#dt-help .dt-att li{display:flex;align-items:center;gap:12px;padding:5px 0}#dt-help .dt-att .dt-att-n{flex:1;min-width:0}" +
@@ -1054,7 +1057,34 @@ function helpHtml(){
     (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
     // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
     '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
-      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + about + fbHtml + "</div>";
+      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + rightsHtml() + aiHtml() + attHtml() + about + fbHtml + "</div>";
+}
+// ファイルの情報（format spec §7.3：題名・作成者・著作権・ライセンス・クレジットの表示）。deck-meta から出し、deck-meta にない項目は索引の metadata から
+// （deck-meta に creators を写す前の版の 1 ファイル向け。再生専用の派生と作業フォルダの組み立ては索引を持たない）。どれもなければ出さない。
+// ライセンスだけがないときは「書かれていません」（エディタのファイルの情報と同じ）
+var RIGHTS_IX = null;
+function rightsHtml(){
+  var M = DECK.META || {}, F = DECK.FORMAT || {}, j = JA;
+  var str = function(v){ return typeof v === "string" && v.trim() ? v.trim().slice(0, 2000) : ""; };
+  var list = function(v){ return Array.isArray(v) ? v.filter(function(x){ return typeof x === "string" && x.trim(); }).map(function(x){ return x.trim().slice(0, 300); }).slice(0, 50) : []; };
+  var md = function(){
+    if (RIGHTS_IX) return RIGHTS_IX;
+    RIGHTS_IX = {};
+    var el = F.indexId && document.getElementById(F.indexId);
+    if (el) try { var o = JSON.parse(el.textContent); if (o && o.metadata && typeof o.metadata === "object" && !Array.isArray(o.metadata)) RIGHTS_IX = o.metadata; } catch (e) {}
+    return RIGHTS_IX;
+  };
+  var pick = function(k){ return Object.prototype.hasOwnProperty.call(M, k) ? M[k] : md()[k]; };
+  var title = str(pick("title")), creators = list(pick("creators")), copyright = str(pick("copyright")), license = str(pick("license")), attribution = str(pick("attribution"));
+  if (!creators.length && !copyright && !license && !attribution) return "";
+  var rows = [];
+  if (title) rows.push([j ? "題名" : "Title", title]);
+  if (creators.length) rows.push([j ? "作成者" : "Created by", creators.join(j ? "、" : ", ")]);
+  if (copyright) rows.push([j ? "著作権" : "Copyright", copyright]);
+  rows.push([j ? "ライセンス" : "License", license || (j ? "書かれていません" : "not stated")]);
+  if (attribution) rows.push([j ? "クレジットの表示" : "Attribution", attribution]);
+  return '<div class="dt-rights"><h3>' + (j ? "ファイルの情報" : "File info") + "</h3><dl>" + rows.map(function(r){
+    return '<div class="dt-rights-r"><dt>' + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd></div>"; }).join("") + "</dl></div>";
 }
 // このファイルの版（format spec §4.1、Player P3）：形式 → プレーヤー → 作成 の順（docs/terms.json の format-version・player・made-with）。
 // deck-meta の version（{major, minor}）・player・generator（{name, version, title?}）から。無いものの行は出さない（ふつうの build の deck-meta は版の文字列だけ）

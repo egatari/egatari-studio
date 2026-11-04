@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/egatari/egatari-spec",
-  "commit": "a72e440df563de6dd878619c938be3522e4ce287",
+  "commit": "b150f5908af4d9f2592e243ef22fba1a8aa95ef1",
   "snapshot": null,
   "branch": "main",
-  "note_ref": "the main branch at a72e440, not a tag (wd-*): re-vendor the next wd-* tag at rc prep",
+  "note_ref": "the main branch at b150f59, not a tag (wd-*): re-vendor the next wd-* tag at rc prep",
   "files": 222,
   "note": "Copied by tools/sync-spec.mjs. Do not edit; change the spec repository and sync again."
 }

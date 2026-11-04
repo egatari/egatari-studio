@@ -1,4 +1,4 @@
-<!-- i18n: pair=article.ja.md sha256=1c9c16d92ca81c55 -->
+<!-- i18n: pair=article.ja.md sha256=aef5b92253f1f131 -->
 # Writing a book (article.md)
 
 English | [日本語](article.ja.md)
@@ -35,7 +35,7 @@ chapter: 1
 | `chapter` | the chapter number (a positive integer); chapter numbers increase in reading order and need not start at 1 |
 | `kind` | `preface`, `chapter` (default), `appendix` or `afterword`. Files come in that order. Prefaces and afterwords have no section numbers; appendices are lettered A, B, … and take no `chapter` |
 | `numbering` | `false` turns off this file's section numbers (figures and equations stay numbered) |
-| `writing-mode` | `vertical-rl` for vertical writing (Japanese language arts); tables are vertical too (each row becomes a column, the first row on the right, a row's cells top to bottom; 1–2 digit numbers in cells stand upright), while figures, equations and code stay horizontal; the page opens at its start (the right edge). A full-width space (U+3000) at the start of a paragraph stays, so paragraphs indented as in Aozora Bunko keep their indent |
+| `writing-mode` | `vertical-rl` for vertical writing (Japanese language arts); tables are vertical too (each row becomes a column, the first row on the right, a row's cells top to bottom; 1–2 digit numbers in cells stand upright) and set from the top of the line: the table, its caption and body cells start at the top, header cells and a first column of bold labels are centred in their cells. Figures, equations and code stay horizontal; the page opens at its start (the right edge). A full-width space (U+3000) at the start of a paragraph stays, so paragraphs indented as in Aozora Bunko keep their indent |
 | `lang`, `bibliography` | when given, equal to the lesson's language and to `references.json`; the same in every chapter |
 
 ## What you can write

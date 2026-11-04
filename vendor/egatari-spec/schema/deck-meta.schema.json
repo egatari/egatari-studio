@@ -68,6 +68,12 @@
     "attribution": {
       "type": "string"
     },
+    "creators": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "offer": {
       "type": "object",
       "properties": {

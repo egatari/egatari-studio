@@ -160,6 +160,7 @@ ok('書き出し：Schema に合う・外すもの・伏せ字・docId を残す
   assert.equal(first.index.metadata.created, undefined);
   assert.deepEqual(first.index.metadata.creators, ['Test']);
   for (const k of ['license', 'copyright', 'attribution']) assert.equal(first.deckMeta[k], first.index.metadata[k], k);
+  assert.deepEqual(first.deckMeta.creators, ['Test'], 'deck-meta.creators from metadata.creators (§4)');
   assert.equal(first.deckMeta.portable, true);
   assert.equal(first.deckMeta.sourceSha256, first.index.sourceSha256);
   // 音声の記録：3 つの hash・出どころ・recipe（声は公開の名前）
@@ -267,6 +268,7 @@ ok('再生専用の派生：索引と原稿の塊がなく、音声の塊は残�
   schemaOk(vMeta, meta, 'play-only deck-meta');
   assert.equal(meta.portable, false); assert.equal(meta.sourceSha256, undefined); assert.equal(meta.docId, first.index.docId);
   for (const k of ['license', 'copyright', 'attribution']) assert.equal(meta[k], first.deckMeta[k]);
+  assert.deepEqual(meta.creators, ['Test'], 'play-only keeps deck-meta.creators');
   const audioBlobs = new Set(Object.values(first.index.audio).map((a) => first.index.files[a.file]));
   const left = new Set([...scan.byId.keys()].filter((k) => k.startsWith(FORMAT.BLOB_PREFIX)).map((k) => k.slice(FORMAT.BLOB_PREFIX.length).replace(/-\d+$/, '')));
   assert.deepEqual([...left].sort(), [...audioBlobs].sort());
@@ -442,6 +444,28 @@ ok('コードが動くかは中身から決める：データの type のない 
   assert.deepEqual(codeReasons(files({ 'deck.html': '<p>x</p>', 'export.html': '<script>1</script>' })), [], 'an exported HTML the deck does not name is not counted');
   assert.ok(codeReasons(files({ 'deck.html': '<p>/*INCLUDE:part.html*/</p>', 'part.html': '<script>1</script>' })).length === 1, 'an HTML the deck names is scanned');
   assert.ok(codeReasons(files({ 'deck.html': '<m-curves><script type="application/json">{{JSON:c.json}}</script></m-curves>', 'data/c.json': '[{"f":"x*x"}]' })).length === 0);
+});
+
+ok('deck-meta.creators（§4）：metadata.creators がなければ書かない。形の合わない値は Schema と検査器の両方が断る。作業フォルダの組み立ても写す', async () => {
+  const D = makeDeck(path.join(work, 'no-creators'));
+  const cfg = path.join(D, FORMAT.CONFIG_FILE);
+  const c = fs.existsSync(cfg) ? JSON.parse(fs.readFileSync(cfg, 'utf8')) : {};
+  if (c.metadata) delete c.metadata.creators;
+  fs.writeFileSync(cfg, JSON.stringify(c, null, 2) + '\n');
+  const p = await buildPortable(path.join(D, 'deck.html'), { out: path.join(D, 'out', 'p' + FORMAT.FILE_EXT) });
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+  assert.equal(own(p.deckMeta, 'creators'), false, 'no creators without metadata.creators');
+  schemaOk(vMeta, p.deckMeta, 'deck-meta without creators');
+  assert.equal(own(JSON.parse(PF.scanDocument(PF.playOnly(p.html)).byId.get('deck-meta').text), 'creators'), false, 'play-only: none either');
+  for (const bad of ['Test', [1], [['a']]]) {
+    const m = { ...first.deckMeta, creators: bad };
+    assert.ok(PF.validateDeckMeta(m).some((e) => e.startsWith('deck-meta.creators')), `checker rejects ${JSON.stringify(bad)}`);
+    assert.equal(vMeta(m), false, `schema rejects ${JSON.stringify(bad)}`);
+  }
+  // 作業フォルダの組み立て（ふつうの build）：deck-meta に権利の表示と作成者も
+  const fm = JSON.parse(/<script type="application\/json" id="deck-meta">([^<]*)<\/script>/.exec(build(path.join(MIN, 'deck.html'), { subset: false }).html)[1]);
+  assert.deepEqual(fm.creators, ['Test']);
+  for (const k of ['license', 'copyright', 'attribution']) assert.equal(fm[k], first.deckMeta[k], `folder build: ${k}`);
 });
 
 ok('空の <script>（§6）：src のない、中身が空か空白だけの <script> を持つデッキは core に書き出し、コメントだけのものは extended', async () => {
@@ -658,6 +682,11 @@ ok('ヘッドレス Chrome（file://）：1 ファイルと再生専用の派生
       assert.ok(r.audio.length >= 2, `${name}: audio entries`);
       for (const a of r.audio) assert.ok(a.ok && a.bytes > 44, `${name}: ${a.k} not readable`);
       assert.equal(r.hidden, true, `${name}: readable layer hidden while the runtime runs`);
+      // ? の窓のファイルの情報（§7.3）：題名・作成者・著作権・ライセンス・クレジットの表示を deck-meta から（再生専用の派生にも）
+      if (file.startsWith(path.join(MIN, 'out'))) {
+        const rows = await page.evaluate(() => { DECK.tools.help(true); const x = [...document.querySelectorAll('#dt-help .dt-rights-r')].map((e) => [e.querySelector('dt').textContent, e.querySelector('dd').textContent]); DECK.tools.help(false); return x; });
+        assert.deepEqual(rows, [['題名', '勾配降下法の基本'], ['作成者', 'Test'], ['著作権', '© 2026 Test'], ['ライセンス', 'CC-BY-4.0'], ['クレジットの表示', 'Test, Minimal lesson']], `${name}: File info in the ? panel`);
+      }
       await page.close();
     }
     // ブラウザで読み取る（kit/core/portable.mjs を 1 本にまとめて読み込む）：印のスクリプトは動かない
