@@ -1,0 +1,30 @@
+name: timing-diag
+on:
+  push:
+    branches: [v0.6.4-timing4-diag]
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '>=22.23.4 <23'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: diag (as shipped)
+        run: node tools/_diag-timing.mjs 6 "$RUNNER_TEMP/diag"
+      - name: diag (toolbar without transition/backdrop)
+        env: { DIAG_NO_TOOLBAR: '1' }
+        run: node tools/_diag-timing.mjs 4 "$RUNNER_TEMP/diag-nt"
+      - name: test-music-timing x3
+        run: for i in 1 2 3; do node tools/test-music-timing.mjs 2>&1 | grep -vE "onset error" || true; done
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: timing-traces
+          path: ${{ runner.temp }}/diag*/*.json
+          retention-days: 3
