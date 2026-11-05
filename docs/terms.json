@@ -663,6 +663,40 @@
    "note": "Google Slides / PowerPoint wording."
   },
   {
+   "id": "presentation-bar",
+   "group": "Structure and playback",
+   "en": "presentation bar",
+   "ja": "発表の帯",
+   "definition": "Egatari Viewer v0.7: the bar of presentation controls in the Viewer. It has no visible label in the UI; the name is for docs, specs and code reviews only.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-05",
+   "by": "owner",
+   "note": "Viewer v0.7 term (not in the UI yet)."
+  },
+  {
+   "id": "annotation-bar",
+   "group": "Structure and playback",
+   "en": "annotation bar",
+   "ja": "書き込みの帯",
+   "definition": "Egatari Viewer v0.7: the bar for marking up the slide while viewing; it opens from its button 「書き込み」 / “Annotate”.",
+   "avoid": {
+    "ja": [
+     "学習モード"
+    ],
+    "en": [
+     "writing bar"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-11-05",
+   "by": "owner",
+   "note": "Viewer v0.7 term (not in the UI yet). Avoid “writing” for the bar or its button (it reads as authoring) and 「学習モード」. 書き込み is still an avoid word of comment (コメント) in the editor; the Viewer's button keeps it."
+  },
+  {
    "id": "presenter-view",
    "group": "Structure and playback",
    "en": "Presenter view",
