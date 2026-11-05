@@ -16,6 +16,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { scanDocument, replaceIndexText, readPortable } from '../kit/core/portable.mjs';
 import { PLAYER } from '../kit/core/player.mjs';
 import { clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-player-change-')));
@@ -80,11 +81,11 @@ async function openAndEdit(page, key) {
   ok(next !== src.text, `${key}: the edit changes the text`);
   const post = page.evaluate(([r, h, text]) => window.__APP_TEST.api('POST', '/__dev/edit', { range: r, h, text }), [range, src.h, next]);
   // 権利の確かめ（初めての書き込み）
-  const asked = await Promise.race([post.then(() => false), page.waitForSelector('#dlg[open] #dlg-ok', { timeout: 20000 }).then(() => true, () => false)]);
+  const asked = await Promise.race([post.then(() => false), page.waitForSelector('#dlg[open] #dlg-ok', { timeout: scaled(20000) }).then(() => true, () => false)]);
   if (asked) await clickDlg(page, '#dlg-ok');
   const res = await post;
   ok(res && res._status === 200, `${key}: the slide text is edited (${res && res._status} ${res && res.error || ''})`);
-  await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
 }
 
 try {
@@ -100,9 +101,9 @@ try {
   // 1. 別のプレーヤーのファイル
   await openAndEdit(page, 'other');
   let p = page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
   await clickDlg(page, '#dlg-rebuild');
-  await page.waitForSelector('#dlg[open] #player-change', { timeout: 60000 });
+  await page.waitForSelector('#dlg[open] #player-change', { timeout: scaled(60000) });
   const body = await page.textContent('#player-change');
   ok((await page.textContent('#dlg-title')) === 'プレーヤーが変わります', 'other player: the dialog title says the player will change');
   ok(body.includes('Other Player 2.0.0') && body.includes(`${PLAYER.displayName} `) && body.includes('キャンセル'), 'other player: names the current player and the one the saved file will carry ' + JSON.stringify(body));
@@ -114,12 +115,12 @@ try {
   ok(st.portable.dirty && (await page.evaluate(() => window.__APP_TEST.saved())) === null, 'other player: Cancel → nothing saved, still unsaved');
 
   p = page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
   await clickDlg(page, '#dlg-rebuild');
-  await page.waitForSelector('#dlg[open] #player-change', { timeout: 60000 });
+  await page.waitForSelector('#dlg[open] #player-change', { timeout: scaled(60000) });
   await clickDlg(page, '#dlg-save');
   await p;
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
   const saved = await readPortable(await savedText(page));
   ok(saved.index.player.name === PLAYER.name && saved.deckMeta.player.name === PLAYER.name && new TextDecoder().decode(saved.files['deck.html']).includes('（直した）'), `other player: Save → the saved file carries ${PLAYER.displayName} ${saved.index.player.version} and the edit`);
 
@@ -127,10 +128,10 @@ try {
   await page.evaluate(() => { window.__pc = 0; });
   await openAndEdit(page, 'mine');
   p = page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
   await clickDlg(page, '#dlg-rebuild');
   await p;
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 60000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
   ok(await page.evaluate(() => window.__pc) === 0, 'same player: saved without the player dialog');
   await ctx.close();
 
@@ -143,9 +144,9 @@ try {
   await pe.evaluate(async () => { const root = await navigator.storage.getDirectory(); const d = await root.getDirectoryHandle('pce', { create: true }); window.__APP_TEST.saveHandle = await d.getFileHandle('saved.html', { create: true }); });
   await openAndEdit(pe, 'other');
   p = pe.evaluate(() => window.__APP_TEST.save('save'));
-  await pe.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+  await pe.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
   await clickDlg(pe, '#dlg-rebuild');
-  await pe.waitForSelector('#dlg[open] #player-change', { timeout: 60000 });
+  await pe.waitForSelector('#dlg[open] #player-change', { timeout: scaled(60000) });
   const en = await pe.textContent('#player-change');
   ok((await pe.textContent('#dlg-title')) === 'The player will change' && en.startsWith('This file plays with Other Player 2.0.0. After saving, it will play with Egatari Player ') && (await pe.textContent('#dlg-save')) === 'Save', 'en: title, body and button ' + JSON.stringify(en));
   await clickDlg(pe, '#dlg-cancel');

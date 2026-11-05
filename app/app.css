@@ -375,7 +375,7 @@ main{flex:1;min-height:0;display:flex}
 .new-block .big{font-size:17px;padding:10px 18px;display:inline-flex;align-items:center;gap:10px}
 .ai-icon .sun{fill:var(--logo-sun)}
 #recent-none{margin:4px 0 0}
-.with-claude a{color:var(--muted);font-size:13px}
+.with-claude a,.parts-link a{color:var(--muted);font-size:13px}
 #panel table.kinds{border-collapse:collapse;font-size:13px;margin:4px 0 12px}
 #panel table.kinds th,#panel table.kinds td{text-align:left;vertical-align:top;padding:4px 8px;border-bottom:1px solid var(--line)}
 .menu-list [role=menuitemradio]::before{content:"";display:inline-block;width:16px;font-size:9px;vertical-align:2px}

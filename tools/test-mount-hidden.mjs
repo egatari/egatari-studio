@@ -9,6 +9,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-mount-hidden-')));
@@ -40,7 +41,7 @@ for (const [name, given] of CASES) {
   const errs = [];
   pn.on('pageerror', (e) => errs.push(e.message));
   await pn.goto(fileUrl(deck));
-  await pn.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await pn.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   const pos = given || await pn.evaluate(() => DECK.slides.map((s, i) => [i, s._max, s._comps.length]).filter((x) => x[2]).map((x) => [x[0], x[1]]));
   // 隠れた iframe の中で起動する
   const ph = await b.newPage({ viewport: { width: 1280, height: 720 } });
@@ -48,7 +49,7 @@ for (const [name, given] of CASES) {
   await ph.addInitScript(atReady);
   await ph.goto(fileUrl(host));
   const fr = await (await ph.$('#f')).contentFrame();
-  await fr.waitForFunction(() => document.readyState === 'complete' && window.DECK && typeof DECK.seek === 'function', null, { timeout: 15000 });
+  await fr.waitForFunction(() => document.readyState === 'complete' && window.DECK && typeof DECK.seek === 'function', null, { timeout: scaled(15000) });
   await ph.waitForTimeout(300);
   const hidden = await fr.evaluate(() => ({ ready: !!DECK.ready, w: document.getElementById('stage').offsetWidth }));
   ok(!hidden.ready && hidden.w === 0, `${name}: not mounted while hidden (ready=${hidden.ready}, stage width ${hidden.w})`);
@@ -58,7 +59,7 @@ for (const [name, given] of CASES) {
   const how = name === 'pitch-fictional' ? 'go' : 'seek';
   await fr.evaluate(([i, k, how]) => (how === 'go' ? DECK.go(i, k, false) : DECK.seek(i, k, Infinity)), [i0, k0, how]);
   await ph.evaluate(() => { document.getElementById('f').style.display = 'block'; });
-  await fr.waitForFunction(() => DECK.ready, null, { timeout: 15000 });
+  await fr.waitForFunction(() => DECK.ready, null, { timeout: scaled(15000) });
   const st = await fr.evaluate(() => DECK.state());
   ok(st.slide === i0 + 1 && st.step === k0, `${name}: the ${how} asked for while hidden is drawn after showing (slide ${st.slide}, step ${st.step})`);
   // 操作のバー（tools.js。起動の後しばらく出て消える）と知らせは、起動の時刻で出ているかどうかが変わるので隠して比べる

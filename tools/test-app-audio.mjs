@@ -19,6 +19,7 @@ import { unpack } from './portable.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { clickCommand } from './click-retry.mjs';
 import { exampleRand } from './examples-portable.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -137,7 +138,7 @@ async function presenterAudioPlays(html, tag) {
     await pg.waitForSelector('#drop');
     const l0 = await pg.evaluate(() => window.__APP_TEST.state().loads);
     await pg.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'min' + ext }); }, [Buffer.from(html).toString('base64'), FORMAT.FILE_EXT]);
-    await pg.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 30000 });
+    await pg.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: scaled(30000) });
     await pg.waitForTimeout(2500);   // 音声のバイトがプレビューに届き、blob: になるまで
     const [pop] = await Promise.all([cx.waitForEvent('page'), clickCommand(pg, '#b-presenter')]);
     watch(pop, tag + ' presenter');

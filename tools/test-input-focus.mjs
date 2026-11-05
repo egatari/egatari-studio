@@ -23,6 +23,7 @@ import { launch, fileUrl } from '../kit/browser.mjs';
 // 「プレビュー ▾」の一覧はプレビューの iframe の上に開く。開いた直後の項目の押しが下の iframe に届いて何も起きないことがあり（macOS の CI）、
 // 発表者ビューの窓が開かないまま waitForEvent('page') が 30 秒で切れた。一覧が閉じるまで押し直す（tools/click-retry.mjs。test-app も同じ）
 import { clickCommand } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-input-focus-')));
@@ -176,6 +177,9 @@ try {
   const st = async (page) => (await previewFrame(page)).evaluate(() => { const s = DECK.state(); return s.slide + ':' + s.step; });
   const fr = async (page, fn, arg) => (await previewFrame(page)).evaluate(fn, arg);
   const frameFocused = async (page) => (await page.evaluate(() => document.activeElement && document.activeElement.id)) === 'preview' && await fr(page, () => document.hasFocus());
+  // 押した後にフォーカスがプレビューへ移るのを待ってから確かめる（移るのはページと枠の 2 つのプロセスを通った後。macOS の CI では 150 ms の後にまだ
+  // 移っておらず、続く → は進んだのに「フォーカスがプレビューにない」で落ちた）。移らなければ期限まで待って false
+  const focusedSoon = async (page) => { for (const t0 = Date.now(); Date.now() - t0 < scaled(5000); await page.waitForTimeout(50)) if (await frameFocused(page)) return true; return frameFocused(page); };
 
   {
     // #1 A・#9 A：プレビューで b → 窓全体が覆いの下。? を開いたまま b → 覆いが上、Esc は暗転 → 一覧の順
@@ -201,7 +205,7 @@ try {
     await page.keyboard.press(tool); await wait(page);
     await clickApp(page, '#deckname');
     await clickPrev(page, 0.5, 0.5);
-    const foc = await frameFocused(page);
+    const foc = await focusedSoon(page);
     const s0 = await st(page);
     await page.keyboard.press('ArrowRight'); await wait(page);
     const s1 = await st(page);
@@ -214,7 +218,7 @@ try {
       const nb = await (await previewFrame(page)).$('#dt-cb [data-b="next"]');
       const nbb = await nb.boundingBox();
       await page.mouse.click(nbb.x + nbb.width / 2, nbb.y + nbb.height / 2); await wait(page);
-      ok(await frameFocused(page), '#2 A: a click on the deck control bar (pen on) after the app header puts focus in the preview');
+      ok(await focusedSoon(page), '#2 A: a click on the deck control bar (pen on) after the app header puts focus in the preview');
     }
     await ctx.close();
   }
@@ -290,7 +294,7 @@ try {
     ok(e3.focus === 'b-edit' && e3.edit !== e1.edit, `#7 A: keyboard activation of a toolbar button still works and keeps focus ${JSON.stringify(e3)}`);
     await page.evaluate(() => document.activeElement && document.activeElement.blur());
     // 口述原稿の引き出しの中（ボタン）からは送らない
-    await page.keyboard.press('n'); await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: 10000 });
+    await page.keyboard.press('n'); await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: scaled(10000) });
     const xb = await page.$('#dev-narr .dev-head button');
     await xb.focus();
     const n0 = await st(page);
@@ -324,7 +328,7 @@ try {
     const { ctx, page } = await openA();
     await clickPrev(page);
     await page.keyboard.press('n');
-    await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: 10000 }); await wait(page, 300);
+    await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: scaled(10000) }); await wait(page, 300);
     await clickApp(page, '#dev-narr .dev-turn textarea');
     await page.keyboard.type('x'); await wait(page);
     await clickPrev(page);
@@ -352,10 +356,10 @@ try {
     const { ctx, page } = await openA();
     await clickPrev(page);
     await page.keyboard.press('n');
-    await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: 10000 }); await wait(page, 300);
+    await page.waitForSelector('#dev-narr .dev-turn textarea', { timeout: scaled(10000) }); await wait(page, 300);
     await clickApp(page, '#dev-narr .dev-turn textarea');
     await clickPrev(page);
-    const foc = await frameFocused(page);
+    const foc = await focusedSoon(page);
     const inert = await page.evaluate(() => document.getElementById('preview').inert);
     ok(foc && !inert, `#8 A: the first click on the preview after leaving a narration field focuses the preview ${JSON.stringify({ foc, inert })}`);
     await ctx.close();

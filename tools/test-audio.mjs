@@ -28,6 +28,7 @@ import { encodeWav, MP3 } from '../kit/core/audio-core.mjs';
 import { silentWav } from './portable-fixtures.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { clickUntil, clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -136,17 +137,17 @@ const waitUsed = (kind, back, timeout = 30000) => page.waitForFunction(([kind, b
 const recState = () => page.evaluate(() => window.__APP_TEST.rec());
 // 板の「● 録音 (r)」で録音モードを開く（その段階で）。戻り値：開いた段階
 async function openRecFromPanel(key) {
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
-  await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.ready && s.phase === 'idle' && s.key === k; }, key, { timeout: 15000 });
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: scaled(2500) }));
+  await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.ready && s.phase === 'idle' && s.key === k; }, key, { timeout: scaled(15000) });
   return (await recState()).key;
 }
 // 録音モードで 1 段：Space → ms 待つ → Space（stop が false なら止めない：上限で止まるのを待つ）→ 書き終わるまで
 async function recordOne(ms, stop = true) {
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording', null, { timeout: 10000 });
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording', null, { timeout: scaled(10000) });
   await page.waitForTimeout(ms);
   if (stop) await page.keyboard.press('Space');
-  await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.phase === 'idle' && !!s.result; }, null, { timeout: 30000 });
+  await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.phase === 'idle' && !!s.result; }, null, { timeout: scaled(30000) });
   return (await recState()).result;
 }
 async function closeRec() {
@@ -220,7 +221,7 @@ try {
   await shot(page, 'audio-recording.png');
   await page.waitForTimeout(1400);
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.phase === 'idle' && !!s.result; }, null, { timeout: 30000 });
+  await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.phase === 'idle' && !!s.result; }, null, { timeout: scaled(30000) });
   const g1 = await page.evaluate(() => (document.getElementById('rec-result') || {}).textContent || '');
   ok(/音量を [+-]\d+\.\d dB 調整/.test(g1), 'gain: recording mode shows the gain applied to the take: ' + g1);
   ok(!(await page.$('#rec-clip')), 'clipping: a normal take has no clipping warning');
@@ -230,7 +231,7 @@ try {
   const t1 = st.entry;
   ok(t1 && t1.kind === 'recorded' && t1.dur > 1.9 && t1.dur < 2.6, `record: after Esc the panel shows the new take for the step, silence trimmed (${t1 && t1.dur} s of 2.2 s voice + 2 × 0.05 s)`);
   ok(st.key === key && await page.isVisible('#dev-audio'), 'record: back in the panel, on the same step');
-  await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'dev-audio-rec', null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'dev-audio-rec', null, { timeout: scaled(5000) }).catch(() => {});
   ok(await page.evaluate(() => document.activeElement && document.activeElement.id === 'dev-audio-rec'), 'a11y: focus returns to the panel\'s record button ' + await page.evaluate(() => document.activeElement && (document.activeElement.tagName + '#' + document.activeElement.id)));
   ok(JSON.stringify(st.history[key]) === '[null]' && !(st.takes[key] || []).length && await page.isVisible('#dev-audio-revert'), 'record: no take left to "use"; Revert to previous goes back to no audio');
   ok(!(await page.evaluate(() => document.getElementById('preview').inert)), 'record: the preview takes clicks again after recording');
@@ -246,7 +247,7 @@ try {
   ok(!(await recState()).open && !(await recState()).mic, 'security: hints from the preview cannot start a recording');
   // 前に戻す：1 つ目の録音に戻る（音声のファイルは消さない）
   await page.click('#dev-audio-revert');
-  await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && s.entry.file === f && s.key === k && s.history[k].length === 1; }, [key, t1.file], { timeout: 30000 });
+  await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && s.entry.file === f && s.key === k && s.history[k].length === 1; }, [key, t1.file], { timeout: scaled(30000) });
   ok(true, 'revert: back to the first recording');
   const man1 = JSON.parse(await opfsRead('audio/manifest.json'));
   const e1 = man1.segments[key];
@@ -284,12 +285,12 @@ try {
   const r1 = await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: nr.turns.map((t, i) => (i ? t : { ...t, text: t.text + '（直した）' })) }), [key, nr]);
   ok(r1._status === 200 && r1.changed, 'stale: narration edited');
   await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-  await page.waitForFunction(() => window.__APP_TEST.audio().state === 'stale', null, { timeout: 15000 });
+  await page.waitForFunction(() => window.__APP_TEST.audio().state === 'stale', null, { timeout: scaled(15000) });
   ok(await page.isVisible('#dev-audio-stale'), 'stale: the panel shows the stale badge');
   ok(!(await page.evaluate(() => window.__APP_TEST.state().warn)).some((w) => w.includes(key)), 'stale: the stale step is not repeated in the build warnings with its internal key (it is a quality check finding, below)');
   await shot(page, 'audio-stale.png');
   await page.click('#b-check');
-  await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((e) => e.textContent.includes('音声の更新が必要')), null, { timeout: 30000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((e) => e.textContent.includes('音声の更新が必要')), null, { timeout: scaled(30000) });
   ok(true, 'stale: the quality check lists the stale step');
   await page.click('#panel-close');
   // TTS（差し替え）で作り直す
@@ -308,12 +309,12 @@ try {
   ok((await audioState()).state === 'fresh', 'tts: up to date again');
   ok((await opfsList('.cache/edits') || []).some((n) => n.endsWith('-manifest.json')), 'tts: the previous manifest was backed up to .cache/edits/');
   ok((await opfsList('audio')).filter((n) => n.endsWith('.mp3')).length === 3, 'tts: the earlier recordings stay in audio/ (not deleted)');
-  await page.waitForFunction((k) => !window.__APP_TEST.state().warn.some((w) => w.includes(k) && w.includes('更新が必要')), key, { timeout: 15000 });
+  await page.waitForFunction((k) => !window.__APP_TEST.state().warn.some((w) => w.includes(k) && w.includes('更新が必要')), key, { timeout: scaled(15000) });
   ok(true, 'tts: the stale warning is gone');
   // MP3 のエンコーダを読み込めない（1 ファイル版と同じ）：WAV で保存し、startOffset は書かない
   await page.evaluate(() => { window.__APP_TEST.mp3 = 'off'; });
   await page.click('#dev-audio-tts');
-  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && /\.wav$/.test(s.entry.file); }, null, { timeout: 30000 });
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && /\.wav$/.test(s.entry.file); }, null, { timeout: scaled(30000) });
   const e3 = JSON.parse(await opfsRead('audio/manifest.json')).segments[key];
   ok(/^tts_[0-9a-f]{16}\.wav$/.test(e3.file) && !('startOffset' in e3) && String.fromCharCode(...(await opfsRead('audio/' + e3.file, true))) === 'RIFF', 'no MP3 encoder: the take is saved as WAV without startOffset');
   await page.evaluate(() => { window.__APP_TEST.mp3 = undefined; });
@@ -324,10 +325,10 @@ try {
     const rN = await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: nr.turns.map((t, i) => (i ? t : { ...t, text: t.text + '1 歩進みます。' })) }), [key, nrN]);
     ok(rN._status === 200 && rN.changed, 'textNormalize: narration with "1 歩" written');
     await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-    await page.waitForFunction(() => window.__APP_TEST.audio().state === 'stale', null, { timeout: 15000 });
+    await page.waitForFunction(() => window.__APP_TEST.audio().state === 'stale', null, { timeout: scaled(15000) });
     const nCalls = (await page.evaluate(() => window.__ttsCalls)).length;
     await page.click('#dev-audio-tts');
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.state === 'fresh'; }, null, { timeout: 30000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.state === 'fresh'; }, null, { timeout: scaled(30000) });
     const callsN = (await page.evaluate(() => window.__ttsCalls)).slice(nCalls);
     ok(callsN.some((c) => c.text.includes('1歩進みます')) && !callsN.some((c) => /1\s+歩/.test(c.text)), `textNormalize: the engine gets "1歩" (${callsN.map((c) => c.text).join(' / ')})`);
     const eN = JSON.parse(await opfsRead('audio/manifest.json')).segments[key];
@@ -346,7 +347,7 @@ try {
     await page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, JSON.stringify(manN, null, 1));
     const before = JSON.stringify(manN.segments[key]);
     await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.entry && document.getElementById('dev-audio-voices'); }, null, { timeout: 15000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.entry && document.getElementById('dev-audio-voices'); }, null, { timeout: scaled(15000) });
     ok((await audioState()).state === 'fresh' && !(await page.isVisible('#dev-audio-stale')), 'textNormalize: an old take without the field is not stale (keeps playing)');
     const panelText = await page.textContent('#dev-audio');
     ok(!(await page.$('#dev-audio-oldnorm')) && !panelText.includes('前処理の版') && !panelText.includes('いちぽ'), 'textNormalize: old TTS steps are not listed (no deck-wide pre-processing notice; #83)');
@@ -359,7 +360,7 @@ try {
     for (const k of others.slice(0, 3)) delete manC.segments[k];
     await page.evaluate(async (txt) => { const w = await (await window.__testDir.getDirectoryHandle('audio')).getFileHandle('manifest.json'); const x = await w.createWritable(); await x.write(txt); await x.close(); }, JSON.stringify(manC, null, 1));
     await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-    await page.waitForFunction(() => !window.__APP_TEST.audio().loading && document.getElementById('dev-audio-voices'), null, { timeout: 15000 });
+    await page.waitForFunction(() => !window.__APP_TEST.audio().loading && document.getElementById('dev-audio-voices'), null, { timeout: scaled(15000) });
   }
   // 声の欄（#18・#19）：1 人の語りなら欄は 1 つ。見本を鳴らす（モデルは読み込まない）。選ぶと voice.json に書く
   ok(await page.evaluate(() => { const s = [...document.querySelectorAll('#dev-audio-voices select')]; return s.length === 1 && [...s[0].options].map((x) => x.value).join() === 'bob,alice' && s[0].value === 'bob'; }), 'voice: one picker for a one-speaker deck, bob and alice for Japanese');
@@ -370,7 +371,7 @@ try {
   await page.waitForFunction(() => /alice/.test(document.getElementById('dev-audio-msg').textContent));
   ok(JSON.parse(await opfsRead('voice.json')).expert === 'alice', 'voice: the choice is written to voice.json');
   // 声を変えた：AI 音声の記録の recipe.voice（bob）と今の声（alice）が違う → A の 1 行（inputHash は声を含まないので、台本の古さとは別に数える）
-  await page.waitForFunction(() => !!document.querySelector('#dev-audio-deck .dv-line[data-kind="voice"]'), null, { timeout: 10000 });
+  await page.waitForFunction(() => !!document.querySelector('#dev-audio-deck .dv-line[data-kind="voice"]'), null, { timeout: scaled(10000) });
   ok((await page.textContent('#dev-audio-deck .dv-line[data-kind="voice"]')) === '声を変えたので、AI 音声の 1 ステップは前の声のままです' && (await audioState()).deck.voice.includes(key), 'A: choosing another voice says the AI audio is in the old voice (recipe.voice vs the current voice)');
   // voice.json の声がブラウザの TTS にない（自分の参照音声の名前。ここでは myvoice）：板の知らせはそのまま見える（#83 で消したのは前処理の一覧だけ）
   await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{"expert": "myvoice"}'); await w.close(); });
@@ -388,7 +389,7 @@ try {
   ok((await page.textContent('#dev-audio .dv-voice-warn')).includes('「zed」') && (await page.textContent('#dev-audio .dv-voice-warn')).includes('「bob」'), 'unknown voice: the panel names it and the default voice it uses');
   await page.evaluate(() => { window.__ttsCalls.length = 0; });
   await page.click('#dev-audio-tts');
-  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && s.entry.kind === 'tts' && window.__ttsCalls.length > 0; }, null, { timeout: 30000 });
+  await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && s.entry && s.entry.kind === 'tts' && window.__ttsCalls.length > 0; }, null, { timeout: scaled(30000) });
   ok((await page.evaluate(() => window.__ttsCalls[0].voices.expert)) === 'bob' && (await audioState()).entry.recipe.voice.expert === 'bob', 'unknown voice: TTS falls back to bob and records it');
   await shot(page, 'audio-voice.png');
   // 口述原稿の言語で TTS のエンジンを選ぶ：voice.json の "lang" ＞ 発言の文字 ＞ <html lang>（日本語のスライドに英語の口述原稿）
@@ -405,7 +406,7 @@ try {
   const nr2 = await page.evaluate(([k]) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), [key]);
   await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: [...nr.turns, { role: 'novice', text: 'それは、どのくらい小さくすればよいのですか？ 小さすぎると進まない気がします。' }, { role: 'expert', text: '良い質問です。まず大きめに始めて、損失が落ち着かなければ半分にします。何度か試すと、ちょうどよいところが分かってきます。' }] }), [key, nr2]);
   await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-  await page.waitForFunction(() => document.querySelectorAll('#dev-audio-voices select').length === 2, null, { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('#dev-audio-voices select').length === 2, null, { timeout: scaled(15000) });
   ok(await page.evaluate(() => [...document.querySelectorAll('#dev-audio .dv-script .dv-role')].map((e) => e.textContent).join() === 'Expert,Novice,Expert'), 'dialogue: every turn of the script is labelled, Expert too');
   ok(await page.evaluate(() => [...document.querySelectorAll('#dev-audio-voices .dv-vr')].map((e) => e.textContent).join() === '説明する人の声,質問する人の声' && [...document.querySelectorAll('#dev-audio-voices select')].map((e) => e.getAttribute('aria-label')).join() === '説明する人の声,質問する人の声'), 'B: a dialogue has two voice fields, 説明する人の声 and 質問する人の声 (as in new-deck ②)');
   const sh = await page.evaluate(() => { const e = document.getElementById('dev-audio-script'); return { h: e.clientHeight, sh: e.scrollHeight, resize: getComputedStyle(e).resize }; });
@@ -444,7 +445,7 @@ try {
   const rClip = await recordOne(3400);
   const clipText = await page.evaluate(() => (document.getElementById('rec-clip') || {}).textContent || '');
   ok(rClip.clip && /音が割れている/.test(clipText), 'clipping: a take that hit full scale warns that it may be distorted: ' + clipText);
-  ok(await page.waitForFunction(() => /音が割れている/.test(document.getElementById('rec-live').textContent), null, { timeout: 3000 }).then(() => true, () => false), 'clipping: the warning is announced too');
+  ok(await page.waitForFunction(() => /音が割れている/.test(document.getElementById('rec-live').textContent), null, { timeout: scaled(3000) }).then(() => true, () => false), 'clipping: the warning is announced too');
   await page.evaluate(() => { window.__clip = false; });
   await closeRec();
   // 600 秒の上限（試験では 1.5 秒に縮める）：止めて、そこまでを使う
@@ -473,16 +474,16 @@ try {
   ok((await page.textContent('#dev-audio')).includes('まだ使っていない音声'), 'unused take: the panel heading is shown');
   await writeMan(goodMan);
   await page.click('#dev-audio-takes .dv-use');
-  await page.waitForFunction((k) => { const s = window.__APP_TEST.audio(); return !s.busy && !(s.takes[k] || []).length && s.entry && s.entry.kind === 'recorded'; }, pk, { timeout: 30000 });
+  await page.waitForFunction((k) => { const s = window.__APP_TEST.audio(); return !s.busy && !(s.takes[k] || []).length && s.entry && s.entry.kind === 'recorded'; }, pk, { timeout: scaled(30000) });
   const eUse = JSON.parse(await opfsRead('audio/manifest.json')).segments[pk];
   ok(eUse.kind === 'recorded' && eUse.file !== eLim.file && (await opfsList('.cache/edits') || []).some((n) => n.endsWith('-manifest.json')), 'unused take: “Use this take” writes it (manifest backed up first)');
   // マイクを使えない：録音モードがそう言い（alert）、待機に戻る
   await page.evaluate(() => { window.__gum = navigator.mediaDevices.getUserMedia; navigator.mediaDevices.getUserMedia = () => Promise.reject(new DOMException('Permission denied', 'NotAllowedError')); });
   await openRecFromPanel(pk);
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => /マイクを使えません/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: 10000 });
+  await page.waitForFunction(() => /マイクを使えません/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: scaled(10000) });
   await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'idle');
-  ok(await page.waitForFunction(() => /マイクを許可/.test(document.getElementById('rec-alert').textContent), null, { timeout: 3000 }).then(() => true, () => false) && !(await recState()).mic, 'mic error: a refused microphone is reported (alert) with how to allow it, and the screen waits');
+  ok(await page.waitForFunction(() => /マイクを許可/.test(document.getElementById('rec-alert').textContent), null, { timeout: scaled(3000) }).then(() => true, () => false) && !(await recState()).mic, 'mic error: a refused microphone is reported (alert) with how to allow it, and the screen waits');
   await page.evaluate(() => { navigator.mediaDevices.getUserMedia = window.__gum; });
   await closeRec();
   // MediaRecorder を作れない（その形式に対応しないブラウザなど）：録音モードがそう言い（alert）、待機に戻る
@@ -490,9 +491,9 @@ try {
   await openRecFromPanel(pk);
   const manMR = await opfsRead('audio/manifest.json');
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => /no recorder here/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: 10000 });
+  await page.waitForFunction(() => /no recorder here/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: scaled(10000) });
   await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'idle');
-  ok(await page.waitForFunction(() => /no recorder here/.test(document.getElementById('rec-alert').textContent), null, { timeout: 3000 }).then(() => true, () => false) && (await recState()).open && !(await recState()).taps && await opfsRead('audio/manifest.json') === manMR,
+  ok(await page.waitForFunction(() => /no recorder here/.test(document.getElementById('rec-alert').textContent), null, { timeout: scaled(3000) }).then(() => true, () => false) && (await recState()).open && !(await recState()).taps && await opfsRead('audio/manifest.json') === manMR,
     'recorder error: a MediaRecorder that cannot be created is reported (screen and alert), the screen waits and nothing is written');
   await page.evaluate(() => { window.MediaRecorder = window.__MR; });
   await closeRec();
@@ -501,11 +502,11 @@ try {
   const manGen = await opfsRead('audio/manifest.json');
   const filesGen = (await opfsList('audio')).join();
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording', null, { timeout: 10000 });
+  await page.waitForFunction(() => window.__APP_TEST.rec().phase === 'recording', null, { timeout: scaled(10000) });
   await page.waitForTimeout(1500);
   const g0 = await page.evaluate(() => window.__APP_TEST.state().gen);
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, 'workspace change: the same folder opened again during a take');
-  await page.waitForSelector('#rec-mode', { state: 'detached', timeout: 10000 });
+  await page.waitForSelector('#rec-mode', { state: 'detached', timeout: scaled(10000) });
   await page.waitForTimeout(1500);
   const gs = await page.evaluate(() => ({ rec: window.__APP_TEST.rec(), audio: window.__APP_TEST.audio(), gen: window.__APP_TEST.state().gen, rmOn: document.getElementById('deck').classList.contains('rec-on'), topInert: document.getElementById('top').inert }));
   ok(!gs.rec.open && gs.rec.phase === 'idle' && !gs.rec.mic && !gs.rec.taps && !gs.rec.mine.length && !gs.rmOn && !gs.topInert && typeof g0 === "number" && gs.gen > g0, 'workspace change: recording mode resets (closed, idle, microphone released, toolbar usable) ' + JSON.stringify({ g0, gen: gs.gen, phase: gs.rec.phase, mic: gs.rec.mic }));
@@ -526,71 +527,142 @@ try {
       [k1]: { file: mp3s[1], dur: 1, cues: [], sync: 'none', kind: 'recorded', inputHash: '0'.repeat(64), processing: 'trim-45-loud-20-cap-v1' } } };
     await writeMan(JSON.stringify(manX, null, 1));
     await page.evaluate(async () => { const w = await (await window.__testDir.getFileHandle('voice.json')).createWritable(); await w.write('{}'); await w.close(); });
-    // egatari.json のほかの項目はバイトのまま（updateConfig）
+    // やり方は覚えない：egatari.json はバイトのまま（studio.audioMethod を書かない）
     const cfg0 = '{\n  "zzz": 1e400,\n  "studio": { "keep": [1, 2] },\n  "10": "x"\n}\n';
     await page.evaluate(async (t) => { const w = await (await window.__testDir.getFileHandle('egatari.json', { create: true })).createWritable(); await w.write(t); await w.close(); }, cfg0);
     await page.click('#b-audio');
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.deck; }, null, { timeout: 15000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.deck; }, null, { timeout: scaled(15000) });
     let A = (await audioState()).deck;
     const N = allKeys.length;
     const lines = await page.$$eval('#dev-audio-deck .dv-line', (e) => e.map((x) => [x.dataset.kind, x.textContent]));
     ok(JSON.stringify(lines) === JSON.stringify([['some', `${N} ステップのうち 2 ステップに音声があります`], ['stale', '1 ステップの音声の更新が必要です（台本が変わりました）'], ['voice', '声を変えたので、AI 音声の 1 ステップは前の声のままです']]), 'A: the status line counts steps with audio, stale steps and voice-changed steps ' + JSON.stringify(lines));
     ok(A.stale.join() === k1 && A.voice.join() === k0 && A.need.length === N, 'A: stale = the changed script, voice changed = recipe.voice alice ≠ bob, the action covers all ' + N);
     ok((await page.$$('#dev-audio-deck button')).length === 1 && (await page.textContent('#dev-audio-action')) === `残りの音声を作る（${N} ステップ）`, 'A: exactly one action, 残りの音声を作る (n)');
-    // 前に使ったやり方がない：A のボタンは B を開いて答えを選ばせる（何も作らない）
-    const calls0 = (await page.evaluate(() => window.__ttsCalls)).length;
-    await page.click('#dev-audio-action');
-    await page.waitForTimeout(300);
-    ok(await page.evaluate(() => document.getElementById('dev-audio-how').open && document.activeElement && document.activeElement.name === 'dv-how') && (await page.evaluate(() => window.__ttsCalls)).length === calls0, 'A: with no method used before, the action opens B on its question (nothing is made)');
-    // B：WebGPU があれば「この PC」が既定。答えは 3 つ。声の欄は答えの上
+    // B：答えは 3 つ、録音 → クラウド → この PC の順。開いたときは、いちばん新しい音声（台本の順で最後の、やり方の分かる記録 = k1 の録音）のやり方。録音では声の欄を出さない
     const how = await page.evaluate(() => ({ legend: document.querySelector('#dev-audio-how summary').textContent, opts: [...document.querySelectorAll('#dev-audio-how .dv-opt')].map((e) => e.textContent), checked: document.querySelector('#dev-audio-how input:checked').value,
-      voicesFirst: !!(document.getElementById('dev-audio-voices').compareDocumentPosition(document.querySelector('#dev-audio-how .dv-opt')) & Node.DOCUMENT_POSITION_FOLLOWING) }));
-    ok(how.legend === '音声をどう付けますか' && how.opts.join('|') === 'AI 音声をクラウドで作る（Google Colab）|AI 音声をこの PC で作る|自分の声で録音する' && how.checked === 'local' && how.voicesFirst, 'B: the question, three answers, この PC is the default when it can make audio, the voice field above ' + JSON.stringify(how));
-    ok((await page.textContent('#dev-audio-local-hint')) === '初めてのときに音声のモデル（約 1.3 GB）を取得します', 'B: この PC says the model is downloaded the first time');
-    // B：録音：録音モードを開く（音声のない最初のステップから）。やり方として覚える
-    await page.click('#dev-audio-how-rec');
+      voices: !!document.getElementById('dev-audio-voices') || !!document.querySelector('#dev-audio .dv-sample') }));
+    ok(how.legend === '音声をどう付けますか' && how.opts.join('|') === '自分の声で録音する|AI 音声をクラウドで作る（Google Colab）|AI 音声をこの PC で作る' && how.checked === 'rec' && !how.voices, 'B: the question, three answers in the order 録音 → クラウド → この PC, opening on the method of the newest audio (a recording), no voice field or preview while 録音 is chosen ' + JSON.stringify(how));
+    // A：いちばん新しい音声のやり方（録音）で続ける：録音モードが要る最初のステップで開く（何も作らない）
+    const calls0 = (await page.evaluate(() => window.__ttsCalls)).length;
+    await clickUntil(page, '#dev-audio-action', () => page.waitForSelector('#rec-mode', { timeout: scaled(2500) }));
+    await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.key === k; }, allKeys[0], { timeout: scaled(15000) });
+    ok((await page.evaluate(() => window.__ttsCalls)).length === calls0, 'A: the action continues with the method of the newest audio (recording mode at the first step that needs audio, nothing made)');
+    await closeRec();
+    // B：録音：録音モードを開く（音声のない最初のステップから）
     await page.waitForSelector('#dev-audio-how-recbtn');
     ok((await page.textContent('#dev-audio-how-recbtn')) === '録音モードを開く (r)', 'B: 自分の声で録音する offers 録音モードを開く (r)');
-    await clickUntil(page, '#dev-audio-how-recbtn', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
-    await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.key === k; }, allKeys[2], { timeout: 15000 });
+    await clickUntil(page, '#dev-audio-how-recbtn', () => page.waitForSelector('#rec-mode', { timeout: scaled(2500) }));
+    await page.waitForFunction((k) => { const s = window.__APP_TEST.rec(); return s.open && s.key === k; }, allKeys[2], { timeout: scaled(15000) });
     ok(true, 'B: recording mode opens at the first step without audio (' + allKeys[2] + ')');
     await closeRec();
-    ok((await audioState()).method === 'rec' && JSON.parse(await opfsRead('egatari.json')).studio.audioMethod === 'rec', 'method: opening recording mode from B records studio.audioMethod = rec');
+    ok((await opfsRead('egatari.json')) === cfg0, 'method: nothing is remembered (egatari.json is not written; no studio.audioMethod)');
     // B：この PC で作る（要るステップをまとめて）
     await page.click('#dev-audio-how-local');
     await page.waitForSelector('#dev-audio-local');
+    ok((await page.textContent('#dev-audio-local-hint')) === '初めてのときに音声のモデル（約 1.3 GB）を取得します', 'B: この PC says the model is downloaded the first time');
     await page.click('#dev-audio-local');
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.deck && s.deck.need.length === 0; }, null, { timeout: 120000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.deck && s.deck.need.length === 0; }, null, { timeout: scaled(120000) });
     A = (await audioState()).deck;
     ok(A.has === N && (await page.textContent('#dev-audio-deck .dv-line')) === `${N} ステップすべてに音声があります` && !(await page.$('#dev-audio-action')), 'A: after making them on this PC, all steps have audio and there is no action');
-    const cfg1 = await opfsRead('egatari.json');
-    ok(JSON.parse(cfg1.replace('1e400', '0')).studio.audioMethod === 'local' && cfg1.includes('"zzz": 1e400') && cfg1.includes('"keep": [1, 2]') && cfg1.includes('"10": "x"'), 'method: egatari.json studio.audioMethod = local, other members kept byte for byte: ' + cfg1.replace(/\n/g, ' '));
+    ok((await opfsRead('egatari.json')) === cfg0 && (await audioState()).method === 'local', 'method: after making AI voice on this PC the newest audio is local (still nothing written to egatari.json)');
     // 台本を直す → 「音声を更新（1 ステップ）」が前のやり方（この PC）で続ける
     const kx = allKeys[3];
     const nrX = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), kx);
     await page.evaluate(([k, nr]) => window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: k.slice(0, k.lastIndexOf(':')), stepKey: k.slice(k.lastIndexOf(':') + 1), rev: nr.rev, turns: nr.turns.map((t, i) => (i ? t : { ...t, text: t.text + '（もう一度）' })) }), [kx, nrX]);
     await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.deck && s.deck.stale.length === 1; }, null, { timeout: 15000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.deck && s.deck.stale.length === 1; }, null, { timeout: scaled(15000) });
     ok((await page.textContent('#dev-audio-action')) === '音声を更新（1 ステップ）' && (await page.getAttribute('#dev-audio-action', 'data-action')) === 'update', 'A: a changed script gives 音声を更新（1 ステップ）');
     const calls1 = (await page.evaluate(() => window.__ttsCalls)).length;
     await page.click('#dev-audio-action');
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.deck && s.deck.need.length === 0; }, null, { timeout: 60000 });
-    ok((await page.evaluate(() => window.__ttsCalls)).length > calls1, 'A: 音声を更新 continues with the method used last (この PC)');
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading && s.deck && s.deck.need.length === 0; }, null, { timeout: scaled(60000) });
+    ok((await page.evaluate(() => window.__ttsCalls)).length > calls1, 'A: 音声を更新 continues with the method of the newest audio (この PC)');
     // C：このステップ
     await frameReady().then((fr) => fr.evaluate(() => DECK.go(2, 2, false)));
-    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.entry && s.key === window.__APP_TEST.ui().pos.key; }, null, { timeout: 15000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.loading && s.entry && s.key === window.__APP_TEST.ui().pos.key; }, null, { timeout: scaled(15000) });
     await page.waitForSelector('#dev-audio-step-head');
     await page.waitForTimeout(300);
     const C = await page.evaluate(() => ({ head: document.getElementById('dev-audio-step-head').textContent, tools: [...document.querySelectorAll('#dev-audio-step .dv-tools button')].map((b) => b.id), cur: document.getElementById('dev-audio-cur').textContent }));
     ok(/^スライド 3「.+」・ステップ 2$/.test(C.head) && /^AI 音声· \d+\.\d 秒/.test(C.cur), 'C: heading スライド n「…」・ステップ k and the current audio “AI 音声 · n 秒” ' + JSON.stringify([C.head, C.cur]));
     ok(['dev-audio-play', 'dev-audio-read', 'dev-audio-rec', 'dev-audio-import', 'dev-audio-revert', 'dev-audio-tts', 'dev-audio-read-sel'].every((x) => C.tools.includes(x)) && (await page.textContent('#dev-audio-tts')) === 'この PC で作り直す', 'C: 聞く・読み上げで聞く・録音 (r)・ファイルから取り込む・前に戻す・この PC で作り直す ' + C.tools.join());
     await page.click('#dev-audio-play');
-    ok(await page.waitForFunction(() => { const a = document.getElementById('dev-audio-player'), b = document.getElementById('dev-audio-play'); return a && (!a.paused || a.ended) && b.textContent === (a.ended ? '▶ 聞く' : '■ 止める'); }, null, { timeout: 5000 }).then(() => true, () => false), 'C: ▶ 聞く plays the step audio (and becomes ■ 止める)');
+    ok(await page.waitForFunction(() => { const a = document.getElementById('dev-audio-player'), b = document.getElementById('dev-audio-play'); return a && (!a.paused || a.ended) && b.textContent === (a.ended ? '▶ 聞く' : '■ 止める'); }, null, { timeout: scaled(5000) }).then(() => true, () => false), 'C: ▶ 聞く plays the step audio (and becomes ■ 止める)');
     await page.click('#dev-audio-play');
     // 外したもの
     const txt = await page.textContent('#dev-audio');
     ok(!/WebGPU がないとき|TTS で作り直す|印付き|前処理の版|口述原稿/.test(txt) && !(await page.$('#dev-audio-colab-scope, .dv-marked, #dev-audio-oldnorm, #dev-audio-meter')), 'removed: no 「WebGPU がないとき」, no TTS で作り直す, no 印付き, no pre-processing list, no in-panel recording');
     await page.click('#dev-audio .dv-ghost');
+  }
+
+  // ---------------------------------------------------------------- 1c. 開いたときの答え（いちばん新しい音声のやり方。ほかは覚えない）と、AI 音声を作れない端末（スマートフォン・タブレット・メモリの少ない端末）
+  {
+    const narrNow = await opfsRead('narration.md');
+    const allKeys = parseNarration(narrNow).map((x) => `${x.slideKey}:${x.stepKey}`);
+    const mp3s = (await opfsList('audio')).filter((n) => n.endsWith('.mp3'));
+    const manBefore = await opfsRead('audio/manifest.json');
+    const P = 'trim-45-loud-20-cap-v1';
+    const rec = () => ({ file: mp3s[0], dur: 1, cues: [], sync: 'none', kind: 'recorded', inputHash: '0'.repeat(64), processing: P });
+    const tts = (processing) => ({ file: mp3s[0], dur: 1, cues: [], sync: 'auto', engine: 'stub', kind: 'tts', inputHash: '0'.repeat(64), recipe: { engine: 'stub', model: 'stub-model-1', voice: { expert: 'bob' }, seed: 0, processing }, processing });
+    const COLAB = P + '+colab1', LOCAL = P;
+    // 作業場所を開き直す（板の「選んだ答え」も消える）→ 板を開いて、答えの並び・選ばれている答え・この PC の様子を読む
+    const openWith = async (segments, device) => {
+      await writeMan(JSON.stringify({ segments }, null, 1));
+      await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir));
+      await frameReady();
+      await page.evaluate(STUB);
+      await page.evaluate((d) => { window.__APP_TEST.ttsDevice = d === null ? undefined : d; }, device === undefined ? null : device);
+      await page.click('#b-audio');
+      await page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && s.deck && document.getElementById('dev-audio-how'); }, null, { timeout: scaled(15000) });
+      return page.evaluate(() => {
+        // 声の欄（声・試聴）の場所：どのやり方の中か、その 1 行目か（クラウドは手順 1 の上、この PC はボタンの上）。出ていなければ null
+        const voicesAt = () => {
+          const g = document.getElementById('dev-audio-voices');
+          if (!g) return document.querySelector('#dev-audio .dv-sample') ? 'stray-sample' : null;
+          const body = g.parentElement;
+          const first = body.firstElementChild === g;
+          const before = (sel) => { const t = body.querySelector(sel); return !!t && !!(g.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_FOLLOWING); };
+          const hasSample = !!g.querySelector('.dv-sample');
+          return body.id + (first ? ':first' : ':not-first') + (body.id === 'dev-audio-cloud-body' ? (before('#dev-audio-c1') ? ':above-step1' : ':below') : body.id === 'dev-audio-local-body' ? (before('#dev-audio-local') ? ':above-button' : ':below') : '') + (hasSample ? ':sample' : ':no-sample');
+        };
+        const b = document.getElementById('dev-audio-tts'), no = document.getElementById('dev-audio-local-no');
+        return { how: window.__APP_TEST.audio().how, checked: (document.querySelector('#dev-audio-how input:checked') || {}).value || null,
+          opts: [...document.querySelectorAll('#dev-audio-how input[name=dv-how]')].map((r) => r.value + (r.disabled ? ':off' : '')).join(),
+          no: no ? no.textContent : null, tts: b ? { off: b.disabled, title: b.title } : null, voices: voicesAt() };
+      });
+    };
+    const [a0, a1, a2] = allKeys;
+    let r = await openWith({});
+    ok(r.opts === 'rec,cloud,local' && r.how === 'rec' && r.checked === 'rec', 'default: no audio → 録音 (order 録音 → クラウド → この PC) ' + JSON.stringify(r));
+    ok(r.voices === null, 'voice field: hidden (not shown at all) while 録音 is chosen ' + JSON.stringify(r.voices));
+    r = await openWith({ [a0]: rec() });
+    ok(r.how === 'rec' && r.checked === 'rec', 'default: newest audio recorded → 録音 ' + JSON.stringify(r));
+    r = await openWith({ [a0]: tts(COLAB) });
+    ok(r.how === 'cloud' && r.checked === 'cloud' && !!(await page.$('#dev-audio-cloud-body')), 'default: newest audio AI voice made in Colab (recipe.processing +colab) → クラウド ' + JSON.stringify(r));
+    ok(r.voices === 'dev-audio-cloud-body:first:above-step1:sample', 'voice field: in クラウド, the first line, above 手順 1, with 試聴 ' + r.voices);
+    r = await openWith({ [a0]: tts(LOCAL) });
+    ok(r.how === 'local' && r.checked === 'local' && r.tts && !r.tts.off, 'default: newest audio AI voice made on this PC → この PC ' + JSON.stringify(r));
+    ok(r.voices === 'dev-audio-local-body:first:above-button:sample', 'voice field: in この PC, the first line, above its controls, with 試聴 ' + r.voices);
+    await page.click('#dev-audio-how-rec');
+    await page.waitForSelector('#dev-audio-rec-body');
+    ok(!(await page.$('#dev-audio-voices')) && !(await page.$('#dev-audio .dv-sample')), 'voice field: switching to 録音 removes 声 and 試聴');
+    await page.click('#dev-audio-how-cloud');
+    await page.waitForSelector('#dev-audio-cloud-body #dev-audio-voices');
+    ok(true, 'voice field: switching to クラウド shows it again inside クラウド');
+    r = await openWith({ [a0]: tts(COLAB), [a1]: rec(), [a2]: tts(LOCAL) });
+    ok(r.how === 'local', 'default: with no times in the manifest, the newest is the last record in script order ' + JSON.stringify(r));
+    r = await openWith({ [a0]: tts(LOCAL) }, { memory: 4, coarseOnly: false, small: false });
+    const NO = 'この端末では AI 音声を作れません。クラウド（Google Colab）で作ってください';
+    ok(r.how === 'cloud' && r.opts === 'rec,cloud,local:off' && r.no === NO && r.tts && r.tts.off && r.tts.title === NO, 'device: low memory (deviceMemory 4) → この PC shown but disabled with the reason; この PC で作り直す disabled with the reason; newest local audio opens on クラウド ' + JSON.stringify(r));
+    r = await openWith({}, { coarseOnly: true, small: true });
+    ok(r.how === 'rec' && r.opts === 'rec,cloud,local:off' && r.no === NO, 'device: a small screen with only a coarse pointer (phone, tablet) → この PC disabled ' + JSON.stringify(r));
+    await page.click('#dev-audio-how-local', { force: true }).catch(() => {});
+    ok((await page.evaluate(() => window.__APP_TEST.audio().how)) === 'rec', 'device: the disabled この PC cannot be chosen');
+    r = await openWith({ [a0]: tts(LOCAL) }, { memory: 8, coarseOnly: false, small: true });
+    ok(r.how === 'local' && r.opts === 'rec,cloud,local' && r.no === null, 'device: 8 GB, a fine pointer → この PC usable ' + JSON.stringify(r));
+    r = await openWith({ [a0]: tts(LOCAL) }, { coarseOnly: true, small: false });
+    ok(r.how === 'local' && r.opts === 'rec,cloud,local', 'device: memory unknown and a large touch screen → この PC usable ' + JSON.stringify(r));
+    await page.click('#dev-audio .dv-ghost');
+    await writeMan(manBefore);
+    await page.evaluate(() => { window.__APP_TEST.ttsDevice = undefined; });
   }
 
   // ---------------------------------------------------------------- 2. 持ち運べる 1 ファイル（段 A で保存）
@@ -622,10 +694,14 @@ try {
   // 音声がそろっているので B はたたんである（開いてから声を選ぶ）
   ok(!(await page.evaluate(() => document.getElementById('dev-audio-how').open)), 'B: folded when every step has audio');
   await page.click('#dev-audio-how summary');
+  // 声の欄は AI 音声のやり方の中だけ（いちばん新しい音声は録音なので、クラウドを選んでから）
+  ok(!(await page.$('#dev-audio-voices')), 'voice field: hidden while 録音 is chosen (single file)');
+  await page.click('#dev-audio-how-cloud');
+  await page.waitForSelector('#dev-audio-cloud-body #dev-audio-voices');
   await page.selectOption('#dev-audio-voices select[data-role="expert"]', 'alice');
   await page.waitForFunction(() => window.__APP_TEST.audio().voices.expert === 'alice');
   await page.click('#dev-audio-action');
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty && !document.querySelector('#dev-audio-deck .dv-line[data-kind="unsaved"]'), null, { timeout: 30000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty && !document.querySelector('#dev-audio-deck .dv-line[data-kind="unsaved"]'), null, { timeout: scaled(30000) });
   ok(true, 'A: 保存 saves the single file and the unsaved line goes away');
   const ps = await page.evaluate(() => window.__APP_TEST.state().portable);
   ok(ps.lastTier === 'A' && ps.lastTierA && JSON.stringify(ps.lastTierA.audio) === JSON.stringify([pkey]) && !ps.dirty, `portable: saved by tier A, only ${pkey} audio changed (the voice choice did not touch voice.json)`);
@@ -654,7 +730,7 @@ try {
   }, pkey);
   ok(rt.offset === MP3.startOffset && rt.entry === MP3.startOffset && rt.plays.length && Math.abs(rt.plays[0] - MP3.startOffset) < 1e-6, `runtime: autoplay starts the step's audio at startOffset (${JSON.stringify(rt.plays)})`);
   // AI の声（#33・format spec §7.3）：索引の記録が kind tts の段階だけ（録音は違う）。舞台と字幕には何も出さず、操作の帯に札「AI 音声」
-  await pp.waitForFunction(() => Object.keys(DECK.AI_AUDIO).length > 0, null, { timeout: 5000 });
+  await pp.waitForFunction(() => Object.keys(DECK.AI_AUDIO).length > 0, null, { timeout: scaled(5000) });
   const ai = await pp.evaluate(async (k) => {
     const tts = DECK.timeline().find((x) => x.audio && x.key !== k);
     DECK.go(tts.i, tts.k, false); DECK.autoplay(true);
@@ -676,12 +752,15 @@ try {
   // ---------------------------------------------------------------- 3. TTS の窓（lab/tts-helper.html。?stub=1 でモデルを取らない）
   const popupErrs = [];
   ctx.on('page', (p) => { p.on('pageerror', (e) => popupErrs.push('pageerror: ' + e.message)); p.on('console', (m) => { if (m.type() === 'error') popupErrs.push('console: ' + m.text()); }); });
-  await page.evaluate(() => { window.__APP_TEST.tts = null; window.__APP_TEST.ttsHelper = 'lab/tts-helper.html?stub=1'; if (!navigator.gpu) Object.defineProperty(navigator, 'gpu', { value: {}, configurable: true }); });
+  // 端末の大きさは試験の機械で変わらないように差し替える（メモリ 16 GB・細かいポインタ）
+  await page.evaluate(() => { window.__APP_TEST.tts = null; window.__APP_TEST.ttsDevice = { memory: 16, coarseOnly: false, small: false }; window.__APP_TEST.ttsHelper = 'lab/tts-helper.html?stub=1'; if (!navigator.gpu) Object.defineProperty(navigator, 'gpu', { value: {}, configurable: true }); });
   await page.evaluate(() => window.__APP_TEST.audioPanel.reload());
+  await page.waitForSelector('#dev-audio-how-local');
+  await page.click('#dev-audio-how-local');
   await page.waitForFunction(() => { const b = document.getElementById('dev-audio-tts'); return b && !b.disabled && document.getElementById('dev-audio-ttsinfo'); });
   ok((await page.textContent('#dev-audio-ttsinfo')).includes('Irodori-TTS 500M-v3'), 'tts window: the panel names the engine for a Japanese deck');
   const back0 = ((await audioState()).history[pkey] || []).length;
-  await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #tts-what', { timeout: 2500 }));
+  await clickUntil(page, '#dev-audio-tts', () => page.waitForSelector('#dlg[open] #tts-what', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #tts-what');
   ok(/1\.26 GB/.test(await page.textContent('#tts-what')), 'tts window: asks before the first download and shows its size');
   await shot(page, 'audio-tts-confirm.png');

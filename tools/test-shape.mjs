@@ -19,6 +19,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { extractBlocks } from '../kit/core/llm-import.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { vendorComponents } from './vendor-components.mjs';
+import { scaled } from './wait-scale.mjs';
 // ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
 await shareBrowser();
 
@@ -175,7 +176,7 @@ try {
   page.on('pageerror', (e) => errors.push(e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   await page.goto(fileUrl(out));
-  await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   const r = await page.evaluate(() => {
     const seen = [];
     DECK.slides.forEach((s, i) => { for (let k = 0; k <= s._max; k++) { DECK.seek(i, k, 0.3); DECK.seek(i, k, Infinity); } });
