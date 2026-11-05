@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.ja.md sha256=e5fec8e253df0827 -->
+<!-- i18n: pair=privacy.ja.md sha256=e783213fd1eb4c0a -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
@@ -113,7 +113,7 @@ Ask about this page or how to use Egatari in GitHub [Issues](https://github.com/
 
 GitHub and Cloudflare, which host the sites, keep access logs (IP address, browser type, pages opened and so on), as for any website. We don't use those logs for analytics or advertising, and we have not added any analytics.
 
-What the Live server (live.egatari.org) keeps: the contents of a Live (questions, votes, "I'm lost" marks, a name only if typed, the random ID made on the device) stay in that Live only, and are deleted automatically when a grace period after the end of the live time has passed (24 hours by default; the host who creates the Live can choose 0 to 7 days). After that, not even we can recover them. To keep the results, download them from the host page during the grace period. IP addresses, browser information and access logs are not stored (request logging is turned off). The IP address is used only when a Live is created, to prevent mass creation (Cloudflare's Turnstile check and a rate limit), and is not stored. If the lesson names a different Live server, that server's own rules apply.
+What the Live server (live.egatari.org) keeps: the contents of a Live (questions, votes, "I'm lost" marks, a name only if typed, the random ID made on the device) stay in that Live only, and are deleted automatically when a grace period after the end of the live time has passed (24 hours by default; the host who creates the Live can choose 0 to 7 days). After that, we do not restore them (even while the cloud service may keep a temporary backup for a while, we do not restore from it). To keep the results, download them from the host page during the grace period. IP addresses, browser information and access logs are not stored (request logging is turned off). The IP address is used only when a Live is created, to prevent mass creation (Cloudflare's Turnstile check and a rate limit), and is not stored. If the lesson names a different Live server, that server's own rules apply.
 
 ---
 
