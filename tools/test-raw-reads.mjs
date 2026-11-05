@@ -38,6 +38,8 @@ const ALLOW = [
   ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'sw.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/sw.js を読む'],
   ['kit/build.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
   ['bin/egatari.mjs', "JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))", 'egatari コマンド：自分の包みの package.json（版と engines）を読む'],
+  ['bin/egatari.mjs', "'instruction-version.json'", 'egatari doctor：自分の包みの kit/instruction-version.json（指示の版）を読む'],
+  ['bin/egatari.mjs', "try { t = fs.readFileSync(f, 'utf8'); }", 'egatari doctor：利用者が入れたスキルの SKILL.md を読んで指示の版の行を拾う（読むだけ・先頭の数 KB で足りるが、大きさの上限は SKILL.md の通常の大きさ）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, `${w}${sfx}.css`))", '字の写し：node_modules の @fontsource の CSS を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'files', m[1]))", '字の写し：その CSS が指す woff2 を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'LICENSE'))", '字の写し：@fontsource の LICENSE を読む（開発者の道具）'],
@@ -94,6 +96,7 @@ const ALLOW = [
   ['lab/tts-engine.mjs', 'res.body.getReader()', 'TTS の窓と試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['tools/changelog.mjs', "const read = (f) => fs.readFileSync(f, 'utf8')", 'CHANGELOG の道具：リポジトリの changes/*.md・CHANGELOG.md・package.json・package-lock.json を読む（開発者の道具）'],
   ['tools/release-assets.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
+  ['tools/part-labels-check.mjs', 'JSON.parse(fs.readFileSync(', 'パーツの名前の検査（npm run gen:check）：リポジトリの components2.lock.json と vendor/components-2/ の既定のカタログの manifest を読む（開発者の道具）'],
   ['tools/parts-gallery.mjs', 'fs.readFileSync(', 'パーツのサンプルのページを組む（開発者とワークフローの道具）：リポジトリの components.lock.json・components2.lock.json・vendor/components-2/ の manifest・vendor/components-gallery/ と、gallery.mjs が書いた egatari.json を読む（--sync は管理者の選んだ checkout の決まったファイル）'],
   ['tools/site-versions.mjs', 'fs.readFileSync(', '版ごとのサイト：自分で組んだ dist・package.json と、gh で取ったリリースの tar.gz（sha256 を確かめ、展開は上限つき）・それを広げた写しの index.html を読む（開発者とワークフローの道具）'],
 ];

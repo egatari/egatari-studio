@@ -16,7 +16,7 @@ predict._slide = timer._slide = slide;
 const scope = { DECK: { ready: true, mode: 'talk', view: '', timeline: () => [{ i: 0, k: 1, dur: 90 }, { i: 0, k: 2, dur: 20 }] },
   started: true, ASIDE: 0, EMBED: false, slides: [slide], raf: 0, presenter, presenterOpened: presenter, window: { addEventListener: (n, f) => { events[n] = f; } },
   document: { addEventListener: (n, f) => { events[n] = f; } },
-  performance: { now: () => 10000 }, animDur: () => 90, tickLive() {}, scheduleAutoEnd() {}, soundCancelAhead() {},
+  performance: { now: () => 10000 }, runT: (r) => (r.t0 || 0) + (10000 - r.start) / 1000, animDur: () => 90, tickLive() {}, scheduleAutoEnd() {}, soundCancelAhead() {},
   requestAnimationFrame: () => 1, editorParent: () => false, trustedCmd: (src) => src === presenter,
   stopLoop() { scope.raf = 0; scope.liveRun = null; },
   seek: (...args) => rendered.push(args), post: (m) => sent.push(m),

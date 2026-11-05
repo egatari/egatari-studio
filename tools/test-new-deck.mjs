@@ -3,7 +3,7 @@
 // 1. 大分類・小分類・④ のパーツの一覧（伝えたいことのまとまり・段と束・初めの印・プランの目安と外す候補）・頼む文の節（場面・構成の型・見せ方・外した言いたいこと）
 // 2. 言いたいこと：決めた表（FALLBACK）と manifest の読み方、外したものだけに使う部品
 // 3. 指示（pack）：束と段（#125）。標準の部品はいつも、専門の部品は印の付いた束だけ、特殊（extra）はどこにも入らない。
-//    無料のプランは中核の 4 つ（FREE_CORE）のほかの標準の部品を一覧の 1 行だけにし、標準すべてが 40 KB に収まる（新規作成のメーターが目安の中から始まる）。
+//    無料のプランは中核の 4 つ（FREE_CORE）のほかの標準の部品を一覧の 1 行だけにし、標準すべてが 45 KB に収まる（新規作成のメーターが目安の中から始まる）。
 //    言いたいこと → パーツ → ステップの表は組み立てのときに作る（入っている部品だけ・外した札の行はない）、R-whole、
 //    外した言いたいことだけに使う部品はどこにも出ない（表・一覧・見本・文。「使わない」の 1 行を除く）、束の見本は抜き出し
 // 4. シード値：作るときに 1 回だけ書く（あれば変えない）・直した返事が失っても戻す・egatari.json の studio.newDeck（ほかの項目はバイトのまま）
@@ -121,7 +121,7 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   assert.equal(DEFAULT_PLAN, 'free');
   assert.equal(planOf({}), 'free'); assert.equal(planOf({ plan: 'paid' }), 'paid'); assert.equal(planOf({ plan: 'gold' }), 'free'); assert.equal(planOf(null), 'free');
   assert.equal(capKb('free'), PACK_CAP_KB.free); assert.equal(capKb('paid'), PAID_PACK_KB);
-  assert.equal(PACK_CAP_KB.free, 40); assert.equal(PAID_PACK_KB, 120); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
+  assert.equal(PACK_CAP_KB.free, 45); assert.equal(PAID_PACK_KB, 120); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
   assert.equal(LIMITS.fail, PACK_CAP_KB.free); assert.equal(LIMITS.free, PACK_CAP_KB.free); assert.equal(LIMITS.paid, PAID_PACK_KB);
   // 印の付いたパーツだけが指示に入り、ほかのパーツはどこにも名前が出ない。有料のプランは全部を詳しく、無料のプランは BRIEF を一覧の 1 行だけ
   for (const lang of ['en', 'ja']) for (const tags of [initialParts([]), ['m-bars', 'm-hist', 'm-timer'], ['m-kanbun', 'm-flow', 'm-kpi'], []]) for (const plan of AI_PLANS) {
@@ -143,25 +143,27 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   assert.ok(c.length && c.every((t) => !kokugo.includes(t)), c.join());
   assert.ok(sizeOf(all.filter((t) => !c.includes(t))) < sizeOf(all));
 });
-ok('fitting the free plan (#125): over 40 KB, the core four are shortened first (never unticked); still over, only specialized parts are candidates, largest first; the paid plan never shortens', () => {
+ok('fitting the free plan (#125): over 45 KB, the core four are shortened first (never unticked); still over, only specialized parts are candidates, largest first; the paid plan never shortens', () => {
   const sizeOf = (lang) => (tags, short) => packSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang }));
   const cap = capKb('free') * 1024;
   for (const lang of ['en', 'ja']) {
     const size = sizeOf(lang);
     // 標準だけ：収まるので短くしない
     assert.deepEqual(fitPlan(initialParts([]), 'free', { sizeOf: size, capBytes: cap }), { short: false, candidates: [] }, lang + ' standard only');
-    // 国語：中核の 4 つを短くすれば収まる。外す候補はない
+    // 国語（45 KB の候補で m-kakijun は extra に移り、gendai・kanbun・kobun の 3 つ。backlog #170）：
+    // 中核の 4 つを短くすれば収まる……日本語は短縮が要るが、英語は短縮なしでも収まる（margin の違い）。外す候補はどちらもない
     const kok = initialParts([{ set: 'kokugo' }]);
-    assert.ok(size(kok, false) > cap, `${lang} kokugo over the limit before shortening (${size(kok, false)} B)`);
     const fk = fitPlan(kok, 'free', { sizeOf: size, capBytes: cap });
-    assert.deepEqual(fk, { short: true, candidates: [] }, lang + ' kokugo');
-    const tk = packWithRequest({ ...partsPackOpts(kok, 'free', { short: true }), lang });
-    assert.ok(packSize(tk) <= cap, `${lang} kokugo shortened: ${packSize(tk)} B`);
-    assert.deepEqual(described(tk), partsOfSet('kokugo').sort(), lang + ': shortened, only the kokugo parts are described');
+    assert.deepEqual(fk.candidates, [], lang + ' kokugo: no drop needed');
+    const tk = packWithRequest({ ...partsPackOpts(kok, 'free', { short: fk.short }), lang });
+    assert.ok(packSize(tk) <= cap, `${lang} kokugo (short=${fk.short}): ${packSize(tk)} B`);
+    assert.deepEqual(described(tk), (fk.short ? partsOfSet('kokugo') : [...FREE_CORE, ...partsOfSet('kokugo')]).sort(),
+      `${lang}: ${fk.short ? 'shortened, only the kokugo parts' : 'not shortened, the core four and the kokugo parts'} are described`);
     assert.deepEqual(rowsOf(tk), [...kok].sort(), lang + ': every ticked part keeps its catalogue line');
     assert.ok(FREE_CORE.every((t) => tk.includes('| `<' + t + '>` |')), lang + ': the core four stay in the catalogue');
-    // 算数・数学と地図：短くしても越える。外す候補は専門のパーツだけで、外せば収まる
-    for (const sets of [['math', 'maps'], ['stats', 'kokugo']]) {
+    // 統計・算数と国語：短くしても越える。外す候補は専門のパーツだけで、外せば収まる（45 KB では math+maps は短縮だけで収まるので、
+    // 両方とも実際に外す候補が出る組にする）
+    for (const sets of [['stats', 'math'], ['stats', 'kokugo']]) {
       const tags = initialParts(sets.map((x) => ({ set: x })));
       const f = fitPlan(tags, 'free', { sizeOf: size, capBytes: cap });
       assert.ok(f.short && f.candidates.length && f.candidates.every((t) => TIERS.parts[t].tier === 'specialized' && sets.includes(TIERS.parts[t].set)), `${lang} ${sets.join('+')}: ${f.candidates.join()}`);
@@ -175,7 +177,7 @@ ok('fitting the free plan (#125): over 40 KB, the core four are shortened first 
     assert.equal(partsPackOpts(kok, 'paid', { short: true }).short, undefined, 'short is for the free plan only');
   }
 });
-ok('free plan (#125): every standard part fits 40 KB, with only the four core parts described; extra parts are in no pack; specialized parts only when their set is ticked; m-cards and m-orbit are described', () => {
+ok('free plan (#125): every standard part fits 45 KB, with only the four core parts described; extra parts are in no pack; specialized parts only when their set is ticked; m-cards and m-orbit are described', () => {
   assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu', 'm-predict']);
   assert.deepEqual(STD, Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard').sort(), 'the standard parts of the pack are the standard tier of the manifest');
   assert.deepEqual(BRIEF, STD.filter((t) => !FREE_CORE.includes(t)));
@@ -187,7 +189,7 @@ ok('free plan (#125): every standard part fits 40 KB, with only the four core pa
     assert.deepEqual(described(start), [...FREE_CORE].sort(), lang + ': only the core four are described on the free plan');
     assert.deepEqual(rowsOf(start), STD, lang + ': every standard part has its catalogue line');
     assert.ok(start.includes(PACK_DATA[lang].briefNote), lang + ': the note on the parts without a section');
-    assert.ok(packSize(buildPack({ lang })) <= LIMITS.fail * 1024, lang + ': buildPack with no set ≤ 40 KB');
+    assert.ok(packSize(buildPack({ lang })) <= LIMITS.fail * 1024, lang + ': buildPack with no set ≤ 45 KB');
     // 有料のプランでは同じ印でも全部を詳しく
     assert.deepEqual(described(packWithRequest({ ...partsPackOpts(initialParts([]), 'paid'), lang })), STD);
     // 特殊（extra）：どの指示にも、全部を選んでも入らない
@@ -277,7 +279,8 @@ ok('purposes: the tiles are the default catalogue manifest\'s own purposes (16),
   // m-bars は 3 つの札に使う：全部外したときだけ使わせない
   assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-numberline']);
   assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
-  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-cards', 'm-flow', 'm-hissan', 'm-kakijun']);
+  // m-kakijun は 2.2.0 候補で extra に移り（backlog #170）、process の部品からは外れる（extra は purposes の計算に入らない）
+  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-cards', 'm-flow', 'm-hissan']);
   assert.deepEqual(componentsOff([], PURPOSES), []);
   // 札のない言いたいことの部品（m-kanbun・m-sweep など）は外せない（束から入る）。特殊のパーツは指示にないので札も持たない
   assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect', 'm-codetree'].some((t) => PURPOSES.components[t]));
@@ -365,7 +368,10 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     // 有料のプランのすべての束：標準と専門のすべての部品が表と説明にある
     const paid = buildPack({ sets: 'all', lang, plan: 'paid' });
     for (const t of Object.keys(TIERS.parts).filter((x) => TIERS.parts[x].tier !== 'extra')) assert.ok(paid.includes('`' + t + '`') && paid.includes('### `<' + t + '>`'), `${lang}: ${t} is in the table and described in the paid pack`);
-    assert.ok(!/＊/.test(all) && !/ \*(?= \||,|$)/m.test(all.slice(all.indexOf('### 2.7'), all.indexOf('### 2.8'))), lang + ': no star markers');
+    // 星印は §2.7 の表し方の表（PURPOSES から組む。部品の名前・束の印はここに出ない）の中だけを見る：§3 の preamble は
+    // ラベルの書き方（`*…*` 斜体・記号のままの全角 ＿ ＾ ＊）を説明する注記を持つ（candidate 2.2.0 の評価のため、template に追加）
+    const purposeSection = all.slice(all.indexOf('### 2.7'), all.indexOf('### 2.8'));
+    assert.ok(!/＊/.test(purposeSection) && !/ \*(?= \||,|$)/m.test(purposeSection), lang + ': no star markers');
     // 束を選ばない：表が指すのは標準の部品だけ。入っていない束は何に使えるかだけ（束と部品の名前は出さない）
     const core = buildPack({ sets: [], lang });
     for (const t of ['m-market', 'm-seq', 'm-kanbun', 'm-hist']) assert.ok(!core.includes(t), `${lang}: no set chosen → ${t} is not named`);
@@ -396,9 +402,9 @@ const PLAN_CHOICES = [
   { plan: 'paid', sets: [] }, { plan: 'paid', sets: ['kokugo'] }, { plan: 'paid', sets: ['math', 'maps', 'tools'] },
 ];
 const partsIn = (text) => [...tagsIn(text)].filter((t) => PACK_DATA.en.components[t]);
-// 上限：無料のプランは束なしで 40 KB（束を足して越えたら新規作成のメーターが外す候補を出すので、ここでは見ない）。有料のプランは 120 KB
+// 上限：無料のプランは束なしで 45 KB（束を足して越えたら新規作成のメーターが外す候補を出すので、ここでは見ない）。有料のプランは 120 KB
 const capOk = (choice, bytes) => (choice.plan === 'paid' ? bytes <= PACK_CAP_KB.paid * 1024 : choice.sets.length ? true : bytes <= PACK_CAP_KB.free * 1024);
-ok('caps per AI plan with all purposes on: free with no set ≤ 40 KB; paid with any two sets ≤ PAID_PACK_KB; the paid worst case is a warning only', () => {
+ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with any two sets ≤ PAID_PACK_KB; the paid worst case is a warning only', () => {
   for (const lang of ['en', 'ja']) {
     assert.ok(Buffer.byteLength(buildPack({ sets: [], lang, plan: 'free' })) <= PACK_CAP_KB.free * 1024, lang + ' free standard');
     for (const p of SET_CHOICES) {
@@ -461,30 +467,30 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
 const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z]+(?:-[a-z]+)*(?![a-z-])/g)].map((m) => m[0]));
 const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]));
 const notInCatalog = (text) => { const c = catalogOf(text); return [...namedParts(text)].filter((t) => !c.has(t)); };
-ok('gen: the size rows (free standard fails over 40 KB, free + a set is only reported, paid pairs fail over 120 KB, the paid worst case warns); a pack over its cap is named with the bytes over and its three largest sections', () => {
+ok('gen: the size rows (free standard fails over 45 KB, free + a set is only reported, paid pairs fail over 120 KB, the paid worst case warns); a pack over its cap is named with the bytes over and its three largest sections', () => {
   const g = generate();
   const rep = sizeReport(g.sizes);
   for (const lang of ['en', 'ja']) {
     const std = rep.find((x) => x.lang === lang && x.what === 'free standard');
-    assert.ok(std && std.max === 40 && std.level !== 'fail', `${lang} free standard: ${std && std.kb} KB`);
+    assert.ok(std && std.max === 45 && std.level !== 'fail', `${lang} free standard: ${std && std.kb} KB`);
     for (const s of SETS) {
       const x = rep.find((y) => y.lang === lang && y.what === 'free standard+' + s);
-      assert.ok(x && x.freeSet && x.max === 40 && ['ok', 'over'].includes(x.level), `${lang} free + ${s}`);
-      // 新規作成とコマンドが写すのと同じ、目安に収めた指示の大きさ（fitPack。越えるときだけ中核の 4 つも短く）。どの束も 40 KB まで
+      assert.ok(x && x.freeSet && x.max === 45 && ['ok', 'over'].includes(x.level), `${lang} free + ${s}`);
+      // 新規作成とコマンドが写すのと同じ、目安に収めた指示の大きさ（fitPack。越えるときだけ中核の 4 つも短く）。どの束も 45 KB まで
       const sizeOf = (t, short) => packSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }));
-      const tags = initialParts([{ set: s }]), f = fitPack(tags, 'free', { sizeOf, capBytes: 40 * 1024 });
-      assert.equal(x.short, sizeOf(tags, false) > 40 * 1024, `${lang} free + ${s}: shortened only when over`);
-      assert.ok(x.short === f.short && x.dropped.join() === f.dropped.join() && Math.abs(x.kb * 1024 - f.bytes) < 1 && x.kb <= 40 && x.level === 'ok', `${lang} free + ${s}: the reported size ${x.kb}`);
+      const tags = initialParts([{ set: s }]), f = fitPack(tags, 'free', { sizeOf, capBytes: 45 * 1024 });
+      assert.equal(x.short, sizeOf(tags, false) > 45 * 1024, `${lang} free + ${s}: shortened only when over`);
+      assert.ok(x.short === f.short && x.dropped.join() === f.dropped.join() && Math.abs(x.kb * 1024 - f.bytes) < 1 && x.kb <= 45 && x.level === 'ok', `${lang} free + ${s}: the reported size ${x.kb}`);
     }
     for (const p of pairsOf(SETS)) { const x = rep.find((y) => y.lang === lang && y.what === `paid standard+${p.join('+')}`); assert.ok(x && x.paidPair && x.max === 120 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
     const w = rep.find((y) => y.lang === lang && y.worst);
     assert.ok(w && w.what === 'paid every set' && w.max === 120 && w.level !== 'fail', `${lang} paid worst case never fails`);
   }
   const r = rep.find((x) => x.lang === 'ja' && x.what === 'free standard+kokugo');
-  assert.ok(r.short && r.level === 'ok', 'free + kokugo is reported with the core four shortened, within 40 KB');
-  const m = overMessage({ ...r, short: false, max: 40 }, g.data);
+  assert.ok(r.short && r.level === 'ok', 'free + kokugo is reported with the core four shortened, within 45 KB');
+  const m = overMessage({ ...r, short: false, max: 45 }, g.data);
   const bytes = Buffer.byteLength(buildPack({ sets: ['kokugo'], lang: 'ja' }));
-  assert.match(m, new RegExp(`^pack over the cap: plan free, lang ja, part sets kokugo: ${bytes} B, ${bytes - 40 * 1024} B over 40 KB \\(40960 B\\)\\. Largest sections: `));
+  assert.match(m, new RegExp(`^pack over the cap: plan free, lang ja, part sets kokugo: ${bytes} B, ${bytes - 45 * 1024} B over 45 KB \\(46080 B\\)\\. Largest sections: `));
   assert.equal((m.split('Largest sections: ')[1].match(/\(\d+ B\)/g) || []).length, 3, m);
 });
 ok('packs name no part outside their own catalog: no set, every single set and every pair × en/ja × plan, and the sweep over purposes turned off', () => {
@@ -513,7 +519,7 @@ ok('packs name no part outside their own catalog: no set, every single set and e
 });
 ok('pack: turning purposes off removes the parts used only for them from the catalog (standard and sets) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);
-  assert.deepEqual(off, ['m-cards', 'm-flow', 'm-hissan', 'm-kakijun', 'm-kpi', 'm-menu']);
+  assert.deepEqual(off, ['m-cards', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu']);
   const full = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', plan: 'paid' });
   const cut = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', exclude: off, off: ['key-number', 'process', 'contents'], plan: 'paid' });
   assert.ok(full.includes('### `<m-flow>`') && full.includes('### `<m-kpi>`') && full.includes('| `<m-menu>` |'));

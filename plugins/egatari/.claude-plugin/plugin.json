@@ -1,4 +1,6 @@
 {
   "name": "egatari",
-  "description": "Make Egatari lessons with the make skill."
+  "version": "0.6.4",
+  "description": "Make Egatari lessons with the make skill.",
+  "skills": "./skills/"
 }

@@ -30,7 +30,7 @@ const scope = { DECK: deck, window: { AudioContext, addEventListener: (t, fn) =>
   location: {}, history: { replaceState() {} }, fragmentOf: () => '', jumpTo: -1,
   performance: { now: () => now }, requestAnimationFrame(fn) { frames.set(1, fn); return 1; }, cancelAnimationFrame(id) { frames.delete(id); },
   document: { dispatchEvent() {} }, CustomEvent: class {}, ctxMode: () => deck.mode === 'lecture' ? 'talk' : deck.mode,
-  compCues: () => null, timing: () => ({ lead: 0 }), compRealTime: (c, k, t) => t,
+  auto: null, paused: null, compCues: () => null, previewOn: () => deck.mode === 'lecture', RATE: 1, timing: () => ({ lead: 0 }), compRealTime: (c, k, t) => t,
   announce() {}, legacy() {}, animDur: () => 1, marksEnd: () => 0, morphSrc: () => -1, T: { morph: 0 },
   reporter: () => () => assert.fail('events must be valid'), errText: String,
   seek(i, k) { scope.POS.i = i; scope.POS.k = k; },

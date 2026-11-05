@@ -123,6 +123,24 @@ export function resolveComponent(P, root, lock, name, version) {
   return P.join(vendorDir(P, root), name, version);
 }
 
+// パーツライブラリ 2.x のカタログが指す写し（components2.lock.json の catalogues.<版>.content.<名前>：そのリリースの manifest の files と
+// ちょうど同じバイトのフォルダの content hash）。部品庫は index.js が同じなら版を付け替えずに README・demo などを直すことがある（版を
+// 上げるのは index.js が変わるときだけ）ので、パーツの版だけでは README・demo のバイトが決まらない。カタログ（どのリリースか）とパーツの
+// 名前で引けば、そのリリースのバイトになる。index.js は同じ版ならどのカタログの写しでも同じ（components2-update が確かめる）。
+//   lock：components.lock.json、lock2：components2.lock.json、catalogue：カタログの版、version：省けばそのカタログのパーツの版
+// カタログに content がない（古い固定）・版がカタログのものと違う（設定のファイルで固定した版）なら、版の写し（resolveComponent）に戻る
+export function resolveCatalogueContent(P, root, lock, lock2, catalogue, name, version) {
+  const cat = isObj(lock2) && isObj(lock2.catalogues) && own(lock2.catalogues, catalogue) ? lock2.catalogues[catalogue] : null;
+  const v = version === undefined && cat && isObj(cat.parts) ? cat.parts[name] : version;
+  if (typeof v !== 'string') return null;
+  if (cat && isObj(cat.parts) && cat.parts[name] === v && isObj(cat.content) && own(cat.content, name)) {
+    if (!NAME_RE.test(name) || !VERSION_RE.test(v)) return null;
+    const hash = cat.content[name];
+    return typeof hash === 'string' && SHA_RE.test(hash) ? P.join(vendorDir(P, root), 'sha256', hash) : null;
+  }
+  return resolveComponent(P, root, lock, name, v);
+}
+
 // 使う版を決める：want（固定。opts.componentVersions や作業フォルダの設定のファイルの components）が手元にあればそれ、なければ既定の版。
 // 返すもの：{version, note}（note は知らせ。固定した版が手元にないときなど）。部品が固定のファイルにないときは version: null
 export function pickVersion(lock, name, want) {

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=7403efc46897562d -->
+<!-- i18n: pair=README.md sha256=a5c1698147a8c255 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -170,7 +170,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 - **台本の音声を 1 ステップずつ：** 「音声」でステップの音声を聞き、作った後に台本が変わっていれば「古い」と示す。マイクから録る（入力の大きさの表示つき）、ファイルから取り込む、AI 音声をこの PC で作る（日本語は読み辞書つきの Irodori-TTS、英語は Kokoro。WebGPU が要り、モデルは初回だけ取得）で作り直すのどれかをして、「この音声を使う」。取り直しは `tts/core.py` と同じく整え（無音を削り −20 LUFS）、出どころと一緒に MP3 で残す（[詳しく](docs/editor.ja.md#台本の音声音声の板)）。Egatari ファイルでは組み直さずに保存する
 - **AI のコーディング道具と一緒に：** ほかのもの（Claude Code・Codex・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・ステップのまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す
 - **言語：** ふだんはブラウザの言語に合わせる。右上の **English / 日本語** のボタン（または `?lang=en`・`?lang=ja`）で切り替える
-- **道具の列：** ファイル ▾（新規作成…・開く…・保存・名前を付けて保存…・エクスポート ▸ 参加者用（再生専用）…／印刷・PDF・ファイルの情報…・フォルダで作業する…）、スライド ▾（スライドの挿入…・複製・削除・修正…）、品質チェック（警告の数）、プレビュー ▾（スライドショー・授業・動画で確かめる、発表者ビュー（台本と次のステップが出る窓）で確かめる）
+- **道具の列：** ファイル ▾（新規作成…・開く…・保存・名前を付けて保存…・エクスポート ▸ 参加者用（再生専用）…／スライドを印刷／本を印刷（本のない教材は台本を印刷）・ファイルの情報…・フォルダで作業する…）、スライド ▾（スライドの挿入…・複製・削除・修正…）、品質チェック（警告の数）、プレビュー ▾（スライドショー・授業・動画で確かめる、発表者ビュー（台本と次のステップが出る窓）で確かめる）
 
 できないこと：自分の参照音声での TTS（`tts/synth.py`）・動画・`npm run check`（品質チェックのコマンド版）・`tools/pdf.mjs` はコマンドで行い、プレビューはフォルダの音声を鳴らさない（鳴らすのは音声の板）。ブラウザ版の品質チェックは一部の項目（はみ出し・文字の大きさ・字数・台本の抜け・コントラスト）だけで、目安にとどまる（全部は `npm run check`）。書き出す HTML は字を絞り込まず分割ファイルごと埋め込む（ブラウザに fonttools がない）ので、コマンドで組んだものより大きい（`examples/minimal` で 0.7 MB に対して約 2 MB）。リポジトリのパーツとテーマはアプリを組んだときのもの。作業フォルダの中のパーツ・テーマはフォルダから読む。
 
@@ -190,7 +190,19 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れている道具（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、道具を再起動する。手間をかけたくなければ、Claude Code で `/plugin` → Marketplaces → egatari → Enable auto-update（自動更新）を入れておく。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+
+## Codex で使う
+
+Codex も同じリポジトリの同じスキルを読む。ターミナルで：
+
+```bash
+codex plugin marketplace add egatari/egatari-studio
+codex plugin add egatari@egatari
+codex plugin add egatari-studio@egatari
+```
+
+教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。Codex の workspace-write サンドボックスはネットとブラウザを塞ぐので、`check` と `build` はサンドボックスの外で、またはネットとブラウザを許して動かす。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
 
 チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 
@@ -215,7 +227,7 @@ D=examples/minimal
 uv run --project tts python tts/synth.py $D --dry-run    # 無音の仮の音声（オフラインで流れを試す）
 uv run --project tts python tts/synth.py $D              # 本番の TTS（サーバーと参照音声が要る）
 node kit/build.mjs $D/deck.html                          # 組み直して、音声の長さをタイムラインに入れる
-node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら --only "更新の式:2"、1 本にまとめるなら --full
+node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら --only "更新の式:2"（スライド 1 枚分なら --only 更新の式）、1 本にまとめるなら --full
 ```
 
 - 声：`--voices expert=bob,novice=alice` か `<教材>/voice.json`（`{"expert": "me"}`、または wav のパス）。既定は 1 人なら `bob`、掛け合いなら `bob`（Expert）と `alice`（Novice）で、`tts/voices/<名前>.wav` を探す。英語の教材では `<名前>_en.wav` があればそちらを使う

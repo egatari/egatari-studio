@@ -1,0 +1,37 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "展開"
+        }
+      ],
+      "label": "sec-q7r2x5",
+      "identifier": "sec-q7r2x5"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "link",
+          "url": "#eq-expand",
+          "children": []
+        },
+        {
+          "type": "text",
+          "value": " を展開する。"
+        }
+      ]
+    },
+    {
+      "type": "math",
+      "value": "\\sum_i (x_i - c)^2 = n(c - \\bar{x})^2 + \\sum_i (x_i - \\bar{x})^2",
+      "identifier": "eq-expand",
+      "label": "eq-expand"
+    }
+  ]
+}

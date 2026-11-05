@@ -4,7 +4,7 @@
 //       固定した ustar + gzip）と、リリースの説明に足す sha256 の行（editor-site-vX.Y.Z.sha256.txt）を作る。どこにも上げない（上げてリリースの説明に sha256 を書くコマンドを出す）
 //   node tools/site-versions.mjs verify <vX.Y.Z>… [--repo owner/name]
 //       リリースに添えた tar.gz を取り、リリースの説明に書いた sha256（と GitHub の記録する digest）と合うか確かめる
-//   node tools/site-versions.mjs assemble --site _site [--current vX.Y.Z] [--repo owner/name]
+//   node tools/site-versions.mjs assemble --site _site [--current vX.Y.Z | vX.Y.Z-rc.N] [--repo owner/name]
 //       pages のワークフローが使う：_site（いま組んだ版。根に置く）に、その写しを _site/v<今の版>/ に、前の各リリースの tar.gz を取って
 //       確かめて _site/vX.Y.Z/ に広げ、_site/versions.json を書く。案内を持たない古い写しには ../version-notice.js を読み込ませる
 //       パーツのサンプルのページ（_site/parts/v<パーツライブラリの版>/。build-app.mjs --parts、backlog #158）：版の写し（/vX.Y.Z/）には入れず、
@@ -26,6 +26,8 @@ import { writePartsIndex, partsCurrent } from './parts-gallery.mjs';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const VERSION_DIR = /^v(\d+\.\d+\.\d+)$/;
 export const RELEASE_TAG = /^v(\d+\.\d+\.\d+)$/;
+// package.json の版：リリースは X.Y.Z、候補は X.Y.Z-rc.N（npm.yml のタグ vX.Y.Z-rc.N と同じ。RELEASING.md）
+export const CURRENT_VERSION = /^(\d+\.\d+\.\d+)(-rc\.\d+)?$/;
 export const assetName = (version) => `editor-site-v${version}.tar.gz`;
 export const shaLine = (version, hex) => `${assetName(version)} sha256: ${hex}`;
 export const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
@@ -155,20 +157,26 @@ const dirBytes = (d) => walk(d).reduce((n, f) => n + fs.statSync(path.join(d, f)
 // → {versions, sizes, injected}
 export function assemble({ site, current, releases = [], log = console.log }) {
   if (!fs.existsSync(path.join(site, 'index.html'))) throw new Error(`${site}: no index.html (build the editor first)`);
-  if (!/^\d+\.\d+\.\d+$/.test(current)) throw new Error(`bad current version ${current}`);
+  const cm = CURRENT_VERSION.exec(current);
+  if (!cm) throw new Error(`bad current version ${current}`);
+  // 候補（X.Y.Z-rc.N）：置かない版。/v<版>/ の写しは作らず、サイトの版の一覧は前のリリースだけ（根の版は直近のリリース）。パーツのサンプルは X.Y.Z（次のリリース）が公開したものとして扱う
+  const rc = !!cm[2], base = cm[1];
   for (const e of fs.readdirSync(site)) if (VERSION_DIR.test(e)) fs.rmSync(path.join(site, e), { recursive: true, force: true });
   fs.rmSync(path.join(site, 'versions.json'), { force: true });
   const rootFiles = fs.readdirSync(site).filter((e) => e !== PARTS_DIR);
-  const cur = path.join(site, 'v' + current);
-  fs.mkdirSync(cur);
-  for (const e of rootFiles) fs.cpSync(path.join(site, e), path.join(cur, e), { recursive: true });
-  const versions = [current], sizes = { [current]: dirBytes(cur) }, injected = {};
+  const versions = [], sizes = {}, injected = {};
+  if (!rc) {
+    const cur = path.join(site, 'v' + current);
+    fs.mkdirSync(cur);
+    for (const e of rootFiles) fs.cpSync(path.join(site, e), path.join(cur, e), { recursive: true });
+    versions.push(current); sizes[current] = dirBytes(cur);
+  }
   // パーツのサンプルのページ：版 → それを公開した Studio の版（いま組んだものは current）
   const partsDir = path.join(site, PARTS_DIR), partsNow = partsCurrent(site);
   const partsFrom = {};
-  for (const v of partsVersions(partsDir)) partsFrom[v] = current;
+  for (const v of partsVersions(partsDir)) partsFrom[v] = base;
   for (const r of releases) {
-    if (r.version === current || versions.includes(r.version)) continue;
+    if (r.version === base || versions.includes(r.version)) continue;
     verifyAsset(r.buf, r);
     const d = path.join(site, 'v' + r.version);
     const n = unpackSite(r.buf, d);
@@ -182,9 +190,10 @@ export function assemble({ site, current, releases = [], log = console.log }) {
   const parts = writePartsIndex(site, partsNow, partsFrom);
   if (parts) log(`parts: ${parts.versions.map((v) => `v${v} (from Studio v${partsFrom[v]})`).join(', ')}; current v${parts.current}`);
   versions.sort(cmpVersion);
-  fs.writeFileSync(path.join(site, 'versions.json'), JSON.stringify({ root: current, versions }, null, 1) + '\n');
+  const root = rc ? versions[0] : current;   // 候補では直近のリリース（なければ書かない）
+  fs.writeFileSync(path.join(site, 'versions.json'), JSON.stringify(root ? { root, versions } : { versions }, null, 1) + '\n');
   const total = dirBytes(site);
-  log(`site: root v${current} + ${versions.map((v) => 'v' + v).join(', ')}: ${(total / 1048576).toFixed(0)} MB`);
+  log(`site: root v${current}${rc ? ' (release candidate: not copied to /v…/; the list shows releases only)' : ''} + ${versions.map((v) => 'v' + v).join(', ')}: ${(total / 1048576).toFixed(0)} MB`);
   if (total > SITE_MAX) throw new Error(`site is ${(total / 1048576).toFixed(0)} MB, over the GitHub Pages limit (1 GB): leave out the oldest versions`);
   if (total > SITE_WARN) log(`warning: site is ${(total / 1048576).toFixed(0)} MB; GitHub Pages allows 1 GB`);
   return { versions, sizes, injected, total, parts };
@@ -237,7 +246,7 @@ function fetchReleases(repo, { only = null, skip = null } = {}) {
 }
 
 // ---------------------------------------------------------------- コマンド
-const versionOfTag = (t) => { const m = RELEASE_TAG.exec(t); if (!m) throw new Error(`not a release tag: ${t} (vX.Y.Z)`); return m[1]; };
+const versionOfTag = (t, allowRc = false) => { const m = (allowRc ? /^v(\d+\.\d+\.\d+(?:-rc\.\d+)?)$/ : RELEASE_TAG).exec(t); if (!m) throw new Error(`not a release tag: ${t} (vX.Y.Z)`); return m[1]; };
 function cmdAsset(args) {
   const oi = args.indexOf('--out');
   const OUT = path.resolve(oi >= 0 ? args[oi + 1] : path.join(ROOT, 'out', 'site'));
@@ -294,10 +303,11 @@ function cmdVerify(args) {
 }
 function cmdAssemble(args) {
   const si = args.indexOf('--site'), ci = args.indexOf('--current');
-  if (si < 0) throw new Error('usage: node tools/site-versions.mjs assemble --site _site [--current vX.Y.Z] [--repo owner/name]');
+  if (si < 0) throw new Error('usage: node tools/site-versions.mjs assemble --site _site [--current vX.Y.Z[-rc.N]] [--repo owner/name]');
   const site = path.resolve(args[si + 1]);
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
-  const current = ci >= 0 ? versionOfTag(args[ci + 1]) : pkg;
+  const current = ci >= 0 ? versionOfTag(args[ci + 1], true) : pkg;
+  if (!CURRENT_VERSION.test(pkg)) throw new Error(`package.json version ${pkg} is not X.Y.Z or X.Y.Z-rc.N`);
   if (current !== pkg) throw new Error(`--current v${current} but package.json is ${pkg} (tag the release commit)`);
   assemble({ site, current, releases: fetchReleases(repoOf(args), { skip: current }) });
 }

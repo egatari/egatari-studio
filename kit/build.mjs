@@ -23,6 +23,7 @@
 //   narration.md（口述原稿）、timeline.json（秒数の調整）、audio/manifest.json（TTS の出力）、macros.tex（数式のマクロ）
 //
 // 組む本体は kit/core/build-core.mjs（ブラウザの編集アプリと共有）。ここは Node の読み書き・字の絞り込み（fonttools）・音声の圧縮（ffmpeg）・CLI
+import { cliHints } from './cli-hint.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -42,6 +43,7 @@ import { safeWriteFile, backupFile } from './safe-fs.mjs';
 import { readRegular, readRegularText, regularStat, READ_LIMITS } from './bounded-read.mjs';
 import { userThemeDirs } from './theme-dirs.mjs';
 import { draftLeftovers, leftoverLines } from './core/template-text.mjs';
+import { CITEPROC_CREDIT } from './core/citeproc-credit.mjs';
 import { THEMES_LOCK_FILE, parseThemesLock, configThemePins, themeUpdate } from './core/themes-lock.mjs';
 
 export { annotate, analyzeSlideIds, readMacros, isJapanese, decodeEntities, glyphText } from './core/build-core.mjs';
@@ -163,8 +165,23 @@ function fontDir(pkg) {
   return fs.existsSync(path.join(v, 'package.json')) ? v : path.dirname(require.resolve(`${pkg}/package.json`));
 }
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
+// 本文の引用を組む CSL（format spec §9C.4。kit/core/article-cite.mjs）：citeproc-js と同梱の書式・言語のファイル（vendor/csl）。
+// 読み込みが重いので、本文が文献を引くときに初めて読む
+let cslCache = null;
+function cslNode() {
+  if (cslCache) return cslCache;
+  const dir = path.join(ROOT, 'vendor', 'csl');
+  const file = (sub, name) => { const p = path.join(dir, sub, name); return fs.existsSync(p) ? readRegular(p, 1 << 20).toString('utf8') : null; };   // 同梱の書式は 100 KB ほど
+  cslCache = { CSL: require('citeproc'), style: (id) => (/^[a-z0-9-]+$/.test(id) ? file('styles', `${id}.csl`) : null), locale: (tag) => (/^[A-Za-z-]+$/.test(tag) ? file('locales', `locales-${tag}.xml`) : null) };
+  return cslCache;
+}
 export const nodeEnv = {
   path, KIT, ROOT, version: VERSION, katex, abcjs,
+  csl: cslNode,   // 関数（env を写す { ...env } で citeproc を読み込まないように）
+  // 本文の道具（format spec §9C。1 ファイルへの書き出し kit/core/portable.mjs が、本文があるときだけ読み込む。myst-parser が重いので）
+  articleTools: async () => ({ ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')), ...(await import('./core/article.mjs')) }),
+  // 本文のステップへのリンクの行き先を再生器で確かめる（§9C.8 の 1。kit/article-steps.mjs。ブラウザを起動するので、リンクがあるときだけ）
+  articleSteps: async (html, links) => (await import('./article-steps.mjs')).resolveStepLinks(html, links),
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir,
@@ -274,6 +291,12 @@ export function updateThemePins(srcPath) {
   return out;
 }
 
+// 本文（article.md・article/、format spec §9C）があるか。あるときだけ本文の読み手（myst-parser。読み込みが重い）を読み込む
+export function hasArticle(srcPath) {
+  const d = path.dirname(path.resolve(srcPath));
+  return fs.existsSync(path.join(d, 'article.md')) || fs.existsSync(path.join(d, 'article'));
+}
+
 // ---------------------------------------------------------------- CLI
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const a = process.argv.slice(2);
@@ -322,15 +345,41 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (idw.length) console.log(`  slide ids written back to the working folder (backups in .cache/edits/): ${idw.join(', ')}`);
     console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live session ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
+    if (r.stats.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);
     if (lw) console.warn('  ⚠ portable: ' + lw);
   } else {
     const out = opts.out || defaultOut(src);
+    // 本文（article.md・article/<名前>.md、format spec §9C）：組む前に読み（言語と題は原稿から）、再生器の本の窓のために出力にも入れる
+    // （§9C.6 の形：<section id="egatari-readable"> の中の <article id="egatari-article">。実行系の前。再生器は始めにこの層を隠し、本の窓に移す）。
+    // 読むための頁も出力の横に <名前>.article.html で書き、点検（§9C.8）の結果を出す
+    let ap = null;
+    const A = hasArticle(src) ? { ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')) } : null;
+    const { articlePage, articlePageOut, articleMessage, themeTokens } = A || {};
+    if (A) {
+      let srcHtml = '';
+      try { srcHtml = readRegularText(src, { max: READ_LIMITS.source }).text; } catch { /* 組み立てが知らせる */ }
+      const lang0 = srcHtml.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
+      try { ap = articlePage(nodeEnv, src, { lang: lang0, title: titleOf(srcHtml) }); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
+    }
+    const withArticle = ap && ap.article ? { articleHtml: ap.article, articleCss: ap.css, runtimePrefix: `<section id="${FORMAT.READABLE_ID}" lang="${ap.lang.replace(/[&"<>]/g, '')}">\n${ap.article}\n</section>\n` } : {};
     let r;
-    try { r = build(src, { ...opts, out }); } catch (e) { if (!['build-too-large', 'build-not-a-file', 'component-requires-missing', 'component-not-in-catalogue'].includes(e.code)) throw e; console.error(e.message); process.exit(1); }
+    try { r = build(src, { ...opts, ...withArticle, out }); } catch (e) { if (!['build-too-large', 'build-not-a-file', 'component-requires-missing', 'component-not-in-catalogue'].includes(e.code)) throw e; console.error(e.message); process.exit(1); }
     try { writeOutput(src, out, r.html); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
     const s = r.stats;
     console.log(`slides: ${s.slides}, math: ${s.math}, components: ${s.components.join(' ') || '-'}, font files: ${s.fontFiles}, narration: ${s.narration}, audio: ${s.audio}, theme: ${s.theme}, size: ${(r.html.length / 1024).toFixed(0)} KB -> ${out}`);
     for (const w of s.warn) console.warn('  ⚠ ' + w);
+    const lang = r.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
+    if (ap) {
+      const ao = articlePageOut(path, path.resolve(out));
+      // 読むための頁の色：組んだデッキの :root の色の変数を写す
+      const page = ap.html.replace('<style>', () => '<style>' + themeTokens(r.html));
+      try { writeOutput(src, ao, page); } catch (e) { console.error(`article: ${e.message}`); process.exit(1); }
+      const ml = core.isJapanese(lang) ? 'ja' : 'en', st = ap.stats, errs = ap.problems.filter((p) => p.sev === 'error').length;
+      console.log(`article: files: ${st.files}, sections: ${st.sections}, figures: ${st.figures}, tables: ${st.tables}, equations: ${st.equations}, errors: ${errs} -> ${ao}`);
+      for (const p of ap.problems) console.warn(`  ${p.sev === 'error' ? '✗' : '⚠'} article: ${cliHints(articleMessage(ml, p))}`);
+      for (const w of ap.warnings) console.warn('  ⚠ article: ' + w);
+      if (ap.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
+    }
   }
 }

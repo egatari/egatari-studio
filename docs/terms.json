@@ -141,6 +141,23 @@
    "note": ""
   },
   {
+   "id": "created-by",
+   "group": "Format and files",
+   "en": "Created by",
+   "ja": "作成者",
+   "definition": "The people who made the lesson (metadata.creators), shown in File info in the editor and the player.",
+   "avoid": {
+    "ja": [
+     "作り手"
+    ],
+    "en": []
+   },
+   "internal": "creators",
+   "decided": "2026-11-04",
+   "by": "owner",
+   "note": "作り手 stays only where it means people who make lessons or parts in general."
+  },
+  {
    "id": "sample",
    "group": "Format and files",
    "en": "Samples",
@@ -438,6 +455,105 @@
    },
    "internal": "pages=spread",
    "decided": "2026-10-26",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "slides-and-book",
+   "group": "Structure and playback",
+   "en": "Slides and book",
+   "ja": "スライドと本",
+   "definition": "Layout with the slides and the book side by side (spec split). Without a book: スライドと台本 / Slides and script.",
+   "avoid": {
+    "ja": [
+     "分割表示",
+     "スプリット"
+    ],
+    "en": [
+     "Split view"
+    ]
+   },
+   "internal": "split (Player P2)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "read-in-book",
+   "group": "Structure and playback",
+   "en": "Read in the book",
+   "ja": "本で読む",
+   "definition": "Link on a slide to the section of the book that goes with it; opens Slides and book (or the book alone on narrow screens).",
+   "avoid": {
+    "ja": [
+     "続きを読む",
+     "本文へ"
+    ],
+    "en": [
+     "Continue reading"
+    ]
+   },
+   "internal": "stage→article link (spec §9C.5)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "watch-on-slides",
+   "group": "Structure and playback",
+   "en": "Watch on slides",
+   "ja": "スライドで見る",
+   "definition": "Link in the book that shows the slide's step over the text with its motion; closing returns to the place being read.",
+   "avoid": {
+    "ja": [
+     "この部分を見る",
+     "動きを見る"
+    ],
+    "en": [
+     "See this part"
+    ]
+   },
+   "internal": "article→stage link (spec §9C.5)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "back-to-playing",
+   "group": "Structure and playback",
+   "en": "Back to the playing part",
+   "ja": "再生中の所に戻る",
+   "definition": "Shown when the viewer scrolls the book away while narration plays; brings the book back to the current turn and resumes following.",
+   "avoid": {
+    "ja": [
+     "同期に戻る"
+    ],
+    "en": [
+     "Resync"
+    ]
+   },
+   "internal": "detach sync (Player P2)",
+   "decided": "2026-10-29",
+   "by": "standards",
+   "note": "Kindle / lyrics wording."
+  },
+  {
+   "id": "book-may-not-match",
+   "group": "Structure and playback",
+   "en": "Slides and book may not match",
+   "ja": "スライドと本が合っていないかもしれません",
+   "definition": "Editor notice when a linked section or step changed after the link was checked (spec §9C.7).",
+   "avoid": {
+    "ja": [
+     "古いかも",
+     "不整合"
+    ],
+    "en": [
+     "stale (in the UI)"
+    ]
+   },
+   "internal": "articleLinks staleness (spec §9C.7)",
+   "decided": "2026-10-29",
    "by": "standards",
    "note": ""
   },
@@ -1133,7 +1249,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Free plan (of the chat AI)",
    "ja": "無料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a free plan; the suggested size limit of the instructions is 40 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
+   "definition": "The user's chat AI is on a free plan; the suggested size limit of the instructions is 45 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
    "avoid": {
     "ja": [
      "無料版"
@@ -1141,9 +1257,9 @@
     "en": []
    },
    "internal": "plan: free",
-   "decided": "2026-10-25",
+   "decided": "2026-11-03",
    "by": "owner",
-   "note": ""
+   "note": "backlog #169: raised from 40 KB to 45 KB"
   },
   {
    "id": "paid-plan",
@@ -1874,6 +1990,261 @@
    "decided": "2026-10-28",
    "by": "owner",
    "note": "Owner, 10/28; follows the 10/22 host/participant decision."
+  },
+  {
+   "id": "contents",
+   "group": "Reading aids",
+   "en": "Contents",
+   "ja": "目次",
+   "definition": "List of the book's sections (or the slide titles) at the top of the book pane.",
+   "avoid": {
+    "ja": [
+     "もくじ",
+     "アウトライン（本で）"
+    ],
+    "en": [
+     "TOC (in the UI)"
+    ]
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": "Decided 2026-10-29 (standards); copied into this file with the reading aids."
+  },
+  {
+   "id": "book-background",
+   "group": "Reading aids",
+   "en": "Background: White / Sepia / Black",
+   "ja": "背景：白・セピア・黒",
+   "definition": "Learner's per-device choice for the book pane only; the slides keep the theme colours. Kindle / Apple Books wording.",
+   "avoid": {
+    "ja": [
+     "テーマ（この意味で）",
+     "ダークモード（この意味で）",
+     "生成り（本の背景で）"
+    ],
+    "en": [
+     "Theme (in this sense)"
+    ]
+   },
+   "internal": "text-pane background (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": "Decided 2026-10-29 (standards). 白 keeps the theme's own light ground."
+  },
+  {
+   "id": "search",
+   "group": "Reading aids",
+   "en": "Search",
+   "ja": "検索",
+   "definition": "Button at the top of the book pane that opens its own search box (also Ctrl+F / ⌘F in the book). Usual wording.",
+   "avoid": {
+    "ja": [
+     "サーチ"
+    ],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "search-in-book",
+   "group": "Reading aids",
+   "en": "Search in the book / Search in the script",
+   "ja": "本の中を検索／台本の中を検索",
+   "definition": "Name and placeholder of the search box; the second form for a lesson without a book (Read with script).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "search-result",
+   "group": "Reading aids",
+   "en": "Previous result / Next result",
+   "ja": "前の検索結果／次の検索結果",
+   "definition": "Buttons of the search box (Shift+Enter / Enter). Chrome find-bar wording.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "no-results",
+   "group": "Reading aids",
+   "en": "No results",
+   "ja": "見つかりません",
+   "definition": "Shown in the search box when nothing matches.",
+   "avoid": {
+    "ja": [
+     "該当なし（検索で）"
+    ],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "text-and-background",
+   "group": "Reading aids",
+   "en": "Text and background",
+   "ja": "文字と背景",
+   "definition": "The Aa button of the book pane: text size, line spacing and background, per device, never in the file.",
+   "avoid": {
+    "ja": [
+     "表示の設定（この意味で）"
+    ],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "text-size",
+   "group": "Reading aids",
+   "en": "Text size",
+   "ja": "文字サイズ",
+   "definition": "Size of the book's text in steps (Readium CSS user setting); the slides keep their size.",
+   "avoid": {
+    "ja": [
+     "字の大きさ（設定の名前で）",
+     "フォントサイズ（本で）"
+    ],
+    "en": [
+     "Font size (in the book)"
+    ]
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "text-smaller-larger",
+   "group": "Reading aids",
+   "en": "Smaller text / Larger text",
+   "ja": "文字を小さく／文字を大きく",
+   "definition": "The two buttons of Text size.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "line-spacing",
+   "group": "Reading aids",
+   "en": "Line spacing",
+   "ja": "行間",
+   "definition": "Space between the lines of the book, Normal or Wide.",
+   "avoid": {
+    "ja": [
+     "行の間隔"
+    ],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "line-spacing-values",
+   "group": "Reading aids",
+   "en": "Normal / Wide",
+   "ja": "標準／広い",
+   "definition": "The two steps of Line spacing.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "resumed",
+   "group": "Reading aids",
+   "en": "Resumed where you left off",
+   "ja": "前回の続きから",
+   "definition": "One-time notice when a lesson reopens in the book at the place last read on this device.",
+   "avoid": {
+    "ja": [
+     "前の続きから"
+    ],
+    "en": [
+     "Continuing where you left off"
+    ]
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "start-over",
+   "group": "Reading aids",
+   "en": "Start over",
+   "ja": "最初から",
+   "definition": "Button of the resume notice: go to the beginning.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "reading-progress",
+   "group": "Reading aids",
+   "en": "Progress",
+   "ja": "進行状況",
+   "definition": "Accessible name of the thin bar under the top of the book pane (how far the book is scrolled). No page numbers.",
+   "avoid": {
+    "ja": [
+     "進み具合（本の窓で）"
+    ],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "enlarge",
+   "group": "Reading aids",
+   "en": "Enlarge",
+   "ja": "拡大",
+   "definition": "Clicking a figure in the book shows it large; accessible name 拡大：<figure>.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "reading aids (Player P2)",
+   "decided": "2026-11-03",
+   "by": "standards",
+   "note": ""
   }
  ]
 }

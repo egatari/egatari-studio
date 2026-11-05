@@ -1,0 +1,28 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "definitionList",
+      "children": [
+        {
+          "type": "definitionTerm",
+          "children": [
+            {
+              "type": "text",
+              "value": "Entropy"
+            }
+          ]
+        },
+        {
+          "type": "definitionDescription",
+          "children": [
+            {
+              "type": "text",
+              "value": "The average information of a source."
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

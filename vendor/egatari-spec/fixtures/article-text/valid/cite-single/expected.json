@@ -1,0 +1,30 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Entropy was defined early "
+        },
+        {
+          "type": "citeGroup",
+          "kind": "parenthetical",
+          "children": [
+            {
+              "type": "cite",
+              "identifier": "doe1948",
+              "label": "doe1948",
+              "kind": "parenthetical"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

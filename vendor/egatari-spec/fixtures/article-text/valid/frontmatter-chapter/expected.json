@@ -1,0 +1,62 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "符号の木"
+        }
+      ],
+      "label": "sec-h7q2xz",
+      "identifier": "sec-h7q2xz"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "ハフマン符号は "
+        },
+        {
+          "type": "link",
+          "url": "#fig-tree",
+          "children": []
+        },
+        {
+          "type": "text",
+          "value": " の木で作る。"
+        }
+      ]
+    },
+    {
+      "type": "container",
+      "kind": "figure",
+      "children": [
+        {
+          "type": "image",
+          "url": "images/tree.png",
+          "alt": "葉に記号を持つ二分木"
+        },
+        {
+          "type": "caption",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "ハフマン木の例。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "label": "fig-tree",
+      "identifier": "fig-tree"
+    }
+  ]
+}

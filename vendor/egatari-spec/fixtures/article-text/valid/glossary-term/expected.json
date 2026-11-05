@@ -1,0 +1,86 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "crossReference",
+          "label": "平均",
+          "identifier": "term-平均",
+          "children": [
+            {
+              "type": "text",
+              "value": "平均"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "は外れ値に引っぱられるが、"
+        },
+        {
+          "type": "crossReference",
+          "label": "中央値",
+          "identifier": "term-中央値",
+          "children": [
+            {
+              "type": "text",
+              "value": "真ん中の値"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "は引っぱられにくい。"
+        }
+      ]
+    },
+    {
+      "type": "glossary",
+      "children": [
+        {
+          "type": "definitionList",
+          "children": [
+            {
+              "type": "definitionTerm",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "平均"
+                }
+              ]
+            },
+            {
+              "type": "definitionDescription",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "値の和を、値の個数で割ったもの。"
+                }
+              ]
+            },
+            {
+              "type": "definitionTerm",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "中央値"
+                }
+              ]
+            },
+            {
+              "type": "definitionDescription",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "値を大きさの順に並べたときの、真ん中の値。"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

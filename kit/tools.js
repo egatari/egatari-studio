@@ -37,11 +37,13 @@ var ICON = {
   next: SVG('<path d="M6 3.2L10.8 8 6 12.8"/>'),
   play: SVG('<path d="M5 3.2l8 4.8-8 4.8z" fill="currentColor"/>'),
   stop: SVG('<rect x="4" y="4" width="8" height="8" rx="1.2" fill="currentColor"/>'),
+  pause: SVG('<rect x="4" y="3.5" width="2.6" height="9" rx=".8" fill="currentColor"/><rect x="9.4" y="3.5" width="2.6" height="9" rx=".8" fill="currentColor"/>'),
   laser: SVG('<circle cx="8" cy="8" r="2.4" fill="currentColor" stroke="none"/><circle cx="8" cy="8" r="5.6" opacity=".5"/>'),
   pen: SVG(PEN + '<path d="M2 14h12"/>'),
   vpen: SVG(PEN + '<path d="M2 14h12" stroke-dasharray="1.4 2.2"/>'),
   clear: SVG('<path d="M7.4 13.5H14"/><path d="M5.6 13.5L2.6 10.5a1.2 1.2 0 0 1 0-1.7l6-6a1.2 1.2 0 0 1 1.7 0l3 3a1.2 1.2 0 0 1 0 1.7L7.4 13.5z"/><path d="M5.4 6.2l4.4 4.4"/>'),
   over: SVG('<rect x="2" y="2.8" width="5" height="4" rx=".8"/><rect x="9" y="2.8" width="5" height="4" rx=".8"/><rect x="2" y="9.2" width="5" height="4" rx=".8"/><rect x="9" y="9.2" width="5" height="4" rx=".8"/>'),
+  view: SVG('<rect x="1.8" y="3" width="12.4" height="10" rx="1.2"/><path d="M8 3v10M9.8 6h2.6M9.8 8.4h2.6M9.8 10.8h1.6"/>'),
   lect: SVG('<rect x="2" y="6.3" width="8.5" height="3.4" rx=".6" fill="currentColor" stroke="none" opacity=".4"/><path d="M2.5 4h11M2.5 8h7.5M2.5 12h11"/>'),
   pres: SVG('<rect x="1.5" y="2.5" width="13" height="8.8" rx="1.2"/><path d="M8 11.3v2.4M5 13.7h6M4.2 5.6h4.6M4.2 8.1h2.8"/>'),
   full: SVG('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
@@ -166,6 +168,8 @@ css(
   "#dt-cb svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}" +
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
+  // 再生速度（自習）：字で今の速さを見せる
+  "#dt-cb button[data-b=rate]{width:auto;min-width:40px;padding:0 4px;font:600 12px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}" +
   // 編集モードの間は、発表の道具（自動再生・レーザー・ペン・消えるペン・色・消す・一覧・全画面）のボタンを隠す
   "#dt-cb.dt-edit [data-b=auto],#dt-cb.dt-edit [data-b=laser],#dt-cb.dt-edit [data-b=vpen],#dt-cb.dt-edit [data-b=pen] .dt-dot,#dt-cb.dt-edit .dt-sw," +
   "#dt-cb.dt-edit [data-b=clear],#dt-cb.dt-edit [data-b=over],#dt-cb.dt-edit [data-b=full],#dt-cb.dt-edit .dt-tsep{display:none!important}" +
@@ -187,13 +191,15 @@ css(
   // キーの一覧（?）
   "#dt-help{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.32);padding:16px}" +
   "#dt-help.show{display:flex}" +
-  "#dt-help .dt-card{max-width:860px;width:fit-content;max-height:100%;overflow:auto;padding:18px 22px 14px;border-radius:14px;background:rgba(22,22,24,.94);" +
+  "#dt-help .dt-card{max-width:1000px;width:fit-content;max-height:100%;overflow:auto;padding:18px 22px 14px;border-radius:14px;background:rgba(22,22,24,.94);" +
   " color:#e8e8e8;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.45)}" +
   "#dt-help .dt-cols{display:grid;grid-auto-flow:column;align-items:start;gap:6px 36px}" +
   "@media (max-width:760px){#dt-help .dt-cols{grid-auto-flow:row}}" +
   "#dt-help .dt-sec{display:grid;grid-template-columns:auto auto;align-content:start;column-gap:10px}#dt-help h3{grid-column:1/-1}" +
   "#dt-help h3{margin:10px 0 4px;font-size:11.5px;font-weight:600;color:#9a9a9a;letter-spacing:.04em}" +
   "#dt-help .dt-row{display:contents}#dt-help .dt-row>span{padding:3px 0;white-space:nowrap}#dt-help .dt-row>span:first-child{text-align:right}" +
+  // 説明の欄は折り返す（キーの欄は折り返さない）：1280 の窓でも道具の列が窓の右で切れない。狭い画面（スマートフォン）でも横にはみ出さない
+  "#dt-help .dt-row>span:last-child{white-space:normal;min-width:0}#dt-help .dt-sec{grid-template-columns:auto minmax(0,1fr)}" +
   "#dt-help kbd{display:inline-block;min-width:20px;margin:0 1px;padding:1px 5px;border:1px solid rgba(255,255,255,.22);border-bottom-width:2px;border-radius:5px;" +
   " background:rgba(255,255,255,.07);font:600 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;color:#fff}" +
   "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}" +
@@ -202,6 +208,9 @@ css(
   "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}" +
   "#dt-help .dt-about{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:8px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;font-size:12px;color:#9a9a9a}" +
   "#dt-help .dt-about-v{color:#ddd;font-variant-numeric:tabular-nums}" +
+  // ファイルの情報（題名・作成者・著作権・ライセンス・クレジットの表示）
+  "#dt-help .dt-rights{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-rights dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px}" +
+  "#dt-help .dt-rights-r{display:contents}#dt-help .dt-rights dt{color:#9a9a9a;white-space:nowrap}#dt-help .dt-rights dd{margin:0;color:#e8e8e8;overflow-wrap:anywhere}" +
   // 添付（ダウンロードだけ）
   "#dt-help .dt-att{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-att ul{list-style:none;margin:0;padding:0}" +
   "#dt-help .dt-att li{display:flex;align-items:center;gap:12px;padding:5px 0}#dt-help .dt-att .dt-att-n{flex:1;min-width:0}" +
@@ -592,7 +601,7 @@ window.addEventListener("message", function(e){
   else if (m.cmd === "key" && m.key === "l"){
     // 授業モード：本体はキーとして押し、「今の画面」は自分で切り替える（deck.js は埋め込みのキーを受けない）
     if (!FOLLOW) press("l");
-    else { DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); var s = DECK.state(); DECK.seek(s.slide - 1, s.step, Infinity); }
+    else DECK.togglePreview();
   }
   else if (m.cmd === "key" && m.key === "o" && !FOLLOW && !EDIT){ if (ov) closeOverview(); else openOverview(); }
 });
@@ -762,16 +771,25 @@ if (RA){
 function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {key: k, shiftKey: !!shift, bubbles: true, cancelable: true})); }
 var JA = DECK.ja !== false;
 var TIP = JA
-  ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧",
+  ? {prev: "前へ", next: "次へ", auto: "自動再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧", view: "表示",
      lect: "先のステップを薄く見せる", cap: "字幕", mute: "効果音を消す", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
-  : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview",
+  : {prev: "Previous", next: "Next", auto: "Autoplay", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview", view: "View",
      lect: "Show later steps faintly", cap: "Captions", mute: "Mute sound effects", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
+// 自習（?mode=learn。Player P1）：再生・一時停止と再生速度。発表者の道具（レーザー・ペン・消えるペン・発表者ビュー）は出さない
+var LEARN = DECK.mode === "learn";
+var PLAY = JA ? {play: "再生", pause: "一時停止", rate: "再生速度"} : {play: "Play", pause: "Pause", rate: "Playback speed"};
+function rateNext(){ var R = DECK.RATES || [1], j = R.indexOf(DECK.rate()); DECK.rate(R[(j + 1) % R.length]); }
 // [名前, 表示するキー, 押すキー（関数なら直接呼ぶ）]。null は区切り
-var BTNS = [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
+var BTNS = LEARN
+  ? [["prev", "←", "ArrowLeft"], ["auto", "a", "a"], ["next", "→", "ArrowRight"], ["rate", "", rateNext], null,
+    ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["full", "f", "f"], null, ["help", "?", "?"]]
+  : [["prev", "←", "ArrowLeft"], ["next", "→", "ArrowRight"], ["auto", "a", "a"], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
-  ["over", "o", "o"], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+  ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+if (LEARN){ TIP.auto = PLAY.play; TIP.rate = PLAY.rate; }
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "mute", "full", "help"];
+function canFull(){ return DECK.canFullscreen ? DECK.canFullscreen() : true; }
 function kk(k){ return JA ? "（" + k + "）" : " (" + k + ")"; }
 var cb = null, hideT = 0, helpBox = null, OVER_ZONE = 140, SHOW_MS = 2500, touchLast = false;
 // 開いたときは帯を 5 秒見せる。その端末で初めてなら、帯の上に出し方の 1 行（hint）。帯が隠れている間は、左下に薄い取っ手（handle）
@@ -792,6 +810,8 @@ function buildBar(){
     if (!b){ var s = document.createElement("i"); s.className = "sep" + (cb.querySelector('[data-b="clear"]') && !cb.querySelector(".dt-tsep") ? " dt-tsep" : ""); s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
     if (b[0] === "read" && !RA) return;   // 読み上げ：端末で読めないとき・読めるステップがないときは出さない
     if (b[0] === "mute" && !(DECK.hasComponentSounds && DECK.hasComponentSounds())) return;
+    if (b[0] === "view" && !DECK.panes) return;   // 表示（並べ方。kit/panes.js）：動画・発表者ビューの中の画面にはない
+    if (b[0] === "full" && !canFull()) return;   // 全画面：要素の全画面がない所（iPhone の Safari・全画面を許さない枠の中）では出さない（deck.js）
     var e = document.createElement("button"); e.type = "button";
     e.setAttribute("data-b", b[0]);
     e.title = TIP[b[0]] + (b[1] ? kk(b[1]) : "");
@@ -842,7 +862,7 @@ function buildBar(){
     act(b, e.detail === 0);
   });
   function act(b, keyboard){
-    if (typeof b._act === "function") b._act(); else press(b._act);
+    if (typeof b._act === "function") b._act(b); else press(b._act);
     // マウス・指で押したらフォーカスを残さない（矢印キーがそのまま効く）。キーボード（Enter / Space、detail = 0）なら残す
     if (!keyboard){
       b.blur();
@@ -860,8 +880,10 @@ function buildBar(){
   window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wakeByPointer(); }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
+  document.addEventListener("webkitfullscreenchange", function(){ if (!("onfullscreenchange" in document)){ placeBar(); syncBar(); } });   // 古い iPadOS の Safari
   document.addEventListener("deck:pos", syncBar);
   document.addEventListener("deck:sounds", syncBar);
+  document.addEventListener("deck:rate", syncBar);
   new MutationObserver(syncBar).observe(document.documentElement, {attributes: true, attributeFilter: ["class", "data-mode"]});
   buildHandle();
   // 開いたときに 5 秒見せて、あることを知らせる。その端末で初めてなら、出し方の 1 行も
@@ -871,9 +893,13 @@ function buildBar(){
   if (!hintSeen()) showHint();
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
+// 舞台を置く箱（kit/deck.js の fit と同じ。窓の並べ方で左の欄だけになる：kit/panes.js の DECK.stageBox）
+function sbox(){ var b = DECK.stageBox && DECK.stageBox(); return b || {x: 0, y: 0, w: innerWidth, h: innerHeight}; }
 function placeBar(){
   if (!cb) return;
-  var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
+  var sb = sbox(), k = Math.min(sb.w / W, sb.h / H), m = (sb.h - H * k) / 2;
+  cb.style.left = Math.round(sb.x + sb.w / 2) + "px";
+  cb.style.maxWidth = Math.max(160, sb.w - 16) + "px";
   // 帯の高さ（狭い画面では 2 行になる）。隠れていても大きさは測れる
   cb.classList.remove("dt-wrap");
   var bh = cb.offsetHeight || 38;
@@ -887,7 +913,7 @@ function placeBar(){
 function liftCaptions(){
   var cap = document.getElementById("deck-cap"), lift = 0;
   if (cb && cb.classList.contains("show") && cap && !cap.hidden){
-    var k = Math.min(innerWidth / W, innerHeight / H), m = (innerHeight - H * k) / 2;
+    var sb = sbox(), k = Math.min(sb.w / W, sb.h / H), m = (sb.h - H * k) / 2;
     var need = (parseFloat(cb.style.bottom) || 0) + cb.offsetHeight + 6 - (m + (parseFloat(getComputedStyle(cap).bottom) || 0) * k);
     if (need > 0) lift = Math.ceil(need / k);
   }
@@ -932,7 +958,7 @@ function showHint(){
   placeHint();
   try { localStorage.setItem(HINT_KEY, "1"); } catch (e) {}
 }
-function placeHint(){ if (hint && cb) hint.style.bottom = Math.round((parseFloat(cb.style.bottom) || 10) + (cb.offsetHeight || 38) + 8) + "px"; }
+function placeHint(){ if (hint && cb) hint.style.left = cb.style.left || "50%"; if (hint && cb) hint.style.bottom = Math.round((parseFloat(cb.style.bottom) || 10) + (cb.offsetHeight || 38) + 8) + "px"; }
 // 帯が隠れている間の取っ手：左下の小さく薄いボタン（スライドの字にかからない）。押すと帯を出す。Tab で選べ、読み上げソフトには名前で読まれる。
 // マウス・指で押してもフォーカスは移さない（矢印キーはスライドに効いたまま）。キーボードで押したら帯の最初のボタンへ
 // マウスを近づけると帯が出て取っ手は見えなくなるが、押せるままにする（押しても帯をもう一度出すだけ）
@@ -976,15 +1002,22 @@ function syncBar(){
     [].forEach.call(sw.children, function(x, j){ x.setAttribute("aria-pressed", j === color ? "true" : "false"); });
   }
   [].forEach.call(cb.querySelectorAll(".dt-dot"), function(d){ d.style.background = PEN_COLOR[COLORS[color]]; });
-  on("lect", DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
+  on("lect", DECK.previewOn ? DECK.previewOn() : DECK.mode === "lecture"); on("cap", DECK.captions && DECK.captions()); on("full", DECK.isFullscreen ? DECK.isFullscreen() : !!document.fullscreenElement); on("help", !!(helpBox && helpBox.classList.contains("show")));
   on("mute", DECK.muteSounds && DECK.muteSounds());
   if (RA) raSync(on("read", RA.key !== null));
   var playing = document.documentElement.classList.contains("autoplay"), a = on("auto", playing);
   if (a && a._p !== playing){
     a._p = playing;
-    a.innerHTML = (playing ? ICON.stop : ICON.play) + "<kbd>a</kbd>";
-    a.title = (playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto) + kk("a");
-    a.setAttribute("aria-label", playing ? (JA ? "自動再生を止める" : "Stop autoplay") : TIP.auto);
+    var stopName = LEARN ? PLAY.pause : (JA ? "自動再生を止める" : "Stop autoplay");
+    a.innerHTML = (playing ? (LEARN ? ICON.pause : ICON.stop) : ICON.play) + "<kbd>a</kbd>";
+    a.title = (playing ? stopName : TIP.auto) + kk("a");
+    a.setAttribute("aria-label", playing ? stopName : TIP.auto);
+  }
+  var rb = cb.querySelector('[data-b="rate"]'), rv = DECK.rate ? DECK.rate() : 1;
+  if (rb && rb._r !== rv){
+    rb._r = rv; rb.textContent = rv + "×";
+    rb.title = PLAY.rate + (JA ? "：" : ": ") + rv + "×" + kk("< >");
+    rb.setAttribute("aria-label", PLAY.rate + (JA ? "：" : ": ") + rv + "×");
   }
   // ボタンの数が変わって（ペンの色・編集モード）帯の行の数が変わったら、置き直す
   if (cb.offsetHeight !== cb._h){ cb._h = cb.offsetHeight; placeBar(); }
@@ -1002,12 +1035,12 @@ function helpHtml(){
       row(K("Shift") + "+" + K("←", "→"), j ? "スライド単位" : "By slide"), row(K("Home", "End"), j ? "最初 / 最後" : "First / last"),
       row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Slide overview"),
       row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
-    sec(j ? "表示" : "View", [
-      row(K("a"), j ? "自動再生" : "Autoplay"), row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
+    sec(j ? "表示" : "View", (LEARN ? [row(K("a"), PLAY.play + " / " + PLAY.pause), row(K("<") + " " + K(">"), PLAY.rate + (j ? "（遅く / 速く）" : " (slower / faster)"))] : [
+      row(K("a"), j ? "自動再生" : "Autoplay")]).concat(DECK.panes && !isDev() ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
-      row(K("b"), j ? "黒い画面" : "Black screen"), row(K("f"), j ? "全画面" : "Fullscreen"), row(K("p"), j ? "発表者ビュー" : "Presenter view"),
-      row(K("?"), j ? "このキーの一覧" : "This help")]),
-    sec(j ? "道具" : "Tools", [
+      row(K("b"), j ? "黒い画面" : "Black screen")].concat(canFull() ? [row(K("f"), j ? "全画面" : "Fullscreen")] : []).concat(LEARN ? [] : [row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
+      row(K("?"), j ? "このキーの一覧" : "This help")]))),
+    LEARN ? "" : sec(j ? "道具" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
       row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
       row(K("Esc"), j ? "道具を解除" : "Exit tool")])
@@ -1026,7 +1059,34 @@ function helpHtml(){
     (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
     // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
     '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
-      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + about + fbHtml + "</div>";
+      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + rightsHtml() + aiHtml() + attHtml() + about + fbHtml + "</div>";
+}
+// ファイルの情報（format spec §7.3：題名・作成者・著作権・ライセンス・クレジットの表示）。deck-meta から出し、deck-meta にない項目は索引の metadata から
+// （deck-meta に creators を写す前の版の 1 ファイル向け。再生専用の派生と作業フォルダの組み立ては索引を持たない）。どれもなければ出さない。
+// ライセンスだけがないときは「書かれていません」（エディタのファイルの情報と同じ）
+var RIGHTS_IX = null;
+function rightsHtml(){
+  var M = DECK.META || {}, F = DECK.FORMAT || {}, j = JA;
+  var str = function(v){ return typeof v === "string" && v.trim() ? v.trim().slice(0, 2000) : ""; };
+  var list = function(v){ return Array.isArray(v) ? v.filter(function(x){ return typeof x === "string" && x.trim(); }).map(function(x){ return x.trim().slice(0, 300); }).slice(0, 50) : []; };
+  var md = function(){
+    if (RIGHTS_IX) return RIGHTS_IX;
+    RIGHTS_IX = {};
+    var el = F.indexId && document.getElementById(F.indexId);
+    if (el) try { var o = JSON.parse(el.textContent); if (o && o.metadata && typeof o.metadata === "object" && !Array.isArray(o.metadata)) RIGHTS_IX = o.metadata; } catch (e) {}
+    return RIGHTS_IX;
+  };
+  var pick = function(k){ return Object.prototype.hasOwnProperty.call(M, k) ? M[k] : md()[k]; };
+  var title = str(pick("title")), creators = list(pick("creators")), copyright = str(pick("copyright")), license = str(pick("license")), attribution = str(pick("attribution"));
+  if (!creators.length && !copyright && !license && !attribution) return "";
+  var rows = [];
+  if (title) rows.push([j ? "題名" : "Title", title]);
+  if (creators.length) rows.push([j ? "作成者" : "Created by", creators.join(j ? "、" : ", ")]);
+  if (copyright) rows.push([j ? "著作権" : "Copyright", copyright]);
+  rows.push([j ? "ライセンス" : "License", license || (j ? "書かれていません" : "not stated")]);
+  if (attribution) rows.push([j ? "クレジットの表示" : "Attribution", attribution]);
+  return '<div class="dt-rights"><h3>' + (j ? "ファイルの情報" : "File info") + "</h3><dl>" + rows.map(function(r){
+    return '<div class="dt-rights-r"><dt>' + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd></div>"; }).join("") + "</dl></div>";
 }
 // このファイルの版（format spec §4.1、Player P3）：形式 → プレーヤー → 作成 の順（docs/terms.json の format-version・player・made-with）。
 // deck-meta の version（{major, minor}）・player・generator（{name, version, title?}）から。無いものの行は出さない（ふつうの build の deck-meta は版の文字列だけ）
@@ -1100,6 +1160,7 @@ window.addEventListener("keydown", function(e){
   else if (k === "?") toggleHelp();
   else if (k === "Escape" && helpBox && helpBox.classList.contains("show")) toggleHelp(false);
   else if (k === "o") openOverview();
+  else if (LEARN && (k === "x" || k === "d" || k === "v" || k === "D")) done = false;   // 自習：発表者の道具はない
   else if (k === "x") toggle("laser");
   else if (k === "d") toggle("pen");
   else if (k === "v") toggle("vpen");

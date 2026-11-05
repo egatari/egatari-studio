@@ -1,6 +1,10 @@
 // ブラウザの TTS（音声の板 app/audio-panel.js の「AI 音声をこの PC で作る」「この PC で作り直す」）。info().ok が false なら、板は「この PC」を出さない。
-//   const tts = createTtsClient({lang, test, confirm})
-//   tts.info(deckLang) → {ok, reason, hint?, label}    使えるか・何を使うか（モデルの取得の大きさ）。hint：使えないときの案内（今の音声の板は出さない。「この PC」の答えを出さないだけ）
+// ただし info().device があれば（スマートフォン・タブレット・メモリの少ない端末）、板は「この PC」を出すが選べず、わけを 1 行書く。
+//   const tts = createTtsClient({lang, test, device, confirm})
+//   tts.info(deckLang) → {ok, reason, hint?, label, device?: 'memory' | 'touch'}    使えるか・何を使うか（モデルの取得の大きさ）。hint：使えないときの案内（今の音声の板は出さない。「この PC」の答えを出さないだけ）
+// 作れる端末（3 つともそろうとき）：WebGPU がある・メモリ（navigator.deviceMemory。分かるブラウザだけ）が 8 GB 以上・粗いポインタだけの小さな画面でない。
+//   device()：試験の差し替え。{memory, coarseOnly, small} ならその値で決め、'measure' なら test() があっても端末を測る。
+//   何もなければ端末を測る（test() の差し替えがあるときは測らない：試験の機械の大きさで結果が変わらないように）
 //   tts.synth({lang, text, role, voices, onProgress(f, label)}) → {pcm: Float32Array, sr, recipe: {engine, model, voice, seed}}
 //
 // 合成は別の窓（lab/tts-helper.html。編集アプリと同じサイトのページ）で動かす：編集アプリのページは外へ繋がらない決まり（CSP の
@@ -16,8 +20,21 @@ const TYPE = 'studio-tts';
 const GB = (n) => (n / 1e9).toFixed(2);
 // 取得する大きさ（lab/tts-engine.mjs の irodoriBytes('fp16')・KOKORO_BYTES と同じ数。窓を開く前に見せるので、ここにも持つ）
 const IRODORI_BYTES = { fp16: 1260000000, fp32: 2440000000 }, KOKORO_BYTES = 326600000;
+// この端末で作れないわけ（null なら作れる）。d：{memory（GB。分からなければ undefined）, coarseOnly（粗いポインタだけ）, small（画面の短い辺が 1024 px 以下）}
+export const MIN_MEMORY_GB = 8;
+export function deviceLimit(d) {
+  if (!d) return null;
+  if (typeof d.memory === 'number' && d.memory < MIN_MEMORY_GB) return 'memory';
+  if (d.coarseOnly && d.small) return 'touch';
+  return null;
+}
+function measureDevice() {
+  const mq = (q) => { try { return window.matchMedia(q).matches; } catch { return false; } };
+  const sc = window.screen || {};
+  return { memory: typeof navigator.deviceMemory === 'number' ? navigator.deviceMemory : undefined, coarseOnly: mq('(pointer: coarse)') && !mq('(any-pointer: fine)'), small: Math.min(sc.width || 0, sc.height || 0) <= 1024 };
+}
 
-export function createTtsClient({ lang = 'ja', test = () => null, confirm = async () => true, helperUrl = 'lab/tts-helper.html' } = {}) {
+export function createTtsClient({ lang = 'ja', test = () => null, device = () => null, confirm = async () => true, helperUrl = 'lab/tts-helper.html' } = {}) {
   const EN = lang === 'en';
   let win = null, ready = null, seq = 0, confirmed = new Set();
   const waiting = new Map();
@@ -66,9 +83,12 @@ export function createTtsClient({ lang = 'ja', test = () => null, confirm = asyn
   }
   return {
     info(deckLang) {
-      const t = test();
-      if (t) return t.info(deckLang);
+      const t = test(), d = device();
+      const lim = d && typeof d === 'object' ? deviceLimit(d) : t && d !== 'measure' ? null : deviceLimit(measureDevice());
+      const limited = (r) => ({ ...r, ok: false, device: lim, reason: lim === 'memory' ? (EN ? 'not enough memory on this device' : 'この端末はメモリが足りません') : (EN ? 'this device is a phone or tablet' : 'この端末はスマートフォンかタブレットです') });
+      if (t) { const r = t.info(deckLang); return r && r.ok && lim ? limited(r) : r; }
       if (location.protocol === 'file:') return { ok: false, reason: noFile, hint: noFileHint, label: '' };
+      if (lim) return limited({ label: label(engineOf(deckLang)) });
       if (!navigator.gpu) return { ok: false, reason: EN ? 'no WebGPU in this browser' : 'このブラウザには WebGPU がありません', hint: noGpu, label: label(engineOf(deckLang)) };
       return { ok: true, reason: '', label: label(engineOf(deckLang)) };
     },

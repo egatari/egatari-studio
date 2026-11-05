@@ -51,8 +51,15 @@ console.error = function(){
 window.addEventListener("message", function(e){
   if (e.source !== parentWin) return;
   var m = e.data || {};
-  if (m.type === "app-print") window.print();
+  // 印刷：スライド（1 枚ずつ。kit/base.css）か、本のない教材の「台本を印刷」（小さなスライドと台本を A4 縦に。printScript）
+  if (m.type === "app-print") { if (m.what === "script") printScript(); else window.print(); }
+  // 本文のステップへのリンクの行き先（format spec §9C.8 の 1。kit/core/article.mjs の STEP_PROBE と同じ確かめ方）。答えは書き込まない
+  else if (m.type === "app-steps") whenReady(function(){ parentWin.postMessage({type: "app-steps-result", id: m.id, load: cfg.load, results: resolveSteps(m.links)}, "*"); });
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
+  // 並べ方（app/book.js の view。再生器の本の窓 kit/panes.js）：slides・split・book
+  else if (m.type === "app-layout") whenReady(function(){ if (window.DECK && DECK.panes && /^(slides|split|book)$/.test(String(m.layout))) DECK.panes.layout(m.layout); });
+  // 本からスライドへ（app/book.js：本のステップへのリンク）：リンクの行き先（"<slideKey>:<stepKey>"）へ
+  else if (m.type === "app-goto" && window.DECK && window.DECK.resolveFragment) { var g = window.DECK.resolveFragment(String(m.f || "")); if (!g.error) window.DECK.go(g.i, g.k, false); }
   // 品質チェックは、テーマの寸法を測る字体を確かめてから（metricsFonts。読み込めなければ測らない）
   else if (m.type === "app-check") whenReady(function(){
     var send = function(f){ parentWin.postMessage({type: "app-check-result", id: m.id, load: cfg.load, results: quickCheck(f)}, "*"); };
@@ -94,6 +101,68 @@ function strip(o){
   D.seek(0, 0, 0);
   document.body.appendChild(box);
   parentWin.postMessage({type: "app-strip-ready", n: D.slides.length}, "*");
+}
+// 再生器の中で並べ方が替わったら（r・並べ方の一覧・狭い窓）、編集アプリに知らせる（プレビュー ▾ の表示の選びを合わせる。app/book.js）
+whenReady(function(){
+  if (!window.DECK || !DECK.panes || typeof MutationObserver !== "function") return;
+  // 始めの並べ方は知らせない（編集アプリが読み込んだ後に頼む）。その後の変わり目だけ
+  var last = DECK.panes.layout(), tell = function(){ var l = DECK.panes.layout(); if (l !== last) { last = l; parentWin.postMessage({type: "app-layout-changed", layout: l}, "*"); } };
+  new MutationObserver(tell).observe(document.documentElement, {attributes: true, attributeFilter: ["data-deck-layout"]});
+});
+// 本文のステップへのリンク（"<slideKey>:<stepKey>" の並び）→ {リンク → {error, max} | {legacy, id}}（kit/core/article.mjs の STEP_PROBE と同じ形）
+function resolveSteps(links){
+  var D = window.DECK, out = {};
+  if (!D || !D.resolveFragment || !Array.isArray(links)) return out;
+  links.slice(0, 2000).forEach(function(f){ f = String(f); var r = D.resolveFragment(f); out[f] = r.error ? {error: r.error, max: r.max} : {legacy: !!r.legacy, id: r.id}; });
+  return out;
+}
+// 台本を印刷（本のない教材。v0.6.5 E5）：どのスライドも最後のステップ（すべてを出した状態）の小さな写しと、その段階の台本を A4 縦に並べ、印刷してから消す。
+// 写し方はスライド一覧の縮図（strip）と同じ。印刷の間はこの並びだけを出す（kit/base.css のスライドの印刷の決まりより後に置く）
+function printScript(){
+  whenReady(function(){
+    var D = window.DECK;
+    if (!D || !D.slides) { window.print(); return; }
+    var prev = document.getElementById("egatari-print-script"); if (prev) prev.remove();
+    var prevCss = document.getElementById("egatari-print-script-css"); if (prevCss) prevCss.remove();
+    var W = 288, H = Math.round(W * 9 / 16), sc = W / 1280, JA = D.ja !== false;
+    var css = document.createElement("style");
+    css.id = "egatari-print-script-css";
+    css.textContent = "@media screen{#egatari-print-script{display:none}}"
+      + "@media print{@page{size:A4 portrait;margin:15mm}html,body{width:auto!important;height:auto!important;overflow:visible!important;background:#fff!important}"
+      + "body>*:not(#egatari-print-script){display:none!important}#egatari-print-script{display:block;color:#000;font-size:10.5pt;line-height:1.6}"
+      + ".eps-item{display:flex;gap:6mm;break-inside:avoid;page-break-inside:avoid;margin:0 0 6mm}"
+      + ".eps-thumb{position:relative;flex:none;width:" + W + "px;height:" + H + "px;overflow:hidden;border:1px solid #888;-webkit-print-color-adjust:exact;print-color-adjust:exact}"
+      + ".eps-text{flex:1;min-width:0}.eps-text h3{font-size:11pt;margin:0 0 2mm}.eps-text p{margin:0 0 1.5mm}.eps-text .eps-novice{font-style:italic}}";
+    var box = document.createElement("div");
+    box.id = "egatari-print-script";
+    var order = function(k){ return k === "concl" ? 1e9 : +k; };
+    (D.aside || function(f){ return f(); })(function(){ D.slides.forEach(function(s, i){
+      D.seek(i, s._max, Infinity);
+      var c = s.cloneNode(true);
+      c.classList.remove("active"); c.removeAttribute("id"); stripIds(c, "ep" + i + "-");
+      var st = c.style;
+      ["visibility:visible", "opacity:1", "position:absolute", "left:0", "top:0", "transform-origin:0 0", "transform:scale(" + sc + ")", "page-break-after:auto", "break-after:auto"].forEach(function(d){ var j = d.indexOf(":"); st.setProperty(d.slice(0, j), d.slice(j + 1), "important"); });
+      var item = document.createElement("section"); item.className = "eps-item";
+      var th = document.createElement("div"); th.className = "eps-thumb"; th.appendChild(c);
+      var tx = document.createElement("div"); tx.className = "eps-text";
+      var h = document.createElement("h3");
+      var head = ((s.querySelector("h2, h1") || {}).textContent || "").replace(/\s+/g, " ").trim();
+      h.textContent = (JA ? "スライド " : "Slide ") + (i + 1) + (head ? (JA ? "　" : ": ") + head : "");
+      tx.appendChild(h);
+      var steps = (D.NARRATION || {})[s._key] || {};
+      Object.keys(steps).sort(function(a, b){ return order(a) - order(b); }).forEach(function(k){
+        (steps[k] || []).forEach(function(t){ var p = document.createElement("p"); p.textContent = t.text || ""; if (t.role === "novice") p.className = "eps-novice"; tx.appendChild(p); });
+      });
+      item.appendChild(th); item.appendChild(tx); box.appendChild(item);
+    }); });
+    if (!D.aside) D.seek(0, 0, 0);
+    document.head.appendChild(css);
+    document.body.appendChild(box);
+    var done = function(){ box.remove(); css.remove(); window.removeEventListener("afterprint", done); };
+    window.addEventListener("afterprint", done);
+    window.print();
+    parentWin.postMessage({type: "app-printed", what: "script"}, "*");
+  });
 }
 // 写しの中の id を付け替え、url(#…) と href="#…" も合わせる（kit/tools.js の uniqIds と同じ）
 function stripIds(root, pre){

@@ -20,8 +20,8 @@ Data example (child `<script type="application/json">`): `{"ready":{"title":"準
 
 依頼にグループワーク・作業時間・制限時間があるときだけ使う。→ キーで段階を進めると数え始める。
 
-- `sec` は秒の整数（3 分なら 180）。`short` は右の一覧に出す短い名前、`text` は 2 行まで
-- 最後の 1 分は赤、最後の 10 秒は時計が点滅
-- 字は `<html lang>` で日本語か英語。`labels` で変えられる：`total` `remaining` `done` `start` `next` `end` `min` `sec` `plus` `minus`
+- 区切り（`phases`）は 8 つまで。`sec` は秒の整数（3 分なら 180）。`short` は右の一覧に出す短い名前、`text` は 2 行まで
+- 最後の 1 分は時計と棒が強調の色（テーマの `--emph`）、最後の 10 秒は時計が点滅
+- 字は `<html lang>` で日本語か英語。`labels` で変えられる：`ready` `total` `remaining` `done` `start` `next` `end` `min` `sec` `plus` `minus`
 - 実行系が対応していれば ＋1 分・−1 分のボタンが出る（同じスライドにいるあいだは延ばした時間が残る）
 - ベル（学会タイマーのように）：`"bells": [{"left": 300, "count": 1}, {"left": 120, "count": 2}, {"left": 0, "count": 3}]`（残り秒と回数）。全体か区切りごとに書く。書かなければ鳴らない

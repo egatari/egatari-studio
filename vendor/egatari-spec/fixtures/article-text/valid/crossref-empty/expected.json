@@ -1,0 +1,32 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "As "
+        },
+        {
+          "type": "link",
+          "url": "#fig-bitmap",
+          "children": []
+        },
+        {
+          "type": "text",
+          "value": " shows, and as "
+        },
+        {
+          "type": "link",
+          "url": "#eq-entropy",
+          "children": []
+        },
+        {
+          "type": "text",
+          "value": " states."
+        }
+      ]
+    }
+  ]
+}

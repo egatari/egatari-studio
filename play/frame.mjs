@@ -4,6 +4,9 @@
 // any untrusted byte is parsed, and the page never searches the lesson's markup for a place to insert anything.
 // The frame is sandbox="allow-scripts" (no allow-same-origin, allow-popups, allow-forms, allow-modals, allow-downloads,
 // allow-top-navigation): an opaque origin, so the lesson cannot read this page's OPFS, IndexedDB, cookies or DOM.
+// No fullscreen permission (allow is "autoplay" only): the lesson cannot take the screen by itself. The player's fullscreen button and
+// f ask the page instead (play/lesson-shim.js 4), which puts this frame element into fullscreen (play/main.js); Safari would ignore
+// allow="fullscreen" on this opaque-origin srcdoc frame anyway.
 // A srcdoc document also inherits this page's own policy (both apply): the page's connect-src (its Live endpoints)
 // is narrowed to 'none' by the prefix, so only the page itself can reach a Live room.
 //

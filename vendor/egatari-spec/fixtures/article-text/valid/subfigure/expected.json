@@ -1,0 +1,95 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "container",
+      "kind": "figure",
+      "children": [
+        {
+          "type": "container",
+          "kind": "figure",
+          "subcontainer": true,
+          "children": [
+            {
+              "type": "image",
+              "url": "images/mean.png",
+              "alt": "平均の位置に線を引いたヒストグラム"
+            },
+            {
+              "type": "caption",
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "平均"
+                    }
+                  ]
+                }
+              ]
+            }
+          ],
+          "label": "fig-pair-mean",
+          "identifier": "fig-pair-mean"
+        },
+        {
+          "type": "container",
+          "kind": "figure",
+          "subcontainer": true,
+          "children": [
+            {
+              "type": "image",
+              "url": "images/median.png",
+              "alt": "中央値の位置に線を引いたヒストグラム"
+            },
+            {
+              "type": "caption",
+              "children": [
+                {
+                  "type": "paragraph",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "中央値"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "caption",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "同じデータに引いた 2 つの代表値。"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "legend",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "架空のデータ。"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "label": "fig-pair",
+      "identifier": "fig-pair"
+    }
+  ]
+}

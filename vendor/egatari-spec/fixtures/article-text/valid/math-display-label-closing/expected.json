@@ -1,0 +1,11 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "math",
+      "value": "H(X) = -\\sum_x p(x) \\log p(x)",
+      "identifier": "eq-entropy",
+      "label": "eq-entropy"
+    }
+  ]
+}

@@ -11,15 +11,17 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：b47ccdba**
+**指示の版：68eeb33a**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-Claude Code では `/plugin update egatari@egatari`。
+Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がない道具では案内を省き、`egatari --version` の版を利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
+
+構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の返事を受けてから（`codex exec` なら resume で）。
 
 下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
@@ -39,9 +41,13 @@ Claude Code では `/plugin update egatari@egatari`。
 - [science](references/parts/science.md)
 - [extra](references/parts/extra.md)
 
-## 本（本文の窓・article）と配置
+## 本（article）
 
-本の本文は読む文章、台本はステップごとに話す言葉。本文を台本へ押し込まない（R-article）。配置は slides（スライド）・flow（続けて読む）・pages（ページ）・split（スライドと本文）。この版の Studio は slides の作成に対応する。本文の窓・article とほかの配置はまだ作れないので、必要なら制限を伝え、本文は別の下書きとして利用者と確認する。未対応の出力が Studio で開けると約束しない。
+教材は、スライドと台本の横に**本**（教科書の章・論文・読み物）を持てる。本の本文は読む文章、台本はステップごとに話す言葉。本文を台本へ押し込まない（R-article）。
+
+本を頼まれたら、[references/book.md](references/book.md) を読んでから構成案を作る。本は Claude Code（ファイルを書ける所）で書く。チャットに貼り付ける形はない。Studio の編集アプリは、本を読む・文字を直す・つながりを確かめる・印刷することはできるが、本を一から作ったり、章を組み直したりはしない。
+
+配置は slides（スライド）と split（スライドと本）。flow・pages はまだない。
 
 ## 音声を付ける
 
@@ -55,9 +61,11 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
 
+頼まれていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
+
 # AI への指示
 
-指示の版：`b47ccdba`
+指示の版：`68eeb33a`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -147,7 +155,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 3. パーツの一覧
 
-どの教材でも使える標準のパーツ。§6 の後に束の指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。
+どの教材でも使える標準のパーツ。§6 の後に束の指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。名前やラベルの `*…*` は斜体、`_` `^` は次の 1 字だけ下付き・上付き。記号のまま出すなら全角の ＿ ＾ ＊。
 
 パーツは上のセットごとの参照ファイルから、必要なものだけ読む。
 

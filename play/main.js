@@ -125,11 +125,51 @@ function startFrame() {
   // so focus it again when the lesson has loaded, unless the viewer has meanwhile moved the focus elsewhere in this page.
   // Safari may refuse either; the keys pressed in this page are handed over anyway (forwardKey)
   f.addEventListener('load', () => {
+    fsState();                         // the lesson learns whether fullscreen is available (play/lesson-shim.js 4)
     const a = document.activeElement;
     if (S.frame !== f || (a && a !== document.body && a !== f)) return;
     try { f.contentWindow.focus(); } catch { /* refused */ }
   }, { once: true });
 }
+// Fullscreen for the lesson. The frame has no fullscreen permission (play/frame.mjs: a lesson cannot take the screen by itself),
+// and Safari ignores allow="fullscreen" on an opaque-origin srcdoc frame anyway. The lesson's shim asks {egaViewer: "fullscreen", on}
+// (play/lesson-shim.js 4, on the player's 全画面 button or f); this page puts the frame element itself into fullscreen, which the
+// browser allows only on the viewer's own activation (it reaches this page from the tap in the frame), and reports the state back
+// {egaViewer: "fullscreen-state", on, enabled, refused?}, also when the viewer leaves with Esc or the system's gesture.
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+function fsEnabled() {
+  const f = S.frame;
+  if (!f || !(f.requestFullscreen || f.webkitRequestFullscreen)) return false;   // iPhone Safari: no element fullscreen
+  const en = document.fullscreenEnabled ?? document.webkitFullscreenEnabled;
+  return en !== false;
+}
+function fsState(refused) {
+  const f = S.frame;
+  if (!f || !f.contentWindow) return;
+  const m = { egaViewer: 'fullscreen-state', on: fsElement() === f, enabled: fsEnabled() };
+  if (refused) m.refused = true;
+  f.contentWindow.postMessage(m, '*');
+}
+function fsRequest(on) {
+  const f = S.frame;
+  if (!f) return;
+  if (on === (fsElement() === f)) { fsState(); return; }
+  if (on) {
+    const go = f.requestFullscreen || f.webkitRequestFullscreen;
+    if (!go || !fsEnabled()) { fsState(true); return; }
+    let p;
+    try { p = go.call(f); } catch { fsState(true); return; }
+    if (p && typeof p.then === 'function') p.then(() => { try { f.contentWindow.focus(); } catch { /* refused */ } }, () => fsState(true));
+    else fsNoPromise = true;   // an old Safari returns nothing: webkitfullscreenchange or webkitfullscreenerror follows
+    return;
+  }
+  const ex = document.exitFullscreen || document.webkitExitFullscreen;
+  try { const p = ex && ex.call(document); if (p && typeof p.catch === 'function') p.catch(() => fsState()); } catch { fsState(); }
+}
+let fsNoPromise = false;
+for (const t of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(t, () => { fsNoPromise = false; fsState(); });
+for (const t of ['fullscreenerror', 'webkitfullscreenerror']) document.addEventListener(t, () => { if (fsNoPromise) { fsNoPromise = false; fsState(true); } });
+
 // The navigation keys (arrows, PageUp/PageDown, Home/End, Space) pressed while the focus is in this page, not in the lesson's
 // frame (its bar or buttons, the Live pane, or a frame that never got the focus): handed to the lesson, which presses them as
 // its own buttons do (play/lesson-shim.js). Not from a field, a widget that uses arrows, or the link box; Space not on a
@@ -194,6 +234,7 @@ function onLive(kind, n) {
   if (kind === 'polls' && n === 0) setPollView(false);
 }
 function closeLesson(quiet) {
+  if (S.frame && fsElement() === S.frame) fsRequest(false);
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
   S.doc = null; S.layout = null; S.hasPolls = false;
@@ -236,6 +277,9 @@ window.addEventListener('message', (e) => {
   if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
   else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) { if (S.live) S.live.setStep(m.key); }
+  // the lesson's shim asks for fullscreen (play/lesson-shim.js 4): exactly {egaViewer, on}. Untrusted: the browser enters it only
+  // on the viewer's own activation, and only the frame element goes fullscreen
+  else if (m.egaViewer === 'fullscreen' && typeof m.on === 'boolean' && Object.keys(m).length === 2) fsRequest(m.on);
 });
 
 const links = linkBox({ words: W, dlg: { box: $('link-box'), title: $('link-t'), host: $('link-host'), url: $('link-url'), notes: $('link-n'), cancel: $('b-link-cancel'), open: $('a-link-open') } });

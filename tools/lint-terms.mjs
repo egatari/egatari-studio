@@ -34,9 +34,11 @@ const COUNTS = args.includes('--counts');
 
 
 // ---- 見る所 ----
-const UI_CODE = ['app/*.js', 'kit/tools.js', 'kit/presenter.js', 'kit/deck.js', 'kit/live.js', 'kit/core/live-results.mjs', 'kit/core/part-labels.mjs', 'server/editor-ui.js', 'server/hints.js'];
+const UI_CODE = ['app/*.js', 'kit/tools.js', 'kit/panes.js', 'kit/track.js', 'kit/presenter.js', 'kit/deck.js', 'kit/live.js', 'kit/core/live-results.mjs', 'kit/core/part-labels.mjs', 'server/editor-ui.js', 'server/hints.js'];
 const PROSE = ['docs/*.md', 'README.md', 'README.ja.md', 'skills/*/SKILL.md', 'plugins/egatari/skills/*/SKILL.md'];
 const PROSE_EXCLUDE = ['docs/authoring-with-llms*', 'docs/terms.md'];
+// AI への指示の文書は仕様の言葉で書くので、ふつうは照らさない。人の呼び方のように、そこでも使わない言葉だけ（terms-allow.json の aiDocsToo）を照らす
+const AI_PROSE = ['docs/authoring-with-llms*'];
 
 export function globRe(g) {
   let s = '';
@@ -224,7 +226,8 @@ export function loadRules(root) {
   const allow = (cfg.allow || []).map((a, k) => ({ ...a, k, used: 0, fre: globRe(a.file), pre: a.pattern ? new RegExp(a.pattern, 'g') : null }));
   // noPairs：ja↔en の組の検査をしない用語（ja の言葉が短く一般的で、部分一致が数え方や別の語に当たる：本 → 2 本・日本語、形式）
   const noPairs = new Set(cfg.noPairs || []);
-  return { terms, canon, avoid, allow, noPairs };
+  const aiDocsToo = new Set(cfg.aiDocsToo || []);
+  return { terms, canon, avoid, allow, noPairs, aiDocsToo };
 }
 
 // 1 つの文字列（行か、文字列リテラルの中身）の中の当たり
@@ -437,9 +440,11 @@ export function checkPairs(root, file, rules) {
 
 export function run(root) {
   const rules = loadRules(root);
-  const files = [...listFiles(root, UI_CODE), ...listFiles(root, PROSE, PROSE_EXCLUDE)];
+  const aiFiles = listFiles(root, AI_PROSE);
+  const files = [...listFiles(root, UI_CODE), ...listFiles(root, PROSE, PROSE_EXCLUDE), ...aiFiles];
   const hits = [];
-  for (const f of files) hits.push(...lintFile(root, f, rules));
+  const aiRules = { ...rules, avoid: rules.avoid.filter((a) => rules.aiDocsToo.has(a.word)) };
+  for (const f of files) hits.push(...lintFile(root, f, aiFiles.includes(f) ? aiRules : rules));
   const pairWarnings = [];
   for (const f of listFiles(root, UI_CODE)) pairWarnings.push(...checkPairs(root, f, rules));
   const unused = rules.allow.filter((a) => !a.used && !a.keep);

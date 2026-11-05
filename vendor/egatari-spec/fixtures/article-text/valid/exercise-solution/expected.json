@@ -1,0 +1,76 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "exercise",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "平均を求める"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "3, 5, 10 の平均を求めよ。"
+            }
+          ]
+        }
+      ],
+      "label": "exr-mean",
+      "identifier": "exr-mean",
+      "enumerated": true
+    },
+    {
+      "type": "solution",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "Solution to "
+            },
+            {
+              "type": "crossReference",
+              "label": "exr-mean",
+              "identifier": "exr-mean"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "inlineMath",
+              "value": "(3 + 5 + 10) / 3 = 6"
+            }
+          ]
+        }
+      ],
+      "label": "sol-mean",
+      "identifier": "sol-mean"
+    },
+    {
+      "type": "exercise",
+      "children": [
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "中央値も求めてみよう。"
+            }
+          ]
+        }
+      ],
+      "enumerated": false
+    }
+  ]
+}

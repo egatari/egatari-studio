@@ -1,0 +1,127 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "container",
+      "kind": "table",
+      "children": [
+        {
+          "type": "caption",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "下人の勇気"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "table",
+          "children": [
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "children": []
+                },
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "一　門の下"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "header": true,
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "二　楼の上へ"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "起きたこと"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "暇を出され、門の下で行き所がない"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "死人の髪を抜く老婆を見る"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "tableRow",
+              "children": [
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "勇気"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "盗人になる勇気が出ない"
+                    }
+                  ]
+                },
+                {
+                  "type": "tableCell",
+                  "children": [
+                    {
+                      "type": "text",
+                      "value": "悪を憎む"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "class": "row-headers",
+      "label": "tbl-yuuki",
+      "identifier": "tbl-yuuki"
+    }
+  ]
+}

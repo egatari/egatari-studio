@@ -1,0 +1,29 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Read "
+        },
+        {
+          "type": "link",
+          "url": "https://example.org/guide",
+          "title": "Guide",
+          "children": [
+            {
+              "type": "text",
+              "value": "the guide"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": " first."
+        }
+      ]
+    }
+  ]
+}

@@ -11,15 +11,17 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: b47ccdba**
+**Instruction version: 68eeb33a**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
-In Claude Code, use `/plugin update egatari@egatari`.
+In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
 
 First confirm the materials, audience, length, language and theme, and show an outline. Each item has a heading, what to convey, a recommended part and why, a conclusion line and materials. Never invent numbers. Write after the user approves the outline and parts. Use one speaker by default; write a dialogue only when asked.
+
+After showing the outline, stop until the user approves it (write no files). Continue after the user's reply (with `codex exec`, by resuming the session).
 
 Follow the shared writing rules below. When finished, use “When you finish” to deliver files or code blocks, according to your capabilities. For a fix request, fix the findings and return the result.
 
@@ -39,9 +41,13 @@ Choose the parts for the outline from the standard parts and the specialized set
 - [science](references/parts/en/science.md)
 - [extra](references/parts/en/extra.md)
 
-## Book (article pane) and layout
+## Book (article)
 
-The book's body is text to read; the script is what is spoken at each step. Do not force the body into the script (R-article). Layouts are slides, flow (continuous reading), pages and split (slides and body). This version of Studio supports creating slides. The article pane and other layouts cannot be created yet. If needed, explain the limitation and review the body with the user as a separate draft. Do not promise that Studio can open unsupported output.
+A lesson can have a **book** (a textbook chapter, a paper or a reading) beside its slides and script. The book's body is text to read; the script is what is spoken at each step. Do not force the body into the script (R-article).
+
+When a book is requested, read [references/book.md](references/en/book.md) before writing the outline. Write the book in Claude Code (where files can be written). There is no form to paste into chat. Studio's editor can read a book, fix its text, check its links and print it, but it does not create a book from scratch or reorganize its chapters.
+
+The layouts are slides and split (slides and book). Flow and pages do not exist yet.
 
 ## Add audio
 
@@ -55,9 +61,11 @@ If you cannot write files, return the two fenced blocks `deck.html` and `narrati
 
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
 
+Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
+
 # Instructions for the AI
 
-Pack version: `b47ccdba`
+Pack version: `68eeb33a`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -147,7 +155,7 @@ Choose candidate parts from the set references.
 
 ## 3. Component catalog
 
-These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num.
+These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 Read only the parts you need from the set references above.
 

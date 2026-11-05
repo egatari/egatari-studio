@@ -1,0 +1,10 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "code",
+      "lang": "python",
+      "value": "print(\"hello\")"
+    }
+  ]
+}

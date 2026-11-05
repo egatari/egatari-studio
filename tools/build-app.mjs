@@ -119,7 +119,7 @@ for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] 
 const commit = (() => { const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }); return r.status === 0 && /^[0-9a-f]{4,40}$/.test(r.stdout.trim()) ? r.stdout.trim() : ''; })();
 const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples };
 const hostedOnly = (v) => v.startsWith('/repo/fonts/') && !SINGLE_FONTS.some((p) => v.startsWith(`/repo/fonts/${p}/`));
-const resourcesSingle = { ...resources, makeSkillZips: Object.fromEntries(Object.entries(makeSkillZips).map(([lang, bytes]) => [lang, bytes.toString('base64')])), text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
+const resourcesSingle = { ...resources, lazyJs: null, makeSkillZips: Object.fromEntries(Object.entries(makeSkillZips).map(([lang, bytes]) => [lang, bytes.toString('base64')])), text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
 
 // ---------------------------------------------------------------- 組む（esbuild）
 // 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。
@@ -135,6 +135,48 @@ const BW = await esbuild.build({
   target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
 });
 const buildWorkerJs = BW.outputFiles[0].text;
+// 本文の道具（app/article-tools.js：myst-parser と kit/core/article*.mjs、引用の書式の写し）：app.js に入れず、本のある教材を開いたときにだけ読み込む
+// （app/article-loader.js。配信版は dist/article-tools.js、1 ファイル版は字として入れる）。kit/core のほかの部品と KaTeX は読み込む側のもの
+// （app/article-host.js の名前。ほかの部品を読もうとしたら組まない：同じものを 2 度入れない）
+const ARTICLE_HOST_NAMES = ['build-core', 'config-file', 'format', 'narration-parse', 'quote-ja'];
+const articleHostPlugin = {
+  name: 'article-host',
+  setup(b) {
+    b.onResolve({ filter: /^katex$/ }, () => ({ path: 'katex', namespace: 'article-host' }));
+    b.onResolve({ filter: /^\.\/[a-z0-9-]+\.mjs$/ }, (a) => {
+      if (!a.importer.split(path.sep).join('/').includes('/kit/core/') || /^\.\/(article|citeproc-credit)/.test(a.path)) return null;
+      const name = a.path.slice(2, -4);
+      if (!ARTICLE_HOST_NAMES.includes(name)) throw new Error(`article tools import kit/core/${name}.mjs, which is not in ARTICLE_HOST_NAMES (app/article-host.js)`);
+      return { path: name, namespace: 'article-host' };
+    });
+    b.onLoad({ filter: /.*/, namespace: 'article-host' }, (a) => ({ contents: `module.exports = globalThis.__egatariArticleHost[${JSON.stringify(a.path)}];`, loader: 'js' }));
+    b.onResolve({ filter: /\?text$/ }, (a) => ({ path: path.resolve(a.resolveDir, a.path.replace(/\?text$/, '')), namespace: 'text' }));
+    b.onLoad({ filter: /.*/, namespace: 'text' }, (a) => ({ contents: fs.readFileSync(a.path, 'utf8'), loader: 'text' }));
+  },
+};
+const ARTICLE_NOTICE = `/* Egatari Studio ${JSON.parse(fs.readFileSync(rel('package.json'), 'utf8')).version} — book tools, loaded only for lessons with a book (MIT). Bundles myst-parser, myst-transforms, myst-ext-proof, myst-ext-exercise and their dependencies (markdown-it, unified, js-yaml, he and others; MIT, ISC or BSD licenses) and the CSL styles and locales in vendor/csl (CC BY-SA 3.0). citeproc-js is not in this file (vendor/citeproc/). See NOTICE.txt. */\n`;
+const ART = await esbuild.build({
+  entryPoints: [rel('app', 'article-tools.js')], bundle: true, write: false, format: 'iife', globalName: '__egatariArticle', platform: 'browser',
+  target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
+  minify: true, plugins: [articleHostPlugin], alias: { punycode: rel('app', 'punycode-shim.js') },
+});
+const articleJs = ARTICLE_NOTICE + ART.outputFiles[0].text;
+// citeproc-js（CPAL-1.0。NOTICE）：組み込まず（縮めず・変換せず）、npm のファイルを手を加えずに dist/vendor/citeproc/ に写す（LICENSE・package.json と、
+// 上流の CPAL の全文（Exhibit A・B つき）・出どころ vendor/citeproc/）。本が文献を引くときにだけ読み込む。写す前に、npm のファイルが出どころの記録
+// （vendor/citeproc/SOURCE.json：citeproc 2.4.63 = Juris-M/citeproc-js 73bc1b4）とバイトまで同じかを確かめ、違えば組まない
+const CITEPROC_DIR = path.dirname(require.resolve('citeproc/package.json'));
+const CITEPROC_SRC = JSON.parse(fs.readFileSync(rel('vendor', 'citeproc', 'SOURCE.json'), 'utf8'));
+for (const [f, want] of Object.entries(CITEPROC_SRC.sha256)) {
+  const file = f === 'CPAL' ? rel('vendor', 'citeproc', 'CPAL') : path.join(CITEPROC_DIR, f);
+  const got = crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+  if (got !== want) throw new Error(`citeproc ${f}: sha256 ${got} is not the recorded ${want} (vendor/citeproc/SOURCE.json)`);
+}
+if (JSON.parse(fs.readFileSync(path.join(CITEPROC_DIR, 'package.json'), 'utf8')).version !== CITEPROC_SRC.version) throw new Error('citeproc: the installed version is not ' + CITEPROC_SRC.version + ' (vendor/citeproc/SOURCE.json)');
+const citeprocJs = fs.readFileSync(path.join(CITEPROC_DIR, 'citeproc_commonjs.js'), 'utf8');
+// 1 ファイル版：別のファイルを読めない（file://）ので、citeproc は手を加えない字のまま <script type="text/plain" id="egatari-citeproc"> に入れる（app.js の外。
+// 縮める道具を通さない。app/article-loader.js がその字を読む）。その字が script の要素を閉じたり開いたりしないこと
+if (/<\/?script/i.test(citeprocJs)) throw new Error('citeproc_commonjs.js contains a script tag; it cannot be carried as is in editor.html');
+resourcesSingle.lazyJs = { article: articleJs };
 // res：アプリに入れる資源（配信版は resources、1 ファイル版は明朝を除いた resourcesSingle）
 const plugin = (res) => ({
   name: 'app',
@@ -181,9 +223,13 @@ const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
 for (const f of fs.readdirSync(ED)) if (/^egatari-make-.*-(ja|en)\.zip$/.test(f)) fs.rmSync(path.join(ED, f));
 for (const [lang, bytes] of Object.entries(makeSkillZips)) fs.writeFileSync(path.join(ED, `egatari-make-${version}-${lang}.zip`), bytes);
-for (const f of ['index.html', 'app.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'article-tools.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
+fs.writeFileSync(path.join(ED, 'article-tools.js'), articleJs);
+fs.mkdirSync(path.join(ED, 'vendor', 'citeproc'), { recursive: true });
+for (const f of ['citeproc_commonjs.js', 'LICENSE', 'package.json']) fs.copyFileSync(path.join(CITEPROC_DIR, f), path.join(ED, 'vendor', 'citeproc', f));
+for (const f of ['CPAL', 'SOURCE.json']) fs.copyFileSync(rel('vendor', 'citeproc', f), path.join(ED, 'vendor', 'citeproc', f));
 fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_ICONS-->', () => iconLinks((f) => f) + '\n<link rel="icon" href="favicon.svg" type="image/svg+xml">\n<link rel="manifest" href="manifest.webmanifest">')
   .replace('<!--APP_CSS-->', '<link rel="stylesheet" href="app.css">').replace('<!--APP_JS-->', '<script src="app.js"></script>'));
 for (const f of [...ICON_FILES, 'favicon.svg']) fs.copyFileSync(LOGO(f), path.join(ED, f));
@@ -249,7 +295,7 @@ if (PARTS) {
 }
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 if (examples.length) console.log(`dist/examples/: ${examples.map((x) => `${x.file} ${kb(x.bytes)}`).join(', ')}`);
-console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
+console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), article-tools.js ${kb(Buffer.byteLength(articleJs))} (loaded for books only), vendor/citeproc ${kb(Buffer.byteLength(citeprocJs))}, fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
 
 // 1 ファイル版：dist/editor.html（字を全部埋め込む。明朝は入れない）
 if (SINGLE) {
@@ -260,7 +306,7 @@ if (SINGLE) {
   const one = html
     .replace('<!--APP_ICONS-->', () => iconLinks((f) => dataUri(f)))
     .replace('<!--APP_CSS-->', () => `<style>\n${css}</style>`)
-    .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script>${inline(NOTICE + jsSingle)}</script>`);
+    .replace('<!--APP_JS-->', () => `<script>window.__FONTPACK=${JSON.stringify(pack)};</script>\n<script type="text/plain" id="egatari-citeproc">${citeprocJs}</script>\n<script>${inline(NOTICE + jsSingle)}</script>`);
   fs.writeFileSync(path.join(OUT, 'editor.html'), one);
   console.log(`dist/editor.html: ${kb(one.length)} (fonts embedded)`);
 }

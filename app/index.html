@@ -35,7 +35,9 @@
           <button type="button" id="b-exportmenu" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
           <div id="m-export" class="menu-list sub-list" role="menu" aria-labelledby="b-exportmenu" hidden>
             <button type="button" id="b-export-play" role="menuitem" data-t="exportPlayOnly"></button>
-            <button type="button" id="b-print" role="menuitem" data-t="print"></button>
+            <!-- 印刷（v0.6.5 E5）：スライド（1 枚ずつ）と、本（本のない教材は台本と小さなスライド。A4 縦。app/book.js） -->
+            <button type="button" id="b-print" role="menuitem" data-t="printSlides"></button>
+            <button type="button" id="b-print-book" role="menuitem" data-t="printScript"></button>
             <button type="button" id="b-unpack" class="only-portable" role="menuitem" data-t="exportFolder" hidden></button>
           </div>
         </div>
@@ -68,11 +70,20 @@
       <button type="button" id="b-narr" data-t="narr" data-key="n"></button>
       <button type="button" id="b-comments" data-t="comments" data-key="c"></button>
       <button type="button" id="b-audio" data-t="audio"></button>
+      <!-- 本（format spec §9C。app/book.js）：本のある教材だけ。合っていないかもしれない組・本文の欄 -->
+      <button type="button" id="b-book" class="only-book" data-t="bookBtn" hidden></button>
     </div>
     <span class="sep"></span>
     <div class="menu">
       <button type="button" id="b-previewmenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-preview" data-t="previewMenu"></button>
       <div id="m-preview" class="menu-list" role="menu" aria-labelledby="b-previewmenu" aria-describedby="m-preview-note" hidden>
+        <!-- 表示（本のある教材だけ。app/book.js）：再生器の並べ方（kit/panes.js）。スライド・スライドと本・本 -->
+        <div role="group" class="only-book" data-t-label="viewGroup" hidden>
+          <button type="button" id="b-view-slides" class="only-book" role="menuitemradio" aria-checked="true" data-t="viewSlides" hidden></button>
+          <button type="button" id="b-view-split" class="only-book" role="menuitemradio" aria-checked="false" data-t="viewSplit" hidden></button>
+          <button type="button" id="b-view-book" class="only-book" role="menuitemradio" aria-checked="false" data-t="viewBook" hidden></button>
+        </div>
+        <div role="separator" class="menu-sep only-book" hidden></div>
         <!-- 表示のモード（スライドショー・動画）は 1 つを選ぶ。スライドショーは全画面にもする。先のステップを薄く見せる（l）は字幕と同じ入／切の選び（内部の名前は lecture、?mode=lecture） -->
         <div role="group" data-t-label="modesGroup">
           <button type="button" id="b-full" role="menuitemradio" aria-checked="true" data-t="fullCmd"></button>
@@ -121,6 +132,8 @@
       <p class="hint" data-t="examplesLead"></p>
       <ul id="examples-list"></ul>
     </div>
+    <!-- パーツの一覧（/parts/。新しいタブ。行き先は app/parts-gallery.js の partsIndexHref：サイトでは根からの相対、file:// では公開のサイト） -->
+    <p class="note parts-link"><a id="w-parts" target="_blank" rel="noopener" data-t="allParts"></a></p>
     <p id="save-note" class="note" hidden data-t="saveNote"></p>
     <!-- Claude Code・Cowork で作る人への案内（行き先は main.js の WITH_CLAUDE_URL の 1 か所。説明のページか README かは未定） -->
     <p class="note with-claude"><a id="w-claude" target="_blank" rel="noopener" data-t="withClaude"></a></p>
@@ -137,6 +150,8 @@
       <!-- allow="autoplay"：発表者ビュー（別の窓）で自動再生を始めても、プレビューの音声が鳴るように（キーを押したのはその窓で、この枠ではない。
            音声を鳴らすのはプレビューだけで、発表者ビューは位置と操作を送るだけ） -->
       <iframe id="preview" title="slides" sandbox="allow-scripts allow-modals" allow="autoplay"></iframe>
+      <!-- 本を見せているとき（再生器の本の窓。app/book.js）の、プレビューのすぐ下の 1 行：組めなかったわけと、citeproc の帰属 -->
+      <div id="book-foot"><p id="book-note" class="hint" hidden></p><p id="book-credit" class="credit" hidden></p></div>
       <div id="errbox" hidden><div class="errcard"><h2 data-t="buildFailed"></h2><p data-t="buildFailedHint"></p><pre id="errtext"></pre></div></div>
       <div id="loading" data-t="building"></div>
     </div>

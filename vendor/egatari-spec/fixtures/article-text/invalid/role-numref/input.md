@@ -1,0 +1,1 @@
+See {numref}`fig-bitmap`.

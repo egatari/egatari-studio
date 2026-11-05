@@ -1,0 +1,48 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "Use "
+        },
+        {
+          "type": "emphasis",
+          "children": [
+            {
+              "type": "text",
+              "value": "emphasis"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": ", "
+        },
+        {
+          "type": "strong",
+          "children": [
+            {
+              "type": "text",
+              "value": "strong"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": " text and a "
+        },
+        {
+          "type": "inlineCode",
+          "value": "code span"
+        },
+        {
+          "type": "text",
+          "value": " together."
+        }
+      ]
+    }
+  ]
+}

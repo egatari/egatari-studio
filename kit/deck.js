@@ -14,11 +14,26 @@ var REDUCE = window.matchMedia && window.matchMedia("(prefers-reduced-motion: re
 var NS = "http://www.w3.org/2000/svg";
 var T = DECK.T = {fade: .45, draw: .7, drawSlow: 1.4, drawDelay: .1, slide: .35, morph: .9, lead: .25, padAfter: .6, hold: 1.2};
 
-// 表示のモード（Player P1）：talk・video（learn はまだない）。「先のステップを薄く見せる」は talk の選択肢（preview）で、
+// 表示のモード（Player P1）：talk・learn・video。「先のステップを薄く見せる」は talk の選択肢（preview）で、
 // 内部では DECK.mode = "lecture" と書く（?mode=lecture は古い呼び方のまま通す。?mode=talk&preview=1 も同じ。Player P8）。
 // 部品に渡す ctx では mode:"talk"・preview:true（format spec §8.4。ctxMode）
+// learn（自習。?mode=learn）：見る人が再生・一時停止・前へ・次へ・跳ぶ・再生速度（0.75〜2 倍、声の高さは保つ）を操る。再生中に送っても再生を続け、
+// 一時停止はその所から続ける。タイムラインの時計も同じ速さで進む（画面は (i, k, t) のまま）。発表者の道具（発表者ビュー・レーザー・ペン）は出さない。
+// learn の薄く見せるのは DECK.mode を変えずに LEARN_PREVIEW で持つ（previewOn）
 DECK.mode = Q.get("mode") || document.documentElement.getAttribute("data-mode") || "talk";
 if (DECK.mode === "talk" && Q.get("preview") === "1") DECK.mode = "lecture";
+var LEARN = DECK.mode === "learn", LEARN_PREVIEW = LEARN && Q.get("preview") === "1";
+function previewOn(){ return DECK.mode === "lecture" || (LEARN && LEARN_PREVIEW); }
+DECK.previewOn = previewOn;
+// 先のステップを薄く見せるの入り切り（l・帯のボタン・発表者ビュー）
+function togglePreview(){
+  if (LEARN) LEARN_PREVIEW = !LEARN_PREVIEW;
+  else { DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); }
+  document.documentElement.classList.toggle("deck-preview", previewOn());
+}
+DECK.togglePreview = function(){ togglePreview(); if (DECK.ready) seek(POS.i, POS.k, Infinity); };
+// 再生速度（learn。Player P1）：タイムラインの時計と声の速さ。声の高さは保つ（preservesPitch）
+var RATES = DECK.RATES = [.75, 1, 1.25, 1.5, 2], RATE = 1;
 // 画面に出す言葉の言語：<html lang> が ja か、lang が無ければ日本語。それ以外は英語
 DECK.ja = /^ja\b/i.test(document.documentElement.lang || "ja");
 DECK.view = Q.get("view") || "";   // "", "follow"（発表者ビューの中の現在の画面）, "next"（次の画面）
@@ -690,7 +705,7 @@ function ctxExtend(s, seconds, c){
   var seg = DECK.timeline().find(function(g){ return g.i === i && g.k === k; });
   // The part clamps first (m-timer: remaining >= 0, total <= 1 hour); the player keeps the step length >= 0 and the total <= 1 hour.
   var elapsed = liveRun && liveRun.i === i && liveRun.k === k ?
-    Math.min(Math.max(0, (seg ? seg.dur : 0) + before), Math.max(liveRun.t, (performance.now() - liveRun.start) / 1000)) : 0;
+    Math.min(Math.max(0, (seg ? seg.dur : 0) + before), Math.max(liveRun.t, runT(liveRun))) : 0;
   var total = Math.max(elapsed - (seg ? seg.dur : 0), Math.min(3600, before + seconds));
   total = Math.min(3600, total) || 0;
   stepExtensions[k] = total;
@@ -703,9 +718,9 @@ function ctxExtend(s, seconds, c){
     // Events scheduled ahead were timed for the old length: drop them and cross again with the new timing.
     soundCancelAhead(liveRun && liveRun.i === i && liveRun.k === k ? liveRun : null, elapsed);
     // A finished/manual step can start its clock again; an active clock keeps its elapsed time.
-    if (!liveRun) liveRun = {i: i, k: k, base: animDur(i, k), start: performance.now(), t: 0, first: false, from: -1};
+    if (!liveRun) liveRun = {i: i, k: k, base: animDur(i, k), start: performance.now(), t0: 0, t: 0, first: false, from: -1};
     if (liveRun.i === i && liveRun.k === k && !raf){
-      liveRun.start = performance.now() - liveRun.t * 1000;
+      liveRun.start = performance.now(); liveRun.t0 = liveRun.t;
       raf = requestAnimationFrame(tickLive);
     }
   }
@@ -811,10 +826,10 @@ var CTX_LIVE = Object.freeze({poll: function(id){
 document.addEventListener("deck:live", function(){
   if (!started || !viewerInput() || !viewerStep) return;
   var v = viewerStep, r = liveRun;
-  seek(v.i, v.k, r && raf ? (performance.now() - r.start) / 1000 : Infinity, undefined, true);
+  seek(v.i, v.k, r && raf ? runT(r) : Infinity, undefined, true);
 });
 function ctxFor(c, s, o){
-  var x = {mode: ctxMode(), preview: DECK.mode === "lecture" && !c._ctxNoPrev, slide: s._key, lang: CTX_LANG, slides: CTX_SLIDES,
+  var x = {mode: ctxMode(), preview: previewOn() && !c._ctxNoPrev, slide: s._key, lang: CTX_LANG, slides: CTX_SLIDES,
     go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited, extend: function(seconds){ return ctxExtend(s, seconds, c); },
     live: viewerInput() && !DECK.view && DECK.live && typeof DECK.live.poll === "function" ? CTX_LIVE : null};
   for (var k in o) x[k] = o[k];
@@ -872,7 +887,7 @@ function seek(i, k, t, from, cont){
   k = Math.max(0, Math.min(s._max, k));
   var tReal = t;   // 時計の部品には、動きを減らす設定でも実際の t（isClock）
   if (REDUCE && t !== Infinity) t = Infinity;
-  var mode = ctxMode(), lecture = DECK.mode === "lecture";
+  var mode = ctxMode(), lecture = previewOn();
   var dim = lecture ? previewOpacity() : 1;
   var entering = k === 0 && from !== undefined && from >= 0 && from !== i && t !== Infinity;
   var morph = entering && t < T.morph && morphSrc(i) === from;
@@ -1585,12 +1600,12 @@ function stepSoundEvents(i, k, base, extension){
   });
   return events;
 }
-// Schedule events {t: step time} for a step whose t = 0 is AudioContext time `at`. Same-time events (a chord) share one call.
+// Schedule events {t: step time} for a step whose t = 0 is AudioContext time `at` (step time runs at the playback rate, learn). Same-time events (a chord) share one call.
 // An event whose time has already passed (a late frame, a resume) sounds now, whole, without replaying an earlier tail.
 function soundPlay(events, at, run, next){
   var now = soundContext.currentTime, groups = [];
   DECK.Sounds.normalize(events).forEach(function(e){
-    var when = Math.max(now, at + e.t), g = groups.find(function(x){ return x.when === when; });
+    var when = Math.max(now, at + e.t / RATE), g = groups.find(function(x){ return x.when === when; });
     if (!g) groups.push(g = {when: when, t: e.t, events: []});
     g.events.push(Object.assign({}, e, {t: 0}));
   });
@@ -1635,7 +1650,7 @@ function soundTick(r, t){
   // Crossings are (prev, horizon]: the clock's time plus the look-ahead, never past the step's end.
   // A renewed mapping would put later events off the grid of those already scheduled: schedule them all again.
   if (soundClockCheck()){ soundCancelAhead(r, t); prev = r.soundT; }
-  var h = Math.max(t, Math.min(end, t + SOUND_AHEAD)), at = soundTime(r.start), now = soundContext.currentTime;
+  var h = Math.max(t, Math.min(end, t + SOUND_AHEAD)), at = soundTime(r.start - (r.t0 || 0) / RATE * 1000), now = soundContext.currentTime;
   r.soundT = Math.max(prev, h);
   soundHandles = soundHandles.filter(function(x){ return x.end > now; });
   soundPlay(DECK.Sounds.crossed(stepSoundEvents(r.i, r.k, r.base, ext), prev, r.soundT), at, r, false);
@@ -1647,16 +1662,18 @@ function soundTick(r, t){
   var prevN = soundNext && soundNext.i === n.i && soundNext.k === n.k ? soundNext.t : -1;
   if (hn <= prevN) return;
   soundNext = {i: n.i, k: n.k, t: hn};
-  soundPlay(DECK.Sounds.crossed(stepSoundEvents(n.i, n.k, n.dur, 0), prevN, hn), at + ends, null, true);
+  soundPlay(DECK.Sounds.crossed(stepSoundEvents(n.i, n.k, n.dur, 0), prevN, hn), at + ends / RATE, null, true);
 }
 
 // ---------------------------------------------------------------- 実時間での再生
 function stopLoop(){ if (raf) cancelAnimationFrame(raf); raf = 0; liveRun = null; }
+// 段階の中の時刻（秒）：実時間 × 再生速度（速さを変えたら t0・start を今に付け替える：rebaseRate）
+function runT(r){ return (r.t0 || 0) + (performance.now() - r.start) / 1000 * RATE; }
 function tickLive(){
   var r = liveRun;
   if (!r) return;
   raf = 0;
-  var t = (performance.now() - r.start) / 1000, cont = !r.first;
+  var t = runT(r), cont = !r.first;
   // The first render performs slide-entry reset before we read the new step's extension.
   if (r.first){ r.first = false; seek(r.i, r.k, 0, r.from, false); cont = true; }
   var end = Math.max(0, r.base + DECK.stepExtension(r.i, r.k));
@@ -1674,7 +1691,7 @@ function play(i, k, animate, from, sounds){
   if (!animate || (REDUCE && !(animDur(i, k) > 0) && !sounds)){ seek(i, k, Infinity); POS.publish(); return; }
   if (i !== POS.i){ slides[POS.i]._tok++; slides[POS.i]._legacyAt = undefined; }
   legacy(slides[i], k, REDUCE);   // 動きを減らす設定で時計の部品のために回すときも、ほかは最後の状態
-  var d = REDUCE ? animDur(i, k) : Math.max(animDur(i, k), DECK.mode === "lecture" ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
+  var d = REDUCE ? animDur(i, k) : Math.max(animDur(i, k), previewOn() ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
   // Sounds follow the whole step, including narration/hold after its visible motion.
   if (sounds && DECK.hasComponentSounds()){
     var segment = DECK.timeline().find(function(g){ return g.i === i && g.k === k; });
@@ -1682,7 +1699,7 @@ function play(i, k, animate, from, sounds){
   }
   // Autoplay starts the step at its planned (absolute) time, so that timing errors never add up from step to step.
   var ag = autoGo && autoGo.i === i && autoGo.k === k ? autoGo : null;
-  liveRun = {i: i, k: k, base: d, start: ag ? ag.start : performance.now(), t: 0, first: true, from: from, sounds: !!sounds, soundT: -1, plan: ag && sounds ? ag : null};
+  liveRun = {i: i, k: k, base: d, start: ag ? ag.start : performance.now(), t0: ag ? ag.e0 : 0, t: 0, first: true, from: from, sounds: !!sounds, soundT: -1, plan: ag && sounds ? ag : null};
   if (ag && sounds && soundNext && soundNext.i === i && soundNext.k === k){
     // The previous step already scheduled this one's first events.
     liveRun.soundT = soundNext.t;
@@ -1698,12 +1715,13 @@ function go(i, k, animate, stepMove){
   if (!stepMove) jumpTo = i;   // 1 段階ずつの送り・戻し（自動再生を含む）でない動きは跳ぶ（ctx.entered）
   var sounds = !!(stepMove && animate && DECK.Sounds && DECK.hasComponentSounds());
   // Autoplay's end timer can beat the final animation frame: include its endpoint crossing.
-  if (sounds && DECK.Sounds && liveRun) soundTick(liveRun, Math.min((performance.now() - liveRun.start) / 1000, Math.max(0, liveRun.base + DECK.stepExtension(liveRun.i, liveRun.k))));
+  if (sounds && DECK.Sounds && liveRun) soundTick(liveRun, Math.min(runT(liveRun), Math.max(0, liveRun.base + DECK.stepExtension(liveRun.i, liveRun.k))));
   if (!sounds) soundStop();
   // A forward step keeps the tails that already sound, but not what was scheduled ahead, unless autoplay reaches its planned next step.
   else if (!(autoGo && autoGo.i === i && autoGo.k === k && soundNext && soundNext.i === i && soundNext.k === k))
-    soundCancelAhead(liveRun, liveRun ? Math.min((performance.now() - liveRun.start) / 1000, liveRun.soundT) : 0);
+    soundCancelAhead(liveRun, liveRun ? Math.min(runT(liveRun), liveRun.soundT) : 0);
   LINKS.seen[i] = true;
+  if (!auto) paused = null;   // 一時停止した段階から離れたら、次の再生はその段階の初めから
   play(i, Math.max(0, Math.min(slides[i]._max, k)), animate, animate && i !== from ? from : -1, sounds);
   // 履歴の項目の state（リンクの深さ）は残し、その項目の中の今の位置（at：ブラウザの「進む」で戻る先）を書く（format spec §9.1A の「戻る」）
   try {
@@ -1720,53 +1738,107 @@ function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false, true);
 // 起動の前（部品の mount の前）の go は開く位置にする（最後の 1 つ。その前に頼まれた seek は捨てる）。送り・戻しは何もしない
 DECK.go = function(i, k, animate){ if (!started){ pendingGo = [i, k]; pendingSeek = null; return; } go(i, k, animate); };
 DECK.next = function(){ if (started) next(); }; DECK.prev = function(){ if (started) prev(); };
-DECK.state = function(){ var i = POS.i, k = POS.k; return {slide: i + 1, step: k, max: slides[i]._max, key: DECK.stepKey(i, k), mode: DECK.mode}; };
+// 窓（kit/panes.js）からの移動：本の窓のスクロール（cause "seek"、Player P8）・「スライドで見る」（"link"）。同じスライドの中なら跳ばない（ctx.entered）。
+// animate：その段階の動きを初めから見せる（スクロールで入った段階・重ねて見せるとき）
+DECK.move = function(i, k, animate, cause){
+  if (!started) return;
+  POS.setCause(cause || "seek"); go(i, k, !!animate, i === POS.i); POS.setCause(null);
+};
+DECK.state = function(){ var i = POS.i, k = POS.k; return {slide: i + 1, step: k, max: slides[i]._max, key: DECK.stepKey(i, k), mode: DECK.mode, playing: !!auto, rate: RATE, preview: previewOn()}; };
 
 // ---------------------------------------------------------------- 自動再生（音声があれば流し、タイムラインで進む）
+// learn（自習）では「再生」：一時停止（stopAuto(true)）はその段階の中の時刻と声の所を覚え、同じ段階で再生し直せばそこから続ける。
+// 段階の中の時刻は実時間 × 再生速度（segT）。速さを変えたら今の時刻で付け替える（rebaseRate）
 var audioEl = null;
-function stopAuto(){
+var paused = null;
+function segT(){ return auto && auto.segStart !== undefined ? auto.e0 + (performance.now() - auto.segStart) / 1000 * RATE : 0; }
+function stopAuto(pause){
   if (!auto) return;
+  paused = pause && LEARN && auto.tl[auto.idx] ? {key: auto.tl[auto.idx].key, e: segT(), audio: auto.playing === auto.tl[auto.idx].key && audioEl ? audioEl.currentTime : null} : null;
   clearTimeout(auto.timer); clearTimeout(auto.atimer);
   if (audioEl){ audioEl.pause(); }
   // The current step plays on; the next step's events scheduled ahead do not.
   if (liveRun) liveRun.plan = null;
   soundHandles = soundHandles.filter(function(h){ if (h.next) h.handle.stop(); return !h.next; }); soundNext = null;
   auto = null; POS.setPlaying(false); document.documentElement.classList.remove("autoplay");
-  POS.publish();
+  POS.publish(); turnTick(); postState();
 }
-function startAuto(){
-  stopAuto();
+// 読み上げ中の話（台本のステップの中の 1 つの話。字数の割合を音声の時刻に当てる。字幕の capIndex と同じ考え）。
+// 変わったら deck:turn {i, k, j}（再生していなければ j = -1）。kit/panes.js が本の窓（台本で読む）で強調する（Player P2）
+var turnNow = null;
+function turnTick(){
+  var g = auto && auto.tl[auto.idx], j = -1;
+  if (g && g.i === POS.i && g.k === POS.k){
+    var ts = capTurns(POS.i, POS.k), tm = timing(POS.i, POS.k), a = tm.audio;
+    j = 0;
+    if (ts.length > 1 && a && a.dur && audioEl && auto.playing === tm.key){
+      var total = ts.reduce(function(n, t){ return n + String(t.text || "").length; }, 0), acc = 0;
+      var x = Math.max(0, (audioEl.currentTime || 0) - audioOffset(a)) / a.dur * total;
+      for (j = 0; j < ts.length - 1; j++){ acc += String(ts[j].text || "").length; if (x < acc) break; }
+    }
+  }
+  var key = j < 0 ? null : POS.i + ":" + POS.k + ":" + j;
+  if (key === turnNow) return;
+  turnNow = key;
+  document.dispatchEvent(new CustomEvent("deck:turn", {detail: {i: POS.i, k: POS.k, j: j}}));
+}
+// here：今の位置（もう描いた段階）から始める。go で描き直さない（learn で再生中に送ったとき）
+function startAuto(here){
+  var rec = paused; paused = null;
+  if (auto){ clearTimeout(auto.timer); clearTimeout(auto.atimer); if (audioEl) audioEl.pause(); auto = null; }
   var tl = DECK.timeline(), idx = tl.findIndex(function(x){ return x.i === POS.i && x.k === POS.k; });
   if (idx < 0) idx = 0;
-  auto = {tl: tl, idx: idx}; POS.setPlaying(true);
+  auto = {tl: tl, idx: idx, e0: 0}; POS.setPlaying(true);
   document.documentElement.classList.add("autoplay");
-  runSeg();
+  if (rec && tl[idx] && rec.key === tl[idx].key){ auto.started = true; runSeg(rec); }
+  else { if (here) auto.started = true; runSeg(); }
+  postState();
 }
-function runSeg(){
+function ensureAudio(){
+  if (!audioEl){
+    audioEl = new Audio();
+    audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); turnTick(); });
+  }
+}
+function playAudio(g, at){
+  ensureAudio();
+  if (auto) auto.playing = g.key;
+  if (at === undefined){ audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; }
+  audioEl.preservesPitch = true; audioEl.mozPreservesPitch = true; audioEl.webkitPreservesPitch = true;
+  audioEl.playbackRate = RATE;
+  var pr = audioEl.play();
+  if (pr && pr.catch) pr.catch(function(e){ if (e && e.name === "NotAllowedError" && EMBED) post({egatari: "playBlocked"}); });
+}
+// rec：一時停止した所 {e：段階の中の秒, audio：声の所（まだ鳴らしていなければ null）}
+function runSeg(rec){
   if (!auto) return;
   clearTimeout(auto.atimer);
-  if (audioEl) audioEl.pause();
+  if (audioEl && !rec) audioEl.pause();
   var g = auto.tl[auto.idx];
   if (!g){ stopAuto(); return; }
   // Step ends are on one absolute clock: autoplay's start plus the planned lengths (and extensions) of the steps before.
   // A timer that fires late shortens the next step instead of delaying everything after it. After a long stall
   // (a background tab throttles timers), start again from now rather than rushing through steps, unless this
   // step's sounds are already scheduled on the plan (then the screen catches up with the sound).
+  // learn: a step resumed after a pause (rec) starts from now at the paused step time e0; every other step starts at its time 0.
   var now = performance.now();
-  if (auto.segStart === undefined || (now - auto.segStart > 250 && !(soundNext && soundNext.i === g.i && soundNext.k === g.k))) auto.segStart = now;
+  if (rec){ auto.segStart = now; auto.e0 = rec.e; }
+  else {
+    auto.e0 = 0;
+    if (auto.segStart === undefined || (now - auto.segStart > 250 && !(soundNext && soundNext.i === g.i && soundNext.k === g.k))) auto.segStart = now;
+  }
   if (!(g.i === POS.i && g.k === POS.k && auto.started)){
     var c0 = POS.cause; POS.setCause(c0 || "play");
-    autoGo = {i: g.i, k: g.k, start: auto.segStart, dur: g.dur, next: auto.tl[auto.idx + 1] || null};
+    autoGo = {i: g.i, k: g.k, start: auto.segStart, e0: auto.e0, dur: g.dur, next: auto.tl[auto.idx + 1] || null};
     try { go(g.i, g.k, true, true); } finally { autoGo = null; }
     POS.setCause(c0);
   }
   auto.started = true;
+  turnTick();
   if (g.audio){
-    if (!audioEl){
-      audioEl = new Audio();
-      audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); });
-    }
-    auto.atimer = setTimeout(function(){ if (auto) auto.playing = g.key; audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; audioEl.play().catch(function(){}); }, Math.max(0, auto.segStart + g.lead * 1000 - performance.now()));
+    ensureAudio();
+    if (rec && rec.audio !== null) playAudio(g, rec.audio);
+    else auto.atimer = setTimeout(function(){ if (auto) playAudio(g); }, Math.max(0, auto.segStart + Math.max(0, g.lead - auto.e0) / RATE * 1000 - performance.now()));
   }
   scheduleAutoEnd();
 }
@@ -1775,16 +1847,47 @@ function scheduleAutoEnd(){
   clearTimeout(auto.timer);
   var g = auto.tl[auto.idx];
   if (!g) return;
-  var remaining = Math.max(0, g.dur + DECK.stepExtension(g.i, g.k) - (performance.now() - auto.segStart) / 1000);
+  var remaining = Math.max(0, g.dur + DECK.stepExtension(g.i, g.k) - segT()) / RATE;
   auto.timer = setTimeout(function(){
     if (!auto) return;
     // Long extensions may exceed a browser timer's maximum delay.
     if (remaining > 2147483){ scheduleAutoEnd(); return; }
-    auto.segStart += Math.max(0, g.dur + DECK.stepExtension(g.i, g.k)) * 1000;
+    auto.segStart += Math.max(0, g.dur + DECK.stepExtension(g.i, g.k) - auto.e0) / RATE * 1000;
     auto.idx++; runSeg();
   }, Math.min(remaining * 1000, 2147483000));
 }
-DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(); else startAuto(); };
+DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(LEARN); else startAuto(); };
+DECK.playing = function(){ return !!auto; };
+// 再生速度を変える：段階の動き（liveRun）と自動再生の時刻を今の所で付け替え、声の速さも替える
+function rebaseRate(v){
+  var now = performance.now();
+  if (liveRun){ liveRun.t0 = runT(liveRun); liveRun.start = now; }
+  // Sounds scheduled ahead were placed at the old rate: drop them; the next frame schedules them again.
+  if (liveRun) soundCancelAhead(liveRun, liveRun.t0);
+  if (auto && auto.segStart !== undefined){
+    auto.e0 = segT(); auto.segStart = now;
+    var g = auto.tl[auto.idx];
+    RATE = v;
+    if (g && g.audio && auto.playing !== g.key){ clearTimeout(auto.atimer); auto.atimer = setTimeout(function(){ if (auto) playAudio(g); }, Math.max(0, g.lead - auto.e0) / RATE * 1000); }
+    scheduleAutoEnd();
+  }
+  RATE = v;
+  if (audioEl) audioEl.playbackRate = v;
+}
+DECK.rate = function(v){
+  if (v === undefined) return RATE;
+  v = +v;
+  if (!(v > 0) || RATES.indexOf(v) < 0) return RATE;
+  if (v !== RATE){ rebaseRate(v); postState(); document.dispatchEvent(new CustomEvent("deck:rate", {detail: {rate: RATE}})); }
+  return RATE;
+};
+function stepRate(d){ var j = RATES.indexOf(RATE); DECK.rate(RATES[Math.max(0, Math.min(RATES.length - 1, (j < 0 ? 1 : j) + d))]); if (DECK.toast) DECK.toast(rateLabel()); }
+function rateLabel(){ return (DECK.ja ? "再生速度 " : "Playback speed ") + RATE + "×"; }
+DECK.rateLabel = rateLabel;
+// 埋め込み（Player P8）：再生の状態と速さが変わるたびに {egatari:"state", playing, rate}
+function postState(){ if (EMBED) post({egatari: "state", playing: !!auto, rate: RATE}); }
+// 文書が隠れたら再生を止める（Player P3。learn では一時停止なので、見えてから再生し直せばそこから続く）
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && auto && DECK.mode !== "video") stopAuto(LEARN); });
 
 // ---------------------------------------------------------------- 発表者ビューとの連携（postMessage。file:// でも動く）
 var presenter = null, presenterOpened = null;   // presenter：位置を送る相手（hello の送り元）。presenterOpened：この窓が開いた発表者ビュー
@@ -1849,6 +1952,12 @@ window.addEventListener("message", function(e){
     // 親がリンクで動くのを止める・許す（format spec §9.1A。止めている間は linkRefused を送る）
     LINKS.follow = m.follow;
     post({egatari: "links", id: m.id, follow: LINKS.follow});
+  } else if (EMBED && e.source === window.parent && (m.egatari === "play" || m.egatari === "pause")){
+    // 再生・一時停止（Player P8）。声を始められなければ playBlocked（playAudio）
+    if (m.egatari === "play"){ if (!auto && !EDIT) startAuto(); } else if (auto) stopAuto(LEARN);
+  } else if (EMBED && e.source === window.parent && m.egatari === "rate"){
+    var rv = DECK.rate(m.value);
+    if (rv !== +m.value) post({egatari: "error", id: m.id, code: "rate", message: "unsupported rate"});
   }
 });
 
@@ -2095,11 +2204,23 @@ function syncBack(){
 }
 
 // ---------------------------------------------------------------- 起動
+// 舞台を置く箱：ふつうは窓全体。窓（ペイン）の並べ方（kit/panes.js の DECK.stageBox）が {x, y, w, h, clip?} を返せばその箱
+// （スライドと本の横並びの左、「スライドで見る」の重ね、台本の縮図の場所）。clip は箱の外に出る分を舞台の座標（1280×720）で切る {top, bottom}
 function fit(){
-  var k = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
   var st = document.getElementById("stage");
-  if (st) st.style.transform = "translate(-50%,-50%) scale(" + k + ")";
+  if (!st) return;
+  var b = typeof DECK.stageBox === "function" ? DECK.stageBox() : null;
+  if (!b){
+    st.style.left = st.style.top = st.style.clipPath = "";
+    st.style.transform = "translate(-50%,-50%) scale(" + Math.min(window.innerWidth / 1280, window.innerHeight / 720) + ")";
+    return;
+  }
+  var k = Math.max(.01, Math.min(b.w / 1280, b.h / 720));
+  st.style.left = (b.x + b.w / 2) + "px"; st.style.top = (b.y + b.h / 2) + "px";
+  st.style.transform = "translate(-50%,-50%) scale(" + k + ")";
+  st.style.clipPath = b.clip ? "inset(" + Math.max(0, b.clip.top / k).toFixed(1) + "px 0 " + Math.max(0, b.clip.bottom / k).toFixed(1) + "px 0)" : "";
 }
+DECK.fit = function(){ fit(); };
 function init(){
   if (Q.get("presenter") && DECK.presenterView){ DECK.presenterView(); return; }
   slides = [].slice.call(document.querySelectorAll("#stage > .slide"));
@@ -2159,6 +2280,7 @@ function start(){
   // 開いたときの位置：#N（番号、範囲の外は端へ）、#<スライドの id>、#<id>:<段階の鍵>（format spec §9.1A）
   var hs = (location.hash || "").slice(1), h0 = /^[0-9]+$/.test(hs) ? {i: Math.max(1, +hs) - 1, k: 0} : hs ? resolveFragment(hs) : {i: 0, k: 0};
   if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
+  DECK.openHash = hs;   // 開いたときの #（kit/panes.js の「前回の続きから」は、# で場所を指して開いたときには使わない）
   if (pendingGo){ h0 = {i: pendingGo[0], k: pendingGo[1]}; pendingGo = null; }
   POS.setCause("seek"); go(h0.i, h0.k, false); POS.setCause(null);
   if (pendingSeek){ var ps = pendingSeek; pendingSeek = null; seek.apply(null, ps); }
@@ -2241,11 +2363,37 @@ document.addEventListener("deck:edit", function(e){
   buf = ""; var j = document.getElementById("jump"); if (j) j.textContent = "";
   setBlack(false);
   extClose();
-  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(function(){});
+  if (fsOn()) fsExit();
 });
+// 全画面（f・帯の「全画面」）：documentElement を全画面にする。古い iPadOS の Safari は接頭辞付きの API（webkitRequestFullscreen）だけ。
+// 断られたら（枠の中で許されていない・ブラウザが断った）短い知らせ。要素の全画面がない所（iPhone の Safari、全画面を許さない枠の中）では
+// DECK.canFullscreen() が false：帯は全画面のボタンを出さず、キーの一覧にも f を載せない（tools.js）。Egatari Viewer の中では
+// Viewer の先頭部分（play/lesson-shim.js）がこの API を Viewer のページへの頼みに置き換え、枠そのものを全画面にする
+function fsOn(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function fsRefused(){ if (DECK.toast) DECK.toast(L10N("全画面にできませんでした", "Could not go fullscreen")); }
+function fsExit(){
+  var ex = document.exitFullscreen || document.webkitExitFullscreen;
+  try { var p = ex && ex.call(document); if (p && p.catch) p.catch(function(){}); } catch (e) { /* already left */ }
+}
+var fsNoPromise = false;
+DECK.canFullscreen = function(){
+  var d = document.documentElement, en = document.fullscreenEnabled;
+  if (en === undefined) en = document.webkitFullscreenEnabled;
+  return !!(d.requestFullscreen || d.webkitRequestFullscreen) && en !== false;
+};
+DECK.isFullscreen = fsOn;
+DECK.toggleFullscreen = function(){
+  if (fsOn()){ fsExit(); return; }
+  var d = document.documentElement, go = d.requestFullscreen || d.webkitRequestFullscreen, p;
+  if (!go || !DECK.canFullscreen()){ fsRefused(); return; }
+  try { p = go.call(d); } catch (e){ fsRefused(); return; }
+  if (p && p.then) p.then(null, fsRefused); else fsNoPromise = true;   // 古い Safari：何も返さず、webkitfullscreenerror が届く
+};
+document.addEventListener("webkitfullscreenchange", function(){ fsNoPromise = false; });
+document.addEventListener("webkitfullscreenerror", function(){ if (fsNoPromise){ fsNoPromise = false; fsRefused(); } });
 // 送りのキー（矢印・PageUp/PageDown・Home・End）。押したら true
 function navKey(k, shift){
-  var nav = true;
+  var nav = true, was = !!auto;
   if ((k === "ArrowRight" || k === "ArrowDown") && shift) go(POS.i + 1, 0, false);
   else if ((k === "ArrowLeft" || k === "ArrowUp") && shift) go(POS.i - 1, 0, false);
   else if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "ArrowDown") next();
@@ -2253,7 +2401,8 @@ function navKey(k, shift){
   else if (k === "Home") go(0, 0, false);
   else if (k === "End") go(slides.length - 1, 0, false);
   else nav = false;
-  if (nav) stopAuto();
+  // learn：再生中に送っても再生を続ける（送った先の段階の初めから。Player P4.1 と同じ）。talk では止める
+  if (nav){ if (LEARN && was) startAuto(true); else stopAuto(); }
   return nav;
 }
 // 編集の画面（信頼する親。server/editor-ui.js）から送られたキー：編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときに
@@ -2288,14 +2437,15 @@ document.addEventListener("keydown", function(e){
   // フォーカスのあるボタンやリンクは、Enter と Space でそれ自身を押す（送りに使わない）
   if ((k === "Enter" || k === " ") && !buf && e.target && e.target.closest && e.target.closest("button, a[href], [role=button]")) return;
   if (/^[0-9]$/.test(k)){ buf += k; if (j) j.textContent = buf; return; }
-  if (k === "Enter" && buf){ stopAuto(); go(parseInt(buf, 10) - 1, 0, false); buf = ""; if (j) j.textContent = ""; return; }
+  if (k === "Enter" && buf){ var was = !!auto; if (!(LEARN && was)) stopAuto(); go(parseInt(buf, 10) - 1, 0, false); if (LEARN && was) startAuto(true); buf = ""; if (j) j.textContent = ""; return; }
   buf = ""; if (j) j.textContent = "";
   if (navKey(k, e.shiftKey)){ e.preventDefault(); return; }
   if (EDIT && (k === "a" || k === "b" || k === "f")) return;
-  if (k === "f"){ if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); }
-  else if (k === "p") openPresenter();
+  if (k === "f") DECK.toggleFullscreen();
+  else if (k === "p"){ if (!LEARN) openPresenter(); }
   else if (k === "a") DECK.autoplay();
-  else if (k === "l"){ DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); seek(POS.i, POS.k, Infinity); }
+  else if (k === "l") DECK.togglePreview();
+  else if (k === ">" || k === "<"){ if (LEARN) stepRate(k === ">" ? 1 : -1); }
   else if (k === "b") setBlack(true);
   else if (k === "s") setCaptions();
   else if (k === "S") capSize();

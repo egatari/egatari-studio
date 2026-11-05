@@ -51,10 +51,10 @@ ok('make-llm-guide --check：指示は材料から作り直したものと同じ
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-// 上限は PACK_CAP_KB（無料のプラン 40 KB：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 120 KB）
-ok('指示の大きさ：無料のプランの標準すべて ≤ 40 KB、有料のプランの標準＋2 つの束のどの組も ≤ 120 KB。前の全体版・core 版はない', () => {
+// 上限は PACK_CAP_KB（無料のプラン 45 KB：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 120 KB）
+ok('指示の大きさ：無料のプランの標準すべて ≤ 45 KB、有料のプランの標準＋2 つの束のどの組も ≤ 120 KB。前の全体版・core 版はない', () => {
   for (const lang of ['en', 'ja']) {
-    assert.ok(packSize(buildPack({ sets: [], lang })) <= 40 * 1024, `${lang} free standard`);
+    assert.ok(packSize(buildPack({ sets: [], lang })) <= 45 * 1024, `${lang} free standard`);
     for (let i = 0; i < SETS.length; i++) for (let j = i + 1; j < SETS.length; j++) assert.ok(packSize(buildPack({ sets: [SETS[i], SETS[j]], lang, plan: 'paid' })) <= 120 * 1024, `${lang} paid standard+${SETS[i]}+${SETS[j]}`);
   }
   for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(!fs.existsSync(path.join(ROOT, 'docs', f)), f);
@@ -66,7 +66,7 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     const paidCommon = commonBody(lang, { plan: 'paid' });
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
-    assert.ok(/\| (Free plan: every standard part|無料のプラン：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 40 KB \|/.test(file) && /\| (Paid plan: every part set|有料のプラン：すべての束)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file),
+    assert.ok(/\| (Free plan: every standard part|無料のプラン：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Paid plan: every part set|有料のプラン：すべての束)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file),
       lang + ': the size table lists the free standard pack and the paid full pack');
     const paidParts = SETS.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
     assert.equal([commonBody(lang, { plan: 'paid', sets: 'all' }).trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ sets: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
@@ -106,7 +106,7 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     const e = editorFitted(['stats', 'math'], lang);
     assert.ok(e.short && e.dropped.length && e.dropped.every((t) => setOf(t) === 'stats' || setOf(t) === 'math'), `${lang}: stats+math is shortened and drops specialized parts (${e.dropped})`);
     assert.ok(fitCli.status === 0 && fitCli.stdout === e.text, `${lang}: the free CLI pack for stats+math is the editor's, byte for byte`);
-    assert.ok(packSize(fitCli.stdout) <= 40 * 1024, `${lang}: ${packSize(fitCli.stdout)} B`);
+    assert.ok(packSize(fitCli.stdout) <= 45 * 1024, `${lang}: ${packSize(fitCli.stdout)} B`);
     assert.ok(fitCli.stderr.includes('core four') && fitCli.stderr.includes('left out, largest first: ' + e.dropped.join(', ')) && fitCli.stderr.includes('--no-fit'), fitCli.stderr);
     for (const s of SETS) assert.equal(node('kit/llm-pack.mjs', '--sets', s, '--lang', lang).stdout, editorFitted([s], lang).text, `${lang} ${s}: the free CLI pack is the editor's`);
   }
@@ -114,13 +114,16 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
   const raw = (sets, lang) => packKb(buildPack({ sets, lang })) + ' KB';
   const fit = (sets, lang) => packKb(editorFitted(sets, lang).text) + ' KB';
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && list.stdout.startsWith('set\ten free, fitted to 40 KB\tja free, fitted to 40 KB\ten free, before fitting\tja free, before fitting\tcomponents\n'), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.startsWith('set\ten free, fitted to 45 KB\tja free, fitted to 45 KB\ten free, before fitting\tja free, before fitting\tcomponents\n'), list.stdout);
   assert.ok(list.stdout.includes(`standard\t${fit([], 'en')}\t${fit([], 'ja')}\t${raw([], 'en')}\t${raw([], 'ja')}\tm-bars, m-cards, m-compare`), list.stdout);
-  assert.ok(list.stdout.includes(`kokugo\t${fit(['kokugo'], 'en')} (core four shortened)\t${fit(['kokugo'], 'ja')} (core four shortened)\t${raw(['kokugo'], 'en')}\t${raw(['kokugo'], 'ja')}\tm-gendai, m-kakijun, m-kanbun, m-kobun\n`), list.stdout);
-  // 無料のプランのどの束も、収めた大きさは 40 KB まで
+  // 国語の括弧書き（中核の 4 つの短縮だけで収まるか）は言語ごとに違ってよい。m-kakijun は 2.2.0 候補で extra に移り（README だけの
+  // リンクに。backlog #170）、国語の束は m-gendai・m-kanbun・m-kobun の 3 つ
+  const kokugoNote = (lang) => (editorFitted(['kokugo'], lang).short ? ' (core four shortened)' : '');
+  assert.ok(list.stdout.includes(`kokugo\t${fit(['kokugo'], 'en')}${kokugoNote('en')}\t${fit(['kokugo'], 'ja')}${kokugoNote('ja')}\t${raw(['kokugo'], 'en')}\t${raw(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`), list.stdout);
+  // 無料のプランのどの束も、収めた大きさは 45 KB まで
   for (const s of SETS) {
     const row = list.stdout.split('\n').find((l) => l.startsWith(s + '\t')).split('\t');
-    for (const c of row.slice(1, 3)) assert.ok(parseFloat(c) <= 40, `--list ${s}: ${c}`);
+    for (const c of row.slice(1, 3)) assert.ok(parseFloat(c) <= 45, `--list ${s}: ${c}`);
   }
   // 有料のプランのすべての束（いちばん大きいとき）は上限を越えても知らせるだけで、そう書く
   const paidAll = packSize(buildPack({ sets: 'all', lang: 'ja', plan: 'paid' }));
@@ -154,7 +157,8 @@ ok('部品の居場所：どの部品もちょうど 1 か所（標準は共通�
   for (const [tag, s] of [['m-menu', 'standard'], ['m-cards', 'standard'], ['m-sweep', 'math'], ['m-collect', null], ['m-codetree', null], ['m-kpi', 'standard'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-orbit', 'science'], ['m-timer', 'tools'], ['m-nothing', null]]) assert.equal(setOf(tag), s, tag);
   // manifest の専門の部品に set がなければ、作り直しは失敗する（写しで確かめる）
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
-  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'skills', 'plugins', 'components.lock.json', 'components2.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'skills', 'plugins', 'components.lock.json', 'components2.lock.json', 'package.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  // make-llm-guide は package.json の版も読む（plugin.json の版・スキルの更新の案内 npx egatari@X.Y.x）
   fs.symlinkSync(fs.realpathSync(path.join(ROOT, 'node_modules')), path.join(tmp, 'node_modules'), 'junction');   // make-llm-guide は kit/core/parts2.mjs（parse5）を読む
   const mf = path.join(tmp, 'vendor', 'components-2', `manifest-${PACK.tiers.catalogue}.json`);
   const bad = JSON.parse(fs.readFileSync(mf, 'utf8'));

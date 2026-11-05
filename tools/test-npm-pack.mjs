@@ -49,7 +49,7 @@ await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験�
   const files = new Set(packed.files.map((f) => f.path));
   for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/portable.mjs', 'tools/sheet.mjs', 'tools/comment-shots.mjs', 'tools/video.mjs',
     'components.lock.json', 'themes.lock.json', 'kit/player.lock.json', 'LICENSE', 'NOTICE', 'fonts/OFL.txt',
-    'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
+    'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'vendor/csl/styles/apa.csl', 'vendor/csl/locales/locales-ja-JP.xml', 'vendor/csl/SOURCE.json', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
   const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|portable|sheet|comment-shots|video)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
   assert.deepEqual(bad, []);
 });

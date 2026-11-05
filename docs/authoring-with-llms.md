@@ -20,22 +20,22 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 
 A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
-This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kakijun`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-market`); [tools](llm-parts/tools.md) (`m-timer`); [science](llm-parts/science.md) (`m-orbit`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024):
+This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-market`); [tools](llm-parts/tools.md) (`m-timer`); [science](llm-parts/science.md) (`m-orbit`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024):
 
 | Pack | Size | Cap |
 |---|---:|---:|
-| Free plan: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 34.5 KB | 40 KB |
-| Free plan: standard + stats (the core four shortened too) | 36.2 KB | 40 KB |
-| Free plan: standard + math (the core four shortened too) | 36.3 KB | 40 KB |
-| Free plan: standard + maps (the core four shortened too) | 33.4 KB | 40 KB |
-| Free plan: standard + kokugo (the core four shortened too) | 39.1 KB | 40 KB |
-| Free plan: standard + english | 36.2 KB | 40 KB |
-| Free plan: standard + music | 37.2 KB | 40 KB |
-| Free plan: standard + business | 39.8 KB | 40 KB |
-| Free plan: standard + tools | 36.7 KB | 40 KB |
-| Free plan: standard + science (the core four shortened too) | 32.6 KB | 40 KB |
-| Paid plan: every standard part | 69.1 KB | 120 KB |
-| Paid plan: every part set (this file and every set pack); over the cap it is a warning only | 122.8 KB | 120 KB |
+| Free plan: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 35.4 KB | 45 KB |
+| Free plan: standard + stats | 44.7 KB | 45 KB |
+| Free plan: standard + math (the core four shortened too) | 37.0 KB | 45 KB |
+| Free plan: standard + maps | 42.3 KB | 45 KB |
+| Free plan: standard + kokugo | 44.8 KB | 45 KB |
+| Free plan: standard + english | 37.1 KB | 45 KB |
+| Free plan: standard + music | 38.7 KB | 45 KB |
+| Free plan: standard + business | 40.9 KB | 45 KB |
+| Free plan: standard + tools | 37.7 KB | 45 KB |
+| Free plan: standard + science | 40.9 KB | 45 KB |
+| Paid plan: every standard part | 70.8 KB | 120 KB |
+| Paid plan: every part set (this file and every set pack); over the cap it is a warning only | 123.9 KB | 120 KB |
 
 All of them are generated by `node tools/make-llm-guide.mjs` from [contract.md](contract.md), the component READMEs and `tools/llm-guide/`; do not edit them by hand.
 
@@ -45,7 +45,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `b47ccdba`
+Pack version: `68eeb33a`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -143,7 +143,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 Some parts are not included in these instructions (for Spread, Compare (amounts or features), Two quantities, Steps of a process, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.1.2/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.2.0/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 
@@ -156,7 +156,7 @@ Each part's description (pinned version): https://github.com/egatari/components/
 
 ## 3. Component catalog
 
-These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num.
+These standard components may be used in any lesson; a part set, when it is included after §6, adds the components of its kind of material. Generated from the component READMEs (their notes are in Japanese). “steps” is how many slide steps a component uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
@@ -166,7 +166,7 @@ These standard components may be used in any lesson; a part set, when it is incl
 | `<m-curves>` | 同じ座標軸に線を 1 本ずつ引く（線の名前は凡例でなく線の端に直接書く） | step の最大（既定は系列の数） | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — the data is the array itself, not {"series": […]}; axes go in attributes (xr="[0,10]" xl="…"); the expression field is f in x (not fn, not u) |
 | `<m-cycle>` | 循環の図。段階の箱を円の上に 12 時から時計回りに並べ、円に沿った矢印でつなぐ（最後から最初へ戻る矢印も） | 段階の数（既定は 1 つ = 1 段階。per-step で n 個ずつ、node の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置は部品が決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
-| `<m-flow>` | 流れ図の箱と矢印を段階ごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],offset?:num,at?}[]}` |
+| `<m-flow>` | 流れ図の箱と矢印を段階ごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | 大きな数字の札（KPI）を段階ごとに出す。数字は数え上げ、下に増減の矢印と一言 | 札の step の最大（既定は札 1 枚 = 1 段階。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
 | `<m-menu>` | スライドへのリンクの札を格子に並べる（目次・単元の選び方）。札はふつうの <a href="#<スライドの id>">、行ったスライドの札に「見た」の印 | ceil(札の数 / per-step)（既定の per-step="0" なら 0：初めから全部） | child `<a href>` links (not JSON) |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — the slices go in "slices" (not "data" or "groups"); value is a number, not a percentage string; the slices are drawn clockwise from 12 o'clock in the written order |
@@ -175,7 +175,7 @@ These standard components may be used in any lesson; a part set, when it is incl
 | `<m-scatter>` | 散布図。点の組（系列）を段階ごとに出し、そのあと傾向の線（最小二乗の直線か、書いた 2 点）を引く | 系列の数 ＋ 傾向の線（既定は系列 1 つ = 1 段階、そのあと線をまとめて 1 段階。系列・線の step で直接） | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — points are [x, y] or {"x", "y", "label"}; axes go in attributes (xr="[0,10]" xl="…"); trend is "linear" or {"fit": "linear", "label": "…"} or {"pts": [[x0, y0], [x1, y1]]} |
 | `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は帯にして、重なる期間は段を分けて積む。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 段階。per-step で n 個ずつ、node の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A node with end is a period (a band); lane groups bands into named lanes |
 | `<m-tree>` | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置は部品が決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — parent のない節（根）はちょうど 1 つ |
-| `<m-venn>` | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数） | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
+| `<m-venn>` | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数。項目のある重なりがなければ重なりすべての数：2 集合で 1、3 集合で 4） | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
 
 (* = description added by this guide)
 
@@ -193,19 +193,20 @@ Data example (child `<script type="application/json">`): `{"series":[{"label":"�
 | `count` | bool | `false` | 値の数字を伸びに合わせて数え上げる |
 | `ticks` | bool | `true` | 値の軸の目盛りと格子 |
 | `al` | string | `""` | 値の軸の名前 |
-| `stack` | bool | `false` | 組の値を 1 本に積み上げる（積み上げ棒） |
+| `stack` | bool | `false` | 組の値を 1 本に積み上げる（積み上げ棒）。\ |
 
 年ごとの売上・費用、聞き取りの結果の順位、導入の前と後の比較など、量を 1 つずつ見せて比べるときに使う。
 
 - group：`label`（`\n` で 2 行）、`value`（系列が 1 つ）か `values`（系列の数だけ）、`step`（既定は per-step から）、`at`（段階の中の開始秒。既定は同じ段階の中で stagger ずつずらす）、`tone`（`emph` などテーマの変数の名前。その組の棒をすべてその色にし、値の数字も同じ色にする）
-- series：`label`（最初の組の棒の上に直接書く。凡例は作らない）、`tone`（既定は `--series-1..4` の順。系列が 1 つなら `--term`）
+- series：`label`（系列が 2 つ以上のとき、最初の組の棒に直接書く。縦棒は棒の上、横棒は値の数字の右（負の棒は下・左）。凡例は作らない）、`tone`（既定は `--series-1..4` の順。系列が 1 つなら `--term`）
 - scale：`[{"step": 3, "max": 27, "at": 0.4}]`。その段階の at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い帯で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
 - 横棒（`orient="h"`）は組の名前を左に、値を棒の右に書く。順位を見せるなら `ticks="false"` で目盛りを消してよい
 - 積み上げ棒（`stack="true"`、`"percent"` なら各組 100 %）：組の `values` を横に並べず 1 本に積み上げる（全体と内訳を組ごとに見せるとき）。合計を棒の端に、それぞれの値を区切りの中に書く。軸の上限は合計から決まる。組の `tone` は合計の数字の色。値は 0 以上にする（負の値は 0 として描く）
 
 注意
 
-- 系列の名前は最初の組の棒の上に書くので、組の棒が細いと隣の系列の名前と重なる。系列は 2〜3 つまでにする
+- 値の数字は既定で棒が伸びきってから出す。伸びる途中の値は読めてしまうと「データ」に見えるため。数え上げたいときだけ `count="true"`。積み上げ棒で `count="true"` にすると数え上げるのは端の合計だけで、区切りの値と系列の名前は伸びきってから出る（段階の長さはその分 0.35 秒長い）
+- 系列の名前は最初の組の棒に書くので、組の棒が細いと隣の系列の名前と重なる。系列は 2〜3 つまでにする
 
 ### `<m-cards>`
 
@@ -291,7 +292,7 @@ Data example (child `<script type="application/json">`): `[{"label":"需要 D","
 
 | 欄 | 意味 |
 |---|---|
-| `label` | 線の名前（`*斜体*` `_下付き` `^上付き`） |
+| `label` | 線の名前 |
 | `f` | x の算術の式（`exp(…)` `sqrt(…)` `PI` などの `Math` の関数と定数、`N(x, 平均, 標準偏差)`、`+ - * / % **`、比較と `? :`。下を見よ）。`xr` で描く範囲を狭められる |
 | `pts` | 点列 `[[x, y], …]`（縦線や実測の折れ線） |
 | `tone` | `term` `emph` `accent2` `muted` `fg` `series-1..4`（既定は `series-1..4` の順） |
@@ -317,7 +318,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - `nodes`：段階（3〜8 個を想定）。配列の順に回る。12 時の位置から時計回りに置き、となりの段階へ円に沿った矢印を引く。最後から最初へ戻る矢印は自動で引く
   - `label`（`\n` で改行）か `tex`（KaTeX）、`note`（箱の中の 2 行目に小さく、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`、`id`
 - `center`：真ん中の名前（`{"label": "PDCA", "note": "…"}`）。最初の段階と一緒に出る（`center.step` で変えられる）。`center` はオブジェクト。`m-pie` の `center` は字（文字列）なので取り違えない
-  - `label`（`\n` で改行）か `tex`（KaTeX）、`note`（箱の**中**の最後の行に小さく、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`、`id`
+  - `label`（`\n` で改行）か `tex`（KaTeX）、`note`（箱の**中**の最後の行に小さく、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`
   - `tone: emph` の箱は、地が `--emph-tint`、枠と字が `--emph`
 - `edges`：ほかのつながり（`from` `to` は段階の `id`、`label` `tone` `dash` `step`）。箱の縁から縁への破線の矢印
 - 矢印の色は `--muted`、3 px（`edges` も `tone` がなければ `--muted`）
@@ -356,7 +357,7 @@ Data example (child `<script type="application/json">`): `{"effect":{"label":"�
 - `order`：`causes-first`（既定。大骨 1 本ずつ（その原因と一緒に）、最後に頭）か `effect-first`（頭と背骨を先に出し、それから大骨 1 本ずつ）。節の `step` が勝つ（原因だけ後の段階にもできる）
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱と字が動くのは 12 px まで（箱の中心で測る）、時間も `fade` の長さの中（共通の決まり §1.2）
-- 入る大きさの目安（1280×720 の本文、高さ 440 px ほど）：大骨 1 本あたりの行（原因と細かい原因の数）は 3 つまで（短ければ 4 つ）、大骨は 4〜6 本、原因は 10 字ほどまで。字は 24 px より小さくならず、入らない分は要素の箱から上下・左右にはみ出す（`console.warn` が足りない px を言う）。多いときは図を分けるか、原因を短く言い換える
+- 入る大きさの目安（1280×720 の本文、高さ 440 px ほど）：大骨 1 本あたりの行（原因と細かい原因の数）は 3 つまで（短ければ 4 つ）、大骨は 4〜6 本、原因は 10 字ほどまで。字は 24 px より小さくならず、入らない分は要素の箱から上下・左右にはみ出す（足りない px を `ctx.report` で知らせ、Studio の検査に出る）。多いときは図を分けるか、原因を短く言い換える
 - 授業の表示（`ctx.preview`）では、後の段階の骨と字をテーマの薄さで出しておく
 
 ### `<m-flow>`
@@ -373,8 +374,8 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 
 座標は要素の箱の px（`x`, `y` は箱の左上、`w`, `h` は大きさ）。
 
-- node：`id` `label`（`*斜体*` `_下付き` `^上付き`、`\n` で改行）または `tex`（KaTeX）、`step`、`tone`（`term` / `emph` / `muted`）、`at`（段階の中の開始秒）、`shape:"diamond"`（判断）
-- edge：`from` `to` `step`（既定は両端の箱の遅いほう）、`label`、`tone`、`dash`、`offset`（名前と線の距離）、`at`、`loop:true`（戻る辺）
+- node：`id` `label`（`\n` で改行）または `tex`（KaTeX）、`step`、`tone`（`term` / `emph` / `muted`）、`at`（段階の中の開始秒）、`shape:"diamond"`（判断）
+- edge：`from` `to` `step`（既定は両端の箱の遅いほう）、`label`、`tone`、`dash`、`offset`（名前と線の距離）、`at`、`loop`（前の箱へ外側を回って戻る辺。回る側は `"left"` `"right"` `"top"` `"bottom"`、`true` なら両端が縦に並ぶとき右・横に並ぶとき下）
 - 色：線と線の名前は `--fg`（`tone` があればその色）。`muted` の箱は枠が `--muted`、地が `--bg`、字は `--fg`
 - 箱は薄く拡大しながら現れ、矢印は同じ段階の箱が出てから引く
 
@@ -390,7 +391,7 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 
 表紙の直後の「掴みの数字」、試験導入の結果、市場規模の要約など、少数の数字を大きく見せるときに使う。
 
-- `label`：札の上の名前。`value`：数字（`digits` 桁、3 桁ごとにカンマ）。`unit`：数字の後ろの単位（小さめの字）。`prefix`：数字の前の記号（`−` `+` `約` など）
+- `label`：札の上の名前。`value`：数字（`digits` 桁、3 桁ごとにカンマ）。`unit`：数字の後ろの単位（小さめの字）。`prefix`：数字の前の記号（`+` `約` など）。負の `value` は自分で − が付くので、`prefix` に `−` を重ねない（`"prefix": "−"` と `-12` は「−−12」）。減った量を正の数で見せるときだけ `value` を正にして `prefix: "−"`
 - `from`：数え上げを始める値（既定 0。「20 分 → 7.5 分」のように減らす数も見せられる）
 - `tone`：数字と札の上の帯の色（`term`（既定）・`emph`・`accent2`・`series-1..4`）
 - `delta`：`{"dir": "up" | "down", "text": "前の期から 4 社", "good": true}`。▲ / ▼ と一言を数字の下に出す。良い向き（`good`、既定は `up` なら良い）なら `--term`、悪い向きなら `--emph`
@@ -487,6 +488,11 @@ Data example (child `<script type="application/json">`): `{"x":{"lo":"手作業"
 - `to: {"x", "y", "label", "step", "at"}`：移動先。`to.step`（既定は点の次の段階）に、点が破線の跡を引きながら滑り、着いたら移動先の上に `label` を出す
 - `cues(k)`：同じ段階に 2 つ以上の点があれば、2 つ目からの開始時刻（at）を返す。口述原稿の `{cue}` の数と合えば、点が言葉に合わせて現れる
 
+注意
+
+- 象限の名前は、点・点の名前・軸の言葉にかからない隅に置く。どの隅もかかるときは点の名前を置き直す（置き場がなければ `ctx.report` で知らせる）
+- 点の名前どうし・移動先の名前との重なりは置き直さない。近い点の名前は重なることがあるので、`anchor` を変えるか座標をずらす
+
 ### `<m-scatter>`
 
 Data example (child `<script type="application/json">`): `{"series":[{"label":"晴れ","points":[[24,210],[28,380],[31,560],{"x":34,"y":690,"label":"猛暑日"}]}],"trend":"linear"}`
@@ -508,7 +514,7 @@ Data example (child `<script type="application/json">`): `{"series":[{"label":"�
 
 - series：`points`（点の並び。`[x, y]` か `{"x", "y", "label", "anchor", "tone"}`）、`label`（系列の名前。図の上に印と一緒に書く）、`tone`（`term` `emph` `accent2` `muted` `fg` `series-1..4`。既定は `series-1..4` の順）、`step`（1 系列 = 1 段階（書いた順）。同じ `step` の系列は一緒に出す）、`at`（段階の中の開始秒）
   - 点の `label` は点の横に書く（右 → 左 → 上 → 下の順に、ほかの点・字・軸と重ならない所。`anchor`（`right` `left` `above` `below`）で最初に試す向きを決められる）。外れた点や目立つ点だけに付ける
-  - 系列ごとに印の形が変わる（丸・四角・三角・ひし形）。色だけに頼らない
+  - 系列ごとに印の形が変わる（丸・四角・三角・ひし形）。色だけに頼らない。形と既定の色は 4 系列までで、5 つ目からは同じ組がくり返すので、系列は 4 つまでにする
 - trend：`"linear"`（全部の点の最小二乗の直線）、または `{"fit": "linear", "series": 0, "label", "tone", "dash", "step", "at", "digits"}`、または `{"pts": [[x0, y0], [x1, y1]]}`（書いた 2 点を結ぶ線分。ちょうど 2 つの `[x, y]`。縦の線も書ける）。2 本以上は配列にする
   - `series`：当てはめに使う系列の番号（0 から数える。1 つ目の系列が 0。数か番号の配列。既定は全部）
   - `label`：線の名前（図の上に書く）。`{r}` は相関係数、`{a}` は傾き、`{b}` は切片に置き換わる（`digits` 桁、既定 2）。例：`"傾向（r = {r}）"`
@@ -539,7 +545,7 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 
 - `when`：時刻。数（`1868`、`-500`、`0.5` など）か、文字列 `"YYYY"` `"YYYY-MM"` `"YYYY-MM-DD"`。箱の上の行に日付として出る（日本語の資料なら「1868年」「2026年10月」）
 - `whenLabel`：日付の行に、計算した日付の代わりに書く字（「明治元年」「平成の終わり」など）。位置は `when` で決まる
-- `label`：名前（`\n` で改行、`*斜体*` `_下付き` `^上付き`）。または `tex`（KaTeX）
+- `label`：名前（`\n` で改行）。または `tex`（KaTeX）
 - `note`：箱の**中**の最後の行に小さく（`--muted`）。期間と節目では名前の後ろに続けて。例：「2 月 11 日」「新橋〜横浜」
 - `tone`：`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`。`emph` の箱は地が `--emph-tint`、枠と字が `--emph`
 - `end`：あれば期間。軸の下の段に帯で描き、名前は帯の中（入らなければ帯の右か左）に書く。名前を `\n` で何行かにすると、帯がその分太くなる
@@ -548,6 +554,7 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 - `step`・`at`：出る段階と、段階の中の開始秒
 - `edges`：ほかのつながり（`from` `to` `label` `tone` `dash` `step`）。箱の縁から縁への破線の矢印（`dash: false` で実線）
 - 工程表：`after: ["id", …]`（前の作業の終わりから始まりへ矢印）、`progress`（0–100 %。濃く塗る）。今日の線は `today`、目盛りの単位は `unit`
+  - `after` の矢印は期間（`end` のある node）か節目（`lane` のある node）のあいだだけ。`lane` のない出来事を指すと引かない。`today` の線は期間が 1 つ以上あるときだけ出る
 
 並べ方：
 
@@ -578,7 +585,7 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"r","l
 
 子の JSON の並び：`edges` は省いてよい。
 
-- node：`id`、`label`（`\n` で改行、`*斜体*` `_下付き` `^上付き`）か `tex`（KaTeX）、`parent`（親の `id`。`parent` のない節（根）はちょうど 1 つ）、`note`（箱の**下**に小さな一言、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`（段階の中の開始秒）
+- node：`id`、`label`（`\n` で改行）か `tex`（KaTeX）、`parent`（親の `id`。`parent` のない節（根）はちょうど 1 つ）、`note`（箱の**下**に小さな一言、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`（段階の中の開始秒）
 - 子は配列の順に並ぶ。親は子の並びの中央に置く
 - edge：親子のほかのつながり（`from` `to` `label` `tone` `dash` `step`）。破線で矢印つき、木の外側（`down` は下、`right` は右）へふくらむ。同じ深さの節どうしに向く。段階は既定で両端の遅いほう
 - 子の `branch`：線の字（確率など）。`path`：根からの `id` の道を順に強調（`pathStep` で一度に。`pathNote`：末尾の一言）
@@ -588,7 +595,7 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"r","l
 - `tone: emph` の箱は、地が `--emph-tint`、枠と字が `--emph`
 - 入る大きさの目安（1280×720 の本文、高さ 440 px ほど）：`down` は 1 段に 4 字ほどの箱が 8 個、`right` は 7 個ほど。深さは 5 段ほど。
   それより多い葉（子のない節）が 1 つの親に並ぶと、子を 2 段に互い違いに並べる（`down` で 16 個ほど、`right` で 11 個ほどまで）。
-  さらに入らなければ名前を 2 行に折る。字は 24 px より小さくならず、入らない分は要素の箱からはみ出す（`console.warn` が足りない px を言う）。多いときは木を分ける
+  さらに入らなければ名前を 2 行に折る。字は 24 px より小さくならず、入らない分は要素の箱からはみ出す（足りない px を `ctx.report` で知らせ、Studio の検査に出る）。多いときは木を分ける
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱が動くのは 12 px まで（箱の中心で測る）、時間も `fade` の長さの中（共通の決まり §1.2）
 - 授業の表示（`ctx.preview`）では、後の段階の箱と線をテーマの薄さで出しておく

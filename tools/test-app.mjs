@@ -28,7 +28,7 @@ import { missingParts2Requirement } from './parts2-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
-import { PARTS_GALLERY } from '../app/parts-gallery.js';
+import { PARTS_GALLERY, PARTS_INDEX, partsIndexHref } from '../app/parts-gallery.js';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
@@ -224,6 +224,15 @@ try {
   }
   ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('.ega.html ファイルをここにドラッグ＆ドロップ') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
+  // パーツの一覧（/parts/）：サンプルのすぐ後の行。新しいタブ。サイトでは根からの相対（凍結した写し /vX.Y.Z/ では ../parts/）、file:// では公開のサイト
+  {
+    const a = await page.$eval('#w-parts', (x) => ({ href: x.getAttribute('href'), abs: x.href, target: x.target, rel: x.rel, text: x.textContent, visible: !!x.offsetParent,
+      after: !!(document.getElementById('examples').compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(x.compareDocumentPosition(document.getElementById('w-claude')) & Node.DOCUMENT_POSITION_FOLLOWING) }));
+    ok(a.href === 'parts/' && a.abs === new URL('parts/', BASE).href && a.target === '_blank' && /\bnoopener\b/.test(a.rel) && a.text === 'パーツの一覧' && a.visible && a.after,
+      `welcome: "パーツの一覧" after the samples opens ${a.abs} in a new tab (rel=${a.rel})`);
+    ok(partsIndexHref({ protocol: 'https:', pathname: '/' }) === 'parts/' && partsIndexHref({ protocol: 'https:', pathname: '/v0.6.5/' }) === '../parts/' && partsIndexHref({ protocol: 'https:', pathname: '/sub/v0.6.5/index.html' }) === '../parts/'
+      && partsIndexHref({ protocol: 'file:', pathname: '/x/editor.html' }) === PARTS_INDEX && PARTS_INDEX === 'https://studio.egatari.org/parts/', 'welcome: the parts link goes to the site root\'s parts/ (also from a frozen /vX.Y.Z/ copy) and, from a local file, to the hosted site');
+  }
   await shot(page, 'welcome.png');
 
   // 新規作成…：チャットの AI の道 1 本（① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。歩き方は tools/test-app-newdeck.mjs）。白紙とテンプレートは新規作成にない
@@ -526,7 +535,7 @@ try {
 
   // ---------------------------------------------------------------- 8. 書き出し（ui-redesign）：「組み立てた HTML」は編集アプリから外した（コマンドの node kit/build.mjs に残す）
   ok(await page.evaluate(() => !document.getElementById('b-export') && ![...document.querySelectorAll('#tools button')].some((b) => /組み立てた HTML|built HTML/i.test(b.textContent))), 'export: no “built HTML” export in the editor (CLI only)');
-  ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-print', 'export: File ▸ Export ▸ has For participants (play only)… and Print / PDF (folder)');
+  ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-print,b-print-book', 'export: File ▸ Export ▸ has For participants (play only)…, Print slides and Print script (folder without a book)');
 
   // ---------------------------------------------------------------- 8b. 授業の部屋を付けて配る（tools/test-app-live.mjs）
   await testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame: f, shot });
@@ -842,7 +851,7 @@ try {
     const memArchive = Object.keys(mem).filter((k) => !/^\.cache\//.test(k) && k !== 'comments.json').sort();
     ok(JSON.stringify(u.written.slice().sort()) === JSON.stringify(memArchive) && u.written.every((k) => fs.readFileSync(path.join(U, k)).equals(mem[k])), `save: unpacked folder matches the in-memory workspace (${u.written.length} files)`);
 
-    // 新しい教材として保存：新しい docId と derivedFrom（元の docId と sourceSha256）。権利の表示と作り手はそのまま。変更がなければ段 A
+    // 新しい教材として保存：新しい docId と derivedFrom（元の docId と sourceSha256）。権利の表示と作成者はそのまま。変更がなければ段 A
     await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); const d = await root.getDirectoryHandle('pf', { create: true }); window.__APP_TEST.saveHandle = await d.getFileHandle('new-lesson.html', { create: true }); });
     await menuClick('#b-saveas');
     await page.waitForSelector('#dlg[open] #saveas-new');
@@ -1546,7 +1555,7 @@ try {
           ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'true', `preview (${lang}): 先のステップを薄く見せる turns the option on (internal mode lecture); the slide show stays the chosen mode`);
           await clickCommand(pt, '#b-lecturemode');
         }
-        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '動画で確かめる', '先のステップを薄く見せる (l)', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
+        ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.filter((x) => !x.hidden).map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '動画で確かめる', '先のステップを薄く見せる (l)', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
       }
       // 狭い幅では 2 行に折り返し、はみ出さない
       await pt.setViewportSize({ width: 900, height: 860 });
@@ -2045,6 +2054,7 @@ try {
   watch(pe, 'en');
   await pe.goto(BASE);
   ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drag a .ega.html file here'), 'i18n: English UI for en locale');
+  ok((await pe.textContent('#w-parts')) === 'All parts', 'i18n: the start screen\'s parts link reads "All parts" in English');
   // 書き出した写しで直したもの：英語の知らせ（両方の文）。編集は断らない
   await pe.evaluate(async (b64) => {
     const root = await navigator.storage.getDirectory();
@@ -2068,6 +2078,10 @@ try {
   ok(await p1.evaluate(() => typeof window.showDirectoryPicker === 'function' && isSecureContext), 'single file: File System Access API available on file://');
   ok(await p1.evaluate(() => [...document.querySelectorAll('link[rel=icon]')].map((l) => l.getAttribute('href').slice(0, 23)).join() === 'data:image/x-icon;base6,data:image/x-icon;base6' && /^data:image\/png;base64,/.test(document.querySelector('link[rel=apple-touch-icon]').getAttribute('href')) && !document.querySelector('link[rel=manifest]')), 'single file: icons embedded as data: URIs, no manifest');
   ok(await p1.isHidden('#examples'), 'single file: no examples list on file:// (the examples are files of the site)');
+  {
+    const a = await p1.$eval('#w-parts', (x) => ({ href: x.getAttribute('href'), target: x.target, rel: x.rel, text: x.textContent, visible: !!x.offsetParent }));
+    ok(a.href === PARTS_INDEX && a.target === '_blank' && /\bnoopener\b/.test(a.rel) && a.text === 'パーツの一覧' && a.visible, `single file: "パーツの一覧" opens the hosted ${PARTS_INDEX} in a new tab on file://`);
+  }
   // file:// では OPFS が使えないので、メモリの上のフォルダ（同じ形のハンドル）で開く
   await p1.evaluate((files) => {
     class FileH { constructor(name, text) { this.kind = 'file'; this.name = name; this.text = text; this.m = Date.now(); }
@@ -2143,6 +2157,7 @@ try {
     await ps.goto(base + 'editor.html');
     await ps.waitForSelector('#drop');
     ok(await ps.evaluate(() => typeof window.__FONTPACK === 'object'), `site (${tag}): editor.html (single file) loads`);
+    ok(await ps.$eval('#w-parts', (x, want) => x.getAttribute('href') === 'parts/' && x.href === want && x.target === '_blank', new URL('parts/', base).href), `site (${tag}): on the site, editor.html links "パーツの一覧" to ${new URL('parts/', base).href}`);
     const lr = await ps.goto(base + 'lab/irodori.html');
     await ps.waitForLoadState('load');
     ok(lr.status() === 200 && (await ps.title()).length > 0 && await ps.evaluate(() => document.querySelectorAll('script[type=module]').length > 0), `site (${tag}): lab/irodori.html loads`);

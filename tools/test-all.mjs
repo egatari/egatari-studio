@@ -87,6 +87,10 @@ const steps = [
   ['check tmlr2026', ['kit/check.mjs', 'examples/tmlr2026-calibration/deck.html']],
   ['build pitch', ['kit/build.mjs', 'examples/pitch-fictional/deck.html']],
   ['check pitch', ['kit/check.mjs', 'examples/pitch-fictional/deck.html']],
+  // 本文（article/ の章・付録・前書き、format spec §9C）のある教材：読むための頁 out/deck.article.html を書き、check の本文の点検（M）がエラー 0
+  ['build article-book', ['kit/build.mjs', 'tools/fixtures/article-book/deck.html']],
+  ['check article-book', ['kit/check.mjs', 'tools/fixtures/article-book/deck.html']],
+  ['test-article-steps', ['tools/test-article-steps.mjs', path.join(tmp, 'article-steps')]],
   ['smoke', ['tools/smoke.mjs', MIN, path.join(tmp, 'smoke')]],
   // 部品の見本（部品庫の部品が増えるたびに長くなる。遅い macOS の CI で 1 段の上限 1200 秒に届いた）は、名前の順に 2 組に分けて別々の段にする（--only test-components で両方）
   ...[1, 2].map((i) => [`test-components ${i}/2`, ['tools/test-components.mjs', '--shard', `${i}/2`, '--shots', path.join(tmp, 'components')]]),
@@ -102,6 +106,10 @@ const steps = [
   ['test-blackout', ['tools/test-blackout.mjs', MIN]],
   // スライドへのリンク（format spec §9.1A）と m-menu：開いたときの #・クリック・戻る・自動再生・埋め込み・発表者ビュー・品質チェック
   ['test-links', ['tools/test-links.mjs', path.join(tmp, 'links')]],
+  ['test-panes', ['tools/test-panes.mjs', path.join(tmp, 'panes')]],   // 窓の並べ方と同期（kit/panes.js。Player P2・§9C.5）：横書き・縦書きの本・台本で読む
+  ['test-reading', ['tools/test-reading.mjs', path.join(tmp, 'reading')]],   // 本の窓の読むための道具（kit/panes.js。Player P2 Reading aids）：目次・検索・戻る・前の続きから・文字と背景・図の拡大
+  ['test-book-css', ['tools/test-book-css.mjs', path.join(tmp, 'book-css')]],   // 本の窓をスライドのテーマの要素の規則から隔てる・縦書きの本の表（§9C.6）：book・split・縦書き・印刷・WebKit（入っていなければ skip）
+  ['test-tracking', ['tools/test-tracking.mjs', path.join(tmp, 'tracking')]],   // 自習（learn）と進み具合の記録（kit/track.js。Player P1・P6・§9.2・SCORM 1.2）：再生速度・舞台と本で読む・終えた判定・postMessage・SCORM の模型
   // 授業の外へ出るリンク（format spec §11）：決まり（kit/core/link-policy.mjs）の単体と、確認の箱・開かない scheme・動画・sandbox の枠
   ['test-extlinks', ['tools/test-extlinks.mjs', path.join(tmp, 'extlinks')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
@@ -148,6 +156,9 @@ const steps = [
   ['test-play', ['tools/test-play.mjs', path.join(tmp, 'play')]],
   // Egatari Viewer を Playwright の WebKit で iPad の大きさに（WebKit が入っていなければ skip で通る：npx playwright-core install webkit）
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
+  // 全画面（f・帯の「全画面」）：Viewer のページが枠そのものを全画面にし状態を教材に戻す・教材だけでは全画面にできない・要素の全画面がない所（iPhone）で
+  // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
+  ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
   ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
   // 編集アプリのプレビューで音声が鳴ること（1 ファイル・発表者ビュー・展開したフォルダ）：時間に敏感なので test-app から分けた（serial。backlog #156）
@@ -156,6 +167,8 @@ const steps = [
   ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
   // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
+  // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5）：あとで読み込む本の道具・本の表示・本文の欄・合っていないかもしれない組・本だけを組み直す保存・印刷
+  ['test-app-book', ['tools/test-app-book.mjs', path.join(tmp, 'app-book')]],
   // 手で書き換えた・崩れた書き出しの印（format spec §3.1）：断る窓か開くか（どちらもページは答える）、食い違う写しは「書き出したあと直した」
   ['test-app-exported-marker', ['tools/test-app-exported-marker.mjs', path.join(tmp, 'exported-marker')]],
   // 組み直す保存の確かめ：まだ保存していない文書は聞かない・テーマを変えただけならそのわけだけ（日本語と英語）
