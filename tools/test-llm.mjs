@@ -52,11 +52,11 @@ ok('make-llm-guide --check：指示は材料から作り直したものと同じ
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-// 上限は PACK_CAP_KB（無料のプラン 45 KB：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 120 KB）
-ok('指示の大きさ：無料のプランの標準すべて ≤ 45 KB、有料のプランの標準＋2 つの束のどの組も ≤ 120 KB。前の全体版・core 版はない', () => {
+// 上限は PACK_CAP_KB（無料のプラン 45 KB：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 150 KB）
+ok('指示の大きさ：無料のプランの標準すべて ≤ 45 KB、有料のプランの標準＋2 つの束のどの組も ≤ 150 KB。前の全体版・core 版はない', () => {
   for (const lang of ['en', 'ja']) {
     assert.ok(packSize(buildPack({ sets: [], lang })) <= 45 * 1024, `${lang} free standard`);
-    for (let i = 0; i < SETS.length; i++) for (let j = i + 1; j < SETS.length; j++) assert.ok(packSize(buildPack({ sets: [SETS[i], SETS[j]], lang, plan: 'paid' })) <= 120 * 1024, `${lang} paid standard+${SETS[i]}+${SETS[j]}`);
+    for (let i = 0; i < SETS.length; i++) for (let j = i + 1; j < SETS.length; j++) assert.ok(packSize(buildPack({ sets: [SETS[i], SETS[j]], lang, plan: 'paid' })) <= 150 * 1024, `${lang} paid standard+${SETS[i]}+${SETS[j]}`);
   }
   for (const f of ['authoring-with-llms.core.md', 'authoring-with-llms.core.ja.md']) assert.ok(!fs.existsSync(path.join(ROOT, 'docs', f)), f);
 });
@@ -67,7 +67,7 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     const paidCommon = commonBody(lang, { plan: 'paid' });
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
-    assert.ok(/\| (Free plan: every standard part|無料のプラン：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Paid plan: every part set|有料のプラン：すべての束)[^|]*\| [\d.]+ KB \| 120 KB \|/.test(file),
+    assert.ok(/\| (Free plan: every standard part|無料のプラン：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Paid plan: every part set|有料のプラン：すべての束)[^|]*\| [\d.]+ KB \| 150 KB \|/.test(file),
       lang + ': the size table lists the free standard pack and the paid full pack');
     const paidParts = SETS.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
     assert.equal([commonBody(lang, { plan: 'paid', sets: 'all' }).trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ sets: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
@@ -128,7 +128,7 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
   }
   // 有料のプランのすべての束（いちばん大きいとき）は上限を越えても知らせるだけで、そう書く
   const paidAll = packSize(buildPack({ sets: 'all', lang: 'ja', plan: 'paid' }));
-  assert.ok(/^paid all\t/m.test(list.stdout) && (paidAll <= 120 * 1024 || /a warning only/.test(list.stdout.split('\n').find((l) => l.startsWith('paid all')))), list.stdout);
+  assert.ok(/^paid all\t/m.test(list.stdout) && (paidAll <= 150 * 1024 || /a warning only/.test(list.stdout.split('\n').find((l) => l.startsWith('paid all')))), list.stdout);
   const listJa = node('kit/llm-pack.mjs', '--list', '--lang', 'ja');
   assert.ok(listJa.status === 0 && listJa.stdout.includes(`standard\t${fit([], 'ja')}\t${raw([], 'ja')}\tm-bars`) && listJa.stdout.includes(`stats\t${fit(['stats'], 'ja')} (core four shortened)\t${raw(['stats'], 'ja')}\t`) && raw([], 'ja') !== raw([], 'en'), listJa.stdout);
   const listEn = node('kit/llm-pack.mjs', '--list', '--lang=en');

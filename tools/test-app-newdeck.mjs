@@ -171,7 +171,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-answered.png', 'paste-step-kind');
     // ④ プランの問い（無料が既定）→ パーツの一覧（標準は全部。てこからは専門の束を推さない：理由なし。授業（小・中・高）は教科の形が一番上）→ メーター → コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
-      && (await text(p1, '#paste-plan-hint')) === 'プランで、指示の大きさの目安が変わります（無料のプランは 45 KB、有料のプランは 120 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
+      && (await text(p1, '#paste-plan-hint')) === 'プランで、指示の大きさの目安が変わります（無料のプランは 45 KB、有料のプランは 150 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
       && (await text(p1, '#paste-parts legend')) === 'AI にどのパーツを使わせますか' && (await ticks(p1)) === sorted(STD) && await p1.isHidden('#paste-parts-why') && (await badges(p1)) === ''
       && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null).flatMap((g) => g.parts).length} 種類）`
       && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
@@ -335,11 +335,22 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(await p3.isChecked('#paste-part-market') && (await badges(p3)) === 'm-market' && (await text(p3, '#paste-parts-why')) === 'Also chose Market size circles, because the setting in step 1 is “Report”.',
       'S3 ④: Business / Report recommends the business set (Market size circles), with the reason and a Suggested badge');
     await p3.check('#paste-plan-paid');
-    ok((await ticks(p3)) === sorted([...STD, 'm-market']) && /^Instructions: [\d.]+ KB \(suggested limit 120 KB\)$/.test(await text(p3, '#paste-pack-size')) && await p3.isHidden('#paste-over'),
-      'S3 ④: the paid plan keeps the ticks and changes only the suggested limit (120 KB, not over): ' + await text(p3, '#paste-pack-size'));
+    ok((await ticks(p3)) === sorted([...STD, 'm-market']) && /^Instructions: [\d.]+ KB \(suggested limit 150 KB\)$/.test(await text(p3, '#paste-pack-size')) && await p3.isHidden('#paste-over'),
+      'S3 ④: the paid plan keeps the ticks and changes only the suggested limit (150 KB, not over): ' + await text(p3, '#paste-pack-size'));
     const c3 = await copy(p3);
     ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Part set: business') && c3.includes('### `<m-market>`') && !c3.includes('## Part set: kokugo') && c3.includes('### `<m-timeline>`') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
       'S3 ④: the pack is every ticked part (the standard ones, m-timeline too, and m-market; no kokugo) and the outline request; the message says to go to step 5 when the outline is out');
+    // 有料のプラン（en）、長い教材（構成案から）：「Save the instructions as a file」が主、「Copy the instructions」が従
+    await p3.click('#paste-change-send');
+    await p3.waitForSelector('#paste-copy-guide:visible');
+    ok(await p3.$eval('#paste-save-guide', (b) => !b.hidden && b.classList.contains('pri')) && !(await p3.$eval('#paste-copy-guide', (b) => b.classList.contains('pri')))
+      && await p3.isVisible('#paste-file-hint') && (await text(p3, '#paste-file-hint')) === 'Attach long instructions to the chat as a file. Gemini cuts a paste at about 30,000 characters; ChatGPT turns a long paste into an attachment by itself.',
+      'S3 ④: paid plan: “Save the instructions as a file” is primary and “Copy the instructions” secondary, with the attachment-guidance line');
+    const [dl3] = await Promise.all([p3.waitForEvent('download', { timeout: scaled(10000) }), p3.click('#paste-save-guide')]);
+    ok(dl3.suggestedFilename() === 'egatari-instructions-en.txt', `S3 ④: “Save the instructions as a file” downloads egatari-instructions-en.txt (got ${dl3.suggestedFilename()})`);
+    const file3 = await dl3.path();
+    ok(!!file3 && fs.readFileSync(file3, 'utf8') === c3, 'S3 ④: the saved file has exactly the bytes “Copy the instructions” would put on the clipboard (UTF-8, no BOM)');
+    ok(/^Saved \([\d.]+ KB\)\. Attach the downloaded file to your chat AI and send it\. When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')), 'S3 ④: saving a long lesson’s pack says “Saved (N KB)…” and still says to go to step 5 once the outline is out');
     ok((await answer(p3, 'send')) === `Instructions: Chat AI: paid plan · ${STD.length + 1} parts · copied`, 'S3 ④: the answered line names the plan and the number of parts: ' + await answer(p3, 'send'));
     ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')) && (await text(p3, '#paste-go-note')) === 'Paste the outline in step 5',
       'S3 ⑤: step 5 first asks for the outline; “Create” is disabled meanwhile and says “Paste the outline in step 5”');
@@ -446,6 +457,17 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const sem = sub('research', 'seminar');
     ok(tailOf(c5, 'ja') === `# 頼みたいこと\n\n**B. 渡した資料と話し合いの内容で作る**\n\nこのチャットで渡した資料と、ここまでの話し合いの内容で、教材を作ってください。\n\n- タイトル（表紙にそのまま使う）：ゼミの進め方\n- 対象（だれ向け）：研究室の学部 4 年生\n- 言語：日本語\n- 話者：1 人\n- そのほかの希望：最後に議論する問いを 1 つ\n- テーマ：default（<html data-theme="default">）\n- 場面：研究発表／ゼミ・進捗報告\n- 構成の型：${sem.structure.ja}\n- 見せ方：${sem.show.ja}\n`,
       'S5 ④: the request (B. 渡した資料と話し合いの内容で作る) has the title, audience and the 詳しく lines in the same form as A (the length left to the AI is not written)');
+    // 有料のプラン：指示をファイルに保存するのが主、コピーは従（長い指示は Gemini の貼り付けで約 3 万字で切れる。backlog 2026-11-05）
+    await p5.click('#paste-change-send');
+    await p5.waitForSelector('#paste-copy-guide:visible');
+    ok(await p5.$eval('#paste-save-guide', (b) => !b.hidden && b.classList.contains('pri')) && !(await p5.$eval('#paste-copy-guide', (b) => b.classList.contains('pri')))
+      && await p5.isVisible('#paste-file-hint') && (await text(p5, '#paste-file-hint')) === '長い指示は、ファイルにしてチャットに添付してください。Gemini は貼り付けると約 3 万字で切れます。ChatGPT は貼り付けると自動で添付に変わります。',
+      'S5 ④: paid plan: 「指示をファイルに保存」 is primary and 「指示をコピー」 secondary, with the attachment-guidance line under them');
+    const [dl5] = await Promise.all([p5.waitForEvent('download', { timeout: scaled(10000) }), p5.click('#paste-save-guide')]);
+    ok(dl5.suggestedFilename() === 'egatari-instructions-ja.txt', `S5 ④: 「指示をファイルに保存」 downloads egatari-instructions-ja.txt (got ${dl5.suggestedFilename()})`);
+    const file5 = await dl5.path();
+    ok(!!file5 && fs.readFileSync(file5, 'utf8') === c5, 'S5 ④: the saved file has exactly the bytes 「指示をコピー」 would put on the clipboard (UTF-8, no BOM)');
+    ok(/^保存しました（[\d.]+ KB）。ダウンロードしたファイルをチャットの AI に添付して送ってください。AI が書き終えたら ⑤ へ$/.test(await text(p5, '#paste-copied')), 'S5 ④: saving shows 「保存しました（N KB）…」, following the copy note’s wording without the “turns into an attachment” caveat');
     // 長さを指定すると B にも書く
     await p5.click('#paste-change-content');
     await p5.check('#paste-length-mode-write');
@@ -507,7 +529,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await ticks(p8)) === after8, 'S8 ④: a new guess does not tick again what was unticked');
     // 有料のプランは目安だけが変わる（印はそのまま）
     await p8.check('#paste-plan-paid');
-    ok((await ticks(p8)) === after8 && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '120' && /（目安は 120 KB まで）$/.test(await text(p8, '#paste-pack-size')), 'S8 ④: the paid plan changes only the limit');
+    ok((await ticks(p8)) === after8 && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '150' && /（目安は 150 KB まで）$/.test(await text(p8, '#paste-pack-size')), 'S8 ④: the paid plan changes only the limit');
     // キーボード：チェックボックスにフォーカスしてスペースで外す・付ける。写す指示はいつも印のとおり
     await p8.focus('#paste-part-tape');
     await p8.keyboard.press('Space');

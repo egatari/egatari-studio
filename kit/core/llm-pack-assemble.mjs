@@ -19,7 +19,7 @@ import { purposesTable } from './purposes.mjs';
 //         修正のやりとり 2 回分（1.5K トークン ほど ずつ）を残せる（owner 決定、2026-11-03、backlog #169）。
 //         標準の部品すべて（束なし）が収まること（越えたら npm run gen が止まる）。束を足して越えたら、新規作成のメーターが外す候補を出す（kit/core/new-deck.mjs）
 //   paid：有料のプラン。PAID_PACK_KB まで
-export const PAID_PACK_KB = 120;   // 有料のプランの上限（仮の値。変えるならここだけ）
+export const PAID_PACK_KB = 150;   // 有料のプランの上限（仮の値。変えるならここだけ）
 export const FREE_PACK_KB = 45;
 export const PACK_CAP_KB = Object.freeze({ free: FREE_PACK_KB, paid: PAID_PACK_KB });
 

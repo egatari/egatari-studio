@@ -1203,8 +1203,8 @@ const deckBase = () => (S.deckFile || 'deck').split('/').pop().replace(/\.html?$
 
 // ---------------------------------------------------------------- 保存の口（ファイルのハンドル・ダウンロード）
 const writeHandle = (h, data, live) => writeFile(h, data, live);   // fsx.js：live() が false になれば入れ替えずに取り消す
-function download(name, text) {
-  const a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/html' })), download: name });
+function download(name, text, type = 'text/html') {
+  const a = el('a', { href: URL.createObjectURL(new Blob([text], { type })), download: name });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
 }
@@ -2181,7 +2181,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

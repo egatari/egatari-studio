@@ -121,6 +121,12 @@ const TX = {
     packTotal: (kb) => `指示の大きさ：${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: '指示をコピー',
     copied: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。長いので、貼るとファイルの添付の形になることがありますが、そのまま送ってかまいません。AI が書き終えたら ⑤ へ`,
+    // 有料のプラン：指示をファイルに保存するのが主、コピーは従（Gemini は貼り付けで約 3 万字で切れる。owner の確認、2026-11-05）
+    saveGuide: '指示をファイルに保存',
+    fileHint: '長い指示は、ファイルにしてチャットに添付してください。Gemini は貼り付けると約 3 万字で切れます。ChatGPT は貼り付けると自動で添付に変わります。',
+    copiedPaid: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。AI が書き終えたら ⑤ へ`,
+    savedGuide: (kb) => `保存しました（${kb} KB）。ダウンロードしたファイルをチャットの AI に添付して送ってください。AI が書き終えたら ⑤ へ`,
+    outlineSaved: (kb) => `保存しました（${kb} KB）。ダウンロードしたファイルをチャットの AI に添付して送ってください。構成案が出たら ⑤ へ`,
     phase: (n) => `${n} 枚なので、2 回に分けて頼みます。まず構成案（見出しの一覧）を頼み、次に ${BATCH} 枚ずつ頼みます`,
     outlineCopied: (kb) => `コピーしました（${kb} KB）。チャットの AI に貼り付けて送ってください。構成案が出たら ⑤ へ`,
     // ⑤ 貼り付け（挿入・修正の ③ も同じ）
@@ -156,6 +162,7 @@ const TX = {
     withPack: 'この教材を作ったのとは別のチャットに送る（指示の全体も付けます）',
     copyInsert: '指示をコピー',
     insertCopied: (kb) => `コピーしました（${kb} KB）。チャットの AI に貼り付けて送ってください。AI が書き終えたら ③ へ`,
+    insertSaved: (kb) => `保存しました（${kb} KB）。ダウンロードしたファイルをチャットの AI に添付して送ってください。AI が書き終えたら ③ へ`,
     // 修正
     wish: '直してほしいこと（なくてもよい）', wishPh: '例：2 枚目の例を身近なものに替える',
     reviseHint: '修正依頼には、品質チェックの指摘、① に書いたこと、開いているコメント、今のスライドと台本が入ります（長い教材は指摘のあるスライドだけ）',
@@ -269,6 +276,12 @@ const TX = {
     packTotal: (kb) => `Instructions: ${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: 'Copy the instructions',
     copied: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. It is long, so it may turn into an attached file; just send it. When the AI has finished, go to step 5.`,
+    // Paid plan: saving the instructions as a file is primary, copying is secondary (Gemini cuts a paste at about 30,000 characters; owner's test, 2026-11-05)
+    saveGuide: 'Save the instructions as a file',
+    fileHint: 'Attach long instructions to the chat as a file. Gemini cuts a paste at about 30,000 characters; ChatGPT turns a long paste into an attachment by itself.',
+    copiedPaid: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. When the AI has finished, go to step 5.`,
+    savedGuide: (kb) => `Saved (${kb} KB). Attach the downloaded file to your chat AI and send it. When the AI has finished, go to step 5.`,
+    outlineSaved: (kb) => `Saved (${kb} KB). Attach the downloaded file to your chat AI and send it. When the outline is out, go to step 5.`,
     phase: (n) => `${n} slides, so you ask in two rounds: first an outline (a list of headings), then ${BATCH} slides at a time.`,
     outlineCopied: (kb) => `Copied (${kb} KB). Paste it into your chat AI and send. When the outline is out, go to step 5.`,
     step3Hint: 'The AI’s output has two grey boxes (code blocks): the slides (deck.html) and the script (narration.md). Copy each with the copy button at its top right and paste it below. If you copied the whole output, paste it into either field and it is split in two.',
@@ -300,6 +313,7 @@ const TX = {
     withPack: 'Send to a different chat from the one that made this lesson (adds the full instructions)',
     copyInsert: 'Copy the instructions',
     insertCopied: (kb) => `Copied (${kb} KB). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
+    insertSaved: (kb) => `Saved (${kb} KB). Attach the downloaded file to your chat AI and send it. When the AI has finished, go to step 3.`,
     wish: 'What to change (optional)', wishPh: 'e.g. use a more familiar example on slide 2',
     reviseHint: 'The fix request includes the quality check findings, what you wrote in step 1, open comments and the current slides and script (for a long lesson, only the slides with findings).',
     copyRevise: 'Copy the fix request', reviseNothing: 'Nothing to fix was found. Write what to change in step 1.',
@@ -347,7 +361,7 @@ const TX = {
 
 
 export function setupLlm(app) {
-  const { S, $, el, ask, toast, status, T, EN } = app;
+  const { S, $, el, ask, toast, status, T, EN, download } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
   // 束の名前（挿入の「指示の全体も付ける」の一覧）：中の図と、教科・用途の名前（kit/core/new-deck.mjs の SET_LABELS の inside・label）
@@ -382,6 +396,9 @@ export function setupLlm(app) {
     box.scrollTop = 0; selectAll();
     return false;
   }
+  // 指示のパック（New ④・挿入②の「別のチャットに送る」）を、コピーと同じバイト（UTF-8・BOM なし）でファイルに保存（有料のプランの主ボタン）。
+  // Gemini は貼り付けで約 3 万字で切れるが、添付したファイルは全文読める（owner の確認、2026-11-05）。app/main.js の download（text/plain）
+  const saveGuideFile = (text) => download(`egatari-instructions-${LANG}.txt`, text, 'text/plain;charset=utf-8');
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
   const kb = (s) => packKb(s);
   // 段：見出しは押せるボタン（aria-expanded・aria-controls）、中身は本体（flow が開け閉めする）。after は本体の外（答えの 1 行・コピーの知らせ）
@@ -793,6 +810,12 @@ export function setupLlm(app) {
       over.hidden = !isOver;
       overText.textContent = isOver ? X.overCap(kbOf(bytes - capBytes), candidates.length ? names(candidates) : '') : '';
       trim.hidden = !candidates.length;
+      // 有料のプラン：指示をファイルに保存するのが主、コピーは従（長い指示は Gemini で貼り付けが切れる。owner の確認、2026-11-05）
+      const paid = draft.plan === 'paid';
+      save.hidden = !paid;
+      save.classList.toggle('pri', paid);
+      copy.classList.toggle('pri', !paid);
+      fileHint.hidden = !paid;
     };
     trim.addEventListener('click', () => { for (const t of candidates) { ticked.delete(t); touched.add(t); } update(); total.focus(); });
     planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; update(); } });
@@ -804,22 +827,34 @@ export function setupLlm(app) {
       const text = textNow();
       copied = choiceNow();
       const ok = await copyInStep(text, copyMsg, title);
-      copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
+      copyMsg.classList.remove('bad'); copyMsg.hidden = false;
+      copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : (draft.plan === 'paid' ? X.copiedPaid(kb(text)) : X.copied(kb(text)))) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
+    const save = el('button', { type: 'button', id: 'paste-save-guide', cls: 'pri', text: X.saveGuide, hidden: '', onclick: () => {
+      const miss = missing();
+      if (miss) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
+      const text = textNow();
+      copied = choiceNow();
+      saveGuideFile(text);
+      copyMsg.box.hidden = true; copyMsg.classList.remove('bad'); copyMsg.hidden = false;
+      copyMsg.textContent = longN() ? X.outlineSaved(kb(text)) : X.savedGuide(kb(text));
+      if (onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
+    } });
+    const fileHint = el('p', { id: 'paste-file-hint', cls: 'hint', hidden: '', text: X.fileHint });
     // 答えた 1 行：プランと選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
     const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.partsShort(chosen().length), X.copiedShort].join(X.listSep), onChange);
     // AI のスキル（#126）：指示書をコピーする代わりに、チャットの AI に入れておく ZIP。［指示書をコピー］の隣
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg, copyMsg.box]);
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint], [summary, copyMsg, copyMsg.box]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
   // ② 指示（挿入）：短い頼む文。チェック「このデッキを作ったのとは別のチャットに送る」で指示の全体（共通の本体と、選んだ束）も付ける
   // 束の既定：開いているデッキの部品・テーマから推したもの（kit/core/llm-pack.mjs の setsForDeck）
-  async function packStep(copyMsg, req, { title, copyLabel, copiedMsg, onCopied, onChange }) {
+  async function packStep(copyMsg, req, { title, copyLabel, copiedMsg, savedMsg, onCopied, onChange }) {
     const initial = await defaultSets();
     const total = el('span', { id: 'paste-pack-size', cls: 'hint' });
     const boxes = SETS.map((s) => { const cb = el('input', { type: 'checkbox', id: 'paste-series-' + s, value: s }); cb.checked = initial.includes(s); return cb; });
@@ -827,7 +862,15 @@ export function setupLlm(app) {
     const chosen = () => boxes.filter((b) => b.checked).map((b) => b.value);
     const textNow = async () => { const r = await req.request(); return withPack.checked ? packWithRequest({ sets: chosen(), lang: LANG, request: r }) : r; };
     const partBytes = (s) => packSize(setPart(s, LANG));
-    const update = async () => { const t = await textNow(); total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t)); };
+    const update = async () => {
+      const t = await textNow();
+      total.textContent = X.packTotal(kb(t)); total.dataset.bytes = String(packSize(t));
+      // 指示の全体を付けたとき（withPack）は長くなりうるので、ファイルに保存するのが主、コピーは従（New ④ と同じ）
+      save.hidden = !withPack.checked;
+      save.classList.toggle('pri', withPack.checked);
+      copy.classList.toggle('pri', !withPack.checked);
+      fileHint.hidden = !withPack.checked;
+    };
     for (const b of boxes) b.addEventListener('change', update);
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
       const text = await textNow();
@@ -835,6 +878,13 @@ export function setupLlm(app) {
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();
     } });
+    const save = el('button', { type: 'button', id: 'paste-save-guide', cls: 'pri', text: X.saveGuide, hidden: '', onclick: async () => {
+      const text = await textNow();
+      saveGuideFile(text);
+      copyMsg.box.hidden = true; copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = savedMsg(kb(text));
+      if (onCopied) onCopied();
+    } });
+    const fileHint = el('p', { id: 'paste-file-hint', cls: 'hint', hidden: '', text: X.fileHint });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
       ...SETS.map((s, i) => el('label', { title: membersOfSet(s).join(', ') }, [boxes[i], el('span', { text: setName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
     const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(setName.stats) })]);
@@ -842,7 +892,7 @@ export function setupLlm(app) {
     await update();
     const summary = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, onChange);
     const node = step('paste-step2', title, [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })]),
-      packParts, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg, copyMsg.box]);
+      packParts, el('div', { cls: 'paste-guide' }, [save, copy, total]), fileHint], [summary, copyMsg, copyMsg.box]);
     return { node, summary, update };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
@@ -1056,7 +1106,7 @@ export function setupLlm(app) {
       const req = { request: () => (B ? batchRequest({ rows: B.rows, from: B.from, to: B.to, deck, narration, lang: LANG })
         : insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG })) };
       batchNow = B;
-      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, onCopied: () => { F.done(0); F.done(1); F.open(2); }, onChange: () => F.open(1) });
+      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, savedMsg: X.insertSaved, onCopied: () => { F.done(0); F.done(1); F.open(2); }, onChange: () => F.open(1) });
       ins.node.addEventListener('input', pack.update);
       const three = step('paste-step-paste', titles[2], pasteKids());
       // 挿入も 1 つだけ開く流れ（① ② に必ず答えるものはないので、どの見出しからも開ける）
