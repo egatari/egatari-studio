@@ -417,13 +417,16 @@ ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with
     assert.ok(rep && rep.level === (rep.kb > PAID_PACK_KB ? 'warn' : 'ok'), `${lang} paid worst case is a warning only: ${rep && rep.kb}`);
   }
 });
-// Gemini cuts a pasted text at about 32,768 characters (owner's test, 2026-11-05); the free pack is never offered as a file (New step 4),
-// so it must keep a margin under that limit on its own. 31,000 UTF-16 code units (JS string length, not UTF-8 bytes) leaves that margin
-// (en free standard measures ~30.5K as the parts catalogue has grown; watch this if it keeps growing — ja is ~21.7K)
-ok('free pack (standard parts, no set — the largest combination the editor can produce on the free plan) stays safely under Gemini’s ~32,768-character paste limit, ja and en', () => {
+// Gemini cuts a pasted text (owner's test, 2026-11-05: at 32,173 UTF-16 units of LF text, 32,682 counting CRLF). The free pack is never
+// offered as a file (New step 4), so it must stay under that on its own, with the learner's brief (~300 characters) in the same box.
+// Some browsers paste with CRLF, so each line feed counts 2: UTF-16 units + line feeds <= 31,000 (decided with the maintainers 2026-11-06;
+// en ~30.85K, ja ~22K). When this trips: first trim the common pack text (with eval A on the result), and only if that is not enough
+// the parts' English descriptions in the parts library (egatari/components).
+ok('free pack (standard parts, no set: the largest the editor makes on the free plan) fits a Gemini paste with the brief: UTF-16 units + line feeds <= 31,000, ja and en', () => {
   for (const lang of ['en', 'ja']) {
     const text = buildPack({ sets: [], lang, plan: 'free' });
-    assert.ok(text.length <= 31000, `${lang} free standard: ${text.length} UTF-16 code units, over the 31,000 margin under Gemini’s ~32k paste limit`);
+    const lf = (text.match(/\n/g) || []).length, n = text.length + lf;
+    assert.ok(n <= 31000, `${lang} free standard: ${text.length} UTF-16 units + ${lf} line feeds = ${n}, over 31,000 (Gemini cuts a paste at about 32,173; see the comment for what to trim)`);
   }
 });
 ok('pack: paid = every standard part + the chosen sets, all described; free = the same parts, with only FREE_CORE and the set parts described; nothing unchosen leaks', () => {
