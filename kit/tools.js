@@ -191,13 +191,15 @@ css(
   // キーの一覧（?）
   "#dt-help{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.32);padding:16px}" +
   "#dt-help.show{display:flex}" +
-  "#dt-help .dt-card{max-width:860px;width:fit-content;max-height:100%;overflow:auto;padding:18px 22px 14px;border-radius:14px;background:rgba(22,22,24,.94);" +
+  "#dt-help .dt-card{max-width:1000px;width:fit-content;max-height:100%;overflow:auto;padding:18px 22px 14px;border-radius:14px;background:rgba(22,22,24,.94);" +
   " color:#e8e8e8;font:13px/1.5 -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif;box-shadow:0 10px 40px rgba(0,0,0,.45)}" +
   "#dt-help .dt-cols{display:grid;grid-auto-flow:column;align-items:start;gap:6px 36px}" +
   "@media (max-width:760px){#dt-help .dt-cols{grid-auto-flow:row}}" +
   "#dt-help .dt-sec{display:grid;grid-template-columns:auto auto;align-content:start;column-gap:10px}#dt-help h3{grid-column:1/-1}" +
   "#dt-help h3{margin:10px 0 4px;font-size:11.5px;font-weight:600;color:#9a9a9a;letter-spacing:.04em}" +
   "#dt-help .dt-row{display:contents}#dt-help .dt-row>span{padding:3px 0;white-space:nowrap}#dt-help .dt-row>span:first-child{text-align:right}" +
+  // 説明の欄は折り返す（キーの欄は折り返さない）：1280 の窓でも道具の列が窓の右で切れない。狭い画面（スマートフォン）でも横にはみ出さない
+  "#dt-help .dt-row>span:last-child{white-space:normal;min-width:0}#dt-help .dt-sec{grid-template-columns:auto minmax(0,1fr)}" +
   "#dt-help kbd{display:inline-block;min-width:20px;margin:0 1px;padding:1px 5px;border:1px solid rgba(255,255,255,.22);border-bottom-width:2px;border-radius:5px;" +
   " background:rgba(255,255,255,.07);font:600 11.5px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace;text-align:center;color:#fff}" +
   "#dt-help .dt-foot{margin-top:12px;color:#888;font-size:11.5px;text-align:center}" +
@@ -206,6 +208,9 @@ css(
   "#dt-help .dt-ver{margin-left:10px;color:#777;font-variant-numeric:tabular-nums}" +
   "#dt-help .dt-about{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:8px;display:flex;flex-wrap:wrap;justify-content:center;gap:2px 18px;font-size:12px;color:#9a9a9a}" +
   "#dt-help .dt-about-v{color:#ddd;font-variant-numeric:tabular-nums}" +
+  // ファイルの情報（題名・作成者・著作権・ライセンス・クレジットの表示）
+  "#dt-help .dt-rights{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-rights dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:12px}" +
+  "#dt-help .dt-rights-r{display:contents}#dt-help .dt-rights dt{color:#9a9a9a;white-space:nowrap}#dt-help .dt-rights dd{margin:0;color:#e8e8e8;overflow-wrap:anywhere}" +
   // 添付（ダウンロードだけ）
   "#dt-help .dt-att{margin-top:12px;border-top:1px solid rgba(255,255,255,.14);padding-top:4px}#dt-help .dt-att ul{list-style:none;margin:0;padding:0}" +
   "#dt-help .dt-att li{display:flex;align-items:center;gap:12px;padding:5px 0}#dt-help .dt-att .dt-att-n{flex:1;min-width:0}" +
@@ -1054,7 +1059,34 @@ function helpHtml(){
     (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
     // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
     '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
-      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + aiHtml() + attHtml() + about + fbHtml + "</div>";
+      : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + rightsHtml() + aiHtml() + attHtml() + about + fbHtml + "</div>";
+}
+// ファイルの情報（format spec §7.3：題名・作成者・著作権・ライセンス・クレジットの表示）。deck-meta から出し、deck-meta にない項目は索引の metadata から
+// （deck-meta に creators を写す前の版の 1 ファイル向け。再生専用の派生と作業フォルダの組み立ては索引を持たない）。どれもなければ出さない。
+// ライセンスだけがないときは「書かれていません」（エディタのファイルの情報と同じ）
+var RIGHTS_IX = null;
+function rightsHtml(){
+  var M = DECK.META || {}, F = DECK.FORMAT || {}, j = JA;
+  var str = function(v){ return typeof v === "string" && v.trim() ? v.trim().slice(0, 2000) : ""; };
+  var list = function(v){ return Array.isArray(v) ? v.filter(function(x){ return typeof x === "string" && x.trim(); }).map(function(x){ return x.trim().slice(0, 300); }).slice(0, 50) : []; };
+  var md = function(){
+    if (RIGHTS_IX) return RIGHTS_IX;
+    RIGHTS_IX = {};
+    var el = F.indexId && document.getElementById(F.indexId);
+    if (el) try { var o = JSON.parse(el.textContent); if (o && o.metadata && typeof o.metadata === "object" && !Array.isArray(o.metadata)) RIGHTS_IX = o.metadata; } catch (e) {}
+    return RIGHTS_IX;
+  };
+  var pick = function(k){ return Object.prototype.hasOwnProperty.call(M, k) ? M[k] : md()[k]; };
+  var title = str(pick("title")), creators = list(pick("creators")), copyright = str(pick("copyright")), license = str(pick("license")), attribution = str(pick("attribution"));
+  if (!creators.length && !copyright && !license && !attribution) return "";
+  var rows = [];
+  if (title) rows.push([j ? "題名" : "Title", title]);
+  if (creators.length) rows.push([j ? "作成者" : "Created by", creators.join(j ? "、" : ", ")]);
+  if (copyright) rows.push([j ? "著作権" : "Copyright", copyright]);
+  rows.push([j ? "ライセンス" : "License", license || (j ? "書かれていません" : "not stated")]);
+  if (attribution) rows.push([j ? "クレジットの表示" : "Attribution", attribution]);
+  return '<div class="dt-rights"><h3>' + (j ? "ファイルの情報" : "File info") + "</h3><dl>" + rows.map(function(r){
+    return '<div class="dt-rights-r"><dt>' + esc(r[0]) + "</dt><dd>" + esc(r[1]) + "</dd></div>"; }).join("") + "</dl></div>";
 }
 // このファイルの版（format spec §4.1、Player P3）：形式 → プレーヤー → 作成 の順（docs/terms.json の format-version・player・made-with）。
 // deck-meta の version（{major, minor}）・player・generator（{name, version, title?}）から。無いものの行は出さない（ふつうの build の deck-meta は版の文字列だけ）

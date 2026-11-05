@@ -13,6 +13,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | script | Script | 台本 | What is spoken, step by step (narration.md). | 口述原稿 ・ ナレーション原稿 / narration | narration.md | 2026-10-24 (owner) |
 | export-script | Export script | 台本を書き出す | Save the script of the steps that need audio as one file, for generating audio in the cloud. | 声の依頼ファイル ・ tts-job.json（画面で） | tts-job.json | 2026-10-24 (owner) |
 | file-info | File info | ファイルの情報 | Title, license, creators and attachments of the file. | 教材の情報 / Lesson info | metadata | 2026-10-24 (owner) |
+| created-by | Created by | 作成者 | The people who made the lesson (metadata.creators), shown in File info in the editor and the player. | 作り手 | creators | 2026-11-04 (owner) |
 | sample | Samples | サンプル | Example lessons shipped with the editor. | 見本 ・ 見本の教材 / examples |  | 2026-10-24 (owner) |
 | template | Template | テンプレート | A slide layout used when inserting a slide, and the starting set of slides for a new lesson. | 雛形 |  | 2026-10-24 (owner) |
 | zip-file | ZIP file | ZIP ファイル | A compressed archive (theme import, cloud audio result). | zip / zip |  | 2026-10-25 (standards) |

@@ -102,9 +102,9 @@
           ]
         }
       ],
+      "class": "horizontal",
       "label": "tbl-counts",
-      "identifier": "tbl-counts",
-      "class": "horizontal"
+      "identifier": "tbl-counts"
     }
   ]
 }

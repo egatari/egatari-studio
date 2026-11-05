@@ -12,6 +12,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -86,7 +87,23 @@ async function open(file, { w = 1280, h = 720, q = '', reduce = false, ctx = nul
 }
 const st = (p) => p.evaluate(() => Object.assign(DECK.panes.state(), { i: DECK.state().slide - 1, k: DECK.state().step }));
 const shot = async (p, n) => { if (SHOTS) await p.screenshot({ path: path.join(work, n + '.png') }); };
-const wait = (p, ms) => p.waitForTimeout(ms);
+// 待つ：少なくとも ms（何も起きないことを確かめる窓）。そのうえで、本の窓のスクロールが止まり（3 こま続けて同じ位置）、描画がもう 2 こま進むまで。
+// 滑らかなスクロール（kit/panes.js の scrollToEl）は遅い runner（macOS の CI）で 900 ms を超え、動いている途中の位置を基準にして
+// 「同じ節のステップでは本は動かない」が落ちた。スクロールの後の付いていく処理（scrolled）も次のこまで走るので、読む前にそれを待つ
+const wait = async (p, ms) => {
+  await p.waitForTimeout(ms);
+  await p.evaluate(() => new Promise((res) => {
+    const b = document.querySelector('#deck-text .dx-body');
+    let last = null, same = 0, n = 0;
+    const tick = () => {
+      const now = b ? b.scrollTop + ',' + b.scrollLeft : '';
+      same = now === last ? same + 1 : 0; last = now; n++;
+      if (same >= 3 && n >= 2) requestAnimationFrame(() => requestAnimationFrame(() => res(true))); else requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => res(false), 15000);   // 止まらないスクロールでも待ち続けない（後の確かめが落ちる）
+  }));
+};
 // 本の窓の中で、ある要素の読み進める向きの位置（窓の初めから。横は上から、縦は右から）
 const along = (p, sel) => p.evaluate((sel) => {
   const b = document.querySelector('#deck-text .dx-body'), e = document.querySelector(sel), br = b.getBoundingClientRect(), r = e.getBoundingClientRect();
@@ -102,14 +119,16 @@ async function wheel(p, dy) {
   await p.mouse.move(r.x, r.y); await p.mouse.wheel(0, dy); await wait(p, 250);
 }
 // 節が読み進める線（窓の 4 分の 1）を少し越えるまで、見る人がスクロールしたことにする
-async function readTo(p, sel) {
+// at：動いた先の [i, k]（あれば、固定の時間ではなくそこへ動くまで待ち、その場で戻る。入るときの動きの途中を確かめるところ）
+async function readTo(p, sel, at = null) {
   await p.evaluate((sel) => {
     const b = document.querySelector('#deck-text .dx-body'), e = document.querySelector(sel), br = b.getBoundingClientRect(), r = e.getBoundingClientRect(), v = b.classList.contains('dx-vertical');
     b.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true}));
     const d = (v ? br.right - r.right : r.top - br.top) - (v ? br.width : br.height) * .2;
     if (v) b.scrollLeft -= d; else b.scrollTop += d;
   }, sel);
-  await wait(p, 250);
+  if (at) await p.waitForFunction(([i, k]) => DECK.state().slide - 1 === i && DECK.state().step === k, at, { timeout: scaled(10000) }).catch(() => {});
+  else await wait(p, 250);
 }
 const markColor = (p) => p.evaluate(() => { const m = document.querySelector('#deck-text .dx-cur'); if (!m) return null; const c = getComputedStyle(m); return {left: c.borderLeftColor, top: c.borderTopColor, lw: c.borderLeftWidth, tw: c.borderTopWidth, aria: m.getAttribute('aria-current')}; });
 
@@ -272,7 +291,7 @@ const markColor = (p) => p.evaluate(() => { const m = document.querySelector('#d
 for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   const p = await open(file, { q: '?layout=split' });
   await p.evaluate(() => DECK.autoplay(true));
-  await p.waitForFunction(() => DECK.state().slide >= 2, null, { timeout: 15000 });
+  await p.waitForFunction(() => DECK.state().slide >= 2, null, { timeout: scaled(15000) });
   let s4 = await st(p);
   ok(s4.playing && !s4.detached && s4.marked === 'sec-pa3bbb', `${name}: during playback the book follows`);
   await wheel(p, name === 'vertical' ? -600 : -600);
@@ -281,8 +300,8 @@ for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   ok(s4.detached && s4.playing && await p.isVisible('#deck-backplay'), `${name}: scrolling during playback stops following, playback goes on, Back to the playing part is shown`);
   ok((await p.textContent('#deck-backplay')).includes('再生中の所に戻る'), `${name}: the button says 再生中の所に戻る`);
   const sp = await scrollPos(p);
-  await p.waitForFunction((pos) => DECK.state().slide >= 3 || (DECK.state().slide - 1) * 10 + DECK.state().step > pos, pos, { timeout: 15000 });
-  await p.waitForFunction(() => DECK.state().slide >= 3, null, { timeout: 15000 });
+  await p.waitForFunction((pos) => DECK.state().slide >= 3 || (DECK.state().slide - 1) * 10 + DECK.state().step > pos, pos, { timeout: scaled(15000) });
+  await p.waitForFunction(() => DECK.state().slide >= 3, null, { timeout: scaled(15000) });
   const sp2 = await scrollPos(p);
   ok(sp2.top === sp.top && sp2.left === sp.left, `${name}: while detached the book stays where the viewer put it (${JSON.stringify(sp)} ${JSON.stringify(sp2)})`);
   await shot(p, `04-${name}-detached`);
@@ -365,8 +384,7 @@ for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
 for (const reduce of [false, true]) {
   const p = await open(S, { q: '?layout=book', reduce });
   ok((await p.textContent('#deck-text .dx-view')).includes('表示') && (await p.getAttribute('#deck-text', 'aria-label')) === '台本で読む', `${reduce ? 'reduced: ' : ''}without a book the text pane is 台本で読む`);
-  await readTo(p, '[data-step-key="s-pa3bbb:1"]');
-  await wait(p, 60);
+  await readTo(p, '[data-step-key="s-pa3bbb:1"]', [1, 1]);
   const s7 = await st(p);
   const op = await p.evaluate(() => +getComputedStyle(DECK.slides[1].querySelector('[data-step="1"]')).opacity);
   ok(s7.i === 1 && s7.k === 1, `${reduce ? 'reduced: ' : ''}scrolling the script moves to the step (${s7.i}:${s7.k})`);

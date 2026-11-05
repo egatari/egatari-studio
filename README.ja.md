@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=a5c1698147a8c255 -->
+<!-- i18n: pair=README.md sha256=cbaea18bc64491f1 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -127,6 +127,8 @@ npx egatari dev mytalk/deck.html      # ブラウザで直す
 npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」になればよい
 npx egatari doctor                    # Node・uv・ffmpeg・ブラウザがあるか、ないものの入れ方
 ```
+
+Bun（`bunx egatari`）でも動きます。
 
 ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
 

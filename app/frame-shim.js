@@ -271,8 +271,10 @@ function quickCheck(fonts){
   try {
     var probe = document.createElement("div"); probe.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
     document.body.appendChild(probe);
-    var cv = document.createElement("canvas"); cv.width = cv.height = 1; var ctx = cv.getContext("2d");
-    var rgb = function(v){ probe.style.color = "var(" + v + ")"; ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = getComputedStyle(probe).color; ctx.fillRect(0, 0, 1, 1); var d = ctx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
+    var cv = document.createElement("canvas"); cv.width = cv.height = 1; var ctx = cv.getContext("2d", {willReadFrequently: true});
+    // rgb()・rgba() はそのまま数を読む（canvas の読み戻しが 0,0,0 を返すことがある。kit/check.mjs の C と同じ）
+    var rgb = function(v){ probe.style.color = "var(" + v + ")"; var css = getComputedStyle(probe).color, m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(css); if (m) return [Math.round(+m[1]), Math.round(+m[2]), Math.round(+m[3])];
+      ctx.clearRect(0, 0, 1, 1); ctx.fillStyle = css; ctx.fillRect(0, 0, 1, 1); var d = ctx.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
     var lum = function(c){ var f = function(x){ x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
     var ratio = function(a, b){ var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
     var bg = rgb("--bg");

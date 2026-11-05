@@ -17,6 +17,7 @@ import { launch, fileUrl, prepareForCapture, releaseCapture } from '../kit/brows
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
 import { KNOWN, expired, entryFor, knownAccepts, unused, lockedVersion } from './step-reset-known.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const args = process.argv.slice(2);
 const oi = args.indexOf('--only');
@@ -83,7 +84,7 @@ for (const { name, dir } of comps) {
   // 開き直す（失敗した場合の後始末にも使う：次の確かめが前の操作の残りに引きずられないように）
   const open = async () => {
     await p.goto(fileUrl(deck));
-    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
     await p.addStyleTag({ content: HIDE });
     // 「見た」の印を先に揃える（すべてのスライドを一度開く）
     n = await p.evaluate(() => DECK.slides.length);
@@ -145,7 +146,7 @@ if (!only || only.includes('kobun')) {
   const deck = path.join(out, 'kobun', 'demo.html');
   const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
   await p.goto(fileUrl(deck));
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   await goTo(p, 0, 1);
   await p.evaluate(() => DECK.go(0, 2, true));
   const it = await interact(p, 0, 'mouse');
@@ -162,23 +163,23 @@ if (!only || only.includes('kobun')) {
   const deck = path.join(out, 'kobun', 'demo.html');
   const ref = await b.newPage({ viewport: { width: 1280, height: 720 } });
   await ref.goto(fileUrl(deck) + '?view=follow');
-  await ref.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await ref.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   await ref.addStyleTag({ content: HIDE });
   await goTo(ref, 0, 2);
   const R = await shot(ref);
   const main = await b.newPage({ viewport: { width: 1280, height: 720 } });
   await main.goto(fileUrl(deck));
-  await main.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await main.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   const popP = main.waitForEvent('popup');
   await main.keyboard.press('p');
   const pv = await popP;
   await pv.setViewportSize({ width: 1400, height: 820 });
   await pv.waitForSelector('#f-cur');
   const fr = await (await pv.$('#f-cur')).contentFrame();
-  await fr.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await fr.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   await fr.addStyleTag({ content: HIDE });
   await goTo(main, 0, 2);
-  await fr.waitForFunction(() => DECK.state().slide === 1 && DECK.state().step === 2, null, { timeout: 15000 });
+  await fr.waitForFunction(() => DECK.state().slide === 1 && DECK.state().step === 2, null, { timeout: scaled(15000) });
   const it = await interact(main, 0, 'mouse');
   ok(it.opened, 'presenter: the card is open on the main window');
   // 発表者ビューの今の画面は送られた位置を動きつきで描くので、動きが終わるまで待つ

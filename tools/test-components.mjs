@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import { parseLock, resolveComponent } from '../kit/core/components-lock.mjs';
 import { ROOT, vendorComponents } from './vendor-components.mjs';
 import { compareRenders, domSnapshot, noiseLog } from '../kit/render-compare.mjs';
+import { scaled } from './wait-scale.mjs';
 // ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
 await shareBrowser();
 
@@ -85,7 +86,7 @@ for (const { name, version, dir } of comps) {
   p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   const load = async () => {
     await p.goto(fileUrl(out));
-    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
+    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(10000) });
     await p.evaluate(() => document.fonts.ready);
   };
   // 撮る前に字と描画が落ち着くのを待つ（docs/contract.md §1：seek の後に requestAnimationFrame を 2 回）

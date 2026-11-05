@@ -24,6 +24,7 @@ import { parseThemesLock } from '../kit/core/themes-lock.mjs';
 import { clickCommand, clickDlg, clickMenuOpen, clickUntil } from './click-retry.mjs';
 import { writeZip } from '../kit/core/zip-read.mjs';
 import { themeOf, withTheme } from '../app/theme-switch.js';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-theme-switch-')));
@@ -94,7 +95,7 @@ async function session(lang, fn) {
 }
 const state = (page) => page.evaluate(() => window.__APP_TEST.state());
 const loads = async (page) => (await state(page)).loads;
-const waitLoads = (page, n) => page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads && !window.__APP_TEST.slides().busy; }, n, { timeout: 60000 });
+const waitLoads = (page, n) => page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads && !window.__APP_TEST.slides().busy; }, n, { timeout: scaled(60000) });
 const frame = (page) => page.frames().find((f) => f.parentFrame() === page.mainFrame() && f.name() !== 'sl-thumbs');
 const emph = async (page) => frame(page).evaluate(probeEmph);
 const memFile = async (page, rel) => { const f = await page.evaluate(() => window.__APP_TEST.files()); return f && f[rel] ? Buffer.from(f[rel], 'base64').toString('utf8') : null; };
@@ -113,9 +114,9 @@ async function switchTo(page, name, { expectCurrent } = {}) {
   if (expectCurrent) ok(cur.length === 1 && cur[0] === expectCurrent, `chooser: the current theme ${expectCurrent} is marked ${JSON.stringify(cur)}`);
   const n = await loads(page);
   // macOS の CI では、窓の上の選択肢を押しても下のプレビューの iframe に届くことがある（click-retry.mjs）：選ばれるまで押し直す
-  await clickUntil(page, `#theme-opt-${name}`, () => page.waitForSelector(`#theme-opt-${name}:checked`, { timeout: 2500 }));
+  await clickUntil(page, `#theme-opt-${name}`, () => page.waitForSelector(`#theme-opt-${name}:checked`, { timeout: scaled(2500) }));
   await clickDlg(page, '#dlg-change');
-  const rights = await page.waitForSelector('#dlg[open] #rights-list', { timeout: 1500 }).catch(() => null);
+  const rights = await page.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(1500) }).catch(() => null);
   if (rights) await clickDlg(page, '#dlg-ok');
   await waitLoads(page, n);
 }
@@ -186,9 +187,9 @@ try {
       window.__APP_TEST.saveHandle = await root.getFileHandle(name, { create: true });
     }, 'saved' + FORMAT.FILE_EXT);
     await page.evaluate(() => { window.__APP_TEST.save('save'); });   // 段 B の確かめの窓を待つので、終わりを待たない
-    const tierB = await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 }).catch(() => null);
+    const tierB = await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) }).catch(() => null);
     if (tierB) await clickDlg(page, '#dlg-rebuild');
-    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 60000 });
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
     const saved = await page.evaluate(() => window.__APP_TEST.saved());
     const r = await readPortable(saved);
     const sc = JSON.parse(Buffer.from(r.files[CFG]).toString('utf8'));
@@ -265,7 +266,7 @@ try {
     ok((await page.textContent('#theme-load-title')) === 'テーマを読み込む', 'zip: 「テーマを読み込む…」 in テーマを変更 opens the same Load theme dialog');
     const n = await loads(page);
     await page.click('#theme-load-zip');
-    await page.waitForSelector('#dlg[open] #theme-opt-zipteal', { timeout: 30000 });
+    await page.waitForSelector('#dlg[open] #theme-opt-zipteal', { timeout: scaled(30000) });
     await waitLoads(page, n).catch(() => {});
     const rows = await page.$$eval('#theme-switch-list > *', (a) => a.map((x) => x.textContent.trim()));
     ok(JSON.stringify(rows) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け', '自分のテーマ', 'ZIP の青緑']), 'zip: after loading, the list shows the theme under 「自分のテーマ」 by its title ' + JSON.stringify(rows));

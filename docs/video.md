@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=227a0dbe8a4834c0 -->
+<!-- i18n: pair=video.ja.md sha256=3e77d5e5347c4288 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)

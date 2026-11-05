@@ -49,6 +49,7 @@ import { setupLlm } from './llm.js';
 import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
+import { partsIndexHref } from './parts-gallery.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from './theme-zip.js';
 import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, deleteMyTheme } from './my-themes.js';
@@ -843,6 +844,7 @@ const ui = createEditorUI({
 // 音声の板（app/audio-panel.js）：信頼する横の板の中。マイク・TTS はこのページだけで動き、プレビューからは何も受け取らない
 const tts = createTtsClient({
   lang: EN ? 'en' : 'ja', test: () => window.__APP_TEST && window.__APP_TEST.tts,
+  device: () => window.__APP_TEST && window.__APP_TEST.ttsDevice,   // 試験：作れる端末かの差し替え（app/tts-client.js の deviceLimit）
   helperUrl: () => (window.__APP_TEST && window.__APP_TEST.ttsHelper) || 'lab/tts-helper.html',
   // 初めて TTS の窓を開く前に：何を取得するか（大きさ）と、窓に渡すもの（読む文と声の名前だけ）を見せて確かめる
   confirm: async (label) => (await ask({ title: T.ttsTitle, body: [el('p', { id: 'tts-what', text: label }), el('p', { cls: 'hint', text: T.ttsPrivacy })],
@@ -877,8 +879,8 @@ const audio = createAudioPanel({
   afterWrite: async () => { await rebuild('save'); updateName(); },
   // TTS が約 1 秒を超えたら（モデルの取得・合成）、隅にロゴを描く（画面は止めない）
   wait: () => slowWait($('wait-badge')),
-  // 1 ファイルの「保存」（A のボタン）と、前に使ったやり方を覚える設定のファイル（egatari.json の studio.audioMethod）
-  save: () => savePortable('save'), configFile: FORMAT.CONFIG_FILE,
+  // 1 ファイルの「保存」（A のボタン）
+  save: () => savePortable('save'),
   // クラウドで作る（Google Colab）：台本の文が Google の環境で処理されるので、このブラウザで初めて書き出す前に 1 度だけ確かめる
   colab: {
     t: T.colab, version: RES.version,
@@ -906,7 +908,7 @@ const rec = createRecMode({
 // 添付の板（app/attachments-panel.js。§3.8）：横の板（#panel）に、作業場所の attachments/ と設定のファイルの役割・題。添付は開かない
 const attach = createAttachPanel({
   lang: EN ? 'en' : 'ja', el, ask, toast, ws: () => S.ws, generation: () => S.gen,
-  // 「ファイル ▾」の「教材の情報…」：題・ライセンス・作り手の下に、添付の板
+  // 「ファイル ▾」の「教材の情報…」：題・ライセンス・作成者の下に、添付の板
   openPanel: (title, body) => openPanel(T.infoTitle, [infoSection(), el('h3', { cls: 'info-h', text: title }), ...[].concat(body)]), isOpen: () => !$('panel').hidden && !!$('attach-panel'),
   beforeWrite: async () => {
     if (earlierWhy()) return earlierWhy();
@@ -1070,7 +1072,7 @@ $('panel-close').onclick = closePanel;
 // （答えは頼んだ読み込みのものだけを受け取る。期限は全体で 20 秒）
 const CHECK_MS = 20000;
 let askSeq = 0;
-const askCheck = () => askFrame('app-check');
+const askCheck = (rec) => askFrame('app-check', {}, rec);
 // 本文のステップへのリンクの行き先（format spec §9C.8 の 1）：今のプレビューの再生器で確かめる（kit/core/article.mjs の STEP_PROBE と同じ。
 // app/frame-shim.js の resolveSteps）。プレビューが答えなければ断る（本のある教材を書き出さない）
 async function askSteps(links) {
@@ -1079,7 +1081,9 @@ async function askSteps(links) {
   if (!r) throw Object.assign(new Error(T.book.noPlayer), { code: 'article-unsupported' });
   return r;
 }
-async function askFrame(type, extra = {}) {
+// rec：頼みの記録（{sends（送った回数）, answered}）。品質チェックの板（quickCheck）は S.lastQuickCheck に残し、試験が「今の読み込みに 1 回送って
+// 答えが来た」（古い文書に送って待たなかった）ことを、かかった時間に頼らずに確かめる
+async function askFrame(type, extra = {}, rec = { sends: 0, answered: false }) {
   const t0 = Date.now(), tick = () => new Promise((r) => setTimeout(r, 50));
   while (Date.now() - t0 < CHECK_MS) {
     if (S.building || !S.allowed || !S.loads || S.frameLoaded !== S.loads) { await tick(); continue; }
@@ -1087,9 +1091,10 @@ async function askFrame(type, extra = {}) {
     if (!f) { await tick(); continue; }
     const got = new Promise((res) => S.checks.set(id, { res, load }));
     f.postMessage({ type, id, ...extra }, '*');
+    rec.sends++;
     for (;;) {
       const r = await Promise.race([got, tick().then(() => undefined)]);
-      if (r !== undefined) return r;
+      if (r !== undefined) { rec.answered = true; return r; }
       if (S.loads !== load || Date.now() - t0 >= CHECK_MS) break;   // 読み込みが替わった（新しい文書に送り直す）・期限
     }
     S.checks.delete(id);
@@ -1097,9 +1102,9 @@ async function askFrame(type, extra = {}) {
   return null;
 }
 // 品質チェックの結果を集める（板には出さない。「修正…」の修正依頼も使う）。プレビューが答えなければ null
-async function checkResults() {
+async function checkResults(rec) {
   if (!$('preview').contentWindow || !S.base) return null;
-  const results = await askCheck();
+  const results = await askCheck(rec);
   if (!results) return null;
   results.push(...(await llm.extraChecks()));   // 読みの指定（narration.md の元の文字列から。app/llm.js）
   // 雛形のまま（スライド一覧の雛形の字・仮の口述原稿「✎ 」。kit/core/template-text.mjs。kit/check.mjs と同じ）：作業場所の原稿から
@@ -1134,7 +1139,8 @@ async function quickCheck() {
   if (!$('preview').contentWindow || !S.base) return;
   if (S.earlier && S.earlier.kind === 'file') { toast(T.earlierNoCheck, true); return; }
   openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checking }), buildWarnBox()]);
-  const results = await checkResults();
+  const rec = S.lastQuickCheck = { sends: 0, answered: false };
+  const results = await checkResults(rec);
   const f = $('preview').contentWindow;
   if (!results) { openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checkFailed }), buildWarnBox()]); return; }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length + S.warn.length;
@@ -1575,7 +1581,7 @@ async function openSource(name, bytes) {
 
 // ---------------------------------------------------------------- 持ち運べる 1 ファイルを保存する
 // mode：'save'（同じファイルに。docId を変えず、derivedFrom を付けも変えもしない）・'copy'（別のファイルに。docId は同じ）・
-//       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作り手はそのまま。§3.6.1・§7.3）
+//       'new'（新しい教材として：新しい docId と derivedFrom。権利の表示と作成者はそのまま。§3.6.1・§7.3）
 // 口述原稿・音声・秒数だけが変わったなら段 A（組み直さずに決まった場所だけを書き換える。kit/core/tier-a.mjs、§7.2）。
 // スライドの原稿が変わった（など段 A でできない）なら段 B（このエディタの版で組み直す）で、保存の前にそのことを知らせて確かめる
 // 保存は 1 つずつ。始めたときの作業場所と文書に結び付け、途中（組み直し・確かめの窓・書き込み）で別のものを開いたら、
@@ -1857,8 +1863,8 @@ async function participantExport() {
   await exportPlayOnlyFile(room, room ? { oneWay: livePanel.oneWay() } : {});
 }
 
-// ---------------------------------------------------------------- 教材の情報…（題・ライセンス・作り手・添付）
-// 題・ライセンス・作り手は設定のファイル（egatari.json の metadata）から読むだけ（ここでは書き換えない）。1 ファイルで設定のファイルになければ索引の metadata
+// ---------------------------------------------------------------- 教材の情報…（題・ライセンス・作成者・添付）
+// 題・ライセンス・作成者は設定のファイル（egatari.json の metadata）から読むだけ（ここでは書き換えない）。1 ファイルで設定のファイルになければ索引の metadata
 let INFO = null;
 async function readInfo() {
   let m = null;
@@ -1959,6 +1965,7 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('w-claude').href = WITH_CLAUDE_URL;
+$('w-parts').href = partsIndexHref(location);
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();
@@ -2116,7 +2123,7 @@ window.__APP_TEST = {
   saveHandle: null,
   dirHandle: null,
   state: () => ({ building: !!S.building, earlier: S.earlier ? { ...S.earlier } : null, deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
-    allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0,
+    allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0, lastQuickCheck: S.lastQuickCheck ? { ...S.lastQuickCheck } : null,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
       lastTier: S.portable.lastTier, lastTierA: S.portable.lastTierA || null, saveWarnings: (S.portable.saveWarnings || []).slice(), lastRefusal: S.portable.lastRefusal || null, sourceOnly: !!S.portable.sourceOnly, derivedFrom: (S.portable.index.metadata && S.portable.index.metadata.derivedFrom) || null } : null }),
   openFile: (input) => openPortable(input),
@@ -2149,6 +2156,7 @@ window.__APP_TEST = {
   menuOpen: () => { const M = openMenuOf(); return M ? M.list.id : null; },
   mp3: undefined,     // 試験：'off' で MP3 のエンコーダを読み込まない（1 ファイル版と同じく WAV で保存する）
   tts: null,          // 試験：ブラウザの TTS の代わり（{info(lang), synth({lang, text, role, voices, onProgress})}。モデルを取りに行かない）
+  ttsDevice: undefined,   // 試験：作れる端末か（{memory, coarseOnly, small}、または 'measure' で端末を測る。app/tts-client.js）
 };
 window.__APP_TEST_OPEN = (h) => openFolder(h);
 

@@ -16,6 +16,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable } from '../kit/core/portable.mjs';
 import { themeOf } from '../app/theme-switch.js';
 import { clickDlg, clickCommand } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-save-rebuild-')));
@@ -57,7 +58,7 @@ const WORDS = {
 const browser = await launch();
 const errs = [];
 const state = (page) => page.evaluate(() => window.__APP_TEST.state());
-const waitLoads = (page, n) => page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads && !window.__APP_TEST.slides().busy; }, n, { timeout: 60000 });
+const waitLoads = (page, n) => page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads && !window.__APP_TEST.slides().busy; }, n, { timeout: scaled(60000) });
 const savedFile = async (page) => readPortable(await page.evaluate(() => window.__APP_TEST.saved()));
 // スライド ▾ → テーマを変更… → 選ぶ → 変更（初めの編集では権利の確認に「続ける」）
 async function switchTo(page, name) {
@@ -66,17 +67,17 @@ async function switchTo(page, name) {
   const n = (await state(page)).loads;
   await page.check(`#theme-opt-${name}`);
   await clickDlg(page, '#dlg-change');
-  const rights = await page.waitForSelector('#dlg[open] #rights-list', { timeout: 1500 }).catch(() => null);
+  const rights = await page.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(1500) }).catch(() => null);
   if (rights) await clickDlg(page, '#dlg-ok');
   await waitLoads(page, n);
-  await page.waitForFunction(() => window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
 }
 // 保存して、確かめの窓が出たら中身を読んで「組み直して保存」を押す。窓が出なければ null
 async function saveAndRead(page) {
   await page.evaluate(() => { window.__tierBSeen = 0; });
   const p = page.evaluate(() => window.__APP_TEST.save('save'));
   // 窓が出たかを、保存が終わるまで見張る（出てすぐ閉じられても見落とさない）
-  const seen = await Promise.race([p.then(() => false), page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 60000 }).then(() => true, () => false)]);
+  const seen = await Promise.race([p.then(() => false), page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(60000) }).then(() => true, () => false)]);
   let dlg = null;
   if (seen) {
     dlg = await page.evaluate(() => ({ title: document.getElementById('dlg-title').textContent, why: (document.getElementById('tier-b-why') || {}).textContent || null,
@@ -84,7 +85,7 @@ async function saveAndRead(page) {
     await clickDlg(page, '#dlg-rebuild');
   }
   await p;
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 60000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
   return { dlg, seenDuring: await page.evaluate(() => window.__tierBSeen) };
 }
 // スライドの文を 1 か所直す（直せる範囲：プレビューの data-src）
@@ -100,7 +101,7 @@ async function editText(page) {
   for (let i = 0; i < 60 && !(src && src.text); i++) { src = await page.evaluate((r) => window.__APP_TEST.api('GET', `/__dev/source?range=${r}`), range); if (!(src && src.text)) await page.waitForTimeout(150); }
   const next = /<[^>]*>/.test(src.text) ? src.text.replace(/>([^<]+)</, '>$1（直した）<') : src.text + '（直した）';
   const res = await page.evaluate(([r, h, text]) => window.__APP_TEST.api('POST', '/__dev/edit', { range: r, h, text }), [range, src.h, next]);
-  await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
   return res && res._status === 200;
 }
 

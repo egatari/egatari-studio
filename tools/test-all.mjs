@@ -13,30 +13,42 @@
 //   先頭の 40 行に「// test-all: serial」の行がある試験（時間に敏感なもの：音声・録音・自動再生・部品の時計・帯や知らせが消える時計を待つもの・時間の上限を確かめるもの）は、
 //   ほかの段がすべて終わったあと、何も同時に走らせずに表の順に 1 つずつ走らせる。
 //   同じものを書き換える段（examples/*/out・同じ作業フォルダ）は、下の after（先に終わっている段）と lock（重ならない組）で並びを決める
+//   メモリの少ない機械（MEM_HEAVY_GIB 未満。GitHub の macOS の runner は 7 GB）では、メモリを多く使う段（HEAVY）どうしを重ねない（TEST_HEAVY_ALONE=1/0 で変えられる）
+// --platform：OS に左右されるところだけを走らせる（CI の macOS の既定。.github/workflows/test.yml）：ブラウザの試験でない段（組み立て・品質チェック・
+//   作ったファイルの --check・単体の検査）と、先頭の 40 行に「// test-all: platform」の行がある試験（パス・file:// の URL・字体と字の組み方・
+//   WebKit・npm の包み）。ほかの試験はブラウザの中の振る舞いを見るので、Linux と Windows の全部の試験で足りる
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
 // 同時に走らせる段の数。ブラウザの試験は 1 本で Chromium の process をいくつも使うので、CPU が多くても JOBS_MAX まで
 const JOBS_MAX = 6;
+// これより少ないメモリ（GiB）の機械では、メモリを多く使う段どうしを重ねない（下の HEAVY）
+const MEM_HEAVY_GIB = 12;
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`usage: node tools/test-all.mjs [--only name,name] [--jobs N] [--verbose] [--list]
+  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--jobs N] [--verbose] [--list]
   --only name,name  run only these steps (and the builds they need); "test-components" selects both shards
+  --platform        run only the platform-sensitive steps: every step that is not a browser test (builds, checks,
+                    generated-file checks, unit tests) and the tests marked "// test-all: platform" (paths, fonts, WebKit, npm pack)
   --jobs N          run up to N steps at once, longest first (default: CPUs - 1, at most ${JOBS_MAX}); steps marked
                     "// test-all: serial" run last, one at a time. --jobs 1 runs the steps in table order
   --verbose         stream every step's output (also when CI is set)
   --list            print every step and its arguments, and exit
   --help            print this and exit
-env: TEST_STEP_TIMEOUT_S (per-step cap, default 600), MOTION_TEST_ARTIFACTS (folder for screenshots and work dirs)`);
+env: TEST_STEP_TIMEOUT_S (per-step cap, default 600 × TEST_TIMEOUT_SCALE), TEST_TIMEOUT_SCALE (factor for every wait's cap, default 1;
+     tools/wait-scale.mjs), TEST_HEAVY_ALONE (1: memory-heavy steps never overlap; default: when the machine has under ${MEM_HEAVY_GIB} GiB),
+     MOTION_TEST_ARTIFACTS (folder for screenshots and work dirs)`);
   process.exit(0);
 }
 const oi = args.indexOf('--only');
 if (oi >= 0 && !(args[oi + 1] && !args[oi + 1].startsWith('--'))) { console.error('test-all: --only needs step names (name,name); --list prints them'); process.exit(2); }
 const only = oi >= 0 ? new Set(args[oi + 1].split(',')) : null;
+const platformOnly = args.includes('--platform');
 const verbose = args.includes('--verbose') || !!process.env.CI;
 const ji = args.indexOf('--jobs');
 const jobs = ji >= 0 ? Number(args[ji + 1]) : Math.max(1, Math.min(JOBS_MAX, (os.availableParallelism ? os.availableParallelism() : os.cpus().length) - 1));
@@ -56,6 +68,8 @@ const head40 = (f) => fs.readFileSync(rel('tools', f), 'utf8').split('\n').slice
 const markOf = (f) => { const m = head40(f).match(MARK); return m ? m[1] : null; };
 // 時間に敏感な試験の印（--jobs が 2 以上のとき、最後に 1 つずつ走らせる）。登録の印（unit・part of）とは別の行
 const SERIAL = /^\/\/ test-all: serial\b/m;
+// OS に左右される試験の印（--platform で走らせる）
+const PLATFORM = /^\/\/ test-all: platform\b/m;
 const testFiles = fs.readdirSync(rel('tools')).filter((f) => /^test-.+\.mjs$/.test(f) && f !== 'test-all.mjs').sort();
 const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace(/\.mjs$/, ''), ['tools/' + f]]);
 const steps = [
@@ -258,11 +272,6 @@ if (orphans.length) {
   fs.rmSync(tmp, { recursive: true, force: true });
   process.exit(1);
 }
-if (args.includes('--list')) {
-  for (const [name, argv] of steps) console.log(`${name}\tnode ${argv.map((a) => a.split(tmp).join('<tmp>')).join(' ')}`);
-  fs.rmSync(tmp, { recursive: true, force: true });
-  process.exit(0);
-}
 
 // ---- 同時に走らせるときの決まり（--jobs 1 では使わない）
 // 時間の目安（秒）：長い段から先に始め、最後に長い段が 1 つだけ残らないように。windows-latest の main の CI（run 41300438072）の値。
@@ -291,7 +300,12 @@ const lock = {
 };
 const builtBy = new Map([[MIN, 'build minimal'], [TMLR, 'build tmlr2026']]);
 const depsOf = (name, argv) => [...new Set([needs[name], ...(after[name] || []), ...argv.map((a) => builtBy.get(a))].filter(Boolean))];
-const lockOf = (name) => lock[name] || null;
+// メモリを多く使う段（ブラウザのページをいくつも開く・子のプロセスで品質チェックを並べる）。macOS の CI（3 vCPU・7 GB）で 2 つが重なると、
+// どちらも 3 倍近く遅くなり（test-app 340 → 1300 s、test-pack-catalogue 200 → 830 s。14 GB の runner では重なっても 390〜450 s）、
+// 段の上限で止められ、runner が応答をなくして job ごと落ちたこともある（run 41795793989 の 2 回目）。少ないメモリの機械ではこれらを重ねない
+const HEAVY = new Set(['test-app', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
+const heavyAlone = process.env.TEST_HEAVY_ALONE ? process.env.TEST_HEAVY_ALONE === '1' : os.totalmem() < MEM_HEAVY_GIB * 2 ** 30;
+const lockOf = (name) => lock[name] || (heavyAlone && HEAVY.has(name) ? 'memory' : null);
 const isSerial = (name, argv) => argv.some((a) => /^tools\/test-.+\.mjs$/.test(a) && SERIAL.test(head40(a.slice('tools/'.length))));
 // 始める順の重み：自分の目安に、自分を待つ段の重みの一番大きいものを足す（短い組み立ての段が、それを待つ長い段より後回しにならないように）
 const weight = new Map();
@@ -304,21 +318,67 @@ const hintOf = (name) => {
   return w;
 };
 
-const STEP_TIMEOUT_S = Number(process.env.TEST_STEP_TIMEOUT_S) > 0 ? Number(process.env.TEST_STEP_TIMEOUT_S) : 600;
+const STEP_TIMEOUT_S = Number(process.env.TEST_STEP_TIMEOUT_S) > 0 ? Number(process.env.TEST_STEP_TIMEOUT_S) : scaled(600000) / 1000;
 // stream：出力をそのまま流す（--verbose・CI で、--jobs 1 のとき）。同時に走らせるときは流さず、終わってからまとめて出す
+// メモリの見張り（CI で同時に走らせる段の数を決める材料）：5 秒ごとに使っている swap（macOS は sysctl vm.swapusage、Linux は /proc/meminfo）を読み、
+// 一番多かったときに走っていた段を最後の一覧の後に出す。読めない OS（Windows）では空きのメモリ（os.freemem）だけ
+const active = new Set();
+const mem = { swap0: null, swapMax: -1, swapAt: '', freeMin: Infinity, freeAt: '' };
+async function swapUsedMiB() {
+  try {
+    if (process.platform === 'darwin') {
+      const { execFile } = await import('node:child_process');
+      const out = await new Promise((res) => execFile('sysctl', ['-n', 'vm.swapusage'], (e, o) => res(e ? '' : o)));
+      const m = /used = ([\d.]+)M/.exec(out);
+      return m ? +m[1] : -1;
+    }
+    if (process.platform === 'linux') {
+      const t = fs.readFileSync('/proc/meminfo', 'utf8'), kb = (k) => +((new RegExp('^' + k + ':\\s+(\\d+)', 'm').exec(t) || [])[1] || 0);
+      return (kb('SwapTotal') - kb('SwapFree')) / 1024;
+    }
+  } catch { /* 読めない */ }
+  return -1;
+}
+const memTimer = setInterval(async () => {
+  const names = [...active].join(', ');
+  const free = os.freemem() / 2 ** 20;
+  if (free < mem.freeMin) { mem.freeMin = free; mem.freeAt = names; }
+  const sw = await swapUsedMiB();
+  if (mem.swap0 === null) mem.swap0 = sw;
+  if (sw > mem.swapMax) { mem.swapMax = sw; mem.swapAt = names; }
+}, 5000);
+memTimer.unref();
 function run(name, argv, stream = verbose) {
   return new Promise((resolve) => {
     const t0 = Date.now();
+    active.add(name);
     const ch = spawn(process.execPath, argv, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
     let out = '';
     ch.stdout.on('data', (d) => { out += d; if (stream) process.stdout.write(d); });
     ch.stderr.on('data', (d) => { out += d; if (stream) process.stderr.write(d); });
     // 1 つのテストが 10 分（遅い macOS の CI では TEST_STEP_TIMEOUT_S で延ばす）を超えたら止める（ブラウザが固まったとき）
     const timer = setTimeout(() => { out += `\n[test-all] timeout: killed after ${STEP_TIMEOUT_S} s\n`; ch.kill('SIGKILL'); }, STEP_TIMEOUT_S * 1000);
-    ch.on('close', (code, sig) => { clearTimeout(timer); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
+    ch.on('close', (code, sig) => { clearTimeout(timer); active.delete(name); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }
-const selected = (name) => !only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, '')) || (name.startsWith('build') && [...only].some((n) => needs[n] === name));
+// 選んだ段（--only・--platform）と、それが待つ段（組み立て。needs・after・引数の組んだデッキ）
+const testOf = (argv) => argv.find((a) => /^tools\/test-.+\.mjs$/.test(a));
+const isPlatform = (argv) => { const t = testOf(argv); return !t || (argv.length === 1 && markOf(t.slice('tools/'.length)) === 'unit') || PLATFORM.test(head40(t.slice('tools/'.length))); };
+const picked = (name, argv) => (!only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, ''))) && (!platformOnly || isPlatform(argv));
+const chosen = new Set();
+const choose = (name, argv) => {
+  if (chosen.has(name)) return;
+  chosen.add(name);
+  for (const d of depsOf(name, argv)) { const st = steps.find(([n]) => n === d); if (st) choose(...st); }
+};
+for (const [name, argv] of steps) if (picked(name, argv)) choose(name, argv);
+const selected = (name) => chosen.has(name);
+// --list（--only・--platform があれば、選んだ段だけ）
+if (args.includes('--list')) {
+  for (const [name, argv] of steps) if (selected(name)) console.log(`${name}\tnode ${argv.map((a) => a.split(tmp).join('<tmp>')).join(' ')}`);
+  if (!process.env.MOTION_TEST_ARTIFACTS) fs.rmSync(tmp, { recursive: true, force: true });
+  process.exit(0);
+}
 // 失敗したテストの出力を見せる（check は長いので、エラーの行と最後の行だけ）
 function showFailure(name, r) {
   const lines = r.out.trimEnd().split('\n');
@@ -437,11 +497,14 @@ const tw = Math.max(5, ...timed.map((r) => r.name.length));
 for (const r of timed) console.log(`  ${r.name.padEnd(tw)}  ${(r.sec.toFixed(1) + ' s').padStart(8)}${r.code === 0 ? '' : '  FAIL'}`);
 console.log(`  ${'total'.padEnd(tw)}  ${(total.toFixed(1) + ' s').padStart(8)}  (${(total / 60).toFixed(1)} min)`);
 // 同時に走らせたときは、かかった時間（壁の時計）も
-if (jobs > 1) console.log(`  ${'wall'.padEnd(tw)}  ${(wall.toFixed(1) + ' s').padStart(8)}  (${(wall / 60).toFixed(1)} min, --jobs ${jobs})`);
+if (jobs > 1) console.log(`  ${'wall'.padEnd(tw)}  ${(wall.toFixed(1) + ' s').padStart(8)}  (${(wall / 60).toFixed(1)} min, --jobs ${jobs}${heavyAlone ? ', memory-heavy steps one at a time' : ''})`);
+const memLine = `memory: ${Math.round(os.totalmem() / 2 ** 20)} MiB in all; lowest free ${Number.isFinite(mem.freeMin) ? Math.round(mem.freeMin) + ' MiB' : '?'} (while ${mem.freeAt || '-'})`
+  + (mem.swapMax >= 0 ? `; swap used at most ${Math.round(mem.swapMax)} MiB, ${Math.round(mem.swapMax - mem.swap0)} MiB more than at the start (while ${mem.swapAt || '-'})` : '');
+console.log('  ' + memLine);
 if (process.env.GITHUB_STEP_SUMMARY) {
   try {
     const md = [`### test-all durations (${process.platform}, node ${process.versions.node})`, '', '| test | result | seconds |', '|---|---|---:|',
-      ...timed.map((r) => `| ${r.name} | ${r.code === 0 ? 'PASS' : 'FAIL'} | ${r.sec.toFixed(1)} |`), `| **total** | | **${total.toFixed(1)}** |`, ...(jobs > 1 ? [`| **wall (--jobs ${jobs})** | | **${wall.toFixed(1)}** |`] : []), ''].join('\n');
+      ...timed.map((r) => `| ${r.name} | ${r.code === 0 ? 'PASS' : 'FAIL'} | ${r.sec.toFixed(1)} |`), `| **total** | | **${total.toFixed(1)}** |`, ...(jobs > 1 ? [`| **wall (--jobs ${jobs})** | | **${wall.toFixed(1)}** |`] : []), '', memLine, ''].join('\n');
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
   } catch (e) { console.log(`(could not write GITHUB_STEP_SUMMARY: ${e.message})`); }
 }

@@ -8,6 +8,7 @@
 //   本の誤り（§9C.8）は保存しない
 //   「本を印刷」：ステップへのリンクの後ろに教材の言葉で「→ スライド N・ステップ K」（ステップ 0 は「→ スライド N」。§9C.13）。本のない教材は「台本を印刷」（小さなスライドと台本）
 //   作業フォルダ：本文の欄の保存はフォルダのファイルに書き、前の中身を .cache/edits/ に控える
+//   人から届いた本（tools/hostile-book.mjs）：安全に読めない段落（kit/core/article-text.mjs の ARTICLE_LIMITS）は、配信版でも 1 ファイル版でも読まずに断り、章・行・節を名指しする
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import os from 'node:os';
@@ -20,6 +21,8 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable } from '../kit/core/portable.mjs';
 import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
 import { clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
+import { hostilePortable } from './hostile-book.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-book-')));
@@ -42,6 +45,8 @@ for (const f of ['deck.html', 'narration.md']) fs.copyFileSync(path.join(ROOT, '
 const plainPacked = path.join(work, 'plain' + FORMAT.FILE_EXT);
 execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', plainDir, '-o', plainPacked], { stdio: 'pipe' });
 const PLAIN = fs.readFileSync(plainPacked);
+// 人から届いた本（tools/hostile-book.mjs）：2 つの章に、markdown-it 13.0.2 の 2 乗の時間を突く段落（引用符・「<!--」）。1 ファイル 1 MiB の上限の手前まで
+const HOSTILE = await hostilePortable(BOOK.toString('utf8'));
 
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'inherit' });
 // 本の道具は app.js に入らない（あとで読み込むファイルにだけある）
@@ -81,7 +86,7 @@ const openBytes = (page, bytes, name) => page.evaluate(([data, name]) => {
   const bin = atob(data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
   return window.__APP_TEST.openFile({ bytes: u, name });
 }, [b64(bytes), name]);
-const bookRendered = (page, n) => page.waitForFunction((n) => { const b = window.__APP_TEST.book(); return b.renders > n || !!b.error; }, n, { timeout: 60000 });
+const bookRendered = (page, n) => page.waitForFunction((n) => { const b = window.__APP_TEST.book(); return b.renders > n || !!b.error; }, n, { timeout: scaled(60000) });
 const savedText = (page) => page.evaluate(async () => new TextDecoder().decode(new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer())));
 async function inBook(page, fn, arg) {
   for (let i = 0; i < 100; i++) {
@@ -91,6 +96,26 @@ async function inBook(page, fn, arg) {
     await page.waitForTimeout(150);
   }
   return null;
+}
+// 人から届いた本を開く：止まらずに（上限は 1 ファイル 1 MiB で数秒）、本の板が 2 つの段落を章・行・節で名指しして断る。ページは応答し続ける
+async function hostileBook(page, label, lang) {
+  const t0 = Date.now();
+  ok(await openBytes(page, Buffer.from(HOSTILE.html, 'utf8'), 'hostile' + FORMAT.FILE_EXT), `${label}: a book with unsafe paragraphs opens (the slides)`);
+  await page.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: 90000 });
+  const ms = Date.now() - t0;
+  const b = await bk(page);
+  const u = b.problems.filter((p) => p.code === 'articleUnsafeParagraph');
+  ok(u.length === 2 && u.every((p) => p.sev === 'error'), `${label}: both paragraphs are refused as articleUnsafeParagraph (${JSON.stringify(b.problems)})`);
+  ok(ms < 30000, `${label}: no hang (opened and checked in ${ms} ms)`);
+  await page.evaluate(() => window.__APP_TEST.bookPanel(true));
+  await page.waitForSelector('#book-problems', { timeout: 20000 });
+  const text = await page.textContent('#book-problems');
+  const [q, h] = HOSTILE.expect;
+  const want = lang === 'ja'
+    ? [`${q.file} ${q.line} 行目：節「${q.heading}」の段落「"a "a`, `${h.file} ${h.line} 行目：節「${h.heading}」の段落「a <!-- a`, '引用符（" と \'）が', 'タグの書き出し（<! と <?）が']
+    : [`${q.file} line ${q.line}: the paragraph “"a "a`, `in the section “${q.heading}”`, `${h.file} line ${h.line}: the paragraph “a <!-- a`, 'quotation marks (" and \')'];
+  ok(want.every((w) => text.includes(w)), `${label}: the book panel names the file, line and section of each (${text.replace(/\s+/g, ' ').slice(0, 240)})`);
+  ok(await page.evaluate(() => 1 + 1) === 2 && !(await st(page)).error, `${label}: the page still answers; no editor error`);
 }
 const egatariArticle = (html) => { const i = html.indexOf('<article id="egatari-article"'); return i < 0 ? '' : html.slice(i, html.indexOf('</article>\n</section>', i) + '</article>'.length); };
 
@@ -104,7 +129,7 @@ try {
 
   // ---------------------------------------------------------------- 本のない教材：本の道具を読み込まない・「台本を印刷」
   ok(await openBytes(page, PLAIN, 'plain' + FORMAT.FILE_EXT), 'plain lesson: opens');
-  await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.builds > 0 && s.frameLoaded === s.loads && s.loads > 0; }, null, { timeout: 60000 });
+  await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.builds > 0 && s.frameLoaded === s.loads && s.loads > 0; }, null, { timeout: scaled(60000) });
   await page.waitForTimeout(500);
   let b = await bk(page);
   ok(!b.present && !b.loaded.tools && !fetched.includes('/article-tools.js'), 'plain lesson: the book tools are not loaded');
@@ -113,31 +138,31 @@ try {
     const pf = await (await page.$('#preview')).contentFrame();
     await pf.evaluate(() => { window.__printed = null; window.print = () => { const b = document.getElementById('egatari-print-script'); window.__printed = b ? { n: b.querySelectorAll('.eps-item').length, thumbs: b.querySelectorAll('.eps-thumb .slide').length, text: b.textContent.slice(0, 400) } : { n: -1 }; }; });
     await page.evaluate(() => document.getElementById('b-print-book').click());
-    const pr = await pf.waitForFunction(() => window.__printed, null, { timeout: 20000 }).then((h) => h.jsonValue());
+    const pr = await pf.waitForFunction(() => window.__printed, null, { timeout: scaled(20000) }).then((h) => h.jsonValue());
     ok(pr.n > 0 && pr.thumbs === pr.n && /スライド 1/.test(pr.text) && pr.text.length > 40, `print script: small slides with their script (${pr.n} slides): ${pr.text.replace(/\s+/g, " ").slice(0, 80)}`);
     ok(await pf.evaluate(() => /size:\s*A4 portrait/.test((document.getElementById('egatari-print-script-css') || {}).textContent || '')), 'print script: A4 portrait');
   }
 
   // ---------------------------------------------------------------- 本のある 1 ファイル
   ok(await openBytes(page, BOOK, 'book' + FORMAT.FILE_EXT), 'book file: opens (no article-unsupported)');
-  await page.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: 90000 });
+  await page.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: scaled(90000) });
   b = await bk(page);
   let s = await st(page);
   ok(b.present && !b.error && b.loaded.tools && b.loaded.citeproc && b.extra, `book file: book tools and citeproc loaded on the page and in the build worker ${b.error || ''}`);
   ok(fetched.includes('/article-tools.js') && fetched.includes('/vendor/citeproc/citeproc_commonjs.js'), 'book file: the tools come from their own files');
   ok(!s.portable.readOnly && !s.portable.tierAOnly, `book file: editable (not read-only, not tier A only) ${JSON.stringify([s.portable.readOnly, s.portable.tierAOnly])}`);
   ok(b.files.join() === 'article/00-preface.md,article/01.md,article/09-answers.md' && b.citeproc, `book file: chapter files in reading order; citations formatted by citeproc (${b.files.join()})`);
-  ok(!b.problems.some((p) => p.sev === 'error'), `book file: no errors in the book (${JSON.stringify(b.problems)})`);
+  ok(!b.problems.some((p) => p.sev === 'error' || p.code === 'articleUnsafeParagraph'), `book file: no errors in the book (${JSON.stringify(b.problems)})`);
   ok(await page.isVisible('#b-book') && (await page.textContent('#b-print-book')) === '本を印刷', 'book file: 本 button; print item 本を印刷');
 
   // E2：プレビューの本
-  await page.waitForFunction(() => window.__APP_TEST.state().frameLoaded === window.__APP_TEST.state().loads, null, { timeout: 60000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().frameLoaded === window.__APP_TEST.state().loads, null, { timeout: scaled(60000) });
   await page.evaluate(() => window.__APP_TEST.setView('book'));
   ok(await inBook(page, () => window.DECK && DECK.panes && DECK.panes.state().layout === 'book' && DECK.panes.state().article), 'view: 本 shows the player’s book pane (kit/panes.js) with the article');
   await page.evaluate(() => window.__APP_TEST.setView('split'));
   ok(await inBook(page, () => DECK.panes.state().layout === 'split') && (await page.getAttribute('#b-view-split', 'aria-checked')) === 'true', 'view: スライドと本 puts the slides and the book side by side');
   await inBook(page, () => { DECK.panes.layout('book'); return true; });
-  await page.waitForFunction(() => document.getElementById('b-view-book').getAttribute('aria-checked') === 'true', null, { timeout: 10000 }).catch(() => {});
+  await page.waitForFunction(() => document.getElementById('b-view-book').getAttribute('aria-checked') === 'true', null, { timeout: scaled(10000) }).catch(() => {});
   ok((await page.getAttribute('#b-view-book', 'aria-checked')) === 'true', 'view: a layout chosen inside the player updates Preview ▾ → View');
   // 読むための助け（v0.6.5 C）：プレビューの sandbox（localStorage なし）でも字の設定・続きからが落ちない。⌘F・Ctrl+F はプレビューの本の窓の検索
   const pv = await (await page.$('#preview')).contentFrame();
@@ -155,13 +180,13 @@ try {
   {
     const l0 = (await st(page)).loads;
     await page.evaluate(() => window.__APP_TEST.previewMode('learn'));
-    await page.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: 30000 });
+    await page.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: scaled(30000) });
     let lm = null;
     for (let i = 0; i < 50 && !(lm && lm.mode === 'learn'); i++) { try { const f = await (await page.$('#preview')).contentFrame(); lm = await f.evaluate(() => (window.DECK && DECK.ready ? { mode: DECK.mode, r1: (DECK.rate(1.5), DECK.state().rate), tracking: DECK.tracking().adapter } : null)); } catch { /* 読み込み中 */ } if (!(lm && lm.mode === 'learn')) await page.waitForTimeout(150); }
     ok(lm && lm.mode === 'learn' && lm.r1 === 1.5 && lm.tracking === null, `learn: the preview plays in learn mode with rate control and no tracking (${JSON.stringify(lm)})`);
     const l1 = (await st(page)).loads;
     await page.evaluate(() => window.__APP_TEST.previewMode('talk'));
-    await page.waitForFunction((l1) => { const s = window.__APP_TEST.state(); return s.loads > l1 && s.frameLoaded === s.loads; }, l1, { timeout: 30000 });
+    await page.waitForFunction((l1) => { const s = window.__APP_TEST.state(); return s.loads > l1 && s.frameLoaded === s.loads; }, l1, { timeout: scaled(30000) });
   }
   const h1 = await inBook(page, () => { const a = document.getElementById('egatari-article'); return a ? [...a.querySelectorAll('h1')].map((x) => x.textContent).join(' / ') : null; });
   ok(/平均と中央値/.test(h1 || ''), `view: the book frame shows the rendered article (${h1})`);
@@ -172,7 +197,7 @@ try {
 
   // E5：本を印刷（ステップへのリンクは「→ スライド N・ステップ K」、ステップ 0 は「→ スライド N」）
   await page.evaluate(() => { window.__APP_TEST.printDry = true; document.getElementById('b-print-book').click(); });
-  await page.waitForFunction(() => !!window.__APP_TEST.book().lastPrint, null, { timeout: 20000 });
+  await page.waitForFunction(() => !!window.__APP_TEST.book().lastPrint, null, { timeout: scaled(20000) });
   const lp = (await bk(page)).lastPrint, printed = lp.texts;
   ok(Array.isArray(printed) && printed.length > 0 && printed.every((t) => /^ → スライド \d+(・ステップ (\d+|結論))?$/.test(t) && !/・ステップ 0$/.test(t)) && printed.includes(' → スライド 1・ステップ 1'), `print book: step links print as → スライド N・ステップ K in the lesson language (${JSON.stringify(printed)})`);
   ok(lp.a4 && !(await page.$('#book-print')), 'print book: A4 portrait; the print frame is removed afterwards');
@@ -183,10 +208,10 @@ try {
   b = await bk(page);
   ok(b.states.length >= 2 && b.states.every((x) => x.state === 'unconfirmed') && /まだ確認していません/.test(await page.textContent('#book-stale')), `stale: links without a record are shown as not checked yet (${JSON.stringify(b.states)})`);
   // 組み直しの途中で板が描き直されることがある（本の道具を読み込んだ後の組み直し）：組み終えてから、ボタンを DOM で押す
-  await page.waitForFunction(() => !window.__APP_TEST.state().building && window.__APP_TEST.state().frameLoaded === window.__APP_TEST.state().loads, null, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__APP_TEST.state().building && window.__APP_TEST.state().frameLoaded === window.__APP_TEST.state().loads, null, { timeout: scaled(60000) }).catch(() => {});
   let r0 = (await bk(page)).renders;
   await page.evaluate(() => document.getElementById('book-confirm-all').click());
-  await page.waitForFunction(() => window.__APP_TEST.book().states.length > 0 && window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: 60000 }).catch(() => {});
+  await page.waitForFunction(() => window.__APP_TEST.book().states.length > 0 && window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: scaled(60000) }).catch(() => {});
   ok((await bk(page)).states.every((x) => x.state === 'ok') && !(await page.$('#book-stale')), 'stale: すべて確認済みにする records every pair');
 
   // E4：本文の欄で直す（保存は作業場所へ。本が組み直る）
@@ -214,7 +239,7 @@ try {
   r0 = (await bk(page)).renders;
   await page.evaluate(() => document.querySelector('#book-stale .book-confirm').click());
   await bookRendered(page, r0);
-  await page.waitForFunction(() => window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: 30000 }).catch(() => {});
+  await page.waitForFunction(() => window.__APP_TEST.book().states.every((x) => x.state === 'ok'), null, { timeout: scaled(30000) }).catch(() => {});
   b = await bk(page);
   ok(b.states.every((x) => x.state === 'ok') && !(await page.$('#book-stale')), `stale: 確認済みにする records the current hashes (${JSON.stringify(b.states)})`);
   const files = await page.evaluate(() => window.__APP_TEST.files());
@@ -224,7 +249,7 @@ try {
   // 1 ファイルの保存：本文だけを組み直す
   const orig = BOOK.toString('utf8');
   await page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 60000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
   s = await st(page);
   const saved = await savedText(page);
   const sp = await readPortable(new TextEncoder().encode(saved));
@@ -242,7 +267,7 @@ try {
   b = await bk(page);
   ok(b.problems.some((p) => p.sev === 'error') && await page.isVisible('#book-problems'), `errors: the panel lists the book errors (${JSON.stringify(b.problems.filter((p) => p.sev === 'error'))})`);
   let p = page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForSelector('#dlg[open] #book-save-errors', { timeout: 30000 });
+  await page.waitForSelector('#dlg[open] #book-save-errors', { timeout: scaled(30000) });
   ok(/fig-nowhere/.test(await page.textContent('#dlg')), 'errors: saving is refused and names the error');
   await clickDlg(page, '#dlg-ok');
   await p;
@@ -264,14 +289,14 @@ try {
   for (let i = 0; i < 60 && !(srcR && srcR.text); i++) { srcR = await page.evaluate((r) => window.__APP_TEST.api('GET', `/__dev/source?range=${r}`), range); if (!(srcR && srcR.text)) await page.waitForTimeout(150); }
   const next = /<[^>]*>/.test(srcR.text) ? srcR.text.replace(/>([^<]+)</, '>$1（直した）<') : srcR.text + '（直した）';
   const post = page.evaluate(([r, h, text]) => window.__APP_TEST.api('POST', '/__dev/edit', { range: r, h, text }), [range, srcR.h, next]);
-  const asked = await Promise.race([post.then(() => false), page.waitForSelector('#dlg[open] #dlg-ok', { timeout: 20000 }).then(() => true, () => false)]);
+  const asked = await Promise.race([post.then(() => false), page.waitForSelector('#dlg[open] #dlg-ok', { timeout: scaled(20000) }).then(() => true, () => false)]);
   if (asked) await clickDlg(page, '#dlg-ok');
   ok((await post)._status === 200, 'tier B: a slide text is edited');
   p = page.evaluate(() => window.__APP_TEST.save('save'));
-  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 60000 });
+  await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(60000) });
   await clickDlg(page, '#dlg-rebuild');
   await p;
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 90000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(90000) }).catch(() => {});
   s = await st(page);
   const savedB = await savedText(page);
   const spB = await readPortable(new TextEncoder().encode(savedB));
@@ -299,7 +324,7 @@ try {
     window.__bd = top;
   }, filesOf(src));
   await pf.evaluate(() => window.__APP_TEST_OPEN(window.__bd));
-  await pf.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: 90000 });
+  await pf.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: scaled(90000) });
   b = await bk(pf);
   ok(b.present && !b.error, `folder: the book is built (${b.error || ''})`);
   ok((await pf.textContent('#b-print-book')) === 'Print book' && (await pf.textContent('#b-view-book')) === 'Book' && (await pf.textContent('#b-book')) === 'Book', 'folder (en): Book / Print book');
@@ -322,6 +347,15 @@ try {
   ok(disk.text.endsWith('\nA new line.\n') && disk.backups >= 1, `folder: ⌘/Ctrl+Enter writes the file in the folder and keeps a backup in .cache/edits/ (${disk.backups})`);
   await cf.close();
 
+  // ---------------------------------------------------------------- 人から届いた本（配信版）：安全に読めない段落は読まずに断る
+  const ch = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
+  const ph = await ch.newPage();
+  ph.on('pageerror', (e) => errs.push(`hostile pageerror: ${e.message}`));
+  await ph.goto(`${HOST}?lang=ja`);
+  await ph.waitForFunction(() => !!window.__APP_TEST);
+  await hostileBook(ph, 'hostile book (hosted)', 'ja');
+  await ch.close();
+
   // ---------------------------------------------------------------- Offline editor（dist/editor.html、file://）：本の道具は同梱の字から動かす
   const co = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: 'ja-JP' });
   const po = await co.newPage();
@@ -329,11 +363,20 @@ try {
   await po.goto('file://' + path.join(DIST, 'editor.html').split(path.sep).join('/') + '?lang=ja');
   await po.waitForFunction(() => !!window.__APP_TEST);
   ok(await openBytes(po, BOOK, 'book' + FORMAT.FILE_EXT), 'offline: the book file opens');
-  await po.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: 120000 });
+  await po.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: scaled(120000) });
   b = await bk(po);
   ok(b.present && !b.error && b.loaded.tools && b.loaded.citeproc && b.citeproc, `offline: the bundled book tools and citeproc run from file:// (${b.error || ''})`);
   ok(sha(Buffer.from(await po.evaluate(() => document.getElementById('egatari-citeproc').textContent), 'utf8')) === sha(npmCiteproc), 'offline: the page reads the same citeproc text it runs');
+  ok(!b.problems.some((p) => p.sev === 'error' || p.code === 'articleUnsafeParagraph'), `offline: the normal book has no errors (${JSON.stringify(b.problems)})`);
   await co.close();
+  // 人から届いた本（1 ファイル版、file://・英語）
+  const ch2 = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: 'en-US' });
+  const ph2 = await ch2.newPage();
+  ph2.on('pageerror', (e) => errs.push(`offline hostile pageerror: ${e.message}`));
+  await ph2.goto('file://' + path.join(DIST, 'editor.html').split(path.sep).join('/') + '?lang=en');
+  await ph2.waitForFunction(() => !!window.__APP_TEST);
+  await hostileBook(ph2, 'hostile book (offline)', 'en');
+  await ch2.close();
 } catch (e) {
   console.error(e);
   fails++;

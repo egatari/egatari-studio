@@ -33,6 +33,9 @@ import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
+// 設定のファイルの metadata から deck-meta に写す権利の項目（format spec §4 の deck-meta の表。schema/deck-meta.schema.json）。1 ファイル（portable.mjs）も作業フォルダの組み立ても同じものを写す
+export const DECK_META_RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
+
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
 const EDITABLE = new Set(['h1', 'h2', 'p', 'li', 'td', 'th']);
 const EDITABLE_CLASS = ['big', 'note', 'sub', 'venue', 'au', 'thm', 'box', 'lead'];
@@ -1043,13 +1046,20 @@ export function build(env0, srcPath, opts = {}) {
   // latin.css はテーマの後のまま（日本語以外のデッキの字の既定。docs/reference.md「Themes」）
   const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${opts.articleCss || ''}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
-  // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）
+  // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）。
+  // 権利の表示と作成者（license・copyright・attribution・creators。§4・§7.3）も写す：再生器のファイルの情報が deck-meta から出す。形の合わない値は写さない
   const folderCompletion = () => {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
     if (!env.exists(cfg) || !inDeck(cfg)) return {};
     let c = null; try { c = JSON.parse(env.readText(cfg)); } catch { return {}; }
-    const m = c && typeof c === 'object' && c.metadata && typeof c.metadata === 'object' ? c.metadata.completion : null;
-    return m && typeof m === 'object' && !Array.isArray(m) ? { completion: m } : {};
+    const md = c && typeof c === 'object' && c.metadata && typeof c.metadata === 'object' && !Array.isArray(c.metadata) ? c.metadata : null;
+    if (!md) return {};
+    const m = md.completion, out = m && typeof m === 'object' && !Array.isArray(m) ? { completion: m } : {};
+    for (const k of DECK_META_RIGHTS) {
+      const v = md[k];
+      if (k === 'creators' ? Array.isArray(v) && v.every((x) => typeof x === 'string') : typeof v === 'string') out[k] = k === 'creators' ? [...v] : v;
+    }
+    return out;
   };
   // 2.0 だけの教材は再生器の 1.x 用の土台と公開の補助（DECK.define・DECK.MotionElement・DECK.el …）を外す。ただし作業フォルダの 1.x の部品（legacy）か、
   // 原稿自身の <script> がその補助を使うなら残す（"componentsCatalogue": "2" でも原稿の DECK.define が黙って動かなくならないように）

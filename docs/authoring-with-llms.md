@@ -45,7 +45,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `73eb43a5`
+Pack version: `68eeb33a`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 

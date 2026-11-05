@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # 本を書く
 
-決まりの本文は Studio の [docs/article.ja.md](https://github.com/egatari/egatari-studio/blob/v0.6.4/docs/article.ja.md)（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
+決まりの本文は Studio の [docs/article.ja.md](https://github.com/egatari/egatari-studio/blob/v0.6.5-rc.2/docs/article.ja.md)（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
 
 ## 1. 先に決める：本の形
 
@@ -57,6 +57,7 @@
 - 1〜2 桁の数字は自動で縦中横になる。年は 4 桁で書く（2026・1917）。
 - 表は既定で本文と同じ縦組みになる。元の表の順に書く（行や列を逆にして書かない）。
 - 長い数字や欧文の多い表は、`:::{table} 題` に `:class: horizontal` を付けて横組みのままにする。
+- 1 列目が行の見出し（「起きたこと」「勇気」のような項目名）の表は、`:class: row-headers` を付ける。項目名を太字にしない。
 - 図・別行の式・コードは横組みのまま。
 - 脚注の番号は立ったまま（横倒しにならない）。
 - スライドの縦組み（`layout-tate`）の 1 列は 17 字ほどまでにする（1 字だけの 2 列目を作らない）。

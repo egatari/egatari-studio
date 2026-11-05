@@ -5,6 +5,7 @@ import { launch, fileUrl } from '../kit/browser.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { scaled } from './wait-scale.mjs';
 const [file, outdir = path.join(os.tmpdir(), 'test-tools')] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-tools.mjs <built.html> [outdir]'); process.exit(2); }
 fs.mkdirSync(outdir, { recursive: true });
@@ -19,7 +20,7 @@ const watch = (p, name) => {
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
 const shot = (p, name) => p.screenshot({ path: path.join(outdir, name + '.png') });
-const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
+const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(10000) });
 // canvas の (x, y)（舞台の座標）付近に色が塗られているか
 const inked = (p) => p.evaluate(() => {
   const c = document.getElementById('dt-canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -121,7 +122,7 @@ watch(pv, '発表者ビュー');
 await pv.waitForLoadState('load');
 let fr;
 for (let i = 0; i < 50 && !fr; i++) { fr = pv.frames().find((f) => /view=follow/.test(f.url())); if (!fr) await pv.waitForTimeout(100); }
-await fr.waitForFunction(() => window.DECK && DECK.ready && DECK.tools, null, { timeout: 10000 });
+await fr.waitForFunction(() => window.DECK && DECK.ready && DECK.tools, null, { timeout: scaled(10000) });
 await pv.waitForTimeout(800);
 await pv.keyboard.press('d');
 await pv.waitForTimeout(100);

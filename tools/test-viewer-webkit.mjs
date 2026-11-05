@@ -1,4 +1,5 @@
 // Egatari Viewer を iPad に近い形で確かめる（Playwright の WebKit と iPad の端末の記述：画面の大きさ・タッチ・Safari の UA）
+// test-all: platform（--platform でも走らせる：WebKit）
 //   node tools/test-viewer-webkit.mjs [<作業用のフォルダ>]
 // npm test の段 test-viewer-webkit（WebKit は `npx playwright-core install webkit` で別に入れる。入っていなければ「skip」で通る）。
 // 本物の iPad の代わりではない（handoff の確認リスト viewer-ipad-check.md が本物の iPad の手順）。ここで見るのは：
@@ -18,6 +19,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { buildPlay } from './build-play.mjs';
 import { startFakeLive } from './live-fake-server.mjs';
 import { checkViewerKeys } from './viewer-keys-check.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-viewer-webkit-')));
@@ -86,10 +88,10 @@ async function page(device) {
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
-  await p.goto(site); await p.waitForSelector('html[data-ready]', { timeout: 20000 });
+  await p.goto(site); await p.waitForSelector('html[data-ready]', { timeout: scaled(20000) });
   return { ctx, p, errors };
 }
-const lessonFrame = async (p) => { await p.waitForSelector('#lesson', { timeout: 20000 }); let f = null; await until(async () => { f = await (await p.$('#lesson')).contentFrame(); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, 20000); return f; };
+const lessonFrame = async (p) => { await p.waitForSelector('#lesson', { timeout: scaled(20000) }); let f = null; await until(async () => { f = await (await p.$('#lesson')).contentFrame(); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, 20000); return f; };
 const noScroll = (p) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 for (const device of ['iPad (gen 11)', 'iPad (gen 11) landscape', 'iPad Mini']) {

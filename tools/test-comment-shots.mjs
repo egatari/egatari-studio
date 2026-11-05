@@ -1,4 +1,5 @@
 // コメントの画像（tools/comment-shots.mjs）の確認：node tools/test-comment-shots.mjs [作業用のフォルダ]
+// test-all: platform（--platform でも走らせる：パス（realpath））
 // examples/minimal を写し、点のあるコメント・点のないコメント・解決済み・ない段階を comments.json に置いて撮る。
 // 画像があるか、印が点の所に描かれているか（輪の上の画素の色・輪の中は塞がない）、切り抜きが点を真ん中に含むか、撮るとデッキの画面が変わらないか。
 // マーカーの線（strokes。ここでは前の形の stroke 1 本）があれば、全体と切り抜きの両方で線の上の画素が印の色か、切り抜きが線の外接矩形＋余白を含むか
