@@ -399,7 +399,7 @@ function targetOf(i, k){
   return best ? best.el : null;
 }
 function scrollToEl(e, smooth){
-  var d = along(e, rectOf(P.body)) - 12, o = {behavior: smooth && !REDUCE ? "smooth" : "auto"};
+  var d = along(e, rectOf(P.body)) - headOffset() - 12, o = {behavior: smooth && !REDUCE ? "smooth" : "auto"};
   P.progAt = Date.now(); P.progUntil = P.progAt + (o.behavior === "smooth" ? 900 : 150);
   if (P.vertical) o.left = P.body.scrollLeft - d; else o.top = P.body.scrollTop + d;
   P.body.scrollTo(o);
@@ -418,9 +418,16 @@ function mark(i, k){
   P.marked = t;
   if (t){ t.classList.add("dx-cur"); t.setAttribute("aria-current", HAS_ART ? "location" : "step"); }
 }
-// 読み進めた所：窓の初めから 4 分の 1 の線を越えた最後の目印
+// 本だけの並べ方（台本で読む）では、今のスライドの縮図が窓の上に貼り付く（sticky、top:0）。縮図の裏は読めないので、
+// 読み進めた所の線と送り先は縮図の下から数える（縮図の高さ分だけ下げる）。横並び・本文（article）では縮図は貼り付かないので 0
+function headOffset(){
+  if (HAS_ART || P.layout !== "book" || !P.body) return 0;
+  var c = P.body.querySelector(".dx-thumb");
+  return c ? c.clientHeight : 0;
+}
+// 読み進めた所：窓の（縮図の下の）読める幅の 4 分の 1 の線を越えた最後の目印
 function readAnchor(){
-  var b = rectOf(P.body), line = (P.vertical ? b.width : b.height) * .25, cur = null;
+  var b = rectOf(P.body), head = headOffset(), line = head + ((P.vertical ? b.width : b.height) - head) * .25, cur = null;
   for (var j = 0; j < P.anchors.length; j++){ if (along(P.anchors[j].el, b) <= line) cur = P.anchors[j]; else if (!HAS_ART) break; }
   return cur || P.anchors[0] || null;
 }
@@ -1155,6 +1162,8 @@ function css(){
   "#deck-split{position:fixed;top:0;bottom:0;width:" + DIV + "px;z-index:21;cursor:col-resize;touch-action:none;background:var(--stage-bg,#2f2f2f)}" +
   "#deck-split::after{content:'';position:absolute;left:3px;top:50%;width:3px;height:36px;margin-top:-18px;border-radius:2px;background:rgba(255,255,255,.5)}" +
   "#deck-split:hover::after,#deck-split.drag::after,#deck-split:focus-visible::after{background:#fff}" +
+  // 指で掴めるように、粗いポインター（タッチ）では仕切りの当たり判定を左右に広げる（見た目の線は細いまま。9px では指で掴めない。44px 以上に）
+  "@media (pointer:coarse){#deck-split::before{content:'';position:absolute;top:0;bottom:0;left:-18px;right:-18px}}" +
   // 本で読む（舞台の右上）・再生中の所に戻る（本の窓の下）
   // 本で読む：発表の画面に出たままにしない。ツールバーと一緒に出て隠れる（キーボードで選んだときは出す）。埋め込みで操作を隠したときは出さない
   "#dt-cb:not(.show)~#deck-readin:not(:focus-visible){opacity:0;pointer-events:none}html.deck-nocontrols #deck-readin,html.deck-nocontrols #deck-text .dx-play,html.deck-nocontrols #deck-text .dx-view{display:none}" +

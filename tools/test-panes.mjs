@@ -124,7 +124,10 @@ async function readTo(p, sel, at = null) {
   await p.evaluate((sel) => {
     const b = document.querySelector('#deck-text .dx-body'), e = document.querySelector(sel), br = b.getBoundingClientRect(), r = e.getBoundingClientRect(), v = b.classList.contains('dx-vertical');
     b.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true}));
-    const d = (v ? br.right - r.right : r.top - br.top) - (v ? br.width : br.height) * .2;
+    // 台本で読む（本だけ）では今のスライドの縮図が上に貼り付く（sticky）。読む所はその下なので、縮図の高さ分だけ下げる（panes.js の headOffset と同じ）
+    const thumb = document.documentElement.getAttribute('data-deck-layout') === 'book' ? b.querySelector('.dx-thumb') : null;
+    const head = thumb ? thumb.getBoundingClientRect().height : 0;
+    const d = (v ? br.right - r.right : r.top - br.top) - head - ((v ? br.width : br.height) - head) * .2;
     if (v) b.scrollLeft -= d; else b.scrollTop += d;
   }, sel);
   if (at) await p.waitForFunction(([i, k]) => DECK.state().slide - 1 === i && DECK.state().step === k, at, { timeout: scaled(10000) }).catch(() => {});
@@ -237,6 +240,20 @@ const markColor = (p) => p.evaluate(() => { const m = document.querySelector('#d
   ok(Math.abs((await st(p)).ratio - r0) < .01, 'double-click resets the divider');
   ok(await p.evaluate(() => { const d = document.getElementById('deck-split'); return d.getAttribute('role') === 'separator' && +d.getAttribute('aria-valuenow') > 0 && d.getAttribute('aria-label') === 'スライドと本の境目'; }), 'the divider is a separator named スライドと本の境目 with a value');
   await p.context().close();
+}
+// ---------------------------------------------------------------- 2t. 仕切りを指（粗いポインター）で掴める：細い線でも当たり判定は 44px 以上（iPad で動かせない不具合）
+{
+  const tc = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true, isMobile: true });
+  const tp = await open(H, { q: '?layout=split', ctx: tc });
+  ok(await tp.evaluate(() => matchMedia('(pointer:coarse)').matches), 'touch: the context is a coarse pointer (iPad-like)');
+  const hitW = await tp.evaluate(() => parseFloat(getComputedStyle(document.getElementById('deck-split'), '::before').width));
+  ok(hitW >= 44, `touch: the divider touch target is at least 44px wide (${hitW}px)`);
+  const hit = await tp.evaluate(() => { const d = document.getElementById('deck-split'), r = d.getBoundingClientRect(), y = r.top + 200; const cx = r.left + r.width / 2; return { left: document.elementFromPoint(cx - 18, y) === d, right: document.elementFromPoint(cx + 18, y) === d, x: Math.round(r.left) }; });
+  ok(hit.left && hit.right, 'touch: the divider is the hit target ~18px to each side of the thin line');
+  await tp.evaluate(() => { const d = document.getElementById('deck-split'), r = d.getBoundingClientRect(); const sx = r.left + r.width / 2 - 18, sy = r.top + 200; document.elementFromPoint(sx, sy).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch', isPrimary: true, button: 0, buttons: 1, clientX: sx, clientY: sy })); d.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: sx - 120, clientY: sy, buttons: 1 })); d.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: sx - 120, clientY: sy, buttons: 0 })); });
+  await wait(tp, 200);
+  ok(await tp.evaluate((x0) => Math.round(document.getElementById('deck-split').getBoundingClientRect().left) < x0 - 40, hit.x), 'touch: a drag starting beside the thin line moves the divider');
+  await tc.close();
 }
 
 // ---------------------------------------------------------------- 3. 縦書き（国語）：同期とスクロールの向き
@@ -388,6 +405,7 @@ for (const reduce of [false, true]) {
   const s7 = await st(p);
   const op = await p.evaluate(() => +getComputedStyle(DECK.slides[1].querySelector('[data-step="1"]')).opacity);
   ok(s7.i === 1 && s7.k === 1, `${reduce ? 'reduced: ' : ''}scrolling the script moves to the step (${s7.i}:${s7.k})`);
+  ok(await p.evaluate(() => { const card = document.querySelector('.dx-thumb.dx-live'); const cur = document.querySelector('#deck-text .dx-cur'); if (!card || !cur) return false; const cb = card.getBoundingClientRect().bottom, r = cur.getBoundingClientRect(); return r.bottom > cb - 1; }), `${reduce ? 'reduced: ' : ''}the current step is visible below the sticky slide card, not hidden behind it`);
   ok(await p.evaluate(() => !document.querySelector('#deck-text [data-step]') && document.querySelectorAll('[data-step="1"]').length === 4), `${reduce ? 'reduced: ' : ''}small slides are not found by document queries (closed shadow trees)`);
   ok(reduce ? op === 1 : op < 1, `${reduce ? 'reduced motion: the step is shown in its final state' : 'the step plays as it enters'} (opacity ${op.toFixed(2)})`);
   ok(await p.evaluate(() => { const s = document.getElementById('stage').getBoundingClientRect(), t = document.querySelector('.dx-thumb.dx-live').getBoundingClientRect(); return Math.abs(s.left - t.left) < 2 && Math.abs(s.width - t.width) < 2; }), `${reduce ? 'reduced: ' : ''}the live slide sits on its small slide`);
