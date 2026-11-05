@@ -202,9 +202,16 @@ function forwardKey(e) {
 // measured again with tools/play-tap-measure.mjs
 const NO_SLACK_VARIANT = 'overlay';
 const variant = () => { const q = new URLSearchParams(location.search).get('noslack'); return q === 'overlay' || q === 'strip' ? q : NO_SLACK_VARIANT; };
+// The visible size. On iPadOS the Home Screen app keeps innerHeight (and the page's own height) from before a rotation for a moment,
+// above all when the status bar was shown in portrait; visualViewport follows the screen. The page itself never scrolls while playing
+// (play.css body.playing), and is put back at the top in case it scrolled before.
+// While a text field has the focus the on-screen keyboard shrinks visualViewport, so the frame keeps innerHeight then.
+const typing = () => { const a = document.activeElement; return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); };
+const viewSize = () => { const v = typing() ? null : window.visualViewport; return { vw: Math.round(v ? v.width : window.innerWidth), vh: Math.round(v ? v.height : window.innerHeight) }; };
 function applyLayout() {
   const live = !!(S.playing && S.playing.live);
-  const vw = window.innerWidth, vh = window.innerHeight;
+  const { vw, vh } = viewSize();
+  if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
   const headless = live && isPhoneLandscape(vw, vh);
   document.body.classList.toggle('headless', headless);
   const P = $('player').getBoundingClientRect();
@@ -219,14 +226,18 @@ function applyLayout() {
   setPollView(false);
   S.layoutKey = layoutKey();
 }
-const layoutKey = () => `${window.innerWidth > window.innerHeight ? 'l' : 'p'}${isPhoneLandscape(window.innerWidth, window.innerHeight) ? 'h' : ''}`;
-// rotation: lay out again at once; any other resize (a desktop window): once it settles
-let resizeTimer = null;
+const layoutKey = () => { const { vw, vh } = viewSize(); return `${vw > vh ? 'l' : 'p'}${isPhoneLandscape(vw, vh) ? 'h' : ''}`; };
+// rotation: lay out again at once, and again once it settles (the size reported first can still be the old one); any other resize
+// (a desktop window, the status bar shown or hidden): once it settles
+let resizeTimer = null, settleTimer = null;
 function onResize() {
   if (!S.frame) return;
   clearTimeout(resizeTimer);
-  if (layoutKey() !== S.layoutKey) applyLayout();
-  else resizeTimer = setTimeout(() => { if (S.frame) applyLayout(); }, 250);
+  if (layoutKey() !== S.layoutKey) {
+    applyLayout();
+    clearTimeout(settleTimer);
+    settleTimer = setTimeout(() => { if (S.frame) applyLayout(); }, 600);
+  } else resizeTimer = setTimeout(() => { if (S.frame) applyLayout(); }, 250);
 }
 // the poll view in the compact modes (slack, strip, overlay, bar): the strip's content changes, the frame does not
 function setPollView(open) {
@@ -475,6 +486,8 @@ async function main() {
   $('b-poll-back').addEventListener('click', () => { setPollView(false); $('b-poll').focus(); });
   $('b-strip-close').addEventListener('click', () => $('b-close').click());
   window.addEventListener('resize', onResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', () => { if (!typing()) onResize(); });
+  window.addEventListener('orientationchange', onResize);
   document.addEventListener('keydown', forwardKey);
   $('live').addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; e.preventDefault(); if ($('live').classList.contains('poll-open')) { setPollView(false); $('b-poll').focus(); } else if (!$('b-live').hidden) $('b-live').focus(); });
   $('b-clear').addEventListener('click', async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); });
