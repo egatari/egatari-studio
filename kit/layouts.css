@@ -77,6 +77,11 @@ html[data-font="mincho"]{--font-sans:var(--font-mincho)}
 .tate{writing-mode:vertical-rl;text-orientation:mixed;height:100%;margin-left:auto;line-height:1.8;line-break:strict}
 .tate p{margin:0 0 0 .5em}
 .tate p.indent{text-indent:1em}
+/* 横組みの .body の中の縦書きの塊（layout-tate でないスライド）は orthogonal flow になり、WebKit（iPad Safari）は
+   height:100% を親の確定した高さに解決できず、列が折り返さずに下へはみ出す（Chromium は折り返す）。.body は position:absolute で
+   高さが確定しているので、塊を絶対配置して高さを確定させ、WebKit でも折り返させる（Chromium の見た目は変わらない）。layout-tate は
+   .body 自体が縦書きで orthogonal にならないので対象外 */
+.slide:not(.layout-tate) > .body > .tate{position:absolute;top:0;bottom:0;right:0;left:auto;width:auto;height:auto}
 /* 縦中横（縦書きの中の 2 桁の数字など） */
 .tcy{text-combine-upright:all}
 /* ルビ：振り仮名は 0.5em（品質チェックは rt の字の大きさを数えない）。縦書きでは右に付く */
