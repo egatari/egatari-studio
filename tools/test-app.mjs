@@ -2212,8 +2212,14 @@ try {
     fs.mkdirSync(OLD);
     fs.writeFileSync(path.join(OLD, 'index.html'), fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8').replace(/<body>[\s\S]*<\/body>/, '<body><h1>old</h1></body>').replace(/<!--APP_\w+-->/g, ''));
     const gz = packSite(OLD);
-    const r = assemble({ site: SITE, current: cur, releases: [{ version: '0.0.1', buf: gz, body: shaLine('0.0.1', sha256(gz)) }], log: () => {} });
-    ok(r.versions.join() === `${cur},0.0.1` && r.injected['0.0.1'], `versions: assembled the site (root v${cur}, /v${cur}/, /v0.0.1/ with the notice script added)`);
+    const rel = (version, buf) => ({ version, buf, body: shaLine(version, sha256(buf)) });
+    // 候補（package.json が X.Y.Z-rc.N）では /v<候補>/ の写しを作らない（RELEASING.md・site-versions.mjs）。凍結した写しの試験は、いま組んだものを前のリリース v0.0.2 として置いて行う
+    const rc = /-rc\.\d+$/.test(cur), frz = rc ? '0.0.2' : cur;
+    const releases = [rel('0.0.1', gz)];
+    if (rc) releases.unshift(rel('0.0.2', packSite(DIST)));
+    const r = assemble({ site: SITE, current: cur, releases, log: () => {} });
+    const listed = rc ? '0.0.2,0.0.1' : `${cur},0.0.1`;
+    ok(r.versions.join() === listed && r.injected['0.0.1'] && !fs.existsSync(path.join(SITE, `v${cur}`)) === rc, `versions: assembled the site (root v${cur}, /v${frz}/, /v0.0.1/ with the notice script added${rc ? '; no copy for the release candidate' : ''})`);
     const SB = BASE + SITEP;
     for (const lang of ['ja', 'en']) {
       const pv = await browser.newPage({ locale: lang === 'en' ? 'en-US' : 'ja-JP' });
@@ -2224,7 +2230,7 @@ try {
       await pv.goto(SB + '?lang=' + lang);
       await pv.waitForSelector('#version-line select', { timeout: scaled(30000) }).catch(() => {});
       const root = await pv.evaluate(() => ({ line: document.getElementById('version-line')?.textContent || '', opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')), note: !!document.getElementById('version-note') }));
-      ok(root.line.includes('v' + cur) && root.opts.join() === `${cur}*,0.0.1` && !root.note, `versions (${lang}): the root shows v${cur} and a list of versions, no frozen notice ${JSON.stringify(root)}`);
+      ok(root.line.includes('v' + cur) && root.opts.join() === (rc ? `${cur}*,${listed}` : `${cur}*,0.0.1`) && !root.note, `versions (${lang}): the root shows v${cur} and a list of versions, no frozen notice ${JSON.stringify(root)}`);
       // 根で古い版を選ぶ → /v0.0.1/（?lang は残す）
       await Promise.all([pv.waitForURL(SB + 'v0.0.1/?lang=' + lang, { timeout: scaled(30000) }).catch(() => {}), pv.selectOption('#version-pick', '0.0.1')]);
       await pv.waitForSelector('#version-note', { timeout: scaled(30000) }).catch(() => {});
@@ -2232,26 +2238,26 @@ try {
       ok(old.url === SB + 'v0.0.1/?lang=' + lang && old.text.includes('v0.0.1') && old.href === SB + '?lang=' + lang, `versions (${lang}): choosing v0.0.1 opens the old copy; its added notice says v0.0.1 and links to the latest ${JSON.stringify(old)}`);
       // 今の版の写し：編集アプリそのもの（資源はその下から読む）。知らせは「これが最新」
       reqs.length = 0;
-      await pv.goto(SB + `v${cur}/?lang=` + lang);
+      await pv.goto(SB + `v${frz}/?lang=` + lang);
       await pv.waitForSelector('#drop');
       await pv.waitForSelector('#version-note', { timeout: scaled(30000) }).catch(() => {});
       const fz = await pv.evaluate(() => ({ text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '', line: !!document.getElementById('version-line'), opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')) }));
       const own = reqs.filter((u) => /\/(app\.js|app\.css)$/.test(u));
-      ok(fz.text.includes('v' + cur) && fz.href === SB + '?lang=' + lang && !fz.line && fz.opts.join() === `${cur}*,0.0.1` && own.length === 2 && own.every((u) => u.startsWith(SB + `v${cur}/`)),
-        `versions (${lang}): /v${cur}/ is the editor itself (its own app.js and app.css), with the frozen notice, a link to the latest and the version list ${JSON.stringify({ ...fz, own })}`);
+      ok(fz.text.includes('v' + frz) && fz.href === SB + '?lang=' + lang && !fz.line && fz.opts.join() === `${frz}*,0.0.1` && own.length === 2 && own.every((u) => u.startsWith(SB + `v${frz}/`)),
+        `versions (${lang}): /v${frz}/ is the editor itself (its own app.js and app.css), with the frozen notice, a link to the latest and the version list ${JSON.stringify({ ...fz, own })}`);
       ok(lang === 'en' ? /frozen copy/.test(fz.text) : /凍結/.test(fz.text), `versions (${lang}): the notice is in the UI language`);
       if (lang === 'ja') {
         await shot(pv, 'version-frozen.png');
         // 写しでも見本を開ける（相対の場所）
         await pv.click('#examples-list li[data-example="minimal"] button');
         await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: scaled(30000) }).catch(() => {});
-        ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${cur}/`);
+        ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${frz}/`);
         await pv.click('#b-help');
         await pv.waitForSelector('#help-download-skill');
-        await checkSkillDownload(pv, { lang, selector: '#help-download-skill', ok, base: SB + `v${cur}/` });
+        await checkSkillDownload(pv, { lang, selector: '#help-download-skill', ok, base: SB + `v${frz}/` });
         await clickUntil(pv, '#panel-close', () => pv.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
         // 写しの TTS の窓・試験ページ（lab/）も、その写しの下にある
-        ok((await fetch(SB + `v${cur}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
+        ok((await fetch(SB + `v${frz}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
         // 知らせを隠す
         await pv.click('#version-note button');
         ok(!(await pv.$('#version-note')), 'versions: the notice can be hidden');
