@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BIN = path.join(ROOT, 'bin', 'egatari.mjs');
@@ -33,7 +34,7 @@ const run = (args, bin, env = {}) => {
   const home = path.join(tmp, 'home');
   fs.mkdirSync(home, { recursive: true });
   return spawnSync(process.execPath, [BIN, ...args], {
-    encoding: 'utf8', timeout: 120000,
+    encoding: 'utf8', timeout: scaled(120000),
     env: { PATH: bin + (win ? path.delimiter + path.join(process.env.SystemRoot || 'C:\\Windows', 'System32') : ''), HOME: home, USERPROFILE: home, SystemRoot: process.env.SystemRoot, CHROME_PATH: path.join(tmp, 'no-browser'), ...env },
   });
 };

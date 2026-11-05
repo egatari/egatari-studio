@@ -1,4 +1,5 @@
 // 本の窓の体裁がスライドのテーマから隔てられていること、縦書きの本の表（format spec §9C.6 Typesetting）の確認：
+// test-all: platform（--platform でも走らせる：WebKit でも）
 //   node tools/test-book-css.mjs [作業フォルダ] [--shots]
 // 1. 要素だけの規則を強く書いたテーマ（tools/fixtures/theme-bare-elements）の教材を組み、並べ方 book・split で、本の p と td・th・li・code・figcaption の
 //    字の大きさが本の大きさ（単独の本の頁と同じ）になること。スライドの表は体裁（28px）またはテーマの値のまま

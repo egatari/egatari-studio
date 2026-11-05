@@ -20,6 +20,7 @@ import { launch } from '../kit/browser.mjs';
 // 「プレビュー ▾」の一覧はプレビューの iframe の上に開く。開いた直後の項目の押しが下の iframe に届いて何も起きないことがあり（macOS の CI）、
 // 発表者ビューの窓が開かないまま waitForEvent('page') が 30 秒で切れた。一覧が閉じるまで押し直す（tools/click-retry.mjs。test-app も同じ）
 import { clickCommand } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-presenter-exit-')));
@@ -292,9 +293,19 @@ try {
       await p.goto(base);
       const deckFrame = () => p.frames().find((f) => f !== p.mainFrame());
       await p.waitForFunction(() => document.getElementById('deck'));
-      await (async () => { for (let i = 0; i < 50; i++) { const f = deckFrame(); if (f && await f.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false)) return; await p.waitForTimeout(200); } })();
+      // デッキが組み上がるまで待つ（前は 10 秒で黙って先へ進み、遅い macOS の CI では組み上がる前に p を押して、発表者の窓を待つ 30 秒が切れた）
+      for (const t0 = Date.now(); ; await p.waitForTimeout(200)) {
+        const f = deckFrame();
+        if (f && await f.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false)) break;
+        if (Date.now() - t0 > scaled(30000)) throw new Error('C: the deck in the dev server preview did not become ready');
+      }
+      // プレビューを押して、キーがデッキの枠に届くようにする（枠の文書にフォーカスが移るまで待つ。固定の 150 ms では足りないことがある）
+      const focusDeck = async () => {
+        await p.bringToFront(); await p.mouse.click(640, 300);
+        await deckFrame().waitForFunction(() => document.hasFocus(), null, { timeout: scaled(5000) }).catch(() => {});
+      };
       const openPC = async () => {
-        await p.bringToFront(); await p.mouse.click(640, 300); await p.waitForTimeout(150);
+        await focusDeck();
         const [pv] = await Promise.all([ctx.waitForEvent('page'), p.keyboard.press('p')]);
         pv.on('pageerror', (e) => errs.push('C presenter: ' + e.message));
         await pv.waitForLoadState();
@@ -304,7 +315,7 @@ try {
       };
       let { pv, pf } = await openPC();
       ok(!!pf, '#1 C: p in the dev server preview opens the presenter view');
-      await p.bringToFront(); await p.mouse.click(640, 300); await p.waitForTimeout(150);
+      await focusDeck();
       await p.keyboard.press('p');
       ok(await closedSoon(pv), '#1 C: p again in the preview closes the presenter view');
       ({ pv, pf } = await openPC());

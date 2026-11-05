@@ -1,4 +1,5 @@
 // 印刷の PDF のページ数がスライド数ちょうどであること（backlog #162：#deck-live（sr-only）が
+// test-all: platform（--platform でも走らせる：印刷の pdf（OS ごとの印刷））
 // 舞台の下に絶対配置で残り、改ページの後ろにもう 1 ページ（空白）を作っていた）
 //   node tools/test-print-pages.mjs [作業フォルダ]
 // 見ること：examples/minimal（6 枚）と examples/tmlr2026-calibration（14 枚）を組み、print の媒体で

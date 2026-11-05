@@ -13,6 +13,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { build } from '../kit/build.mjs';
 import { launch } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const MEASURES = 8, BPM = 88, SPB = 60 / BPM, SPM = 2 * SPB;
 const bars = Array.from({ length: MEASURES }, (_, m) => m % 2 ? 'GG GG' : 'GG G2').join(' | ');
@@ -90,7 +91,7 @@ try {
   // Start on step 0 so that autoplay enters measure 1 through an ordinary forward step; 'a' is a trusted gesture (audio).
   await page.keyboard.press('a');
   await page.waitForFunction((n) => window.__onsets.filter((o) => !o.stops.some((x) => x <= o.when)).length >= n, plan.length, { timeout: (tl.reduce((a, g) => a + g.dur, 0) + 10) * 1000 });
-  await page.waitForFunction(() => !document.documentElement.classList.contains('autoplay'), null, { timeout: 10000 });
+  await page.waitForFunction(() => !document.documentElement.classList.contains('autoplay'), null, { timeout: scaled(10000) });
   const onsets = (await page.evaluate(() => window.__onsets)).filter((o) => !o.stops.some((x) => x <= o.when));
   assert.equal(onsets.length, plan.length, `one onset per note (${onsets.length})`);
   // Measure 1 starts at the first onset; every later onset is planned from there.

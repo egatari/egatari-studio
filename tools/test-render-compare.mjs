@@ -15,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { diffStats, faintOff, canonAttrs, judgeRenders, describeRender, noiseCap, compareRenders, domSnapshot, noiseLog, NOISE_BOUNDS, LEGACY_TOL } from '../kit/render-compare.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-render-compare-'));
@@ -295,7 +296,7 @@ await t('check D fixture: the small slide really differs in pixels (else the cas
   const q = await b2.newPage({ viewport: { width: 1280, height: 720 } });
   try {
     await q.goto(fileUrl(out));
-    await q.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+    await q.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
     await q.addStyleTag({ content: '#dt-cb,#deck-toast{display:none!important}' });
     const settle = () => q.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
     await q.evaluate(() => DECK.seek(1, 1, 0.4)); await settle();

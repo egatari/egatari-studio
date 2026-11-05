@@ -1,10 +1,11 @@
 // test-all: part of test-app
 // 新規作成の画面いっぱいのページ・② の内容の欄（大きさの目安は出さない）・長い教材の 2 回に分けた作り方（⑤ が構成案の欄から → 6 枚ずつ。kit/core/llm-outline.mjs）
 //   testAppOutline({browser, BASE, ok, watch, shotDir})
-//   画像（shotDir があれば）：new-page.png・new-content.png・new-outline.png・outline-progress.png
+//   画像（shotDir があれば）：copy-refused-outline.png・new-page.png・new-content.png・new-outline.png・outline-progress.png
 import path from 'node:path';
-import { replyOf, answerNew } from './test-app-llm.mjs';
+import { replyOf, answerNew, refusedCopy } from './test-app-llm.mjs';
 import { clickDlg, clickUntil } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const head = (i) => `見出し ${i}`;
 export function slidesOf(from, to, whole) {
@@ -34,7 +35,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     ok(await page.evaluate(() => document.activeElement && document.getElementById('dlg').contains(document.activeElement)) && (await page.$$eval('#dlg h2, #dlg h3', (xs) => xs.length)) >= 6, 'new page: the focus is in the page; a heading for the page and each question');
     await shot('new-page.png');
     await page.click('#page-back');
-    await page.waitForSelector('#dlg[open]', { state: 'detached', timeout: 5000 }).catch(() => {});
+    await page.waitForSelector('#dlg[open]', { state: 'detached', timeout: scaled(5000) }).catch(() => {});
     ok(!(await page.$('#dlg[open]')), 'new page: 「← 戻る」 leaves the page');
     await page.click('#w-new');
     await page.waitForSelector('#dlg[open] #paste-step-kind');
@@ -83,6 +84,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 1〜6 枚目'));
     c = await copied();
     ok((await page.textContent('#paste-outline-copy')) === '1〜6 枚目を頼む指示をコピー' && c.includes('ちょうど 6 枚') && c.includes('| 24 | 見出し 24 | 要点 24 |') && c.includes('<!DOCTYPE html>'), 'outline: 「1〜6 枚目を頼む指示をコピー」 asks for slides 1–6 (a whole deck.html), with the outline');
+    await refusedCopy(page, ok, { want: c.replace(/\r\n/g, '\n'), what: 'outline 1〜6', button: '#paste-outline-copy', msg: 'paste-outline-copied', box: 'paste-outline-copy-text', lang: 'ja', shot: shotDir && path.join(shotDir, 'copy-refused-outline.png') });
     await page.evaluate(() => document.getElementById('paste-step-paste').scrollIntoView({ block: 'start' }));
     await shot('new-outline.png');
     // ［変更］で構成案を貼り直せる
@@ -97,8 +99,8 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     // 「押せるか」の計算が今の窓の「挿入」を押せなくした（構成案を待っている、として）。ここでは後始末を止めておき、貼った後に放す（下の batch: の確かめ）
     await page.evaluate(() => { const A = window.__APP_TEST; A.afterOpens = 0; A.afterOpenGate = new Promise((r) => { A.releaseAfterOpen = r; }); });
     await clickDlg(page, '#dlg-import');
-    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
-    await page.waitForSelector('#notice-outline', { timeout: 30000 });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
+    await page.waitForSelector('#notice-outline', { timeout: scaled(30000) });
     const ofile = () => page.evaluate(() => { const f = window.__APP_TEST.files(); const t = f && f['egatari.json'] ? new TextDecoder().decode(Uint8Array.from(atob(f['egatari.json']), (ch) => ch.charCodeAt(0))) : null; try { return t ? JSON.parse(t).studio.outline : null; } catch { return null; } });
     let of = await ofile();
     ok(of && of.next === 7 && of.rows.length === 24 && of.rows[23].heading === '見出し 24' && (await page.evaluate(() => window.__APP_TEST.state().portable.name)) === '長い教材.ega.html', 'outline: the first output creates the lesson and stores the outline in egatari.json (studio.outline, next: 7)');
@@ -111,7 +113,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     // 窓は開いたばかりで、下にプレビュー（組んだ 6 枚）がある。macOS の CI では、この直後の押しが下のプレビューの iframe に届いて何も写らないことがあった
     // （知らせも写したものも空のまま 30 秒。tools/click-retry.mjs）。写るまで押し直す（写すのは何度でも同じ文）
     // 写せなかったとき：わけが分かるように、知らせと写したものの先頭を出して落とす
-    await clickUntil(page, '#paste-copy-guide', () => page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 7〜12 枚目'), null, { timeout: 2500 })).catch(async () => {
+    await clickUntil(page, '#paste-copy-guide', () => page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 7〜12 枚目'), null, { timeout: scaled(2500) })).catch(async () => {
       const d = await page.evaluate(() => ({ copied: (document.getElementById('paste-copied') || {}).textContent, msg: (document.getElementById('paste-msg') || {}).textContent, last: (window.__APP_TEST.lastCopy || '').slice(0, 200) }));
       throw new Error('batch: the request was not copied: ' + JSON.stringify(d));
     });
@@ -121,7 +123,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     ok((await page.textContent('#dlg-import')) === '挿入' && await page.isDisabled('#dlg-import'), 'batch: the same two fields; 「挿入」 waits for the slides');
     await page.fill('#paste-narr', replyOf(b2.deck, b2.narr));
     // 「挿入」が押せないまま（CI でだけ起きた）：押せないわけ（ボタンの左の 1 行）と欄の状態を出して落とす
-    await page.waitForFunction(() => !document.getElementById('dlg-import').disabled, null, { timeout: 15000 }).catch(async () => {
+    await page.waitForFunction(() => !document.getElementById('dlg-import').disabled, null, { timeout: scaled(15000) }).catch(async () => {
       const d = await page.evaluate(() => { const g = (id) => { const e = document.getElementById(id); return e ? e.textContent : null; }; const b = document.getElementById('dlg-import');
         return { note: g('paste-go-note'), msg: g('paste-msg'), info: g('paste-info'), deck: g('paste-deck-st'), narr: g('paste-narr-st'), title: g('dlg-title'),
           deckLen: (document.getElementById('paste-deck') || {}).value?.length, narrLen: (document.getElementById('paste-narr') || {}).value?.length,
@@ -131,11 +133,11 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     });
     // 前の窓（新規作成）の後始末をここで終わらせる：今の窓の「挿入」は押せるまま、ボタンの左の 1 行も今の窓のものだけ
     await page.evaluate(() => { const A = window.__APP_TEST; A.afterOpenGate = null; A.releaseAfterOpen(); });
-    await page.waitForFunction(() => window.__APP_TEST.afterOpens >= 1, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__APP_TEST.afterOpens >= 1, null, { timeout: scaled(30000) });
     ok(await page.evaluate(() => !document.getElementById('dlg-import').disabled && document.querySelectorAll('#dlg-buttons .paste-go-note').length === 1 && document.getElementById('paste-go-note').textContent === ''),
       'batch: the creating dialog finishing late (its quality check ends after this dialog is filled) leaves 「挿入」 enabled and its note alone');
     await clickDlg(page, '#dlg-import');
-    await page.waitForFunction(() => /残り 12 枚/.test((document.getElementById('notice-outline') || {}).textContent || ''), null, { timeout: 30000 });
+    await page.waitForFunction(() => /残り 12 枚/.test((document.getElementById('notice-outline') || {}).textContent || ''), null, { timeout: scaled(30000) });
     of = await ofile();
     const hs = await page.evaluate(() => (window.__APP_TEST.state().portable ? true : false));
     ok(of.next === 13 && hs, 'batch: after inserting slides 7–12, studio.outline says next: 13 and the notice 「残り 12 枚」');

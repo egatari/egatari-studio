@@ -1,4 +1,5 @@
 // 画面を撮る共通の道具（kit/browser.mjs の stableCapture・captureUrl）：発表（talk）の操作の帯が写り込まず、撮る時刻で絵が変わらないこと
+// test-all: platform（--platform でも走らせる：画面の撮り方（OS の描画））
 //   node tools/test-capture.mjs [出力先]
 // 確かめること：talk の読み込み直後は帯 #dt-cb が出ている／stableCapture の絵は、読み込みの 0.5 秒後でも 3 秒後（帯が消えたあと）でも同じ／
 // captureUrl は mode=video を付け（#hash は保つ）、video では帯を作らない

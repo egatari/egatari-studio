@@ -13,6 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { silentWav } from './portable-fixtures.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -165,7 +166,7 @@ async function scrollToSec(p, sel) {
     const key0 = await p.evaluate(() => DECK.state().key);
     const t0 = Date.now();
     await p.evaluate(() => DECK.autoplay(true));
-    await p.waitForFunction((k) => DECK.state().key !== k, key0, { timeout: 30000 });
+    await p.waitForFunction((k) => DECK.state().key !== k, key0, { timeout: scaled(30000) });
     const dt = (Date.now() - t0) / 1000;
     await p.evaluate(() => DECK.autoplay(false));
     return dt;
@@ -185,7 +186,7 @@ async function scrollToSec(p, sel) {
   const tr0 = Date.now();
   await p.keyboard.press('a');
   ok(await p.evaluate(() => document.querySelector('#dt-cb [data-b="auto"]').getAttribute('aria-label')) === '一時停止', 'playing: the button says 一時停止');
-  await p.waitForFunction((k) => DECK.state().key !== k, pausedKey[0], { timeout: 30000 });
+  await p.waitForFunction((k) => DECK.state().key !== k, pausedKey[0], { timeout: scaled(30000) });
   const rest = (Date.now() - tr0) / 1000;
   ok(rest < d * 0.6, `play after pause continues from where it paused (rest ${rest.toFixed(2)} s of ${d.toFixed(2)} s)`);
   // 再生中に送る：learn では再生を続ける
@@ -214,7 +215,7 @@ async function scrollToSec(p, sel) {
     HTMLMediaElement.prototype.play = function(){ window.__el = this; window.__audio.push({ rate: this.playbackRate, pitch: this.preservesPitch, t: this.currentTime, src: this.src.split('/').pop() }); return play.call(this); };
   } } });
   await a.evaluate(() => { DECK.rate(1.5); DECK.autoplay(true); });
-  await a.waitForFunction(() => window.__audio.length > 0, null, { timeout: 5000 });
+  await a.waitForFunction(() => window.__audio.length > 0, null, { timeout: scaled(5000) });
   const au = await a.evaluate(() => window.__audio[0]);
   ok(au.rate === 1.5 && au.pitch === true && au.src === 'silent.wav', `narration plays at the chosen speed with the pitch kept (${JSON.stringify(au)})`);
   await wait(a, 400); await a.keyboard.press('a'); await wait(a, 300);
@@ -345,10 +346,10 @@ f.src = 'deck.html' + location.search;
   p.on('pageerror', (e) => errors.push('host: ' + e.message));
   await p.goto(fileUrl(host) + '?embed=1&layout=split');
   const fr = () => p.frame({ url: /deck\.html/ });
-  await p.waitForFunction(() => window.msgs.some((m) => m.egatari === 'step'), null, { timeout: 10000 });
+  await p.waitForFunction(() => window.msgs.some((m) => m.egatari === 'step'), null, { timeout: scaled(10000) });
   ok(await fr().evaluate(() => DECK.tracking().adapter) === 'postmessage', 'in a frame without a SCORM API the postMessage adapter is used');
   await fr().click('#stage', { position: { x: 200, y: 300 } });
-  await p.waitForFunction(() => window.msgs.filter((x) => x.egatari === 'step' && x.via === 'text').length >= 3, null, { timeout: 8000 }).catch(() => {});
+  await p.waitForFunction(() => window.msgs.filter((x) => x.egatari === 'step' && x.via === 'text').length >= 3, null, { timeout: scaled(8000) }).catch(() => {});
   await wait(p, 300);
   const m = await p.evaluate(() => window.msgs);
   ok(m.some((x) => x.egatari === 'started'), 'started after the first user gesture');
@@ -470,7 +471,7 @@ f.src = 'deck.html' + location.search;
   await p5.goto(fileUrl(hostR));
   let fr5 = null;
   for (let j = 0; j < 150 && !(fr5 = p5.frame({ url: /deck\.html/ })); j++) await wait(p5, 100);
-  await fr5.waitForFunction(() => window.DECK && DECK.ready && DECK.tracking && DECK.tracking().adapter, null, { timeout: 15000 });
+  await fr5.waitForFunction(() => window.DECK && DECK.ready && DECK.tracking && DECK.tracking().adapter, null, { timeout: scaled(15000) });
   await wait(p5, 300);
   const r5 = await fr5.evaluate(() => ({ adapter: DECK.tracking().adapter, resumed: DECK.panes.state().resumed, notice: !!document.getElementById('deck-resume'), key: DECK.state().key }));
   ok(r5.adapter === 'postmessage' && !r5.resumed && !r5.notice && r5.key === `${SLIDES[1][0]}:1`, `embedded: the host's position wins over the device's resume, no notice (${JSON.stringify(r5)})`);

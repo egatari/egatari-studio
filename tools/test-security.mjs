@@ -20,6 +20,7 @@ import { safeWriteFile, readContained, pruneBackups, backupFile } from '../kit/s
 import { unpack } from './portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { markupReasons, documentReasons } from '../kit/core/code-scan.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -143,7 +144,7 @@ try {
     const flagged = r.stats.codeReasons.length > 0;
     ok(markupReasons(fs.readFileSync(path.join(dir, 'deck.html'), 'utf8')).length > 0 === flagged, `formula ${name}: the source scan and the scan of the built document agree`);
     await load(previewDocument(r.html, SHIM));
-    await frameOf().waitForFunction(() => !!(window.DECK && DECK.ready), null, { timeout: 15000 }).catch(() => {});
+    await frameOf().waitForFunction(() => !!(window.DECK && DECK.ready), null, { timeout: scaled(15000) }).catch(() => {});
     const ran = await frameOf().evaluate(() => { try { DECK.seek(0, 3, Infinity); } catch (e) { /* 無視 */ } return globalThis.__bypass === 1; }).catch(() => false);
     ok(!ran || flagged, `formula ${name}: a formula the runtime evaluated is flagged as code by the scanner (ran=${ran}, flagged=${flagged})`);
     if (name === 'plain') ok(!flagged && !ran, 'formula plain: plain formulas are not code');
@@ -339,7 +340,7 @@ try {
       const cdp = await fctx.newCDPSession(fp);
       const data = { items: [], files: [pick], dragOperationsMask: 1 };
       for (const type of ['dragEnter', 'dragOver', 'drop']) await cdp.send('Input.dispatchDragEvent', { type, x: 100, y: 100, data });
-      await fp.waitForFunction(() => window.R, null, { timeout: 10000 }).catch(() => {});
+      await fp.waitForFunction(() => window.R, null, { timeout: scaled(10000) }).catch(() => {});
       const R = await fp.evaluate(() => window.R);
       await fctx.close();
       ok(R && !R.error && R.names.join() === 'plain.txt' && R['link.txt'] === 'NotFoundError' && R['linkdir'] === 'NotFoundError' && R['inner.txt'] === 'NotFoundError' && R.write === 'NotFoundError' && fs.readFileSync(secret, 'utf8') === 'OUTSIDE-SECRET',
@@ -405,7 +406,7 @@ try {
     // 同時に走らせると CPU の取り合いで延びる（固まることは spawnSync の timeout が見る。FIFO の「固まらない」は下で壁の時計のまま）
     for (const [name, file, re, extra] of CASES2) {
       const code = `import { build } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(), c0 = process.cpuUsage(); let m = 'built'; try { build(${JSON.stringify(file)}, { subset: false, ...${JSON.stringify(extra || {})} }); } catch (e) { m = e.code + ': ' + e.message; } const c = process.cpuUsage(c0); console.log(JSON.stringify({ m, ms: Date.now() - t0, cpu: Math.round((c.user + c.system) / 1000), rss: process.resourceUsage().maxRSS }));`;
-      const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
+      const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: scaled(60000) });
       let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
       const maxRss = extra || /GiB|x10001/.test(name) ? 300 * 1024 : 1024 * 1024;   // 読まずに断るもの：大きなファイルの中身を確保しない
       ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.cpu < 5000 && o.rss < maxRss, `build limits: ${name} -> refused quickly with bounded memory (${o.m}; CPU ${o.cpu} ms, ${o.ms} ms on the clock; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
@@ -423,7 +424,7 @@ try {
         fs.writeFileSync(path.join(d, 'narration.md'), '# n\n\n## x\n[0] hello\n');
         prep(d);
         const code = `import { buildPortable } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/build.mjs')).href)}; const t0 = Date.now(), c0 = process.cpuUsage(); let m = 'built'; try { await buildPortable(${JSON.stringify(f)}, { subset: false, ...${JSON.stringify(extra)} }); } catch (e) { m = e.code + ': ' + e.message; } const c = process.cpuUsage(c0); console.log(JSON.stringify({ m, ms: Date.now() - t0, cpu: Math.round((c.user + c.system) / 1000), rss: process.resourceUsage().maxRSS }));`;
-        const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: 60000 });
+        const rr = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', timeout: scaled(60000) });
         let o = {}; try { o = JSON.parse(rr.stdout.trim().split('\n').pop()); } catch { o = { m: 'no result: ' + rr.stderr.slice(0, 200) }; }
         ok(/^build-too-large: /.test(o.m) && re.test(o.m) && o.cpu < 5000 && o.rss < 300 * 1024 && !fs.existsSync(path.join(d, 'out')), `portable limits: ${name} -> refused before allocating (${o.m}; CPU ${o.cpu} ms, ${o.ms} ms on the clock; max RSS ${Math.round((o.rss || 0) / 1024)} MiB)`);
       };

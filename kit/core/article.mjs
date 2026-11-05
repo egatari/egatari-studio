@@ -262,5 +262,6 @@ export function assignSectionIds(text, taken = new Set(), rand = (n) => globalTh
   }
   // 下から足す（行の番号がずれないように）
   for (const a of [...added].reverse()) lines.splice(a.line - 1, 0, `(${a.id})=`);
-  return { out: added.length ? lines.join(eol) : text, added };
+  // unsafe：2 乗の時間がかかる段落で読まなかったとき、その指摘（articleUnsafeParagraph。kit/core/article-text.mjs）。そのときは何も足さない
+  return { out: added.length ? lines.join(eol) : text, added, unsafe: r.problems.find((p) => p.code === 'articleUnsafeParagraph') || null };
 }

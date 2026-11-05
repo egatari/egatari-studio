@@ -1,4 +1,5 @@
 // 縦組みのスライド（class="slide layout-tate"、kit/layouts.css）の試験
+// test-all: platform（--platform でも走らせる：縦組み（字体の寸法と字の組み方））
 //   node tools/test-layout-tate.mjs [作業フォルダ]
 // 1. 試験用のデッキ（文章・箇条書き・.tate とルビ・m-kobun・m-gendai・m-kanbun）を default と kokugo のテーマで組み、
 //    最終段階で：見出しが縦書きで右端の列（右 1232px・天 48px）にあり、罫が列の左にあり、字が列に収まる／本文の字が見出しの列・結論の列・ページ番号に重ならず、
@@ -14,6 +15,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { shareBrowser, launch, fileUrl, stableCapture } from '../kit/browser.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
+import { scaled } from './wait-scale.mjs';
 // ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
 await shareBrowser();
 
@@ -133,7 +135,7 @@ for (const theme of ['default', 'kokugo']) {
   p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   const load = async () => {
     await p.goto(fileUrl(out));
-    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
+    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(10000) });
     await p.evaluate(() => document.fonts.ready);
   };
   const settle = () => p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));

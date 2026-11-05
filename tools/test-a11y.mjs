@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { scaled } from './wait-scale.mjs';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const [file, outdir = path.join(os.tmpdir(), 'test-a11y')] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-a11y.mjs <built.html> [outdir]'); process.exit(2); }
@@ -24,7 +25,7 @@ const watch = (p, name) => {
 };
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? 'ok   ' : 'FAIL ') + msg); if (!cond) fails++; };
-const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
+const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(10000) });
 const live = (p) => p.evaluate(() => { const e = document.getElementById('deck-live'); return e ? e.textContent : null; });
 const settle = (p) => p.waitForTimeout(120);
 // 領域はいったん空にしてから少し後に入る（kit/deck.js の announce）。遅い機械（CI の macOS など）でも決まった時間で読まず、前と違う文が入るまで待つ
@@ -193,7 +194,7 @@ const g2 = await capGeo();
 ok(g2 && g2.text !== g1.text && g2.lines <= 3 && LONG.includes(g2.text), `時間がたつと次のまとまりへ（${g2 && g2.text.slice(0, 16)}…、${g2 && g2.lines} 行）`);
 await stableCapture(p, { path: path.join(outdir, 'caption-long-2.png') });
 const tail = LONG.slice(-20);
-await p.waitForFunction((t) => (document.querySelector('#deck-cap .cap-line') || {}).textContent?.endsWith(t), tail, { timeout: 30000 }).catch(() => {});
+await p.waitForFunction((t) => (document.querySelector('#deck-cap .cap-line') || {}).textContent?.endsWith(t), tail, { timeout: scaled(30000) }).catch(() => {});
 await p.waitForTimeout(1500);
 const g3 = await capGeo();
 ok(g3 && LONG.endsWith(g3.text) && g3.lines <= 3, '最後のまとまりはそのまま残る');

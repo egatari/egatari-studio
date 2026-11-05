@@ -27,7 +27,7 @@ const framed = document.documentElement.hasAttribute('data-framed');
 let lang = initialLang();
 const W = () => WORDS[lang];
 
-const S = { playing: null, frame: null, live: null, recents: null, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
+const S = { playing: null, opening: 0, frame: null, live: null, recents: null, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
 const sr = $('sr');
 function announce(t) { sr.textContent = ''; setTimeout(() => { sr.textContent = t; }, 30); }
 function showMsg(t) { $('msg').textContent = t || ''; }
@@ -55,7 +55,13 @@ function getReader() {
 }
 function scan(text) { return new Promise((res) => { const id = ++readSeq; waiting.set(id, res); getReader().postMessage({ id, text }); }); }
 
+// S.opening counts the files being read and checked. Meanwhile the Viewer counts as playing: no new version takes over (initSW below).
+// Only S.playing (set once the check is done) was looked at before, so a takeover between choosing a file and its start reloaded the page and the file was gone
 async function openFile(blob, name, opts = {}) {
+  S.opening++;
+  try { return await openChecked(blob, name, opts); } finally { S.opening--; }
+}
+async function openChecked(blob, name, opts) {
   showMsg('');
   if (!blob || typeof blob.size !== 'number') { showMsg(W().errRead); return false; }
   if (blob.size > MAX_BYTES) { showMsg(W().errTooLarge(MAX_BYTES / 1024 / 1024)); return false; }
@@ -363,13 +369,13 @@ async function initSW() {
   setTimeout(() => { launching = false; }, 10000);
   let asked = false, retry = 0, controlled = !!navigator.serviceWorker.controller;
   const takeOver = () => {
-    if (S.playing || asked || !reg.waiting || !navigator.serviceWorker.controller) return;
+    if (S.playing || S.opening || asked || !reg.waiting || !navigator.serviceWorker.controller) return;
     asked = true;
     reg.waiting.postMessage({ type: 'activate-if-idle' });
   };
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const replaced = controlled; controlled = true;
-    if ((asked || (launching && replaced)) && !S.playing) location.reload();
+    if ((asked || (launching && replaced)) && !S.playing && !S.opening) location.reload();
   });
   navigator.serviceWorker.addEventListener('message', (e) => {
     if (!(e.data && e.data.type === 'busy')) return;
@@ -379,9 +385,9 @@ async function initSW() {
   });
   takeOver();
   reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && launching) takeOver(); }); });
-  if (!S.playing) reg.update().catch(() => {});
+  if (!S.playing && !S.opening) reg.update().catch(() => {});
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || S.playing) return;
+    if (document.visibilityState !== 'visible' || S.playing || S.opening) return;
     asked = false;
     launching = true;
     setTimeout(() => { launching = false; }, 10000);

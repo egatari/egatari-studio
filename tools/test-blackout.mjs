@@ -12,6 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const html = path.resolve(process.argv[2] || 'examples/minimal/out/deck.html');
 const outDir = process.argv[3] ? path.resolve(process.argv[3]) : null;
@@ -114,32 +115,32 @@ try {
   const hidden0 = await pv.evaluate(() => document.getElementById('pv-black').hidden);
   await p.bringToFront();
   await p.keyboard.press('b');
-  await pv.waitForFunction(() => !document.getElementById('pv-black').hidden, null, { timeout: 5000 }).catch(() => {});
+  await pv.waitForFunction(() => !document.getElementById('pv-black').hidden, null, { timeout: scaled(5000) }).catch(() => {});
   const pv1 = await pv.evaluate(() => { const e = document.getElementById('pv-black'); return { shown: !e.hidden && e.getBoundingClientRect().width > 0, text: e.textContent }; });
   if (outDir) await pv.screenshot({ path: path.join(outDir, 'blackout-presenter.png') });
   ok(hidden0 && pv1.shown && /黒い画面中|Black screen/.test(pv1.text), 'the presenter view shows the blacked-out indicator while the main window is black ' + JSON.stringify({ hidden0, ...pv1 }));
   await pv.bringToFront();
   await pv.keyboard.press('b');
-  await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: 5000 }).catch(() => {});
-  await pv.waitForFunction(() => document.getElementById('pv-black').hidden, null, { timeout: 5000 }).catch(() => {});
+  await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: scaled(5000) }).catch(() => {});
+  await pv.waitForFunction(() => document.getElementById('pv-black').hidden, null, { timeout: scaled(5000) }).catch(() => {});
   const r = { main: await p.evaluate(() => document.documentElement.classList.contains('blackout')), ind: await pv.evaluate(() => document.getElementById('pv-black').hidden) };
   ok(!r.main && r.ind, 'b in the presenter view ends blackout on the main window, and the indicator goes ' + JSON.stringify(r));
   await pv.keyboard.press('b');
-  await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: 5000 }).catch(() => {});
+  await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: scaled(5000) }).catch(() => {});
   ok(await p.evaluate(() => document.documentElement.classList.contains('blackout')), 'b in the presenter view also starts blackout on the main window');
   // 暗転の間に発表者ビューで送りのキー：本体のキーと同じく暗転を終えるだけで、スライドも段階も動かさない
   for (const k of ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Space', 'PageDown', 'PageUp']) {
     const a = await p.evaluate(() => DECK.state());
     const on = await p.evaluate(() => document.documentElement.classList.contains('blackout'));
     await pv.keyboard.press(k);
-    await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: 3000 }).catch(() => {});
+    await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: scaled(3000) }).catch(() => {});
     await p.waitForTimeout(300);
     const z = await p.evaluate(() => ({ st: DECK.state(), black: document.documentElement.classList.contains('blackout') }));
-    await pv.waitForFunction(() => document.getElementById('pv-black').hidden, null, { timeout: 3000 }).catch(() => {});
+    await pv.waitForFunction(() => document.getElementById('pv-black').hidden, null, { timeout: scaled(3000) }).catch(() => {});
     const ind = await pv.evaluate(() => document.getElementById('pv-black').hidden);
     ok(on && !z.black && ind && z.st.slide === a.slide && z.st.step === a.step, `${k} in the presenter view ends blackout on the main window and leaves the slide and step unchanged ` + JSON.stringify({ before: [a.slide, a.step], after: [z.st.slide, z.st.step], on, black: z.black, indicatorHidden: ind }));
     await pv.keyboard.press('b');
-    await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: 3000 }).catch(() => {});
+    await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: scaled(3000) }).catch(() => {});
   }
   await pv.close();
   await p.bringToFront();
