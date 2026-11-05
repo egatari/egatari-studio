@@ -133,13 +133,14 @@ jobs:
           retention-days: 3
 
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths, the macOS fonts, and WebKit (Playwright's, closest to Safari). Uses the preinstalled Google Chrome.
-  # Full runs (see the top) run all of npm test here; other runs the platform-sensitive set (npm test -- --platform, 94 of 157 steps, about 20 % of the time), then tools/clean-env.mjs
+  # Full runs (see the top) run all of npm test here; other runs the platform-sensitive set (npm test -- --platform, 94 of 157 steps: 11.5 min against 64-69 min for all, run 41957733017), then tools/clean-env.mjs
   # (the clean job's macOS leg; test-npm-pack in the set is the pack job's), so a branch run asks for one macOS runner instead of three.
-  # Why: on the 3-vCPU, 7 GB arm64 runner npm test took 45-89 min (median 61) in the 86 runs of 2026-11-03/04 and failed in a different test on most runs;
+  # Why: on the 3-vCPU, 7 GB arm64 runner npm test took 37-89 min (median 62) in the 86 macOS jobs of 2026-11-03/04, and 33 of the 62 that finished failed, mostly in a different test each time;
   # macOS jobs also waited for a runner ("not acquired by Runner ... after multiple attempts" after 15-40 min, 7 jobs) and one runner lost contact mid-run (41795793989).
   # Earlier: test-components reached the 1200 s step cap here and is split into two test-all steps; with --jobs 3 (backlog #156) other runs slowed every step about 2x.
   # --jobs 2 with the memory-heavy steps one at a time (tools/test-all.mjs HEAVY, automatic under 12 GiB): when two of them overlapped, both ran about 3x slower
   # (test-app 340-600 s → 1100-1300 s, test-pack-catalogue 200-330 s → 630-830 s; on the occasional 14 GB runner 390-450 s even when they overlapped).
+  # One at a time, three full runs (41933828143, 41942340958, 41950024877) were green in 64-69 min, test-app 728-797 s; swap still grew by 0.7-1.1 GB while test-app ran
   # TEST_TIMEOUT_SCALE 3: every wait's cap (tools/wait-scale.mjs, Playwright's 30 s default in kit/browser.mjs, the 600 s step cap) is 3x here; the waits end
   # when their condition holds, so a passing run is not slower. Linux and Windows keep the factor 1
   macos:
