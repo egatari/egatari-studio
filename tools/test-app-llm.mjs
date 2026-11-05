@@ -407,7 +407,13 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       window.__APP_TEST.open(top);
     }, [ex, exN]);
     await p.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: scaled(30000) });
-    const read = (rel) => p.evaluate(async (rel) => (await (await window.__rdir.getFileHandle(rel)).getFile()).text(), rel);
+    // 編集アプリが書いている途中のファイルは読めないことがある（Windows の CI：NotReadableError。書き終えるのを待つ試験の繰り返しの中で）：少し待って読み直す
+    const read = async (rel) => {
+      for (const t0 = Date.now(); ; await p.waitForTimeout(100)) {
+        try { return await p.evaluate(async (rel) => (await (await window.__rdir.getFileHandle(rel)).getFile()).text(), rel); }
+        catch (e) { if (!/NotReadableError/.test(String(e && e.message)) || Date.now() - t0 > scaled(5000)) throw e; }
+      }
+    };
     const r = await pasteReplace(p, reply);
     ok(/^0 errors/.test(r.sum) && askedOnce(r), `llm replace (working folder): replacing with another deck runs the quality check on the rebuilt preview, asked once (${r.ms} ms, ${JSON.stringify(r.ask)}): ${r.sum}`);
     const h = await previewHeadings(p, '導入から 3 か月の結果');
