@@ -319,7 +319,7 @@ function liveBox(){
   return {x: r.left, y: r.top, w: r.width, h: r.height, clip: {top: Math.max(0, b.top - r.top), bottom: Math.max(0, r.bottom - b.bottom)}};
 }
 function setLive(){
-  var th = P.layout === "book" && !HAS_ART && !P.ov && P.body ? P.body.querySelector('.dx-thumb[data-i="' + P.pos.i + '"]') : null;
+  var th = P.playing && P.layout === "book" && !HAS_ART && !P.ov && P.body ? P.body.querySelector('.dx-thumb[data-i="' + P.pos.i + '"]') : null;
   if (th === P.live) return;
   if (P.live) P.live.classList.remove("dx-live");
   P.live = th;
@@ -399,7 +399,7 @@ function targetOf(i, k){
   return best ? best.el : null;
 }
 function scrollToEl(e, smooth){
-  var d = along(e, rectOf(P.body)) - headOffset() - 12, o = {behavior: smooth && !REDUCE ? "smooth" : "auto"};
+  var d = along(e, rectOf(P.body)) - 12, o = {behavior: smooth && !REDUCE ? "smooth" : "auto"};
   P.progAt = Date.now(); P.progUntil = P.progAt + (o.behavior === "smooth" ? 900 : 150);
   if (P.vertical) o.left = P.body.scrollLeft - d; else o.top = P.body.scrollTop + d;
   P.body.scrollTo(o);
@@ -418,16 +418,9 @@ function mark(i, k){
   P.marked = t;
   if (t){ t.classList.add("dx-cur"); t.setAttribute("aria-current", HAS_ART ? "location" : "step"); }
 }
-// 本だけの並べ方（台本で読む）では、今のスライドの縮図が窓の上に貼り付く（sticky、top:0）。縮図の裏は読めないので、
-// 読み進めた所の線と送り先は縮図の下から数える（縮図の高さ分だけ下げる）。横並び・本文（article）では縮図は貼り付かないので 0
-function headOffset(){
-  if (HAS_ART || P.layout !== "book" || !P.body) return 0;
-  var c = P.body.querySelector(".dx-thumb");
-  return c ? c.clientHeight : 0;
-}
-// 読み進めた所：窓の（縮図の下の）読める幅の 4 分の 1 の線を越えた最後の目印
+// 読み進めた所：窓の初めから 4 分の 1 の線を越えた最後の目印
 function readAnchor(){
-  var b = rectOf(P.body), head = headOffset(), line = head + ((P.vertical ? b.width : b.height) - head) * .25, cur = null;
+  var b = rectOf(P.body), line = (P.vertical ? b.width : b.height) * .25, cur = null;
   for (var j = 0; j < P.anchors.length; j++){ if (along(P.anchors[j].el, b) <= line) cur = P.anchors[j]; else if (!HAS_ART) break; }
   return cur || P.anchors[0] || null;
 }
@@ -447,6 +440,8 @@ function scrolled(){
     if (!P.detached){ P.detached = true; P.bp.hidden = false; placeBackPlay(); hideResume(); }
     return;
   }
+  // 台本で読む（本だけ）：手のスクロールではステップを動かさない。縮図はただの図として本文と一緒に流れ、最終状態のまま（押すと「スライドで見る」で再生する）
+  if (!HAS_ART && P.layout === "book") return;
   var a = readAnchor();
   if (!a || a.i === null || (a.i === P.pos.i && a.k === P.pos.k)) return;
   // スクロールで入ったステップは一度だけ動かす（外へ出きるまで再び動かさない）。動きを減らす設定なら最後の形
@@ -1151,7 +1146,6 @@ function css(){
   "#deck-text .dx-thumb{display:block;width:100%;max-width:640px;min-height:0;margin:0 auto .6em;padding:0;border-radius:4px;outline:1px solid var(--line,rgba(127,127,127,.45));background:var(--bg)}" +
   "#deck-text .dx-tbox{display:block;position:relative;width:100%;aspect-ratio:16/9;overflow:hidden}" +
   "#deck-text .dx-tbox>.slide{position:absolute!important;left:0;top:0;transform-origin:0 0;transform:scale(var(--dx-s,.3));pointer-events:none}" +
-  "html[data-deck-layout=book] #deck-text .dx-thumb{position:sticky;top:0;z-index:1}" +
   "html[data-deck-layout=split] #deck-text .dx-thumb{max-width:min(100%,360px);margin-left:0}" +
   "#deck-text .dx-thumb.dx-live .dx-tbox{visibility:hidden}" +
   "#deck-text .dx-role{font-weight:600;color:var(--muted,inherit)}#deck-text .dx-step p{margin:.2em 0}" +
