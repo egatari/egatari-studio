@@ -10,6 +10,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { LinkPolicy } from '../kit/core/link-policy.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-extlinks-')));
@@ -96,7 +97,7 @@ const requests = [];
 const ctx = await b.newContext({ viewport: { width: 1280, height: 720 } });
 // 外のサイトへの要求は、ここで止めて数える（同意の前にどこへも行かないことの確認）。応答は空のページ
 await ctx.route(/^https?:\/\/(?!127\.0\.0\.1|localhost)/, (route) => { requests.push(route.request().url()); route.fulfill({ status: 200, contentType: 'text/html', body: '<title>out</title>' }); });
-const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 10000 });
+const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(10000) });
 const open = async (q = '') => {
   const p = await ctx.newPage();
   p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });

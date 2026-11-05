@@ -1,4 +1,5 @@
 // npm の包み egatari の試験（#157）：npm pack した tarball をリポジトリの外の一時フォルダに入れ、egatari コマンドで作って組んで検査する
+// test-all: platform（--platform でも走らせる：npm の包みと、リポジトリの外への入れ方）
 //   node tools/test-npm-pack.mjs [作業フォルダ] [--keep]
 // 1. 包みの中身：bin・kit・字の写し（fonts/@fontsource、OFL の LICENSE つき）があり、試験・examples・dist・規格の試験用ファイル・node_modules はない
 // 2. 入れる：npm install <tarball>（--prefer-offline・--ignore-scripts）。@fontsource は入らない（devDependencies）
@@ -11,6 +12,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -29,7 +31,7 @@ const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + nam
 const WIN = process.platform === 'win32';
 const sh = (cmd, argv, cwd, env = {}) => {
   if (WIN) argv = argv.map((a) => (/[\s&()^|<>]/.test(a) ? `"${a}"` : a));
-  const r = spawnSync(cmd, argv, { cwd, encoding: 'utf8', shell: WIN, env: { ...process.env, ...env }, maxBuffer: 64 << 20, timeout: 600000 });
+  const r = spawnSync(cmd, argv, { cwd, encoding: 'utf8', shell: WIN, env: { ...process.env, ...env }, maxBuffer: 64 << 20, timeout: scaled(600000) });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || ''), stdout: r.stdout || '', error: r.error };
 };
 const must = (r, what) => { assert.equal(r.code, 0, `${what} failed (${r.code})${r.error ? ' ' + r.error.message : ''}\n${r.out.slice(-3000)}`); return r; };

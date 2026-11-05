@@ -1,5 +1,6 @@
 // 本文の点検（kit/core/article-text.mjs・article.mjs）の知らせの言葉（日本語・英語）。何が違うかと、どう直すか。
 // 場所（ファイル・行）は articleWhere が前に付け、仕様の節（§9C.x）は後ろに付ける。check（kit/check-messages.mjs の MESSAGES）と build が使う
+import { quoteJa } from './quote-ja.mjs';
 const hintJa = (a) => (a.hint ? `：${a.hint} と書く` : '');
 const hintEn = (a) => (a.hint ? `: write ${a.hint}` : '');
 const WHY_SUBFIG = {
@@ -41,7 +42,7 @@ export const ARTICLE_MESSAGES = {
   articleBareUrl: { ja: (a) => `URL「${a.url}」がリンクになっていない：<${a.url}> か [字](${a.url}) と書く`, en: (a) => `the URL ${a.url} is not a link: write <${a.url}> or [text](${a.url})` },
   articleTaskList: { ja: () => 'チェックの付く箇条書き（- [ ]）は書けない：普通の箇条書きにする', en: () => 'task lists (- [ ]) are not allowed: use a plain list' },
   articleHeadingLevel: { ja: (a) => (a.depth === 1 ? '「#」（第 1 段の見出し）は書けない：題は前付けの title に書き、節は ## から' : `「${'#'.repeat(a.depth)}」（第 ${a.depth} 段の見出し）は書けない：見出しは ##・###・#### まで`), en: (a) => (a.depth === 1 ? 'a level-1 heading (#) is not allowed: put the title in the front matter title and start sections at ##' : `a level-${a.depth} heading is not allowed: use ##, ### or ####`) },
-  articleSectionId: { ja: (a) => `節「${a.heading}」（## の見出し）に id がない：npm run ids で (sec-…)= の行を付ける（自分で書かない）`, en: (a) => `the section “${a.heading}” (a ## heading) has no id: run npm run ids to add its (sec-…)= line (do not write ids by hand)` },
+  articleSectionId: { ja: (a) => `節${quoteJa(a.heading)}（## の見出し）に id がない：npm run ids で (sec-…)= の行を付ける（自分で書かない）`, en: (a) => `the section “${a.heading}” (a ## heading) has no id: run npm run ids to add its (sec-…)= line (do not write ids by hand)` },
   articleSectionIdForm: { ja: (a) => `節の id「${a.label}」が決まりの形（sec- と英小文字・2〜7 の 6 字）でない：その (…)= の行を消して npm run ids で付け直す（参照も直す）`, en: (a) => `the section id “${a.label}” is not of the required form (sec- and 6 characters a–z, 2–7): delete its (…)= line, run npm run ids and update references to it` },
   articleLabel: { ja: (a) => `名前「${a.label}」：${WHY_LABEL.ja[a.why]}`, en: (a) => `the label “${a.label}” ${WHY_LABEL.en[a.why]}` },
   articleCiteKey: { ja: (a) => `引用の鍵「${a.key}」が鍵の書式に合わない（英数字と _、間に . : - 。64 字まで）`, en: (a) => `the citation key “${a.key}” does not match the key pattern (letters, digits, _, separated by . : -; up to 64)` },
@@ -52,6 +53,7 @@ export const ARTICLE_MESSAGES = {
   articleAsideNested: { ja: () => 'コラムの中にコラムがある：入れ子にしない', en: () => 'an aside inside an aside: do not nest them' },
   articleNested: { ja: (a) => `${a.outer === 'aside' ? 'コラム' : '問'}の中に ${a.inner} は置けない`, en: (a) => `an ${a.outer} cannot hold a ${a.inner}` },
   articleAsideClass: { ja: (a) => `コラムの :class: の名前「${a.cls}」は英小文字・数字・- だけ（例：inquiry、goals）`, en: (a) => `the aside class “${a.cls}” must be lowercase letters, digits and - (e.g. inquiry, goals)` },
+  articleTableClass: { ja: (a) => `表の :class: の名前「${a.cls}」は英小文字・数字・- だけ（例：horizontal）`, en: (a) => `the table class “${a.cls}” must be lowercase letters, digits and - (e.g. horizontal)` },
   articleProofKind: { ja: (a) => `定理の類の種類 prf:${a.kind} は Egatari Text 1 にない（theorem・lemma・definition など 15 種）`, en: (a) => `prf:${a.kind} is not a theorem-like kind of Egatari Text 1 (theorem, lemma, definition, … 15 kinds)` },
   articleFootnoteContent: { ja: (a) => `脚注 [^${a.name}] の中に ${a.what} がある：脚注は段落だけ`, en: (a) => `the footnote [^${a.name}] holds a ${a.what}: footnotes hold paragraphs only` },
   articleFootnoteMissing: { ja: (a) => `脚注 [^${a.name}] の定義がない：[^${a.name}]: 本文 の行を足す`, en: (a) => `the footnote [^${a.name}] has no definition: add a line [^${a.name}]: text` },
@@ -69,6 +71,10 @@ export const ARTICLE_MESSAGES = {
   articleConfig: { ja: (a) => `egatari.json の article（本文のファイルと読む順）${{ shape: 'が object でない', path: `の path（${a.path}）が article.md でない`, chapters: 'の chapters が article/<名前>.md の重ならない並びでない', missing: `のファイル ${a.path} が作業フォルダにない`, unreadable: 'が読めない（egatari.json が JSON でない）' }[a.why]}：直すか、article の項目を消す（読む順は種類とファイルの名前の順になる）`, en: (a) => `egatari.json article (the book's files and reading order): ${{ shape: 'not an object', path: `path (${a.path}) is not article.md`, chapters: 'chapters is not a list of distinct article/<name>.md paths', missing: `${a.path} is not in the working folder`, unreadable: 'unreadable (egatari.json is not JSON)' }[a.why]}; fix it or remove the article member (the order then follows kind and file name)` },
   articleUnlisted: { ja: () => '本文のファイルが egatari.json の article に載っていない（本に入らない）：chapters に足すか、ファイルを外す', en: () => 'this article file is not listed in egatari.json article (it is not part of the book): add it to chapters or move the file' },
   articleRead: { ja: (a) => `本文のファイルが読めない：${a.why}`, en: (a) => `cannot read the article file: ${a.why}` },
+  articleUnsafeParagraph: {
+    ja: (a) => `${a.heading ? `節${quoteJa(a.heading)}の` : ''}段落${quoteJa(a.text + '…')}に${a.what === 'html' ? 'タグの書き出し（<! と <?）' : '引用符（" と \'）'}が ${a.count} 個ある。1 つの段落に ${a.max} 個を越えると安全に読めないので、本を読み込まない：段落を分けるか、${a.what === 'html' ? 'タグ' : '引用符'}を減らす`,
+    en: (a) => `the paragraph “${a.text}…”${a.heading ? ` in the section “${a.heading}”` : ''} has ${a.count} ${a.what === 'html' ? 'tag openings (<! and <?)' : 'quotation marks (" and \')'}. More than ${a.max} in one paragraph cannot be read safely, so the book is not read: split the paragraph or use fewer ${a.what === 'html' ? 'tags' : 'quotation marks'}`,
+  },
   articleTooLarge: { ja: (a) => `本文のファイルが大きすぎる（${a.bytes} 字、${a.max} まで）：章に分ける`, en: (a) => `the article file is too large (${a.bytes} characters, up to ${a.max}): split it into chapters` },
   articleChapterNumber: { ja: () => '章のファイルに chapter（章の番号）がない：前付けに chapter: 番号 を書く', en: () => 'a chapter file has no chapter number: add chapter: <n> to its front matter' },
   articleChapterTitle: { ja: () => '章のファイルに title（章の題）がない：前付けに title: 題 を書く', en: () => 'a chapter file has no title: add title: <title> to its front matter' },
@@ -93,11 +99,11 @@ export const ARTICLE_MESSAGES = {
   articleCiteEngine: { ja: (a) => `引用を書式で組めなかった（${a.why}）：鍵の字のまま書いた。references.json の項目を確かめる`, en: (a) => `could not format citations (${a.why}); wrote the keys instead: check the items in references.json` },
   articleUncited: { ja: (a) => `本文で引いていない文献が ${a.count} 件ある（${a.keys.join('・')}${a.count > a.keys.length ? ' …' : ''}）：一覧には出ない`, en: (a) => `${a.count} reference(s) never cited (${a.keys.join(', ')}${a.count > a.keys.length ? ', …' : ''}); they are not listed` },
   articleLinksShape: { ja: (a) => `egatari.json の articleLinks の形が違う（${a.why}）：その項目を消し、npm run ids で付け直す`, en: (a) => `egatari.json articleLinks has the wrong shape (${a.why}): remove it and run npm run ids to record the links again` },
-  articleLinkStale: { ja: (a) => `スライドと本が合っていないかもしれません：スライド ${a.slide} と節「${a.heading || a.section}」（${a.section}）。つないだ後に${a.changed === 'article' ? '節' : a.changed === 'slide' ? 'スライドか口述原稿' : '節とスライドの両方'}が変わった。読み比べて、合っていれば npm run ids -- --confirm-links で確かめた印を付ける（字は自動では直さない）`, en: (a) => `slides and book may not match: slide ${a.slide} and the section “${a.heading || a.section}” (${a.section}); ${a.changed === 'article' ? 'the section' : a.changed === 'slide' ? 'the slide or its narration' : 'both the section and the slide'} changed after they were linked. Compare them; if they still agree, run npm run ids -- --confirm-links (nothing is changed automatically)` },
+  articleLinkStale: { ja: (a) => `スライドと本が合っていないかもしれません：スライド ${a.slide} と節${quoteJa(a.heading || a.section)}（${a.section}）。つないだ後に${a.changed === 'article' ? '節' : a.changed === 'slide' ? 'スライドか口述原稿' : '節とスライドの両方'}が変わった。読み比べて、合っていれば npm run ids -- --confirm-links で確かめた印を付ける（字は自動では直さない）`, en: (a) => `slides and book may not match: slide ${a.slide} and the section “${a.heading || a.section}” (${a.section}); ${a.changed === 'article' ? 'the section' : a.changed === 'slide' ? 'the slide or its narration' : 'both the section and the slide'} changed after they were linked. Compare them; if they still agree, run npm run ids -- --confirm-links (nothing is changed automatically)` },
   articleLinkUnconfirmed: { ja: (a) => `スライドと節のつながり ${a.count} 組がまだ記録されていない（${a.pairs.join('、')}${a.count > a.pairs.length ? ' …' : ''}）：npm run ids で記録すると、後でどちらかが変わったときに知らせる`, en: (a) => `${a.count} slide–section link(s) are not recorded yet (${a.pairs.join(', ')}${a.count > a.pairs.length ? ', …' : ''}): run npm run ids to record them, so that later changes on either side are reported` },
   articleLinkUnlinked: { ja: (a) => `egatari.json の articleLinks に、もうつながっていない組が ${a.count} 組ある（${a.pairs.join('、')}${a.count > a.pairs.length ? ' …' : ''}）：1 ファイルに書き出すときに外す`, en: (a) => `egatari.json articleLinks records ${a.count} pair(s) that are no longer linked (${a.pairs.join(', ')}${a.count > a.pairs.length ? ', …' : ''}); they are dropped when the single file is written` },
   articleSummary: { ja: (a) => `本文：ファイル ${a.files}、節 ${a.sections}、名前 ${a.labels}`, en: (a) => `article: ${a.files} file(s), ${a.sections} section(s), ${a.labels} label(s)` },
-  articleSectionUnlinked: { ja: (a) => `節「${a.heading}」（${a.section}）がどのスライドともつながっていない（{step} のリンクか、スライドの data-article で結ぶ）`, en: (a) => `the section “${a.heading}” (${a.section}) is linked to no slide (add a {step} link or name it in a slide's data-article)` },
+  articleSectionUnlinked: { ja: (a) => `節${quoteJa(a.heading)}（${a.section}）がどのスライドともつながっていない（{step} のリンクか、スライドの data-article で結ぶ）`, en: (a) => `the section “${a.heading}” (${a.section}) is linked to no slide (add a {step} link or name it in a slide's data-article)` },
 };
 
 // 1 つの知らせの言葉：場所（ファイル・行）＋言葉＋（§…）

@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.md sha256=bd300eadaba33572 -->
+<!-- i18n: pair=threat-model.md sha256=82f1b305e143ad21 -->
 # 脅威モデル
 
 [English](threat-model.md) | 日本語
@@ -26,6 +26,7 @@ Egatari Studio が何を、誰から、どのコードで守っているかの�
 - スライドが送れるのはヒントだけ（`server/hints.js`）で、書き込む文字は運べない。編集 UI はスライドの外で動き、ソースを自分で読み、「保存」を押したときだけ書く。編集アプリは、コードを含む教材を動かす前に確認し、「コードがあるか」はEgatari ファイルの申告ではなくビルド後の中身で決める（`kit/core/code-scan.mjs`）。
 - 読み込みは上限つきの読み手を通す（`kit/bounded-read.mjs`、`app/bounded-read.js`。`tools/test-raw-reads.mjs` が直接の読み込みを見張る）。ビルドは作業フォルダーの外に出るパス（`../`、絶対パス、シンボリックリンク）を断り、include・埋め込み・数式・全体の大きさに上限がある。書き込みは `kit/safe-fs.mjs` を通す。添付はダウンロード専用で、実行しない。
 - 編集アプリのページ自身は `eval` を禁じている（`'unsafe-eval'` なし）。
+- 開いた教材や Egatari ファイルの本（`article.md`・`article/`）の本文は、CLI でも編集アプリでも、本の読み手にとって信頼できない入力である（`kit/core/article-text.mjs`）。本のファイルの大きさは、それぞれ 1 MiB まで。1 つの段落に引用符（`"` と `'`）が 512 個、またはタグの書き出し（`<!`・`<?`）が 64 個を越えると、読む前に断る（`articleUnsafeParagraph`）。これで markdown-it 13.0.2 の 2 乗の時間（GHSA-r7fv-28h4-cvq7・GHSA-6v5v-wf23-fmfq・GHSA-vfgh-jcmw-g37q）がページやプロセスを止めることはない。markdown-it 14.3.3 への更新は v0.6.6 で行う（SECURITY.md）。
 
 **対策の外。** 教材自身のコードはプレビューの中で動き、スライドの領域には何でも描ける（偽の編集カードも）。信頼できるのは編集アプリ自身のパネルの操作だけ。開発サーバーのスライドの文書と `PREVIEW_CSP` は、取り下げ済みのパーツを動かし続けるため `'unsafe-eval'` を残している。資源の使い方は予算で縛るもので、プロセス全体のメモリや時間までは縛らない。`kit/check.mjs`・`tools/pdf.mjs`・`render/`・試験は、ヘッドレス Chrome で教材のコードを動かす（SECURITY.md）ので、信頼できる教材にだけ使う。
 
@@ -72,7 +73,7 @@ Egatari Studio が何を、誰から、どのコードで守っているかの�
 - CI は修正の入った Node（2026-10-20/21 のセキュリティリリースの 22.23.4・24.22.1 以降）で走る。ランナーにたまたまある版は使わない（SECURITY.md）。
 - レジストリのパーツは [egatari/components](https://github.com/egatari/components) のリリースの写しを同梱する。`npm run components:update` は、リリースの `manifest.json`（SHA-256）と tarball・全ファイルを突き合わせ、すでにある版は置き換えない。ビルドはパーツをネットワークから取らず、`npm run components:check`（`gen:check` の一部）が `vendor/components` と `components.lock.json` を比べる。取り下げ済みの版（v1.0.0・v1.0.1）は、警告つきでしかビルドせず、黙っては使わない。
 - 編集アプリのページは、MP3 エンコーダーを自分のサイトからしか読まない。ブラウザー内の音声合成のウィンドウ（`lab/tts-helper.html`）は、固定した版のライブラリーを jsDelivr から、モデルを Hugging Face から読む。編集アプリと同じオリジンで、lab ページと同じく信頼しているため、そこでの侵害されたファイルは編集アプリの保存領域に届きうる（SECURITY.md）。
-- GitHub のワークフローは、すべて最小権限の `permissions:` を宣言する。CodeQL（`codeql.yml`）、`npm audit --omit=dev --audit-level=high`（`audit.yml`）、OpenSSF Scorecard（`scorecard.yml`）、npm と GitHub Actions の Dependabot（`.github/dependabot.yml`）が、コードと依存を見張る。知らせるだけで、それ自体でリリースを止めない。
+- GitHub のワークフローは、すべて最小権限の `permissions:` を宣言する。CodeQL（`codeql.yml`）、high 以上の `npm audit --omit=dev`（`audit.yml`。`tools/audit-check.mjs` を通し、そこに挙げた markdown-it 13.0.2 の 5 つの勧告だけを v0.6.6 まで許す）、OpenSSF Scorecard（`scorecard.yml`）、npm と GitHub Actions の Dependabot（`.github/dependabot.yml`）が、コードと依存を見張る。知らせるだけで、それ自体でリリースを止めない。
 - 編集アプリのサイトのリリースは、古い版の写しを組み立てる前に、リリースノートに記した sha256 と突き合わせる（`tools/site-versions.mjs`、RELEASING.ja.md）。
 
 **対策の外。** 開発用の依存は CI で監査していない。アクションはコミットのハッシュではなく版のタグで固定しているので、タグが動かされると、Dependabot かレビューが気づくまで取り込まれうる。Dependabot が出す更新も、人が読む必要がある。

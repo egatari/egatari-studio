@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=67001521df01e12c -->
+<!-- i18n: pair=reference.ja.md sha256=fc8d43bb48731a8c -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -270,7 +270,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Shift+→ / Shift+↓, Shift+← / Shift+↑ | next / previous slide (step 0) |
 | Home / End | first / last slide |
 | digits + Enter | go to that slide |
-| f | fullscreen |
+| f | fullscreen (where the browser has element fullscreen; on iPhone Safari, or framed without the fullscreen permission, the bar has no fullscreen button and the key list leaves f out; when the browser refuses, the player says “Could not go fullscreen”) |
 | p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
 | a | autoplay from the current step (audio if any). Any navigation key stops it |
 | l | show later steps faintly (on/off) |
@@ -287,7 +287,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | Backspace / Alt+← | otherwise, after following a link to a slide: back to where the link was clicked (also the **Back** button at the top left and the browser's back button) |
 | Tab / Shift+Tab | focus the control-bar buttons (Enter / Space presses; Esc returns to the slide) |
 | Esc | leave the tool, close help |
-| ? | key list (with dev-server keys when served by `server/dev.mjs`) |
+| ? | key list (with dev-server keys when served by `server/dev.mjs`), and the lesson's File info (title, created by, copyright, license, attribution) when the file has them |
 
 ### Toolbar (shown when the lesson opens, then on mouse move or tap)
 
@@ -379,7 +379,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps`, … in the [authoring guide](authoring-with-llms.md)), the **quality check** that reports **findings** against them, and the **fix request** that hands the findings to an AI. The quality checker comes as a command (`npm run check`, below, with every check) and in the browser ([editor app](editor.md), a subset).
 
-`node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the lesson's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
+`node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the lesson's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
 
 `--json` prints:
 
@@ -476,7 +476,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 
 - **What goes in**: every file the build reads from the working folder (`deck.html`, `narration.md`, `macros.tex`, `timeline.json`, data, figures, images, styles, lesson-local parts and themes), `voice.json` with local paths reduced to voice names, and the audio listed in `audio/manifest.json` for steps that exist in the script (compressed to AAC as with `--embed-audio`; WAV with a warning if ffmpeg is missing). Each audio clip is stored once and the runtime plays it from there.
 - **What stays out**: `comments.json`, hidden files and folders (`.cache/`, `.git/`, `.env`, …), `out/`, `video/`, `bundle/`, `node_modules/`, backups, `*.local.json`, credentials, unused audio and the TTS cache files. A file the build read but that is excluded is reported. Parts and themes from this repository are referenced by name, version and SHA-256 instead of being copied (a theme from your theme folders, `EGATARI_THEMES` or `~/.egatari/themes`, is copied in as the lesson's `themes/<name>/`); a registry name is a single identifier (`^[a-z][a-z0-9-]{0,63}$`), and the reader refuses a file whose registry names are anything else (a path, `..`, uppercase).
-- **Lesson id**: the first export creates `egatari.json` in the working folder with a random `docId`; keep it with the lesson so later exports keep the same id. Its optional `metadata` object may hold `license` (SPDX id or URL), `copyright`, `attribution`, `creators`, `description`, `accessibility`, `curriculum`, `completion`, `derivedFrom`, `authorship` and `audience`; `license`, `copyright` and `attribution` are also copied to the runtime metadata, so a play-only copy keeps them. Title and language come from `<title>` and `<html lang>`.
+- **Lesson id**: the first export creates `egatari.json` in the working folder with a random `docId`; keep it with the lesson so later exports keep the same id. Its optional `metadata` object may hold `license` (SPDX id or URL), `copyright`, `attribution`, `creators`, `description`, `accessibility`, `curriculum`, `completion`, `derivedFrom`, `authorship` and `audience`; `license`, `copyright`, `attribution` and `creators` are also copied to the runtime metadata (`deck-meta`, also in a working-folder build), so a play-only copy keeps them and the player's key list (`?`) shows them under **File info** (title, created by, copyright, license, attribution). Title and language come from `<title>` and `<html lang>`.
 - **Player and producer** (spec §4.1, §7.1): the index and `deck-meta` carry `player` — the bundled player, `{"name": "egatari-player", "version": …, "title": "Egatari Player"}` (`title` is the name shown to people, `name` the stable identifier; the version is `kit/player.json`'s, with `+dev.<commit>` added when the player files differ from the release recorded in `kit/player.lock.json`; `npm run player:check`) — and `generator`, the software that wrote the file (`{"name": "egatari-studio", "version": <Studio's version>, "title": "Egatari Studio"}`). `contracts` is `{"source": 1}`. Saving without rebuilding (tier A) keeps `player` and `generator` byte for byte; a rebuild writes this Studio's and warns when the file carried another player (`playerChange`); the editor then asks before saving (see [editor](editor.md), “Saving with a rebuild”).
 - **File policy** (spec §4.2): a `<meta http-equiv="Content-Security-Policy">` right after `<meta charset>`, before every script, style and link: the baseline, which connects nowhere (`connect-src 'none'`). A play-only copy with Live adds only the Live's endpoint to `connect-src`, in place; destinations of `embed` (copied into `deck-extensions` in every file) go into `frame-src`. Readers report a file whose policy is missing, misplaced or differs (compared as parsed directives) as not conforming; it still plays.
 - **Slide ids** (spec §8.1): every slide in the file has an id and every script heading `{#id}`. Slides and headings without one (a lesson an AI just wrote, older keys by heading text, hand-written `data-key` or `s<n>`) get one at export, written back to the working folder with the keys in `audio/manifest.json`, `timeline.json`, `comments.json` and `egatari.json` (backups in `.cache/edits/`); the build and the quality checker still accept them.
@@ -542,7 +542,7 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 | `--out dir` | required |
 | `--fps n` | default 30 |
 | `--scale x` | default 1.5 (1920×1080) |
-| `--only key,…` | only these steps; the rest stay as they are |
+| `--only key,…` | only these slides or steps; the rest stay as they are. Each item is a slide key or id (all of that slide's steps) or `slideKey:step` (one step). An item that matches nothing is an error that lists the valid slide keys |
 | `--full` | also `full.mp4`, and with two or more chapters `chapter_NN.mp4` and `chapters.json` (needs all clips) |
 | `--force` | ignore `.render-cache.json` |
 | `--captions` | burn the script captions into the video (`?captions=1`); part of the cache key |

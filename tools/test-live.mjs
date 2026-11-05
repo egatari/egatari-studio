@@ -27,6 +27,7 @@ import { checkFilePolicy, placementProblems } from '../kit/core/file-policy.mjs'
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { startFakeLive, PROTOCOL_DIR, fixture } from './live-fake-server.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(ROOT, '.tmp-live-')));
@@ -278,7 +279,7 @@ const quiet = (net, what) => ok(net.req.length === 0 && net.ws.length === 0 && f
 console.log('no network');
 { fake.reset(); const o = await open(fileUrl(files['early.html'])); await sleep(800);
   const s = await st(o.p), dis = await o.p.$eval('#live-pane .lv-join', (b) => b.disabled || b.closest('[hidden]') !== null);
-  await o.p.click('#live-mark'); await o.p.click('#live-pane .lv-join', { force: true, timeout: 1000 }).catch(() => {}); await sleep(300);
+  await o.p.click('#live-mark'); await o.p.click('#live-pane .lv-join', { force: true, timeout: scaled(1000) }).catch(() => {}); await sleep(300);
   ok(s && s.state === 'off' && dis, 'before the window: the pane says when the room opens; Join is not offered'); quiet(o.net, 'before the window'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['late.html'])); await sleep(600);
   ok(await o.p.$eval('#live-mark', (m) => document.documentElement.classList.contains('lv-collapsed') && m.title.includes('ライブの時間は終わりました') && m.textContent.includes('終わりました')), 'after the window: collapsed; the marker says the live time is over');
@@ -330,7 +331,7 @@ console.log('no network');
   ok(await fr.evaluate(() => { const j = document.querySelector('#live-pane .lv-join'); return !j || j.disabled || !!j.closest('[hidden]'); }), 'framed (LMS): no Join button in the frame');
   await fr.click('#live-mark');
   quiet(o.net, 'framed (LMS) before the link is clicked (marker opened)');
-  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), fr.click('#live-pane .lv-join-link')]);   // 再生器が作るリンク：確認の箱は出ない（format spec §11 (h)。行き先の host は板に出す）
+  const [tab] = await Promise.all([o.ctx.waitForEvent('page', { timeout: scaled(5000) }).catch(() => null), fr.click('#live-pane .lv-join-link')]);   // 再生器が作るリンク：確認の箱は出ない（format spec §11 (h)。行き先の host は板に出す）
   await until(() => o.net.req.length > 0, 3000);
   ok(tab && o.net.req.length === 1 && o.net.req[0] === want.split('#')[0] && !o.net.req[0].includes('Q2xhc3Nyb29tS2V5MDAwMD'),
     `click: a new tab loads the join page; the key stays in the fragment and is not sent (${o.net.req.join(', ')})`);
@@ -338,7 +339,7 @@ console.log('no network');
   await o.close(); }
 
 { fake.reset(); const o = await open(fileUrl(files['default-loopback.html'])); await sleep(1000);
-  await o.p.click('#live-pane .lv-join', { timeout: 500 }).catch(() => {}); await sleep(500);
+  await o.p.click('#live-pane .lv-join', { timeout: scaled(500) }).catch(() => {}); await sleep(500);
   ok(!(await o.p.$('#live-pane')), 'shipped player with an http://127.0.0.1 endpoint: the room is ignored (no pane, no Join)');
   quiet(o.net, 'shipped player with an http://127.0.0.1 endpoint'); await o.close(); }
 console.log('connect from file://');

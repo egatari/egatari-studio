@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=09c4c162b2bd968c -->
+<!-- i18n: pair=video.md sha256=f5d0164d3a94d601 -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -40,7 +40,7 @@ node kit/build.mjs $D/deck.html
 
 # 2. TTS（Irodori-TTS）
 uv run --project tts python tts/synth.py $D --voices expert=bob,novice=alice
-#    オフラインで流れを試すなら --dry-run（無音・7.5 字/秒の推定長）。一部だけなら --only "更新の式:2,更新の式:concl"
+#    オフラインで流れを試すなら --dry-run（無音・7.5 字/秒の推定長）。一部だけなら --only "更新の式:2,更新の式:concl"（スライドの鍵か id だけなら、そのスライドの全ステップ：--only 更新の式）
 
 # 3. build し直す（audio/manifest.json を読み、音声の長さと cue をタイムラインに入れる）
 node kit/build.mjs $D/deck.html
@@ -49,7 +49,7 @@ node kit/build.mjs $D/deck.html
 node render/render.mjs $D/out/deck.html --out $D/video [--fps 30] [--scale 1.5] [--full]
 
 # 5.（なくてよい）音声入りの 1 ファイル。配る・編集アプリで開き直すため
-node kit/build.mjs $D --portable      # 学ぶ人に配る再生専用の写しは --play-only
+node kit/build.mjs $D --portable      # 参加者に配る再生専用の写しは --play-only
 ```
 
 ## 何ができるか

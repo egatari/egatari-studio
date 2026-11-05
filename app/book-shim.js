@@ -10,7 +10,9 @@ window.addEventListener("message", function(e){
   var m = e.data || {};
   if (m.type !== "book-print") return;
   var css = document.createElement("style");
-  css.textContent = "@media print{@page{size:A4 portrait;margin:18mm}body{background:#fff!important}#egatari-article{max-width:none;padding:0;font-size:10.5pt}#egatari-article a{color:inherit;text-decoration:none}}@media screen{.egatari-print-to{display:none}}";
+  // 縦書きの本は行の長さを頁の高さいっぱいに（画面の 40em の上限を外す）。2 つ目からの章は新しい頁から
+  css.textContent = "@media print{@page{size:A4 portrait;margin:18mm}body{background:#fff!important}#egatari-article{max-width:none;padding:0;font-size:10.5pt}#egatari-article.egatari-vertical{max-height:none}#egatari-article a{color:inherit;text-decoration:none}#egatari-article section[data-egatari-chapter]~section[data-egatari-chapter]{break-before:page}}@media screen{.egatari-print-to{display:none}}";
+  var vertical = !!document.querySelector("#egatari-article.egatari-vertical");
   document.head.appendChild(css);
   var added = [];
   [].forEach.call(document.querySelectorAll("a[data-egatari-step]"), function(a){
@@ -19,7 +21,10 @@ window.addEventListener("message", function(e){
     if (!n || i < 1) return;
     var s = document.createElement("span");
     s.className = "egatari-print-to";
-    s.textContent = " " + String(k === "0" ? W.slide : k === "concl" ? W.concl : W.step).replace("{n}", n).replace("{k}", k);
+    var label = " " + String(k === "0" ? W.slide : k === "concl" ? W.concl : W.step).replace("{n}", n).replace("{k}", k);
+    // 縦書きでは 1〜2 桁の数を縦中横に（本の組み立てが書く番号と同じ。format spec §9C.6）
+    if (vertical) label.split(/([0-9]+)/).forEach(function(part, j){ if (!part) return; if (j % 2 && part.length <= 2){ var t = document.createElement("span"); t.className = "egatari-tcy"; t.textContent = part; s.appendChild(t); } else s.appendChild(document.createTextNode(part)); });
+    else s.textContent = label;
     a.after(s); added.push(s);
   });
   var done = function(){ added.forEach(function(s){ s.remove(); }); css.remove(); window.removeEventListener("afterprint", done); if (!m.dry) P.postMessage({type: "book-printed"}, "*"); };

@@ -27,7 +27,7 @@ const framed = document.documentElement.hasAttribute('data-framed');
 let lang = initialLang();
 const W = () => WORDS[lang];
 
-const S = { playing: null, frame: null, live: null, recents: null, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
+const S = { playing: null, opening: 0, frame: null, live: null, recents: null, doc: null, title: '', layout: null, layoutKey: '', hasPolls: false };
 const sr = $('sr');
 function announce(t) { sr.textContent = ''; setTimeout(() => { sr.textContent = t; }, 30); }
 function showMsg(t) { $('msg').textContent = t || ''; }
@@ -55,7 +55,13 @@ function getReader() {
 }
 function scan(text) { return new Promise((res) => { const id = ++readSeq; waiting.set(id, res); getReader().postMessage({ id, text }); }); }
 
+// S.opening counts the files being read and checked. Meanwhile the Viewer counts as playing: no new version takes over (initSW below).
+// Only S.playing (set once the check is done) was looked at before, so a takeover between choosing a file and its start reloaded the page and the file was gone
 async function openFile(blob, name, opts = {}) {
+  S.opening++;
+  try { return await openChecked(blob, name, opts); } finally { S.opening--; }
+}
+async function openChecked(blob, name, opts) {
   showMsg('');
   if (!blob || typeof blob.size !== 'number') { showMsg(W().errRead); return false; }
   if (blob.size > MAX_BYTES) { showMsg(W().errTooLarge(MAX_BYTES / 1024 / 1024)); return false; }
@@ -125,11 +131,51 @@ function startFrame() {
   // so focus it again when the lesson has loaded, unless the viewer has meanwhile moved the focus elsewhere in this page.
   // Safari may refuse either; the keys pressed in this page are handed over anyway (forwardKey)
   f.addEventListener('load', () => {
+    fsState();                         // the lesson learns whether fullscreen is available (play/lesson-shim.js 4)
     const a = document.activeElement;
     if (S.frame !== f || (a && a !== document.body && a !== f)) return;
     try { f.contentWindow.focus(); } catch { /* refused */ }
   }, { once: true });
 }
+// Fullscreen for the lesson. The frame has no fullscreen permission (play/frame.mjs: a lesson cannot take the screen by itself),
+// and Safari ignores allow="fullscreen" on an opaque-origin srcdoc frame anyway. The lesson's shim asks {egaViewer: "fullscreen", on}
+// (play/lesson-shim.js 4, on the player's 全画面 button or f); this page puts the frame element itself into fullscreen, which the
+// browser allows only on the viewer's own activation (it reaches this page from the tap in the frame), and reports the state back
+// {egaViewer: "fullscreen-state", on, enabled, refused?}, also when the viewer leaves with Esc or the system's gesture.
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+function fsEnabled() {
+  const f = S.frame;
+  if (!f || !(f.requestFullscreen || f.webkitRequestFullscreen)) return false;   // iPhone Safari: no element fullscreen
+  const en = document.fullscreenEnabled ?? document.webkitFullscreenEnabled;
+  return en !== false;
+}
+function fsState(refused) {
+  const f = S.frame;
+  if (!f || !f.contentWindow) return;
+  const m = { egaViewer: 'fullscreen-state', on: fsElement() === f, enabled: fsEnabled() };
+  if (refused) m.refused = true;
+  f.contentWindow.postMessage(m, '*');
+}
+function fsRequest(on) {
+  const f = S.frame;
+  if (!f) return;
+  if (on === (fsElement() === f)) { fsState(); return; }
+  if (on) {
+    const go = f.requestFullscreen || f.webkitRequestFullscreen;
+    if (!go || !fsEnabled()) { fsState(true); return; }
+    let p;
+    try { p = go.call(f); } catch { fsState(true); return; }
+    if (p && typeof p.then === 'function') p.then(() => { try { f.contentWindow.focus(); } catch { /* refused */ } }, () => fsState(true));
+    else fsNoPromise = true;   // an old Safari returns nothing: webkitfullscreenchange or webkitfullscreenerror follows
+    return;
+  }
+  const ex = document.exitFullscreen || document.webkitExitFullscreen;
+  try { const p = ex && ex.call(document); if (p && typeof p.catch === 'function') p.catch(() => fsState()); } catch { fsState(); }
+}
+let fsNoPromise = false;
+for (const t of ['fullscreenchange', 'webkitfullscreenchange']) document.addEventListener(t, () => { fsNoPromise = false; fsState(); });
+for (const t of ['fullscreenerror', 'webkitfullscreenerror']) document.addEventListener(t, () => { if (fsNoPromise) { fsNoPromise = false; fsState(true); } });
+
 // The navigation keys (arrows, PageUp/PageDown, Home/End, Space) pressed while the focus is in this page, not in the lesson's
 // frame (its bar or buttons, the Live pane, or a frame that never got the focus): handed to the lesson, which presses them as
 // its own buttons do (play/lesson-shim.js). Not from a field, a widget that uses arrows, or the link box; Space not on a
@@ -194,6 +240,7 @@ function onLive(kind, n) {
   if (kind === 'polls' && n === 0) setPollView(false);
 }
 function closeLesson(quiet) {
+  if (S.frame && fsElement() === S.frame) fsRequest(false);
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
   S.doc = null; S.layout = null; S.hasPolls = false;
@@ -236,6 +283,9 @@ window.addEventListener('message', (e) => {
   if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
   else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) { if (S.live) S.live.setStep(m.key); }
+  // the lesson's shim asks for fullscreen (play/lesson-shim.js 4): exactly {egaViewer, on}. Untrusted: the browser enters it only
+  // on the viewer's own activation, and only the frame element goes fullscreen
+  else if (m.egaViewer === 'fullscreen' && typeof m.on === 'boolean' && Object.keys(m).length === 2) fsRequest(m.on);
 });
 
 const links = linkBox({ words: W, dlg: { box: $('link-box'), title: $('link-t'), host: $('link-host'), url: $('link-url'), notes: $('link-n'), cancel: $('b-link-cancel'), open: $('a-link-open') } });
@@ -292,27 +342,39 @@ async function clearRecents() { if (S.recents) { try { await S.recents.clear(); 
 // Nothing is swapped while a lesson is open: no request is made while playing, and a takeover that races with opening a file does
 // not reload (the running page keeps its own scripts; every file it needs is already loaded).
 // Coming back to the Viewer (visibilitychange) counts as a launch only on the start screen, with no lesson open.
+// Two races at a launch (seen on slow CI runners, also possible on a slow phone): the window this page replaced (the same tab's previous
+// page, still unloading) can still be listed for a moment, so the worker answers 'busy': during a launch the page asks again after a second.
+// And a takeover granted just before this page loaded (asked by the previous page) arrives here as a new controller this page did not ask
+// for: during a launch, at the start screen, the page reloads for it too (not when the first worker claims a page that had none).
 async function initSW() {
   if (!('serviceWorker' in navigator)) return null;
   let reg;
   try { reg = await navigator.serviceWorker.register('./sw.js', { scope: './' }); } catch { return null; }
   if (!reg) return null;   // a browser that blocks service workers may resolve without a registration
-  let asked = false;
-  const takeOver = () => {
-    if (S.playing || asked || !reg.waiting || !navigator.serviceWorker.controller) return;
-    asked = true;
-    reg.waiting.postMessage({ type: 'activate-if-idle' });
-  };
-  navigator.serviceWorker.addEventListener('controllerchange', () => { if (asked && !S.playing) location.reload(); });
-  navigator.serviceWorker.addEventListener('message', (e) => { if (e.data && e.data.type === 'busy') asked = false; });
-  takeOver();
-  reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && launching) takeOver(); }); });
   // a launch: the first seconds after the page started. Later, an update found while the Viewer is in use waits for the next launch
   let launching = true;
   setTimeout(() => { launching = false; }, 10000);
-  if (!S.playing) reg.update().catch(() => {});
+  let asked = false, retry = 0, controlled = !!navigator.serviceWorker.controller;
+  const takeOver = () => {
+    if (S.playing || S.opening || asked || !reg.waiting || !navigator.serviceWorker.controller) return;
+    asked = true;
+    reg.waiting.postMessage({ type: 'activate-if-idle' });
+  };
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const replaced = controlled; controlled = true;
+    if ((asked || (launching && replaced)) && !S.playing && !S.opening) location.reload();
+  });
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (!(e.data && e.data.type === 'busy')) return;
+    asked = false;
+    clearTimeout(retry);
+    if (launching) retry = setTimeout(() => { if (launching) takeOver(); }, 1000);
+  });
+  takeOver();
+  reg.addEventListener('updatefound', () => { const w = reg.installing; if (w) w.addEventListener('statechange', () => { if (w.state === 'installed' && launching) takeOver(); }); });
+  if (!S.playing && !S.opening) reg.update().catch(() => {});
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible' || S.playing) return;
+    if (document.visibilityState !== 'visible' || S.playing || S.opening) return;
     asked = false;
     launching = true;
     setTimeout(() => { launching = false; }, 10000);

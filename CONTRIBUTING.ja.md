@@ -1,4 +1,4 @@
-<!-- i18n: pair=CONTRIBUTING.md sha256=a9d757f4f9075213 -->
+<!-- i18n: pair=CONTRIBUTING.md sha256=8c7481e3762c3c3e -->
 # 貢献の仕方
 
 [English](CONTRIBUTING.md) | 日本語
@@ -29,12 +29,13 @@
 npm install
 npm test                 # 全部（Chrome か Playwright の Chromium が要る）
 npm test -- --jobs 1     # 1 つずつ、段の表の順に
+npm test -- --platform   # OS に左右される段だけ（ブランチの CI が macOS で走らせるもの）
 node tools/test-all.mjs --only test-components,test-tools
 ```
 
-`npm test` はいくつかの段を同時に走らせる：`--jobs N`（既定は CPU の数 − 1、多くて 6）で長い段から始め、段ごとの出力はその段が終わったときに出す。`--jobs 1` は今までどおり 1 つずつ。時間に敏感な試験（音声・録音・自動再生・部品の時計、帯や知らせが時計で消えるのを待つもの、test-security の「すぐ断る」のような時間の上限）は先頭の近くに `// test-all: serial` の行を持ち、最後に、ほかに何も走らせずに 1 つずつ走る。実時間や CPU の時間で確かめる新しい試験にはこの行を足すか、その確かめだけを小さな serial の段に分ける（test-app の音声の確かめを持つ test-app-audio のように）。子のプロセスがそれぞれブラウザを起動する（`kit/check.mjs`・`kit/abcjs-node.mjs`・`tools/sheet.mjs`）ブラウザの試験は、先に `kit/browser.mjs` の `await shareBrowser()` を呼ぶ：試験の間ブラウザを 1 つだけ起動し、引数のない `launch()` はどれもそこにつなぐ。そうでなければ、決まった時間だけ待たずに状態を待つ（期限は固まったときのためだけに長めに）：CPU を分け合うと段は遅くなる。試験は、ほかの段が使う決まった場所に書かない（渡されたフォルダか `fs.mkdtempSync` を使う）。同じファイルを使う段は `tools/test-all.mjs` で並びを決める（`after`・`lock`）。
+`npm test` はいくつかの段を同時に走らせる：`--jobs N`（既定は CPU の数 − 1、多くて 6）で長い段から始め、段ごとの出力はその段が終わったときに出す。`--jobs 1` は今までどおり 1 つずつ。時間に敏感な試験（音声・録音・自動再生・部品の時計、帯や知らせが時計で消えるのを待つもの、test-security の「すぐ断る」のような時間の上限）は先頭の近くに `// test-all: serial` の行を持ち、最後に、ほかに何も走らせずに 1 つずつ走る。実時間や CPU の時間で確かめる新しい試験にはこの行を足すか、その確かめだけを小さな serial の段に分ける（test-app の音声の確かめを持つ test-app-audio のように）。子のプロセスがそれぞれブラウザを起動する（`kit/check.mjs`・`kit/abcjs-node.mjs`・`tools/sheet.mjs`）ブラウザの試験は、先に `kit/browser.mjs` の `await shareBrowser()` を呼ぶ：試験の間ブラウザを 1 つだけ起動し、引数のない `launch()` はどれもそこにつなぐ。そうでなければ、決まった時間だけ待たずに状態を待つ（期限は固まったときのためだけに長めに）：CPU を分け合うと段は遅くなる。待ちの期限は `tools/wait-scale.mjs` の `scaled(ms)` で書く：`TEST_TIMEOUT_SCALE`（CI の macOS は 3）が掛かり、Playwright の既定の 30 秒にも `kit/browser.mjs` が同じ値を掛ける。時間で確かめる値（N ms 以内に答える）には掛けない。できるところは決まった結果になる確かめにする（時間を測らずに、起きたことを数える）。試験は、ほかの段が使う決まった場所に書かない（渡されたフォルダか `fs.mkdtempSync` を使う）。同じファイルを使う段は `tools/test-all.mjs` で並びを決める（`after`・`lock`）。
 
-CI は push と PR ごとに Node 22 と 24（Linux）・Windows で `npm test -- --jobs 3`、macOS（3 vCPU・7 GB）で `npm test -- --jobs 2` を回し、3 つの OS で `node tools/clean-env.mjs`（空の `HOME`・TTS のサーバーなし）も走らせる。`node tools/test-all.mjs --list` はすべての段とその引数を出す。
+CI は push と PR ごとに Node 22 と 24（Linux）・Windows で `npm test -- --jobs 3` を回し、3 つの OS で `node tools/clean-env.mjs`（空の `HOME`・TTS のサーバーなし）も走らせる。macOS（3 vCPU・7 GB。メモリが 12 GiB 未満の機械ではメモリを多く使う段どうしを重ねない）では、`main` への push・`v*` のタグ・`full=true` を付けた手動の実行で `npm test -- --jobs 2`、ほかは `npm test -- --jobs 2 --platform`（組み立て・品質チェック・単体の検査と、`// test-all: platform` の印のある試験：パス・字体・WebKit・npm の包み）。確かめることが OS に左右される新しい試験には、先頭の近くに `// test-all: platform` の行を足す。`node tools/test-all.mjs --list` はすべての段とその引数を出す（`--platform` を付ければその組だけ）。
 
 単体の試験は一覧に書かずに見つける：先頭の近くに `// test-all: unit` の行がある `tools/test-*.mjs` を引数なしで走らせる（ブラウザが要らないものに限る）。引数・組んだデッキ・決まった順番が要る試験は `tools/test-all.mjs` に段として書く。ほかの試験が読み込む試験には `// test-all: part of <段>` と書く。`tools/test-*.mjs` がどれにも当たらなければ、`npm test` は何も走らせずに失敗する（新しい試験を入れ忘れないように）。
 
@@ -65,7 +66,7 @@ CI は push と PR ごとに Node 22 と 24（Linux）・Windows で `npm test -
 - Editor app: **Export single file** keeps the attachments of the opened file
 ```
 
-節は `Added`・`Changed (API)`（[口の形](#口の形)の形や、呼び出す側が使うほかの口の変更）・`Changed`・`Removed`・`Fixed`・`Security`。1 つの断片に節がいくつあってもよい。項目は英語で書く（CHANGELOG は英語）。`CHANGELOG.md` の `## [Unreleased]` は空のままにする。リリースのとき `node tools/changelog.mjs --release X.Y.Z` が断片を（この節の順、節の中はファイル名の順で）`## [X.Y.Z] - <日付>` にまとめ、比べるリンクを直し、`package.json` と `package-lock.json` の版を変え、断片を消す。`--preview` は書かずに節を出すだけ、`--check`（`npm test` に入っている）は断片を確かめる。CI では、コード（`app/`・`kit/`・`vendor/components/`・`components.lock.json`・`server/`・`render/`・`tts/`・`themes/`・`lab/`・`skills/`・`package.json`）を変えたのに断片を足していない pull request に警告を出す（失敗にはしない）。リリースの手順は [RELEASING.ja.md](RELEASING.ja.md)。
+節は `Migration`（使う人が動かし続けるためにする手順。いちばん先に出る）・`Added`・`Changed (API)`（[口の形](#口の形)の形や、呼び出す側が使うほかの口の変更）・`Changed`・`Removed`・`Fixed`・`Security`。1 つの断片に節がいくつあってもよい。項目は英語で書く（CHANGELOG は英語）。`CHANGELOG.md` の `## [Unreleased]` は空のままにする。リリースのとき `node tools/changelog.mjs --release X.Y.Z` が断片を（この節の順、節の中はファイル名の順で）`## [X.Y.Z] - <日付>` にまとめ、比べるリンクを直し、`package.json` と `package-lock.json` の版を変え、断片を消す。`--preview` は書かずに節を出すだけ、`--check`（`npm test` に入っている）は断片を確かめる。CI では、コード（`app/`・`kit/`・`vendor/components/`・`components.lock.json`・`server/`・`render/`・`tts/`・`themes/`・`lab/`・`skills/`・`package.json`）を変えたのに断片を足していない pull request に警告を出す（失敗にはしない）。リリースの手順は [RELEASING.ja.md](RELEASING.ja.md)。
 
 ## 書き方の決まり
 

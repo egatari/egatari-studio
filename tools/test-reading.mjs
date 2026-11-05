@@ -301,6 +301,7 @@ for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   const s = await p.evaluate(() => DECK.panes.state());
   ok(!s.find && (await p.getAttribute('#deck-text .dx-findbar input', 'aria-label')) === '台本の中を検索', 'without a book the search box searches the script');
   ok((await p.$$('#deck-text .dx-say')).length === 0, 'no turn is highlighted outside playback');
+  ok((await p.$$eval('#deck-text [data-step-key="s-ra2aaa:0"] .dx-role', (bs) => bs.map((b) => b.textContent))).join(',') === '説明する人,質問する人', 'the speakers are named in the lesson language (説明する人, 質問する人), not by the internal role');
   await p.evaluate(() => DECK.autoplay(true)); await wait(p, 200);
   ok(await p.evaluate(() => { const x = document.querySelector('#deck-text .dx-say'); return !!x && x.closest('.dx-step').classList.contains('dx-cur'); }), 'during playback the turn being read is highlighted in the current step');
   await shot(p, '07-turn');

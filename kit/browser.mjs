@@ -9,8 +9,20 @@ import { chromium } from 'playwright-core';
 
 export async function launch(opts = {}) {
   // 試験が shareBrowser() で起動した 1 つのブラウザがあれば、起動せずにつなぐ（引数のない launch() だけ。close はつなぎを切るだけで、ページは新しい context に入る）
-  if (process.env[SHARED_WS] && !Object.keys(opts).length) return chromium.connect(process.env[SHARED_WS]);
-  return (await launchWhich(opts)).browser;
+  if (process.env[SHARED_WS] && !Object.keys(opts).length) return scaleDefaults(await chromium.connect(process.env[SHARED_WS]));
+  return scaleDefaults((await launchWhich(opts)).browser);
+}
+// 試験の待ちの上限を伸ばす（TEST_TIMEOUT_SCALE。tools/wait-scale.mjs と同じ値で、遅い CI の runner 向け）：Playwright の既定の 30 秒
+// （click・fill・waitForSelector・goto）に掛ける。値がなければ（試験のほか）何もしない
+export function scaleDefaults(browser) {
+  const s = Number(process.env.TEST_TIMEOUT_SCALE);
+  if (!(s > 1)) return browser;
+  const ms = Math.round(30000 * s);
+  const set = (x) => { x.setDefaultTimeout(ms); x.setDefaultNavigationTimeout(ms); return x; };
+  const newContext = browser.newContext.bind(browser), newPage = browser.newPage.bind(browser);
+  browser.newContext = async (...a) => set(await newContext(...a));
+  browser.newPage = async (...a) => set(await newPage(...a));
+  return browser;
 }
 // launch と同じ順で探し、どれで起動したかも返す：{browser, via}（via は 'CHROME_PATH' | 'chrome' | 'msedge' | 'chromium'。egatari doctor）
 export async function launchWhich(opts = {}) {

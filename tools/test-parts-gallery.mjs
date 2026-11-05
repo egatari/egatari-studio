@@ -85,7 +85,8 @@ if (BUILD) {
     `the built page has all ${g.slides} slides and loads nothing from outside`);
   const vj = JSON.parse(fs.readFileSync(path.join(SITE, 'parts', 'versions.json'), 'utf8'));
   ok(fs.existsSync(path.join(SITE, 'parts', 'index.html')) && vj.current === lock2.default && vj.versions.join() === lock2.default, 'parts/index.html and versions.json list the built version ' + JSON.stringify(vj));
-  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
+  // 正式版の形で組む（候補 X.Y.Z-rc.N では /v…/ の写しを作らないので、凍結した写しに parts/ がないことは X.Y.Z で確かめる）
+  const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version.replace(/-rc\.\d+$/, '');
   assemble({ site: SITE, current: version, releases: [], log: () => {} });
   ok(fs.existsSync(page) && fs.existsSync(path.join(SITE, 'parts', 'index.html')) && fs.existsSync(path.join(SITE, `v${version}`, 'index.html')) && !fs.existsSync(path.join(SITE, `v${version}`, 'parts')),
     `after assemble: /parts/v${lock2.default}/ and /parts/index.html stay; /v${version}/ has no parts/`);

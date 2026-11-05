@@ -1,4 +1,5 @@
 // チャットの AI との行き来の試験（ブラウザは品質チェック（kit/check.mjs）の中だけ）
+// test-all: platform（--platform でも走らせる：パス（リンク・junction））
 //   node tools/test-llm.mjs [作業用のフォルダ]
 // 1. 指示（共通の本体 docs/authoring-with-llms*.md と系列 docs/llm-parts/*.md）が材料から作り直したものと同じ（make-llm-guide --check）・大きさ・
 //    規格の名前・組み立て（kit/core/llm-pack.mjs の buildPack・kit/llm-pack.mjs）・部品の居場所
@@ -157,7 +158,8 @@ ok('部品の居場所：どの部品もちょうど 1 か所（標準は共通�
   for (const [tag, s] of [['m-menu', 'standard'], ['m-cards', 'standard'], ['m-sweep', 'math'], ['m-collect', null], ['m-codetree', null], ['m-kpi', 'standard'], ['m-market', 'business'], ['m-kanbun', 'kokugo'], ['m-orbit', 'science'], ['m-timer', 'tools'], ['m-nothing', null]]) assert.equal(setOf(tag), s, tag);
   // manifest の専門の部品に set がなければ、作り直しは失敗する（写しで確かめる）
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'motion-llm-pack-'));
-  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'skills', 'plugins', 'components.lock.json', 'components2.lock.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  for (const d of ['tools', 'docs', 'vendor', 'themes', 'kit', 'skills', 'plugins', 'components.lock.json', 'components2.lock.json', 'package.json']) fs.cpSync(path.join(ROOT, d), path.join(tmp, d), { recursive: true, filter: (p) => !/node_modules/.test(p) });
+  // make-llm-guide は package.json の版も読む（plugin.json の版・スキルの更新の案内 npx egatari@X.Y.x）
   fs.symlinkSync(fs.realpathSync(path.join(ROOT, 'node_modules')), path.join(tmp, 'node_modules'), 'junction');   // make-llm-guide は kit/core/parts2.mjs（parse5）を読む
   const mf = path.join(tmp, 'vendor', 'components-2', `manifest-${PACK.tiers.catalogue}.json`);
   const bad = JSON.parse(fs.readFileSync(mf, 'utf8'));

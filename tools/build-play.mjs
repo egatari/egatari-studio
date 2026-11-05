@@ -45,7 +45,7 @@ export function pageCsp(endpoints, policy) {
     "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
   ].join('; ');
 }
-export const PERMISSIONS = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), display-capture=(), publickey-credentials-get=()';
+export const PERMISSIONS = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), display-capture=(), publickey-credentials-get=(), fullscreen=(self)';
 
 export function headersFile(csp) {
   return [

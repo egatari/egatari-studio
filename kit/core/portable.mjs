@@ -12,7 +12,7 @@
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
 import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
 import { codeReasons } from './code-scan.mjs';
-import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
+import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, resolveComponent, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
@@ -568,6 +568,7 @@ export function validateDeckMeta(m, opts = {}) {
   if (own(m, 'tracking') && !(Array.isArray(m.tracking) && m.tracking.every((x) => typeof x === 'string' && RE.feature.test(x)) && new Set(m.tracking).size === m.tracking.length)) e.push('deck-meta.tracking: not a list of unique adapter names');
   if (own(m, 'completion')) completionCheck(m.completion, 'deck-meta.completion', e);
   for (const k of ['license', 'copyright', 'attribution']) if (own(m, k) && typeof m[k] !== 'string') e.push(`deck-meta.${k}: not a string`);
+  if (own(m, 'creators') && !strArr(m.creators)) e.push('deck-meta.creators: not an array of strings');
   return e;
 }
 // 実行系の deck-audio（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-audio.schema.json）
@@ -1322,7 +1323,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     format: FID, version: { ...FORMAT_VERSION }, contracts: { ...CONTRACTS }, player, generator, docId, title: metadata.title, lang,
     portable: true, sourceSha256: srcSha, tracking: [...TRACKING],
     ...(metadata.completion ? { completion: metadata.completion } : {}),
-    ...Object.fromEntries(['license', 'copyright', 'attribution'].filter((k) => own(metadata, k)).map((k) => [k, metadata[k]])),
+    // 権利の表示と作成者（format spec §4・§7.3）：再生専用の派生は索引を持たないので、ここに写したものだけが残る
+    ...Object.fromEntries(DECK_META_RIGHTS.filter((k) => own(metadata, k)).map((k) => [k, k === 'creators' ? [...metadata[k]] : metadata[k]])),
   };
   const me = validateDeckMeta(deckMeta);
   if (me.length) fail('invalid-deck-meta', me.join('; '), me);

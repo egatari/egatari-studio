@@ -28,7 +28,7 @@ for (const s of forbidden) assert.ok(environmentHits(s).length, s);
 assert.ok(environmentHits('8882').length);
 assert.ok(environmentHits('IRODORI_URL http://localhost:8882').length);
 assert.deepEqual(environmentHits('IRODORI_URL default http://localhost:8882'), []);
-const files = [...walk('.claude-plugin'), ...walk('skills'), ...walk('plugins/egatari'), 'README.md', 'README.ja.md', ...walk('docs')].filter((f) => /\.(md|json)$/.test(f));
+const files = [...walk('.claude-plugin'), ...walk('.agents'), ...walk('skills'), ...walk('plugins/egatari'), 'README.md', 'README.ja.md', ...walk('docs')].filter((f) => /\.(md|json)$/.test(f));
 const hits = files.flatMap((f) => environmentHits(read(f)).map((h) => `${f}:${h}`));
 assert.deepEqual(hits, [], 'personal environment references');
 console.log(`ok environment scan: ${files.length} files`);
@@ -38,7 +38,19 @@ const light = JSON.parse(read('plugins/egatari/.claude-plugin/plugin.json'));
 const market = JSON.parse(read('.claude-plugin/marketplace.json'));
 assert.equal(plugin.name, 'egatari-studio');
 assert.equal(light.name, 'egatari');
-for (const p of [plugin, light]) assert.ok(!Object.hasOwn(p, 'version'));
+// 更新は版に従う：plugin.json と 2 つの marketplace（Claude・Codex）の項目の版は package.json の版と同じ（リリースで changelog.mjs --release がそろえる）
+const pkgVersion = JSON.parse(read('package.json')).version;
+for (const p of [plugin, light]) { assert.equal(p.version, pkgVersion, `${p.name}: plugin.json version`); assert.equal(p.skills, './skills/'); }
+const codexMarket = JSON.parse(read('.agents/plugins/marketplace.json'));
+assert.equal(codexMarket.name, 'egatari');
+assert.deepEqual(codexMarket.plugins.map((p) => [p.name, p.source]), [['egatari', { source: 'local', path: './plugins/egatari' }], ['egatari-studio', { source: 'local', path: './' }]]);
+for (const p of codexMarket.plugins) {
+  assert.equal(p.version, pkgVersion, `.agents marketplace: ${p.name} version`);
+  assert.deepEqual(p.policy, { installation: 'AVAILABLE', authentication: 'ON_INSTALL' });
+  assert.ok(p.category);
+}
+for (const p of market.plugins) assert.equal(p.version, pkgVersion, `.claude-plugin marketplace: ${p.name} version`);
+assert.equal(JSON.parse(read('kit/instruction-version.json')).instruction, read('plugins/egatari/skills/make/SKILL.md').match(/^\*\*指示の版：([a-f0-9]{8})\*\*$/m)[1]);
 assert.equal(market.name, 'egatari');
 assert.ok(market.owner.name);
 assert.deepEqual(market.plugins.map((p) => [p.name, p.source]), [['egatari', './plugins/egatari'], ['egatari-studio', './']]);
@@ -49,7 +61,16 @@ for (const p of market.plugins) {
 for (const dir of ['kit', 'vendor', 'themes']) assert.ok(fs.statSync(path.join(ROOT, dir)).isDirectory());
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari')).sort(), ['.claude-plugin', 'skills']);
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari/skills')), ['make']);
-assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')), ['studio']);
+assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')).sort(), ['motion-components', 'motion-slides', 'motion-slides-video', 'studio']); // motion-* は旧名の移動のお知らせ（1 版だけ）
+// 旧名の移動のお知らせ（1 版だけ。v0.6.5 で消す）：プラグインの中から読まれても害がないよう、説明と本文の両方に見張りの文を持つ
+for (const n of ['motion-slides', 'motion-slides-video', 'motion-components']) {
+  const t = read(`skills/${n}/SKILL.md`);
+  const fm = t.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  assert.ok(fm[1].includes(`name: ${n}\n`), n);
+  for (const w of ['egatari:make', 'egatari-studio:studio', 'Do NOT use this to make lessons']) assert.ok(fm[1].includes(w), `${n} description: ${w}`);
+  for (const w of ['egatari-studio:motion-*', 'ignore this skill', 'egatari:make', 'egatari-studio:studio', '無視', '/plugin install egatari@egatari']) assert.ok(fm[2].includes(w), `${n} body: ${w}`);
+  assert.ok(fm[2].indexOf('egatari-studio:motion-*') < fm[2].indexOf('# '), `${n}: guard comes first`);
+}
 for (const dir of ['make', 'parts', 'video']) assert.ok(!fs.existsSync(path.join(ROOT, 'skills', dir)));
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'parts.md', 'video.md']);
 for (const [f, name, triggers] of [
@@ -81,6 +102,7 @@ assert.doesNotMatch(make, /ffmpeg|動画|\bvideo\b/i);
 // Every make file is safe to read in a chat with no local environment.
 const makeForbidden = ['<repo>', 'npm', 'node ', 'npx', 'tools/', 'kit/', '/' + 'Users/', '100.' + '64', '8882', 'brew', 'LaunchAgent', 'gen' + 'do'];   // split so the self-contained scan does not flag this list
 function checkMake(text, file) {
+  text = text.replaceAll(`npx egatari@${JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.')}.x skills update`, '');   // the one command a make skill may name: the update for tools without a plugin update command (#172)
   for (const token of makeForbidden) assert.ok(!text.includes(token), `${file}: forbidden ${token}`);
 }
 for (const f of walk(MAKE_SKILL_DIR)) checkMake(read(f), f);

@@ -25,6 +25,7 @@ import path from 'node:path';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const contentLock = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8'));
@@ -219,7 +220,7 @@ const open = async (url, vp = { width: 1280, height: 720 }) => {
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(url);
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
   await p.evaluate(() => document.fonts.ready);
   return { p, errs };
 };
@@ -407,7 +408,7 @@ for (const mode of ['talk', 'learn']) {
   await cp.locator('[data-extend="-60"]').click();
   // 縮めると自動再生の終わりの時計が残り 0 で掛け直され（kit/deck.js の scheduleAutoEnd）、次の段階へ進む。進むまで待つ（固定の 80 ms では、遅い macOS の CI で
   // 時計と描画が間に合わずに落ちた）。縮めなければ 60 秒待つので、5 秒の期限で「縮めると進む」を見分けられる
-  await cp.waitForFunction(() => DECK.state().step === 2, null, { timeout: 5000 }).catch(() => {});
+  await cp.waitForFunction(() => DECK.state().step === 2, null, { timeout: scaled(5000) }).catch(() => {});
   ok(await cp.evaluate(() => DECK.state().step === 2), `${mode}: shortening the elapsed autoplay wait advances`);
   await cp.evaluate(() => DECK.autoplay(false));
 

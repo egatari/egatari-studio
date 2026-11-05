@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=092fde938ec4b2bd -->
+<!-- i18n: pair=with-claude.ja.md sha256=a41c79b6ff595d62 -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -24,7 +24,7 @@ First delete the old `~/.claude/skills/motion-*` entries, including any in a pro
 /plugin install egatari-studio@egatari
 ```
 
-The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`.
+The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or run `npx egatari@0.6.x skills update` (it also updates Codex) and restart the tool. For automatic updates: `/plugin` → Marketplaces → egatari → Enable auto-update. Codex: see "Using it with Codex" in the README.
 
 ### Chat Claude and Cowork
 

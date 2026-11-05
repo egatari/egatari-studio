@@ -1,0 +1,19 @@
+/* 試験用のテーマ（tools/test-book-css.mjs）：古いテーマ・自作のテーマにありがちな、.slide を前に付けない要素だけの規則を、わざと強く書く。
+   本の窓（#egatari-article）はこれらに染まらず、単独の本の頁と同じ大きさで組まれること。スライドの表は、テーマの値になること（テーマは体裁の後に読む） */
+:root{ --title: #7a1f1f; }
+table{font-size:31px;line-height:1.1;width:100%;margin:40px 0;color:#7a1f1f}
+th,td{font-size:31px;padding:20px;text-align:right}
+th{background:#eee}
+ul,ol{list-style:square;margin:30px 0;padding-left:3em;font-size:29px}
+li{font-size:29px;line-height:1.1;margin:12px 0}
+p{font-size:27px;margin:0 0 30px}
+code,pre{font-size:33px;font-family:serif}
+figure{margin:0;width:50%}
+figcaption{font-size:40px;text-align:right}
+img{display:block;width:100%}
+blockquote{font-size:35px;border-left:8px solid #7a1f1f}
+h2,h3{font-size:50px;position:relative;top:12px}
+a{font-size:24px;color:#7a1f1f}
+section{font-size:26px;line-height:1}
+article{font-size:30px;width:300px}
+rt{font-size:20px}

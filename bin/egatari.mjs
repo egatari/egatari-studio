@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // egatari コマンド（npm の包み egatari の bin。npx egatari …）：各スクリプトに振り分けるだけ
-//   egatari new|ids|check|build|dev|sheet|comment-shots|portable|video|tts|doctor [引数…]、egatari --version、egatari --help
+//   egatari new|ids|check|build|dev|sheet|comment-shots|portable|video|tts|doctor|skills update [引数…]、egatari --version、egatari --help
 // 引数はそのままスクリプトに渡す。相対パスは呼び出した場所（cwd）から解く（INIT_CWD も cwd にそろえる）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { readHead } from '../kit/bounded-read.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -25,7 +26,7 @@ const SCRIPTS = {
 };
 
 function help() {
-  const w = Math.max(...Object.keys(SCRIPTS).map((k) => k.length), 'doctor'.length);
+  const w = Math.max(...Object.keys(SCRIPTS).map((k) => k.length), 'doctor'.length, 'skills'.length);
   const line = (name, desc, use) => `  ${name.padEnd(w)}  ${desc}\n  ${''.padEnd(w)}    egatari ${name}${use ? ' ' + use : ''}`;
   console.log(`egatari ${PKG.version} — Egatari Studio
 
@@ -33,7 +34,8 @@ function help() {
 
 ${Object.entries(SCRIPTS).map(([k, [, d, u]]) => line(k, d, u)).join('\n')}
 ${line('tts', '口述原稿を AI 音声にする（uv が要る）/ synthesize the script with TTS (needs uv)', '<folder> [--dry-run] [--voices expert=bob,novice=alice] …')}
-${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか調べる / check Node, uv, ffmpeg and a browser', '')}
+${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか、入れたスキルが古くないか調べる / check Node, uv, ffmpeg, a browser and the installed skills', '')}
+${line('skills', 'Claude Code・Codex に入れたスキルを更新する / update the skills installed in Claude Code and Codex', 'update')}
 
   --version  版を出す / print the version
   --help     この説明 / this help
@@ -65,6 +67,86 @@ function cacheDir() {
   return process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
 }
 
+// ---------------------------------------------------------------- スキルの版
+const INSTRUCTION_RE = /\*\*(?:指示の版|Instruction version)[：:]\s*([a-f0-9]{8})\*\*/;
+const kitInstruction = () => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'kit', 'instruction-version.json'), 'utf8')).instruction || null; } catch { return null; } };
+// 入れたスキル（Claude Code・Codex のプラグインのキャッシュと個人のスキルのフォルダ）の SKILL.md から、指示の版の行を拾う
+function installedSkills() {
+  const home = os.homedir();
+  const roots = ['.claude/plugins', '.claude/skills', '.codex/plugins', '.codex/skills', '.agents/skills'].map((d) => path.join(home, d));
+  const found = [];
+  const walk = (dir, depth) => {
+    let ents;
+    try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) {
+      const f = path.join(dir, e.name);
+      if (e.isDirectory() && depth < 9 && e.name !== 'node_modules' && e.name !== '.git') walk(f, depth + 1);
+      else if (e.name === 'SKILL.md') {
+        let t; try { t = fs.readFileSync(f, 'utf8'); } catch { continue; }
+        const name = t.match(/^---\n[\s\S]*?^name:\s*(\S+)/m)?.[1];
+        const v = t.match(INSTRUCTION_RE)?.[1];
+        if ((name === 'make' || name === 'studio') && v) found.push({ file: f, name, version: v });
+      }
+    }
+  };
+  for (const r of roots) walk(r, 0);
+  return found;
+}
+function skillsCheck() {
+  const kit = kitInstruction();
+  if (!kit) return;
+  const old = installedSkills().filter((s) => s.version !== kit);
+  if (!old.length) return;
+  const [major, minor] = PKG.version.split('.');
+  console.log(`!!  skills   入れたスキルの指示の版が、この egatari（${kit}）と違う / installed skill instructions differ from this egatari (${kit}):`);
+  for (const s of old) console.log(`           ${s.name} ${s.version}  ${s.file}`);
+  console.log(`           更新 / update: npx egatari@${major}.${minor}.x skills update`);
+}
+
+// ---------------------------------------------------------------- skills update
+const MARKET = 'egatari', PLUGINS = ['egatari', 'egatari-studio'];
+const onWin = process.platform === 'win32';
+function lastJson(out) {
+  const lines = String(out || '').split('\n').map((l) => l.trim()).filter(Boolean);
+  try { return JSON.parse(lines[lines.length - 1]); } catch { return undefined; }
+}
+function summarize(j) {
+  if (j === null || typeof j !== 'object') return String(j);
+  const pick = ['status', 'result', 'message', 'oldVersion', 'newVersion', 'previousVersion', 'version', 'updated', 'changed'].filter((k) => k in j);
+  const text = JSON.stringify(pick.length ? Object.fromEntries(pick.map((k) => [k, j[k]])) : j);
+  return text.length > 240 ? text.slice(0, 237) + '…' : text;
+}
+function skillsUpdate() {
+  const tools = {
+    claude: [['plugin', 'marketplace', 'update', MARKET, '--json'], ...PLUGINS.map((p) => ['plugin', 'update', `${p}@${MARKET}`, '--json'])],
+    codex: [['plugin', 'marketplace', 'upgrade', MARKET, '--json'], ...PLUGINS.map((p) => ['plugin', 'add', `${p}@${MARKET}`, '--json'])],
+  };
+  let failed = 0, done = 0;
+  for (const [tool, steps] of Object.entries(tools)) {
+    const probe = spawnSync(tool, ['--version'], { encoding: 'utf8', timeout: 15000, shell: onWin });
+    if (probe.error || probe.status !== 0) { console.log(`--  ${tool}  見つからない（飛ばす）/ not found on PATH (skipped)`); continue; }
+    let ok = true;
+    for (const args of steps) {
+      const cmd = `${tool} ${args.join(' ')}`;
+      const r = spawnSync(tool, args, { encoding: 'utf8', timeout: 180000, shell: onWin });
+      const j = lastJson(r.stdout);
+      const bad = r.error || r.status !== 0 || j === undefined || (j && typeof j === 'object' && (j.error || j.success === false || j.ok === false));
+      if (bad) {
+        ok = false;
+        console.log(`NG  ${cmd}`);
+        console.log(`    失敗。出力はそのまま / failed. raw output:\n${[r.stdout, r.stderr, r.error?.message].filter(Boolean).join('\n').trimEnd().replace(/^/gm, '    ')}`);
+        console.log(`    手で行う / run by hand: ${cmd.replace(' --json', '')}`);
+        break;
+      }
+      console.log(`ok  ${cmd.replace(' --json', '')}: ${summarize(j)}`);
+    }
+    if (ok) done++; else failed++;
+  }
+  if (!done && !failed) console.log('claude も codex も見つからない。どちらかを入れてから / neither claude nor codex was found; install one first.');
+  else if (done) console.log('更新したら道具を再起動すると反映される / restart the tool to apply the update.');
+  process.exit(failed ? 1 : 0);
+}
+
 // ---------------------------------------------------------------- doctor
 // engines の範囲（"^22.23.4 || ^24.22.1 || >=26.12.1" の形だけ）に v が入るか
 function satisfies(v, range) {
@@ -82,6 +164,26 @@ const firstLine = (cmd, args) => {
   const r = spawnSync(cmd, args, { encoding: 'utf8', timeout: 15000 });
   return r.status === 0 ? (r.stdout || r.stderr).split('\n')[0].replace(/\s+Copyright.*/, '').trim() : null;
 };
+
+// 旧 README のシンボリックリンク ~/.claude/skills/motion-*（motion-slides など）が、プラグインへの移行後に切れていないか。
+// 切れたリンク、または移動のお知らせ（SKILL.md に下の STUB_MARK）だけの項目を返す。読むだけで、何も消さない
+const STUB_MARK = 'This skill moved into the egatari plugin.';
+function oldSkillLinks(home = os.homedir()) {
+  const dir = path.join(home, '.claude', 'skills');
+  let names = [];
+  try { names = fs.readdirSync(dir).filter((n) => n.startsWith('motion-')).sort(); } catch { return []; }
+  const out = [];
+  for (const n of names) {
+    const p = path.join(dir, n);
+    let dead = false;
+    try { fs.statSync(p); } catch { dead = true; }
+    if (dead) { out.push({ path: p, why: 'dead link / 切れたリンク' }); continue; }
+    try { if (readHead(path.join(p, 'SKILL.md'), 4096).toString('utf8').includes(STUB_MARK)) out.push({ path: p, why: 'moved notice / 移動のお知らせ' }); } catch { /* 他のスキルは対象外 */ }
+  }
+  return out;
+}
+const MIGRATE_STEPS = '~/.claude/skills/motion-* を消して、Claude Code で次を実行 / delete ~/.claude/skills/motion-* and run in Claude Code:\n'
+  + '/plugin marketplace add egatari/egatari-studio\n/plugin install egatari@egatari\n/plugin install egatari-studio@egatari';
 
 async function doctor() {
   let bad = 0;
@@ -112,6 +214,9 @@ async function doctor() {
       'Google Chrome か Microsoft Edge を入れる、`npx playwright-core install chromium`、または CHROME_PATH=/path/to/chrome\n'
       + 'install Google Chrome or Microsoft Edge, run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome', true);
   }
+  const old = oldSkillLinks();
+  show(!old.length, 'skills', old.length ? `古いスキルの置き場が残っている / old skill entries left: ${old.map((o) => `${o.path} (${o.why})`).join(', ')}` : '古いスキルの置き場なし / no old skill entries', MIGRATE_STEPS, false);
+  skillsCheck();
   console.log(bad ? `足りないもの ${bad} / ${bad} required missing` : 'ok');
   process.exit(bad ? 1 : 0);
 }
@@ -125,6 +230,7 @@ const [cmd, ...rest] = process.argv.slice(2);
 if (!cmd || cmd === '-h' || cmd === '--help' || cmd === 'help') { help(); process.exit(cmd ? 0 : 1); }
 if (cmd === '-v' || cmd === '--version' || cmd === 'version') { console.log(PKG.version); process.exit(0); }
 if (cmd === 'doctor') await doctor();
+else if (cmd === 'skills') { if (rest[0] === 'update') skillsUpdate(); else { console.error('使い方 / usage: egatari skills update'); process.exit(1); } }
 else if (cmd === 'tts') {
   // uv run --frozen：包みの中の uv.lock を書き換えない。仮想環境は利用者のキャッシュに（UV_PROJECT_ENVIRONMENT があればそれ）。.pyc も包みに書かない
   const tts = path.join(ROOT, 'tts');

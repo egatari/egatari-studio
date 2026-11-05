@@ -141,6 +141,23 @@
    "note": ""
   },
   {
+   "id": "created-by",
+   "group": "Format and files",
+   "en": "Created by",
+   "ja": "作成者",
+   "definition": "The people who made the lesson (metadata.creators), shown in File info in the editor and the player.",
+   "avoid": {
+    "ja": [
+     "作り手"
+    ],
+    "en": []
+   },
+   "internal": "creators",
+   "decided": "2026-11-04",
+   "by": "owner",
+   "note": "作り手 stays only where it means people who make lessons or parts in general."
+  },
+  {
    "id": "sample",
    "group": "Format and files",
    "en": "Samples",

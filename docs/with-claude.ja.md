@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=d57c39188ff51a4a -->
+<!-- i18n: pair=with-claude.md sha256=3a062d3b0d1237cc -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -24,7 +24,7 @@
 /plugin install egatari-studio@egatari
 ```
 
-教材を書くだけなら最初の 2 行で十分です。studio を使うときに `npm ci` は要りません。studio スキルが初めに `npx egatari@0.6.x doctor` で Node.js・ブラウザ・uv・ffmpeg を確かめ、足りないものの入れ方を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari` です。
+教材を書くだけなら最初の 2 行で十分です。studio を使うときに `npm ci` は要りません。studio スキルが初めに `npx egatari@0.6.x doctor` で Node.js・ブラウザ・uv・ffmpeg を確かめ、足りないものの入れ方を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`、または `npx egatari@0.6.x skills update`（Codex も更新します）を実行して道具を再起動します。自動更新にするなら `/plugin` → Marketplaces → egatari → Enable auto-update。Codex は README の「Codex で使う」を見てください。
 
 ### チャットの Claude・Cowork
 

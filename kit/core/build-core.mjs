@@ -18,6 +18,7 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
+import { innerJa } from './quote-ja.mjs';
 import { applyMetrics, DEFAULT_METRICS } from './theme-metrics.mjs';
 import { RUNTIME_FORMAT, FORMAT } from './format.mjs';
 import { runtimeAttachTypes } from './attach-content.mjs';
@@ -27,10 +28,13 @@ import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
 import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError } from './parts2.mjs';
-import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash } from './themes-lock.mjs';
+import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash, CSS_URL_RE, themeUrlRel } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
+
+// 設定のファイルの metadata から deck-meta に写す権利の項目（format spec §4 の deck-meta の表。schema/deck-meta.schema.json）。1 ファイル（portable.mjs）も作業フォルダの組み立ても同じものを写す
+export const DECK_META_RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
 const EDITABLE = new Set(['h1', 'h2', 'p', 'li', 'td', 'th']);
@@ -489,7 +493,23 @@ function themeAssets(env, t, warn, depth = 0, ud = [], tctx = null) {
   const tok = P.join(dir, 'tokens.css');
   // resolveTheme が確かめたが、読む直前にもう一度（同じ根で）
   if (!inRoot(tok)) { warn.push(`refused: テーマの tokens.css（${P.basename(dir)}）が許した場所の外を指している（読まない）`); return { css: par ? par.css : '', logos, cfg, metrics, declared }; }
-  return { css: (par ? par.css + '\n' : '') + env.readText(tok), logos, cfg, metrics, declared };
+  return { css: (par ? par.css + '\n' : '') + themeCssUrls(env, env.readText(tok), dir, inRoot, warn), logos, cfg, metrics, declared };
+}
+// テーマの tokens.css の url(…)（直接でも --cover-bg: url(cover.png) のような変数でも）：テーマのフォルダからの相対の参照を data: URI にする
+// （書き出したどのファイルでも画像が出る。組み立てが読むので、テーマの sha256・持ち運べる 1 ファイルの themes/<名前>/ に入る。format spec §6）。
+// data:・http(s):・絶対のパス・#断片は触らない。ロゴと同じ根の決まり（テーマのフォルダの外は読まず、知らせて元のまま）。読みは env（上限つき）を通す
+function themeCssUrls(env, text, dir, inRoot, warn) {
+  const P = env.path, name = P.basename(dir);
+  return text.replace(CSS_URL_RE, (m, q, ref) => {
+    if (ref === undefined) return m;                                   // コメント
+    const rel = themeUrlRel(ref), r = String(ref).trim();
+    if (!rel) return m;
+    const f = P.resolve(dir, rel);
+    if (!env.exists(f) || !env.isFile(f)) { warn.push(`missing: テーマ「${name}」の tokens.css の url(${r}) が見つからない（元のまま残す）`); return m; }
+    if (!inRoot(f)) { warn.push(`refused: テーマ「${name}」の tokens.css の url(${r}) が許した場所の外にある（読まない）`); return m; }
+    if (excludedFromThemeHash(P.relative(dir, f).split(P.sep).join('/'))) { warn.push(`theme: 「${r}」は文書（README・LICENSE・.md）なので埋め込まない（読まない）`); return m; }
+    return `url("${dataUri(env, f)}")`;
+  });
 }
 export const MIME = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml', webp: 'image/webp', avif: 'image/avif', ico: 'image/x-icon',
   wav: 'audio/wav', mp3: 'audio/mpeg', m4a: 'audio/mp4', ogg: 'audio/ogg', opus: 'audio/ogg', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime',
@@ -961,7 +981,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const w of segs.warnings || []) warn.push(`narration: ${w}`);
   const keySet = new Set(slides.map((s) => s.key));
   // 鍵がどのスライドにも合わない節（## 見出し）。段階のない節も知らせる
-  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${s.heading || s.key || s.slideKey}」（鍵「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
+  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${innerJa(s.heading || s.key || s.slideKey)}」（鍵「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
   const narration = narrationMap(segs, !!opts.dev);
   const marks = marksMap(segs);
   checkMarks(html, segs, warn);
@@ -1026,13 +1046,20 @@ export function build(env0, srcPath, opts = {}) {
   // latin.css はテーマの後のまま（日本語以外のデッキの字の既定。docs/reference.md「Themes」）
   const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${opts.articleCss || ''}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
-  // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）
+  // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）。
+  // 権利の表示と作成者（license・copyright・attribution・creators。§4・§7.3）も写す：再生器のファイルの情報が deck-meta から出す。形の合わない値は写さない
   const folderCompletion = () => {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
     if (!env.exists(cfg) || !inDeck(cfg)) return {};
     let c = null; try { c = JSON.parse(env.readText(cfg)); } catch { return {}; }
-    const m = c && typeof c === 'object' && c.metadata && typeof c.metadata === 'object' ? c.metadata.completion : null;
-    return m && typeof m === 'object' && !Array.isArray(m) ? { completion: m } : {};
+    const md = c && typeof c === 'object' && c.metadata && typeof c.metadata === 'object' && !Array.isArray(c.metadata) ? c.metadata : null;
+    if (!md) return {};
+    const m = md.completion, out = m && typeof m === 'object' && !Array.isArray(m) ? { completion: m } : {};
+    for (const k of DECK_META_RIGHTS) {
+      const v = md[k];
+      if (k === 'creators' ? Array.isArray(v) && v.every((x) => typeof x === 'string') : typeof v === 'string') out[k] = k === 'creators' ? [...v] : v;
+    }
+    return out;
   };
   // 2.0 だけの教材は再生器の 1.x 用の土台と公開の補助（DECK.define・DECK.MotionElement・DECK.el …）を外す。ただし作業フォルダの 1.x の部品（legacy）か、
   // 原稿自身の <script> がその補助を使うなら残す（"componentsCatalogue": "2" でも原稿の DECK.define が黙って動かなくならないように）

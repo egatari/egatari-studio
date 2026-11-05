@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=5b75cb7c2a905296 -->
+<!-- i18n: pair=README.md sha256=cbaea18bc64491f1 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,6 +128,8 @@ npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」にな�
 npx egatari doctor                    # Node・uv・ffmpeg・ブラウザがあるか、ないものの入れ方
 ```
 
+Bun（`bunx egatari`）でも動きます。
+
 ほかのコマンド（`ids`・`sheet`・`comment-shots`・`portable`・`video`・`tts`）は `npx egatari --help` に出る。`npx egatari video <作業フォルダ | .ega.html>` は組んでから、今ある音声のまま動画にする（ffmpeg が要る）。相対パスは今いるフォルダから解く。組み立てが埋め込む字は包みに入っている（`get-fonts` は要らない）。`egatari tts` は uv で `tts/synth.py` を動かし、Python の環境を利用者のキャッシュのフォルダに作る（別の場所にするには `UV_PROJECT_ENVIRONMENT`）。
 
 ## ブラウザで直す（開発サーバー）
@@ -190,7 +192,19 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、上の「npm で使う（clone しない）」）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れている道具（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、道具を再起動する。手間をかけたくなければ、Claude Code で `/plugin` → Marketplaces → egatari → Enable auto-update（自動更新）を入れておく。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+
+## Codex で使う
+
+Codex も同じリポジトリの同じスキルを読む。ターミナルで：
+
+```bash
+codex plugin marketplace add egatari/egatari-studio
+codex plugin add egatari@egatari
+codex plugin add egatari-studio@egatari
+```
+
+教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。Codex の workspace-write サンドボックスはネットとブラウザを塞ぐので、`check` と `build` はサンドボックスの外で、またはネットとブラウザを許して動かす。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
 
 チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 
@@ -215,7 +229,7 @@ D=examples/minimal
 uv run --project tts python tts/synth.py $D --dry-run    # 無音の仮の音声（オフラインで流れを試す）
 uv run --project tts python tts/synth.py $D              # 本番の TTS（サーバーと参照音声が要る）
 node kit/build.mjs $D/deck.html                          # 組み直して、音声の長さをタイムラインに入れる
-node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら --only "更新の式:2"、1 本にまとめるなら --full
+node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら --only "更新の式:2"（スライド 1 枚分なら --only 更新の式）、1 本にまとめるなら --full
 ```
 
 - 声：`--voices expert=bob,novice=alice` か `<教材>/voice.json`（`{"expert": "me"}`、または wav のパス）。既定は 1 人なら `bob`、掛け合いなら `bob`（Expert）と `alice`（Novice）で、`tts/voices/<名前>.wav` を探す。英語の教材では `<名前>_en.wav` があればそちらを使う

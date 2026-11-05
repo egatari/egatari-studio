@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseArticleText, fixtureTree, checkHtmlTable, convertAozora } from '../kit/core/article-text.mjs';
+import { parseArticleText, fixtureTree, checkHtmlTable, convertAozora, ARTICLE_LIMITS } from '../kit/core/article-text.mjs';
 import { articleLayout, readArticle, validateArticle, parseStep, referenceKeys } from '../kit/core/article.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { renderArticle, numberArticle } from '../kit/core/article-render.mjs';
@@ -21,6 +21,16 @@ const t = (name, fn) => { try { fn(); passed++; } catch (e) { failed++; console.
 const errorsOf = (ps) => ps.filter((p) => p.sev === 'error');
 // 1 つの原稿を article.md として読み、ファイルの点検と文書全体の点検（文脈のいらないもの）をかける
 const whole = (src, ctx = {}) => { const a = readArticle({ path: 'article.md' }, () => src); const v = validateArticle(a, ctx); return { a, problems: [...a.problems, ...v.problems] }; };
+
+// 段落の頭の全角の空白（青空文庫の字下げ）：CommonMark が外すのは半角の空白とタブだけ。markdown-it の trim が U+3000 を外していた
+t('a leading U+3000 of a paragraph is kept (CommonMark strips only spaces and tabs)', () => {
+  const r = parseArticleText('---\ntitle: t\n---\n\n　ある日の暮方の事である。\n　二行目。\n\n「せりふ」\n\n```\n　code\n```\n');
+  assert.deepStrictEqual(errorsOf(r.problems), []);
+  assert.equal(r.tree.children[0].children[0].value, '　ある日の暮方の事である。\n　二行目。');
+  assert.equal(r.tree.children[1].children[0].value, '「せりふ」');
+  assert.equal(r.tree.children[2].value, '　code');
+  assert.ok(!JSON.stringify(r.tree).includes('﷐'), 'no placeholder is left in the tree');
+});
 
 // ---------------------------------------------------------------- 仕様の fixtures
 // 仕様の側の食い違い（仕様の持ち主に知らせ済み）：拒む例のうち、今の §9C.2 の本文では正しい書き方になっているもの
@@ -298,6 +308,52 @@ t('section ids are added by the tool', () => {
   assert.equal(r.out, '(sec-abcdef)=\r\n## A\r\n\r\n(sec-aaaaaa)=\r\n## B\r\n');
   assert.equal(assignSectionIds(r.out).added.length, 0);
 });
+// markdown-it 13.0.2 の 2 乗の時間（GHSA-r7fv-28h4-cvq7・GHSA-6v5v-wf23-fmfq の smartquotes、GHSA-vfgh-jcmw-g37q の行内の HTML）：
+// 1 つの段落の " ' と「<! <?」の数が ARTICLE_LIMITS を越えたら、myst-parser に渡さずに断る。1 MiB の攻撃の形はどれも速く断り、限りちょうどは読む
+{
+  const L = ARTICLE_LIMITS, N = L.fileBytes;
+  const fill = (p) => { let s = ''; while (s.length + p.length + 2 <= N) s += p + '\n\n'; return s; };
+  const SHAPES = {
+    'GHSA-r7fv (double openers, unmatched single closers)': [(k) => ' "a'.repeat(k / 2) + " a'".repeat(k / 2), L.paragraphQuotes],
+    'GHSA-r7fv (single openers, unmatched double closers)': [(k) => " 'a".repeat(k / 2) + ' a"'.repeat(k / 2), L.paragraphQuotes],
+    'GHSA-6v5v (a run of quotes)': [(k) => '"'.repeat(k), L.paragraphQuotes],
+    'GHSA-6v5v (many replacements in one text)': [(k) => '"a" '.repeat(k / 2), L.paragraphQuotes],
+    'GHSA-vfgh (<?)': [(k) => 'a <? '.repeat(k), L.paragraphHtmlStarts],
+    'GHSA-vfgh (<!--)': [(k) => 'a <!-- '.repeat(k), L.paragraphHtmlStarts],
+    'GHSA-vfgh (<!A)': [(k) => 'a <!A '.repeat(k), L.paragraphHtmlStarts],
+    'GHSA-vfgh (<![CDATA[)': [(k) => 'a <![CDATA[ '.repeat(k), L.paragraphHtmlStarts],
+  };
+  for (const [name, [f, max]] of Object.entries(SHAPES)) {
+    t(`unsafe paragraph refused fast: ${name}`, () => {
+      for (const src of [fill(f(max + 2)), f(2 * Math.floor((N - 10) / f(2).length))]) {
+        const t0 = performance.now();
+        const { a, problems } = whole(src);
+        const ms = performance.now() - t0;
+        const u = problems.filter((p) => p.code === 'articleUnsafeParagraph');
+        assert.equal(u.length, 1, 'one articleUnsafeParagraph');
+        assert.equal(u[0].sev, 'error');
+        assert.equal(u[0].line, 1);
+        assert.deepStrictEqual(a.files[0].tree.children, [], 'myst-parser is not run');
+        assert.ok(ms < 1000, `${Math.round(ms)} ms`);
+      }
+    });
+  }
+  t('a paragraph at the limits still parses; code blocks and separate paragraphs do not count', () => {
+    for (const src of [' "a'.repeat(L.paragraphQuotes), 'a <?x'.repeat(L.paragraphHtmlStarts), '```python\n' + 'print("a", \'b\')\n'.repeat(500) + '```\n', '- "a"\n'.repeat(400), '| a | b |\n|---|---|\n' + '| "x" | \'y\' |\n'.repeat(400)]) {
+      const r = parseArticleText(src);
+      assert.ok(!r.problems.some((p) => p.code === 'articleUnsafeParagraph'), src.slice(0, 30));
+      assert.ok(r.tree.children.length > 0);
+    }
+  });
+  t('the unsafe paragraph is named by section, start and line, in both languages', () => {
+    const src = '---\ntitle: t\n---\n\n## はじめに\n\nふつうの段落。\n\n:::{exercise}\n' + " 'a".repeat(L.paragraphQuotes + 1) + '\n:::\n';
+    const u = parseArticleText(src).problems.find((p) => p.code === 'articleUnsafeParagraph');
+    assert.equal(u.line, 10);
+    assert.deepStrictEqual([u.data.what, u.data.count, u.data.max, u.data.heading], ['quotes', L.paragraphQuotes + 1, L.paragraphQuotes, 'はじめに']);
+    assert.match(articleMessage('ja', { ...u, file: 'article.md' }), /^article\.md 10 行目：節「はじめに」の段落「'a 'a/);
+    assert.match(articleMessage('en', { ...u, file: 'article.md' }), /^article\.md line 10: the paragraph “'a 'a.*in the section “はじめに” has 513 quotation marks/);
+  });
+}
 t('every problem code has words in both languages', () => {
   const codes = new Set();
   for (const f of ['core/article-text.mjs', 'core/article.mjs', 'core/article-page.mjs', 'core/article-cite.mjs', 'check.mjs']) for (const m of fs.readFileSync(path.join(ROOT, 'kit', ...f.split('/')), 'utf8').matchAll(/'(article[A-Z][A-Za-z]+)'/g)) codes.add(m[1]);

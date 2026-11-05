@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=0fd1bcf023be26ba -->
+<!-- i18n: pair=README.ja.md sha256=a16a3451d9082807 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -128,6 +128,8 @@ npx egatari check mytalk/deck.html    # the last line should read "エラー 0" 
 npx egatari doctor                    # Node, uv, ffmpeg and a browser: what is there and how to install what is missing
 ```
 
+Also runs with Bun (`bunx egatari`).
+
 `npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
 
 ## Editing in the browser (dev server)
@@ -190,7 +192,19 @@ First delete the old `~/.claude/skills/motion-*` entries (and any copies in a pr
 /plugin install egatari-studio@egatari
 ```
 
-The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see "With npm (no clone)" above): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
+The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see "With npm (no clone)" above): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. For zero effort in Claude Code, open `/plugin` → Marketplaces → egatari → Enable auto-update. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
+
+## Using it with Codex
+
+Codex reads the same skills from the same repository. In a terminal:
+
+```bash
+codex plugin marketplace add egatari/egatari-studio
+codex plugin add egatari@egatari
+codex plugin add egatari-studio@egatari
+```
+
+Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a lesson. Codex's workspace-write sandbox blocks the network and the browser, so run `check` and `build` outside it, or with network and browser access allowed. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
 
 For a chat AI, upload `egatari-make-skill.zip`. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 
@@ -215,7 +229,7 @@ D=examples/minimal
 uv run --project tts python tts/synth.py $D --dry-run    # silent placeholder audio, to try the pipeline offline
 uv run --project tts python tts/synth.py $D              # real TTS (needs the server and the voices)
 node kit/build.mjs $D/deck.html                          # rebuild so the audio lengths enter the timeline
-node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step, --full for one file
+node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step (or --only 更新の式 for a whole slide), --full for one file
 ```
 
 - Voices: `--voices expert=bob,novice=alice`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English lesson `<name>_en.wav` is used when it exists

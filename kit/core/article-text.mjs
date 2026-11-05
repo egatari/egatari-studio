@@ -8,15 +8,21 @@
 // 版（package.json で固定）：myst-parser 1.7.4・myst-transforms 1.3.51・myst-ext-proof 1.0.13・myst-ext-exercise 1.0.10・vfile 6.0.3。
 // 仕様の正解の木は myst-parser 1.7.5 / myst-transforms 1.3.52 で作ったが、その 2 つは公開から 2 週間たっていない（2026-10-26）。
 // 1 つ前の版（2026-09-21）で 49 の正解の木がすべて同じになることを確かめて、こちらに固定する（tools/test-article.mjs が毎回確かめる）。
-// markdown-it は 13 のまま（14 は markdown-it-dollarmath が読めない）。13 の既知の弱点（HTML の行内の 2 乗の時間）があるので、
-// 読む大きさは ARTICLE_LIMITS.fileBytes までにする。linkify・typographer は myst-parser が切っている。
-import { mystParse } from 'myst-parser';
+// markdown-it は 13 のまま（14 は markdown-it-dollarmath と myst-to-html が読めない：markdown-it/lib/common/utils.js が 14 にない）。
+// myst-parser の既定では html と typographer（smartquotes）が入り、linkify は切れている。13 には 2 乗の時間がかかる書き方がある
+// （smartquotes：GHSA-r7fv-28h4-cvq7・GHSA-6v5v-wf23-fmfq、行内の HTML の「<!」「<?」：GHSA-vfgh-jcmw-g37q）。開いたファイルの本文は
+// 信用できない入力なので、読む大きさを ARTICLE_LIMITS.fileBytes までにし、1 つの段落の引用符（" と '）と「<!」「<?」の数を
+// ARTICLE_LIMITS.paragraphQuotes・paragraphHtmlStarts までにする（越えたら myst-parser に渡さずに断る。articleUnsafeParagraph）。
+// v0.6.6 で本の道具を markdown-it 14.3.3 といっしょに 1 本にまとめたら、この限りは外せる（.github/workflows/audit.yml の例外も）。
+import { mystParse, createTokenizer } from 'myst-parser';
 import { proofDirective } from 'myst-ext-proof';
 import { exerciseDirectives } from 'myst-ext-exercise';
 import { liftMystDirectivesAndRolesTransform, mystTargetsTransform, reconstructHtmlTransform, htmlTransform, containerChildrenTransform, captionParagraphTransform } from 'myst-transforms';
 import { VFile } from 'vfile';
 
-export const ARTICLE_LIMITS = Object.freeze({ fileBytes: 1 << 20 });   // 1 ファイル 1 MiB まで（本の 1 章には十分）
+// fileBytes：1 ファイル 1 MiB まで（本の 1 章には十分）。paragraphQuotes・paragraphHtmlStarts：1 つの段落（markdown-it の行内の塊：段落・見出し・
+// 表の欄など。コードブロックは数えない）の " と ' の数、「<!」「<?」の数の上限。最も悪い 1 MiB でも 13.0.2 で 0.15 秒ほどに収まる値
+export const ARTICLE_LIMITS = Object.freeze({ fileBytes: 1 << 20, paragraphQuotes: 512, paragraphHtmlStarts: 64 });
 
 // §9C.2 の定理の類（mystmd の proof 拡張の種類）
 export const PROOF_KINDS = Object.freeze(['theorem', 'lemma', 'proposition', 'corollary', 'definition', 'example', 'remark', 'proof', 'axiom', 'assumption', 'conjecture', 'criterion', 'property', 'observation', 'algorithm']);
@@ -24,7 +30,7 @@ export const KINDS = Object.freeze(['preface', 'chapter', 'appendix', 'afterword
 // 前付けに書ける項目と型（§9C.2）
 const FM_MEMBERS = { title: 'string', subtitle: 'string', lang: 'lang', bibliography: 'string', 'writing-mode': 'mode', chapter: 'posint', kind: 'kind', numbering: 'boolean' };
 // 指令ごとに書ける option（§9C.2）
-const DIRECTIVES = { figure: ['label', 'alt'], table: ['label'], aside: ['label', 'class'], exercise: ['label', 'nonumber'], solution: ['label'], glossary: [] };
+const DIRECTIVES = { figure: ['label', 'alt'], table: ['label', 'class'], aside: ['label', 'class'], exercise: ['label', 'nonumber'], solution: ['label'], glossary: [] };
 const ROLES = new Set(['step', 'ruby', 'term', 'sub', 'sup']);
 const ADMONITIONS = new Set(['admonition', 'note', 'tip', 'hint', 'important', 'warning', 'caution', 'attention', 'danger', 'error', 'seealso', 'margin', 'sidebar', 'topic']);
 // 名前の決まり（§8.1・§9C.3・§9C.4）
@@ -153,6 +159,71 @@ export function checkHtmlTable(html) {
   return [...new Set(errs)];
 }
 
+// 段落の頭の全角の空白（U+3000。青空文庫などの字下げ）を残す。CommonMark が段落の頭と終わりから外すのは半角の空白とタブだけだが、
+// markdown-it（myst-parser の下）は String.prototype.trim で U+3000 も外す。読む前に行の頭の U+3000 を印（U+FDD0。非文字）に替え、木の字で戻す
+const IDEO_MARK = '\uFDD0';
+function protectIdeographicSpaces(body) { return body.replace(/^\u3000+/gm, (m) => IDEO_MARK.repeat(m.length)); }
+function keepIdeographicSpaces(tree) {
+  const seen = new Set();
+  const walk = (x) => {
+    if (!x || typeof x !== 'object' || seen.has(x)) return;
+    seen.add(x);
+    for (const k of Object.keys(x)) {
+      const v = x[k];
+      if (typeof v === 'string') { if (v.includes(IDEO_MARK)) x[k] = v.split(IDEO_MARK).join('\u3000'); }
+      else if (v && typeof v === 'object') walk(v);
+    }
+  };
+  walk(tree);
+  return tree;
+}
+
+// ---------------------------------------------------------------- 2 乗の時間がかかる段落（markdown-it 13 の smartquotes と行内の HTML）
+// 1 つの段落の " と ' の数、「<!」「<?」の数を数える。速い道：空行で区切った行の並びごとに数える（markdown-it の行内の塊は空行をまたがないので、
+// これが上限になる）。越える並びがあるときだけ、markdown-it のブロックの読み（線形）で行内の塊を出して数え直す（コードブロックは数えない。
+// 指令の中身はあとで myst-parser が読み直すので、中身も同じように数える）。返すもの：越えた最初の段落 {what, count, max, line, heading, text} か null
+const QUOTE_RE = /["']/g;
+const HTML_START_RE = /<[!?]/g;
+const countOf = (s, re) => { let n = 0; re.lastIndex = 0; while (re.exec(s)) n++; return n; };
+const overLimit = (s) => {
+  const q = countOf(s, QUOTE_RE);
+  if (q > ARTICLE_LIMITS.paragraphQuotes) return { what: 'quotes', count: q, max: ARTICLE_LIMITS.paragraphQuotes };
+  const h = countOf(s, HTML_START_RE);
+  if (h > ARTICLE_LIMITS.paragraphHtmlStarts) return { what: 'html', count: h, max: ARTICLE_LIMITS.paragraphHtmlStarts };
+  return null;
+};
+let blockTokenizer = null;
+function unsafeParagraph(body) {
+  let fast = false, run = '';
+  for (const ln of (body + '\n').split('\n')) {
+    if (/^[ \t]*$/.test(ln)) { if (run && overLimit(run)) { fast = true; break; } run = ''; } else run += ln + '\n';
+  }
+  if (!fast) return null;
+  blockTokenizer ||= createTokenizer({});
+  return unsafeIn(body, 0, '');
+}
+function unsafeIn(src, base, heading0) {
+  const tokens = [];
+  blockTokenizer.block.parse(src.replace(/\0/g, '\uFFFD'), blockTokenizer, {}, tokens);
+  let heading = heading0;
+  for (let i = 0; i < tokens.length; i++) {
+    const t = tokens[i];
+    const line = base + (t.map ? t.map[0] : 0) + 1;
+    if (t.type === 'inline') {
+      if (tokens[i - 1] && tokens[i - 1].type === 'heading_open') heading = t.content.trim();
+      const o = overLimit(t.content);
+      if (o) return { ...o, line, heading: heading.slice(0, 40), text: t.content.trim().replace(/\s+/g, ' ').slice(0, 20) };
+    } else if (/fence$/.test(t.type) && /^\s*\{/.test(t.info || '')) {
+      // 指令（:::{…}・```{…}）：引数の行と中身を数える（中身はあとで myst-parser が読み直す）
+      const o = overLimit(t.info || '');
+      if (o) return { ...o, line, heading: heading.slice(0, 40), text: String(t.info).trim().replace(/\s+/g, ' ').slice(0, 20) };
+      const inner = unsafeIn(t.content || '', line, heading);
+      if (inner) return inner;
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------- 本体
 // 返すもの：{fm, tree, problems, conversions}。problems は {sev: 'error'|'warn', code, spec, line, data}（line は原稿の行、1 から）
 export function parseArticleText(src, opts = {}) {
@@ -167,7 +238,13 @@ export function parseArticleText(src, opts = {}) {
   const lines = front.body.split('\n');
   const lineOf = (n) => (n && n.position ? n.position.start.line + off : null);
   const add = (sev, code, spec, node, data = {}) => problems.push(P(sev, code, spec, typeof node === 'number' ? node : lineOf(node), data));
-  const tree = mystParse(front.body, { directives: [proofDirective, ...exerciseDirectives] });
+  // 2 乗の時間がかかる段落があれば、myst-parser に渡さずに断る（上の markdown-it 13 の説明）
+  const unsafe = unsafeParagraph(front.body);
+  if (unsafe) {
+    problems.push(P('error', 'articleUnsafeParagraph', null, unsafe.line + off, { what: unsafe.what, count: unsafe.count, max: unsafe.max, heading: unsafe.heading, text: unsafe.text }));
+    return { fm: front.fm, tree: { type: 'root', children: [] }, problems, conversions, lineOffset: off };
+  }
+  const tree = keepIdeographicSpaces(mystParse(protectIdeographicSpaces(front.body), { directives: [proofDirective, ...exerciseDirectives] }));
 
   // ---- 変換の前の木：指令・役割・生の HTML・コメント・区切り・字
   const rawWalk = (node, parents) => {
@@ -351,6 +428,8 @@ export function parseArticleText(src, opts = {}) {
       if (node.depth === 2 && !node.label) add('error', 'articleSectionId', '§9C.3', node, { heading: plain(node).slice(0, 40) });
       if (node.label) checkLabel(node, node.depth === 2 ? 'section' : 'heading');
     } else if (['math', 'container', 'aside', 'proof', 'exercise', 'solution', 'table'].includes(t) && node.label && !(t === 'exercise' && node.hidden)) checkLabel(node, 'label');
+    // 表の :class:（§9C.2・§9C.6）：名前の形はコラムの種類と同じ。horizontal は縦書きの本でも横組みのまま、ほかはテーマに渡す
+    if (t === 'container' && node.kind === 'table') for (const c of String(node.class || '').split(/\s+/).filter(Boolean)) if (!CLASS_RE.test(c)) add('error', 'articleTableClass', '§9C.2', node, { cls: c });
     if (t === 'aside') {
       if (!(node.children && node.children[0] && node.children[0].type === 'admonitionTitle')) add('error', 'articleAsideTitle', '§9C.2', node);
       for (const c of String(node.class || '').split(/\s+/).filter(Boolean)) if (!CLASS_RE.test(c)) add('error', 'articleAsideClass', '§9C.2', node, { cls: c });

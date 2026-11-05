@@ -142,8 +142,9 @@ export function articlePageOf(env, R, opts = {}) {
   const r = { html: R.html, warnings: R.warnings };
   const title = L.article.files.length === 1 && L.article.files[0].fm.title ? L.article.files[0].fm.title : opts.title || '';
   const usesMath = /class="katex/.test(r.html);
+  // 縦書きの本の頁は、根も縦書きにする：頁は右から左へ進み、開いたときは右端（本の初め）が見える（§9C.2・EPUB の page-progression-direction="rtl"）
   const html = `<!DOCTYPE html>
-<html lang="${esc(lang)}">
+<html lang="${esc(lang)}"${L.article.writingMode === 'vertical-rl' ? ' class="egatari-vertical-page"' : ''}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -151,7 +152,8 @@ export function articlePageOf(env, R, opts = {}) {
 <style>${themeTokens(opts.themeCss || '')}
 body{margin:0;background:var(--bg,Canvas);color:var(--fg,CanvasText);font-family:${/^ja\b/i.test(lang) ? (L.article.writingMode === 'vertical-rl' ? '"BIZ UDPMincho",serif' : '"BIZ UDPGothic",sans-serif') : 'system-ui,sans-serif'}}
 ${usesMath ? katexCss(env) : ''}
-${ARTICLE_CSS}</style>
+${ARTICLE_CSS}
+html.egatari-vertical-page{writing-mode:vertical-rl}</style>
 </head>
 <body>
 <section id="egatari-readable" lang="${esc(lang)}">

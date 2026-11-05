@@ -32,6 +32,7 @@ import { makeDeck } from './portable-fixtures.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { withLayoutScan } from '../kit/core/layout-scan.mjs';
 import { shareBrowser, launch } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 // ブラウザは 1 つだけ起動し、この試験と子のプロセス（kit/check.mjs など）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser。backlog #156）
 await shareBrowser();
 
@@ -506,7 +507,7 @@ ok('記事だけの教材：index.article があれば entry はいらない。�
     const frame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame());
     // プレビュー（dev）：品質チェックを頼み、返事が来る
     await load(previewDocument(base.html, `${VIOL}${SHIM}(${JSON.stringify({ dev: true, load: 1 })});`));
-    await frame().waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 30000 });
+    await frame().waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(30000) });
     const st = await frame().evaluate(() => {
       const metas = [...document.querySelectorAll('meta')].filter((m) => (m.getAttribute('http-equiv') || '').toLowerCase() === 'content-security-policy').map((m) => m.content);
       const s = document.querySelector('section.slide');
@@ -517,12 +518,12 @@ ok('記事だけの教材：index.article があれば entry はいらない。�
     assert.equal(st.metas[1], policyText(), 'the file keeps its own policy');
     assert.equal(st.slides, 2); assert.ok(st.visible); assert.equal(st.readableHidden, true);
     await page.evaluate(() => document.getElementById('f').contentWindow.postMessage({ type: 'app-check', id: 'q1' }, '*'));
-    await page.waitForFunction(() => M.some((m) => m.type === 'app-check-result'), null, { timeout: 30000 });
+    await page.waitForFunction(() => M.some((m) => m.type === 'app-check-result'), null, { timeout: scaled(30000) });
     const viol = await frame().evaluate(() => window.__viol);
     assert.deepEqual(viol, [], 'no CSP violation in the preview');
     // 縮図（スライド一覧）：仲立ちが写しを並べ、知らせる
     await load(previewDocument(base.html, `${VIOL}${SHIM}(${JSON.stringify({ strip: { w: 160, row: 96, bg: '#000' } })});`));
-    await page.waitForFunction(() => M.some((m) => m.type === 'app-strip-ready'), null, { timeout: 30000 });
+    await page.waitForFunction(() => M.some((m) => m.type === 'app-strip-ready'), null, { timeout: scaled(30000) });
     assert.equal((await page.evaluate(() => M.find((m) => m.type === 'app-strip-ready').n)), 2);
     assert.deepEqual(await frame().evaluate(() => window.__viol), []);
     assert.deepEqual(errs, []);

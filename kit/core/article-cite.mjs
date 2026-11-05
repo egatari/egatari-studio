@@ -23,6 +23,24 @@ const LIST_TITLE = { ja: '参考文献', en: 'References' };
 const LOCALES = { ja: 'ja-JP', en: 'en-US' };
 export const cslLocaleOf = (lang) => LOCALES[String(lang || '').toLowerCase().split('-')[0]] || 'en-US';
 
+// 同梱の書式を、読み込むときに少しだけ合わせる（vendor/csl のファイルは手を加えない写しのまま。変えた点は NOTICE と vendor/csl/SOURCE.json の note）。
+// sist02：
+//   - 著者のない文献（編者だけの本など）は編者を著者の場所に書く（CSL の substitute。元の書式は著者がないと名前を何も書かない）
+//   - 日本語の本では、巻・号・ページを SIST02 の略記 vol.・no.・p. にし（ja-JP の言語のファイルの「巻」「号」「ページ」に「. 」が付いて
+//     「ページ. 84–93」となっていた）、書名を囲む引用符を「」『』にする（“ ” は縦書きで寝る）
+export function adaptStyle(style, xml, lang) {
+  if (typeof xml !== 'string' || style !== 'sist02') return xml;
+  let out = xml.replace(/(<macro name="author">\s*<names variable="author" suffix="\. ">\s*<name [^>]*\/>)(\s*<\/names>)/,
+    '$1<label form="short" prefix=" " plural="never"/><substitute><names variable="editor"/><names variable="translator"/></substitute>$2');
+  if (/^ja\b/i.test(String(lang || ''))) {
+    const terms = '<term name="open-quote">「</term><term name="close-quote">」</term><term name="open-inner-quote">『</term><term name="close-inner-quote">』</term>' +
+      '<term name="volume" form="short"><single>vol.</single><multiple>vol.</multiple></term><term name="issue" form="short"><single>no.</single><multiple>no.</multiple></term>' +
+      '<term name="page" form="short"><single>p.</single><multiple>p.</multiple></term>';
+    out = out.replace(/<locale xml:lang="ja">\s*<terms>[\s\S]*?<\/terms>\s*<\/locale>/, `<locale xml:lang="ja"><terms>${terms}</terms></locale>`);
+  }
+  return out;
+}
+
 // metadata.citations を読む（§9C.4・§9C.8 の 7）。book：index.article が chapters か。styles：使える書式の名前（既定は同梱のもの）
 // 返すもの：{style（実際に使う書式）, asked（書いてあった style）, list, problems}
 export function citationSettings(citations, { book = false, styles = Object.keys(CITATION_STYLES) } = {}) {
@@ -55,7 +73,7 @@ export function renderCitations(article, items, opts) {
   for (const it of Array.isArray(items) ? items : []) if (it && typeof it === 'object' && typeof it.id === 'string' && !byId.has(it.id)) byId.set(it.id, it);
   const book = !!(article.index && article.index.chapters);
   const perChapter = list === 'chapter' && book;
-  const styleXml = csl && csl.style ? csl.style(style) : null;
+  const styleXml = csl && csl.style ? adaptStyle(style, csl.style(style), lang) : null;
   if (!csl || !csl.CSL || !styleXml) return { groups, narratives, end, chapters, problems, rendered: false };
   const numeric = /<category\s+citation-format="numeric"/.test(styleXml);
   const locale = cslLocaleOf(lang);

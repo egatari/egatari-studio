@@ -1,4 +1,0 @@
-### Fixed
-
-- A lesson that uses an element its selected parts library does not provide is no longer built with the part silently missing (#165). An element only parts library 2.x has (e.g. `<m-score>`) in a 1.x lesson, an element from a newer 2.x catalogue than the one selected, the name of a library part, or a 1.x lesson pinning a part to a 2.x version now stops `build`, the single-file export and the editor, and `check --json` reports `component-not-in-catalogue` (English and Japanese), naming the element and the fix, e.g. set `"componentsCatalogue": "2"` in `egatari.json`. Elements the lesson defines itself are not affected; names in no catalogue stay a warning.
-- The 1.x player no longer throws `egatariParts is not defined` when a hand-made file carries a 2.x part without the registry: the element is reported in `DECK.componentErrors` and shown as its text equivalent, and the parts after it still run.

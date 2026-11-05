@@ -13,6 +13,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | script | Script | 台本 | What is spoken, step by step (narration.md). | 口述原稿 ・ ナレーション原稿 / narration | narration.md | 2026-10-24 (owner) |
 | export-script | Export script | 台本を書き出す | Save the script of the steps that need audio as one file, for generating audio in the cloud. | 声の依頼ファイル ・ tts-job.json（画面で） | tts-job.json | 2026-10-24 (owner) |
 | file-info | File info | ファイルの情報 | Title, license, creators and attachments of the file. | 教材の情報 / Lesson info | metadata | 2026-10-24 (owner) |
+| created-by | Created by | 作成者 | The people who made the lesson (metadata.creators), shown in File info in the editor and the player. | 作り手 | creators | 2026-11-04 (owner) |
 | sample | Samples | サンプル | Example lessons shipped with the editor. | 見本 ・ 見本の教材 / examples |  | 2026-10-24 (owner) |
 | play-sample | Play | 再生 | Button of a sample on the first screen: plays the sample large in a window (backlog #130). | 見る（このボタンで） | playExample | 2026-11-03 (standards) |
 | make-like-sample | Make one based on this sample | このサンプルを参考に作る | Main button of the sample window (and the link on egatari.org's samples page): opens New… with the sample's structure, setting, theme and parts filled in; only step 2 is empty. The line under it: 「構成・テーマ・パーツを引き継ぎます。中身はあなたの題材で新しく作ります」 / “Keeps its structure, theme and parts; the content is new, from your topic.” | このサンプルのように作る; Make one like this sample | ?from-sample=<name> | 2026-11-05 (owner) |

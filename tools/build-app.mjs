@@ -138,7 +138,7 @@ const buildWorkerJs = BW.outputFiles[0].text;
 // 本文の道具（app/article-tools.js：myst-parser と kit/core/article*.mjs、引用の書式の写し）：app.js に入れず、本のある教材を開いたときにだけ読み込む
 // （app/article-loader.js。配信版は dist/article-tools.js、1 ファイル版は字として入れる）。kit/core のほかの部品と KaTeX は読み込む側のもの
 // （app/article-host.js の名前。ほかの部品を読もうとしたら組まない：同じものを 2 度入れない）
-const ARTICLE_HOST_NAMES = ['build-core', 'config-file', 'format', 'narration-parse'];
+const ARTICLE_HOST_NAMES = ['build-core', 'config-file', 'format', 'narration-parse', 'quote-ja'];
 const articleHostPlugin = {
   name: 'article-host',
   setup(b) {

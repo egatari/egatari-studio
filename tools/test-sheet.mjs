@@ -49,4 +49,10 @@ ok(d3 && d3.w === g3.width && d3.h === g3.height, `--steps size ${d3 && d3.w}×$
 ok(r3.labels.join('|').startsWith('5:0 · ') && r3.labels[4] === '5:4', `--steps labels: ${r3.labels.join(' | ')}`);
 const o3 = execFileSync('node', [path.join(ROOT, 'tools/sheet.mjs'), built, path.join(work, 'd.png'), '--steps'], { encoding: 'utf8' });
 ok(o3.includes(path.join(work, 'd.png')) && o3.includes('5 steps of 1 slide'), 'CLI --steps prints the path and the count');
+// 既定の出力：原稿（deck.html）を渡しても <作業フォルダ>/out/sheet.png（原稿の横に書かない。docs/reference の npm run sheet）
+const copy = path.join(work, 'folder');
+fs.rmSync(copy, { recursive: true, force: true });
+fs.cpSync(deck, copy, { recursive: true, filter: (f) => !/[\\/]out$/.test(f) });
+const r4 = await sheet(path.join(copy, 'deck.html'), {});
+ok(r4.out === path.join(copy, 'out', 'sheet.png') && fs.existsSync(r4.out) && !fs.readdirSync(copy).some((f) => /\.png$/.test(f)), `deck.html: the sheet goes to out/sheet.png (${r4.out})`);
 process.exit(fails ? 1 : 0);

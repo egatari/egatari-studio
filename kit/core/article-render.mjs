@@ -5,13 +5,14 @@
 import { visit, plain } from './article-text.mjs';
 import { parseStep } from './article.mjs';
 import { renderCitations } from './article-cite.mjs';
+import { quoteJa } from './quote-ja.mjs';
 
 // 言語ごとの言葉（§9C.6）。日本語のほかは英語
 const WORDS = {
   ja: {
     figure: '図', table: '表', aside: 'コラム', exercise: '問', equation: '式', section: (n) => `${n} 節`,
     chapter: (n) => `第 ${n} 章`, appendix: (l) => `付録 ${l}`, proof: '証明', solution: (x) => `${x} の解答`, eq: (n) => `式 (${n})`,
-    step: (title, k) => `スライド「${title}」${k === '0' ? '' : k === 'concl' ? 'の結論' : `のステップ ${k}`}`,
+    step: (title, k) => `スライド${quoteJa(title)}${k === '0' ? '' : k === 'concl' ? 'の結論' : `のステップ ${k}`}`,
     kinds: { theorem: '定理', lemma: '補題', proposition: '命題', corollary: '系', definition: '定義', example: '例', remark: '注意', proof: '証明', axiom: '公理', assumption: '仮定', conjecture: '予想', criterion: '規準', property: '性質', observation: '観察', algorithm: 'アルゴリズム' },
     paren: (t) => `（${t}）`, sp: ' ', notes: '注', back: '本文へ戻る',
   },
@@ -139,7 +140,11 @@ export function renderArticle(article, opts = {}) {
     const exerciseBefore = new Set();
     children.forEach((c, i) => { if (c.type === 'solution' && i > 0 && children[i - 1].type === 'exercise') exerciseBefore.add(c); });
 
-    const text = (s) => (vertical ? tcy(String(s)) : esc(String(s)));
+    // 縦中横は縦書きの本の字だけ（横組みのままの表 :class: horizontal の中は横書きなので付けない）
+    let horizontal = false;
+    const text = (s) => (vertical && !horizontal ? tcy(String(s)) : esc(String(s)));
+    // 書式で組んだ引用の HTML：縦書きでは字の中の 1〜2 桁の数（(1)・(1, p. 12) の番号）を縦中横に。タグと文字参照には触れない
+    const citeHtml = (h) => (vertical ? String(h).replace(/(<[^>]*>|&[#A-Za-z0-9]+;)|(?<![0-9])([0-9]{1,2})(?![0-9])/g, (m, keep, d) => (keep ? keep : `<span class="egatari-tcy">${d}</span>`)) : h);
     const inline = (ns) => (ns || []).map(node).join('');
     const block = (ns) => (ns || []).map(node).filter((x) => x !== '').join('\n');
     const num = (n) => info.nodes.get(n) || {};
@@ -159,10 +164,12 @@ export function renderArticle(article, opts = {}) {
       const start = pendingNotes[0].n;
       const items = pendingNotes.map(({ n, def }) => {
         const body = (def.children || []).map((p, j, a) => (p.type === 'paragraph' ? inline(p.children) + (j < a.length - 1 ? '<br>' : '') : '')).join('');
-        return `<li id="${fnId(n)}">${body} <a class="egatari-fn-back" href="#${fnId(n)}-ref" aria-label="${esc(W.back)}">↩</a></li>`;
+        // 縦書きでは番号を字で書く（リストの印は横に寝て、縦中横にできない。§9C.6 の組み立てが書く番号と同じく 1〜2 桁を縦中横に）
+        const no = vertical ? `<span class="egatari-fn-no">${text(String(n))}</span>` : '';
+        return `<li id="${fnId(n)}">${no}${body} <a class="egatari-fn-back" href="#${fnId(n)}-ref" aria-label="${esc(W.back)}">↩</a></li>`;
       });
       pendingNotes = [];
-      return `<ol class="egatari-footnotes"${start > 1 ? ` start="${start}"` : ''}>${items.join('')}</ol>`;
+      return `<ol class="egatari-footnotes${vertical ? ' egatari-fn-numbered' : ''}"${start > 1 ? ` start="${start}"` : ''}>${items.join('')}</ol>`;
     };
     function node(n) {
       switch (n.type) {
@@ -261,8 +268,8 @@ export function renderArticle(article, opts = {}) {
           }
           return inline(n.children);
         }
-        case 'citeGroup': return `<span class="egatari-cite-group">${C && C.groups.has(n) ? C.groups.get(n) : `(${(n.children || []).map(node).join('; ')})`}</span>`;
-        case 'cite': if (C && C.narratives.has(n)) return C.narratives.get(n);
+        case 'citeGroup': return `<span class="egatari-cite-group">${C && C.groups.has(n) ? citeHtml(C.groups.get(n)) : `(${(n.children || []).map(node).join('; ')})`}</span>`;
+        case 'cite': if (C && C.narratives.has(n)) return citeHtml(C.narratives.get(n));
           return `<span class="egatari-cite" data-egatari-cite="${esc(n.label || n.identifier)}">${esc(n.label || n.identifier)}${n.suffix ? `, ${text(n.suffix)}` : ''}</span>`;
         case 'mystRole': {
           if (n.name === 'ruby') {
@@ -290,14 +297,19 @@ export function renderArticle(article, opts = {}) {
     function container(n) {
       const x = num(n);
       const caption = captionOf(n, 'caption')[0], legend = captionOf(n, 'legend')[0];
+      const id = n.label ? ` id="${esc(n.label)}"` : '';
+      if (n.kind === 'table') {
+        // :class:（§9C.6）：egatari-table-<名前>。horizontal の表は縦書きの本でも横組み（題・注も。字は縦中横にしない）
+        const names = String(n.class || '').split(/\s+/).filter(Boolean);
+        const cls = ['egatari-table', ...names.map((c) => `egatari-table-${c}`)].join(' ');
+        if (!names.includes('horizontal')) return figTable(n, cls, id, x, caption, legend);
+        const was = horizontal;
+        horizontal = true;
+        try { return figTable(n, cls, id, x, caption, legend); } finally { horizontal = was; }
+      }
       const capInline = caption ? (caption.children || []).map((p) => (p.type === 'paragraph' ? inline(p.children) : node(p))).join(' ') : '';
       const numSpan = x.text ? `<span class="egatari-num">${text(x.text)}</span>${capInline ? ' ' : ''}` : '';
       const legendHtml = legend ? `<div class="egatari-legend">${block(legend.children)}</div>` : '';
-      const id = n.label ? ` id="${esc(n.label)}"` : '';
-      if (n.kind === 'table') {
-        const t = (n.children || []).find((c) => c.type === 'table');
-        return `<figure class="egatari-table"${id}>${caption || x.text ? `<figcaption>${numSpan}${capInline}</figcaption>` : ''}\n${t ? table(t) : ''}${legendHtml}</figure>`;
-      }
       if (n.subcontainer) {
         const im = (n.children || []).find((c) => c.type === 'image');
         return `<figure class="egatari-subfigure"${id}>${im ? img(im) : ''}<figcaption><span class="egatari-num">${text(x.num || '')}</span>${capInline ? ' ' + capInline : ''}</figcaption></figure>`;
@@ -305,22 +317,30 @@ export function renderArticle(article, opts = {}) {
       const parts = (n.children || []).filter((c) => c.type === 'image' || (c.type === 'container' && c.subcontainer)).map((c) => (c.type === 'image' ? img(c) : container(c)));
       return `<figure class="egatari-figure"${id}>${parts.join('\n')}${caption || x.text ? `<figcaption>${numSpan}${capInline}</figcaption>` : ''}${legendHtml}</figure>`;
     }
-    // 表は木から書く（§9C.6）：頭の th だけの行を thead に、ほかを tbody に
-    function table(t) {
+    function figTable(n, cls, id, x, caption, legend) {
+      const capInline = caption ? (caption.children || []).map((p) => (p.type === 'paragraph' ? inline(p.children) : node(p))).join(' ') : '';
+      const numSpan = x.text ? `<span class="egatari-num">${text(x.text)}</span>${capInline ? ' ' : ''}` : '';
+      const legendHtml = legend ? `<div class="egatari-legend">${block(legend.children)}</div>` : '';
+      const t = (n.children || []).find((c) => c.type === 'table');
+      return `<figure class="${cls}"${id}>${caption || x.text ? `<figcaption>${numSpan}${capInline}</figcaption>` : ''}\n${t ? table(t, String(n.class || '').split(/\s+/).includes('row-headers')) : ''}${legendHtml}</figure>`;
+    }
+    // 表は木から書く（§9C.6）：頭の th だけの行を thead に、ほかを tbody に。
+    // :class: row-headers（§9C.6）：本文の各行の最初のセルは行の見出し（th scope="row"。見出しの行と同じ見た目）
+    function table(t, rowHeaders = false) {
       const rows = t.children || [];
       let h = 0;
       while (h < rows.length && (rows[h].children || []).length && rows[h].children.every((c) => c.header)) h++;
       if (h === rows.length) h = Math.min(1, rows.length);
-      const cell = (c) => {
-        const tag = c.header ? 'th' : 'td';
-        const a = [];
+      const cell = (c, rowHead) => {
+        const tag = c.header || rowHead ? 'th' : 'td';
+        const a = rowHead ? ['scope="row"'] : [];
         if (Number.isInteger(c.colspan) && c.colspan > 1) a.push(`colspan="${c.colspan}"`);
         if (Number.isInteger(c.rowspan) && c.rowspan > 1) a.push(`rowspan="${c.rowspan}"`);
         if (['left', 'center', 'right'].includes(c.align)) a.push(`class="egatari-align-${c.align}"`);
         return `<${tag}${a.length ? ' ' + a.join(' ') : ''}>${inline(c.children)}</${tag}>`;
       };
-      const tr = (r) => `<tr>${(r.children || []).map(cell).join('')}</tr>`;
-      return `<table>${h ? `<thead>${rows.slice(0, h).map(tr).join('')}</thead>` : ''}<tbody>${rows.slice(h).map(tr).join('')}</tbody></table>`;
+      const tr = (r, body) => `<tr>${(r.children || []).map((c, i) => cell(c, body && rowHeaders && i === 0)).join('')}</tr>`;
+      return `<table>${h ? `<thead>${rows.slice(0, h).map((r) => tr(r, false)).join('')}</thead>` : ''}<tbody>${rows.slice(h).map((r) => tr(r, true)).join('')}</tbody></table>`;
     }
     // 節（§9C.6）：最初の h2 の前はそのまま、h2 ごとに <section>。脚注はその節の終わりに
     function body() {
@@ -354,14 +374,22 @@ function tcy(s) { return String(s).split(/([A-Za-z0-9.,:/%]+)/).map((part, i) =>
 export function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 // 本文の見た目（静かな既定。テーマの変数があればそれを使う）。§9C.6：日本語の強調は傍点、縦書きの図・表・式は横組み、表の見出しの行は刷るときに繰り返す
-export const ARTICLE_CSS = `#egatari-article{max-width:42em;margin:0 auto;padding:1.5em 1em;line-height:1.8;color:var(--fg,CanvasText);font-size:18px}
+// 本の体裁。初めの 1 行は、スライドのテーマの要素の規則（table{font-size:28px} など、.slide を前に付けない古いテーマ・デッキの規則）を本に届かせない囲い：
+// 本の要素は all:revert でブラウザの既定に戻してから、下の本の規則で組む（単独の本の頁と同じ）。詳細度は (1,0,1)：id を持たないテーマの規則には
+// 順によらず勝ち、本の規則（同じかそれより高い詳細度で、後に書く）には負ける。:where() で 0 にすると、要素だけの規則 (0,0,1) に負けるので使わない。
+// span・div は入れない（KaTeX の組版がクラスで決めている）
+// 縦書きの本の表（:class: horizontal でないもの）は天付き（作者、2026-11-04）：表と表題は行の頭（上）から、本文のセル（td）も頭から。見出しのセル（th）はセルの中で中央。
+// :class: row-headers の行の見出し（th scope="row"）も見出しなので中央。
+// td・th の規則は (1,0,1) にして、列の揃え（.egatari-align-*。原稿の |:---| など）には負ける。横書きの本の表は中央のまま
+export const ARTICLE_CSS = `#egatari-article,#egatari-article :is(section,header,footer,aside,nav,h1,h2,h3,h4,h5,h6,p,blockquote,pre,hr,ul,ol,li,dl,dt,dd,figure,figcaption,img,table,caption,colgroup,col,thead,tbody,tfoot,tr,th,td,a,em,strong,b,i,small,code,kbd,samp,sub,sup,ruby,rt,rp,mark){all:revert}
+#egatari-article{max-width:42em;margin:0 auto;padding:1.5em 1em;line-height:1.8;color:var(--fg,CanvasText);font-size:18px}
 #egatari-article .egatari-num{font-weight:bold}
 #egatari-article h1{font-size:1.6em;line-height:1.4}#egatari-article h2{font-size:1.3em;margin-top:2em}#egatari-article h3{font-size:1.1em}#egatari-article h4{font-size:1em}
 #egatari-article .egatari-book-title{font-size:1.1em;color:var(--muted,GrayText)}#egatari-article .egatari-subtitle{color:var(--muted,GrayText);margin-top:-.5em}
 #egatari-article figure{margin:1.2em 0;text-align:center}#egatari-article figure img{max-width:100%;height:auto}
 #egatari-article figcaption{font-size:.9em;margin-top:.4em}#egatari-article .egatari-legend{font-size:.85em;color:var(--muted,GrayText);text-align:left}
 #egatari-article .egatari-subfigure{display:inline-block;vertical-align:top;margin:0 .5em;max-width:45%}
-#egatari-article table{border-collapse:collapse;margin:0 auto}#egatari-article th,#egatari-article td{border:1px solid var(--line,GrayText);padding:.2em .6em}
+#egatari-article table{border-collapse:collapse;margin:0 auto;text-align:start}#egatari-article th,#egatari-article td{border:1px solid var(--line,GrayText);padding:.2em .6em}
 #egatari-article thead{display:table-header-group}#egatari-article .egatari-align-left{text-align:left}#egatari-article .egatari-align-center{text-align:center}#egatari-article .egatari-align-right{text-align:right}
 #egatari-article .egatari-math{display:flex;align-items:center;justify-content:center;gap:1em;margin:1em 0}#egatari-article .egatari-eqno{margin-left:auto}
 #egatari-article .egatari-aside,#egatari-article .egatari-exercise,#egatari-article .egatari-solution{border:1px solid var(--line,GrayText);border-radius:6px;padding:.4em 1em;margin:1.2em 0;break-inside:avoid}
@@ -373,6 +401,10 @@ export const ARTICLE_CSS = `#egatari-article{max-width:42em;margin:0 auto;paddin
 #egatari-article .egatari-references-numeric li{display:flex;gap:.5em}#egatari-article .egatari-ref-label{flex:none;min-width:2.5em}#egatari-article .egatari-sc{font-variant:small-caps}#egatari-article .egatari-upright{font-style:normal}#egatari-article .egatari-unbold{font-weight:normal}#egatari-article .egatari-underline{text-decoration:underline}
 #egatari-article:lang(ja) em,#egatari-article :lang(ja) em{font-style:normal;text-emphasis:filled sesame;-webkit-text-emphasis:filled sesame;text-emphasis-position:over right;-webkit-text-emphasis-position:over right}
 #egatari-article.egatari-vertical{writing-mode:vertical-rl;max-width:none;max-height:40em;overflow-x:auto}
-#egatari-article.egatari-vertical figure,#egatari-article.egatari-vertical table,#egatari-article.egatari-vertical .egatari-math{writing-mode:horizontal-tb}
+#egatari-article.egatari-vertical :is(figure,.egatari-math,pre){writing-mode:horizontal-tb}
+#egatari-article.egatari-vertical :is(figure.egatari-table,table){writing-mode:vertical-rl}#egatari-article.egatari-vertical table{margin-block:0;margin-inline:auto}#egatari-article.egatari-vertical :is(th,td){padding:.5em .25em}
+#egatari-article.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal){margin-block:1.2em;margin-inline:0;text-align:start}#egatari-article.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal) table{margin-inline:0}#egatari-article.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal) figcaption{margin:0;margin-block-end:.4em}#egatari-article :where(.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal)) td{text-align:start}#egatari-article :where(.egatari-vertical figure.egatari-table:not(.egatari-table-horizontal)) th{text-align:center}
+#egatari-article.egatari-vertical figure.egatari-table-horizontal,#egatari-article.egatari-vertical figure.egatari-table-horizontal table{writing-mode:horizontal-tb}#egatari-article.egatari-vertical figure.egatari-table-horizontal :is(th,td){padding:.2em .6em}
+#egatari-article .egatari-fn-numbered{list-style:none;padding-inline-start:0}#egatari-article .egatari-fn-no{margin-inline-end:.5em;font-weight:bold}
 #egatari-article .egatari-tcy{text-combine-upright:all;-webkit-text-combine:horizontal}
 @media print{#egatari-article figure,#egatari-article .egatari-math{break-inside:avoid}#egatari-article h2,#egatari-article h3,#egatari-article h4{break-after:avoid}}`;

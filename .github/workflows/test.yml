@@ -1,11 +1,22 @@
 name: test
 
+# Where the tests run (RELEASING.md step 3): Linux and Windows run everything on every run. macOS runs the full npm test (and its clean and pack legs)
+# only on a push to main, a push of a release or rc tag (v*), and a dispatch with full=true (gh workflow run test.yml --ref <branch> -f full=true).
+# Other runs (branch dispatches, pull requests) run the platform-sensitive set there (npm test -- --platform: builds, checks, unit tests, paths,
+# fonts, WebKit, npm pack, and the clean environment), in one job. The condition is written out where it is used (jobs.<id>.if and strategy cannot read env):
+#   github.event_name == 'push' || inputs.full
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      full:
+        description: 'macOS: run the full npm test and the macOS clean and pack jobs (default: the platform-sensitive set)'
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -104,7 +115,8 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
-          TEST_STEP_TIMEOUT_S: '900'
+          # 900 s was too tight for test-app here: 760 s median and up to 876 s in 2026-11-03/04, and run 41957733017 reached 900 s while still progressing
+          TEST_STEP_TIMEOUT_S: '1200'
         # --jobs 3 (backlog #156): see the test job
         run: npm test -- --jobs 3
       - name: Upload screenshots on failure
@@ -121,29 +133,47 @@ jobs:
           if-no-files-found: warn
           retention-days: 3
 
-  # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths. Uses the preinstalled Google Chrome.
+  # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths, the macOS fonts, and WebKit (Playwright's, closest to Safari). Uses the preinstalled Google Chrome.
+  # Full runs (see the top) run all of npm test here; other runs the platform-sensitive set (npm test -- --platform, 94 of 157 steps: 11.5 min against 64-69 min for all, run 41957733017), then tools/clean-env.mjs
+  # (the clean job's macOS leg; test-npm-pack in the set is the pack job's), so a branch run asks for one macOS runner instead of three.
+  # Why: on the 3-vCPU, 7 GB arm64 runner npm test took 37-89 min (median 62) in the 86 macOS jobs of 2026-11-03/04, and 33 of the 62 that finished failed, mostly in a different test each time;
+  # macOS jobs also waited for a runner ("not acquired by Runner ... after multiple attempts" after 15-40 min, 7 jobs) and one runner lost contact mid-run (41795793989).
+  # Earlier: test-components reached the 1200 s step cap here and is split into two test-all steps; with --jobs 3 (backlog #156) other runs slowed every step about 2x.
+  # --jobs 2 with the memory-heavy steps one at a time (tools/test-all.mjs HEAVY, automatic under 12 GiB): when two of them overlapped, both ran about 3x slower
+  # (test-app 340-600 s → 1100-1300 s, test-pack-catalogue 200-330 s → 630-830 s; on the occasional 14 GB runner 390-450 s even when they overlapped).
+  # One at a time, three full runs (41933828143, 41942340958, 41950024877) were green in 64-69 min, test-app 728-797 s; swap still grew by 0.7-1.1 GB while test-app ran
+  # TEST_TIMEOUT_SCALE 3: every wait's cap (tools/wait-scale.mjs, Playwright's 30 s default in kit/browser.mjs, the 600 s step cap) is 3x here; the waits end
+  # when their condition holds, so a passing run is not slower. Linux and Windows keep the factor 1
   macos:
     runs-on: macos-latest
-    # macOS runners are slow: npm test now runs past 45 min here, so the job and each test-all step get more time (clean on macOS takes under 2 min; its 25 min is enough).
-    # test-components reached the 1200 s step cap here (1190.8 s, then 1200 s in run 40594677324): it now runs the quality checks alongside the browser checks and is split into two test-all steps
-    # 75 min was too short once v0.6.3 joined its branches: green runs took 55-68 min, and run 41210305228 reached the cap in test-audio, still progressing (every test 10-30 % slower, plus the new viewer-input and sounds tests)
-    # --jobs 1 here (backlog #156): the macOS arm64 runner has 3 vCPUs and 7 GB, and each browser test already uses more than one. With --jobs 3 green runs took 38-41 min,
-    # but other runs slowed every step about 2x (test-app reached the 1200 s step cap); with --jobs 2 they took 55-57 min, no faster than one at a time, and test-app's
-    # audio checks (autoplay plays, currentTime advances) failed. Those checks are now their own serial step (test-app-audio), so this runs --jobs 2 again
-    timeout-minutes: 90
+    timeout-minutes: ${{ (github.event_name == 'push' || inputs.full) && 90 || 40 }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
           cache: npm
+      - uses: astral-sh/setup-uv@v10.3.0   # tools/clean-env.mjs runs tts/synth.py --dry-run
+        if: ${{ !(github.event_name == 'push' || inputs.full) }}
       - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
-      - name: npm test
+      - name: Install Playwright WebKit
+        # test-viewer-webkit, test-touch, test-book-css, test-fullscreen and test-print-backgrounds also run in WebKit when it is installed (they skip otherwise)
+        run: npx playwright-core install webkit
+      # (written as !full && '--platform' || '': an empty string after && is false and would always pick the second value)
+      - name: npm test${{ !(github.event_name == 'push' || inputs.full) && ' -- --platform' || '' }}
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
-          TEST_STEP_TIMEOUT_S: '1200'
-        # --jobs 2 (backlog #156): see the comment on the job
-        run: npm test -- --jobs 2
+          TEST_TIMEOUT_SCALE: '3'
+          TEST_STEP_TIMEOUT_S: '1800'
+        run: npm test -- --jobs 2 ${{ !(github.event_name == 'push' || inputs.full) && '--platform' || '' }}
+      - name: Clean environment (the clean job's macOS leg)
+        # the same as the clean job: an empty HOME (so no Playwright browsers and no user theme folder) and no TTS server
+        if: ${{ !(github.event_name == 'push' || inputs.full) }}
+        shell: bash
+        run: |
+          H="$RUNNER_TEMP/empty-home"
+          mkdir -p "$H"
+          HOME="$H" IRODORI_URL=http://127.0.0.1:9 node tools/clean-env.mjs
       - name: Upload screenshots on failure
         # Only small diagnostics (png, json, txt, log): built decks, audio and fonts copied into the work dirs made the artifact ~450 MB
         if: failure()
@@ -167,7 +197,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS only on full runs (see the top); otherwise the macos job runs tools/clean-env.mjs after its platform-sensitive set
+        os: ${{ fromJSON((github.event_name == 'push' || inputs.full) && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest","windows-latest"]') }}
     defaults:
       run:
         shell: bash
@@ -196,7 +227,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # macOS only on full runs (see the top); otherwise test-npm-pack runs in the macos job's platform-sensitive set
+        os: ${{ fromJSON((github.event_name == 'push' || inputs.full) && '["ubuntu-latest","windows-latest","macos-latest"]' || '["ubuntu-latest","windows-latest"]') }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -206,6 +238,26 @@ jobs:
       - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
       - name: Pack, install and run egatari (tools/test-npm-pack.mjs)
         run: node tools/test-npm-pack.mjs
+
+  # Bun: the packed CLI under the Bun runtime (bunx --bun, so #!/usr/bin/env node runs Bun too), the same install as the pack job (tools/bun-check.mjs:
+  # npm pack, npm install <tarball> in a temp folder outside the repository). Runs new, check, build and build --portable, and fails if a build's bytes
+  # differ from Node's build of the same folder. Linux only, Bun pinned (1.4.4 was tested by hand; change the pin on purpose). Uses the preinstalled Google Chrome.
+  # README: "Also runs with Bun (bunx egatari)"; npx egatari stays the documented way
+  bun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
+          cache: npm
+      - uses: oven-sh/setup-bun@v2.0.2
+        with:
+          bun-version: 1.4.4
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
+      - name: Bun runs the packed egatari like Node (tools/bun-check.mjs)
+        run: node tools/bun-check.mjs
 
   # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
   # Also on Windows (Git Bash): the same steps with ffmpeg from Chocolatey.

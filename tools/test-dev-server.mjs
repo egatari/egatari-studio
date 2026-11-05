@@ -1,4 +1,5 @@
 // 開発サーバー（server/dev.mjs・server/shell.js・server/editor-ui.js・server/hints.js）の確認
+// test-all: platform（--platform でも走らせる：パスと開発サーバー）
 //   node tools/test-dev-server.mjs <作業用のフォルダ> [--shots 画像のフォルダ]
 // examples/minimal を作業用のフォルダに写してから動かす（見本そのものは書き換えない）。narration.md は CRLF にして、
 // 書き戻しが元の改行のままかを確かめる。「学習率と収束」のスライドには id を付け、その節を除いておく（新しい節の見出し {#id}）
@@ -12,6 +13,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseNarration } from '../kit/narration.mjs';
 import { writeHostileDeck, PWNED } from './hostile-deck.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -97,7 +99,7 @@ const trustedLayout = (p, frameId) => p.evaluate((fid) => {
   return { ids, outside, mark: mark && mark.getClientRects().length ? mark.textContent : null, inert: document.getElementById(fid).inert };
 }, frameId);
 const loads = (p = page) => p.evaluate(() => window.__DEV_LOADS);
-async function reloaded(n, p = page) { await p.waitForFunction((n) => window.__DEV_LOADS > n, n, { timeout: 15000 }); return ready(p); }
+async function reloaded(n, p = page) { await p.waitForFunction((n) => window.__DEV_LOADS > n, n, { timeout: scaled(15000) }); return ready(p); }
 // 読み込み直しが止むまで待つ（Windows の fs.watch は 1 回の書き込みで変更を何度も知らせ、組み直しが 2 回続くことがある。
 // 2 回目の読み込み直しが次の evaluate の途中に来ると「Execution context was destroyed」になる）
 async function settled(n, p = page, quiet = 1000) {
@@ -685,7 +687,7 @@ try {
     ok(!(await inert()) && fs.readFileSync(path.join(hostileDir, 'narration.md'), 'utf8').includes('保存する入力、その後の入力'), 'narration: the next save stores the newer input, then the drawer follows and the preview is interactive');
     // 保存で組み直したデッキが読み込み直されるのを待つ（次の試験がデッキの __hint を使う）
     await hp.waitForTimeout(500);
-    await deckOf(hp).waitForFunction(() => typeof window.__hint === 'function' && window.DECK && DECK.ready, null, { timeout: 15000 });
+    await deckOf(hp).waitForFunction(() => typeof window.__hint === 'function' && window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   }
   // 外枠の欄で「保存」を押したときだけ書く
   await hf.evaluate(() => window.__hint('edit'));

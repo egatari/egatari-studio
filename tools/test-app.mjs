@@ -28,7 +28,7 @@ import { missingParts2Requirement } from './parts2-fixtures.mjs';
 import { hostileFiles, PWNED } from './hostile-deck.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { testLlm } from './test-app-llm.mjs';
-import { PARTS_GALLERY } from '../app/parts-gallery.js';
+import { PARTS_GALLERY, PARTS_INDEX, partsIndexHref } from '../app/parts-gallery.js';
 import { testAppLive } from './test-app-live.mjs';
 import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
@@ -39,6 +39,7 @@ import { assignIds } from '../kit/core/slide-ids.mjs';
 import zlib from 'node:zlib';
 import { writeZip } from '../kit/core/zip-read.mjs';
 import { assemble, packSite, sha256, shaLine } from './site-versions.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -58,7 +59,7 @@ const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.joi
 // サンプルを編集で開く：一覧の「再生」→ 大きく再生する窓の「コピーを開いて編集」（app/main.js の playExample。backlog #130）
 async function openExampleCopy(page, name) {
   await page.click(`#examples-list li[data-example="${name}"] button`);
-  await page.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: 30000 });
+  await page.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: scaled(30000) });
   await clickDlg(page, '#dlg-copy');
 }
 // examples/minimal にスライドの id を付けたもの（format spec §8.1：書き出しは id のないスライドに id を付けて書き戻すので、試験の鍵が書き出しの前後で
@@ -203,7 +204,7 @@ async function previewBlank(p = page) {
 // 何も保存されずに次の読み込みを待って 15 秒で落ちた（tools/click-retry.mjs）。効果（保存を始めてボタンが押せなくなった・板が閉じた・口述原稿が未保存でなくなった）が出るまで押し直す
 async function clickSave(sel) {
   const h = await page.waitForSelector(sel);
-  return clickUntil(page, sel, () => page.waitForFunction((b) => !b.isConnected || b.disabled || (!!b.closest('#dev-narr') && !window.__APP_TEST.ui().narrDirty), h, { timeout: 2500 }));
+  return clickUntil(page, sel, () => page.waitForFunction((b) => !b.isConnected || b.disabled || (!!b.closest('#dev-narr') && !window.__APP_TEST.ui().narrDirty), h, { timeout: scaled(2500) }));
 }
 // 期限は固まったときのためだけ（外での変更は 1.5 秒ごとに見つけ、組み立ては Worker。ほかの段と同時に走る CI では組み立てに 10 秒を超えることがある）。
 // 状態を待つほかの waitFor も同じわけで 30 秒まで（10 秒では、並べて走らせた macOS の CI で組み立てを待ちきれなかった）
@@ -230,6 +231,15 @@ try {
   }
   ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('.ega.html ファイルをここにドラッグ＆ドロップ') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
   ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
+  // パーツの一覧（/parts/）：サンプルのすぐ後の行。新しいタブ。サイトでは根からの相対（凍結した写し /vX.Y.Z/ では ../parts/）、file:// では公開のサイト
+  {
+    const a = await page.$eval('#w-parts', (x) => ({ href: x.getAttribute('href'), abs: x.href, target: x.target, rel: x.rel, text: x.textContent, visible: !!x.offsetParent,
+      after: !!(document.getElementById('examples').compareDocumentPosition(x) & Node.DOCUMENT_POSITION_FOLLOWING) && !!(x.compareDocumentPosition(document.getElementById('w-claude')) & Node.DOCUMENT_POSITION_FOLLOWING) }));
+    ok(a.href === 'parts/' && a.abs === new URL('parts/', BASE).href && a.target === '_blank' && /\bnoopener\b/.test(a.rel) && a.text === 'パーツの一覧' && a.visible && a.after,
+      `welcome: "パーツの一覧" after the samples opens ${a.abs} in a new tab (rel=${a.rel})`);
+    ok(partsIndexHref({ protocol: 'https:', pathname: '/' }) === 'parts/' && partsIndexHref({ protocol: 'https:', pathname: '/v0.6.5/' }) === '../parts/' && partsIndexHref({ protocol: 'https:', pathname: '/sub/v0.6.5/index.html' }) === '../parts/'
+      && partsIndexHref({ protocol: 'file:', pathname: '/x/editor.html' }) === PARTS_INDEX && PARTS_INDEX === 'https://studio.egatari.org/parts/', 'welcome: the parts link goes to the site root\'s parts/ (also from a frozen /vX.Y.Z/ copy) and, from a local file, to the hosted site');
+  }
   await shot(page, 'welcome.png');
 
   // 新規作成…：チャットの AI の道 1 本（① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。歩き方は tools/test-app-newdeck.mjs）。白紙とテンプレートは新規作成にない
@@ -299,10 +309,10 @@ try {
   ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: x / v do nothing while editing');
   // ペンのキー d はマーカー（#70）：画面の端は「編集中：マーカー」、もう一度 d で切れる
   await f.locator('body').press('d');
-  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中：マーカー', null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中：マーカー', null, { timeout: scaled(5000) }).catch(() => {});
   ok(await f.evaluate(() => DECK.tools.mode()) === 'ink' && await page.evaluate(() => document.getElementById('dev-mode').textContent) === '編集中：マーカー', 'tools vs edit: d enters the marker while editing (footer: 編集中：マーカー)');
   await f.locator('body').press('d');
-  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中', null, { timeout: 5000 }).catch(() => {});
+  await page.waitForFunction(() => document.getElementById('dev-mode').textContent === '編集中', null, { timeout: scaled(5000) }).catch(() => {});
   ok(await f.evaluate(() => DECK.tools.mode()) === null, 'tools vs edit: d again leaves the marker');
   const li = f.locator('#stage .slide.active li[data-step="2"]');
   await li.dblclick();
@@ -345,7 +355,7 @@ try {
   // （改行だけの違いは組み立ての結果を変えないので、プレビューは読み込み直さない。組み直しを待つ）
   const b0 = await page.evaluate(() => window.__APP_TEST.state().builds);
   await opfs.write('narration.md', (await opfs.read('narration.md')).replace(/\r?\n/g, '\r\n'));
-  await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: 30000 });   // 期限は固まったときのため（waitLoads と同じ）
+  await page.waitForFunction((b0) => window.__APP_TEST.state().builds > b0, b0, { timeout: scaled(30000) });   // 期限は固まったときのため（waitLoads と同じ）
   await f.locator('body').press('e');   // 編集モードを切る（デッキで押した e は知らせとしてアプリに届く）
   await page.waitForFunction(() => !window.__APP_TEST.ui().edit);
   ok(!(await f.evaluate(() => document.documentElement.classList.contains('dev-edit'))), 'edit: e pressed in the preview turns edit mode off (forwarded hint)');
@@ -364,7 +374,7 @@ try {
   f = await waitLoads(n);
   // 保存の書き込みで組み直しが始まり、新しい画面の読み込みが保存の返事（未保存の印を消して鍵を外す。server/editor-ui.js の doSave）より先に済むことがある。
   // 返事が届く（未保存でなくなる）まで待ってから見る（ほかの段と同時に走る CI で落ちた）
-  await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty, null, { timeout: 30000 }).catch(() => {});
+  await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty, null, { timeout: scaled(30000) }).catch(() => {});
   ok(await page.evaluate(() => !document.getElementById('preview').inert && !window.__APP_TEST.ui().editing), 'narration: after Save the preview takes input again');
   const narr1 = await opfs.read('narration.md');
   ok(narr1.includes('アプリから書き直した口述原稿です。') && narr1.includes('足した発言です。'), 'narration: narration.md changed (turn added)');
@@ -427,7 +437,7 @@ try {
       const s = document.getElementById('stage').getBoundingClientRect(), k = Math.min(innerWidth / 1280, innerHeight / 720);
       res(Math.abs(s.width - 1280 * k) < 0.5 && s.left === s0.left && s.top === s0.top && s.width === s0.width);
     }));
-  }), null, { timeout: 30000 });
+  }), null, { timeout: scaled(30000) });
   const cwant = await target.evaluate((el) => {
     const r = el.getBoundingClientRect(), s = document.getElementById('stage').getBoundingClientRect();
     return { x: (r.left + 20 - s.left) * 1280 / s.width, y: (r.top + r.height / 2 - s.top) * 720 / s.height, h: r.height, unit: 1280 / s.width };
@@ -459,8 +469,8 @@ try {
   ok((await page.evaluate(() => window.__APP_TEST.ui().pins)) === 0, 'comment: no pin is drawn on another slide');
   await page.click('#dev-comments .dev-c');
   // 移った知らせ（deck-pos）が届いて印が光るまで待つ（決まった時間では、遅い CI で印がまだない・前の段階の位置のことがある）
-  await f.waitForFunction((key) => DECK.state().key === key, `${K('何を最小化するか')}:0`, { timeout: 30000 });
-  await page.waitForFunction(() => !!document.querySelector('#dev-pins .dev-pin.dv-flash'), null, { timeout: 30000 });
+  await f.waitForFunction((key) => DECK.state().key === key, `${K('何を最小化するか')}:0`, { timeout: scaled(30000) });
+  await page.waitForFunction(() => !!document.querySelector('#dev-pins .dev-pin.dv-flash'), null, { timeout: scaled(30000) });
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));   // 枠の大きさの変化（ResizeObserver）で描き直した後
   const appPin = await page.evaluate(() => { const e = document.querySelector('#dev-pins .dev-pin'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, flash: e.classList.contains('dv-flash') }; });
   const appWant = await page.evaluate(() => { const r = document.getElementById('preview').getBoundingClientRect(); return { l: r.left, t: r.top }; });
@@ -485,12 +495,12 @@ try {
 
   // 組み立ての失敗 → 重ね表示、直すと消える
   await opfs.write('deck.html', deck2.replace(/<head>[\s\S]*?<\/head>/, ''));
-  await page.waitForSelector('#errbox:not([hidden])', { timeout: 30000 });
+  await page.waitForSelector('#errbox:not([hidden])', { timeout: scaled(30000) });
   ok((await page.textContent('#errtext')).includes('<head>'), 'error: build failure shown over the preview');
   await shot(page, 'error.png');
   n = await loads();
   await opfs.write('deck.html', deck2);
-  await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 30000 });
+  await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: scaled(30000) });
   ok(await page.isHidden('#errbox'), 'error: overlay disappears after the fix');
   // 選んだカタログにない要素（#165）：組み立てと同じエラーを画面の言葉で出す（黙って落とさない）。egatari.json で 2.x を選べば組める
   {
@@ -498,7 +508,7 @@ try {
     const scoreDeck = deck2.replace('<h2>学習率と収束（外で変更）</h2>', '<h2>学習率と収束（外で変更）</h2><m-score aria-label="音階"><script type="application/json">{"abc":"X:1\\nK:C\\nCDEF|"}</script></m-score>');
     ok(scoreDeck !== deck2, 'catalogue: test edit applies');
     await opfs.write('deck.html', scoreDeck);
-    await page.waitForSelector('#errbox:not([hidden])', { timeout: 15000 });
+    await page.waitForSelector('#errbox:not([hidden])', { timeout: scaled(15000) });
     const et = await page.textContent('#errtext');
     ok(et.includes('<m-score> は、この教材が使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
       'catalogue: a 1.x lesson using <m-score> fails to build with the same message as build and check, in the editor\'s language: ' + et.slice(0, 120));
@@ -506,7 +516,7 @@ try {
     await shot(page, 'catalogue-error.png');
     n = await loads();
     await page.click('#err-fix');
-    await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: 15000 });
+    await page.waitForSelector('#errbox[hidden]', { state: 'attached', timeout: scaled(15000) });
     f = await waitLoads(n);
     const conf1 = await opfs.read('egatari.json');
     ok(JSON.parse(conf1).componentsCatalogue === '2' && (conf0 === null || conf1.startsWith(conf0.replace(/\s*\}\s*$/, ''))),
@@ -524,11 +534,11 @@ try {
 
   // ---------------------------------------------------------------- 7. 品質チェック
   await page.click('#b-check');
-  await page.waitForSelector('#panel-body .sum', { timeout: 20000 });
+  await page.waitForSelector('#panel-body .sum', { timeout: scaled(20000) });
   const sum = await page.textContent('#panel-body .sum');
   ok(/エラー \d+ · 警告 \d+/.test(sum), 'check: quality check summary shown: ' + sum);
   await shot(page, 'check.png');
-  await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+  await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
 
   // ---------------------------------------------------------------- 8. 書き出し（ui-redesign）：「組み立てた HTML」は編集アプリから外した（コマンドの node kit/build.mjs に残す）
   ok(await page.evaluate(() => !document.getElementById('b-export') && ![...document.querySelectorAll('#tools button')].some((b) => /組み立てた HTML|built HTML/i.test(b.textContent))), 'export: no “built HTML” export in the editor (CLI only)');
@@ -627,7 +637,7 @@ try {
     const openFile = async (name, run = true) => {
       const n0 = await loads();
       const p = page.evaluate((name) => window.__APP_TEST.openFile({ handle: window.__pf[name] }), name);
-      const asked = await Promise.race([p.then(() => false), page.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
+      const asked = await Promise.race([p.then(() => false), page.waitForSelector('#dlg[open] #dlg-run', { timeout: scaled(30000) }).then(() => true)]);
       let blank = null;
       if (asked) { if ((await loads()) !== n0) throw new Error('preview loaded before the code notice'); blank = await previewBlank(); await clickDlg(page, run ? '#dlg-run' : '#dlg-cancel'); }
       return { r: await p, n0, asked, blank };
@@ -676,7 +686,7 @@ try {
     await page.waitForSelector('#toast.show.bad');
     ok(!(await dlgOpen()) && (await page.textContent('#toast')) === 'このファイルではスライドを編集できません（台本・音声・秒数だけ）', 'portable: missing requirements refuse slide editing with tierAOnlyNoSlides');
     ok((await page.getAttribute('#b-theme-switch', 'aria-disabled')) === 'true', 'portable: missing requirements disable theme switching');
-    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 30000 });
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: scaled(30000) });
     await f.evaluate(() => DECK.go(0, 0, false));
     await page.click('#b-narr');
     await page.waitForSelector('#dlg[open] #dlg-ok');
@@ -690,7 +700,7 @@ try {
     ok(!(await pstate()).error && await f.evaluate(() => !!document.querySelector('m-bars svg rect, m-bars svg path')), 'portable: narration edit refreshes the original player without rebuilding');
     await page.click('#b-narr');
     await clickCommand(page, '#b-save');
-    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
     ok((await pstate()).portable.lastTier === 'A' && !(await dlgOpen()), 'portable: missing requirements save narration through tier A without a rebuild prompt');
     const missingSaved = await getFile('missing-parts' + FORMAT.FILE_EXT);
     const missingRead = await readPortable(new Uint8Array(missingSaved));
@@ -757,7 +767,7 @@ try {
     f = await waitLoads(n);
     await page.click('#b-narr');
     await clickCommand(page, '#b-save');
-    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
     ok(!(await dlgOpen()), 'tier A: narration-only change saves without the rebuild warning');
     const aBuf = await getFile(MINF);
     let ps0 = await pstate();
@@ -810,11 +820,11 @@ try {
     await page.waitForSelector('#panel-body .sum');
     const staleRes = await page.evaluate(() => [...document.querySelectorAll('#panel-body .res.warn')].map((r) => r.textContent).find((t) => t.includes('音声の更新が必要')) || '');
     ok(/ステップ 0。/.test(staleRes) && staleRes.includes('スライド 2') && !/s-[a-z0-9]{6}/.test(staleRes), `portable narration: the Quality check lists the stale step on its slide, without the internal key (${staleRes})`);
-    await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+    await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
 
     // 保存：スライドを直したので段 B（組み直す）。保存の前に、編集していないスライドの見え方が変わりうることを知らせる
     await clickCommand(page, '#b-save');
-    await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+    await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
     ok((await page.textContent('#tier-b-warn')).includes('編集していないスライドも、見え方が変わることがあります'), 'tier B: warns before saving that slides you did not edit may look different');
     ok((await page.textContent('#dlg-body')).includes('スライドの HTML を直したので'), 'tier B: says why it cannot save without rebuilding');
     await shot(page, 'portable-tier-b-warning.png');
@@ -822,9 +832,9 @@ try {
     await page.waitForTimeout(200);
     ok((await pstate()).portable.dirty, 'tier B: Cancel → not saved');
     await clickCommand(page, '#b-save');
-    await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+    await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
     await clickDlg(page, '#dlg-rebuild');
-    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
     ok((await pstate()).portable.lastTier === 'B', 'tier B: rebuilt and saved');
     const savedBuf = await getFile(MINF);
     const saved = await readPortable(new Uint8Array(savedBuf));
@@ -848,13 +858,13 @@ try {
     const memArchive = Object.keys(mem).filter((k) => !/^\.cache\//.test(k) && k !== 'comments.json').sort();
     ok(JSON.stringify(u.written.slice().sort()) === JSON.stringify(memArchive) && u.written.every((k) => fs.readFileSync(path.join(U, k)).equals(mem[k])), `save: unpacked folder matches the in-memory workspace (${u.written.length} files)`);
 
-    // 新しい教材として保存：新しい docId と derivedFrom（元の docId と sourceSha256）。権利の表示と作り手はそのまま。変更がなければ段 A
+    // 新しい教材として保存：新しい docId と derivedFrom（元の docId と sourceSha256）。権利の表示と作成者はそのまま。変更がなければ段 A
     await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); const d = await root.getDirectoryHandle('pf', { create: true }); window.__APP_TEST.saveHandle = await d.getFileHandle('new-lesson.html', { create: true }); });
     await menuClick('#b-saveas');
     await page.waitForSelector('#dlg[open] #saveas-new');
     await page.check('#saveas-new');
     await clickDlg(page, '#dlg-save');
-    await page.waitForFunction((id) => window.__APP_TEST.state().portable.docId !== id, pmin.index.docId, { timeout: 30000 });
+    await page.waitForFunction((id) => window.__APP_TEST.state().portable.docId !== id, pmin.index.docId, { timeout: scaled(30000) });
     const nl = await readPortable(new Uint8Array(Buffer.from(await page.evaluate(async () => { const u = new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }), 'base64')));
     ok(nl.docId !== pmin.index.docId && nl.deckMeta.docId === nl.docId && JSON.parse(new TextDecoder().decode(nl.files[FORMAT.CONFIG_FILE])).docId === nl.docId, `save as new lesson: new docId ${nl.docId} (index, deck-meta and ${FORMAT.CONFIG_FILE})`);
     ok(JSON.stringify(nl.index.metadata.derivedFrom) === JSON.stringify({ docId: pmin.index.docId, sourceSha256: saved.index.sourceSha256 }), 'save as new lesson: derivedFrom = the original docId and sourceSha256');
@@ -878,13 +888,13 @@ try {
     // フォルダに書き出す（空のフォルダ）→ 中身は unpack と同じ。空でないフォルダは断る
     await emptyDir('unpacked');
     await menuClick('#b-unpack');
-    await page.waitForFunction(() => document.getElementById('st-msg').textContent.includes('unpacked'), null, { timeout: 15000 });
+    await page.waitForFunction(() => document.getElementById('st-msg').textContent.includes('unpacked'), null, { timeout: scaled(15000) });
     const out1 = await dirFiles('unpacked');
     ok(JSON.stringify(Object.keys(out1).sort()) === JSON.stringify(u.written.slice().sort()) && u.written.every((k) => Buffer.from(out1[k], 'base64').equals(fs.readFileSync(path.join(U, k)))), `export folder: same files and bytes as npm run portable -- unpack (${Object.keys(out1).length})`);
     await menuClick('#b-unpack');
     await page.waitForSelector('#toast.show.bad');
     ok((await page.textContent('#toast')).includes('空ではありません') && Object.keys(await dirFiles('unpacked')).length === Object.keys(out1).length, 'export folder: a non-empty folder is refused');
-    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 30000 });
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: scaled(30000) });
 
     // 書き出したフォルダを開き、持ち運べる 1 ファイルに書き出す（フォルダの「1 ファイルを書き出す」）→ 同じ文書
     n = await loads();
@@ -951,7 +961,7 @@ try {
     await page.click('#b-narr');
     ok(!parseNarration((await wsFiles())['narration.md'].toString()).some((x) => `${x.slideKey}:${x.stepKey}` === rk), 'removed step: gone from narration.md');
     await clickCommand(page, '#b-save');
-    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
     const rps = await pstate();
     ok(rps.portable.lastTier === 'A' && rps.portable.lastTierA.audio.includes(rk), 'removed step: saved with tier A, its audio record changed');
     ok(rps.portable.saveWarnings.some((w) => w.includes(`"${rk}"`) && /removed/.test(w)) && rps.warn.some((w) => w.includes(`"${rk}"`) && /removed/.test(w)), `removed step: the warning is returned and in the warnings list (${JSON.stringify(rps.portable.saveWarnings)})`);
@@ -974,7 +984,7 @@ try {
         await emptyDir('extracted');
         await clickDlg(page, '#dlg-extract');
         ok(await p === false, `refuse: ${name} is not opened for editing`);
-        await page.waitForFunction(() => document.getElementById('st-msg').textContent.includes('extracted'), null, { timeout: 15000 });
+        await page.waitForFunction(() => document.getElementById('st-msg').textContent.includes('extracted'), null, { timeout: scaled(15000) });
         const ex = await dirFiles('extracted');
         ok(!!ex['deck.html'] && !!ex['narration.md'] && !!ex['audio/manifest.json'], `refuse: ${name} → source extracted to an empty folder (${Object.keys(ex).length} files)`);
       } else {
@@ -1003,7 +1013,7 @@ try {
       f = await waitLoads(n);
       await page.click('#b-narr');
       await clickCommand(page, '#b-save');
-      await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+      await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
       const u1 = await readPortable(new Uint8Array(await getFile(UF)));
       ok((await pstate()).portable.lastTier === 'A' && kept(u1.index) && u1.sourceMatches, 'unknown members: kept at every level by a tier A save');
       // スライドを直す → 段 B（組み直し）でも残る
@@ -1017,9 +1027,9 @@ try {
       f = await waitLoads(n);
       await page.click('#b-edit');
       await clickCommand(page, '#b-save');
-      await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: 30000 });
+      await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
       await clickDlg(page, '#dlg-rebuild');
-      await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+      await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
       const u2 = await readPortable(new Uint8Array(await getFile(UF)));
       ok((await pstate()).portable.lastTier === 'B' && kept(u2.index) && u2.sourceMatches && new TextDecoder().decode(u2.files['deck.html']).includes('はじめに（段 B）'), 'unknown members: kept at every level by a tier B save (rebuild)');
       ok(!u2.index.metadata.derivedFrom && u2.docId === u1.docId, 'unknown members: Save keeps the docId and adds no derivedFrom');
@@ -1044,7 +1054,7 @@ try {
     await page.waitForSelector('#toast.show.bad');
     ok(!(await page.evaluate(() => document.getElementById('dlg').open)) && (await page.textContent('#toast')).includes('スライドを編集できません'), 'tier A only: slide editing is refused (no rights prompt)');
     await shot(page, 'portable-tier-a-only.png');
-    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: 30000 });
+    await page.waitForSelector('#toast:not(.show)', { state: 'attached', timeout: scaled(30000) });
     // 口述原稿は直せる（権利を見せてから）。保存は段 A
     let of = deckFrame();
     await of.evaluate(() => DECK.go(1, 1, false));
@@ -1058,7 +1068,7 @@ try {
     of = await waitLoads(nn);
     await page.click('#b-narr');
     await clickCommand(page, '#b-save');
-    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
     const oth = await page.evaluate(async () => { const u = new Uint8Array(await (await window.__other.getFile()).arrayBuffer()); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); });
     const othText = Buffer.from(oth, 'base64').toString();
     let othOk = true; try { regionDiff(pother, othText, { narration: [`${K('何を最小化するか')}:1`] }); } catch (e) { othOk = false; console.log('    ' + e.message.slice(0, 300)); }
@@ -1171,11 +1181,11 @@ try {
     await clickDlg(page, '#dlg-ok');
     ok(await big === false, 'size: the oversized file is not opened');
     // 解析の上限（§11）：上限の大きさより小さいが、小さな要素が何百万もある文書は、Worker の中で解析の途中に断る（全部の木を作らない）
-    const leave = async () => { if (await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: 1000 }).catch(() => null)) await clickDlg(page, '#dlg-discard'); };
+    const leave = async () => { if (await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: scaled(1000) }).catch(() => null)) await clickDlg(page, '#dlg-discard'); };
     const t0c = Date.now();
     let opc = page.evaluate((h) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(h), name: 'tiny-elements.html' }), pmin.html.replace('<body>', '<body>' + '<p>'.repeat(3000000)));
     await leave();
-    await page.waitForSelector('#dlg[open] #refuse-reason', { timeout: 30000 });
+    await page.waitForSelector('#dlg[open] #refuse-reason', { timeout: scaled(30000) });
     ok((await page.textContent('#dlg .tech')).includes('too-complex') && Date.now() - t0c < 20000, `bounded: a file with millions of tiny elements is refused while parsing (too-complex, ${Date.now() - t0c} ms including the transfer)`);
     await clickDlg(page, '#dlg-ok');
     ok(await opc === false, 'bounded: the file is not opened');
@@ -1183,7 +1193,7 @@ try {
     await page.evaluate(() => { window.__APP_TEST.readerTimeout = 1; });
     opc = page.evaluate((h) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(h), name: 'slow.html' }), pmin.html);
     await leave();
-    await page.waitForSelector('#dlg[open] #refuse-reason', { timeout: 30000 });
+    await page.waitForSelector('#dlg[open] #refuse-reason', { timeout: scaled(30000) });
     ok((await page.textContent('#dlg .tech')).includes('reader-timeout'), 'deadline: reading past the deadline terminates the reader worker and refuses the file');
     await clickDlg(page, '#dlg-ok');
     ok(await opc === false, 'deadline: the file is not opened');
@@ -1199,7 +1209,7 @@ try {
       await gapStart();
       const tb = Date.now();
       page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-bomb'])).catch(() => {});
-      await page.waitForFunction(() => /build-too-large|over the limit/.test(window.__APP_TEST.state().error || ''), null, { timeout: 30000 });
+      await page.waitForFunction(() => /build-too-large|over the limit/.test(window.__APP_TEST.state().error || ''), null, { timeout: scaled(30000) });
       const gb = await gapEnd();
       ok(Date.now() - tb < 15000 && gb < 300, `build limits: a folder deck including a small file 100000 times is refused (build-too-large) in ${Date.now() - tb} ms; the page stayed responsive (longest timer gap ${gb} ms)`);
       // 重い組み立て（式 15000）を期限 800 ms で：Worker を止めて失敗にし、その間もページは動く
@@ -1208,7 +1218,7 @@ try {
       await gapStart();
       const ts = Date.now();
       page.evaluate(() => window.__APP_TEST_OPEN(window.__cdirs['c-slow'])).catch(() => {});
-      await page.waitForFunction(() => /build-timeout|longer than/.test(window.__APP_TEST.state().error || ''), null, { timeout: 30000 });
+      await page.waitForFunction(() => /build-timeout|longer than/.test(window.__APP_TEST.state().error || ''), null, { timeout: scaled(30000) });
       const gs = await gapEnd();
       ok(Date.now() - ts < 15000 && gs < 300, `build deadline: a slow build is stopped after the deadline (build-timeout, ${Date.now() - ts} ms); the page stayed responsive (longest timer gap ${gs} ms)`);
       await page.evaluate(() => { window.__APP_TEST.buildTimeout = 0; });
@@ -1293,7 +1303,7 @@ try {
     await page.waitForFunction(() => window.__APP_TEST.state().presLoads > 0);
     const before = await page.evaluate(() => window.__APP_TEST.state());
     await page.evaluate(async (text) => { const w = await (await window.__cdirs['c-poll'].getFileHandle('deck.html')).createWritable(); await w.write(text); await w.close(); }, ONERR);
-    await page.waitForSelector('#dlg[open] #dlg-run', { timeout: 20000 });
+    await page.waitForSelector('#dlg[open] #dlg-run', { timeout: scaled(20000) });
     ok((await page.evaluate(() => window.__APP_TEST.state().presLoads)) === before.presLoads && (await loads()) === before.loads, 'consent: code appearing on a polling rebuild is asked about before the preview or the presenter view loads it');
     await clickDlg(page, '#dlg-cancel');
     await page.waitForTimeout(POLL_WAIT);
@@ -1330,13 +1340,13 @@ try {
       const pr = page.evaluate(([k, rev, turns]) => { const [sk, st] = [k.slice(0, k.lastIndexOf(':')), k.slice(k.lastIndexOf(':') + 1)]; return window.__APP_TEST.api('POST', '/__dev/narration', { slideKey: sk, stepKey: st, rev, turns }); },
         [KEY, g.rev, g.turns.map((t) => ({ role: t.role, text }))]);
       // 最初の編集の前の権利の確認
-      const first = await Promise.race([pr.then(() => 'done'), page.waitForSelector('#dlg[open] #rights-list', { timeout: 8000 }).then(() => 'rights', () => 'none')]);
+      const first = await Promise.race([pr.then(() => 'done'), page.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(8000) }).then(() => 'rights', () => 'none')]);
       if (first === 'rights') await clickDlg(page, '#dlg-ok');
       const r = await pr;
       if (r._status !== 200) throw new Error('edit failed ' + JSON.stringify(r));
     };
     // 開く（今のものが未保存なら「捨てる」）
-    const discardIfAsked = async () => { if (await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: 1500 }).catch(() => null)) await clickDlg(page, '#dlg-discard'); };
+    const discardIfAsked = async () => { if (await page.waitForSelector('#dlg[open] #dlg-discard', { timeout: scaled(1500) }).catch(() => null)) await clickDlg(page, '#dlg-discard'); };
     const openWith = async (handleJs) => {
       const n0 = await loads();
       const pr = page.evaluate(([js, html]) => { const h = new Function('html', 'return ' + js)(html); window.__H = h; return window.__APP_TEST.openFile({ handle: h }); }, [handleJs, pmin.html]);
@@ -1428,30 +1438,30 @@ try {
     });
     await pt.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__open = await root.getDirectoryHandle('minimal'); });
     await pt.evaluate(() => window.__APP_TEST_OPEN(window.__open));
-    await pt.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
+    await pt.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: scaled(20000) });
     for (const [kind, open] of [['folder', null], ['portable', async () => {
       await pt.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'lesson-with-a-long-name' + ext }); }, [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]);
-      await pt.waitForFunction(() => window.__APP_TEST.state().kind === 'memory' && window.__APP_TEST.state().loads > 0, null, { timeout: 20000 });
+      await pt.waitForFunction(() => window.__APP_TEST.state().kind === 'memory' && window.__APP_TEST.state().loads > 0, null, { timeout: scaled(20000) });
     }]]) {
       if (open) await open();
       // 品質チェックの札：読み込みの後に自動でかけた品質チェックの数（エラーと警告）。板の数と同じ
       if (kind === 'folder') {
-        await pt.waitForFunction(() => window.__APP_TEST.badge().autoChecks > 0, null, { timeout: 30000 });
+        await pt.waitForFunction(() => window.__APP_TEST.badge().autoChecks > 0, null, { timeout: scaled(30000) });
         const bd = await pt.evaluate(() => window.__APP_TEST.badge());
         await pt.click('#b-check');
         await pt.waitForSelector('#panel-body .sum');
         const sum = await pt.textContent('#panel-body .sum');
         const m = /(\d+)\D+(\d+)/.exec(sum);
         ok(m && +m[1] === bd.errs && +m[2] === bd.warns && bd.hidden === (bd.errs + bd.warns === 0) && bd.bad === (bd.errs > 0) && !(await pt.evaluate(() => window.__APP_TEST.ui().edit)), `badge (${lang}): after a build the quick check runs by itself and the badge shows its counts (${bd.errs} / ${bd.warns}, "${bd.text}"; panel "${sum}")`);
-        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
         // 組み立ての警告（無い目印 {mark:zzq}）：警告の数に入り、中の名前（## s-…・narration.md の行）を見せず、押すとそのスライドへ
         const nar0 = await pt.evaluate(async () => (await (await window.__open.getFileHandle('narration.md')).getFile()).text());
         const putNarr = (t) => pt.evaluate(async (x) => { const w = await (await window.__open.getFileHandle('narration.md')).createWritable(); await w.write(x); await w.close(); }, t);
         await putNarr(nar0.replace('{mark:grad}', '{mark:zzq}'));
         const nb = await pt.evaluate(() => window.__APP_TEST.state().builds);
         await pt.evaluate(() => window.__APP_TEST.rebuild());
-        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n && window.__APP_TEST.state().warn.some((w) => w.includes('zzq')), nb, { timeout: 30000 });
-        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n && window.__APP_TEST.state().warn.some((w) => w.includes('zzq')), nb, { timeout: scaled(30000) });
+        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(20000) });
         await pt.click('#b-check');
         await pt.waitForSelector('#panel-body .sum');
         await pt.waitForSelector('#panel-body #check-buildwarn li');
@@ -1462,14 +1472,14 @@ try {
         ok(mw && +mw[2] === bw.checked + bw.n && bw.n > 0 && bw.badge.warns === +mw[2], `build warnings (${lang}): counted in the summary and the badge ("${bw.sum}" = ${bw.checked} checker + ${bw.n} build; badge "${bw.badge.text}")`);
         ok(!/## s-|narration\.md|\[\d+\]/.test(bw.text) && bw.go.length === 1 && bw.go[0].includes(lang === 'en' ? 'slide 3' : 'スライド 3') && bw.go[0].includes(lang === 'en' ? 'Emphasis: ' : '強調：'), `build warnings (${lang}): no internal names; the slide number and title instead (${bw.go[0]})`);
         await pt.click('#check-buildwarn li.go');
-        await pt.waitForFunction(() => window.__APP_TEST.state().pos && window.__APP_TEST.state().pos.i === 2, null, { timeout: 5000 }).catch(() => {});
+        await pt.waitForFunction(() => window.__APP_TEST.state().pos && window.__APP_TEST.state().pos.i === 2, null, { timeout: scaled(5000) }).catch(() => {});
         ok((await pt.evaluate(() => window.__APP_TEST.state().pos?.i)) === 2, `build warnings (${lang}): clicking one goes to its slide`);
-        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
         await putNarr(nar0);
         const nb2 = await pt.evaluate(() => window.__APP_TEST.state().builds);
         await pt.evaluate(() => window.__APP_TEST.rebuild());
-        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n, nb2, { timeout: 30000 });
-        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+        await pt.waitForFunction((n) => window.__APP_TEST.state().builds > n, nb2, { timeout: scaled(30000) });
+        await pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(20000) });
       }
       // 品質チェックの札がいちばん長いとき（エラーも警告も 2 桁）
       await pt.evaluate(() => { const b = document.getElementById('b-check-badge'); b.hidden = false; b.textContent = document.documentElement.lang === 'en' ? '12 errors · 12 warnings' : 'エラー 12 · 警告 12'; b.classList.add('bad'); });
@@ -1485,12 +1495,12 @@ try {
       }
       await pt.setViewportSize({ width: 1440, height: 860 });
       // プレビューを表示し終えてから（loads は srcdoc を渡した数。iframe の load はその後で、プレビューに focus を移す）
-      const shown = () => pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+      const shown = () => pt.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(20000) });
       await shown();
       await pt.click('#b-help');
       await pt.waitForSelector('#help-download-skill');
       await checkSkillDownload(pt, { lang, selector: '#help-download-skill', ok, base: BASE });
-      await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+      await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
       await clickMenuOpen(pt, '#b-filemenu');
       await pt.waitForSelector('#m-file:not([hidden])');
       if (SHOTS) await pt.screenshot({ path: path.join(SHOTS, `toolbar-${lang}-${kind}-menu.png`), clip: { x: 0, y: 0, width: 1000, height: 400 } });
@@ -1536,7 +1546,7 @@ try {
         const vmode = async (want) => {
           const l0 = await pt.evaluate(() => window.__APP_TEST.state().loads);
           await clickCommand(pt, '#b-videomode');
-          await pt.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: 20000 });
+          await pt.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: scaled(20000) });
           const fr = pt.frames().find((x) => x.parentFrame() === pt.mainFrame());
           let m = null; for (let i = 0; i < 50 && m !== want; i++) { try { m = await fr.evaluate(() => window.DECK && DECK.ready ? DECK.mode : null); } catch { /* 読み込み中 */ } if (m !== want) await pt.waitForTimeout(100); }
           return m === want && (await pt.getAttribute('#b-videomode', 'aria-checked')) === (want === 'video' ? 'true' : 'false');
@@ -1546,7 +1556,7 @@ try {
         {
           const l0 = await pt.evaluate(() => window.__APP_TEST.state().loads);
           await clickCommand(pt, '#b-lecturemode');
-          await pt.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: 20000 });
+          await pt.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: scaled(20000) });
           const fr = pt.frames().find((x) => x.parentFrame() === pt.mainFrame());
           let m = null; for (let i = 0; i < 50 && m !== 'lecture'; i++) { try { m = await fr.evaluate(() => window.DECK && DECK.ready ? DECK.mode : null); } catch { /* 読み込み中 */ } if (m !== 'lecture') await pt.waitForTimeout(100); }
           ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'true', `preview (${lang}): 先のステップを薄く見せる turns the option on (internal mode lecture); the slide show stays the chosen mode`);
@@ -1575,24 +1585,24 @@ try {
     const pframe = () => po.frames().find((x) => x.parentFrame() === po.mainFrame());
     // 開くのを待つ（独自のコードの確かめが出たら「始める」）。返すもの：openFile の答え
     const settle = async (p) => {
-      const asked = await Promise.race([p.then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
+      const asked = await Promise.race([p.then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: scaled(30000) }).then(() => true)]);
       if (asked) await clickDlg(po, '#dlg-run');
       const r = await p;
-      if (r) await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+      if (r) await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
       return r;
     };
     const slidesNow = async () => { for (let i = 0; i < 100; i++) { try { const f = pframe(); const n = f && await f.evaluate(() => (window.DECK && DECK.ready ? DECK.slides.length : 0)); if (n) return n; } catch { /* 読み込み中 */ } await po.waitForTimeout(100); } return 0; };
     // 開く（保存していない変更を捨ててよいかを聞かれたら「捨てる」）
     const openBytes = (text, name) => {
       const p = po.evaluate(([t, n]) => window.__APP_TEST.openFile({ bytes: new TextEncoder().encode(t), name: n }), [text, name]);
-      return (async () => { if (await po.evaluate(() => !!(window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty))) { await po.waitForSelector('#dlg[open] #dlg-discard'); await clickUntil(po, '#dlg-discard', () => po.waitForSelector('#dlg[open] #dlg-discard', { state: 'detached', timeout: 2500 })); } return p; })();
+      return (async () => { if (await po.evaluate(() => !!(window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty))) { await po.waitForSelector('#dlg[open] #dlg-discard'); await clickUntil(po, '#dlg-discard', () => po.waitForSelector('#dlg[open] #dlg-discard', { state: 'detached', timeout: scaled(2500) })); } return p; })();
     };
     // 品質チェックのエラーの数
     const quickErrors = async () => {
       await po.click('#b-check');
-      await po.waitForSelector('#panel-body .sum', { timeout: 20000 });
+      await po.waitForSelector('#panel-body .sum', { timeout: scaled(20000) });
       const t = await po.textContent('#panel-body .sum');
-      await clickUntil(po, '#panel-close', () => po.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+      await clickUntil(po, '#panel-close', () => po.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
       return { n: Number((t.match(/エラー (\d+)/) || [])[1]), t };
     };
 
@@ -1607,9 +1617,9 @@ try {
       await po.waitForSelector(`#examples-list li[data-example="${name}"] button`);
       await openExampleCopy(po, name);
       // 開いた後の状態を待つ（独自のコードの確かめは「始める」）
-      const asked = await Promise.race([po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: 30000 }).then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: 30000 }).then(() => true)]);
-      if (asked) { await clickDlg(po, '#dlg-run'); await po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: 30000 }); }
-      await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+      const asked = await Promise.race([po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: scaled(30000) }).then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: scaled(30000) }).then(() => true)]);
+      if (asked) { await clickDlg(po, '#dlg-run'); await po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: scaled(30000) }); }
+      await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
       const s = await pst();
       ok(s.portable.docId === want.docId && !s.error && !s.portable.readOnly, `examples: ${name} opens from the list (docId ${s.portable.docId.slice(0, 8)}…, ${want.index.profile}${asked ? ', asked before its own code ran' : ''}, no build error)`);
       ok(asked === (want.index.profile === 'extended'), `examples: ${name} → the code notice ${want.index.profile === 'extended' ? 'is' : 'is not'} shown (same import checks as any file)`);
@@ -1660,12 +1670,12 @@ try {
     // 保存：どこにも保存していないので、1 ファイルか空のフォルダかを選ぶ
     await po.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('source-only' + '.ega.html', { create: true }); });
     await clickCommand(po, '#b-save');
-    await po.waitForSelector('#dlg[open] #save-where', { timeout: 30000 });
+    await po.waitForSelector('#dlg[open] #save-where', { timeout: scaled(30000) });
     await po.waitForSelector('#dlg[open] #save-where');
     ok(!!(await po.$('#dlg-file')) && !!(await po.$('#dlg-folder')), 'source only: Save asks where (a single file or a folder)');
     if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'save-where.png') });
     await clickDlg(po, '#dlg-file');
-    await po.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+    await po.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
     const sv = await readPortable(new Uint8Array(Buffer.from(await po.evaluate(async () => { const u = new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()); let x = ''; for (let i = 0; i < u.length; i += 0x8000) x += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(x); }), 'base64')));
     s = await pst();
     ok(sv.index.entry === 'deck.html' && new TextDecoder().decode(sv.files['deck.html']) === ksrc && !sv.files['narration.md'] && sv.docId === s.portable.docId && !(await po.isVisible('#notice-source-only')),
@@ -1736,7 +1746,7 @@ try {
       }, [deckWith('mytml'), MINI.narration, themeFiles]);
       const tst = () => po.evaluate(() => window.__APP_TEST.themeFolder());
       const builds = () => po.evaluate(() => window.__APP_TEST.state().builds);
-      const afterBuild = (n0) => po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.builds > n && !window.__APP_TEST.state().error; }, n0, { timeout: 30000 });
+      const afterBuild = (n0) => po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.builds > n && !window.__APP_TEST.state().error; }, n0, { timeout: scaled(30000) });
       const themeWarn = (s, n = 'mytml') => s.warn.find((w) => w.startsWith(`theme not found: "${n}"`));
       const appHtml = () => po.evaluate(() => window.__APP_TEST.build({}));
       ok((await tst()).name === null && (await tst()).state === 'none', 'theme folder: none chosen at first');
@@ -1747,17 +1757,17 @@ try {
       if (SHOTS) { await slidesNow(); await po.waitForTimeout(300); await po.screenshot({ path: path.join(SHOTS, 'theme-folder-prompt.png') }); }
       // 警告の一覧にも同じボタン。プレビューの読み込みが終わるのを待ってから板を開く：読み込み中に開くと、閉じる押下が
       // 読み直し中の iframe に届いてしまう（測定済み。試験の競合で、アプリの不具合ではない）
-      await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+      await po.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
       await po.click('#b-check');
       await po.waitForSelector('#panel-body #check-buildwarn');
       ok(await po.isVisible('#panel-body .theme-warn #b-theme-load'), 'theme folder: the theme warning in the Quality check panel has the button too');
-      await clickUntil(po, '#panel-close', () => po.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+      await clickUntil(po, '#panel-close', () => po.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
       // 選ぶ（選ぶ画面の代わりに OPFS のフォルダ）→ 組み直して、そのテーマ（色とロゴ）で組む
       await po.evaluate(() => { window.__APP_TEST.themePicker = async (o) => { window.__pickOpts = o; return window.__thmUser; }; });
       let n0 = await builds();
       // macOS の CI では、窓のボタンを押しても下のプレビューの iframe に届くことがある（click-retry.mjs）：効くまで押し直す
-      await clickUntil(po, '#notice-theme #b-theme-load', () => po.waitForSelector('#theme-load[open] #theme-load-folder', { timeout: 2500 }));
-      await clickUntil(po, '#theme-load-folder', () => po.waitForFunction(() => !!window.__pickOpts, null, { timeout: 2500 }));
+      await clickUntil(po, '#notice-theme #b-theme-load', () => po.waitForSelector('#theme-load[open] #theme-load-folder', { timeout: scaled(2500) }));
+      await clickUntil(po, '#theme-load-folder', () => po.waitForFunction(() => !!window.__pickOpts, null, { timeout: scaled(2500) }));
       await afterBuild(n0);
       s = await pst();
       let html = await appHtml();
@@ -1792,7 +1802,7 @@ try {
       // 残す：読み込み直しても同じフォルダ（IndexedDB）
       await po.goto(BASE);
       await po.waitForSelector('#drop');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 30000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: scaled(30000) });
       ok((await tst()).state === 'granted' && (await po.textContent('#w-themes-state')).includes('thm-user'), 'theme folder: remembered after a reload (handle in IndexedDB), shown on the first screen');
       // 許可の求め直し：次の訪問では許可が切れている（prompt）。知らせの「「thm-user」を使う」で求め直し、許せば組み直す
       await po.evaluate(async () => {
@@ -1826,7 +1836,7 @@ try {
       await afterBuild(n0);
       // 先に始まっていた組み立て（外での変更を見張る poll など）が先に終わることがある。忘れたあとの組み立てが済み、知らせが出るまで待つ（期限は固まったときのため）
       await po.waitForFunction(() => { const s = window.__APP_TEST.state(), t = window.__APP_TEST.themeFolder(), b = document.querySelector('#notice-theme #b-theme-load');
-        return !s.error && t.name === null && !t.inBuild && s.warn.some((w) => w.startsWith('theme not found: "mytml"')) && !!b && b.getClientRects().length > 0; }, null, { timeout: 30000 }).catch(() => {});
+        return !s.error && t.name === null && !t.inBuild && s.warn.some((w) => w.startsWith('theme not found: "mytml"')) && !!b && b.getClientRects().length > 0; }, null, { timeout: scaled(30000) }).catch(() => {});
       s = await pst();
       ok(!!themeWarn(s) && (await tst()).name === null && !(await tst()).inBuild && await po.isVisible('#notice-theme #b-theme-load'), 'theme folder: Forget → the deck builds without it again and the notice is back');
       await po.goto(BASE);
@@ -1862,7 +1872,7 @@ try {
       // 残す：読み込み直しても（IndexedDB に中身）
       await po.goto(BASE);
       await po.waitForSelector('#drop');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 2, null, { timeout: 30000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 2, null, { timeout: scaled(30000) });
       ok((await po.textContent('#w-themes-state')).includes('mytml'), 'theme zip: remembered after a reload (contents in IndexedDB), shown on the first screen');
       // 同じ名前のテーマをもう一度読み込む：置き換えたと知らせる
       await pickZip(zipOf('egatari-themes-main/themes/', themeFiles), 'egatari-themes-main.zip');
@@ -1871,7 +1881,7 @@ try {
       await clickDlg(po, '#dlg-load');
       await po.waitForSelector('#theme-load[open] #theme-load-zip');
       await po.click('#theme-load-zip');
-      await po.waitForFunction(() => /同じ名前のテーマ「evil」「mytml」があったので、今読み込んだものに置き換えました。/.test(document.getElementById('toast').textContent), null, { timeout: 30000 });
+      await po.waitForFunction(() => /同じ名前のテーマ「evil」「mytml」があったので、今読み込んだものに置き換えました。/.test(document.getElementById('toast').textContent), null, { timeout: scaled(30000) });
       ok((await tst()).mine.length === 2, 'theme zip: loading a theme with the same name again replaces it and says so');
       // 「自分のテーマ」の窓：テーマごとに見せる名前と「削除」。削除は確かめてから、1 つだけ
       await po.evaluate(() => document.getElementById('w-themes').click());
@@ -1882,7 +1892,7 @@ try {
       await po.waitForSelector('#dlg[open] #dlg-delete');
       ok((await po.textContent('#theme-delete-msg')) === '「mytml」をこのブラウザから削除します。読み込んだ ZIP ファイルは残ります。', 'theme zip: Delete asks first and says the ZIP file is kept');
       await clickDlg(po, '#dlg-delete');
-      await po.waitForFunction(() => JSON.stringify(window.__APP_TEST.themeFolder().mine) === '["evil"]', null, { timeout: 30000 });
+      await po.waitForFunction(() => JSON.stringify(window.__APP_TEST.themeFolder().mine) === '["evil"]', null, { timeout: scaled(30000) });
       await po.waitForSelector('#dlg[open] #theme-mine li[data-theme="evil"]');
       ok(!(await po.$('#theme-mine li[data-theme="mytml"]')), 'theme zip: only that theme is deleted, and the dialog shows the rest');
       await clickDlg(po, '#dlg-close');
@@ -1893,7 +1903,7 @@ try {
       ok(!!themeWarn(await pst()) && /このブラウザに保存したテーマにありません（削除したか、まだ読み込んでいません）。「テーマを読み込む…」/.test(await po.textContent('#notice-theme')), 'theme zip: a deck whose theme was deleted says it is not in this browser and to load it again with 「テーマを読み込む…」');
       await po.goto(BASE);
       await po.waitForSelector('#drop');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 30000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: scaled(30000) });
       ok(JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: the deletion holds after a reload');
       // フォルダを選ぶと、保存したテーマと同じ名前（evil）があれば、フォルダのものを使うと知らせる（保存したテーマは消さない）
       await po.evaluate(async () => { const u = await (await navigator.storage.getDirectory()).getDirectoryHandle('thm-user'); window.__APP_TEST.themePicker = async () => u; document.getElementById('w-themes').click(); });
@@ -1901,10 +1911,10 @@ try {
       await clickDlg(po, '#dlg-load');
       await po.waitForSelector('#theme-load[open] #theme-load-folder');
       await po.click('#theme-load-folder');
-      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: 30000 });
+      await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: scaled(30000) });
       // 選んだフォルダ（名前）はハンドルを IndexedDB に残す前に決まり、知らせはその後に出る（app/main.js の chooseThemeFolder）。知らせが出るまで待つ
       //（名前だけを待って読むと、ほかの段と同時に走る CI では前の知らせを読んで落ちた）
-      await po.waitForFunction(() => (document.getElementById('toast').textContent || '').startsWith('テーマのフォルダ「thm-user」を使います'), null, { timeout: 30000 }).catch(() => {});
+      await po.waitForFunction(() => (document.getElementById('toast').textContent || '').startsWith('テーマのフォルダ「thm-user」を使います'), null, { timeout: scaled(30000) }).catch(() => {});
       const tt = await po.textContent('#toast');
       ok(tt.includes('同じ名前のテーマ「evil」が、このブラウザにも保存してあります。フォルダのものを使います。') && !tt.includes('置き換えました') && JSON.stringify((await tst()).mine) === '["evil"]', 'theme zip: choosing a folder with a theme named like a saved one says the folder one is used (the saved one is kept)');
       await po.evaluate(() => { window.__APP_TEST.themePicker = null; });
@@ -1920,7 +1930,7 @@ try {
         await clickDlg(po, '#dlg-load');
         await po.waitForSelector('#theme-load[open] #theme-load-zip');
         await po.click('#theme-load-zip');
-        await po.waitForFunction((src) => new RegExp(src).test(document.getElementById('toast').textContent), re.source, { timeout: 30000 });
+        await po.waitForFunction((src) => new RegExp(src).test(document.getElementById('toast').textContent), re.source, { timeout: scaled(30000) });
         ok((await tst()).mine.length === 0, `theme zip: ${what} is refused with its message`);
       }
       await po.evaluate(() => { window.__APP_TEST.themeZipPicker = null; });
@@ -1970,7 +1980,7 @@ try {
     // 1 ファイル：開いて、再生専用を書き出す → 原稿（索引）のない再生専用。同じ docId
     const n0 = await pq.evaluate(() => window.__APP_TEST.state().loads);
     ok(await pq.evaluate(() => window.__APP_TEST.openFile({ handle: window.__pq.h })) === true, 'play-only: opened a single file');
-    await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n0, { timeout: 20000 });
+    await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n0, { timeout: scaled(20000) });
     let po = await exportPlay('lesson.play.html');
     ok(await kindOf(po) === 'play-only' && po.includes(pmin.index.docId) && !scanDocument(po).byId.has(FORMAT.INDEX_ID), `play-only (single file): exported a play-only file (${(po.length / 1024).toFixed(0)} KB, same docId, no index)`);
     // 最近開いたもの：1 ファイルも並び、そこから開き直せる
@@ -1978,13 +1988,13 @@ try {
     await pq.waitForSelector('#recent-list li[data-kind=file]');
     ok(await pq.isVisible('#recent-list li[data-kind=file]') && (await pq.textContent('#recent-list li[data-kind=file] .nm')) === 'lesson' + FORMAT.FILE_EXT && (await pq.textContent('#recent-list li[data-kind=file] .kind')) === 'Egatari ファイル', 'recent: the opened single file is listed (marked as a single file)');
     await pq.click('#recent-list li[data-kind=file] button:not(.ghost)');
-    await pq.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 20000 });
+    await pq.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: scaled(20000) });
     ok((await pq.evaluate(() => window.__APP_TEST.state().portable.name)) === 'lesson' + FORMAT.FILE_EXT, 'recent: reopened the single file from the list');
     await pq.evaluate(async () => { const d = await (await navigator.storage.getDirectory()).getDirectoryHandle('pq'); window.__pq = { d, deck: await d.getDirectoryHandle('deck') }; });   // 読み直しで消えたハンドル
     // 作業フォルダ：再生専用も書き出せる
     const n1 = await pq.evaluate(() => window.__APP_TEST.state().loads);
     ok(await pq.evaluate(() => window.__APP_TEST_OPEN(window.__pq.deck)) === true, 'play-only: opened a working folder');
-    await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n1, { timeout: 20000 });
+    await pq.waitForFunction((n) => window.__APP_TEST.state().loads > n, n1, { timeout: scaled(20000) });
     po = await exportPlay('deck.play.html');
     ok(await kindOf(po) === 'play-only', 'play-only (working folder): exported a play-only file' + (po ? '' : ': ' + await pq.textContent('#toast')));
     // TTS のモデルのキャッシュ：「使い方」に使用量と入っているモデル。「モデルを消す」で消える（ほかのキャッシュは残る）
@@ -2036,7 +2046,7 @@ try {
     await ps.selectOption('#paste-theme', { label: 'テーマを読み込む…' });
     await ps.waitForSelector('#theme-load[open] #theme-load-zip');
     await ps.click('#theme-load-zip');
-    await ps.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: 30000 });
+    await ps.waitForFunction(() => window.__APP_TEST.themeFolder().mine.length === 1, null, { timeout: scaled(30000) });
     await ps.waitForSelector('#paste-theme optgroup', { state: 'attached' });
     ok((await ps.$$eval('#paste-theme optgroup[label="自分のテーマ"] option', (xs) => xs.map((x) => x.textContent))).includes('My theme'), 'safari: a theme loaded from a zip is offered in the new-deck theme select under 「自分のテーマ」 (by its title)');
     await ps.click('#dlg-cancel');
@@ -2051,6 +2061,7 @@ try {
   watch(pe, 'en');
   await pe.goto(BASE);
   ok((await pe.textContent('#w-openfile')) === 'Open a file (.ega.html)…' && (await pe.textContent('#drop')).includes('Drag a .ega.html file here'), 'i18n: English UI for en locale');
+  ok((await pe.textContent('#w-parts')) === 'All parts', 'i18n: the start screen\'s parts link reads "All parts" in English');
   // 書き出した写しで直したもの：英語の知らせ（両方の文）。編集は断らない
   await pe.evaluate(async (b64) => {
     const root = await navigator.storage.getDirectory();
@@ -2059,7 +2070,7 @@ try {
     const w = await h.createWritable(); await w.write(u); await w.close();
     await window.__APP_TEST.openFile({ handle: h });
   }, fs.readFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT)).toString('base64'));
-  await pe.waitForSelector('#notice-exported', { timeout: 30000 });
+  await pe.waitForSelector('#notice-exported', { timeout: scaled(30000) });
   { const t = await pe.textContent('#notice-exported');
     ok(t.startsWith("This file was exported from a working folder (the folder that holds the slide and script files). Editing it here does not change the files in that folder. If you don't have the folder, you can edit and save this file as usual.") && t.includes('This file has been edited since it was exported.') && (await pe.textContent('#b-exported-unpack')) === 'Export working folder…', 'exportedFrom: the notice in English (both sentences) and the "Export working folder…" button');
     const st = await pe.evaluate(() => window.__APP_TEST.state().portable);
@@ -2074,6 +2085,10 @@ try {
   ok(await p1.evaluate(() => typeof window.showDirectoryPicker === 'function' && isSecureContext), 'single file: File System Access API available on file://');
   ok(await p1.evaluate(() => [...document.querySelectorAll('link[rel=icon]')].map((l) => l.getAttribute('href').slice(0, 23)).join() === 'data:image/x-icon;base6,data:image/x-icon;base6' && /^data:image\/png;base64,/.test(document.querySelector('link[rel=apple-touch-icon]').getAttribute('href')) && !document.querySelector('link[rel=manifest]')), 'single file: icons embedded as data: URIs, no manifest');
   ok(await p1.isHidden('#examples'), 'single file: no examples list on file:// (the examples are files of the site)');
+  {
+    const a = await p1.$eval('#w-parts', (x) => ({ href: x.getAttribute('href'), target: x.target, rel: x.rel, text: x.textContent, visible: !!x.offsetParent }));
+    ok(a.href === PARTS_INDEX && a.target === '_blank' && /\bnoopener\b/.test(a.rel) && a.text === 'パーツの一覧' && a.visible, `single file: "パーツの一覧" opens the hosted ${PARTS_INDEX} in a new tab on file://`);
+  }
   // file:// では OPFS が使えないので、メモリの上のフォルダ（同じ形のハンドル）で開く
   await p1.evaluate((files) => {
     class FileH { constructor(name, text) { this.kind = 'file'; this.name = name; this.text = text; this.m = Date.now(); }
@@ -2090,14 +2105,14 @@ try {
     window.__mem = d;
   }, files);
   ok(await p1.evaluate(() => window.__APP_TEST_OPEN(window.__mem)) === true, 'single file: opened a folder');
-  await p1.waitForFunction(() => window.__APP_TEST.state().loads > 0 && !window.__APP_TEST.state().error, null, { timeout: 20000 });
+  await p1.waitForFunction(() => window.__APP_TEST.state().loads > 0 && !window.__APP_TEST.state().error, null, { timeout: scaled(20000) });
   let ready = false;
   for (let i = 0; i < 100 && !ready; i++) { const fr = p1.frames().find((x) => x.parentFrame() === p1.mainFrame()); try { ready = !!(fr && await fr.evaluate(() => window.DECK && DECK.ready)); } catch { /* 読み込み中 */ } if (!ready) await p1.waitForTimeout(100); }
   ok(ready, 'single file: preview renders from file:// (fonts embedded)');
   await p1.click('#b-help');
   await p1.waitForSelector('#help-download-skill');
   await checkSkillDownload(p1, { lang: 'ja', selector: '#help-download-skill', ok });
-  await clickUntil(p1, '#panel-close', () => p1.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+  await clickUntil(p1, '#panel-close', () => p1.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
   // 音声の板：1 ファイル版（file://）では TTS の窓がないので「この PC で作る」は出さず、クラウドと録音を答えにする
   await p1.click('#b-audio');
   await p1.waitForSelector('#dev-audio-how');
@@ -2107,7 +2122,7 @@ try {
   await p1.evaluate(() => { window.showSaveFilePicker = undefined; });
   const l1 = await p1.evaluate(() => window.__APP_TEST.state().loads);
   ok(await p1.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'dl' + ext }); }, [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]) === true, 'single file: opened a portable file from bytes on file:// (reader worker from a blob URL)');
-  await p1.waitForFunction((n) => window.__APP_TEST.state().loads > n, l1, { timeout: 20000 });
+  await p1.waitForFunction((n) => window.__APP_TEST.state().loads > n, l1, { timeout: scaled(20000) });
   const [dl] = await Promise.all([p1.waitForEvent('download'), clickCommand(p1, '#b-save')]);
   const dlr = await readPortable(new Uint8Array(fs.readFileSync(await dl.path())));
   ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
@@ -2115,7 +2130,7 @@ try {
   await p1.goto(pathToFileURL(path.join(DIST, 'editor.html')).href + '?lang=en');
   await p1.waitForSelector('#drop');
   await p1.evaluate(([b64, ext]) => window.__APP_TEST.openFile({ bytes: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)), name: 'skill' + ext }), [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]);
-  await p1.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: 20000 });
+  await p1.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(20000) });
   await p1.click('#b-help');
   await p1.waitForSelector('#help-download-skill');
   await checkSkillDownload(p1, { lang: 'en', selector: '#help-download-skill', ok });
@@ -2140,7 +2155,7 @@ try {
     await ps.waitForSelector('#drop');
     ok(await ps.evaluate(() => [...document.styleSheets].some((x) => x.href && x.href.endsWith('/app.css')) && document.title === 'Egatari Studio'), `site (${tag}): the editor loads at ${base}`);
     await ps.goto(base + 'editor/?lang=en#x');
-    await ps.waitForURL(base + '?lang=en#x', { timeout: 30000 }).catch(() => {});
+    await ps.waitForURL(base + '?lang=en#x', { timeout: scaled(30000) }).catch(() => {});
     await ps.waitForSelector('#drop');
     ok(ps.url() === base + '?lang=en#x' && (await ps.textContent('#w-openfile')) === 'Open a file (.ega.html)…', `site (${tag}): editor/?lang=en#x redirects to ${ps.url()} (English UI)`);
     // スクリプトが動かなくても行ける：meta refresh とリンク（ページを開くと移ってしまうので、HTML を読んで確かめる）
@@ -2149,6 +2164,7 @@ try {
     await ps.goto(base + 'editor.html');
     await ps.waitForSelector('#drop');
     ok(await ps.evaluate(() => typeof window.__FONTPACK === 'object'), `site (${tag}): editor.html (single file) loads`);
+    ok(await ps.$eval('#w-parts', (x, want) => x.getAttribute('href') === 'parts/' && x.href === want && x.target === '_blank', new URL('parts/', base).href), `site (${tag}): on the site, editor.html links "パーツの一覧" to ${new URL('parts/', base).href}`);
     const lr = await ps.goto(base + 'lab/irodori.html');
     await ps.waitForLoadState('load');
     ok(lr.status() === 200 && (await ps.title()).length > 0 && await ps.evaluate(() => document.querySelectorAll('script[type=module]').length > 0), `site (${tag}): lab/irodori.html loads`);
@@ -2168,10 +2184,10 @@ try {
       // 約 1 秒を超える待ち（見本を開く）：はじめの画面の上にロゴを描く。すぐ終わるときは出さない
       await ps.route('**/examples/minimal' + FORMAT.FILE_EXT, async (route) => { await new Promise((r) => setTimeout(r, 1800)); await route.continue(); });
       await ps.click('#examples-list li[data-example="minimal"] button');
-      ok(await ps.waitForSelector('#wait:not([hidden]) img.wait-logo', { timeout: 4000 }).then(() => true).catch(() => false), 'wait: a slow open draws the logo after about 1 s');
-      await ps.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: 30000 });
+      ok(await ps.waitForSelector('#wait:not([hidden]) img.wait-logo', { timeout: scaled(4000) }).then(() => true).catch(() => false), 'wait: a slow open draws the logo after about 1 s');
+      await ps.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: scaled(30000) });
       await clickDlg(ps, '#dlg-copy');
-      await ps.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 30000 }).catch(() => {});
+      await ps.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: scaled(30000) }).catch(() => {});
       ok(await ps.evaluate(() => document.getElementById('wait').hidden && !document.querySelector('.wait-logo')), 'wait: the logo is gone once the deck is shown');
       await ps.unroute('**/examples/minimal' + FORMAT.FILE_EXT);
     }
@@ -2186,7 +2202,7 @@ try {
     await ps.goto(base);
     await ps.waitForSelector('#examples-list li[data-example="minimal"] button');
     await openExampleCopy(ps, 'minimal');
-    await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: 30000 }).catch(() => {});
+    await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: scaled(30000) }).catch(() => {});
     ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);
     await ps.click('#b-help');
     await ps.waitForSelector('#help-download-skill');
@@ -2204,8 +2220,14 @@ try {
     fs.mkdirSync(OLD);
     fs.writeFileSync(path.join(OLD, 'index.html'), fs.readFileSync(path.join(ROOT, 'app', 'index.html'), 'utf8').replace(/<body>[\s\S]*<\/body>/, '<body><h1>old</h1></body>').replace(/<!--APP_\w+-->/g, ''));
     const gz = packSite(OLD);
-    const r = assemble({ site: SITE, current: cur, releases: [{ version: '0.0.1', buf: gz, body: shaLine('0.0.1', sha256(gz)) }], log: () => {} });
-    ok(r.versions.join() === `${cur},0.0.1` && r.injected['0.0.1'], `versions: assembled the site (root v${cur}, /v${cur}/, /v0.0.1/ with the notice script added)`);
+    const rel = (version, buf) => ({ version, buf, body: shaLine(version, sha256(buf)) });
+    // 候補（package.json が X.Y.Z-rc.N）では /v<候補>/ の写しを作らない（RELEASING.md・site-versions.mjs）。凍結した写しの試験は、いま組んだものを前のリリース v0.0.2 として置いて行う
+    const rc = /-rc\.\d+$/.test(cur), frz = rc ? '0.0.2' : cur;
+    const releases = [rel('0.0.1', gz)];
+    if (rc) releases.unshift(rel('0.0.2', packSite(DIST)));
+    const r = assemble({ site: SITE, current: cur, releases, log: () => {} });
+    const listed = rc ? '0.0.2,0.0.1' : `${cur},0.0.1`;
+    ok(r.versions.join() === listed && r.injected['0.0.1'] && !fs.existsSync(path.join(SITE, `v${cur}`)) === rc, `versions: assembled the site (root v${cur}, /v${frz}/, /v0.0.1/ with the notice script added${rc ? '; no copy for the release candidate' : ''})`);
     const SB = BASE + SITEP;
     for (const lang of ['ja', 'en']) {
       const pv = await browser.newPage({ locale: lang === 'en' ? 'en-US' : 'ja-JP' });
@@ -2214,36 +2236,36 @@ try {
       pv.on('request', (q) => reqs.push(q.url()));
       // 根：はじめの画面の下に版の一覧。凍結の知らせはない
       await pv.goto(SB + '?lang=' + lang);
-      await pv.waitForSelector('#version-line select', { timeout: 30000 }).catch(() => {});
+      await pv.waitForSelector('#version-line select', { timeout: scaled(30000) }).catch(() => {});
       const root = await pv.evaluate(() => ({ line: document.getElementById('version-line')?.textContent || '', opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')), note: !!document.getElementById('version-note') }));
-      ok(root.line.includes('v' + cur) && root.opts.join() === `${cur}*,0.0.1` && !root.note, `versions (${lang}): the root shows v${cur} and a list of versions, no frozen notice ${JSON.stringify(root)}`);
+      ok(root.line.includes('v' + cur) && root.opts.join() === (rc ? `${cur}*,${listed}` : `${cur}*,0.0.1`) && !root.note, `versions (${lang}): the root shows v${cur} and a list of versions, no frozen notice ${JSON.stringify(root)}`);
       // 根で古い版を選ぶ → /v0.0.1/（?lang は残す）
-      await Promise.all([pv.waitForURL(SB + 'v0.0.1/?lang=' + lang, { timeout: 30000 }).catch(() => {}), pv.selectOption('#version-pick', '0.0.1')]);
-      await pv.waitForSelector('#version-note', { timeout: 30000 }).catch(() => {});
+      await Promise.all([pv.waitForURL(SB + 'v0.0.1/?lang=' + lang, { timeout: scaled(30000) }).catch(() => {}), pv.selectOption('#version-pick', '0.0.1')]);
+      await pv.waitForSelector('#version-note', { timeout: scaled(30000) }).catch(() => {});
       const old = await pv.evaluate(() => ({ url: location.href, text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '' }));
       ok(old.url === SB + 'v0.0.1/?lang=' + lang && old.text.includes('v0.0.1') && old.href === SB + '?lang=' + lang, `versions (${lang}): choosing v0.0.1 opens the old copy; its added notice says v0.0.1 and links to the latest ${JSON.stringify(old)}`);
       // 今の版の写し：編集アプリそのもの（資源はその下から読む）。知らせは「これが最新」
       reqs.length = 0;
-      await pv.goto(SB + `v${cur}/?lang=` + lang);
+      await pv.goto(SB + `v${frz}/?lang=` + lang);
       await pv.waitForSelector('#drop');
-      await pv.waitForSelector('#version-note', { timeout: 30000 }).catch(() => {});
+      await pv.waitForSelector('#version-note', { timeout: scaled(30000) }).catch(() => {});
       const fz = await pv.evaluate(() => ({ text: document.getElementById('version-note')?.textContent || '', href: document.getElementById('version-latest')?.href || '', line: !!document.getElementById('version-line'), opts: [...document.querySelectorAll('#version-pick option')].map((o) => o.value + (o.selected ? '*' : '')) }));
       const own = reqs.filter((u) => /\/(app\.js|app\.css)$/.test(u));
-      ok(fz.text.includes('v' + cur) && fz.href === SB + '?lang=' + lang && !fz.line && fz.opts.join() === `${cur}*,0.0.1` && own.length === 2 && own.every((u) => u.startsWith(SB + `v${cur}/`)),
-        `versions (${lang}): /v${cur}/ is the editor itself (its own app.js and app.css), with the frozen notice, a link to the latest and the version list ${JSON.stringify({ ...fz, own })}`);
+      ok(fz.text.includes('v' + frz) && fz.href === SB + '?lang=' + lang && !fz.line && fz.opts.join() === `${frz}*,0.0.1` && own.length === 2 && own.every((u) => u.startsWith(SB + `v${frz}/`)),
+        `versions (${lang}): /v${frz}/ is the editor itself (its own app.js and app.css), with the frozen notice, a link to the latest and the version list ${JSON.stringify({ ...fz, own })}`);
       ok(lang === 'en' ? /frozen copy/.test(fz.text) : /凍結/.test(fz.text), `versions (${lang}): the notice is in the UI language`);
       if (lang === 'ja') {
         await shot(pv, 'version-frozen.png');
         // 写しでも見本を開ける（相対の場所）
         await openExampleCopy(pv, 'minimal');
-        await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: 30000 }).catch(() => {});
-        ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${cur}/`);
+        await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: scaled(30000) }).catch(() => {});
+        ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${frz}/`);
         await pv.click('#b-help');
         await pv.waitForSelector('#help-download-skill');
-        await checkSkillDownload(pv, { lang, selector: '#help-download-skill', ok, base: SB + `v${cur}/` });
-        await clickUntil(pv, '#panel-close', () => pv.waitForSelector('#panel[hidden]', { state: 'attached', timeout: 2500 }));
+        await checkSkillDownload(pv, { lang, selector: '#help-download-skill', ok, base: SB + `v${frz}/` });
+        await clickUntil(pv, '#panel-close', () => pv.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
         // 写しの TTS の窓・試験ページ（lab/）も、その写しの下にある
-        ok((await fetch(SB + `v${cur}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
+        ok((await fetch(SB + `v${frz}/lab/tts-helper.html`)).status === 200 && (await fetch(SB + 'v0.0.1/index.html')).status === 200, 'versions: lab/ is served inside the frozen copy');
         // 知らせを隠す
         await pv.click('#version-note button');
         ok(!(await pv.$('#version-note')), 'versions: the notice can be hidden');

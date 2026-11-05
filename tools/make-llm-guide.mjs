@@ -13,6 +13,7 @@
 // 材料（どれかを直したら作り直す）：
 //   tools/llm-guide/template.md・template.ja.md   共通の本体（英語が正本）。{{…}} を下の中身で置き換える
 //   docs/llm-book.md・llm-book.ja.md              make の「本と配置」（手書きの正本）。スキルの頭にそのまま差し込む
+//   docs/llm-book-ref.md・llm-book-ref.ja.md      make の references/book.md（本を頼まれたときだけ読む。en は references/en/book.md）
 //   tools/llm-guide/sets/<束>.md・.ja.md          束ごとの部分。{{CATALOG}}（その束の部品）・{{EXTENSIONS}}（標準の部品のその束向けの節）・{{WORKED …}}
 //   docs/contract.md・contract.ja.md              {{contract §N "頭の字"}}：その節の箇条書きのうち、その字で始まる 1 つ（見つからなければ失敗）
 //   vendor/components/sha256/<hash>/README.md・index.js  既定のカタログの部品の写し（components.lock.json の content 表で引く）。frontmatter の name・summary・steps・props と、
@@ -68,7 +69,19 @@ export function setsOf(manifest) {
 }
 
 // ---------------------------------------------------------------- 段と束（パーツライブラリ 2.0 の manifest）
-// → {catalogue, parts: {タグ: {tier, set?, purposes}}, purposes: [{id, label: {ja, en}, into?}]}。manifest の要素のパーツすべて（特殊も。一覧が特殊を除く）
+// パーツの画面の名前（manifest の display。components 2.2.0 から）→ {ja, en} | null。display は「日本語 / English」の 1 つの文字列か {ja, en}。
+// kit/core/part-labels.mjs が新規作成 ④ の名前にこれを使い、表の名前（PART_LABELS の ja・en）はこれのないパーツだけに使う
+export function displayOf(c, version = '') {
+  const d = c.display;
+  if (d == null) return null;
+  const where = `manifest-${version}.json: ${c.tag} display ${JSON.stringify(d)}`;
+  if (typeof d === 'object' && typeof d.ja === 'string' && typeof d.en === 'string' && d.ja.trim() && d.en.trim()) return { ja: d.ja.trim(), en: d.en.trim() };
+  if (typeof d !== 'string') throw new Error(`${where} is neither "ja / en" nor {ja, en}`);
+  const xs = d.split(' / ');
+  if (xs.length !== 2 || !xs[0].trim() || !xs[1].trim()) throw new Error(`${where} is not "ja / en"`);
+  return { ja: xs[0].trim(), en: xs[1].trim() };
+}
+// → {catalogue, parts: {タグ: {tier, set?, purposes, display?: {ja, en}}}, purposes: [{id, label: {ja, en}, into?}]}。manifest の要素のパーツすべて（特殊も。一覧が特殊を除く）
 export function tiersFrom(cat = catalogue()) {
   const m = cat.manifest;
   const parts = {};
@@ -76,7 +89,8 @@ export function tiersFrom(cat = catalogue()) {
   for (const c of els) {
     if (!['standard', 'specialized', 'extra'].includes(c.tier)) throw new Error(`manifest-${cat.version}.json: ${c.tag} has tier ${JSON.stringify(c.tier)}`);
     if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${cat.version}.json: ${c.tag} is specialized without a set`);
-    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])] };
+    const display = displayOf(c, cat.version);
+    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])], ...(display ? { display } : {}) };
   }
   const purposes = (m.purposes || []).map((p) => ({ id: p.id, label: p.label || { ja: p.ja, en: p.en }, ...(p.tile && p.tile.into ? { into: p.tile.into } : {}) }));
   return { catalogue: cat.version, parts, purposes };
@@ -421,7 +435,17 @@ const PACK_VERSION = '{{PACK_VERSION}}';
 // スキルには貼り付け用の大きさの上限を掛けない。パーツの説明は同じ材料から束（セット）ごとに分ける：標準・束ごと（専門）と、特殊は README への道だけ
 const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
 
+const CLI_MINOR = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
+
+// Docs links pinned to the release tag (package.json version; the release step sets it, then re-runs gen).
+export const docUrl = (name, anchor = '') => `https://github.com/egatari/egatari-studio/blob/v${JSON.parse(read('package.json')).version}/docs/${name}${anchor ? '#' + anchor : ''}`;
+// {{DOC name#anchor}} in a source text becomes the pinned URL
+const docLinks = (text) => text.replace(/\{\{DOC ([\w.-]+)(?:#(\S+?))?\}\}/g, (_, n, a) => docUrl(n, a));
+// Hand-written skill text: <!-- generated: doc name#anchor -->…<!-- /generated: doc --> gets the pinned URL
+export function studioDocs(text) {
+  return text.replace(/(<!-- generated: doc ([\w.-]+)(?:#(\S+?))? -->)[^<]*(<!-- \/generated: doc -->)/g, (_, o, n, a, c) => o + docUrl(n, a) + c);
+}
 
 // Studio is hand-written. Only this marked version line belongs to the generator.
 export function studioVersion(text, version) {
@@ -451,6 +475,7 @@ export function skillFiles(data, lang = 'ja') {
       .replace('{{CATALOG}}', ja ? 'パーツは上のセットごとの参照ファイルから、必要なものだけ読む。' : 'Read only the parts you need from the set references above.')
       .replace('{{PURPOSES}}', ja ? 'パーツの候補はセットごとの参照ファイルで選ぶ。' : 'Choose candidate parts from the set references.'));
     const book = splitStamp(read('docs', ja ? 'llm-book.ja.md' : 'llm-book.md')).body.trim();
+    files[`${MAKE_SKILL_DIR}/references/${ja ? '' : 'en/'}book.md`] = skillTerms(head + docLinks(splitStamp(read('docs', ja ? 'llm-book-ref.ja.md' : 'llm-book-ref.md')).body.trim()) + '\n');
     const text = ja ? `---
 name: make
 description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
@@ -466,12 +491,14 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 **指示の版：${data.version}**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-Claude Code では \`/plugin update egatari@egatari\`。
+Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egatari@${CLI_MINOR}.x skills update\`。更新の道がない道具では案内を省き、\`egatari --version\` の版を利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 ## 進め方
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
+
+構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の返事を受けてから（\`codex exec\` なら resume で）。
 
 下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
@@ -495,6 +522,8 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
 
+頼まれていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
+
 ${common}
 ` : `---
 name: make
@@ -511,12 +540,14 @@ Egatari is an open lesson format ([specification](https://github.com/egatari/ega
 **Instruction version: ${data.version}**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
-In Claude Code, use \`/plugin update egatari@egatari\`.
+In Claude Code, use \`/plugin update egatari@egatari\`. In Codex, use \`npx egatari@${CLI_MINOR}.x skills update\`. If a tool has no update path, leave out the instruction and tell the user the version from \`egatari --version\`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
 
 ## Workflow
 
 First confirm the materials, audience, length, language and theme, and show an outline. Each item has a heading, what to convey, a recommended part and why, a conclusion line and materials. Never invent numbers. Write after the user approves the outline and parts. Use one speaker by default; write a dialogue only when asked.
+
+After showing the outline, stop until the user approves it (write no files). Continue after the user's reply (with \`codex exec\`, by resuming the session).
 
 Follow the shared writing rules below. When finished, use “When you finish” to deliver files or code blocks, according to your capabilities. For a fix request, fix the findings and return the result.
 
@@ -540,12 +571,14 @@ If you cannot write files, return the two fenced blocks \`deck.html\` and \`narr
 
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
 
+Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
+
 ${common}
 `;
     files[`${MAKE_SKILL_DIR}/${ja ? 'SKILL.md' : 'SKILL.en.md'}`] = skillTerms(text);
   }
   if (lang === 'en') files[`${MAKE_SKILL_DIR}/SKILL.md`] = files[`${MAKE_SKILL_DIR}/SKILL.en.md`];
-  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', description: 'Make Egatari lessons with the make skill.' }, null, 2) + '\n';
+  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', version: JSON.parse(read('package.json')).version, description: 'Make Egatari lessons with the make skill.', skills: './skills/' }, null, 2) + '\n';
   return files;
 }
 
@@ -689,7 +722,8 @@ export function generate(opts = {}) {
     }
   }
   Object.assign(files, skillFiles(data, opts.skillLang));
-  files['skills/studio/SKILL.md'] = studioVersion(read('skills/studio/SKILL.md'), data.version);
+  files['kit/instruction-version.json'] = JSON.stringify({ instruction: data.version }, null, 2) + '\n';   // egatari doctor が、入れたスキルの指示の版と比べる
+  files['skills/studio/SKILL.md'] = studioDocs(studioVersion(read('skills/studio/SKILL.md'), data.version));
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
   return { files, sizes, data, warnings };

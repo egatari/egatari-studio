@@ -13,7 +13,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const SECTIONS = ['Added', 'Changed (API)', 'Changed', 'Removed', 'Fixed', 'Security'];
+const SECTIONS = ['Migration', 'Added', 'Changed (API)', 'Changed', 'Removed', 'Fixed', 'Security'];
 // コードが変わったと見なす場所（--check --base）。文書・試験・CI だけの変更には断片は要らない
 const CODE = /^(app|kit|vendor\/components|vendor\/themes|server|render|tts|themes|lab|skills)\/|^(package|components\.lock|themes\.lock)\.json$/;
 const FRAG = /^[a-z0-9][a-z0-9._-]*\.md$/;
@@ -69,6 +69,7 @@ function render(sections) {
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const SEMVER = /^\d+\.\d+\.\d+$/;
+const RC = /^\d+\.\d+\.\d+-rc\.\d+$/;
 
 function fail(msg) { console.error(`changelog: ${msg}`); process.exit(1); }
 
@@ -103,6 +104,28 @@ function setVersion(file, version) {
   j.version = version;
   if (j.packages && j.packages['']) j.packages[''].version = version;
   fs.writeFileSync(file, JSON.stringify(j, null, 2) + '\n');
+}
+
+// プラグインの版（Claude・Codex の更新の手がかり）を package.json の版にそろえる：各 plugin.json と 2 つの marketplace.json の項目
+function setPluginVersions(version) {
+  for (const f of ['.claude-plugin/plugin.json', 'plugins/egatari/.claude-plugin/plugin.json']) setVersion(path.join(ROOT, f), version);
+  for (const f of ['.claude-plugin/marketplace.json', '.agents/plugins/marketplace.json']) {
+    const file = path.join(ROOT, f);
+    if (!fs.existsSync(file)) continue;
+    const raw = read(file), j = JSON.parse(raw);
+    if (JSON.stringify(j, null, 2) + '\n' !== raw) fail(`${f} is not in 2-space JSON format: set the versions by hand`);
+    for (const p of j.plugins) p.version = version;
+    fs.writeFileSync(file, JSON.stringify(j, null, 2) + '\n');
+  }
+}
+
+// 版を変える（--release と --rc で同じ）：package.json・package-lock.json・プラグインの版（#172）。そのあと make-llm-guide.mjs を動かし直す
+// （スキルの docs へのリンクは v<版> の札に固定、make の SKILL.md の更新のコマンドは CLI の小版。どちらも package.json の版から作る）
+function setAllVersions(v) {
+  setVersion(path.join(ROOT, 'package.json'), v);
+  setVersion(path.join(ROOT, 'package-lock.json'), v);
+  setPluginVersions(v);
+  if (fs.existsSync(path.join(ROOT, 'tools', 'make-llm-guide.mjs'))) execFileSync(process.execPath, [path.join(ROOT, 'tools', 'make-llm-guide.mjs')], { stdio: 'inherit' });
 }
 
 function changedFiles(base) {
@@ -140,7 +163,7 @@ if (args.includes('--preview')) {
 
 if (args.includes('--release')) {
   const v = opt('--release');
-  if (!v || !SEMVER.test(v)) fail('usage: --release X.Y.Z (three numbers; rc versions are tags only, not CHANGELOG sections)');
+  if (!v || !SEMVER.test(v)) fail('usage: --release X.Y.Z (three numbers; an rc has no CHANGELOG section: --rc X.Y.Z-rc.N only sets the version)');
   const date = opt('--date') || today();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) fail('--date must be YYYY-MM-DD');
   if (errors.length) fail(errors.join('\n'));
@@ -149,12 +172,20 @@ if (args.includes('--release')) {
   let text;
   try { text = release(read(CL), v, date, body); } catch (e) { fail(e.message); }
   fs.writeFileSync(CL, text);
-  setVersion(path.join(ROOT, 'package.json'), v);
-  setVersion(path.join(ROOT, 'package-lock.json'), v);
   for (const f of files) fs.rmSync(path.join(DIR, f));
-  console.log(`CHANGELOG.md: [${v}] - ${date} from ${files.length} fragment(s); package.json and package-lock.json set to ${v}; fragments removed`);
+  setAllVersions(v);
+  console.log(`CHANGELOG.md: [${v}] - ${date} from ${files.length} fragment(s); package.json, package-lock.json and the plugin manifests and marketplaces set to ${v}; fragments removed`);
   process.exit(0);
 }
 
-console.error('usage: node tools/changelog.mjs --check [--base <ref>] | --preview [X.Y.Z] | --release X.Y.Z [--date YYYY-MM-DD]  [--root <dir>]');
+// 候補：版だけを X.Y.Z-rc.N にする（npm.yml はタグ = "v" + 版を求める。プラグインの版と make-llm-guide は --release と同じ）。CHANGELOG と changes/ は触らない
+if (args.includes('--rc')) {
+  const v = opt('--rc');
+  if (!v || !RC.test(v)) fail('usage: --rc X.Y.Z-rc.N');
+  setAllVersions(v);
+  console.log(`package.json, package-lock.json and the plugin manifests and marketplaces set to ${v}; CHANGELOG.md and changes/ untouched`);
+  process.exit(0);
+}
+
+console.error('usage: node tools/changelog.mjs --check [--base <ref>] | --preview [X.Y.Z] | --release X.Y.Z [--date YYYY-MM-DD] | --rc X.Y.Z-rc.N  [--root <dir>]');
 process.exit(1);

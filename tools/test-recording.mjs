@@ -23,6 +23,7 @@ import { build } from '../kit/build.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { encodeWav, clickCut } from '../kit/core/audio-core.mjs';
 import { clickUntil } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 // Local diagnostic: synthetic audio routing jitters on shared CI runners.
 const AUDIO_BURSTS = process.env.EGATARI_TEST_AUDIO_BURSTS === '1';
@@ -264,7 +265,7 @@ try {
   await page.keyboard.press('ArrowRight'); await waitIdx(1);
   st = await recState();
   ok(st.key === keys[1], 'move: → goes to the next step (' + st.key + ')');
-  await page.waitForFunction((k) => (window.__APP_TEST.ui().pos || {}).key === k, keys[1], { timeout: 10000 });
+  await page.waitForFunction((k) => (window.__APP_TEST.ui().pos || {}).key === k, keys[1], { timeout: scaled(10000) });
   ok(true, 'stage: the preview follows the recording cursor');
   ok(/ステップ 2 \/ \d+/.test(await liveHas(/ステップ 2 \//)), 'live: a step change announces "step n of N"');
   await page.keyboard.press('ArrowLeft'); await waitIdx(0);
@@ -477,14 +478,14 @@ try {
   const pkey = (await page.evaluate(() => window.__APP_TEST.audio())).key;
   ok((await page.textContent('#dev-audio-rec')).includes('(r)') && !(await page.$('#dev-audio-recmode')), 'entry: the Audio panel has one record button, “● 録音 (r)”, and no second way to record');
   const prevE = (await manifest())[pkey];
-  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: 2500 }));
+  await clickUntil(page, '#dev-audio-rec', () => page.waitForSelector('#rec-mode', { timeout: scaled(2500) }));
   await waitRec('idle');
   ok((await recState()).key === pkey, 'panel: the button opens recording mode at the panel\'s step (' + pkey + ')');
   await record(3500, [], 'Space');
   const eP = await waitWritten(pkey, prevE);
   await page.keyboard.press('Escape');
   await page.waitForSelector('#rec-mode', { state: 'detached' });
-  await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && !s.busy && s.key === k && s.entry && s.entry.file === f; }, [pkey, eP.file], { timeout: 15000 });
+  await page.waitForFunction(([k, f]) => { const s = window.__APP_TEST.audio(); return s.open && !s.loading && !s.busy && s.key === k && s.entry && s.entry.file === f; }, [pkey, eP.file], { timeout: scaled(15000) });
   ok(await page.isVisible('#dev-audio-play') && !!(await page.$('#dev-audio-player')) && await page.isVisible('#dev-audio-revert'), 'panel: after Esc the panel shows the new take for that step, with Revert to previous');
   // r で開いても、開いていた板は閉じない（録音モードの間は隠れるだけ）
   await page.evaluate(() => document.body.focus());
@@ -564,7 +565,7 @@ try {
   await page.evaluate(() => { window.__slow.starts = 0; navigator.mediaDevices.getUserMedia = () => new Promise((_, rej) => setTimeout(() => rej(new DOMException('Permission denied', 'NotAllowedError')), 300)); document.body.focus(); });
   await page.keyboard.press('r');
   await page.keyboard.press('Space');
-  await page.waitForFunction(() => /マイクを使えません/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: 10000 });
+  await page.waitForFunction(() => /マイクを使えません/.test((document.getElementById('rec-err') || {}).textContent || ''), null, { timeout: scaled(10000) });
   await waitRec('idle');
   await page.waitForTimeout(400);
   sc = await slowCounts();

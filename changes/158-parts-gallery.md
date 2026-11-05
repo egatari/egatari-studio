@@ -1,2 +1,0 @@
-### Added
-- Samples of all parts: a page with every part of the parts library working, grouped by what to convey (#158), at <https://studio.egatari.org/parts/v2.1.1/> for parts library 2.1.1, with a list of versions at `/parts/`. The editor's help and step 4 of “New…” link to it. `node tools/build-app.mjs --parts` builds it from the vendored release alone (`tools/parts-gallery.mjs`, with the parts library's `gallery.mjs --pack` vendored from a pinned commit in `vendor/components-gallery/`); like the editor's `/vX.Y.Z/`, each published version stays as first released.
