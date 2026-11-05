@@ -48,6 +48,7 @@ import { setupLlm } from './llm.js';
 import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
+import { partsIndexHref } from './parts-gallery.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from './theme-zip.js';
 import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, deleteMyTheme } from './my-themes.js';
@@ -1958,6 +1959,7 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('w-claude').href = WITH_CLAUDE_URL;
+$('w-parts').href = partsIndexHref(location);
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();

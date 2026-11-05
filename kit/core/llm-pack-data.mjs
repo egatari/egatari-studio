@@ -1183,7 +1183,11 @@ export const PACK = {
     "purposes": [
      "hierarchy",
      "process"
-    ]
+    ],
+    "display": {
+     "ja": "ハフマン木",
+     "en": "Huffman tree"
+    }
    },
    "m-collect": {
     "tier": "extra",

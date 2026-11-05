@@ -99,6 +99,7 @@ const ALLOW = [
   ['lab/tts-engine.mjs', 'res.body.getReader()', 'TTS の窓と試験ページ：重みの fetch を読みながら進み具合を出す（content-length の大きさで確保）'],
   ['tools/changelog.mjs', "const read = (f) => fs.readFileSync(f, 'utf8')", 'CHANGELOG の道具：リポジトリの changes/*.md・CHANGELOG.md・package.json・package-lock.json を読む（開発者の道具）'],
   ['tools/release-assets.mjs', "fs.readFileSync(path.join(ROOT, 'package.json')", 'リポジトリの package.json（版）を読む'],
+  ['tools/part-labels-check.mjs', 'JSON.parse(fs.readFileSync(', 'パーツの名前の検査（npm run gen:check）：リポジトリの components2.lock.json と vendor/components-2/ の既定のカタログの manifest を読む（開発者の道具）'],
   ['tools/parts-gallery.mjs', 'fs.readFileSync(', 'パーツのサンプルのページを組む（開発者とワークフローの道具）：リポジトリの components.lock.json・components2.lock.json・vendor/components-2/ の manifest・vendor/components-gallery/ と、gallery.mjs が書いた egatari.json を読む（--sync は管理者の選んだ checkout の決まったファイル）'],
   ['tools/site-versions.mjs', 'fs.readFileSync(', '版ごとのサイト：自分で組んだ dist・package.json と、gh で取ったリリースの tar.gz（sha256 を確かめ、展開は上限つき）・それを広げた写しの index.html を読む（開発者とワークフローの道具）'],
 ];
