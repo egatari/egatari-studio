@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=bd2d61cbacbe8d98 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=09b0bf2cc063b09b -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -9,22 +9,29 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
 1. **Release candidate.** First set `COLAB.ref` in `kit/core/colab-core.mjs` to the release tag `vX.Y.Z` (the Colab link of the editor and the notebook's clone use it), run `npm run gen` and commit. Then, on the `main` commit to release, tag and push a candidate:
 
-   **The bundled player.** Files carry `player` {name, version} (format spec §4.1): `kit/player.json` holds Egatari Player's version, and `kit/player.lock.json` the version and SHA-256 of the last released player (the files in `PLAYER_FILES`, `kit/core/player.mjs`: `kit/deck.js`, the `kit/core` modules it bundles, `presenter.js`, `tools.js`, `shape.js`, the runtime CSS and the Live player). A build whose player files equal the lock writes the plain version; any other build writes `<version>+dev.<commit>` (`+dev` without git). Before tagging an rc, run `npm run player:check -- --strict`; if the player changed since its last release, run `npm run player:bump -- patch|minor|major` (the first release is `major`: 1.0.0), fill in `changes/player-<version>.md`, run `npm run gen:check` and commit, so that the candidate's files carry the plain player version. On branches `npm run player:check` only informs.
+   **The bundled player.** Files carry `player` {name, version} (format spec §4.1): `kit/player.json` holds Egatari Player's version, and `kit/player.lock.json` the version and SHA-256 of the last released player (the files in `PLAYER_FILES`, `kit/core/player.mjs`: `kit/deck.js`, the `kit/core` modules it bundles, `presenter.js`, `tools.js`, `shape.js`, the runtime CSS and the Live player). The book's typesetting CSS (`ARTICLE_CSS` in `kit/core/article-render.mjs`) is generator output written into the lesson, like the theme and slide CSS, so it is versioned by `generator`, not by the player hash. A build whose player files equal the lock writes the plain version; any other build writes `<version>+dev.<commit>` (`+dev` without git). Before tagging an rc, run `npm run player:check -- --strict`; if the player changed since its last release, run `npm run player:bump -- patch|minor|major` (the first release is `major`: 1.0.0), fill in `changes/player-<version>.md`, run `npm run gen:check` and commit, so that the candidate's files carry the plain player version. On branches `npm run player:check` only informs.
 
    **The spec snapshot.** Before tagging an rc, `vendor/egatari-spec` must equal the latest `wd-*` snapshot of egatari-spec (`vendor/egatari-spec/SOURCE.json` has `"snapshot": "wd-YYYY-MM-DD"`, and `node tools/spec-snapshot.mjs --check` prints `ok`). Sync with `node tools/sync-spec.mjs <spec clone> --ref wd-YYYY-MM-DD`. If the spec has changed since its latest snapshot, ask the spec maintainer to cut a new snapshot first.
 
+   **The version in `package.json`.** `npm.yml` publishes only when the tag equals `v` + `package.json`'s `version`, so set the version to the candidate's before tagging (the candidate is published to the `next` dist-tag; `latest` stays on the last release). `--rc` changes only the version, in the same files as step 4 (`package.json`, `package-lock.json`, both `plugin.json` files and the two `marketplace.json` files), and re-runs `node tools/make-llm-guide.mjs` so the skills' pinned docs links and the CLI minor version follow it (`npm run gen:check` and `tools/test-plugin.mjs` need all of them to match `package.json`); `CHANGELOG.md` and `changes/` stay as they are:
+
    ```bash
-   git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin vX.Y.Z-rc.N
+   node tools/changelog.mjs --rc X.Y.Z-rc.N
+   npm run gen:check
+   git commit -am "vX.Y.Z-rc.N：版を X.Y.Z-rc.N にする"
+   git tag -a vX.Y.Z-rc.N -m vX.Y.Z-rc.N && git push origin main vX.Y.Z-rc.N
    ```
+
+   A later candidate repeats this with the next N. Step 4 (`--release X.Y.Z`) then sets the version to the plain `X.Y.Z`. The editor site treats an rc version as "not a release": `tools/site-versions.mjs assemble` accepts it, makes no `/v…/` folder for it, and lists only full releases (and a "Run workflow" on an rc tag only does the dry run; `pages.yml` never deploys it).
 
 2. **Evaluation.** Check the maintainers' nightly evaluation (run with the format spec's experiment tools; ask the maintainer for the summary of the candidate commit): tier A (re-scoring saved replies) shows **0 changed** — if not 0, confirm every difference is an intended change — and tier B (new generation) shows no large drop in the pass rate after fixes compared with recent nights. Otherwise fix on `main` and make a new candidate.
 3. **CI green on `main`.** The `test` and `pages` (build only) workflows pass for the candidate's commit: `gh run list --branch main --limit 5`.
    The `test` workflow includes the self-containment checks (backlog #50); all must be green:
-   - `npm test` on Linux (Node 22 and 24), Windows and **macOS** (`test`, `windows`, `macos` jobs; three steps at a time on Linux and Windows, one at a time on macOS, timing-sensitive tests last and alone). If a test fails there but passes alone, run `npm test -- --jobs 1` to tell a test that does not tolerate running alongside others from a real failure
+   - `npm test` on Linux (Node 22 and 24), Windows and **macOS** (`test`, `windows`, `macos` jobs; three steps at a time on Linux and Windows, two on macOS with the memory-heavy steps one at a time, timing-sensitive tests last and alone). **Where the tests run:** Linux and Windows run everything on every run. macOS runs the full `npm test` (and the macOS legs of `clean` and `pack`) only for a push to `main`, a push of a `v*` tag (release or rc) and a dispatch with `full=true` (`gh workflow run test.yml --ref <branch> -f full=true`); branch dispatches and pull requests run the platform-sensitive set there in one job (`npm test -- --platform`: builds, checks, unit tests and the tests marked `// test-all: platform` for paths, fonts, WebKit and the npm package, then `node tools/clean-env.mjs`). **The rc tag needs one fully green full-suite run on all three OSes** for its commit (the run of the push to `main`, of the tag, or a `full=true` dispatch), rerunning failed jobs at most once and noting every failure. Waits are 3x longer on macOS (`TEST_TIMEOUT_SCALE=3`, `tools/wait-scale.mjs`). If a test fails there but passes alone, run `npm test -- --jobs 1` to tell a test that does not tolerate running alongside others from a real failure
    - `tools/test-selfcontained.mjs` (in `npm test`): no personal paths, private addresses, secrets locations or personal voice names in tracked files; `localhost:8882` only as the default of `IRODORI_URL`; `skills/` names only the bundled skills; the paths, links and `npm run` scripts that documents name exist; `kit/` and `server/` do not import `tts/` or `render/`
-   - the `clean` job on Linux, Windows and macOS: `node tools/clean-env.mjs` with an empty `HOME` and no TTS server builds, quality-checks and exports (`--portable`, `--play-only`) every example, runs `tts/synth.py --dry-run` and builds with its audio, and builds a deck from `npm run new`. Run it locally too: `node tools/clean-env.mjs`
-   - the `pack` job on Linux, Windows and macOS: `node tools/test-npm-pack.mjs` packs the npm package `egatari`, installs the tarball outside the repository and runs `npx egatari` (`--version`, `doctor`, `new`, `check`, `build`, `build --portable`)
-4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json` and `package-lock.json` and deletes `changes/*.md`):
+   - the `clean` job on Linux, Windows and macOS (macOS on full runs; otherwise the `macos` job runs it after its set): `node tools/clean-env.mjs` with an empty `HOME` and no TTS server builds, quality-checks and exports (`--portable`, `--play-only`) every example, runs `tts/synth.py --dry-run` and builds with its audio, and builds a deck from `npm run new`. Run it locally too: `node tools/clean-env.mjs`
+   - the `pack` job on Linux, Windows and macOS (macOS on full runs; otherwise `test-npm-pack` in the `macos` job's set): `node tools/test-npm-pack.mjs` packs the npm package `egatari`, installs the tarball outside the repository and runs `npx egatari` (`--version`, `doctor`, `new`, `check`, `build`, `build --portable`)
+4. **Changelog.** Check the section, then assemble it (this also sets the version in `package.json`, `package-lock.json`, both `plugin.json` files and the plugin entries of `.claude-plugin/marketplace.json` and `.agents/plugins/marketplace.json` — installed Claude Code and Codex update from this version — deletes `changes/*.md` and re-runs `node tools/make-llm-guide.mjs`, because the skills link the docs pinned to `v<version>` and name the CLI's minor version in the update command; `tools/test-plugin.mjs` fails if any of the versions differs from `package.json`):
 
    ```bash
    node tools/changelog.mjs --preview X.Y.Z
@@ -33,7 +40,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git commit -am "vX.Y.Z：CHANGELOG を版にまとめ、版を X.Y.Z にする"
    ```
 
-   Only `CHANGELOG.md`, `changes/` and the version change between the candidate and this commit.
+   Only these change between the candidate and this commit: `CHANGELOG.md`, `changes/`, the versions (`package.json`, `package-lock.json`, `.claude-plugin/plugin.json`, `plugins/egatari/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) and what `make-llm-guide.mjs` regenerates from the version: the skills' pinned docs links (`plugins/egatari/skills/make/references/book.md`, `references/en/book.md`, `skills/studio/SKILL.md`) and the CLI minor version in the update command (`plugins/egatari/skills/make/SKILL.md`, `SKILL.en.md`).
 5. **No session links.** Before every push (commits and tags):
 
    ```bash
@@ -97,6 +104,6 @@ If the `npm` environment limits its deployment tags (Settings → Environments �
 git tag -a fonts-extra-vX.Y.Z -m fonts-extra-vX.Y.Z && git push origin fonts-extra-vX.Y.Z
 ```
 
-## Before v0.6.5
+## Before v0.6.6
 
-Delete the moved-notice stubs `skills/motion-slides`, `skills/motion-slides-video` and `skills/motion-components` (kept for v0.6.4 only) and their assertions in `tools/test-plugin.mjs`. `egatari doctor` keeps checking for old `~/.claude/skills/motion-*` entries.
+Delete the moved-notice stubs `skills/motion-slides`, `skills/motion-slides-video` and `skills/motion-components` (kept for v0.6.4–v0.6.5; remove them once the migration notice has gone out) and their assertions in `tools/test-plugin.mjs`. `egatari doctor` keeps checking for old `~/.claude/skills/motion-*` entries.

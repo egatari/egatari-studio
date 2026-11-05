@@ -1,0 +1,19 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "A paragraph, then indented code:"
+        }
+      ]
+    },
+    {
+      "type": "code",
+      "lang": "",
+      "value": "x = 1\ny = 2"
+    }
+  ]
+}

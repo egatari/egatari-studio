@@ -7,6 +7,10 @@
 //   await b.scan(files, entry, {timeout})                       → 理由の配列
 //   b.probe(name)                                               試験：Worker の大域変数
 //   b.setThemes(tws)                                            利用者のテーマのフォルダ（app/theme-folder.js の themeFolderWorkspace。null で使わない）
+//   b.setExtra(text)                                            Worker の字の後ろにつなげる字（本の道具。app/article-loader.js の workerPrelude）。
+//                                                               変われば、終わっていない要求のない Worker を作り直す（次の要求から）
+//   await b.article(ws, file, opts, {timeout})                  本（kit/core/article-page.mjs の renderedArticle と読むための頁・つながりの古さ。app/engine.js の article）
+// opts.steps(links)：Worker の本文のステップへのリンクの行き先を、親が確かめる（プレビューの再生器。app/main.js）
 // 作業場所（ws）の読み出しは Worker からの問い合わせに答える（ws.readBytes・ws.list）。Worker は作業場所に書けない
 import WORKER_SRC from 'virtual:build-worker';
 
@@ -19,8 +23,8 @@ const plain = (L) => ({ files: new Map([...L.files].map(([k, f]) => [k, { m: f.m
 // 作業場所の読み出しは、その Worker に出した組み立ての要求（req）に結び付け、その要求の作業場所だけを読む。同時に読むのは代ごとに READ_CONCURRENCY まで、
 // Worker を止めたら、まだ始めていない読み出しは始めない
 export const READ_CONCURRENCY = 8;
-export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker === 'function' ? Worker : null) } = {}) {
-  let worker = null, gen = 0, seq = 0, wsSeq = 0, themeWs = null;
+export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker === 'function' ? Worker : null), steps = null } = {}) {
+  let worker = null, gen = 0, seq = 0, wsSeq = 0, themeWs = null, extra = '', workerExtra = '';
   const waiting = new Map();          // 要求の番号 → {resolve, reject, gen, ws}
   const wsIds = new WeakMap();
   const idOf = (ws) => { if (!wsIds.has(ws)) wsIds.set(ws, ++wsSeq); return wsIds.get(ws); };
@@ -57,6 +61,11 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
         return reply(true, renderAbc(m.arg));
       }
       if (m.op === 'lazy') return reply(true, await loadLazy(m.arg));
+      // 本文のステップへのリンクの行き先（§9C.8 の 1）：この Worker にまだ終わっていない要求があるときだけ
+      if (m.op === 'steps') {
+        if (!steps || ![...waiting.values()].some((w) => w.gen === g && w.ws)) throw Object.assign(new Error('no player to check step links'), { code: 'article-unsupported' });
+        return reply(true, await steps(Array.isArray(m.arg) ? m.arg.map(String) : []));
+      }
       // 利用者のテーマのフォルダ：今選んでいるフォルダで、この Worker にまだ終わっていない要求があるときだけ（読むだけ）
       if (m.op === 'tlist' || m.op === 'tread') {
         const tw = themeWs;
@@ -77,9 +86,13 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
       return reply(true, plain(await lim(() => ws.list(m.arg.o))));
     } catch (err) { reply(false, null, err); }
   }
+  const busy = () => [...waiting.values()].some((w) => w.gen === gen);
   function getWorker() {
+    // つなげる字が替わった（本の道具を読み込んだ）：終わっていない要求がなければ作り直す
+    if (worker && workerExtra !== extra && !busy()) { const old = worker; worker = null; old.terminate(); }
     if (worker) return worker;
-    const url = URL.createObjectURL(new Blob([WORKER_SRC], { type: 'text/javascript' }));
+    workerExtra = extra;
+    const url = URL.createObjectURL(new Blob([WORKER_SRC + extra], { type: 'text/javascript' }));
     const me = new WorkerClass(url, { name: 'deck-builder' }), g = ++gen;
     worker = me;
     const lim = limiter(() => worker === me && gen === g);
@@ -117,6 +130,9 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
     scan: (files, entry, o = {}) => call({ op: 'scan', files, entry }, null, o.timeout),
     probe: (name) => call({ op: 'probe', name }, null),
     setThemes: (tws) => { themeWs = tws || null; },
+    setExtra: (text) => { extra = String(text || ''); },
+    get extra() { return workerExtra; },
+    article: (ws, file, opts, o = {}) => call({ op: 'article', ws: idOf(ws), file, opts }, ws, o.timeout),
     terminate: () => fail('cancelled', 'cancelled'),
     get generation() { return gen; },
   };

@@ -1,4 +1,5 @@
 // 選べる字体（#133）の試験
+// test-all: platform（--platform でも走らせる：字体（埋め込む字体と OS の字体））
 //   node tools/test-fonts.mjs [作業フォルダ]
 // 1. 一覧（FONT_LIST）：10 の字体（日本語 5・英語 4・等幅 1）、どれも @fontsource の包みが package.json の devDependencies にある（npm の包みには写し fonts/@fontsource を入れる）
 // 2. 選んだ字体だけが入る：一覧の字体をスライドの CSS で名指すと埋め込み、名指さない字体は入らない。既定の日本語の教材は Source Sans 3 を入れない

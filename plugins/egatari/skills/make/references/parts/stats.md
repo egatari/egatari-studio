@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # stats のパーツ
 
-指示の版：b47ccdba
+指示の版：68eeb33a
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -59,8 +59,8 @@
 | `rotate` | string | `"auto"` | 列の名前：auto・0・90 |
 | `xl` | string | `""` | 列の見出し |
 | `yl` | string | `""` | 行の見出し |
-| `unit` | string |  |  |
-| `digits` | number |  |  |
+| `unit` | string |  | セルの数字の後ろに付ける単位（JSON の unit より先） |
+| `digits` | number |  | セルの数字の小数桁（既定は値の桁、2 桁まで。割合は 0） |
 
 `highlight: [[行, 列], …]`（0 から。3 つ目にステップ）で --emph の枠。
 

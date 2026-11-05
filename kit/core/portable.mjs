@@ -12,7 +12,7 @@
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
 import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
 import { codeReasons } from './code-scan.mjs';
-import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError } from './build-core.mjs';
+import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, resolveComponent, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
@@ -41,6 +41,8 @@ export const FORMAT_VERSION = Object.freeze({ major: 1, minor: 0 });
 // contracts は {source} だけ（format spec §7.1。実行系の約束の版 runtime は 1.0 の形で外した：再生器は player が名指す）
 export const CONTRACTS = Object.freeze({ source: 1 });
 export const FEATURES = Object.freeze(['sources-v1', 'audio-v1']);
+// 同梱の再生器が持つ記録の口（Player P6。kit/track.js）：deck-meta.tracking に書く（SCORM 1.2 の包み手はここに scorm12 があるかを見る）
+export const TRACKING = Object.freeze(['scorm12', 'postmessage', 'local']);
 // generator：ファイルを書いたソフト（Egatari Studio と、その版 = package.json の version）。同梱の再生器は player（kit/core/player.mjs）
 export const GENERATOR = 'egatari-studio';
 export const GENERATOR_TITLE = 'Egatari Studio';   // 人に見せる名前（generator.title。spec §3.1）
@@ -279,12 +281,30 @@ export function validateIndex(ix) {
   if (own(ix, 'generator')) generatorCheck(ix.generator, 'generator', e);
   if (own(ix, 'docId')) str(ix.docId, 'docId', RE.docId);
   if (own(ix, 'entry')) path(ix.entry, 'entry');
+  // 本文（§9C.1）：path か chapters のちょうど 1 つ。chapters は article/<名前>.md の重ならない並び。どのファイルも files にある
   if (own(ix, 'article')) {
     const a = ix.article;
     if (!isObj(a)) e.push('article: not an object');
     else {
-      if (!own(a, 'path')) e.push('article: missing "path"');
-      for (const k of ['path', 'references']) if (own(a, k)) str(a[k], `article.${k}`, null, 1);
+      if (own(a, 'path') === own(a, 'chapters')) e.push(own(a, 'path') ? 'article: both "path" and "chapters"' : 'article: missing "path" (or "chapters")');
+      for (const k of ['path', 'references']) if (own(a, k)) path(a[k], `article.${k}`);
+      if (own(a, 'chapters')) {
+        if (!Array.isArray(a.chapters) || !a.chapters.length) e.push('article.chapters: not a non-empty array');
+        else {
+          a.chapters.forEach((c, j) => str(c, `article.chapters[${j}]`, /^article\/[^/]+\.md$/));
+          if (new Set(a.chapters).size !== a.chapters.length) e.push('article.chapters: duplicate items');
+        }
+      }
+      if (isObj(ix.files)) for (const p of [...articleFilesOf(a), ...(typeof a.references === 'string' ? [a.references] : [])]) if (typeof p === 'string' && !own(ix.files, p)) e.push(`article: "${p}" is not in files`);
+    }
+  }
+  // スライドと節のつながりの記録（§9C.7）：{スライドの鍵: {節の id: {article, slide}}}（SHA-256 の 16 進の小文字）
+  if (own(ix, 'articleLinks')) {
+    const L = ix.articleLinks;
+    if (!isObj(L)) e.push('articleLinks: not an object');
+    else for (const [sk, m] of Object.entries(L)) {
+      if (!isObj(m)) { e.push(`articleLinks["${sk}"]: not an object`); continue; }
+      for (const [sec, r] of Object.entries(m)) if (!isObj(r) || !RE.sha256.test(String(r.article)) || !RE.sha256.test(String(r.slide))) e.push(`articleLinks["${sk}"]["${sec}"]: not {article, slide}`);
     }
   }
   if (own(ix, 'sourceSha256')) str(ix.sourceSha256, 'sourceSha256', RE.sha256);
@@ -504,11 +524,27 @@ function metadataCheck(m, w, e) {
     }
   }
   if (own(m, 'audience') && !['public', 'individual'].includes(m.audience)) e.push(`${w}.audience: not public or individual`);
+  // 本文の引用の書式と一覧・シリーズ（§9C.4・§9C.1A）
+  if (own(m, 'citations')) {
+    const c = m.citations;
+    if (!isObj(c)) e.push(`${w}.citations: not an object`);
+    else {
+      if (own(c, 'style') && !(typeof c.style === 'string' && c.style.length)) e.push(`${w}.citations.style: not a non-empty string`);
+      if (own(c, 'list') && !['end', 'chapter', 'none'].includes(c.list)) e.push(`${w}.citations.list: not end, chapter or none`);
+      if (own(c, 'placement') && !['inline', 'footer', 'both'].includes(c.placement)) e.push(`${w}.citations.placement: not inline, footer or both`);
+    }
+  }
+  if (own(m, 'series')) {
+    const x = m.series;
+    if (!isObj(x) || !(typeof x.id === 'string' && x.id.length) || !(typeof x.title === 'string' && x.title.length) || (own(x, 'part') && !(Number.isInteger(x.part) && x.part >= 1))) e.push(`${w}.series: not {id, title, part?}`);
+  }
 }
+// 終えた判定（§9.2）：visitedFraction か reachedEnd のどちらか 1 つまでと、played: true（舞台で再生したものだけを数える）。知らない決まりは残す
 function completionCheck(c, w, e) {
   if (!isObj(c)) { e.push(`${w}: not an object`); return; }
-  const n = Object.keys(c).length;
-  if (n !== 1) e.push(`${w}: needs exactly one rule`);
+  if (!Object.keys(c).length) e.push(`${w}: needs a rule`);
+  if (own(c, 'visitedFraction') && own(c, 'reachedEnd')) e.push(`${w}: visitedFraction and reachedEnd together`);
+  if (own(c, 'played') && c.played !== true) e.push(`${w}.played: not true`);
   if (own(c, 'visitedFraction') && !(typeof c.visitedFraction === 'number' && c.visitedFraction > 0 && c.visitedFraction <= 1)) e.push(`${w}.visitedFraction: not in (0, 1]`);
   if (own(c, 'reachedEnd') && c.reachedEnd !== true) e.push(`${w}.reachedEnd: not true`);
 }
@@ -532,6 +568,7 @@ export function validateDeckMeta(m, opts = {}) {
   if (own(m, 'tracking') && !(Array.isArray(m.tracking) && m.tracking.every((x) => typeof x === 'string' && RE.feature.test(x)) && new Set(m.tracking).size === m.tracking.length)) e.push('deck-meta.tracking: not a list of unique adapter names');
   if (own(m, 'completion')) completionCheck(m.completion, 'deck-meta.completion', e);
   for (const k of ['license', 'copyright', 'attribution']) if (own(m, k) && typeof m[k] !== 'string') e.push(`deck-meta.${k}: not a string`);
+  if (own(m, 'creators') && !strArr(m.creators)) e.push('deck-meta.creators: not an array of strings');
   return e;
 }
 // 実行系の deck-audio（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-audio.schema.json）
@@ -628,10 +665,10 @@ const escAttr = (s) => escText(s).replace(/"/g, '&quot;');
 const plain = (s) => String(s).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/\\\(|\\\)/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 // 書き出す metadata：設定のファイル（FORMAT.CONFIG_FILE）の metadata のうち仕様の項目だけ（時刻・メールなどは入れない）
-const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience'];
+const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience', 'citations', 'series'];
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
-const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom']);
+const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom', 'article', 'articleLinks']);
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
 // JSON の値が同じか（object の項目の順は問わない）
 export function sameJson(a, b) {
@@ -667,8 +704,22 @@ export function folderConfig(index, text) {
     if (Object.keys(add).length) patch.extensions = configMerge(add);
   }
   if (list && list.length && !(isObj(c) && own(c, FORMAT.ATTACH_KEY))) patch[FORMAT.ATTACH_KEY] = list;
+  // 本文（§9C.7）：章のある本文は読む順（article）を必ず書く。つながりの記録（articleLinks）も index と同じ値で残す
+  if (isObj(index.article) && Array.isArray(index.article.chapters) && !(isObj(c) && own(c, 'article'))) patch.article = index.article;
+  if (isObj(index.articleLinks) && !(isObj(c) && own(c, 'articleLinks'))) patch.articleLinks = index.articleLinks;
   if (!Object.keys(patch).length) return null;
   return updateConfig(isObj(c) ? text : null, patch);
+}
+// 本文（§9C.1）：index.article の値（path か chapters、と references）と、そのファイルの並び
+const articleIndexOf = (ix) => ({ ...(ix.path ? { path: ix.path } : { chapters: ix.chapters.slice() }), ...(ix.references ? { references: ix.references } : {}) });
+const articleFilesOf = (ix) => (!isObj(ix) ? [] : typeof ix.path === 'string' ? [ix.path] : Array.isArray(ix.chapters) ? ix.chapters.slice() : []);
+// 作業フォルダに本文のファイル（article.md・article/<名前>.md）があるか（読みはしない。本文の道具を読み込むかを決める）
+async function articlePresent(env, deckDir) {
+  const P = env.path;
+  if (typeof env.listFiles === 'function') {
+    try { return env.listFiles(deckDir).some((f) => /^(?:article\.md|article\/[^/]+\.md)$/.test(P.relative(deckDir, f).split(P.sep).join('/'))); } catch { return false; }
+  }
+  return env.exists(P.join(deckDir, 'article.md')) || env.exists(P.join(deckDir, 'article'));
 }
 // 書き出しの前の id（§8.1。kit/core/slide-ids.mjs の exportIds）：作業フォルダの原稿・口述原稿・音声の記録・timeline.json・comments.json を
 // 上限つきで読み、付け替えたものを {writes: {作業フォルダの中のパス: 字}} で返す。付けられない原稿（id の書式の誤り・鍵の重なり）は断る
@@ -725,14 +776,15 @@ function sectionTags(html) { return (html.match(/<section\b[^>]*>/gi) || []).fil
 //   idRand                 id のないスライドに付ける id の乱数（rand(n) → n バイト。見本を組むたびに同じ文書にする。kit/core/narration-core.mjs の newSlideId）
 //   withoutLiveResults     授業の部屋の結果（kit/core/live-results.mjs。学ぶ人の質問と答え）の添付を入れない（人に渡す 1 ファイル）。
 //                          入れたものは stats.liveResults（パスの配列。1 ファイルを書き出す呼び手が知らせる）
+//   checkSteps             false：本文のステップへのリンクを再生器で確かめない（索引だけを見る試しの書き出し。編集アプリが開くときの exportIndex。書いた文書は使わない）
 // 添付（§3.8）：作業フォルダの attachments/ の下のファイル（env.listFiles(dir) → 絶対パスの配列。なければ設定のファイルに書いたものだけ）を
 //   上限の内で files に入れ、設定のファイルの役割と題から index.attachments を作る（kit/core/attachments.mjs）。読むのは組み立てと同じ数え方（chargedEnv）
 // 返すもの：{html, index, deckMeta, files: {path: Uint8Array}, audio, writes: {path: 文字列}（原稿に残すもの：FORMAT.CONFIG_FILE と、id を付けたときの
 //   原稿・口述原稿・記録の JSON）, warnings, stats, playerChange（carry の再生器の名前が違うとき {from, to}、ほかは null）, ids: {added, orphans}}
 export async function exportPortable(env0, srcPath, opts = {}) {
   const P = env0.path;
-  // 記事（§9C）のある教材は作り直さない（この書き手は article-v1 を持たない。作り直すと記事が落ちる：§7.2）
-  if (isObj(opts.carry) && own(opts.carry, 'article')) fail('article-unsupported', 'the lesson has an article (§9C), which this editor does not implement: only tier A edits are possible');
+  // 記事（§9C）のある教材は、本文の道具（env.articleTools）を持たない書き手では作り直さない（作り直すと記事が落ちる：§7.2）
+  if (isObj(opts.carry) && own(opts.carry, 'article') && typeof env0.articleTools !== 'function') fail('article-unsupported', 'the lesson has an article (§9C), which this editor does not implement: only tier A edits are possible');
   const deckDir = P.dirname(P.resolve(srcPath));
   const rel = (p) => P.relative(deckDir, p).split(P.sep).join('/');
   const warnings = [], writes = dict();
@@ -744,6 +796,18 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   for (const w of idFix.warnings) warnings.push(w);
   const overlay = new Map();   // 絶対パス → 付け替えた字（組み立ても書き出しもこれを読む）
   for (const [rp, text] of Object.entries(idFix.writes)) { overlay.set(P.resolve(deckDir, ...rp.split('/')), text); writes[rp] = text; }
+  // 本文（format spec §9C）：本文の道具（env.articleTools()：kit/core/article-page.mjs と article-messages.mjs。Node の組み立てと、本文のある教材を
+  // 開いた編集アプリ（あとで読み込む app/article-tools.js）が持つ。持たない書き手は、本文のある作業フォルダを断る：黙って本文を落とさない。§7.2）
+  let AT = null;
+  if (await articlePresent(env0, deckDir)) {
+    if (typeof env0.articleTools !== 'function') fail('article-unsupported', 'the working folder has an article (§9C), which this editor cannot write into the single file yet: export it with the CLI (npm run portable -- pack)');
+    AT = await env0.articleTools();
+    // 節の id（§9C.3）：id のない ## の見出しに付け、作業フォルダにも書き戻す（スライドの id と同じ。書き出しは id のない節を出さない）
+    const ov = { ...env0, readText: (p, max) => { const o = overlay.get(P.resolve(p)); return o !== undefined ? o : env0.readText(p, max); } };
+    const sw = AT.sectionIdWrites(ov, srcPath, opts.idRand ? { rand: opts.idRand } : {});
+    for (const [rp, text] of Object.entries(sw.writes)) { overlay.set(P.resolve(deckDir, ...rp.split('/')), text); writes[rp] = text; }
+    if (sw.added.length) warnings.push(`${LOG}: gave ${sw.added.length} article section(s) an id (§9C.3) and wrote them back to the working folder: ${sw.added.map((a) => `${a.file}:${a.line} ${a.id}`).join(', ')}`);
+  }
   // 組み立てが読んだファイルを記録する
   const reads = new Set();
   const over = (p) => overlay.get(P.resolve(p));
@@ -800,10 +864,35 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (tl) themeVersions = themePinsForIndex(tl, opts.carry.themes).pins;
   }
   // ファイルの決まり（§4.2）：基準のまま（外へは繋がらない）。授業の部屋の派生だけが行き先を足す（kit/core/live.mjs の addLive）
-  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, policyMeta: policyMeta(policyText()) });
+  // 本文（§9C.6）は組む前に読む：再生器の本の窓のために、本文の字を字の絞り込みに、体裁（ARTICLE_CSS）を組み立てに渡す（言語と題は原稿から）
+  let art0 = null;
+  if (AT) {
+    let src0 = '';
+    try { src0 = env.readText(srcPath); } catch { /* 組み立てが知らせる */ }
+    const lang0 = (src0.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
+    const title0 = plain(src0.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '') || plain(src0.match(/<h2[^>]*>([\s\S]*?)<\/h2>/i)?.[1] || '');
+    art0 = AT.renderedArticle(env, srcPath, { lang: lang0, title: title0 });
+  }
+  const r = (opts.build || coreBuild)(env, srcPath, { ...opts, ...(componentVersions ? { componentVersions } : {}), ...(themeVersions ? { themeVersions } : {}), budget, embedAudio: false, audioRef, deckMeta: metaPh, runtimePrefix: prefixPh, ...(AT && AT.ARTICLE_CSS ? { articleCss: AT.ARTICLE_CSS } : {}), ...(art0 && art0.html ? { articleHtml: art0.html } : {}), policyMeta: policyMeta(policyText()) });
   for (const w of r.stats.warn) warnings.push(w);
   let html = r.html;
   if (new RegExp(`\\bid\\s*=\\s*["']?(?:${[IX_ID, RD_ID, BP, FORMAT.SIGNATURES_ID].map(reEsc).join('|')})`, 'i').test(html)) fail('reserved-id', `the deck uses a reserved id (${IX_ID}, ${RD_ID}, ${BP}…)`);
+  // 本文（§9C.6）：組み立てと同じ env で読む（読んだ本文のファイル・文献・画像が依存の閉包に入る）。誤り（§9C.8）があれば書き出さない
+  let art = null;
+  if (AT) {
+    const lang0 = (r.html.match(/<html[^>]*\slang\s*=\s*["']([^"']*)["']/i)?.[1] || 'ja').trim() || 'ja';
+    art = art0;
+    if (art && art.L.index) {
+      const ml = /^ja\b/i.test(lang0) ? 'ja' : 'en';
+      const errs = art.problems.filter((x) => x.sev === 'error');
+      if (errs.length) fail('article-invalid', `the article has ${errs.length} error(s) (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs);
+      for (const x of art.problems) if (x.sev === 'warn') warnings.push(`${LOG}: article: ${AT.articleMessage(ml, x)}`);
+      for (const w of art.warnings) warnings.push(`${LOG}: article: ${w}`);
+      art.links = await AT.articleLinkReport(art.L);
+      for (const x of art.links.problems) warnings.push(`${LOG}: article: ${AT.articleMessage(ml, x)}`);
+      if (art.links.removed.length) warnings.push(`${LOG}: article: dropped ${art.links.removed.length} link record(s) of pairs no longer linked (§9C.7): ${art.links.removed.map((x) => `${x.slide}↔${x.section}`).join(', ')}`);
+    } else art = null;
+  }
 
   // 原稿のファイル（依存の閉包）と、部品庫・テーマ庫の参照
   const files = dict();
@@ -1050,6 +1139,17 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (!sameJson(econf.themes, pins)) files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), { themes: pins }));
   }
 
+  // 本文（§9C.1・§9C.7）：1 ファイルの中の設定のファイルに、章の読む順（article。展開するときに要る）と、つながりの記録（articleLinks。
+  // もうつながっていない組を外したもの。index.articleLinks と同じ値）を書く。作業フォルダの設定のファイルは変えない
+  if (art) {
+    for (const p of [...articleFilesOf(art.L.index), ...(art.L.index.references ? [art.L.index.references] : [])]) if (!files[p]) fail('article-invalid', `the article file "${p}" was not read into the archive`);
+    const cur = parseJsonStrict(new TextDecoder().decode(files[CFG]));
+    const patch = {};
+    if (art.L.index.chapters && !sameJson(cur.article, articleIndexOf(art.L.index))) patch.article = articleIndexOf(art.L.index);
+    const links = art.links.pruned;
+    if (!sameJson(cur.articleLinks, links === null ? undefined : links)) patch.articleLinks = links === null ? undefined : links;
+    if (Object.keys(patch).length) files[CFG] = utf8(updateConfig(new TextDecoder().decode(files[CFG]), patch));
+  }
   // 外したもの・パスの規則
   const pathErr = checkArchivePaths(Object.keys(files));
   if (pathErr.length) fail('bad-path', 'archive paths break §3.3: ' + pathErr.join('; '), pathErr);
@@ -1202,6 +1302,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     excluded: [...EXCLUDED_CATEGORIES],
     ...(Object.keys(extensions).length ? { extensions } : {}),
     ...(attachList.length ? { [FORMAT.ATTACH_KEY]: attachList } : {}),
+    ...(art ? { article: articleIndexOf(art.L.index) } : {}),
+    ...(art && art.links.pruned ? { articleLinks: art.links.pruned } : {}),
   };
   // 読み取った文書から作り直すとき（編集アプリ）：この書き手が知らない項目を、索引のどの深さでも残す（§7.1：metadata・音声の記録・部品とテーマ・塊・
   // 版などの中も）。口述原稿の行から作られなかった拡張も残す（§9A）。docId を変えない保存では derivedFrom を元のまま（付けも変えもしない。§7.3）
@@ -1219,9 +1321,10 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (ie.length) fail('invalid-index', 'produced index is invalid: ' + ie.join('; '), ie);
   const deckMeta = {
     format: FID, version: { ...FORMAT_VERSION }, contracts: { ...CONTRACTS }, player, generator, docId, title: metadata.title, lang,
-    portable: true, sourceSha256: srcSha, tracking: [],
+    portable: true, sourceSha256: srcSha, tracking: [...TRACKING],
     ...(metadata.completion ? { completion: metadata.completion } : {}),
-    ...Object.fromEntries(['license', 'copyright', 'attribution'].filter((k) => own(metadata, k)).map((k) => [k, metadata[k]])),
+    // 権利の表示と作成者（format spec §4・§7.3）：再生専用の派生は索引を持たないので、ここに写したものだけが残る
+    ...Object.fromEntries(DECK_META_RIGHTS.filter((k) => own(metadata, k)).map((k) => [k, k === 'creators' ? [...metadata[k]] : metadata[k]])),
   };
   const me = validateDeckMeta(deckMeta);
   if (me.length) fail('invalid-deck-meta', me.join('; '), me);
@@ -1264,7 +1367,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const ixScript = `<script type="${FORMAT.MIME}" id="${IX_ID}" data-sha256="${await sha256Hex(indexText)}">${indexText}</script>\n`;
   projected += ixScript.length;
   if (projected > LIM.bundledChars) throw new BuildLimitError('portable document (index)', projected, LIM.bundledChars);
-  const readable = readableLayer(r.slides, segs, lang, warnings, room() - 1) + '\n';
+  const readable = readableLayer(r.slides, segs, lang, warnings, room() - 1, art ? art.html : '') + '\n';
   projected += readable.length;
   if (projected > LIM.bundledChars) throw new BuildLimitError('portable document (readable layer)', projected, LIM.bundledChars);
   // 塊（base64）：すべての大きさを確かめた後にだけ作る
@@ -1280,6 +1383,17 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 書いたものが §4.2 の決まりに合うこと（置き場所と中身。合わなければ書かない）
   { const pp = checkFilePolicy(html);
     if (pp.length) fail('file-policy', 'the file policy (§4.2) is not in place: ' + pp.join('; '), pp); }
+  // 本文のステップへのリンク（§9C.8 の 1：ないスライド・ないステップへのリンクは誤りで、書き出さない）：書いた文書を再生器で開き、check と同じに確かめる
+  // （env.articleSteps。Node の組み立ては kit/article-steps.mjs、編集アプリはプレビューの再生器。持たなければ書き出さない）
+  if (art && opts.checkSteps !== false) {
+    const links = AT.stepLinksOf(art.L.article);
+    if (links.length) {
+      if (typeof env0.articleSteps !== 'function') fail('article-unsupported', 'the article has step links, and this producer cannot check them in the player (§9C.8): export it with the CLI (npm run portable -- pack)');
+      const res = await env0.articleSteps(html, links);
+      const errs = AT.validateArticle(art.L.article, { ...art.L.ctx, resolveStep: AT.stepResolver(res) }).problems.filter((x) => x.code === 'articleStep');
+      if (errs.length) { const ml = /^ja\b/i.test(lang) ? 'ja' : 'en'; fail('article-invalid', `the article has ${errs.length} error(s) (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs); }
+    }
+  }
   const size = utf8Length(html);
   if (size > WARN_BYTES) warnings.push(`${LOG}: the file is ${(size / MiB).toFixed(1)} MiB (over ${WARN_BYTES / MiB} MiB): consider splitting the lesson into chapters`);
   if (size > LIMITS.fileBytes) warnings.push(`${LOG}: the file is over ${LIMITS.fileBytes / MiB} MiB; editors may refuse it`);
@@ -1293,7 +1407,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (v && f && f.version === v && carryLock.components[c.name].sha256[v] === f.sha256) registryEquivalent.push(c.tag || `${c.name}@${c.version}`);
     }
   }
-  return { registryEquivalent, playerChange, ids: { added: idFix.added, orphans: idFix.orphans }, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
+  return { registryEquivalent, playerChange, ids: { added: idFix.added, orphans: idFix.orphans }, html, index, deckMeta, files: Object.assign(dict(), files, audioFiles), audio, writes, warnings, stats: { ...r.stats, citeproc: !!(art && art.citeproc), bytes: size, files: Object.keys(files).length, audio: Object.keys(audio).length, blobs: Object.keys(blobs).length, attachments: attachList.length, liveResults } };
 }
 
 // ---------------------------------------------------------------- 知らない項目を残す（作り直しのとき）
@@ -1383,7 +1497,8 @@ function recipeOf(sj, v) {
 // §2.1 スクリプトなしで読める層：全段階の口述原稿の表示用の文字（スクリプトが動くと deck.js が隠す）。
 // 記事の中の段階は番号の小さい順、concl は最後。どのスライドにも当たらない鍵の口述原稿は入れず、warnings に知らせる
 // cap：書き出してよい字数（組んだ文書の上限の残り）。実体参照に直した後の字数を、その文字列を作る前に数え、超えるなら作らずに断る
-function readableLayer(slides, segs, lang, warnings = [], cap = Infinity) {
+// article：本文の <article id="egatari-article">（§9C.6：#egatari-readable の最後の子。なければ ''）
+function readableLayer(slides, segs, lang, warnings = [], cap = Infinity, article = '') {
   const bySlide = new Map();
   for (const s of segs) { if (!bySlide.has(s.slideKey)) bySlide.set(s.slideKey, []); bySlide.get(s.slideKey).push(s); }
   const keys = new Set(slides.map((sl) => sl.key));
@@ -1401,6 +1516,7 @@ function readableLayer(slides, segs, lang, warnings = [], cap = Infinity) {
     for (const s of steps) { take(readableStepLength(s)); push(readableStep(s)); }
     take('</article>'.length); push('</article>');
   }
+  if (article) { take(article.length); push(article); }
   take('</section>'.length); push('</section>');
   return out.join('\n');
 }
@@ -1545,7 +1661,7 @@ export async function readPortable(input, opts = {}) {
   if (errs.length) fail('invalid-index', 'index is invalid: ' + errs.slice(0, 8).join('; '), errs);
   const paths = Object.keys(ix.files);
   if (own(ix, 'entry') && !own(ix.files, ix.entry)) fail('invalid-index', `entry "${ix.entry}" is not in files`);
-  if (isObj(ix.article) && !own(ix.files, ix.article.path)) fail('invalid-index', `article.path "${ix.article.path}" is not in files`);
+  if (isObj(ix.article)) for (const p of articleFilesOf(ix.article)) if (!own(ix.files, p)) fail('invalid-index', `article file "${p}" is not in files`);
   for (const p of paths) if (!own(ix.blobs, ix.files[p])) fail('invalid-index', `files["${p}"] refers to a missing blob ${ix.files[p]}`);
   if (ix.audio) for (const [k, a] of Object.entries(ix.audio)) {
     if (!own(ix.files, a.file)) fail('invalid-index', `audio["${k}"].file "${a.file}" is not in files`);

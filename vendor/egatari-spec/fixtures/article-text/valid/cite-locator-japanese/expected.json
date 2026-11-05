@@ -1,0 +1,31 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "この定理は教科書にある "
+        },
+        {
+          "type": "citeGroup",
+          "kind": "parenthetical",
+          "children": [
+            {
+              "type": "cite",
+              "identifier": "yamada2020",
+              "label": "yamada2020",
+              "kind": "parenthetical",
+              "suffix": "3 頁"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "。"
+        }
+      ]
+    }
+  ]
+}

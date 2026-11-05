@@ -2,14 +2,14 @@
 //   readThemeZip(bytes, zipName) → Map<名前, Map<テーマの中の場所, Uint8Array>>
 //     zip の中の深さ THEME_ZIP_LIMITS.depth までのどこでも、tokens.css を持つフォルダを 1 つのテーマとする（GitHub の「Download ZIP」の
 //     <repo>-main/themes/<名前>/ も）。いくつあってもすべて。名前はフォルダの名前（zip の最上位に tokens.css があれば zip の名前）で、
-//     部品庫・テーマ庫の名前の決まり（RE.registryName）に合わなければ断る。読むのは tokens.css・theme.json・theme.json の logos・最上位の LICENSE* だけ
+//     部品庫・テーマ庫の名前の決まり（RE.registryName）に合わなければ断る。読むのは tokens.css・tokens.css の url(…)・theme.json・theme.json の logos・最上位の LICENSE* だけ
 //     （ほかは読まない）。中身は kit/core/zip-read.mjs が上限つきで読む。..・絶対パス・シンボリックリンクの項目が 1 つでもあれば zip ごと断る
 //   取り出したテーマは「自分のテーマ」の置き場所（app/my-themes.js。IndexedDB）に source: 'zip' で入れる
 //   pickZipFile() → File | null
 import { readZip, ZipError } from '../kit/core/zip-read.mjs';
 import { ReadOverError, READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { RE } from '../kit/core/portable.mjs';
-import { excludedFromThemeHash, isThemeLicense } from '../kit/core/themes-lock.mjs';
+import { excludedFromThemeHash, isThemeLicense, themeCssRefs } from '../kit/core/themes-lock.mjs';
 
 const KiB = 1024, MiB = 1048576;
 export const THEME_ZIP_LIMITS = Object.freeze({
@@ -91,6 +91,10 @@ export async function readThemeZip(bytes, zipName = '') {
     const d = dirOf(n), name = dirName.get(d), base = n.split('/').pop();
     if (!name) continue;
     themes.get(name).set(base, b); used += b.length;
+    if (base === 'tokens.css') {   // tokens.css の url(…)（画像。組み立てが data: URI にする）も 2 回目に読む
+      for (const f of themeCssRefs(new TextDecoder().decode(b))) { const z = inside(d, f); if (z && !r1.files.has(z)) want.set(z, [name, d ? z.slice(d.length + 1) : z]); }
+      continue;
+    }
     if (base !== 'theme.json') continue;
     let cfg = null;
     try { cfg = JSON.parse(new TextDecoder().decode(b)); } catch { cfg = null; }   // 読めない theme.json は組み立てが知らせる

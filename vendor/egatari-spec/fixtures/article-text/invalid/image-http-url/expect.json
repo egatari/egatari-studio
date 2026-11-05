@@ -1,0 +1,4 @@
+{
+  "error": "image path is a URL, not an archive path",
+  "spec": "§9C.1"
+}

@@ -1,0 +1,36 @@
+{
+  "name": "egatari",
+  "interface": {
+    "displayName": "Egatari"
+  },
+  "plugins": [
+    {
+      "name": "egatari",
+      "version": "0.6.5-rc.2",
+      "source": {
+        "source": "local",
+        "path": "./plugins/egatari"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity",
+      "description": "Make Egatari lessons with the make skill. No Node.js required."
+    },
+    {
+      "name": "egatari-studio",
+      "version": "0.6.5-rc.2",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity",
+      "description": "Local checks, builds, parts and video with the studio skill. Install egatari too."
+    }
+  ]
+}

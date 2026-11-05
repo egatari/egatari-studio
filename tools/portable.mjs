@@ -21,6 +21,7 @@ import { LOCK_FILE, VENDOR_COMPONENTS, VERSION_RE, resolveComponent, parseLock, 
 import { normalizeEol } from '../kit/core/identity-hash.mjs';
 import { THEMES_LOCK_FILE, parseThemesLock, themeVersionForSha, themeUpdate, themePinnedWarning } from '../kit/core/themes-lock.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
+import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
 import { buildPortable, defaultPortableOut, writeOutput, nodeEnv } from '../kit/build.mjs';
 import { titleOf } from '../kit/core/export-name.mjs';
 import { safeWriteFile, checkWritable, readContained } from '../kit/safe-fs.mjs';
@@ -263,6 +264,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       writeOutput(src, out, r.html);
       console.log(`packed ${r.stats.files} source files, ${r.stats.audio} audio (docId ${r.index.docId}, sourceSha256 ${r.index.sourceSha256.slice(0, 12)}…) -> ${out}`);
       for (const w of r.warnings) console.warn('  ⚠ ' + w);
+      if (r.stats.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
       const lw = playOnly ? null : liveResultsWarning(r.stats.liveResults);
       if (lw) console.warn('  ⚠ portable: ' + lw);
     } else if (cmd === 'attach' && pos.length === 2) {

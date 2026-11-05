@@ -24,6 +24,7 @@ import { unpack } from './portable.mjs';
 import { silentWav, addUnknownMembers } from './portable-fixtures.mjs';
 import { regionDiff, skeleton, firstDiff } from './tier-a-diff.mjs';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = process.argv[2] ? path.resolve(process.argv[2]) : fs.mkdtempSync(path.join(os.tmpdir(), 'test-tier-a-'));
@@ -178,7 +179,7 @@ for (const name of ['minimal', 'tmlr2026-calibration']) {
       page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
       page.on('pageerror', (e) => errors.push(e.message));
       await page.goto(fileUrl(file));
-      await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 30000 });
+      await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(30000) });
       const key = results[name].a.changes.narration[0];
       const res = await page.evaluate(async ([key, glyphs]) => {
         const p = key.lastIndexOf(':'), sk = key.slice(0, p), st = key.slice(p + 1);

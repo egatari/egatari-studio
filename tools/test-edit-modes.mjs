@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { parseNarration } from '../kit/narration.mjs';
 import { encodeWav } from '../kit/core/audio-core.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'motion-edit-modes'));
@@ -74,7 +75,7 @@ const dk = () => deckOf(page);
 const sleep = (ms) => page.waitForTimeout(ms);
 async function until(fn, ms = 4000) { const t = Date.now(); for (;;) { try { if (await fn()) return true; } catch { /* 読み込み中 */ } if (Date.now() - t > ms) return false; await sleep(60); } }
 async function ready() {
-  await page.waitForFunction(() => window.__DEV_LOADS > 0, null, { timeout: 15000 });
+  await page.waitForFunction(() => window.__DEV_LOADS > 0, null, { timeout: scaled(15000) });
   if (!(await until(() => dk().evaluate(() => !!(window.DECK && DECK.ready)), 15000))) throw new Error('deck not ready');
   await sleep(200);
 }

@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { packSite, readTar, unpackSite, recordedSha, verifyAsset, shaLine, sha256, assemble, injectNotice, assetName, safeRel } from './site-versions.mjs';
 import { siteVersionOf, cmpVersion, MARK } from '../app/version-ui.js';
 
@@ -114,6 +115,25 @@ throws(() => assemble({ site: SITE, current: '0.4.3', releases: [bad], log: () =
 const noIndex = path.join(tmp, 'noindex'); put(noIndex, 'app.js', 'x');
 throws(() => assemble({ site: SITE, current: '0.4.3', releases: [rel('0.3.0', noIndex)], log: () => {} }), /no index\.html/, 'assemble: an asset without index.html fails');
 
+
+// 候補（package.json が X.Y.Z-rc.N）：受け付ける。/v…/ の写しは作らず、版の一覧と根の版は前のリリースだけ（置かない版）
+{
+  const RS = path.join(tmp, 'rcsite');
+  put(RS, 'index.html', 'rc build'); put(RS, 'app.js', 'x'); put(RS, 'v9.9.9/stale.txt', 'old');
+  const rr = assemble({ site: RS, current: '0.4.4-rc.1', releases: [rel('0.4.3', OLD), rel('0.4.2', NEW)], log: () => {} });
+  const rv = JSON.parse(fs.readFileSync(path.join(RS, 'versions.json'), 'utf8'));
+  ok(rr.versions.join() === '0.4.3,0.4.2' && rv.root === '0.4.3' && rv.versions.join() === '0.4.3,0.4.2', 'assemble: an rc current lists the releases only; the root is the last full release ' + JSON.stringify(rv));
+  ok(!fs.existsSync(path.join(RS, 'v0.4.4-rc.1')) && !fs.existsSync(path.join(RS, 'v0.4.4')) && fs.existsSync(path.join(RS, 'v0.4.3', 'index.html')), 'assemble: no /v…/ folder for an rc (nor for its X.Y.Z)');
+  ok(!fs.existsSync(path.join(RS, 'v9.9.9')) && fs.readFileSync(path.join(RS, 'index.html'), 'utf8') === 'rc build', 'assemble: with an rc, stale folders go and the root stays the new build');
+  const RN = path.join(tmp, 'rcnone'); put(RN, 'index.html', 'rc build');
+  assemble({ site: RN, current: '0.0.1-rc.2', releases: [], log: () => {} });
+  ok(JSON.stringify(JSON.parse(fs.readFileSync(path.join(RN, 'versions.json'), 'utf8'))) === '{"versions":[]}', 'assemble: an rc with no release before it writes an empty list and no root');
+  for (const badv of ['0.4.4-rc', '0.4.4-rc.x', '0.4.4-beta.1', '0.4.4-rc.1-x', 'v0.4.4']) throws(() => assemble({ site: RS, current: badv, releases: [], log: () => {} }), /bad current version/, `assemble: ${badv} is refused`);
+  // 道具の入口（package.json の版が候補で、--current も同じ）：版の読み方を通る
+  const cli = (...a) => spawnSync(process.execPath, [path.join(path.dirname(fileURLToPath(import.meta.url)), 'site-versions.mjs'), 'assemble', ...a], { encoding: 'utf8' });
+  const c = cli('--site', path.join(tmp, 'nosite'), '--current', 'v0.4.4-rc.x');
+  ok(c.status === 1 && /not a release tag/.test(c.stderr), 'assemble CLI: --current must be vX.Y.Z or vX.Y.Z-rc.N');
+}
 
 // ---------------------------------------------------------------- パーツのサンプルのページ（/parts/。backlog #158）
 // 前のリリース 0.6.4（2.1.1 を公開）・0.6.5（2.1.1 と 2.2.0 を持つ）、いま組んだ 0.6.6（2.2.0 と 2.3.0）：2.1.1 は 0.6.4 の、2.2.0 は 0.6.5 のページを残し、2.3.0 だけいま組んだもの

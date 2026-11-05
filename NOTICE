@@ -47,6 +47,42 @@ built with) is not covered by the MIT license in LICENSE. You may use it unmodif
 Egatari or to software that reads or writes Egatari files (Egatari-compatible software). Do not
 alter it or use it in a way that suggests endorsement. See assets/logo/README.md.
 
+Book citations (format spec §9C.4) are formatted at build time by citeproc-js (npm package citeproc 2.4.63, Copyright
+(c) 2009-2019 Frank Bennett; upstream https://github.com/Juris-M/citeproc-js at commit
+73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9, https://github.com/Juris-M/citeproc-js/tree/73bc1b44bc7d54d0bfec4e070fd27f5efe024ff9 :
+that version has no git tag, and this is the commit whose package.json says 2.4.63 and whose citeproc_commonjs.js and
+LICENSE are byte-identical to the npm files; vendor/citeproc/SOURCE.json records it with their sha256). Its LICENSE offers the Common Public
+Attribution License 1.0 or any later version, or the GNU Affero General Public License 3.0 or any later version
+("CPAL-1.0+ OR AGPL-3.0+"); Egatari Studio uses it under the CPAL-1.0 (text: https://opensource.org/licenses/CPAL-1.0
+and the file CPAL of that commit, copied unmodified to vendor/citeproc/CPAL with its Exhibits A and B). citeproc is an unmodified dependency, installed by npm and loaded by
+the command-line build (kit/build.mjs, when a book cites references) and by the editor app when it shows or saves a
+book that cites references. Built lessons and single files (.ega.html) carry only the formatted citation text, and
+this repository and the npm package egatari do not contain or bundle citeproc. The editor app does not bundle it in
+app.js: the hosted editor serves the npm file citeproc_commonjs.js of citeproc 2.4.63 byte-identical (not minified, not
+transpiled), with its LICENSE, package.json, the CPAL text (Exhibits A and B) and SOURCE.json, as vendor/citeproc/ next
+to the app, and loads it only for a book with references; the Offline editor (dist/editor.html) carries the same file
+byte for byte, header comment included, in a <script type="text/plain" id="egatari-citeproc"> element outside the app
+script, and runs it only then. The source of this Covered Code is that file itself (JavaScript as published on npm, the
+same bytes as citeproc_commonjs.js at the upstream commit above). The Attribution Information of its Exhibit B is:
+"(c) Frank Bennett", "citeproc-js implements the Citation Style Language", https://citationstyles.org/.
+This attribution is displayed wherever citeproc runs behind something the user sees: the command-line build and
+pack print it ("Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style
+Language — https://citationstyles.org/") whenever citeproc formatted citations, and the editor app shows the same
+line under the book and in its Book panel whenever citeproc formatted the book's citations. The dev server preview
+builds the slides only and does not run citeproc. CPAL section 15 (network use): citeproc runs in the user's own
+browser, and the hosted editor makes the unmodified source available as served (vendor/citeproc/); Egatari Studio
+does not run builds as a hosted service.
+The editor app's book tools (dist/article-tools.js, loaded only for lessons with a book) bundle myst-parser,
+myst-transforms, myst-ext-proof, myst-ext-exercise (MIT, Executable Books) and their dependencies (markdown-it,
+unified, js-yaml, he and others; MIT, ISC or BSD licenses), and the CSL styles and locales of vendor/csl/.
+The citation styles and locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
+from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
+in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file
+states in its <rights> element. When it formats citations, kit/core/article-cite.mjs (adaptStyle) adapts sist02.csl in memory
+(the file stays unmodified): an editor or translator stands in for a missing author, and for Japanese books the volume,
+issue and page terms are the SIST02 abbreviations vol., no., p. and titles are quoted with 「」『』. The adapted style is
+licensed under the same CC BY-SA 3.0 License.
+
 abcjs 6.7.2 renders score symbols at build time (MIT). The editor bundles abcjs
 for rendering only; built lessons carry the SVG and no abcjs runtime.
 

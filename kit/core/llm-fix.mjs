@@ -13,6 +13,7 @@
 //     deck・narration が合わせて limit（既定 40,000 字）を超えれば、問題のあるスライドだけ（id で）を載せ、そのスライドだけを返してもらう
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
+import { quoteJa } from './quote-ja.mjs';
 import { commonBody, componentsIn, componentNotes } from './llm-pack.mjs';
 import { DEFAULT_METRICS, limitsOf } from './theme-metrics.mjs';
 
@@ -73,7 +74,7 @@ const L = {
     ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み ```deck.html と ```narration.md を書いてください（R-output）。',
     askPartial: (n) => `デッキが長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
     problems: '指摘', rules: '規格', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
-    where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? `「${p.title}」` : ''}`),
+    where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? quoteJa(p.title) : ''}`),
     sev: { error: 'エラー', warn: '警告' },
   },
 };

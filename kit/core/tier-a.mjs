@@ -7,6 +7,9 @@
 //     files     作業場所の今のファイル：{path: Uint8Array} か Map（audio/manifest.json を含む。控え・コメントなど保存しないものは無視する）
 //     opts.identity  {docId, derivedFrom}：新しい教材として保存する（docId と derivedFrom も書き換え、書き出しの印 exportedFrom を外す。§3.1・§7.3）
 //     opts.fonts     {faces(key) → [{w, family, file, range}], load(file) → Promise<base64>}：字の分割ファイル（@fontsource）。key は 'biz' | 'sans3'
+//     opts.article   {html}：本文（§9C）を直したときの、組み直した <article id="egatari-article">（呼び手が今の作業場所から組む。kit/core/article-page.mjs の
+//                    renderedArticle）。本文のファイル（index.article の path・chapters・references）が変わっていて、これがなければ article-changed で断る
+//                    （呼び手は本文を組んでから、もう一度呼ぶ）。本文を直すのは §9C.1 の「本文だけを組み直す」編集で、スライドは組み直さない
 //
 // 書き換えるのは §7.2 が挙げる場所だけ：
 //   実行系の JSON（deck-narration・deck-marks・deck-timing・deck-audio）の、変わった段階の項目だけ（ほかの項目のバイトはそのまま）
@@ -16,6 +19,9 @@
 //   塊（新しい中身を足し、どこからも参照されなくなったものを除く）
 //   字の補い：新しい <style id="<前置><n>">（n は今ある補いの番号の次・0 から。最後の字の <style> の後に。今の文書が埋め込む字（family・weight・style）
 //     ごとに、その字が持たない字の分割ファイルだけ。既にある字のバイトは触らない。要らなければ足さない）
+//   本文（§9C.1）：本文のファイルの中身が変わったときだけ、読める層の <article id="egatari-article"> を opts.article.html に置き換える
+//     （本文のファイルを足す・消す・章の順を変える・本文の画像を変えるのは段 B）。新しい字があれば字の補いも（口述原稿と同じ）
+//   つながりの記録（index.articleLinks。§9C.7）：設定のファイルの articleLinks を確かめた（記録し直した）ときは、索引も同じ値に
 //   添付（attachments/ の下のファイルと index.attachments。§3.8・§7.2 の「archive entries」）：足す・消す・名前を替える・役割と題（設定のファイル）。
 //     スライドの原稿（テキストのファイル）がその添付のパスを書いていれば（組み立てが読んだかもしれない）断る（段 B へ）
 //   段階の口述原稿をまるごと消したときは、その音声の記録と塊も消して warnings に知らせる（直しただけの段階の音声は残す。古いと分かる）
@@ -35,6 +41,7 @@ import { updateConfig } from './config-file.mjs';
 
 const IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, RD_ID = FORMAT.READABLE_ID, CFG = FORMAT.CONFIG_FILE;
 const SUP = FORMAT.FONT_SUPPLEMENT_PREFIX;
+const ARTICLE_ID = 'egatari-article';   // 本文の実行時の形（format spec §9C.6）
 const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'deck-meta'];
 // 段 A で変わってよい原稿のファイル（音声 audio/ は記録として別に扱う）。FORMAT.CONFIG_FILE は docId と権利の表示が索引と同じときだけ
 const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
@@ -88,8 +95,10 @@ export function scanLayout(text) {
   };
   function readableOf(sec, L) {
     const articles = new Map(), dupArticles = new Set();
+    let book = null, dupBook = false;   // 本文（§9C.6：#egatari-readable の最後の <article id="egatari-article">。data-slide-key はない）
     for (const a of sec.childNodes || []) {
       if (a.tagName !== 'article') continue;
+      if (attr(a, 'id') === ARTICLE_ID && attr(a, 'data-slide-key') == null) { if (book) dupBook = true; else book = loc(a); continue; }
       const key = attr(a, 'data-slide-key');
       if (key == null) continue;
       if (articles.has(key)) { dupArticles.add(key); continue; }
@@ -104,7 +113,7 @@ export function scanLayout(text) {
       }
       articles.set(key, { ...al, after, divs, dupDivs });
     }
-    return { ...L, articles, dupArticles };
+    return { ...L, articles, dupArticles, book, dupBook };
   }
   visit(doc, false);
   return { blocks, dupBlocks, index, chunks, styles, readable, headEnd, slideKeys };
@@ -213,6 +222,9 @@ function fontFacesOf(text, styles) {
 }
 const inRange = (range, c) => range.some(([a, b]) => c >= a && c <= b);
 // 見える字だけ（deck-narration の ttsParts は画面に出ないので、字の補いの判定に入れない）
+// HTML の見える字（タグを除き、文字参照を戻す。字の補いの判定だけに使う）
+const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: '\u00a0' };
+const textOfHtml = (h) => String(h).replace(/<[^>]*>/g, '').replace(/&(?:#x([0-9a-f]+)|#(\d+)|([a-z]+));/gi, (m, x, d, n) => { try { return x ? String.fromCodePoint(parseInt(x, 16)) : d ? String.fromCodePoint(+d) : ENT[n.toLowerCase()] || m; } catch { return m; } });
 const shown = (v, out = []) => { if (typeof v === 'string') out.push(v); else if (Array.isArray(v)) v.forEach((x) => shown(x, out)); else if (isObj(v)) for (const [k, x] of Object.entries(v)) { if (k !== 'ttsParts') shown(x, out); } return out; };
 
 // ---------------------------------------------------------------- 本体
@@ -236,6 +248,7 @@ async function run(original, filesIn, opts) {
   const docId = identity ? identity.docId : ix.docId;
   if (identity && !(typeof identity.docId === 'string' && RE.docId.test(identity.docId))) refuse('bad-identity', 'identity.docId is not a lowercase UUID');
 
+  let linksNew, linksSet = false;   // 設定のファイルを変えたときの articleLinks（索引にも同じ値を書く。§9C.7）
   // 1. どの原稿が変わったか。段 A の場所だけで済むもの（口述原稿・timeline.json・設定のファイル）のほかは断る
   const changed = [];
   for (const p of new Set([...Object.keys(old), ...NEW.keys()])) {
@@ -245,8 +258,17 @@ async function run(original, filesIn, opts) {
     if (eqBytes(a, b)) continue;
     changed.push(p);
   }
-  const outside = changed.filter((p) => !TIER_A_FILES.has(p) && !isAttachPath(p));
+  // 本文のファイル（§9C.1：index.article の path・chapters・references）。中身を直しただけなら本文だけを組み直す（opts.article）
+  const artIx = isObj(ix.article) ? ix.article : null;
+  const ARTICLE_FILES = new Set(artIx ? [...(typeof artIx.path === 'string' ? [artIx.path] : Array.isArray(artIx.chapters) ? artIx.chapters : []), ...(typeof artIx.references === 'string' ? [artIx.references] : [])] : []);
+  const articleChanged = changed.filter((p) => ARTICLE_FILES.has(p));
+  const outside = changed.filter((p) => !TIER_A_FILES.has(p) && !isAttachPath(p) && !ARTICLE_FILES.has(p));
   if (outside.length) refuse('source-changed', `slide source changed (${outside.join(', ')}): the lesson must be rebuilt (tier B)`, outside);
+  const artGone = articleChanged.filter((p) => !NEW.get(p));
+  if (artGone.length) refuse('source-changed', `an article file was removed (${artGone.join(', ')}): the lesson must be rebuilt (tier B)`, artGone);
+  const articleHtml = opts.article && typeof opts.article.html === 'string' ? opts.article.html.replace(/\r\n?/g, '\n') : null;
+  if (articleChanged.length && articleHtml === null) refuse('article-changed', `the article changed (${articleChanged.join(', ')}): render it again and pass it (opts.article), or rebuild`, articleChanged);
+  if (articleChanged.length && !new RegExp(`^<article id="${ARTICLE_ID}"[\\s>][\\s\\S]*</article>$`).test(articleHtml)) refuse('layout', `opts.article.html is not one <article id="${ARTICLE_ID}"> element`);
   // 添付の変更：スライドの原稿（添付と音声でない文字のファイル）がそのパスを書いていれば、組み立てが読んだかもしれないので組み直す
   const attachChanged = changed.filter((p) => isAttachPath(p));
   if (attachChanged.length) {
@@ -264,6 +286,16 @@ async function run(original, filesIn, opts) {
       if (!deepEqual(cm[k], want)) refuse('config-changed', `${CFG}: metadata.${k} differs from the document (the lesson must be rebuilt)`);
     }
     for (const k of META_RIGHTS) if (k !== 'title' && own(im, k) && !own(cm, k)) refuse('config-changed', `${CFG}: metadata.${k} is missing`);
+    // 章の読む順（article。§9C.7）が変われば本文の組み直し（段 B）。つながりの記録（articleLinks）は段 A の場所（§7.2）：索引も同じ値に
+    let oc = null;
+    try { oc = own(old, CFG) ? parseJsonStrict(dec.decode(old[CFG])) : null; } catch { oc = null; }
+    if (!deepEqual(isObj(oc) ? oc.article : undefined, c.article)) refuse('source-changed', `${CFG}: the order of the article's chapters changed: the lesson must be rebuilt (tier B)`);
+    if (own(c, 'articleLinks')) {
+      const AL = c.articleLinks, okRec = (r) => isObj(r) && RE.sha256.test(String(r.article)) && RE.sha256.test(String(r.slide));
+      if (!isObj(AL) || !Object.values(AL).every((m) => isObj(m) && Object.values(m).every(okRec))) refuse('config-changed', `${CFG}: articleLinks is not {slideKey: {sectionId: {article, slide}}}`);
+    }
+    linksNew = own(c, 'articleLinks') ? c.articleLinks : undefined;
+    linksSet = true;
   }
   if (identity && !changed.includes(CFG) && own(old, CFG)) refuse('config-changed', `${CFG}: the new docId is not in the configuration file`);
 
@@ -434,6 +466,7 @@ async function run(original, filesIn, opts) {
   if (!hasAudio && req.includes('audio-v1')) req.splice(req.indexOf('audio-v1'), 1);
   if (!deepEqual(req, ix.requires)) setIx(['requires'], req);
   if (attachDiff) setIx([FORMAT.ATTACH_KEY], attachList.length ? attachList : undefined);
+  if (linksSet && !deepEqual(linksNew, own(ix, 'articleLinks') ? ix.articleLinks : undefined)) setIx(['articleLinks'], linksNew, [...INDEX_ORDER, 'article', 'articleLinks']);
   if (!hasAudio) { if (own(ix, 'audio')) setIx(['audio'], undefined); }
   else if (!own(ix, 'audio')) setIx(['audio'], newAudio);
   else for (const k of audioChanged) setIx(['audio', k], own(newAudio, k) ? newAudio[k] : undefined, Object.keys(newAudio));
@@ -487,11 +520,20 @@ async function run(original, filesIn, opts) {
   const lang = (r.deckMeta && r.deckMeta.lang) || (isObj(ix.metadata) && ix.metadata.lang) || 'ja';
   const need = new Set();
   for (const { s, st } of narrChanged) for (const x of shown(newMap[s]?.[st])) for (const ch of x) if (ch.codePointAt(0) >= 0x20) need.add(ch.codePointAt(0));
+  // 本文を組み直したとき：前の本文になかった字（前の本文の字は、組み立てが字を選んだときにあった字）
+  const bookLoc = articleChanged.length ? (L.readable && L.readable.book) : null;
+  const oldBookChars = new Set();
+  if (articleChanged.length) {
+    if (!bookLoc || L.readable.dupBook) refuse('layout', `the readable layer has no single <article id="${ARTICLE_ID}">`);
+    for (const ch of textOfHtml(original.slice(bookLoc.cStart, bookLoc.cEnd))) oldBookChars.add(ch.codePointAt(0));
+    for (const ch of textOfHtml(articleHtml)) { const c = ch.codePointAt(0); if (c >= 0x20 && !oldBookChars.has(c)) need.add(c); }
+  }
   if (need.size) {
     const have = fontFacesOf(original, L.styles);
     // 範囲（unicode-range）のない字（字を絞り込んだもの）は、元の口述原稿の字だけを持つとみなす（足りなければ補う。多めに足すことはあっても欠けない）
     const known = new Set();
     for (const x of shown(parseJsonStrict(blockText('deck-narration')))) for (const ch of x) known.add(ch.codePointAt(0));
+    for (const c of oldBookChars) known.add(c);
     const covered = (c, family, w, style) => have.some((f) => f.family === family && f.w === w && f.style === style && (f.range ? inRange(f.range, c) : known.has(c)));
     const families = { biz: 'BIZ UDPGothic', sans3: 'Source Sans 3' };
     // 補うのは、文書が埋め込んでいる字（同じ family・weight・style）だけ（§7.2。400 だけを埋め込んだ文書には 400 だけ）
@@ -550,6 +592,8 @@ async function run(original, filesIn, opts) {
     ops.push([at, at + 64, h]);
     ops.push([L.index.cStart, L.index.cEnd, ixText]);
   }
+  // 本文（§9C.1）：<article id="egatari-article"> をまるごと置き換える（ほかのバイトはそのまま）
+  if (articleChanged.length && original.slice(bookLoc.start, bookLoc.end) !== articleHtml) ops.push([bookLoc.start, bookLoc.end, articleHtml]);
   // 読める層：どのスライドにも当たらない鍵の口述原稿は入れず、知らせる（§2.1。書き出しと同じ）
   const orphans = newSegs.filter((sg) => !L.slideKeys.has(sg.slideKey) && !(L.readable && L.readable.articles.has(sg.slideKey)));
   for (const sg of orphans) warnings.push(`narration for "${sg.slideKey}:${sg.stepKey}" matches no slide; omitted from the readable layer`);
@@ -612,7 +656,7 @@ async function run(original, filesIn, opts) {
   return {
     ok: true, html, index: newIndex, deckMeta: back.deckMeta, warnings: [...warnings], ...(configText !== null ? { config: configText } : {}),
     changes: {
-      files: changed, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
+      files: changed, article: articleChanged, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
       extensions: exChanged, attachments: attachDiff || attachChanged.length > 0, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],
       supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split(/[\\/]/).pop()), faces: supplement.faces, chars: supplement.chars } : null,
       identity: !!identity, unchanged: html === original,

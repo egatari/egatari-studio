@@ -1,0 +1,46 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "container",
+      "kind": "figure",
+      "children": [
+        {
+          "type": "image",
+          "url": "images/bitmap.png",
+          "alt": "A grid of black and white squares forming the letter A"
+        },
+        {
+          "type": "caption",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "A bitmap of the letter A."
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "legend",
+          "children": [
+            {
+              "type": "paragraph",
+              "children": [
+                {
+                  "type": "text",
+                  "value": "Each square is one pixel."
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "label": "fig-bitmap",
+      "identifier": "fig-bitmap"
+    }
+  ]
+}

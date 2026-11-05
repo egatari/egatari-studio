@@ -118,5 +118,34 @@ ok('--release refuses entries under Unreleased, rc versions, and no fragments', 
   assert.equal(run(repo('empty', {}), '--release', '0.5.0').code, 1);
 });
 
+ok('--rc sets only the versions; npm.yml\'s tag check accepts the rc tag, then the release tag', () => {
+  // npm.yml の「tag equals package.json version」の手順そのものを取り出して、一時のリポジトリで走らせる
+  const yml = fs.readFileSync(path.join(path.dirname(TOOL), '..', '.github', 'workflows', 'npm.yml'), 'utf8').replace(/\r\n/g, '\n');   // Windows の CRLF
+  const m = /- name: tag equals package\.json version\n\s+run: \|\n((?:[ ]{10}.*\n)+)/.exec(yml);
+  assert.ok(m, 'npm.yml has the tag check step');
+  const script = m[1].replace(/^ {10}/gm, '');
+  const tagCheck = (root, tag) => spawnSync('sh', ['-c', script], { cwd: root, encoding: 'utf8', env: { ...process.env, GITHUB_REF_NAME: tag } }).status;
+  const root = repo('rc', { 'a.md': '### Added\n- a\n' });
+  fs.mkdirSync(path.join(root, '.claude-plugin'));
+  fs.writeFileSync(path.join(root, '.claude-plugin', 'plugin.json'), JSON.stringify({ name: 'x', version: '0.4.1' }, null, 2) + '\n');
+  const cl = fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8');
+  for (const bad of ['0.5.0', '0.5.0-rc', '0.5', 'v0.5.0-rc.1', '0.5.0-beta.1']) assert.equal(run(root, '--rc', bad).code, 1, bad);
+  assert.equal(tagCheck(root, 'v0.5.0-rc.1'), 1, 'before --rc the rc tag is refused');
+  const r = run(root, '--rc', '0.5.0-rc.1');
+  assert.equal(r.code, 0, r.out);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version, '0.5.0-rc.1');
+  const lock = JSON.parse(fs.readFileSync(path.join(root, 'package-lock.json'), 'utf8'));
+  assert.equal(lock.version, '0.5.0-rc.1'); assert.equal(lock.packages[''].version, '0.5.0-rc.1');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin', 'plugin.json'), 'utf8')).version, '0.5.0-rc.1', 'the plugin version follows (#172; tools/test-plugin.mjs)');
+  assert.equal(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), cl, 'CHANGELOG.md untouched');
+  assert.deepEqual(fs.readdirSync(path.join(root, 'changes')).sort(), ['.gitkeep', 'a.md'], 'fragments kept');
+  assert.equal(tagCheck(root, 'v0.5.0-rc.1'), 0, 'rc tag accepted');
+  assert.equal(tagCheck(root, 'v0.5.0'), 1, 'release tag refused while the version is an rc');
+  assert.equal(run(root, '--rc', '0.5.0-rc.2').code, 0);   // 次の候補
+  assert.equal(run(root, '--release', '0.5.0', '--date', '2026-11-01').code, 0);
+  assert.equal(tagCheck(root, 'v0.5.0'), 0, 'release tag accepted after --release');
+  assert.equal(tagCheck(root, 'v0.5.0-rc.2'), 1);
+});
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${n} passed`);

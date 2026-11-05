@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=b7be818d684032bd -->
+<!-- i18n: pair=contract.ja.md sha256=eb5c15f87a47ad59 -->
 # Contract (Studio notes on the authoring source)
 
 English | [日本語](contract.ja.md)
@@ -29,7 +29,7 @@ The one-line list of options, syntax and keys is in [reference.md](reference.md)
 
 ## 2. Display modes
 
-Modes and the preview of later steps are Player P1. In Studio's player: `?mode=talk|video` (default `talk`, or `<html data-mode>`); `learn` is not implemented yet. **Show later steps faintly** is the option `?preview=1` (key `l`), at the theme's `--preview-opacity`; elements with `data-preview="none"` and parts that declare `preview: "none"` stay hidden ahead (format §8.4).
+Modes and the preview of later steps are Player P1. In Studio's player: `?mode=talk|learn|video` (default `talk`, or `<html data-mode>`). In `learn` the learner plays, pauses, steps and jumps; playback speed is 0.75, 1, 1.25, 1.5 or 2× (`DECK.rate`), the narration keeps its pitch and the timeline clock runs at the same speed, so the screen is still `(i, k, t)`; pausing resumes from the same point, stepping while playing keeps playing, and the presenter tools (presenter view, laser, pens) are not offered. Playback pauses whenever the page is hidden (Player P3). Progress is recorded by `kit/track.js` (Player P6, [reference](reference.md#self-study-and-progress)). **Show later steps faintly** is the option `?preview=1` (key `l`), at the theme's `--preview-opacity`; elements with `data-preview="none"` and parts that declare `preview: "none"` stay hidden ahead (format §8.4).
 
 ## 3. Parts (Web Components)
 

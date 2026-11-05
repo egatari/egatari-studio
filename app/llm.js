@@ -31,6 +31,7 @@ import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
+import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -149,7 +150,7 @@ const TX = {
     batchTitle: '構成案の続き', batchWhere: (a, b, n, left) => `構成案の ${a}〜${b} 枚目（全 ${n} 枚。残り ${left} 枚）を、最後のスライドの後ろに入れます`,
     batchDone: (left) => (left ? `構成案：残り ${left} 枚` : '構成案のスライドをすべて作りました'),
     // 挿入
-    insertWhere: (n, h) => `挿入する場所：スライド ${n}「${h}」の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}「${h}」）の後ろ`,
+    insertWhere: (n, h) => `挿入する場所：スライド ${n}${quoteJa(h)}の後ろ`, insertWhereLast: (n, h) => `挿入する場所：最後のスライド（${n}${quoteJa(h)}）の後ろ`,
     insertCount: '足す枚数', insertWish: '足したいこと（なくてもよい）', insertWishPh: '例：練習問題を 1 つ',
     insertHint: '指示には、今のスライドの見出しの一覧と、挿入する場所の前のスライドだけを入れます（短く済みます）',
     withPack: 'この教材を作ったのとは別のチャットに送る（指示の全体も付けます）',
@@ -187,7 +188,7 @@ const TX = {
     idProblems: 'id を付けられないスライドがあります（品質チェックの結果を見てください）',
     unsavedNote: '保存するまでファイルには書いていません',
     fix: 'AI への修正依頼をコピー', fixTitle: 'AI への修正依頼',
-    fixLead: (n, partial) => `指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今のスライドと台本'} をコピーしました。同じチャットに貼り付けて送り、AI の出力は「修正…」の ③ に貼り付けます`,
+    fixLead: (kb, n, partial) => `コピーしました（${kb} KB。指摘 ${n} 件と、その規格、${partial ? '問題のあるスライド' : '今のスライドと台本'}）。同じチャットに貼り付けて送り、AI の出力は「修正…」の ③ に貼り付けます`,
     fixCopyFailed: '自動ではコピーできませんでした。下の文字を選んでコピーしてください',
     copyCutOff: 'AI に送り直しを頼む指示をコピー', cutOffCopied: 'コピーしました。チャットに貼り付けて送り、AI の出力をここに貼り付けてください',
     fixNone: '直す問題はありません', pasteReply: 'AI の出力を貼り付ける…', close: '閉じる',
@@ -330,7 +331,7 @@ const TX = {
     idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
     fix: 'Copy a fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (n, partial) => `Copied ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current slides and script'}. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
+    fixLead: (kb, n, partial) => `Copied (${kb} KB: ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current slides and script'}). Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
     copyCutOff: 'Copy instructions to resend', cutOffCopied: 'Copied. Paste it into the chat and send, then paste the AI’s output here.',
     fixNone: 'No problems to fix.', pasteReply: 'Paste the AI’s output…', close: 'Close',
@@ -362,6 +363,24 @@ export function setupLlm(app) {
     catch {
       try { if (area) { area.focus(); area.select(); } return document.execCommand('copy'); } catch { return false; }
     }
+  }
+  // 段の［コピー］（新規作成の ④・挿入と修正の ②）：クリップボードに書けなければ、知らせの下の字の欄（copyMsg.box。品質チェックの修正依頼の窓と同じ見た目）に
+  // 全文を出して全部を選び、fixCopyFailed（「下の文字を選んで…」）で自分でコピーしてもらう。欄を出している間は段をたたまない（ok を返さない）
+  // 知らせ msg の下に置く、コピーできなかったときの全文の欄（msg.box）。どの［コピー］も copyInStep を通し、写していないのに「コピーしました」と言わない
+  const withCopyBox = (msg, id, label) => { msg.box = el('textarea', { id, readonly: '', rows: '12', spellcheck: 'false', hidden: '', 'aria-label': label }); return msg; };
+  async function copyInStep(text, copyMsg, label) {
+    const box = copyMsg.box;
+    box.hidden = true;
+    if (window.__APP_TEST) window.__APP_TEST.lastCopy = text;
+    try { await navigator.clipboard.writeText(text); return true; } catch { /* 下の欄へ */ }
+    box.value = text; box.setAttribute('aria-label', label); box.hidden = false;
+    const selectAll = () => { try { box.focus(); box.select(); box.setSelectionRange(0, box.value.length); } catch { /* 無視 */ } };
+    selectAll();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch { ok = false; }
+    if (ok) { box.hidden = true; return true; }
+    box.scrollTop = 0; selectAll();
+    return false;
   }
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
   const kb = (s) => packKb(s);
@@ -781,10 +800,10 @@ export function setupLlm(app) {
     const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, parts: chosen() });
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
       const miss = missing();
-      if (miss) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
+      if (miss) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
       const text = textNow();
       copied = choiceNow();
-      const ok = await copyText(text);
+      const ok = await copyInStep(text, copyMsg, title);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : X.copied(kb(text))) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
@@ -794,7 +813,7 @@ export function setupLlm(app) {
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg]);
+    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [copy, skill]), skillHint], [summary, copyMsg, copyMsg.box]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
@@ -812,18 +831,18 @@ export function setupLlm(app) {
     for (const b of boxes) b.addEventListener('change', update);
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: copyLabel, onclick: async () => {
       const text = await textNow();
-      const ok = await copyText(text);
+      const ok = await copyInStep(text, copyMsg, title);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();
     } });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
       ...SETS.map((s, i) => el('label', { title: membersOfSet(s).join(', ') }, [boxes[i], el('span', { text: setName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
     const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(setName.stats) })]);
-    withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; update(); });
+    withPack.addEventListener('change', () => { packParts.hidden = !withPack.checked; copyMsg.hidden = true; copyMsg.textContent = ''; copyMsg.box.hidden = true; update(); });
     await update();
     const summary = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, onChange);
     const node = step('paste-step2', title, [el('label', { cls: 'paste-with-pack', for: 'paste-with-pack' }, [withPack, el('span', { text: X.withPack })]),
-      packParts, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg]);
+      packParts, el('div', { cls: 'paste-guide' }, [copy, total])], [summary, copyMsg, copyMsg.box]);
     return { node, summary, update };
   }
   // ② 修正依頼：品質チェックの指摘（今かけ直す）と ① と開いているメモと、今の原稿（kit/core/llm-fix.mjs）
@@ -836,13 +855,13 @@ export function setupLlm(app) {
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyRevise, onclick: async () => {
       const results = results0 || (app.checkResults ? await app.checkResults() : []) || [];
       const r = await reviseRequest(results, wish.value);
-      if (!r) { copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; onChange(0); return; }
-      const ok = await copyText(r.text);
+      if (!r) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; onChange(0); return; }
+      const ok = await copyInStep(r.text, copyMsg, title[1]);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.revised(kb(r.text), r.problems, r.notes) : X.fixCopyFailed;
       if (ok && onCopied) onCopied();
     } });
     const sum2 = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, () => onChange(1));
-    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy])], [sum2, copyMsg]);
+    const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy])], [sum2, copyMsg, copyMsg.box]);
     return { s1, s2, sum1, sum2, wish };
   }
 
@@ -949,10 +968,10 @@ export function setupLlm(app) {
     const titles = opts.batch ? X.steps.batch : X.steps[mode];
     outlineRows = null; batchNow = null; newChoice = null;
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
-    const copyMsg = el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' });
+    const copyMsg = withCopyBox(el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-copy-text', X.sendQ);
     // 出力が切れていた・コードブロックがなかったとき：AI に送り直しを頼む文を写すボタン
-    const cutMsg = el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' });
-    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyText(t); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
+    const cutMsg = withCopyBox(el('p', { id: 'paste-cut-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-cut-text', X.copyCutOff);
+    const cut = el('button', { type: 'button', id: 'paste-copy-cutoff', hidden: '', text: X.copyCutOff, onclick: async () => { const t = cutOffRequest(S.cutOff || {}, LANG); const ok = await copyInStep(t, cutMsg, X.copyCutOff); cutMsg.hidden = false; cutMsg.textContent = ok ? X.cutOffCopied : X.fixCopyFailed; } });
     S.cutOff = null;
     const goNote = el('span', { id: 'paste-go-note', cls: 'hint paste-go-note', role: 'status' });
     let outlinePhase = () => false;   // 新規作成で構成案を待っているとき（作成は押せない）
@@ -966,6 +985,7 @@ export function setupLlm(app) {
       const b = document.getElementById('dlg-import');
       if (!howto.isConnected) return;
       cut.hidden = !S.cutOff;
+      if (!S.cutOff) cutMsg.box.hidden = true;
       if (!b || !fields || !b.closest('#dlg[open]')) return;
       // ボタンは同じ場所のまま。押せないときは、すぐ左に欠けているもののうち最初の 1 つを、押せるときは添え書き（台本なしで作成します など）を出す
       const pre = unanswered(), waiting = outlinePhase(), ready = fields.ready();
@@ -976,7 +996,7 @@ export function setupLlm(app) {
     };
     fields = pasteFields(mode, () => syncGo());
     const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
-      ...fields.nodes, msg, cut, cutMsg, el('p', { cls: 'hint', text: X.untrusted })];
+      ...fields.nodes, msg, cut, cutMsg, cutMsg.box, el('p', { cls: 'hint', text: X.untrusted })];
     let body, openPaste = () => {};
     if (mode === 'new') {
       // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。1 つだけ開く流れ（flow）：答えた問いは 1 行にたたみ、次の問いを開く。
@@ -1105,7 +1125,7 @@ export function setupLlm(app) {
           el('div', { cls: 'paste-field wide' }, [el('label', { for: 'paste-outline-text', text: X.outlineLabel }), oText]), oMsg, el('div', { cls: 'paste-guide' }, [next]));
       } else if (as === 'got') {
         const rows = outlineRows, b = nextBatch({ rows, next: 1 });
-        const msgO = el('p', { id: 'paste-outline-copied', cls: 'hint', role: 'status', hidden: '' });
+        const msgO = withCopyBox(el('p', { id: 'paste-outline-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-outline-copy-text', X.outlineCopy(b.from, b.to));
         const change = el('button', { type: 'button', id: 'paste-change-outline', cls: 'ghost', text: X.change, onclick: () => { outlineRows = null; render(true); oText.focus(); } });
         h.textContent = titles[4];
         box.replaceChildren(
@@ -1114,8 +1134,8 @@ export function setupLlm(app) {
           el('ol', { id: 'paste-outline-list', cls: 'paste-outline' }, rows.map((r) => el('li', { text: r.point ? `${r.heading} — ${r.point}` : r.heading }))),
           el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-outline-copy', cls: 'pri', text: X.outlineCopy(b.from, b.to), onclick: async () => {
             const t = batchRequest({ rows, from: b.from, to: b.to, first: true, lang: LANG });
-            const ok = await copyText(t); msgO.hidden = false; msgO.textContent = ok ? X.batchCopied(kb(t)) : X.fixCopyFailed;
-          } })]), msgO, ...kids);
+            const ok = await copyInStep(t, msgO, X.outlineCopy(b.from, b.to)); msgO.hidden = false; msgO.textContent = ok ? X.batchCopied(kb(t)) : X.fixCopyFailed;
+          } })]), msgO, msgO.box, ...kids);
       } else {
         h.textContent = titles[4];
         box.replaceChildren(...kids);
@@ -1253,9 +1273,12 @@ export function setupLlm(app) {
   }
   // 組み直しが終わり、プレビューの今の読み込みが表示し終わるのを待って品質チェック。S.pos では待たない（フォルダの置き換えでは、
   // 前の読み込みの位置が残っていて、読み込み中のプレビューに頼みを送ってしまう。頼みは app.quickCheck が今の読み込みに結び付ける）
+  // 待つのは組み直し（期限は app.buildTimeout()）とその読み込みの表示まで。前は 20 秒で打ち切り、遅い PC（macOS の CI で、置き換えの組み直しと
+  // 表示に 20 秒を超えた）では品質チェックを黙って飛ばしていた（板が開かず、結果も「答えなかった」も出ない）
   async function afterOpen() {
     const t0 = Date.now(), ready = () => S.allowed && !S.building && S.loads > 0 && S.frameLoaded === S.loads;
-    while (Date.now() - t0 < 20000 && !ready()) await new Promise((r) => setTimeout(r, 100));
+    const limit = app.buildTimeout() + 20000;
+    while (Date.now() - t0 < limit && !ready()) await new Promise((r) => setTimeout(r, 100));
     if (ready()) await app.quickCheck();
     // 試験（tools/test-app-outline.mjs）：この後始末を、次の窓を開いて貼った後まで待たせる（__APP_TEST.afterOpenGate：Promise）。済んだ数は afterOpens
     const AT = window.__APP_TEST;
@@ -1329,13 +1352,17 @@ export function setupLlm(app) {
     if (!probs.length) { toast(X.fixNone); return; }
     const { deck, narration } = await readDeck();
     const req = buildFixRequest({ problems: probs, deck, narration, lang: LANG });
-    const area = el('textarea', { id: 'fix-text', readonly: '', rows: '12', spellcheck: 'false' });
+    const area = el('textarea', { id: 'fix-text', readonly: '', rows: '12', spellcheck: 'false', 'aria-label': X.fixTitle });
     area.value = req.text;
-    const ok = await copyText(req.text, area);
+    // 知らせ：新規作成の ④ と同じ（コピーしました（N KB）…。だめなら字の欄を選んで、自分でコピーしてもらう）
+    const lead = el('p', { id: 'fix-lead', role: 'status' });
+    const say = (ok) => { lead.textContent = ok ? X.fixLead(kb(req.text), probs.length, req.partial) : X.fixCopyFailed; };
+    say(await copyText(req.text, area));
+    // ［修正依頼をコピー］：何度でも写し直せる（開いた後に別のものをコピーしたとき）。修正… の ② と同じボタン
+    const copy = el('button', { type: 'button', id: 'fix-copy', cls: 'pri', text: X.copyRevise, onclick: async () => { lead.textContent = ''; say(await copyText(req.text, area)); } });
     // 窓を開いた後に頭を見せる（窓が字の欄にフォーカスを移すと、終わりへ送られることがある）
     setTimeout(() => { try { area.setSelectionRange(0, 0); area.scrollTop = 0; } catch { /* 無視 */ } }, 0);
-    const v = await ask({ title: X.fixTitle, kind: 'paste', body: [
-      el('p', { id: 'fix-lead', text: ok ? X.fixLead(probs.length, req.partial) : X.fixCopyFailed }), area],
+    const v = await ask({ title: X.fixTitle, kind: 'paste', body: [el('div', { cls: 'paste-guide' }, [copy]), lead, area],
       buttons: [{ id: 'cancel', label: X.close }, { id: 'paste', label: X.pasteReply, pri: true }] });
     if (v === 'paste') await aiDialog('replace', { results, focusPaste: true });
   }

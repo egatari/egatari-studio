@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const [file, outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-message-sources-'))] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-message-sources.mjs <built.html> [outdir]'); process.exit(2); }
@@ -18,7 +19,7 @@ const b = await launch();
 const ctx = await b.newContext({ viewport: { width: 1280, height: 800 } });
 const errs = [];
 const watch = (p, n) => { p.on('pageerror', (e) => errs.push(n + ': ' + e.message)); };
-const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+const ready = (p) => p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
 const state = (f) => f.evaluate(() => DECK.state().slide * 100 + DECK.state().step);
 const settle = (p, ms = 300) => p.waitForTimeout(ms);
 
@@ -41,7 +42,7 @@ const settle = (p, ms = 300) => p.waitForTimeout(ms);
   // この窓が開いた発表者ビューからは動く
   const [pv] = await Promise.all([ctx.waitForEvent('page'), p.keyboard.press('p')]);
   watch(pv, 'presenter');
-  await pv.waitForFunction(() => /\//.test((document.getElementById('pv-pos') || {}).textContent || ''), null, { timeout: 15000 });
+  await pv.waitForFunction(() => /\//.test((document.getElementById('pv-pos') || {}).textContent || ''), null, { timeout: scaled(15000) });
   await pv.evaluate(() => opener.postMessage({ type: 'deck-cmd', cmd: 'next' }, '*')); await settle(p, 400);
   ok(await state(p) > s0, 'top: the presenter view this window opened still drives it');
   await pv.evaluate(() => opener.postMessage({ type: 'deck-tool', cmd: 'mode', mode: 'laser' }, '*')); await settle(p, 200);
@@ -63,7 +64,7 @@ f.src = ${JSON.stringify(path.basename(file))} + location.search + location.hash
 async function frameReady(p) {
   let fr = null;
   for (let i = 0; i < 150 && !(fr = frameOf(p)); i++) await p.waitForTimeout(100);
-  await fr.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await fr.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   return fr;
 }
 const frameOf = (p) => p.frames().find((f) => f !== p.mainFrame() && /\.html/.test(f.url()) && !/msg-host/.test(f.url()));

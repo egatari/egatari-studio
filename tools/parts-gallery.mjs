@@ -16,7 +16,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { resolveComponent } from '../kit/core/components-lock.mjs';
+import { resolveCatalogueContent } from '../kit/core/components-lock.mjs';
 import { VENDOR_PARTS2, LOCK2_FILE } from '../kit/core/parts2.mjs';
 import { cmpVersion } from '../app/version-ui.js';
 import { PARTS_DIR, partsGalleryUrl } from '../app/parts-gallery.js';
@@ -64,9 +64,11 @@ export function previousCatalogue(lock2, version) {
   return older.length ? older[0] : null;
 }
 
-// manifest の files を、写し（components.lock.json の content 表が指す vendor/components/sha256/<hash>/）から dir に並べる（展開した tarball と同じ形）
+// manifest の files を、そのカタログの写し（components2.lock.json の catalogues.<版>.content が指す vendor/components/sha256/<hash>/）から
+// dir に並べる（展開した tarball と同じ形）。カタログで引く：同じパーツの版でも、後のリリースが README・demo だけ直していることがある
 export function packFolder(manifestFile, dir) {
   const lock = readJson(path.join(ROOT, 'components.lock.json'));
+  const lock2 = readJson(path.join(ROOT, LOCK2_FILE));
   const m = readJson(manifestFile);
   for (const f of Object.keys(m.files)) {
     let src;
@@ -74,8 +76,8 @@ export function packFolder(manifestFile, dir) {
     else {
       const [name, ...rest] = f.split('/');
       const c = m.components[name];
-      const d = c ? resolveComponent(path, ROOT, lock, name, c.version) : null;
-      if (!d) throw new Error(`${f}: ${name}${c ? ' ' + c.version : ''} is not in the vendored parts (components.lock.json)`);
+      const d = c ? resolveCatalogueContent(path, ROOT, lock, lock2, m.version, name, c.version) : null;
+      if (!d) throw new Error(`${f}: ${name}${c ? ' ' + c.version : ''} is not in the vendored parts (${LOCK2_FILE}, components.lock.json)`);
       src = path.join(d, ...rest);
     }
     if (!fs.existsSync(src)) throw new Error(`${f}: not in the vendored copy (${path.relative(ROOT, src)})`);

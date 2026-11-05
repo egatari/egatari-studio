@@ -13,6 +13,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | script | Script | 台本 | What is spoken, step by step (narration.md). | 口述原稿 ・ ナレーション原稿 / narration | narration.md | 2026-10-24 (owner) |
 | export-script | Export script | 台本を書き出す | Save the script of the steps that need audio as one file, for generating audio in the cloud. | 声の依頼ファイル ・ tts-job.json（画面で） | tts-job.json | 2026-10-24 (owner) |
 | file-info | File info | ファイルの情報 | Title, license, creators and attachments of the file. | 教材の情報 / Lesson info | metadata | 2026-10-24 (owner) |
+| created-by | Created by | 作成者 | The people who made the lesson (metadata.creators), shown in File info in the editor and the player. | 作り手 | creators | 2026-11-04 (owner) |
 | sample | Samples | サンプル | Example lessons shipped with the editor. | 見本 ・ 見本の教材 / examples |  | 2026-10-24 (owner) |
 | template | Template | テンプレート | A slide layout used when inserting a slide, and the starting set of slides for a new lesson. | 雛形 |  | 2026-10-24 (owner) |
 | zip-file | ZIP file | ZIP ファイル | A compressed archive (theme import, cloud audio result). | zip / zip |  | 2026-10-25 (standards) |
@@ -37,6 +38,11 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | book-scroll | Scrolling | スクロール | Book shown as one scrolled column (spec layout flow). Acrobat ja wording. | フロー表示 | flow (Player P2) | 2026-10-26 (standards) |
 | book-single-page | Single page | 単一ページ | Book shown one page at a time. | 片ページ | pages=single | 2026-10-26 (standards) |
 | book-spread | Two-page view | 見開きページ | Book shown two pages side by side; chosen automatically on wide screens. | スプレッド | pages=spread | 2026-10-26 (standards) |
+| slides-and-book | Slides and book | スライドと本 | Layout with the slides and the book side by side (spec split). Without a book: スライドと台本 / Slides and script. | 分割表示 ・ スプリット / Split view | split (Player P2) | 2026-10-29 (standards) |
+| read-in-book | Read in the book | 本で読む | Link on a slide to the section of the book that goes with it; opens Slides and book (or the book alone on narrow screens). | 続きを読む ・ 本文へ / Continue reading | stage→article link (spec §9C.5) | 2026-10-29 (standards) |
+| watch-on-slides | Watch on slides | スライドで見る | Link in the book that shows the slide's step over the text with its motion; closing returns to the place being read. | この部分を見る ・ 動きを見る / See this part | article→stage link (spec §9C.5) | 2026-10-29 (standards) |
+| back-to-playing | Back to the playing part | 再生中の所に戻る | Shown when the viewer scrolls the book away while narration plays; brings the book back to the current turn and resumes following. Kindle / lyrics wording. | 同期に戻る / Resync | detach sync (Player P2) | 2026-10-29 (standards) |
+| book-may-not-match | Slides and book may not match | スライドと本が合っていないかもしれません | Editor notice when a linked section or step changed after the link was checked (spec §9C.7). | 古いかも ・ 不整合 / stale (in the UI) | articleLinks staleness (spec §9C.7) | 2026-10-29 (standards) |
 | toolbar | Toolbar | ツールバー | The bar of playback and presentation controls at the bottom of the player; it hides and comes back when the mouse moves to the bottom or the screen is tapped. Its small faint handle is labelled ツールバーを表示 / Show toolbar. Google Slides / PowerPoint wording. | 操作の帯 ・ コントロールバー / control bar |  | 2026-10-26 (standards) |
 | presenter-view | Presenter view | 発表者ビュー | A second window with the script, next step and tools (key p). |  |  | 2026-10-24 (owner) |
 | black-screen | Black screen | 黒い画面 | Blank the screen during a presentation (key b). | 暗転 / blackout |  | 2026-10-25 (owner) |
@@ -86,7 +92,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | subjects | Subjects | 内容の分野 | Part sets for a subject, offered when inserting slides for a different chat (question: Will the slides need any of these?). New… lists parts instead (backlog #124). Headings use 内容の分野; running text may say 分野. | 系列 ・ 教科 / series | series | 2026-10-25 (owner) |
 | subject-english | English (foreign language) | 英語 | The subject tile for English as a foreign language (parts series english). The en label says (foreign language) so that it is not confused with the lesson language English. | 語学 / English (subject) | series english | 2026-10-26 (owner) |
 | subject-music | Music | 音楽 | The subject tile for music (parts series music: keyboard, score). |  | series music | 2026-10-26 (owner) |
-| free-plan | Free plan (of the chat AI) | 無料のプラン（チャットの AI の） | The user's chat AI is on a free plan; the suggested size limit of the instructions is 40 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans. | 無料版 | plan: free | 2026-10-25 (owner) |
+| free-plan | Free plan (of the chat AI) | 無料のプラン（チャットの AI の） | The user's chat AI is on a free plan; the suggested size limit of the instructions is 45 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans. | 無料版 | plan: free | 2026-11-03 (owner, backlog #169) |
 | paid-plan | Paid plan (of the chat AI) | 有料のプラン（チャットの AI の） | The user's chat AI is on a paid plan; the suggested size limit of the instructions is 120 KB. Always shown with 「チャットの AI：」. | 有料版 | plan: paid | 2026-10-25 (owner) |
 | tools | Tools | 道具 | Parts the AI uses only when ticked (e.g. Timer); in New… they are listed under Time-boxing. |  | group: tool | 2026-10-25 (owner) |
 | standard-parts | Standard parts | 標準パーツ | Parts ticked from the start in New… (the standard tier of the parts library). | 共通の部品 ・ 共通パーツ ・ 共通の図 / common parts | common | 2026-10-25 (owner) |
@@ -144,3 +150,23 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | export | Export | エクスポート | Save the lesson in another form (menu action). Its messages use the same word: エクスポートしました. One word per action: the message repeats the word of the button or menu that triggered it. 書き出す is only the audio panel’s own 台本を書き出す (export-script). | 書き出し（メニュー名で） ・ 書き出しました（エクスポートの知らせで） |  | 2026-10-24 (owner) |
 | device | Device | 端末 | The computer or tablet a person views or edits a lesson on (the school word, as in 1人1台端末). Use パソコン only when it really means a PC. 機械 stays in 機械学習 and in the 4M (人・機械・方法・材料) of the m-fishbone example; list those in docs/terms-allow.json. | 機械（端末の意味で） / machine |  | 2026-10-28 (owner) |
 | viewer-person | Participant / Learner | 参加者／学習者 | The person who opens a lesson. 参加者 for a person in a session or receiving a play-only file (see participant); 学習者 when the point is learning (self-study, pedagogy). When the device is meant, say 端末 and name no person (e.g. 開く端末の明朝で表示されます). The spec keeps its English word viewer; it is not shown in the UI, where Viewer is the app name Egatari Viewer. Owner, 10/28; follows the 10/22 host/participant decision. | 見る人 / viewer (a person, UI) | viewer (spec) | 2026-10-28 (owner) |
+
+## Reading aids
+
+| id | English | 日本語 | definition | avoid (ja / en) | internal | decided |
+|---|---|---|---|---|---|---|
+| contents | Contents | 目次 | List of the book's sections (or the slide titles) at the top of the book pane. Decided 2026-10-29 (standards); copied into this file with the reading aids. | もくじ ・ アウトライン（本で） / TOC (in the UI) | reading aids (Player P2) | 2026-11-03 (standards) |
+| book-background | Background: White / Sepia / Black | 背景：白・セピア・黒 | Learner's per-device choice for the book pane only; the slides keep the theme colours. Kindle / Apple Books wording. Decided 2026-10-29 (standards). 白 keeps the theme's own light ground. | テーマ（この意味で） ・ ダークモード（この意味で） ・ 生成り（本の背景で） / Theme (in this sense) | text-pane background (Player P2) | 2026-11-03 (standards) |
+| search | Search | 検索 | Button at the top of the book pane that opens its own search box (also Ctrl+F / ⌘F in the book). Usual wording. | サーチ | reading aids (Player P2) | 2026-11-03 (standards) |
+| search-in-book | Search in the book / Search in the script | 本の中を検索／台本の中を検索 | Name and placeholder of the search box; the second form for a lesson without a book (Read with script). |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| search-result | Previous result / Next result | 前の検索結果／次の検索結果 | Buttons of the search box (Shift+Enter / Enter). Chrome find-bar wording. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| no-results | No results | 見つかりません | Shown in the search box when nothing matches. | 該当なし（検索で） | reading aids (Player P2) | 2026-11-03 (standards) |
+| text-and-background | Text and background | 文字と背景 | The Aa button of the book pane: text size, line spacing and background, per device, never in the file. | 表示の設定（この意味で） | reading aids (Player P2) | 2026-11-03 (standards) |
+| text-size | Text size | 文字サイズ | Size of the book's text in steps (Readium CSS user setting); the slides keep their size. | 字の大きさ（設定の名前で） ・ フォントサイズ（本で） / Font size (in the book) | reading aids (Player P2) | 2026-11-03 (standards) |
+| text-smaller-larger | Smaller text / Larger text | 文字を小さく／文字を大きく | The two buttons of Text size. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| line-spacing | Line spacing | 行間 | Space between the lines of the book, Normal or Wide. | 行の間隔 | reading aids (Player P2) | 2026-11-03 (standards) |
+| line-spacing-values | Normal / Wide | 標準／広い | The two steps of Line spacing. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| resumed | Resumed where you left off | 前回の続きから | One-time notice when a lesson reopens in the book at the place last read on this device. | 前の続きから / Continuing where you left off | reading aids (Player P2) | 2026-11-03 (standards) |
+| start-over | Start over | 最初から | Button of the resume notice: go to the beginning. |  | reading aids (Player P2) | 2026-11-03 (standards) |
+| reading-progress | Progress | 進行状況 | Accessible name of the thin bar under the top of the book pane (how far the book is scrolled). No page numbers. | 進み具合（本の窓で） | reading aids (Player P2) | 2026-11-03 (standards) |
+| enlarge | Enlarge | 拡大 | Clicking a figure in the book shows it large; accessible name 拡大：<figure>. |  | reading aids (Player P2) | 2026-11-03 (standards) |

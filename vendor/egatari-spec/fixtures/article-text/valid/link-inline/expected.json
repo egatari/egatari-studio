@@ -1,0 +1,43 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "See "
+        },
+        {
+          "type": "link",
+          "url": "https://example.org/page",
+          "title": "Example",
+          "children": [
+            {
+              "type": "text",
+              "value": "the example site"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": " or "
+        },
+        {
+          "type": "link",
+          "url": "https://example.org/",
+          "children": [
+            {
+              "type": "text",
+              "value": "https://example.org/"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

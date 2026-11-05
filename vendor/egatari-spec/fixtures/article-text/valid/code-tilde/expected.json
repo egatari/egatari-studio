@@ -1,0 +1,10 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "code",
+      "lang": "js",
+      "value": "const x = 1;"
+    }
+  ]
+}

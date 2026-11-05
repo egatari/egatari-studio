@@ -26,6 +26,22 @@ export function excludedFromThemeHash(rel) {
   const r = topLevel(rel);
   return r !== null && (/^(?:readme|licen[cs]e)/i.test(r) || /\.md$/i.test(r));
 }
+// テーマの tokens.css の url(…)（組み立てが data: URI にする。kit/core/build-core.mjs）：テーマのフォルダからの相対の参照だけ。
+// data:・blob:・http(s):・//・絶対のパス・#断片・ほかのスキームは対象外。themeUrlRel(ref) → 相対パス（?#を除き、% を戻したもの）か null。
+// CSS_URL_RE は /*…*/（コメント。飛ばす）と url(…) に合う
+export const CSS_URL_RE = /\/\*[\s\S]*?\*\/|url\(\s*(['"]?)([^'")]*)\1\s*\)/g;
+export function themeUrlRel(ref) {
+  const r = String(ref).trim();
+  if (!r || /^(?:data:|blob:|#|about:)/i.test(r) || /^(?:https?:)?\/\//i.test(r) || r.startsWith('/') || /^[a-z][a-z0-9+.-]*:/i.test(r) || /\$\{|\{\{/.test(r)) return null;
+  let rel = r.replace(/[?#].*$/, '');
+  try { rel = decodeURIComponent(rel); } catch { /* そのまま */ }
+  return rel || null;
+}
+export function themeCssRefs(text) {
+  const out = [];
+  for (const m of String(text).matchAll(CSS_URL_RE)) { if (m[2] === undefined) continue; const r = themeUrlRel(m[2]); if (r) out.push(r); }
+  return out;
+}
 export function excludedFromThemeCopy(rel) {
   const r = topLevel(rel);
   return r !== null && !isThemeLicense(r) && (/^readme/i.test(r) || /\.md$/i.test(r));

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-scatter の見本</title>
+<!-- 組み方：node kit/build.mjs components/scatter/demo.html -o components/scatter/out/demo.html（数値はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>最高気温とアイスの売上：平日と休日（架空）</h2>
+  <div class="body">
+    <m-scatter xr="[20,36]" yr="[0,600]" xt="[20,24,28,32,36]" yt="[0,200,400,600]" xl="最高気温（℃）" yl="売上（個）" style="height:430px">
+      <script type="application/json">{
+        "series": [
+          {"label": "平日", "points": [[21.2, 53], [22.6, 8], [22.9, 144], [27.5, 180], [27.6, 188], [29.0, 268], [29.7, 230], [31.4, 279], [31.7, 316], [33.8, 355], [34.2, 261], [34.2, 281]]},
+          {"label": "休日", "points": [[23.0, 257], [23.3, 269], [23.9, 270], [23.9, 303], [25.1, 321], [29.4, 380], [29.6, 373], [30.5, 379], [33.2, 452], [33.2, 561], [33.5, 446], [34.5, 457]]}
+        ],
+        "trend": [{"fit": "linear", "series": 0, "tone": "series-1", "dash": true}, {"fit": "linear", "series": 1, "tone": "series-2", "dash": true}]
+      }</script>
+    </m-scatter>
+  </div>
+  <div class="concl"><span>→ 休日はどの気温でも平日より多く売れる</span></div>
+</section>
+
+<section class="slide">
+  <h2>傾向の強さと外れた日（架空）</h2>
+  <div class="body">
+    <m-scatter xr="[20,36]" yr="[0,500]" xt="[20,24,28,32,36]" yt="[0,100,200,300,400,500]" xl="最高気温（℃）" yl="売上（個）" style="height:430px">
+      <script type="application/json">{
+        "series": [{"points": [[23.1, 176], [24.0, 206], [24.3, 159], [24.6, 223], [25.2, 314], [26.5, 277], [27.6, 310],
+          {"x": 27.6, "y": 440, "label": "花火大会の日", "anchor": "left"},
+          [29.3, 370], [29.5, 334], [29.8, 361], [29.9, 394], [30.4, 441], [31.1, 442], [31.4, 359], [32.7, 372], [32.7, 439],
+          [33.3, 472], [33.9, 420], [34.1, 428]]}],
+        "trend": {"fit": "linear", "label": "傾向（r = {r}）", "tone": "emph"}
+      }</script>
+    </m-scatter>
+  </div>
+  <div class="concl"><span>→ 暑い日ほど売れる。1 ℃ 上がると約 23 個増える</span></div>
+</section>
+
+<section class="slide">
+  <h2>見せ方の種類（variant）</h2>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 28px">
+      <m-scatter variant="fade" xr="[0,10]" yr="[0,10]" xt="[0,5,10]" yt="[0,5,10]" style="height:400px">
+        <script type="application/json">{"series": [{"label": "フェード（fade、既定）", "points": [[1, 2.2], [2, 2.1], [3, 3.9], [4, 3.6], [5, 5.4], [6, 5.1], [7, 7.2], [8, 6.6], [9, 8.4]]}], "trend": "linear"}</script>
+      </m-scatter>
+      <m-scatter variant="sweep" xr="[0,10]" yr="[0,10]" xt="[0,5,10]" yt="[0,5,10]" style="height:400px">
+        <script type="application/json">{"series": [{"label": "左から（sweep）", "points": [[1, 2.2], [2, 2.1], [3, 3.9], [4, 3.6], [5, 5.4], [6, 5.1], [7, 7.2], [8, 6.6], [9, 8.4]]}], "trend": "linear"}</script>
+      </m-scatter>
+      <m-scatter variant="grow" xr="[0,10]" yr="[0,10]" xt="[0,5,10]" yt="[0,5,10]" style="height:400px">
+        <script type="application/json">{"series": [{"label": "大きくなる（grow）", "points": [[1, 2.2], [2, 2.1], [3, 3.9], [4, 3.6], [5, 5.4], [6, 5.1], [7, 7.2], [8, 6.6], [9, 8.4]]}], "trend": "linear"}</script>
+      </m-scatter>
+    </div>
+  </div>
+  <div class="concl"><span>→ 書かなければ最初の見せ方（fade）になる。数字は架空</span></div>
+</section>
+
+</div>
+</body>
+</html>

@@ -27,6 +27,7 @@ import { replyOf } from './test-app-llm.mjs';
 import { slidesOf } from './test-app-outline.mjs';
 import { clickDlg, clickCommand, clickUntil } from './click-retry.mjs';
 import { generate, makeSkillZip } from './make-llm-guide.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const worked = (n, f) => fs.readFileSync(path.join(ROOT, 'tools', 'llm-guide', 'worked', n, f), 'utf8').replace(/\r\n/g, '\n');
@@ -51,7 +52,7 @@ export async function checkSkillDownload(p, { lang, selector, ok, base }) {
   let dl = null;
   for (let i = 0; i < 3 && !dl; i++) {
     await b.focus();
-    [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), b.press('Enter')]);
+    [dl] = await Promise.all([p.waitForEvent('download', { timeout: scaled(10000) }).catch(() => null), b.press('Enter')]);
     if (dl && i > 0) console.log(`key-retry: ${selector} Enter needed ${i + 1} presses`);
   }
   if (!dl) { ok(false, `skill (${lang}, ${selector}): no download after 3 presses of Enter`); return; }
@@ -100,9 +101,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
   const create = async (p, dirty = false) => {
     const before = await p.evaluate(() => (window.__APP_TEST.state().portable || {}).docId || null);
     await clickDlg(p, '#dlg-import');
-    if (dirty) { await p.waitForSelector('#dlg[open] #dlg-discard', { timeout: 30000 }); await clickDlg(p, '#dlg-discard'); }
-    await p.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d && s.loads > 0 && s.frameLoaded === s.loads; }, before, { timeout: 30000 });
-    await p.waitForSelector('#panel:not([hidden]) #panel-body .sum', { timeout: 30000 });
+    if (dirty) { await p.waitForSelector('#dlg[open] #dlg-discard', { timeout: scaled(30000) }); await clickDlg(p, '#dlg-discard'); }
+    await p.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d && s.loads > 0 && s.frameLoaded === s.loads; }, before, { timeout: scaled(30000) });
+    await p.waitForSelector('#panel:not([hidden]) #panel-body .sum', { timeout: scaled(30000) });
     return files(p);
   };
   const newDeckOf = (F) => (JSON.parse(F['egatari.json'] || '{}').studio || {}).newDeck;
@@ -170,15 +171,15 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-answered.png', 'paste-step-kind');
     // ④ プランの問い（無料が既定）→ パーツの一覧（標準は全部。てこからは専門の束を推さない：理由なし。授業（小・中・高）は教科の形が一番上）→ メーター → コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'お使いのチャットの AI は、無料のプランですか、有料のプランですか' && (await text(p1, 'label:has(#paste-plan-free)')) === '無料のプラン（わからなければこちら）'
-      && (await text(p1, '#paste-plan-hint')) === 'プランで、指示の大きさの目安が変わります（無料のプランは 40 KB、有料のプランは 120 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
+      && (await text(p1, '#paste-plan-hint')) === 'プランで、指示の大きさの目安が変わります（無料のプランは 45 KB、有料のプランは 120 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
       && (await text(p1, '#paste-parts legend')) === 'AI にどのパーツを使わせますか' && (await ticks(p1)) === sorted(STD) && await p1.isHidden('#paste-parts-why') && (await badges(p1)) === ''
       && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null).flatMap((g) => g.parts).length} 種類）`
-      && /^指示の大きさ：[\d.]+ KB（目安は 40 KB まで）$/.test(await text(p1, '#paste-pack-size')),
+      && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the plan question (free by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
     // 標準のパーツを全部選んだ無料のプランの指示は目安の中から始まる（中核の 4 つのほかは一覧の 1 行だけ。backlog #125）
     const bytes1 = +(await p1.getAttribute('#paste-pack-size', 'data-bytes'));
     ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && await p1.isHidden('#paste-shortened') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
-      `S1 ④: with every standard part ticked, the free plan's meter starts within the 40 KB limit (${bytes1} B), not striped`);
+      `S1 ④: with every standard part ticked, the free plan's meter starts within the 45 KB limit (${bytes1} B), not striped`);
     await checkSkillDownload(p1, { lang: 'ja', selector: '#paste-download-skill', ok, base: BASE });
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
@@ -216,7 +217,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await flowState(p1)) === '1:open:step:-:body:- 2:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-', 'S6: insert follows the same one-open flow (① open, ② ③ headings): ' + await flowState(p1));
     await p1.fill('#paste-insert-wish', '練習問題を 1 つ');
     // macOS の CI では、プレビューの上の窓のボタンを押しても下の iframe に届くことがある（click-retry.mjs）：② が開くまで押し直す
-    await clickUntil(p1, '#paste-next-1', () => p1.waitForSelector('#paste-step1-answer .paste-answer-text', { timeout: 2500 }));
+    await clickUntil(p1, '#paste-next-1', () => p1.waitForSelector('#paste-step1-answer .paste-answer-text', { timeout: scaled(2500) }));
     ok((await flowState(p1)) === '1:shut:-:-:nobody:answer 2:open:step:-:body:- paste:shut:-:pending:nobody:-' && (await text(p1, '#paste-step1-answer .paste-answer-text')) === '足す枚数：1 枚・練習問題を 1 つ',
       'S6: 「次へ」 folds ① to 「足す枚数：1 枚・練習問題を 1 つ」 and opens ②');
     const i1 = await copy(p1);
@@ -235,8 +236,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s6-insert.png', 'paste-step-paste');
     await p1.evaluate(() => { document.getElementById('panel').hidden = true; });
     await clickDlg(p1, '#dlg-import');
-    await p1.waitForFunction(() => /挿入しました/.test(document.getElementById('toast').textContent), null, { timeout: 30000 });
-    await p1.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('練習問題'); }, null, { timeout: 30000 });
+    await p1.waitForFunction(() => /挿入しました/.test(document.getElementById('toast').textContent), null, { timeout: scaled(30000) });
+    await p1.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('練習問題'); }, null, { timeout: scaled(30000) });
     const F6 = await files(p1);
     ok((F6['deck.html'].match(/<section class="slide/g) || []).length === 4 && /## 練習問題 \{#s-[a-z2-7]{6}\}/.test(F6['narration.md']) && /^スライド 1 枚を 4 枚目に挿入しました/.test(await text(p1, '#toast')),
       'S6: 「挿入」 adds the slide after the last one with its script: ' + await text(p1, '#toast'));
@@ -311,7 +312,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p2, 'flow-s7-revise.png', 'paste-step-paste');
     await p2.evaluate(() => { document.getElementById('panel').hidden = true; });
     await clickDlg(p2, '#dlg-import');
-    await p2.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<h2>3 か月の結果'); }, null, { timeout: 30000 });
+    await p2.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<h2>3 か月の結果'); }, null, { timeout: scaled(30000) });
     const F7 = await files(p2);
     ok((await p2.evaluate(() => window.__APP_TEST.state().portable.docId)) === docId7 && (F7['deck.html'].match(/<section class="slide/g) || []).length === 3 && F7['narration.md'] === F2['narration.md'],
       'S7: only that slide is replaced (same docId, 3 slides, the script unchanged)');
@@ -385,7 +386,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p4, 'flow-s4-more.png', 'paste-step-content');
     await p4.click('#paste-next-content');
     await p4.click('#paste-next-theme');
-    ok((await ticks(p4)) === sorted([...STD, ...['m-gendai', 'm-kakijun', 'm-kanbun', 'm-kobun']]) && (await text(p4, '#paste-parts-why')) === '② に「漢文」とあるので、漢文・古文・現代文の読解・書き順も選びました' && (await badges(p4)) === sorted(['m-gendai', 'm-kakijun', 'm-kanbun', 'm-kobun']),
+    ok((await ticks(p4)) === sorted([...STD, ...['m-gendai', 'm-kanbun', 'm-kobun']]) && (await text(p4, '#paste-parts-why')) === '② に「漢文」とあるので、漢文・古文・現代文の読解も選びました' && (await badges(p4)) === sorted(['m-gendai', 'm-kanbun', 'm-kobun']),
       'S4 ④: 漢文 in step 2 ticks the kokugo set, and says why: ' + await text(p4, '#paste-parts-why'));
     // ［変更］で ② を直す：④ ⑤ は出たまま。答えの 1 行も新しくなる
     await p4.click('#paste-change-content');
@@ -464,13 +465,13 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.check('#paste-cat-teaching');
     await p8.check('#paste-sub-class');
     await p8.click('#paste-next-kind');
-    await p8.fill('#paste-title', 'わり算の筆算と世界の人口');
+    await p8.fill('#paste-title', 'わり算の筆算とデータの分布');
     await p8.click('#paste-next-content');
     await p8.click('#paste-next-theme');
-    const math = ['m-hissan', 'm-numberline', 'm-sweep', 'm-tape'], maps = ['m-map-japan', 'm-map-world'];
-    ok((await ticks(p8)) === sorted([...STD, ...math, ...maps]) && (await badges(p8)) === sorted([...math, ...maps])
-      && (await text(p8, '#paste-parts-why')) === `② に「筆算」とあるので、${['m-numberline', 'm-tape', 'm-hissan', 'm-sweep'].map((t) => label(t, 'ja')).join('・')}も選びました。② に「世界」とあるので、日本地図・世界地図も選びました`,
-      'S8 ④: two sets from the words of step 2 (math, maps), one reason each, and a Suggested badge on each: ' + await text(p8, '#paste-parts-why'));
+    const math = ['m-hissan', 'm-numberline', 'm-sweep', 'm-tape'], stats = ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq'];
+    ok((await ticks(p8)) === sorted([...STD, ...math, ...stats]) && (await badges(p8)) === sorted([...math, ...stats])
+      && (await text(p8, '#paste-parts-why')) === `② に「分布」とあるので、${['m-heatmap', 'm-hist', 'm-boxplot', 'm-seq'].map((t) => label(t, 'ja')).join('・')}も選びました。② に「筆算」とあるので、${['m-numberline', 'm-tape', 'm-hissan', 'm-sweep'].map((t) => label(t, 'ja')).join('・')}も選びました`,
+      'S8 ④: two sets from the words of step 2 (stats, math), one reason each, and a Suggested badge on each: ' + await text(p8, '#paste-parts-why'));
     ok((await groupIds(p8)).split(',')[0] === 'subject' && (await p8.$$eval('#paste-pgroup-subject .pick', (xs) => xs.map((x) => x.dataset.part))).slice(0, 2).join() === 'm-map-japan,m-map-world'
       && (await p8.getAttribute('#paste-pgroup-subject', 'role')) === 'group' && (await text(p8, '#paste-pgroup-subject-h')) === '教科の形'
       && !(await p8.$('#paste-part-codetree')) && !(await p8.$('#paste-part-collect')),
@@ -478,7 +479,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // 一つずつの札：チェックボックス・絵・名前・1 行の説明（説明は aria-describedby）
     // 絵は loading="lazy"：画面に入れて読み終わるのを待つ（macOS の CI で、まだ読んでいない絵を確かめて落ちた）
     await p8.$eval('#paste-part-bars', (x) => x.closest('label.pick').scrollIntoView({ block: 'center' }));
-    await p8.waitForFunction(() => { const i = document.querySelector('#paste-part-bars')?.closest('label.pick')?.querySelector('picture.pick-thumb img'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).catch(() => {});
+    await p8.waitForFunction(() => { const i = document.querySelector('#paste-part-bars')?.closest('label.pick')?.querySelector('picture.pick-thumb img'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: scaled(10000) }).catch(() => {});
     const thumb8 =await p8.$eval('#paste-part-bars', (x) => { const l = x.closest('label.pick'), img = l && l.querySelector('picture.pick-thumb img'), src = l && l.querySelector('picture.pick-thumb source');
       return { ok: !!img && img.src.startsWith('data:image/webp') && img.complete && img.naturalWidth > 0 && src.media === '(prefers-color-scheme: dark)' && src.srcset.startsWith('data:image/webp') && l.querySelector('.tile-label').textContent === '棒グラフ'
         && document.getElementById(x.getAttribute('aria-describedby')).textContent === '棒の長さで量を比べる', alt: img && img.alt }; });
@@ -490,9 +491,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(await p8.isVisible('#paste-shortened') && (await text(p8, '#paste-shortened')) === '無料のプランの目安に収めるため、棒グラフ・流れ図・目次・予想と答えの説明を短くしました',
       'S8 ④: over the free limit, the core four are shortened first, and the meter says so: ' + await text(p8, '#paste-shortened'));
     ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、チャットの AI が最後まで読めないことがあります。外す候補：/.test(over8) && !['棒グラフ', '流れ図', '目次', '予想と答え', '折れ線'].some((w) => over8.includes(w))
-      && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '40'
+      && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '45'
       && (await text(p8, '#paste-trim')) === '候補を外す',
-      'S8 ④: still over the free plan’s 40 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);
+      'S8 ④: still over the free plan’s 45 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);
     await p8.click('#paste-trim');
     const ticks8 = await ticks(p8);
     const bytes8 = +(await p8.getAttribute('#paste-pack-size', 'data-bytes'));
@@ -501,7 +502,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const after8 = await ticks(p8);
     // 推し直しても、外した印は戻らない
     await p8.click('#paste-change-content');
-    await p8.fill('#paste-title', 'わり算の筆算と世界の人口（2）');
+    await p8.fill('#paste-title', 'わり算の筆算とデータの分布（2）');
     await p8.click('#paste-next-content');
     ok((await ticks(p8)) === after8, 'S8 ④: a new guess does not tick again what was unticked');
     // 有料のプランは目安だけが変わる（印はそのまま）
@@ -526,7 +527,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       window.__sdir = top;
       window.__APP_TEST.open(top);
     }, [fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8'), cfg9]);
-    await p9.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
+    await p9.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: scaled(30000) });
     const cfgNow = () => p9.evaluate(async () => (await (await window.__sdir.getFileHandle('egatari.json')).getFile()).text());
     await clickCommand(p9, '#b-new');
     await p9.waitForSelector('#dlg[open] #paste-step-kind');

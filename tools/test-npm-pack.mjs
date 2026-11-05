@@ -1,4 +1,5 @@
 // npm の包み egatari の試験（#157）：npm pack した tarball をリポジトリの外の一時フォルダに入れ、egatari コマンドで作って組んで検査する
+// test-all: platform（--platform でも走らせる：npm の包みと、リポジトリの外への入れ方）
 //   node tools/test-npm-pack.mjs [作業フォルダ] [--keep]
 // 1. 包みの中身：bin・kit・字の写し（fonts/@fontsource、OFL の LICENSE つき）があり、試験・examples・dist・規格の試験用ファイル・node_modules はない。
 //    部品の写しは index.js（と使用条件）だけで README.md・demo.html・CHANGELOG.md はない（vendor/.npmignore）。既定の声の wav もない（tts/voices.json と tts/refvoices.py が初めての tts で取り寄せる）
@@ -17,6 +18,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { FONT_LIST, FONTS_EXTRA_PKG } from '../kit/core/build-core.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
@@ -35,7 +37,7 @@ const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + nam
 const WIN = process.platform === 'win32';
 const sh = (cmd, argv, cwd, env = {}) => {
   if (WIN) argv = argv.map((a) => (/[\s&()^|<>]/.test(a) ? `"${a}"` : a));
-  const r = spawnSync(cmd, argv, { cwd, encoding: 'utf8', shell: WIN, env: { ...process.env, ...env }, maxBuffer: 64 << 20, timeout: 600000 });
+  const r = spawnSync(cmd, argv, { cwd, encoding: 'utf8', shell: WIN, env: { ...process.env, ...env }, maxBuffer: 64 << 20, timeout: scaled(600000) });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || ''), stdout: r.stdout || '', error: r.error };
 };
 const must = (r, what) => { assert.equal(r.code, 0, `${what} failed (${r.code})${r.error ? ' ' + r.error.message : ''}\n${r.out.slice(-3000)}`); return r; };
@@ -59,7 +61,7 @@ await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験�
   const files = new Set(packed.files.map((f) => f.path));
   for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/portable.mjs', 'tools/sheet.mjs', 'tools/comment-shots.mjs', 'tools/video.mjs',
     'components.lock.json', 'themes.lock.json', 'kit/player.lock.json', 'LICENSE', 'NOTICE', 'fonts/OFL.txt',
-    'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
+    'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'vendor/csl/styles/apa.csl', 'vendor/csl/locales/locales-ja-JP.xml', 'vendor/csl/SOURCE.json', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
   const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|portable|sheet|comment-shots|video)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
   assert.deepEqual(bad, []);
 });

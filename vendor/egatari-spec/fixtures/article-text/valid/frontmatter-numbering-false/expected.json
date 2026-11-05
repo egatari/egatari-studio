@@ -1,0 +1,26 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "Why this book"
+        }
+      ],
+      "label": "sec-a2b3c4",
+      "identifier": "sec-a2b3c4"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "This section is not numbered."
+        }
+      ]
+    }
+  ]
+}

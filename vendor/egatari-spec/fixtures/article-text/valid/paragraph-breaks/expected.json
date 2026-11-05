@@ -1,0 +1,37 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "First line of a paragraph\ncontinues after a soft break.\nA hard break with a backslash"
+        },
+        {
+          "type": "break"
+        },
+        {
+          "type": "text",
+          "value": "and one with two spaces"
+        },
+        {
+          "type": "break"
+        },
+        {
+          "type": "text",
+          "value": "end the paragraph."
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "A second paragraph."
+        }
+      ]
+    }
+  ]
+}

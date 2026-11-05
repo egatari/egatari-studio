@@ -20,6 +20,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { clickDlg } from './click-retry.mjs';
 import { LIVE_BLOCK_ID, parseLiveSetupString, liveSetupIds } from '../kit/core/live.mjs';
 import Ajv from 'ajv/dist/2020.js';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const PROTO = path.join(ROOT, ...FORMAT.LIVE_VENDOR_DIR.split('/'));
@@ -99,12 +100,12 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       const str2 = await page.inputValue('#live-setup');
       ok(str2 !== str && parseLiveSetupString(str2).key === key, 'one-way: the string follows the live time (same ids)');
       await page.click('#live-setup-copy');
-      await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 }).catch(() => {});
+      await page.waitForFunction(() => window.__copied !== null, null, { timeout: scaled(3000) }).catch(() => {});
       ok(await page.evaluate(() => window.__copied) === str2 && /文字列をコピーしました/.test(await page.textContent('#toast')), 'one-way: Copy puts exactly the string on the clipboard');
       // 設定の文字列を保存する：小さな .txt のダウンロード（中身は文字列だけ）
       ok(/この文字列でライブが作られます。ホスト用リンクと同じように大事に扱い、参加者には決して渡さないでください/.test(await page.textContent('#live-setup-warn')), 'one-way: a one-line warning next to the string (keep it like the host link, never give it to participants)');
       ok(/貼る前に.*閉じると.*誰も作れないライブを指したままになります/.test(await page.textContent('#live-setup-lost')), 'one-way: the panel says that closing before pasting leaves handed-out files pointing at a Live nobody can create, unless the string was saved');
-      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 5000 }), page.click('#live-setup-save')]);
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: scaled(5000) }), page.click('#live-setup-save')]);
       const dlPath = await dl.path();
       const dlText = dlPath ? fs.readFileSync(dlPath, 'utf8') : '';
       ok(dl.suggestedFilename() === `${FORMAT.NAME}-live-setup-${room}.txt` && dlText === str2 + '\n', `one-way: Save the setup string downloads ${dl.suggestedFilename()} holding exactly the string`);
@@ -202,7 +203,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     // 「活動の JSON をコピー」：コピーする字にも label
     await page.evaluate(() => { window.__copied = null; try { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied = t; } } }); } catch { /* なし */ } });
     await page.click('#live-copy');
-    await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 }).catch(() => {});
+    await page.waitForFunction(() => window.__copied !== null, null, { timeout: scaled(3000) }).catch(() => {});
     { const c = JSON.parse((await page.evaluate(() => window.__copied)) || '{}'); ok(c[step] && c[step][0].label === label && c[step][0].id === 'p1', 'copy activities JSON: the copied text carries the labels'); }
     await shot(page, 'live-poll-labels.png');
     // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）

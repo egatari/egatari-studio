@@ -30,12 +30,13 @@
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 //       口述原稿の言語はスライドと別に決め（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）、式らしさと長いターンは発言ごとにその言語の規則で見る
+import { cliHints } from './cli-hint.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch } from './browser.mjs';
 import { compareRenders, domSnapshot } from './render-compare.mjs';
-import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv } from './build.mjs';
+import { build, isJapanese, analyzeSlideIds, listFiles, nodeEnv, hasArticle, resolveDeckArg } from './build.mjs';
 import { referenceVoices, matchReference } from './core/ref-voice.mjs';
 import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
@@ -56,11 +57,14 @@ const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const ti = args.indexOf('--theme'), theme = ti >= 0 ? args[ti + 1] : undefined;
 const li = args.indexOf('--lang'), langArg = li >= 0 ? args[li + 1] : undefined;   // 知らせの言葉（ja | en。既定はデッキの言語）
-const src = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1) && !(li >= 0 && i === li + 1));
-if (!src) {
-  console.error('usage: node kit/check.mjs <deck.html> [--theme name] [--lang ja|en] [--json]');
+const arg0 = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1) && !(li >= 0 && i === li + 1));
+if (!arg0) {
+  console.error('usage: node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]');
   process.exit(1);
 }
+// 作業フォルダを渡したら、その中の deck.html（組み立てと同じ。フォルダは「通常のファイルでない」と紛らわしく断られていた）
+let src;
+try { src = resolveDeckArg(arg0); } catch (e) { console.error(`check: ${e.message}`); process.exit(1); }
 
 // ---------------------------------------------------------------- 結果の置き場
 // slide: null（デッキ全体）または {i, title}。sev: 'error' | 'warn' | 'info'
@@ -102,7 +106,7 @@ catch (e) {
       msg: where(ml, { n: null }) + (ml === 'en' ? ': ' : '：') + message(ml, e.code, data),
     }));
     if (asJson) console.log(JSON.stringify({ ok: false, lang: ml, counts: { error: findings.length, warn: 0, info: 0 }, results: findings }, null, 2));
-    else for (const f of findings) console.log(`[${ml === 'en' ? 'error' : 'エラー'}] ${f.msg}`);
+    else for (const f of findings) console.log(`[${ml === 'en' ? 'error' : 'エラー'}] ${cliHints(f.msg)}`);
     await new Promise((resolve) => process.stdout.write('', resolve));
     process.exit(1);
   }
@@ -358,6 +362,35 @@ phase = 'J リンク';
   if (links.length) report(null, 'info', 'linkCount', { ok, other: links.filter((l) => l.other).length });
 }
 
+// ================================================================ M. 本文（article.md・article/<名前>.md、format spec §9C.8）
+// 部分集合の外の書き方・名前・章の決まり・相互参照・解答・用語・引用の鍵・画像・data-article。ステップへのリンクの行き先は再生器（DECK.resolveFragment）で確かめる
+phase = 'M 本文';
+if (hasArticle(src)) {
+  const { loadArticle, stepLinksOf, articleLinkReport } = await import('./core/article-page.mjs');
+  const { validateArticle, stepResolver, STEP_PROBE } = await import('./core/article.mjs');
+  const L = loadArticle(nodeEnv, src, { lang });
+  if (L) {
+    const links = stepLinksOf(L.article);
+    const res = await page.evaluate(STEP_PROBE, links);
+    const resolveStep = stepResolver(res);
+    const v = validateArticle(L.article, { ...L.ctx, resolveStep });
+    for (const p of [...L.problems, ...v.problems]) report(null, p.sev, p.code, { ...p.data, file: p.file || null, line: p.line || null, spec: p.spec });
+    // スライドと節のつながりの古さ（§9C.7）：記録の hash と今が違えば「スライドと本が合っていないかもしれません」。記録のない組はまとめて 1 行
+    if (L.index) {
+      const lr = await articleLinkReport(L);
+      for (const p of lr.problems) report(null, p.sev, p.code, { ...p.data, file: p.file, line: null, spec: p.spec });
+      for (const x of lr.states) if (x.state !== 'ok' && x.state !== 'unconfirmed') {
+        const sec = v.sections.get(x.section);
+        report(null, 'warn', 'articleLinkStale', { slide: x.slide, section: x.section, heading: sec ? sec.heading.slice(0, 40) : '', changed: x.state, file: sec ? sec.file : null, line: sec ? sec.line : null, spec: '§9C.7' });
+      }
+      const un = lr.states.filter((x) => x.state === 'unconfirmed');
+      if (un.length) report(null, 'info', 'articleLinkUnconfirmed', { count: un.length, pairs: un.slice(0, 10).map((x) => `${x.slide}↔${x.section}`), spec: '§9C.7' });
+      if (lr.removed.length) report(null, 'info', 'articleLinkUnlinked', { count: lr.removed.length, pairs: lr.removed.slice(0, 10).map((x) => `${x.slide}↔${x.section}`), spec: '§9C.7' });
+    }
+    report(null, 'info', 'articleSummary', { files: L.article.files.length, sections: v.sections.size, labels: v.labels.size });
+  }
+}
+
 // ================================================================ A. 体裁の検査
 phase = 'A 体裁';
 // 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
@@ -508,7 +541,9 @@ for (const seg of built.segs) {
 // ================================================================ C. パレットのコントラスト
 phase = 'C パレット';
 // oklch() や color-mix() は getComputedStyle だけでは rgb に落ちないことがあるので、
-// 一度 1x1 の canvas に塗って画素として読み、実際に表示される sRGB 値を得る
+// 一度 1x1 の canvas に塗って画素として読み、実際に表示される sRGB 値を得る。rgb()・rgba() はそのまま数を読む（canvas を通しても同じ値）：
+// 込み合った macOS の CI で、どの組も 1.00:1 の contrastLow になったことがある（canvas の読み戻しがどの色も 0,0,0 を返せばそうなる）
+// （canvas は willReadFrequently で CPU に置く。kit/core/layout-scan.mjs・kit/tools.js と同じ）
 const palette = await page.evaluate(() => {
   const vars = ['--fg', '--term', '--emph', '--muted', '--title', '--accent2', '--bg'];
   const probe = document.createElement('div');
@@ -516,11 +551,13 @@ const palette = await page.evaluate(() => {
   document.body.appendChild(probe);
   const canvas = document.createElement('canvas');
   canvas.width = 1; canvas.height = 1;
-  const ctx = canvas.getContext('2d');
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   const out = {};
   for (const v of vars) {
     probe.style.color = `var(${v})`;
     const css = getComputedStyle(probe).color;
+    const m = /^rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(css);
+    if (m) { out[v] = { css, rgb: [m[1], m[2], m[3]].map((x) => Math.round(+x)) }; continue; }
     ctx.clearRect(0, 0, 1, 1);
     ctx.fillStyle = css;
     ctx.fillRect(0, 0, 1, 1);
@@ -706,7 +743,7 @@ if (asJson) {
     code: r.code,
     rule: ruleOf(r.code, r.a),
     data: r.a,
-    msg: r.msg,
+    msg: cliHints(r.msg),
   }));
   console.log(JSON.stringify({ ok, lang: ML, counts, results: out }, null, 2));
 } else {
@@ -726,7 +763,7 @@ if (asJson) {
     const label = key === -1 ? (EN ? '■ Whole deck' : '■ デッキ全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;
     console.log(label);
     const items = groups.get(key).sort((a, b) => SEV_RANK[a.sev] - SEV_RANK[b.sev]);
-    for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${r.what}`);
+    for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${cliHints(r.what)}`);
   }
   console.log('');
   console.log(EN ? `${counts.error} errors, ${counts.warn} warnings, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);

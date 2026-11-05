@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # english のパーツ
 
-指示の版：b47ccdba
+指示の版：68eeb33a
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

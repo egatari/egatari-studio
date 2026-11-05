@@ -1,0 +1,42 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "See "
+        },
+        {
+          "type": "link",
+          "url": "#fig-bitmap",
+          "children": [
+            {
+              "type": "text",
+              "value": "the bitmap figure"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": " and "
+        },
+        {
+          "type": "link",
+          "url": "#sec-k2m4q7",
+          "children": [
+            {
+              "type": "text",
+              "value": "this section"
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "value": "."
+        }
+      ]
+    }
+  ]
+}

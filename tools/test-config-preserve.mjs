@@ -23,6 +23,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { updateConfig, merge, configObject } from '../kit/core/config-file.mjs';
 import { unpack, attachLiveResults } from './portable.mjs';
 import { clickCommand, clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-config-preserve-')));
@@ -179,7 +180,7 @@ try {
   const menuClick = (id) => clickCommand(page, id);
   const until = async (fn, ms = 30000) => { const t0 = Date.now(); for (;;) { const v = await fn(); if (v || Date.now() - t0 > ms) return v; await page.waitForTimeout(100); } };
   const okAll = async () => { for (let i = 0; i < 6 && await page.$('#dlg[open]'); i++) { await clickDlg(page, '#dlg-ok'); await page.waitForTimeout(300); } };
-  const idle = () => page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy(), null, { timeout: 30000 });
+  const idle = () => page.waitForFunction(() => !document.querySelector('#dlg[open]') && !window.__APP_TEST.attachBusy(), null, { timeout: scaled(30000) });
   const wsCfg = async () => { const f = await page.evaluate(() => window.__APP_TEST.files()); return f && f[CFG] ? Buffer.from(f[CFG], 'base64').toString('utf8') : null; };
 
   // 作業フォルダ（OPFS）：docId のない egatari.json
@@ -195,7 +196,7 @@ try {
   }, ff);
   const fread = (rel) => page.evaluate(async (rel) => { try { return await (await (await window.__fd.getFileHandle(rel)).getFile()).text(); } catch { return null; } }, CFG);
   await page.evaluate(() => window.__APP_TEST_OPEN(window.__fd));
-  await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder' && window.__APP_TEST.state().loads > 0, null, { timeout: 60000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().kind === 'folder' && window.__APP_TEST.state().loads > 0, null, { timeout: scaled(60000) });
   // 1 ファイルを書き出す（作業フォルダに docId を残す）
   await page.evaluate(async () => { window.__APP_TEST.saveHandle = await window.__fd.getFileHandle('out.ega.html', { create: true }); });
   await menuClick('#b-export-portable');
@@ -234,7 +235,7 @@ try {
   }, Buffer.from(pf.html).toString('base64'));
   const l0 = await page.evaluate(() => window.__APP_TEST.state().loads);
   await page.evaluate(() => window.__APP_TEST.openFile({ handle: window.__ph }));
-  await page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.kind === 'memory' && s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 60000 });
+  await page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.kind === 'memory' && s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: scaled(60000) });
   await okAll();
   ok(kept(await wsCfg()), `editor (single file): opening keeps ${CFG} byte for byte in the other members`);
   // 添付を足して保存（段 A）
@@ -248,7 +249,7 @@ try {
   ok(kept(ws1), `editor (single file): the attachments panel writes ${CFG}; the other members stay byte for byte`);
   await page.evaluate(() => window.__APP_TEST.save('save'));
   await okAll();
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 60000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
   const saved = await readPortable(await page.evaluate(() => window.__APP_TEST.saved()));
   ok(kept(dec.decode(saved.files[CFG])) && saved.index[KEY].some((e) => e.path === 'attachments/more.txt'), `editor (single file): Save keeps the other members of ${CFG} byte for byte (tier ${await page.evaluate(() => window.__APP_TEST.state().portable.lastTier)})`);
   // 新しい教材として保存
@@ -258,9 +259,9 @@ try {
   const savedNew = await until(async () => { const h = await page.evaluate(() => window.__APP_TEST.saved()); if (!h) return null; const r = await readPortable(h); return r.index.docId !== saved.index.docId ? r : null; }, 60000);
   ok(savedNew && kept(dec.decode(savedNew.files[CFG])) && kept(await wsCfg()) && configObject(await wsCfg()).docId === savedNew.index.docId, `editor (single file): Save as new lesson changes docId and derivedFrom; the other members of ${CFG} stay byte for byte`);
   // テーマを更新
-  await page.waitForSelector('#b-theme-update', { timeout: 30000 });
+  await page.waitForSelector('#b-theme-update', { timeout: scaled(30000) });
   await page.click('#b-theme-update');
-  await page.waitForFunction(() => !!document.getElementById('notice-theme-done'), null, { timeout: 60000 });
+  await page.waitForFunction(() => !!document.getElementById('notice-theme-done'), null, { timeout: scaled(60000) });
   const ws2 = await wsCfg();
   ok(kept(ws2) && configObject(ws2).themes.default !== '1.0.0', `editor (single file): "Update theme" changes themes in ${CFG}; the other members stay byte for byte\n` + show(ws2));
   await ctx.close();
