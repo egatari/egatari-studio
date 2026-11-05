@@ -28,6 +28,7 @@ import { articleLayout, articleFiles, assignSectionIds, readArticle } from '../k
 import { configObject, updateConfig } from '../kit/core/config-file.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { ARTICLE_LIMITS } from '../kit/core/article-text.mjs';
+import { articleMessage } from '../kit/core/article-messages.mjs';
 
 const USAGE = 'usage: npm run ids -- <working folder | deck.html> [--dry-run] [--confirm-links]';
 const KEEP_EDITS = 30;
@@ -89,6 +90,8 @@ const articleWrites = [], articleSummary = [];
     const text = rd(file);
     if (text === null) continue;
     const r = assignSectionIds(text, taken);
+    // 安全に読めない段落（kit/core/article-text.mjs）：本を読まずに、何も書かないうちに断る（節の id も、つながりの記録も変えない）
+    if (r.unsafe) fail(`${articleMessage('ja', { ...r.unsafe, file: rel })}（何も書いていない）\n     ${articleMessage('en', { ...r.unsafe, file: rel })} (nothing written)`);
     for (const a of r.added) { taken.add(a.id); articleSummary.push(`  ${rel}:${a.line}  ${a.id}  ← ## ${a.heading}`); }
     if (r.added.length) articleWrites.push([file, r.out, rel, r.added.length]);
   }

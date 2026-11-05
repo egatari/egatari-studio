@@ -31,6 +31,8 @@ const ALLOW = [
   ['tools/play-tap-measure.mjs', "JSON.parse(fs.readFileSync(cfg, 'utf8'))", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの設定のファイルを読む'],
   ['tools/play-tap-measure.mjs', "matchAll(/<section class=", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの deck.html から、スライドの id（鍵）を読む'],
   ['tools/play-tap-measure.mjs', "r.end(fs.readFileSync(f))", 'Egatari Viewer の押しの計測：自分で組んだ _play/ のファイルを配る（試験のサーバー）'],
+  ['tools/audit-check.mjs', "JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version", 'npm audit の例外の期限：リポジトリの package.json（版）を読む'],
+  ['tools/hostile-book.mjs', "edit(fs.readFileSync(f, 'utf8')", '試験用の人から届いた本：試験が一時のフォルダに写した見本（tools/fixtures/article-book）の章を読む'],
   ['tools/build-play.mjs', "JSON.parse(fs.readFileSync(rel('package.json'), 'utf8'))", 'Egatari Viewer の組み立て：リポジトリの package.json（版）を読む'],
   ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'lesson-shim.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/lesson-shim.js を読む'],
   ['tools/build-play.mjs', "files[f] = fs.readFileSync(rel('play', f))", 'Egatari Viewer の組み立て：リポジトリの play/ の決まったファイルを読む'],

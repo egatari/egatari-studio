@@ -8,6 +8,7 @@
 //   本の誤り（§9C.8）は保存しない
 //   「本を印刷」：ステップへのリンクの後ろに教材の言葉で「→ スライド N・ステップ K」（ステップ 0 は「→ スライド N」。§9C.13）。本のない教材は「台本を印刷」（小さなスライドと台本）
 //   作業フォルダ：本文の欄の保存はフォルダのファイルに書き、前の中身を .cache/edits/ に控える
+//   人から届いた本（tools/hostile-book.mjs）：安全に読めない段落（kit/core/article-text.mjs の ARTICLE_LIMITS）は、配信版でも 1 ファイル版でも読まずに断り、章・行・節を名指しする
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import os from 'node:os';
@@ -20,6 +21,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable } from '../kit/core/portable.mjs';
 import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
 import { clickDlg } from './click-retry.mjs';
+import { hostilePortable } from './hostile-book.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-book-')));
@@ -42,6 +44,8 @@ for (const f of ['deck.html', 'narration.md']) fs.copyFileSync(path.join(ROOT, '
 const plainPacked = path.join(work, 'plain' + FORMAT.FILE_EXT);
 execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', plainDir, '-o', plainPacked], { stdio: 'pipe' });
 const PLAIN = fs.readFileSync(plainPacked);
+// 人から届いた本（tools/hostile-book.mjs）：2 つの章に、markdown-it 13.0.2 の 2 乗の時間を突く段落（引用符・「<!--」）。1 ファイル 1 MiB の上限の手前まで
+const HOSTILE = await hostilePortable(BOOK.toString('utf8'));
 
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'inherit' });
 // 本の道具は app.js に入らない（あとで読み込むファイルにだけある）
@@ -92,6 +96,26 @@ async function inBook(page, fn, arg) {
   }
   return null;
 }
+// 人から届いた本を開く：止まらずに（上限は 1 ファイル 1 MiB で数秒）、本の板が 2 つの段落を章・行・節で名指しして断る。ページは応答し続ける
+async function hostileBook(page, label, lang) {
+  const t0 = Date.now();
+  ok(await openBytes(page, Buffer.from(HOSTILE.html, 'utf8'), 'hostile' + FORMAT.FILE_EXT), `${label}: a book with unsafe paragraphs opens (the slides)`);
+  await page.waitForFunction(() => window.__APP_TEST.book().renders > 0 || !!window.__APP_TEST.book().error, null, { timeout: 90000 });
+  const ms = Date.now() - t0;
+  const b = await bk(page);
+  const u = b.problems.filter((p) => p.code === 'articleUnsafeParagraph');
+  ok(u.length === 2 && u.every((p) => p.sev === 'error'), `${label}: both paragraphs are refused as articleUnsafeParagraph (${JSON.stringify(b.problems)})`);
+  ok(ms < 30000, `${label}: no hang (opened and checked in ${ms} ms)`);
+  await page.evaluate(() => window.__APP_TEST.bookPanel(true));
+  await page.waitForSelector('#book-problems', { timeout: 20000 });
+  const text = await page.textContent('#book-problems');
+  const [q, h] = HOSTILE.expect;
+  const want = lang === 'ja'
+    ? [`${q.file} ${q.line} 行目：節「${q.heading}」の段落「"a "a`, `${h.file} ${h.line} 行目：節「${h.heading}」の段落「a <!-- a`, '引用符（" と \'）が', 'タグの書き出し（<! と <?）が']
+    : [`${q.file} line ${q.line}: the paragraph “"a "a`, `in the section “${q.heading}”`, `${h.file} line ${h.line}: the paragraph “a <!-- a`, 'quotation marks (" and \')'];
+  ok(want.every((w) => text.includes(w)), `${label}: the book panel names the file, line and section of each (${text.replace(/\s+/g, ' ').slice(0, 240)})`);
+  ok(await page.evaluate(() => 1 + 1) === 2 && !(await st(page)).error, `${label}: the page still answers; no editor error`);
+}
 const egatariArticle = (html) => { const i = html.indexOf('<article id="egatari-article"'); return i < 0 ? '' : html.slice(i, html.indexOf('</article>\n</section>', i) + '</article>'.length); };
 
 try {
@@ -127,7 +151,7 @@ try {
   ok(fetched.includes('/article-tools.js') && fetched.includes('/vendor/citeproc/citeproc_commonjs.js'), 'book file: the tools come from their own files');
   ok(!s.portable.readOnly && !s.portable.tierAOnly, `book file: editable (not read-only, not tier A only) ${JSON.stringify([s.portable.readOnly, s.portable.tierAOnly])}`);
   ok(b.files.join() === 'article/00-preface.md,article/01.md,article/09-answers.md' && b.citeproc, `book file: chapter files in reading order; citations formatted by citeproc (${b.files.join()})`);
-  ok(!b.problems.some((p) => p.sev === 'error'), `book file: no errors in the book (${JSON.stringify(b.problems)})`);
+  ok(!b.problems.some((p) => p.sev === 'error' || p.code === 'articleUnsafeParagraph'), `book file: no errors in the book (${JSON.stringify(b.problems)})`);
   ok(await page.isVisible('#b-book') && (await page.textContent('#b-print-book')) === '本を印刷', 'book file: 本 button; print item 本を印刷');
 
   // E2：プレビューの本
@@ -322,6 +346,15 @@ try {
   ok(disk.text.endsWith('\nA new line.\n') && disk.backups >= 1, `folder: ⌘/Ctrl+Enter writes the file in the folder and keeps a backup in .cache/edits/ (${disk.backups})`);
   await cf.close();
 
+  // ---------------------------------------------------------------- 人から届いた本（配信版）：安全に読めない段落は読まずに断る
+  const ch = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: 'ja-JP' });
+  const ph = await ch.newPage();
+  ph.on('pageerror', (e) => errs.push(`hostile pageerror: ${e.message}`));
+  await ph.goto(`${HOST}?lang=ja`);
+  await ph.waitForFunction(() => !!window.__APP_TEST);
+  await hostileBook(ph, 'hostile book (hosted)', 'ja');
+  await ch.close();
+
   // ---------------------------------------------------------------- Offline editor（dist/editor.html、file://）：本の道具は同梱の字から動かす
   const co = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: 'ja-JP' });
   const po = await co.newPage();
@@ -333,7 +366,16 @@ try {
   b = await bk(po);
   ok(b.present && !b.error && b.loaded.tools && b.loaded.citeproc && b.citeproc, `offline: the bundled book tools and citeproc run from file:// (${b.error || ''})`);
   ok(sha(Buffer.from(await po.evaluate(() => document.getElementById('egatari-citeproc').textContent), 'utf8')) === sha(npmCiteproc), 'offline: the page reads the same citeproc text it runs');
+  ok(!b.problems.some((p) => p.sev === 'error' || p.code === 'articleUnsafeParagraph'), `offline: the normal book has no errors (${JSON.stringify(b.problems)})`);
   await co.close();
+  // 人から届いた本（1 ファイル版、file://・英語）
+  const ch2 = await browser.newContext({ viewport: { width: 1280, height: 860 }, locale: 'en-US' });
+  const ph2 = await ch2.newPage();
+  ph2.on('pageerror', (e) => errs.push(`offline hostile pageerror: ${e.message}`));
+  await ph2.goto('file://' + path.join(DIST, 'editor.html').split(path.sep).join('/') + '?lang=en');
+  await ph2.waitForFunction(() => !!window.__APP_TEST);
+  await hostileBook(ph2, 'hostile book (offline)', 'en');
+  await ch2.close();
 } catch (e) {
   console.error(e);
   fails++;
