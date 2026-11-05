@@ -20,6 +20,7 @@ import { unpack } from './portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { spawnSync } from 'node:child_process';
 import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
+import { hostileChapters } from './hostile-book.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BOOK = path.join(ROOT, 'tools', 'fixtures', 'article-book');
@@ -447,6 +448,54 @@ console.log(Object.keys(req.cache).some((k) => /[\\/]citeproc[\\/]/.test(k)) ? '
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stdout.trim().split('\n').pop(), 'not loaded');
   assert.match(fs.readFileSync(path.join(ROOT, 'server', 'dev.mjs'), 'utf8'), /\)\.build; needReimport/, 'the dev server still uses build() (slides only)');
+});
+
+// 人から届いた本（tools/hostile-book.mjs）：markdown-it 13.0.2 の 2 乗の時間を突く段落（引用符・「<!--」。1 ファイル 1 MiB の上限の手前まで）は、
+// build・pack・ids のどれも読まずに断り、章・行・節を名指しする（止まらない）。ふつうの本は今までどおり
+const runTimed = (args) => { const t0 = Date.now(); const r = spawnSync(process.execPath, args, { encoding: 'utf8', maxBuffer: 64 << 20, timeout: 60000 }); return { ...r, ms: Date.now() - t0 }; };
+const snapshot = (dir) => { const out = {}; const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const f = path.join(d, e.name); if (e.isDirectory()) walk(f); else out[path.relative(dir, f)] = fs.readFileSync(f, 'utf8'); } }; walk(dir); return out; };
+t('a book from someone else: build reports the unsafe paragraphs by file, line and section without parsing them, fast', () => {
+  let want;
+  const d = copyBook('hostile-build', (dir) => { want = hostileChapters(dir); });
+  const r = runTimed([path.join(ROOT, 'kit', 'build.mjs'), path.join(d, 'deck.html')]);
+  assert.equal(r.error, undefined, 'no hang (60 s)');
+  assert.ok(r.ms < 15000, `${r.ms} ms`);
+  const lines = r.stderr.split('\n').filter((l) => l.includes('安全に読めない'));
+  assert.equal(lines.length, 2, r.stderr.slice(0, 2000));
+  assert.ok(lines[0].includes(`✗ article: ${want[0].file} ${want[0].line} 行目：節「${want[0].heading}」の段落「"a "a`) && lines[0].includes('引用符（" と \'）が'), lines[0].slice(0, 200));
+  assert.ok(lines[1].includes(`✗ article: ${want[1].file} ${want[1].line} 行目：節「${want[1].heading}」の段落「a <!-- a`) && lines[1].includes('タグの書き出し（<! と <?）が'), lines[1].slice(0, 200));
+  const page = fs.readFileSync(path.join(d, 'out', 'deck.article.html'), 'utf8');
+  assert.ok(!page.includes('"a "a "a') && !page.includes('a &lt;!-- a'), 'the refused files are not in the book page');
+  // ふつうの本：同じ組み立てで、知らせはない
+  const n = copyBook('hostile-build-normal');
+  const rn = runTimed([path.join(ROOT, 'kit', 'build.mjs'), path.join(n, 'deck.html')]);
+  assert.equal(rn.status, 0, rn.stderr);
+  assert.ok(!rn.stderr.includes('安全に読めない') && /errors: 0/.test(rn.stdout), rn.stdout + rn.stderr);
+});
+t('a book from someone else: pack (the Egatari file) refuses it with articleUnsafeParagraph', async () => {
+  let want;
+  const d = copyBook('hostile-pack', (dir) => { want = hostileChapters(dir); });
+  const t0 = Date.now();
+  await assert.rejects(PF.exportPortable(nodeEnv, path.join(d, 'deck.html'), { fromFolder: true }), (e) => e.code === 'article-invalid'
+    && JSON.stringify(e.details.filter((x) => x.code === 'articleUnsafeParagraph').map((x) => [x.file, x.line, x.data.what, x.data.heading])) === JSON.stringify(want.map((w) => [w.file, w.line, w.what, w.heading])));
+  assert.ok(Date.now() - t0 < 15000, `${Date.now() - t0} ms`);
+});
+t('a book from someone else: ids refuses before writing anything, naming the paragraph in both languages', () => {
+  let want;
+  const d = copyBook('hostile-ids', (dir) => { want = hostileChapters(dir); });
+  const before = snapshot(d);
+  const r = runTimed([path.join(ROOT, 'tools', 'ids.mjs'), d]);
+  assert.equal(r.error, undefined, 'no hang (60 s)');
+  assert.ok(r.ms < 15000, `${r.ms} ms`);
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.ok(r.stderr.startsWith(`ids: ${want[0].file} ${want[0].line} 行目：節「${want[0].heading}」の段落「"a "a`), r.stderr.slice(0, 300));
+  assert.ok(r.stderr.includes(`${want[0].file} line ${want[0].line}: the paragraph “"a "a`) && r.stderr.includes('(nothing written)'), r.stderr.slice(0, 600));
+  assert.deepEqual(snapshot(d), before, 'no file changed, no backup written');
+  // ふつうの本：ids は今までどおり（--dry-run で何も変えない）
+  const n = copyBook('hostile-ids-normal');
+  const rn = runTimed([path.join(ROOT, 'tools', 'ids.mjs'), n, '--dry-run']);
+  assert.equal(rn.status, 0, rn.stderr);
+  assert.ok(!/安全に読めない|cannot be read safely/.test(rn.stdout + rn.stderr));
 });
 
 for (const [name, fn] of tests) {

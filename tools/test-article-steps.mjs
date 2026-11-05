@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url';
 import * as PF from '../kit/core/portable.mjs';
 import { nodeEnv } from '../kit/build.mjs';
 import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
+import { hostileChapters } from './hostile-book.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BOOK = path.join(ROOT, 'tools', 'fixtures', 'article-book');
@@ -60,6 +61,23 @@ await ok('npm run portable -- pack prints the citeproc-js credit when citeproc f
   const rn = spawnSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', path.dirname(n), '-o', path.join(work, 'none.ega.html')], { encoding: 'utf8', maxBuffer: 64 << 20 });
   assert.equal(rn.status, 0, rn.stderr);
   assert.ok(!rn.stdout.includes('citeproc'), 'no credit without citations');
+});
+// 人から届いた本（tools/hostile-book.mjs）：check は安全に読めない段落を読まずに articleUnsafeParagraph で知らせ（章・行・節）、止まらない。ふつうの本は今までどおり
+await ok('check: a book from someone else with unsafe paragraphs is reported by file, line and section, without hanging', async () => {
+  const src = copy('hostile', 's-k3f9q2:1');
+  const want = hostileChapters(path.dirname(src));
+  const t0 = Date.now();
+  const r = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), src, '--json'], { encoding: 'utf8', maxBuffer: 64 << 20, timeout: 120000 });
+  assert.equal(r.error, undefined, 'no hang (120 s)');
+  assert.equal(r.status, 1, 'check fails');
+  const res = JSON.parse(r.stdout).results;
+  const u = res.filter((x) => x.code === 'articleUnsafeParagraph');
+  assert.deepStrictEqual(u.map((x) => [x.sev, x.data.file, x.data.line, x.data.what, x.data.heading]), want.map((w) => ['error', w.file, w.line, w.what, w.heading]));
+  assert.ok(u[0].msg.includes(`${want[0].file} ${want[0].line} 行目：節「${want[0].heading}」の段落「"a "a`), u[0].msg.slice(0, 200));
+  const n = copy('hostile-normal', 's-k3f9q2:1');
+  const rn = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), n, '--json'], { encoding: 'utf8', maxBuffer: 64 << 20, timeout: 120000 });
+  assert.ok(!JSON.parse(rn.stdout).results.some((x) => x.code === 'articleUnsafeParagraph' || (x.sev === 'error' && /^article/.test(x.code || ''))), 'the normal book: no book error');
+  console.log(`  (check of the hostile book: ${Date.now() - t0} ms with the normal one)`);
 });
 if (!process.argv[2]) fs.rmSync(work, { recursive: true, force: true });
 console.log(failed ? `article steps: ${failed} failed` : 'article steps: all ok');

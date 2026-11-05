@@ -43,6 +43,24 @@ Use a Node.js release that includes the latest security fixes. The floor is the 
 - `package.json` `engines` is `^22.23.4 || ^24.22.1 || >=26.12.1` (npm warns on an older Node; it does not refuse).
 - CI asks `actions/setup-node` for a range, not a bare major (`'>=22.23.4 <23'`, and `'>=24.22.1 <25'` for the Node 24 job). With a bare `22` the action takes whatever 22.x the runner image has cached, which lags behind: the Linux jobs of 2026-10-24 ran 22.23.3 and 24.21.0. With the range an older cached copy does not match, and the action downloads a patched one.
 
+## Book text and markdown-it 13 (until v0.6.6)
+
+The book text (`article.md`, `article/`; format spec §9C) of a lesson or Egatari file you open is untrusted input, in the CLI (`kit/build.mjs`, `kit/check.mjs`, `npm run ids`) and in the editor app alike: a file someone sends you can carry it. It is read by myst-parser 1.7.4, which runs markdown-it 13.0.2 with `html: true`, smartquotes (`typographer`) on and `linkify` off. markdown-it 13.0.2 has five advisories (fixed in 14.3.3); three of them are reachable this way and take quadratic time (a 1 MiB paragraph of quotation marks took about a minute):
+
+- GHSA-r7fv-28h4-cvq7 (high) and GHSA-6v5v-wf23-fmfq: smartquotes. GHSA-vfgh-jcmw-g37q: inline HTML (`<!--`, `<?`, `<!A`, `<![CDATA[`).
+- GHSA-38c4-r59v-3vqw and GHSA-253c-mchw-3w2r need `linkify`, which is off: not reachable.
+
+**The guard** (`kit/core/article-text.mjs`, `ARTICLE_LIMITS`): each book file is at most 1 MiB, and before a file is parsed, every paragraph (markdown-it's inline blocks: paragraphs, headings, table cells, the arguments and body of directives; code blocks do not count) is counted. A paragraph with more than 512 quotation marks (`"` and `'`) or more than 64 tag openings (`<!`, `<?`) makes the check refuse the book (`articleUnsafeParagraph`, naming the section, the paragraph and its line), and myst-parser never sees that file. Below the limits the parse is unchanged. With the guard, the worst 1 MiB file for these advisories parses in about 0.15 s, as with 14.3.3.
+
+**Why not 14.3.3 now.** No released myst-parser, markdown-it-dollarmath or myst-to-html allows markdown-it 14, and forcing it with `overrides` breaks them (they import `markdown-it/lib/common/utils.js`, which 14 does not have). `overrides` would also not reach `npm install egatari`, which resolves myst-parser's own `^13.0.0`. v0.6.6 bundles the book tools with markdown-it 14.3.3 for the CLI as the editor already bundles them; until then `.github/workflows/audit.yml` lists exactly these five advisories as exceptions (`tools/audit-check.mjs`: any other advisory at high or above still fails, and the list fails the job once the version reaches 0.6.6).
+
+**If you installed `egatari` from npm.** `npm audit` in your project reports these five advisories for markdown-it 13.0.2, which comes with myst-parser. In plain terms:
+
+- What is at risk: only the tools that read a book (`egatari build`, `egatari check`, `egatari ids`, `egatari portable pack`, and the editor app when it opens a lesson with a book). A book written to be slow, in a lesson or Egatari file someone sends you, could keep the process or the page busy for a minute or more. It cannot run code or read your files.
+- Playing is not affected. Egatari Viewer and the player inside an Egatari file contain neither myst-parser nor markdown-it (the book is already HTML when it is played), so learners and participants are not exposed.
+- The guard above refuses such a book with a message that names the section, the paragraph and its line. Ordinary books are read exactly as before.
+- Do not run `npm audit fix --force` or add an `overrides` entry for markdown-it 14 in your project: in 0.6.5 that breaks the book tools. Update to v0.6.6, which bundles the book tools with markdown-it 14.3.3; after that `npm audit` no longer reports them.
+
 ## Dependency updates (cooldown)
 
 Dependabot (`.github/dependabot.yml`) proposes a new npm release only after it has been public for 7 days (14 days for a major version), and a new action release after 7 days. This gives a hijacked release (like the npm worms and `preinstall` payloads of 2025-2026) time to be found and unpublished before it reaches a pull request here. Security updates are not delayed: Dependabot does not apply the cooldown to them. A human still reads every update.
