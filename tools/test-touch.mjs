@@ -1,5 +1,6 @@
 // タッチ画面（iPad・スマートフォン）での操作の帯（kit/tools.js）
 // test-all: serial（操作の帯が数秒で隠れるのを決まった待ちで確かめる。--jobs が 2 以上でも、最後にほかと重ねずに走らせる）
+// test-all: platform（--platform でも走らせる：WebKit でも）
 //   node tools/test-touch.mjs <built.html> [画面の保存先]
 // Chromium と、入っていれば WebKit（npx playwright-core install webkit。なければ「skip」）で、タッチを模して：
 // - 帯が隠れた後、スライドを指でタップすると帯が出る（位置は動かない）。何度でも
@@ -15,6 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { webkit } from 'playwright-core';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const [file, outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-touch-'))] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-touch.mjs <built.html> [outdir]'); process.exit(2); }
@@ -31,7 +33,7 @@ async function run(name, browser) {
   const errs = [];
   p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(url + '#2');
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
   const pos = () => p.evaluate(() => { const s = DECK.state(); return s.slide * 100 + s.step; });
   const shown = () => p.evaluate(() => { const c = document.getElementById('dt-cb'); return !!c && c.classList.contains('show'); });
   const btn = (n) => `#dt-cb button[data-b="${n}"]`;
@@ -112,7 +114,7 @@ async function desktopHelp(name, browser) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
   const p = await ctx.newPage();
   await p.goto(url);
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
   await helpFits(p, `${name} 1280×800`, 1280);
   await ctx.close();
 }
@@ -124,7 +126,7 @@ async function phone(name, browser) {
     const errs = [];
     p.on('pageerror', (e) => errs.push(e.message));
     await p.goto(url + '#2');
-    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+    await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
     await p.waitForTimeout(400);
     const m = await p.evaluate(() => {
       const r = (id) => { const e = document.getElementById(id); return e ? e.getBoundingClientRect().toJSON() : null; };

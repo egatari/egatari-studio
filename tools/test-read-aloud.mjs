@@ -25,6 +25,7 @@ import { build, buildPortable } from '../kit/build.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { audioState } from '../kit/core/audio-core.mjs';
 import { launch, fileUrl, stableCapture } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-read-aloud-')));
@@ -345,7 +346,7 @@ try {
       await walk(window.__testDir, '');
       return out;
     });
-    await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: scaled(30000) });
     const deckFrame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame());
     for (let i = 0; i < 100; i++) { const f = deckFrame(); try { if (f && await f.evaluate(() => !!(window.DECK && DECK.ready))) break; } catch { /* 読み込み中 */ } await page.waitForTimeout(100); }
     await page.waitForTimeout(300);
@@ -391,7 +392,7 @@ try {
     await page.waitForFunction(() => window.__ra.queue.length > 0);
     const c1 = await page.evaluate(() => window.__ra.cancels);
     await deckFrame().evaluate(() => DECK.go(2, 3, false));
-    await page.waitForFunction((c) => window.__ra.cancels > c, c1, { timeout: 5000 }).catch(() => {});
+    await page.waitForFunction((c) => window.__ra.cancels > c, c1, { timeout: scaled(5000) }).catch(() => {});
     ok(await page.evaluate((c) => window.__ra.cancels > c, c1), 'editor: moving to another step stops the reading');
     await page.waitForTimeout(500);
     const after = await snap();

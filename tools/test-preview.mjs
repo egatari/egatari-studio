@@ -14,6 +14,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const out = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-preview-')));
@@ -89,7 +90,7 @@ const page = async (file, q = '') => {
   p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   p.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   await p.goto(fileUrl(file) + q);
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   return p;
 };
 const probe = (p, k) => p.evaluate((k) => {
@@ -178,7 +179,7 @@ for (const reduce of [true, false]) {
   q.on('pageerror', (e) => errs.push('pageerror: ' + e.message));
   if (reduce) await q.emulateMedia({ reducedMotion: 'reduce' });
   await q.goto(fileUrl(built.ja) + '#s-two');
-  await q.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
+  await q.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   await q.evaluate(() => { document.getElementById('ck')._t = []; });
   await q.keyboard.press('ArrowRight');
   await q.waitForTimeout(150);

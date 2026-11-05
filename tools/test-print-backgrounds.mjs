@@ -1,4 +1,5 @@
 // 印刷でも章の扉（sec）の背景が落ちないこと（backlog #57）
+// test-all: platform（--platform でも走らせる：印刷の背景（WebKit でも））
 //   node tools/test-print-backgrounds.mjs [作業フォルダ] [--png 保存先.png]
 // 見ること：print の媒体で、スライドと sec の print-color-adjust が exact、sec の背景が白でも透明でもない（html・body は白のまま）、
 //   画面の媒体では何も変わらない（print-color-adjust は初期値の economy のまま）。pdf を作れるときは、pdftoppm で画素にして扉の色を確かめる。

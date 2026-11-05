@@ -24,6 +24,7 @@ import { strokesOf, entryStrokesOf, strokesCentroidOf } from '../server/editor-u
 import { createDevApi } from '../app/devapi.js';
 import { commentShots, PIN_COLOR } from './comment-shots.mjs';
 import { clickUntil } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || path.join(os.tmpdir(), 'motion-ink-comments'));
@@ -141,7 +142,7 @@ const deckInk = () => dk().evaluate(() => { const c = document.getElementById('d
 let saved = null, target = null;
 try {
   await page.goto(base);
-  await page.waitForFunction(() => window.__DEV_LOADS > 0, null, { timeout: 15000 });
+  await page.waitForFunction(() => window.__DEV_LOADS > 0, null, { timeout: scaled(15000) });
   if (!(await until(() => dk().evaluate(() => !!(window.DECK && DECK.ready)), 15000))) throw new Error('deck not ready');
   await dk().evaluate(() => DECK.go(1, 0, false));
   await sleep(300);
@@ -160,9 +161,9 @@ try {
   const inkBtn = await page.evaluate(() => { const b = document.querySelector('#dev-badge .dv-ink'); return { text: b.textContent, title: b.title }; });
   ok(inkBtn.text === 'マーカー（m）' && inkBtn.title.startsWith('丸や矢印で場所を示して、コメントを付ける'), 'the edit toolbar button is named マーカー and its tooltip explains it ' + JSON.stringify(inkBtn));
   // 板のボタンで切る・入れる
-  await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === null, null, { timeout: 2500 }));
+  await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === null, null, { timeout: scaled(2500) }));
   ok((await tool()) === null && (await UI()).modeText === '編集中', 'the edit toolbar button turns it off (indicator back to 編集中)');
-  await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === 'ink', null, { timeout: 2500 }));
+  await clickUntil(page, '#dev-badge .dv-ink', () => page.waitForFunction(() => window.__DEV_UI.state().tool === 'ink', null, { timeout: scaled(2500) }));
   ok((await tool()) === 'ink', 'and on again');
   // スライドの操作の帯：編集中はペンのボタンだけが「マーカー」として残り、押している状態を見せる
   await page.mouse.move(...await stagePt(640, 700)); await sleep(200);
@@ -206,7 +207,7 @@ try {
 
   // 4. 残す
   await page.fill('#dev-comment textarea', 'この式を丸で囲んだ所を短く');
-  await clickUntil(page, '#dev-comment .dv-pri', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
+  await clickUntil(page, '#dev-comment .dv-pri', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: scaled(2500) }));
   await until(() => fs.existsSync(COMMENTS));
   saved = JSON.parse(fs.readFileSync(COMMENTS, 'utf8'));
   const c = saved[0] || {}, S = c.strokes || [], s = S[0] || [];
@@ -228,11 +229,11 @@ try {
   await drawOnStage(Array.from({ length: 12 }, (_, j) => [200 + j * 20, 600]));
   await until(async () => (await page.textContent('#dev-comment')).includes('2 本'));
   const two = (await page.textContent('#dev-comment')).includes('マーカーの線 2 本');
-  await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
+  await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: scaled(2500) }));
   await drawOnStage(Array.from({ length: 12 }, (_, j) => [700 + j * 20, 600]));
   await until(() => page.evaluate(() => !!document.querySelector('#dev-comment textarea')));
   const after = await page.evaluate(() => ({ text: document.querySelector('#dev-comment .dev-where .dv-s').textContent, m: document.querySelector('#dev-pins svg.dev-ink.dv-new .dv-line').getAttribute('d').split('M').length - 1 }));
-  await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: 2500 }));
+  await clickUntil(page, '#dev-comment .dev-foot button:not(.dv-pri)', () => page.waitForFunction(() => !document.querySelector('#dev-comment'), null, { timeout: scaled(2500) }));
   const after2 = JSON.parse(fs.readFileSync(COMMENTS, 'utf8'));
   ok(two && after.m === 1 && after.text === 'マーカーの線' && after2.length === 1, 'cancel discards all the pending strokes (the next note starts from one stroke, nothing written) ' + JSON.stringify({ two, m: after.m, n: after2.length }));
   // 前の形（stroke 1 本）のコメント：一覧と重ねに出る

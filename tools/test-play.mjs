@@ -37,6 +37,7 @@ import { faviconSvg } from '../kit/core/favicon.mjs';
 import { liveCsp } from '../kit/core/live.mjs';
 import { startFakeLive } from './live-fake-server.mjs';
 import { checkViewerKeys } from './viewer-keys-check.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-play-')));
@@ -186,7 +187,7 @@ async function page(url = site.url, opts = {}) {
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', (e) => errors.push(e.message));
-  if (url) { await p.goto(url); await p.waitForSelector('html[data-ready]', { timeout: 15000 }); }
+  if (url) { await p.goto(url); await p.waitForSelector('html[data-ready]', { timeout: scaled(15000) }); }
   return { ctx, p, errors, close: () => ctx.close() };
 }
 const lessonFrame = async (p) => { await p.waitForSelector('#lesson'); let f = null; await until(async () => { f = (await (await p.$('#lesson')).contentFrame()); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, 15000); return f; };
@@ -319,9 +320,9 @@ console.log('service worker');
   // offline after the first visit: a new navigation and a reload both open the Viewer, its icons and manifest, and a lesson plays
   const before = site.reqs.length;
   await o.ctx.setOffline(true);
-  await o.p.goto(site.url); await o.p.waitForSelector('html[data-ready]', { timeout: 10000 }).catch(() => {});
+  await o.p.goto(site.url); await o.p.waitForSelector('html[data-ready]', { timeout: scaled(10000) }).catch(() => {});
   ok(await o.p.evaluate(() => document.documentElement.hasAttribute('data-ready')), 'offline: the page opens from the service worker');
-  await o.p.reload(); await o.p.waitForSelector('html[data-ready]', { timeout: 10000 }).catch(() => {});
+  await o.p.reload(); await o.p.waitForSelector('html[data-ready]', { timeout: scaled(10000) }).catch(() => {});
   ok(await o.p.evaluate(() => document.documentElement.hasAttribute('data-ready') && document.querySelector('.logo-light').complete && document.querySelector('.logo-light').naturalWidth > 0),
     'offline: a reload opens the page again, with its logo');
   ok(await o.p.evaluate(async () => (await fetch('./manifest.webmanifest')).ok && (await fetch('./icons/icon-192.png')).ok && (await fetch('./icons/favicon.svg')).ok), 'offline: the manifest and icons come from the cache');
@@ -337,7 +338,9 @@ console.log('service worker');
   // a new version, rebuilt into the same folder. It is found while a lesson plays: it installs and waits; nothing is swapped
   const v1 = built.version;
   const b2 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v2' });
-  await openFixture(o.p, 'lesson.play.ega.html'); const f1 = await lessonFrame(o.p);
+  // Once on macOS CI the lesson never opened here (#lesson not visible in 30 s). A takeover while the file is read would reload the page (play/main.js S.opening
+  // now prevents it); if it happens again, print what the documents saw of the worker
+  await openFixture(o.p, 'lesson.play.ega.html'); const f1 = await lessonFrame(o.p).catch(async (e) => { console.log('service worker log: ' + await swDiag(o.p)); throw e; });
   await f1.evaluate(() => DECK.go(1, 0));
   await o.p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   ok(await until(() => o.p.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); return !!(r && r.waiting); }), 15000), 'a new version: it installs and waits');
@@ -374,7 +377,7 @@ console.log('service worker');
     await cdp.detach();
     if (!activated) throw new Error(`the next launch: with every window closed, the browser did not activate the waiting version within ${NEXT_LAUNCH_MS / 1000} s (${seen})`); }
   // the page may still reload once as it takes over: wait for the page, not for the first load
-  await p3.goto(site.url, { waitUntil: 'commit', timeout: 30000 }); await p3.waitForSelector('html[data-ready]', { timeout: 30000 });
+  await p3.goto(site.url, { waitUntil: 'commit', timeout: scaled(30000) }); await p3.waitForSelector('html[data-ready]', { timeout: scaled(30000) });
   ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, 15000), `the next launch: version ${b2.version}`);
   c = await cached(p3);
   ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
@@ -475,7 +478,7 @@ site.extra.set('/__test/share.html', shareForm);
   await o.p.evaluate(() => navigator.serviceWorker.ready);
   await o.p.goto(site.url + '__test/share.html');
   await o.p.setInputFiles('#i', FIX['lesson.play.ega.html']);
-  await Promise.all([o.p.waitForURL((u) => u.pathname === '/' && !u.search, { timeout: 15000 }).catch(() => {}), o.p.evaluate(() => document.getElementById('f').submit())]);
+  await Promise.all([o.p.waitForURL((u) => u.pathname === '/' && !u.search, { timeout: scaled(15000) }).catch(() => {}), o.p.evaluate(() => document.getElementById('f').submit())]);
   const f = await lessonFrame(o.p);
   ok(!!f && await o.p.textContent('#lesson-kind') === 'Egatari ファイル（再生専用）', 'share_target: the service worker receives the shared file and the page plays it');
   ok(!site.reqs.includes('POST /share'), 'share_target: the file never reaches the server');
@@ -485,7 +488,7 @@ site.extra.set('/__test/share.html', shareForm);
 { const o = await page(null, { sw: false });
   await o.p.goto(site.url + '__test/share.html');
   await o.p.setInputFiles('#i', FIX['lesson.play.ega.html']);
-  await Promise.all([o.p.waitForURL((u) => u.pathname === '/', { timeout: 10000 }).catch(() => {}), o.p.evaluate(() => document.getElementById('f').submit())]);
+  await Promise.all([o.p.waitForURL((u) => u.pathname === '/', { timeout: scaled(10000) }).catch(() => {}), o.p.evaluate(() => document.getElementById('f').submit())]);
   await o.p.waitForSelector('html[data-ready]');
   ok(await until(() => o.p.evaluate(() => /受け取れませんでした/.test(document.getElementById('msg').textContent))), 'share_target without a service worker: the server answers 303 and the page asks to open the app and share again');
   await o.close(); }
@@ -513,7 +516,7 @@ console.log('links');
   ok(b.open && b.host === 'example.org' && b.url === 'https://example.org/page' && b.href === 'https://example.org/page' && !b.openHidden, 'a link out of the lesson: the page shows the destination host and address in its own box');
   ok(b.rel.includes('noopener') && b.rel.includes('noreferrer') && b.focus === 'b-link-cancel' && await o.p.textContent('#b-link-cancel') === 'キャンセル', 'the box: opens with noopener noreferrer; the focus starts on 「キャンセル」');
   ok(await f.evaluate(() => document.getElementById('deck-extlink') === null), 'the player\'s own box does not appear (the page handles it)');
-  const [popup] = await Promise.all([o.ctx.waitForEvent('page', { timeout: 5000 }).catch(() => null), o.p.click('#a-link-open')]);
+  const [popup] = await Promise.all([o.ctx.waitForEvent('page', { timeout: scaled(5000) }).catch(() => null), o.p.click('#a-link-open')]);
   ok(!!popup, 'Open: a new tab, only after the tap in the page\'s box');
   if (popup) await popup.close();
   await until(async () => !(await box()).open);

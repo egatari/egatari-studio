@@ -7,12 +7,13 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const CLI = path.join(ROOT, 'bin/egatari.mjs');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'doctor-skills-'));
 const doctor = (home) => {
-  const r = spawnSync(process.execPath, [CLI, 'doctor'], { encoding: 'utf8', env: { ...process.env, HOME: home, USERPROFILE: home }, timeout: 60000 });
+  const r = spawnSync(process.execPath, [CLI, 'doctor'], { encoding: 'utf8', env: { ...process.env, HOME: home, USERPROFILE: home }, timeout: scaled(60000) });
   return r.stdout + r.stderr;
 };
 const home = (name) => { const h = path.join(tmp, name); fs.mkdirSync(path.join(h, '.claude', 'skills'), { recursive: true }); return h; };

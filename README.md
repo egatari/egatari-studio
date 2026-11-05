@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=aefabc600b839416 -->
+<!-- i18n: pair=README.ja.md sha256=a16a3451d9082807 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -127,6 +127,8 @@ npx egatari dev mytalk/deck.html      # edit in the browser
 npx egatari check mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
 npx egatari doctor                    # Node, uv, ffmpeg and a browser: what is there and how to install what is missing
 ```
+
+Also runs with Bun (`bunx egatari`).
 
 `npx egatari --help` lists the other commands (`ids`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the fonts the build embeds (no `get-fonts`). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
 

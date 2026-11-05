@@ -1,4 +1,5 @@
 // テーマの寸法の宣言（theme.json の metrics。docs/contract.md §12、format spec §6、backlog #76）の試験
+// test-all: platform（--platform でも走らせる：テーマの寸法（字体の寸法））
 //   node tools/test-theme-metrics.mjs [作業フォルダ]
 // 1. 既定と検証（kit/core/theme-metrics.mjs）：既定から導く限りが今までの定数（565・680・1236・1162・124・44）と同じ。layout-scan.mjs の中に書いた既定
 //    （layoutScan と metricsProbe。文字列にしてページに入れるので外の名前を使えない）が DEFAULT_METRICS と同じ。項目ごとの継承、読めない値（文字列・範囲の外・

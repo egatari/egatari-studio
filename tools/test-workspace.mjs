@@ -31,6 +31,7 @@ import { resolveComponent, parseLock } from '../kit/core/components-lock.mjs';
 import { appComponentFiles } from './vendor-components.mjs';
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from '../kit/core/build-core.mjs';
 import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
@@ -268,7 +269,7 @@ ok('組み立ての Worker の口：止めた Worker からの答え・問い合
   const A = mkWs('A'), B = mkWs('B');
   const c = createBuildClient({ text: {}, b64: {} }, async () => 'lazy', { WorkerClass: FakeWorker });
   const L = await A.list();
-  const p1 = c.build(A, L, 'deck.html', {}, null, { timeout: 60000 });
+  const p1 = c.build(A, L, 'deck.html', {}, null, { timeout: scaled(60000) });
   const W1 = FakeWorker.all[0];
   const req1 = W1.sent.find((m) => m.op === 'build');
   assert.equal(W1.sent[0].gen, 1);
@@ -290,7 +291,7 @@ ok('組み立ての Worker の口：止めた Worker からの答え・問い合
   await assert.rejects(p1, (e) => e.code === 'cancelled');
   assert.ok(W1.terminated);
   // 新しい Worker で新しい要求
-  const p2 = c.build(B, await B.list(), 'deck.html', {}, null, { timeout: 60000 });
+  const p2 = c.build(B, await B.list(), 'deck.html', {}, null, { timeout: scaled(60000) });
   const W2 = FakeWorker.all[1];
   const req2 = W2.sent.find((m) => m.op === 'build');
   assert.ok(W2 !== W1 && W2.sent[0].gen === 2);
@@ -330,7 +331,7 @@ ok('持ち運べる 1 ファイルを読む Worker の口：期限で止めた W
   const W1 = FakeWorker.all[0], id1 = W1.sent[0].id;
   await assert.rejects(p1, (e) => e.code === 'reader-timeout');
   assert.ok(W1.terminated);
-  const p2 = PW.readInWorker(new Uint8Array([2]), { timeout: 60000 });
+  const p2 = PW.readInWorker(new Uint8Array([2]), { timeout: scaled(60000) });
   const W2 = FakeWorker.all[1], id2 = W2.sent[0].id;
   assert.ok(W2 !== W1 && id2 !== id1);
   let settled = false; p2.then(() => { settled = true; }, () => { settled = true; });
@@ -342,7 +343,7 @@ ok('持ち運べる 1 ファイルを読む Worker の口：期限で止めた W
   const r = await p2;
   assert.equal(r.index.docId, 'new');
   // 古い Worker の失敗も新しい Worker の要求を断らない
-  const p3 = PW.readInWorker(new Uint8Array([3]), { timeout: 60000 });
+  const p3 = PW.readInWorker(new Uint8Array([3]), { timeout: scaled(60000) });
   const id3 = W2.sent.at(-1).id;
   W1.onerror && W1.onerror({ message: 'old failure', preventDefault() {} });
   W2.emit({ id: id3, ok: true, indexText: '{"docId":"three"}', deckMetaText: null, buffers: [], table: [], warnings: [] });

@@ -1273,9 +1273,12 @@ export function setupLlm(app) {
   }
   // 組み直しが終わり、プレビューの今の読み込みが表示し終わるのを待って品質チェック。S.pos では待たない（フォルダの置き換えでは、
   // 前の読み込みの位置が残っていて、読み込み中のプレビューに頼みを送ってしまう。頼みは app.quickCheck が今の読み込みに結び付ける）
+  // 待つのは組み直し（期限は app.buildTimeout()）とその読み込みの表示まで。前は 20 秒で打ち切り、遅い PC（macOS の CI で、置き換えの組み直しと
+  // 表示に 20 秒を超えた）では品質チェックを黙って飛ばしていた（板が開かず、結果も「答えなかった」も出ない）
   async function afterOpen() {
     const t0 = Date.now(), ready = () => S.allowed && !S.building && S.loads > 0 && S.frameLoaded === S.loads;
-    while (Date.now() - t0 < 20000 && !ready()) await new Promise((r) => setTimeout(r, 100));
+    const limit = app.buildTimeout() + 20000;
+    while (Date.now() - t0 < limit && !ready()) await new Promise((r) => setTimeout(r, 100));
     if (ready()) await app.quickCheck();
     // 試験（tools/test-app-outline.mjs）：この後始末を、次の窓を開いて貼った後まで待たせる（__APP_TEST.afterOpenGate：Promise）。済んだ数は afterOpens
     const AT = window.__APP_TEST;
