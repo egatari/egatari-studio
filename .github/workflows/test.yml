@@ -115,7 +115,8 @@ jobs:
           TEMP: ${{ runner.temp }}
           TMP: ${{ runner.temp }}
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
-          TEST_STEP_TIMEOUT_S: '900'
+          # 900 s was too tight for test-app here: 760 s median and up to 876 s in 2026-11-03/04, and run 41957733017 reached 900 s while still progressing
+          TEST_STEP_TIMEOUT_S: '1200'
         # --jobs 3 (backlog #156): see the test job
         run: npm test -- --jobs 3
       - name: Upload screenshots on failure
