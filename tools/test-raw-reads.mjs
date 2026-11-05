@@ -47,6 +47,8 @@ const ALLOW = [
   ['bin/egatari.mjs', "JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))", 'egatari コマンド：自分の包みの package.json（版と engines）を読む'],
   ['bin/egatari.mjs', "'instruction-version.json'", 'egatari doctor：自分の包みの kit/instruction-version.json（指示の版）を読む'],
   ['bin/egatari.mjs', "try { t = fs.readFileSync(f, 'utf8'); }", 'egatari doctor：利用者が入れたスキルの SKILL.md を読んで指示の版の行を拾う（読むだけ・先頭の数 KB で足りるが、大きさの上限は SKILL.md の通常の大きさ）'],
+  ['kit/font-subset.mjs', "JSON.parse(fs.readFileSync(path.join(path.dirname(HB_WASM), '..', 'package.json'), 'utf8'))", '字の切り出し：node_modules の harfbuzzjs の package.json（版を記録する）を読む'],
+  ['kit/font-subset.mjs', 'fs.readFileSync(HB_WASM)', '字の切り出し：node_modules の harfbuzzjs の wasm（決まったファイル）を読む'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, `${w}${sfx}.css`))", '字の写し：node_modules の @fontsource の CSS を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'files', m[1]))", '字の写し：その CSS が指す woff2 を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'LICENSE'))", '字の写し：@fontsource の LICENSE を読む（開発者の道具）'],
