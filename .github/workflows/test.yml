@@ -238,6 +238,26 @@ jobs:
       - name: Pack, install and run egatari (tools/test-npm-pack.mjs)
         run: node tools/test-npm-pack.mjs
 
+  # Bun: the packed CLI under the Bun runtime (bunx --bun, so #!/usr/bin/env node runs Bun too), the same install as the pack job (tools/bun-check.mjs:
+  # npm pack, npm install <tarball> in a temp folder outside the repository). Runs new, check, build and build --portable, and fails if a build's bytes
+  # differ from Node's build of the same folder. Linux only, Bun pinned (1.4.4 was tested by hand; change the pin on purpose). Uses the preinstalled Google Chrome.
+  # README: "Also runs with Bun (bunx egatari)"; npx egatari stays the documented way
+  bun:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '>=22.23.4 <23'   # floor: the 2026-10-20/21 Node security release (SECURITY.md#node-versions)
+          cache: npm
+      - uses: oven-sh/setup-bun@v2.0.2
+        with:
+          bun-version: 1.4.4
+      - run: npm ci --ignore-scripts   # no install scripts (SECURITY.md#install-scripts)
+      - name: Bun runs the packed egatari like Node (tools/bun-check.mjs)
+        run: node tools/bun-check.mjs
+
   # Tier 2 (fast): TTS pipeline in --dry-run (silent placeholder audio, no TTS server) and video render of two steps.
   # Also on Windows (Git Bash): the same steps with ffmpeg from Chocolatey.
   tier2:
