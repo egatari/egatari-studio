@@ -25,6 +25,7 @@ import { silentWav } from './portable-fixtures.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { regionDiff } from './tier-a-diff.mjs';
 import { clickUntil, clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-colab-')));
@@ -66,13 +67,13 @@ const opfsRead = (rel, bin) => page.evaluate(async ([rel, bin]) => {
   try { const parts = rel.split('/'); const name = parts.pop(); let d = window.__testDir; for (const x of parts) d = await d.getDirectoryHandle(x); const f = await (await d.getFileHandle(name)).getFile(); return bin ? [...new Uint8Array(await f.arrayBuffer())] : await f.text(); }
   catch { return null; }
 }, [rel, !!bin]);
-const idle = () => page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading; }, null, { timeout: 60000 });
+const idle = () => page.waitForFunction(() => { const s = window.__APP_TEST.audio(); return !s.busy && !s.loading; }, null, { timeout: scaled(60000) });
 const msgs = () => page.$$eval('#dev-audio .dv-colab-msg', (e) => e.map((x) => x.textContent));
 // C1 台本を書き出す（このブラウザで初めてなら確かめの窓 → 進む）→ ダウンロードした tts-job.json。sel：押すボタン
 async function exportJob(confirm, sel = '#dev-audio-colab-export') {
   const dl = page.waitForEvent('download');
   if (confirm) {
-    await clickUntil(page, sel, () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
+    await clickUntil(page, sel, () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: scaled(2500) }));
     await clickDlg(page, '#dlg-ok');
   } else await page.click(sel);
   const d = await dl;
@@ -104,7 +105,7 @@ async function importZip(bytes) {
   const chooser = await fc;
   lastChooser = { multiple: chooser.isMultiple(), accept: await chooser.element().getAttribute('accept'), type: await chooser.element().getAttribute('type'), dir: await chooser.element().evaluate((e) => e.webkitdirectory) };
   await chooser.setFiles({ name: 'egatari-tts-result.zip', mimeType: 'application/zip', buffer: Buffer.from(bytes) });
-  await page.waitForFunction(() => document.querySelector('#dev-audio .dv-colab-msg'), null, { timeout: 60000 });
+  await page.waitForFunction(() => document.querySelector('#dev-audio .dv-colab-msg'), null, { timeout: scaled(60000) });
   await idle();
 }
 
@@ -153,7 +154,7 @@ try {
   const href = await page.getAttribute('#dev-audio-colab-open', 'href');
   ok(/^https:\/\/colab\.research\.google\.com\/github\/egatari\/egatari-studio\/blob\/[^/]+\/colab\/egatari-tts\.ipynb$/.test(href) && (await page.getAttribute('#dev-audio-colab-open', 'rel')) === 'noopener' && (await page.getAttribute('#dev-audio-colab-open', 'target')) === '_blank', 'C2: "Colab を開く" links to the official notebook (new tab, noopener)');
   // プライバシーの確認（初めての 1 回）：キャンセルすれば書き出さない
-  await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: 2500 }));
+  await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #colab-privacy');
   ok((await page.textContent('#colab-privacy')) === '台本の文は Google の環境で処理されます。共有してよい文だけにしてください。スライドやほかのファイルは渡しません。' && (await page.textContent('#dlg-title')).includes('台本を Google Colab に渡します') && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'C1: the privacy question (台本を Google Colab に渡します / 書き出す / キャンセル)');
   let downloaded = false; page.once('download', () => { downloaded = true; });
@@ -162,7 +163,7 @@ try {
   ok(!downloaded && !(await page.$('#dev-audio-c1[data-done="1"]')), 'C1: cancelling the privacy question writes nothing (no ✓)');
   // 書き出す（確かめる）
   const job = await exportJob(true);
-  ok(await page.waitForSelector('#dev-audio-c1[data-done="1"]', { timeout: 5000 }).then(() => true, () => false) && (await page.textContent('#dev-audio-c1 .dv-tick')) === '✓' && !(await page.$('#dev-audio-c2 .dv-tick, #dev-audio-c3 .dv-tick')), 'step 1: ✓ after the export (only step 1)');
+  ok(await page.waitForSelector('#dev-audio-c1[data-done="1"]', { timeout: scaled(5000) }).then(() => true, () => false) && (await page.textContent('#dev-audio-c1 .dv-tick')) === '✓' && !(await page.$('#dev-audio-c2 .dv-tick, #dev-audio-c3 .dv-tick')), 'step 1: ✓ after the export (only step 1)');
   ok((await page.evaluate(() => window.__APP_TEST.audio().how)) === 'cloud' && (await opfsRead('egatari.json')) === JSON.stringify({ docId: DOC }) + '\n', 'method: the export keeps クラウド chosen on this page and writes nothing to egatari.json (no studio.audioMethod)');
   await shotPanel('cloud-step1-done');
   // 手順 2：Colab を開く（新しいタブ。試験ではネットワークに出ない）。開いただけでは ✓ を付けない（ZIP ファイルを取り込んで ✓）
@@ -203,7 +204,7 @@ try {
   await importZip(await colabZip(job));
   const sum = (await msgs())[0];
   ok(sum === `${keys.length - 1} ステップに AI 音声を付けました。1 ステップは、書き出した後に台本が変わっているので使っていません`, 'import: ' + sum);
-  ok(await page.waitForSelector('#dev-audio-c3[data-done="1"]', { timeout: 5000 }).then(() => true, () => false) && !!(await page.$('#dev-audio-c2[data-done="1"]')) && !!(await page.$('#dev-audio-c1[data-done="1"]')), 'steps 2 and 3: ✓ after the ZIP file is imported');
+  ok(await page.waitForSelector('#dev-audio-c3[data-done="1"]', { timeout: scaled(5000) }).then(() => true, () => false) && !!(await page.$('#dev-audio-c2[data-done="1"]')) && !!(await page.$('#dev-audio-c1[data-done="1"]')), 'steps 2 and 3: ✓ after the ZIP file is imported');
   await shotPanel('cloud-all-done');
   const man = JSON.parse(await opfsRead('audio/manifest.json'));
   const applied = keys.filter((k) => k !== changed);
@@ -265,7 +266,7 @@ try {
   ok(await page.evaluate(() => window.__APP_TEST.state().portable.dirty), 'portable: the imported audio marks the file unsaved');
   ok((await page.textContent('#dev-audio-deck .dv-line[data-kind="unsaved"]')) === '保存するまでファイルには入っていません' && (await page.textContent('#dev-audio-action')) === '保存', 'A: single file: 保存するまでファイルには入っていません and the action is 保存');
   await page.click('#dev-audio-action');
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: 30000 });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
   const ps = await page.evaluate(() => window.__APP_TEST.state().portable);
   ok(ps.lastTier === 'A' && ps.lastTierA && JSON.stringify([...ps.lastTierA.audio].sort()) === JSON.stringify([...keys.slice(1)].sort()) && !ps.dirty, 'portable: saved by tier A; only the audio of the imported steps changed');
   const saved = await page.evaluate(() => window.__APP_TEST.saved());

@@ -18,6 +18,7 @@ import { resolveComponent } from '../kit/core/components-lock.mjs';
 import { appComponentFiles } from './vendor-components.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { PREVIEW_CSP } from '../app/preview-doc.js';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-yanked-')));
@@ -112,7 +113,7 @@ try {
     const b64 = Buffer.from(pold.html).toString('base64');
     const opened = await page.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'old' + ext }); }, [b64, FORMAT.FILE_EXT]);
     ok(opened === true, `${lang}: the lesson that records the yanked version opens`);
-    await page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 30000 });
+    await page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: scaled(30000) });
     // 知らせとボタン
     const notice = await page.textContent('#notice-yanked');
     ok(/m-sweep 1\.0\.0/.test(notice) && notice.includes(NEW), `${lang}: a notice names the yanked components and recommends ${NEW}`);
@@ -147,8 +148,8 @@ try {
     ok(fr.errors === 1 && /eval|Content Security Policy/i.test(fr.errMsg), `${lang}: yanked m-sweep cannot eval inside the editor's frame: it shows its inline placeholder, the rest plays (${fr.errors}: ${fr.errMsg.slice(0, 80)})`);
     // ボタン
     await page.click('#b-yanked-rebuild');
-    await page.waitForFunction(() => !document.getElementById('notice-yanked') && !!document.getElementById('notice-yanked-done'), null, { timeout: 30000 });
-    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.frameLoaded === s.loads; }, null, { timeout: 30000 });
+    await page.waitForFunction(() => !document.getElementById('notice-yanked') && !!document.getElementById('notice-yanked-done'), null, { timeout: scaled(30000) });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
     const done = await page.textContent('#notice-yanked-done');
     ok(/m-sweep/.test(done) && done.includes(NEW), `${lang}: after the button, a note says which identity hashes changed ("${done.slice(0, 120)}…")`);
     const c1 = await cfg();

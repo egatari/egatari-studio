@@ -1,6 +1,6 @@
 {
   "name": "egatari",
-  "version": "0.6.4",
+  "version": "0.6.5-rc.2",
   "license": "MIT",
   "homepage": "https://studio.egatari.org/",
   "repository": {
@@ -76,7 +76,7 @@
     "comment-shots": "node tools/comment-shots.mjs",
     "release:assets": "node tools/release-assets.mjs",
     "gen": "node tools/catalog.mjs && node tools/make-llm-guide.mjs && node tools/katex-ranges.mjs && node tools/make-colab-notebook.mjs",
-    "gen:check": "node tools/components-update.mjs --check && node tools/themes-lock.mjs --check && node tools/fonts-vendor.mjs --check && node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check && node tools/make-colab-notebook.mjs --check && node tools/part-thumbs.mjs --check && node tools/parts-gallery.mjs --verify",
+    "gen:check": "node tools/components-update.mjs --check && node tools/themes-lock.mjs --check && node tools/fonts-vendor.mjs --check && node tools/catalog.mjs --check && node tools/make-llm-guide.mjs --check && node tools/part-labels-check.mjs && node tools/katex-ranges.mjs --check && node tools/changelog.mjs --check && node tools/make-colab-notebook.mjs --check && node tools/part-thumbs.mjs --check && node tools/parts-gallery.mjs --verify",
     "thumbs": "node tools/part-thumbs.mjs",
     "changelog": "node tools/changelog.mjs",
     "components:update": "node tools/components-update.mjs",

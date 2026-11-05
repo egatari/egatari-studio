@@ -24,6 +24,7 @@ import { excludedFromThemeHash, excludedFromThemeCopy } from '../kit/core/themes
 import { parseThemesLock, themesLockProblems, themeVersionForSha, themePinsForIndex, pickThemeVersion, themeUpdate, configThemePins } from '../kit/core/themes-lock.mjs';
 import { themesLockCheck, themeDirSha } from './themes-lock.mjs';
 import { unpack } from './portable.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-theme-version-')));
@@ -286,7 +287,7 @@ try {
     const b64 = Buffer.from(pold.html).toString('base64');
     const opened = await page.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'old' + ext }); }, [b64, FORMAT.FILE_EXT]);
     ok(opened === true, `${lang}: the lesson that recorded default 1.0.0 opens`);
-    await page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: 60000 });
+    await page.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: scaled(60000) });
     const st0 = await page.evaluate(() => window.__APP_TEST.state());
     ok(!st0.portable.tierAOnly && !st0.portable.readOnly, `${lang}: slide edits stay allowed (the editor has the recorded theme version)`);
     ok(st0.portable.themePins && st0.portable.themePins.default === OLD, `${lang}: the editor builds with the recorded version ${OLD}`);
@@ -305,8 +306,8 @@ try {
     ok(!('themes' in (await cfg())), `${lang}: before the button, ${FORMAT.CONFIG_FILE} is unchanged`);
     ok(st0.portable.themes.find((t) => t.name === 'default').sha256 === D.sha256[OLD], `${lang}: before the button, the record is unchanged`);
     await page.click('#b-theme-update');
-    await page.waitForFunction(() => !document.getElementById('notice-theme-pinned') && !!document.getElementById('notice-theme-done'), null, { timeout: 60000 });
-    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.frameLoaded === s.loads; }, null, { timeout: 60000 });
+    await page.waitForFunction(() => !document.getElementById('notice-theme-pinned') && !!document.getElementById('notice-theme-done'), null, { timeout: scaled(60000) });
+    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.frameLoaded === s.loads; }, null, { timeout: scaled(60000) });
     const c1 = await frame().evaluate(colors);
     ok(c1.emph === NEW_EMPH && c1.muted === NEW_MUTED, `${lang}: after the button, the preview has the ${NEW} colors (${c1.emph}, ${c1.muted})`);
     ok((await cfg()).themes.default === NEW, `${lang}: ${FORMAT.CONFIG_FILE} now pins ${NEW}`);

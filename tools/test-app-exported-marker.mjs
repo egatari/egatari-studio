@@ -16,6 +16,7 @@ import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { scanDocument, replaceIndexText, readPortable } from '../kit/core/portable.mjs';
 import { clickDlg } from './click-retry.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-exported-marker-')));
@@ -85,10 +86,10 @@ try {
       return window.__APP_TEST.openFile({ bytes: u, name: n });
     }, [Buffer.from(html).toString('base64'), 'x' + FORMAT.FILE_EXT]);
     // 開き終わるか、断る窓が出るまで（どちらも 30 秒以内）
-    const first = await Promise.race([opening.then((v) => ({ done: v })), page.waitForSelector('#dlg[open] #refuse-reason', { timeout: 30000 }).then(() => ({ refused: true }), () => ({ timeout: true }))]);
+    const first = await Promise.race([opening.then((v) => ({ done: v })), page.waitForSelector('#dlg[open] #refuse-reason', { timeout: scaled(30000) }).then(() => ({ refused: true }), () => ({ timeout: true }))]);
     if (want === 'opens') {
       ok(first.done === true, `${name}: opens (${Date.now() - t0} ms)`);
-      await page.waitForSelector('#notice-exported', { timeout: 30000 }).catch(() => {});
+      await page.waitForSelector('#notice-exported', { timeout: scaled(30000) }).catch(() => {});
       const t = (await page.textContent('#notice-exported').catch(() => '')) || '';
       ok(t.includes('作業フォルダのファイルは変わりません') && t.includes('書き出したあと、このファイルで直した所があります。') === edited,
         `${name}: the exported-copy notice ${edited ? 'says the copy was edited since export' : 'does not say it was edited'}`);

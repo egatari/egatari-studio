@@ -69,7 +69,19 @@ export function setsOf(manifest) {
 }
 
 // ---------------------------------------------------------------- 段と束（パーツライブラリ 2.0 の manifest）
-// → {catalogue, parts: {タグ: {tier, set?, purposes}}, purposes: [{id, label: {ja, en}, into?}]}。manifest の要素のパーツすべて（特殊も。一覧が特殊を除く）
+// パーツの画面の名前（manifest の display。components 2.2.0 から）→ {ja, en} | null。display は「日本語 / English」の 1 つの文字列か {ja, en}。
+// kit/core/part-labels.mjs が新規作成 ④ の名前にこれを使い、表の名前（PART_LABELS の ja・en）はこれのないパーツだけに使う
+export function displayOf(c, version = '') {
+  const d = c.display;
+  if (d == null) return null;
+  const where = `manifest-${version}.json: ${c.tag} display ${JSON.stringify(d)}`;
+  if (typeof d === 'object' && typeof d.ja === 'string' && typeof d.en === 'string' && d.ja.trim() && d.en.trim()) return { ja: d.ja.trim(), en: d.en.trim() };
+  if (typeof d !== 'string') throw new Error(`${where} is neither "ja / en" nor {ja, en}`);
+  const xs = d.split(' / ');
+  if (xs.length !== 2 || !xs[0].trim() || !xs[1].trim()) throw new Error(`${where} is not "ja / en"`);
+  return { ja: xs[0].trim(), en: xs[1].trim() };
+}
+// → {catalogue, parts: {タグ: {tier, set?, purposes, display?: {ja, en}}}, purposes: [{id, label: {ja, en}, into?}]}。manifest の要素のパーツすべて（特殊も。一覧が特殊を除く）
 export function tiersFrom(cat = catalogue()) {
   const m = cat.manifest;
   const parts = {};
@@ -77,7 +89,8 @@ export function tiersFrom(cat = catalogue()) {
   for (const c of els) {
     if (!['standard', 'specialized', 'extra'].includes(c.tier)) throw new Error(`manifest-${cat.version}.json: ${c.tag} has tier ${JSON.stringify(c.tier)}`);
     if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${cat.version}.json: ${c.tag} is specialized without a set`);
-    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])] };
+    const display = displayOf(c, cat.version);
+    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])], ...(display ? { display } : {}) };
   }
   const purposes = (m.purposes || []).map((p) => ({ id: p.id, label: p.label || { ja: p.ja, en: p.en }, ...(p.tile && p.tile.into ? { into: p.tile.into } : {}) }));
   return { catalogue: cat.version, parts, purposes };

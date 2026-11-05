@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { resolveCatalogueContent } from '../kit/core/components-lock.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -82,7 +83,7 @@ for (const x of decks) {
   const perr = [];
   p.on('pageerror', (e) => perr.push(e.message));
   await p.goto(fileUrl(path.join(x.d, 'out.html')));
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 }).catch((e) => perr.push(String(e.message).split('\n')[0]));
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) }).catch((e) => perr.push(String(e.message).split('\n')[0]));
   const st = await p.evaluate(() => {
     for (let i = 0; i < DECK.slides.length; i++) for (let k = 0; k <= DECK.slides[i]._max; k++) DECK.seek(i, k, Infinity);
     return { slides: DECK.slides.length, comps: DECK.slides.reduce((n, s) => n + s._comps.length, 0), errors: DECK.componentErrors.map((e) => `${e.tag} ${e.phase} ${e.kind}${e.msg ? ': ' + e.msg : ''}`) };

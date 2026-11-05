@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const [file, outdir = fs.mkdtempSync(path.join(os.tmpdir(), 'test-bar-hint-'))] = process.argv.slice(2);
 if (!file) { console.error('usage: node tools/test-bar-hint.mjs <built.html> [outdir]'); process.exit(2); }
@@ -31,7 +32,7 @@ async function open(ctx, q = '') {
   const p = await ctx.newPage();
   p.on('pageerror', (e) => errs.push(e.message));
   await p.goto(url + q + '#2');
-  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 20000 });
+  await p.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(20000) });
   return p;
 }
 

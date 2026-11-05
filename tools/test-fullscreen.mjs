@@ -1,4 +1,5 @@
 // 全画面（f・帯の「全画面」）を Chromium と WebKit で確かめる
+// test-all: platform（--platform でも走らせる：WebKit でも）
 //   node tools/test-fullscreen.mjs [<作業用のフォルダ>]
 // npm test の段 test-fullscreen（WebKit は `npx playwright-core install webkit` で別に入れる。入っていなければ WebKit の分だけ「skip」）。
 //  1. Egatari Viewer：教材の枠には全画面の許可がない（allow に fullscreen がない）。帯の「全画面」と f で、Viewer のページが枠そのものを
@@ -19,6 +20,7 @@ import { webkit } from 'playwright-core';
 import { launch } from '../kit/browser.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { buildPlay } from './build-play.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'test-fullscreen-')));
@@ -89,9 +91,9 @@ async function context(browser, init) {
 }
 const deckReady = (f) => until(() => f.evaluate(() => !!(window.DECK && DECK.ready && document.getElementById('dt-cb'))), 20000);
 async function viewerLesson(o) {
-  await o.p.goto(site); await o.p.waitForSelector('html[data-ready]', { timeout: 20000 });
+  await o.p.goto(site); await o.p.waitForSelector('html[data-ready]', { timeout: scaled(20000) });
   await o.p.setInputFiles('#file', LESSON);
-  await o.p.waitForSelector('#lesson', { timeout: 20000 });
+  await o.p.waitForSelector('#lesson', { timeout: scaled(20000) });
   let f = null;
   await until(async () => { f = await (await o.p.$('#lesson')).contentFrame(); return !!f && await f.evaluate(() => !!(window.DECK && DECK.ready && document.getElementById('dt-cb'))); }, 20000);
   return f;

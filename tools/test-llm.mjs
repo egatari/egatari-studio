@@ -1,4 +1,5 @@
 // チャットの AI との行き来の試験（ブラウザは品質チェック（kit/check.mjs）の中だけ）
+// test-all: platform（--platform でも走らせる：パス（リンク・junction））
 //   node tools/test-llm.mjs [作業用のフォルダ]
 // 1. 指示（共通の本体 docs/authoring-with-llms*.md と系列 docs/llm-parts/*.md）が材料から作り直したものと同じ（make-llm-guide --check）・大きさ・
 //    規格の名前・組み立て（kit/core/llm-pack.mjs の buildPack・kit/llm-pack.mjs）・部品の居場所

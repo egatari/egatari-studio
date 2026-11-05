@@ -1,12 +1,14 @@
 // test-all: part of test-app
 // 開いたばかりの重ね（確かめの窓・「開く ▾」の一覧）のボタンを押す。押しても効かなかったら（プレビューに行ってしまった）もう一度押す
-//   await clickUntil(page, '#dlg-discard', () => page.waitForSelector('#dlg[open] #dlg-discard', { state: 'detached', timeout: 2500 }));
+//   await clickUntil(page, '#dlg-discard', () => page.waitForSelector('#dlg[open] #dlg-discard', { state: 'detached', timeout: scaled(2500) }));
 // 重ねはプレビューの iframe（sandbox で origin を持たない → 別のプロセス）の上に出る。macOS の CI では、重ねを出した直後（品質チェックの板を
 // 閉じて枠の大きさが変わった直後など）に押すと、押したものが重ねのボタンではなく下の iframe に届き、ページには何も起きないことがある
 // （4 回とも iframe の mousedown・mouseup・click が数えられ、ページには何も来なかった）。Playwright が押す前に確かめるのは
 // ページの中の elementFromPoint だけで、ブラウザが押したものを渡す先は見ないので、確かめは通る。重ねの描画が落ち着けば次の押しは届く。
 // effect：押した効果が出るのを待つ関数（出なければ投げる）。押す前から効果が出ていれば 1 回で済む
 // 2 回以上押したときは、数えられるように標準出力に書く（"click-retry: <selector> needed N clicks"）
+import { scaled } from './wait-scale.mjs';
+
 export async function clickUntil(page, selector, effect, { tries = 5 } = {}) {
   let last;
   for (let i = 0; i < tries; i++) {
@@ -26,7 +28,7 @@ export async function clickUntil(page, selector, effect, { tries = 5 } = {}) {
   throw last;
 }
 
-const EFFECT_MS = 2500;
+const EFFECT_MS = scaled(2500);
 
 // 確かめの窓のボタン（#dlg-*）：押した効果は「その窓が閉じる」（ボタンが開いている窓の中から消える。次の確かめが同じ窓で開いても、ボタンは作り直される）
 export async function clickDlg(page, selector) {
@@ -67,4 +69,10 @@ export async function clickCommand(page, selector) {
     if (await page.isHidden('#' + id)) await clickMenuOpen(page, o);
   }
   return clickMenuItem(page, selector);
+}
+
+// 押すと別のものが見えるようになるボタン（貼り付けの窓の［次へ］・［変更］・段の見出し）：効果は shows が見えること。
+// 窓が開いた直後・段を開き直した直後の押しが下のプレビューに届き、次の段が開かないまま、その中のボタンの click が 30 秒で切れた（macOS の CI。test-app-llm）
+export function clickShows(page, selector, shows) {
+  return clickUntil(page, selector, () => page.waitForSelector(shows, { state: 'visible', timeout: EFFECT_MS }));
 }

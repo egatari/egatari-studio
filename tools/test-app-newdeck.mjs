@@ -27,6 +27,7 @@ import { replyOf } from './test-app-llm.mjs';
 import { slidesOf } from './test-app-outline.mjs';
 import { clickDlg, clickCommand, clickUntil } from './click-retry.mjs';
 import { generate, makeSkillZip } from './make-llm-guide.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const worked = (n, f) => fs.readFileSync(path.join(ROOT, 'tools', 'llm-guide', 'worked', n, f), 'utf8').replace(/\r\n/g, '\n');
@@ -51,7 +52,7 @@ export async function checkSkillDownload(p, { lang, selector, ok, base }) {
   let dl = null;
   for (let i = 0; i < 3 && !dl; i++) {
     await b.focus();
-    [dl] = await Promise.all([p.waitForEvent('download', { timeout: 10000 }).catch(() => null), b.press('Enter')]);
+    [dl] = await Promise.all([p.waitForEvent('download', { timeout: scaled(10000) }).catch(() => null), b.press('Enter')]);
     if (dl && i > 0) console.log(`key-retry: ${selector} Enter needed ${i + 1} presses`);
   }
   if (!dl) { ok(false, `skill (${lang}, ${selector}): no download after 3 presses of Enter`); return; }
@@ -100,9 +101,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
   const create = async (p, dirty = false) => {
     const before = await p.evaluate(() => (window.__APP_TEST.state().portable || {}).docId || null);
     await clickDlg(p, '#dlg-import');
-    if (dirty) { await p.waitForSelector('#dlg[open] #dlg-discard', { timeout: 30000 }); await clickDlg(p, '#dlg-discard'); }
-    await p.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d && s.loads > 0 && s.frameLoaded === s.loads; }, before, { timeout: 30000 });
-    await p.waitForSelector('#panel:not([hidden]) #panel-body .sum', { timeout: 30000 });
+    if (dirty) { await p.waitForSelector('#dlg[open] #dlg-discard', { timeout: scaled(30000) }); await clickDlg(p, '#dlg-discard'); }
+    await p.waitForFunction((d) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.docId !== d && s.loads > 0 && s.frameLoaded === s.loads; }, before, { timeout: scaled(30000) });
+    await p.waitForSelector('#panel:not([hidden]) #panel-body .sum', { timeout: scaled(30000) });
     return files(p);
   };
   const newDeckOf = (F) => (JSON.parse(F['egatari.json'] || '{}').studio || {}).newDeck;
@@ -216,7 +217,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await flowState(p1)) === '1:open:step:-:body:- 2:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-', 'S6: insert follows the same one-open flow (① open, ② ③ headings): ' + await flowState(p1));
     await p1.fill('#paste-insert-wish', '練習問題を 1 つ');
     // macOS の CI では、プレビューの上の窓のボタンを押しても下の iframe に届くことがある（click-retry.mjs）：② が開くまで押し直す
-    await clickUntil(p1, '#paste-next-1', () => p1.waitForSelector('#paste-step1-answer .paste-answer-text', { timeout: 2500 }));
+    await clickUntil(p1, '#paste-next-1', () => p1.waitForSelector('#paste-step1-answer .paste-answer-text', { timeout: scaled(2500) }));
     ok((await flowState(p1)) === '1:shut:-:-:nobody:answer 2:open:step:-:body:- paste:shut:-:pending:nobody:-' && (await text(p1, '#paste-step1-answer .paste-answer-text')) === '足す枚数：1 枚・練習問題を 1 つ',
       'S6: 「次へ」 folds ① to 「足す枚数：1 枚・練習問題を 1 つ」 and opens ②');
     const i1 = await copy(p1);
@@ -235,8 +236,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s6-insert.png', 'paste-step-paste');
     await p1.evaluate(() => { document.getElementById('panel').hidden = true; });
     await clickDlg(p1, '#dlg-import');
-    await p1.waitForFunction(() => /挿入しました/.test(document.getElementById('toast').textContent), null, { timeout: 30000 });
-    await p1.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('練習問題'); }, null, { timeout: 30000 });
+    await p1.waitForFunction(() => /挿入しました/.test(document.getElementById('toast').textContent), null, { timeout: scaled(30000) });
+    await p1.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('練習問題'); }, null, { timeout: scaled(30000) });
     const F6 = await files(p1);
     ok((F6['deck.html'].match(/<section class="slide/g) || []).length === 4 && /## 練習問題 \{#s-[a-z2-7]{6}\}/.test(F6['narration.md']) && /^スライド 1 枚を 4 枚目に挿入しました/.test(await text(p1, '#toast')),
       'S6: 「挿入」 adds the slide after the last one with its script: ' + await text(p1, '#toast'));
@@ -311,7 +312,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p2, 'flow-s7-revise.png', 'paste-step-paste');
     await p2.evaluate(() => { document.getElementById('panel').hidden = true; });
     await clickDlg(p2, '#dlg-import');
-    await p2.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<h2>3 か月の結果'); }, null, { timeout: 30000 });
+    await p2.waitForFunction(() => { const f = window.__APP_TEST.files(); return f && new TextDecoder().decode(Uint8Array.from(atob(f['deck.html']), (c) => c.charCodeAt(0))).includes('<h2>3 か月の結果'); }, null, { timeout: scaled(30000) });
     const F7 = await files(p2);
     ok((await p2.evaluate(() => window.__APP_TEST.state().portable.docId)) === docId7 && (F7['deck.html'].match(/<section class="slide/g) || []).length === 3 && F7['narration.md'] === F2['narration.md'],
       'S7: only that slide is replaced (same docId, 3 slides, the script unchanged)');
@@ -478,7 +479,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // 一つずつの札：チェックボックス・絵・名前・1 行の説明（説明は aria-describedby）
     // 絵は loading="lazy"：画面に入れて読み終わるのを待つ（macOS の CI で、まだ読んでいない絵を確かめて落ちた）
     await p8.$eval('#paste-part-bars', (x) => x.closest('label.pick').scrollIntoView({ block: 'center' }));
-    await p8.waitForFunction(() => { const i = document.querySelector('#paste-part-bars')?.closest('label.pick')?.querySelector('picture.pick-thumb img'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: 10000 }).catch(() => {});
+    await p8.waitForFunction(() => { const i = document.querySelector('#paste-part-bars')?.closest('label.pick')?.querySelector('picture.pick-thumb img'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: scaled(10000) }).catch(() => {});
     const thumb8 =await p8.$eval('#paste-part-bars', (x) => { const l = x.closest('label.pick'), img = l && l.querySelector('picture.pick-thumb img'), src = l && l.querySelector('picture.pick-thumb source');
       return { ok: !!img && img.src.startsWith('data:image/webp') && img.complete && img.naturalWidth > 0 && src.media === '(prefers-color-scheme: dark)' && src.srcset.startsWith('data:image/webp') && l.querySelector('.tile-label').textContent === '棒グラフ'
         && document.getElementById(x.getAttribute('aria-describedby')).textContent === '棒の長さで量を比べる', alt: img && img.alt }; });
@@ -526,7 +527,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       window.__sdir = top;
       window.__APP_TEST.open(top);
     }, [fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8'), cfg9]);
-    await p9.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: 30000 });
+    await p9.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.open && s.allowed && s.frameLoaded === s.loads && s.pos; }, null, { timeout: scaled(30000) });
     const cfgNow = () => p9.evaluate(async () => (await (await window.__sdir.getFileHandle('egatari.json')).getFile()).text());
     await clickCommand(p9, '#b-new');
     await p9.waitForSelector('#dlg[open] #paste-step-kind');
