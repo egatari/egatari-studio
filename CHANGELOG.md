@@ -8,6 +8,154 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.5] - 2026-11-06
+
+### Added
+
+- Codex support: `.agents/plugins/marketplace.json` lists the same two plugins (egatari, egatari-studio), the plugin manifests declare `"skills": "./skills/"`, and the README has a "Using it with Codex" section (#172).
+- `egatari skills update` updates the skills in every tool found on PATH (Claude Code: `claude plugin marketplace update` and `claude plugin update`; Codex: `codex plugin marketplace upgrade` and `codex plugin add`), reports each result, and ends with "restart the tool". `egatari doctor` warns when an installed skill's instruction version differs from the package's (`kit/instruction-version.json`).
+- Book (article, format spec §9C, draft): the build reads `article.md` or chapters `article/<name>.md` (front matter `title`, `chapter`,
+  `kind` preface/chapter/appendix/afterword, `numbering`, `writing-mode`), checks Egatari Text 1 and writes `out/<deck>.article.html`:
+  numbered sections, figures, tables (merged cells written from the tree), boxes, theorems with ∎, exercises and solutions, footnotes,
+  glossary, ruby, emphasis dots and upright digits in Japanese vertical writing, cross-references such as "図 4.1" and "4.1 節"
+- `check` reports book problems as `article…` codes (§9C.8): constructs outside Egatari Text 1 with the replacement to write, labels,
+  chapter order and numbers, cross-references, solutions, terms, step links, citation keys, images and slides' `data-article`
+- `npm run ids` adds a missing section id `(sec-xxxxxx)=` before each `##` heading of the book, and writes the chapters' reading order
+  into an existing `egatari.json` (`article`); without it, chapters are read by kind, then by file name
+- Docs: [Writing a book](docs/article.md)
+- Book citations (format spec §9C.4): the build formats `[@key]`, `[@key, p. 3]`, `[@a; @b]` and `@key` with the Citation Style Language
+  and writes the reference list; `egatari.json` `metadata.citations` picks the style (`apa`, `ieee`, `sist02`; another name falls back to
+  `apa` with a warning) and the list (`end`, `chapter` with ids `ref-<chapter>-<key>`, `none`); uncited works are reported
+- Links between slides and book sections (§9C.5, §9C.7): `npm run ids` records new links in `egatari.json` `articleLinks`, `check` says
+  "slides and book may not match" when either side changed since, and `npm run ids -- --confirm-links` records that they agree again
+- The Egatari file (.ega.html) carries the book (§9C.1, §9C.6): chapter files, `references.json` and images in the archive,
+  `index.article` and `index.articleLinks`, and the rendered book as `#egatari-article` at the end of the readable layer; `unpack` writes
+  the reading order into `egatari.json`. A book with errors is not exported; sections without an id get one. Tier A edits keep the book
+- `npm run portable -- pack` opens the written file in the player and refuses a book whose step links point to a slide or step that
+  does not exist (`articleStep`, as `check` reports it; §9C.8)
+- The build and `pack` print the citeproc-js attribution (CPAL-1.0 Exhibit B) when citeproc formatted citations; built files do not carry it
+- `check` warns about an HTML table in the book that merges no cells (`articleHtmlTableNoSpan`: a pipe table would do, §9C.8)
+- Editor app, book (spec §9C, draft): lessons with a book open and can be edited (no more `article-unsupported`). **Preview ▾ → View: Slides / Slides and book / Book** arranges the preview's player and its book pane; the **Book** panel lists slides and sections that may not match (“Slides and book may not match”, **Mark as checked** records `articleLinks`), the book's errors and warnings, and a plain text field per book file. Saving an Egatari file after a book-only edit rebuilds only `#egatari-article` (tier A rules; `tierA(…, {article: {html}})`, code `article-changed` asks for it); rebuilding saves and folder exports keep the book. Step links in the book are checked in the preview's player.
+- Editor app, printing: **Print slides** and **Print book** (A4 portrait; links to slides print in the lesson's language as “→ slide 5, step 3”, or “→ slide 5” for step 0, spec §9C.13); without a book, **Print script** prints each slide small, in its final state, with its script.
+- The book tools (myst-parser and the article modules, `dist/article-tools.js`, about 350 KB gzip) and citeproc-js 2.4.63 (byte-identical to the npm file, not minified, with its LICENSE and the CPAL text in `dist/vendor/citeproc/`; in the Offline editor as a plain-text script element, byte for byte) are loaded only for lessons with a book (citeproc only when it cites references); `app.js` grows by about 17 KB gzip. When citeproc formats citations, the app shows its CPAL Exhibit B attribution under the book.
+- `deck-meta` carries `creators` (spec §4, egatari-spec b150f59), copied from `metadata.creators` like `license`, `copyright` and `attribution`, so a play-only file keeps them; omitted when there are none and checked against the schema. A working-folder build now writes the same four into its `deck-meta`
+- Player: the key list (`?`) shows the lesson's **File info** (title, created by, copyright, license, attribution; spec §7.3) from `deck-meta`, falling back to the index's `metadata` for files exported before this change
+- Book: `:::{table}` with `:class: row-headers` (spec §9C.6, egatari-spec bc0fd0d) makes the first cell of each body row a row header (`<th scope="row">`), styled like the header row
+- `node tools/changelog.mjs --rc X.Y.Z-rc.N` sets only the version for a release candidate (`package.json`, `package-lock.json` and the plugin manifests and marketplaces, as `--release` does, then re-runs `tools/make-llm-guide.mjs`; `CHANGELOG.md` and `changes/` untouched), so the rc tag equals "v" + the version (what `npm.yml` requires) and the candidate publishes to the `next` dist-tag
+- Player: three layouts, **Slides**, **Slides and book** and **Book** (Player P2), chosen with **View** or `r` and remembered on this
+  device; `?layout=slides|flow|split` and the embedding message `{egatari:"layout"}`; `metadata.primary: "read"` opens the book. The book
+  is the lesson's article; without one, **Read with script** shows each slide small with its steps' script
+- Player: the slides and the book follow one position (scrolling the book moves the slides, also in vertical writing), with a rule
+  marking the current part; during autoplay the book follows until you scroll it, then **Back to the playing part** brings it back
+- Player: **Read in the book** on a slide with a section, **Watch on slides** in the book (the slide over the book with its motion;
+  ← / →, Esc returns to the place you were reading), a resizable divider, and steps that play once as they scroll into view in
+  Read with script (final states with reduced motion)
+- Build: the folder build puts the book into the built lesson (`#egatari-readable`, format spec §9C.6) for the player, with its glyphs
+- Editor: the first screen has a small link **All parts** (パーツの一覧) after the samples. It opens the parts page `/parts/` in a new tab (relative to the site root; from the offline editor opened from disk, <https://studio.egatari.org/parts/>)
+- Player: reading aids in the book (Player P2): **Contents** (chapters and sections, or the slide titles, with the current one
+  marked), **Search** in the whole text (also in vertical writing; Ctrl+F / ⌘F in the book), **Back** after a jump, and a thin
+  progress bar (no page numbers)
+- Player: **Text and background**: text size in six steps, line spacing Normal / Wide and background White / Sepia / Black for the
+  book only, remembered on this device and never written into the file; figures in the book enlarge on a click
+- Player: reopening a lesson in the book continues where you left off on this device, with a one-time notice and **Start over**;
+  during autoplay Read with script highlights the turn being read
+- Self-study (`?mode=learn`, Player P1): the toolbar has Play / Pause, previous, next and Playback speed (0.75, 1, 1.25, 1.5, 2×; `<` / `>`),
+  with the narration's pitch kept and the timeline at the same speed; pause resumes from the same point and stepping while playing keeps
+  playing; no laser pointer, pens or presenter view. With `?embed=1`, `play`, `pause` and `rate` commands and the `state` event (Player P8)
+- Progress tracking (`kit/track.js`, Player P6, format spec §9.2): a SCORM 1.2 API, the parent of an `?embed=1` frame (`postMessage`) or
+  this device, the first found. Steps played on the slides (`via: "stage"`) and read in the book or script for 3 seconds (`via: "text"`)
+  are kept apart; a step the slides only reached by following the book is not played. Completion follows `metadata.completion`
+  including `played: true`. SCORM suspend data carries the `stage` and `text` sets beside `seen` (binding §2.2). With a SCORM API or an
+  embedding host, its location wins over the device's "Resumed where you left off". Egatari files list `scorm12`, `postmessage` and
+  `local` in `deck-meta.tracking`
+
+### Changed
+
+- The plugin manifests and marketplace entries carry `version`, equal to `package.json`'s; `changelog.mjs --release` sets them and `test-plugin` checks them, so installed tools update when a release is made. The skill texts name both Claude Code and Codex for installing and updating.
+- Dependencies: `myst-parser` 1.7.4, `myst-transforms` 1.3.51, `myst-ext-proof` 1.0.13, `myst-ext-exercise` 1.0.10, `vfile` 6.0.3 (build only;
+  the editor app does not load them yet)
+- Dependencies: `citeproc` 2.4.63 (citeproc-js, used under CPAL-1.0 from its CPAL-1.0+ OR AGPL-3.0+ choice; run by the build and, unmodified and loaded only for books with references, by the editor app; not in lessons or Egatari files), and the CSL styles `apa`, `ieee`, `sist02` and
+  the `en-US` and `ja-JP` locales (CC BY-SA 3.0) in `vendor/csl/`
+- Editor: the Audio panel's answers are now **Record your own voice** (the default), **Make AI voice in the cloud (Google Colab)**,
+  **Make AI voice on this computer**. With audio, it opens on the method of the newest audio (recording, Colab or this computer);
+  `studio.audioMethod` in `egatari.json` is no longer read or written, and the WebGPU-based default is gone (this replaces #85's cloud default)
+- Editor: the cloud is three numbered steps like the New dialog's (number badge, heading, one button): Export script, Run it in
+  Colab (with the Colab instructions as a–d), Import the audio; a step that happened on this page gets a ✓
+- Editor: on a phone, a tablet or a device with less than 8 GB of memory, **Make AI voice on this computer** and **Remake on this
+  computer** are shown but disabled with the reason; a lesson whose newest audio was made on a computer opens on the cloud there
+- Editor: **Voice** and **▶ Sample** are now the first line inside the chosen AI method (above step 1 for the cloud, above the
+  button for this computer) and are not shown while recording is chosen
+- Book, vertical writing (spec §9C.6, egatari-spec a72e440): tables are vertical too (`writing-mode: vertical-rl`: each row is a column, the first row on the right, cells top to bottom; 1–2 digit numbers in cells upright), on screen and in print. This replaces the horizontal tables with right-to-left columns (`direction: rtl`). Figures, display math and code stay horizontal
+- Book: `:::{table}` takes `:class: <names>` (spec §9C.2), written as `egatari-table-<name>` on the table's figure; `horizontal` keeps a table horizontal in a vertical book. `check` reports a malformed name as `articleTableClass`
+- Format spec copy (`vendor/egatari-spec`): the snapshot **wd-2026-11-05** (egatari-spec 81d7612), with the article-text fixtures `valid/table-class` and `valid/table-row-headers`
+- CI (`.github/workflows/test.yml`, `RELEASING.md` step 3): macOS runs the full `npm test` only for a push to `main`, a `v*` tag, and a dispatch with `full=true`; other runs there run the platform-sensitive set (`npm test -- --platform`) and the clean environment in one job. Linux and Windows are unchanged. Playwright WebKit is installed on macOS, so the WebKit tests run there
+- Tests: `npm test -- --platform` runs builds, checks, unit tests and the tests marked `// test-all: platform`; `TEST_TIMEOUT_SCALE` multiplies every wait's cap (`tools/wait-scale.mjs`, Playwright's default in `kit/browser.mjs`, the step cap); on machines with under 12 GiB the memory-heavy steps never overlap (`TEST_HEAVY_ALONE`); the summary prints the lowest free memory and the swap growth. `--only` now also runs the builds a step's arguments need
+- npm package: also runs with Bun (`bunx egatari`); a CI job (`bun`, Bun 1.4.4) runs `new`, `check`, `build` and `build --portable` with `bunx --bun` on the packed CLI and checks that both builds are byte-identical to Node's (`tools/bun-check.mjs`)
+- Components 2.0 lessons now use egatari/components **v2.2.0** by default (`components2.lock.json`; 2.1.2, 2.1.1, 2.1.0 and 2.0.0 stay available). Highlights: the shared base is 1.1.0, which measures the width of subscripts and superscripts (24px floor) instead of guessing it, so 41 parts get a new version (`m-kakijun` too, as base 1.1.0 is required everywhere). 30 parts' READMEs were revised. `m-codetree` is shown as a Huffman tree (ハフマン木). `m-score` 2.1.0 steps per measure with `by="measure"` (it requires base 1.1.0 and markup-reader 1.0.1; plot is 1.0.1). `m-kakijun` moves to the tier `extra`, so it is no longer ticked with the kokugo set in New… (the set is 漢文・古文・現代文). The free plan's size target for the AI instructions is raised from 40 to 45 KB (#169), and the pack body has one common line about the markup.
+- Book, vertical writing: tables are set from the top of the line (天付き): the table, its caption and body cells start at the top of the column instead of being centred; header cells (the header row and row headers) stay centred in their cells. Horizontal books are unchanged
+- Editor and docs: `metadata.creators` is called 作成者 / “Created by” (was 作り手 / “Creators”), the same as the player's File info; added to the terms list
+- Player: `?mode=learn` now opens **Slides and book** (**Slides and script** without a book) on wide screens and the book alone on
+  narrow ones (Player P2 defaults); before, it opened the slides alone. `?layout=slides` or the layout chosen on the device keeps the slides
+- Book: in vertical writing, numbers the build writes (headings such as 「第 4 章」 and 「1 春の朝」, captions, cross-references, equation
+  numbers) set a run of one or two digits upright, as in the text; 「1.2」 stays rotated whole (format spec §9C.6)
+- New… step 4 takes part names from the `display` field of the default parts library manifest (copied by `npm run gen`; `npm run gen:check` compares them). Only parts without a `display` keep a local name in `kit/core/part-labels.mjs`. Renamed: `m-codetree` 符号の木 → ハフマン木, Code tree → Huffman tree. The instructions for the chat AI do not change
+- Egatari Player 1.3.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release (files from earlier versions keep their own player), with these additions since 1.2.0:
+  - three layouts (Slides, Slides and book, Book) that follow one position, with Read in the book / Watch on slides and Read with script (Player P2);
+  - reading aids in the book: Contents, Search, Back, a progress bar, Text and background, and resuming where you left off;
+  - self-study (`?mode=learn`), with Play / Pause and Playback speed (Player P1, P8);
+  - progress tracking through SCORM 1.2, an embedding parent or this device (Player P6), which pauses when the page is hidden;
+  - the book pane isolated from slide themes' element rules, and vertical tables set from the top of the line;
+  - a fullscreen fallback and message;
+  - File info in the key list (`?`): title, created by, copyright, license and attribution (spec §7.3);
+  - a key list that fits a 1280-wide window and phone width.
+- `render/render.mjs --only` also accepts a slide key or slide id, meaning all of that slide's steps (`--only 更新の式`); step keys (`slideKey:step`) work as before. An item that matches nothing is now an error that lists the valid slide keys, instead of a warning that rendered nothing.
+- Every build, also the working folder's `out/deck.html`, writes `deck-meta.completion` from `metadata.completion`
+- Playback pauses when the page is hidden (Player P3)
+- `metadata.completion` may combine `visitedFraction` or `reachedEnd` with `played: true` (it was refused as more than one rule)
+
+### Fixed
+
+- Player, book: the book pane (`book` and `split` layouts) is isolated from a slide theme's element rules. Its elements are reset with `all: revert` at ID specificity before the book's own styles, so a theme's bare `table{font-size:28px}`, `li`, `p`, `code`, `figcaption`, `h2`, `rt`, … no longer reach `#egatari-article` (tables were 28px in an 18px book). The book in the player now matches the standalone `deck.article.html`; table cells are start-aligned
+- Slide layout (`kit/layouts.css`): the element rules `table`, `th`, `td`, `td.r`, `rt`, `svg text`, `svg .mi`, `.katex` and `.katex-display` apply inside `.slide` only (`:where(.slide)`, same specificity; slides look the same and themes still override them)
+- Each vendored parts library 2.x catalogue now resolves exactly the files its own release shipped. The parts library may fix a part's README, demo or CHANGELOG without a new part version (versions change only when `index.js` changes); `tools/components2-update.mjs` used to repoint the part version to the newest release's files, so older catalogues (and their frozen `/parts/v<version>/` gallery) no longer matched their `manifest-<version>.json` (2.0.0-rc.1, 2.0.0 and 2.1.0 already differed in `tape`/`timer` demos and many `CHANGELOG.md` files). `components2.lock.json` now records, per catalogue, the content hash of every part (`catalogues.<version>.content`); the gallery, the AI instruction pack, the parts list and its thumbnails resolve a part through its catalogue. An import that changes only a part's ancillary files adds a new copy for the new catalogue and keeps the old one; the same version with a different `index.js` is still refused. `components.lock.json` is unchanged (the build keeps reading and recording the same `index.js`), so built lessons and Egatari files do not change. The existing catalogues were re-imported from their verified release tarballs; `node tools/components2-update.mjs --check` now checks every catalogue's files against its manifest. A `components2.lock.json` without `content` still works (parts resolve by version as before).
+- `check` takes a working folder, as `build` does (it checks the folder's `deck.html`); before, a folder was refused as "not a regular file (FIFO, device or socket)"
+- Editor, AI paste (Revise…, Replace): the quality check after the rebuild now waits as long as the build may take (its 60 s limit plus 20 s) for the preview. On a slow computer the rebuild and the preview took more than the 20 s it waited before, and the check was skipped without a word (no panel, no result)
+- Viewer: a new version no longer takes over while a chosen file is being read and checked. Only a lesson that had started counted before, so a takeover in that moment reloaded the page and the file did not open
+- Quality check (command and editor): the contrast check reads `rgb()` colours directly instead of through a canvas (canvases are now CPU-backed, `willReadFrequently`). On a busy macOS CI runner every pair was once reported as 1.00:1 `contrastLow`, which a canvas readback of 0,0,0 would give
+- `check` and `build` name the command that works where you ran them: `npx egatari ids` from the egatari command, `node <path>/tools/ids.mjs` when the kit runs from outside its folder (they always said `npm run ids`)
+- Player: the key list (`?`) no longer cuts off the Tools column at the right edge of a 1280-wide window or overflows at phone width: the card is up to 1000px wide and the descriptions wrap
+- The quality check’s “Copy a fix request for your AI” dialog has a **Copy the fix request** button beside the text, so the request can be copied again after the clipboard was overwritten; the note says the size, like the other copy steps (“Copied (N KB …)”)
+- When the browser refuses the clipboard, “Copy the instructions” (New step 4, Insert slides step 2), “Copy the fix request” (Revise step 2), “Copy instructions to resend” and the outline’s “Copy the instructions for slides a–b” show the whole text, selected, under the message, and keep the step open; before, the message pointed to “the text below” that was not there
+- Viewer: the player's **Fullscreen** button and `f` did nothing in Egatari Viewer (the lesson's frame has no fullscreen permission, so
+  every browser refused). The lesson now asks the page, which puts the frame itself into fullscreen and reports the state back, so the
+  button shows pressed, and Esc, the button and `f` leave it; this works with any player inside the file. The frame still gets no
+  fullscreen permission, and the page's `Permissions-Policy` now says `fullscreen=(self)`
+- Player: fullscreen falls back to `webkitRequestFullscreen` (older iPadOS Safari), and says “Could not go fullscreen” when the browser
+  refuses instead of failing silently. Where the browser has no element fullscreen (iPhone Safari) or a frame does not allow it, the bar
+  has no fullscreen button and the key list leaves out `f`
+- `tools/site-versions.mjs assemble` (and so the `pages` workflow's build on an rc tag) no longer fails with `bad current version` when `package.json` is `X.Y.Z-rc.N`: it makes no `/v…/` copy for an rc and lists full releases only (RELEASING.md)
+- Egatari Player 1.3.1 (the bundled player that files carry, `player` in the index and `deck-meta`): patch release after 1.3.0 (in the release candidates only), found on an iPad mini:
+  - vertical text (`.tate`) in a horizontal slide wraps into columns inside the slide on iPad and in Safari (WebKit took its `height: 100%` from the window, so the column ran past the slide's bottom in the small slides of Read with script and in Watch on slides);
+  - in the Book layout without a book (Read with script), the small slides no longer stay fixed over the text: each shows its slide's final state and scrolls with the script like a figure, and scrolling the script no longer plays steps, so the script is never hidden behind a slide (before, the slide was pinned at the top and the script slid under it). Tap a small slide to open it in Watch on slides; during playback the playing slide stays live on its card and the text follows it (with reduced motion, each step's final state);
+  - on touch screens the divider between the slides and the book or script can be grabbed 18 px on either side of the line (44 px in all); the line looks the same.
+- A heading or title that itself contains 「」 is no longer quoted as 「「春暁」を読む」 in the Japanese messages (stale slide/book links from `check` and the editor, the narration and link checks, the build warnings, the editor's slide names and undo lines, and the AI fix and insert requests). The inner 「」 become 『』, giving 「『春暁』を読む」, by one shared helper (`kit/core/quote-ja.mjs`). English messages are unchanged.
+- `npm run sheet -- <folder>/deck.html` writes the sheet to `<folder>/out/sheet.png`, as for the folder, instead of `deck.sheet.png` beside the source
+- Themes: a relative `url(...)` in a theme's `tokens.css` (directly, or via a custom property such as `--cover-bg: url(cover.png)`) is now
+  inlined as a `data:` URI, so the image shows in any shipped file; it stays inside the theme folder (like logos), enters the theme sha256 and
+  the portable file's `themes/<name>/`, and the editor reads such images from a theme ZIP too
+
+### Security
+
+- Book text: markdown-it 13.0.2 (under myst-parser 1.7.4) has five advisories, and three are reachable with the book text of an opened file
+  (smartquotes GHSA-r7fv-28h4-cvq7 and GHSA-6v5v-wf23-fmfq, inline HTML GHSA-vfgh-jcmw-g37q; a 1 MiB paragraph took about a minute). The check now
+  refuses a book with a paragraph of more than 512 quotation marks (`"` and `'`) or 64 tag openings (`<!`, `<?`) before parsing it
+  (`articleUnsafeParagraph`, with the section, paragraph and line), in the CLI and the editor; below the limits nothing changes. markdown-it 14.3.3
+  cannot be forced yet (myst-parser and its plugins import a file 14 removed); it comes in v0.6.6 with the bundled book tools. Until then the audit
+  workflow allows exactly these five advisories (`tools/audit-check.mjs`; any other advisory at high or above still fails). SECURITY.md has the details
+- If you installed `egatari` from npm: `npm audit` reports these five markdown-it 13.0.2 advisories. Only the tools that read a book (`build`, `check`, `ids`, `portable pack`
+  and the editor app) are concerned; playing is not (Egatari Viewer and the player in an Egatari file contain no markdown-it). Do not force
+  markdown-it 14 with `npm audit fix --force` or `overrides` (it breaks the book tools in 0.6.5); update to v0.6.6 instead (SECURITY.md)
+
 ## [0.6.4] - 2026-11-04
 
 ### Migration
@@ -1046,7 +1194,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.4...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.5...HEAD
+[0.6.5]: https://github.com/egatari/egatari-studio/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/egatari/egatari-studio/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/egatari/egatari-studio/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/egatari/egatari-studio/compare/v0.6.1...v0.6.2
