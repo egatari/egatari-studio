@@ -6,3 +6,6 @@
 
 ### Changed
 - Egatari Viewer: one line under **ファイルを開く** says that a copy of each opened file is kept on this device (up to 10), or that nothing is kept, with a link to the 「共有の端末」 switch and 「すべて削除」.
+
+### Added
+- Privacy page ([docs/privacy.md](docs/privacy.md), [日本語](docs/privacy.ja.md)): what Studio, the player and Egatari Viewer send over the internet and keep on the device, how schools can check or block it, site logs, and how long the Live server keeps a Live's contents. An appendix points to the code.

@@ -1,6 +1,6 @@
 # Security
 
-See also the [threat model](docs/threat-model.md) (what is protected, from whom, and where each protection lives in the code).
+See also the [threat model](docs/threat-model.md) (what is protected, from whom, and where each protection lives in the code), and the [privacy page](docs/privacy.md) (what is sent over the internet and what is kept on the device).
 
 ## Trust model: a deck is code
 
