@@ -667,7 +667,7 @@
    "group": "Structure and playback",
    "en": "presentation bar",
    "ja": "発表の帯",
-   "definition": "Egatari Viewer v0.7: the bar of presentation controls in the Viewer. It has no visible label in the UI; the name is for docs, specs and code reviews only.",
+   "definition": "Egatari Viewer v0.7: the bar of presentation controls in the Viewer (the player's bar today, unchanged). It has no visible label in the UI; the name is for docs, specs and code reviews only.",
    "avoid": {
     "ja": [],
     "en": []
@@ -678,23 +678,69 @@
    "note": "Viewer v0.7 term (not in the UI yet)."
   },
   {
-   "id": "annotation-bar",
+   "id": "markup-bar",
    "group": "Structure and playback",
-   "en": "annotation bar",
-   "ja": "書き込みの帯",
-   "definition": "Egatari Viewer v0.7: the bar for marking up the slide while viewing; it opens from its button 「書き込み」 / “Annotate”.",
+   "en": "Markup",
+   "ja": "マークアップ",
+   "definition": "Egatari Viewer v0.7: the learner's bar for marking up a lesson while reading or viewing (highlight, pen, note, recall, export), and its toggle button at the right end of the presentation bar. The name iPad uses for its pen bar (Photos, PDF, Notes).",
    "avoid": {
     "ja": [
      "学習モード"
     ],
     "en": [
+     "annotation bar",
      "writing bar"
     ]
    },
    "internal": "",
-   "decided": "2026-11-05",
+   "decided": "2026-11-06",
    "by": "owner",
-   "note": "Viewer v0.7 term (not in the UI yet). Avoid “writing” for the bar or its button (it reads as authoring) and 「学習モード」. 書き込み is still an avoid word of comment (コメント) in the editor; the Viewer's button keeps it."
+   "note": "Viewer v0.7 term (not in the UI yet). 書き込み stays an avoid word (of comment); 「学習モード」 is avoided because the modes were removed. Spec and docs keep “annotation” as the umbrella term (W3C Web Annotation, spec annotations.md); the learner's pen in this bar is the existing term pen (ペン), its tooltip says it is saved."
+  },
+  {
+   "id": "highlight",
+   "group": "Structure and playback",
+   "en": "Highlight",
+   "ja": "ハイライト",
+   "definition": "Egatari Viewer v0.7: a learner's colour mark over text in the book or script (Kindle, Apple Books). Not the Studio edit tool marker (マーカー).",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-06",
+   "by": "owner",
+   "note": "Viewer v0.7 term (not in the UI yet). マーカー / Marker stays the Studio edit-mode tool."
+  },
+  {
+   "id": "note",
+   "group": "Structure and playback",
+   "en": "Note",
+   "ja": "メモ",
+   "definition": "Egatari Viewer v0.7: a learner's note anchored to text, a figure or a slide (Kindle, Apple Books). Not comment (コメント), which stays the note to the AI.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-06",
+   "by": "owner",
+   "note": "Viewer v0.7 term (not in the UI yet). コメント / Comment stays the note to the AI."
+  },
+  {
+   "id": "recall",
+   "group": "Structure and playback",
+   "en": "Recall",
+   "ja": "暗記",
+   "definition": "Egatari Viewer v0.7: the switch in the markup bar that hides highlighted text; tapping reveals it one by one.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-06",
+   "by": "owner",
+   "note": "Viewer v0.7 term (not in the UI yet)."
   },
   {
    "id": "presenter-view",

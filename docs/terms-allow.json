@@ -17,7 +17,8 @@
   "noPairs": [
     "book",
     "format-version",
-    "no-results"
+    "no-results",
+    "note"
   ],
   "allow": [
     {
