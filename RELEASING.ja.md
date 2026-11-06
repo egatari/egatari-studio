@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=5e9bd2760f4b2ca2 -->
+<!-- i18n: pair=RELEASING.md sha256=559a10a5cce94506 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -72,6 +72,7 @@
    ```
 
 8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/>・<https://studio.egatari.org/vX.Y.Z/>・前のリリースの `/v…/`・<https://studio.egatari.org/parts/>（すべてのパーツのサンプル）を開く（その記録に、置いた凍結した写しと、各版のページをどのリリースから取ったかが並ぶ）。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
+   **置く版の下限。** `tools/site-versions.mjs` の `HOSTED_FROM`（いまは `0.6.0`。2026-11-06 の作者の決定）より前のリリースは広げない。その `/vX.Y.Z/` は、GitHub のリリースと最新版へのリンクを出す日本語と英語の短いページになり、記録には版ごとに 1 行が出る。版の一覧には出ない。サイトが 800 MB を超えた知らせ（1 GB を超えると失敗）が出たら、その知らせが置いている最も古い版を挙げるので、`HOSTED_FROM` を知らせの勧める版にするコミットを `main` に入れ、もう一度置く。リリースに添えたファイルはそのままでよい。ファイルの名前を `editor-site-vX.Y.Z.tar.gz` に戻しても、下限より前の版はまた置かれない（[docs/editor.ja.md](docs/editor.ja.md#版ごとの-url凍結した写し)）
    ブラウザが受け取る圧縮した応答も確かめる：`curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` が `200` を出すこと（圧縮した 404 がキャッシュに残り、ドメインを替えても消えないことがある）
 
 ## v0.6.6 の前に
