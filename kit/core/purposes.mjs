@@ -59,8 +59,8 @@ const NOTES = {
   'change:m-bars': T('点が少ないとき', 'few points'),
   'part-whole:m-bars': T('積み上げ', 'stacked'),
   'part-whole:m-market': T('入れ子', 'nested'),
-  'hierarchy:m-codetree': T('符号の木だけ', 'code trees only'),
-  'process:m-codetree': T('符号の木で復号', 'decoding with a code tree'),
+  'hierarchy:m-codetree': T('ハフマン木だけ', 'Huffman trees only'),
+  'process:m-codetree': T('ハフマン木で復号', 'decoding with a Huffman tree'),
 };
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);

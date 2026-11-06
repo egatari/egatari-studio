@@ -39,7 +39,7 @@ const LOCAL = {
   'm-kanbun': { ja: '漢文', en: 'Kanbun', icon: 'kanbun', desc: { ja: '返り点を付けて訓読の順にたどり、書き下す', en: 'Return marks, reading order and the rendered text' } },
   'm-kobun': { ja: '古文', en: 'Kobun', icon: 'kobun', desc: { ja: '語に切って品詞を色分けし、現代語訳と並べる', en: 'Words split and coloured by part of speech, with a modern translation' } },
   'm-gendai': { ja: '現代文の読解', en: 'Modern text reading', icon: 'gendai', desc: { ja: '傍線・指す内容への矢印・段落の役割を図にする', en: 'Underlines, arrows to what words refer to, and paragraph roles' } },
-  'm-codetree': { icon: 'codetree', desc: { ja: '符号を木の枝でたどる', en: 'Codes traced along the branches of a tree' } },
+  'm-codetree': { icon: 'codetree', desc: { ja: 'ハフマン木で 0 と 1 の並びを復号する', en: 'Decodes a string of 0s and 1s with a Huffman tree' } },
   'm-map-japan': { ja: '日本地図', en: 'Map of Japan', icon: 'map', desc: { ja: '都道府県を塗り分け、点や矢印を置く', en: 'Prefectures shaded, with points and arrows' } },
   'm-predict': { ja: '予想と答え', en: 'Predict and check', icon: 'predict', desc: { ja: '予想を聞いてから答えを見せる', en: 'Asks for a guess, then shows the answer' } },
   'm-timer': { ja: 'タイマー', en: 'Timer', icon: 'timer', desc: { ja: '演習やグループワークの残り時間', en: 'Time left for an exercise or group work' } },
@@ -56,6 +56,7 @@ const LOCAL = {
   'm-map-world': { ja: '世界地図', en: 'World map', icon: 'mapworld', desc: { ja: '国や地域を塗り分け、点や矢印を置く', en: 'Countries shaded, with points and arrows' } },
   'm-cards': { ja: 'カード', en: 'Cards', icon: 'menu', desc: { ja: 'アイコン付きのカードを並べて 1 枚ずつ出す', en: 'Cards with icons, shown one at a time' } },
   'm-score': { ja: '楽譜', en: 'Score', icon: 'keyboard', desc: { ja: '五線譜を 1 音ずつ出して鳴らす', en: 'Staff notation, one note at a time, with sound' } },
+  'm-particles': { icon: 'cycle', desc: { ja: '粒子の動きで、状態や変化の仕組みを見せる', en: 'Particles in motion, showing how a state or a change works' } },
   'm-orbit': { ja: '月の満ち欠け', en: 'Moon phases', icon: 'cycle', desc: { ja: '月の位置と見える形を並べて動かす', en: 'The Moon’s position and its visible shape, moving together' } },
 };
 // 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）

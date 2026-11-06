@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: 68eeb33a
+Instruction version: e65089a5
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
@@ -306,7 +306,7 @@ Data example (child `<script type="application/json">`): `{"question":"重い球
 | `poll` | string | `""` | Live poll ID (receives no live counts; viewer/author counts are used) |
 | `ticks` | bool | `true` | 数の軸の目盛りと格子 |
 
-「A だと思う人〜」と手を挙げてもらい、先生が −1・＋1 で数える（数を打ち込んでもよい）。一人で学習者は選択肢を押すと自分の予想になる。
+「A だと思う人〜」と手を挙げてもらい、先生が −1・＋1 で数える（数を打ち込んでもよい）。一人で自習する学習者は、選択肢を押すと自分の予想になる。
 
 - 選択肢は 2〜6。動画・印刷・最初の表示は `counts`（無ければ 0）。同じスライドにいるあいだは数が残る（答えのステップでも、戻っても）
 - 台本は `counts` の数で書き、数える所は `{note:ここで手を挙げてもらう}` と書く（丸かっこは読み上げられる）

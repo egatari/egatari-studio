@@ -20,11 +20,11 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 
 A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
-This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-market`); [tools](llm-parts/tools.md) (`m-timer`); [science](llm-parts/science.md) (`m-orbit`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
+This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-market`); [tools](llm-parts/tools.md) (`m-timer`); [science](llm-parts/science.md) (`m-orbit`, `m-particles`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
 
 | Pack | Size | Cap | Paste length | Cap |
 |---|---:|---:|---:|---:|
-| Free plan: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 35.4 KB | 45 KB | 30,525 | 31,000 |
+| Free plan: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 35.4 KB | 45 KB | 30,530 | 31,000 |
 | Free plan: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 33.6 KB | 45 KB | 30,751 | 31,000 |
 | Free plan: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare left out) | 33.3 KB | 45 KB | 30,810 | 31,000 |
 | Free plan: standard + maps (the core four shortened too) | 34.2 KB | 45 KB | 30,931 | 31,000 |
@@ -33,9 +33,9 @@ This file and the part set packs together are the **full pack**: the standards, 
 | Free plan: standard + music (the core four shortened too) | 30.6 KB | 45 KB | 28,150 | 31,000 |
 | Free plan: standard + business (the core four shortened too) | 32.8 KB | 45 KB | 29,348 | 31,000 |
 | Free plan: standard + tools (the core four shortened too) | 29.7 KB | 45 KB | 27,436 | 31,000 |
-| Free plan: standard + science (the core four shortened too) | 32.9 KB | 45 KB | 28,663 | 31,000 |
-| Paid plan: every standard part | 70.8 KB | 150 KB | — | — |
-| Paid plan: every part set (this file and every set pack) | 123.9 KB | 150 KB | — | — |
+| Free plan: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn left out) | 37.4 KB | 45 KB | 30,773 | 31,000 |
+| Paid plan: every standard part | 70.9 KB | 150 KB | — | — |
+| Paid plan: every part set (this file and every set pack) | 130.3 KB | 150 KB | — | — |
 
 All of them are generated by `node tools/make-llm-guide.mjs` from [contract.md](contract.md), the component READMEs and `tools/llm-guide/`; do not edit them by hand.
 
@@ -45,7 +45,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `68eeb33a`
+Pack version: `e65089a5`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -143,7 +143,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 Some parts are not included in these instructions (for Spread, Compare (amounts or features), Two quantities, Steps of a process, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.2.0/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.4.0/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 
@@ -463,7 +463,7 @@ Data example (child `<script type="application/json">`): `{"question":"重い球
 | `poll` | string | `""` | Live poll ID (receives no live counts; viewer/author counts are used) |
 | `ticks` | bool | `true` | 数の軸の目盛りと格子 |
 
-「A だと思う人〜」と手を挙げてもらい、先生が −1・＋1 で数える（数を打ち込んでもよい）。一人で学ぶ人は選択肢を押すと自分の予想になる。
+「A だと思う人〜」と手を挙げてもらい、先生が −1・＋1 で数える（数を打ち込んでもよい）。一人で自習する学習者は、選択肢を押すと自分の予想になる。
 
 - 選択肢は 2〜6。動画・印刷・最初の表示は `counts`（無ければ 0）。同じスライドにいるあいだは数が残る（答えの段階でも、戻っても）
 - 口述原稿は `counts` の数で書き、数える所は `{note:ここで手を挙げてもらう}` と書く（丸かっこは読み上げられる）

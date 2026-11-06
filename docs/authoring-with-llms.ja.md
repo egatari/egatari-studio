@@ -20,22 +20,22 @@
 
 登録した指示は自動では新しくなりません。指示のはじめに **指示の版：…** の行があるので、編集アプリが新しくなったらコピーし直した指示の版と比べ、違えば登録したものを差し替えます。make スキル（`plugins/egatari/skills/make/`）も同じ正本から作ります。2 つのファイルを書き、ローカルの品質チェック・組み立て・音声を付ける手順は別の studio スキル（`skills/studio/`）が案内します。
 
-このファイルと束の指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべての部品（用途のとても限られる特殊のパーツは指示に入れない）。このファイルはいつも標準の部品を説明します。**束の指示**はそれぞれ、ある種類の材料の専門の部品を足す：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-market`）、[tools](llm-parts/tools.ja.md)（`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`）。編集アプリの新規作成は、標準の部品と、パーツの一覧で印の付いたパーツの束をコピーします。無料のプランでは、中核の 4 つのほかの標準の部品は一覧の 1 行だけにして、標準すべてが無料のプランの上限に収まるようにします。無料のプランの上限は 45 KB と、貼り付けの長さ（UTF-16 の単位の数＋改行の数。Gemini が貼り付けを切るあたり）の 31,000 の、先に届くほうです。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、その束を入れた無料のプランの指示を出す。`--plan paid` を付けるとどの部品も詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024。貼り付けの長さは UTF-16 の単位の数＋改行の数で、CRLF で貼られることがあるため改行を 2 つに数える）：
+このファイルと束の指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべての部品（用途のとても限られる特殊のパーツは指示に入れない）。このファイルはいつも標準の部品を説明します。**束の指示**はそれぞれ、ある種類の材料の専門の部品を足す：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-market`）、[tools](llm-parts/tools.ja.md)（`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`・`m-particles`）。編集アプリの新規作成は、標準の部品と、パーツの一覧で印の付いたパーツの束をコピーします。無料のプランでは、中核の 4 つのほかの標準の部品は一覧の 1 行だけにして、標準すべてが無料のプランの上限に収まるようにします。無料のプランの上限は 45 KB と、貼り付けの長さ（UTF-16 の単位の数＋改行の数。Gemini が貼り付けを切るあたり）の 31,000 の、先に届くほうです。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、その束を入れた無料のプランの指示を出す。`--plan paid` を付けるとどの部品も詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024。貼り付けの長さは UTF-16 の単位の数＋改行の数で、CRLF で貼られることがあるため改行を 2 つに数える）：
 
 | 指示 | 大きさ | 上限 | 貼り付けの長さ | 上限 |
 |---|---:|---:|---:|---:|
-| 無料のプラン：標準のパーツすべて（`m-bars`・`m-flow`・`m-menu`・`m-predict` のほかは一覧の 1 行だけ） | 36.1 KB | 45 KB | 21,935 | 31,000 |
+| 無料のプラン：標準のパーツすべて（`m-bars`・`m-flow`・`m-menu`・`m-predict` のほかは一覧の 1 行だけ） | 36.1 KB | 45 KB | 21,940 | 31,000 |
 | 無料のプラン：標準＋stats（中核の 4 つも一覧の 1 行だけ） | 37.7 KB | 45 KB | 23,866 | 31,000 |
 | 無料のプラン：標準＋math（中核の 4 つも一覧の 1 行だけ） | 38.0 KB | 45 KB | 24,360 | 31,000 |
-| 無料のプラン：標準＋maps | 43.1 KB | 45 KB | 26,721 | 31,000 |
+| 無料のプラン：標準＋maps | 43.1 KB | 45 KB | 26,726 | 31,000 |
 | 無料のプラン：標準＋kokugo（中核の 4 つも一覧の 1 行だけ） | 37.6 KB | 45 KB | 22,364 | 31,000 |
-| 無料のプラン：標準＋english | 37.8 KB | 45 KB | 22,927 | 31,000 |
-| 無料のプラン：標準＋music | 39.4 KB | 45 KB | 23,947 | 31,000 |
-| 無料のプラン：標準＋business | 41.7 KB | 45 KB | 25,242 | 31,000 |
-| 無料のプラン：標準＋tools | 38.5 KB | 45 KB | 23,400 | 31,000 |
-| 無料のプラン：標準＋science | 41.7 KB | 45 KB | 24,704 | 31,000 |
+| 無料のプラン：標準＋english | 37.8 KB | 45 KB | 22,932 | 31,000 |
+| 無料のプラン：標準＋music | 39.4 KB | 45 KB | 23,952 | 31,000 |
+| 無料のプラン：標準＋business | 41.7 KB | 45 KB | 25,247 | 31,000 |
+| 無料のプラン：標準＋tools | 38.5 KB | 45 KB | 23,405 | 31,000 |
+| 無料のプラン：標準＋science（中核の 4 つも一覧の 1 行だけ） | 40.0 KB | 45 KB | 23,468 | 31,000 |
 | 有料のプラン：標準のパーツすべて | 71.7 KB | 150 KB | — | — |
-| 有料のプラン：すべての束（このファイルとすべての束の指示） | 125.6 KB | 150 KB | — | — |
+| 有料のプラン：すべての束（このファイルとすべての束の指示） | 131.9 KB | 150 KB | — | — |
 
 どれも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・部品の README・`tools/llm-guide/` から作るので、手で直さない。
 
@@ -45,7 +45,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 # AI への指示
 
-指示の版：`68eeb33a`
+指示の版：`e65089a5`
 
 短い **Egatari の教材**を 1 つ書いてください。段階ごとに出る HTML のスライド（`deck.html`）と口述原稿（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと口述原稿は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -143,7 +143,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 この指示に入っていないパーツもある（ばらつき・比べる（量・特徴）・2 つの量の関係・手順・工程・場所・地図・全体と内訳・循環など）。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）
 
-各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v2.2.0/components/<名前>/README.md（名前は `m-` を除いたもの）
+各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v2.4.0/components/<名前>/README.md（名前は `m-` を除いたもの）
 
 - **R-whole** 箇条書き・数字の札・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）
 
@@ -463,7 +463,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 | `poll` | string | `""` | 投票の id（今は見る人・作者の数を使う） |
 | `ticks` | bool | `true` | 数の軸の目盛りと格子 |
 
-「A だと思う人〜」と手を挙げてもらい、先生が −1・＋1 で数える（数を打ち込んでもよい）。一人で学ぶ人は選択肢を押すと自分の予想になる。
+「A だと思う人〜」と手を挙げてもらい、先生が −1・＋1 で数える（数を打ち込んでもよい）。一人で自習する学習者は、選択肢を押すと自分の予想になる。
 
 - 選択肢は 2〜6。動画・印刷・最初の表示は `counts`（無ければ 0）。同じスライドにいるあいだは数が残る（答えの段階でも、戻っても）
 - 口述原稿は `counts` の数で書き、数える所は `{note:ここで手を挙げてもらう}` と書く（丸かっこは読み上げられる）

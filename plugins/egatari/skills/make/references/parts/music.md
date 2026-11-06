@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # music のパーツ
 
-指示の版：68eeb33a
+指示の版：e65089a5
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

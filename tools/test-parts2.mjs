@@ -492,9 +492,9 @@ for (const [code, what] of [
   const v220 = lock2.catalogues['2.2.0'];
   const LIBRARIES_220 = ['boxplot-core', 'codetree-core', 'expr', 'heatmap-core', 'hist-core', 'icons', 'kanbun-core', 'shape'];
   const bumped220 = Object.keys(v220.parts).filter((n) => !LIBRARIES_220.includes(n));
-  ok(lock2.default === '2.2.0' && v220 && v220.tag === 'v2.2.0' && v220.tarballSha256 === 'abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2' &&
+  ok(v220 && v220.tag === 'v2.2.0' && v220.tarballSha256 === 'abec0042fefb438b28df88b8af38b7b07577c61140b5576f4fff5e1d43deb3a2' &&
     v220.manifestSha256 === '26b3e9b50956ac0f70f6f132cf2af2de0de3d684f3df8c2181b6c2eb4d878ec1',
-    'components 2.2.0 (release tag v2.2.0) is the default and pinned to its tarball');
+    'components 2.2.0 (release tag v2.2.0) is pinned to its tarball');
   ok(LIBRARIES_220.every((n) => v220.parts[n] === v212.parts[n]),
     'the 8 untouched library parts keep their 2.1.2 version in components 2.2.0 (README-only refresh, index.js unchanged)');
   ok(bumped220.length === 41 && bumped220.every((n) => v220.parts[n] !== v212.parts[n]) && v220.parts.kakijun === '2.0.1' && v220.parts.kakijun !== v212.parts.kakijun,
@@ -505,6 +505,34 @@ for (const [code, what] of [
   ok(v220.parts.base === '1.1.0' && v220.parts['markup-reader'] === '1.0.1' && v220.parts.plot === '1.0.1' &&
     v220.parts.score === '2.1.0' && lock2.parts.score['2.1.0'].requires.base === '1.1.0',
     'components 2.2.0: base 1.1.0 / markup-reader 1.0.1 / plot 1.0.1 bump together; m-score 2.1.0 adds per-step (by="measure") and requires both');
+  // 候補 2.3.0（components 側はまだタグ・リリースなし。branch c2-base d26231c）：版が上がるのは m-codetree 2.0.3 だけ（要素の
+  // aria-label を表示名のハフマン木 / Huffman tree に合わせる、#168）。版を上げずに変わったのは codetree-core 1.0.0（README）、
+  // icons 1.0.0（README と、アイコンの名前の言葉 en.json・ja.json が新しく入る。編集アプリのアイコンの検索が使う）、
+  // m-predict 2.0.3（README：学ぶ人 → 学習者）で、どれも index.js はそのまま（refreshed）。manifest・tarball の sha256 は manifest.json のもの
+  const v230 = lock2.catalogues['2.3.0'];
+  ok(v230 && v230.tag === 'v2.3.0' && v230.tarballSha256 === '46480ea715b73ef01bed807501316df96f5aacb63a96fa01af5cf14ede7f0f39' &&
+    v230.manifestSha256 === 'da1c17682f3b6df228453e4acc0b90d3e9c4c71d3fe9cf2cf8fa3f7de4d8b205',
+    'components 2.3.0 is pinned to the released tarball (v2.3.0)');
+  const bumped230 = Object.keys(v230.parts).filter((n) => v230.parts[n] !== v220.parts[n]);
+  ok(Object.keys(v230.parts).length === Object.keys(v220.parts).length && bumped230.join() === 'codetree' && v220.parts.codetree === '2.0.2' && v230.parts.codetree === '2.0.3' &&
+    lock2.parts.codetree['2.0.3'].sha256 === '3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3',
+    `CANDIDATE 2.3.0: only m-codetree gets a new version (2.0.2 → 2.0.3) (${bumped230.join(', ')})`);
+  const codetreeJs = fs.readFileSync(partFile('codetree', '2.0.3'), 'utf8');
+  ok(codetreeJs.includes('"ハフマン木で "') && codetreeJs.includes('" with the Huffman tree: "') && !/符号の木|code tree/i.test(codetreeJs),
+    'CANDIDATE 2.3.0: m-codetree 2.0.3 names itself ハフマン木 / Huffman tree in its aria-label (「ハフマン木で…を復号」 / "Decoding … with the Huffman tree")');
+  const changed230 = Object.keys(v230.content).filter((n) => !bumped230.includes(n) && v230.content[n] !== v220.content[n]).sort();
+  ok(changed230.join() === 'codetree-core,icons,predict', `CANDIDATE 2.3.0: only codetree-core@1.0.0, icons@1.0.0 and predict@2.0.3 change without a version bump (${changed230.join(', ')})`);
+  const iconsDir = path.join(ROOT, 'vendor', 'components', 'sha256', v230.content.icons);
+  ok(['en.json', 'ja.json'].every((f) => fs.existsSync(path.join(iconsDir, f))) && ['en.json', 'ja.json'].every((f) => !fs.existsSync(path.join(ROOT, 'vendor', 'components', 'sha256', v220.content.icons, f))),
+    'CANDIDATE 2.3.0: icons 1.0.0 brings en.json and ja.json (icon words for the editor\'s icon search); the 2.2.0 copy has none');
+  // 部品庫 2.4.0（リリース a383099、c2-base 54bf442）：新しいパーツ m-particles 2.0.0（理科の束）だけ。ほかのパーツは版も中身も 2.3.0 のまま
+  const v240 = lock2.catalogues['2.4.0'];
+  ok(lock2.default === '2.4.0' && v240 && v240.tag === 'v2.4.0' && v240.tarballSha256 === '4e8202f3b4cd742a78560789976f622c0f0c0380e3452a0274a952b25ee9574d' && v240.manifestSha256 === '468299a10cdb1336f370ff3c16032bd0dc1aef4e271613b64651d68efe06889e',
+    'components 2.4.0 is the default and pinned to the released tarball and manifest (v2.4.0)');
+  const added240 = Object.keys(v240.parts).filter((n) => !(n in v230.parts));
+  const bumped240 = Object.keys(v230.parts).filter((n) => v240.parts[n] !== v230.parts[n]);
+  ok(added240.join() === 'particles' && v240.parts.particles === '2.0.0' && bumped240.length === 0,
+    `2.4.0: only m-particles 2.0.0 is new; no other part changes version (new: ${added240.join(', ')}; bumped: ${bumped240.join(', ')})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

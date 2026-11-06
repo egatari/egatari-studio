@@ -428,18 +428,6 @@
       "term": "created-by",
       "pairs": true,
       "reason": "The editor's help says the copyright and creators are kept on Save as a new file; en names the list \"creators\", the label is \"Created by\""
-    },
-    {
-      "file": "docs/authoring-with-llms*",
-      "pattern": "一人で学ぶ人は",
-      "term": "participant",
-      "reason": "from the m-predict 2.0.3 README in egatari/components; remove when components ships the fix (学習者)"
-    },
-    {
-      "file": "docs/authoring-with-llms*",
-      "pattern": "一人で学ぶ人は",
-      "term": "learner",
-      "reason": "from the m-predict 2.0.3 README in egatari/components; remove when components ships the fix (学習者)"
     }
   ]
 }
