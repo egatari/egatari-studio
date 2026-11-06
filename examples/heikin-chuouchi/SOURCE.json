@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "59e254f79adbf685c13674f23edf08f9ec77a0c9",
+  "commit": "2bf058ba6037b72b187b89accccc9d03256f900b",
   "path": "books/heikin-chuouchi",
   "files": {
     "article/00-preface.md": "283e53f55f6ae24adb89a90f6251a3b17b5b3534d5493aa5087155f1d195f2b5",
@@ -18,8 +18,8 @@
     "data/exercises.json": "ba812edf4ff174fcd797d1716e3d9db03c412a071aa65a684d554da03fc2b666",
     "data/savings.json": "dac439e7e48c9560e3742edb9fcdc6bbd2e101a948335140ea8833f50d00500a",
     "data/sweep_values.json": "5281260cd9d828ee58fd969a112c1b22d11ac86c179fbe548ea329659f300583",
-    "deck.html": "7884d76cf0c28194b767d4815bb76bab22e62ffd8f4b8aef6fd413b861e18276",
-    "egatari.json": "7a7a93a16b6cd41ae959ffe7f1bd2bb067b87d84c9048784c63648c1ea48fb7e",
+    "deck.html": "cea18558c87952bcfdc15eb5bae646e1c44c331b4a109db3119b4f28894d0ad5",
+    "egatari.json": "2dd64f7391edb93bc6da186fb0dc16cf4b058d69a8f9eff6fd7454121257ef24",
     "images/abs-sum.svg": "6b9f221e146dd78a629adb2ff8f528d300cd30f79b44195c49dd3c5ad7ee02a2",
     "images/newsvendor.svg": "00ed8c5bd2c4b454bd418af306e527e1c5b0fd4b7622b4185eeb930910982fdc",
     "images/outlier-abs.svg": "a924d927eb670284f643bf5d93f2912a0fb8579e825b458e664099290c9cf498",

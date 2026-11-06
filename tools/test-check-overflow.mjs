@@ -176,9 +176,9 @@ await t('quick check: the same layout findings as the command (one implementatio
   const k = Q.results.find((x) => Q.ids[x.i] === 's-fix52a' && x.code === 'svgTextBox');
   assert.equal(k.arg.t, 'deck.html・narration.md');
 });
-// 知っている所見（写しの見本は直さず、元の egatari/examples で直す）：heikin-chuouchi の 7 枚目の m-sweep で、Windows の字の幅では
-// 縦軸の目盛り「600」が軸の名前「二乗の和」に重なる（macOS・Linux では重ならない）
-const KNOWN_EXAMPLE = [{ d: 'heikin-chuouchi', slide: 7, code: 'textOverlap', u: '二乗の和' }];
+// 知っている所見（写しの見本は直さず、元の egatari/examples で直してから写し直す）。いまはない
+// （heikin-chuouchi の 7 枚目、Windows で目盛り「600」が「二乗の和」に重なった件は examples 2bf058b で直した）
+const KNOWN_EXAMPLE = [];
 await t('quick check: no new findings on the examples', async () => {
   const found = [];
   for (const d of fs.readdirSync(path.join(ROOT, 'examples')).sort()) {
