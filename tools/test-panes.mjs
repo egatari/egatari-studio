@@ -238,6 +238,20 @@ const markColor = (p) => p.evaluate(() => { const m = document.querySelector('#d
   ok(await p.evaluate(() => { const d = document.getElementById('deck-split'); return d.getAttribute('role') === 'separator' && +d.getAttribute('aria-valuenow') > 0 && d.getAttribute('aria-label') === 'スライドと本の境目'; }), 'the divider is a separator named スライドと本の境目 with a value');
   await p.context().close();
 }
+// ---------------------------------------------------------------- 2t. 仕切りを指（粗いポインター）で掴める：細い線でも当たり判定は 44px 以上（iPad で動かせない不具合）
+{
+  const tc = await browser.newContext({ viewport: { width: 1280, height: 800 }, hasTouch: true, isMobile: true });
+  const tp = await open(H, { q: '?layout=split', ctx: tc });
+  ok(await tp.evaluate(() => matchMedia('(pointer:coarse)').matches), 'touch: the context is a coarse pointer (iPad-like)');
+  const hitW = await tp.evaluate(() => parseFloat(getComputedStyle(document.getElementById('deck-split'), '::before').width));
+  ok(hitW >= 44, `touch: the divider touch target is at least 44px wide (${hitW}px)`);
+  const hit = await tp.evaluate(() => { const d = document.getElementById('deck-split'), r = d.getBoundingClientRect(), y = r.top + 200; const cx = r.left + r.width / 2; return { left: document.elementFromPoint(cx - 18, y) === d, right: document.elementFromPoint(cx + 18, y) === d, x: Math.round(r.left) }; });
+  ok(hit.left && hit.right, 'touch: the divider is the hit target ~18px to each side of the thin line');
+  await tp.evaluate(() => { const d = document.getElementById('deck-split'), r = d.getBoundingClientRect(); const sx = r.left + r.width / 2 - 18, sy = r.top + 200; document.elementFromPoint(sx, sy).dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, pointerId: 1, pointerType: 'touch', isPrimary: true, button: 0, buttons: 1, clientX: sx, clientY: sy })); d.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: sx - 120, clientY: sy, buttons: 1 })); d.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: sx - 120, clientY: sy, buttons: 0 })); });
+  await wait(tp, 200);
+  ok(await tp.evaluate((x0) => Math.round(document.getElementById('deck-split').getBoundingClientRect().left) < x0 - 40, hit.x), 'touch: a drag starting beside the thin line moves the divider');
+  await tc.close();
+}
 
 // ---------------------------------------------------------------- 3. 縦書き（国語）：同期とスクロールの向き
 {
@@ -380,27 +394,45 @@ for (const [name, file] of [['horizontal', H], ['vertical', V]]) {
   await n.context().close();
 }
 
-// ---------------------------------------------------------------- 7. 台本で読む（本のない教材）：スクロールで一度だけ動く・動きを減らす設定
+// ---------------------------------------------------------------- 7. 台本で読む（本のない教材）：縮図はただの図（貼り付かない・スクロールでステップは動かない）。再生中だけ今のスライドが動く。動きを減らす設定
+// 仕様 Player P2「Stages placed in the text」：置いた舞台は最終状態で本文と一緒に流れる／スクロールしても位置は動くがステップは動かない／本文の上に貼り付かない／押すと別の面で再生できる／
+// 再生中だけ、再生しているスライドの舞台が生きて本文がそれに付いていく／動きを減らす設定では、再生する舞台は各ステップの最終状態を見せる
 for (const reduce of [false, true]) {
+  const pre = reduce ? 'reduced: ' : '';
   const p = await open(S, { q: '?layout=book', reduce });
-  ok((await p.textContent('#deck-text .dx-view')).includes('表示') && (await p.getAttribute('#deck-text', 'aria-label')) === '台本で読む', `${reduce ? 'reduced: ' : ''}without a book the text pane is 台本で読む`);
-  await readTo(p, '[data-step-key="s-pa3bbb:1"]', [1, 1]);
-  const s7 = await st(p);
-  const op = await p.evaluate(() => +getComputedStyle(DECK.slides[1].querySelector('[data-step="1"]')).opacity);
-  ok(s7.i === 1 && s7.k === 1, `${reduce ? 'reduced: ' : ''}scrolling the script moves to the step (${s7.i}:${s7.k})`);
-  ok(await p.evaluate(() => !document.querySelector('#deck-text [data-step]') && document.querySelectorAll('[data-step="1"]').length === 4), `${reduce ? 'reduced: ' : ''}small slides are not found by document queries (closed shadow trees)`);
-  ok(reduce ? op === 1 : op < 1, `${reduce ? 'reduced motion: the step is shown in its final state' : 'the step plays as it enters'} (opacity ${op.toFixed(2)})`);
-  ok(await p.evaluate(() => { const s = document.getElementById('stage').getBoundingClientRect(), t = document.querySelector('.dx-thumb.dx-live').getBoundingClientRect(); return Math.abs(s.left - t.left) < 2 && Math.abs(s.width - t.width) < 2; }), `${reduce ? 'reduced: ' : ''}the live slide sits on its small slide`);
+  ok((await p.textContent('#deck-text .dx-view')).includes('表示') && (await p.getAttribute('#deck-text', 'aria-label')) === '台本で読む', `${pre}without a book the text pane is 台本で読む`);
+  // 縮図はただの図：貼り付かない・本文と一緒に流れる・今は生きていない（最終状態の静止画）
+  const card0 = await p.evaluate(() => { const c = document.querySelector('.dx-slide[data-i="0"] .dx-thumb'); return { pos: getComputedStyle(c).position, top: Math.round(c.getBoundingClientRect().top) }; });
+  ok(card0.pos !== 'sticky' && card0.pos !== 'fixed', `${pre}the slide card is not fixed over the text (position ${card0.pos})`);
+  ok(await p.evaluate(() => !document.querySelector('.dx-thumb.dx-live')), `${pre}no stage is live over a card while reading by hand`);
+  // スクロール：位置（本文のスクロール）は動くがステップは動かない・縮図は本文と一緒に上へ流れる
+  const st0 = await st(p);
+  await wheel(p, 500); await wait(p, 200);
+  const st1 = await st(p);
+  const card1top = await p.evaluate(() => Math.round(document.querySelector('.dx-slide[data-i="0"] .dx-thumb').getBoundingClientRect().top));
+  ok(st1.i === st0.i && st1.k === st0.k, `${pre}scrolling moves the reading position but plays no steps (stays ${st1.i}:${st1.k})`);
+  ok(card1top < card0.top - 100, `${pre}the slide card scrolls up with the text (${card0.top} → ${card1top})`);
+  ok(await p.evaluate(() => !document.querySelector('.dx-thumb.dx-live')), `${pre}scrolling does not make a card live`);
+  ok(await p.evaluate(() => !document.querySelector('#deck-text [data-step]') && document.querySelectorAll('[data-step="1"]').length === 4), `${pre}small slides are not found by document queries (closed shadow trees)`);
+  // 再生中だけ：再生しているスライドの縮図が生きて舞台が重なり、本文が付いていく。動きを減らす設定では最終状態
+  await p.evaluate(() => DECK.go(1, 0)); await wait(p, 200);
+  await p.evaluate(() => DECK.autoplay(true)); await wait(p, 500);
+  const play = await p.evaluate(() => {
+    const stt = DECK.state(), live = document.querySelector('.dx-thumb.dx-live');
+    const s = document.getElementById('stage').getBoundingClientRect(), t = live && live.getBoundingClientRect();
+    const stepEl = stt.step >= 1 ? DECK.slides[stt.slide - 1].querySelector('[data-step="' + stt.step + '"]') : null;
+    const cur = document.querySelector('#deck-text .dx-cur'), bb = document.querySelector('#deck-text .dx-body').getBoundingClientRect();
+    const curR = cur && cur.getBoundingClientRect();
+    return { live: !!live, liveMatches: !!live && live.getAttribute('data-i') === String(stt.slide - 1), onCard: t ? (Math.abs(s.left - t.left) < 2 && Math.abs(s.width - t.width) < 2) : false, op: stepEl ? +getComputedStyle(stepEl).opacity : 1, curVisible: curR ? (curR.bottom > bb.top && curR.top < bb.bottom) : false };
+  });
+  ok(play.liveMatches && play.onCard, `${pre}during playback only the playing slide's card is live and the stage sits on it`);
+  ok(play.curVisible, `${pre}during playback the text follows the playing slide (the current step is in view)`);
+  ok(!reduce || play.op === 1, 'reduced motion: the playing stage shows the step in its final state (opacity 1)');
+  await p.evaluate(() => DECK.autoplay(false)); await wait(p, 200);
+  ok(await p.evaluate(() => !document.querySelector('.dx-thumb.dx-live')), `${pre}stopping playback returns the card to a static figure`);
   if (!reduce) {
-    await wait(p, 900);
-    await readTo(p, '[data-step-key="s-pa3bbb:0"]'); await wait(p, 60);
-    const op0 = await p.evaluate(() => +getComputedStyle(DECK.slides[1].querySelector('[data-step="1"]')).opacity);
-    ok((await st(p)).k === 0, 'scrolling back moves to the earlier step');
-    await readTo(p, '[data-step-key="s-pa3bbb:1"]'); await wait(p, 60);
-    const op1 = await p.evaluate(() => +getComputedStyle(DECK.slides[1].querySelector('[data-step="1"]')).opacity);
-    ok(op1 === 1, `a step that has not left the view does not play again (opacity ${op1.toFixed(2)}, before ${op0.toFixed(2)})`);
     await shot(p, '07-script-book');
-    // 縮図を押すと重ねて見せる
+    // 縮図を押すと別の面（スライドで見る）で再生できる
     await p.click('.dx-thumb[data-i="2"]'); await wait(p, 200);
     ok((await st(p)).overlay && (await st(p)).i === 2, 'a small slide opens Watch on slides');
     await p.keyboard.press('Escape');
