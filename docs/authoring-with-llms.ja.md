@@ -20,7 +20,7 @@
 
 登録した指示は自動では新しくなりません。指示のはじめに **指示の版：…** の行があるので、編集アプリが新しくなったらコピーし直した指示の版と比べ、違えば登録したものを差し替えます。make スキル（`plugins/egatari/skills/make/`）も同じ正本から作ります。2 つのファイルを書き、ローカルの品質チェック・組み立て・音声を付ける手順は別の studio スキル（`skills/studio/`）が案内します。
 
-このファイルと束の指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべての部品（用途のとても限られる特殊のパーツは指示に入れない）。このファイルはいつも標準の部品を説明します。**束の指示**はそれぞれ、ある種類の材料の専門の部品を足す：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-market`）、[tools](llm-parts/tools.ja.md)（`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`）。編集アプリの新規作成は、標準の部品と、パーツの一覧で印の付いたパーツの束をコピーします。無料のプランでは、中核の 4 つのほかの標準の部品は一覧の 1 行だけにして、標準すべてが無料のプランの上限に収まるようにします。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、その束を入れた無料のプランの指示を出す。`--plan paid` を付けるとどの部品も詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024）：
+このファイルと束の指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべての部品（用途のとても限られる特殊のパーツは指示に入れない）。このファイルはいつも標準の部品を説明します。**束の指示**はそれぞれ、ある種類の材料の専門の部品を足す：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-market`）、[tools](llm-parts/tools.ja.md)（`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`・`m-particles`）。編集アプリの新規作成は、標準の部品と、パーツの一覧で印の付いたパーツの束をコピーします。無料のプランでは、中核の 4 つのほかの標準の部品は一覧の 1 行だけにして、標準すべてが無料のプランの上限に収まるようにします。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、その束を入れた無料のプランの指示を出す。`--plan paid` を付けるとどの部品も詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024）：
 
 | 指示 | 大きさ | 上限 |
 |---|---:|---:|
@@ -33,9 +33,9 @@
 | 無料のプラン：標準＋music | 39.4 KB | 45 KB |
 | 無料のプラン：標準＋business | 41.7 KB | 45 KB |
 | 無料のプラン：標準＋tools | 38.5 KB | 45 KB |
-| 無料のプラン：標準＋science | 41.7 KB | 45 KB |
+| 無料のプラン：標準＋science（中核の 4 つも一覧の 1 行だけ） | 40.0 KB | 45 KB |
 | 有料のプラン：標準のパーツすべて | 71.7 KB | 120 KB |
-| 有料のプラン：すべての束（このファイルとすべての束の指示）。上限を越えても知らせるだけ | 125.6 KB | 120 KB |
+| 有料のプラン：すべての束（このファイルとすべての束の指示）。上限を越えても知らせるだけ | 131.9 KB | 120 KB |
 
 どれも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・部品の README・`tools/llm-guide/` から作るので、手で直さない。
 
@@ -45,7 +45,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 # AI への指示
 
-指示の版：`2c359d45`
+指示の版：`e65089a5`
 
 短い **Egatari の教材**を 1 つ書いてください。段階ごとに出る HTML のスライド（`deck.html`）と口述原稿（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと口述原稿は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -143,7 +143,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 この指示に入っていないパーツもある（ばらつき・比べる（量・特徴）・2 つの量の関係・手順・工程・場所・地図・全体と内訳・循環など）。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）
 
-各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v2.3.0/components/<名前>/README.md（名前は `m-` を除いたもの）
+各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v2.4.0/components/<名前>/README.md（名前は `m-` を除いたもの）
 
 - **R-whole** 箇条書き・数字の札・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）
 

@@ -56,6 +56,7 @@ const LOCAL = {
   'm-map-world': { ja: '世界地図', en: 'World map', icon: 'mapworld', desc: { ja: '国や地域を塗り分け、点や矢印を置く', en: 'Countries shaded, with points and arrows' } },
   'm-cards': { ja: 'カード', en: 'Cards', icon: 'menu', desc: { ja: 'アイコン付きのカードを並べて 1 枚ずつ出す', en: 'Cards with icons, shown one at a time' } },
   'm-score': { ja: '楽譜', en: 'Score', icon: 'keyboard', desc: { ja: '五線譜を 1 音ずつ出して鳴らす', en: 'Staff notation, one note at a time, with sound' } },
+  'm-particles': { icon: 'cycle', desc: { ja: '粒子の動きで、状態や変化の仕組みを見せる', en: 'Particles in motion, showing how a state or a change works' } },
   'm-orbit': { ja: '月の満ち欠け', en: 'Moon phases', icon: 'cycle', desc: { ja: '月の位置と見える形を並べて動かす', en: 'The Moon’s position and its visible shape, moving together' } },
 };
 // 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）
