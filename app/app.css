@@ -326,6 +326,12 @@ main{flex:1;min-height:0;display:flex}
 @media (max-width:720px){ #rec-mode{position:fixed;inset:0;z-index:1001} #deck.rec-on #viewer{display:none} }
 /* 新規作成…・スライドの挿入…・修正…（app/main.js・app/llm.js） */
 #dlg .paste-howto{margin:0 0 6px;padding:8px 12px;border-radius:8px;background:var(--line);font-size:13.5px}
+/* 新規作成：もう出力を持っている人の「AI の出力を貼り付ける」と、貼り付けだけの画面（app/llm.js の showDirect） */
+#dlg .paste-direct{margin:0 0 10px}
+#dlg .paste-direct .hint{margin:2px 0 0}
+#dlg .paste-howto[hidden],#dlg .paste-direct[hidden],#dlg .paste-only[hidden]{display:none}
+#dlg .paste-only{border-left:3px solid var(--accent);margin:0 0 6px 6px;padding:6px 0 14px 18px}
+#dlg .paste-only h3{font-size:16px;margin:0 0 6px}
 #dlg .paste-where{margin:0 0 6px;font-weight:600}
 #dlg .paste-with-pack{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:0 0 6px}
 #dlg .paste-field.wide{grid-column:span 2}

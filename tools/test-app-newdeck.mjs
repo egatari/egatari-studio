@@ -14,8 +14,13 @@
 //    指示の大きさのメーター（目安を越えたら越えた分と外す候補、［候補を外す］）、外した印は推し直しで戻さない、有料のプランは目安だけが変わる、キーボードで選ぶ
 // S9 前に分野を選んだ教材を開いたまま新規作成：前の選び方は読まず、いつも初めの選び方から（egatari.json は書き換えない）
 // S10 研修（ja）：小分類「研修・使い方の説明」でタイマーを推し、外せば指示に入らない
+// S11 チャットの AI のスキルで作った出力を持っている先生（ja）：「AI の出力を貼り付ける」→ 貼り付けだけの画面（① 〜 ④ は要らない）・戻る・
+//     ファイルから読む（種類の違うファイル・大きすぎるファイルは断る）→［作成］：名前は教材の <title>、テーマは教材のまま、studio.newDeck は書かない
+// S12 前に作った出力に誤りがある（ja）：貼り付けだけの画面から作成 → 品質チェックのエラーと「AI への修正依頼をコピー」（⑤ と同じ）
+// S13 ふつうの流れの ⑤（en）：「Read from a file」で .md の出力を選ぶ → 分ける →［Create］（選び方は今までどおり studio.newDeck に）
+// S14 貼り付けだけの画面（en）：<title> も data-theme もない出力の .txt を台本の欄に落とす → 名前は最初の h1、テーマは足さない
 // どの場面も：押せない［作成］［挿入］［置き換える］の横に、欠けているもののうち最初の 1 つ（「① に答えてください」など）。押せるときの添え書きもボタンの横
-// 画像（shotDir があれば）：flow-s1-kind.png・flow-s1-answered.png・flow-s1-paste.png・flow-s2-moved.png・flow-s3-outline.png・flow-s4-more.png・flow-s5.png・flow-s6-insert.png・flow-s7-revise.png
+// 画像（shotDir があれば）：flow-s11-offer.png・flow-s11-only.png・flow-s1-kind.png・flow-s1-answered.png・flow-s1-paste.png・flow-s2-moved.png・flow-s3-outline.png・flow-s4-more.png・flow-s5.png・flow-s6-insert.png・flow-s7-revise.png
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,7 +28,10 @@ import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { CATEGORIES, initialParts, partsList } from '../kit/core/new-deck.mjs';
 import { partsPackOpts, PACK_CAP_KB } from '../kit/core/llm-pack.mjs';
 import { PART_LABELS } from '../kit/core/part-labels.mjs';
-import { replyOf } from './test-app-llm.mjs';
+import { replyOf, answerNew } from './test-app-llm.mjs';
+import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
+import { exportName } from '../kit/core/export-name.mjs';
+import { FORMAT } from '../kit/core/format.mjs';
 import { slidesOf } from './test-app-outline.mjs';
 import { clickDlg, clickCommand, clickUntil } from './click-retry.mjs';
 import { generate, makeSkillZip } from './make-llm-guide.mjs';
@@ -559,6 +567,111 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p10.uncheck('#paste-part-timer');
     const c10b = await copy(p10);
     ok(!c10b.includes('m-timer') && (await answer(p10, 'send')) === `Instructions: Chat AI: free plan · ${STD.length} parts · copied`, 'S10 ④: unticked, the timer is not named anywhere in the instructions');
+
+    // ================================================================ S11 スキル（チャットの AI の egatari:make）の出力を持っている先生（ja）：問いに答えずに貼る
+    const cdeck11 = worked('common', 'deck.html'), cnarr11 = worked('common', 'narration.md');
+    const p11 = await open('ja', 's11');
+    await startNew(p11);
+    const flow0 = await flowState(p11);
+    ok((await text(p11, '#paste-direct')) === 'AI の出力を貼り付ける' && (await text(p11, '#paste-direct-hint')) === 'スキルで作った出力や、前に作った出力を、そのまま入れます'
+      && (await p11.getAttribute('#paste-direct', 'aria-describedby')) === 'paste-direct-hint' && await p11.isVisible('#ai-howto') && await p11.isHidden('#paste-only')
+      && await p11.evaluate(() => document.getElementById('ai-howto').nextElementSibling.id === 'paste-direct-offer'),
+      'S11: under the how-to, New… offers 「AI の出力を貼り付ける」 with 「スキルで作った出力や、前に作った出力を、そのまま入れます」 under it');
+    await shot(p11, 'flow-s11-offer.png');
+    await p11.click('#paste-direct');
+    await p11.waitForSelector('#paste-only:not([hidden]) #paste-deck');
+    await p11.waitForFunction(() => document.activeElement && document.activeElement.id === 'paste-deck');
+    let st11 = await status(p11);
+    ok((await text(p11, '#paste-only-h')) === 'AI の出力を貼り付けます' && JSON.stringify(await visible(p11, ['paste-step-kind', 'paste-step-content', 'paste-step-theme', 'paste-step-send', 'paste-step-paste', 'ai-howto', 'paste-direct'])) === JSON.stringify([false, false, false, false, false, false, false])
+      && await p11.isVisible('#paste-narr') && await p11.isVisible('#paste-file') && (await text(p11, '#paste-file')) === 'ファイルから読む' && (await text(p11, '#paste-only-back')) === '問いに答えて作る'
+      && st11.go === '作成' && st11.goOff && st11.note === 'スライドを貼り付けてください' && st11.beside,
+      'S11: the paste-only form shows only the two fields of ⑤, 「ファイルから読む」 and 「問いに答えて作る」; ① 〜 ④ are not asked; 「作成」 says 「スライドを貼り付けてください」 (no step number): ' + JSON.stringify(st11));
+    await shot(p11, 'flow-s11-only.png');
+    // 戻る：ふつうの流れはそのまま（① が開いている）。もう一度開くと、貼った字は残っている
+    await p11.fill('#paste-narr', cnarr11);
+    await p11.click('#paste-only-back');
+    await p11.waitForSelector('#paste-only', { state: 'hidden' });
+    ok((await flowState(p11)) === flow0 && await p11.isVisible('#ai-howto') && await p11.evaluate(() => document.activeElement && document.activeElement.id === 'paste-direct')
+      && (await status(p11)).note === '① に答えてください', 'S11: 「問いに答えて作る」 goes back to the questions as they were (① open): ' + await flowState(p11) + ' focus=' + await p11.evaluate(() => document.activeElement && document.activeElement.id) + ' note=' + (await status(p11)).note);
+    await p11.click('#paste-direct');
+    await p11.waitForSelector('#paste-only:not([hidden]) #paste-deck');
+    ok((await p11.inputValue('#paste-narr')) === cnarr11.trim() || (await p11.inputValue('#paste-narr')) === cnarr11, 'S11: what was pasted stays when going back and forth');
+    // ファイルから読む：種類の違うファイルと大きすぎるファイルは読まずに断る（上限つきの読み取り。欄はそのまま）
+    const pickFile = (p, name, size, body) => p.evaluate(([name, size, body]) => {
+      const inp = document.getElementById('paste-file-input'), dt = new DataTransfer();
+      dt.items.add(new File([body !== null ? body : new Uint8Array(size)], name, { type: 'text/plain' }));
+      inp.files = dt.files; inp.dispatchEvent(new Event('change'));
+    }, [name, size, body]);
+    await pickFile(p11, 'reply.pdf', 0, 'x');
+    await p11.waitForSelector('#paste-file-msg:not([hidden])');
+    ok((await text(p11, '#paste-file-msg')) === 'テキストのファイル（.txt・.md）を選んでください' && (await p11.inputValue('#paste-deck')) === '', 'S11: a file that is not .txt or .md is refused');
+    await pickFile(p11, 'huge.md', READ_LIMITS.source + 1, null);
+    await p11.waitForFunction(() => /大きすぎます/.test(document.getElementById('paste-file-msg').textContent));
+    ok((await text(p11, '#paste-file-msg')) === `このファイルは大きすぎます（${Math.round(READ_LIMITS.source / 1048576)} MB まで）。AI の出力のファイルを選び直してください`
+      && (await p11.inputValue('#paste-deck')) === '' && (await status(p11)).goOff, `S11: a file over the limit (${READ_LIMITS.source + 1} bytes) is refused by the bounded reader without reading it; the fields stay as they were`);
+    await p11.fill('#paste-deck', replyOf(cdeck11, cnarr11));
+    st11 = await status(p11);
+    ok(st11.deck === '✓ スライド 3 枚' && st11.narr === '✓ 台本 3 節' && st11.info === '出力の全体だったので、スライドと台本に分けました' && !st11.goOff && st11.note === '' && await p11.isHidden('#paste-file-msg'),
+      'S11: the whole output is split as in ⑤ and 「作成」 is enabled: ' + JSON.stringify(st11));
+    const F11 = await create(p11);
+    const s11 = await p11.evaluate(() => window.__APP_TEST.state().portable);
+    ok(s11.name === exportName('How a web page arrives', 'ai-draft', FORMAT.FILE_EXT) && newDeckOf(F11) === undefined && /<html lang="en" data-theme="default">/.test(F11['deck.html']) && F11['narration.md'].includes('{#s-')
+      && /^作成しました：スライド 3 枚/.test(await text(p11, '#toast')),
+      `S11: 「作成」 makes the lesson named from its <title> (${s11.name}), keeps the deck's theme and writes no studio.newDeck (no setting was asked)`);
+
+    // ================================================================ S12 前に作った出力に誤り（台本に行き先のないステップ）：⑤ と同じに品質チェックと修正依頼
+    const p12 = await open('ja', 's12');
+    await startNew(p12);
+    await p12.click('#paste-direct');
+    await p12.waitForSelector('#paste-only:not([hidden]) #paste-deck');
+    const badN12 = cnarr11.replace('[0] Today we follow', '[9] This step is not on the slide.\n[0] Today we follow');
+    ok(badN12 !== cnarr11, 'S12: the narration has an orphan step [9]');
+    await p12.fill('#paste-narr', replyOf(cdeck11, badN12));
+    await create(p12);
+    const sum12 = await text(p12, '#panel-body .sum');
+    ok(/エラー/.test(sum12) && await p12.isVisible('#panel-body #b-fixreq') && (await text(p12, '#panel-body #b-fixreq')) === 'AI への修正依頼をコピー', 'S12: the quality check reports the error and offers 「AI への修正依頼をコピー」, as after ⑤: ' + sum12);
+    await p12.click('#panel-body #b-fixreq');
+    await p12.waitForSelector('#dlg[open] #fix-text');
+    ok((await p12.inputValue('#fix-text')).includes('[9]'), 'S12: the fix request quotes the orphan step');
+    await p12.click('#dlg-cancel');
+
+    // ================================================================ S13 ふつうの流れ（en）：⑤ で「Read from a file」から .md の出力を選ぶ
+    const p13 = await open('en', 's13');
+    await startNew(p13);
+    await answerNew(p13, { cat: 'other', sub: null, title: 'How a web page arrives', paste: true });
+    ok((await text(p13, '#paste-file')) === 'Read from a file' && (await text(p13, '#paste-file-hint')) === 'Choose the output file (.txt, .md), or drag it onto a field.' && await p13.isVisible('#paste-file'),
+      'S13 ⑤: the normal step 5 has “Read from a file” by the fields');
+    const [chooser] = await Promise.all([p13.waitForEvent('filechooser'), p13.click('#paste-file')]);
+    await chooser.setFiles({ name: 'reply.md', mimeType: 'text/markdown', buffer: Buffer.from(replyOf(cdeck11, cnarr11)) });
+    await p13.waitForFunction(() => document.getElementById('paste-deck-st').textContent.startsWith('✓'));
+    const st13 = await status(p13);
+    ok(st13.deck === '✓ 3 slides' && st13.narr === '✓ Script, 3 sections' && st13.info === 'That was the whole output; it was split into slides and script.' && !st13.goOff,
+      'S13 ⑤: the chosen .md goes through the same split as pasted text: ' + JSON.stringify(st13));
+    const F13 = await create(p13);
+    ok(JSON.stringify(newDeckOf(F13)) === JSON.stringify({ v: 1, plan: 'free', category: 'other', subcategory: null, parts: [...STD].sort() }), 'S13: the normal flow still records its choices in studio.newDeck: ' + JSON.stringify(newDeckOf(F13)));
+
+    // ================================================================ S14 貼り付けだけの画面（en）：<title> も data-theme もない出力の .txt を台本の欄に落とす
+    const p14 = await open('en', 's14');
+    await startNew(p14);
+    ok((await text(p14, '#paste-direct')) === 'Paste the AI’s output' && (await text(p14, '#paste-direct-hint')) === 'For output you already have, from a skill or from before.', 'S14: the action is “Paste the AI’s output”, with its line under it');
+    await p14.click('#paste-direct');
+    await p14.waitForSelector('#paste-only:not([hidden]) #paste-deck');
+    ok((await status(p14)).note === 'Paste the slides' && (await text(p14, '#paste-only-back')) === 'Answer the questions instead', 'S14: “Create” says “Paste the slides” (no step number)');
+    const deck14 = cdeck11.replace(/<title>[^<]*<\/title>\n?/, '').replace(' data-theme="default"', '');
+    ok(!/<title>|data-theme/.test(deck14), 'S14: the deck has no <title> and no data-theme');
+    await p14.evaluate((t) => {
+      const box = document.getElementById('paste-narr').closest('.paste-field'), dt = new DataTransfer();
+      dt.items.add(new File([t], 'reply.txt', { type: 'text/plain' }));
+      box.dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      box.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, replyOf(deck14, cnarr11));
+    await p14.waitForFunction(() => document.getElementById('paste-deck-st').textContent.startsWith('✓'));
+    const st14 = await status(p14);
+    ok(st14.deck === '✓ 3 slides' && st14.narr === '✓ Script, 3 sections' && !st14.goOff, 'S14: the dropped .txt is split into both fields: ' + JSON.stringify(st14));
+    const F14 = await create(p14);
+    const s14 = await p14.evaluate(() => window.__APP_TEST.state().portable);
+    ok(s14.name === exportName('How a web page arrives', 'ai-draft', FORMAT.FILE_EXT) && !/data-theme/.test(F14['deck.html'].match(/<html\b[^>]*>/i)[0]) && newDeckOf(F14) === undefined,
+      `S14: with no <title>, the name comes from the first h1 (${s14.name}); no theme is added`);
   } finally {
     for (const c of contexts) await c.close();
   }

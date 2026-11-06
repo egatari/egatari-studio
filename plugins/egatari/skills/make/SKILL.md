@@ -55,9 +55,9 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 書き終えたら
 
-ファイルを書けるなら、新しいフォルダに `deck.html` と `narration.md` と、`{"componentsCatalogue": "2"}` だけの `egatari.json` を書く（新しい教材はパーツライブラリ 2 で組む。ここに出てくるパーツは 2 のもの。`egatari.json` がないと前の 1 のまま組まれ、2 だけのパーツが組み立てのエラーになる）。この場合は、下の R-output の囲みの代わりにファイルで渡す。`egatari-studio:studio` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
+ファイルを書けるなら、新しいフォルダに `deck.html` と `narration.md` と、`{"componentsCatalogue": "2"}` だけの `egatari.json` を書く（新しい教材はパーツライブラリ 2 で組む。ここに出てくるパーツは 2 のもの。`egatari.json` がないと前の 1 のまま組まれ、2 だけのパーツが組み立てのエラーになる）。この場合は、下の R-output の囲みの代わりにファイルで渡す。`egatari-studio:studio` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」→「AI の出力を貼り付ける」（New… → “Paste the AI’s output”）に貼り付けてもらう。
 
-ファイルを書けなければ、Studio の「新規作成…」に貼り付けられるように、下の R-output に従い、`deck.html` と `narration.md` の 2 つのコードの囲みを返す。
+ファイルを書けなければ、Studio の「新規作成…」→「AI の出力を貼り付ける」に貼り付けられるように、下の R-output に従い、`deck.html` と `narration.md` の 2 つのコードの囲みを返す。
 
 どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
 
