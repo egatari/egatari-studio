@@ -21,6 +21,7 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
 import LIVE_JS from '../kit/live.js?text';
 import { createTtsClient } from './tts-client.js';
+import { readAloud } from './read-aloud.js';
 import { loadLame } from './mp3-loader.js';
 import { writeFile, cancelledError, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
@@ -833,6 +834,11 @@ const ui = createEditorUI({
     { name: 'rec', isOpen: () => rec.isOpen(), close: () => rec.close() },
     { name: 'panel', isOpen: () => !$('panel').hidden, close: () => closePanel() }],
   onPos: () => audio.onPos(),
+  // 読み方の欄（#101）：入れた読みでその語だけを、端末の声（#89 と同じ readAloud）か、この PC の AI 音声で試す
+  pronounce: {
+    readAloud: (text, lang) => readAloud(text, lang, { terms: (RES.yomi && RES.yomi.terms) || [] }),
+    ai: { available: (lang) => { try { return !!tts.info(lang).ok; } catch { return false; } }, say: (text, lang) => audio.tryVoice(text, lang) },
+  },
   onRecord: () => { rec.open().then((on) => { if (on) ui.mark('rec', true); }); },
 });
 // 音声の板（app/audio-panel.js）：信頼する横の板の中。マイク・TTS はこのページだけで動き、プレビューからは何も受け取らない

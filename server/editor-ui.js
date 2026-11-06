@@ -19,6 +19,8 @@
 //     volatileComments?: () => bool,               コメントが保存されない（1 ファイルで開いている）とき true：コメントの一覧に知らせを出す
 //     onPos?: (pos) => void,                       デッキの位置（{i, k, key, nextKey}）が変わった（ほかの欄が段階に付いていくため）
 //     modeHost?: 要素,                             今のモード（「編集中」「発表の道具：ペン」「表示」。aria-live で知らせる）を入れる画面の端の帯（プレビューの外）
+//     pronounce?: {readAloud(text, lang) → Promise<{ok, reason?}>, ai?: {available(lang) → bool, say(text, lang) → Promise<{ok, reason?}>}}
+//                                                  読み方の欄（#101）の「読み上げで聞く」「AI 音声で聞く」（編集アプリ。開発サーバーには無い：ボタンを出さない）
 //     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
 //   })
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
@@ -37,6 +39,9 @@
 //   ui.toggleEdit(on?) / ui.toggleNarr(on?) / ui.toggleComments(on?) / ui.state()
 //   ui.goStep(slideKey, stepKey)  プレビューをその段階へ動かす（録音モード。読み込み直している間は、読み込んだ後の位置を替える）
 //   ui.side（信頼する横の板。ほかの欄はここに入れる）・ui.h（要素を作る）・ui.pos()・ui.slide(i)（{key, heading…}）・ui.refresh()（板と鍵を出し直す）
+import { createScriptField } from './script-field.js';
+import { checkWord, applyReading, findBare, readingIn, textLang, isWellFormedReading, MAX_WORD } from '../kit/core/readings.mjs';
+
 const STR = {
   en: {
     mark: 'Editing — app', editMode: 'Edit mode', where: (n, t) => 'Slide ' + n + (t ? ': ' + t : ''), locked: 'The slides do not take clicks while this editor is open', warn: 'Warnings ', editTip: (alt) => 'Double-click to edit · ' + alt + '+click to leave a comment · e to exit',
@@ -48,7 +53,14 @@ const STR = {
     toSlide: 'Click to go to the slide', nStale: (k) => 'You are editing a different step than the one shown (' + k + '). It will switch after you save or cancel',
     nLine: (n) => 'narration.md line ' + n, nNone: 'No script yet', revertT: 'Revert to before editing', nTitle: 'Script', step: 'Step ', closeN: 'Close (n)',
     discard: 'Discard unsaved changes?', slide: (n, t) => 'Slide ' + n + ': ' + t, dirty: 'Unsaved changes', nEmpty: 'No script for this step yet. Start with “Add a turn”',
-    speaker: 'Speaker', expert: 'Explainer (Expert)', novice: 'Questioner (Novice)', tPlace: 'What to say. {cue} marks a sync point, {φ|phi} sets a reading',
+    speaker: 'Speaker', expert: 'Explainer (Expert)', novice: 'Questioner (Novice)', tPlace: 'What to say. {cue} marks a sync point. To set how a word is read, select it and press “Pronunciation…”', tLabel: 'What to say',
+    pron: 'Pronunciation…', pronT: 'Set how a word or symbol is read aloud (select it in the script first)', pTitle: (w) => 'Pronunciation of “' + w + '”', pLabel: 'Pronunciation', pPh: 'e.g. theta',
+    pFrom: { step: 'Filled in from the same word elsewhere in this script', dict: 'Filled in from your dictionary' },
+    pAll: (n) => (n ? 'Apply to all in this script (' + n + ' more)' : 'Apply to all in this script (no others)'), pDict: 'Add to dictionary', pDictOff: 'The dictionary cannot be used in this browser (it does not keep data here, as in private browsing). You can still apply the pronunciation', pDictT: 'Remembered in this browser. When you select the same word in another script, the field opens with this pronunciation',
+    pDevice: 'Listen with read-aloud', pAi: 'Listen with AI voice', pApply: 'Apply', pRemove: 'Remove pronunciation', pAiBusy: 'Making AI voice…', pAiFail: 'Could not make the AI voice: ', pNoVoice: 'This device has no read-aloud voice for this language. Make AI voice to hear it',
+    pNoSel: 'Select a word in the script first', pNoY: 'Type the pronunciation', pBadY: 'A pronunciation cannot contain { or }, and is at most 64 characters',
+    pWhy: { space: 'Select one word or symbol without spaces', expr: 'Select only one word or symbol (a pronunciation cannot go on an expression or a sentence)', mark: 'The selection covers a pronunciation or a mark such as {cue}. Select only one word', long: 'Too long. Select only one word (up to ' + MAX_WORD + ' characters)', turns: 'Select within one turn' },
+    dirtyAll: (n) => 'Unsaved changes (saving also adds the pronunciation in ' + n + (n === 1 ? ' place' : ' places') + ' in other steps)', savedAll: (n) => 'Saved (also added the pronunciation in ' + n + (n === 1 ? ' place' : ' places') + ' in other steps)',
     up: 'Move up', del: 'Delete', delT: 'Delete this turn', add: '+ Add a turn', nConflict: 'The script has changed. Please reload (copy what you typed first)',
     noChange: 'No changes', next: (k, other) => 'Next step (' + k + (other ? ', next slide' : '') + ')', concl: 'conclusion line', noNext: 'No next step', noNarr: '(no script)',
     busy: 'Save or cancel the open editor first', noSlideKey: 'This step is not in the slides', noOpen: (alt) => 'No open comments. ' + alt + '+click on a slide to leave one',
@@ -68,7 +80,14 @@ const STR = {
     toSlide: 'クリックでそのスライドへ', nStale: (k) => '表示中のステップ（' + k + '）とは別のステップを編集中です。保存かキャンセルのあとで切り替わります',
     nLine: (n) => 'narration.md ' + n + ' 行目', nNone: 'まだ台本がありません', revertT: '編集前に戻す', nTitle: '台本', step: 'ステップ ', closeN: '閉じる（n）',
     discard: '保存していない変更を捨てますか', slide: (n, t) => 'スライド ' + n + '：' + t, dirty: '未保存の変更があります', nEmpty: 'このステップの台本はまだありません。「発言を足す」で書き始めます',
-    speaker: '話者', expert: '説明する人（Expert）', novice: '質問する人（Novice）', tPlace: '話す内容。{cue} で同期点、{φ|ファイ} で読みを指定できます',
+    speaker: '話者', expert: '説明する人（Expert）', novice: '質問する人（Novice）', tPlace: '話す内容。{cue} で同期点。読み方は、語を選んで「読み方…」で付けます', tLabel: '話す内容',
+    pron: '読み方…', pronT: '語や記号の読み方を付けます（台本の欄で語を選んでから押します）', pTitle: (w) => '「' + w + '」の読み方', pLabel: '読み方', pPh: '例：シータ',
+    pFrom: { step: '同じ台本のほかの所と同じ読み方を入れました', dict: '辞書の読み方を入れました' },
+    pAll: (n) => (n ? 'この台本のすべてに（ほかに ' + n + ' か所）' : 'この台本のすべてに（ほかにはありません）'), pDict: '辞書に登録', pDictOff: 'このブラウザでは辞書を使えません（プライベートウィンドウなど、データを残さない設定のため）。読み方はこのまま付けられます', pDictT: 'このブラウザに覚えます。ほかの台本で同じ語を選ぶと、この読み方が入った状態で開きます',
+    pDevice: '読み上げで聞く', pAi: 'AI 音声で聞く', pApply: '付ける', pRemove: '読み方を外す', pAiBusy: 'AI 音声を作っています…', pAiFail: 'AI 音声を作れませんでした：', pNoVoice: 'この端末に、この言語の読み上げの声がありません。聞くには AI 音声で',
+    pNoSel: '読み方を付ける語を、台本の欄で選んでください', pNoY: '読み方を入れてください', pBadY: '読み方に { と } は使えません（64 字まで）',
+    pWhy: { space: '空白を含まない 1 つの語か記号を選んでください', expr: '1 つの語か記号だけを選んでください（式や文には付けられません）', mark: '読み方や {cue} の付いた所にかかっています。1 つの語だけを選んでください', long: '長すぎます。1 つの語だけを選んでください（' + MAX_WORD + ' 字まで）', turns: '1 つの発言の中で選んでください' },
+    dirtyAll: (n) => '未保存の変更があります（保存すると、ほかのステップの ' + n + ' か所にも読み方を付けます）', savedAll: (n) => '保存しました（ほかのステップの ' + n + ' か所にも読み方を付けました）',
     up: '前へ', del: '削除', delT: 'この発言を消す', add: '＋ 発言を足す', nConflict: '台本が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）',
     noChange: '変更はありません', next: (k, other) => '次のステップ（' + k + (other ? '、次のスライド' : '') + '）', concl: '結論の行', noNext: '次のステップはありません', noNarr: '（台本なし）',
     busy: '開いている編集の欄を、先に保存するか取り消してください', noSlideKey: 'このステップはスライドにありません', noOpen: (alt) => '未対応のコメントはありません。スライドの上で ' + alt + '+クリックすると残せます',
@@ -132,7 +151,19 @@ const CSS = [
   '.dev-turn .dv-row{display:flex;align-items:center;gap:6px;margin-bottom:6px}.dev-turn .dv-row .dv-sp{flex:1}',
   '.dev-turn select{padding:2px 6px;font-size:13px}',
   '.dev-turn.novice{border-left:4px solid #f59e0b}.dev-turn.expert{border-left:4px solid #2563eb}',
-  '.dev-turn textarea{width:100%;min-height:70px;padding:6px 8px;font-size:14px;line-height:1.6;resize:vertical}',
+  '.dev-turn .dv-text{display:block;width:100%;min-height:70px;padding:6px 8px;font-size:14px;line-height:2.1;white-space:pre-wrap;word-break:break-word;background:#fff;border:1px solid #c7ccd6;border-radius:6px;outline:none;cursor:text}',
+  '.dev-turn .dv-text:focus{outline:2px solid #93b4f5;outline-offset:0;border-color:#2563eb}',
+  '.dev-turn .dv-text.dv-empty::before{content:attr(data-ph);color:#8a91a1;pointer-events:none}',
+  // 読みのかたまり（{x|y}）：語の上に小さく読み。押すと読み方の欄
+  '.dev-turn .dv-rb{ruby-position:over;border-bottom:1px dotted #2563eb;cursor:pointer;border-radius:2px}.dev-turn .dv-rb:hover{background:#eef3ff}',
+  '.dev-turn .dv-rb rt{font-size:.62em;color:#1d4fd8;letter-spacing:0;user-select:none}',
+  '#dev-pron{background:#fff;border:1px solid #93b4f5;border-radius:8px;padding:10px;margin:-2px 0 10px;box-shadow:0 2px 8px rgba(37,99,235,.12)}',
+  '#dev-pron .dv-pt{font-weight:700;margin-bottom:6px}#dev-pron label{display:flex;align-items:center;gap:6px;margin:6px 0;font-size:13px}',
+  '#dev-pron input[type=text]{flex:1;font:inherit;padding:4px 8px;border:1px solid #c7ccd6;border-radius:6px}#dev-pron input[type=text]:focus{outline:2px solid #93b4f5;border-color:#2563eb}',
+  '#dev-pron .dv-from,#dev-pron .dv-note{font-size:12px;color:#6b7385;margin:0 0 4px 0}#dev-pron .dv-note{margin-left:24px}',
+  '#dev-pron .dv-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:8px}#dev-pron .dv-row .dv-sp{flex:1}',
+  '#dev-pron-msg:empty{display:none}#dev-pron-msg{font-size:12.5px;margin-top:6px;color:#9b1c1c}',
+  '#dev-narr .dv-pmsg{font-size:12.5px;color:#9b1c1c;margin:-6px 0 10px}#dev-narr .dv-pmsg:empty{display:none}',
   '#dev-narr .dv-tools{display:flex;gap:8px;align-items:center;margin:4px 0 12px}',
   '#dev-narr .dv-next{border-top:1px dashed #cfd4de;padding-top:8px;color:#5b6475}',
   '#dev-narr .dv-next .dv-lab{font-size:12px;color:#8a91a1;margin-bottom:4px}#dev-narr .dv-next p{margin:0 0 6px;font-size:13px}',
@@ -272,6 +303,24 @@ export function createEditorUI(o) {
 
   if (!doc.getElementById('dev-ui-style')) {
     const st = doc.createElement('style'); st.id = 'dev-ui-style'; st.textContent = CSS; doc.head.appendChild(st);
+  }
+  // 読み方の辞書（#101）：このブラウザの localStorage に、台本の言語ごとの {語: 読み}。原稿に {x|y} を書くための覚えで、音声には直接当てない
+  const DICT_KEY = 'egatari.pronunciations.v1', DICT_MAX = 1000;
+  // 使えないブラウザ（プライベートウィンドウ・保存を止めた設定・localStorage の口が例外を投げる）では null。読み方の欄はそのまま使え、「辞書に登録」だけを止める
+  function dictAll() { try { const v = JSON.parse(win.localStorage.getItem(DICT_KEY) || 'null'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return null; } }
+  // 書けるか：試しの鍵を書いて消す（読めても書けない設定がある）
+  function dictUsable() {
+    try { const st = win.localStorage, k = DICT_KEY + '.probe'; st.setItem(k, '1'); st.removeItem(k); return dictAll() !== null; } catch { return false; }
+  }
+  function dictGet(lang, x) { const all = dictAll(); const d = all && all[lang]; return d && typeof d === 'object' && Object.hasOwn(d, x) && typeof d[x] === 'string' ? d[x] : null; }
+  function dictSet(lang, x, y) {
+    const all = dictAll();
+    if (!all) return false;
+    const d = all[lang] && typeof all[lang] === 'object' ? all[lang] : {};
+    delete d[x];
+    if (y !== null) { d[x] = y; const keys = Object.keys(d); for (const k of keys.slice(0, Math.max(0, keys.length - DICT_MAX))) delete d[k]; }
+    all[lang] = d;
+    try { win.localStorage.setItem(DICT_KEY, JSON.stringify(all)); return true; } catch { return false; }   // 使えない環境：覚えない
   }
   function h(tag, props, kids) {
     const e = doc.createElement(tag);
@@ -651,7 +700,7 @@ export function createEditorUI(o) {
     if (narrOpen) {
       drawer = h('aside', { id: 'dev-narr', cls: 'edit-ui', 'aria-label': L.nTitle });
       // 口述原稿の欄（文字と話者）に入っている間は「編集している」。欄から離れたら、その間に動いた位置に付いていく
-      const field = (t) => !!(t && t.matches && t.matches('textarea, select'));
+      const field = (t) => !!(t && t.matches && t.matches('textarea, select, input, .dv-text'));
       drawer.addEventListener('focusin', (e) => { if (field(e.target)) { narrFocus = true; updateSide(); } });
       drawer.addEventListener('focusout', (e) => {
         if (field(e.relatedTarget) && drawer && drawer.contains(e.relatedTarget)) return;
@@ -678,7 +727,7 @@ export function createEditorUI(o) {
     }
     const sk = splitKey(key);
     // edit：入力のたびに増える版。保存の応答は、送った版が今も同じときだけ「保存した」にする（保存の途中の入力を未保存のまま残す）
-    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, edit: 0, i: pos.i };
+    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, edit: 0, i: pos.i, pendingAll: new Map() };
     renderDrawer(true);
     Promise.all([info ? info : loadInfo(), api('GET', '/__dev/narration?key=' + encodeURIComponent(key))]).then(([, j]) => {
       if (narr !== cur) return;
@@ -709,33 +758,173 @@ export function createEditorUI(o) {
     const nmsg = h('div', { cls: 'dev-msg' }); body.appendChild(nmsg);
     if (loading) { saveBtn.disabled = true; body.appendChild(h('div', { cls: 'dev-empty', text: L.loading })); return; }
     if (narr.error) { saveBtn.disabled = true; showErr(nmsg, narr.error); return; }
-    const markDirty = () => { narr.edit++; narr.dirty = true; status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); };
+    const pendingN = () => [...narr.pendingAll.values()].reduce((n, x) => n + x.n, 0);
+    const dirtyText = () => (pendingN() ? L.dirtyAll(pendingN()) : L.dirty);
+    const markDirty = () => { narr.edit++; narr.dirty = true; status.textContent = dirtyText(); status.className = 'dv-st dv-dirty'; updateSide(); };
+    // 台本の欄（server/script-field.js）と、読み方の欄（#101）。fields：発言ごとの欄、lastField：最後に入った欄
+    let fields = [], lastField = 0, pron = null;
+    const narrLang = () => textLang(narr.turns.map((t) => t.text).join(' ')) ;
+    const pmsg = h('div', { cls: 'dv-pmsg', id: 'dev-pron-why', role: 'status', 'aria-live': 'polite' });
     const list = h('div', { cls: 'dv-turns' }); body.appendChild(list);
     function drawTurns() {
-      list.innerHTML = '';
+      list.innerHTML = ''; fields = []; closePron();
       if (!narr.turns.length) list.appendChild(h('div', { cls: 'dev-empty', text: L.nEmpty }));
       narr.turns.forEach((t, j) => {
         const sel = h('select', { 'aria-label': L.speaker }, [h('option', { value: 'expert', text: L.expert }), h('option', { value: 'novice', text: L.novice })]);
         sel.value = t.role;
-        const ta = h('textarea', { placeholder: L.tPlace });
-        ta.value = t.text;
+        const sf = createScriptField(doc, { value: t.text, label: L.tLabel, placeholder: L.tPlace, lang: narrLang(),
+          onInput: (v) => { t.text = v; markDirty(); }, onKeydown: keys, onReading: (a) => openPron(j, a) });
+        const ta = sf.el;
+        fields[j] = sf;
+        ta.addEventListener('focus', () => { lastField = j; });
         const card = h('div', { cls: 'dev-turn ' + t.role }, [
           h('div', { cls: 'dv-row' }, [sel, h('span', { cls: 'dv-sp' }),
             j > 0 ? h('button', { cls: 'dv-ghost', text: '↑', title: L.up, on: { click: () => { const x = narr.turns.splice(j, 1)[0]; narr.turns.splice(j - 1, 0, x); markDirty(); drawTurns(); } } }) : null,
             h('button', { cls: 'dv-ghost', text: L.del, title: L.delT, on: { click: () => { narr.turns.splice(j, 1); markDirty(); drawTurns(); } } })]),
           ta]);
         sel.addEventListener('change', () => { t.role = sel.value; card.className = 'dev-turn ' + t.role; markDirty(); });
-        ta.addEventListener('input', () => { t.text = ta.value; markDirty(); });
-        ta.addEventListener('keydown', keys);
         list.appendChild(card);
       });
     }
     drawTurns();
     const last = () => (narr.turns.length ? narr.turns[narr.turns.length - 1].role : 'novice');
-    body.appendChild(h('div', { cls: 'dv-tools' }, [h('button', { text: L.add, on: { click: () => {
+    const pronBtn = h('button', { id: 'dev-pron-btn', text: L.pron, title: L.pronT, on: { mousedown: (e) => e.preventDefault(), click: () => openPron(null) } });
+    body.appendChild(h('div', { cls: 'dv-tools' }, [pronBtn, h('button', { text: L.add, on: { click: () => {
       narr.turns.push({ role: last() === 'expert' ? 'novice' : 'expert', text: '' }); markDirty(); drawTurns();
-      const tas = list.querySelectorAll('textarea'); if (tas.length) tas[tas.length - 1].focus();
+      const tas = list.querySelectorAll('.dv-text'); if (tas.length) tas[tas.length - 1].focus();
     } } })]));
+    body.appendChild(pmsg);
+    // ---------------------------------------------------------------- 読み方の欄（#101。設計は handoff/pronounce-design-2026-11-04.md）
+    function closePron(refocus) {
+      if (!pron) return;
+      const was = pron; pron = null; was.box.remove();
+      if (refocus && fields[was.j]) { fields[was.j].el.focus(); fields[was.j].select(was.start, was.end); }
+    }
+    // 選んだ所 → {j, start, end, x, y?}（y：読みの付いた語を直すとき）。断るときは pmsg に知らせて null
+    function pickWord(j, a) {
+      pmsg.textContent = '';
+      if (a) return { j, start: a.start, end: a.end, x: a.x, y: a.y };
+      const sel = doc.defaultView.getSelection();
+      if (sel && sel.rangeCount) {
+        const r = sel.getRangeAt(0);
+        const ja = fields.findIndex((f) => f && f.el.contains(r.startContainer)), jb = fields.findIndex((f) => f && f.el.contains(r.endContainer));
+        if (ja >= 0 || jb >= 0) { if (ja !== jb) { pmsg.textContent = L.pWhy.turns; return null; } j = ja; }
+        else j = null;
+      }
+      const f = j === null ? null : fields[j];
+      const s = f && f.selection();
+      if (!f || !s) { pmsg.textContent = L.pNoSel; return null; }
+      let { start, end } = s;
+      const v = f.value;
+      if (start === end) {
+        const at = f.atomAt(start, end);
+        if (at && at.start < start && start < at.end) return { j, ...at };
+        // カーソルの所の語（Intl.Segmenter。Word の「ルビ」と同じく、選んでいなければカーソルの語）
+        let w = null;
+        try {
+          const seg = new Intl.Segmenter(narrLang(), { granularity: 'word' });
+          for (const x of seg.segment(v)) if (x.isWordLike && x.index <= start && start <= x.index + x.segment.length) { w = { start: x.index, end: x.index + x.segment.length }; break; }
+        } catch { /* Intl.Segmenter のない環境：選んでもらう */ }
+        if (!w || f.touchesAtom(w.start, w.end)) { pmsg.textContent = L.pNoSel; return null; }
+        ({ start, end } = w);
+      }
+      while (start < end && /\s/.test(v[start])) start++;
+      while (end > start && /\s/.test(v[end - 1])) end--;
+      const exact = f.atomAt(start, end);
+      if (exact && exact.start === start && exact.end === end) return { j, ...exact };
+      if (f.touchesAtom(start, end)) { pmsg.textContent = L.pWhy.mark; return null; }
+      const c = checkWord(v.slice(start, end));
+      if (!c.ok) { pmsg.textContent = c.why === 'empty' ? L.pNoSel : L.pWhy[c.why]; return null; }
+      return { j, start, end, x: c.word };
+    }
+    function openPron(j, a) {
+      closePron(false);
+      const w = pickWord(j === null ? lastField : j, a);
+      if (!w) return;
+      const f = fields[w.j], lang = narrLang();
+      f.select(w.start, w.end);
+      // ほかの所：このステップの欄の中（選んだ所は除く）＋ほかのステップ（開発サーバー・編集アプリに数えてもらう）
+      const here = fields.reduce((n, g, k) => n + (g ? findBare(g.value, w.x).length : 0), 0) - (w.y ? 0 : 1);
+      const hereY = w.y || fields.map((g) => g && readingIn(g.value, w.x)).find(Boolean) || null;
+      const dictOk = dictUsable(), dict = dictOk ? dictGet(lang, w.x) : null;
+      const input = h('input', { type: 'text', id: 'dev-pron-y', placeholder: L.pPh, 'aria-label': L.pLabel, maxlength: '64', spellcheck: 'false', lang });
+      const from = h('div', { cls: 'dv-from', id: 'dev-pron-from' });
+      const allBox = h('input', { type: 'checkbox', id: 'dev-pron-all' });
+      const allText = h('span', { text: L.pAll(Math.max(0, here)) });
+      const dictBox = h('input', { type: 'checkbox', id: 'dev-pron-dict' });
+      const msg = h('div', { id: 'dev-pron-msg', role: 'status', 'aria-live': 'polite' });
+      const P = pron = { ...w, box: null, other: 0, here: Math.max(0, here), lang, dictHad: dict };
+      const fill = (y, kind) => { if (!input.value && y) { input.value = y; from.textContent = kind ? L.pFrom[kind] : ''; } };
+      if (w.y) input.value = w.y; else fill(hereY, 'step');
+      if (!input.value && dict) fill(dict, 'dict');
+      dictBox.checked = !!dict && (!input.value || input.value === dict);
+      if (!dictOk) { dictBox.disabled = true; dictBox.checked = false; dictBox.setAttribute('aria-describedby', 'dev-pron-dict-off'); }
+      const setAll = () => { const n = P.here + P.other; allText.textContent = L.pAll(n); allBox.disabled = !n; if (!n) allBox.checked = false; };
+      setAll();
+      api('GET', '/__dev/narration/word?text=' + encodeURIComponent(w.x) + '&except=' + encodeURIComponent(narr.key)).then((r) => {
+        if (pron !== P || r._status !== 200) return;
+        P.other = Math.max(0, Math.floor(num(r.count)));
+        if (typeof r.reading === 'string') fill(r.reading, 'step');
+        setAll();
+      });
+      const say = (t) => { msg.textContent = t || ''; };
+      const yOf = () => input.value.trim();
+      const listen = [];
+      const pr = o.pronounce || null;
+      if (pr && pr.readAloud) listen.push(h('button', { id: 'dev-pron-device', text: L.pDevice, on: { click: async () => {
+        const y = yOf(); if (!y) { say(L.pNoY); return; }
+        say('');
+        const r = await pr.readAloud('{' + w.x + '|' + y + '}', P.lang);
+        if (r && !r.ok) say(r.reason === 'no-voice' || r.reason === 'no-synth' ? L.pNoVoice : L.pNoY);
+      } } }));
+      if (pr && pr.ai && pr.ai.available(P.lang)) listen.push(h('button', { id: 'dev-pron-ai', text: L.pAi, on: { click: async (e) => {
+        const y = yOf(); if (!y) { say(L.pNoY); return; }
+        const b = e.currentTarget; b.disabled = true; say(L.pAiBusy); msg.style.color = '#4b5363';
+        try { const r = await pr.ai.say(y, P.lang); say(r && !r.ok ? L.pAiFail + (r.reason || '') : ''); }
+        catch (err) { say(L.pAiFail + (err && err.message || err)); }
+        finally { b.disabled = false; msg.style.color = ''; }
+      } } }));
+      function apply() {
+        const y = yOf();
+        if (!y) { say(L.pNoY); input.focus(); return; }
+        if (!isWellFormedReading(w.x, y) || y.length > 64) { say(L.pBadY); input.focus(); return; }
+        // 選んだ所と（すべてになら）同じ欄のほかの所を 1 つの元に戻す単位で。ほかの欄はそれぞれの欄で
+        const atom = '{' + w.x + '|' + y + '}';
+        let v = f.value.slice(0, w.start) + atom + f.value.slice(w.end), c = w.start + atom.length;
+        if (allBox.checked) {
+          const before = findBare(v.slice(0, w.start), w.x).length;
+          v = applyReading(v, w.x, y).text; c += before * (y.length + 3);
+          fields.forEach((g) => { if (!g || g === f) return; const r = applyReading(g.value, w.x, y); if (r.n) g.replace(0, g.value.length, r.text, g.value.length); });
+          if (P.other) narr.pendingAll.set(w.x, { y, n: P.other });
+        }
+        f.replace(0, f.value.length, v, c);
+        if (dictOk) { if (dictBox.checked) dictSet(P.lang, w.x, y); else if (P.dictHad) dictSet(P.lang, w.x, null); }
+        markDirty();
+        closePron(false);
+        f.el.focus();
+      }
+      function remove() { f.replace(w.start, w.end, w.x); if (dictOk && dictBox.checked === false && P.dictHad) dictSet(P.lang, w.x, null); markDirty(); closePron(false); f.el.focus(); }
+      const box = P.box = h('div', { id: 'dev-pron', role: 'group', 'aria-label': L.pTitle(w.x) }, [
+        h('div', { cls: 'dv-pt', text: L.pTitle(w.x) }),
+        h('label', {}, [h('span', { text: L.pLabel }), input]), from,
+        listen.length ? h('div', { cls: 'dv-row' }, listen) : null,
+        h('label', {}, [allBox, allText]),
+        h('label', { title: dictOk ? L.pDictT : L.pDictOff }, [dictBox, h('span', { text: L.pDict })]),
+        dictOk ? h('div', { cls: 'dv-note', text: L.pDictT }) : h('div', { cls: 'dv-note', id: 'dev-pron-dict-off', text: L.pDictOff }),
+        msg,
+        h('div', { cls: 'dv-row' }, [w.y ? h('button', { id: 'dev-pron-remove', text: L.pRemove, on: { click: remove } }) : null, h('span', { cls: 'dv-sp' }),
+          h('button', { id: 'dev-pron-cancel', text: L.cancel, on: { click: () => closePron(true) } }), h('button', { id: 'dev-pron-apply', cls: 'dv-pri', text: L.pApply, on: { click: apply } })]),
+      ]);
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT' && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); apply(); }
+        else if (e.key === 'Escape') { e.preventDefault(); closePron(true); }
+        e.stopPropagation();
+      });
+      input.addEventListener('input', () => { from.textContent = ''; });
+      const card = f.el.closest('.dev-turn');
+      card.after(box);
+      input.focus(); input.select();
+    }
     const next = h('div', { cls: 'dv-next' }); body.appendChild(next);
     renderNext(next);
     const cur = narr;
@@ -751,8 +940,21 @@ export function createEditorUI(o) {
         if (j.rev) cur.rev = j.rev;
         // 送った後に入力があれば（版が進んだ）、未保存のまま：欄の中身を替えず、デッキに付いていかず、プレビューは inert のまま
         if (cur.edit !== sent) { status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); return; }
-        cur.dirty = false; status.textContent = j.changed ? L.saved : L.noChange; status.className = 'dv-st'; updateSide();
-        if (narr === cur && pos && pos.key !== cur.key) narrFollow(true);
+        const finish = (n) => {
+          cur.dirty = false; status.textContent = n ? L.savedAll(n) : j.changed ? L.saved : L.noChange; status.className = 'dv-st'; updateSide();
+          if (narr === cur && pos && pos.key !== cur.key) narrFollow(true);
+        };
+        // 読み方の「この台本のすべてに」：ほかのステップにも付ける（このステップを保存した後）
+        const all = [...cur.pendingAll];
+        if (!all.length) { finish(0); return; }
+        cur.pendingAll.clear();
+        saveBtn.disabled = true; saveBtn.textContent = L.saving;
+        all.reduce((p, [x, v]) => p.then((n) => api('POST', '/__dev/narration/readings', { text: x, reading: v.y, except: cur.key }).then((r) => {
+          if (r._status !== 200) throw new Error(r._offline ? L.offline : (r.error || L.saveFail));
+          return n + Math.max(0, Math.floor(num(r.n)));
+        })), Promise.resolve(0)).then((n) => { saveBtn.textContent = L.save; saveBtn.disabled = false; finish(n); }, (e) => {
+          saveBtn.textContent = L.save; saveBtn.disabled = false; status.textContent = e.message; status.className = 'dv-st dv-dirty';
+        });
       });
     }
     function keys(e) {

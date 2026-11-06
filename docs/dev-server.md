@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=603ce4a37bc9bf6b -->
+<!-- i18n: pair=dev-server.ja.md sha256=cb54cbbc0355960a -->
 # Dev server (fix the slides in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -27,7 +27,7 @@ The page at `/` is a frame around the slides: the slides themselves run in a san
 | Key | Action |
 |---|---|
 | `e` | Toggle edit mode. Editable elements get an outline. **Double-click** to open the HTML (with math as `\( \)`) in the side panel of the frame page (never over the slide), ⌘/Ctrl+Enter or Save to save, Esc to cancel. While the HTML or comment box is open the slides do not take clicks |
-| `n` | Script drawer (right; the slide shrinks beside it). Edit the turns of the current step (speaker Expert / Novice; add, delete and reorder turns). Write `{cue}` and `{φ\|ファイ}` as they are. The next step is shown below |
+| `n` | Script drawer (right; the slide shrinks beside it). Edit the turns of the current step (speaker Expert / Novice; add, delete and reorder turns). Write `{cue}` as it is; to set how a word is read, select it and press **Pronunciation…** (the reading is stored as `{φ\|ファイ}` and shown small above the word; see [the editor](editor.md#using-it), without the Listen buttons). The next step is shown below |
 | `c` | List of comments for the AI (open ones), numbered. Click one to go to its slide and step; its point flashes on the slide. 「解決」 ("Resolve") marks it as done |
 | Alt+click (on a Mac, hold the ⌥ Option key and click) | Leave a comment for the AI about that element. The point you clicked is kept too (a *pin*): while the list is open, each comment of the step on screen is marked with a numbered ring at that spot, at any size of the slide |
 | `m` (in edit mode, when not typing in a text field; also the 「マーカー（m）」 / "Marker (m)" button in the edit-mode bar of the side panel, and the pen button of the slide controls, which reads 「マーカー」 / "Marker" with the key `m` while editing; `d` also opens it) | Marker: draw a circle or an arrow on the slide. When you let go, the same comment box as Alt+click opens for the mark in the side panel; while it is open, further strokes join the same comment (up to 20; the preview stays drawable), Leave keeps all the marks with the comment (`strokes`), Cancel discards them all. The marks are drawn over the slide (never into the slides' HTML) in the pin colour. The indicator says 「編集中：マーカー」 / "Editing: marker". `m` again (or `d`), or Esc, turns it off, and so does leaving edit mode. While typing in a text field `d` and `m` are text. Outside edit mode `m` does nothing and `d` is the presenter pen; the presenter view cannot choose the marker and its tools stay refused while editing |

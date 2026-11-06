@@ -4,7 +4,8 @@
 import { short } from '../kit/core/sha1.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/core/bounded-read-core.mjs';
 import { normPin, entryStrokes, strokesCentroid } from '../kit/core/comment-core.mjs';
-import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey } from '../kit/core/narration-core.mjs';
+import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey, narrationWord, applyNarrationReading } from '../kit/core/narration-core.mjs';
+import { checkWord, isWellFormedReading } from '../kit/core/readings.mjs';
 
 function parseRange(s) {
   const m = /^(\d+)-(\d+)$/.exec(String(s || ''));
@@ -121,6 +122,39 @@ export function createDevApi(ctx) {
             if (live()) await ctx.afterWrite();
           }
           return ok({ ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
+        });
+      }
+      // 読み方（#101）：同じ語がほかのステップに何か所あるか・付いている読み（except の段階は数えない）
+      if (method === 'GET' && p === '/__dev/narration/word') {
+        const w = checkWord(u.searchParams.get('text') || '');
+        if (!w.ok) return err(400, M.badNarr);
+        const text = await ws.readText('narration.md', NARR);
+        if (!live()) return CANCEL();
+        return ok(narrationWord(text ?? '', w.word, u.searchParams.get('except') || null));
+      }
+      // 読み方の「この台本のすべてに」：ほかのステップの、読みの付いていない語に {x|y} を付ける（台本の欄の保存の後）
+      if (method === 'POST' && p === '/__dev/narration/readings') {
+        return await serial(async () => {
+          if (!live()) return CANCEL();
+          const w = checkWord(body.text);
+          if (!w.ok || w.word !== body.text || !isWellFormedReading(body.text, body.reading) || String(body.reading).length > 64) return err(400, M.badNarr);
+          const cur = await ws.readText('narration.md', NARR);
+          if (!live()) return CANCEL();
+          if (cur === null) return ok({ ok: true, n: 0 });
+          const r = applyNarrationReading(cur, w.word, String(body.reading), typeof body.except === 'string' ? body.except : null);
+          if (r.n) {
+            const no = ctx.beforeWrite && await ctx.beforeWrite('narration');
+            if (!live()) return CANCEL();
+            if (no) return err(403, no);
+            fits(r.text, NARR, 'narration.md');
+            await ws.backup('narration.md', NARR);
+            if (!live()) return CANCEL();
+            if ((await ws.readText('narration.md', NARR)) !== cur) return err(409, M.narrConflict);
+            if (!live()) return CANCEL();
+            await ws.writeText('narration.md', r.text, { live });
+            if (live()) await ctx.afterWrite();
+          }
+          return ok({ ok: true, n: r.n });
         });
       }
       if (method === 'GET' && p === '/__dev/comments') {

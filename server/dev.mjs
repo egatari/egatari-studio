@@ -16,6 +16,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { rewriteNarration, narrationRev, rawTurns as narrRawTurns, splitKey, isStepKey } from '../kit/narration.mjs';
+import { narrationWord, applyNarrationReading } from '../kit/core/narration-core.mjs';
+import { checkWord, isWellFormedReading } from '../kit/core/readings.mjs';
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
 import { normPin, entryStrokes, strokesCentroid } from '../kit/core/comment-core.mjs';
@@ -65,7 +67,7 @@ function issueCap() {
 }
 const capOk = (c) => typeof c === 'string' && /^[0-9a-f]{32}$/.test(c) && CAPS.has(c);
 // 外枠が読み込む部品（合言葉を含まない。誰でも読める）
-const STATIC = { '/__dev/shell.js': 'shell.js', '/__dev/editor-ui.js': 'editor-ui.js' };
+const STATIC = { '/__dev/shell.js': 'shell.js', '/__dev/editor-ui.js': 'editor-ui.js', '/__dev/script-field.js': 'script-field.js', '/kit/core/readings.mjs': '../kit/core/readings.mjs' };
 
 // ---------------------------------------------------------------- 組み立て
 let buildFn = null, buildVer = 0, needReimport = true;
@@ -419,6 +421,21 @@ const server = http.createServer(async (req, res) => {
       const out = rewriteNarration(text, sk, st, b.turns, page?.slides || []);
       if (out !== text) { backup(NARR); writeIn(NARR, out); console.log(`narration ${sk}:${st}`); await afterWrite(); }
       return send(res, 200, { ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
+    }
+    // 読み方（#101）：同じ語がほかのステップに何か所あるか・付いている読み／ほかのステップにも付ける（台本の欄の保存の後）
+    if (req.method === 'GET' && p === '/__dev/narration/word') {
+      const w = checkWord(u.searchParams.get('text') || '');
+      if (!w.ok) return send(res, 400, { error: '語が正しくありません' });
+      return send(res, 200, narrationWord(readNarr(), w.word, u.searchParams.get('except') || null));
+    }
+    if (req.method === 'POST' && p === '/__dev/narration/readings') {
+      const b = await readBody(req);
+      const w = checkWord(b.text);
+      if (!w.ok || w.word !== b.text || !isWellFormedReading(b.text, b.reading) || String(b.reading).length > 64) return send(res, 400, { error: '語か読み方が正しくありません' });
+      const text = readNarr();
+      const r = applyNarrationReading(text, w.word, String(b.reading), typeof b.except === 'string' ? b.except : null);
+      if (r.n) { backup(NARR); writeIn(NARR, r.text); console.log(`narration readings ${w.word}`); await afterWrite(); }
+      return send(res, 200, { ok: true, n: r.n });
     }
     if (req.method === 'GET' && p === '/__dev/comments') return send(res, 200, readComments());
     if (req.method === 'POST' && p === '/__dev/comment') {
