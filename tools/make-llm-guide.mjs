@@ -516,7 +516,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 ## 書き終えたら
 
-ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` と、\`{"componentsCatalogue": "2"}\` だけの \`egatari.json\` を書く（新しい教材はパーツライブラリ 2 で組む。ここに出てくるパーツは 2 のもの。\`egatari.json\` がないと前の 1 のまま組まれ、2 だけのパーツが組み立てのエラーになる）。この場合は、下の R-output の囲みの代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行う。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
+ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` と、\`{"componentsCatalogue": "2"}\` だけの \`egatari.json\` を書く（新しい教材はパーツライブラリ 2 で組む。ここに出てくるパーツは 2 のもの。\`egatari.json\` がないと前の 1 のまま組まれ、2 だけのパーツが組み立てのエラーになる）。この場合は、下の R-output の囲みの代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行い、Egatari ファイル（\`.ega.html\`）で仕上げる。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」（New…）に貼り付けてもらう。
 
 ファイルを書けなければ、Studio の「新規作成…」に貼り付けられるように、下の R-output に従い、\`deck.html\` と \`narration.md\` の 2 つのコードの囲みを返す。
 
@@ -565,7 +565,7 @@ Ask the user to add audio in Studio's audio panel (make AI voice on this compute
 
 ## When you finish
 
-If you can write files, write \`deck.html\`, \`narration.md\` and an \`egatari.json\` containing only \`{"componentsCatalogue": "2"}\` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without \`egatari.json\` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the fenced blocks required by R-output below. If \`egatari-studio:studio\` is available, continue with that skill for quality checks, ids and building. Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into “New…” (新規作成…).
+If you can write files, write \`deck.html\`, \`narration.md\` and an \`egatari.json\` containing only \`{"componentsCatalogue": "2"}\` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without \`egatari.json\` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the fenced blocks required by R-output below. If \`egatari-studio:studio\` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (\`.ega.html\`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into “New…” (新規作成…).
 
 If you cannot write files, return the two fenced blocks \`deck.html\` and \`narration.md\` following R-output below, ready to paste into Studio's “New…”.
 
