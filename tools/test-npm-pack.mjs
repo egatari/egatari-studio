@@ -1,9 +1,14 @@
 // npm の包み egatari の試験（#157）：npm pack した tarball をリポジトリの外の一時フォルダに入れ、egatari コマンドで作って組んで検査する
 // test-all: platform（--platform でも走らせる：npm の包みと、リポジトリの外への入れ方）
 //   node tools/test-npm-pack.mjs [作業フォルダ] [--keep]
-// 1. 包みの中身：bin・kit・字の写し（fonts/@fontsource、OFL の LICENSE つき）があり、試験・examples・dist・規格の試験用ファイル・node_modules はない
+// 1. 包みの中身：bin・kit・字の写し（fonts/@fontsource、OFL の LICENSE つき）があり、試験・examples・dist・規格の試験用ファイル・node_modules はない。
+//    部品の写しは index.js（と使用条件）だけで README.md・demo.html・CHANGELOG.md はない（vendor/.npmignore）。既定の声の wav もない（tts/voices.json と tts/refvoices.py が初めての tts で取り寄せる）
 // 2. 入れる：npm install <tarball>（--prefer-offline・--ignore-scripts）。@fontsource は入らない（devDependencies）
 // 3. npx egatari --version・doctor・new（相対パスは cwd から）・check・build・sheet・build --portable
+// 3a. 字体：egatari の包みは既定の 3 つ（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と同梱のテーマの字体（asagi の Zen Maru Gothic）。
+//     ほかの 6 つは別の包み @egatari/fonts-extra（packages/fonts-extra を npm pack したもの）。既定の教材と asagi の教材はネットワークなしで組め、
+//     CSS で選べる字体（Klee One）を名指した教材は、その包みがなければ組み立てと品質チェックが入れ方を言い（fontsExtraMissing）、その包みを入れれば組める
+// 3b. doctor：部品の写しの index.js が固定と manifest の sha256 に合う（parts）。部品庫 1.x・2.x の部品を使う教材が、入れた包みで組める
 // 4. 再生器の版：出した版と同じならその版、違っても "+dev" だけで、外側の利用者のリポジトリの commit を付けない（kit/build.mjs の repoCommit）
 // 包みと入れた後の大きさを出す。ブラウザが要る（check・doctor）
 import fs from 'node:fs';
@@ -12,6 +17,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { FONT_LIST, FONTS_EXTRA_PKG } from '../kit/core/build-core.mjs';
 import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -41,7 +47,11 @@ const mb = (b) => (b / 1048576).toFixed(1) + ' MiB';
 const proj = path.join(work, 'proj');
 const pkgDir = path.join(proj, 'node_modules', 'egatari');
 const egatari = (argv, cwd = proj, env) => sh('npx', ['--no', '--', 'egatari', ...argv], cwd, env);
-let tgz = null, packed = null;
+let tgz = null, packed = null, extraTgz = null;
+const fontName = (f) => f.pkg.replace(/^@fontsource\//, '');
+const EXTRA = FONT_LIST.filter((f) => f.extra), DEFAULTS = FONT_LIST.filter((f) => !f.extra);
+// ネットワークを使わない（届かないプロキシ・npm はオフライン）
+const OFFLINE = { HTTP_PROXY: 'http://127.0.0.1:9', HTTPS_PROXY: 'http://127.0.0.1:9', http_proxy: 'http://127.0.0.1:9', https_proxy: 'http://127.0.0.1:9', NO_PROXY: '', no_proxy: '', npm_config_offline: 'true' };
 
 await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験・examples・dist・規格の試験用ファイルは入らない', () => {
   const r = must(sh('npm', ['pack', '--json', '--pack-destination', work], ROOT), 'npm pack');
@@ -75,6 +85,43 @@ await t('npm pack：icons の en.json・ja.json は入らず、icons の index.j
   assert.deepEqual([...files].filter((f) => /^vendor\/components\/sha256\/[^/]+\/(en|ja)\.json$/.test(f)), []);
 });
 
+await t('npm pack：部品の写しは index.js と使用条件だけ（README.md・demo.html・CHANGELOG.md なし）、既定の声の wav はなく、取り寄せの固定（tts/voices.json）がある', () => {
+  const files = packed.files.map((f) => f.path);
+  const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'components.lock.json'), 'utf8'));
+  const dirs = new Set(Object.values(lock.components).flatMap((c) => Object.values(c.content)));
+  for (const h of dirs) assert.ok(files.includes(`vendor/components/sha256/${h}/index.js`), `missing vendor/components/sha256/${h}/index.js`);
+  assert.deepEqual(files.filter((f) => /^vendor\/components(-2)?\/.*(^|\/)(README\.md|demo\.html)$/.test(f)), []);
+  assert.ok(files.some((f) => /^vendor\/components\/sha256\/[0-9a-f]{64}\/(OFL\.txt|LICENSE-[^/]+)$/.test(f)), 'the parts\' own licences stay');
+  for (const f of ['vendor/components/manifest.json', 'vendor/components/LICENSE', 'components2.lock.json', 'tts/voices.json', 'tts/refvoices.py', 'tts/voices/README.md']) assert.ok(files.includes(f), 'missing ' + f);
+  assert.deepEqual(files.filter((f) => /\.wav$/.test(f)), []);
+});
+
+await t('npm pack：字体は既定の 3 つと同梱のテーマの Zen Maru Gothic だけ。ほかの 6 つ（FONT_LIST の extra）は入らない', () => {
+  const files = packed.files.map((f) => f.path);
+  assert.deepEqual(DEFAULTS.map((f) => f.family).sort(), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Source Sans 3', 'Zen Maru Gothic']);
+  for (const f of DEFAULTS) for (const x of ['400.css', '700.css', 'LICENSE']) assert.ok(files.includes(`fonts/@fontsource/${fontName(f)}/${x}`), `missing ${fontName(f)}/${x}`);
+  assert.equal(EXTRA.length, 6);
+  for (const f of EXTRA) assert.deepEqual(files.filter((x) => x.includes(`/${fontName(f)}/`)), [], f.family);
+  assert.deepEqual(files.filter((x) => x.startsWith('packages/')), []);
+});
+
+await t('npm pack packages/fonts-extra：@egatari/fonts-extra に選べる 6 つ（CSS・woff2・OFL）があり、既定の字体はない', () => {
+  const dir = path.join(ROOT, 'packages', 'fonts-extra');
+  const r = must(sh('npm', ['pack', '--json', '--pack-destination', work], dir), 'npm pack fonts-extra');
+  const p = JSON.parse(r.stdout.slice(r.stdout.indexOf('[')))[0];
+  extraTgz = path.join(work, p.filename);
+  assert.equal(p.name, FONTS_EXTRA_PKG);
+  const files = p.files.map((f) => f.path);
+  for (const f of EXTRA) {
+    for (const w of f.weights) assert.ok(files.includes(`@fontsource/${fontName(f)}/${w}.css`), `${f.family} ${w}`);
+    if (f.italic) assert.ok(files.includes(`@fontsource/${fontName(f)}/400-italic.css`), `${f.family} italic`);
+    assert.ok(files.includes(`@fontsource/${fontName(f)}/LICENSE`) && files.some((x) => x.startsWith(`@fontsource/${fontName(f)}/files/`) && x.endsWith('.woff2')), f.family);
+  }
+  for (const f of DEFAULTS) assert.deepEqual(files.filter((x) => x.includes(`/${fontName(f)}/`)), [], f.family);
+  assert.deepEqual(files.filter((x) => !/^(@fontsource\/|package\.json$|README\.md$)/.test(x)), []);
+  console.log(`     ${FONTS_EXTRA_PKG}: tarball ${mb(p.size)}, unpacked ${mb(p.unpackedSize)} (${p.entryCount} files)`);
+});
+
 await t('npm install <tarball>：入れたものに @fontsource はなく、字は写しから', () => {
   fs.mkdirSync(proj, { recursive: true });
   fs.writeFileSync(path.join(proj, 'package.json'), JSON.stringify({ name: 'egatari-pack-test', version: '0.0.0', private: true }, null, 2));
@@ -94,7 +141,20 @@ await t('npx egatari --version・--help・知らないコマンド', () => {
 
 await t('egatari doctor：Node・uv・ffmpeg・ブラウザを出し、要るものがそろえば 0', () => {
   const r = must(egatari(['doctor']), 'doctor');
-  for (const k of ['node', 'uv', 'ffmpeg', 'browser']) assert.match(r.stdout, new RegExp(`^(ok|NG|--)\\s+${k}\\b`, 'm'), k);
+  for (const k of ['node', 'uv', 'ffmpeg', 'browser', 'voices']) assert.match(r.stdout, new RegExp(`^(ok|NG|--)\\s+${k}\\b`, 'm'), k);
+  assert.match(r.stdout, /^ok\s+parts\s+index\.js \d+ /m, 'the vendored index.js files match the lock and the manifests');
+});
+
+await t('egatari doctor：部品の index.js を 1 つ書き換えると parts が NG で 1', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(pkgDir, 'components.lock.json'), 'utf8'));
+  const f = path.join(pkgDir, 'vendor', 'components', 'sha256', lock.components.sweep.content[lock.components.sweep.default], 'index.js');
+  const keep = fs.readFileSync(f);
+  fs.writeFileSync(f, Buffer.concat([keep, Buffer.from('\n// changed\n')]));
+  try {
+    const r = egatari(['doctor']);
+    assert.equal(r.code, 1, r.out);
+    assert.match(r.stdout, /^NG\s+parts\s+.*sweep@/m);
+  } finally { fs.writeFileSync(f, keep); }
 });
 
 // 一時フォルダの中に別のリポジトリ（外側の利用者のリポジトリの代わり）を作り、その中で教材を作る
@@ -114,11 +174,67 @@ await t('egatari check deck/deck.html：エラー 0', () => {
 });
 
 await t('egatari build：out/deck.html に写しの字（BIZ UDPGothic・Source Sans 3）が入る', () => {
-  must(egatari(['build', 'deck/deck.html'], user), 'build');
+  // ネットワークなし（届かないプロキシ・npm はオフライン）で組む
+  const r = must(egatari(['build', 'deck/deck.html'], user, OFFLINE), 'build');
+  assert.doesNotMatch(r.out, /fonts-extra/);
   const html = fs.readFileSync(path.join(user, 'deck', 'out', 'deck.html'), 'utf8');
   assert.match(html, /@font-face\{font-family:"Source Sans 3"/);
   assert.match(html, /@font-face\{font-family:"BIZ UDPGothic"/);
   assert.doesNotMatch(html, /字の包みがない|がないので埋め込まない/);
+});
+
+await t('egatari build：部品庫 1.x（minimal・pitch）と 2.x（pitch をカタログ 2 で）の部品が、README・見本のない写しから組める', () => {
+  for (const [d, cat] of [['minimal', null], ['pitch-fictional', null], ['pitch-fictional', '2']]) {
+    const dir = path.join(user, `ex-${d}${cat ? '-' + cat : ''}`);
+    fs.cpSync(path.join(ROOT, 'examples', d), dir, { recursive: true, filter: (s) => !/[\\/](out|audio|\.cache)$/.test(s) });
+    if (cat) {
+      const cf = path.join(dir, 'egatari.json');
+      fs.writeFileSync(cf, JSON.stringify({ ...JSON.parse(fs.readFileSync(cf, 'utf8')), componentsCatalogue: cat }, null, 2));
+    }
+    const r = must(egatari(['build', path.relative(user, path.join(dir, 'deck.html'))], user), `build ${d}`);
+    assert.doesNotMatch(r.out, /component not found|no available index\.js|refused/, r.out.slice(-2000));
+    const html = fs.readFileSync(path.join(dir, 'out', 'deck.html'), 'utf8');
+    const marks = [...html.matchAll(/\/\/ ---- (\S+) \((vendor\/components\/[^)]*index\.js)\)/g)].map((m) => m[1]);
+    const want = d === 'minimal' ? ['m-sweep'] : cat ? ['bars@2.0.1', 'base@1.0.0'] : ['m-bars', 'm-flow', 'm-kpi'];
+    for (const w of want) assert.ok(marks.some((m) => m === w || m.startsWith(w.replace(/@.*/, '@'))), `${d}: no ${w} in ${marks.join(', ')}`);
+  }
+});
+
+await t('同梱のテーマ asagi（Zen Maru Gothic）は @egatari/fonts-extra なしで、ネットワークなしで組め、知らせがない', () => {
+  must(egatari(['new', 'maru', '--lang', 'ja', '--theme', 'asagi'], user), 'new --theme asagi');
+  const b = must(egatari(['build', 'maru/deck.html'], user, OFFLINE), 'build asagi');
+  assert.doesNotMatch(b.out, /fonts-extra:|字の?ないので/);
+  assert.match(fs.readFileSync(path.join(user, 'maru', 'out', 'deck.html'), 'utf8'), /@font-face\{font-family:"Zen Maru Gothic"/);
+});
+
+// CSS で選べる字体（fonts-extra の Klee One）を名指した教材
+await t('CSS で Klee One を名指した教材：@egatari/fonts-extra がなければ build が知らせ、check は fontsExtraMissing（入れ方つき）', () => {
+  must(egatari(['new', 'klee', '--lang', 'ja'], user), 'new klee');
+  const f = path.join(user, 'klee', 'deck.html');
+  fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('</head>', '<style>.slide h1{font-family:"Klee One",var(--font-sans)}</style>\n</head>'));
+  const b = must(egatari(['build', 'klee/deck.html'], user, OFFLINE), 'build klee');
+  assert.match(b.out, /fonts-extra: .*Klee One.*npm i -D @egatari\/fonts-extra/);
+  assert.doesNotMatch(fs.readFileSync(path.join(user, 'klee', 'out', 'deck.html'), 'utf8'), /@font-face\{font-family:"Klee One"/);
+  const r = egatari(['check', 'klee/deck.html', '--json'], user);
+  const j = JSON.parse(r.stdout.slice(r.stdout.indexOf('{')));
+  const x = j.results.filter((y) => y.code === 'fontsExtraMissing');
+  assert.equal(x.length, 1, r.stdout.slice(0, 3000));
+  assert.equal(x[0].sev, 'error');
+  assert.match(JSON.stringify(x[0]), /npm i -D @egatari\/fonts-extra/);
+  assert.equal(j.results.filter((y) => y.code === 'fontNotEmbedded' && /Klee/.test(JSON.stringify(y))).length, 0, 'not reported twice');
+  assert.notEqual(r.code, 0);
+});
+
+await t('@egatari/fonts-extra をその tarball から入れると、Klee One を埋め込んで組め、check に fontsExtraMissing がない', () => {
+  assert.ok(extraTgz, 'no fonts-extra tarball');
+  must(sh('npm', ['install', '-D', path.relative(proj, extraTgz).split(path.sep).join('/'), '--prefer-offline', '--ignore-scripts', '--no-audit', '--no-fund'], proj), 'npm install fonts-extra');
+  assert.ok(fs.existsSync(path.join(pkgDir, 'bin', 'egatari.mjs')), 'egatari is still installed');
+  const b = must(egatari(['build', 'klee/deck.html'], user, OFFLINE), 'build klee with fonts-extra');
+  assert.doesNotMatch(b.out, /fonts-extra:/);
+  assert.match(fs.readFileSync(path.join(user, 'klee', 'out', 'deck.html'), 'utf8'), /@font-face\{font-family:"Klee One"/);
+  const r = egatari(['check', 'klee/deck.html', '--json'], user);
+  const j = JSON.parse(r.stdout.slice(r.stdout.indexOf('{')));
+  assert.equal(j.results.filter((y) => y.code === 'fontsExtraMissing').length, 0);
 });
 
 await t('egatari sheet deck：全スライドの 1 枚の画像（egatari-studio のスキルが呼ぶ）', () => {

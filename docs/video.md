@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=3e77d5e5347c4288 -->
+<!-- i18n: pair=video.ja.md sha256=6f02a1c60d6b577e -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -14,7 +14,7 @@ The list of TTS and render options and environment variables is in [reference.md
   - `POST {IRODORI_URL}/v1/audio/speech`: synthesizes one line at a time. The body is JSON
     `{"model": "mlx-community/Irodori-TTS-v4.1-Small-fp16", "input": "<sentence>", "ref_audio": "<path to the reference wav>", "response_format": "wav"}`.
     `ref_audio` is a path that the server reads (if the server is on another computer, a path on that computer)
-- The default reference voices `bob` and `alice` (and `alice_en`, `bob_en`) are synthetic voices included in `tts/voices/` ([where they come from](../tts/voices/README.md)). For other voices, put a wav file at `<reference voice folder>/<name>.wav` and refer to it by name
+- The default reference voices `bob` and `alice` (and `alice_en`, `bob_en`) are synthetic voices in `tts/voices/` of the repository ([where they come from](../tts/voices/README.md)). A checkout uses those files; the npm package does not carry them, and the first `egatari tts` that needs one downloads it from `https://raw.githubusercontent.com/egatari/egatari-studio/<tag>/tts/voices/<name>.wav` (the tag and each file's sha256 are pinned in `tts/voices.json`), refuses it if the sha256 differs, and keeps it in your cache folder (`~/Library/Caches/egatari/voices/` on macOS, `~/.cache/egatari/voices/` on Linux, `%LOCALAPPDATA%\egatari\voices\` on Windows). Offline, the error names the URL and the place to put the file by hand. For other voices, put a wav file at `<reference voice folder>/<name>.wav` and refer to it by name
 
 | Environment variable | Meaning | Default |
 |---|---|---|

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=009edcf65f352005 -->
+<!-- i18n: pair=reference.md sha256=8fbea782c9a853f9 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -213,6 +213,8 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 日本語 | BIZ UDPゴシック（既定）、BIZ UDP明朝、しっぽり明朝（Shippori Mincho）、Zen Maru Gothic、Klee One（400 と 600） |
 | 英語 | Source Sans 3（既定）、Source Serif 4、Andika、Atkinson Hyperlegible Next（どれも斜体あり） |
 | 等幅 | Source Code Pro |
+
+npm の包み `egatari` についてくるのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と、同梱のテーマが使う字体（`asagi` の Zen Maru Gothic）で、同梱のテーマはどれも `npx egatari` だけで組める。教材の CSS か自分のテーマだけが名指せるほかの字体（しっぽり明朝・Klee One・Source Serif 4・Andika・Atkinson Hyperlegible Next・Source Code Pro）は別の包み `@egatari/fonts-extra` にあり、`egatari` と一緒に入れる（`npm i -D @egatari/fonts-extra`、または `npx -p egatari -p @egatari/fonts-extra egatari …`）。組み立ては `egatari` の包みと今いるフォルダからそれを探す。ないと、組み立ては `fonts-extra: …` と知らせ、品質チェックは入れ方つきのエラー `fontsExtraMissing` を出す。黙ってほかの字体にはしない。リポジトリの checkout にはどの字体もある（`npm ci`）。
 
 CSS はほかの字体（端末に入っている字体など）も書けるが、ファイルには入らない。開く端末ごとに、その字体か、並びの次の字体で出る。品質チェックは `fontNotEmbedded` で名前を挙げて知らせる（教材に 1 回。スライドの字の `font-family` の計算した値の最初の名前が、埋め込んだ字体でも総称でもないもの）。オフライン版のエディタ（`editor.html`）が持つのは BIZ UDPゴシックと Source Sans 3 だけで、ほかの字体を選んだ教材はその字体なしで組み、知らせる。
 
@@ -436,6 +438,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 台本の言語がスライドの言語と違う（`narrLang`） | 情報 |
 | `--fg --term --emph --title --accent2` と `--bg` のコントラストが 4.5:1 未満。`--muted` が 3:1 未満 | エラー。警告 |
 | スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
+| 教材が `@egatari/fonts-extra` の字体を選んでいる（教材の CSS か自分のテーマ）のに、その包みが npm の包み `egatari` と一緒に入っていないので、その字体が入らない — `fontsExtraMissing`（入れ方を言う） | エラー |
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
 | パーツの描画が呼び出し順で変わる | エラー |
@@ -516,7 +519,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | 選択肢 | 意味 |
 |---|---|
 | `--voices expert=a,novice=b` | 声（`voice.json` より優先） |
-| `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`） |
+| `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`。npm の包みでは、ない既定の声を初めて使うときにキャッシュへ取り寄せる。`tts/voices.json`） |
 | `--engine irodori\|voxcpm2` | `voice.json` の `engine` と教材の言語より優先 |
 | `--yomi FILE` | 読み辞書（`MOTION_YOMI` より優先。既定 `tts/yomi.yaml`）。日本語だけ |
 | `--only 鍵,…` | このステップ（`スライドの鍵:ステップ`）だけ |

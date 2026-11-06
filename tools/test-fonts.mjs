@@ -40,6 +40,31 @@ await t('一覧：日本語 5・英語 4・等幅 1 の 10 の名前（Klee One 
   assert.deepEqual(FONT_LIST.map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Shippori Mincho', 'Zen Maru Gothic', 'Klee One', 'Source Sans 3', 'Source Serif 4', 'Andika', 'Atkinson Hyperlegible Next', 'Source Code Pro']);
   for (const f of FONT_LIST) assert.ok(pkg.devDependencies[f.pkg] && !pkg.dependencies[f.pkg], f.pkg);
   assert.deepEqual(FONT_LIST.find((f) => f.family === 'Klee One').weights, [400, 600]);
+  // 既定の 3 つと同梱のテーマの字体は egatari の包みに、ほかの 6 つ（extra）は別の包み @egatari/fonts-extra に（#176。tools/fonts-vendor.mjs）
+  assert.deepEqual(FONT_LIST.filter((f) => !f.extra).map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Zen Maru Gothic', 'Source Sans 3']);
+  const extra = JSON.parse(fs.readFileSync(path.join(ROOT, 'packages', 'fonts-extra', 'package.json'), 'utf8'));
+  assert.equal(extra.name, '@egatari/fonts-extra');
+  assert.ok(pkg.peerDependenciesMeta[extra.name].optional && pkg.peerDependencies[extra.name] === `^${extra.version.split('.')[0]}.0.0`);
+});
+
+await t('同梱のテーマ（themes/ と前の版の写し vendor/themes/）が名指す字体は、どれも egatari の包みに入る（extra でない。npx egatari だけで組める）', () => {
+  const files = (d) => fs.readdirSync(d, { recursive: true, withFileTypes: true }).filter((e) => e.isFile()).map((e) => path.join(e.parentPath ?? e.path, e.name));
+  const dirs = [];
+  for (const d of fs.readdirSync(path.join(ROOT, 'themes'))) dirs.push(path.join(ROOT, 'themes', d));
+  const vt = path.join(ROOT, 'vendor', 'themes');
+  if (fs.existsSync(vt)) for (const n of fs.readdirSync(vt)) if (fs.statSync(path.join(vt, n)).isDirectory()) for (const v of fs.readdirSync(path.join(vt, n))) dirs.push(path.join(vt, n, v));
+  const used = new Map();
+  for (const d of dirs) {
+    if (!fs.statSync(d).isDirectory()) continue;
+    const fl = files(d);
+    const css = fl.filter((f) => f.endsWith('.css')).map((f) => fs.readFileSync(f, 'utf8')).join('\n');
+    const tj = fl.find((f) => path.basename(f) === 'theme.json');
+    const cfg = tj ? JSON.parse(fs.readFileSync(tj, 'utf8')).fonts : null;
+    for (const f of chosenFonts(css, cfg)) used.set(f.family, [...(used.get(f.family) || []), path.relative(ROOT, d)]);
+  }
+  assert.ok(used.has('Zen Maru Gothic'), 'asagi names Zen Maru Gothic (the check is live)');
+  const bad = [...used].filter(([fam]) => FONT_LIST.find((f) => f.family === fam).extra);
+  assert.deepEqual(bad, [], 'a bundled theme names a font of @egatari/fonts-extra');
 });
 
 await t('選ぶ：theme.json の fonts と CSS の名指し（既定の 3 つは数えない）。強調の中のラテン文字', () => {

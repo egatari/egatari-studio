@@ -12,7 +12,8 @@
   voice には声・モデル・正規化の目標・行間・読み辞書と適用規則の版が入る（どれかが変われば作り直し）
 - --dry-run：TTS を呼ばず、推定の長さ（日本語 7.5 字/秒）の無音を作る。digest は別になる
 - 声の設定：--voices > <deckdir>/voice.json > 既定（Expert = bob、Novice = alice）。
-  名前は <参照音声のフォルダ>/<名前>.wav（--ref-dir > IRODORI_REF_DIR > tts/voices）、パスも書ける
+  名前は <参照音声のフォルダ>/<名前>.wav（--ref-dir > IRODORI_REF_DIR > tts/voices）、パスも書ける。
+  既定の声（tts/voices.json）が tts/voices/ になければ（npm の包み）、初めて使うときに取り寄せる（refvoices.py）
 - 読み辞書：--yomi > MOTION_YOMI > tts/yomi.yaml
 - サーバー：IRODORI_URL（既定 http://localhost:8882）
 - 録音・取り込みの音声（manifest の kind が recorded か imported。編集アプリの音声の板が書く）は作り直さず、そのまま残す
@@ -266,7 +267,7 @@ def main():
     if not lang.startswith("ja"):
         suffix = "_" + lang.split("-")[0]
         for r, v in list(voices.items()):
-            if not ("/" in v or v.endswith(".wav")) and (ref_dir / f"{v}{suffix}.wav").exists():
+            if not ("/" in v or v.endswith(".wav")) and M.voice_available(v + suffix, ref_dir):
                 voices[r] = v + suffix
     voice = {
         "engine": "dry-run" if args.dry_run else engine,
@@ -298,7 +299,7 @@ def main():
             try:
                 refs[r] = M.resolve_voice(voices[r], ref_dir, deckdir)   # 参照音声が無ければここで止める
                 refs[r] = M.ref_at_model_rate(refs[r], no_link(deckdir, deckdir / ".cache" / "voices"))   # 48 kHz・モノラルにそろえる
-            except (FileNotFoundError, PermissionError) as e:
+            except (FileNotFoundError, PermissionError, M.VoiceFetchError) as e:
                 sys.exit(f"⚠ {e}")
 
     only = set(k.strip() for k in args.only.split(",")) if args.only else None

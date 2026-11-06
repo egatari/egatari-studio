@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=a476742a0a3a1c4b -->
+<!-- i18n: pair=RELEASING.ja.md sha256=09b0bf2cc063b09b -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -73,6 +73,36 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
 8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>, <https://studio.egatari.org/vX.Y.Z/>, the previous release's `/v…/` (its log lists the frozen copies it added) and <https://studio.egatari.org/parts/> (the samples of all parts; the log also says which release each version's page came from). To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
    Also check the compressed response, which a browser gets: `curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` must print `200` (a cached compressed 404 can survive a domain change).
+
+## @egatari/fonts-extra
+
+The package `egatari` carries the default fonts (BIZ UDPGothic, BIZ UDPMincho, Source Sans 3) and every font a bundled theme uses (Zen Maru Gothic of `asagi`), so every bundled theme works from `npx egatari` alone; `tools/test-fonts.mjs` fails if a bundled theme names an `extra` font. The 6 other optional fonts (`extra` in `FONT_LIST`, `kit/core/build-core.mjs`) are the separate package `@egatari/fonts-extra` in `packages/fonts-extra/`, with its own version; `egatari` lists it as an optional peer dependency (`^1.0.0`). `tools/fonts-vendor.mjs` (its `prepack`, and `egatari`'s) builds its copy from the `@fontsource` devDependencies, and `tools/test-npm-pack.mjs` packs it and builds a lesson with an optional font from it. Publish a new version only when its fonts change (a bump of an optional `@fontsource` devDependency, or a change of the list or the weights; a bundled theme that starts using one of them moves that family back into `egatari`: remove its `extra`).
+
+**First publish (by hand, once).** A scoped package must exist before trusted publishing can be set up for it. From a clean checkout of the release commit, signed in to npm as an owner of the `@egatari` scope:
+
+```bash
+npm ci
+cd packages/fonts-extra
+npm pack --dry-run          # 6 families, none of egatari's; prepack builds @fontsource/
+npm publish --access public
+```
+
+Then on npmjs.com, package `@egatari/fonts-extra` → Settings → Trusted publishing → GitHub Actions, with these fields:
+
+| field | value |
+|---|---|
+| Organization or user | `egatari` |
+| Repository | `egatari-studio` |
+| Workflow filename | `npm-fonts-extra.yml` |
+| Environment name | `npm` |
+
+If the `npm` environment limits its deployment tags (Settings → Environments → npm), also allow `fonts-extra-v*`.
+
+**Later versions.** Bump `version` in `packages/fonts-extra/package.json` (and the peer range in the root `package.json` on a major bump), merge, then tag the commit and push the tag; `.github/workflows/npm-fonts-extra.yml` checks that the tag equals the version, runs `tools/test-npm-pack.mjs` and publishes with provenance (only while `NPM_PUBLISH` is `true`):
+
+```bash
+git tag -a fonts-extra-vX.Y.Z -m fonts-extra-vX.Y.Z && git push origin fonts-extra-vX.Y.Z
+```
 
 ## Before v0.6.6
 

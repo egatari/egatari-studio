@@ -6,6 +6,8 @@ marp2mp4（main_irodori.py）の関数を移したもの。ffmpeg のフィル�
 設定（環境変数）:
   IRODORI_URL       Irodori-TTS のサーバー（既定 http://localhost:8882）
   IRODORI_REF_DIR   参照音声（<名前>.wav）のフォルダ。サーバーから見えるパスで渡す（既定 tts/voices）
+
+既定の声（tts/voices.json の bob・alice・…_en）は、tts/voices/ になければ初めて使うときに取り寄せる（refvoices.py）。
 """
 
 from __future__ import annotations
@@ -15,11 +17,17 @@ import json
 import os
 import re
 import subprocess
+import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
 
 import requests
+
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import refvoices as R  # noqa: E402  （既定の声の取り寄せ）
+from refvoices import VoiceFetchError  # noqa: E402,F401
 
 IRODORI_URL = os.environ.get("IRODORI_URL", "http://localhost:8882").rstrip("/")
 TTS_MODEL = "mlx-community/Irodori-TTS-v4.1-Small-fp16"
@@ -50,9 +58,23 @@ def server_is_local() -> bool:
     return urlparse(IRODORI_URL).hostname in ("localhost", "127.0.0.1", "::1")
 
 
+def _default_refs(refs: Path) -> bool:
+    """refs が既定の参照音声のフォルダ（tts/voices）か。"""
+    try:
+        return refs.resolve() == DEFAULT_REF_DIR.resolve()
+    except OSError:
+        return False
+
+
+def voice_available(name: str, refs: Path) -> bool:
+    """名前の声 <refs>/<名前>.wav があるか。既定のフォルダの既定の声は、なくても取り寄せられるのであるとみなす。"""
+    return (refs / f"{name}.wav").exists() or (_default_refs(refs) and R.is_default(f"{name}.wav"))
+
+
 def resolve_voice(voice: str, refs: Path, base: Path | None = None) -> Path:
     """声の指定 → 参照音声のパス。名前（bob）なら <refs>/<名前>.wav、
     パス（/ を含むか .wav で終わる）ならそのファイル（相対なら base から）。
+    既定のフォルダ（tts/voices）にない既定の声は、取り寄せたキャッシュのパス（refvoices.default_voice。取り寄せられなければ VoiceFetchError）。
 
     サーバーが別のマシンのときはパスはサーバー側のものなので、有無を確かめない。
     """
@@ -62,6 +84,8 @@ def resolve_voice(voice: str, refs: Path, base: Path | None = None) -> Path:
             p = base / p
     else:
         p = refs / f"{voice}.wav"
+        if server_is_local() and not p.exists() and _default_refs(refs) and R.is_default(p.name):
+            return R.default_voice(p.name)
     if server_is_local() and not p.exists():
         raise FileNotFoundError(f"参照音声が見つかりません: {p}"
                                 "（IRODORI_REF_DIR か --ref-dir、または voice.json にパスで書く）")

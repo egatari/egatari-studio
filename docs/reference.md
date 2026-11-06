@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=90b11e50ad2fc48c -->
+<!-- i18n: pair=reference.ja.md sha256=7a980764169ceed0 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -213,6 +213,8 @@ The fonts a file can carry are a fixed list, all under the SIL Open Font License
 | Japanese | BIZ UDPGothic (default), BIZ UDPMincho, Shippori Mincho, Zen Maru Gothic, Klee One (400 and 600) |
 | English | Source Sans 3 (default), Source Serif 4, Andika, Atkinson Hyperlegible Next (each with italic) |
 | Monospace | Source Code Pro |
+
+From the npm package `egatari`, the default fonts (BIZ UDPGothic, BIZ UDPMincho, Source Sans 3) and every font a bundled theme uses (Zen Maru Gothic of `asagi`) come with it, so every bundled theme builds from `npx egatari` alone. The others (Shippori Mincho, Klee One, Source Serif 4, Andika, Atkinson Hyperlegible Next, Source Code Pro), which only a lesson's CSS or its own theme can name, are in the separate package `@egatari/fonts-extra`: install it next to `egatari` (`npm i -D @egatari/fonts-extra`, or `npx -p egatari -p @egatari/fonts-extra egatari …`). The build finds it from the `egatari` package and from the current folder. Without it, the build warns `fonts-extra: …` and the checker reports the error `fontsExtraMissing` with the install command; the font is never replaced silently. A repository checkout has every font (`npm ci`).
 
 CSS may name any other font (one installed on the device, for example), but it is not embedded: each device shows its own font, or the next one in the list. The checker warns `fontNotEmbedded` once per lesson with the names (the first family of the computed `font-family` of slide text that is neither embedded nor generic). The offline editor (`editor.html`) carries only BIZ UDPGothic and Source Sans 3; a lesson that chooses another font is built there without it, with a warning.
 
@@ -437,6 +439,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | the script language differs from the slide language (`narrLang`) | info |
 | contrast of `--fg --term --emph --title --accent2` vs `--bg` < 4.5:1; `--muted` < 3:1 | error; warn |
 | on each slide, text of a heading or the body against the background behind it (computed colours; not over images or gradients, not faint text) < 4.5:1, the lowest one per slide — `textContrast` | warn |
+| the lesson chooses a font of `@egatari/fonts-extra` (its CSS or its own theme) and that package is not installed next to the npm package `egatari`, so the font is not embedded — `fontsExtraMissing`, with the install command | error |
 | slide text in a font that is not embedded in the file (the first family of its computed `font-family` is neither embedded nor generic), so it looks different on each device — `fontNotEmbedded`, once per lesson with the names | warn |
 | a chapter divider (`class="slide sec"`) with an `<h2>` and no `<h1>` (the title of a divider is `<h1>`; an `<h2>` is shown the same way) — `secHeading` | warn |
 | part drawing depends on call order | error |
@@ -517,7 +520,7 @@ Attachments are archive entries, so adding, removing or renaming files under `at
 | Option | Meaning |
 |---|---|
 | `--voices expert=a,novice=b` | voices (over `voice.json`) |
-| `--ref-dir DIR` | reference voice folder (over `IRODORI_REF_DIR`; default `tts/voices/`) |
+| `--ref-dir DIR` | reference voice folder (over `IRODORI_REF_DIR`; default `tts/voices/`, where the npm package downloads a missing default voice to the cache on first use; `tts/voices.json`) |
 | `--engine irodori\|voxcpm2` | over `voice.json` `engine` and the lesson language |
 | `--yomi FILE` | reading dictionary (over `MOTION_YOMI`; default `tts/yomi.yaml`). Japanese only |
 | `--only key,…` | only these steps (`slideKey:step`) |

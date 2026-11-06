@@ -159,10 +159,31 @@ export function listFiles(dir) {
   go(dir, 1);
   return out;
 }
-// @fontsource の包みの場所：npm の包みに入れた写し（fonts/@fontsource/<名前>/。tools/fonts-vendor.mjs）→ node_modules の順
+// 選べる字体の 7 つ（FONT_LIST の extra）を入れた別の包み @egatari/fonts-extra の場所（なければ null）。
+// egatari の包み（このファイル）から → 今いるフォルダ（利用者の作業場所。INIT_CWD は bin/egatari.mjs が cwd にそろえる）から探す。
+// リポジトリの checkout では packages/fonts-extra（tools/fonts-vendor.mjs が写しを作ったとき）
+let _extra;
+function fontsExtraRoot() {
+  if (_extra !== undefined) return _extra;
+  _extra = null;
+  for (const from of [import.meta.url, path.join(process.env.INIT_CWD || process.cwd(), 'package.json')]) {
+    try { _extra = path.dirname(createRequire(from).resolve(`${core.FONTS_EXTRA_PKG}/package.json`)); break; } catch { /* 次 */ }
+  }
+  if (!_extra) {
+    const local = path.join(ROOT, 'packages', 'fonts-extra');
+    if (fs.existsSync(path.join(local, '@fontsource'))) _extra = local;
+  }
+  return _extra;
+}
+// @fontsource の包みの場所：npm の包みに入れた写し（fonts/@fontsource/<名前>/。tools/fonts-vendor.mjs）→ 別の包み @egatari/fonts-extra の写し
+// （<その包み>/@fontsource/<名前>/）→ node_modules（リポジトリの checkout の devDependencies）の順
 function fontDir(pkg) {
   const v = path.join(ROOT, 'fonts', ...pkg.split('/'));
-  return fs.existsSync(path.join(v, 'package.json')) ? v : path.dirname(require.resolve(`${pkg}/package.json`));
+  if (fs.existsSync(path.join(v, 'package.json'))) return v;
+  const x = fontsExtraRoot();
+  const e = x && path.join(x, ...pkg.split('/'));
+  if (e && fs.existsSync(path.join(e, 'package.json'))) return e;
+  return path.dirname(require.resolve(`${pkg}/package.json`));
 }
 // max：読んでよいバイト数（kit/core/build-core.mjs の chargedEnv が渡す。なければ READ_LIMITS.default）
 // 本文の引用を組む CSL（format spec §9C.4。kit/core/article-cite.mjs）：citeproc-js と同梱の書式・言語のファイル（vendor/csl）。
@@ -185,6 +206,8 @@ export const nodeEnv = {
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir,
+  // 別の包み @egatari/fonts-extra がない（その字体を選んだ教材に、入れ方を知らせる。kit/core/build-core.mjs の fontCss）
+  get fontsExtraMissing() { return !fontsExtraRoot(); },
   exists: (p) => fs.existsSync(p),
   isFile: (p) => fs.statSync(p).isFile(),
   readText: (p, max) => readRegular(p, max).toString('utf8'),

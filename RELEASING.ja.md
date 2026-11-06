@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=5e9bd2760f4b2ca2 -->
+<!-- i18n: pair=RELEASING.md sha256=7824ebb0f6cf9394 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -73,6 +73,36 @@
 
 8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/>・<https://studio.egatari.org/vX.Y.Z/>・前のリリースの `/v…/`・<https://studio.egatari.org/parts/>（すべてのパーツのサンプル）を開く（その記録に、置いた凍結した写しと、各版のページをどのリリースから取ったかが並ぶ）。同じ版を置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
    ブラウザが受け取る圧縮した応答も確かめる：`curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` が `200` を出すこと（圧縮した 404 がキャッシュに残り、ドメインを替えても消えないことがある）
+
+## @egatari/fonts-extra
+
+包み `egatari` が持つのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と、同梱のテーマが使う字体（`asagi` の Zen Maru Gothic）で、同梱のテーマはどれも `npx egatari` だけで組める（同梱のテーマが `extra` の字体を名指すと `tools/test-fonts.mjs` が失敗する）。ほかの選べる 6 つの字体（`kit/core/build-core.mjs` の `FONT_LIST` の `extra`）は、`packages/fonts-extra/` の別の包み `@egatari/fonts-extra` で、版も別に持つ。`egatari` はそれを任意の peer dependency（`^1.0.0`）に挙げる。写しは `tools/fonts-vendor.mjs`（その包みと `egatari` の `prepack`）が `@fontsource` の devDependencies から作り、`tools/test-npm-pack.mjs` がそれを pack して、選べる字体の教材を組む。新しい版は、その字体が変わるときだけ出す（選べる字体の `@fontsource` の devDependencies を上げた、一覧か太さを変えた。同梱のテーマがそのどれかを使い始めたら、その字体は `extra` を外して `egatari` に戻す）。
+
+**初めての公開（手で 1 回）。** スコープのある包みは、あってからでないと trusted publishing を設定できない。リリースのコミットのきれいな checkout で、`@egatari` のスコープの owner として npm にサインインして：
+
+```bash
+npm ci
+cd packages/fonts-extra
+npm pack --dry-run          # 6 つの字体があり、egatari の字体はない。prepack が @fontsource/ を作る
+npm publish --access public
+```
+
+それから npmjs.com で、包み `@egatari/fonts-extra` → Settings → Trusted publishing → GitHub Actions に次を書く：
+
+| 欄 | 値 |
+|---|---|
+| Organization or user | `egatari` |
+| Repository | `egatari-studio` |
+| Workflow filename | `npm-fonts-extra.yml` |
+| Environment name | `npm` |
+
+環境 `npm` が置けるタグを限っているなら（Settings → Environments → npm）、`fonts-extra-v*` も許す。
+
+**次からの版。** `packages/fonts-extra/package.json` の `version` を上げ（major を上げるときは、ルートの `package.json` の peer の範囲も）、マージしてから、そのコミットにタグを付けて push する。`.github/workflows/npm-fonts-extra.yml` がタグと版が同じかを確かめ、`tools/test-npm-pack.mjs` を走らせて、出所の証明（provenance）つきで公開する（`NPM_PUBLISH` が `true` のときだけ）：
+
+```bash
+git tag -a fonts-extra-vX.Y.Z -m fonts-extra-vX.Y.Z && git push origin fonts-extra-vX.Y.Z
+```
 
 ## v0.6.6 の前に
 
