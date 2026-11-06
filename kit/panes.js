@@ -319,7 +319,7 @@ function liveBox(){
   return {x: r.left, y: r.top, w: r.width, h: r.height, clip: {top: Math.max(0, b.top - r.top), bottom: Math.max(0, r.bottom - b.bottom)}};
 }
 function setLive(){
-  var th = P.layout === "book" && !HAS_ART && !P.ov && P.body ? P.body.querySelector('.dx-thumb[data-i="' + P.pos.i + '"]') : null;
+  var th = P.playing && P.layout === "book" && !HAS_ART && !P.ov && P.body ? P.body.querySelector('.dx-thumb[data-i="' + P.pos.i + '"]') : null;
   if (th === P.live) return;
   if (P.live) P.live.classList.remove("dx-live");
   P.live = th;
@@ -440,6 +440,8 @@ function scrolled(){
     if (!P.detached){ P.detached = true; P.bp.hidden = false; placeBackPlay(); hideResume(); }
     return;
   }
+  // 台本で読む（本だけ）：手のスクロールではステップを動かさない。縮図はただの図として本文と一緒に流れ、最終状態のまま（押すと「スライドで見る」で再生する）
+  if (!HAS_ART && P.layout === "book") return;
   var a = readAnchor();
   if (!a || a.i === null || (a.i === P.pos.i && a.k === P.pos.k)) return;
   // スクロールで入ったステップは一度だけ動かす（外へ出きるまで再び動かさない）。動きを減らす設定なら最後の形
@@ -1144,7 +1146,6 @@ function css(){
   "#deck-text .dx-thumb{display:block;width:100%;max-width:640px;min-height:0;margin:0 auto .6em;padding:0;border-radius:4px;outline:1px solid var(--line,rgba(127,127,127,.45));background:var(--bg)}" +
   "#deck-text .dx-tbox{display:block;position:relative;width:100%;aspect-ratio:16/9;overflow:hidden}" +
   "#deck-text .dx-tbox>.slide{position:absolute!important;left:0;top:0;transform-origin:0 0;transform:scale(var(--dx-s,.3));pointer-events:none}" +
-  "html[data-deck-layout=book] #deck-text .dx-thumb{position:sticky;top:0;z-index:1}" +
   "html[data-deck-layout=split] #deck-text .dx-thumb{max-width:min(100%,360px);margin-left:0}" +
   "#deck-text .dx-thumb.dx-live .dx-tbox{visibility:hidden}" +
   "#deck-text .dx-role{font-weight:600;color:var(--muted,inherit)}#deck-text .dx-step p{margin:.2em 0}" +
@@ -1155,6 +1156,8 @@ function css(){
   "#deck-split{position:fixed;top:0;bottom:0;width:" + DIV + "px;z-index:21;cursor:col-resize;touch-action:none;background:var(--stage-bg,#2f2f2f)}" +
   "#deck-split::after{content:'';position:absolute;left:3px;top:50%;width:3px;height:36px;margin-top:-18px;border-radius:2px;background:rgba(255,255,255,.5)}" +
   "#deck-split:hover::after,#deck-split.drag::after,#deck-split:focus-visible::after{background:#fff}" +
+  // 指で掴めるように、粗いポインター（タッチ）では仕切りの当たり判定を左右に広げる（見た目の線は細いまま。9px では指で掴めない。44px 以上に）
+  "@media (pointer:coarse){#deck-split::before{content:'';position:absolute;top:0;bottom:0;left:-18px;right:-18px}}" +
   // 本で読む（舞台の右上）・再生中の所に戻る（本の窓の下）
   // 本で読む：発表の画面に出たままにしない。ツールバーと一緒に出て隠れる（キーボードで選んだときは出す）。埋め込みで操作を隠したときは出さない
   "#dt-cb:not(.show)~#deck-readin:not(:focus-visible){opacity:0;pointer-events:none}html.deck-nocontrols #deck-readin,html.deck-nocontrols #deck-text .dx-play,html.deck-nocontrols #deck-text .dx-view{display:none}" +

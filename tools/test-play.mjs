@@ -888,6 +888,20 @@ for (const [kind, fix] of [['polls', 'live.play.ega.html'], ['nopolls', 'qa.play
   const t = await o.p.evaluate(() => [...document.querySelectorAll('#live fieldset label, #live button')].filter((e) => e.offsetParent !== null).map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
   ok(ind.every((h) => h >= 24) && t.length >= 4 && t.every(([w, h]) => w >= 24 && h >= 44), `overlay (default): indicator controls at least 24 px (${ind.join(',')}), the poll sheet's rows and buttons at least 44 px tall (${t.map((x) => x.join('x')).join(', ')})`);
   await o.close(); }
+// rotation in the iPad Home Screen app: right after turning, innerHeight can still be the portrait one (above all after the status
+// bar was shown in portrait), and a page that scrolled hid the bar and moved the slide off the top. The page never scrolls while
+// playing and the layout is taken again once the rotation settles
+{ const o = await page(site.url, { viewport: { width: 834, height: 1194 } });
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p);
+  ok(await o.p.evaluate(() => getComputedStyle(document.body).overflow === 'hidden' && (window.scrollTo(0, 500), window.scrollY === 0)), 'iPad rotation: the page does not scroll while a lesson plays');
+  await o.p.evaluate(() => { const stale = window.innerHeight; Object.defineProperty(window, 'innerHeight', { configurable: true, get: () => stale });
+    setTimeout(() => { delete window.innerHeight; }, 300); });
+  await o.p.setViewportSize({ width: 1194, height: 834 });
+  await new Promise((r) => setTimeout(r, 1200));
+  const g = await geo(o.p);
+  ok(g.bar && g.bar.y === 0 && g.frame && g.frame.y >= g.bar.h && g.frame.y + g.frame.h <= 834 && g.frame.w === 1194 && await o.p.evaluate(() => window.scrollY === 0),
+    `iPad rotation with a stale innerHeight: the bar stays at the top and the frame fits the landscape screen (bar ${JSON.stringify(g.bar)}, frame ${JSON.stringify(g.frame)})`);
+  await o.close(); }
 // rotation: laid out once more, and the controls follow; focus order in the pane
 { const o = await page(site.url, { viewport: { width: 375, height: 667 } });
   await openFixture(o.p, 'live.play.ega.html'); await o.p.click('#b-start-join'); await lessonFrame(o.p);
