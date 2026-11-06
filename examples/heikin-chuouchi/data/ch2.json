@@ -1,0 +1,98 @@
+{
+ "note": "架空の販売記録（20 日分、個）。scripts/make_data.py が乱数の種 20261031 で作る",
+ "sales": [
+  35,
+  53,
+  33,
+  47,
+  42,
+  49,
+  37,
+  37,
+  43,
+  24,
+  41,
+  29,
+  40,
+  43,
+  35,
+  38,
+  56,
+  36,
+  33,
+  49
+ ],
+ "sorted": [
+  24,
+  29,
+  33,
+  33,
+  35,
+  35,
+  36,
+  37,
+  37,
+  38,
+  40,
+  41,
+  42,
+  43,
+  43,
+  47,
+  49,
+  49,
+  53,
+  56
+ ],
+ "days": 20,
+ "mean": 40,
+ "median": 39.0,
+ "min": 24,
+ "max": 56,
+ "price": 150,
+ "cost": 100,
+ "profit": 50,
+ "cases": [
+  {
+   "key": "equal",
+   "name": "重さが等しい",
+   "over": 100,
+   "under": 100,
+   "best_q": [
+    38,
+    39,
+    40
+   ],
+   "best_loss_per_day": 630,
+   "critical_ratio": 0.5,
+   "share_below": 0.45,
+   "share_at_or_below": 0.5
+  },
+  {
+   "key": "waste",
+   "name": "廃棄を嫌う",
+   "over": 100,
+   "under": 50,
+   "best_q": [
+    36
+   ],
+   "best_loss_per_day": 402.5,
+   "critical_ratio": 0.3333,
+   "share_below": 0.3,
+   "share_at_or_below": 0.35
+  },
+  {
+   "key": "stockout",
+   "name": "品切れを嫌う",
+   "over": 100,
+   "under": 200,
+   "best_q": [
+    43
+   ],
+   "best_loss_per_day": 885,
+   "critical_ratio": 0.6667,
+   "share_below": 0.65,
+   "share_at_or_below": 0.75
+  }
+ ]
+}

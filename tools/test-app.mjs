@@ -1603,6 +1603,10 @@ try {
     // 見本の一覧：配信版の dist/examples/ と同じもの（tools/examples-portable.mjs の順）
     const exNames = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
     ok(await po.isVisible('#examples') && exNames.join(',') === EXAMPLES.join(','), `examples: the first screen lists the examples (${exNames.join(', ')})`);
+    // 本のあるサンプル（examples.json の book）だけに「本」の印
+    const exBooks = await po.$$eval('#examples-list li', (li) => li.filter((x) => x.querySelector('.ex-book')).map((x) => x.getAttribute('data-example')));
+    ok(exBooks.join(',') === 'heikin-chuouchi,rashomon' && (await po.textContent('#examples-list li[data-example="rashomon"] .ex-book')) === '本',
+      `examples: only the samples with a book have the 本 badge (${exBooks.join(', ')})`);
     if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'examples-list.png') });
     for (const name of EXAMPLES) {
       const file = path.join(DIST, 'examples', name + FORMAT.FILE_EXT);
@@ -1618,6 +1622,11 @@ try {
       ok(s.portable.docId === want.docId && !s.error && !s.portable.readOnly, `examples: ${name} opens from the list (docId ${s.portable.docId.slice(0, 8)}…, ${want.index.profile}${asked ? ', asked before its own code ran' : ''}, no build error)`);
       ok(asked === (want.index.profile === 'extended'), `examples: ${name} → the code notice ${want.index.profile === 'extended' ? 'is' : 'is not'} shown (same import checks as any file)`);
       ok((await slidesNow()) > 0 && !s.portable.tierAOnly, `examples: ${name} renders and can be rebuilt (registry matches this editor)`);
+      if (want.index.article) {
+        await po.waitForFunction(() => { const b = window.__APP_TEST.book(); return b.renders > 0 || !!b.error; }, null, { timeout: scaled(60000) });
+        const b = await po.evaluate(() => window.__APP_TEST.book());
+        ok(b.present && b.renders > 0 && !b.error, `examples: ${name} opens with its book (rendered, no error)`);
+      }
     }
 
     // 原稿の deck.html（examples/kokugo-kanbun）

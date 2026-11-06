@@ -1,0 +1,16 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "59e254f79adbf685c13674f23edf08f9ec77a0c9",
+  "path": "books/rashomon",
+  "files": {
+    "article.md": "987d4fe96c9d7386fdcef9c82c5705b55a4265b3a306308134ced77525dc922c",
+    "deck.html": "34360bf0022d085ad8e578fde2bc6ffc88e09fd6f5b08aca43399b34b45662ce",
+    "egatari.json": "83fc660c14645d72ce78c14e1adddfe78ff69014133aca4343c2996f1793ab10",
+    "narration.md": "ca56ebe3ce9edbfe38856684a16d2de6125bb049c0ac8f9da744e3d8cb341831",
+    "references.json": "de2c57df4029709bf7f564c37be544062bddf5c7d8aa765aa70507582fd0d4f4",
+    "scripts/aozora.py": "894b12145082f68841cccf50140e06b894a7601ed941ef112acfdd538b770055",
+    "scripts/verify.py": "4da91ff3cc473f329221773579d1e3bf5951c4ece5b9ee3898019252d18227f5",
+    "source/rashomon.txt": "18fd203e4e805fa8cf05d8ee18db05a29f541e83f4043b67091191ce1db4a319"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (books/rashomon, every tracked file except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again."
+}

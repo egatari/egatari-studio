@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="kokugo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>芥川龍之介「羅生門」を読む</title>
+<!--
+  本（article.md、縦書き）と組になるスライド。本文の引用はすべて青空文庫の本文と照らしてある（scripts/verify.py）。
+  主題：下人の「勇気」の向きが、場面ごとにどう変わるか。
+-->
+<style>
+/* 勇気の表：場面の行を 1 行ずつ出す */
+.yuuki { width: 100%; border-collapse: collapse; }
+.yuuki th, .yuuki td { padding: 6px 10px; vertical-align: top; }
+.yuuki th:first-child, .yuuki td:first-child { white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-kllodh">
+  <div class="venue">言語文化（高校 1 年）</div>
+  <h1>芥川龍之介「羅生門」を読む</h1>
+  <div class="au">下人の勇気は、どちらを向くか</div>
+</section>
+
+<section class="slide layout-tate" id="s-mznudg" data-article="sec-ykwx6o sec-kuq6jj">
+  <h2>一　門の下で欠けていた勇気</h2>
+  <div class="body">
+    <p>主人に暇を出され、行き所がない</p>
+    <p data-step="1">考えは「選ばないとすれば」まで進む</p>
+    <p data-step="2">盗人になる勇気が<span class="emph">「出ずにいた」</span></p>
+    <p data-step="3">右の頬の<span class="term">「大きな面皰を気にしながら」</span></p>
+  </div>
+  <div class="concl"><span>盗人になる勇気は、まだない</span></div>
+</section>
+
+<section class="slide layout-tate" id="s-aj4uvw" data-article="sec-6qfuhf sec-trljki">
+  <h2>二　恐怖から悪への反感へ</h2>
+  <div class="body">
+    <p>楼の上で、死人の髪の毛を抜く老婆を見る</p>
+    <p data-step="1">「六分の恐怖と四分の好奇心」</p>
+    <p data-step="2">「この老婆に対するはげしい憎悪」</p>
+    <p data-step="3"><span class="emph">「あらゆる悪に対する反感」</span></p>
+  </div>
+  <div class="concl"><span>今なら饑死を選ぶほど、悪を憎む</span></div>
+</section>
+
+<section class="slide layout-tate noconcl" id="s-ii3uo7" data-article="sec-gbflzy sec-qpgjxq">
+  <h2>三　老婆の理屈の組み立て</h2>
+  <div class="body">
+    <m-gendai tate style="height:560px" aria-label="老婆の言い分を、主張・根拠・結論の段落に分け、指示語の指す先を矢印で示す図">
+      @主張#p1>p3
+      ここにいる死人どもは、皆、そのくらいな事を、されてもいい人間ばかりだぞよ。
+
+      @根拠#p2>p3
+      {わしが今、髪を抜いた女|#onna}などはな、蛇を四寸ばかりずつに切って干したのを、干魚だと云うて、太刀帯の陣へ売りに往んだわ。……せねば、饑死をするのじゃて、{仕方がなくした事|_A,#shikata}であろ。
+
+      @結論#p3
+      されば、今また、わしのしていた事も悪い事とは思わぬぞよ。……じゃて、{その仕方がない事|>shikata}を、よく知っていた{この女|>onna}は、大方わしのする事も==大目に見てくれるであろ==。
+    </m-gendai>
+  </div>
+</section>
+
+<section class="slide layout-tate" id="s-ucyvz2" data-article="sec-yxqeof sec-ldja2r">
+  <h2>四　反対な方向に動く勇気</h2>
+  <div class="body">
+    <p>老婆の話を、下人は「冷然として」聞く</p>
+    <p data-step="1">「己もそうしなければ、饑死をする体なのだ。」</p>
+    <p data-step="2"><span class="emph">「全然、反対な方向に動こうとする勇気」</span></p>
+    <p data-step="3"><span class="term">「不意に右の手を面皰から離して」</span></p>
+  </div>
+  <div class="concl"><span>老婆の理屈を、自分に向け直す</span></div>
+</section>
+
+<section class="slide" id="s-424g2z" data-article="sec-yxqeof">
+  <h2>勇気の表：場面ごとに読み返す</h2>
+  <div class="body">
+    <table class="yuuki">
+      <thead><tr><th>場面</th><th>勇気</th><th>体の動き（にきび）</th></tr></thead>
+      <tbody>
+        <tr data-step="1"><td>一　門の下</td><td>盗人になる勇気が「出ずにいた」</td><td>「面皰を気にしながら」</td></tr>
+        <tr data-step="2"><td>二　楼の上へ</td><td>悪を憎み、「饑死を選んだ」だろう</td><td>火の光が頬を照らす</td></tr>
+        <tr data-step="3"><td>三　老婆の言い分</td><td>「梯子から上へ飛び上った」</td><td>手は太刀に</td></tr>
+        <tr data-step="4"><td>四　下人の行方</td><td class="emph">「反対な方向に動こうとする勇気」</td><td>「面皰から離して」</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="concl"><span>一で欠けた勇気が、四で反対の向きに生まれる</span></div>
+</section>
+
+<section class="slide layout-tate" id="s-aszkfg" data-article="sec-yxqeof">
+  <h2>結び　下人の行方</h2>
+  <div class="body">
+    <p>「外には、ただ、黒洞々たる夜があるばかりである。」</p>
+    <p data-step="1"><span class="emph">「下人の行方は、誰も知らない。」</span></p>
+    <p data-step="2" class="muted">初出（1915 年）の結び：「下人は、既に、雨を冒して、京都の町へ強盗を働きに急ぎつゝあつた。」</p>
+  </div>
+  <div class="concl"><span>今の結びは、下人の行方を語らない</span></div>
+</section>
+
+</div>
+</body>
+</html>

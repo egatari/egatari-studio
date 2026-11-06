@@ -1,0 +1,15 @@
+{
+ "groups": [
+  {
+   "label": "平均値",
+   "value": 2059,
+   "step": 1
+  },
+  {
+   "label": "中央値\n（参考値）",
+   "value": 1167,
+   "step": 2,
+   "tone": "emph"
+  }
+ ]
+}

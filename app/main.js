@@ -153,7 +153,9 @@ function showExamples() {
     ul.append(el('li', { 'data-example': x.name }, [
       el('span', { cls: 'ex-text' }, [
         el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
-        el('span', { cls: 'meta', text: `${x.file} · ` + T.exampleMeta(x.slides, (x.bytes / 1048576).toFixed(1), x.profile === 'extended') }),
+        el('span', { cls: 'meta' }, [`${x.file} · ` + T.exampleMeta(x.slides, (x.bytes / 1048576).toFixed(1), x.profile === 'extended'),
+          // 本のあるサンプル（一覧の book。tools/examples-portable.mjs）に「本」の印
+          ...(x.book === true ? [el('span', { cls: 'attach-badge ex-book', text: T.exampleBook, title: T.exampleBookTitle })] : [])]),
       ]),
       el('button', { type: 'button', text: T.exampleOpen, 'aria-label': `${T.exampleOpen}: ${x.title}`, onclick: () => openExample(x) }),
     ]));

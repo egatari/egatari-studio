@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=6203ae58d6f8b877 -->
+<!-- i18n: pair=editor.ja.md sha256=b72bc0a17e86c0f1 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -294,7 +294,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 3. Settings → Environments → `github-pages` → Deployment branches and tags: add the tag rule `v*.*.*` (the environment allows only `main` by default, and a deploy from a tag is refused without it).
 4. Push a release tag, or run the workflow on one (Actions → pages → Run workflow, choose the tag).
 
-The build also writes the samples as Egatari files to `examples/<name>.ega.html` (`tools/examples-portable.mjs`, about 14 MB together; `--no-examples` leaves them out), and the editor's first screen lists them. They are built from a temporary copy of each sample folder (nothing is written into `examples/`); a sample without `egatari.json` (such as `minimal`, which may be copied as a template) gets a `docId` derived from its name, so every build is the same document.
+The build also writes the samples as Egatari files to `examples/<name>.ega.html` (`tools/examples-portable.mjs`, about 31 MB together, 16 MB of it the two samples with a book; `--no-examples` leaves them out), and the editor's first screen lists them, marking the samples with a book **Book**. The two samples with a book, `heikin-chuouchi` and `rashomon`, are unmodified copies of `books/<name>` in [egatari/examples](https://github.com/egatari/examples); their `SOURCE.json` records the commit and each file's sha256 (`tools/test-release-assets.mjs` checks them), so change them there and copy them again. They are built from a temporary copy of each sample folder (nothing is written into `examples/`); a sample without `egatari.json` (such as `minimal`, which may be copied as a template) gets a `docId` derived from its name, so every build is the same document.
 
 The build writes `egatari-make-<version>-ja.zip` and `egatari-make-<version>-en.zip` to `dist/` from the make generator. Downloads use these site files; the single file `editor.html` embeds both ZIPs for offline use. Frozen `/vX.Y.Z/` copies and the editor site archive carry the ZIPs with the rest of `dist/`.
 
@@ -304,7 +304,7 @@ With `--parts` the build also makes the page of samples of all parts (`tools/par
 
 ### Release assets
 
-`npm run release:assets` (`tools/release-assets.mjs`) builds the same sample files into `out/release/` with an `examples.json` (name, title, language, slides, size, sha256). It also writes `egatari-make-<version>-ja.zip` and `egatari-make-<version>-en.zip` from the make generator. It uploads nothing; attach the files to the GitHub release by hand, for example `gh release create v<version> out/release/*`.
+`npm run release:assets` (`tools/release-assets.mjs`) builds the same sample files into `out/release/` with an `examples.json` (name, title, language, slides, size, sha256, and `book`: whether it has a book). It also writes `egatari-make-<version>-ja.zip` and `egatari-make-<version>-en.zip` from the make generator. It uploads nothing; attach the files to the GitHub release by hand, for example `gh release create v<version> out/release/*`.
 
 ### Versions (frozen copies)
 

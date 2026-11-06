@@ -1,0 +1,74 @@
+{
+ "note": "架空のデータ（5 日間の待ち時間、分）",
+ "x": [
+  2,
+  4,
+  5,
+  7,
+  12
+ ],
+ "n": 5,
+ "mean": 6,
+ "median": 5,
+ "sum_abs_at_median": 13,
+ "sum_abs_at_mean": 14,
+ "sum_sq_at_mean": 58,
+ "sum_sq_at_median": 63,
+ "variance": 11.6,
+ "square_form": "5(c-6)^2 + 58",
+ "abs_slopes": [
+  {
+   "from": 0,
+   "to": 2,
+   "slope": -5
+  },
+  {
+   "from": 2,
+   "to": 4,
+   "slope": -3
+  },
+  {
+   "from": 4,
+   "to": 5,
+   "slope": -1
+  },
+  {
+   "from": 5,
+   "to": 7,
+   "slope": 1
+  },
+  {
+   "from": 7,
+   "to": 12,
+   "slope": 3
+  },
+  {
+   "from": 12,
+   "to": 14,
+   "slope": 5
+  }
+ ],
+ "outlier_moves": [
+  {
+   "outlier": 12,
+   "mean": 6,
+   "median": 5,
+   "min_sum_sq": 58,
+   "min_sum_abs": 13
+  },
+  {
+   "outlier": 22,
+   "mean": 8,
+   "median": 5,
+   "min_sum_sq": 258,
+   "min_sum_abs": 23
+  },
+  {
+   "outlier": 32,
+   "mean": 10,
+   "median": 5,
+   "min_sum_sq": 618,
+   "min_sum_abs": 33
+  }
+ ]
+}

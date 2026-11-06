@@ -229,6 +229,7 @@ const ja = {
   allParts: 'パーツの一覧',
   // はじめの画面の見本（サイトに置いた 1 ファイル。tools/build-app.mjs）
   examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。開いて再生したり、直したりできます。', exampleOpen: '開く',
+  exampleBook: '本', exampleBookTitle: '本（読むための本文）があります',
   exampleFailed: 'サンプルを読み込めませんでした',
   exampleMeta: (n, mb, code) => `${n} 枚 · ${mb} MB${code ? ' · 独自のコードを含む（開くときに確認します）' : ''}`,
   unsavedTitle: '保存していない変更', unsavedLead: '開いているファイルに、保存していない変更があります。捨てて先へ進みますか？',
@@ -629,6 +630,7 @@ const en = {
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
   allParts: 'All parts',
   examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Open one to play it or edit it.', exampleOpen: 'Open',
+  exampleBook: 'Book', exampleBookTitle: 'Has a book (a text to read)',
   exampleFailed: 'Could not load the sample',
   exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asks before opening)' : ''}`,
   unsavedTitle: 'Unsaved changes', unsavedLead: 'The open file has unsaved changes. Discard them and continue?',

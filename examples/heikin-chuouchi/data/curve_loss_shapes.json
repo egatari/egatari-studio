@@ -1,0 +1,19 @@
+[
+ {
+  "label": "絶対値 |*u*|",
+  "f": "abs(x)",
+  "tone": "term",
+  "step": 1,
+  "labelAt": -3,
+  "anchor": "right",
+  "ly": 3.6
+ },
+ {
+  "label": "二乗 *u*^2",
+  "f": "x*x",
+  "tone": "accent2",
+  "step": 2,
+  "labelAt": 2.1,
+  "anchor": "right"
+ }
+]

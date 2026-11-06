@@ -1,0 +1,18 @@
+[
+ {
+  "label": "余る損（1 個 100 円）",
+  "f": "x > 0 ? 100*x : 0",
+  "tone": "term",
+  "step": 1,
+  "labelAt": 2.2,
+  "anchor": "left"
+ },
+ {
+  "label": "足りない損（1 個 50 円）",
+  "f": "x < 0 ? -50*x : 0",
+  "tone": "accent2",
+  "step": 2,
+  "labelAt": -3,
+  "anchor": "right"
+ }
+]
