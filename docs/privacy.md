@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.ja.md sha256=dfdbd32ffc06df24 -->
+<!-- i18n: pair=privacy.ja.md sha256=44eb44cdf6e68a7e -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
@@ -10,6 +10,7 @@ This page explains what Egatari Studio (the app for making lessons, https://stud
 - It covers Studio, the `.ega.html` files Studio exports (the files you hand out to learners), and Egatari Viewer, the play-only page (https://viewer.egatari.org/).
 - It describes what the code actually does. There is no advertising and no usage measurement (none was found in the code).
 - It also says how to block or check each connection, for school IT staff.
+- Live: an optional feature, chosen by the creator for each lesson and open for a set time, where participants send questions and votes from their own devices to a Live server during a lesson or talk; lessons without Live never connect to a Live server.
 - The evidence in the code (files and lines) is in the [appendix](#appendix-evidence-in-the-code-for-maintainers).
 
 ## Where your lesson files are
