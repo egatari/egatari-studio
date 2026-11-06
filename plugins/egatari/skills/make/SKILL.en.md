@@ -1,6 +1,6 @@
 ---
 name: make
-description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”. Former name motion-slides is retained for one version.
+description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”.
 ---
 
 <!-- generated; do not edit by hand -->

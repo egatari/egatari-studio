@@ -1,6 +1,6 @@
 ---
 name: studio
-description: リポジトリで Egatari 教材の品質チェック・id の付与・組み立て・Egatari ファイルの作成・開発サーバーのコメント反映・手元の音声作成・動画化・新しいパーツの作成を行う。「品質チェックして」「組み立てて」「Egatari ファイルにして」「コメントを反映して」「動画にして」「パーツを作って」「この図をパーツにして」で使う。旧名 motion-slides-video・motion-components（1 版のあいだ残す）でも使う。Use for checking and building lessons locally, applying comments, adding local audio, exporting video and writing parts.
+description: リポジトリで Egatari 教材の品質チェック・id の付与・組み立て・Egatari ファイルの作成・開発サーバーのコメント反映・手元の音声作成・動画化・新しいパーツの作成を行う。「品質チェックして」「組み立てて」「Egatari ファイルにして」「コメントを反映して」「動画にして」「パーツを作って」「この図をパーツにして」で使う。Use for checking and building lessons locally, applying comments, adding local audio, exporting video and writing parts.
 ---
 
 Always reply in the language the user writes in. Write slides and narration in the lesson's language.
