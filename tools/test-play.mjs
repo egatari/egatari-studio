@@ -470,6 +470,56 @@ console.log('shared device');
   ok(!(await o.p.isDisabled('#keep')) && await o.p.isChecked('#keep'), 'shared device off again: keeping comes back');
   await o.close(); }
 
+// ---------------------------------------------------------------- 6b. persistent storage (play/main.js maybeRequestPersist, docs/viewer.md)
+// WebKit does not evict an origin once navigator.storage.persist() has succeeded for it, so the page asks once per launch, right
+// after the first file lands in recents, and shows navigator.storage.persisted()'s actual answer under the device-only notice.
+console.log('persistent storage');
+const persistPage = async ({ persisted = false, reject = false } = {}) => {
+  const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+  await ctx.addInitScript(([persistedVal, rej]) => {
+    const orig = navigator.storage;
+    const getDirectory = orig && typeof orig.getDirectory === 'function' ? orig.getDirectory.bind(orig) : undefined;
+    const estimate = orig && typeof orig.estimate === 'function' ? orig.estimate.bind(orig) : undefined;
+    window.__persistCalls = 0;
+    const stub = { getDirectory, estimate,
+      persist: () => { window.__persistCalls++; return rej ? Promise.reject(new Error('nope')) : Promise.resolve(true); },
+      persisted: () => Promise.resolve(!!persistedVal) };
+    Object.defineProperty(navigator, 'storage', { configurable: true, get: () => stub });
+  }, [persisted, reject]);
+  const p = await ctx.newPage();
+  await p.goto(site.url); await p.waitForSelector('html[data-ready]');
+  return { ctx, p, calls: () => p.evaluate(() => window.__persistCalls), close: () => ctx.close() };
+};
+{ const o = await persistPage({ persisted: false });
+  ok(await o.p.isHidden('#recent-persist'), 'persistent storage: the line is hidden on a cold load with nothing kept');
+  ok(await o.calls() === 0, 'persistent storage: not called on a cold load with nothing kept');
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  ok(await until(async () => await o.calls() === 1), 'persistent storage: called once, right after the first file lands in recents');
+  ok(await until(async () => await o.p.textContent('#recent-persist') === 'ブラウザが空き容量や日数で消すことがあります'),
+    'persistent storage: persisted() false shows the second line');
+  await openFixture(o.p, 'lesson.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  await sleep(300);
+  ok(await o.calls() === 1, 'persistent storage: a second file opened the same launch does not ask again');
+  await o.close(); }
+{ const o = await persistPage({ persisted: true });
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  ok(await until(async () => await o.p.textContent('#recent-persist') === 'この端末に残します（ブラウザが消さない設定）'),
+    'persistent storage: persisted() true shows the first line');
+  await o.close(); }
+{ const o = await persistPage({ persisted: false });
+  await o.p.check('#shared');
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  await sleep(300);
+  ok(await o.calls() === 0, 'persistent storage: never called in shared-device mode');
+  ok(await o.p.isHidden('#recent-persist'), 'persistent storage: the line stays hidden in shared-device mode');
+  await o.close(); }
+{ const o = await persistPage({ persisted: false, reject: true });
+  await openFixture(o.p, 'lesson.play.ega.html');
+  ok(!!(await lessonFrame(o.p)), 'persistent storage: playback is unaffected when persist() rejects');
+  await o.p.click('#b-close');
+  ok(await until(async () => await o.calls() === 1), 'persistent storage: still asked once even though it rejects (errors ignored)');
+  await o.close(); }
+
 // ---------------------------------------------------------------- 7. share_target
 console.log('share target');
 const shareForm = `<!doctype html><meta charset="utf-8"><form id="f" method="post" action="/share" enctype="multipart/form-data"><input type="file" name="lesson" id="i"><input type="text" name="title" value="x"></form>`;
