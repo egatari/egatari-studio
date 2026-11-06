@@ -478,7 +478,7 @@ export function skillFiles(data, lang = 'ja') {
     files[`${MAKE_SKILL_DIR}/references/${ja ? '' : 'en/'}book.md`] = skillTerms(head + docLinks(splitStamp(read('docs', ja ? 'llm-book-ref.ja.md' : 'llm-book-ref.md')).body.trim()) + '\n');
     const text = ja ? `---
 name: make
-description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
+description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
 ---
 
 ${head}
@@ -527,7 +527,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 ${common}
 ` : `---
 name: make
-description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”. Former name motion-slides is retained for one version.
+description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”.
 ---
 
 ${head}

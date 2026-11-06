@@ -133,6 +133,8 @@ export function buildPartsGallery({ out, catalogue, previous, tool, log = consol
 
 // ---------------------------------------------------------------- 版の一覧（/parts/index.html と /parts/versions.json）
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// スクリプトを持たない、サイトの小さなページの決まり（この一覧と、site-versions.mjs の「もう置いていない」版のページ）
+export const STATIC_PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'";
 // current：いまの編集アプリ（サイトの根）が使う版。versions：置いてある版（新しい順に並べ、current を先に）
 export function partsIndexHtml({ current, versions }) {
   const list = [...new Set(versions)].sort(cmpVersion);   // 新しい順
@@ -143,7 +145,7 @@ export function partsIndexHtml({ current, versions }) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="${STATIC_PAGE_CSP}">
 <title>パーツのサンプル / Samples of parts — Egatari Studio</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml">
 <style>

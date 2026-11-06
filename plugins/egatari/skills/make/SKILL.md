@@ -1,6 +1,6 @@
 ---
 name: make
-description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。旧名 motion-slides（1 版のあいだ残す）。「motion-slides」「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
+description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
 ---
 
 <!-- generated; do not edit by hand -->

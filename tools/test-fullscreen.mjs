@@ -99,11 +99,24 @@ async function viewerLesson(o) {
   return f;
 }
 // the bar's 全画面 button, pressed with a real click (the bar ignores a click in its first 350 ms after the pointer revealed it)
+// The bar hides when the pointer rests: on a loaded runner it could hide again before the hover, which then waited for a visible
+// button until the timeout (macOS CI). Move the real pointer over the lesson to reveal the bar, wait until the button is visible, then
+// hover and click; try again (up to 3 times) if the bar hid in between.
 async function pressFull(f) {
   const b = await f.$('#dt-cb [data-b="full"]');
   if (!b) return false;
-  await b.hover(); await sleep(450);
-  await b.click();
+  const page = f.page();
+  let box = null;   // the lesson's frame in the Viewer; the whole viewport when the file itself is the page
+  if (f.parentFrame()) box = await (await f.frameElement()).boundingBox();
+  else { const v = page.viewportSize(); if (v) box = { x: 0, y: 0, width: v.width, height: v.height }; }
+  for (let i = 0; i < 3; i++) {
+    if (box) { await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.move(box.x + box.width / 2, box.y + box.height - 30, { steps: 4 }); }
+    if (!await until(() => b.isVisible(), scaled(3000))) continue;
+    try { await b.hover({ timeout: scaled(3000) }); } catch { continue; }
+    await sleep(450);
+    try { await b.click({ timeout: scaled(3000) }); return true; } catch { /* the bar hid; reveal it again */ }
+  }
+  await b.hover(); await sleep(450); await b.click();   // last try: let Playwright's own error say what is wrong
   return true;
 }
 const pressed = (f) => f.evaluate(() => { const b = document.querySelector('#dt-cb [data-b="full"]'); return b ? b.getAttribute('aria-pressed') : null; });

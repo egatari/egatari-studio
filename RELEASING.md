@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=09b0bf2cc063b09b -->
+<!-- i18n: pair=RELEASING.ja.md sha256=701d28b28f3dad83 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -72,6 +72,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    ```
 
 8. **Pages.** The `pages` workflow for the tag deploys; check that its run deployed (`gh run list --workflow pages --limit 3`) and open <https://studio.egatari.org/>, <https://studio.egatari.org/vX.Y.Z/>, the previous release's `/v…/` (its log lists the frozen copies it added) and <https://studio.egatari.org/parts/> (the samples of all parts; the log also says which release each version's page came from). To deploy a release again, run the workflow on its tag (Actions → pages → Run workflow).
+   **Hosting floor.** Releases below `HOSTED_FROM` in `tools/site-versions.mjs` (now `0.6.0`, owner decision of 2026-11-06) are not unpacked; their `/vX.Y.Z/` is a short bilingual page linking to the GitHub release and to the latest version, and the log has one line for each. They are not in the version list. If the run warns that the site is over 800 MB (or fails over 1 GB), the message names the oldest hosted versions: raise the floor by setting `HOSTED_FROM` to the version it suggests, in a commit on `main`, and deploy again; leave the release assets as they are. Renaming an asset back to `editor-site-vX.Y.Z.tar.gz` does not re-host a version below the floor ([docs/editor.md](docs/editor.md#versions-frozen-copies)).
    Also check the compressed response, which a browser gets: `curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` must print `200` (a cached compressed 404 can survive a domain change).
 
 ## @egatari/fonts-extra
@@ -103,7 +104,3 @@ If the `npm` environment limits its deployment tags (Settings → Environments �
 ```bash
 git tag -a fonts-extra-vX.Y.Z -m fonts-extra-vX.Y.Z && git push origin fonts-extra-vX.Y.Z
 ```
-
-## Before v0.6.6
-
-Delete the moved-notice stubs `skills/motion-slides`, `skills/motion-slides-video` and `skills/motion-components` (kept for v0.6.4–v0.6.5; remove them once the migration notice has gone out) and their assertions in `tools/test-plugin.mjs`. `egatari doctor` keeps checking for old `~/.claude/skills/motion-*` entries.

@@ -61,21 +61,12 @@ for (const p of market.plugins) {
 for (const dir of ['kit', 'vendor', 'themes']) assert.ok(fs.statSync(path.join(ROOT, dir)).isDirectory());
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari')).sort(), ['.claude-plugin', 'skills']);
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari/skills')), ['make']);
-assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')).sort(), ['motion-components', 'motion-slides', 'motion-slides-video', 'studio']); // motion-* は旧名の移動のお知らせ（1 版だけ）
-// 旧名の移動のお知らせ（1 版だけ。v0.6.5 で消す）：プラグインの中から読まれても害がないよう、説明と本文の両方に見張りの文を持つ
-for (const n of ['motion-slides', 'motion-slides-video', 'motion-components']) {
-  const t = read(`skills/${n}/SKILL.md`);
-  const fm = t.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-  assert.ok(fm[1].includes(`name: ${n}\n`), n);
-  for (const w of ['egatari:make', 'egatari-studio:studio', 'Do NOT use this to make lessons']) assert.ok(fm[1].includes(w), `${n} description: ${w}`);
-  for (const w of ['egatari-studio:motion-*', 'ignore this skill', 'egatari:make', 'egatari-studio:studio', '無視', '/plugin install egatari@egatari']) assert.ok(fm[2].includes(w), `${n} body: ${w}`);
-  assert.ok(fm[2].indexOf('egatari-studio:motion-*') < fm[2].indexOf('# '), `${n}: guard comes first`);
-}
+assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')).sort(), ['studio']);   // 旧名 motion-* の移動のお知らせは v0.6.6 で消した（egatari doctor は ~/.claude/skills/motion-* を見続ける）
 for (const dir of ['make', 'parts', 'video']) assert.ok(!fs.existsSync(path.join(ROOT, 'skills', dir)));
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'parts.md', 'video.md']);
 for (const [f, name, triggers] of [
-  [`${MAKE_SKILL_DIR}/SKILL.md`, 'make', ['motion-slides']],
-  ['skills/studio/SKILL.md', 'studio', ['動画にして', 'パーツを作って', 'この図をパーツにして', 'motion-slides-video', 'motion-components', 'checking and building lessons locally']],
+  [`${MAKE_SKILL_DIR}/SKILL.md`, 'make', ['動きのあるスライドを作って', '教材を作って']],
+  ['skills/studio/SKILL.md', 'studio', ['動画にして', 'パーツを作って', 'この図をパーツにして', 'checking and building lessons locally']],
 ]) {
   const fm = read(f).match(/^---\n([\s\S]*?)\n---/)[1];
   assert.ok(fm.includes(`name: ${name}\n`));
@@ -117,9 +108,10 @@ assert.ok(studio.includes('egatari:make'));
 const modifiedStudio = studio.replace('教材をローカルで確かめて組む', '手書きの見出しを保つ');
 assert.equal(studioVersion(modifiedStudio, '1234abcd'), modifiedStudio.replace(versionLine(studio), '**指示の版：1234abcd**'));
 assert.throws(() => studioVersion('no marker', data.version), /exactly one/);
-for (const [old, owner] of [['motion-slides', MAKE_SKILL_DIR], ['motion-slides-video', 'skills/studio'], ['motion-components', 'skills/studio']]) {
+// 旧名（motion-slides・motion-slides-video・motion-components）は v0.6.6 でどのスキルの説明にも本文にも残さない
+for (const old of ['motion-slides', 'motion-slides-video', 'motion-components']) {
   const owners = [MAKE_SKILL_DIR, 'skills/studio'].filter((dir) => walk(dir).some((f) => new RegExp(`(^|[^a-zA-Z0-9-])${old}($|[^a-zA-Z0-9-])`).test(read(f))));
-  assert.deepEqual(owners, [owner], `${old}: exactly one skill owns the old name`);
+  assert.deepEqual(owners, [], `${old}: no skill mentions the old name`);
 }
 // Relative Markdown links must resolve inside the corresponding plugin bundle.
 function checkLinks(files, bundleRoot) {

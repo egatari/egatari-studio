@@ -2215,11 +2215,12 @@ try {
     const rel = (version, buf) => ({ version, buf, body: shaLine(version, sha256(buf)) });
     // 候補（package.json が X.Y.Z-rc.N）では /v<候補>/ の写しを作らない（RELEASING.md・site-versions.mjs）。凍結した写しの試験は、いま組んだものを前のリリース v0.0.2 として置いて行う
     const rc = /-rc\.\d+$/.test(cur), frz = rc ? '0.0.2' : cur;
-    const releases = [rel('0.0.1', gz)];
+    // v0.0.0：置く版の下限（ここでは 0.0.1）より前のリリース。広げず「もう置いていない」のページだけ（版の一覧に出ない）
+    const releases = [rel('0.0.1', gz), { version: '0.0.0', stub: true }];
     if (rc) releases.unshift(rel('0.0.2', packSite(DIST)));
-    const r = assemble({ site: SITE, current: cur, releases, log: () => {} });
+    const r = assemble({ site: SITE, current: cur, releases, hostedFrom: '0.0.1', log: () => {} });
     const listed = rc ? '0.0.2,0.0.1' : `${cur},0.0.1`;
-    ok(r.versions.join() === listed && r.injected['0.0.1'] && !fs.existsSync(path.join(SITE, `v${cur}`)) === rc, `versions: assembled the site (root v${cur}, /v${frz}/, /v0.0.1/ with the notice script added${rc ? '; no copy for the release candidate' : ''})`);
+    ok(r.versions.join() === listed && r.stubs.join() === '0.0.0' && r.injected['0.0.1'] && !fs.existsSync(path.join(SITE, `v${cur}`)) === rc, `versions: assembled the site (root v${cur}, /v${frz}/, /v0.0.1/ with the notice script added${rc ? '; no copy for the release candidate' : ''})`);
     const SB = BASE + SITEP;
     for (const lang of ['ja', 'en']) {
       const pv = await browser.newPage({ locale: lang === 'en' ? 'en-US' : 'ja-JP' });
@@ -2261,6 +2262,13 @@ try {
         // 知らせを隠す
         await pv.click('#version-note button');
         ok(!(await pv.$('#version-note')), 'versions: the notice can be hidden');
+        // 下限より前の版：「もう置いていない」のページ（スクリプトなし。決まりの違反・間違いは watch が数える）。最新版を開くと根へ
+        await pv.goto(SB + 'v0.0.0/');
+        const st = await pv.evaluate(() => ({ text: document.body.innerText, links: [...document.querySelectorAll('a')].map((a) => a.href), scripts: document.scripts.length }));
+        ok(/このサイトにはもう置いていません/.test(st.text) && /no longer hosted on this site/.test(st.text) && st.scripts === 0 && st.links.includes(SB) && st.links.some((u) => /\/releases\/tag\/v0\.0\.0$/.test(u)),
+          `versions: /v0.0.0/ (below the hosting floor) is the stub page with links to its release and to the latest ${JSON.stringify(st)}`);
+        await Promise.all([pv.waitForURL(SB, { timeout: scaled(30000) }).catch(() => {}), pv.click('a[href="../"] >> nth=0')]);
+        ok(pv.url() === SB, 'versions: the stub opens the latest version ' + pv.url());
       }
       await pv.close();
     }

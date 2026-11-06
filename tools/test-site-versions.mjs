@@ -2,14 +2,17 @@
 // test-all: unit
 //   URL のパス → 凍結した写しの版・tar.gz の往復（並びと時刻を固定して同じバイト・長いパス・GNU tar でも読める）・変なパスやリンクを断る・
 //   リリースの説明の sha256 の行と GitHub の digest・サイトの組み立て（根・/v<今の版>/・前の版・versions.json・古い写しへの案内の読み込み）・
-//   パーツのサンプルのページ（/parts/v<版>/ を版の写しから出す・最初に公開したリリースのページを残す・/parts/index.html と versions.json）
+//   パーツのサンプルのページ（/parts/v<版>/ を版の写しから出す・最初に公開したリリースのページを残す・/parts/index.html と versions.json）・
+//   置く版の下限（HOSTED_FROM より前は tar.gz を取らず広げず、/vX.Y.Z/ に「もう置いていない」のページだけ。versions.json に入れない）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { packSite, readTar, unpackSite, recordedSha, verifyAsset, shaLine, sha256, assemble, injectNotice, assetName, safeRel } from './site-versions.mjs';
+import { packSite, readTar, unpackSite, recordedSha, verifyAsset, shaLine, sha256, assemble, injectNotice, assetName, safeRel,
+  HOSTED_FROM, SITE_WARN, archivedAssetName, stubHtml, parseReleases, fetchReleases, floorCandidates } from './site-versions.mjs';
+import { partsIndexHtml, STATIC_PAGE_CSP } from './parts-gallery.mjs';
 import { siteVersionOf, cmpVersion, MARK } from '../app/version-ui.js';
 
 let fails = 0;
@@ -92,7 +95,7 @@ for (const lang of ['ja', 'en']) put(SITE, `egatari-make-0.4.3-${lang}.zip`, Buf
 put(SITE, 'v9.9.9/stale.txt', 'left from an earlier assemble');
 const rel = (version, dir) => { const buf = packSite(dir); return { version, buf, body: shaLine(version, sha256(buf)), digest: null }; };
 const logs = [];
-const r = assemble({ site: SITE, current: '0.4.3', releases: [rel('0.4.1', OLD), rel('0.4.2', NEW), rel('0.4.3', OLD)], log: (m) => logs.push(m) });
+const r = assemble({ site: SITE, current: '0.4.3', hostedFrom: '0.0.0', releases: [rel('0.4.1', OLD), rel('0.4.2', NEW), rel('0.4.3', OLD)], log: (m) => logs.push(m) });
 const vj = JSON.parse(fs.readFileSync(path.join(SITE, 'versions.json'), 'utf8'));
 ok(vj.root === '0.4.3' && vj.versions.join() === '0.4.3,0.4.2,0.4.1', 'assemble: versions.json lists the root and every frozen copy, newest first ' + JSON.stringify(vj));
 ok(!fs.existsSync(path.join(SITE, 'v9.9.9')), 'assemble: version folders from an earlier run are removed');
@@ -111,22 +114,22 @@ ok(!fs.readFileSync(path.join(SITE, 'v0.4.2', 'index.html'), 'utf8').includes('v
 ok(fs.readFileSync(path.join(SITE, 'v0.4.1', 'lab', 'irodori.html'), 'utf8') === 'lab' && fs.readFileSync(path.join(SITE, 'app.js'), 'utf8').includes('root'), 'assemble: the old copy is unpacked as is; the root stays the new build');
 ok(injectNotice(path.join(SITE, 'v0.4.1')).length === 0, 'injectNotice: running again changes nothing');
 const bad = rel('0.4.0', OLD); bad.body = shaLine('0.4.0', 'f'.repeat(64));
-throws(() => assemble({ site: SITE, current: '0.4.3', releases: [bad], log: () => {} }), /does not match/, 'assemble: a release whose asset does not match its notes fails the build');
+throws(() => assemble({ site: SITE, current: '0.4.3', hostedFrom: '0.0.0', releases: [bad], log: () => {} }), /does not match/, 'assemble: a release whose asset does not match its notes fails the build');
 const noIndex = path.join(tmp, 'noindex'); put(noIndex, 'app.js', 'x');
-throws(() => assemble({ site: SITE, current: '0.4.3', releases: [rel('0.3.0', noIndex)], log: () => {} }), /no index\.html/, 'assemble: an asset without index.html fails');
+throws(() => assemble({ site: SITE, current: '0.4.3', hostedFrom: '0.0.0', releases: [rel('0.3.0', noIndex)], log: () => {} }), /no index\.html/, 'assemble: an asset without index.html fails');
 
 
 // 候補（package.json が X.Y.Z-rc.N）：受け付ける。/v…/ の写しは作らず、版の一覧と根の版は前のリリースだけ（置かない版）
 {
   const RS = path.join(tmp, 'rcsite');
   put(RS, 'index.html', 'rc build'); put(RS, 'app.js', 'x'); put(RS, 'v9.9.9/stale.txt', 'old');
-  const rr = assemble({ site: RS, current: '0.4.4-rc.1', releases: [rel('0.4.3', OLD), rel('0.4.2', NEW)], log: () => {} });
+  const rr = assemble({ site: RS, current: '0.4.4-rc.1', hostedFrom: '0.0.0', releases: [rel('0.4.3', OLD), rel('0.4.2', NEW)], log: () => {} });
   const rv = JSON.parse(fs.readFileSync(path.join(RS, 'versions.json'), 'utf8'));
   ok(rr.versions.join() === '0.4.3,0.4.2' && rv.root === '0.4.3' && rv.versions.join() === '0.4.3,0.4.2', 'assemble: an rc current lists the releases only; the root is the last full release ' + JSON.stringify(rv));
   ok(!fs.existsSync(path.join(RS, 'v0.4.4-rc.1')) && !fs.existsSync(path.join(RS, 'v0.4.4')) && fs.existsSync(path.join(RS, 'v0.4.3', 'index.html')), 'assemble: no /v…/ folder for an rc (nor for its X.Y.Z)');
   ok(!fs.existsSync(path.join(RS, 'v9.9.9')) && fs.readFileSync(path.join(RS, 'index.html'), 'utf8') === 'rc build', 'assemble: with an rc, stale folders go and the root stays the new build');
   const RN = path.join(tmp, 'rcnone'); put(RN, 'index.html', 'rc build');
-  assemble({ site: RN, current: '0.0.1-rc.2', releases: [], log: () => {} });
+  assemble({ site: RN, current: '0.0.1-rc.2', hostedFrom: '0.0.0', releases: [], log: () => {} });
   ok(JSON.stringify(JSON.parse(fs.readFileSync(path.join(RN, 'versions.json'), 'utf8'))) === '{"versions":[]}', 'assemble: an rc with no release before it writes an empty list and no root');
   for (const badv of ['0.4.4-rc', '0.4.4-rc.x', '0.4.4-beta.1', '0.4.4-rc.1-x', 'v0.4.4']) throws(() => assemble({ site: RS, current: badv, releases: [], log: () => {} }), /bad current version/, `assemble: ${badv} is refused`);
   // 道具の入口（package.json の版が候補で、--current も同じ）：版の読み方を通る
@@ -161,7 +164,83 @@ assemble({ site: PR, current: '0.6.4', releases: [rel('0.6.5', P5)], log: () => 
 ok(fs.readFileSync(path.join(PR, 'parts', 'v2.1.1', 'index.html'), 'utf8') === 'gallery 2.1.1 from 0.6.4 (rebuilt)' && fs.existsSync(path.join(PR, 'parts', 'v2.2.0', 'index.html')),
   'assemble parts: deploying an earlier tag again keeps its own page and takes only versions it did not have from later releases');
 const NP = path.join(tmp, 'noparts'); put(NP, 'index.html', 'root');
-ok(assemble({ site: NP, current: '0.4.3', releases: [rel('0.4.1', OLD)], log: () => {} }).parts === null && !fs.existsSync(path.join(NP, 'parts')), 'assemble parts: no parts pages anywhere writes no /parts/');
+ok(assemble({ site: NP, current: '0.4.3', hostedFrom: '0.0.0', releases: [rel('0.4.1', OLD)], log: () => {} }).parts === null && !fs.existsSync(path.join(NP, 'parts')), 'assemble parts: no parts pages anywhere writes no /parts/');
+
+// ---------------------------------------------------------------- 置く版の下限（HOSTED_FROM。作者の決定 2026-11-06）
+ok(HOSTED_FROM === '0.6.0', 'HOSTED_FROM is 0.6.0');
+{
+  // gh の答え：v0.4.1 は tar.gz を .archived.tar.gz に名前を変えた、v0.4.8 は名前を戻した（.tar.gz）、v0.4.0 は tar.gz なし、v0.6.0・v0.6.5 は置く版
+  const gh = [
+    { tag: 'v0.4.0', draft: false, prerelease: false, body: '', assets: [] },
+    { tag: 'v0.4.1', draft: false, prerelease: false, body: '', assets: [{ name: archivedAssetName('0.4.1'), digest: 'sha256:' + 'a'.repeat(64) }] },
+    { tag: 'v0.4.8', draft: false, prerelease: false, body: shaLine('0.4.8', 'b'.repeat(64)), assets: [{ name: assetName('0.4.8'), digest: null }] },
+    { tag: 'v0.6.0', draft: false, prerelease: false, body: '', assets: [{ name: assetName('0.6.0'), digest: null }] },
+    { tag: 'v0.6.5', draft: false, prerelease: false, body: '', assets: [{ name: assetName('0.6.5'), digest: null }, { name: 'egatari-make-0.6.5-ja.zip', digest: null }] },
+    { tag: 'v0.6.6-rc.1', draft: false, prerelease: true, body: '', assets: [{ name: assetName('0.6.6-rc.1'), digest: null }] },
+  ].map((r) => JSON.stringify(r)).join('\n');
+  const list = parseReleases(gh);
+  const lr = (v) => list.find((r) => r.version === v);
+  ok(list.map((r) => r.version).join() === '0.6.5,0.6.0,0.4.8,0.4.1,0.4.0' && lr('0.4.1').archived && !lr('0.4.1').asset && lr('0.4.8').asset && !lr('0.4.8').archived,
+    'parseReleases: releases only (no rc), newest first, with the asset under either name');
+  const asked = [], logs2 = [];
+  const got = fetchReleases('o/r', { list: () => list, get: (repo, r) => { asked.push(r.version); return Buffer.from('x'); }, log: (m) => logs2.push(m) });
+  ok(asked.join() === '0.6.5,0.6.0', 'fetchReleases: downloads only the hosted versions (none below the floor) ' + JSON.stringify(asked));
+  ok(got.filter((r) => r.stub).map((r) => r.version).join() === '0.4.8,0.4.1' && got.filter((r) => r.stub).every((r) => !r.buf),
+    'fetchReleases: below-floor releases with editor-site-vX.tar.gz or .archived.tar.gz are listed as stubs, without a download');
+  ok(!got.some((r) => r.version === '0.4.0') && logs2.some((m) => /v0\.4\.0: no editor-site-v0\.4\.0\.tar\.gz/.test(m)), 'fetchReleases: a below-floor release without either asset is skipped');
+  const asked2 = [];
+  fetchReleases('o/r', { floor: null, list: () => list, get: (repo, r) => { asked2.push(r.version); return Buffer.from('x'); }, log: () => {} });
+  ok(asked2.join() === '0.6.5,0.6.0,0.4.8', 'fetchReleases (verify, no floor): downloads every editor-site-vX.tar.gz, not the archived ones');
+
+  // 組み立て：v0.4.1（.archived の目印だけ）・v0.4.8（tar.gz を渡しても sha が合わなくても使わない）は「もう置いていない」のページ、v0.6.0 は広げる
+  const FS = path.join(tmp, 'floorsite'), F6 = path.join(tmp, 'f6');
+  put(FS, 'index.html', `<!DOCTYPE html><html><head>${csp}</head></html>`); put(FS, 'app.js', `var MARK="${MARK}";`);
+  put(F6, 'index.html', 'v0.6.0'); put(F6, 'app.js', `var MARK="${MARK}";`);
+  const unverified = { version: '0.4.8', buf: packSite(OLD), body: shaLine('0.4.8', 'f'.repeat(64)), digest: null };
+  const fl = [];
+  const fr = assemble({ site: FS, current: '0.6.5', repo: 'o/r', releases: [{ version: '0.4.1', stub: true }, unverified, rel('0.6.0', F6)], log: (m) => fl.push(m) });
+  const fv = JSON.parse(fs.readFileSync(path.join(FS, 'versions.json'), 'utf8'));
+  ok(fv.versions.join() === '0.6.5,0.6.0' && fr.versions.join() === '0.6.5,0.6.0' && fr.stubs.join() === '0.4.8,0.4.1', 'assemble floor: versions.json lists only hosted versions; stubs are returned apart ' + JSON.stringify(fv));
+  for (const v of ['0.4.1', '0.4.8']) {
+    ok(fs.readdirSync(path.join(FS, 'v' + v)).join() === 'index.html', `assemble floor: /v${v}/ has only the stub index.html (nothing unpacked, no notice script)`);
+    ok(fl.filter((m) => m.startsWith(`v${v}: below the hosting floor v0.6.0`)).length === 1, `assemble floor: one log line for v${v}`);
+  }
+  ok(fs.readFileSync(path.join(FS, 'v0.6.0', 'index.html'), 'utf8') === 'v0.6.0', 'assemble floor: a release at the floor is unpacked as before');
+  const stub = fs.readFileSync(path.join(FS, 'v0.4.8', 'index.html'), 'utf8');
+  ok(stub === stubHtml({ version: '0.4.8', repo: 'o/r' }), 'assemble floor: the stub is stubHtml');
+  ok(stub.includes('href="https://github.com/o/r/releases/tag/v0.4.8"') && (stub.match(/href="\.\.\/"/g) || []).length === 2, 'stub: links to its GitHub release and to the latest (../), in both languages');
+  ok(stub.includes('Egatari Studio v0.4.8 は、このサイトにはもう置いていません。一式は <a href="https://github.com/o/r/releases/tag/v0.4.8">GitHub のリリース</a>から取れます。') && stub.includes('>最新版を開く</a>'), 'stub: Japanese text');
+  ok(stub.includes('Egatari Studio v0.4.8 is no longer hosted on this site. You can download it from its <a href="https://github.com/o/r/releases/tag/v0.4.8">GitHub release</a>.') && stub.includes('>Open the latest version</a>') && /<section lang="en">/.test(stub), 'stub: English text');
+  // ほかのページと同じ点検：パーツの一覧（parts/index.html）と同じ決まりの <meta>、スクリプトなし、外から読むものなし、viewport・暗い色・lang
+  const metaCsp = (h) => /<meta http-equiv="Content-Security-Policy" content="([^"]*)">/.exec(h)?.[1];
+  ok(metaCsp(stub) === STATIC_PAGE_CSP && metaCsp(partsIndexHtml({ current: '1.0.0', versions: ['1.0.0'] })) === STATIC_PAGE_CSP, 'stub: the same CSP meta as parts/index.html ' + metaCsp(stub));
+  ok(!/<script/i.test(stub) && !/\son\w+=/i.test(stub) && !/(src|href)="(?!\.\.\/|https:\/\/github\.com\/o\/r\/releases\/tag\/v0\.4\.8")/.test(stub), 'stub: no scripts, no event handlers, no resources but ../favicon.svg; links only to the release and ../');
+  ok(/<html lang="ja">/.test(stub) && /<meta charset="utf-8">/.test(stub) && /<meta name="viewport"/.test(stub) && /prefers-color-scheme:dark/.test(stub), 'stub: lang, charset, viewport and dark colours');
+  ok(stubHtml({ version: '0.4.1', repo: 'a"b/<c>' }).includes('https://github.com/a&quot;b/&lt;c&gt;/releases/tag/v0.4.1'), 'stub: the repository name is escaped');
+  // 名前を戻しても下限より前は置かない：tar.gz（正しい sha）を渡しても広げない
+  const FS2 = path.join(tmp, 'floorsite2'); put(FS2, 'index.html', 'root');
+  assemble({ site: FS2, current: '0.6.5', releases: [rel('0.4.2', OLD)], log: () => {} });
+  ok(fs.readdirSync(path.join(FS2, 'v0.4.2')).join() === 'index.html' && JSON.parse(fs.readFileSync(path.join(FS2, 'versions.json'), 'utf8')).versions.join() === '0.6.5',
+    'assemble floor: a below-floor release with a valid editor-site-vX.tar.gz is still only a stub (renaming the asset back does not re-host it)');
+  ok(fs.readFileSync(path.join(FS2, 'v0.4.2', 'index.html'), 'utf8').includes('https://github.com/egatari/egatari-studio/releases/tag/v0.4.2'), 'stub: the default repository is egatari/egatari-studio');
+
+  // 大きいサイトの知らせ：次に下限を上げる候補（置いている最も古い版）を挙げる
+  const M = 1048576, sz = { '0.6.6': 60 * M, '0.6.5': 300 * M, '0.6.4': 300 * M, '0.6.0': 250 * M };
+  const fc = floorCandidates(['0.6.6', '0.6.5', '0.6.4', '0.6.0'], '0.6.6', sz, 910 * M);
+  ok(fc.drop.join() === '0.6.0' && fc.next === '0.6.4', 'floorCandidates: the oldest hosted versions until the site is under the warning size ' + JSON.stringify(fc));
+  ok(floorCandidates(['0.6.6', '0.6.5', '0.6.4', '0.6.0'], '0.6.6', sz, 1150 * M).drop.join() === '0.6.0,0.6.4' && floorCandidates(['0.6.6'], '0.6.6', sz, 900 * M).drop.length === 0, 'floorCandidates: more when needed; none without older versions');
+  const BIG = path.join(tmp, 'big'), B0 = path.join(tmp, 'b0'), B1 = path.join(tmp, 'b1');
+  put(BIG, 'index.html', 'root'); put(B0, 'index.html', 'v0.6.0'); put(B1, 'index.html', 'v0.6.1'); put(B0, 'app.js', `var MARK="${MARK}";`); put(B1, 'app.js', `var MARK="${MARK}";`);
+  const bl = [];
+  assemble({ site: BIG, current: '0.6.2', releases: [rel('0.6.0', B0), rel('0.6.1', B1)], log: (m) => bl.push(m), hostedFrom: '0.6.0' });
+  ok(!bl.some((m) => /^warning/.test(m)), 'assemble: no size warning for a small site');
+  const wl = [];
+  assemble({ site: BIG, current: '0.6.2', releases: [rel('0.6.0', B0), rel('0.6.1', B1)], log: (m) => wl.push(m), hostedFrom: '0.6.0', warnAt: 10 });
+  const w = wl.find((m) => /^warning/.test(m)) || '';
+  ok(/Candidates for the next floor raise \(HOSTED_FROM in tools\/site-versions\.mjs, now 0\.6\.0\): the oldest hosted versions v0\.6\.0 \(\d+ MB\), v0\.6\.1 \(\d+ MB\); set HOSTED_FROM to '0\.6\.2'/.test(w), 'assemble: the size warning names the oldest hosted versions as candidates for the next floor raise: ' + w);
+  throws(() => assemble({ site: BIG, current: '0.6.2', releases: [rel('0.6.0', B0), rel('0.6.1', B1)], log: () => {}, hostedFrom: '0.6.0', maxAt: 10 }), /over the GitHub Pages limit.*the oldest hosted versions v0\.6\.0/, 'assemble: over the limit fails and names the candidates');
+  ok(SITE_WARN === 800 * M && fc.next, 'SITE_WARN unchanged');
+}
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(fails ? `${fails} failed` : 'all passed');
