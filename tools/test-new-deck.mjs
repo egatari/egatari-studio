@@ -41,7 +41,7 @@ const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.comp
 // 束を 1 つ選んだ無料のプランの指示で外すパーツ（kit/core/llm-pack-assemble.mjs の SINGLE_SET_DROP_ORDER の順、収まったところで止める。2026-11-06）。
 // 載っていない束は何も外さない。日本語はどの束も中核の 4 つを短くすれば収まる
 const SINGLE_SET_EXPECTED = {
-  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-compare', 'm-pie'], kokugo: ['m-fishbone', 'm-quad'] },
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare'], kokugo: ['m-fishbone', 'm-quad'] },
   ja: {},
 };
 for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
@@ -435,10 +435,10 @@ ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with
 // Some browsers paste with CRLF, so each line feed counts 2: UTF-16 units + line feeds <= 31,000 (decided with the maintainers 2026-11-06;
 // en ~30.85K, ja ~22K). When this trips: first trim the common pack text (with eval A on the result), and only if that is not enough
 // the parts' English descriptions in the parts library (egatari/components).
-ok('the single-set drop order: the maintainers\' list, every standard part outside the core four except m-cards and m-kpi (not placed yet: never left out)', () => {
-  assert.deepEqual([...SINGLE_SET_DROP_ORDER], ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-compare', 'm-pie', 'm-scatter', 'm-curves']);
+ok('the single-set drop order: the maintainers\' list, every standard part outside the core four', () => {
+  assert.deepEqual([...SINGLE_SET_DROP_ORDER], ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-kpi', 'm-compare', 'm-cards', 'm-pie', 'm-scatter', 'm-curves']);
   const outside = STD.filter((t) => !FREE_CORE.includes(t));
-  assert.deepEqual(outside.filter((t) => !SINGLE_SET_DROP_ORDER.includes(t)), ['m-cards', 'm-kpi']);
+  assert.deepEqual(outside.filter((t) => !SINGLE_SET_DROP_ORDER.includes(t)), []);
   assert.ok(SINGLE_SET_DROP_ORDER.every((t) => STD.includes(t)));
 });
 // The free plan's fitter (fitSize in kit/core/llm-pack-assemble.mjs) caps every free pack at min(45 KB, 31,000 of these) (2026-11-06), so the

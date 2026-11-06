@@ -22,10 +22,10 @@
   four shortened; the English standard pack (30,525) is unchanged. Japanese packs (22,000–27,000) and every paid pack are byte for
   byte the same
 - Free plan, one part set ticked and still over the limit after shortening the core four: the parts left out are now the standard
-  parts outside the core four, in a fixed order (`m-fishbone`, `m-quad`, `m-cycle`, `m-venn`, `m-tree`, `m-timeline`, `m-compare`,
-  `m-pie`, `m-scatter`, `m-curves`; charts last, since the subject sets lean on them; `SINGLE_SET_DROP_ORDER`), stopping as soon as
+  parts outside the core four, in a fixed order (`m-fishbone`, `m-quad`, `m-cycle`, `m-venn`, `m-tree`, `m-timeline`, `m-kpi`,
+  `m-compare`, `m-cards`, `m-pie`, `m-scatter`, `m-curves`; charts last, since the subject sets lean on them; `SINGLE_SET_DROP_ORDER`), stopping as soon as
   it fits. The set's own parts and the core four are never left out. In English, stats leaves out `m-fishbone` to `m-timeline` (six
-  parts), math the same and `m-compare`, `m-pie`, kokugo `m-fishbone`, `m-quad`. With two or more sets nothing changes: specialized
+  parts), math the same and `m-kpi`, `m-compare`, kokugo `m-fishbone`, `m-quad`. With two or more sets nothing changes: specialized
   parts are left out, largest first. `node kit/llm-pack.mjs` names every part it left out on stderr; New… names them as the parts to
   untick The
   size table in `docs/authoring-with-llms.md` shows the paste length of each free pack, and `--list` shows it too

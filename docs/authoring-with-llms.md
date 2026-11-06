@@ -26,7 +26,7 @@ This file and the part set packs together are the **full pack**: the standards, 
 |---|---:|---:|---:|---:|
 | Free plan: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 35.4 KB | 45 KB | 30,525 | 31,000 |
 | Free plan: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 33.6 KB | 45 KB | 30,751 | 31,000 |
-| Free plan: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-compare, m-pie left out) | 33.1 KB | 45 KB | 30,643 | 31,000 |
+| Free plan: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare left out) | 33.3 KB | 45 KB | 30,810 | 31,000 |
 | Free plan: standard + maps (the core four shortened too) | 34.2 KB | 45 KB | 30,931 | 31,000 |
 | Free plan: standard + kokugo (the core four shortened too; m-fishbone, m-quad left out) | 35.8 KB | 45 KB | 30,735 | 31,000 |
 | Free plan: standard + english (the core four shortened too) | 29.0 KB | 45 KB | 27,039 | 31,000 |

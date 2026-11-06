@@ -161,10 +161,10 @@ export function fitPlan(data, ticked, plan, { sizeOf, capBytes }) {
 // 束を 1 つだけ選んだ無料のプランの指示で、中核の 4 つを短くしても越えるときに外す標準のパーツと、その順（maintainers の決定、2026-11-06）。
 // 選んだ束のパーツと中核の 4 つ（FREE_CORE。この並びの m-menu は飛ばす）は外さない。この順に 1 つずつ外し、収まったところで止める。
 // 図表（m-pie・m-scatter・m-curves）を最後にするのは、教科の束（stats・math・maps・science）が図表に頼るから（stats では m-scatter と m-curves が
-// m-hist の隣で使われる）。m-cards と m-kpi はこの並びにないので外さない（置き場所は決まっていない）。
+// m-hist の隣で使われる）。m-kpi はビジネスの札なので早めに、m-cards は何にでも使う形なので図表のすぐ前に。
 // maintainers の順の 1 番目「選んでいない束のパーツを先に外す」は、今は起きない（新規作成もコマンドも、指示に入る専門のパーツはどれも選んだ束のもの）
 // ので書かない。束を 2 つ以上選んだときは今までどおり（trimCandidates：専門のパーツだけを、減る大きさの大きい順に）
-export const SINGLE_SET_DROP_ORDER = Object.freeze(['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-compare', 'm-pie', 'm-scatter', 'm-curves']);
+export const SINGLE_SET_DROP_ORDER = Object.freeze(['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-kpi', 'm-compare', 'm-cards', 'm-pie', 'm-scatter', 'm-curves']);
 function singleSetCandidates(ticked, { sizeOf, capBytes }) {
   const out = [];
   if (sizeOf(ticked) <= capBytes) return out;
