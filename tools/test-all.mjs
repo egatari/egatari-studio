@@ -32,7 +32,7 @@ const JOBS_MAX = 6;
 const MEM_HEAVY_GIB = 12;
 if (args.includes('--help') || args.includes('-h')) {
   console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--jobs N] [--verbose] [--list]
-  --only name,name  run only these steps (and the builds they need); "test-components" selects both shards
+  --only name,name  run only these steps (and the builds they need); "test-components" and "test-app" select both halves
   --platform        run only the platform-sensitive steps: every step that is not a browser test (builds, checks,
                     generated-file checks, unit tests) and the tests marked "// test-all: platform" (paths, fonts, WebKit, npm pack)
   --jobs N          run up to N steps at once, longest first (default: CPUs - 1, at most ${JOBS_MAX}); steps marked
@@ -174,7 +174,9 @@ const steps = [
   // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
   ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
-  ['test-app', ['tools/test-app.mjs', path.join(tmp, 'app')]],
+  // 編集アプリ（サンプルが 6 つになって、ubuntu の CI で 1 段の上限 900 秒の際の 870〜900 秒になった）は、前半（2〜10d）と後半（10c〜13b）の 2 段に分ける
+  // （--only test-app で両方。tools/test-app.mjs の --part）
+  ...[1, 2].map((i) => [`test-app ${i}/2`, ['tools/test-app.mjs', '--part', `${i}/2`, path.join(tmp, `app-${i}`)]]),
   // 編集アプリのプレビューで音声が鳴ること（1 ファイル・発表者ビュー・展開したフォルダ）：時間に敏感なので test-app から分けた（serial。backlog #156）
   ['test-app-audio', ['tools/test-app-audio.mjs', path.join(tmp, 'app-audio')]],
   // 読み方のボタン（台本の欄。#101）：ルビの欄・元に戻す・すべてに・辞書・聞く（声は差し替え）・英語
@@ -281,7 +283,7 @@ if (orphans.length) {
 // 載っていない段は HINT_DEFAULT_S。目安が外れても結果は変わらない（終わる時刻が変わるだけ）
 const HINT_DEFAULT_S = 8;
 const HINT_S = {
-  'test-app': 444, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
+  'test-app 1/2': 222, 'test-app 2/2': 222, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
   'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
   'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35,
@@ -306,7 +308,7 @@ const depsOf = (name, argv) => [...new Set([needs[name], ...(after[name] || []),
 // メモリを多く使う段（ブラウザのページをいくつも開く・子のプロセスで品質チェックを並べる）。macOS の CI（3 vCPU・7 GB）で 2 つが重なると、
 // どちらも 3 倍近く遅くなり（test-app 340 → 1300 s、test-pack-catalogue 200 → 830 s。14 GB の runner では重なっても 390〜450 s）、
 // 段の上限で止められ、runner が応答をなくして job ごと落ちたこともある（run 41795793989 の 2 回目）。少ないメモリの機械ではこれらを重ねない
-const HEAVY = new Set(['test-app', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
+const HEAVY = new Set(['test-app 1/2', 'test-app 2/2', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
 const heavyAlone = process.env.TEST_HEAVY_ALONE ? process.env.TEST_HEAVY_ALONE === '1' : os.totalmem() < MEM_HEAVY_GIB * 2 ** 30;
 const lockOf = (name) => lock[name] || (heavyAlone && HEAVY.has(name) ? 'memory' : null);
 const isSerial = (name, argv) => argv.some((a) => /^tools\/test-.+\.mjs$/.test(a) && SERIAL.test(head40(a.slice('tools/'.length))));
