@@ -26,3 +26,6 @@ tools/fixtures/subset-names/** -text
 vendor/citeproc/** -text
 # パーツのサンプルのページを組む道具の写し（egatari/components の決まったコミット。tools/parts-gallery.mjs）：バイトのまま（SOURCE.json の sha256）
 vendor/components-gallery/** -text
+# 本のあるサンプル（egatari/examples の books/<名前> の写し）：バイトのまま（本文は LF でないと §9C.2 の誤り。SOURCE.json の sha256）
+examples/heikin-chuouchi/** -text
+examples/rashomon/** -text
