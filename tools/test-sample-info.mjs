@@ -8,7 +8,8 @@
 // - 正しくない sample.json を断る（形・分類・パーツ・字数・権利）
 // - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack。目安は fitSize）：pitch の指示は m-bars・m-flow の説明を詳しいまま目安に収まる（英語の無料のプランは貼り付けの長さで ③ まで進む）。
 //   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる
-// - 本のあるサンプル（article/ と sample.json の book: true）：指示はちょうど 1 行（サンプルにも本があり、本は Claude Code で作る）だけ増える。同梱の 4 つは本がない
+// - 本のあるサンプル（本文 article.md か article/ と sample.json の book: true）：指示はちょうど 1 行（サンプルにも本があり、本は Claude Code で作る）だけ増える。
+//   同梱の heikin-chuouchi（article/）と rashomon（article.md）は本がある。本があるかは組んだ 1 ファイルの索引の article で決める（buildExamples の book）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,7 +22,7 @@ import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText,
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
-import { EXAMPLES, readSample } from './examples-portable.mjs';
+import { EXAMPLES, readSample, buildExamples } from './examples-portable.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -31,6 +32,11 @@ const ctx = { categories: CATEGORIES, parts: LISTED };
 const norm = (s) => s.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/\s+/g, '');
 
 console.log(`free plan limit: ${PACK_CAP_KB.free} KB`);
+// 本があるか：サンプルを組んだ 1 ファイルの索引に article があるか（tools/examples-portable.mjs の book。本文は article.md でも article/ でもよい）
+const builtTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-sample-built-'));
+let BUILT;
+try { BUILT = new Map((await buildExamples(builtTmp)).map((x) => [x.name, x])); } finally { fs.rmSync(builtTmp, { recursive: true, force: true }); }
+const BOOKS = ['heikin-chuouchi', 'rashomon'];
 for (const name of EXAMPLES) {
   const dir = path.join(ROOT, 'examples', name);
   let s = null;
@@ -47,7 +53,7 @@ for (const name of EXAMPLES) {
   const lang = (deck.match(/<html[^>]*\blang="([^"]+)"/) || [])[1], theme = (deck.match(/<html[^>]*\bdata-theme="([^"]+)"/) || [])[1];
   ok(s.lang === lang, `${name}: lang is <html lang> (${lang})`);
   ok(CHOOSABLE.some((t) => t.name === s.theme) && (s.theme === theme || RETIRED.includes(theme)), `${name}: theme ${s.theme} is choosable and is the deck’s (${theme})`);
-  ok(s.book === fs.existsSync(path.join(dir, 'article')), `${name}: book is ${s.book}`);
+  ok(BUILT.has(name) && s.book === BUILT.get(name).book, `${name}: book is ${s.book}, and the built file's index ${BUILT.has(name) && BUILT.get(name).book ? 'has' : 'has no'} article`);
   // 構成を添えた指示（無料のプラン、画面の言語は両方）：初めの印（標準と小分類のおすすめ）にサンプルのパーツ
   for (const L of ['ja', 'en']) {
     const ticks = [...new Set([...initialParts(recommend({ sub: s.subcategory, text: '', lang: L })), ...s.parts])];
@@ -156,20 +162,30 @@ ok(f.full === null && !f.shortened.length && !f.ownShortened.length && f.dropped
 f = fitSample(FAKE, ALL, 'free', { sizeOf: (tags, full) => fsize(tags, full) + (tags.includes('x-a') ? 300 : 0), capBytes: 900, own: OWN });
 ok(f.dropped.join() === 'x-a' && !f.shortened.length && f.step1Shortened.length === 2 && f.bytes <= 900, 'fitSample: once a part is left out, the core parts are described in full again if they fit');
 
-// ---------------------------------------------------------------- 本のあるサンプル：サンプルのフォルダの写しに article/ を足し、sample.json を book: true に
-ok(EXAMPLES.every((n) => readSample(n).book === false), 'none of the bundled samples has a book (their from-sample packs have no book line)');
+// ---------------------------------------------------------------- 本のあるサンプル
+// 本のある 2 つ（heikin-chuouchi・rashomon）は sample.json が book: true で、本のない指示（book: false にしたもの）と比べる。
+// ほかのサンプルは、フォルダの写しに article/ を足し、sample.json を book: true にして比べる
+ok(BOOKS.every((n) => readSample(n).book === true) && EXAMPLES.filter((n) => !BOOKS.includes(n)).every((n) => readSample(n).book === false),
+  `the samples with a book are ${BOOKS.join(' and ')} (sample.json book: true); the others have none`);
 const bookTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-sample-book-'));
 try {
   for (const name of EXAMPLES) {
-    const dir = path.join(bookTmp, name);
-    fs.cpSync(path.join(ROOT, 'examples', name), dir, { recursive: true, filter: (f) => !/[\\/](out|\.cache)$/.test(f) });
-    fs.mkdirSync(path.join(dir, 'article'), { recursive: true });
-    fs.writeFileSync(path.join(dir, 'article', 'chapter1.md'), '# 1\n\nText.\n');
-    const plain = JSON.parse(fs.readFileSync(path.join(dir, 'sample.json'), 'utf8'));
-    const withBook = { ...plain, book: true };
-    fs.writeFileSync(path.join(dir, 'sample.json'), JSON.stringify(withBook, null, 2) + '\n');
-    const read = JSON.parse(fs.readFileSync(path.join(dir, 'sample.json'), 'utf8'));
-    ok(!sampleProblems(read).length && read.book === fs.existsSync(path.join(dir, 'article')), `${name} with a book: sample.json is valid and book matches article/`);
+    let plain, read;
+    if (BOOKS.includes(name)) {
+      // 本のあるサンプル：そのままの sample.json（book: true）と、book: false にした本のない指示
+      read = readSample(name);
+      plain = { ...read, book: false };
+      ok(read.book === true && !sampleProblems(read).length && BUILT.get(name).book, `${name} has a book: sample.json is valid with book: true, and the built file's index has the article`);
+    } else {
+      const dir = path.join(bookTmp, name);
+      fs.cpSync(path.join(ROOT, 'examples', name), dir, { recursive: true, filter: (f) => !/[\\/](out|\.cache)$/.test(f) });
+      fs.mkdirSync(path.join(dir, 'article'), { recursive: true });
+      fs.writeFileSync(path.join(dir, 'article', 'chapter1.md'), '# 1\n\nText.\n');
+      plain = JSON.parse(fs.readFileSync(path.join(dir, 'sample.json'), 'utf8'));
+      fs.writeFileSync(path.join(dir, 'sample.json'), JSON.stringify({ ...plain, book: true }, null, 2) + '\n');
+      read = JSON.parse(fs.readFileSync(path.join(dir, 'sample.json'), 'utf8'));
+      ok(!sampleProblems(read).length && read.book === fs.existsSync(path.join(dir, 'article')), `${name} with a book: sample.json is valid and book matches article/`);
+    }
     for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
       const second = { title: L === 'ja' ? '論語を読む' : 'Reading the Analects' };
       // 本の行の分だけ、収める先（fitSample の capBytes）を減らした本のない指示と比べる（同じ予算どうし）。
