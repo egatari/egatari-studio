@@ -16,7 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { FONT_LIST, FONTS_EXTRA_PKG } from '../kit/core/build-core.mjs';
 import { scaled } from './wait-scale.mjs';
 
@@ -59,7 +59,7 @@ await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験�
   tgz = path.join(work, packed.filename);
   assert.ok(fs.existsSync(tgz), tgz);
   const files = new Set(packed.files.map((f) => f.path));
-  for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/portable.mjs', 'tools/sheet.mjs', 'tools/comment-shots.mjs', 'tools/video.mjs',
+  for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/vendor/book-tools.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/portable.mjs', 'tools/sheet.mjs', 'tools/comment-shots.mjs', 'tools/video.mjs',
     'components.lock.json', 'themes.lock.json', 'kit/player.lock.json', 'LICENSE', 'NOTICE', 'fonts/OFL.txt',
     'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'vendor/csl/styles/apa.csl', 'vendor/csl/locales/locales-ja-JP.xml', 'vendor/csl/SOURCE.json', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
   const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|portable|sheet|comment-shots|video)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
@@ -122,13 +122,27 @@ await t('npm pack packages/fonts-extra：@egatari/fonts-extra に選べる 6 つ
   console.log(`     ${FONTS_EXTRA_PKG}: tarball ${mb(p.size)}, unpacked ${mb(p.unpackedSize)} (${p.entryCount} files)`);
 });
 
-await t('npm install <tarball>：入れたものに @fontsource はなく、字は写しから', () => {
+await t('npm install <tarball>：入れたものに @fontsource・myst・markdown-it はなく、字は写しから、本は束から読める', async () => {
   fs.mkdirSync(proj, { recursive: true });
   fs.writeFileSync(path.join(proj, 'package.json'), JSON.stringify({ name: 'egatari-pack-test', version: '0.0.0', private: true }, null, 2));
   must(sh('npm', ['install', path.relative(proj, tgz).split(path.sep).join('/'), '--prefer-offline', '--ignore-scripts', '--no-audit', '--no-fund'], proj), 'npm install');
   assert.ok(fs.existsSync(path.join(pkgDir, 'bin', 'egatari.mjs')));
   assert.ok(!fs.existsSync(path.join(proj, 'node_modules', '@fontsource')), 'node_modules/@fontsource should not be installed');
   assert.ok(!fs.existsSync(path.join(pkgDir, '.git')));
+  const tree = JSON.parse(must(sh('npm', ['ls', '--omit=dev', '--all', '--json'], proj), 'npm ls --omit=dev').stdout);
+  const devOnly = new Set(['markdown-it', 'myst-parser', 'myst-transforms', 'myst-ext-proof', 'myst-ext-exercise', 'vfile']);
+  const checkTree = (node) => {
+    for (const [name, dep] of Object.entries(node.dependencies || {})) {
+      assert.ok(!devOnly.has(name), `${name} should be bundled, not installed`);
+      checkTree(dep);
+    }
+  };
+  checkTree(tree);
+  // myst が入っていない場所でも、実際に本文を読めること（リポジトリの node_modules へはたどれない）。
+  const { parseArticleText } = await import(pathToFileURL(path.join(pkgDir, 'kit', 'core', 'article-text.mjs')).href);
+  const book = parseArticleText('(sec-aaaaaa)=\n## Bundled reader\n\nText.\n');
+  assert.deepEqual(book.problems.filter((p) => p.sev === 'error'), []);
+  assert.equal(book.tree.children[0].type, 'heading');
 });
 
 await t('npx egatari --version・--help・知らないコマンド', () => {

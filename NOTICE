@@ -79,9 +79,10 @@ line under the book and in its Book panel whenever citeproc formatted the book's
 builds the slides only and does not run citeproc. CPAL section 15 (network use): citeproc runs in the user's own
 browser, and the hosted editor makes the unmodified source available as served (vendor/citeproc/); Egatari Studio
 does not run builds as a hosted service.
-The editor app's book tools (dist/article-tools.js, loaded only for lessons with a book) bundle myst-parser,
-myst-transforms, myst-ext-proof, myst-ext-exercise (MIT, Executable Books) and their dependencies (markdown-it,
-unified, js-yaml, he and others; MIT, ISC or BSD licenses), and the CSL styles and locales of vendor/csl/.
+The shared book tools (kit/vendor/book-tools.mjs, used by the CLI and the editor app) bundle myst-parser,
+myst-transforms, myst-ext-proof, myst-ext-exercise (MIT, Executable Books), vfile (MIT) and their dependencies
+(markdown-it 14.3.3, punycode.js, unified, js-yaml, he and others; MIT, ISC or BSD licenses).
+The editor app's dist/article-tools.js also bundles the CSL styles and locales of vendor/csl/.
 The citation styles and locales in vendor/csl/ (apa.csl, ieee.csl, sist02.csl, locales-en-US.xml, locales-ja-JP.xml) are unmodified copies
 from the Citation Style Language projects (https://github.com/citation-style-language/styles and /locales; commits
 in vendor/csl/SOURCE.json), licensed under the Creative Commons Attribution-ShareAlike 3.0 License, as each file
