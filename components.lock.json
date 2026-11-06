@@ -3093,6 +3093,19 @@
         "2.0.3": "37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09"
       },
       "catalogue": "2"
+    },
+    "particles": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "e7dae02ce2a247f691e62ddbcce1a66269728f8988e97818ddf3546f6cf2df63"
+      },
+      "content": {
+        "2.0.0": "ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098"
+      },
+      "catalogue": "2"
     }
   }
 }

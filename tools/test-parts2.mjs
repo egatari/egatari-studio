@@ -510,9 +510,9 @@ for (const [code, what] of [
   // icons 1.0.0（README と、アイコンの名前の言葉 en.json・ja.json が新しく入る。編集アプリのアイコンの検索が使う）、
   // m-predict 2.0.3（README：学ぶ人 → 学習者）で、どれも index.js はそのまま（refreshed）。manifest・tarball の sha256 は manifest.json のもの
   const v230 = lock2.catalogues['2.3.0'];
-  ok(lock2.default === '2.3.0' && v230 && v230.tag === 'v2.3.0' && v230.tarballSha256 === '46480ea715b73ef01bed807501316df96f5aacb63a96fa01af5cf14ede7f0f39' &&
+  ok(v230 && v230.tag === 'v2.3.0' && v230.tarballSha256 === '46480ea715b73ef01bed807501316df96f5aacb63a96fa01af5cf14ede7f0f39' &&
     v230.manifestSha256 === 'da1c17682f3b6df228453e4acc0b90d3e9c4c71d3fe9cf2cf8fa3f7de4d8b205',
-    'CANDIDATE components 2.3.0 is the default and pinned to the tarball verified here (not yet a components release)');
+    'components 2.3.0 is pinned to the released tarball (v2.3.0)');
   const bumped230 = Object.keys(v230.parts).filter((n) => v230.parts[n] !== v220.parts[n]);
   ok(Object.keys(v230.parts).length === Object.keys(v220.parts).length && bumped230.join() === 'codetree' && v220.parts.codetree === '2.0.2' && v230.parts.codetree === '2.0.3' &&
     lock2.parts.codetree['2.0.3'].sha256 === '3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3',
@@ -525,6 +525,14 @@ for (const [code, what] of [
   const iconsDir = path.join(ROOT, 'vendor', 'components', 'sha256', v230.content.icons);
   ok(['en.json', 'ja.json'].every((f) => fs.existsSync(path.join(iconsDir, f))) && ['en.json', 'ja.json'].every((f) => !fs.existsSync(path.join(ROOT, 'vendor', 'components', 'sha256', v220.content.icons, f))),
     'CANDIDATE 2.3.0: icons 1.0.0 brings en.json and ja.json (icon words for the editor\'s icon search); the 2.2.0 copy has none');
+  // 部品庫 2.4.0（リリース a383099、c2-base 54bf442）：新しいパーツ m-particles 2.0.0（理科の束）だけ。ほかのパーツは版も中身も 2.3.0 のまま
+  const v240 = lock2.catalogues['2.4.0'];
+  ok(lock2.default === '2.4.0' && v240 && v240.tag === 'v2.4.0' && v240.tarballSha256 === '4e8202f3b4cd742a78560789976f622c0f0c0380e3452a0274a952b25ee9574d' && v240.manifestSha256 === '468299a10cdb1336f370ff3c16032bd0dc1aef4e271613b64651d68efe06889e',
+    'components 2.4.0 is the default and pinned to the released tarball and manifest (v2.4.0)');
+  const added240 = Object.keys(v240.parts).filter((n) => !(n in v230.parts));
+  const bumped240 = Object.keys(v230.parts).filter((n) => v240.parts[n] !== v230.parts[n]);
+  ok(added240.join() === 'particles' && v240.parts.particles === '2.0.0' && bumped240.length === 0,
+    `2.4.0: only m-particles 2.0.0 is new; no other part changes version (new: ${added240.join(', ')}; bumped: ${bumped240.join(', ')})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
