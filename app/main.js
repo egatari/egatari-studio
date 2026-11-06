@@ -27,12 +27,13 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex } from '../kit/core/portable.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
+import { draftStore, createDraftKeeper } from './drafts.js';
 import { tierA } from '../kit/core/tier-a.mjs';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
@@ -92,6 +93,34 @@ const S = {
 };
 // 前の版のファイルなら、編集を断るわけ（なければ null）。前の版の作業フォルダは知らせるだけで、編集は断らない
 const earlierWhy = () => (S.earlier && S.earlier.kind === 'file' ? T.earlierNoEdit : null);
+// 保存していない変更をブラウザの中に残す（app/drafts.js、backlog #55）：1 ファイルを開いている間だけ、その文書の見張り（keeper）を持つ。
+// S.draftKept：今の変更をこのブラウザに残せているか（状態の帯のヒントの文を選ぶ。残せていないときに「復元できます」と言わない）
+const drafts = draftStore();
+let keeper = null;
+const draftContent = (rel) => rel === 'audio/manifest.json' || !excludedReason(rel);   // 保存するファイルに入るもの（app/portable-ws.js の archiveFiles と同じ）
+function startKeeper(ws, P) {
+  S.draftKept = false;
+  if (!ws || ws.kind !== 'memory' || !P || !ws.stamps) return;
+  try {
+    keeper = createDraftKeeper({ store: drafts, ws, content: draftContent,
+      limits: (window.__APP_TEST && window.__APP_TEST.draftLimits) || undefined,
+      doc: () => (S.portable === P && S.ws === ws && !P.readOnly && !P.earlier && typeof P.original === 'string'
+        ? { name: P.name, original: P.original, handle: P.handle || null, neverSaved: !!P.neverSaved && !P.saved, sourceOnly: !!P.sourceOnly, rightsOk: !!P.rightsOk } : null),
+      onState: (x) => {
+        if (S.ws !== ws) return;
+        if (x.error) { S.draftKept = false; toast(T.drafts[x.error === 'too-large' ? 'tooLarge' : x.error === 'quota' ? 'quota' : 'failed'], true); }
+        else S.draftKept = !!x.kept;
+        updateSaveLoc();
+      } });
+  } catch (e) { console.warn('[editor] cannot keep unsaved changes in this browser', e); keeper = null; }
+}
+// 今の文書の見張りを閉じる。discard：変更を捨てた（このブラウザに残したものも消す）
+async function stopKeeper(discard = false) {
+  const k = keeper; keeper = null; S.draftKept = false;
+  if (k) await k.close({ discard });
+}
+const draftWhen = (t) => new Date(t).toLocaleString(EN ? 'en-US' : 'ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const draftSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
 
 // ---------------------------------------------------------------- 画面の部品
 let toastTimer = 0;
@@ -118,6 +147,7 @@ async function showWelcome() {
   $('unsupported').hidden = SUPPORTED;
   $('w-open').disabled = !SUPPORTED;   // 「新規作成…」（チャットの AI に書いてもらう）はフォルダがなくても使える
   showExamples();
+  showDrafts();
   const list = await recentList();
   // 最近のファイル：なくても見出しは出す（「まだありません」）
   $('recent').hidden = false; $('recent-none').hidden = list.length > 0;
@@ -139,6 +169,29 @@ async function showWelcome() {
         else openFolder(r.handle);
       } }),
       el('button', { type: 'button', cls: 'ghost', text: '✕', title: T.forget, 'aria-label': T.forget, onclick: async () => { await recentRemove(r.id); showWelcome(); } }),
+    ]));
+  }
+}
+// はじめの画面の「保存していない変更」：ほかのタブが持っていない、このブラウザに残した変更（新しい順）。行ごとに「復元」「変更を捨てる」
+async function showDrafts() {
+  let list = [];
+  try { await drafts.prune(); list = await drafts.free(); } catch { /* 使えない環境 */ }
+  const ul = $('drafts-list');
+  if (!ul || $('welcome').hidden) return;
+  $('drafts').hidden = !list.length;
+  $('drafts-title').textContent = T.drafts.title; $('drafts-lead').textContent = T.drafts.lead;
+  ul.innerHTML = '';
+  for (const m of list) {
+    ul.append(el('li', { 'data-draft': m.id }, [
+      el('span', { cls: 'nm', text: m.name }),
+      el('span', { cls: 'when', text: T.drafts.rowMeta(draftWhen(m.updated), draftSize(m.bytes || 0)) }),
+      el('button', { type: 'button', cls: 'draft-restore', text: T.drafts.restore, 'aria-label': `${T.drafts.restore}: ${m.name}`, onclick: () => restoreDraft(m) }),
+      el('button', { type: 'button', cls: 'ghost draft-discard', text: T.drafts.discard, 'aria-label': `${T.drafts.discard}: ${m.name}`, onclick: async () => {
+        const v = await ask({ title: T.drafts.discardTitle, kind: 'warn', body: [el('p', { text: T.drafts.discardBody(m.name) })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'discard', label: T.drafts.discard, pri: true }] });
+        if (v !== 'discard') return;
+        try { await drafts.remove(m.id); toast(T.drafts.discarded); } catch (e) { toast(String(e.message || e), true); }
+        showDrafts();
+      } }),
     ]));
   }
 }
@@ -204,6 +257,7 @@ async function openFolder(handle) {
 // 作業場所を替える（プレビューの状態は捨てる）
 function resetDeck(ws, portable) {
   autoSeq++; clearTimeout(autoTimer); showBadge(0, 0, 0);
+  if (keeper) stopKeeper(false);
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
@@ -215,6 +269,8 @@ function resetDeck(ws, portable) {
   if ($('attach-panel')) closePanel();
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
   blankPreview();
+  // 1 ファイル：開いた直後の中身を基準にして、保存していない変更を残し始める（作業フォルダはその場で書くので残さない）
+  if (portable) startKeeper(ws, portable);
 }
 // プレビューを空にする：iframe を新しいもの（何も読み込まない）に取り替える。srcdoc を変えるだけでは、新しい文書が読み込まれるまで
 // 前のデッキが見え、そのコードも動き続ける。取り替えれば前の文書はすぐに消え、確かめの窓の後ろには何も出ない
@@ -305,8 +361,8 @@ function updateSaveLoc() {
   // 下の帯の左に出す（道具の列は 1280 px で 1 行に収める）。説明は title に
   const where = P ? P.name : (S.ws.name || '');
   if (!P) { text = T.locFolder(where); tip = T.locFolderTip; cls = 'ok'; }
-  else if ((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved) { text = T.locNever; tip = T.locNeverTip; cls = 'never'; }
-  else if (S.ws.dirty) { text = T.locDirty; tip = T.locDirtyTip; cls = 'dirty'; }
+  else if ((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved) { text = T.locNever; tip = S.draftKept ? T.locNeverTipKept : T.locNeverTip; cls = 'never'; }
+  else if (S.ws.dirty) { text = T.locDirty; tip = S.draftKept ? T.locDirtyTipKept : T.locDirtyTip; cls = 'dirty'; }
   else if (P.handle) { text = T.locFile(where); tip = T.locFileTip; cls = 'ok'; }
   else { text = T.locFileDl(where); tip = T.locFileDlTip; cls = ''; }
   e.textContent = text; e.title = text + ' — ' + tip; e.className = 'saveloc ' + cls; e.hidden = false;
@@ -1200,7 +1256,31 @@ function showHelp() {
     ...h.map(([title, lines]) => [el('h3', { text: title }), el('ul', {}, lines.map((l) => { const li = el('li'); li.innerHTML = l; return li; }))]).flat(),
     el('p', { id: 'help-format', cls: 'muted', text: T.helpFormat(RES.specSnapshot) }),   // 従う仕様の版（vendor/egatari-spec/SOURCE.json の snapshot。ビルド時に読む）
     modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
+    draftsSection(),                              // このブラウザに残した、保存していない変更：件数と「すべて捨てる」（#29）
   ]);
+}
+
+// 使い方の板の節：このブラウザに残した、保存していない変更（件数・大きさ・残し方）と「すべて捨てる」（ほかのタブで開いているもの・今の文書のものは消さない）
+function draftsSection() {
+  const L = T.drafts;
+  const box = el('section', { id: 'drafts-help', cls: 'model-cache' });
+  async function render() {
+    let list = [];
+    try { list = (await drafts.list()).filter((m) => !keeper || m.id !== keeper.id); } catch { /* 使えない環境 */ }
+    const bytes = list.reduce((a, m) => a + (m.bytes || 0), 0);
+    const btn = el('button', { type: 'button', id: 'b-drafts-delete', text: L.discardAll });
+    btn.disabled = !list.length;
+    btn.onclick = async () => {
+      const v = await ask({ title: L.discardAllTitle, kind: 'warn', body: [el('p', { text: L.discardAllBody(list.length) })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'delete', label: L.discardAll, pri: true }] });
+      if (v !== 'delete') return;
+      try { toast(L.discardedAll(await drafts.removeAll({ except: keeper ? keeper.id : null }))); } catch (e) { toast(String(e.message || e), true); }
+      await render();
+    };
+    box.replaceChildren(el('h3', { text: L.helpTitle }), el('ul', { id: 'drafts-help-info' }, [el('li', { text: L.helpCount(list.length, draftSize(bytes)) }), el('li', { text: L.helpNote })]), el('div', { cls: 'row' }, [btn]));
+  }
+  box.append(el('h3', { text: L.helpTitle }));
+  render().catch(() => {});
+  return box;
 }
 
 // ---------------------------------------------------------------- 書き出し
@@ -1355,7 +1435,9 @@ async function pickPortable() {
 // 未保存の変更があれば、捨ててよいか聞く。戻り値：先へ進んでよいか
 async function leavePortable() {
   if (!S.portable || !S.ws || !S.ws.dirty) return true;
-  return (await ask({ title: T.unsavedTitle, body: [el('p', { text: T.unsavedLead })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'discard', label: T.discard, pri: true }] })) === 'discard';
+  const go = (await ask({ title: T.unsavedTitle, body: [el('p', { text: T.unsavedLead })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'discard', label: T.discard, pri: true }] })) === 'discard';
+  if (go) await stopKeeper(true);   // 変更を捨てた：このブラウザに残したものも消す
+  return go;
 }
 // key：言葉を選ぶ鍵（既定は code。索引のない文書は、何かで分ける：'play-only'・'built-output'。sourceKind）
 function refusal(code, message, key = code) {
@@ -1481,8 +1563,69 @@ async function openPortableNow(input) {
     status('');
     loadFrame();
   } else await rebuild('open');
+  if (!input.noDraftOffer) await offerDraft(P, ws);
   return true;
 }
+
+// ---------------------------------------------------------------- 保存していない変更の復元（app/drafts.js、backlog #55）
+// 開いたファイルに、このブラウザに残した変更（名前と元のファイルの sha256 が同じで、ほかのタブが持っていないもの）があれば、復元するかを聞く。
+// 復元：今開いた中身の上に、残したファイルを書き戻す。変更を捨てる：残したものを消す。Esc：そのまま（はじめの画面の一覧に残る）
+async function offerDraft(P, ws) {
+  if (P.readOnly || P.earlier || S.portable !== P || !keeper) return;
+  let m;
+  try { m = (await drafts.matching(P.name, await sha256Hex(new TextEncoder().encode(P.original)))).filter((x) => x.id !== keeper.id)[0]; }
+  catch { return; }
+  if (!m || S.portable !== P) return;
+  const v = await ask({ title: T.drafts.askTitle, body: [el('p', { id: 'draft-ask', text: T.drafts.askBody(P.name, draftWhen(m.updated)) }), el('p', { cls: 'hint', text: T.drafts.askHint })],
+    buttons: [{ id: 'discard', label: T.drafts.discard }, { id: 'restore', label: T.drafts.restore, pri: true }] });
+  if (S.portable !== P || S.ws !== ws) return;
+  if (v === 'discard') { try { await drafts.remove(m.id); toast(T.drafts.discarded); } catch { /* 消せなくてもよい */ } return; }
+  if (v !== 'restore') return;
+  let d = null;
+  try { d = await drafts.read(m.id); } catch { /* 下で */ }
+  if (!d) { toast(T.drafts.cannotRestore, true); return; }
+  await applyDraft(d, P, ws);
+}
+// はじめの画面の「復元」：残した元のファイルを、ほかのファイルと同じ道（openPortable）で開き直し、その上に書き戻す
+async function restoreDraft(m) {
+  let d = null;
+  try { d = await drafts.read(m.id); } catch { /* 下で */ }
+  if (!d) { toast(T.drafts.cannotRestore, true); showWelcome(); return false; }
+  const ok = await openPortable({ bytes: new TextEncoder().encode(d.base), name: d.meta.name, fresh: !!d.meta.neverSaved && !d.meta.handle, noDraftOffer: true });
+  if (!ok || !S.portable) { if (!$('welcome').hidden) showWelcome(); return false; }
+  return applyDraft(d, S.portable, S.ws);
+}
+async function applyDraft(d, P, ws) {
+  const live = () => S.portable === P && S.ws === ws;
+  if (!keeper || !(await keeper.adopt(d.meta))) { toast(T.drafts.cannotRestore, true); return false; }
+  try {
+    for (const rel of d.meta.removed || []) if (await ws.exists(rel)) await ws.remove(rel, { live });
+    for (const rel of [...d.files.keys()].sort()) await ws.writeBytes(rel, d.files.get(rel), { live });
+  } catch (e) { toast(T.drafts.cannotRestore + ': ' + (e.message || e), true); return false; }
+  if (!live()) return false;
+  if (d.meta.sourceOnly) P.sourceOnly = true;
+  if (d.meta.rightsOk) P.rightsOk = true;
+  // 元のファイルのハンドル：今もこの変更の元と同じ中身だと、聞かずに確かめられたときだけ結び付ける（書き換わっていれば、上書きしないように保存の場所を聞く）
+  if (!P.handle && d.meta.handle) {
+    let same = false, known = false;
+    try {
+      if (await hasPermission(d.meta.handle, 'read')) {
+        known = true;
+        const f = await d.meta.handle.getFile();
+        if (f.size <= LIMITS.fileBytes) same = (await sha256Hex(await readFileBounded(f, { max: LIMITS.fileBytes, what: f.name }))) === d.meta.baseSha;
+      }
+    } catch { /* 移動・削除された */ }
+    if (same) { P.handle = d.meta.handle; P.neverSaved = false; }
+    else if (known) toast(T.drafts.fileChanged(P.name), true);
+  }
+  updateName(); showNotice();
+  await rebuild('restore');
+  if (!live()) return false;
+  slidesPanel.refresh();
+  toast(T.drafts.restored);
+  return true;
+}
+
 
 // ---------------------------------------------------------------- 前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）
 // ファイル：組み直さない（この版の組み立てで作り直すと、別のプレーヤーの別の教材になる）。ファイルそのもの（自分のプレーヤー）を
@@ -1722,6 +1865,8 @@ async function savePortableBound(mode) {
       if (!live()) throw cancelledError();
     }
     const clean = rev !== null && ws.markClean(rev);
+    // 本当に保存した：このブラウザに残した変更を消す。保存の途中で編集があった：新しい元のファイルで残し直す
+    if (keeper) { if (clean) keeper.saved(); else keeper.savedDirty(); }
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
     slidesPanel.saved();   // スライド一覧の「元に戻す」は保存まで
     P.saveWarnings = saveWarnings;
@@ -2137,6 +2282,12 @@ window.__APP_TEST = {
   api: (method, url, body) => api(method, url, body),
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),
   workerProbe: (name) => probeWorker(name),
+  drafts: () => drafts.list(),
+  draftState: () => (keeper ? { ...keeper.state(), kept: !!S.draftKept } : null),
+  draftFlush: () => (keeper ? keeper.flush() : null),
+  draftLimits: null,  // 試験：保存していない変更を残す間隔など（app/drafts.js の DRAFT_LIMITS を上書き）。開く前に入れる
+  welcome: () => showWelcome(),
+  help: () => showHelp(),
   buildWorkerProbe: (name) => builder.probe(name),
   buildTimeout: 0,
   themePicker: null,  // 試験：テーマのフォルダを選ぶ画面の代わり（(opts) → ハンドル）
