@@ -4,11 +4,11 @@
 //   node kit/llm-pack.mjs --no-fit [--sets …]                無料のプランで目安に収めない（下の fit をしない。比べる・調べる用）
 //   node kit/llm-pack.mjs --list [--lang ja]                   束・その部品・大きさ（無料のプランは収めた大きさと収める前の大きさ。最後に有料のプラン）
 //   node kit/llm-pack.mjs --help | -h                          使い方
-// 無料のプランは、編集アプリの新規作成と同じに目安（PACK_CAP_KB.free）に収める（kit/core/llm-pack.mjs の fitPack。backlog #125）：
+// 無料のプランは、編集アプリの新規作成と同じに目安（PACK_CAP_KB.free と、貼り付けの長さ FREE_PASTE_UNITS の近いほう。fitSize）に収める（kit/core/llm-pack.mjs の fitPack。backlog #125）：
 //   越えたら中核の 4 つの説明を短くし、それでも越えれば専門のパーツを大きい順に外す。短くした・外したときは、何をなぜしたかを stderr に出す
 //   （黙って外さない。毎晩の評価・スキルが無料のプランで使う指示が、利用者が編集アプリで貼るものと同じになるように）。生の指示は --no-fit
 // 前の --series（系列）と --tools（道具）は 1 版のあいだ読む：系列は束に読み替え（SERIES_SETS。info は特殊になったので何も足さない）、道具は束 tools
-import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, loadedParts, partsPackOpts, fitPack } from './core/llm-pack.mjs';
+import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, loadedParts, partsPackOpts, fitPack } from './core/llm-pack.mjs';
 
 // 前の系列 → 束
 const SERIES_SETS = { academic: ['stats', 'math'], business: ['business'], kokugo: ['kokugo'], english: ['english'], info: [], social: ['maps'], music: ['music'] };
@@ -24,13 +24,15 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
 --plan   the user's chat AI: free (default; the standard parts other than
          the four core ones get only their catalogue line: ${BRIEF.join(', ')})
          or paid (every part described in full)
-         On the free plan the pack is fitted to ${PACK_CAP_KB.free} KB as the editor's New… does:
+         On the free plan the pack is fitted to ${PACK_CAP_KB.free} KB and to a paste
+         length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds), as the editor's New… does:
          over the limit, the core four (${FREE_CORE.join(', ')}) get only their
          catalogue line too; if still over, specialized parts are left out,
          largest first. stderr says what was shortened or left out
 --no-fit the free-plan pack as assembled, without fitting it to the limit
 --list   lists the part sets, their components and the size of the common
-         body with that set (KB = UTF-8 bytes / 1024): the free plan fitted,
+         body with that set (KB = UTF-8 bytes / 1024; the free plan fitted
+         also shows its paste length): the free plan fitted,
          then before fitting, then the paid plan; without --lang, en and ja
 --series, --tools  the former options, read for one version: a series is
          read as its part sets (${Object.entries(SERIES_SETS).map(([s, x]) => `${s} = ${x.join('+') || 'none'}`).join(', ')}),
@@ -55,7 +57,7 @@ if (bad.length) { console.error(`unknown option ${bad[0]}\n\n${USAGE}`); process
 
 // 無料のプランの指示を目安に収める（編集アプリと同じ fitPack。頼みたいことは記入欄のまま）→ {text, fit}
 function fittedPack(sets, lang) {
-  const sizeOf = (tags, short) => packSize(buildPack({ ...partsPackOpts(tags, 'free', { short }), lang }));
+  const sizeOf = (tags, short) => fitSize(buildPack({ ...partsPackOpts(tags, 'free', { short }), lang }), 'free');
   const fit = fitPack(loadedParts(sets), 'free', { sizeOf, capBytes: PACK_CAP_KB.free * 1024 });
   return { text: buildPack({ ...partsPackOpts(fit.tags, 'free', { short: fit.short }), lang }), fit };
 }
@@ -63,9 +65,9 @@ function fittedPack(sets, lang) {
 if (argv.includes('--list')) {
   const langs = langArg ? [langArg] : ['en', 'ja'];
   const cols = (f) => langs.map((lang) => f(lang)).join('\t');
-  const fitted = (sets) => cols((lang) => { const { text, fit } = fittedPack(sets, lang); return packKb(text) + ' KB' + (fit.dropped.length ? ` (core four shortened; left out ${fit.dropped.join(', ')})` : fit.short ? ' (core four shortened)' : ''); });
+  const fitted = (sets) => cols((lang) => { const { text, fit } = fittedPack(sets, lang); return packKb(text) + ' KB, ' + pasteUnits(text) + ' paste' + (fit.dropped.length ? ` (core four shortened; left out ${fit.dropped.join(', ')})` : fit.short ? ' (core four shortened)' : ''); });
   const raw = (sets, plan = 'free') => cols((lang) => packKb(buildPack({ sets, lang, plan })) + ' KB');
-  console.log(['set', ...langs.map((l) => `${l} free, fitted to ${PACK_CAP_KB.free} KB`), ...langs.map((l) => `${l} free, before fitting`), 'components'].join('\t'));
+  console.log(['set', ...langs.map((l) => `${l} free, fitted to ${PACK_CAP_KB.free} KB and ${FREE_PASTE_UNITS} paste`), ...langs.map((l) => `${l} free, before fitting`), 'components'].join('\t'));
   console.log(`${STANDARD}\t${fitted([])}\t${raw([])}\t${membersOfSet(STANDARD).join(', ')}`);
   for (const s of SETS) console.log(`${s}\t${fitted([s])}\t${raw([s])}\t${membersOfSet(s).join(', ')}`);
   console.log(`all\t${fitted('all')}\t${raw('all')}`);
@@ -93,9 +95,10 @@ if (argv.includes('--list')) {
     if (plan === 'paid' || argv.includes('--no-fit')) process.stdout.write(buildPack({ sets, lang, plan }));
     else {
       const { text, fit } = fittedPack(sets, lang);
-      if (fit.short) console.error(`note: free plan: over ${PACK_CAP_KB.free} KB, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
-      if (fit.dropped.length) console.error(`note: free plan: still over ${PACK_CAP_KB.free} KB, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
-      if (fit.over) console.error(`warning: free plan: ${kbOf(fit.bytes)} KB is still over ${PACK_CAP_KB.free} KB`);
+      const limit = `${PACK_CAP_KB.free} KB or a paste length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds)`;
+      if (fit.short) console.error(`note: free plan: over ${limit}, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
+      if (fit.dropped.length) console.error(`note: free plan: still over ${limit}, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
+      if (fit.over) console.error(`warning: free plan: ${kbOf(packSize(text))} KB, paste length ${pasteUnits(text)}, is still over ${limit}`);
       process.stdout.write(text);
     }
   } catch (e) { console.error(e.message); process.exit(2); }

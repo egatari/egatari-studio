@@ -18,7 +18,7 @@
 //     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS, partsPackOpts, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, fitSize, setPart, TIERS, partsPackOpts, FREE_CORE } from '../kit/core/llm-pack.mjs';
 import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, choiceRequest, withChoice } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
@@ -788,7 +788,8 @@ export function setupLlm(app) {
       groups.replaceChildren(...partsList(draft.sub || null).map((g) => groupNodes.get(g.id)));
     };
     let candidates = [];
-    const sizeOf = (tags, short) => packSize(textNow(tags, short));
+    // 目安に照らす大きさ（fitSize）：無料のプランは 45 KB と貼り付けの長さ 31,000（UTF-16 の単位の数＋改行の数）の近いほう。コマンド（kit/llm-pack.mjs）と同じ
+    const sizeOf = (tags, short) => fitSize(textNow(tags, short), draft.plan);
     const update = () => {
       for (const [t, cb] of boxes) { cb.checked = ticked.has(t); picks.get(t).badge.hidden = !(isRec(t) && TIERS.parts[t].tier !== 'standard'); }
       setRadios(planSet, 'paste-plan', draft.plan);
@@ -800,15 +801,16 @@ export function setupLlm(app) {
       const fit = fitPlan(chosen(), draft.plan, { sizeOf, capBytes });
       shortNow = fit.short;
       shortened.hidden = !shortNow;
-      const t = textNow(), bytes = packSize(t);
+      const t = textNow(), bytes = packSize(t), size = fitSize(t, draft.plan);
       total.textContent = X.packMeter(kb(t), cap); total.dataset.bytes = String(bytes);
       bar.setAttribute('aria-valuemax', String(cap)); bar.setAttribute('aria-valuenow', kb(t)); bar.setAttribute('aria-valuetext', X.packMeter(kb(t), cap));
-      fill.style.width = Math.min(100, (bytes / capBytes) * 100).toFixed(1) + '%';
-      const isOver = bytes > capBytes;
+      // 棒と越えた分は、2 つの目安の近いほう（size）で。越えた分の KB は、その割合を実際のバイト数に掛けたもの
+      fill.style.width = Math.min(100, (size / capBytes) * 100).toFixed(1) + '%';
+      const isOver = size > capBytes;
       meter.classList.toggle('over', isOver);
       candidates = isOver ? fit.candidates : [];
       over.hidden = !isOver;
-      overText.textContent = isOver ? X.overCap(kbOf(bytes - capBytes), candidates.length ? names(candidates) : '') : '';
+      overText.textContent = isOver ? X.overCap(kbOf(Math.ceil(bytes * (size - capBytes) / size)), candidates.length ? names(candidates) : '') : '';
       trim.hidden = !candidates.length;
       // 有料のプラン：指示をファイルに保存するのが主、コピーは従（長い指示は Gemini で貼り付けが切れる。owner の確認、2026-11-05）
       const paid = draft.plan === 'paid';

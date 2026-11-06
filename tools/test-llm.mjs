@@ -24,7 +24,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { parseCheck } from '../kit/core/check-result.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '../kit/core/llm-fix.mjs';
-import { buildPack, commonBody, setPart, requestBody, SETS, setOf, setsForDeck, componentsIn, packSize, packKb, FREE_CORE, partsPackOpts } from '../kit/core/llm-pack.mjs';
+import { buildPack, commonBody, setPart, requestBody, SETS, setOf, setsForDeck, componentsIn, packSize, packKb, FREE_CORE, partsPackOpts, fitSize, pasteUnits, FREE_PASTE_UNITS } from '../kit/core/llm-pack.mjs';
 import { initialParts, fitPlan, capKb } from '../kit/core/new-deck.mjs';
 import { partOf } from '../kit/core/llm-pack-assemble.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
@@ -52,7 +52,7 @@ ok('make-llm-guide --check：指示は材料から作り直したものと同じ
   const r = node('tools/make-llm-guide.mjs', '--check');
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
-// 上限は PACK_CAP_KB（無料のプラン 45 KB：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 150 KB）
+// 上限は PACK_CAP_KB（無料のプラン 45 KB と貼り付けの長さ FREE_PASTE_UNITS（31,000）：標準の部品すべて。束を足して越えたら新規作成のメーターが知らせる。有料のプラン 150 KB）
 ok('指示の大きさ：無料のプランの標準すべて ≤ 45 KB、有料のプランの標準＋2 つの束のどの組も ≤ 150 KB。前の全体版・core 版はない', () => {
   for (const lang of ['en', 'ja']) {
     assert.ok(packSize(buildPack({ sets: [], lang })) <= 45 * 1024, `${lang} free standard`);
@@ -95,7 +95,7 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
   assert.equal(node('kit/llm-pack.mjs', '--series', 'info', '--no-fit').stdout, buildPack({ sets: [], lang: 'en' }), 'info is extra now: the standard pack');
   // 無料のプランは、編集アプリの新規作成で同じパーツを選んで［候補を外す］を押したときと同じ指示（同じ fitPlan。backlog #125）。何をしたかは stderr
   const editorFitted = (sets, lang) => {
-    const sizeOf = (t, short) => packSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }));
+    const sizeOf = (t, short) => fitSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }), 'free');
     const cap = capKb('free') * 1024, tags = initialParts(sets.map((x) => ({ set: x })));
     const first = fitPlan(tags, 'free', { sizeOf, capBytes: cap });
     const rest = tags.filter((t) => !first.candidates.includes(t));
@@ -107,24 +107,24 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     const e = editorFitted(['stats', 'math'], lang);
     assert.ok(e.short && e.dropped.length && e.dropped.every((t) => setOf(t) === 'stats' || setOf(t) === 'math'), `${lang}: stats+math is shortened and drops specialized parts (${e.dropped})`);
     assert.ok(fitCli.status === 0 && fitCli.stdout === e.text, `${lang}: the free CLI pack for stats+math is the editor's, byte for byte`);
-    assert.ok(packSize(fitCli.stdout) <= 45 * 1024, `${lang}: ${packSize(fitCli.stdout)} B`);
+    assert.ok(packSize(fitCli.stdout) <= 45 * 1024 && pasteUnits(fitCli.stdout) <= FREE_PASTE_UNITS, `${lang}: ${packSize(fitCli.stdout)} B, paste length ${pasteUnits(fitCli.stdout)}`);
     assert.ok(fitCli.stderr.includes('core four') && fitCli.stderr.includes('left out, largest first: ' + e.dropped.join(', ')) && fitCli.stderr.includes('--no-fit'), fitCli.stderr);
     for (const s of SETS) assert.equal(node('kit/llm-pack.mjs', '--sets', s, '--lang', lang).stdout, editorFitted([s], lang).text, `${lang} ${s}: the free CLI pack is the editor's`);
   }
   // --list：無料のプランは目安に収めた大きさ（編集アプリと同じ）と収める前の大きさ、--lang がなければ en と ja の両方の列
   const raw = (sets, lang) => packKb(buildPack({ sets, lang })) + ' KB';
-  const fit = (sets, lang) => packKb(editorFitted(sets, lang).text) + ' KB';
+  const fit = (sets, lang) => { const t = editorFitted(sets, lang).text; return packKb(t) + ' KB, ' + pasteUnits(t) + ' paste'; };
   const list = node('kit/llm-pack.mjs', '--list');
-  assert.ok(list.status === 0 && list.stdout.startsWith('set\ten free, fitted to 45 KB\tja free, fitted to 45 KB\ten free, before fitting\tja free, before fitting\tcomponents\n'), list.stdout);
+  assert.ok(list.status === 0 && list.stdout.startsWith('set\ten free, fitted to 45 KB and 31000 paste\tja free, fitted to 45 KB and 31000 paste\ten free, before fitting\tja free, before fitting\tcomponents\n'), list.stdout);
   assert.ok(list.stdout.includes(`standard\t${fit([], 'en')}\t${fit([], 'ja')}\t${raw([], 'en')}\t${raw([], 'ja')}\tm-bars, m-cards, m-compare`), list.stdout);
   // 国語の括弧書き（中核の 4 つの短縮だけで収まるか）は言語ごとに違ってよい。m-kakijun は 2.2.0 候補で extra に移り（README だけの
   // リンクに。backlog #170）、国語の束は m-gendai・m-kanbun・m-kobun の 3 つ
-  const kokugoNote = (lang) => (editorFitted(['kokugo'], lang).short ? ' (core four shortened)' : '');
+  const kokugoNote = (lang) => { const e = editorFitted(['kokugo'], lang); return e.dropped.length ? ` (core four shortened; left out ${e.dropped.join(', ')})` : e.short ? ' (core four shortened)' : ''; };
   assert.ok(list.stdout.includes(`kokugo\t${fit(['kokugo'], 'en')}${kokugoNote('en')}\t${fit(['kokugo'], 'ja')}${kokugoNote('ja')}\t${raw(['kokugo'], 'en')}\t${raw(['kokugo'], 'ja')}\tm-gendai, m-kanbun, m-kobun\n`), list.stdout);
   // 無料のプランのどの束も、収めた大きさは 45 KB まで
   for (const s of SETS) {
     const row = list.stdout.split('\n').find((l) => l.startsWith(s + '\t')).split('\t');
-    for (const c of row.slice(1, 3)) assert.ok(parseFloat(c) <= 45, `--list ${s}: ${c}`);
+    for (const c of row.slice(1, 3)) assert.ok(parseFloat(c) <= 45 && +c.match(/, (\d+) paste/)[1] <= FREE_PASTE_UNITS, `--list ${s}: ${c}`);
   }
   // 有料のプランのすべての束（いちばん大きいとき）は上限を越えても知らせるだけで、そう書く
   const paidAll = packSize(buildPack({ sets: 'all', lang: 'ja', plan: 'paid' }));

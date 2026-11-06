@@ -21,6 +21,8 @@
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
 //   PLANS・FREE_CORE・BRIEF                      お使いの AI のプラン・無料のプランでも詳しく書く中核の 4 つ・無料のプランで一覧の 1 行だけの標準の部品
 //   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（{free, paid}。kit/core/llm-pack-assemble.mjs）
+//   FREE_PASTE_UNITS・pasteUnits(text)          無料のプランのもう 1 つの上限：貼り付けの長さ（UTF-16 の単位の数＋改行の数）が 31,000 まで
+//   fitSize(text, plan)                          目安に収める物差し（fitPlan・fitPack の sizeOf に使う）：無料のプランは 45 KB と 31,000 の近いほう（バイトに換算）
 //   assemble(data, {sets, lang, plan})           buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
@@ -30,9 +32,9 @@
 //   partsPackOpts(tags, plan, {short})           選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?}（buildPack・packWithRequest に渡す。
 //                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf } from './llm-pack-assemble.mjs';
 
-export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD };
+export { assemble, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD };
 export const BRIEF = briefParts(PACK, 'free');   // 無料のプランで一覧の 1 行だけの標準の部品
 export const SETS = PACK.sets;
 export const TIERS = PACK.tiers;

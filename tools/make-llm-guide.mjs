@@ -23,8 +23,8 @@
 //   vendor/components-2/manifest-<版>.json         部品の tier・set と {{PURPOSES}}：言いたいこと → パーツ → ステップの表（版を固定した URL 付き）。
 //                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK。どちらを使ったかは材料の purposes.source
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
-// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・45 KB を超えれば失敗。標準と 1 つの束は、越えるなら中核の 4 つも
-// 短くした大きさで、45 KB を超えれば知らせるだけ（新規作成のメーターが専門のパーツを外す候補に出す）。有料のプランは標準と 2 つの束のどの組も 150 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
+// 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・45 KB か貼り付けの長さ 31,000（UTF-16 の単位の数＋改行の数。
+// FREE_PASTE_UNITS）を超えれば失敗。標準と 1 つの束は、越えるなら中核の 4 つも短くし、専門のパーツも外して収めた大きさで、それでも越えれば知らせるだけ。有料のプランは標準と 2 つの束のどの組も 150 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
 import { parseLock, resolveCatalogueContent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
-import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
+import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -47,8 +47,9 @@ export const LEGACY_SERIES = Object.freeze({ academic: ['stats', 'math', 'scienc
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';
 export const commonFile = (lang) => (lang === 'ja' ? 'docs/authoring-with-llms.ja.md' : 'docs/authoring-with-llms.md');
 export const partFile = (s, lang) => `docs/llm-parts/${s}${lang === 'ja' ? '.ja' : ''}.md`;
-// KB（1024 バイト）。fail：無料のプランの標準すべて。free：無料のプランの上限（標準と束。越えたら知らせるだけ）。paid：有料のプラン
-export const LIMITS = { warn: 35, fail: PACK_CAP_KB.free, free: PACK_CAP_KB.free, paid: PACK_CAP_KB.paid };
+// KB（1024 バイト）。fail：無料のプランの標準すべて。free：無料のプランの上限（標準と束。越えたら知らせるだけ）。paid：有料のプラン。
+// paste：無料のプランのもう 1 つの上限（貼り付けの長さ = UTF-16 の単位の数＋改行の数。FREE_PASTE_UNITS。KB ではない）
+export const LIMITS = { warn: 35, fail: PACK_CAP_KB.free, free: PACK_CAP_KB.free, paid: PACK_CAP_KB.paid, paste: FREE_PASTE_UNITS };
 // 2 つの束の組。'a+b' の名前で大きさを持つ
 export const pairsOf = (sets) => sets.flatMap((a, i) => sets.slice(i + 1).map((b) => [a, b]));
 // いちばん大きい組：[名前, KB]
@@ -688,14 +689,19 @@ export function generate(opts = {}) {
   for (const lang of ['en', 'ja']) {
     const kb = (sets, plan, short = false) => KB(assemble(data, { sets, lang, plan, short }));
     // 無料のプラン：新規作成とコマンド（kit/llm-pack.mjs）が写すのと同じ、目安に収めた指示（llm-pack-assemble.mjs の fitPack：越えたら中核の 4 つを短く、
-    // それでも越えれば専門のパーツを外す）。freeFit は束ごとの {short, dropped}
-    const bytesOf = (tags, short) => Buffer.byteLength(assemble(data, { ...packOptsOf(data, tags, 'free', { short }), lang }), 'utf8');
-    const fitted = (sets) => fitPack(data, [...membersOf(data[lang], STANDARD), ...sets.flatMap((s) => membersOf(data[lang], s))], 'free', { sizeOf: bytesOf, capBytes: LIMITS.free * 1024 });
+    // それでも越えれば専門のパーツを外す）。目安は 45 KB と貼り付けの長さ 31,000 の小さいほう（fitSize）。freeFit は束ごとの {short, dropped}。
+    // 大きさ（KB）と貼り付けの長さ（freePaste…）は、収めた指示そのものを測る
+    const textOf = (tags, short) => assemble(data, { ...packOptsOf(data, tags, 'free', { short }), lang });
+    const fitted = (sets) => {
+      const f = fitPack(data, [...membersOf(data[lang], STANDARD), ...sets.flatMap((s) => membersOf(data[lang], s))], 'free', { sizeOf: (tags, short) => fitSize(textOf(tags, short), 'free'), capBytes: LIMITS.free * 1024 });
+      const text = textOf(f.tags, f.short);
+      return { ...f, kb: Buffer.byteLength(text, 'utf8') / 1024, paste: pasteUnits(text) };
+    };
     const std = fitted([]);
     const fits = Object.fromEntries(SETS.map((s) => [s, fitted([s])]));
     sizes[lang] = {
-      free: std.bytes / 1024, freeStandardShort: std.short || std.dropped.length > 0,
-      freeSets: Object.fromEntries(SETS.map((s) => [s, fits[s].bytes / 1024])), freeFit: Object.fromEntries(SETS.map((s) => [s, { short: fits[s].short, dropped: fits[s].dropped }])),
+      free: std.kb, freePaste: std.paste, freeStandardShort: std.short || std.dropped.length > 0,
+      freeSets: Object.fromEntries(SETS.map((s) => [s, fits[s].kb])), freeSetsPaste: Object.fromEntries(SETS.map((s) => [s, fits[s].paste])), freeFit: Object.fromEntries(SETS.map((s) => [s, { short: fits[s].short, dropped: fits[s].dropped }])),
       freeShort: SETS.filter((s) => fits[s].short),
       paid: kb([], 'paid'), paidSets: Object.fromEntries(SETS.map((s) => [s, kb([s], 'paid')])),
       paidPairs: Object.fromEntries(PAIRS.map((p) => [p.join('+'), kb(p, 'paid')])), paidAll: kb('all', 'paid'),
@@ -711,10 +717,13 @@ export function generate(opts = {}) {
     }).join(ja ? '、' : '; ');
     const z = sizes[lang];
     const core = FREE_CORE.map((t) => '`' + t + '`').join(ja ? '・' : ', ');
+    // 無料のプランの行は貼り付けの長さ（UTF-16 の単位の数＋改行の数）とその上限も。有料のプランはファイルで渡せるので —
+    const n0 = (n) => n.toLocaleString('en-US');
     const rows = ja
-      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free], ...SETS.map((s) => [`無料のプラン：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], [`有料のプラン：すべての束（このファイルとすべての束の指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
-      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free], ...SETS.map((s) => [`Free plan: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too' + (z.freeFit[s].dropped.length ? `; ${z.freeFit[s].dropped.join(', ')} left out` : '') + ')' : ''}`, z.freeSets[s], LIMITS.free]), ['Paid plan: every standard part', z.paid, LIMITS.paid], [`Paid plan: every part set (this file and every set pack)${z.paidAll > LIMITS.paid ? '; over the cap it is a warning only' : ''}`, z.paidAll, LIMITS.paid]];
-    const table = (ja ? '| 指示 | 大きさ | 上限 |\n|---|---:|---:|\n' : '| Pack | Size | Cap |\n|---|---:|---:|\n') + rows.map(([w, kb, cap]) => `| ${w} | ${f1(kb)} | ${cap} KB |`).join('\n');
+      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`無料のプラン：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], [`有料のプラン：すべての束（このファイルとすべての束の指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
+      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`Free plan: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too' + (z.freeFit[s].dropped.length ? `; ${z.freeFit[s].dropped.join(', ')} left out` : '') + ')' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['Paid plan: every standard part', z.paid, LIMITS.paid], [`Paid plan: every part set (this file and every set pack)${z.paidAll > LIMITS.paid ? '; over the cap it is a warning only' : ''}`, z.paidAll, LIMITS.paid]];
+    const table = (ja ? '| 指示 | 大きさ | 上限 | 貼り付けの長さ | 上限 |\n|---|---:|---:|---:|---:|\n' : '| Pack | Size | Cap | Paste length | Cap |\n|---|---:|---:|---:|---:|\n')
+      + rows.map(([w, kb, cap, paste]) => `| ${w} | ${f1(kb)} | ${cap} KB | ${paste === undefined ? '—' : n0(paste)} | ${paste === undefined ? '—' : n0(LIMITS.paste)} |`).join('\n');
     const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SETS_LIST}}', list);
     files[commonFile(lang)] = preamble + commonOf(data, lang, { sets: [], plan: 'paid' }) + '\n\n' + requestOf(data, lang) + '\n';
     for (const s of SETS) {
@@ -787,8 +796,10 @@ export function sizeReport(sizes) {
   const out = [];
   for (const [lang, z] of Object.entries(sizes)) {
     // 標準すべては、短くも外しもせずに収まること（越えて短くしたら失敗）
-    out.push({ lang, what: 'free standard', plan: 'free', sets: [], kb: z.free, max: LIMITS.fail, level: z.free > LIMITS.fail || z.freeStandardShort ? 'fail' : z.free > LIMITS.warn ? 'warn' : 'ok' });
-    for (const [s, kb] of Object.entries(z.freeSets)) out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, short: (z.freeShort || []).includes(s), dropped: ((z.freeFit || {})[s] || {}).dropped || [], kb, max: LIMITS.free, level: kb > LIMITS.free ? 'over' : 'ok' });
+    // 貼り付けの長さ（paste）も無料のプランの上限（LIMITS.paste）。標準すべてが越えれば失敗（収めるために短くしても失敗）
+    const pasteOver = (n) => n !== undefined && n > LIMITS.paste;
+    out.push({ lang, what: 'free standard', plan: 'free', sets: [], kb: z.free, paste: z.freePaste, max: LIMITS.fail, level: z.free > LIMITS.fail || pasteOver(z.freePaste) || z.freeStandardShort ? 'fail' : z.free > LIMITS.warn ? 'warn' : 'ok' });
+    for (const [s, kb] of Object.entries(z.freeSets)) { const paste = (z.freeSetsPaste || {})[s]; out.push({ lang, what: 'free standard+' + s, plan: 'free', sets: [s], freeSet: true, short: (z.freeShort || []).includes(s), dropped: ((z.freeFit || {})[s] || {}).dropped || [], kb, paste, max: LIMITS.free, level: kb > LIMITS.free || pasteOver(paste) ? 'over' : 'ok' }); }
     out.push({ lang, what: 'paid standard', plan: 'paid', sets: [], kb: z.paid, max: LIMITS.paid, level: z.paid > LIMITS.paid ? 'fail' : 'ok' });
     for (const [p, kb] of Object.entries(z.paidPairs)) out.push({ lang, what: 'paid standard+' + p, plan: 'paid', sets: p.split('+'), paidPair: true, kb, max: LIMITS.paid, level: kb > LIMITS.paid ? 'fail' : 'ok' });
     out.push({ lang, what: 'paid every set', plan: 'paid', sets: 'all', worst: true, kb: z.paidAll, max: LIMITS.paid, level: z.paidAll > LIMITS.paid ? 'warn' : 'ok' });
@@ -874,12 +885,12 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   // 有料のプランの 2 つの束の組はどれも確かめ、越えたものは全部出す。越えていなければ、言語ごとにいちばん大きい組だけを出す
   const shownPaid = Object.fromEntries(Object.entries(sizes).map(([lang, z]) => [lang, 'paid standard+' + largestPair(z.paidPairs)[0]]));
   for (const r of sizeReport(sizes)) {
-    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (every set at once on the paid plan; cap ${r.max} KB, a warning only, never a failure)` : r.freeSet ? ` (fitted to ${r.max} KB as New… and kit/llm-pack.mjs copy it${r.short ? ': the core four shortened too' : ''}${r.dropped.length ? `; left out ${r.dropped.join(', ')}` : ''})` : ''}`;
+    const line = `size ${r.lang} ${r.what}: ${r.kb.toFixed(1)} KB${r.paste !== undefined ? `, paste length ${r.paste} (cap ${LIMITS.paste})` : ''}${r.paidPair ? ` (largest pair; cap ${r.max} KB)` : r.worst ? ` (every set at once on the paid plan; cap ${r.max} KB, a warning only, never a failure)` : r.freeSet ? ` (fitted to ${r.max} KB and ${LIMITS.paste} paste length as New… and kit/llm-pack.mjs copy it${r.short ? ': the core four shortened too' : ''}${r.dropped.length ? `; left out ${r.dropped.join(', ')}` : ''})` : ''}`;
     if (r.paidPair && r.level !== 'fail' && r.what !== shownPaid[r.lang]) continue;
-    if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB)`); console.error('  ' + overMessage(r, data)); }
+    if (r.level === 'fail') { fail++; console.error(`${line} — over the limit (${r.max} KB${r.paste !== undefined ? `, paste length ${LIMITS.paste}` : ''})`); console.error('  ' + overMessage(r, data)); }
     else if (r.level === 'warn' && r.worst) { console.warn(`warning: ${line} — over ${r.max} KB`); console.warn('  ' + overMessage(r, data)); }
     else if (r.level === 'warn') console.warn(`warning: ${line} — over the ${LIMITS.warn} KB target`);
-    else if (r.level === 'over') console.log(`${line} — over ${r.max} KB`);
+    else if (r.level === 'over') console.log(`${line} — over ${r.max} KB or ${LIMITS.paste} paste length`);
     else console.log(line);
   }
   if (check && (stale || fail)) process.exit(1);

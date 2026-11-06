@@ -22,6 +22,26 @@ import { purposesTable } from './purposes.mjs';
 export const PAID_PACK_KB = 150;   // 有料のプランの上限（仮の値。変えるならここだけ）
 export const FREE_PACK_KB = 45;
 export const PACK_CAP_KB = Object.freeze({ free: FREE_PACK_KB, paid: PAID_PACK_KB });
+// 無料のプランのもう 1 つの上限：貼り付けの長さ（UTF-16 の単位の数＋改行の数）。Gemini の貼り付けの上限（owner の試し、2026-11-05：LF の文で
+// UTF-16 の 32,173 単位あたり、CRLF に数えて 32,682 で切れる）。CRLF で貼るブラウザがあるので改行は 2 つに数える（CRLF counts 2）。無料のプランは
+// ファイルで渡せないので、頼みたいことを書き足す分を残して 31,000（2026-11-06 決定）。英語は 1 文字 ≈ 1 バイトなので 45 KB より先にこちらに届く。
+// 無料のプランの目安は min(45 KB（バイト）, 31,000（貼り付けの長さ）)：fitSize がこの 2 つを 1 つの物差しにする
+export const FREE_PASTE_UNITS = 31000;
+// 貼り付けの長さ：UTF-16 の単位の数＋改行（LF）の数
+export function pasteUnits(text) {
+  const s = String(text);
+  let lf = 0;
+  for (let i = s.indexOf('\n'); i >= 0; i = s.indexOf('\n', i + 1)) lf++;
+  return s.length + lf;
+}
+const utf8Bytes = (s) => new TextEncoder().encode(String(s)).length;
+// 目安に収める物差し（fitPlan・fitPack の sizeOf に渡す。バイトに換算した大きさ）：有料のプランは UTF-8 のバイト数。無料のプランは、バイト数と、
+// 貼り付けの長さを 45 KB : 31,000 の比でバイトに換算したものの大きいほう。fitSize(text, 'free') <= FREE_PACK_KB * 1024 なら、両方の上限の中
+export function fitSize(text, plan = 'free') {
+  const bytes = utf8Bytes(text);
+  if (planName(plan) === 'paid') return bytes;
+  return Math.max(bytes, pasteUnits(text) * FREE_PACK_KB * 1024 / FREE_PASTE_UNITS);
+}
 
 // 標準の部品の段の名前（材料の部品の set）
 export const STANDARD = 'standard';
