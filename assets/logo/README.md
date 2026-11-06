@@ -20,6 +20,7 @@ them in a way that suggests endorsement.
 |---|---|
 | `egatari-light.svg` / `egatari-dark.svg` | Master mark (256), 48 px and up; light / dark backgrounds |
 | `egatari-32-light.svg` / `egatari-32-dark.svg` | Optical version for 24–32 px (the editor's header) |
+| `egatari-lockup-light.svg` / `egatari-lockup-dark.svg` | Horizontal lockup "Egatari" (system-ui 600, height 48 px and up; copied from `lockups/egatari-{light,dark}.svg` of the logo masters) |
 | `egatari-studio-light.svg` / `egatari-studio-dark.svg` | Horizontal lockup "Egatari Studio" (system-ui 600, height 48 px and up) |
 | `egatari-draw-light.svg` / `egatari-draw-dark.svg` | Stroke-drawing animation (2.5 s, once; final state with reduced motion). Only for waits over about 1 s |
 | `favicon.ico` / `favicon-dark.ico` | 16 (bracketless glyph) / 32 / 48 px |
@@ -30,7 +31,7 @@ them in a way that suggests endorsement.
 `favicon.ico`, `apple-touch-icon.png` and `icon-512.png` are copied from the specification repository's logo files; `icon-192.png` and `favicon-dark.ico` are copied from the logo masters (the 16 px and 32 px sizes are hand-fitted, so do not make them by scaling the SVGs).
 
 Colours: light `#4A488E` with sun `#D3381C`; dark `#A9ABFA` with sun `#F2573B` (on `#111`). Keep the aspect ratio and the
-clear space (the 256 canvas already contains it; keep at least 6 px around the lockup at 96 px height). Do not use the
+clear space (the 256 canvas already contains it; keep at least 6 px around a lockup at 96 px height). Do not use the
 mark below 16 px, rotate, stretch, recolour, outline or shadow it, move the sun, or separate the brackets.
 
-縦横比と余白（256 の正方形の中に含む。ロックアップは高さ 96 px のとき周りに 6 px 以上）を保つ。16 px 未満では使わない。回転・変形・色の変更・縁取り・影・太陽の位置の変更・括弧の切り離しをしない。
+縦横比と余白（256 の正方形の中に含む。ロックアップ（「Egatari」「Egatari Studio」）は高さ 96 px のとき周りに 6 px 以上）を保つ。16 px 未満では使わない。回転・変形・色の変更・縁取り・影・太陽の位置の変更・括弧の切り離しをしない。
