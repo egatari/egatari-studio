@@ -1,11 +1,11 @@
 // 画面の言葉の検査（tools/lint-terms.mjs）の試験：terms-allow.json の noPairs
 // test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
-// noPairs に書いた用語の id は、ja↔en の組の検査をしない（ja の言葉が短く一般的：本 → 「2 本」「日本語」）。書かない用語は今までどおり組を確かめる
+// play/（Viewer）の文字列も app/ と同じに照らす。noPairs に書いた用語の id は、ja↔en の組の検査をしない（ja の言葉が短く一般的：本 → 「2 本」「日本語」）。書かない用語は今までどおり組を確かめる
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
-import { checkPairs, loadRules } from './lint-terms.mjs';
+import { checkPairs, loadRules, UI_CODE, globRe } from './lint-terms.mjs';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lint-terms-'));
 const term = (id, ja, en) => ({ id, group: 'test', en, ja, definition: '', avoid: { ja: [], en: [] }, internal: '', decided: '2026-10-26', by: 'test', note: '' });
@@ -30,6 +30,9 @@ ok('noPairs: ["book"] skips the pair check for book only; other terms are still 
 ok('the repository lists book, format-version and no-results (見つかりません is generic) and note (メモ is inside メモリ) in noPairs', () => {
   const cfg = JSON.parse(fs.readFileSync(new URL('../docs/terms-allow.json', import.meta.url), 'utf8'));
   assert.deepEqual(cfg.noPairs, ['book', 'format-version', 'no-results', 'note']);
+});
+ok('the Viewer\'s strings (play/i18n.mjs, play/main.js) are scanned like app/*.js', () => {
+  for (const f of ['play/i18n.mjs', 'play/main.js', 'app/main.js']) assert.ok(UI_CODE.some((g) => globRe(g).test(f)), f);
 });
 fs.rmSync(root, { recursive: true, force: true });
 console.log(`lint-terms: ${n} ok`);

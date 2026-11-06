@@ -447,6 +447,42 @@
       "term": "created-by",
       "pairs": true,
       "reason": "The editor's help says the copyright and creators are kept on Save as a new file; en names the list \"creators\", the label is \"Created by\""
+    },
+    {
+      "file": "play/i18n.mjs",
+      "pattern": "skip: '本文へ'",
+      "term": "read-in-book",
+      "reason": "The Viewer's skip link (skip to the main content), not the slide-to-book link."
+    },
+    {
+      "file": "play/i18n.mjs",
+      "pattern": "参加しないで見る",
+      "term": "play-sample",
+      "reason": "Live: watch a Live session without joining; not the sample's Play button."
+    },
+    {
+      "file": "play/i18n.mjs",
+      "pattern": "見ている位置や時間は送りません",
+      "term": "no-upload",
+      "reason": "Live privacy line: questions and votes really are sent to the host; it says what is not sent, not a file upload."
+    },
+    {
+      "file": "play/i18n.mjs",
+      "pattern": "Question sent|You have sent|Only what you choose to send.*are sent\\.",
+      "term": "no-upload",
+      "reason": "Live questions and votes are sent to the host; not the files privacy line."
+    },
+    {
+      "file": "play/i18n.mjs",
+      "pattern": "A copy of each file you open is kept on this device",
+      "term": "exported-file",
+      "reason": "The copy kept in Recent files on this device, not a file exported from a working folder."
+    },
+    {
+      "file": "play/main.js",
+      "pattern": "'English' : '日本語'",
+      "term": "subject-english",
+      "reason": "The Viewer's language switch (the UI language English), not the subject tile."
     }
   ]
 }
