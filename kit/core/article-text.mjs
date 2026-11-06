@@ -8,20 +8,18 @@
 // 版（package.json で固定）：myst-parser 1.7.4・myst-transforms 1.3.51・myst-ext-proof 1.0.13・myst-ext-exercise 1.0.10・vfile 6.0.3。
 // 仕様の正解の木は myst-parser 1.7.5 / myst-transforms 1.3.52 で作ったが、その 2 つは公開から 2 週間たっていない（2026-10-26）。
 // 1 つ前の版（2026-09-21）で 49 の正解の木がすべて同じになることを確かめて、こちらに固定する（tools/test-article.mjs が毎回確かめる）。
-// markdown-it は 13 のまま（14 は markdown-it-dollarmath と myst-to-html が読めない：markdown-it/lib/common/utils.js が 14 にない）。
-// myst-parser の既定では html と typographer（smartquotes）が入り、linkify は切れている。13 には 2 乗の時間がかかる書き方がある
-// （smartquotes：GHSA-r7fv-28h4-cvq7・GHSA-6v5v-wf23-fmfq、行内の HTML の「<!」「<?」：GHSA-vfgh-jcmw-g37q）。開いたファイルの本文は
-// 信用できない入力なので、読む大きさを ARTICLE_LIMITS.fileBytes までにし、1 つの段落の引用符（" と '）と「<!」「<?」の数を
-// ARTICLE_LIMITS.paragraphQuotes・paragraphHtmlStarts までにする（越えたら myst-parser に渡さずに断る。articleUnsafeParagraph）。
-// v0.6.6 で本の道具を markdown-it 14.3.3 といっしょに 1 本にまとめたら、この限りは外せる（.github/workflows/audit.yml の例外も）。
-import { mystParse, createTokenizer } from 'myst-parser';
-import { proofDirective } from 'myst-ext-proof';
-import { exerciseDirectives } from 'myst-ext-exercise';
-import { liftMystDirectivesAndRolesTransform, mystTargetsTransform, reconstructHtmlTransform, htmlTransform, containerChildrenTransform, captionParagraphTransform } from 'myst-transforms';
-import { VFile } from 'vfile';
+// 本の道具は markdown-it 14.3.3 といっしょに kit/vendor/book-tools.mjs にまとめる（tools/build-book-tools.mjs）。
+// CLI と編集アプリが同じものを使う。myst-parser の既定では html と typographer（smartquotes）が入り、linkify は切れている。
+// defence in depth：開いたファイルの本文は信用できない入力なので、読む大きさを ARTICLE_LIMITS.fileBytes までにし、1 つの段落の
+// 引用符（" と '）と「<!」「<?」の数も制限する（越えたら myst-parser に渡さずに断る。articleUnsafeParagraph）。
+import {
+  mystParse, createTokenizer, proofDirective, exerciseDirectives,
+  liftMystDirectivesAndRolesTransform, mystTargetsTransform, reconstructHtmlTransform,
+  htmlTransform, containerChildrenTransform, captionParagraphTransform, VFile,
+} from '../vendor/book-tools.mjs';
 
 // fileBytes：1 ファイル 1 MiB まで（本の 1 章には十分）。paragraphQuotes・paragraphHtmlStarts：1 つの段落（markdown-it の行内の塊：段落・見出し・
-// 表の欄など。コードブロックは数えない）の " と ' の数、「<!」「<?」の数の上限。最も悪い 1 MiB でも 13.0.2 で 0.15 秒ほどに収まる値
+// 表の欄など。コードブロックは数えない）の " と ' の数、「<!」「<?」の数の上限。defence in depth として v0.6.5 の上限を保つ
 export const ARTICLE_LIMITS = Object.freeze({ fileBytes: 1 << 20, paragraphQuotes: 512, paragraphHtmlStarts: 64 });
 
 // §9C.2 の定理の類（mystmd の proof 拡張の種類）
@@ -178,7 +176,7 @@ function keepIdeographicSpaces(tree) {
   return tree;
 }
 
-// ---------------------------------------------------------------- 2 乗の時間がかかる段落（markdown-it 13 の smartquotes と行内の HTML）
+// ---------------------------------------------------------------- defence in depth：段落の引用符と行内の HTML の上限
 // 1 つの段落の " と ' の数、「<!」「<?」の数を数える。速い道：空行で区切った行の並びごとに数える（markdown-it の行内の塊は空行をまたがないので、
 // これが上限になる）。越える並びがあるときだけ、markdown-it のブロックの読み（線形）で行内の塊を出して数え直す（コードブロックは数えない。
 // 指令の中身はあとで myst-parser が読み直すので、中身も同じように数える）。返すもの：越えた最初の段落 {what, count, max, line, heading, text} か null
@@ -238,7 +236,7 @@ export function parseArticleText(src, opts = {}) {
   const lines = front.body.split('\n');
   const lineOf = (n) => (n && n.position ? n.position.start.line + off : null);
   const add = (sev, code, spec, node, data = {}) => problems.push(P(sev, code, spec, typeof node === 'number' ? node : lineOf(node), data));
-  // 2 乗の時間がかかる段落があれば、myst-parser に渡さずに断る（上の markdown-it 13 の説明）
+  // defence in depth：上限を越える段落は myst-parser に渡さずに断る
   const unsafe = unsafeParagraph(front.body);
   if (unsafe) {
     problems.push(P('error', 'articleUnsafeParagraph', null, unsafe.line + off, { what: unsafe.what, count: unsafe.count, max: unsafe.max, heading: unsafe.heading, text: unsafe.text }));

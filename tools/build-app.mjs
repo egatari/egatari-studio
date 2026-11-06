@@ -158,7 +158,7 @@ const ARTICLE_NOTICE = `/* Egatari Studio ${JSON.parse(fs.readFileSync(rel('pack
 const ART = await esbuild.build({
   entryPoints: [rel('app', 'article-tools.js')], bundle: true, write: false, format: 'iife', globalName: '__egatariArticle', platform: 'browser',
   target: ['chrome110', 'edge110'], legalComments: 'none', charset: 'utf8', logLevel: 'warning', conditions: ['import', 'browser', 'default'],
-  minify: true, plugins: [articleHostPlugin], alias: { punycode: rel('app', 'punycode-shim.js') },
+  minify: true, plugins: [articleHostPlugin],
 });
 const articleJs = ARTICLE_NOTICE + ART.outputFiles[0].text;
 // citeproc-js（CPAL-1.0。NOTICE）：組み込まず（縮めず・変換せず）、npm のファイルを手を加えずに dist/vendor/citeproc/ に写す（LICENSE・package.json と、

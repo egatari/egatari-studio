@@ -26,3 +26,6 @@ tools/fixtures/subset-names/** -text
 vendor/citeproc/** -text
 # パーツのサンプルのページを組む道具の写し（egatari/components の決まったコミット。tools/parts-gallery.mjs）：バイトのまま（SOURCE.json の sha256）
 vendor/components-gallery/** -text
+
+# 本文の道具の束：--check は作り直したものとバイトで比べるので、Windows でも LF を保つ。
+kit/vendor/book-tools.mjs text eol=lf
