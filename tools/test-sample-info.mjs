@@ -7,7 +7,8 @@
 // - 構成を添えた指示：無料のプランで目安に収まる（サンプルのパーツは外す候補にしない）。添える節は約 300 トークン（字数の上限）
 // - 正しくない sample.json を断る（形・分類・パーツ・字数・権利）
 // - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack。目安は fitSize）：pitch の指示は m-bars・m-flow の説明を詳しいまま目安に収まる（英語の無料のプランは貼り付けの長さで ③ まで進む）。
-//   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる
+//   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツ、無料のプランではさらにサンプルにない標準のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる。
+//   同梱のサンプルはどれも、どの言語・プランでもサンプルのパーツを残して収まる
 // - 本のあるサンプル（本文 article.md か article/ と sample.json の book: true）：指示はちょうど 1 行（サンプルにも本があり、本は Claude Code で作る）だけ増える。
 //   同梱の heikin-chuouchi（article/）と rashomon（article.md）は本がある。本があるかは組んだ 1 ファイルの索引の article で決める（buildExamples の book）
 import fs from 'node:fs';
@@ -156,6 +157,14 @@ for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
   const again = samplePackFit({ tags: r.tags, plan, lang: L, request: r.request, own: P.parts });
   ok(again.text === r.text && !again.dropped.length, `pitch from-sample (${L}, ${plan}): fitting again after unticking gives the same instructions (the editor after Untick these)`);
 }
+// 同梱のサンプルはどれも、どの言語・プランでも、サンプルのパーツを残したまま目安に収まる（fitSample の 2 は、専門のパーツの後に、
+// サンプルが使わない標準のパーツも SINGLE_SET_DROP_ORDER の順に外す。英語の kokugo-kanbun は貼り付けの長さで越えていた）
+for (const name of EXAMPLES) for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
+  const S = readSample(name);
+  const r = fromSamplePack({ sample: { ...S, title: 'T', name }, lang: L, plan, second: { title: L === 'ja' ? '題' : 'Topic' } });
+  ok(!r.over && fitSize(r.text, plan) <= PACK_CAP_KB[plan] * 1024 && S.parts.every((t) => r.tags.includes(t)) && !r.dropped.some((t) => S.parts.includes(t) || FREE_CORE.includes(t)),
+    `${name} from-sample (${L}, ${plan}): fits with the sample's parts kept (${r.bytes} bytes, paste length ${pasteUnits(r.text)}${r.dropped.length ? '; left out ' + r.dropped.join(', ') : ''})`);
+}
 // 越えたときの順：作った材料（標準 6 つ：中核の 4 つ ＋ s-a・s-b、専門 x-a・x-b・x-own）。大きさは詳しい標準 100・1 行だけの標準 10・専門 200（x-a）・150（x-b）・50（x-own）
 const FAKE = { en: { components: Object.fromEntries([...FREE_CORE.map((t) => [t, { set: 'standard' }]), ['s-a', { set: 'standard' }], ['s-b', { set: 'standard' }],
   ['x-a', { set: 'xs' }], ['x-b', { set: 'xs' }], ['x-own', { set: 'xs' }]]) } };
@@ -222,9 +231,8 @@ try {
       const af = fitSamplePack(ticks, plan, { sizeOf: (t, full) => fitSize(packText({ tags: t, plan, lang: L, request: bp.request, full }), plan), capBytes: capKb(plan) * 1024, own: plainSample.parts });
       const a = packText({ tags: af.tags, plan, lang: L, request: aReq, full: af.full }).split('\n');
       const plainOver = fromSamplePack({ sample: plainSample, lang: L, plan, second }).over;
-      // 本のない指示がもう目安を越える組（サンプルの専門のパーツは外さないので起きうる）は、本の行で越えるのではないので警告だけにする
-      if (bp.over && plainOver) console.log(`  warn ${name} (${L}, ${plan}): the from-sample pack is over the limit even without a book (${bp.bytes} bytes, paste length ${pasteUnits(bp.text)})`);
-      else ok(!bp.over && fitSize(bp.text, plan) <= capKb(plan) * 1024, `${name} (${L}, ${plan}) with a book: the pack stays within the cap (${bp.bytes} bytes, paste length ${pasteUnits(bp.text)})`);
+      ok(!plainOver && !bp.over && fitSize(bp.text, plan) <= capKb(plan) * 1024 && plainSample.parts.every((t) => bp.tags.includes(t)),
+        `${name} (${L}, ${plan}) with a book: the pack stays within the cap with the sample's parts kept (${bp.bytes} bytes, paste length ${pasteUnits(bp.text)}${bp.dropped.length ? '; left out ' + bp.dropped.join(', ') : ''})`);
       const b = bp.text.split('\n');
       let i = 0; while (i < a.length && a[i] === b[i]) i++;
       const one = b.length === a.length + 1 && JSON.stringify([...b.slice(0, i), ...b.slice(i + 1)]) === JSON.stringify(a);

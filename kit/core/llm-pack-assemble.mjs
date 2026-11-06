@@ -194,7 +194,8 @@ export function fitPack(data, ticked, plan, { sizeOf, capBytes, keep = [] }) {
 // 「このサンプルを参考に作る」の目安に収める（backlog #130。編集アプリの新規作成とコマンドの --from-sample が同じ関数を使う）。
 // サンプルのパーツ（own）は無料のプランでも詳しく書く（中核の 4 つでも、ほかの標準のパーツでも）。越えたら、この順に 1 段ずつ：
 //   1. サンプルが使わない中核の 4 つを短くする（減る大きさの大きい順に 1 つずつ、収まるまで）
-//   2. サンプルが使わない専門のパーツを外す（trimCandidates。減る大きさの大きい順）
+//   2. サンプルが使わない専門のパーツを外す（trimCandidates。減る大きさの大きい順）。無料のプランでそれでも越えるなら、
+//      サンプルが使わない標準のパーツを SINGLE_SET_DROP_ORDER の順に外す（中核の 4 つとサンプルのパーツは外さない）
 //   3. それでも越えるときだけ、サンプルの標準のパーツを短くする（減る大きさの大きい順に 1 つずつ）
 // 2 で外したら、残ったパーツでもう一度 1 から決める（編集アプリで［候補を外す］を押した後と同じ指示になる。外して収まれば 1 で短くした分も戻る）。
 // 有料のプランは短くしない（2 だけ）。sizeOf(tags, full) は選んだパーツと詳しく書く標準の部品で組んだ指示のバイト数。
@@ -222,6 +223,18 @@ export function fitSample(data, ticked, plan, { sizeOf, capBytes, own = [] }) {
     const step1Full = full;
     const keep = new Set(tags.filter((t) => !data.en.components[t] || isStd(t) || mine.includes(t)));
     const dropped = size() > capBytes ? trimCandidates(tags, { sizeOf: (x) => sizeOf(x, full), capBytes, keep }) : [];
+    // 2 の続き（無料のプラン）：専門のパーツを外してもまだ越えるなら、サンプルが使わない標準のパーツを SINGLE_SET_DROP_ORDER の順に外す
+    // （中核の 4 つとサンプルのパーツは外さない。2026-11-07 決定：英語の kokugo-kanbun が貼り付けの長さで越えたまま、外す候補がなかった）
+    if (free) {
+      const rest = () => tags.filter((t) => !dropped.includes(t));
+      if (sizeOf(rest(), full) > capBytes) {
+        for (const t of SINGLE_SET_DROP_ORDER) {
+          if (FREE_CORE.includes(t) || !tags.includes(t) || mine.includes(t) || dropped.includes(t)) continue;
+          dropped.push(t);
+          if (sizeOf(rest(), full) <= capBytes) break;
+        }
+      }
+    }
     if (dropped.length) return { tags, full, step1Full, shortened, dropped, ownShortened: [] };
     const ownShortened = free ? shorten(mine.filter(isStd)) : [];
     return { tags, full, step1Full, shortened, dropped, ownShortened };

@@ -8,7 +8,7 @@
 - A sample with a book (`article/`, `"book": true`) adds one line to the request: books are made in Claude Code, the chat AI makes the slides and narration
 - `node kit/llm-pack.mjs --from-sample <name> [--request …]` prints exactly the instructions the editor copies for that sample (shared `kit/core/new-deck-pack.mjs`)
 - New… from a sample: the sample's parts keep their full descriptions on the free plan; over the limit, the other core parts are shortened first,
-  then specialized parts the sample does not use are left out, and only last the sample's own parts are shortened (`fitSample`, editor and command alike)
+  then specialized parts the sample does not use are left out (on the free plan, then standard parts it does not use, in the single-set order), and only last the sample's own parts are shortened (`fitSample`, editor and command alike)
 
 ### Changed (API)
 
