@@ -38,6 +38,13 @@ Egatari files that use m-kakijun carry its index.js, whose stroke data keeps the
 ("_license").
 This repository contains no institutional logos. A theme added by a user (in a deck's
 themes/ or a folder in EGATARI_THEMES) is under its own terms.
+The samples with a book in examples/heikin-chuouchi/ and examples/rashomon/ are copies of
+egatari/examples (https://github.com/egatari/examples; SOURCE.json records the commit). Their
+lessons (book, slides, script, data and figures) are licensed under CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/), © 2026 Gendo Kumoi (雲居玄道); the scripts in their
+scripts/ are MIT. The text of 芥川龍之介「羅生門」 quoted in examples/rashomon/ (and kept in its
+source/) is in the public domain and comes from Aozora Bunko (https://www.aozora.gr.jp/). Each
+Egatari file built from them carries the licence and attribution in its metadata.
 
 Egatari logo
 ============

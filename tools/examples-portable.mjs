@@ -1,8 +1,9 @@
 // 見本（examples/）を持ち運べる 1 ファイル（--portable）に組む。編集アプリの配信版（tools/build-app.mjs の dist/examples/）と
 // リリースに添えるファイル（tools/release-assets.mjs の out/release/）が同じものを使う
-//   buildExamples(outDir) → [{name, file, title, lang, slides, bytes, profile, sha256, sample}]（outDir/<name><FORMAT.FILE_EXT> に書く）
+//   buildExamples(outDir) → [{name, file, title, lang, slides, bytes, profile, sha256, sample, book}]（outDir/<name><FORMAT.FILE_EXT> に書く。book：本（article）を持つか）
 //   sample：サンプルのフォルダの sample.json（テーマは新規作成で選べるもの）（kit/core/sample-info.mjs。「このサンプルを参考に作る」で引き継ぐもの。backlog #130）。ないか正しくなければ組まない
 //   readSample(name) → sample.json の中身（確かめたもの）
+// 本のあるサンプル（heikin-chuouchi・rashomon）は egatari/examples の books/<名前> の写し（SOURCE.json にリポジトリとコミットと各ファイルの sha256。直さず、元を直して写し直す）
 // 見本には音声がない（audio/ はリポジトリに入れない）ので、音声なしの 1 ファイルになる（再生は推定の秒数。TTS も dry-run の無音も作らない）。
 // 組むのは見本のフォルダの写し（一時フォルダ）から：リポジトリの見本に設定のファイル（egatari.json）を書かない。設定のファイルのない見本
 // （minimal は新しいデッキの雛形にしてよいので docId を持たせない）には、名前から決めた docId を与える（組むたびに同じ文書）
@@ -16,8 +17,8 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { sampleProblems } from '../kit/core/new-deck-pack.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-// 並べる順（はじめの画面の一覧もこの順）
-export const EXAMPLES = ['minimal', 'pitch-fictional', 'kokugo-kanbun', 'tmlr2026-calibration'];
+// 並べる順（はじめの画面の一覧もこの順）。本のある 2 つは後ろに
+export const EXAMPLES = ['minimal', 'pitch-fictional', 'kokugo-kanbun', 'tmlr2026-calibration', 'heikin-chuouchi', 'rashomon'];
 
 // 名前から決めた docId（小文字の UUID の形。版 4・変種 RFC 4122 の桁にそろえる）
 export function exampleDocId(name) {
@@ -69,7 +70,7 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       for (const w of r.warnings) log(`  ⚠ example ${name}: ${w}`);
       const m = r.index.metadata || {};
       list.push({ name, file, title: String(m.title || name), lang: String(m.lang || ''), slides: r.stats.slides, bytes: Buffer.byteLength(r.html), profile: r.index.profile,
-        sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample });
+        sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample, book: !!r.index.article });
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   return list;

@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=aa0fe48cb5d94a18 -->
+<!-- i18n: pair=editor.md sha256=71cc1d42cb40fd04 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -312,7 +312,7 @@ Egatari ファイルを直している間、保存していない変更をこの
 3. Settings → Environments → `github-pages` → Deployment branches and tags にタグの決まり `v*.*.*` を足す（この environment はふだん `main` だけを許すので、足さないとタグからの deploy は断られる）
 4. リリースのタグを push するか、タグを選んで workflow を走らせる（Actions → pages → Run workflow）
 
-組み立てはサンプルも Egatari ファイルにして `examples/<名前>.ega.html` に置き（`tools/examples-portable.mjs`。合わせて約 14 MB。`--no-examples` で入れない）、編集アプリの最初の画面に並べる。組むのはサンプルのフォルダの一時的な写しから（`examples/` には何も書かない）。`egatari.json` のないサンプル（テンプレートとして写してよい `minimal` など）には名前から決めた `docId` を与えるので、組むたびに同じ文書になる
+組み立てはサンプルも Egatari ファイルにして `examples/<名前>.ega.html` に置き（`tools/examples-portable.mjs`。合わせて約 31 MB で、そのうち本のある 2 つが 16 MB。`--no-examples` で入れない）、編集アプリの最初の画面に並べる。本のあるサンプルには「本」の印を付ける。本のある 2 つ（`heikin-chuouchi`・`rashomon`）は [egatari/examples](https://github.com/egatari/examples) の `books/<名前>` をそのまま写したもの。`SOURCE.json` にコミットと各ファイルの sha256 を書いてある（`tools/test-release-assets.mjs` が確かめる）ので、直すときは元のリポジトリで直して写し直す。組むのはサンプルのフォルダの一時的な写しから（`examples/` には何も書かない）。`egatari.json` のないサンプル（テンプレートとして写してよい `minimal` など）には名前から決めた `docId` を与えるので、組むたびに同じ文書になる
 
 組み立ては make の生成元から `egatari-make-<version>-ja.zip` と `egatari-make-<version>-en.zip` を `dist/` に書く。ダウンロードはこのサイト内のファイルを使い、単体の `editor.html` はオフラインでも使えるよう両言語の ZIP を埋め込む。凍結した `/vX.Y.Z/` と編集アプリのサイトのアーカイブも、`dist/` のほかのファイルと一緒に ZIP を持つ。
 
@@ -322,7 +322,7 @@ Egatari ファイルを直している間、保存していない変更をこの
 
 ### リリースに添えるファイル
 
-`npm run release:assets`（`tools/release-assets.mjs`）が同じサンプルのファイルを `out/release/` に組み、`examples.json`（名前・題名・言語・枚数・大きさ・sha256）を添える。make の生成元から `egatari-make-<version>-ja.zip` と `egatari-make-<version>-en.zip` も書く。どこにも上げない。GitHub のリリースには人の手で添える（たとえば `gh release create v<版> out/release/*`）
+`npm run release:assets`（`tools/release-assets.mjs`）が同じサンプルのファイルを `out/release/` に組み、`examples.json`（名前・題名・言語・枚数・大きさ・sha256、本があるかの `book`）を添える。make の生成元から `egatari-make-<version>-ja.zip` と `egatari-make-<version>-en.zip` も書く。どこにも上げない。GitHub のリリースには人の手で添える（たとえば `gh release create v<版> out/release/*`）
 
 ### 版ごとの URL（凍結した写し）
 

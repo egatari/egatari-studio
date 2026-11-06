@@ -1,0 +1,96 @@
+{
+  "componentsCatalogue": "2",
+  "metadata": {
+    "license": "CC-BY-4.0",
+    "copyright": "© 2026 雲居玄道",
+    "creators": [
+      "雲居玄道"
+    ],
+    "citations": {
+      "style": "sist02",
+      "list": "end"
+    }
+  },
+  "article": {
+    "chapters": [
+      "article/00-preface.md",
+      "article/01.md",
+      "article/02.md",
+      "article/90-answers.md"
+    ],
+    "references": "references.json"
+  },
+  "articleLinks": {
+    "s-rjumpv": {
+      "sec-jccn5k": {
+        "article": "b269fa268944db27e9062e6f7e64d65b575454ab5b5c5ad79e922fdffe6678a9",
+        "slide": "cec55f9ce2c57c43a66c4de62e4ae3d77cbe2552b425a6cc18d5c0602d22869f"
+      }
+    },
+    "s-qzht54": {
+      "sec-zna5yy": {
+        "article": "6cf22869e70889d0153f9238f14371096dac3a979814a2bbd5e7edc3dfeba71e",
+        "slide": "2de6272d0a66e0dfda186fd8eb6aa7ffb9885b6158dd854a8a78cf7dfe81ff57"
+      },
+      "sec-lalsmr": {
+        "article": "c60bdafcbd660d49074c35e5616105f3f1d3863ebec7081c68e7512c7703288e",
+        "slide": "2de6272d0a66e0dfda186fd8eb6aa7ffb9885b6158dd854a8a78cf7dfe81ff57"
+      }
+    },
+    "s-hciibn": {
+      "sec-4t6flt": {
+        "article": "b2b78f0ed36d2efc3c62dcde891204ad8493a6397777587553310da7e2b043a2",
+        "slide": "e285cccc5eb9ddf9d1b240f343dd20b0a1e0bd0ca0dd4c92628bfb12a4f6f554"
+      }
+    },
+    "s-2l7yrs": {
+      "sec-zafebf": {
+        "article": "37d3c4e0ae519545dd4bed4cef1d4201d2c7eddf13429e5c97581d132ce1b4a3",
+        "slide": "54f61256906b66050031eb5f17b20a8f5809c97e32c76eb7c8e4a3b2af3f346b"
+      }
+    },
+    "s-gmadkg": {
+      "sec-oj4wrv": {
+        "article": "a4131348b74fdec5ab9b44398fd5d248a9800ad1625c0d4a2889312dd1eb1c77",
+        "slide": "d4b4f511fd8e5b5e99a22a2dd4f546f4510accd35257b7c003426e8de6c40c95"
+      }
+    },
+    "s-gurc6i": {
+      "sec-i3rggw": {
+        "article": "61dd7de7b2a76d91b02d75c3741ba61a72f8980f615f0dd4c877af041da54883",
+        "slide": "96e1d143e3bccd3de791b72cc238ae00e4cccc7b55a7a35ab171a0ce31f1c858"
+      }
+    },
+    "s-4tdknx": {
+      "sec-lz5e7p": {
+        "article": "27edea2fe713287d304f559dcf3f7b9981a47d6bac138c0f03afb5e71be36942",
+        "slide": "ff986cc51e1566b030cd31b322b1c77f8f02bb8863d339156cd7755f3ba9b991"
+      },
+      "sec-hrtzvr": {
+        "article": "addaab39899dd38c2b9ca2461ff82770a031b71285537c6bdb9d3ec87bec3823",
+        "slide": "ff986cc51e1566b030cd31b322b1c77f8f02bb8863d339156cd7755f3ba9b991"
+      }
+    },
+    "s-v6octt": {
+      "sec-5g7df7": {
+        "article": "82bca6a557120a7e0b63fbf76f56e1ef0ed8c984493da3aec6c23900f76efb3d",
+        "slide": "082773e2c722578e57669324546bb1e5b6280c9b5df64983227dec284be17abb"
+      },
+      "sec-dcdrrx": {
+        "article": "659afbb72fbdd5ad3e94ff3dfd45a591a6503af8baf3cae70b21bdddb1a6d1a5",
+        "slide": "082773e2c722578e57669324546bb1e5b6280c9b5df64983227dec284be17abb"
+      },
+      "sec-hvvdam": {
+        "article": "def2fecaabc0c3e4ededd71d3ce1c0d98672f78f055447d4ca1e0edfdd3d35dd",
+        "slide": "082773e2c722578e57669324546bb1e5b6280c9b5df64983227dec284be17abb"
+      }
+    },
+    "s-bi3rri": {
+      "sec-zafebf": {
+        "article": "37d3c4e0ae519545dd4bed4cef1d4201d2c7eddf13429e5c97581d132ce1b4a3",
+        "slide": "cb4b993fe3ad84460ca58900a6f7503982cb8112b65fea6901e128a828b9d3ad"
+      }
+    }
+  },
+  "docId": "ccaab200-6e5f-447d-afa7-9f994ef8acf2"
+}

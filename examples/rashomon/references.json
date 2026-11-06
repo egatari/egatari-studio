@@ -1,0 +1,39 @@
+[
+  {
+    "id": "aozora-rashomon",
+    "type": "webpage",
+    "title": "羅生門",
+    "author": [{"family": "芥川", "given": "龍之介"}],
+    "container-title": "青空文庫",
+    "URL": "https://www.aozora.gr.jp/cards/000879/card127.html",
+    "note": "図書カード No.127。底本：「芥川龍之介全集1」ちくま文庫、筑摩書房、1986。入力：平山誠、野口英司。校正：もりみつじゅんじ。2022年7月16日修正版",
+    "accessed": {"date-parts": [[2026, 11, 3]]}
+  },
+  {
+    "id": "ikegami2004",
+    "type": "article-journal",
+    "title": "「羅生門」論：末尾改稿を軸に",
+    "author": [{"family": "池上", "given": "貴子"}],
+    "container-title": "日本文学研究",
+    "volume": "39",
+    "page": "84-93",
+    "publisher": "梅光学院大学日本文学会",
+    "issued": {"date-parts": [[2004, 1]]},
+    "ISSN": "0286-2948",
+    "URL": "https://ypir.lib.yamaguchi-u.ac.jp/bg/1315",
+    "language": "ja"
+  },
+  {
+    "id": "miyata1984",
+    "type": "article-journal",
+    "title": "今昔物語集の編集過程：目録標題と本文標題とのあいだ",
+    "author": [{"family": "宮田", "given": "尚"}],
+    "container-title": "日本文学研究",
+    "volume": "20",
+    "page": "49-60",
+    "publisher": "梅光女学院大学日本文学会",
+    "issued": {"date-parts": [[1984, 11]]},
+    "URL": "https://ypir.lib.yamaguchi-u.ac.jp/bg/882",
+    "language": "ja"
+  }
+]

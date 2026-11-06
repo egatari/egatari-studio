@@ -1,0 +1,12 @@
+{
+ "survey": "家計調査（貯蓄・負債編）2025年平均、二人以上の世帯",
+ "published": "2026-05-19",
+ "unit": "万円",
+ "mean": 2059,
+ "median_holders": 1264,
+ "median_all_reference": 1167,
+ "share_below_mean_pct": 66.1,
+ "mean_minus_median_all": 892,
+ "mean_over_median_all": 1.76,
+ "median_all_over_mean": 0.567
+}

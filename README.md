@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=9af3a10b12f3b3f0 -->
+<!-- i18n: pair=README.ja.md sha256=5d59603aff5d90da -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -287,6 +287,8 @@ A theme can also sit next to a lesson (`<deck>/themes/<name>/`) or in a folder o
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: lesson-local parts (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `default` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | Japanese, 10 slides: a pitch for a fictional company (株式会社レポミル, a SaaS that drafts reports). `m-kpi`, `m-flow` (money flows and `pulse`), `m-bars` (with an axis rescale), `m-quad`, `m-market`, theme `business`, data written by a script (`scripts/`, `data/`). The company, product and every number are made up |
 | [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 11 slides for a 国語 lesson: a contents slide with `m-menu` (links to each part, Back to return), kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
+| [`examples/heikin-chuouchi`](examples/heikin-chuouchi) | Japanese, 10 slides **with a book** (`article/`, 4 files: chapter numbers, figures, equations, citations, links between the book and the slides) for high-school maths: mean and median as the lowest point of the sum of squared and absolute deviations. `m-curves`, `m-sweep`, `m-bars`, theme `default`. Copied from [egatari/examples](https://github.com/egatari/examples) (`SOURCE.json`); CC BY 4.0 |
+| [`examples/rashomon`](examples/rashomon) | Japanese, 7 slides (5 vertical) **with a book** (`article.md`, vertical) for reading 芥川龍之介「羅生門」 in high school, with `m-gendai`, theme `kokugo`. The story's text is from Aozora Bunko (public domain); the reading guide, slides and script are CC BY 4.0. Copied from [egatari/examples](https://github.com/egatari/examples) (`SOURCE.json`) |
 
 The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default voice. The published video of this example was narrated with the author's own reference voice, which is not included in the repository.
 

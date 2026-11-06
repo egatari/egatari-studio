@@ -1,0 +1,89 @@
+[
+  {
+    "id": "stat2026sav",
+    "type": "report",
+    "author": [
+      {
+        "literal": "総務省統計局"
+      }
+    ],
+    "title": "家計調査報告（貯蓄・負債編）－2025年（令和7年）平均結果－（二人以上の世帯）",
+    "publisher": "総務省統計局",
+    "issued": {
+      "date-parts": [
+        [
+          2026,
+          5,
+          19
+        ]
+      ]
+    },
+    "URL": "https://www.stat.go.jp/data/sav/sokuhou/nen/index.html",
+    "accessed": {
+      "date-parts": [
+        [
+          2026,
+          11,
+          3
+        ]
+      ]
+    },
+    "language": "ja"
+  },
+  {
+    "id": "todai1991",
+    "type": "book",
+    "title": "統計学入門",
+    "collection-title": "基礎統計学",
+    "publisher": "東京大学出版会",
+    "publisher-place": "東京",
+    "issued": {
+      "date-parts": [
+        [
+          1991
+        ]
+      ]
+    },
+    "ISBN": "978-4-13-042065-5",
+    "language": "ja",
+    "author": [
+      {
+        "literal": "東京大学教養学部統計学教室 編"
+      }
+    ]
+  },
+  {
+    "id": "app-loss",
+    "type": "webpage",
+    "title": "ズレの測り方",
+    "container-title": "AI体験（機械学習理論研究室）",
+    "URL": "https://lab.kumoi.net/apps/loss-basics/",
+    "accessed": {
+      "date-parts": [
+        [
+          2026,
+          11,
+          3
+        ]
+      ]
+    },
+    "language": "ja"
+  },
+  {
+    "id": "app-news",
+    "type": "webpage",
+    "title": "毎朝いくつ作るか",
+    "container-title": "AI体験（機械学習理論研究室）",
+    "URL": "https://lab.kumoi.net/apps/newsvendor/",
+    "accessed": {
+      "date-parts": [
+        [
+          2026,
+          11,
+          3
+        ]
+      ]
+    },
+    "language": "ja"
+  }
+]

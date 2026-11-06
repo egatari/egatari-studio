@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>平均と中央値は「ズレの測り方」で決まる</title>
+<!--
+  本（article/）と組になった見本の教材。数値はすべて scripts/make_data.py の出力（data/*.json）。
+  1.2 節の貯蓄の数字は総務省統計局の公表値。ほかのデータは架空。
+-->
+<style>
+.half { flex: 1 1 0; min-width: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-ou4gcp">
+  <div class="venue">数学 I　データの分析</div>
+  <h1>平均と中央値は「ズレの測り方」で決まる</h1>
+</section>
+
+<section class="slide" id="s-rjumpv" data-article="sec-jccn5k">
+  <h2>貯蓄の平均と中央値が食い違う</h2>
+  <div class="body">
+    <p class="note">貯蓄現在高（万円）。二人以上の世帯、2025 年平均。総務省統計局「家計調査（貯蓄・負債編）」</p>
+    <m-bars unit="万円" style="height:360px" aria-label="貯蓄現在高の平均値と中央値の棒グラフ">
+      <script type="application/json">{{JSON:bars_savings.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>平均を下回る世帯が約 3 分の 2（66.1%）</span></div>
+</section>
+
+<section class="slide" id="s-qzht54" data-article="sec-lalsmr sec-zna5yy">
+  <h2>ズレの測り方は 1 つではない</h2>
+  <div class="body">
+    <p>値 \(x\) と代表値 \(c\) のズレ \(u = x - c\) を、どう数えるか</p>
+    <m-curves xr="[-3,3]" yr="[0,4]" xt="[-3,-2,-1,0,1,2,3]" yt="[0,1,2,3,4]" xl="ズレ *u*" yl="損" style="height:380px" aria-label="ズレの絶対値と二乗のグラフ">
+      <script type="application/json">{{JSON:curve_loss_shapes.json}}</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>測り方を決めると、よい代表値が決まる</span></div>
+</section>
+
+<section class="slide" id="s-hciibn" data-article="sec-4t6flt">
+  <h2>絶対値の和は折れ線、底は中央値</h2>
+  <div class="body">
+    <p>データ：2, 4, 5, 7, 12（架空の待ち時間、分）</p>
+    <m-curves xr="[0,14]" yr="[0,40]" xt="[0,2,4,6,8,10,12,14]" yt="[0,10,20,30,40]" xl="代表値 *c*（分）" yl="絶対値の和" style="height:380px" aria-label="絶対値の和を代表値の関数として描いた折れ線">
+      <script type="application/json">{{JSON:curve_abs.json}}</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>左右の個数が釣り合う所が底</span></div>
+</section>
+
+<section class="slide" id="s-bi3rri" data-article="sec-zafebf">
+  <h2>二乗の和は放物線、底は平均</h2>
+  <div class="body">
+    <p>同じデータ：2, 4, 5, 7, 12（架空）</p>
+    <m-curves xr="[0,14]" yr="[0,400]" xt="[0,2,4,6,8,10,12,14]" yt="[0,100,200,300,400]" xl="代表値 *c*（分）" yl="二乗の和" style="height:380px" aria-label="二乗の和を代表値の関数として描いた放物線">
+      <script type="application/json">{{JSON:curve_sq.json}}</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>底は平均の所にある</span></div>
+</section>
+
+<section class="slide" id="s-2l7yrs" data-article="sec-zafebf">
+  <h2>平方完成で底を読む</h2>
+  <div class="body">
+    <p>\(\bar{x}\)：平均、\(n\)：データの個数</p>
+    <div class="big" data-step="1">\[ \sum_{i=1}^{n} (x_i - c)^2 = \htmlId{sqterm}{n\,(c - \bar{x})^2} + \htmlId{rest}{\sum_{i=1}^{n} (x_i - \bar{x})^2} \]</div>
+    <p data-step="2">第 1 項は 0 以上で、\(c = \bar{x}\) のときだけ 0</p>
+    <p data-step="3">例：\(5\,(c - 6)^2 + 58\)。残る 58 は分散 11.6 の 5 倍</p>
+  </div>
+  <div class="concl"><span>微分なしで、底が平均だとわかる</span></div>
+</section>
+
+<section class="slide" id="s-gmadkg" data-article="sec-oj4wrv">
+  <h2>外れ値を 1 つ動かす</h2>
+  <div class="body">
+    <p>2, 4, 5, 7 はそのまま、いちばん大きい値を 12 → 22 → 32</p>
+    <div class="cols" style="gap:24px">
+      <div class="half">
+        <m-sweep f="Math.abs(u-2) + Math.abs(u-4) + Math.abs(u-5) + Math.abs(u-7) + Math.abs(u-c)" values='{{JSON:sweep_values.json}}' param="外れ値" xr="[0,35]" yr="[0,80]" xt="[0,5,10,20,30]" yt="[0,40,80]" xl="*c*" yl="絶対値の和" digits="0" style="height:380px" aria-label="外れ値を動かしたときの絶対値の和"></m-sweep>
+      </div>
+      <div class="half">
+        <m-sweep f="(u-2)**2 + (u-4)**2 + (u-5)**2 + (u-7)**2 + (u-c)**2" values='{{JSON:sweep_values.json}}' param="外れ値" xr="[0,35]" yr="[0,1200]" xt="[0,5,10,20,30]" yt="[0,1200]" xl="*c*" yl="二乗の和" digits="0" style="height:380px" aria-label="外れ値を動かしたときの二乗の和"></m-sweep>
+      </div>
+    </div>
+  </div>
+  <div class="concl"><span>平均は 6 → 8 → 10、中央値は 5 のまま</span></div>
+</section>
+
+<section class="slide" id="s-gurc6i" data-article="sec-i3rggw">
+  <h2>どちらを選ぶかは分析者が決める</h2>
+  <div class="body">
+    <ul>
+      <li data-step="1">大きなズレを特に重く見たい：<span class="term">二乗</span> → 平均</li>
+      <li data-step="2">ズレを大きさのまま数えたい：<span class="term">絶対値</span> → 中央値</li>
+      <li data-step="3"><span class="emph">データは測り方を決めない。目的が決める</span></li>
+    </ul>
+  </div>
+  <div class="concl"><span>代表値の良し悪しは目的から決まる</span></div>
+</section>
+
+<section class="slide" id="s-4tdknx" data-article="sec-lz5e7p sec-hrtzvr">
+  <h2>余る損と足りない損は違う</h2>
+  <div class="body">
+    <p>おにぎり 1 個：仕入れ値 100 円、売値 150 円（架空）</p>
+    <m-curves xr="[-4,4]" yr="[0,420]" xt="[-4,-2,0,2,4]" yt="[0,100,200,300,400]" xl="仕入れ数 − 売れた数（個）" yl="損（円）" style="height:380px" aria-label="余ったときと足りないときの損の折れ線">
+      <script type="application/json">{{JSON:curve_pinball.json}}</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>折れ線が傾き、底が動く</span></div>
+</section>
+
+<section class="slide" id="s-v6octt" data-article="sec-dcdrrx sec-5g7df7 sec-hvvdam">
+  <h2>店の考えで仕入れ数が変わる</h2>
+  <div class="body">
+    <p>架空の 20 日分の販売記録で計算。縦軸は 1 日あたりの損（円）</p>
+    <m-curves xr="[25,55]" yr="[0,3200]" xt="[25,30,35,40,45,50,55]" yt="[0,1000,2000,3000]" xl="仕入れ数 *q*（個）" yl="" style="height:380px" aria-label="損の重さを変えたときの仕入れ数と損の折れ線">
+      <script type="application/json">{{JSON:curve_news.json}}</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>底は、損の重さで決まる分位点に移る</span></div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=6d67bfb6c54628ea -->
+<!-- i18n: pair=README.md sha256=0c666dc6566681cf -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -287,6 +287,8 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 | [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | 英語・14 枚（TMLR 2026 の論文の紹介）。教材専用のパーツ（`components/`）、スクリプトで作ったデータ（`scripts/` `data/`）、英語の TTS（`voice.json`）、テーマ `default` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | 日本語・10 枚（架空の会社「株式会社レポミル」（報告書の下書きを作る SaaS）のピッチ）。`m-kpi`、`m-flow`（お金の流れと `pulse`）、`m-bars`（軸の広がり）、`m-quad`、`m-market`、テーマ `business`、スクリプトで書いたデータ（`scripts/` `data/`）。社名・製品・数字はすべて架空 |
 | [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | 日本語・11 枚（国語の授業）。`m-menu` の目次（各部へのリンクと「戻る」）、`m-kanbun` の漢文（『史記』、孟浩然「春暁」、杜甫「春望」、『論語』）、`m-kobun` の『枕草子』、`m-gendai` の現代文（見本のために書いた文章、縦書き）、テーマ `kokugo` |
+| [`examples/heikin-chuouchi`](examples/heikin-chuouchi) | 日本語・10 枚と**本**（`article/` の 4 ファイル。章の番号・図・式・引用・本とスライドの行き来）。高校の数学（平均と中央値を、二乗と絶対値のズレの和の底として見る）。`m-curves`、`m-sweep`、`m-bars`、テーマ `default`。[egatari/examples](https://github.com/egatari/examples) からの写し（`SOURCE.json`）。CC BY 4.0 |
+| [`examples/rashomon`](examples/rashomon) | 日本語・7 枚（うち縦書き 5 枚）と**本**（`article.md`、縦書き）。高校で芥川龍之介「羅生門」を読む。`m-gendai`、テーマ `kokugo`。本文は青空文庫（著作権の保護期間満了）、読みの手引き・スライド・台本は CC BY 4.0。[egatari/examples](https://github.com/egatari/examples) からの写し（`SOURCE.json`） |
 
 `examples/tmlr2026-calibration` の `voice.json` は TTS の既定の声を使う。公開しているこの見本の動画は、著者本人の参照音声で読み上げたもの（参照音声はリポジトリに含めていない）。
 
