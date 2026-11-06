@@ -77,6 +77,8 @@ button:disabled { opacity: 0.5; cursor: default; }
 
 /* player: the frame and the Live controls are placed by play/layout.mjs (absolute boxes, set once when the lesson starts and
    again only on rotation). The controls never lie over the frame except in the measured 'overlay' variant */
+/* playing: the page is exactly the screen and never scrolls (a scrolled page hid the bar and moved the slide after a rotation in the Home Screen app) */
+body.playing { height: 100dvh; min-height: 0; overflow: hidden; }
 #player { flex: 1; min-height: 0; position: relative; }
 #stage-wrap { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background: var(--stage-bg); }
 #stage-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: var(--stage-bg); }
