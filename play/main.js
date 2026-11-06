@@ -72,7 +72,9 @@ async function openChecked(blob, name, opts) {
   if (!r || !r.ok) { showMsg(r && r.error === 'not-egatari' ? W().errNotEgatari : W().errParse); return false; }
   const info = { name: String(name || 'lesson.ega.html').slice(0, 300), title: r.meta.title, kind: r.kind, docId: r.meta.docId };
   if (opts.recentId) { try { await S.recents.touch(opts.recentId); } catch { /* keep playing */ } }
-  else if ($('keep').checked && !$('shared').checked && S.recents && S.recents.kind !== 'none') { try { await S.recents.add(blob, info); } catch { /* storage full or blocked: still play */ } }
+  else if ($('keep').checked && !$('shared').checked && S.recents && S.recents.kind !== 'none') {
+    try { await S.recents.add(blob, info); maybeRequestPersist(); } catch { /* storage full or blocked: still play */ }
+  }
   play(text, r, info);
   return true;
 }
@@ -324,6 +326,7 @@ async function renderRecents() {
   $('recent-empty').hidden = list.length > 0;
   $('b-clear').hidden = list.length === 0;
   renderKeepLine(list.length);
+  await renderPersistNote(list.length > 0);
 }
 // One line under "Open a file": whether opened files are copied onto this device (the same condition as openFile), with a link
 // to the 「共有の端末」 switch and, when copies exist, 「すべて削除」 (the same action and confirmation as the button in Recent files).
@@ -334,6 +337,33 @@ function renderKeepLine(n = keptCount) {
   const keeping = $('keep').checked && !$('shared').checked && !!S.recents && S.recents.kind !== 'none';
   $('keep-line-text').textContent = keeping ? W().keepLineOn : $('shared').checked ? W().keepLineShared : W().keepLineOff;
   $('keep-line-clear').hidden = n === 0;
+}
+// WebKit (Safari 17+, iOS 17+) never evicts an origin once navigator.storage.persist() has succeeded for it (other browsers may
+// still ask the viewer, or decide on their own heuristics). Asked once per launch, right after the first file actually lands in
+// recents (not on a cold load with nothing kept, and never in shared-device mode: the call site in openChecked already gates on
+// keep && !shared). Fire-and-forget: never awaited before playback continues.
+let persistAsked = false;
+function maybeRequestPersist() {
+  if (persistAsked || typeof navigator.storage?.persist !== 'function') return;
+  persistAsked = true;
+  navigator.storage.persist().then(updatePersistNote, updatePersistNote);
+}
+async function updatePersistNote() {
+  if (!S.recents) return;
+  let n = 0;
+  try { n = (await S.recents.list()).length; } catch { n = 0; }
+  await renderPersistNote(n > 0);
+}
+// under 「この端末にだけ保存されます」: the browser's actual answer to persist(), read fresh each time (it can already be true from
+// an earlier launch). Hidden in shared-device mode or with nothing kept, where it would say nothing useful.
+async function renderPersistNote(hasKept) {
+  const el = $('recent-persist');
+  if (!el) return;
+  if ($('shared').checked || !hasKept) { el.hidden = true; el.textContent = ''; return; }
+  let persisted = false;
+  try { persisted = typeof navigator.storage?.persisted === 'function' ? await navigator.storage.persisted() : false; } catch { persisted = false; }
+  el.hidden = false;
+  el.textContent = persisted ? W().persistYes : W().persistNo;
 }
 const KEEP_KEY = 'egatari-viewer-keep', SHARED_KEY = 'egatari-viewer-shared';
 const getPref = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
