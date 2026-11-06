@@ -173,9 +173,16 @@ async function showWelcome() {
   }
 }
 // はじめの画面の「保存していない変更」：ほかのタブが持っていない、このブラウザに残した変更（新しい順）。行ごとに「復元」「変更を捨てる」
+let draftsWaiting = false;   // ほかのタブの印が外れるのを待っている（待ちは 1 つだけ）
 async function showDrafts() {
   let list = [];
   try { await drafts.prune(); list = await drafts.free(); } catch { /* 使えない環境 */ }
+  // 落ちたばかりのタブの変更は、その印が外れるまで「ほかのタブが持っている」に見える。外れたら一覧を出し直す
+  if (!draftsWaiting) {
+    let wait = null;
+    try { wait = await drafts.released(); } catch { wait = null; }
+    if (wait) { draftsWaiting = true; wait.done.then(() => { draftsWaiting = false; if (!$('welcome').hidden) showDrafts(); }); }
+  }
   const ul = $('drafts-list');
   if (!ul || $('welcome').hidden) return;
   $('drafts').hidden = !list.length;

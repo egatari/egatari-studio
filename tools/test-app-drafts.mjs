@@ -4,6 +4,7 @@
 //   残す（台本でなくスライドの文の編集と、録音 1 本）→ タブを閉じる → 同じファイルを開くと「復元しますか」→ 復元で編集と録音が戻る
 //   2 つのタブ（開いているタブの変更は問わない・互いを上書きしない）・はじめの画面の一覧から復元・変更を捨てる・
 //   保存領域の不足（IndexedDB の put が QuotaExceededError）を知らせて止まらない・本当に保存したら消える・30 日を過ぎたものの掃除
+import { scaled } from './wait-scale.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -134,7 +135,7 @@ try {
 
   // ---- 2. 読み込み直して復元：はじめの画面に出て、同じファイルを開くと問う
   const B = await newTab('B');
-  await B.waitForSelector('#drafts:not([hidden]) #drafts-list li', { timeout: 10000 });
+  await B.waitForSelector('#drafts:not([hidden]) #drafts-list li', { timeout: scaled(30000) });
   ok((await B.textContent('#drafts-list')).includes(NAME) && (await B.textContent('#drafts-lead')).includes('ブラウザが消すことがあります'), '2: the first screen lists the unsaved changes and says the browser may delete them');
   o = await openAndSee(B);
   ok(o.r === 'ask', '2: opening the same file asks to restore');
@@ -184,7 +185,7 @@ try {
   await C.close({ runBeforeUnload: false });
   await B.close({ runBeforeUnload: false });
   const D = await newTab('D');
-  await D.waitForSelector('#drafts:not([hidden]) #drafts-list li', { timeout: 10000 });
+  await D.waitForSelector('#drafts:not([hidden]) #drafts-list li', { timeout: scaled(30000) });
   n = (await state(D)).loads;
   await D.click(`#drafts-list li[data-draft="${cId}"] .draft-restore`);
   await waitLoads(D, n);
@@ -257,6 +258,24 @@ try {
   await E.waitForFunction(() => /ありません/.test(document.getElementById('drafts-help-info').textContent), null, { timeout: 30000 });
   list = await draftsOf(E);
   ok(!list.some((m) => m.id === 'dother') && list.some((m) => m.id === eId), '8: Discard all deletes the others and keeps the open file’s changes');
+  // ---- 9. 落ちたばかりのタブの印がまだ残っているときに開いた画面：印が外れたら一覧を出し直す（遅い Windows で、はじめの画面が一覧を出さないままだった）
+  await F.evaluate(() => new Promise((res, rej) => {
+    const r = indexedDB.open('egatari-drafts', 1);
+    r.onsuccess = () => {
+      const t = r.result.transaction(['meta', 'base'], 'readwrite');
+      t.objectStore('meta').put({ id: 'dlock', name: 'held' + '.ega.html', baseSha: '0'.repeat(64), created: Date.now(), updated: Date.now(), bytes: 10, changed: [], removed: [] });
+      t.objectStore('base').put({ id: 'dlock', text: 'x' });
+      t.oncomplete = () => res(); t.onerror = () => rej(t.error);
+    };
+  }));
+  await F.evaluate(() => new Promise((held) => { navigator.locks.request('egatari-draft:dlock', () => new Promise((r) => { window.__releaseDlock = r; held(); })); }));
+  const G = await newTab('G');
+  await G.waitForTimeout(800);
+  ok(!(await G.$('#drafts-list li[data-draft="dlock"]')), '9: changes another tab still holds are not listed');
+  await F.evaluate(() => window.__releaseDlock());
+  await G.waitForSelector('#drafts-list li[data-draft="dlock"]', { timeout: scaled(10000) }).catch(() => {});
+  ok(!!(await G.$('#drafts-list li[data-draft="dlock"]')), '9: once that tab lets go (it closed or crashed), the first screen lists them without a reload');
+  await G.close({ runBeforeUnload: false });
   await E.close({ runBeforeUnload: false });
   await F.close({ runBeforeUnload: false });
 } catch (e) {

@@ -62,6 +62,16 @@ export function draftStore({ idb = globalThis.indexedDB, locks = globalThis.navi
     },
     // 変更の一覧（新しい順。元のファイルとファイルの中身は入れない）
     async list() { const all = await tx([META], 'readonly', (s) => s[META].getAll()); return (all || []).sort((a, b) => b.updated - a.updated); },
+    // ほかのタブが持っている変更のどれかが外れたら解ける（落ちたタブの印はブラウザが少し遅れて外す。はじめの画面の一覧を出し直すため）。
+    // 持たれている変更がなければ、または navigator.locks がなければ null。返すのは { done }（約束をそのまま返すと await が外れるまで待ってしまう）。
+    // shared で待つので、外れた所ですぐ放す
+    async released() {
+      if (!locks || !locks.request) return null;
+      const [all, held] = await Promise.all([store.list(), store.held()]);
+      const ids = all.map((m) => m.id).filter((id) => held.has(id));
+      if (!ids.length) return null;
+      return { done: Promise.race(ids.map((id) => locks.request(LOCK_PREFIX + id, { mode: 'shared' }, () => undefined).catch(() => undefined))) };
+    },
     // ほかのタブが持っていない変更（問い・はじめの画面に出すもの）
     async free() { const [all, held] = await Promise.all([store.list(), store.held()]); return all.filter((m) => !held.has(m.id)); },
     // 書く：meta（id・名前・鍵…）、base（元のファイル。替わったときだけ）、put（[{rel, bytes, m}]）、keep（残すファイルの名前。ほかは消す）
