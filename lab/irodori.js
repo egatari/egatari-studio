@@ -3,7 +3,7 @@
 // 重みとトークナイザは Hugging Face から実行時に取り、Cache Storage に置く（2 回目は取りに行かない）
 import { IrodoriTTS } from './vendor/irodori-tts-webgpu/pipeline.mjs';
 // 版・場所・大きさ・WAV の読み取り・再標本化は、編集アプリの TTS の窓（lab/tts-helper.html）と共有する（lab/tts-engine.mjs）
-import { ORT_VERSION, TRANSFORMERS_VERSION, ORT_URL, ORT_WASM, TRANSFORMERS_URL, HF_REPO, HF_REV, HF_BASE, CACHE_NAME, SR, MODELS, SIZES, TOKENIZER_BYTES, folderOf, parseWav, resample } from './tts-engine.mjs';
+import { ORT_VERSION, TRANSFORMERS_VERSION, ORT_URL, ORT_WASM, TRANSFORMERS_URL, importOrt, importPinned, HF_REPO, HF_REV, HF_BASE, CACHE_NAME, SR, MODELS, SIZES, TOKENIZER_BYTES, folderOf, parseWav, resample } from './tts-engine.mjs';
 import { deleteModelCaches } from './model-cache.mjs';
 
 // 試験 B の組。左 raw は原稿（{θ|シータ} などの指定を解いた後）、右 yomi は読み辞書を通した後。
@@ -184,11 +184,7 @@ async function loadModel() {
   try {
     if (tts) { for (const s of Object.values(tts.s)) await s.release?.().catch(() => {}); tts = null; loadedPrec = null; }
     if (!ort) {
-      ort = await import(ORT_URL);
-      ort.env.wasm.wasmPaths = ORT_WASM;
-      ort.env.webgpu.powerPreference = 'high-performance';   // 念のため（adapter を渡すので普通は使われない）
-      if (gpuAdapter) ort.env.webgpu.adapter = gpuAdapter;   // 環境の欄に出したアダプタをそのまま使わせる
-      ort.env.logLevel = 'error';
+      ort = await importOrt(gpuAdapter);   // 環境の欄に出したアダプタをそのまま使わせる。WebAssembly は中身を確かめて渡す
     }
     const sizes = SIZES[prec];
     cacheErrors = [];
@@ -210,7 +206,7 @@ async function loadModel() {
       loadLog(`  ${name}: ${mb(sizes[name][0] + sizes[name][1])} MB ${m.cached && d.cached ? 'キャッシュから' : '取得'} ${((tf - ts) / 1000).toFixed(1)} s、セッション作成 ${((tc - tf) / 1000).toFixed(1)} s`);
     }
     if (!tokenizer) {
-      const T = await import(TRANSFORMERS_URL);
+      const T = await importPinned(TRANSFORMERS_URL);
       // tokenizer/llmjp_tok/ を「手元のモデル」として HF の固定版から読む（上流は同じ場所を自前で配っている）
       T.env.allowRemoteModels = false;
       T.env.allowLocalModels = true;

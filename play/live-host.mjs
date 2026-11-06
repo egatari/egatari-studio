@@ -156,14 +156,14 @@ export function startLive({ live, words: S, lang, allowed, policy: LP, el, onOpe
   function connect() {
     clearTimers();
     if (stopped || !DIRECT || left || phase() !== 'open') { render(); return; }
-    const url = LP.socketUrl(live, pid());
-    if (!url || !LP.sameEndpoint(url, live.endpoint)) { setState('stopped', 'bad_endpoint'); return; }
+    const url = LP.socketUrl(live), hello = LP.joinMessage(live, pid());   // the key and pid go in the first message, never in the address
+    if (!url || !hello || !LP.sameEndpoint(url, live.endpoint)) { setState('stopped', 'bad_endpoint'); return; }
     let s;
     try { s = new WebSocket(url); } catch { onClose({ code: 1006 }); return; }
     ws = s; admitted = false; pending = {};
     setState('connecting');
     s.onmessage = (ev) => { if (ws === s) onMessage(ev); };
-    s.onopen = () => { if (ws !== s) return; pingTimer = setInterval(() => send({ v: 1, t: 'ping' }), 45000); };
+    s.onopen = () => { if (ws !== s) return; send(hello); pingTimer = setInterval(() => send({ v: 1, t: 'ping' }), 45000); };
     s.onclose = (ev) => { if (ws !== s) return; ws = null; onClose(ev); };
     s.onerror = () => {};
     scheduleEnd();

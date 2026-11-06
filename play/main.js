@@ -323,6 +323,17 @@ async function renderRecents() {
   }
   $('recent-empty').hidden = list.length > 0;
   $('b-clear').hidden = list.length === 0;
+  renderKeepLine(list.length);
+}
+// One line under "Open a file": whether opened files are copied onto this device (the same condition as openFile), with a link
+// to the 「共有の端末」 switch and, when copies exist, 「すべて削除」 (the same action and confirmation as the button in Recent files).
+// Schools use shared iPads and Chromebooks; the default keeps copies (SHARED_DEVICE_DEFAULT), so say so where the file is opened.
+let keptCount = 0;
+function renderKeepLine(n = keptCount) {
+  keptCount = n;
+  const keeping = $('keep').checked && !$('shared').checked && !!S.recents && S.recents.kind !== 'none';
+  $('keep-line-text').textContent = keeping ? W().keepLineOn : $('shared').checked ? W().keepLineShared : W().keepLineOff;
+  $('keep-line-clear').hidden = n === 0;
 }
 const KEEP_KEY = 'egatari-viewer-keep', SHARED_KEY = 'egatari-viewer-shared';
 const getPref = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
@@ -332,11 +343,13 @@ function syncKeep() {
   const shared = $('shared').checked;
   $('keep').disabled = shared;
   $('keep').checked = !shared && getPref(KEEP_KEY) !== '0';
+  renderKeepLine();
 }
 function initKeep() {
   $('shared').checked = isShared();
   syncKeep();
-  $('keep').addEventListener('change', () => setPref(KEEP_KEY, $('keep').checked ? '1' : '0'));
+  $('keep').addEventListener('change', () => { setPref(KEEP_KEY, $('keep').checked ? '1' : '0'); renderKeepLine(); });
+  $('a-keep-shared').addEventListener('click', (e) => { e.preventDefault(); $('shared').scrollIntoView({ block: 'center' }); $('shared').focus(); });
   $('shared').addEventListener('change', async () => {
     setPref(SHARED_KEY, $('shared').checked ? '1' : '0');
     syncKeep();
@@ -490,7 +503,9 @@ async function main() {
   window.addEventListener('orientationchange', onResize);
   document.addEventListener('keydown', forwardKey);
   $('live').addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; e.preventDefault(); if ($('live').classList.contains('poll-open')) { setPollView(false); $('b-poll').focus(); } else if (!$('b-live').hidden) $('b-live').focus(); });
-  $('b-clear').addEventListener('click', async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); });
+  const clearAll = async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); };
+  $('b-clear').addEventListener('click', clearAll);
+  $('b-keep-clear').addEventListener('click', clearAll);
   // the "home" link: back to the start without reloading while a lesson plays
   $('home').addEventListener('click', (e) => { if (S.playing) { e.preventDefault(); $('b-close').click(); } });
   try { S.recents = await openRecents({ prefer: new URLSearchParams(location.search).get('store') === 'idb' ? 'idb' : '' }); } catch { S.recents = null; }

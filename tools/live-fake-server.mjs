@@ -1,9 +1,10 @@
 // 試験用の授業の部屋（tools/test-live.mjs と tools/test-app.mjs が使う）：通信の約束（FORMAT.LIVE_VENDOR_DIR の写し）を話す小さな WebSocket のサーバー。
 // 依存なし（RFC 6455 の手渡しと文字のフレームだけ）。ループバックだけで待ち受け、ネットワークは使わない
 //   const srv = await startFakeLive({requireApproval})
-//   srv.endpoint（http://127.0.0.1:<port>）・srv.connections（{url, origin, query}）・srv.messages（学ぶ人から届いた JSON）・srv.http（ws でない要求）
+//   srv.endpoint（http://127.0.0.1:<port>）・srv.connections（{url, origin, query, join}）・srv.messages（学ぶ人から届いた JSON。join は除く）・srv.http（ws でない要求）
 //   srv.drop(code)：つながっている全員を code で切る。srv.rejectNext(code)：次の接続を、手渡しの後すぐ code で切る。srv.admitAll()。srv.send(obj)。srv.close()
-// 返事：welcome（写しの fixtures/server-learner/welcome*.json を、この部屋と pid に合わせて）・ask と vote と confused には ack（ref を返す）・name には ack・ping には pong
+// 最初のメッセージは join（鍵と pid。PROTOCOL.md §3）でなければ 4400 で切る（鍵と pid はアドレスに入らない）。join には welcome（写しの fixtures/server-learner/welcome*.json を、
+// この部屋と pid に合わせて）・ask と vote と confused には ack（ref を返す）・name には ack・ping には pong
 import http from 'node:http';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -44,8 +45,10 @@ export async function startFakeLive(opts = {}) {
     sock.on('close', () => { conn.open = false; socks.delete(c); });
     sock.on('error', () => {});
     if (reject) { const code = reject; reject = null; setTimeout(() => c.close(code), 20); return; }
-    const w = fixture(c.status === 'admitted' ? 'server-learner/welcome.json' : 'server-learner/welcome-waiting.json');
-    sendObj({ ...w, room: conn.query.room, pid: conn.query.pid, window: opts.window || w.window });
+    const welcome = () => {
+      const w = fixture(c.status === 'admitted' ? 'server-learner/welcome.json' : 'server-learner/welcome-waiting.json');
+      sendObj({ ...w, room: conn.query.room, pid: conn.join.pid, window: opts.window || w.window });
+    };
     let buf = Buffer.alloc(0);
     sock.on('data', (d) => {
       buf = Buffer.concat([buf, d]);
@@ -65,6 +68,11 @@ export async function startFakeLive(opts = {}) {
         if (op !== 1) continue;
         let m;
         try { m = JSON.parse(p.toString('utf8')); } catch { c.close(4400); return; }
+        if (!conn.join) {   // 最初のメッセージ：join だけ
+          const ok = m && m.v === 1 && m.t === 'join' && Object.keys(m).sort().join() === 'key,pid,t,v' && /^[A-Za-z0-9_-]{22,64}$/.test(m.key) && /^[A-Za-z0-9_-]{16,43}$/.test(m.pid);
+          if (!ok) { c.close(m && m.t === 'join' ? 4403 : 4400); return; }
+          conn.join = m; welcome(); continue;
+        }
         messages.push(m);
         const ref = m.ref ? { ref: m.ref } : {};
         if (m.t === 'ping') sendObj({ v: 1, t: 'pong' });

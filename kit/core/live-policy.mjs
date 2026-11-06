@@ -8,7 +8,8 @@
 //   LP.inWindow(live.window, nowMs)         窓の中か（両端に SKEW_MS のゆとり）
 //   LP.closeInfo(code)                      {code, name, retry, kind}（kind：'retry' | 'stop'）
 //   LP.plan(code, attempt, nowMs, window, rand) → {retry: true, delayMs} | {retry: false, reason}（つなぎ直すか、いつ）
-//   LP.socketUrl(live, pid)                 学ぶ人の WebSocket の URL（endpoint と同じ origin。違えば null）
+//   LP.socketUrl(live)                      学ぶ人の WebSocket の URL（endpoint と同じ origin。違えば null）。部屋だけで、鍵と pid は入れない
+//   LP.joinMessage(live, pid)               つないだ後の最初のメッセージ {v:1, t:'join', key, pid}（鍵と pid はアドレスでなくここで送る。プロキシやサーバーの記録に残らない）
 //   LP.sameEndpoint(url, endpoint)          URL の origin が endpoint の origin と同じか（http(s) と ws(s) を対応させる）
 //   LP.activitiesFor(live, stepKey)         その段階で出す活動（"*" の後にその段階のもの）
 //   LP.docContext(doc, endpoint)            この文書からつないでよいか：'' | 'framed' | 'scheme' | 'sandboxed' | 'preview' | 'policy'（迷ったら否）
@@ -164,12 +165,17 @@ export function LivePolicy(opts) {
     if (!u) return null;
     return (u.protocol === 'https:' ? 'wss://' : 'ws://') + u.host;
   }
-  function socketUrl(live, pid) {
-    if (!isObj(live) || live.v !== 1 || !str(live.room) || !RE.room.test(live.room) || !str(live.key) || !RE.key.test(live.key) || !str(pid) || !RE.pid.test(pid)) return null;
+  // 学ぶ人の WebSocket（egatari/live の PROTOCOL.md §3）：アドレスには部屋だけ。鍵と pid は最初のメッセージ join で送る
+  function socketUrl(live) {
+    if (!isObj(live) || live.v !== 1 || !str(live.room) || !RE.room.test(live.room)) return null;
     var b = wsBase(live.endpoint);
     if (!b) return null;
-    var url = b + '/ws?room=' + encodeURIComponent(live.room) + '&key=' + encodeURIComponent(live.key) + '&pid=' + encodeURIComponent(pid);
+    var url = b + '/ws?room=' + encodeURIComponent(live.room);
     return sameEndpoint(url, live.endpoint) ? url : null;
+  }
+  function joinMessage(live, pid) {
+    if (!isObj(live) || live.v !== 1 || !str(live.key) || !RE.key.test(live.key) || !str(pid) || !RE.pid.test(pid)) return null;
+    return { v: 1, t: 'join', key: live.key, pid: pid };
   }
   function sameEndpoint(url, endpoint) {
     var e = parseEndpoint(endpoint), u;
@@ -269,6 +275,6 @@ export function LivePolicy(opts) {
   }
   return { RE: RE, LIMITS: LIMITS, normStrokes: normStrokes, SKEW_MS: SKEW_MS, CODES: CODES, BACKOFF: BACKOFF, RETRY_MIN_MS: RETRY_MIN_MS,
     validate: validate, inWindow: inWindow, windowStart: windowStart, windowEnd: windowEnd, closeInfo: closeInfo, plan: plan,
-    socketUrl: socketUrl, sameEndpoint: sameEndpoint, parseEndpoint: parseEndpoint, hostOf: hostOf, connectSrc: connectSrc, activitiesFor: activitiesFor,
+    socketUrl: socketUrl, joinMessage: joinMessage, sameEndpoint: sameEndpoint, parseEndpoint: parseEndpoint, hostOf: hostOf, connectSrc: connectSrc, activitiesFor: activitiesFor,
     docContext: docContext, cspOk: cspOk, joinUrl: joinUrl, offerJoinLink: offerJoinLink };
 }

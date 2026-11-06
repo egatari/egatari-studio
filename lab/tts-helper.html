@@ -5,8 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- 編集アプリの「TTS で作り直す」が開く窓。モデルとライブラリだけを取りに行く（jsDelivr と Hugging Face、版は固定）。
      編集アプリのページ（ネットワークに繋がらない）とは別のページで、受け取るのは読む文と声の名前だけ、返すのは音（PCM）だけ -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval' 'unsafe-eval'; connect-src 'self' https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob: https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+<!-- 決まり（CSP）。試験は tools/test-lab-csp.mjs。版や置き場を替えたら node tools/tts-sri.mjs（--fetch で中身も）
+     script-src：jsDelivr のコードは下の import map の integrity（sha384）で中身まで固定する。'sha256-…' はその import map を許すもの。
+       'wasm-unsafe-eval' は onnxruntime-web の WebAssembly のため。'unsafe-eval' は要らない（Chrome で Irodori・Kokoro の読み込みと合成を
+       CSP の違反なしで確かめた。onnxruntime-web 1.23 の糊にある new Function は embind の emval の呼び出しで、この使い方では通らない。
+       ほかのブラウザや版で通ってしまうと、窓に EvalError が出る。そのときは理由を書いて足す）
+     connect-src：huggingface.co と、そこから転送される配信の host（us.aws.cdn.hf.co。2026-11 に Playwright で取得の要求を記録して確かめた。
+       *.huggingface.co・*.hf.co の全部は許さない）。jsDelivr は WebAssembly を確かめて取るため。blob: は Kokoro に確かめた WebAssembly を渡すため
+     worker-src 'none'：onnxruntime-web は 1 スレッドで動き（このページは cross-origin isolated でない）、worker を作らない -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' https://cdn.jsdelivr.net 'wasm-unsafe-eval' 'sha256-ORfPS7tG6Tvz03LybpIQjeVZlft9kdilo9s/PvEjcBA='; connect-src 'self' https://cdn.jsdelivr.net https://huggingface.co https://us.aws.cdn.hf.co blob:; worker-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'">
 <meta name="referrer" content="no-referrer">
+<script type="importmap">{"imports":{"egatari-sri":"./tts-engine.mjs"},"integrity":{"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.0/dist/ort.webgpu.mjs":"sha384-N6f7mYiLljH5d73pdoSOdC9/RbEoHCXRvV843PaT93GuqTHybaxUQYzm7X247UQE","https://cdn.jsdelivr.net/npm/onnxruntime-web@1.23.0/dist/ort-wasm-simd-threaded.asyncify.mjs":"sha384-gAZ5slMQ8I9PiSFh20nyJzT8bN7rQqPsciJTV1VeK1PNpeuTQ2QmHlZ6cKvTNN36","https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.6/dist/transformers.min.js":"sha384-ypqDKlGaciPzMZFxk0iPx9blYGxbZIWTqZX7f6BuiicO9rTfnXfprLBev5KE5OfK","https://cdn.jsdelivr.net/npm/kokoro-js@1.2.1/dist/kokoro.web.js":"sha384-suR1TeKe6Fe8fT0n/uTWoohnPJrp1zu3z0bj4VH2anmmq739wlmFSnMFJyMYszAC","https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/dist/ort-wasm-simd-threaded.jsep.mjs":"sha384-7GJqH5vc83Yt7VHwrMXTM8bNCrt/e/8eCtok8zlB2u5dwqmhzSakzCkQWrfYGRN4"}}</script>
 <title>Egatari Studio — TTS</title>
 <link rel="icon" href="data:,">
 <style>

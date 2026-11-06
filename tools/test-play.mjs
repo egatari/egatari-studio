@@ -10,7 +10,7 @@
 //  4. 枠の中を断る：見出しのあるサーバーでは読み込まれず、見出しのないサーバーでも guard.js が止める
 //  5. service worker：キャッシュは自分のファイルだけ（教材を開いても増えない）・初めに開いた後はオフラインで開ける（読み込み直しも）・
 //     新しい版は次に開いたときから（再生中・ほかの窓で教材を再生している間は入れ替えない。更新のボタンはない）
-//  6. 最近のファイル：OPFS と IndexedDB の両方で、保存・一覧・開き直し・1 つ削除・すべて削除・残さない設定
+//  6. 最近のファイル：OPFS と IndexedDB の両方で、保存・一覧・開き直し・1 つ削除・すべて削除・残さない設定。「ファイルを開く」の下の 1 行（この端末にコピーを残す・共有の端末・すべて削除）
 //  7. share_target：service worker が受けて開く／service worker がないときは知らせ
 //  8. リンク：教材が頼んだリンクは決まり（kit/core/link-policy.mjs）の箱をページの側に出す。開かない scheme・相対・別の host の字・
 //     同じ host の 2 度目・偽の送り手（枠でない窓）の頼みは無視
@@ -470,6 +470,55 @@ console.log('shared device');
   ok(!(await o.p.isDisabled('#keep')) && await o.p.isChecked('#keep'), 'shared device off again: keeping comes back');
   await o.close(); }
 
+// The line under 「ファイルを開く」: copies of opened files are kept on this device (the default), with a link to 「共有の端末」
+// and 「すべて削除」 (schools share iPads and Chromebooks). The text follows the real state: kept, not kept, shared device
+console.log('device copies line');
+{ const o = await page();
+  const line = () => o.p.textContent('#keep-line-text');
+  const clearShown = () => o.p.evaluate(() => !document.getElementById('keep-line-clear').hidden);
+  ok(await o.p.evaluate(() => { const l = document.getElementById('keep-line'); return !!l && l.previousElementSibling === document.getElementById('drop') && l.getBoundingClientRect().height > 0; }),
+    'device copies: the line sits right under the file picker and is visible');
+  ok(await line() === '開いたファイルのコピーを、この端末の「最近のファイル」に 10 件まで残します。', `device copies: by default it says copies are kept, up to 10 (${await line()})`);
+  ok(await o.p.getAttribute('#a-keep-shared', 'href') === '#shared' && await o.p.textContent('#a-keep-shared') === '共有の端末', 'device copies: a link to the 「共有の端末」 switch, by its name');
+  ok(!(await clearShown()), 'device copies: no 「すべて削除」 while nothing is kept');
+  await o.p.click('#a-keep-shared');
+  ok(await o.p.evaluate(() => document.activeElement && document.activeElement.id === 'shared') && !(await o.p.isChecked('#shared')), 'device copies: the link moves focus to the switch and does not change it');
+  await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
+  ok(await until(() => clearShown()) && await o.p.textContent('#b-keep-clear') === 'すべて削除', 'device copies: once a copy is kept, the line offers 「すべて削除」');
+  // EGATARI_SHOTS_DIR=<dir>：画面の確かめ用に、1280 と 390 の幅で開く画面を撮る（日本語と英語、コピーが 1 つある状態。試験の合否には使わない）
+  if (process.env.EGATARI_SHOTS_DIR) {
+    fs.mkdirSync(process.env.EGATARI_SHOTS_DIR, { recursive: true });
+    for (const width of [1280, 390]) {
+      const q = await page(site.url, { viewport: { width, height: width > 600 ? 800 : 844 } });
+      await openFixture(q.p, 'lesson.play.ega.html'); await lessonFrame(q.p); await q.p.click('#b-close');
+      await until(() => q.p.evaluate(() => !document.getElementById('keep-line-clear').hidden));
+      for (const l of ['ja', 'en']) {
+        if (l === 'en') { await q.p.click('#b-lang'); await sleep(200); }
+        await q.p.evaluate(() => document.activeElement && document.activeElement.blur());
+        await q.p.screenshot({ path: path.join(process.env.EGATARI_SHOTS_DIR, `viewer-device-copies-${l}-${width}.png`) });
+      }
+      await q.close();
+    }
+  }
+  o.p.once('dialog', (d) => d.dismiss());
+  await o.p.click('#b-keep-clear');
+  await sleep(200);
+  ok(await o.p.evaluate(() => document.querySelectorAll('#recent-list li').length) === 1, 'device copies: 「すべて削除」 asks first (dismissed: nothing deleted)');
+  o.p.once('dialog', (d) => d.accept());
+  await o.p.click('#b-keep-clear');
+  ok(await until(() => o.p.evaluate(() => document.querySelectorAll('#recent-list li').length === 0)) && !(await clearShown()), 'device copies: 「すべて削除」 in the line deletes the copies, as the button in Recent files does');
+  await o.p.uncheck('#keep');
+  ok(await line() === '開いたファイルは、この端末に残しません。', 'device copies: with keeping off, the line says nothing is kept');
+  await o.p.check('#keep');
+  await o.p.check('#shared');
+  ok(await line() === '共有の端末：開いたファイルは、この端末に残しません。', 'device copies: on a shared device, the line says so');
+  await o.p.click('#b-lang');
+  ok(await until(async () => await line() === 'Shared device: opened files are not kept on this device.') && await o.p.textContent('#a-keep-shared') === 'Shared device', `device copies: English, shared device (${await line()})`);
+  await o.p.uncheck('#shared');
+  ok(await until(async () => await line() === 'A copy of each file you open is kept on this device, in Recent files (up to 10).'), `device copies: English, the default (${await line()})`);
+  await o.p.click('#b-lang');
+  await o.close(); }
+
 // ---------------------------------------------------------------- 7. share_target
 console.log('share target');
 const shareForm = `<!doctype html><meta charset="utf-8"><form id="f" method="post" action="/share" enctype="multipart/form-data"><input type="file" name="lesson" id="i"><input type="text" name="title" value="x"></form>`;
@@ -698,7 +747,8 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   ok(await f.evaluate(() => getComputedStyle(document.getElementById('live-mark')).display) === 'none' && await f.evaluate(() => DECK.live.state().context) === 'framed',
     'live: the lesson\'s own Live mark is hidden and its player, framed, does not connect');
   const c0 = fake.connections[0] || {};
-  ok(fake.connections.length === 1 && c0.query.room === 'r-7k2q6xw4' && c0.query.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && /^[A-Za-z0-9_-]{16,43}$/.test(c0.query.pid), 'live: one WebSocket to the declared endpoint with room, key and a random pid');
+  ok(fake.connections.length === 1 && c0.query.room === 'r-7k2q6xw4' && Object.keys(c0.query).length === 1 && c0.join && c0.join.key === 'Q2xhc3Nyb29tS2V5MDAwMD' && /^[A-Za-z0-9_-]{16,43}$/.test(c0.join.pid),
+    'live: one WebSocket to the declared endpoint with the room only in the address; the key and a random pid in the join message');
   ok(c0.origin === site.url.replace(/\/$/, ''), `live: the page holds the connection (Origin ${c0.origin}), not the lesson (Origin null)`);
   ok(frameReqs.length === 0, 'live: the lesson\'s frame made no request');
   ok((await state(o.p)).layout.mode === 'side', 'live with polls at 1280 x 800: the side pane');

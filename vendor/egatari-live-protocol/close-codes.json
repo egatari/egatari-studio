@@ -17,7 +17,7 @@
    "code": 4403,
    "name": "bad_key",
    "retry": false,
-   "meaning": "learner key does not match this room (or bad pid)"
+   "meaning": "learner key does not match this room, bad pid, or no join message within 10 s"
   },
   {
    "code": 4404,
