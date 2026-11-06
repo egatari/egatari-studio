@@ -1,6 +1,8 @@
 // 見本（examples/）を持ち運べる 1 ファイル（--portable）に組む。編集アプリの配信版（tools/build-app.mjs の dist/examples/）と
 // リリースに添えるファイル（tools/release-assets.mjs の out/release/）が同じものを使う
-//   buildExamples(outDir) → [{name, file, title, lang, slides, bytes, profile}]（outDir/<name><FORMAT.FILE_EXT> に書く）
+//   buildExamples(outDir) → [{name, file, title, lang, slides, bytes, profile, sha256, sample}]（outDir/<name><FORMAT.FILE_EXT> に書く）
+//   sample：サンプルのフォルダの sample.json（テーマは新規作成で選べるもの）（kit/core/sample-info.mjs。「このサンプルを参考に作る」で引き継ぐもの。backlog #130）。ないか正しくなければ組まない
+//   readSample(name) → sample.json の中身（確かめたもの）
 // 見本には音声がない（audio/ はリポジトリに入れない）ので、音声なしの 1 ファイルになる（再生は推定の秒数。TTS も dry-run の無音も作らない）。
 // 組むのは見本のフォルダの写し（一時フォルダ）から：リポジトリの見本に設定のファイル（egatari.json）を書かない。設定のファイルのない見本
 // （minimal は新しいデッキの雛形にしてよいので docId を持たせない）には、名前から決めた docId を与える（組むたびに同じ文書）
@@ -11,6 +13,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { buildPortable, writeOutput } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
+import { sampleProblems } from '../kit/core/new-deck-pack.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 // 並べる順（はじめの画面の一覧もこの順）
@@ -34,6 +37,16 @@ export function exampleRand(name) {
   };
 }
 
+// サンプルの情報（sample.json）：使う場面の分類と、新規作成の ④ に並ぶパーツに照らして確かめる
+export function readSample(name) {
+  const file = path.join(ROOT, 'examples', name, 'sample.json');
+  if (!fs.existsSync(file)) throw new Error(`example ${name}: ${file} not found`);
+  const obj = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const errs = sampleProblems(obj);   // 分類・④ のパーツ・新しく選べるテーマに照らす（kit/core/new-deck-pack.mjs。コマンドの --from-sample と同じ）
+  if (errs.length) throw new Error(`example ${name}: sample.json: ${errs.map((e) => `${e.path || '(root)'} ${e.code}`).join(', ')}`);
+  return obj;
+}
+
 export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} } = {}) {
   fs.mkdirSync(outDir, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-examples-'));
@@ -42,6 +55,7 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
     for (const name of names) {
       const dir = path.join(ROOT, 'examples', name);
       if (!fs.existsSync(path.join(dir, 'deck.html'))) throw new Error(`example ${name}: ${path.join(dir, 'deck.html')} not found`);
+      const sample = readSample(name);
       const copy = path.join(tmp, name);
       fs.cpSync(dir, copy, { recursive: true, filter: (f) => { const r = path.relative(dir, f); return !r.split(path.sep).some((s) => s === 'out' || s.startsWith('.')); } });
       const cfg = path.join(copy, FORMAT.CONFIG_FILE);
@@ -49,12 +63,13 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       const file = name + FORMAT.FILE_EXT, out = path.join(outDir, file);
       const src = path.join(copy, 'deck.html');
       // id のないスライド（minimal・tmlr2026 の原稿は id を持たない）に書き出しが付ける id も、名前から決めた乱数で（組むたびに同じ文書）
+      fs.rmSync(path.join(copy, 'sample.json'), { force: true });   // 教材の中身ではない（一覧に載せる）
       const r = await buildPortable(src, { out, idRand: exampleRand(name), fromFolder: false });
       writeOutput(src, out, r.html);
       for (const w of r.warnings) log(`  ⚠ example ${name}: ${w}`);
       const m = r.index.metadata || {};
       list.push({ name, file, title: String(m.title || name), lang: String(m.lang || ''), slides: r.stats.slides, bytes: Buffer.byteLength(r.html), profile: r.index.profile,
-        sha256: crypto.createHash('sha256').update(r.html).digest('hex') });
+        sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample });
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   return list;

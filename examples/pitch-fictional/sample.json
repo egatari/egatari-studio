@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "request": "架空の会社「レポミル」（社内のデータから報告書の下書きを作るサービス）の投資家向けピッチを 10 枚で作ってください。課題・解決・市場・お金の流れ・売上の計画・お願いの順に、数字は架空と明記してください。",
+  "category": "business",
+  "subcategory": "pitch",
+  "theme": "sumi",
+  "parts": ["m-bars", "m-flow", "m-kpi", "m-market", "m-quad"],
+  "structure": [
+    { "heading": "株式会社レポミル", "point": "表紙。社名と一言の説明、架空と明記" },
+    { "heading": "月報に消えている時間", "point": "課題を数字で：書くより集めて直す時間が長い" },
+    { "heading": "今の書き方：転記と差し戻しの往復", "point": "今の手順を流れ図で。転記の誤りが差し戻しを生む" },
+    { "heading": "聞き取りで多かった不満", "point": "不満の内訳を棒グラフで" },
+    { "heading": "レポミルの書き方", "point": "解決後の手順。人は直すことに時間を使う" },
+    { "heading": "ほかの道具との位置づけ", "point": "4 象限で競合と比べる" },
+    { "heading": "市場の大きさ（年間）", "point": "TAM・SAM・SOM の同心円" },
+    { "heading": "お金とサービスの流れ", "point": "事業モデルを流れ図で" },
+    { "heading": "売上の計画", "point": "5 年の売上を数字で" },
+    { "heading": "お願いしたいこと", "point": "試験導入・資金・紹介の 3 つ" }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": { "license": "CC-BY-4.0", "attribution": "雲居玄道（Egatari Studio）" }
+}

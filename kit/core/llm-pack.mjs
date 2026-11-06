@@ -25,12 +25,12 @@
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
 //   loadedParts(sets)                            その束で組み立てに入る部品（標準と、選んだ束の部品）
-//   trimCandidates・fitPlan・fitPack             無料のプランの目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。編集アプリ（kit/core/new-deck.mjs が出し直す）と
+//   trimCandidates・fitPlan・fitPack             無料のプランの目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。fitSample は「このサンプルを参考に作る」の収め方。編集アプリ（kit/core/new-deck.mjs が出し直す）と
 //                                                コマンド（kit/llm-pack.mjs）が同じ関数を使う
-//   partsPackOpts(tags, plan, {short})           選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?}（buildPack・packWithRequest に渡す。
+//   partsPackOpts(tags, plan, {short, full})     選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?, full?}（buildPack・packWithRequest に渡す。
 //                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, fitPlan as fitPlanOf, fitPack as fitPackOf, fitSample as fitSampleOf, packOptsOf } from './llm-pack-assemble.mjs';
 
 export { assemble, PACK_CAP_KB, PAID_PACK_KB, PLANS, FREE_CORE, STANDARD };
 export const BRIEF = briefParts(PACK, 'free');   // 無料のプランで一覧の 1 行だけの標準の部品
@@ -47,6 +47,7 @@ export const partsPackOpts = (tags, plan = 'free', opts = {}) => packOptsOf(PACK
 export const trimCandidates = trimCandidatesOf;
 export const fitPlan = (ticked, plan, opts) => fitPlanOf(PACK, ticked, plan, opts);
 export const fitPack = (ticked, plan, opts) => fitPackOf(PACK, ticked, plan, opts);
+export const fitSample = (ticked, plan, opts) => fitSampleOf(PACK, ticked, plan, opts);
 
 export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 

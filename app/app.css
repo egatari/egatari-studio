@@ -451,4 +451,16 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-info{margin:0 0 6px}
 #dlg .paste-go-note{align-self:center;font-size:13px;color:var(--muted)}
 #panel .buildwarn li.go{cursor:pointer}#panel .buildwarn li.go:hover{color:var(--accent)}#panel .buildwarn .where{color:var(--muted);font-size:12px}
+/* サンプルを大きく再生する窓（app/main.js の playExample。backlog #130）：16:9 の枠を窓いっぱいに、下に頼み方と権利、ボタン */
+#dlg.sample{width:min(1240px,96vw);max-height:96vh;padding:14px 18px}
+#dlg.sample .sample-stage{width:min(100%,calc((96vh - 210px) * 16 / 9));aspect-ratio:16/9;margin:0 auto;background:#000;border-radius:8px;overflow:hidden}
+#dlg.sample #sample-frame{width:100%;height:100%;border:0;display:block}
+#dlg.sample .sample-label{font-weight:600}
+#dlg.sample #sample-request,#dlg.sample #sample-rights{margin:6px 0 0}
+#dlg.sample .sample-like-note{margin:6px 0 0;text-align:end}
+#dlg button.small{font-size:12.5px;padding:3px 10px}
+#dlg .pick-badge.from-sample{background:var(--panel);color:var(--accent);border:1px solid var(--accent)}
+#dlg .paste-answered .pick-badge:not([hidden]){display:inline-block}
+#dlg .paste-answered .pick-badge{position:static;margin:0 8px;vertical-align:1px}
+#dlg .paste-from{margin:0 0 10px}
 #err-fix{margin-top:14px}

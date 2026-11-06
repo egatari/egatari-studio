@@ -56,6 +56,12 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
 const firstDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i >= a.length && a.length === b.length ? '' : `\n       at ${i}: app …${JSON.stringify(a.slice(Math.max(0, i - 80), i + 120))}\n       node …${JSON.stringify(b.slice(Math.max(0, i - 80), i + 120))}`; };
 const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.join(SHOTS, name) }); };
 
+// サンプルを編集で開く：一覧の「再生」→ 大きく再生する窓の「コピーを開いて編集」（app/main.js の playExample。backlog #130）
+async function openExampleCopy(page, name) {
+  await page.click(`#examples-list li[data-example="${name}"] button`);
+  await page.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: scaled(30000) });
+  await clickDlg(page, '#dlg-copy');
+}
 // examples/minimal にスライドの id を付けたもの（format spec §8.1：書き出しは id のないスライドに id を付けて書き戻すので、試験の鍵が書き出しの前後で
 // 変わらないように先に付ける。乱数は名前から決めたもの）。K('見出し') → そのスライドの id
 const MINI = assignIds(fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), 'utf8'), fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8'), { rand: exampleRand('minimal') });
@@ -1609,7 +1615,7 @@ try {
       const want = await readPortable(new Uint8Array(fs.readFileSync(file)));
       await po.goto(BASE);
       await po.waitForSelector(`#examples-list li[data-example="${name}"] button`);
-      await po.click(`#examples-list li[data-example="${name}"] button`);
+      await openExampleCopy(po, name);
       // 開いた後の状態を待つ（独自のコードの確かめは「始める」）
       const asked = await Promise.race([po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: scaled(30000) }).then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: scaled(30000) }).then(() => true)]);
       if (asked) { await clickDlg(po, '#dlg-run'); await po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: scaled(30000) }); }
@@ -2179,6 +2185,8 @@ try {
       await ps.route('**/examples/minimal' + FORMAT.FILE_EXT, async (route) => { await new Promise((r) => setTimeout(r, 1800)); await route.continue(); });
       await ps.click('#examples-list li[data-example="minimal"] button');
       ok(await ps.waitForSelector('#wait:not([hidden]) img.wait-logo', { timeout: scaled(4000) }).then(() => true).catch(() => false), 'wait: a slow open draws the logo after about 1 s');
+      await ps.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: scaled(30000) });
+      await clickDlg(ps, '#dlg-copy');
       await ps.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: scaled(30000) }).catch(() => {});
       ok(await ps.evaluate(() => document.getElementById('wait').hidden && !document.querySelector('.wait-logo')), 'wait: the logo is gone once the deck is shown');
       await ps.unroute('**/examples/minimal' + FORMAT.FILE_EXT);
@@ -2193,7 +2201,7 @@ try {
     }
     await ps.goto(base);
     await ps.waitForSelector('#examples-list li[data-example="minimal"] button');
-    await ps.click('#examples-list li[data-example="minimal"] button');
+    await openExampleCopy(ps, 'minimal');
     await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: scaled(30000) }).catch(() => {});
     ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);
     await ps.click('#b-help');
@@ -2250,7 +2258,7 @@ try {
       if (lang === 'ja') {
         await shot(pv, 'version-frozen.png');
         // 写しでも見本を開ける（相対の場所）
-        await pv.click('#examples-list li[data-example="minimal"] button');
+        await openExampleCopy(pv, 'minimal');
         await pv.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0; }, null, { timeout: scaled(30000) }).catch(() => {});
         ok(await pv.evaluate(() => { const s = window.__APP_TEST.state(); return !!(s.portable && !s.error); }), `versions: the minimal example opens in /v${frz}/`);
         await pv.click('#b-help');

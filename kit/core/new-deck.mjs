@@ -28,7 +28,7 @@
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
 //   choiceOf(configText)               → studio.newDeck | null
-//   choice の形：{plan, category, subcategory, parts: [タグ]}（category・subcategory は id か null。parts は選んだパーツ。
+//   choice の形：{plan, category, subcategory, parts: [タグ], fromSample?}（category・subcategory は id か null。parts は選んだパーツ。fromSample は始めたサンプルの名前。
 //   前の記録（subjects・tools・purposesOff）は読むだけで、新しく書くものには入れない）
 //
 // 見せ方（variant。format spec §8.4）は名前だけで選ぶ。教材のシード値（data-egatari-seed）はなくなった：書かない。前の原稿にあれば、そのまま残す（誰も読まない）
@@ -234,6 +234,8 @@ const clean = (choice) => ({
   category: catOf(choice.category) ? choice.category : null,
   subcategory: subOf(choice.category, choice.subcategory) ? choice.subcategory : null,
   parts: Object.keys(PARTS).filter((t) => (choice.parts || []).includes(t)).sort(),
+  // サンプルから始めたなら、そのサンプルの名前（examples/<名前>。backlog #130）
+  ...(typeof choice.fromSample === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(choice.fromSample) ? { fromSample: choice.fromSample } : {}),
 });
 export function withChoice(configText, choice) {
   return updateConfig(configText || null, { studio: merge({ newDeck: clean(choice || {}) }) });

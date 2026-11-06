@@ -1,0 +1,24 @@
+{
+  "v": 1,
+  "request": "高校 1 年の国語で、漢文（返り点から書き下し文へ）を中心に、古文の品詞分解と現代文の段落の役割も 1 枚ずつ扱う、目次から選んで見直せる教材を作ってください。返り点の決まりを示し、春暁・春望・論語で読む順を 1 字ずつ追ってください。",
+  "category": "teaching",
+  "subcategory": "class",
+  "theme": "kokugo",
+  "parts": ["m-gendai", "m-kanbun", "m-kobun", "m-menu"],
+  "structure": [
+    { "heading": "漢文を読む――返り点から書き下し文へ", "point": "表紙" },
+    { "heading": "今日の内容", "point": "目次。押すとその所へ、戻るで目次へ" },
+    { "heading": "返り点は読む順を示す", "point": "レ点・一二点・上下点の決まり" },
+    { "heading": "レ点・一二点・一レ点（『史記』）", "point": "読む順を番号で 1 字ずつ追う" },
+    { "heading": "孟浩然「春暁」", "point": "縦書きの白文から書き下し文へ" },
+    { "heading": "杜甫「春望」（前半）", "point": "一句に二つのレ点" },
+    { "heading": "杜甫「春望」（後半）", "point": "三つのレ点で下から戻る" },
+    { "heading": "再読文字と置き字（『論語』）", "point": "二度読む字と読まない字" },
+    { "heading": "古文の品詞分解（『枕草子』）", "point": "語に切り、品詞と訳を添える" },
+    { "heading": "現代文：段落の役割と指示語", "point": "指示語の指す所と段落の役割" },
+    { "heading": "まとめ", "point": "要点と、目次から見直す案内" }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": { "license": "CC-BY-4.0", "attribution": "雲居玄道（Egatari Studio）" }
+}

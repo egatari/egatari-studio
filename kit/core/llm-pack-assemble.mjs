@@ -11,6 +11,8 @@
 //   plan：お使いの AI のプラン。'free'（既定）では、標準の部品のうち中核の 4 つ（FREE_CORE）だけを詳しく書き、ほかの標準の部品は一覧の 1 行だけにする
 //     （標準すべてが無料のプランの上限に収まるように。backlog #125）。'paid' はどの部品も詳しく書く。専門の部品はどちらのプランでも詳しく書く
 //   short：無料のプランで、中核の 4 つも一覧の 1 行だけにする（束を足して上限を越えたとき、新規作成が外す候補より先に使う。kit/core/new-deck.mjs の fitPlan）
+//   full：無料のプランで詳しく書く標準の部品（既定は中核の 4 つ。short なら []）。渡せば short より先に読む。
+//     「このサンプルを参考に作る」はサンプルのパーツを詳しく書き、目安に収めるときに 1 つずつ短くする（fitSample）
 import { purposesTable } from './purposes.mjs';
 
 // 指示の大きさの上限（KB = 1024 バイト。生成した指示で、頼みたいことは記入欄のまま。写す文に入る内容・場面の節は数えない）。
@@ -30,9 +32,10 @@ export const PLANS = Object.freeze(['free', 'paid']);
 export const FREE_CORE = Object.freeze(['m-bars', 'm-flow', 'm-menu', 'm-predict']);
 export const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
 // 一覧の 1 行だけにする部品（無料のプランの、中核の 4 つ以外の標準の部品。short なら中核の 4 つも）
-export function briefParts(data, plan = 'free', short = false) {
+export function briefParts(data, plan = 'free', short = false, full = null) {
   if (planName(plan) === 'paid') return [];
-  return Object.keys(data.en.components).sort().filter((t) => data.en.components[t].set === STANDARD && (short || !FREE_CORE.includes(t)));
+  const keep = Array.isArray(full) ? full : short ? [] : FREE_CORE;
+  return Object.keys(data.en.components).sort().filter((t) => data.en.components[t].set === STANDARD && !keep.includes(t));
 }
 export function normalizeSets(sets, data) {
   if (sets === undefined || sets === null) return [];
@@ -71,13 +74,13 @@ export function goneParts(data, lang, exclude, sets) {
 export const membersOf = (D, set) => Object.keys(D.components).sort().filter((n) => D.components[n].set === set);
 
 // 共通の本体（標準の部品の一覧と説明・言いたいことの表）。sets：入っている束（表が指す部品を決める。既定 [] は標準だけ。null ならすべて）。off：外した札
-export function commonOf(data, lang, { exclude = [], sets = [], off = [], plan = 'free', short = false } = {}) {
+export function commonOf(data, lang, { exclude = [], sets = [], off = [], plan = 'free', short = false, full = null } = {}) {
   const D = langOf(data, lang);
   const ss = sets === null ? [...data.sets] : normalizeSets(sets, data);
   const gone = goneParts(data, lang, exclude, ss);
   const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, sets: ss, off }) : '');
   return tidy(partSpans(D.common, exclude).replace('{{PURPOSES}}', table)
-    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, briefParts(data, plan, short))));
+    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, briefParts(data, plan, short, full))));
 }
 // 1 つの束の指示。sets：一緒に入る束（説明の中の名前を残す部品を決める。既定はこの束だけ）
 export function partOf(data, name, lang, { exclude = [], sets = [name] } = {}) {
@@ -91,18 +94,18 @@ export function partOf(data, name, lang, { exclude = [], sets = [name] } = {}) {
 export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
 
 // sets：選んだ束（'a,b'・配列・'all'）。plan：'free'（既定）| 'paid'（詳しさだけが変わる）
-export function packParts(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}) {
+export function packParts(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null } = {}) {
   const ss = normalizeSets(sets, data);
-  return [commonOf(data, lang, { exclude, sets: ss, off, plan, short }), ...ss.map((s) => partOf(data, s, lang, { exclude, sets: ss }))];
+  return [commonOf(data, lang, { exclude, sets: ss, off, plan, short, full }), ...ss.map((s) => partOf(data, s, lang, { exclude, sets: ss }))];
 }
-export function assemble(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}) {
-  const parts = [...packParts(data, { sets, lang, exclude, off, plan, short }), requestOf(data, lang)].filter(Boolean);
+export function assemble(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null } = {}) {
+  const parts = [...packParts(data, { sets, lang, exclude, off, plan, short, full }), requestOf(data, lang)].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }
 
 // 選んだパーツ（タグ）だけの組み立ての引数 {sets, exclude, plan, short?}：選んだ専門のパーツの束を入れ、選ばないパーツは除く（新規作成と同じ。
 // kit/core/llm-pack.mjs の partsPackOpts はこの指示の材料で）
-export function packOptsOf(data, tags, plan = 'free', { short = false } = {}) {
+export function packOptsOf(data, tags, plan = 'free', { short = false, full = null } = {}) {
   const want = new Set(tags || []), all = Object.keys(data.en.components);
   const on = all.filter((t) => want.has(t));
   return {
@@ -110,6 +113,7 @@ export function packOptsOf(data, tags, plan = 'free', { short = false } = {}) {
     exclude: all.filter((t) => !want.has(t)).sort(),
     plan: planName(plan),
     ...(short && planName(plan) === 'free' ? { short: true } : {}),
+    ...(Array.isArray(full) && planName(plan) === 'free' ? { full: [...new Set(full)].sort() } : {}),
   };
 }
 
@@ -128,20 +132,63 @@ export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {
 
 // 目安に収める（backlog #125）：無料のプランで目安を越えたら、まず中核の 4 つ（棒グラフ・流れ図・目次・予想と答え）の説明も短くする（short）。
 // それでも越えるなら、外す候補は印の付いた専門のパーツだけ（外したときに減る大きさの大きい順。標準のパーツは候補にしない）。
-// sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。→ {short, candidates}
-export function fitPlan(data, ticked, plan, { sizeOf, capBytes }) {
+// sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。keep：ほかに候補にしないパーツ（サンプルから引き継いだパーツ。backlog #130）。→ {short, candidates}
+export function fitPlan(data, ticked, plan, { sizeOf, capBytes, keep: also = [] }) {
   const short = planName(plan) === 'free' && sizeOf(ticked, false) > capBytes;
-  const keep = new Set(ticked.filter((t) => !data.en.components[t] || data.en.components[t].set === STANDARD));
+  const keep = new Set(ticked.filter((t) => !data.en.components[t] || data.en.components[t].set === STANDARD || also.includes(t)));
   return { short, candidates: trimCandidates(ticked, { sizeOf: (tags) => sizeOf(tags, short), capBytes, keep }) };
 }
 
 // 目安に収めた後の選び方（コマンドの kit/llm-pack.mjs と npm run gen の大きさの表が使う。編集アプリで［候補を外す］を押した後と同じ）：fitPlan の候補を外し、
 // 外した後でもう一度 fitPlan で short を決める（外して収まれば、中核の 4 つの説明は詳しいまま）。
 // → {tags: 残るパーツ, short, dropped: 外したパーツ, bytes, over: まだ目安を越えるか}
-export function fitPack(data, ticked, plan, { sizeOf, capBytes }) {
-  const first = fitPlan(data, ticked, plan, { sizeOf, capBytes });
+export function fitPack(data, ticked, plan, { sizeOf, capBytes, keep = [] }) {
+  const first = fitPlan(data, ticked, plan, { sizeOf, capBytes, keep });
   const tags = ticked.filter((t) => !first.candidates.includes(t));
-  const { short } = first.candidates.length ? fitPlan(data, tags, plan, { sizeOf, capBytes }) : first;
+  const { short } = first.candidates.length ? fitPlan(data, tags, plan, { sizeOf, capBytes, keep }) : first;
   const bytes = sizeOf(tags, short);
   return { tags, short, dropped: first.candidates, bytes, over: bytes > capBytes };
+}
+
+// 「このサンプルを参考に作る」の目安に収める（backlog #130。編集アプリの新規作成とコマンドの --from-sample が同じ関数を使う）。
+// サンプルのパーツ（own）は無料のプランでも詳しく書く（中核の 4 つでも、ほかの標準のパーツでも）。越えたら、この順に 1 段ずつ：
+//   1. サンプルが使わない中核の 4 つを短くする（減る大きさの大きい順に 1 つずつ、収まるまで）
+//   2. サンプルが使わない専門のパーツを外す（trimCandidates。減る大きさの大きい順）
+//   3. それでも越えるときだけ、サンプルの標準のパーツを短くする（減る大きさの大きい順に 1 つずつ）
+// 2 で外したら、残ったパーツでもう一度 1 から決める（編集アプリで［候補を外す］を押した後と同じ指示になる。外して収まれば 1 で短くした分も戻る）。
+// 有料のプランは短くしない（2 だけ）。sizeOf(tags, full) は選んだパーツと詳しく書く標準の部品で組んだ指示のバイト数。
+// → {tags, full, step1Full・step1Shortened：初めの 1 の後の full と短くしたもの（外す候補を見せている間の編集アプリの指示と知らせ）, shortened：1 で短くしたもの, dropped：2 で外したもの,
+//    ownShortened：3 で短くしたもの, short：何かを短くしたか, bytes, over}
+export function fitSample(data, ticked, plan, { sizeOf, capBytes, own = [] }) {
+  const free = planName(plan) === 'free';
+  const isStd = (t) => !!data.en.components[t] && data.en.components[t].set === STANDARD;
+  const once = (tags) => {
+    const mine = tags.filter((t) => own.includes(t));
+    let full = free ? [...new Set([...FREE_CORE, ...mine.filter(isStd)])].sort() : null;
+    const size = () => sizeOf(tags, full);
+    // full から 1 つずつ外して短くする（減る大きさの大きい順。同じなら名前の順）。選んでいないパーツは指示に入らないので数えない
+    const shorten = (pool) => {
+      const out = [];
+      let left = pool.filter((t) => tags.includes(t) && full.includes(t));
+      while (left.length && size() > capBytes) {
+        const now = size();
+        const [t] = left.map((x) => [x, now - sizeOf(tags, full.filter((y) => y !== x))]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0];
+        full = full.filter((y) => y !== t); out.push(t); left = left.filter((y) => y !== t);
+      }
+      return out;
+    };
+    const shortened = free ? shorten(FREE_CORE.filter((t) => !mine.includes(t))) : [];
+    const step1Full = full;
+    const keep = new Set(tags.filter((t) => !data.en.components[t] || isStd(t) || mine.includes(t)));
+    const dropped = size() > capBytes ? trimCandidates(tags, { sizeOf: (x) => sizeOf(x, full), capBytes, keep }) : [];
+    if (dropped.length) return { tags, full, step1Full, shortened, dropped, ownShortened: [] };
+    const ownShortened = free ? shorten(mine.filter(isStd)) : [];
+    return { tags, full, step1Full, shortened, dropped, ownShortened };
+  };
+  const first = once([...ticked]);
+  let r = first, dropped = [];
+  while (r.dropped.length) { dropped = [...dropped, ...r.dropped]; r = once(r.tags.filter((t) => !r.dropped.includes(t))); }
+  const bytes = sizeOf(r.tags, r.full);
+  return { tags: r.tags, full: r.full, step1Full: first.step1Full, step1Shortened: first.shortened, shortened: r.shortened, dropped, ownShortened: r.ownShortened,
+    short: r.shortened.length + r.ownShortened.length > 0, bytes, over: bytes > capBytes };
 }
