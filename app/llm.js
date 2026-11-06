@@ -41,10 +41,13 @@ import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
 import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf, samplePackFit } from '../kit/core/new-deck-pack.mjs';
+import { readFileBoundedText } from './bounded-read.js';
 
 
 // 画面の言葉（handoff/new-deck-flow-2026-10-25.md の文言の表。表にないものは handoff/ux-wording-principles.md の決まりで決めた）
 const CIRCLED = ['', '①', '②', '③', '④', '⑤', '⑥'];
+// 貼り付けた出力・ファイルから読む出力の上限（バイト）：組み立てが読む原稿（deck.html）と同じ（kit/core/bounded-read-core.mjs の READ_LIMITS.source）
+const REPLY_MAX = READ_LIMITS.source;
 const TX = {
   ja: {
     method: 'チャットの AI に書いてもらう', methodFix: 'チャットの AI に直してもらう',
@@ -145,10 +148,18 @@ const TX = {
     keepDeck: 'スライドは今のままにします',
     extracted: { deck: '出力からスライドのコードブロックを取り出しました', narr: '出力から台本のコードブロックを取り出しました' },
     // 押せない［作成］［挿入］［置き換える］の横：欠けているもののうち最初の 1 つ（n は問いの番号）
-    why: { kind: '① に答えてください', title: '② のタイトルを書いてください', deck: (n) => `${CIRCLED[n]} にスライドを貼り付けてください`, either: (n) => `${CIRCLED[n]} にスライドか台本を貼り付けてください`,
-      outline: (n) => `${CIRCLED[n]} に構成案を貼り付けてください`, fix: (n) => `${CIRCLED[n]} の欄の下の知らせを見てください` },
+    // n が 0：番号のない貼り付けだけの画面（新規作成の「AI の出力を貼り付ける」）
+    why: { kind: '① に答えてください', title: '② のタイトルを書いてください', deck: (n) => `${n ? CIRCLED[n] + ' に' : ''}スライドを貼り付けてください`, either: (n) => `${n ? CIRCLED[n] + ' に' : ''}スライドか台本を貼り付けてください`,
+      outline: (n) => `${CIRCLED[n]} に構成案を貼り付けてください`, fix: (n) => `${n ? CIRCLED[n] + ' の' : ''}欄の下の知らせを見てください` },
     go: { new: '作成', insert: '挿入', replace: '置き換える' },
     replaceHint: '直したスライドだけが出力されたときは、そのスライドだけを置き換えます',
+    // 新規作成の貼り付けだけの画面（もう出力を持っている人：スキルで作った・前に作った）と、ファイルから読む
+    direct: 'AI の出力を貼り付ける', directHint: 'スキルで作った出力や、前に作った出力を、そのまま入れます',
+    onlyTitle: 'AI の出力を貼り付けます', onlyBack: '問いに答えて作る',
+    fromFile: 'ファイルから読む', fromFileHint: '出力のファイル（.txt・.md）を選ぶか、欄にドラッグ＆ドロップします',
+    fileType: 'テキストのファイル（.txt・.md）を選んでください',
+    fileOver: (mb) => `このファイルは大きすぎます（${mb} MB まで）。AI の出力のファイルを選び直してください`,
+    fileUnread: 'このファイルを読めませんでした。もう一度選んでください',
     untrusted: '貼り付けたものは、開いたファイルと同じに扱います。スクリプトが入っていれば、動かす前に確かめます',
     // 構成案（長い教材）
     outlineLabel: '構成案（outline のコードブロック）', outlinePh: 'outline のコードブロックを貼り付け',
@@ -301,10 +312,16 @@ const TX = {
     noNarr: { new: 'It will be created without a script (you can write one later).', insert: 'They will be inserted without a script (you can write one later).', replace: 'The script stays as it is.' },
     keepDeck: 'The slides stay as they are.',
     extracted: { deck: 'Took the slides code block out of the output.', narr: 'Took the script code block out of the output.' },
-    why: { kind: 'Answer step 1', title: 'Write the title in step 2', deck: (n) => `Paste the slides in step ${n}`, either: (n) => `Paste the slides or the script in step ${n}`,
-      outline: (n) => `Paste the outline in step ${n}`, fix: (n) => `See the notice under the fields in step ${n}` },
+    why: { kind: 'Answer step 1', title: 'Write the title in step 2', deck: (n) => `Paste the slides${n ? ` in step ${n}` : ''}`, either: (n) => `Paste the slides or the script${n ? ` in step ${n}` : ''}`,
+      outline: (n) => `Paste the outline in step ${n}`, fix: (n) => `See the notice under the fields${n ? ` in step ${n}` : ''}` },
     go: { new: 'Create', insert: 'Insert', replace: 'Replace' },
     replaceHint: 'If only the fixed slides are in the output, only those slides are replaced.',
+    direct: 'Paste the AI’s output', directHint: 'For output you already have, from a skill or from before.',
+    onlyTitle: 'Paste the AI’s output', onlyBack: 'Answer the questions instead',
+    fromFile: 'Read from a file', fromFileHint: 'Choose the output file (.txt, .md), or drag it onto a field.',
+    fileType: 'Choose a text file (.txt or .md).',
+    fileOver: (mb) => `This file is too large (up to ${mb} MB). Choose the AI’s output file again.`,
+    fileUnread: 'Could not read this file. Choose it again.',
     untrusted: 'Pasted content is treated like an opened file: if it contains scripts, you are asked before they run.',
     outlineLabel: 'Outline (the outline code block)', outlinePh: 'Paste the outline code block',
     outlineHint: (a, b) => `Paste the outline (the outline code block) and press Next. Then copy the instructions for slides ${a}–${b}. Ask for the rest after creating, with “Ask for the next ${BATCH}” in the notice above.`,
@@ -1020,10 +1037,34 @@ export function setupLlm(app) {
       onChange();
     }
     // 欄に書き戻した字（分けた・移した中身）は、もう読んだもの：同じ字の input では読み直さない（知らせが消えないように）
-    for (const f of [F.deck, F.narr]) f.ta.addEventListener('input', () => { if (f.ta.value === f.last) return; take(f.k); F.deck.last = F.deck.ta.value; F.narr.last = F.narr.ta.value; render(); });
+    const taken = (k) => { take(k); F.deck.last = F.deck.ta.value; F.narr.last = F.narr.ta.value; render(); };
+    for (const f of [F.deck, F.narr]) f.ta.addEventListener('input', () => { if (f.ta.value === f.last) return; fileMsg.hidden = true; taken(f.k); });
+    // ファイルから読む（ChatGPT・Claude が出力をファイルで渡したとき）：.txt・.md を上限つきで読み（app/bounded-read.js。上限は貼り付けた原稿と同じ REPLY_MAX）、
+    // 貼り付けた字と同じに欄に入れて pastePart を通す（信頼しない：貼った字と同じ扱い）。選んだときはスライドの欄へ（中身で分ける・移す）、落としたときは落とした欄へ
+    const fileMsg = el('p', { id: 'paste-file-msg', cls: 'note bad', role: 'alert', hidden: '' });
+    const fileIn = el('input', { type: 'file', id: 'paste-file-input', accept: '.txt,.md,text/plain,text/markdown', hidden: '', tabindex: '-1', 'aria-label': X.fromFile });
+    async function readReply(file, k) {
+      fileMsg.hidden = true; fileMsg.textContent = '';
+      if (!file) return;
+      if (!/\.(txt|md|markdown)$/i.test(String(file.name || ''))) { fileMsg.hidden = false; fileMsg.textContent = X.fileType; return; }
+      let text;
+      try { text = (await readFileBoundedText(file, { max: REPLY_MAX, what: String(file.name || '') })).text; }
+      catch (e) { fileMsg.hidden = false; fileMsg.textContent = e && e.code === 'read-over' ? X.fileOver(Math.round(REPLY_MAX / 1048576)) : X.fileUnread; return; }
+      F[k].ta.value = text.replace(/^\uFEFF/, '');
+      taken(k);
+      F[k].ta.focus();
+    }
+    fileIn.addEventListener('change', () => { const f = fileIn.files && fileIn.files[0]; fileIn.value = ''; readReply(f, 'deck'); });
+    const fileBtn = el('button', { type: 'button', id: 'paste-file', text: X.fromFile, 'aria-describedby': 'paste-file-hint', onclick: () => fileIn.click() });
+    const fileRow = el('div', { cls: 'paste-guide paste-file' }, [fileBtn, el('span', { id: 'paste-file-hint', cls: 'hint', text: X.fromFileHint }), fileIn, fileMsg]);
+    const hasFiles = (e) => !!(e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files'));
+    for (const f of [F.deck, F.narr]) {
+      f.box.addEventListener('dragover', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; });
+      f.box.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); readReply(e.dataTransfer.files[0], f.k); });
+    }
     render();
     return {
-      nodes: [info, F.deck.box, F.narr.box],
+      nodes: [info, F.deck.box, F.narr.box, fileRow],
       focus: () => F.deck.ta.focus(),
       // 押してよいか（新規作成・挿入はスライドが要る。修正はどちらか 1 つでよい）と、ボタンの横に出す言葉
       ready: () => {
@@ -1072,6 +1113,9 @@ export function setupLlm(app) {
     let unanswered = () => null;      // 新規作成：① ② の答えで欠けているもの（押せないわけ）
     const pasteN = mode === 'new' ? 5 : 3;
     let fields = null;
+    // 新規作成の貼り付けだけの画面（「AI の出力を貼り付ける」）：① 〜 ④ は要らない。押せないわけの言葉に番号を付けない
+    let direct = false;
+    const pn = () => (direct ? 0 : pasteN);
     // この呼び出しの窓の印（ask に渡す本体の 1 行目）。窓は 1 つを使い回すので、印が文書にないとき（前の窓・次の窓が出ている）はボタンに触らない。
     // 前の窓の後始末（作成の後の品質チェックを待つ）が次の窓（構成案の続き）を開いた後に終わり、その計算が今の窓の「挿入」を押せなくしていた
     const howto = el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo });
@@ -1085,14 +1129,14 @@ export function setupLlm(app) {
       // ボタンは同じ場所のまま。押せないときは、すぐ左に欠けているもののうち最初の 1 つを、押せるときは添え書き（台本なしで作成します など）を出す
       const pre = unanswered(), waiting = outlinePhase(), ready = fields.ready();
       b.disabled = !!pre || waiting || !ready;
-      goNote.textContent = pre || (waiting ? X.why.outline(pasteN) : !ready ? fields.why(pasteN) : fields.note());
+      goNote.textContent = pre || (waiting ? X.why.outline(pasteN) : !ready ? fields.why(pn()) : fields.note());
       if (b.previousSibling !== goNote) b.before(goNote);
       b.setAttribute('aria-describedby', 'paste-go-note');
     };
     fields = pasteFields(mode, () => syncGo());
     const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
       ...fields.nodes, msg, cut, cutMsg, cutMsg.box, el('p', { cls: 'hint', text: X.untrusted })];
-    let body, openPaste = () => {}, focusTitle = null;
+    let body, openPaste = () => {}, focusTitle = null, showDirect = () => {};
     if (mode === 'new') {
       // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。1 つだけ開く流れ（flow）：答えた問いは 1 行にたたみ、次の問いを開く。
       // ③ まで答えると ④、指示をコピーすると ⑤ が開く。⑤ は ④ を開いたら見出しから開ける（もう出力を持っている人）
@@ -1119,16 +1163,32 @@ export function setupLlm(app) {
       send = sendStep(titles[3], copyMsg, { request, missing, onCopied: () => { F.done(3); F.open(4); }, onChange: () => F.open(3) });
       newChoice = send.choice;
       five = fiveStep(titles, fields, pasteKids, () => syncGo());
-      outlinePhase = () => five.waiting();
-      unanswered = () => (!kindOk() ? X.why.kind : !titleOk() ? X.why.title : null);
+      outlinePhase = () => !direct && five.waiting();
+      unanswered = () => (direct ? null : !kindOk() ? X.why.kind : !titleOk() ? X.why.title : null);
       F = flow([...Qs.map((q) => ({ node: q.node, q })), { node: send.node, summary: send.summary }, { node: five.node, can: () => F.current >= 3 || F.isDone(3), focus: () => { const o = document.getElementById('paste-outline-text'); if (o && o.getClientRects().length) o.focus(); else fields.focus(); } }],
         { onOpen: (i) => { if (i === 3) { send.guessNow(); send.update(); } if (i === 4) five.render(); } });
-      openPaste = () => F.open(4, { focus: false });
+      openPaste = () => { if (!direct) F.open(4, { focus: false }); };
       // サンプルから：① と ③ は答えた形（「サンプルから」の札）、② を開く
       if (draft.from) { F.done(0); F.done(2); F.open(1, { focus: false }); } else F.open(0, { focus: false });
       focusTitle = draft.from ? () => Qs[1].titleIn.focus() : null;
       send.update(); five.render();
-      body = [...Qs.map((q) => q.node), send.node, five.node];
+      // もう出力を持っている人（スキルの出力・前に作った出力）：問いに答えずに貼り付けだけの画面へ。欄は ⑤ と同じもの（貼った字は行き来しても残る）。
+      // 場面・タイトル・テーマは貼った教材のまま（<title>・<html data-theme>）で、選んだものを足さない（openNew の direct）
+      const directBtn = el('button', { type: 'button', id: 'paste-direct', 'aria-describedby': 'paste-direct-hint', text: X.direct, onclick: () => showDirect(true) });
+      const offer = el('div', { id: 'paste-direct-offer', cls: 'paste-direct' }, [directBtn, el('p', { id: 'paste-direct-hint', cls: 'hint', text: X.directHint })]);
+      const onlyBox = el('div', { cls: 'paste-five' });
+      const only = el('section', { id: 'paste-only', cls: 'paste-only', 'aria-labelledby': 'paste-only-h', hidden: '' }, [el('h3', { id: 'paste-only-h', text: X.onlyTitle }), onlyBox,
+        el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-only-back', text: X.onlyBack, onclick: () => showDirect(false) })])]);
+      const steps = [...Qs.map((q) => q.node), send.node, five.node];
+      showDirect = (on) => {
+        direct = on;
+        howto.hidden = on; offer.hidden = on; only.hidden = !on;
+        for (const n of steps) n.hidden = on;
+        if (on) { onlyBox.replaceChildren(...five.kids); setTimeout(() => fields.focus(), 0); }
+        else { five.render(true); directBtn.focus(); }
+        syncGo();
+      };
+      body = [offer, ...steps, only];
     } else if (mode === 'insert') {
       const { deck, narration } = await readDeck();
       const slides = sectionsOf(deck);
@@ -1180,7 +1240,7 @@ export function setupLlm(app) {
       if (unanswered() || outlinePhase() || !fields.ready()) { focusPaste = true; if (!unanswered()) openPaste(); continue; }
       status(X.building[mode]);
       let res;
-      try { res = await finish(fields.data(), mode); } finally { status(''); }
+      try { res = await finish({ ...fields.data(), direct }, mode); } finally { status(''); }
       if (res === null) return true;   // 窓は閉じた：貼り付けの段を開き直さない（開き直すと、もう閉じた窓の計算が走る）
       focusPaste = true; openPaste();
       msg.hidden = false; msg.textContent = res;
@@ -1233,7 +1293,7 @@ export function setupLlm(app) {
       }
       onChange();
     }
-    return { node, render, waiting };
+    return { node, render, waiting, kids };
   }
 
 
@@ -1280,6 +1340,8 @@ export function setupLlm(app) {
   // 組み立ての失敗の言葉：選んだカタログにない要素（kit/core/parts2.mjs。1.x の教材に 2.x だけのパーツを貼った、など）は画面の言葉で直し方まで
   const buildFailText = (e) => (e && e.code === NOT_IN_CATALOGUE && Array.isArray(e.notInCatalogue) ? e.notInCatalogue.map((a) => catalogueMessage(LANG, a)).join(' ') : String((e && e.message) || e).slice(0, 300));
   const nameOf = (deck) => exportName(titleOf(deck), 'ai-draft', FORMAT.FILE_EXT);   // 題名から（kit/core/export-name.mjs）
+  // 貼り付けだけの画面の題名：<title>、なければ最初の <h1> の字（タグを除き、文字参照を戻す：titleOf と同じ読み方）。どちらもなければ ''（名前は ai-draft）
+  const lessonTitle = (deck) => titleOf(deck) || titleOf(`<title>${(String(deck).match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || ''}</title>`);
   // メモリの上の原稿 → Worker で1 ファイル（.ega.html）（組み立てと同じ期限）→ 開く（中身からコードを探し、あれば確かめる）
   async function openFiles(files, name, extra) {
     const ws = memoryWorkspace('pasted', files);
@@ -1299,17 +1361,18 @@ export function setupLlm(app) {
     if (!newTheme || !/^[\w-]+$/.test(newTheme)) return deck;
     return deck.replace(/<html\b[^>]*>/i, (tag) => (/\sdata-theme\s*=/i.test(tag) ? tag : tag.replace(/>$/, ` data-theme="${newTheme}">`)));
   }
+  // r.direct：貼り付けだけの画面から（① 〜 ④ に答えていない）。テーマ・構成案・選び方（studio.newDeck）は足さず、名前は貼った教材の題名（<title>、なければ最初の h1）から
   async function openNew(r, notes, info = []) {
-    const ids = withIds(withTheme(r.deck), r.narration);
+    const ids = withIds(r.direct ? r.deck : withTheme(r.deck), r.narration);
     const files = { 'deck.html': ids.deck, 'narration.md': ids.narration || '' };
     // 構成案から作った最初の分：構成案と、次に頼む番号を設定のファイル（egatari.json の studio.outline）に（kit/core/llm-outline.mjs）。
     // 新規作成で選んだもの（場面・分野・外した言いたいこと）を studio.newDeck に。どちらも updateConfig を通る（kit/core/config-file.mjs）
     // 新しい教材はパーツライブラリ 2.x で組む（指示が出すパーツと同じカタログ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）
     let cfg = withNewLessonCatalogue(null);
-    if (outlineRows) cfg = withOutline(cfg, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
-    if (newChoice) cfg = withChoice(cfg, newChoice());
+    if (outlineRows && !r.direct) cfg = withOutline(cfg, { rows: outlineRows, next: 1 + sectionsOf(ids.deck).length });
+    if (newChoice && !r.direct) cfg = withChoice(cfg, newChoice());
     files[FORMAT.CONFIG_FILE] = cfg;
-    const name = nameOf(ids.deck);
+    const name = r.direct ? exportName(lessonTitle(ids.deck), 'ai-draft', FORMAT.FILE_EXT) : nameOf(ids.deck);
     const err = await openFiles(files, name, {});
     if (err) return err;
     if (S.portable && S.portable.name === name) toast([X.imported((S.slides || []).length, ids.added), ...info, ...notes, ids.problems.length ? X.idProblems : '', X.unsavedNote].filter(Boolean).join(' · '), notes.length > 0 || ids.problems.length > 0);

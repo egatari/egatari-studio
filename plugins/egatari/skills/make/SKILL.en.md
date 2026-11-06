@@ -55,9 +55,9 @@ Ask the user to add audio in Studio's audio panel (make AI voice on this compute
 
 ## When you finish
 
-If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the fenced blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (`.ega.html`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into “New…” (新規作成…).
+If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the fenced blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (`.ega.html`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
 
-If you cannot write files, return the two fenced blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's “New…”.
+If you cannot write files, return the two fenced blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's New… → “Paste the AI’s output”.
 
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
 
