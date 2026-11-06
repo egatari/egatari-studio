@@ -3,7 +3,7 @@
 
 [English](viewer-sharing.md) | 日本語
 
-iPhone・iPad では、Egatari ファイル（.ega.html）を「ファイル」App やファイルのプレビューで開いても、教材は動きません（iOS はそこで HTML をスクリプトを動かさずに表示するため）。そのときは **Egatari Viewer**（`https://viewer.egatari.org/`。ホーム画面での名前は **Ega Viewer**）で開きます。ファイルは端末の中で読まれ、どこにも送られません。
+iPhone・iPad では、Egatari ファイル（.ega.html）を「ファイル」App やファイルのプレビューで開いても、教材は動きません（iOS はそこで HTML をスクリプトを動かさずに表示するため）。そのときは **Egatari Viewer**（`https://viewer.egatari.org/`。ホーム画面での名前は **Ega Viewer**）で開きます。ファイルは端末の中で読まれ、どこにもアップロードされません。
 
 Slack や Teams のように HTML を自分で開くアプリでは、Viewer なしでそのまま再生できます（アプリの中のブラウザが教材のスクリプトを動かすため）。
 

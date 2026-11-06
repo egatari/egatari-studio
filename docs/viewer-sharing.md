@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer-sharing.ja.md sha256=4227b734c0fce4f5 -->
+<!-- i18n: pair=viewer-sharing.ja.md sha256=5865e7f64ea39971 -->
 # Opening a lesson on iPhone and iPad (Egatari Viewer)
 
 English | [日本語](viewer-sharing.ja.md)

@@ -15,9 +15,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateSample, sampleStructureRequest, SAMPLE_LIMITS } from '../kit/core/sample-info.mjs';
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, withChoice, choiceOf } from '../kit/core/new-deck.mjs';
-import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE } from '../kit/core/llm-pack.mjs';
+import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE, fitSample as fitSamplePack, packSize } from '../kit/core/llm-pack.mjs';
 import { fitSample } from '../kit/core/llm-pack-assemble.mjs';
-import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS } from '../kit/core/new-deck-pack.mjs';
+import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText, sampleTicks } from '../kit/core/new-deck-pack.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
@@ -166,8 +166,18 @@ try {
     ok(!sampleProblems(read).length && read.book === fs.existsSync(path.join(dir, 'article')), `${name} with a book: sample.json is valid and book matches article/`);
     for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
       const second = { title: L === 'ja' ? '論語を読む' : 'Reading the Analects' };
-      const a = fromSamplePack({ sample: { ...plain, title: 'T', name }, lang: L, plan, second }).text.split('\n');
-      const b = fromSamplePack({ sample: { ...read, title: 'T', name }, lang: L, plan, second }).text.split('\n');
+      // 本の行の分だけ、収める先（fitSample の capBytes）を減らした本のない指示と比べる（同じ予算どうし）。
+      // 本の行を足すと指示は 1 行ぶん大きくなり、目安の際にある組では fitSample がもう 1 つ短くする（正しい振る舞い）。
+      // 部品庫 2.3.0 で m-predict の README が 15 バイト長くなり、pitch-fictional（ja、無料）は目安の際にある（本の行つきで 46072 → 46087 > 46080）
+      const plainSample = { ...plain, title: 'T', name };
+      const aReq = fromSamplePack({ sample: plainSample, lang: L, plan, second }).request;
+      const bookBytes = packSize(REQUEST_WORDS[L].sampleBook + '\n');
+      const ticks = sampleTicks(plainSample, recommend({ sub: plainSample.subcategory || null, text: [second.title, '', ''].join('\n'), lang: L }));
+      const af = fitSamplePack(ticks, plan, { sizeOf: (t, full) => packSize(packText({ tags: t, plan, lang: L, request: aReq, full })), capBytes: capKb(plan) * 1024 - bookBytes, own: plainSample.parts });
+      const a = packText({ tags: af.tags, plan, lang: L, request: aReq, full: af.full }).split('\n');
+      const bp = fromSamplePack({ sample: { ...read, title: 'T', name }, lang: L, plan, second });
+      ok(!bp.over && bp.bytes <= capKb(plan) * 1024, `${name} (${L}, ${plan}) with a book: the pack stays within the cap (${bp.bytes} bytes)`);
+      const b = bp.text.split('\n');
       let i = 0; while (i < a.length && a[i] === b[i]) i++;
       const one = b.length === a.length + 1 && JSON.stringify([...b.slice(0, i), ...b.slice(i + 1)]) === JSON.stringify(a);
       ok(one && b[i] === REQUEST_WORDS[L].sampleBook && /Claude Code/.test(b[i]) && (L === 'ja' ? /本/.test(b[i]) : /\bbook\b/.test(b[i])),
