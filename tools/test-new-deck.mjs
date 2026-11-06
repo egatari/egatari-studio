@@ -22,7 +22,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, overMessage, sizeReport, pairsOf } from './make-llm-guide.mjs';
-import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack } from '../kit/core/llm-pack.mjs';
+import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, SINGLE_SET_DROP_ORDER, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partDesc, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -38,6 +38,13 @@ const ok = (name, fn) => { fn(); n++; console.log('  ok   ' + name); };
 const choiceRequest = (c, P, lang) => choiceRequestOf({ ...c, parts: loadedParts((c && c.sets) || []) }, P, lang);
 const MANIFEST2 = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
 const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === STANDARD).sort();
+// 束を 1 つ選んだ無料のプランの指示で外すパーツ（kit/core/llm-pack-assemble.mjs の SINGLE_SET_DROP_ORDER の順、収まったところで止める。2026-11-06）。
+// 載っていない束は何も外さない。日本語はどの束も中核の 4 つを短くすれば収まる
+const SINGLE_SET_EXPECTED = {
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-compare', 'm-pie'], kokugo: ['m-fishbone', 'm-quad'] },
+  ja: {},
+};
+for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
 const EXTRA = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'extra').sort();
 const ofSet = (s) => Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === s).sort();
 const described = (text) => [...text.matchAll(/^### `<(m-[a-z]+(?:-[a-z]+)*)>`$/gm)].map((x) => x[1]).sort();   // 拡張の節（### `<m-flow>`：この束の拡張）は数えない
@@ -143,7 +150,7 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   assert.ok(c.length && c.every((t) => !kokugo.includes(t)), c.join());
   assert.ok(sizeOf(all.filter((t) => !c.includes(t))) < sizeOf(all));
 });
-ok('fitting the free plan (#125): over 45 KB or a paste length of 31,000, the core four are shortened first (never unticked); still over, only specialized parts are candidates, largest first; the paid plan never shortens', () => {
+ok('fitting the free plan (#125): over 45 KB or a paste length of 31,000, the core four are shortened first (never unticked); still over, with one set the standard parts outside the core four in the fixed order, with two or more only specialized parts, largest first; the paid plan never shortens', () => {
   // 目安の物差しは fitSize（45 KB と貼り付けの長さ 31,000 の近いほう。新規作成とコマンドが使う）
   const sizeOf = (lang) => (tags, short) => fitSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang }), 'free');
   const cap = capKb('free') * 1024;
@@ -152,16 +159,16 @@ ok('fitting the free plan (#125): over 45 KB or a paste length of 31,000, the co
     // 標準だけ：収まるので短くしない
     assert.deepEqual(fitPlan(initialParts([]), 'free', { sizeOf: size, capBytes: cap }), { short: false, candidates: [] }, lang + ' standard only');
     // 国語（45 KB の候補で m-kakijun は extra に移り、gendai・kanbun・kobun の 3 つ。backlog #170）：
-    // 日本語は中核の 4 つを短くすれば 45 KB に収まり、外す候補はない。英語は貼り付けの長さ 31,000 を越え、短くしても越えるので国語のパーツが候補になる
+    // 日本語は中核の 4 つを短くすれば 45 KB に収まり、外す候補はない。英語は貼り付けの長さ 31,000 を越え、短くしても越えるので、
+    // 束が 1 つのときの順（SINGLE_SET_DROP_ORDER）で標準のパーツが候補になる（国語のパーツは外さない）
     const kok = initialParts([{ set: 'kokugo' }]);
     const fk = fitPlan(kok, 'free', { sizeOf: size, capBytes: cap });
     assert.ok(fk.short, lang + ' kokugo: the core four are shortened');
-    if (lang === 'ja') assert.deepEqual(fk.candidates, [], lang + ' kokugo: no drop needed');
-    else assert.ok(fk.candidates.length && fk.candidates.every((t) => partsOfSet('kokugo').includes(t)), `${lang} kokugo: only kokugo parts are candidates (${fk.candidates})`);
+    assert.deepEqual(fk.candidates, SINGLE_SET_EXPECTED[lang].kokugo, lang + ' kokugo: the candidates');
     const kept = kok.filter((t) => !fk.candidates.includes(t));
     const tk = packWithRequest({ ...partsPackOpts(kept, 'free', { short: fk.short }), lang });
     assert.ok(packSize(tk) <= cap && pasteUnits(tk) <= FREE_PASTE_UNITS, `${lang} kokugo (short=${fk.short}): ${packSize(tk)} B, paste length ${pasteUnits(tk)}`);
-    assert.deepEqual(described(tk), partsOfSet('kokugo').filter((t) => kept.includes(t)).sort(), `${lang}: shortened, only the kokugo parts kept are described`);
+    assert.deepEqual(described(tk), partsOfSet('kokugo').sort(), `${lang}: shortened, the kokugo parts are described`);
     assert.deepEqual(rowsOf(tk), [...kept].sort(), lang + ': every ticked part keeps its catalogue line');
     assert.ok(FREE_CORE.every((t) => tk.includes('| `<' + t + '>` |')), lang + ': the core four stay in the catalogue');
     // 統計・算数と国語：短くしても越える。外す候補は専門のパーツだけで、外せば収まる（45 KB では math+maps は短縮だけで収まるので、
@@ -428,6 +435,12 @@ ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with
 // Some browsers paste with CRLF, so each line feed counts 2: UTF-16 units + line feeds <= 31,000 (decided with the maintainers 2026-11-06;
 // en ~30.85K, ja ~22K). When this trips: first trim the common pack text (with eval A on the result), and only if that is not enough
 // the parts' English descriptions in the parts library (egatari/components).
+ok('the single-set drop order: the maintainers\' list, every standard part outside the core four except m-cards and m-kpi (not placed yet: never left out)', () => {
+  assert.deepEqual([...SINGLE_SET_DROP_ORDER], ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-compare', 'm-pie', 'm-scatter', 'm-curves']);
+  const outside = STD.filter((t) => !FREE_CORE.includes(t));
+  assert.deepEqual(outside.filter((t) => !SINGLE_SET_DROP_ORDER.includes(t)), ['m-cards', 'm-kpi']);
+  assert.ok(SINGLE_SET_DROP_ORDER.every((t) => STD.includes(t)));
+});
 // The free plan's fitter (fitSize in kit/core/llm-pack-assemble.mjs) caps every free pack at min(45 KB, 31,000 of these) (2026-11-06), so the
 // guard covers every set combination New… can tick, ja and en: the pack New… and kit/llm-pack.mjs copy after fitting (fitPack: the core four
 // shortened, then specialized parts left out, largest first) must fit. The standard pack as assembled (no fit at all) must fit on its own.
@@ -449,7 +462,11 @@ ok('free pack fits a Gemini paste with the brief: UTF-16 units + line feeds <= 3
       const text = packWithRequest({ ...partsPackOpts(f.tags, 'free', { short: f.short }), lang });
       const { lf, n } = units(text);
       assert.ok(!f.over && n <= 31000 && packSize(text) <= capKb('free') * 1024, `${lang} free ${sets.join('+') || '(none)'} fitted: ${text.length} UTF-16 units + ${lf} line feeds = ${n}, ${packSize(text)} B`);
-      assert.ok(f.dropped.every((t) => TIERS.parts[t].tier === 'specialized'), `${lang} ${sets.join('+')}: only specialized parts left out`);
+      if (sets.length === 1) {
+        // 束が 1 つ：中核の 4 つのほかの標準のパーツを決まった順に。選んだ束のパーツと中核の 4 つは外さない。外したものは決まった表のとおり
+        assert.ok(f.dropped.every((t) => TIERS.parts[t].tier === 'standard' && !FREE_CORE.includes(t)), `${lang} ${sets[0]}: only standard parts outside the core four left out (${f.dropped})`);
+        assert.deepEqual(f.dropped, SINGLE_SET_EXPECTED[lang][sets[0]], `${lang} ${sets[0]}: the parts left out`);
+      } else assert.ok(f.dropped.every((t) => TIERS.parts[t].tier === 'specialized'), `${lang} ${sets.join('+')}: only specialized parts left out`);
       k++;
     }
   }

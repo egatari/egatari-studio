@@ -32,9 +32,9 @@
 //   partsPackOpts(tags, plan, {short})           選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?}（buildPack・packWithRequest に渡す。
 //                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, SINGLE_SET_DROP_ORDER, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf } from './llm-pack-assemble.mjs';
 
-export { assemble, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD };
+export { assemble, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, SINGLE_SET_DROP_ORDER };
 export const BRIEF = briefParts(PACK, 'free');   // 無料のプランで一覧の 1 行だけの標準の部品
 export const SETS = PACK.sets;
 export const TIERS = PACK.tiers;

@@ -147,12 +147,33 @@ export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {
 }
 
 // 目安に収める（backlog #125）：無料のプランで目安を越えたら、まず中核の 4 つ（棒グラフ・流れ図・目次・予想と答え）の説明も短くする（short）。
-// それでも越えるなら、外す候補は印の付いた専門のパーツだけ（外したときに減る大きさの大きい順。標準のパーツは候補にしない）。
+// それでも越えるなら、束が 1 つのときは中核の 4 つのほかの標準のパーツを SINGLE_SET_DROP_ORDER の順に（選んだ束のパーツは外さない）、
+// 束が 2 つ以上のときは印の付いた専門のパーツだけ（外したときに減る大きさの大きい順。標準のパーツは候補にしない）。
 // sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。→ {short, candidates}
 export function fitPlan(data, ticked, plan, { sizeOf, capBytes }) {
   const short = planName(plan) === 'free' && sizeOf(ticked, false) > capBytes;
+  const sets = new Set(ticked.filter((t) => data.en.components[t] && data.en.components[t].set !== STANDARD).map((t) => data.en.components[t].set));
+  if (planName(plan) === 'free' && sets.size === 1) return { short, candidates: singleSetCandidates(ticked, { sizeOf: (tags) => sizeOf(tags, short), capBytes }) };
   const keep = new Set(ticked.filter((t) => !data.en.components[t] || data.en.components[t].set === STANDARD));
   return { short, candidates: trimCandidates(ticked, { sizeOf: (tags) => sizeOf(tags, short), capBytes, keep }) };
+}
+
+// 束を 1 つだけ選んだ無料のプランの指示で、中核の 4 つを短くしても越えるときに外す標準のパーツと、その順（maintainers の決定、2026-11-06）。
+// 選んだ束のパーツと中核の 4 つ（FREE_CORE。この並びの m-menu は飛ばす）は外さない。この順に 1 つずつ外し、収まったところで止める。
+// 図表（m-pie・m-scatter・m-curves）を最後にするのは、教科の束（stats・math・maps・science）が図表に頼るから（stats では m-scatter と m-curves が
+// m-hist の隣で使われる）。m-cards と m-kpi はこの並びにないので外さない（置き場所は決まっていない）。
+// maintainers の順の 1 番目「選んでいない束のパーツを先に外す」は、今は起きない（新規作成もコマンドも、指示に入る専門のパーツはどれも選んだ束のもの）
+// ので書かない。束を 2 つ以上選んだときは今までどおり（trimCandidates：専門のパーツだけを、減る大きさの大きい順に）
+export const SINGLE_SET_DROP_ORDER = Object.freeze(['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-compare', 'm-pie', 'm-scatter', 'm-curves']);
+function singleSetCandidates(ticked, { sizeOf, capBytes }) {
+  const out = [];
+  if (sizeOf(ticked) <= capBytes) return out;
+  for (const t of SINGLE_SET_DROP_ORDER) {
+    if (FREE_CORE.includes(t) || !ticked.includes(t)) continue;
+    out.push(t);
+    if (sizeOf(ticked.filter((x) => !out.includes(x))) <= capBytes) break;
+  }
+  return out;
 }
 
 // 目安に収めた後の選び方（コマンドの kit/llm-pack.mjs と npm run gen の大きさの表が使う。編集アプリで［候補を外す］を押した後と同じ）：fitPlan の候補を外し、

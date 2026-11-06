@@ -8,7 +8,7 @@
 //   越えたら中核の 4 つの説明を短くし、それでも越えれば専門のパーツを大きい順に外す。短くした・外したときは、何をなぜしたかを stderr に出す
 //   （黙って外さない。毎晩の評価・スキルが無料のプランで使う指示が、利用者が編集アプリで貼るものと同じになるように）。生の指示は --no-fit
 // 前の --series（系列）と --tools（道具）は 1 版のあいだ読む：系列は束に読み替え（SERIES_SETS。info は特殊になったので何も足さない）、道具は束 tools
-import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, loadedParts, partsPackOpts, fitPack } from './core/llm-pack.mjs';
+import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, loadedParts, partsPackOpts, fitPack, normalizeSets, SINGLE_SET_DROP_ORDER } from './core/llm-pack.mjs';
 
 // 前の系列 → 束
 const SERIES_SETS = { academic: ['stats', 'math'], business: ['business'], kokugo: ['kokugo'], english: ['english'], info: [], social: ['maps'], music: ['music'] };
@@ -27,8 +27,11 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
          On the free plan the pack is fitted to ${PACK_CAP_KB.free} KB and to a paste
          length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds), as the editor's New… does:
          over the limit, the core four (${FREE_CORE.join(', ')}) get only their
-         catalogue line too; if still over, specialized parts are left out,
-         largest first. stderr says what was shortened or left out
+         catalogue line too; if still over, with one part set the standard
+         parts outside the core four are left out in a fixed order
+         (${SINGLE_SET_DROP_ORDER.filter((t) => !FREE_CORE.includes(t)).join(', ')}),
+         never the set's own parts; with two or more sets, specialized parts
+         are left out, largest first. stderr says what was shortened or left out
 --no-fit the free-plan pack as assembled, without fitting it to the limit
 --list   lists the part sets, their components and the size of the common
          body with that set (KB = UTF-8 bytes / 1024; the free plan fitted
@@ -97,7 +100,10 @@ if (argv.includes('--list')) {
       const { text, fit } = fittedPack(sets, lang);
       const limit = `${PACK_CAP_KB.free} KB or a paste length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds)`;
       if (fit.short) console.error(`note: free plan: over ${limit}, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
-      if (fit.dropped.length) console.error(`note: free plan: still over ${limit}, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
+      // 束が 1 つなら中核の 4 つのほかの標準のパーツを決まった順に、2 つ以上なら専門のパーツを大きい順に（kit/core/llm-pack-assemble.mjs の fitPlan）
+      if (fit.dropped.length) console.error(normalizeSets(sets).length === 1
+        ? `note: free plan: still over ${limit}, so these standard parts were left out, in the fixed order: ${fit.dropped.join(', ')} (the ${normalizeSets(sets)[0]} parts and the core four are kept; --no-fit keeps them all)`
+        : `note: free plan: still over ${limit}, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
       if (fit.over) console.error(`warning: free plan: ${kbOf(packSize(text))} KB, paste length ${pasteUnits(text)}, is still over ${limit}`);
       process.stdout.write(text);
     }

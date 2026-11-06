@@ -109,7 +109,14 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     assert.ok(fitCli.status === 0 && fitCli.stdout === e.text, `${lang}: the free CLI pack for stats+math is the editor's, byte for byte`);
     assert.ok(packSize(fitCli.stdout) <= 45 * 1024 && pasteUnits(fitCli.stdout) <= FREE_PASTE_UNITS, `${lang}: ${packSize(fitCli.stdout)} B, paste length ${pasteUnits(fitCli.stdout)}`);
     assert.ok(fitCli.stderr.includes('core four') && fitCli.stderr.includes('left out, largest first: ' + e.dropped.join(', ')) && fitCli.stderr.includes('--no-fit'), fitCli.stderr);
-    for (const s of SETS) assert.equal(node('kit/llm-pack.mjs', '--sets', s, '--lang', lang).stdout, editorFitted([s], lang).text, `${lang} ${s}: the free CLI pack is the editor's`);
+    for (const s of SETS) {
+      const r = node('kit/llm-pack.mjs', '--sets', s, '--lang', lang), e = editorFitted([s], lang);
+      assert.equal(r.stdout, e.text, `${lang} ${s}: the free CLI pack is the editor's`);
+      // 束が 1 つ：外したパーツは stderr の 1 行が名前で全部言う（指示には名前を出さない）
+      const note = (r.stderr.match(/left out, in the fixed order: ([^(]+) \(/) || [])[1];
+      assert.equal(note ? note.trim() : '', e.dropped.join(', '), `${lang} ${s}: the left-out note names exactly the parts left out`);
+      for (const t of e.dropped) assert.ok(!new RegExp('(?<![\\w-])' + t + '(?![\\w-])').test(r.stdout), `${lang} ${s}: ${t} (left out) is named in the pack`);
+    }
   }
   // --list：無料のプランは目安に収めた大きさ（編集アプリと同じ）と収める前の大きさ、--lang がなければ en と ja の両方の列
   const raw = (sets, lang) => packKb(buildPack({ sets, lang })) + ' KB';
