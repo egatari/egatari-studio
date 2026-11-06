@@ -1266,7 +1266,7 @@
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Paid plan (of the chat AI)",
    "ja": "有料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a paid plan; the suggested size limit of the instructions is 120 KB. Always shown with 「チャットの AI：」.",
+   "definition": "The user's chat AI is on a paid plan; the suggested size limit of the instructions is 150 KB. Always shown with 「チャットの AI：」.",
    "avoid": {
     "ja": [
      "有料版"
@@ -1274,9 +1274,9 @@
     "en": []
    },
    "internal": "plan: paid",
-   "decided": "2026-10-25",
+   "decided": "2026-11-06",
    "by": "owner",
-   "note": ""
+   "note": "raised from 120 KB to 150 KB; v0.6.6 also adds Save the instructions as a file as the paid-plan primary action (Gemini cuts a paste at ~32,768 characters, owner's test 2026-11-05)"
   },
   {
    "id": "tools",

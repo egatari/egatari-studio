@@ -24,7 +24,7 @@
 //                                                 manifest に purposes がなければ kit/core/purposes.mjs の FALLBACK。どちらを使ったかは材料の purposes.source
 //   tools/llm-guide/worked/<名前>/                {{WORKED 名前 "見出し"}}：見本の deck.html と narration.md（npm test が組んで検査する）
 // 大きさ（--check。sizeReport）：無料のプランの標準すべて（束なし）は 35 KB を超えれば警告・45 KB を超えれば失敗。標準と 1 つの束は、越えるなら中核の 4 つも
-// 短くした大きさで、45 KB を超えれば知らせるだけ（新規作成のメーターが専門のパーツを外す候補に出す）。有料のプランは標準と 2 つの束のどの組も 120 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
+// 短くした大きさで、45 KB を超えれば知らせるだけ（新規作成のメーターが専門のパーツを外す候補に出す）。有料のプランは標準と 2 つの束のどの組も 150 KB まで（越えれば失敗）、すべての束は越えれば知らせるだけ（PACK_CAP_KB）
 // 1 行目の i18n の印（tools/i18n-pairs.mjs）は残す。作り直して中身が変わったら、両方を見比べて npm run i18n -- --stamp で印を付け直す
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';

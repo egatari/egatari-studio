@@ -121,7 +121,7 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   assert.equal(DEFAULT_PLAN, 'free');
   assert.equal(planOf({}), 'free'); assert.equal(planOf({ plan: 'paid' }), 'paid'); assert.equal(planOf({ plan: 'gold' }), 'free'); assert.equal(planOf(null), 'free');
   assert.equal(capKb('free'), PACK_CAP_KB.free); assert.equal(capKb('paid'), PAID_PACK_KB);
-  assert.equal(PACK_CAP_KB.free, 45); assert.equal(PAID_PACK_KB, 120); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
+  assert.equal(PACK_CAP_KB.free, 45); assert.equal(PAID_PACK_KB, 150); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
   assert.equal(LIMITS.fail, PACK_CAP_KB.free); assert.equal(LIMITS.free, PACK_CAP_KB.free); assert.equal(LIMITS.paid, PAID_PACK_KB);
   // 印の付いたパーツだけが指示に入り、ほかのパーツはどこにも名前が出ない。有料のプランは全部を詳しく、無料のプランは BRIEF を一覧の 1 行だけ
   for (const lang of ['en', 'ja']) for (const tags of [initialParts([]), ['m-bars', 'm-hist', 'm-timer'], ['m-kanbun', 'm-flow', 'm-kpi'], []]) for (const plan of AI_PLANS) {
@@ -402,7 +402,7 @@ const PLAN_CHOICES = [
   { plan: 'paid', sets: [] }, { plan: 'paid', sets: ['kokugo'] }, { plan: 'paid', sets: ['math', 'maps', 'tools'] },
 ];
 const partsIn = (text) => [...tagsIn(text)].filter((t) => PACK_DATA.en.components[t]);
-// 上限：無料のプランは束なしで 45 KB（束を足して越えたら新規作成のメーターが外す候補を出すので、ここでは見ない）。有料のプランは 120 KB
+// 上限：無料のプランは束なしで 45 KB（束を足して越えたら新規作成のメーターが外す候補を出すので、ここでは見ない）。有料のプランは 150 KB
 const capOk = (choice, bytes) => (choice.plan === 'paid' ? bytes <= PACK_CAP_KB.paid * 1024 : choice.sets.length ? true : bytes <= PACK_CAP_KB.free * 1024);
 ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with any two sets ≤ PAID_PACK_KB; the paid worst case is a warning only', () => {
   for (const lang of ['en', 'ja']) {
@@ -415,6 +415,18 @@ ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with
     for (const s of SETS) assert.ok(!paid.includes(lang === 'en' ? `## Part set: ${s}` : `## 部品の束：${s}`), `${lang} paid without a set has no set pack ${s}`);
     const rep = sizeReport(generate().sizes).find((x) => x.lang === lang && x.worst);
     assert.ok(rep && rep.level === (rep.kb > PAID_PACK_KB ? 'warn' : 'ok'), `${lang} paid worst case is a warning only: ${rep && rep.kb}`);
+  }
+});
+// Gemini cuts a pasted text (owner's test, 2026-11-05: at 32,173 UTF-16 units of LF text, 32,682 counting CRLF). The free pack is never
+// offered as a file (New step 4), so it must stay under that on its own, with the learner's brief (~300 characters) in the same box.
+// Some browsers paste with CRLF, so each line feed counts 2: UTF-16 units + line feeds <= 31,000 (decided with the maintainers 2026-11-06;
+// en ~30.85K, ja ~22K). When this trips: first trim the common pack text (with eval A on the result), and only if that is not enough
+// the parts' English descriptions in the parts library (egatari/components).
+ok('free pack (standard parts, no set: the largest the editor makes on the free plan) fits a Gemini paste with the brief: UTF-16 units + line feeds <= 31,000, ja and en', () => {
+  for (const lang of ['en', 'ja']) {
+    const text = buildPack({ sets: [], lang, plan: 'free' });
+    const lf = (text.match(/\n/g) || []).length, n = text.length + lf;
+    assert.ok(n <= 31000, `${lang} free standard: ${text.length} UTF-16 units + ${lf} line feeds = ${n}, over 31,000 (Gemini cuts a paste at about 32,173; see the comment for what to trim)`);
   }
 });
 ok('pack: paid = every standard part + the chosen sets, all described; free = the same parts, with only FREE_CORE and the set parts described; nothing unchosen leaks', () => {
@@ -467,7 +479,7 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
 const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z]+(?:-[a-z]+)*(?![a-z-])/g)].map((m) => m[0]));
 const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]));
 const notInCatalog = (text) => { const c = catalogOf(text); return [...namedParts(text)].filter((t) => !c.has(t)); };
-ok('gen: the size rows (free standard fails over 45 KB, free + a set is only reported, paid pairs fail over 120 KB, the paid worst case warns); a pack over its cap is named with the bytes over and its three largest sections', () => {
+ok('gen: the size rows (free standard fails over 45 KB, free + a set is only reported, paid pairs fail over 150 KB, the paid worst case warns); a pack over its cap is named with the bytes over and its three largest sections', () => {
   const g = generate();
   const rep = sizeReport(g.sizes);
   for (const lang of ['en', 'ja']) {
@@ -482,9 +494,9 @@ ok('gen: the size rows (free standard fails over 45 KB, free + a set is only rep
       assert.equal(x.short, sizeOf(tags, false) > 45 * 1024, `${lang} free + ${s}: shortened only when over`);
       assert.ok(x.short === f.short && x.dropped.join() === f.dropped.join() && Math.abs(x.kb * 1024 - f.bytes) < 1 && x.kb <= 45 && x.level === 'ok', `${lang} free + ${s}: the reported size ${x.kb}`);
     }
-    for (const p of pairsOf(SETS)) { const x = rep.find((y) => y.lang === lang && y.what === `paid standard+${p.join('+')}`); assert.ok(x && x.paidPair && x.max === 120 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
+    for (const p of pairsOf(SETS)) { const x = rep.find((y) => y.lang === lang && y.what === `paid standard+${p.join('+')}`); assert.ok(x && x.paidPair && x.max === 150 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
     const w = rep.find((y) => y.lang === lang && y.worst);
-    assert.ok(w && w.what === 'paid every set' && w.max === 120 && w.level !== 'fail', `${lang} paid worst case never fails`);
+    assert.ok(w && w.what === 'paid every set' && w.max === 150 && w.level !== 'fail', `${lang} paid worst case never fails`);
   }
   const r = rep.find((x) => x.lang === 'ja' && x.what === 'free standard+kokugo');
   assert.ok(r.short && r.level === 'ok', 'free + kokugo is reported with the core four shortened, within 45 KB');
