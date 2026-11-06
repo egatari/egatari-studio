@@ -896,7 +896,7 @@ export function setupLlm(app) {
       copyMsg.textContent = longN() ? X.outlineSaved(kb(text)) : X.savedGuide(kb(text));
       if (onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
-    const fileHint = el('p', { id: 'paste-file-hint', cls: 'hint', hidden: '', text: X.fileHint });
+    const fileHint = el('p', { id: 'paste-attach-hint', cls: 'hint', hidden: '', text: X.fileHint });
     // 答えた 1 行：プランと選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
     const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.partsShort(chosen().length), X.copiedShort].join(X.listSep), onChange);
     // AI のスキル（#126）：指示書をコピーする代わりに、チャットの AI に入れておく ZIP。［指示書をコピー］の隣
@@ -939,7 +939,7 @@ export function setupLlm(app) {
       copyMsg.box.hidden = true; copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = savedMsg(kb(text));
       if (onCopied) onCopied();
     } });
-    const fileHint = el('p', { id: 'paste-file-hint', cls: 'hint', hidden: '', text: X.fileHint });
+    const fileHint = el('p', { id: 'paste-attach-hint', cls: 'hint', hidden: '', text: X.fileHint });
     const seriesSet = el('fieldset', { id: 'paste-series', cls: 'paste-series', 'aria-describedby': 'paste-series-hint' }, [el('legend', { text: X.seriesLegend }),
       ...SETS.map((s, i) => el('label', { title: membersOfSet(s).join(', ') }, [boxes[i], el('span', { text: setName[s] || s }), el('span', { cls: 'hint', 'data-bytes': String(partBytes(s)), text: X.plusKb(kbOf(partBytes(s))) })]))]);
     const packParts = el('div', { id: 'paste-pack-parts', cls: 'paste-guide', hidden: '' }, [seriesSet, el('p', { id: 'paste-series-hint', cls: 'hint', text: X.seriesHint(setName.stats) })]);

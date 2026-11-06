@@ -352,7 +352,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.click('#paste-change-send');
     await p3.waitForSelector('#paste-copy-guide:visible');
     ok(await p3.$eval('#paste-save-guide', (b) => !b.hidden && b.classList.contains('pri')) && !(await p3.$eval('#paste-copy-guide', (b) => b.classList.contains('pri')))
-      && await p3.isVisible('#paste-file-hint') && (await text(p3, '#paste-file-hint')) === 'Attach long instructions to the chat as a file. Gemini cuts a paste at about 30,000 characters; ChatGPT turns a long paste into an attachment by itself.',
+      && await p3.isVisible('#paste-attach-hint') && (await text(p3, '#paste-attach-hint')) === 'Attach long instructions to the chat as a file. Gemini cuts a paste at about 30,000 characters; ChatGPT turns a long paste into an attachment by itself.',
       'S3 ④: paid plan: “Save the instructions as a file” is primary and “Copy the instructions” secondary, with the attachment-guidance line');
     const [dl3] = await Promise.all([p3.waitForEvent('download', { timeout: scaled(10000) }), p3.click('#paste-save-guide')]);
     ok(dl3.suggestedFilename() === 'egatari-instructions-en.txt', `S3 ④: “Save the instructions as a file” downloads egatari-instructions-en.txt (got ${dl3.suggestedFilename()})`);
@@ -469,7 +469,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p5.click('#paste-change-send');
     await p5.waitForSelector('#paste-copy-guide:visible');
     ok(await p5.$eval('#paste-save-guide', (b) => !b.hidden && b.classList.contains('pri')) && !(await p5.$eval('#paste-copy-guide', (b) => b.classList.contains('pri')))
-      && await p5.isVisible('#paste-file-hint') && (await text(p5, '#paste-file-hint')) === '長い指示は、ファイルにしてチャットに添付してください。Gemini は貼り付けると約 3 万字で切れます。ChatGPT は貼り付けると自動で添付に変わります。',
+      && await p5.isVisible('#paste-attach-hint') && (await text(p5, '#paste-attach-hint')) === '長い指示は、ファイルにしてチャットに添付してください。Gemini は貼り付けると約 3 万字で切れます。ChatGPT は貼り付けると自動で添付に変わります。',
       'S5 ④: paid plan: 「指示をファイルに保存」 is primary and 「指示をコピー」 secondary, with the attachment-guidance line under them');
     const [dl5] = await Promise.all([p5.waitForEvent('download', { timeout: scaled(10000) }), p5.click('#paste-save-guide')]);
     ok(dl5.suggestedFilename() === 'egatari-instructions-ja.txt', `S5 ④: 「指示をファイルに保存」 downloads egatari-instructions-ja.txt (got ${dl5.suggestedFilename()})`);
