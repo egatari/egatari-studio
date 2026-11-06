@@ -40,7 +40,7 @@ import { withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
-import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf, samplePackFit } from '../kit/core/new-deck-pack.mjs';
+import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf, samplePackFit, fromSampleStart } from '../kit/core/new-deck-pack.mjs';
 import { readFileBoundedText } from './bounded-read.js';
 
 
@@ -490,7 +490,7 @@ export function setupLlm(app) {
   };
   // サンプルと同じ答えか（「サンプルから」の札。変えたら札は消える）
   const sameKind = () => !!draft.from && draft.category === draft.from.category && (draft.sub ?? null) === draft.from.subcategory;
-  const sameTheme = () => !!draft.from && newTheme === draft.from.theme;
+  const sameTheme = () => !!draft.from && newTheme === fromSampleStart(draft.from).theme;
   const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
   const kindOk = () => { const c = catOf(draft.category); return !!c && (!c.subs.length || draft.sub !== undefined); };
   const titleOk = () => !!draft.title.trim();
@@ -1102,7 +1102,8 @@ export function setupLlm(app) {
       // サンプルから（opts.sample）：① の場面と小分類・③ のテーマ・④ のパーツに入れ、② だけを空のまま開く。サンプルなしの新規作成ではサンプルを使わない
       const smp = opts.sample || null;
       draft.from = smp; draft.useStructure = true;
-      if (smp) { draft.category = smp.category; draft.sub = smp.subcategory; newTheme = smp.theme; }
+      // テーマは同梱の選べるテーマだけを引き継ぐ（ほかは default。サンプルの教材の中だけのテーマを利用者の教材に渡さない。kit/core/new-deck-pack.mjs の sampleTheme）
+      if (smp) { const st = fromSampleStart(smp); draft.category = st.category; draft.sub = st.subcategory; newTheme = st.theme; }
     }
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const copyMsg = withCopyBox(el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-copy-text', X.sendQ);

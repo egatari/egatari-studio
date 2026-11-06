@@ -9,7 +9,8 @@
 //   newDeckPack({tags, plan, lang, request, keep, trim}) → {text, bytes, short, candidates, dropped, over}
 //                                       目安に収める：trim なしは ④ を開いたとき（無料のプランで越えたら中核の 4 つを短くし、外す候補を出すだけ）、
 //                                       trim は［候補を外す］を押した後（fitPack。コマンドの指示と同じ）
-//   sampleProblems(obj)                 → sample.json の誤り（validateSample に、分類・④ のパーツ・新しく選べるテーマを照らしたもの）
+//   sampleProblems(obj)                 → sample.json の誤り（validateSample に、分類・④ のパーツを照らしたもの。テーマは誤りにしない）
+//   sampleTheme(theme)・fromSampleStart(sample) → 引き継ぐテーマ（同梱の選べるテーマだけ。ほかは default）・① ③ の答え
 //   samplePackFit({tags, plan, lang, request, own}) → fitSample の結果 ＋ {text：収めた後の指示, sizeOf}。「このサンプルを参考に作る」の収め方：
 //                                       サンプルのパーツ（own）は詳しいまま、越えたら ① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く
 //   fromSamplePack({sample, title, lang, plan, second, useStructure}) → {text, bytes, short, shortened, dropped, ownShortened, over, tags, full, candidates, request}。
@@ -82,11 +83,16 @@ export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = 
 }
 
 export function sampleProblems(obj) {
-  const errs = validateSample(obj, { categories: CATEGORIES, parts: LISTED() });
-  // テーマは新しく選べるもの（サンプルの原稿が選べなくしたテーマ（business）なら、その代わりのテーマ）
-  if (!errs.length && !CHOOSABLE.some((t) => t.name === obj.theme)) errs.push({ path: 'theme', code: 'not-choosable' });
-  return errs;
+  // テーマは誤りにしない：同梱でないテーマ（教材の中だけのテーマなど）は、引き継ぐときに default にする（sampleTheme）
+  return validateSample(obj, { categories: CATEGORIES, parts: LISTED() });
 }
+
+// 「このサンプルを参考に作る」で引き継ぐテーマ：同梱のテーマで新しく選べるもの（CHOOSABLE。kit/core/themes-list.mjs。編集アプリの ③ の一覧と同じ）だけ。
+// ほかは default。紹介のためのサンプルは、教材の中だけのテーマ（Egatari のロゴを入れたブランドのテーマなど）を使うことがある。
+// それを利用者の教材に渡してはならない（ロゴが利用者の教材に出る）ので、名前が同梱のテーマと合うときだけ引き継ぐ（2026-11-07 決定）
+export const sampleTheme = (theme) => (CHOOSABLE.some((t) => t.name === theme) ? theme : 'default');
+// サンプルから新規作成を始めるときの ① ③ の答え（編集アプリの app/llm.js が使う）：{category, subcategory, theme}
+export const fromSampleStart = (sample) => ({ category: sample.category, subcategory: sample.subcategory ?? null, theme: sampleTheme(sample.theme) });
 
 // 「このサンプルを参考に作る」：① ③ ④ はサンプルから、② は second（タイトルと内容。ほかの項目は AI に任せる。言語は画面の言語、話す人は 1 人）。
 // sample には title（サンプルの題名）も入れる
@@ -94,7 +100,7 @@ export function fromSamplePack({ sample, lang = 'en', plan = 'free', second = {}
   const w = W(lang);
   const title = String(second.title || ''), content = String(second.content || '').trim();
   const values = { title, audience: '', length: '', language: w.langReq[lang] || '', speakers: w.speakersReq[1], wishes: '' };
-  const request = newDeckRequest({ kind: 'A', values, theme: sample.theme, category: sample.category, subcategory: sample.subcategory, sample, useStructure, content, outlineN: longOf(values.length), lang });
+  const request = newDeckRequest({ kind: 'A', values, theme: sampleTheme(sample.theme), category: sample.category, subcategory: sample.subcategory, sample, useStructure, content, outlineN: longOf(values.length), lang });
   const rec = recommend({ sub: sample.subcategory || null, text: [title, content, ''].join('\n'), lang });
   const tags = sampleTicks(sample, rec);
   const f = samplePackFit({ tags, plan, lang, request, own: sample.parts });

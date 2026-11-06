@@ -1,7 +1,7 @@
 // 見本（examples/）を持ち運べる 1 ファイル（--portable）に組む。編集アプリの配信版（tools/build-app.mjs の dist/examples/）と
 // リリースに添えるファイル（tools/release-assets.mjs の out/release/）が同じものを使う
 //   buildExamples(outDir) → [{name, file, title, lang, slides, bytes, profile, sha256, sample, book}]（outDir/<name><FORMAT.FILE_EXT> に書く。book：本（article）を持つか）
-//   sample：サンプルのフォルダの sample.json（テーマは新規作成で選べるもの）（kit/core/sample-info.mjs。「このサンプルを参考に作る」で引き継ぐもの。backlog #130）。ないか正しくなければ組まない
+//   sample：サンプルのフォルダの sample.json（テーマは何でもよい。引き継ぐのは同梱の選べるテーマだけで、ほかは default：kit/core/new-deck-pack.mjs の sampleTheme）（kit/core/sample-info.mjs。「このサンプルを参考に作る」で引き継ぐもの。backlog #130）。ないか正しくなければ組まない
 //   readSample(name) → sample.json の中身（確かめたもの）
 // 本のあるサンプル（heikin-chuouchi・rashomon）は egatari/examples の books/<名前> の写し（SOURCE.json にリポジトリとコミットと各ファイルの sha256。直さず、元を直して写し直す）
 // 見本には音声がない（audio/ はリポジトリに入れない）ので、音声なしの 1 ファイルになる（再生は推定の秒数。TTS も dry-run の無音も作らない）。

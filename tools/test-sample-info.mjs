@@ -18,7 +18,7 @@ import { validateSample, sampleStructureRequest, SAMPLE_LIMITS } from '../kit/co
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, withChoice, choiceOf } from '../kit/core/new-deck.mjs';
 import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE, fitSample as fitSamplePack, packSize, fitSize, pasteUnits } from '../kit/core/llm-pack.mjs';
 import { fitSample } from '../kit/core/llm-pack-assemble.mjs';
-import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText, sampleTicks } from '../kit/core/new-deck-pack.mjs';
+import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText, sampleTicks, sampleTheme, fromSampleStart } from '../kit/core/new-deck-pack.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
@@ -52,7 +52,9 @@ for (const name of EXAMPLES) {
   ok(s.parts.every((t) => used.has(t)) && [...used].filter((t) => LISTED.includes(t)).every((t) => s.parts.includes(t)), `${name}: parts are the listed parts the deck uses (${s.parts.join(', ')})`);
   const lang = (deck.match(/<html[^>]*\blang="([^"]+)"/) || [])[1], theme = (deck.match(/<html[^>]*\bdata-theme="([^"]+)"/) || [])[1];
   ok(s.lang === lang, `${name}: lang is <html lang> (${lang})`);
-  ok(CHOOSABLE.some((t) => t.name === s.theme) && (s.theme === theme || RETIRED.includes(theme)), `${name}: theme ${s.theme} is choosable and is the deck’s (${theme})`);
+  // 同梱でないテーマ（教材の中だけのテーマ）は誤りにしない（引き継ぐときに default。sampleTheme）。警告だけ
+  if (!CHOOSABLE.some((t) => t.name === s.theme)) console.log(`  warn ${name}: theme ${s.theme} is not a bundled theme New… offers; “Make one based on this sample” uses default`);
+  else ok(s.theme === theme || RETIRED.includes(theme), `${name}: theme ${s.theme} is choosable and is the deck’s (${theme})`);
   ok(BUILT.has(name) && s.book === BUILT.get(name).book, `${name}: book is ${s.book}, and the built file's index ${BUILT.has(name) && BUILT.get(name).book ? 'has' : 'has no'} article`);
   // 構成を添えた指示（無料のプラン、画面の言語は両方）：初めの印（標準と小分類のおすすめ）にサンプルのパーツ
   for (const L of ['ja', 'en']) {
@@ -113,6 +115,26 @@ const cases = [
 for (const [what, o, want] of cases) ok(codes(o) === want, `rejects ${what}: ${codes(o) || '(nothing)'}`);
 ok(validateSample({ ...good(), category: 'other', subcategory: null }, ctx).length === 0 && validateSample({ ...good(), subcategory: null }, ctx).length === 0, 'accepts subcategory null (Other, None of these)');
 ok(validateSample({ ...good(), category: 'nope', parts: ['m-nope'] }).length === 0, 'without categories and parts, only the shape is checked');
+
+// ---------------------------------------------------------------- 引き継ぐテーマ（sampleTheme）
+// 「このサンプルを参考に作る」が引き継ぐのは同梱の選べるテーマ（CHOOSABLE）だけ。ほかは default。
+// わけ：紹介のためのサンプルは、Egatari のロゴを入れた教材の中だけのテーマ（ブランドのテーマ）を使うことがあり、それを利用者の教材に渡してはならない
+const themeDirs = fs.readdirSync(path.join(ROOT, 'themes'), { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+ok(JSON.stringify([...CHOOSABLE.map((t) => t.name), ...RETIRED].sort()) === JSON.stringify(themeDirs), `the bundled themes are the choosable ones and the retired ones (themes/: ${themeDirs.join(', ')})`);
+ok(CHOOSABLE.every((t) => sampleTheme(t.name) === t.name) && RETIRED.every((n) => sampleTheme(n) === 'default') && sampleTheme('egatari-brand') === 'default' && sampleTheme(undefined) === 'default',
+  'sampleTheme: a bundled theme New… offers is kept; a retired or unknown one becomes default');
+{
+  const brand = { ...readSample('pitch-fictional'), theme: 'egatari-brand' };
+  ok(!sampleProblems(brand).length, 'a sample.json with a theme that is not bundled is still valid (a warning in this test, not an error)');
+  for (const L of ['ja', 'en']) {
+    const r = fromSamplePack({ sample: { ...brand, title: 'T', name: 'pitch-fictional' }, lang: L, plan: 'free', second: { title: 'X' } });
+    ok(r.text.includes(REQUEST_WORDS[L].themeLine('default')) && !r.text.includes('egatari-brand'), `unknown theme (${L}): the from-sample pack asks for theme default and never names the sample's own theme`);
+  }
+  // 新しい教材：編集アプリは ③ のテーマを fromSampleStart の theme から始め、作成で <html data-theme> に入れる（app/llm.js）
+  const st = fromSampleStart(brand);
+  ok(st.theme === 'default' && st.category === brand.category && st.subcategory === brand.subcategory, `unknown theme: the new lesson starts with theme default (${JSON.stringify(st)})`);
+  ok(fromSampleStart(readSample('kokugo-kanbun')).theme === 'kokugo', 'a bundled theme is carried over to the new lesson (kokugo-kanbun → kokugo)');
+}
 
 // ---------------------------------------------------------------- 「このサンプルを参考に作る」の収め方（kit/core/llm-pack-assemble.mjs の fitSample）
 // pitch：m-bars・m-flow は中核の 4 つ、m-kpi・m-quad はほかの標準のパーツ。無料のプランでもサンプルのパーツは詳しく（説明の節 ### `<m-…>` がある）
