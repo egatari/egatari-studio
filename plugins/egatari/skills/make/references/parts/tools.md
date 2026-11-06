@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # tools のパーツ
 
-指示の版：e65089a5
+指示の版：8b8ee76e
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
