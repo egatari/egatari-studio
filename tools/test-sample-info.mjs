@@ -6,7 +6,7 @@
 //   （原稿のテーマが新しく選べないものなら、選べるテーマ）。本は article/ があるときだけ
 // - 構成を添えた指示：無料のプランで目安に収まる（サンプルのパーツは外す候補にしない）。添える節は約 300 トークン（字数の上限）
 // - 正しくない sample.json を断る（形・分類・パーツ・字数・権利）
-// - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack）：pitch の無料のプランの指示は m-bars・m-flow の説明を詳しいまま目安に収まる。
+// - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack。目安は fitSize）：pitch の指示は m-bars・m-flow の説明を詳しいまま目安に収まる（英語の無料のプランは貼り付けの長さで ③ まで進む）。
 //   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる
 // - 本のあるサンプル（article/ と sample.json の book: true）：指示はちょうど 1 行（サンプルにも本があり、本は Claude Code で作る）だけ増える。同梱の 4 つは本がない
 import fs from 'node:fs';
@@ -15,7 +15,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateSample, sampleStructureRequest, SAMPLE_LIMITS } from '../kit/core/sample-info.mjs';
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, withChoice, choiceOf } from '../kit/core/new-deck.mjs';
-import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE, fitSample as fitSamplePack, packSize } from '../kit/core/llm-pack.mjs';
+import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE, fitSample as fitSamplePack, packSize, fitSize, pasteUnits } from '../kit/core/llm-pack.mjs';
 import { fitSample } from '../kit/core/llm-pack-assemble.mjs';
 import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText, sampleTicks } from '../kit/core/new-deck-pack.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
@@ -53,9 +53,10 @@ for (const name of EXAMPLES) {
     const ticks = [...new Set([...initialParts(recommend({ sub: s.subcategory, text: '', lang: L })), ...s.parts])];
     const base = filledRequest({ kind: 'A', values: { title: L === 'ja' ? 'てこのはたらき' : 'How levers work' } }, L) + `- theme: ${s.theme}\n` + choiceRequest({ category: s.category, subcategory: s.subcategory }, null, L) + '\n';
     const st = sampleStructureRequest(s, 'X'.repeat(40), L);
-    const fit = (req) => fitPack(ticks, 'free', { sizeOf: (tags, short) => Buffer.byteLength(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang: L, request: req })), capBytes: capKb('free') * 1024, keep: s.parts });
+    // 目安に照らす大きさは fitSize（無料のプランは 45 KB と貼り付けの長さ 31,000 の近いほう。編集アプリの ④ の棒と同じ）
+    const fit = (req) => fitPack(ticks, 'free', { sizeOf: (tags, short) => fitSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang: L, request: req }), 'free'), capBytes: capKb('free') * 1024, keep: s.parts });
     const a = fit(base), b = fit(base + '\n' + st);
-    ok(!b.over && s.parts.every((t) => b.tags.includes(t)), `${name} (${L}): with the structure the free plan fits after fitting: ${(a.bytes / 1024).toFixed(2)} → ${(b.bytes / 1024).toFixed(2)} KB (structure ${(Buffer.byteLength(st) / 1024).toFixed(2)} KB${b.dropped.length ? ', drops ' + b.dropped.join(' ') : ''}${b.short ? ', short core' : ''}); the sample’s parts stay`);
+    ok(!b.over && s.parts.every((t) => b.tags.includes(t)), `${name} (${L}): with the structure the free plan fits after fitting: ${(a.bytes / 1024).toFixed(2)} → ${(b.bytes / 1024).toFixed(2)} KB-equivalent (structure ${(Buffer.byteLength(st) / 1024).toFixed(2)} KB${b.dropped.length ? ', drops ' + b.dropped.join(' ') : ''}${b.short ? ', short core' : ''}); the sample’s parts stay`);
   }
 }
 
@@ -114,8 +115,13 @@ for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
   const P = readSample('pitch-fictional');
   const r = fromSamplePack({ sample: { ...P, title: 'Pitch', name: 'pitch-fictional' }, lang: L, plan, second: { title: L === 'ja' ? '新しい事業の提案' : 'A new business' } });
   const fullIn = P.parts.filter((t) => PACK[L].components[t].set === 'standard').every((t) => r.text.includes(entryOf(t, L)));
-  ok(r.bytes <= PACK_CAP_KB[plan] * 1024 && !r.over && P.parts.every((t) => r.tags.includes(t)) && fullIn && r.text.includes(entryOf('m-bars', L)) && r.text.includes(entryOf('m-flow', L)) && !r.ownShortened.length,
-    `pitch from-sample (${L}, ${plan}): ${(r.bytes / 1024).toFixed(2)} KB under ${PACK_CAP_KB[plan]} KB, the sample's parts kept with their full descriptions (m-bars, m-flow, m-kpi, m-quad)` +
+  // 英語の無料のプランは貼り付けの長さ 31,000 が先に届く（fitSize）。pitch にはサンプルにない専門のパーツがないので、ほかの中核の 4 つを短くした後は
+  // ③ サンプルの標準のパーツを短くするしかない（fitSample の順どおり）。そのときは、① をすべて済ませてから ③ に進んだことを確かめる
+  const third = r.ownShortened.length > 0;
+  const orderOk = !third || (plan === 'free' && FREE_CORE.filter((t) => !P.parts.includes(t)).every((t) => r.shortened.includes(t)) && r.ownShortened.every((t) => P.parts.includes(t)));
+  ok(fitSize(r.text, plan) <= PACK_CAP_KB[plan] * 1024 && !r.over && P.parts.every((t) => r.tags.includes(t)) && (third ? orderOk : fullIn && r.text.includes(entryOf('m-bars', L)) && r.text.includes(entryOf('m-flow', L))),
+    `pitch from-sample (${L}, ${plan}): ${(r.bytes / 1024).toFixed(2)} KB, within ${PACK_CAP_KB[plan]} KB${plan === 'free' ? ' and the paste length' : ''}, the sample's parts kept` +
+    (third ? `; the sample's own ${r.ownShortened.join(', ')} shortened only after every other core part` : ' with their full descriptions (m-bars, m-flow, m-kpi, m-quad)') +
     (r.shortened.length ? `; shortened ${r.shortened.join(', ')}` : '') + (r.dropped.length ? `; left out ${r.dropped.join(', ')}` : ''));
   if (plan === 'free') ok(!r.shortened.some((t) => P.parts.includes(t)) && r.shortened.every((t) => FREE_CORE.includes(t)), `pitch from-sample (${L}): only core parts the sample does not use are shortened (${r.shortened.join(', ') || 'none'})`);
   // 編集アプリ：［候補を外す］の後（外したパーツを除いた印）でもう一度収めても同じ指示（外すものはもうない）
@@ -168,15 +174,19 @@ try {
       const second = { title: L === 'ja' ? '論語を読む' : 'Reading the Analects' };
       // 本の行の分だけ、収める先（fitSample の capBytes）を減らした本のない指示と比べる（同じ予算どうし）。
       // 本の行を足すと指示は 1 行ぶん大きくなり、目安の際にある組では fitSample がもう 1 つ短くする（正しい振る舞い）。
-      // 部品庫 2.3.0 で m-predict の README が 15 バイト長くなり、pitch-fictional（ja、無料）は目安の際にある（本の行つきで 46072 → 46087 > 46080）
+      // 部品庫 2.3.0 で m-predict の README が 15 バイト長くなり、pitch-fictional（ja、無料）は目安の際にある（本の行つきで 46072 → 46087 > 46080）。
+      // 目安は fitSize（無料のプランは 45 KB と貼り付けの長さ 31,000 の近いほう）で、本の行の分は 2 つの物差しで違うので、予算から引くのでなく、
+      // 本のない指示の収め方を本の行つきの指示で量る（同じ大きさで決めるので、選び方は同じ。違うのは本の行だけのはず）
       const plainSample = { ...plain, title: 'T', name };
       const aReq = fromSamplePack({ sample: plainSample, lang: L, plan, second }).request;
-      const bookBytes = packSize(REQUEST_WORDS[L].sampleBook + '\n');
-      const ticks = sampleTicks(plainSample, recommend({ sub: plainSample.subcategory || null, text: [second.title, '', ''].join('\n'), lang: L }));
-      const af = fitSamplePack(ticks, plan, { sizeOf: (t, full) => packSize(packText({ tags: t, plan, lang: L, request: aReq, full })), capBytes: capKb(plan) * 1024 - bookBytes, own: plainSample.parts });
-      const a = packText({ tags: af.tags, plan, lang: L, request: aReq, full: af.full }).split('\n');
       const bp = fromSamplePack({ sample: { ...read, title: 'T', name }, lang: L, plan, second });
-      ok(!bp.over && bp.bytes <= capKb(plan) * 1024, `${name} (${L}, ${plan}) with a book: the pack stays within the cap (${bp.bytes} bytes)`);
+      const ticks = sampleTicks(plainSample, recommend({ sub: plainSample.subcategory || null, text: [second.title, '', ''].join('\n'), lang: L }));
+      const af = fitSamplePack(ticks, plan, { sizeOf: (t, full) => fitSize(packText({ tags: t, plan, lang: L, request: bp.request, full }), plan), capBytes: capKb(plan) * 1024, own: plainSample.parts });
+      const a = packText({ tags: af.tags, plan, lang: L, request: aReq, full: af.full }).split('\n');
+      const plainOver = fromSamplePack({ sample: plainSample, lang: L, plan, second }).over;
+      // 本のない指示がもう目安を越える組（サンプルの専門のパーツは外さないので起きうる）は、本の行で越えるのではないので警告だけにする
+      if (bp.over && plainOver) console.log(`  warn ${name} (${L}, ${plan}): the from-sample pack is over the limit even without a book (${bp.bytes} bytes, paste length ${pasteUnits(bp.text)})`);
+      else ok(!bp.over && fitSize(bp.text, plan) <= capKb(plan) * 1024, `${name} (${L}, ${plan}) with a book: the pack stays within the cap (${bp.bytes} bytes, paste length ${pasteUnits(bp.text)})`);
       const b = bp.text.split('\n');
       let i = 0; while (i < a.length && a[i] === b[i]) i++;
       const one = b.length === a.length + 1 && JSON.stringify([...b.slice(0, i), ...b.slice(i + 1)]) === JSON.stringify(a);

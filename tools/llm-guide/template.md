@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=ad9dad6a8d43ef39 -->
+<!-- i18n: pair=template.ja.md sha256=4687bf772e7693cd -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -20,7 +20,7 @@ For a chat AI on a free plan, copy the instructions from “New” in the editor
 
 A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
-This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: {{SETS_LIST}}. The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024):
+This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized component (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized components of one kind of material: {{SETS_LIST}}. The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; on the free plan, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the free plan's limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the free-plan pack with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
 
 {{SIZE_TABLE}}
 

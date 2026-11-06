@@ -16,7 +16,7 @@
 //                                       「このサンプルを参考に作る」で ② だけを書いて（second：{title, content}）④ で写すもの（無料のプランも有料のプランも［候補を外す］の後）
 import { filledRequest, packWithRequest } from './llm-request.mjs';
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, fitPlan } from './new-deck.mjs';
-import { partsPackOpts, fitPack, fitSample, packSize } from './llm-pack.mjs';
+import { partsPackOpts, fitPack, fitSample, packSize, fitSize } from './llm-pack.mjs';
 import { sampleStructureRequest, validateSample } from './sample-info.mjs';
 import { outlineRequest, slideCountOf, OUTLINE_OVER } from './llm-outline.mjs';
 import { CHOOSABLE } from './themes-list.mjs';
@@ -67,7 +67,8 @@ export function sampleTicks(sample, rec = []) {
 export const packText = ({ tags, plan = 'free', lang = 'en', request, short = false, full = null }) => packWithRequest({ ...partsPackOpts(tags, plan, { short, full }), lang, request });
 
 export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = [], trim = false }) {
-  const sizeOf = (t, short) => packSize(packText({ tags: t, plan, lang, request, short }));
+  // 目安に照らす大きさは fitSize（無料のプランは 45 KB と貼り付けの長さ 31,000 の近いほう。編集アプリの ④ の棒と同じ）
+  const sizeOf = (t, short) => fitSize(packText({ tags: t, plan, lang, request, short }), plan);
   const capBytes = capKb(plan) * 1024;
   if (trim) {
     const f = fitPack(tags, plan, { sizeOf, capBytes, keep });
@@ -76,8 +77,8 @@ export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = 
   }
   const f = fitPlan(tags, plan, { sizeOf, capBytes, keep });
   const text = packText({ tags, plan, lang, request, short: f.short });
-  const bytes = packSize(text);
-  return { text, bytes, short: f.short, candidates: bytes > capBytes ? f.candidates : [], dropped: [], over: bytes > capBytes, tags };
+  const bytes = packSize(text), over = fitSize(text, plan) > capBytes;
+  return { text, bytes, short: f.short, candidates: over ? f.candidates : [], dropped: [], over, tags };
 }
 
 export function sampleProblems(obj) {
@@ -101,7 +102,8 @@ export function fromSamplePack({ sample, lang = 'en', plan = 'free', second = {}
 }
 
 export function samplePackFit({ tags, plan = 'free', lang = 'en', request, own = [] }) {
-  const sizeOf = (t, full) => packSize(packText({ tags: t, plan, lang, request, full }));
+  // 目安に照らす大きさは fitSize（無料のプランは 45 KB と貼り付けの長さ 31,000 の近いほう）
+  const sizeOf = (t, full) => fitSize(packText({ tags: t, plan, lang, request, full }), plan);
   const f = fitSample(tags, plan, { sizeOf, capBytes: capKb(plan) * 1024, own });
   return { ...f, sizeOf, text: packText({ tags: f.tags, plan, lang, request, full: f.full }) };
 }

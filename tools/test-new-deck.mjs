@@ -3,7 +3,7 @@
 // 1. 大分類・小分類・④ のパーツの一覧（伝えたいことのまとまり・段と束・初めの印・プランの目安と外す候補）・頼む文の節（場面・構成の型・見せ方・外した言いたいこと）
 // 2. 言いたいこと：決めた表（FALLBACK）と manifest の読み方、外したものだけに使う部品
 // 3. 指示（pack）：束と段（#125）。標準の部品はいつも、専門の部品は印の付いた束だけ、特殊（extra）はどこにも入らない。
-//    無料のプランは中核の 4 つ（FREE_CORE）のほかの標準の部品を一覧の 1 行だけにし、標準すべてが 45 KB に収まる（新規作成のメーターが目安の中から始まる）。
+//    無料のプランは中核の 4 つ（FREE_CORE）のほかの標準の部品を一覧の 1 行だけにし、標準すべてが 45 KB と貼り付けの長さ 31,000 に収まる（新規作成のメーターが目安の中から始まる）。
 //    言いたいこと → パーツ → ステップの表は組み立てのときに作る（入っている部品だけ・外した札の行はない）、R-whole、
 //    外した言いたいことだけに使う部品はどこにも出ない（表・一覧・見本・文。「使わない」の 1 行を除く）、束の見本は抜き出し
 // 4. シード値：作るときに 1 回だけ書く（あれば変えない）・直した返事が失っても戻す・egatari.json の studio.newDeck（ほかの項目はバイトのまま）
@@ -22,7 +22,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, overMessage, sizeReport, pairsOf } from './make-llm-guide.mjs';
-import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack } from '../kit/core/llm-pack.mjs';
+import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, SINGLE_SET_DROP_ORDER, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack } from '../kit/core/llm-pack.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partDesc, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -38,6 +38,13 @@ const ok = (name, fn) => { fn(); n++; console.log('  ok   ' + name); };
 const choiceRequest = (c, P, lang) => choiceRequestOf({ ...c, parts: loadedParts((c && c.sets) || []) }, P, lang);
 const MANIFEST2 = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
 const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === STANDARD).sort();
+// 束を 1 つ選んだ無料のプランの指示で外すパーツ（kit/core/llm-pack-assemble.mjs の SINGLE_SET_DROP_ORDER の順、収まったところで止める。2026-11-06）。
+// 載っていない束は何も外さない。日本語はどの束も中核の 4 つを短くすれば収まる
+const SINGLE_SET_EXPECTED = {
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare'], kokugo: ['m-fishbone', 'm-quad'] },
+  ja: {},
+};
+for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
 const EXTRA = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'extra').sort();
 const ofSet = (s) => Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === s).sort();
 const described = (text) => [...text.matchAll(/^### `<(m-[a-z]+(?:-[a-z]+)*)>`$/gm)].map((x) => x[1]).sort();   // 拡張の節（### `<m-flow>`：この束の拡張）は数えない
@@ -122,7 +129,7 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   assert.equal(planOf({}), 'free'); assert.equal(planOf({ plan: 'paid' }), 'paid'); assert.equal(planOf({ plan: 'gold' }), 'free'); assert.equal(planOf(null), 'free');
   assert.equal(capKb('free'), PACK_CAP_KB.free); assert.equal(capKb('paid'), PAID_PACK_KB);
   assert.equal(PACK_CAP_KB.free, 45); assert.equal(PAID_PACK_KB, 150); assert.equal(PACK_CAP_KB.paid, PAID_PACK_KB);
-  assert.equal(LIMITS.fail, PACK_CAP_KB.free); assert.equal(LIMITS.free, PACK_CAP_KB.free); assert.equal(LIMITS.paid, PAID_PACK_KB);
+  assert.equal(LIMITS.fail, PACK_CAP_KB.free); assert.equal(LIMITS.free, PACK_CAP_KB.free); assert.equal(LIMITS.paid, PAID_PACK_KB); assert.equal(LIMITS.paste, FREE_PASTE_UNITS);
   // 印の付いたパーツだけが指示に入り、ほかのパーツはどこにも名前が出ない。有料のプランは全部を詳しく、無料のプランは BRIEF を一覧の 1 行だけ
   for (const lang of ['en', 'ja']) for (const tags of [initialParts([]), ['m-bars', 'm-hist', 'm-timer'], ['m-kanbun', 'm-flow', 'm-kpi'], []]) for (const plan of AI_PLANS) {
     const text = packWithRequest({ ...partsPackOpts(tags, plan), lang });
@@ -143,23 +150,26 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   assert.ok(c.length && c.every((t) => !kokugo.includes(t)), c.join());
   assert.ok(sizeOf(all.filter((t) => !c.includes(t))) < sizeOf(all));
 });
-ok('fitting the free plan (#125): over 45 KB, the core four are shortened first (never unticked); still over, only specialized parts are candidates, largest first; the paid plan never shortens', () => {
-  const sizeOf = (lang) => (tags, short) => packSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang }));
+ok('fitting the free plan (#125): over 45 KB or a paste length of 31,000, the core four are shortened first (never unticked); still over, with one set the standard parts outside the core four in the fixed order, with two or more only specialized parts, largest first; the paid plan never shortens', () => {
+  // 目安の物差しは fitSize（45 KB と貼り付けの長さ 31,000 の近いほう。新規作成とコマンドが使う）
+  const sizeOf = (lang) => (tags, short) => fitSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang }), 'free');
   const cap = capKb('free') * 1024;
   for (const lang of ['en', 'ja']) {
     const size = sizeOf(lang);
     // 標準だけ：収まるので短くしない
     assert.deepEqual(fitPlan(initialParts([]), 'free', { sizeOf: size, capBytes: cap }), { short: false, candidates: [] }, lang + ' standard only');
     // 国語（45 KB の候補で m-kakijun は extra に移り、gendai・kanbun・kobun の 3 つ。backlog #170）：
-    // 中核の 4 つを短くすれば収まる……日本語は短縮が要るが、英語は短縮なしでも収まる（margin の違い）。外す候補はどちらもない
+    // 日本語は中核の 4 つを短くすれば 45 KB に収まり、外す候補はない。英語は貼り付けの長さ 31,000 を越え、短くしても越えるので、
+    // 束が 1 つのときの順（SINGLE_SET_DROP_ORDER）で標準のパーツが候補になる（国語のパーツは外さない）
     const kok = initialParts([{ set: 'kokugo' }]);
     const fk = fitPlan(kok, 'free', { sizeOf: size, capBytes: cap });
-    assert.deepEqual(fk.candidates, [], lang + ' kokugo: no drop needed');
-    const tk = packWithRequest({ ...partsPackOpts(kok, 'free', { short: fk.short }), lang });
-    assert.ok(packSize(tk) <= cap, `${lang} kokugo (short=${fk.short}): ${packSize(tk)} B`);
-    assert.deepEqual(described(tk), (fk.short ? partsOfSet('kokugo') : [...FREE_CORE, ...partsOfSet('kokugo')]).sort(),
-      `${lang}: ${fk.short ? 'shortened, only the kokugo parts' : 'not shortened, the core four and the kokugo parts'} are described`);
-    assert.deepEqual(rowsOf(tk), [...kok].sort(), lang + ': every ticked part keeps its catalogue line');
+    assert.ok(fk.short, lang + ' kokugo: the core four are shortened');
+    assert.deepEqual(fk.candidates, SINGLE_SET_EXPECTED[lang].kokugo, lang + ' kokugo: the candidates');
+    const kept = kok.filter((t) => !fk.candidates.includes(t));
+    const tk = packWithRequest({ ...partsPackOpts(kept, 'free', { short: fk.short }), lang });
+    assert.ok(packSize(tk) <= cap && pasteUnits(tk) <= FREE_PASTE_UNITS, `${lang} kokugo (short=${fk.short}): ${packSize(tk)} B, paste length ${pasteUnits(tk)}`);
+    assert.deepEqual(described(tk), partsOfSet('kokugo').sort(), `${lang}: shortened, the kokugo parts are described`);
+    assert.deepEqual(rowsOf(tk), [...kept].sort(), lang + ': every ticked part keeps its catalogue line');
     assert.ok(FREE_CORE.every((t) => tk.includes('| `<' + t + '>` |')), lang + ': the core four stay in the catalogue');
     // 統計・算数と国語：短くしても越える。外す候補は専門のパーツだけで、外せば収まる（45 KB では math+maps は短縮だけで収まるので、
     // 両方とも実際に外す候補が出る組にする）
@@ -170,6 +180,8 @@ ok('fitting the free plan (#125): over 45 KB, the core four are shortened first 
       const gains = f.candidates.map((t) => size(tags, true) - size(tags.filter((x) => x !== t), true));
       assert.deepEqual(gains, [...gains].sort((a, b) => b - a), lang + ': largest first');
       assert.ok(size(tags.filter((t) => !f.candidates.includes(t)), true) <= cap, `${lang} ${sets.join('+')}: fits after unticking the candidates`);
+      const left = packWithRequest({ ...partsPackOpts(tags.filter((t) => !f.candidates.includes(t)), 'free', { short: true }), lang });
+      assert.ok(packSize(left) <= cap && pasteUnits(left) <= FREE_PASTE_UNITS, `${lang} ${sets.join('+')}: within 45 KB and the paste length after unticking`);
     }
     // 有料のプランは短くしない
     const paidSize = (tags, short) => packSize(packWithRequest({ ...partsPackOpts(tags, 'paid', { short }), lang }));
@@ -186,6 +198,7 @@ ok('free plan (#125): every standard part fits 45 KB, with only the four core pa
     // 新規作成の初めの印（標準すべて）の無料のプランの指示：目安の中（#124 のメーターが赤から始まらない）
     const start = packWithRequest({ ...partsPackOpts(initialParts([]), 'free'), lang });
     assert.ok(packSize(start) <= capKb('free') * 1024, `${lang}: the free pack of every standard part is ${packSize(start)} B, over ${capKb('free')} KB`);
+    assert.ok(fitSize(start, 'free') <= capKb('free') * 1024, `${lang}: the free pack of every standard part has a paste length of ${pasteUnits(start)}, over ${FREE_PASTE_UNITS}`);
     assert.deepEqual(described(start), [...FREE_CORE].sort(), lang + ': only the core four are described on the free plan');
     assert.deepEqual(rowsOf(start), STD, lang + ': every standard part has its catalogue line');
     assert.ok(start.includes(PACK_DATA[lang].briefNote), lang + ': the note on the parts without a section');
@@ -422,12 +435,42 @@ ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with
 // Some browsers paste with CRLF, so each line feed counts 2: UTF-16 units + line feeds <= 31,000 (decided with the maintainers 2026-11-06;
 // en ~30.85K, ja ~22K). When this trips: first trim the common pack text (with eval A on the result), and only if that is not enough
 // the parts' English descriptions in the parts library (egatari/components).
-ok('free pack (standard parts, no set: the largest the editor makes on the free plan) fits a Gemini paste with the brief: UTF-16 units + line feeds <= 31,000, ja and en', () => {
+ok('the single-set drop order: the maintainers\' list, every standard part outside the core four', () => {
+  assert.deepEqual([...SINGLE_SET_DROP_ORDER], ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-kpi', 'm-compare', 'm-cards', 'm-pie', 'm-scatter', 'm-curves']);
+  const outside = STD.filter((t) => !FREE_CORE.includes(t));
+  assert.deepEqual(outside.filter((t) => !SINGLE_SET_DROP_ORDER.includes(t)), []);
+  assert.ok(SINGLE_SET_DROP_ORDER.every((t) => STD.includes(t)));
+});
+// The free plan's fitter (fitSize in kit/core/llm-pack-assemble.mjs) caps every free pack at min(45 KB, 31,000 of these) (2026-11-06), so the
+// guard covers every set combination New… can tick, ja and en: the pack New… and kit/llm-pack.mjs copy after fitting (fitPack: the core four
+// shortened, then specialized parts left out, largest first) must fit. The standard pack as assembled (no fit at all) must fit on its own.
+ok('free pack fits a Gemini paste with the brief: UTF-16 units + line feeds <= 31,000, ja and en: the standard pack as assembled, and the fitted pack of every combination of part sets', () => {
+  assert.equal(FREE_PASTE_UNITS, 31000);
+  const units = (text) => { const lf = (text.match(/\n/g) || []).length; return { lf, n: text.length + lf }; };
   for (const lang of ['en', 'ja']) {
     const text = buildPack({ sets: [], lang, plan: 'free' });
-    const lf = (text.match(/\n/g) || []).length, n = text.length + lf;
+    const { lf, n } = units(text);
+    assert.equal(pasteUnits(text), n);
     assert.ok(n <= 31000, `${lang} free standard: ${text.length} UTF-16 units + ${lf} line feeds = ${n}, over 31,000 (Gemini cuts a paste at about 32,173; see the comment for what to trim)`);
   }
+  let k = 0;
+  for (let m = 0; m < 1 << SETS.length; m++) {
+    const sets = SETS.filter((_, i) => m & (1 << i));
+    for (const lang of ['en', 'ja']) {
+      const sizeOf = (tags, short) => fitSize(packWithRequest({ ...partsPackOpts(tags, 'free', { short }), lang }), 'free');
+      const f = fitPack(initialParts(sets.map((s) => ({ set: s }))), 'free', { sizeOf, capBytes: capKb('free') * 1024 });
+      const text = packWithRequest({ ...partsPackOpts(f.tags, 'free', { short: f.short }), lang });
+      const { lf, n } = units(text);
+      assert.ok(!f.over && n <= 31000 && packSize(text) <= capKb('free') * 1024, `${lang} free ${sets.join('+') || '(none)'} fitted: ${text.length} UTF-16 units + ${lf} line feeds = ${n}, ${packSize(text)} B`);
+      if (sets.length === 1) {
+        // 束が 1 つ：中核の 4 つのほかの標準のパーツを決まった順に。選んだ束のパーツと中核の 4 つは外さない。外したものは決まった表のとおり
+        assert.ok(f.dropped.every((t) => TIERS.parts[t].tier === 'standard' && !FREE_CORE.includes(t)), `${lang} ${sets[0]}: only standard parts outside the core four left out (${f.dropped})`);
+        assert.deepEqual(f.dropped, SINGLE_SET_EXPECTED[lang][sets[0]], `${lang} ${sets[0]}: the parts left out`);
+      } else assert.ok(f.dropped.every((t) => TIERS.parts[t].tier === 'specialized'), `${lang} ${sets.join('+')}: only specialized parts left out`);
+      k++;
+    }
+  }
+  assert.equal(k, 2 << SETS.length);
 });
 ok('pack: paid = every standard part + the chosen sets, all described; free = the same parts, with only FREE_CORE and the set parts described; nothing unchosen leaks', () => {
   for (const lang of ['en', 'ja']) for (const plan of AI_PLANS) for (const sets of SET_CHOICES) {
@@ -489,10 +532,11 @@ ok('gen: the size rows (free standard fails over 45 KB, free + a set is only rep
       const x = rep.find((y) => y.lang === lang && y.what === 'free standard+' + s);
       assert.ok(x && x.freeSet && x.max === 45 && ['ok', 'over'].includes(x.level), `${lang} free + ${s}`);
       // 新規作成とコマンドが写すのと同じ、目安に収めた指示の大きさ（fitPack。越えるときだけ中核の 4 つも短く）。どの束も 45 KB まで
-      const sizeOf = (t, short) => packSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }));
+      const sizeOf = (t, short) => fitSize(packWithRequest({ ...partsPackOpts(t, 'free', { short }), lang }), 'free');
       const tags = initialParts([{ set: s }]), f = fitPack(tags, 'free', { sizeOf, capBytes: 45 * 1024 });
+      const fitted = packWithRequest({ ...partsPackOpts(f.tags, 'free', { short: f.short }), lang });
       assert.equal(x.short, sizeOf(tags, false) > 45 * 1024, `${lang} free + ${s}: shortened only when over`);
-      assert.ok(x.short === f.short && x.dropped.join() === f.dropped.join() && Math.abs(x.kb * 1024 - f.bytes) < 1 && x.kb <= 45 && x.level === 'ok', `${lang} free + ${s}: the reported size ${x.kb}`);
+      assert.ok(x.short === f.short && x.dropped.join() === f.dropped.join() && Math.abs(x.kb * 1024 - packSize(fitted)) < 1 && x.paste === pasteUnits(fitted) && x.kb <= 45 && x.paste <= LIMITS.paste && x.level === 'ok', `${lang} free + ${s}: the reported size ${x.kb} KB, paste length ${x.paste}`);
     }
     for (const p of pairsOf(SETS)) { const x = rep.find((y) => y.lang === lang && y.what === `paid standard+${p.join('+')}`); assert.ok(x && x.paidPair && x.max === 150 && x.level === 'ok', `${lang} paid ${p.join('+')}`); }
     const w = rep.find((y) => y.lang === lang && y.worst);
