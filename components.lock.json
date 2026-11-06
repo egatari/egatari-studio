@@ -296,7 +296,8 @@
         "1.13.1",
         "2.0.0",
         "2.0.1",
-        "2.0.2"
+        "2.0.2",
+        "2.0.3"
       ],
       "sha256": {
         "1.0.0": "c7ecdd90392998347e6ca55bef70d0eef6a240150030424f29654fcca753dcb6",
@@ -323,7 +324,8 @@
         "1.13.1": "cde0439fa559fb69edcdc98746121e5a8579f1228b63b1f8b774a79faf105504",
         "2.0.0": "21f5e95ee0d45bd05c56a56a32da0f286adefef1f79fc51813cc216c0613bc7a",
         "2.0.1": "3af5292c8b58e2ad4ec0ec62da934fc2513f33ecb9ab3035fd75f55f9603217a",
-        "2.0.2": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948"
+        "2.0.2": "06b74d974186ffe32ae6641a3a73f6d0af022fdc5d403920c2410b05ba1c5948",
+        "2.0.3": "3d67eecc6eab90e8832bbdfa6fff6bcc471c755132434fc3defd80999acd2fe3"
       },
       "crlfSha256": {
         "1.0.0": "8bb622c9c20ac3dfff1847284aaa8896b74d26e0daf9e73d64404dc1b23a920c",
@@ -374,7 +376,8 @@
         "1.13.1": "a4baeda47410cc2ded554725c2612766df3a7bbdba8c8cbb6d841f2ea4008023",
         "2.0.0": "d3b79b06cb9b317ea9690a2b069d0571e240ea45f50b9aee00bc562d3c500a43",
         "2.0.1": "6c1626dc4c691d7ee4abdef37c21d42dd6d981674ac885a3d2bdc1a884b4e2ab",
-        "2.0.2": "ed44804fc14b2755a82960d94cb0322858732ad789fd9a46704ee88955bd65e6"
+        "2.0.2": "ed44804fc14b2755a82960d94cb0322858732ad789fd9a46704ee88955bd65e6",
+        "2.0.3": "a039412289506dde09a645016eac4cf7ce819f08e98a424f34f19e9dc84a89db"
       }
     },
     "codetree-core": {

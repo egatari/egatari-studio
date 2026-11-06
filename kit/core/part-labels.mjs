@@ -39,7 +39,7 @@ const LOCAL = {
   'm-kanbun': { ja: '漢文', en: 'Kanbun', icon: 'kanbun', desc: { ja: '返り点を付けて訓読の順にたどり、書き下す', en: 'Return marks, reading order and the rendered text' } },
   'm-kobun': { ja: '古文', en: 'Kobun', icon: 'kobun', desc: { ja: '語に切って品詞を色分けし、現代語訳と並べる', en: 'Words split and coloured by part of speech, with a modern translation' } },
   'm-gendai': { ja: '現代文の読解', en: 'Modern text reading', icon: 'gendai', desc: { ja: '傍線・指す内容への矢印・段落の役割を図にする', en: 'Underlines, arrows to what words refer to, and paragraph roles' } },
-  'm-codetree': { icon: 'codetree', desc: { ja: '符号を木の枝でたどる', en: 'Codes traced along the branches of a tree' } },
+  'm-codetree': { icon: 'codetree', desc: { ja: 'ハフマン木で 0 と 1 の並びを復号する', en: 'Decodes a string of 0s and 1s with a Huffman tree' } },
   'm-map-japan': { ja: '日本地図', en: 'Map of Japan', icon: 'map', desc: { ja: '都道府県を塗り分け、点や矢印を置く', en: 'Prefectures shaded, with points and arrows' } },
   'm-predict': { ja: '予想と答え', en: 'Predict and check', icon: 'predict', desc: { ja: '予想を聞いてから答えを見せる', en: 'Asks for a guess, then shows the answer' } },
   'm-timer': { ja: 'タイマー', en: 'Timer', icon: 'timer', desc: { ja: '演習やグループワークの残り時間', en: 'Time left for an exercise or group work' } },
