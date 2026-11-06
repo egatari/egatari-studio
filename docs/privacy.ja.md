@@ -1,14 +1,14 @@
-<!-- i18n: pair=privacy.md sha256=c9374f086482dad6 -->
+<!-- i18n: pair=privacy.md sha256=8fd790e3f66052d3 -->
 # プライバシー
 
 [English](privacy.md) | 日本語
 
 ## このページについて
 
-このページでは、Egatari Studio（教材を作るアプリ。https://studio.egatari.org/）と、教材を再生するプレーヤー（Egatari Player）が、インターネットに何を送り、端末に何を残すかを説明します。
+このページでは、Egatari を作っている私たち（Egatari の開発者）が、Egatari Studio（教材を作るアプリ。https://studio.egatari.org/）と、教材を再生するプレーヤー（Egatari Player）が、インターネットに何を送り、端末に何を残すかを説明します。
 
 - 対象は、Studio、Studio が書き出す `.ega.html`（学習者に配るファイル）、再生専用のページ Egatari Viewer（https://viewer.egatari.org/）です。
-- 書いてあるのは、プログラムの実際の動きです。広告や利用状況の計測は入っていません（探した範囲では見つかりません）。
+- 書いてあるのは、プログラムの実際の動きです。広告や利用状況の計測は入れていません。
 - 学校の IT 担当の方が通信を止めたり確かめたりできるように、止め方も書きます。
 - 「ライブ」は、授業や発表の最中に、参加者が自分の端末から質問を送ったり投票したりできる機能です。時間を決めて開き、使うかどうかは作成者が教材ごとに選びます。ライブを付けていない教材は、ライブのサーバーにつながりません。
 - コードの中の根拠（ファイルと行）は、英語版の[付録](privacy.md#appendix-evidence-in-the-code-for-maintainers)にあります。
@@ -35,12 +35,12 @@
 | ライブ（質問・投票）を使う（参加者が「参加する」を 1 回押す） | 教材に書いてあるライブのサーバー（既定は https://live.egatari.org。作成者が別のサーバーを指定できる） | 参加者が送ると決めた質問と投票、入力したときだけ名前、端末で作った乱数の ID、接続を保つための ping、参加コード（v0.6.6 から、接続のアドレスには入れず、つないだ後の最初のやりとりで送る）。見ている位置や時間は送らない | ライブを付けずに書き出す。学校のネットワークで、そのサーバーだけを止める |
 
 補足：
-- アクセス解析：探した範囲では、Studio にもプレーヤーにも、解析のプログラムや、それに送る処理はありません。サイトを置いている GitHub と Cloudflare が残すアクセスの記録は、下の「サイトの記録」のとおりです。
+- アクセス解析：Studio にもプレーヤーにも、アクセス解析のプログラムは入れていません。サイトを置いている GitHub と Cloudflare が残すアクセスの記録は、下の「サイトの記録」のとおりです。
 - 外のサーバーからスクリプトを読み込むのは、音声のモデルを取る窓だけです（版と中身を固定しています）。Studio 本体のページは、外のスクリプトを読み込みません。
 
 ## 送らないもの
 
-次のことは、コードで確かめました。
+Studio とプレーヤーは、次のものを送りません。
 
 - 教材のスライド・台本・音声・画像を Studio のサーバーへ送ることはありません。教材を保存したり共有したりする仕組みが、サーバーにありません。
 - Studio のプレビューは、外へつながない設定（`connect-src 'none'`）で動きます。
@@ -108,7 +108,7 @@ CSP（通信を許す相手の設定）で確かめる方法：
 
 ## 問い合わせ
 
-このページや使い方についての質問は、GitHub の [Issues](https://github.com/egatari/egatari-studio/issues) か [Discussions](https://github.com/egatari/egatari-studio/discussions) に書いてください。人に見られたくない相談（個人情報や安全の問題）は、GitHub の「非公開で報告する」（[Report a vulnerability](https://github.com/egatari/egatari-studio/security/advisories/new)）から送ってください。作成者だけが読みます。
+このページや使い方についての質問は、GitHub の [Issues](https://github.com/egatari/egatari-studio/issues) か [Discussions](https://github.com/egatari/egatari-studio/discussions) に書いてください。人に見られたくない相談（個人情報や安全の問題）は、GitHub の「非公開で報告する」（[Report a vulnerability](https://github.com/egatari/egatari-studio/security/advisories/new)）から送ってください。Egatari の開発者だけが読みます。
 
 ## サイトの記録
 

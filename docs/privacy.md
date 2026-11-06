@@ -1,14 +1,14 @@
-<!-- i18n: pair=privacy.ja.md sha256=44eb44cdf6e68a7e -->
+<!-- i18n: pair=privacy.ja.md sha256=767c3eecb973beb2 -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
 
 ## About this page
 
-This page explains what Egatari Studio (the app for making lessons, https://studio.egatari.org/) and the player that plays lessons (Egatari Player) send over the internet, and what they keep on your device.
+This page is written by us, the developers of Egatari, and explains what Egatari Studio (the app for making lessons, https://studio.egatari.org/) and the player that plays lessons (Egatari Player) send over the internet, and what they keep on your device.
 
 - It covers Studio, the `.ega.html` files Studio exports (the files you hand out to learners), and Egatari Viewer, the play-only page (https://viewer.egatari.org/).
-- It describes what the code actually does. There is no advertising and no usage measurement (none was found in the code).
+- It describes what the code actually does. We have not added ads or usage tracking.
 - It also says how to block or check each connection, for school IT staff.
 - Live: an optional feature, chosen by the creator for each lesson and open for a set time, where participants send questions and votes from their own devices to a Live server during a lesson or talk; lessons without Live never connect to a Live server.
 - The evidence in the code (files and lines) is in the [appendix](#appendix-evidence-in-the-code-for-maintainers).
@@ -35,12 +35,12 @@ This page explains what Egatari Studio (the app for making lessons, https://stud
 | Using Live (questions and polls) (participant's action; press "Join" once) | The Live server written in the lesson (by default https://live.egatari.org; the lesson's creator can choose another) | Questions and votes the participant chooses to send, a name only if they type one, a random ID made on the device, pings, and the join code (sent in the first message after connecting, not in the connection address; from v0.6.6). The viewing position and timing are not sent | Export without Live. Block only that server on the school network |
 
 Notes:
-- Analytics: no analytics code or reporting calls were found in Studio or the player. For the access logs that GitHub and Cloudflare keep, see "Site logs" below.
+- Analytics: we have not added analytics code to Studio or the player. For the access logs that GitHub and Cloudflare keep, see "Site logs" below.
 - Only the window that downloads the voice models loads scripts from other servers (pinned by version and content). The main Studio page does not.
 
 ## What is not sent
 
-As far as the code shows:
+Studio and the player do not send:
 
 - Studio never sends lesson slides, scripts, audio or images to a Studio server. There is no saving or sharing service.
 - Studio's preview runs under a policy that cannot connect anywhere (`connect-src 'none'`).
@@ -108,7 +108,7 @@ To block connections:
 
 ## Contact
 
-Ask about this page or how to use Egatari in GitHub [Issues](https://github.com/egatari/egatari-studio/issues) or [Discussions](https://github.com/egatari/egatari-studio/discussions). For anything you don't want made public (personal data, security problems), use GitHub's private reporting ([Report a vulnerability](https://github.com/egatari/egatari-studio/security/advisories/new)). Only the maintainers read it.
+Ask about this page or how to use Egatari in GitHub [Issues](https://github.com/egatari/egatari-studio/issues) or [Discussions](https://github.com/egatari/egatari-studio/discussions). For anything you don't want made public (personal data, security problems), use GitHub's private reporting ([Report a vulnerability](https://github.com/egatari/egatari-studio/security/advisories/new)). Only the Egatari developers read it.
 
 ## Site logs
 
