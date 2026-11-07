@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=701d28b28f3dad83 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=2dd2d6edb1d86b44 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -12,6 +12,8 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    **The bundled player.** Files carry `player` {name, version} (format spec §4.1): `kit/player.json` holds Egatari Player's version, and `kit/player.lock.json` the version and SHA-256 of the last released player (the files in `PLAYER_FILES`, `kit/core/player.mjs`: `kit/deck.js`, the `kit/core` modules it bundles, `presenter.js`, `tools.js`, `shape.js`, the runtime CSS and the Live player). The book's typesetting CSS (`ARTICLE_CSS` in `kit/core/article-render.mjs`) is generator output written into the lesson, like the theme and slide CSS, so it is versioned by `generator`, not by the player hash. A build whose player files equal the lock writes the plain version; any other build writes `<version>+dev.<commit>` (`+dev` without git). Before tagging an rc, run `npm run player:check -- --strict`; if the player changed since its last release, run `npm run player:bump -- patch|minor|major` (the first release is `major`: 1.0.0), fill in `changes/player-<version>.md`, run `npm run gen:check` and commit, so that the candidate's files carry the plain player version. On branches `npm run player:check` only informs.
 
    **The spec snapshot.** Before tagging an rc, `vendor/egatari-spec` must equal the latest `wd-*` snapshot of egatari-spec (`vendor/egatari-spec/SOURCE.json` has `"snapshot": "wd-YYYY-MM-DD"`, and `node tools/spec-snapshot.mjs --check` prints `ok`). Sync with `node tools/sync-spec.mjs <spec clone> --ref wd-YYYY-MM-DD`. If the spec has changed since its latest snapshot, ask the spec maintainer to cut a new snapshot first.
+
+   **The font subsetter.** `harfbuzzjs` and `wawoff2` are pinned exactly in `package.json` (`SUBSET_PINS` in `kit/core/font-subset-core.mjs`); they and the `@fontsource` packages decide the bytes of every embedded font. Bumping one is an output change, like a KaTeX bump: update `SUBSET_PINS` and the pinned hashes in `tools/test-font-subset.mjs` (`PRINT_PINS=1 node tools/test-font-subset.mjs` prints them) and say so in `changes/`.
 
    **The version in `package.json`.** `npm.yml` publishes only when the tag equals `v` + `package.json`'s `version`, so set the version to the candidate's before tagging (the candidate is published to the `next` dist-tag; `latest` stays on the last release). `--rc` changes only the version, in the same files as step 4 (`package.json`, `package-lock.json`, both `plugin.json` files and the two `marketplace.json` files), and re-runs `node tools/make-llm-guide.mjs` so the skills' pinned docs links and the CLI minor version follow it (`npm run gen:check` and `tools/test-plugin.mjs` need all of them to match `package.json`); `CHANGELOG.md` and `changes/` stay as they are:
 

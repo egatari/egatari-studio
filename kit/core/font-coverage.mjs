@@ -35,7 +35,8 @@ export function uncoveredGlyphs(html) {
   const seen = new Set(), missing = [];
   for (const [where, t] of parts) for (const ch of t) {
     const c = ch.codePointAt(0);
-    if (c <= 0x20 || seen.has(c) || /\s/.test(ch)) continue;
+    // 空白と、字形を持たない書式の字（ゼロ幅の空白 U+200B・式の見えない演算子 U+2061 など。Unicode の Cf）は数えない：どの字体で組んでも見えない
+    if (c <= 0x20 || seen.has(c) || /\s|\p{Cf}/u.test(ch)) continue;
     seen.add(c);
     if (!covered(c)) missing.push({ char: ch, cp: c, where });
   }

@@ -113,7 +113,7 @@ if (process.env.EGATARI_FONT_SUBSET !== '0') {
   try {
     const fsub = await import('./font-subset.mjs');
     await fsub.initSubsetter();
-    subsetFont = (bytes, cps) => Buffer.from(fsub.subsetWoff2(bytes, cps)).toString('base64');
+    subsetFont = (bytes, cps) => { const r = fsub.subsetFace(bytes, cps); return { b64: Buffer.from(r.woff2).toString('base64'), cps: r.cps }; };
   } catch (e) { console.warn('  ⚠ 字の絞り込み（wasm）を使えない（分割ファイルを使う）: ' + e.message); }
 }
 

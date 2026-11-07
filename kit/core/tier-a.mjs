@@ -6,7 +6,10 @@
 //     original  開いている（または前に保存した）1 ファイルの文字列
 //     files     作業場所の今のファイル：{path: Uint8Array} か Map（audio/manifest.json を含む。控え・コメントなど保存しないものは無視する）
 //     opts.identity  {docId, derivedFrom}：新しい教材として保存する（docId と derivedFrom も書き換え、書き出しの印 exportedFrom を外す。§3.1・§7.3）
-//     opts.fonts     {faces(key) → [{w, family, file, range}], load(file) → Promise<base64>}：字の分割ファイル（@fontsource）。key は 'biz' | 'sans3'
+//     opts.fonts     {faces(key) → [{w, family, file, range}], load(file) → Promise<base64>}：字の分割ファイル（@fontsource）。key は FONTS の名前（'biz' | 'sans3' | 'mincho'）か、
+//                    一覧（FONT_LIST）の family（'Zen Maru Gothic' など）。その字体を持たなければ null か空か throw（その字体には補わない）。
+//                    なければ（字の元がない）、新しい字は補わずに保存し、warnings（頭 FONT_FALLBACK_WARN）と changes.uncovered に端末の字体で出る字を名指す
+//     opts.fontSubset () → Promise<(bytes, cps, file) => {b64, cps} | null>：字の切り出し（kit/core/font-subset-core.mjs）。あれば補いの分割ファイルを補う字だけに切り出す
 //     opts.article   {html}：本文（§9C）を直したときの、組み直した <article id="egatari-article">（呼び手が今の作業場所から組む。kit/core/article-page.mjs の
 //                    renderedArticle）。本文のファイル（index.article の path・chapters・references）が変わっていて、これがなければ article-changed で断る
 //                    （呼び手は本文を組んでから、もう一度呼ぶ）。本文を直すのは §9C.1 の「本文だけを組み直す」編集で、スライドは組み直さない
@@ -35,12 +38,17 @@ import {
   readableStep, readableStepOrder, extensionsFrom, excludedReason, LIMITS, RE, KNOWN, copyUnknown, validateDeckMeta, isOffset,
 } from './portable.mjs';
 import { parseNarration, narrationMap, marksMap, splitKey } from './narration-core.mjs';
-import { isJapanese, LATIN_MAX, parseRange, fontFaceCss } from './build-core.mjs';
+import { isJapanese, LATIN_MAX, parseRange, fontFaceCss, FONTS, fontByFamily, FONT_LIST } from './build-core.mjs';
 import { planAttachments, problemText, isAttachPath, inspectAttachment, blocking, nameProblem, roleProblem, attachmentMime, ATTACH_ROLES } from './attachments.mjs';
 import { updateConfig } from './config-file.mjs';
 
 const IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, RD_ID = FORMAT.READABLE_ID, CFG = FORMAT.CONFIG_FILE;
 const SUP = FORMAT.FONT_SUPPLEMENT_PREFIX;
+// 字の元がなく、補えなかった字の知らせの頭（編集アプリが見分けて、画面の言葉で名指す。app/main.js）
+export const FONT_FALLBACK_WARN = 'font-fallback: ';
+// 補いの字体の並び（組み立ての fontCss と同じ：Source Sans 3 → BIZ UDPゴシック → 明朝 → 選べる字体の一覧の順）
+const FONT_ORDER = [...new Set(['Source Sans 3', 'BIZ UDPGothic', 'BIZ UDPMincho', ...FONT_LIST.map((f) => f.family)])];
+const fromBase64 = (b64) => { const t = atob(b64), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return u; };
 const ARTICLE_ID = 'egatari-article';   // 本文の実行時の形（format spec §9C.6）
 const BLOCKS = ['deck-narration', 'deck-marks', 'deck-audio', 'deck-timing', 'deck-meta'];
 // 段 A で変わってよい原稿のファイル（音声 audio/ は記録として別に扱う）。FORMAT.CONFIG_FILE は docId と権利の表示が索引と同じときだけ
@@ -516,7 +524,7 @@ async function run(original, filesIn, opts) {
   if (identity) edit('deck-meta', (t) => jsonSet(t, ['docId'], identity.docId));
 
   // 8. 字の補い：変わった段階の表示の字のうち、今の文書の字（@font-face）が持たないもの
-  let supplement = null;
+  let supplement = null, uncovered = '';
   const lang = (r.deckMeta && r.deckMeta.lang) || (isObj(ix.metadata) && ix.metadata.lang) || 'ja';
   const need = new Set();
   for (const { s, st } of narrChanged) for (const x of shown(newMap[s]?.[st])) for (const ch of x) if (ch.codePointAt(0) >= 0x20) need.add(ch.codePointAt(0));
@@ -535,49 +543,86 @@ async function run(original, filesIn, opts) {
     for (const x of shown(parseJsonStrict(blockText('deck-narration')))) for (const ch of x) known.add(ch.codePointAt(0));
     for (const c of oldBookChars) known.add(c);
     const covered = (c, family, w, style) => have.some((f) => f.family === family && f.w === w && f.style === style && (f.range ? inRange(f.range, c) : known.has(c)));
-    const families = { biz: 'BIZ UDPGothic', sans3: 'Source Sans 3' };
+    // 補う字体（§7.2「その字が要る、埋め込んだどの字体にも」）：組み立てと同じ決まりで、その字を組む字体のうち文書が埋め込んでいるもの全部。
+    // 日本語の教材は和文の字体（BIZ UDPゴシック・明朝・選んだ和文の字体）のどれにも。英語などは Source Sans 3 が持つ字なら Source Sans 3 と
+    // 埋め込んだ英語の字体、ラテン文字より後ろの字なら埋め込んだ和文の字体（明朝で組む字幕・本文にも補う。v0.6.6 まではゴシックと Source Sans 3 だけだった）
+    const JA = isJapanese(lang);
+    const embeddedFams = [...new Set(have.map((f) => f.family))];
+    const groupOf = (fam) => { const x = fontByFamily(fam); return x ? x.group : null; };
+    const keyOf = (fam) => Object.keys(FONTS).find((k) => FONTS[k].family === fam) || fam;
+    // 補いのない字体の知らせに使う、その字の既定の字体
+    const defaultFam = (c) => (JA || !inSansOf(c) ? FONTS.biz.family : FONTS.sans3.family);
     // 補うのは、文書が埋め込んでいる字（同じ family・weight・style）だけ（§7.2。400 だけを埋め込んだ文書には 400 だけ）
     const embedded = (family) => { const m = new Map(); for (const f of have) if (f.family === family) m.set(`${f.w}/${f.style}`, { w: f.w, style: f.style }); return [...m.values()]; };
-    const facesOf = (key) => (opts.fonts ? opts.fonts.faces(key) : null);
-    const sans = isJapanese(lang) ? null : facesOf('sans3');
-    const inSans = (c) => !!sans && sans.some((f) => inRange(f.range, c));
+    // 字の分割ファイルの一覧（key：FONTS の名前か FONT_LIST の family）。字の元がない・その字体を持たない（1 ファイル版の編集アプリは明朝を持たない）なら null
+    const facesCache = new Map();
+    const facesOf = (key) => {
+      if (!opts.fonts) return null;
+      if (!facesCache.has(key)) { let v = null; try { v = opts.fonts.faces(key) || null; } catch { v = null; } facesCache.set(key, v && v.length ? v : null); }
+      return facesCache.get(key);
+    };
+    const sans = JA ? null : facesOf('sans3');
+    const inSansOf = (c) => !!sans && sans.some((f) => inRange(f.range, c));
+    const targetsOf = (c) => {
+      if (JA) return embeddedFams.filter((fam) => groupOf(fam) === 'ja');
+      if (inSansOf(c)) return embeddedFams.filter((fam) => groupOf(fam) === 'en');
+      return c > LATIN_MAX ? embeddedFams.filter((fam) => groupOf(fam) === 'ja') : [];
+    };
     // 分割ファイルのうち字 c を持つもの：同じ太さ、なければいちばん近い太さ（同じ近さなら細いほう）
     const source = (list, w, c) => {
       const hit = list.filter((x) => inRange(x.range, c));
       return hit.sort((a, b) => Math.abs(a.w - w) - Math.abs(b.w - w) || a.w - b.w)[0] || null;
     };
-    const add = [], seen = new Set(), missing = [], noFace = new Set();
+    const add = [], seen = new Map(), missing = [], noFace = new Set();
     for (const c of [...need].sort((a, b) => a - b)) {
-      const key = isJapanese(lang) ? 'biz' : inSans(c) ? 'sans3' : c > LATIN_MAX ? 'biz' : null;
-      if (!key) continue;
-      const want = embedded(families[key]);
-      if (!want.length) { if (!have.some((f) => f.range && inRange(f.range, c))) noFace.add(families[key]); continue; }
-      for (const { w, style } of want) {
-        if (covered(c, families[key], w, style)) continue;
-        const list = facesOf(key);
+      if (!JA && !inSansOf(c) && c <= LATIN_MAX) continue;
+      const fams = targetsOf(c);
+      if (!fams.length) { if (!have.some((f) => f.range && inRange(f.range, c))) noFace.add(defaultFam(c)); continue; }
+      for (const fam of fams) for (const { w, style } of embedded(fam)) {
+        if (covered(c, fam, w, style)) continue;
+        const list = facesOf(keyOf(fam));
         // 字のソースがないとき：元の口述原稿にもあった字で、文書の字が持たないものは、組み立てのときの字のソースにもなかった字
-        // （@fontsource の分割ファイルにない「θ」など。組み立ては口述原稿の字を持つ分割ファイルをみな埋め込む）。補えないのは前と同じなので断らない
-        // （ソースがあっても見つからずに補わない。字のソースの有無で結果を変えない）。断るのは新しい字だけ
-        if (!list) { if (!known.has(c)) missing.push(c); continue; }
+        // （@fontsource の分割ファイルにない「θ」など。組み立ては口述原稿の字を持つ分割ファイルをみな埋め込む）。補えないのは前と同じなので数えない
+        // （ソースがあっても見つからずに補わない。字のソースの有無で結果を変えない）
+        if (!list) { if (!known.has(c) && !missing.includes(c)) missing.push(c); continue; }
         const f = source(list, w, c);
-        const id = f && `${f.file}|${w}|${style}`;
-        if (f && !seen.has(id)) { seen.add(id); add.push({ f: { ...f, w, style }, key }); }
+        if (!f) { if (!known.has(c) && !missing.includes(c)) missing.push(c); continue; }   // どの分割ファイルにもない字（∎ など）
+        const id = `${f.file}|${w}|${style}`;
+        if (!seen.has(id)) { const x = { f: { ...f, family: fam, w, style }, key: keyOf(fam), chars: [] }; seen.set(id, x); add.push(x); }
+        seen.get(id).chars.push(c);
       }
     }
     for (const fam of noFace) warnings.push(`new narration characters need "${fam}", which the document does not embed: no font supplement for them (they use the fonts of the device that opens the file)`);
-    if (missing.length) refuse('fonts', `glyphs for ${missing.length} new characters are needed but no font source was given`);
+    // 字の元がない（字体のファイルを持たない編集アプリ）か、元のどの分割ファイルにもない字：断らずに保存し、端末の字体で出る字を名指して知らせる（handoff/font-subset-design-2026-11-05.md の決めごと 3）
+    if (missing.length) {
+      uncovered = String.fromCodePoint(...missing.sort((a, b) => a - b));
+      warnings.push(`${FONT_FALLBACK_WARN}${missing.length} new character(s) got no font supplement (no font source has them), so they use the fonts of the device that opens the file: ${uncovered}`);
+    }
     if (add.length) {
       // 分割ファイルの並び（組み立てと同じ：字の種類 → 太さ → 分割の順）。同じファイルを別の太さ・style に使うときはその順
+      // 字体の順は組み立てと同じ（Source Sans 3 → BIZ UDPゴシック → 明朝 → 選んだ字体：FONT_ORDER）
+      const famRank = (fam) => { const i = FONT_ORDER.indexOf(fam); return i < 0 ? FONT_ORDER.length : i; };
       const order = new Map();
-      for (const key of ['sans3', 'biz']) (facesOf(key) || []).forEach((f, j) => order.set(f.file, (key === 'sans3' ? 0 : 1e6) + j));
-      add.sort((a, b) => order.get(a.f.file) - order.get(b.f.file) || a.f.w - b.f.w || (a.f.style < b.f.style ? -1 : a.f.style > b.f.style ? 1 : 0));
+      for (const x of add) if (!order.has(x.f.file)) order.set(x.f.file, (facesOf(x.key) || []).findIndex((f) => f.file === x.f.file));
+      add.sort((a, b) => famRank(a.f.family) - famRank(b.f.family) || order.get(a.f.file) - order.get(b.f.file) || a.f.w - b.f.w || (a.f.style < b.f.style ? -1 : a.f.style > b.f.style ? 1 : 0));
+      // 字の切り出し（opts.fontSubset。あれば）：補いの分割ファイルも、補う字だけに切り出し、unicode-range をその字にする（1 字の直しで 30〜60 KB でなく約 1 KB）
+      const cut = typeof opts.fontSubset === 'function' ? await opts.fontSubset() : null;
       let css = '';
-      for (const { f } of add) css += fontFaceCss(f, await opts.fonts.load(f.file));
+      for (const x of add) {
+        const b64 = await opts.fonts.load(x.f.file);
+        if (cut) {
+          const r = cut(fromBase64(b64), [...new Set(x.chars)].sort((a, b) => a - b), x.f.file);
+          if (!r.cps.length) { x.skip = true; continue; }
+          x.f = { ...x.f, range: r.cps.reduce((o, c) => { const l = o[o.length - 1]; if (l && c === l[1] + 1) l[1] = c; else o.push([c, c]); return o; }, []) };
+          css += fontFaceCss(x.f, r.b64);
+        } else css += fontFaceCss(x.f, b64);
+      }
       // 番号：今ある補いの番号（正準の 10 進）のいちばん大きいものの次、なければ 0
       const nums = L.styles.map((s) => s.id && s.id.startsWith(SUP) ? s.id.slice(SUP.length) : null).filter((x) => x !== null && /^(0|[1-9]\d*)$/.test(x)).map(BigInt);
       const n = nums.length ? nums.reduce((a, b) => (b > a ? b : a)) + 1n : 0n;
-      supplement = { id: SUP + n, files: [...new Set(add.map((x) => x.f.file))], faces: add.map((x) => ({ family: x.f.family, weight: x.f.w, style: x.f.style })),
-        chars: [...need].filter((c) => add.some((x) => inRange(x.f.range, c))).map((c) => String.fromCodePoint(c)).join(''), css };
+      const used = add.filter((x) => !x.skip);
+      if (used.length) supplement = { id: SUP + n, files: [...new Set(used.map((x) => x.f.file))], faces: used.map((x) => ({ family: x.f.family, weight: x.f.w, style: x.f.style })),
+        chars: [...need].sort((a, b) => a - b).filter((c) => used.some((x) => inRange(x.f.range, c))).map((c) => String.fromCodePoint(c)).join(''), css };
     }
   }
 
@@ -659,6 +704,7 @@ async function run(original, filesIn, opts) {
       files: changed, article: articleChanged, narration: narrChanged.map((x) => x.k), marks: marksChanged, timing: timingChanged, audio: audioChanged,
       extensions: exChanged, attachments: attachDiff || attachChanged.length > 0, blobsAdded: newChunks.length ? Object.keys(blobs).filter((id) => !own(ix.blobs, id)) : [], blobsDropped: [...dropSet],
       supplement: supplement ? { id: supplement.id, files: supplement.files.map((f) => String(f).split(/[\\/]/).pop()), faces: supplement.faces, chars: supplement.chars } : null,
+      uncovered,
       identity: !!identity, unchanged: html === original,
     },
   };

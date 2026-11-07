@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=5d59603aff5d90da -->
+<!-- i18n: pair=README.ja.md sha256=cf594cd75171a844 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -174,7 +174,7 @@ The same editing as the dev server, as a web page that opens an Egatari file (`.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
 - **Toolbar:** File ▾ (New…, Open…, Save, Save as…, Export ▸ For participants (play-only)… / Print slides / Print book (Print script without a book), File info…, Work in a folder…), Slide ▾ (Insert slide…, Duplicate, Delete, Revise…), Quality check (with a warning count), Preview ▾ (check as a slide show or as a video, show later steps faintly, or in presenter view with the script and the next step).
 
-Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the command quality checker) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The browser quality checker covers a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full quality check is `npm run check`. Exported HTML embeds whole font files instead of a subset (no fonttools in the browser), so it is larger than a command-line build (about 2 MB instead of 0.7 MB for `examples/minimal`). Repository parts and themes are the ones bundled when the editor was built; parts and themes inside the working folder are read from the folder.
+Limits: TTS with your own reference voices (`tts/synth.py`), video, `npm run check` (the command quality checker) and `tools/pdf.mjs` stay on the command line, and the preview does not play the folder's audio (the Audio panel does). The browser quality checker covers a subset (overflow, font size, length, missing narration, contrast) and is only a hint; the full quality check is `npm run check`. Exported files subset the fonts exactly as a command-line build does (the subsetter, about 2 MB, is loaded on the first export). Repository parts and themes are the ones bundled when the editor was built; parts and themes inside the working folder are read from the folder.
 
 ![editor app](docs/images/editor-app.png)
 

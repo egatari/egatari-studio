@@ -23,14 +23,14 @@ import Ajv from 'ajv/dist/2020.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { tierA } from '../kit/core/tier-a.mjs';
-import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
+import { fontFaces, FONTS, fontByFamily } from '../kit/core/build-core.mjs';
 import { PLAYER, PLAYER_FILES, PLAYER_JSON, PLAYER_LOCK, playerHash, playerVersion, resolvePlayer, bumpVersion } from '../kit/core/player.mjs';
 import { BASELINE, policyText, policyMeta, policyDiff, placementProblems, checkFilePolicy, extensionSources, findPolicies } from '../kit/core/file-policy.mjs';
 import { addLive } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { buildPortable, liveRuntimeText, nodeEnv } from '../kit/build.mjs';
 // 段 A の字の補いの元（編集アプリの engine.fonts と同じ形）：字を絞り込んだ文書では、新しい字に補いが要る（#178 (4)）
-const FONTS_SRC = { faces: (k) => fontFaces(nodeEnv, FONTS[k]), load: async (f) => nodeEnv.readBase64(f) };
+const FONTS_SRC = { faces: (k) => fontFaces(nodeEnv, FONTS[k] || fontByFamily(k)), load: async (f) => nodeEnv.readBase64(f) };
 import { makeDeck } from './portable-fixtures.mjs';
 import { previewDocument } from '../app/preview-doc.js';
 import { withLayoutScan } from '../kit/core/layout-scan.mjs';

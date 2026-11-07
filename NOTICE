@@ -10,6 +10,12 @@ the @fontsource packages ship their own license files). The other fonts a theme 
 egatari carries copies of the files of these packages that the build reads, each with its LICENSE, in
 fonts/@fontsource/<name>/ (made by tools/fonts-vendor.mjs). Built decks embed subsets of these fonts and of the
 KaTeX fonts (MIT); those embedded fonts remain under their own licenses.
+Fonts are subset with harfbuzzjs 1.6.4 (harfbuzz-subset.wasm; MIT, Copyright (c) 2019-2026 The harfbuzzjs
+project authors; HarfBuzz under the Old MIT license, https://github.com/harfbuzz/harfbuzz) and re-encoded with
+wawoff2 2.0.1 (MIT, https://github.com/fontello/wawoff2; Google woff2 and Brotli, MIT), both npm dependencies.
+The editor app carries the same files in font-subset.js (loaded only when an Egatari file is exported); the
+hosted editor puts their LICENSE files in vendor/font-subset/. That file swaps embind's code generation
+(new Function) in the wawoff2 glue for equivalent functions, so that it runs under the editor's CSP.
 The default reference voices (tts/voices/bob*.wav, alice*.wav) are synthetic voices
 made with Qwen3-TTS (Apache-2.0), Irodori-TTS (MIT) and VoxCPM2 (Apache-2.0); see
 tts/voices/README.md. They may be redistributed with this project.

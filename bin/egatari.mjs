@@ -212,7 +212,7 @@ async function doctor() {
   show(satisfies(process.versions.node, range), 'node', `${process.versions.node}（要るもの / required: ${range}）`,
     'Node.js を入れ直す / install a supported Node.js: https://nodejs.org/', true);
   const uv = firstLine('uv', ['--version']);
-  show(!!uv, 'uv', uv || 'なし / not found（tts と字の絞り込みに使う / used by tts and font subsetting）',
+  show(!!uv, 'uv', uv || 'なし / not found（tts に使う / used by tts）',
     '入れ方 / install: https://docs.astral.sh/uv/getting-started/installation/', false);
   const ff = firstLine('ffmpeg', ['-version']), fp = firstLine('ffprobe', ['-version']);
   show(!!(ff && fp), 'ffmpeg', ff ? (fp ? ff : ff + '（ffprobe がない / ffprobe not found）') : 'なし / not found（video と音声の圧縮に使う / used by video and audio compression）',

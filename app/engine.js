@@ -15,7 +15,7 @@ import abcjsPackage from 'abcjs/package.json' with { type: 'json' };
 import * as P from '../kit/core/path-posix.mjs';
 import { build as coreBuild, BUILD_LIMITS, BuildLimitError, ReadOverError, FileChangedError } from '../kit/core/build-core.mjs';
 import { exportPortable as coreExportPortable } from '../kit/core/portable.mjs';
-import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
+import { fontFaces, FONTS, fontByFamily } from '../kit/core/build-core.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { titleOf } from '../kit/core/export-name.mjs';
 
@@ -41,7 +41,9 @@ const dec = new TextDecoder();
 // article() → {tools, csl, steps} | null：本（format spec §9C）の道具（読み込んであれば。app/article-loader.js）。tools：本文の道具、
 //   csl：引用の書式（citeproc。文献を引く本だけ。なければ null）、steps(links) → Promise<{リンク → 行き先}>：本文のステップへのリンクの行き先（プレビューの再生器）。
 //   あれば書き出し（exportPortable）の env に articleTools・csl・articleSteps を入れる（本のある教材を作り直せる）
-export function createEngine(res, loadLazy, { renderAbc, article = null } = {}) {
+// fontSubset() → Promise<(bytes, cps, file) => {b64, cps} | null>：字の切り出し（#178 (4)。app/font-subset-loader.js）。あれば持ち運べる 1 ファイルへの書き出し（exportPortable）で、
+//   コマンドの組み立てと同じく字を教材が使う字だけに切り出す（同じ字ならバイトまで同じ）。なければ（読み込めない・Worker）分割ファイルをそのまま入れる。プレビュー（build）は切り出さない（速さのため）
+export function createEngine(res, loadLazy, { renderAbc, article = null, fontSubset = null } = {}) {
   // The core remains synchronous. Collect score work, resolve it via RPC, then retry,
   // just as for missing files. Keep successes and failures for this build only.
   const scores = new Map(), pendingScores = new Map();
@@ -251,7 +253,8 @@ export function createEngine(res, loadLazy, { renderAbc, article = null } = {}) 
 
   // 字の分割ファイル（段 A の編集の字の補い。kit/core/tier-a.mjs の opts.fonts）：一覧は同梱の CSS から、中身は必要なものだけ読む
   const fonts = {
-    faces: (key) => fontFaces(env, FONTS[key]),
+    // key：FONTS の名前（biz・sans3・mincho）か一覧（FONT_LIST）の family。この版のアプリがその字体を持たなければ null（1 ファイル版は明朝などを持たない）
+    faces: (key) => { const f = FONTS[key] || fontByFamily(key); if (!f || !env.exists(env.path.join(env.fontDir(f.pkg), '400.css'))) return null; return fontFaces(env, f); },
     async load(p) {
       p = P.resolve(p);
       if (p in res.b64) return res.b64[p];
@@ -326,14 +329,17 @@ export function createEngine(res, loadLazy, { renderAbc, article = null } = {}) 
       }
       throw new Error('could not read all files');
     },
-    // 持ち運べる 1 ファイルに書き出す（kit/core/portable.mjs の exportPortable。字は絞り込まない）。audio/ も含めた一覧で、
-    // 書き出しが参照したもの（組み立ての依存・音声・字の分割ファイルなど）だけを読んでから作り直す。opts.carry：読み取った文書の索引
+    // 持ち運べる 1 ファイルに書き出す（kit/core/portable.mjs の exportPortable）。audio/ も含めた一覧で、
+    // 書き出しが参照したもの（組み立ての依存・音声・字の分割ファイルなど）だけを読んでから作り直す。opts.carry：読み取った文書の索引。
+    // 字：切り出しの道具（fontSubset）があれば、教材が使う字だけに切り出す（opts.subset が false なら切り出さない）。r.fontSubset：切り出したか
     async exportPortable(file, opts = {}) {
       scores.clear(); pendingScores.clear();
+      const sub = opts.subset !== false && fontSubset ? await fontSubset() : null;
       const full = await ws.list({ audio: true });
       await refreshThemes();
       const miss = new Set();
       const xenv = mkEnv(() => full, miss);
+      if (sub) xenv.subsetFont = sub;
       withArticle(xenv);
       const { signal, ...o } = opts;
       if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
@@ -341,10 +347,10 @@ export function createEngine(res, loadLazy, { renderAbc, article = null } = {}) 
       for (let i = 0; i < 40; i++) {
         miss.clear();
         let r = null, err = null;
-        try { r = await coreExportPortable(xenv, DECK + '/' + file, { subset: false, ...o }); } catch (e) { err = e; }
+        try { r = await coreExportPortable(xenv, DECK + '/' + file, { ...o, subset: !!sub }); } catch (e) { err = e; }
         if (err && err.code === 'build-too-large') throw err;
         if (pendingScores.size) { await loadScores(); continue; }
-        if (!miss.size) { if (err) throw err; return r; }
+        if (!miss.size) { if (err) throw err; r.fontSubset = !!sub; return r; }
         await loadMissing(miss, full, tally, live);
       }
       throw new Error('could not read all files');

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=f8049b046cc3e3a3 -->
+<!-- i18n: pair=reference.ja.md sha256=24ff94828f70163e -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -441,6 +441,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | on each slide, text of a heading or the body against the background behind it (computed colours; not over images or gradients, not faint text) < 4.5:1, the lowest one per slide — `textContrast` | warn |
 | the lesson chooses a font of `@egatari/fonts-extra` (its CSS or its own theme) and that package is not installed next to the npm package `egatari`, so the font is not embedded — `fontsExtraMissing`, with the install command | error |
 | slide text in a font that is not embedded in the file (the first family of its computed `font-family` is neither embedded nor generic), so it looks different on each device — `fontNotEmbedded`, once per lesson with the names | warn |
+| visible characters of the slides, script or book that no embedded font has (such as `∎`, which @fontsource lacks), so they show in the device's font — `fontNotCovered`, once per lesson with the characters by place (also `node tools/font-coverage.mjs <built HTML>`) | warn |
 | a chapter divider (`class="slide sec"`) with an `<h2>` and no `<h1>` (the title of a divider is `<h1>`; an `<h2>` is shown the same way) — `secHeading` | warn |
 | part drawing depends on call order | error |
 | emphasis target not found; list of emphasis per step | warn; info |
@@ -462,7 +463,7 @@ The slides and the script may be in different languages (for example Japanese sl
 | `--embed-audio` | embed audio as AAC 64 kbps mono (needs ffmpeg; otherwise WAV, with a warning). Without it, audio is referenced relative to the output |
 | `--portable`, `--play-only` | an Egatari file that also carries the editable source; see [Egatari file](#egatari-file---portable) |
 
-The summary line shows slides, math, parts, font files, script steps, audio steps, theme and size. Caches: subset fonts in `$TMPDIR/motion-slides-fonts/` (keyed by the glyphs, the TTF file's hash and the fonttools version; `uv` runs `fonttools==4.67.0` and `brotli==1.2.0`), compressed audio in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the slide text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the script, string literals of the parts used (without CJK in non-Japanese lessons), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese lessons `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
+The summary line shows slides, math, parts, font files, script steps, audio steps, theme and size. Fonts: of the @fontsource chunks that hold the lesson's characters, each is cut down to the characters used with harfbuzz (WebAssembly, `harfbuzzjs`, pinned in `package.json`), re-encoded as woff2 (`wawoff2`), and declared with a `unicode-range` of exactly the kept characters. No Python or TTF files are needed, and the editor's export gives the same bytes. The same characters, chunks and tool versions give the same bytes on every OS (`tools/test-font-subset.mjs`). Source Sans 3, Source Serif 4 and Source Code Pro, which have a Reserved Font Name, are not subset. `EGATARI_FONT_SUBSET=0` embeds the chunks whole. `--dev` and the dev server do not subset. Compressed audio is cached in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the slide text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the script, string literals of the parts used (without CJK in non-Japanese lessons), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese lessons `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
 
 
 A lesson-local part (`<deck>/components/<name>/index.js`) is read only if its real path is inside the working folder, a library part only inside `vendor/components/`; a lesson-local one that resolves outside is refused with a warning and not replaced by the registry one. Inside the working folder, the output (`out/…`) and `egatari.json` are never written through a symbolic link (the file or a folder on the way); a link there makes the build fail without writing.

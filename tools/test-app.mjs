@@ -2,7 +2,7 @@
 //   node tools/test-app.mjs [作業用のフォルダ] [--shots 画像のフォルダ] [--part 1/2|2/2]
 // 1. tools/build-app.mjs で作業用のフォルダに組み、dist/ を 127.0.0.1 で配る（根と /egatari-studio/ の両方。13 でサイトの形を確かめる）
 // 2. OPFS（navigator.storage.getDirectory()）に examples/minimal を写したフォルダを作り、window.__APP_TEST_OPEN(handle) で開く
-// 3. ブラウザで組んだ HTML が Node の build（字を絞り込まない）と同じか・原稿の編集・口述原稿・コメント・外での変更・
+// 3. ブラウザで組んだ HTML が Node の build（字を絞り込まない）と同じか・書き出しの字の切り出しが Node とバイトまで同じか・原稿の編集・口述原稿・コメント・外での変更・
 //    組み立ての失敗・書き出し・品質チェック・発表者ビュー・1 ファイル版（file://）を確かめる。コンソールのエラーが無いこと
 // 4. 持ち運べる 1 ファイル（examples/minimal ＋ dry-run の音声、tools/portable-fixtures.mjs）：フォルダなしで開く・権利の確認・
 //    編集・保存（OPFS のファイルのハンドルに上書き）・開き直し・フォルダへの書き出し・フォルダからの書き出し・改変を認めないライセンス・
@@ -298,6 +298,16 @@ try {
     const appHtml = await page.evaluate(() => window.__APP_TEST.build({ dev: false }));
     const nodeHtml = build(path.join(MINIDIR, 'deck.html'), { subset: false }).html;
     ok(appHtml === nodeHtml, `build: browser build is byte-identical to Node build (subset off) (${(appHtml.length / 1024).toFixed(0)} KB)` + firstDiff(appHtml, nodeHtml));
+    // 持ち運べる 1 ファイルへの書き出し：字は Node の書き出しと同じく教材が使う字だけに切り出し、バイトまで同じ（字の切り出しの道具 font-subset.js。#178 (4)）
+    {
+      const fonts = (h) => [...h.matchAll(/@font-face\{[^}]*\}/g)].map((m) => m[0]).join('\n');
+      const ax = await page.evaluate(() => window.__APP_TEST.exportPortable());
+      const copy = path.join(work, 'mini-src-export');
+      fs.rmSync(copy, { recursive: true, force: true }); fs.cpSync(MINIDIR, copy, { recursive: true });
+      const nx = await buildPortable(path.join(copy, 'deck.html'), { fromFolder: false });
+      const fa = fonts(ax.html), fb = fonts(nx.html), off = fonts(build(path.join(MINIDIR, 'deck.html'), { subset: false }).html);
+      ok(ax.fontSubset && fa === fb && fa.length * 2 < off.length, `export: the editor subsets fonts like the CLI, byte for byte (${(fa.length / 1024).toFixed(0)} KB of fonts; ${(off.length / 1024).toFixed(0)} KB unsubset)` + firstDiff(fa, fb));
+    }
     const appDev = await page.evaluate(() => window.__APP_TEST.build({ dev: true }));
     const nodeDev = build(path.join(MINIDIR, 'deck.html'), { dev: true }).html;
     ok(appDev === nodeDev, 'build: dev build (data-src) is byte-identical to Node' + firstDiff(appDev, nodeDev));

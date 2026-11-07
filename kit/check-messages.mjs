@@ -23,6 +23,7 @@ const PLACE_EN = {
   cover: '; a cover holds .venue (venue), h1 (title) and .au (authors, affiliation), and the theme adds the logos: put a subtitle on a second line of the h1 (after <br>) or in .venue, and place any other text in free space with position:absolute and top in the deck\'s <style>',
   sec: '; a section divider holds h1 (chapter name) and .lead (one line): place any other text in free space with position:absolute and top in the deck\'s <style>',
 };
+const WHERE_JA = { slides: 'スライド', narration: '台本', article: '本' }, WHERE_EN = { slides: 'slides', narration: 'script', article: 'book' };
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
 // 添付（§3.8）の型と条件の言葉
 const ROLE_JA = { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' };
@@ -184,6 +185,10 @@ export const MESSAGES = {
   fontsExtraMissing: {
     ja: (a) => `字体（${(a.fonts || []).join('・')}）は別の包み ${a.pkg} にあり、入っていないのでファイルに入らない（開く端末の字体で出る）：${a.install} で入れて組み直す（npx なら npx -p egatari -p ${a.pkg} egatari …）。または既定の字体のテーマにする`,
     en: (a) => `the fonts (${(a.fonts || []).join(', ')}) are in the separate package ${a.pkg}, which is not installed, so they are not embedded (each device shows its own font): install it with ${a.install} and build again (with npx: npx -p egatari -p ${a.pkg} egatari …), or use a theme with the default fonts` },
+  // 埋め込んだ字体のどれにもない字（kit/core/font-coverage.mjs。#178 (4)）。where：slides | narration | article
+  fontNotCovered: {
+    ja: (a) => `ファイルの字体にない字があります（${(a.groups || []).map((g) => `${WHERE_JA[g.where] || g.where}：${g.chars}`).join('、')}）。この字は開く端末の字体で表示されるので、端末によって見え方が変わります：どの端末でも同じに見せるには、字体にある字に替える（∎ なら □ や ■、記号なら式の中に書く）`,
+    en: (a) => `Some characters are not in the file's fonts (${(a.groups || []).map((g) => `${WHERE_EN[g.where] || g.where}: ${g.chars}`).join('; ')}). They show in the font of the device that opens the file, so they look different on each device: to look the same everywhere, use characters the fonts have (for ∎, □ or ■; for symbols, write them in math)` },
   fontNotEmbedded: {
     ja: (a) => `ファイルに入っていない字体です（${(a.fonts || []).join('・')}）。開く端末によって見え方が変わります：どの端末でも同じに見せるには、ファイルに入る字体（docs/reference.ja.md「字体」の一覧）から選ぶ`,
     en: (a) => `This font is not embedded in the file (${(a.fonts || []).join(', ')}), so it looks different on each device: to look the same everywhere, choose a font that goes into the file (the list in docs/reference.md, “Fonts”)` },

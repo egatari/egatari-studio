@@ -13,6 +13,8 @@
 //   env.katexDir                   katex の dist（katex.min.css・katex.min.js・fonts/）
 //   env.fontDir(pkg)               @fontsource の包みの場所（{w}.css と files/）
 //   env.version                    デッキに入れる版（DECK.VERSION）
+//   env.subsetFont(bytes, cps, file) 任意。分割ファイル（woff2）を字の番号 cps だけに切り出す → {b64：woff2 の base64, cps：切り出した字が持つ字}（kit/core/font-subset-core.mjs。Node は kit/font-subset.mjs、
+//                                  編集アプリは app/font-subset-loader.js）。あれば @fontsource の分割ファイルを切り出し、unicode-range をその字にする（opts.subset が false か dev なら使わない）
 //   env.subset(text, font)         任意。使っている字だけに絞った BIZ UDPゴシック（font が 'mincho' なら BIZ UDP明朝）（{css, n, bytes} か null）
 //   env.compressAudio(file)        任意。埋め込む音声を小さくしたファイル（できなければ元のまま）。env.audioFailed() で失敗を知る
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
@@ -317,6 +319,9 @@ function jsonStrings(v, out) {
 }
 // JS の文字列リテラルの中身（注釈は先に除く。粗いが、字を集めるだけなので足りる）
 const jsLiterals = (js) => [...js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[\s;{}(),])\/\/[^\n]*/g, '$1').matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g)].map((m) => m[2]).join('\n');
+// プレーヤーの画面の言葉の和文の字（実行系の JS の文字列。字を切り出すときに日本語の教材に入れる。tools.js の道具の帯は端末の字体で組むので数えない）
+export const PLAYER_UI_FILES = Object.freeze(['deck.js', 'presenter.js', 'panes.js', 'track.js']);
+export const playerUiGlyphs = (readKit) => (unescapeJs(jsLiterals(PLAYER_UI_FILES.map(readKit).join('\n'))).match(CJK) || []).join('');
 export function glyphText(html, narration, compJs = '', lang = '') {
   const h = html.replace(/data:[^"')\s]+/g, '');
   const json = [];
@@ -332,8 +337,9 @@ export function glyphText(html, narration, compJs = '', lang = '') {
 // 分割ファイルをそのまま入れる（Source Sans 3・Source Serif 4・Source Code Pro は RFN「Source」。どれもラテン文字の小さな分割ファイル）
 export const NO_SUBSET_PKGS = Object.freeze(new Set(['@fontsource/source-sans-3', '@fontsource/source-serif-4', '@fontsource/source-code-pro']));
 // 分割ファイル（unicode-range ごと）のうち、使っている字を含むものだけを埋め込む
-// sub：字の絞り込み（#178 (4)）。env.subsetFont(woff2 のバイト, 字の番号の配列) → base64 があれば、当たった分割ファイルを、その中で使う字だけに絞り、
+// sub：字の絞り込み（#178 (4)）。env.subsetFont(woff2 のバイト, 字の番号の配列, 分割ファイルの場所) → base64 があれば、当たった分割ファイルを、その中で使う字だけに絞り、
 // unicode-range をその字にする（§7.2。段 A の字の補いが、どの字を持つかを範囲から知る）。字は小さい順に渡すので、字を集めた順によらない
+const fromB64 = (b64) => { const s = atob(b64 || ''), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
 function rangeCss(env, fonts, text, italic = false, sub = false) {
   const used = new Set();
   for (const ch of text) { const c = ch.codePointAt(0); if (c >= 0x20) used.add(c); }
@@ -345,8 +351,15 @@ function rangeCss(env, fonts, text, italic = false, sub = false) {
     if (!mine.length) continue;
     let b64, face = f;
     if (sub && typeof env.subsetFont === 'function' && !NO_SUBSET_PKGS.has(x.pkg)) {
-      b64 = env.subsetFont(env.readBytes(f.file), mine);
-      face = { ...f, range: rangesOf(mine.map((c) => String.fromCodePoint(c)).join('')) };
+      // 分割ファイルをまだ読んでいない（編集アプリは足りないものを記録して空を返し、読んでから組み直す）：空のまま進む
+      const src = typeof env.readBytes === 'function' ? env.readBytes(f.file) : fromB64(env.readBase64(f.file));
+      if (!src || !src.length) b64 = '';
+      else {
+        // unicode-range は切り出した字が本当に持つ字（分割ファイルの範囲にあっても字形のない字は書かない。§7.2）。1 字も持たなければ入れない
+        const r = env.subsetFont(src, mine, f.file);
+        if (!r.cps.length) continue;
+        b64 = r.b64; face = { ...f, range: rangesOf(String.fromCodePoint(...r.cps)) };
+      }
     } else b64 = env.readBase64(f.file);
     bytes += b64.length; n++;
     css += fontFaceCss(face, b64);
@@ -737,7 +750,7 @@ export function chargedEnv(env, bud) {
   });
   // 字の絞り込み（Node）は env の外で字のファイルを読み、できた CSS を返す：使う前にその大きさを数える
   // 分割ファイルの絞り込み（wasm）：元の分割ファイルは w.readBytes で数えて読む。できた base64 も数える
-  if (typeof env.subsetFont === 'function') w.subsetFont = (bytes, cps) => { const r = env.subsetFont(bytes, cps); bud.read(r.length); return r; };
+  if (typeof env.subsetFont === 'function') w.subsetFont = (bytes, cps, file) => { const r = env.subsetFont(bytes, cps, file); bud.read(r.b64.length); return r; };
   if (typeof env.subset === 'function') w.subset = (t, font) => { const r = env.subset(t, font); if (r && typeof r.css === 'string') bud.read(utf8Length(r.css)); return r; };
   return w;
 }
@@ -1063,7 +1076,7 @@ export function build(env0, srcPath, opts = {}) {
   const subsetOn = opts.subset !== false && !opts.dev;
   // 字を絞り込むときは、再生器の画面の言葉（実行系の JS の文字列の和文。日本語の教材だけ。tools.js の道具の帯は端末の字体で組むので数えない）も入れる：分割ファイルをまるごと入れていたときは
   // たまたま入っていた字が、絞り込むと欠けて端末の字体で出るので（handoff/font-subset-design-2026-11-05.md §3.1）
-  const uiText = subsetOn && isJapanese(lang) ? (unescapeJs(jsLiterals(['deck.js', 'presenter.js', 'panes.js', 'track.js'].map((f) => read(KIT, f)).join('\n'))).match(CJK) || []).join('') : '';
+  const uiText = subsetOn && isJapanese(lang) ? playerUiGlyphs((f) => read(KIT, f)) : '';
   const textForFont = glyphText(html + articleHtml, narrationMap(segs, !!opts.dev, false), compJs, lang) + uiText;
   const fonts = fontCss(env, textForFont, subsetOn, lang, usesMincho(html, theme.css, compJs) || /class="egatari-vertical"/.test(articleHtml), warn,
     { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: italicText(html, compJs, isJapanese(lang)), body: bodyFont(theme.css, theme.cfg && theme.cfg.fonts) });
