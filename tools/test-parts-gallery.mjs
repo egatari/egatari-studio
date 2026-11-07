@@ -45,9 +45,11 @@ ok(deck.includes('m-hissan（変わった') && deck.includes('m-boxplot（変わ
   'marks against 2.1.1: every element but m-kakijun changed (code-only audit fixes across 37 parts), nothing new; Studio\'s words (パーツのサンプル)');
 // 取り込んだどのカタログも、そのカタログの写しから組める（gallery.mjs --pack は写しを manifest の各ファイルの sha256 と照らす。後のリリースが
 // 版を上げずに README・demo だけ直しても、前のカタログは前のバイトのまま：components2.lock.json の catalogues.<版>.content）
+const slidesOf = new Map();   // カタログ → そのギャラリーのスライドの数（組み立て（--build）が既定のカタログの数と比べる）
 for (const cv of Object.keys(lock2.catalogues).sort()) {
   let gv = null, err = null;
   try { gv = galleryDeck({ work: path.join(tmp, 'work-' + cv), catalogue: cv }); } catch (e) { err = e; }
+  if (gv) slidesOf.set(cv, gv.slides);
   ok(gv && gv.parts > 30 && gv.slides > 150, `catalogue ${cv}: the gallery builds from its own vendored copy${gv ? ` (${gv.parts} parts, ${gv.slides} slides)` : ': ' + String(err && err.message).slice(0, 300)}`);
 }
 const g0 = galleryDeck({ work: path.join(tmp, 'work0'), catalogue: '2.1.2', previous: 'none' });
@@ -81,8 +83,10 @@ if (BUILD) {
   const page = path.join(SITE, 'parts', `v${lock2.default}`, 'index.html');
   ok(fs.existsSync(page) && fs.statSync(page).size > 1048576, `build-app --parts writes parts/v${lock2.default}/index.html (${fs.existsSync(page) ? (fs.statSync(page).size / 1048576).toFixed(1) : 0} MB)`);
   const built = fs.existsSync(page) ? fs.readFileSync(page, 'utf8') : '';
-  ok((built.match(/<section\b[^>]*\bclass="slide\b/g) || []).length === g.slides && /m-orbit/.test(built) && !/<script\s+src=/i.test(built),
-    `the built page has all ${g.slides} slides and loads nothing from outside`);
+  // 既定のカタログ（lock2.default）のギャラリーと同じ数（2.1.2 の 175 ではない。2.4.0 で m-particles が増えた）
+  const want = slidesOf.get(lock2.default);
+  ok(want > 0 && (built.match(/<section\b[^>]*\bclass="slide\b/g) || []).length === want && /m-orbit/.test(built) && !/<script\s+src=/i.test(built),
+    `the built page has all ${want} slides of the ${lock2.default} gallery and loads nothing from outside`);
   const vj = JSON.parse(fs.readFileSync(path.join(SITE, 'parts', 'versions.json'), 'utf8'));
   ok(fs.existsSync(path.join(SITE, 'parts', 'index.html')) && vj.current === lock2.default && vj.versions.join() === lock2.default, 'parts/index.html and versions.json list the built version ' + JSON.stringify(vj));
   // 正式版の形で組む（候補 X.Y.Z-rc.N では /v…/ の写しを作らないので、凍結した写しに parts/ がないことは X.Y.Z で確かめる）
