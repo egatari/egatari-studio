@@ -138,7 +138,7 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 158; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` line 264).
 - Same-origin fetches only: lazy fonts `app/main.js` line 69; examples line 232; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 48–54, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 14–18 (skipped on file:, line 13), copied by `tools/build-app.mjs` lines 246–251.
 - Offline single-file `editor.html`: `tools/build-app.mjs` lines 300–311; no TTS window on file: `app/tts-client.js` lines 50, 90.
-- No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 403–460). A web manifest is written: `tools/build-app.mjs` lines 214–218, 236.
+- No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 404–457). A web manifest is written: `tools/build-app.mjs` lines 214–218, 236.
 - No analytics: a grep for analytics/beacon/plausible/gtag/googletagmanager/cloudflareinsights/sentry/telemetry/sendBeacon over `app kit play server lab tools/build-app.mjs tools/build-play.mjs` finds nothing. Page templates: `app/index.html` lines 1–14, `tools/build-app.mjs` lines 233–234, 277–289, 306–309, `play/index.html` lines 1–10.
 
 ### AI voice on this computer
@@ -172,7 +172,7 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - No request logs: `wrangler.production.toml` lines 44–45 (`observability enabled = false`).
 
 ### Gallery and doc links
-- `app/parts-gallery.js` lines 6–8; `app/llm.js` line 791; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 2157, 2158; `app/i18n.js` lines 367–369, 796–798 (all user-click links, `rel=noopener`).
+- `app/parts-gallery.js` lines 6–8; `app/llm.js` line 791; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 1727, 2146; `app/i18n.js` lines 367–369, 796–798 (all user-click links, `rel=noopener`).
 
 ### Fonts
 - No CDN fonts. Studio `font-src 'self' data:` (`app/index.html` line 10); fonts from `fonts/` (`tools/build-app.mjs` lines 88–99, 238–244); the single file embeds them, lines 300–309. Viewer uses system fonts (`play/sw.js` lines 4–5).
@@ -191,7 +191,7 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - `deck-capsize`: `kit/deck.js` lines 1373, 1506. `<format>-player-bar-hint-v1`: `kit/tools.js` lines 803, 947–959. Live pid and joined: `kit/live.js` lines 98–109, 538–567. Position in the address: `kit/deck.js` lines 1732, 2032.
 - Layout, divider, reading settings and "Resumed where you left off": `kit/panes.js` lines 11–14, 28, 38–41, 339, 830–842, 917–945 (not used when embedded, in an LMS or in the preview: lines 931–937).
 - Progress: `kit/track.js` lines 1–14; SCORM 1.2 lines 114–167 (`cmi.core.lesson_status`, `lesson_location`, `suspend_data`, `session_time`); postMessage to the embedding page lines 168–177; this device lines 178–185; choice of one lines 273, 299.
-- Viewer: `play/recents.mjs` lines 1–3, 9–14, 19–52, 57– (OPFS `recent/`, IndexedDB `egatari-viewer`, up to 10); keep on by default `play/main.js` lines 372–388, `SHARED_DEVICE_DEFAULT = false` line 23; clearing on a shared device lines 383–387; install hint line 469; language `play/i18n.mjs` lines 127–133.
+- Viewer: `play/recents.mjs` lines 1–3, 9–14, 19–52, 57– (OPFS `recent/`, IndexedDB `egatari-viewer`, up to 10); keep on by default `play/main.js` lines 331–340, 368–374, `SHARED_DEVICE_DEFAULT = false` line 23; clearing on a shared device lines 384–386; install hint line 469; language `play/i18n.mjs` lines 129–135.
 - Viewer service worker caches only its own files: `play/sw.js` lines 1–9, 21–27, 64–82; headers `tools/build-play.mjs` lines 40–66; Worker `play/worker.js` lines 5–22; `play/wrangler.production.toml` lines 20–21 (`observability enabled = false`), 12 (custom domain). Share target keeps the file in memory for 60 s: `play/sw.js` lines 10–11, 50–62.
 
 ### Player (`.ega.html`) requests
