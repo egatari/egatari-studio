@@ -535,11 +535,17 @@ for (const [code, what] of [
     `2.4.0: only m-particles 2.0.0 is new; no other part changes version (new: ${added240.join(', ')}; bumped: ${bumped240.join(', ')})`);
   // 部品庫 2.4.1（リリース 24c70da、c2-base 9d18ad8）：sweep・curves 2.1.0、plot 1.1.0、boxplot・hist・scatter・seq 2.0.3、codetree 2.0.4。ほかは 2.4.0 のまま
   const v241 = lock2.catalogues['2.4.1'];
-  ok(lock2.default === '2.4.1' && v241 && v241.tarballSha256 === 'aa686b0f27e338a518774906f3820b6020c1d7921828f6b9a26bc904cfa0d54d' && v241.manifestSha256 === '378a0360434f063451d112069eb8db7941982dc689669558742ad4f50f501ee1',
-    'components 2.4.1 is the default and pinned to the released tarball and manifest (v2.4.1)');
+  ok(v241 && v241.tarballSha256 === 'aa686b0f27e338a518774906f3820b6020c1d7921828f6b9a26bc904cfa0d54d' && v241.manifestSha256 === '378a0360434f063451d112069eb8db7941982dc689669558742ad4f50f501ee1',
+    'components 2.4.1 is pinned to the released tarball and manifest (v2.4.1)');
   const bumped241 = Object.keys(v241.parts).filter((n) => v241.parts[n] !== v240.parts[n]).sort();
   ok(bumped241.join() === 'boxplot,codetree,curves,hist,plot,scatter,seq,sweep' && Object.keys(v241.parts).length === Object.keys(v240.parts).length,
     `2.4.1: exactly boxplot, codetree, curves, hist, plot, scatter, seq and sweep get new versions (${bumped241.join(', ')})`);
+  // 部品庫 2.4.2 の候補（c2-base 8677cef）：plot 1.1.1（縦軸の題が目盛りの字に重なるときだけ左へ）と、使う 6 つ（boxplot・hist・scatter・seq 2.0.4、curves・sweep 2.1.1）。指示の中身は 2.4.1 と同じ
+  const v242 = lock2.catalogues['2.4.2'];
+  ok(lock2.default === '2.4.2' && v242 && v242.tarballSha256 === 'acedccc6255d387bc7bd2c38aee9941e091f017a0dafa156da8c5b35e938390e',
+    'CANDIDATE components 2.4.2 is the default and pinned to the tarball verified here (not yet a components release)');
+  const bumped242 = Object.keys(v242.parts).filter((n) => v242.parts[n] !== v241.parts[n]).sort();
+  ok(bumped242.join() === 'boxplot,curves,hist,plot,scatter,seq,sweep', `CANDIDATE 2.4.2: exactly plot and its six users get new versions (${bumped242.join(', ')})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

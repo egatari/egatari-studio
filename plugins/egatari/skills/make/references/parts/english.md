@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # english のパーツ
 
-指示の版：e082831d
+指示の版：2dcfdea9
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
