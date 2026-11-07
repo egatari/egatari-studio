@@ -30,6 +30,7 @@
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 //       口述原稿の言語はスライドと別に決め（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）、式らしさと長いターンは発言ごとにその言語の規則で見る
+import { findRawMath } from './core/raw-math.mjs';
 import { cliHints } from './cli-hint.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -395,6 +396,7 @@ if (hasArticle(src)) {
 phase = 'A 体裁';
 // 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
 await page.evaluate(`window.__layoutScan = ${layoutScan}`);
+await page.evaluate(`window.__findRawMath = ${findRawMath}`);
 const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS]) => {
   const S = DECK.slides;
   const step0 = [], punct = [];
@@ -435,8 +437,8 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS])
       if (JA) punct.push({ i: m.i, jp: (txt.match(/[、。]/g) || []).length, en: (txt.match(/[，．]/g) || []).length });
       const dm = JA && txt.match(/[^\n。．]{0,14}(です|ます)(?=[。．、，」）\s]|$)/m);
       if (dm) issues.push(['desuMasu', { t: dm[0].trim() }]);
-      const rm = txt.match(/\\\(|\\\[|\$[^$]+\$/);
-      if (rm) issues.push(['rawMath', { t: txt.slice(rm.index, rm.index + 24).trim() }]);
+      const rm = window.__findRawMath(txt);
+      if (rm) issues.push(['rawMath', { t: rm.text.trim() }]);
       const ke = body.querySelector('.katex-error');
       if (ke) issues.push(['katexError', { t: (ke.getAttribute('title') || ke.textContent || '').slice(0, 60) }]);
     }
