@@ -11,6 +11,12 @@
 // 5. 包みを LMS の形で開く：親のページが SCORM 1.2 の API（window.API）を持ち、index.html を iframe で開く。プレーヤーが親の API を見つけ、
 //    終えた判定（metadata.completion：既定・visitedFraction・reachedEnd）のとおりに cmi.core.lesson_status を incomplete → completed にする。
 //    足りないうちは completed にしない。閉じると exit（終えたら ""）・LMSFinish。プレーヤーのステップの数が包み手の数え方（stepCount）と同じ
+// 6. 厳しい LMS の模型で、閉じて開き直す（scorm-again の Scorm12API と ILIAS の SCORM 1.2 の決まりを写す。依存には足さない）：
+//    値の形（CMITimespan は HHHH:MM:SS.SS、exit・lesson_status の語彙、長さ）・読むだけの要素・初めの前と終えた後の呼び出しを断る。
+//    次の回の entry は、保存された exit が suspend のときだけ resume（ILIAS の SCORM1_2standard.js の LMSInitialize）。
+//    ページを閉じる間（beforeunload・pagehide）の保存は届かないことがある：ILIAS は同期の XHR で送り、Chrome・Safari はそれを止める
+//    （Chrome の ILIAS は beforeunload の中なら sendBeacon で届く）。届かなかった保存の値は ILIAS と同じく捨てる。
+//    どちらでも、開き直すと続きから（位置と見た所）・時間（total_time）が 0 でない・終えた後は exit "" で続きにしない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -297,6 +303,96 @@ window.API = {
     await forward(L.p, 3);
     const C = await close(L);
     ok(sets(C, 'cmi.core.exit').pop() === 'suspend' && sets(C, 'cmi.core.lesson_location').pop() === '#3' && JSON.parse(sets(C, 'cmi.suspend_data').pop()).n === N_STEPS, 'closing before completion: exit suspend, lesson_location #3, suspend_data for 12 steps');
+  }
+
+  // ---------------------------------------------------------------- 6. 厳しい LMS の模型で、閉じて開き直す
+  // persistIn：ページを閉じる間でも保存が届く出来事（ILIAS を Chrome で：['beforeunload']。Safari では []）
+  const strictLms = (dir, persistIn) => {
+    fs.writeFileSync(path.join(dir, 'strict.html'), `<!DOCTYPE html><html><head><meta charset="utf-8"><title>LMS</title><script>
+const PERSIST_IN = ${JSON.stringify(persistIn)};
+const RX = { time: /^\\d{2,4}:[0-5]\\d:[0-5]\\d(\\.\\d{1,2})?$/, exit: /^(time-out|suspend|logout|)$/, status: /^(passed|completed|failed|incomplete|browsed)$/ };
+const RO = new Set(['cmi.core.student_id', 'cmi.core.student_name', 'cmi.core.credit', 'cmi.core.entry', 'cmi.core.total_time', 'cmi.core.lesson_mode', 'cmi.launch_data']);
+const WO = new Set(['cmi.core.session_time', 'cmi.core.exit']);
+const RW = new Set(['cmi.core.lesson_location', 'cmi.core.lesson_status', 'cmi.suspend_data', 'cmi.core.score.raw']);
+const DEF = { 'cmi.core.lesson_status': 'not attempted', 'cmi.core.lesson_mode': 'normal', 'cmi.core.credit': 'credit', 'cmi.core.lesson_location': '', 'cmi.suspend_data': '', 'cmi.core.total_time': '0000:00:00' };
+const hs = (t) => { const m = /^(\\d+):(\\d+):(\\d+)(?:\\.(\\d{1,2}))?$/.exec(t); return m ? ((+m[1] * 60 + +m[2]) * 60 + +m[3]) * 100 + (m[4] ? +m[4].padEnd(2, '0') : 0) : 0; };
+const ts = (c) => [Math.floor(c / 360000), Math.floor(c / 6000) % 60, Math.floor(c / 100) % 60].map((x, i) => String(x).padStart(i ? 2 : 4, '0')).join(':') + '.' + String(c % 100).padStart(2, '0');
+window.__db = {}; window.__bad = []; window.__entries = []; window.__lost = [];
+let s, dismissing = null;
+window.__session = () => {
+  const db = window.__db;
+  s = { init: false, over: false, err: '0', dirty: {}, mem: { ...DEF, ...db }, total0: db['cmi.core.total_time'] || DEF['cmi.core.total_time'] };
+  delete s.mem['cmi.core.exit']; delete s.mem['cmi.core.session_time'];
+  s.mem['cmi.core.entry'] = db['cmi.core.exit'] === 'suspend' ? 'resume' : Object.keys(db).length ? '' : 'ab-initio';
+  window.__entries.push(s.mem['cmi.core.entry']);
+};
+window.__session();
+const fail = (code, why) => { s.err = code; if (why) window.__bad.push(why); return 'false'; };
+// 保存：閉じる間は PERSIST_IN の出来事の中だけ届く。届かなくても送った値は捨てる（ILIAS の IliasCommit は送る前に a_toStore を空にする）
+const store = () => { const d = s.dirty; s.dirty = {}; if (dismissing && !PERSIST_IN.includes(dismissing)) { window.__lost.push([dismissing, Object.keys(d)]); return false; } Object.assign(window.__db, d); return true; };
+const put = (k, v) => { s.mem[k] = v; s.dirty[k] = v; };
+window.API = {
+  LMSInitialize: (a) => { if (a !== '') return fail('201', 'LMSInitialize arg'); if (s.init || s.over) return fail('101', 'LMSInitialize twice'); s.init = true; s.err = '0'; return 'true'; },
+  LMSGetValue: (k) => { if (!s.init) { fail('301', 'LMSGetValue ' + k + ' outside the session'); return ''; } if (WO.has(k)) { fail('404', 'LMSGetValue write-only ' + k); return ''; } if (!RO.has(k) && !RW.has(k)) { fail('201', 'LMSGetValue unknown ' + k); return ''; } s.err = '0'; return s.mem[k] ?? ''; },
+  LMSSetValue: (k, v) => {
+    if (!s.init) return fail('301', 'LMSSetValue ' + k + ' outside the session');
+    if (typeof v !== 'string') return fail('405', 'LMSSetValue ' + k + ' not a string');
+    if (RO.has(k)) return fail('403', 'LMSSetValue read-only ' + k);
+    if (!WO.has(k) && !RW.has(k)) return fail('201', 'LMSSetValue unknown ' + k);
+    const okv = k === 'cmi.core.session_time' ? RX.time.test(v) : k === 'cmi.core.exit' ? RX.exit.test(v) : k === 'cmi.core.lesson_status' ? RX.status.test(v)
+      : k === 'cmi.core.lesson_location' ? v.length <= 255 : k === 'cmi.suspend_data' ? v.length <= 4096 : true;
+    if (!okv) return fail('405', 'LMSSetValue ' + k + ' = ' + JSON.stringify(v));
+    put(k, v);
+    if (k === 'cmi.core.session_time') put('cmi.core.total_time', ts(hs(s.total0) + hs(v)));   // ILIAS（時間は教材から）：total_time = 初めの total_time + session_time
+    s.err = '0'; return 'true';
+  },
+  LMSCommit: (a) => { if (a !== '') return fail('201', 'LMSCommit arg'); if (!s.init) return fail('301', 'LMSCommit outside the session'); if (!store()) return fail('101'); s.err = '0'; return 'true'; },
+  LMSFinish: (a) => { if (a !== '') return fail('201', 'LMSFinish arg'); if (!s.init) return fail('301', 'LMSFinish outside the session'); const r = store(); s.init = false; s.over = true; if (!r) return fail('101'); s.err = '0'; return 'true'; },
+  LMSGetLastError: () => s.err, LMSGetErrorString: () => '', LMSGetDiagnostic: () => ''
+};
+// 閉じる間の印：教材の窓の出来事を、プレーヤーより先に（捕まえる段で）見る
+window.__watch = (w) => { for (const t of ['beforeunload', 'pagehide']) w.addEventListener(t, () => { dismissing = t; }, true); };
+window.__reopen = () => new Promise((r) => { const f = document.getElementById('sco'); f.onload = () => { dismissing = null; window.__session(); f.onload = () => { window.__watch(f.contentWindow); r(); }; f.src = 'index.html'; }; f.src = 'about:blank'; });
+</script></head><body style="margin:0"><iframe id="sco" src="index.html" onload="window.__watch(this.contentWindow)" style="width:1280px;height:720px;border:0"></iframe></body></html>`);
+  };
+  const ready = (p) => p.waitForFunction(() => { const f = document.getElementById('sco'); try { const D = f.contentWindow.DECK; return D && D.ready && D.tracking && D.tracking().adapter === 'scorm12' && f.contentWindow.location.pathname.endsWith('index.html'); } catch { return false; } }, null, { timeout: scaled(30000) });
+  const frame = async (p) => (await p.$('#sco')).contentFrame();
+  const where = (f) => f.evaluate(() => { const t = DECK.timeline(), k = DECK.state().key; return { j: t.findIndex((g) => g.key === k), stage: DECK.tracking().stage }; });
+  for (const [label, persistIn, last, saved] of [['ILIAS on Chrome (store reaches the LMS in beforeunload)', ['beforeunload'], 4, 4], ['ILIAS on Safari (no store reaches the LMS while the page goes away)', [], 4, 3]]) {
+    const out = path.join(work, 'lms-default');
+    strictLms(out, persistIn);
+    const c = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const p = await c.newPage();
+    p.on('pageerror', (e) => errors.push(`strict: ${e.message}`));
+    await p.goto(`${HOST}lms-default/strict.html`);
+    await ready(p);
+    await p.mouse.click(300, 400);
+    await forward(p, last);   // #0 → #last（2 枚目の途中。2 枚目に入った #3 で保存した）
+    await p.waitForTimeout(400);   // 時間が 0 にならない
+    await p.evaluate(() => window.__reopen());
+    await ready(p);
+    let db = await p.evaluate(() => window.__db);
+    const lost = await p.evaluate(() => window.__lost);
+    ok(db['cmi.core.exit'] === 'suspend' && db['cmi.core.lesson_location'] === '#' + saved && db['cmi.core.lesson_status'] === 'incomplete',
+      `${label}: after closing, the LMS holds exit suspend, lesson_location #${saved}, incomplete (${db['cmi.core.exit']}, ${db['cmi.core.lesson_location']}, ${db['cmi.core.lesson_status']}; lost while closing: ${JSON.stringify(lost)})`);
+    ok(/^\d{2,4}:[0-5]\d:[0-5]\d(\.\d{1,2})?$/.test(db['cmi.core.session_time'] || '') && /^\d+:\d\d:\d\d/.test(db['cmi.core.total_time'] || '') && db['cmi.core.total_time'] !== '0000:00:00.00',
+      `${label}: session_time is a CMITimespan and the time spent is not 0 (session_time ${db['cmi.core.session_time']}, total_time ${db['cmi.core.total_time']})`);
+    let f = await frame(p), w = await where(f);
+    ok((await p.evaluate(() => window.__entries)).join() === 'ab-initio,resume' && w.j === saved && [0, 1, 2, 3].every((j) => w.stage.includes(j)),
+      `${label}: reopened with entry resume, continues at #${saved} with the visited steps (${w.j}; ${w.stage})`);
+    // 終えてから閉じる：exit ""、次は続きにしない（completed のまま）
+    await p.mouse.click(300, 400);
+    await forward(p, N_STEPS);
+    await p.waitForTimeout(300);
+    await p.evaluate(() => window.__reopen());
+    await ready(p);
+    db = await p.evaluate(() => window.__db);
+    f = await frame(p); w = await where(f);
+    ok(db['cmi.core.lesson_status'] === 'completed' && db['cmi.core.exit'] === '' && (await p.evaluate(() => window.__entries)).pop() === '' && w.j === 0,
+      `${label}: after completing, exit "" is stored and the next session starts at the beginning with status completed (${db['cmi.core.lesson_status']}, exit ${JSON.stringify(db['cmi.core.exit'])}, at #${w.j})`);
+    const bad = await p.evaluate(() => window.__bad);
+    ok(!bad.length, `${label}: the strict LMS refused no call (${bad.join('; ') || 'none'})`);
+    await c.close();
   }
 } catch (e) {
   fails++;

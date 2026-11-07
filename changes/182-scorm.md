@@ -12,3 +12,13 @@
 - Tests: `tools/test-scorm.mjs` (zip layout and determinism, the manifest against the binding's rules, refusals, and the package
   launched in a frame under a parent page with a fake SCORM 1.2 API for each completion rule) and `tools/test-app-scorm.mjs` (the
   export dialog in ja and en, Cancel, the downloaded zip, unsaved changes)
+
+### Fixed
+
+- SCORM 1.2 resume and time spent on LMSs that store with synchronous requests (seen on ILIAS): the player now writes
+  `cmi.core.session_time` and `cmi.core.exit` (`suspend`, or `""` once completed) with every commit, and also commits on
+  `beforeunload`, not only on `pagehide`. Chrome and Safari block synchronous requests while a page goes away, so the final
+  commit in `pagehide` never reached ILIAS: `exit` stayed unset (the next launch started from the first slide) and the time spent
+  stayed 0. `session_time` is counted in whole hundredths of a second, so it never reads `:60.00`. `tools/test-scorm.mjs` closes and
+  reopens the package under a strict SCORM 1.2 model (value formats, read-only elements, `entry` from the stored `exit`, stores
+  lost while the page goes away) (`kit/track.js`)
