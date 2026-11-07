@@ -32,10 +32,11 @@ Prints the instructions for a chat AI: the common body (every standard part)
 plus the packs of the chosen part sets (${SETS.join(', ')};
 'all' for every set; none: the common body only). Extra parts are never included.
 --lang   language of the instructions (default en)
---plan   the user's chat AI: free (default; the standard parts other than
-         the four core ones get only their catalogue line: ${BRIEF.join(', ')})
-         or paid (every part described in full)
-         On the free plan the pack is fitted to ${PACK_CAP_KB.free} KB and to a paste
+--plan   which instructions (New… step 4): free = the light instructions (default;
+         the standard parts other than the four core ones get only their
+         catalogue line: ${BRIEF.join(', ')}) or paid = the detailed instructions
+         (every part described in full)
+         The light instructions are fitted to ${PACK_CAP_KB.free} KB and to a paste
          length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds), as the editor's New… does:
          over the limit, the core four (${FREE_CORE.join(', ')}) get only their
          catalogue line too; if still over, with one part set the standard
@@ -43,7 +44,7 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
          (${SINGLE_SET_DROP_ORDER.filter((t) => !FREE_CORE.includes(t)).join(', ')}),
          never the set's own parts; with two or more sets, specialized parts
          are left out, largest first. stderr says what was shortened or left out
---no-fit the free-plan pack as assembled, without fitting it to the limit
+--no-fit the light instructions as assembled, without fitting it to the limit
 --from-sample  exactly what the editor copies in New… after “Make one based on
          this sample” (examples/<name>/sample.json): its setting, theme and parts (never
          suggested for unticking, described in full), plus its structure; fitted to
@@ -53,9 +54,9 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
          first line is the title of step 2, the rest its content (a file name
          reads that file; none: step 2 left empty)
 --list   lists the part sets, their components and the size of the common
-         body with that set (KB = UTF-8 bytes / 1024; the free plan fitted
-         also shows its paste length): the free plan fitted,
-         then before fitting, then the paid plan; without --lang, en and ja
+         body with that set (KB = UTF-8 bytes / 1024; the light instructions
+         fitted also show their paste length): the light instructions fitted,
+         then before fitting, then the detailed instructions; without --lang, en and ja
 --series, --tools  the former options, read for one version: a series is
          read as its part sets (${Object.entries(SERIES_SETS).map(([s, x]) => `${s} = ${x.join('+') || 'none'}`).join(', ')}),
          and any tool as the tools set
@@ -110,9 +111,9 @@ if (argv.includes('--from-sample')) {
     const lang = langArg || 'en', plan = planArg || 'free';
     const r = samplePack(String(arg('--from-sample') || ''), lang, plan);
     // 収め方（kit/core/llm-pack-assemble.mjs の fitSample）：サンプルのパーツは詳しいまま。① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く
-    if (r.shortened.length) console.error(`note: free plan: over ${PACK_CAP_KB.free} KB or a paste length of ${FREE_PASTE_UNITS}, so these core parts the sample does not use get only their catalogue line: ${r.shortened.join(', ')} (the sample's own parts stay in full)`);
+    if (r.shortened.length) console.error(`note: light instructions: over ${PACK_CAP_KB.free} KB or a paste length of ${FREE_PASTE_UNITS}, so these core parts the sample does not use get only their catalogue line: ${r.shortened.join(', ')} (the sample's own parts stay in full)`);
     if (r.dropped.length) console.error(`note: ${plan} plan: still over the limit, so these specialized parts the sample does not use were left out, largest first: ${r.dropped.join(', ')} (the sample's own parts stay)`);
-    if (r.ownShortened.length) console.error(`note: free plan: still over the limit with nothing else to leave out, so these parts of the sample get only their catalogue line too: ${r.ownShortened.join(', ')}`);
+    if (r.ownShortened.length) console.error(`note: light instructions: still over the limit with nothing else to leave out, so these parts of the sample get only their catalogue line too: ${r.ownShortened.join(', ')}`);
     if (r.over) console.error(`warning: ${plan} plan: ${kbOf(r.bytes)} KB is still over the limit`);
     process.stdout.write(r.text);
   } catch (e) { console.error(e.message); process.exit(2); }
@@ -150,12 +151,12 @@ if (argv.includes('--from-sample')) {
     else {
       const { text, fit } = fittedPack(sets, lang);
       const limit = `${PACK_CAP_KB.free} KB or a paste length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds)`;
-      if (fit.short) console.error(`note: free plan: over ${limit}, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
+      if (fit.short) console.error(`note: light instructions: over ${limit}, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
       // 束が 1 つなら中核の 4 つのほかの標準のパーツを決まった順に、2 つ以上なら専門のパーツを大きい順に（kit/core/llm-pack-assemble.mjs の fitPlan）
       if (fit.dropped.length) console.error(normalizeSets(sets).length === 1
-        ? `note: free plan: still over ${limit}, so these standard parts were left out, in the fixed order: ${fit.dropped.join(', ')} (the ${normalizeSets(sets)[0]} parts and the core four are kept; --no-fit keeps them all)`
-        : `note: free plan: still over ${limit}, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
-      if (fit.over) console.error(`warning: free plan: ${kbOf(packSize(text))} KB, paste length ${pasteUnits(text)}, is still over ${limit}`);
+        ? `note: light instructions: still over ${limit}, so these standard parts were left out, in the fixed order: ${fit.dropped.join(', ')} (the ${normalizeSets(sets)[0]} parts and the core four are kept; --no-fit keeps them all)`
+        : `note: light instructions: still over ${limit}, so these specialized parts were left out, largest first: ${fit.dropped.join(', ')} (--no-fit keeps them)`);
+      if (fit.over) console.error(`warning: light instructions: ${kbOf(packSize(text))} KB, paste length ${pasteUnits(text)}, is still over ${limit}`);
       process.stdout.write(text);
     }
   } catch (e) { console.error(e.message); process.exit(2); }

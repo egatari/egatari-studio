@@ -27,7 +27,7 @@ Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@
 
 ## パーツを選ぶ
 
-構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 - [standard](references/parts/standard.md)
 - [stats](references/parts/stats.md)

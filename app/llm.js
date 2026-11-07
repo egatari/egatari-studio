@@ -3,8 +3,8 @@
 //     ① どんな場面で使いますか（大分類・小分類。どちらも答える。あてはまらなければ「その他」「この中にない」。kit/core/new-deck.mjs）→
 //     ② 何について、だれに向けて作りますか（タイトルは必須。だれ向け・長さ・内容は「AI に任せる」か書く。詳しく：言語・話す人・そのほかの希望。
 //        「チャットの AI と、もう内容を話し合ってある」の切り替えで、タイトルのほかを隠す。kit/core/llm-request.mjs の記入欄）→
-//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（無料のプランか有料のプランか → パーツの一覧（伝えたいことごと、教科の形は最後。
-//        標準は全部、専門は ① の小分類と ② の言葉から推した束に印。kit/core/new-deck.mjs の partsList・recommend）→ 指示の大きさのメーター（プランの目安）→［指示をコピー］）→
+//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（AI に渡す指示：軽量か詳細か → パーツの一覧（伝えたいことごと、教科の形は最後。
+//        標準は全部、専門は ① の小分類と ② の言葉から推した束に印。kit/core/new-deck.mjs の partsList・recommend）→ 指示の大きさのメーター（軽量・詳細の目安）→［指示をコピー］）→
 //     ⑤ AI の出力を貼り付けます：欄 2 つ（スライド＝deck.html・台本＝narration.md。どちらに出力の全体を貼っても分け、違う欄に貼ったものは移す。kit/core/llm-import.mjs の pastePart）→
 //        ［作成］：スライドに id を付け（kit/core/slide-ids.mjs）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして（app/build-worker.js の exportHtml）、
 //        ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
@@ -57,7 +57,7 @@ const TX = {
     howToFix: '直してほしいことを書くと、チャットの AI に送る修正依頼ができます。AI の出力をここに貼り付けると、スライドを置き換えます。',
     answered: (q, a) => `${q}：${a}`, change: '変更', next: '次へ', cancel: 'キャンセル',
     // 1 つだけ開く流れの、答えた段の 1 行（④ 指示・挿入と修正の ① ②）
-    sendQ: '指示', planShort: { free: 'チャットの AI：無料のプラン', paid: 'チャットの AI：有料のプラン' }, copiedShort: 'コピーしました', listSep: '・',
+    sendQ: '指示', planShort: { free: '軽量', paid: '詳細' }, copiedShort: 'コピーしました', listSep: '・',
     insertAnswer: (n, wish) => `${n} 枚${wish ? '・' + wish : ''}`, wishNone: 'なし',
     back: '← 戻る',
     steps: {
@@ -100,10 +100,15 @@ const TX = {
     themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ',
     themeLine: REQUEST_WORDS.ja.themeLine,
     // ④ AI に送る
-    planLegend: 'お使いのチャットの AI は、無料のプランですか、有料のプランですか',
-    plan: { free: '無料のプラン（わからなければこちら）', paid: '有料のプラン' },
-    planHint: (free, paid) => `プランで、指示の大きさの目安が変わります（無料のプランは ${free} KB、有料のプランは ${paid} KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります`,
-    planNote: 'Egatari は無料です。ここで聞くのは、お使いのチャットの AI のプランです',
+    // 指示の詳しさ（内部の名前は plan：free = 軽量・paid = 詳細。作者の決定 2026-11-07）
+    planLegend: 'AI に渡す指示を選んでください',
+    plan: { free: '軽量（どの AI でも）', paid: '詳細（有料の AI 向け）' },
+    planBadge: '迷ったらこちら',
+    planDesc: {
+      free: '約 3 万字までの短い指示です。無料の ChatGPT や Gemini にも、そのまま貼り付けられます。選んだ分野によっては、パーツの説明を短くしたり、一部を省いたりします。',
+      paid: 'パーツの説明を省かない、長い指示です。ChatGPT・Gemini・Claude の有料プランのように、長い文章を読める AI に向いています。Gemini は、コピーして貼り付けると約 3 万字で切れることがあります。ファイルに保存して添付してください。使う分野だけを選ぶと、指示が短くなり、AI が使う量（トークン）も減り、パーツも選びやすくなります。',
+    },
+    planHint: (free, paid) => `選んだ指示で、大きさの目安が変わります（軽量は ${free} KB、詳細は ${paid} KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります`,
     // スライドの挿入の「指示の全体も付ける」の分野
     seriesLegend: 'スライドに出てくるものはありますか（内容の分野）',
     seriesHint: (name) => `データの分布の図（ヒストグラム・箱ひげ図）を使うなら「${name}」を選ぶ。棒・折れ線・円などのグラフはいつも入る`,
@@ -125,13 +130,13 @@ const TX = {
     packMeter: (kb, cap) => `指示の大きさ：${kb} KB（目安は ${cap} KB まで）`,
     overCap: (kb, names) => `目安より ${kb} KB 大きいので、チャットの AI が最後まで読めないことがあります。${names ? `外す候補：${names}` : '外すパーツを選んでください'}`,
     trim: '候補を外す',
-    shortened: (names) => `無料のプランの目安に収めるため、${names}の説明を短くしました`,
+    shortened: (names) => `軽量の指示に収めるため、${names}の説明を短くしました`,
     packTotal: (kb) => `指示の大きさ：${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: '指示をコピー',
     copied: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。長いので、貼るとファイルの添付の形になることがありますが、そのまま送ってかまいません。AI が書き終えたら ⑤ へ`,
-    // 有料のプラン：指示をファイルに保存するのが主、コピーは従（Gemini は貼り付けで約 3 万字で切れる。owner の確認、2026-11-05）
+    // 詳細の指示：ファイルに保存するのが主、コピーは従（Gemini は貼り付けで約 3 万字で切れる。owner の確認、2026-11-05）
     saveGuide: '指示をファイルに保存',
-    fileHint: '長い指示は、ファイルにしてチャットに添付してください。Gemini は貼り付けると約 3 万字で切れます。ChatGPT は貼り付けると自動で添付に変わります。',
+    fileHint: '長い指示は、ファイルにしてチャットに添付してください。Gemini は、コピーして貼り付けると約 3 万字で切れることがあります。ChatGPT は貼り付けると自動で添付に変わります。',
     copiedPaid: (kb) => `コピーしました（${kb} KB）。チャットの AI のタブに貼り付けて送ってください。AI が書き終えたら ⑤ へ`,
     savedGuide: (kb) => `保存しました（${kb} KB）。ダウンロードしたファイルをチャットの AI に添付して送ってください。AI が書き終えたら ⑤ へ`,
     outlineSaved: (kb) => `保存しました（${kb} KB）。ダウンロードしたファイルをチャットの AI に添付して送ってください。構成案が出たら ⑤ へ`,
@@ -156,6 +161,8 @@ const TX = {
     // 新規作成の貼り付けだけの画面（もう出力を持っている人：スキルで作った・前に作った）と、ファイルから読む
     direct: 'AI の出力を貼り付ける', directHint: 'スキルで作った出力や、前に作った出力を、そのまま入れます',
     onlyTitle: 'AI の出力を貼り付けます', onlyBack: '問いに答えて作る',
+    // 新規作成のはじめの 3 つめの入口「このサンプルを参考に作る」（app/i18n.js の exampleLike・exampleLikeNote）→ サンプルを選ぶ → サンプルから始めた新規作成
+    pickTitle: '参考にするサンプルを選んでください', pickBtn: '選ぶ', pickMeta: (n) => `${n} 枚`,
     fromFile: 'ファイルから読む', fromFileHint: '出力のファイル（.txt・.md）を選ぶか、欄にドラッグ＆ドロップします',
     fileType: 'テキストのファイル（.txt・.md）を選んでください',
     fileOver: (mb) => `このファイルは大きすぎます（${mb} MB まで）。AI の出力のファイルを選び直してください`,
@@ -230,7 +237,7 @@ const TX = {
     howToNew: 'Answer four questions to make instructions for a chat AI (ChatGPT, Gemini, Claude, …). Paste the AI’s output here and your slides are made.',
     howToFix: 'Write what to change to make a fix request for a chat AI. Paste the AI’s output here and the slides are replaced.',
     answered: (q, a) => `${q}: ${a}`, change: 'Change', next: 'Next', cancel: 'Cancel',
-    sendQ: 'Instructions', planShort: { free: 'Chat AI: free plan', paid: 'Chat AI: paid plan' }, copiedShort: 'copied', listSep: ' · ',
+    sendQ: 'Instructions', planShort: { free: 'Light', paid: 'Detailed' }, copiedShort: 'copied', listSep: ' · ',
     insertAnswer: (n, wish) => `${n} slide${n === 1 ? '' : 's'}${wish ? ' · ' + wish : ''}`, wishNone: 'none',
     back: '← Back',
     steps: {
@@ -269,10 +276,14 @@ const TX = {
     },
     themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load theme…', themeMine: 'My themes',
     themeLine: REQUEST_WORDS.en.themeLine,
-    planLegend: 'Is your chat AI on a free plan or a paid plan?',
-    plan: { free: 'Free plan (choose this if unsure)', paid: 'Paid plan' },
-    planHint: (free, paid) => `The plan sets the suggested size limit for the instructions (free plan ${free} KB, paid plan ${paid} KB). A chat AI may not read instructions that are too long to the end.`,
-    planNote: 'Egatari is free. This asks about your chat AI\'s plan.',
+    planLegend: 'Choose the instructions for the AI',
+    plan: { free: 'Light (any AI)', paid: 'Detailed (for paid AI plans)' },
+    planBadge: 'If unsure',
+    planDesc: {
+      free: 'Short instructions of up to about 30,000 characters. You can paste them as they are into the free ChatGPT or Gemini too. Depending on the subjects you choose, some part descriptions are shortened or a few parts are left out.',
+      paid: 'Long instructions that describe every part in full. They suit AIs that can read long text, such as the paid versions of ChatGPT, Gemini and Claude. Gemini may cut a copy-and-paste at about 30,000 characters, so save the instructions as a file and attach it. Choosing only the subjects you use makes the instructions shorter, so the AI uses fewer tokens and chooses parts more easily.',
+    },
+    planHint: (free, paid) => `Your choice sets the suggested size limit for the instructions (light ${free} KB, detailed ${paid} KB). A chat AI may not read instructions that are too long to the end.`,
     seriesLegend: 'Will the slides need any of these? (subjects)',
     seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
     partsLegend: 'Which parts may the AI use?',
@@ -291,13 +302,13 @@ const TX = {
     packMeter: (kb, cap) => `Instructions: ${kb} KB (suggested limit ${cap} KB)`,
     overCap: (kb, names) => `${kb} KB over the suggested limit, so your chat AI may not read it to the end. ${names ? `Parts you could untick: ${names}` : 'Untick some parts.'}`,
     trim: 'Untick these',
-    shortened: (names) => `To fit the free plan’s limit, the descriptions of ${names} are shortened.`,
+    shortened: (names) => `To fit the light instructions, the descriptions of ${names} are shortened.`,
     packTotal: (kb) => `Instructions: ${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: 'Copy the instructions',
     copied: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. It is long, so it may turn into an attached file; just send it. When the AI has finished, go to step 5.`,
-    // Paid plan: saving the instructions as a file is primary, copying is secondary (Gemini cuts a paste at about 30,000 characters; owner's test, 2026-11-05)
+    // Detailed instructions: saving them as a file is primary, copying is secondary (Gemini cuts a paste at about 30,000 characters; owner's test, 2026-11-05)
     saveGuide: 'Save the instructions as a file',
-    fileHint: 'Attach long instructions to the chat as a file. Gemini cuts a paste at about 30,000 characters; ChatGPT turns a long paste into an attachment by itself.',
+    fileHint: 'Attach long instructions to the chat as a file. Gemini may cut a copy-and-paste at about 30,000 characters. ChatGPT turns a long paste into an attachment by itself.',
     copiedPaid: (kb) => `Copied (${kb} KB). Paste it into your chat AI’s tab and send. When the AI has finished, go to step 5.`,
     savedGuide: (kb) => `Saved (${kb} KB). Attach the downloaded file to your chat AI and send it. When the AI has finished, go to step 5.`,
     outlineSaved: (kb) => `Saved (${kb} KB). Attach the downloaded file to your chat AI and send it. When the outline is out, go to step 5.`,
@@ -318,6 +329,7 @@ const TX = {
     replaceHint: 'If only the fixed slides are in the output, only those slides are replaced.',
     direct: 'Paste the AI’s output', directHint: 'For output you already have, from a skill or from before.',
     onlyTitle: 'Paste the AI’s output', onlyBack: 'Answer the questions instead',
+    pickTitle: 'Choose the sample to base it on', pickBtn: 'Choose', pickMeta: (n) => `${n} slide${n === 1 ? '' : 's'}`,
     fromFile: 'Read from a file', fromFileHint: 'Choose the output file (.txt, .md), or drag it onto a field.',
     fileType: 'Choose a text file (.txt or .md).',
     fileOver: (mb) => `This file is too large (up to ${mb} MB). Choose the AI’s output file again.`,
@@ -421,7 +433,7 @@ export function setupLlm(app) {
     box.scrollTop = 0; selectAll();
     return false;
   }
-  // 指示のパック（New ④・挿入②の「別のチャットに送る」）を、コピーと同じバイト（UTF-8・BOM なし）でファイルに保存（有料のプランの主ボタン）。
+  // 指示のパック（New ④・挿入②の「別のチャットに送る」）を、コピーと同じバイト（UTF-8・BOM なし）でファイルに保存（詳細の指示の主ボタン）。
   // Gemini は貼り付けで約 3 万字で切れるが、添付したファイルは全文読める（owner の確認、2026-11-05）。app/main.js の download（text/plain）
   const saveGuideFile = (text) => download(`egatari-instructions-${LANG}.txt`, text, 'text/plain;charset=utf-8');
   // 大きさ：UTF-8 のバイト数 / 1024（小数 1 桁）。node kit/llm-pack.mjs --list と同じ計算（kit/core/llm-pack.mjs の packKb）、言葉は UI の言語
@@ -738,10 +750,10 @@ export function setupLlm(app) {
   }
 
   // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る（handoff/parts-tiers-2026-10-27.md §2）
-  // 問い「無料のプランですか、有料のプランですか」→「AI にどのパーツを使わせますか」（パーツの一覧：伝えたいことごとのまとまり、教科の形は最後。
-  // kit/core/new-deck.mjs の partsList）→ 指示の大きさ（プランの目安と比べるメーター）→［指示をコピー］。
+  // 問い「AI に渡す指示を選んでください」（軽量・詳細。内部の名前は plan の free・paid）→「AI にどのパーツを使わせますか」（パーツの一覧：伝えたいことごとのまとまり、教科の形は最後。
+  // kit/core/new-deck.mjs の partsList）→ 指示の大きさ（軽量・詳細の目安と比べるメーター）→［指示をコピー］。
   // 初めの選び方：標準のパーツは全部、専門のパーツは ① の小分類と ② の言葉から決めた束だけ（recommend。理由を一覧の上に出し、パーツに「おすすめ」）。
-  // 特殊（extra）のパーツは出さない。プランが変えるのは目安だけ（選べる数は限らない）：越えたら、無料のプランはまず中核の 4 つの説明を短くし（fitPlan）、それでも越えれば越えた分と外す候補（専門のパーツだけ）と［候補を外す］。
+  // 特殊（extra）のパーツは出さない。軽量・詳細が変えるのは目安と詳しさだけ（選べる数は限らない）：越えたら、軽量の指示はまず中核の 4 つの説明を短くし（fitPlan）、それでも越えれば越えた分と外す候補（専門のパーツだけ）と［候補を外す］。
   // 自分で替えた印は、推し直しで上書きしない。新規作成はいつも初めの選び方から（開いている教材の studio.newDeck は読まない）
   // パーツの見本の小さな絵（app/part-thumbs.js。tools/part-thumbs.mjs がパーツの見本 demo.html から作る）：明るい画面と暗い画面の 2 枚を <picture> で。
   // alt は何の絵か（パーツの名前と、日本語の画面では見本の見出し）。絵のないパーツは線画（ICONS）
@@ -782,14 +794,18 @@ export function setupLlm(app) {
     const groups = el('div', { id: 'paste-pgroups', cls: 'pgroups' });
     const why = el('p', { id: 'paste-parts-why', cls: 'hint paste-why', role: 'status', hidden: '' });
     const count = el('p', { id: 'paste-parts-count', cls: 'hint', 'aria-live': 'polite' });
-    const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-note paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map((p) => radio('paste-plan', p, X.plan[p], draft.plan === p))]);
-    const planNote = el('p', { id: 'paste-plan-note', cls: 'hint', text: X.planNote });   // プランは使う人のチャットの AI のもの（Egatari にプランはない）
+    // 指示の詳しさ（軽量・詳細）：選択肢ごとに名前と説明。軽量に「迷ったらこちら」の札（内部の名前は plan の free・paid のまま）
+    const planOpt = (p) => el('label', { cls: 'plan-opt' }, [
+      el('input', { type: 'radio', name: 'paste-plan', value: p, id: 'paste-plan-' + p, 'aria-describedby': 'paste-plan-' + p + '-d', ...(draft.plan === p ? { checked: '' } : {}) }),
+      el('span', { cls: 'plan-text' }, [el('span', { cls: 'plan-name' }, [el('span', { text: X.plan[p] }), ...(p === DEFAULT_PLAN ? [el('span', { cls: 'plan-badge', text: X.planBadge })] : [])]),
+        el('small', { id: 'paste-plan-' + p + '-d', text: X.planDesc[p] })])]);
+    const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map(planOpt)]);
     const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint(capKb('free'), capKb('paid')) });
     const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
       el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }),
       // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
       el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), why, groups, count]);
-    // 指示の大きさ：プランの目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
+    // 指示の大きさ：軽量・詳細の目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
     const total = el('span', { id: 'paste-pack-size', cls: 'hint', tabindex: '-1' });
     const fill = el('span', { cls: 'meter-fill' });
     const bar = el('span', { id: 'paste-meter', cls: 'meter-bar', role: 'meter', 'aria-valuemin': '0', 'aria-labelledby': 'paste-pack-size' }, [fill]);
@@ -804,8 +820,8 @@ export function setupLlm(app) {
     structCb.checked = draft.useStructure;
     structCb.addEventListener('change', () => { draft.useStructure = structCb.checked; update(); });
     const structRow = draft.from ? el('label', { id: 'paste-structure-row', cls: 'paste-with-pack', for: 'paste-use-structure' }, [structCb, el('span', { text: X.useStructure(draft.from.title, draft.from.structure.length) })]) : null;
-    // プランは上限と詳しさを変える（無料のプランは、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
-    // 無料のプランで目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
+    // 軽量・詳細は上限と詳しさを変える（軽量の指示は、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
+    // 軽量の指示で目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
     // サンプルから始めたとき（draft.from）は、サンプルのパーツを詳しく書く（fullNow。kit/core/new-deck-pack.mjs の samplePackFit がコマンドと同じに決める）
     let shortNow = false, fullNow = null;
     const textNow = (tags = chosen(), short = shortNow, full = fullNow) => packText({ tags, plan: draft.plan, lang: LANG, request: request(), short, full });
@@ -827,7 +843,7 @@ export function setupLlm(app) {
       groups.replaceChildren(...partsList(draft.sub || null).map((g) => groupNodes.get(g.id)));
     };
     let candidates = [];
-    // 目安に照らす大きさ（fitSize）：無料のプランは 45 KB と貼り付けの長さ 31,000（UTF-16 の単位の数＋改行の数）の近いほう。コマンド（kit/llm-pack.mjs）と同じ
+    // 目安に照らす大きさ（fitSize）：軽量の指示は 45 KB と貼り付けの長さ 31,000（UTF-16 の単位の数＋改行の数）の近いほう。コマンド（kit/llm-pack.mjs）と同じ
     const sizeOf = (tags, short) => fitSize(textNow(tags, short), draft.plan);
     const update = () => {
       for (const [t, cb] of boxes) {
@@ -839,7 +855,7 @@ export function setupLlm(app) {
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
       const cap = capKb(draft.plan), capBytes = cap * 1024;
-      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：無料のプランで越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に（束が 1 つなら標準のパーツを決まった順に）。
+      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：軽量の指示で越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に（束が 1 つなら標準のパーツを決まった順に）。
       // サンプルから始めたとき（samplePackFit）：サンプルのパーツは詳しいまま、① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す候補に →
       // ③ 外す候補がなくなっても越えるときだけサンプルのパーツを短く。候補を見せている間の指示は ① の後のもの（［候補を外す］の後はコマンドと同じ指示）
       let fit, cut;
@@ -867,7 +883,7 @@ export function setupLlm(app) {
       over.hidden = !isOver;
       overText.textContent = isOver ? X.overCap(kbOf(Math.ceil(bytes * (size - capBytes) / size)), candidates.length ? names(candidates) : '') : '';
       trim.hidden = !candidates.length;
-      // 有料のプラン：指示をファイルに保存するのが主、コピーは従（長い指示は Gemini で貼り付けが切れる。owner の確認、2026-11-05）
+      // 詳細の指示：ファイルに保存するのが主、コピーは従（長い指示は Gemini で貼り付けが切れる。owner の確認、2026-11-05）
       const paid = draft.plan === 'paid';
       save.hidden = !paid;
       save.classList.toggle('pri', paid);
@@ -899,13 +915,13 @@ export function setupLlm(app) {
       if (onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
     const fileHint = el('p', { id: 'paste-attach-hint', cls: 'hint', hidden: '', text: X.fileHint });
-    // 答えた 1 行：プランと選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
+    // 答えた 1 行：指示の詳しさ（軽量・詳細）と選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
     const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.partsShort(chosen().length), X.copiedShort].join(X.listSep), onChange);
     // AI のスキル（#126）：指示書をコピーする代わりに、チャットの AI に入れておく ZIP。［指示書をコピー］の隣
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planNote, planHint, partsSet, structRow, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint].filter(Boolean), [summary, copyMsg, copyMsg.box]);
+    const node = step('paste-step-send', title, [planSet, planHint, partsSet, structRow, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint].filter(Boolean), [summary, copyMsg, copyMsg.box]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
@@ -1123,6 +1139,9 @@ export function setupLlm(app) {
     // 前の窓の後始末（作成の後の品質チェックを待つ）が次の窓（構成案の続き）を開いた後に終わり、その計算が今の窓の「挿入」を押せなくしていた
     const howto = el('p', { id: 'ai-howto', cls: 'paste-howto', text: mode === 'replace' ? X.howToFix : mode === 'new' ? X.howToNew : X.howTo });
     const fromLead = mode === 'new' && draft.from ? el('p', { id: 'ai-from-sample', cls: 'note paste-from', role: 'status', text: X.fromSampleLead(draft.from.title) }) : null;
+    // ?from-sample= の名前が一覧にないとき（app/main.js の openFromSampleParam）：ふつうの新規作成を開き、1 行で知らせる
+    const notice = mode === 'new' && !draft.from && opts.notice ? el('p', { id: 'ai-sample-missing', cls: 'note paste-from', role: 'status', text: opts.notice }) : null;
+    let picked = null;   // はじめの画面の「このサンプルを参考に作る」で選んだサンプル（窓を閉じて、サンプルから開き直す）
     const syncGo = () => {
       const b = document.getElementById('dlg-import');
       if (!howto.isConnected) return;
@@ -1139,7 +1158,7 @@ export function setupLlm(app) {
     fields = pasteFields(mode, () => syncGo());
     const pasteKids = () => [el('p', { id: 'paste-step3-hint', cls: 'hint', text: X.step3Hint }), ...(mode === 'replace' ? [el('p', { cls: 'hint', text: X.replaceHint })] : []),
       ...fields.nodes, msg, cut, cutMsg, cutMsg.box, el('p', { cls: 'hint', text: X.untrusted })];
-    let body, openPaste = () => {}, focusTitle = null, showDirect = () => {};
+    let body, openPaste = () => {}, focusTitle = null, showDirect = () => {}, showPick = () => {};
     if (mode === 'new') {
       // ① 場面 → ② 内容 → ③ 見た目 → ④ 指示を送る → ⑤ 出力を貼る。1 つだけ開く流れ（flow）：答えた問いは 1 行にたたみ、次の問いを開く。
       // ③ まで答えると ④、指示をコピーすると ⑤ が開く。⑤ は ④ を開いたら見出しから開ける（もう出力を持っている人）
@@ -1178,7 +1197,22 @@ export function setupLlm(app) {
       // もう出力を持っている人（スキルの出力・前に作った出力）：問いに答えずに貼り付けだけの画面へ。欄は ⑤ と同じもの（貼った字は行き来しても残る）。
       // 場面・タイトル・テーマは貼った教材のまま（<title>・<html data-theme>）で、選んだものを足さない（openNew の direct）
       const directBtn = el('button', { type: 'button', id: 'paste-direct', 'aria-describedby': 'paste-direct-hint', text: X.direct, onclick: () => showDirect(true) });
-      const offer = el('div', { id: 'paste-direct-offer', cls: 'paste-direct' }, [directBtn, el('p', { id: 'paste-direct-hint', cls: 'hint', text: X.directHint })]);
+      // 3 つめの入口「このサンプルを参考に作る」：サンプルを選ぶ画面（はじめの画面のサンプルと同じ一覧。sample.json のあるもの）→ サンプルから始めた新規作成（再生の窓のボタンと同じ）。
+      // サンプルから始めたとき・サンプルのない組み立て（--no-examples）では出さない
+      const samples = draft.from ? [] : (Array.isArray(app.examples) ? app.examples : []).filter((x) => x && x.sample);
+      const pickBtn = samples.length ? el('button', { type: 'button', id: 'paste-from-sample', 'aria-describedby': 'paste-from-sample-hint', text: T.exampleLike, onclick: () => showPick(true) }) : null;
+      const offer = el('div', { id: 'paste-direct-offer', cls: 'paste-direct' }, [el('div', { cls: 'paste-entry' }, [directBtn, el('p', { id: 'paste-direct-hint', cls: 'hint', text: X.directHint })]),
+        pickBtn ? el('div', { cls: 'paste-entry' }, [pickBtn, el('p', { id: 'paste-from-sample-hint', cls: 'hint', text: T.exampleLikeNote })]) : null].filter(Boolean));
+      const pickList = el('ul', { id: 'paste-samples-list', cls: 'paste-samples-list' }, samples.map((x) => el('li', { 'data-example': x.name }, [
+        el('span', { cls: 'ex-text' }, [el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
+          el('span', { cls: 'meta' }, [X.pickMeta(x.slides), ...(x.book === true ? [el('span', { cls: 'attach-badge ex-book', text: T.exampleBook, title: T.exampleBookTitle })] : [])])]),
+        el('button', { type: 'button', text: X.pickBtn, 'aria-label': `${X.pickBtn}: ${x.title}`, onclick: () => {
+          picked = { name: x.name, title: x.title, ...x.sample };
+          const d = document.getElementById('dlg'); if (d.open) d.close('sample');
+        } })])));
+      const pick = el('section', { id: 'paste-samples', cls: 'paste-only', 'aria-labelledby': 'paste-samples-h', hidden: '' }, [el('h3', { id: 'paste-samples-h', text: X.pickTitle }),
+        el('p', { cls: 'hint', text: T.exampleLikeNote }), pickList,
+        el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-samples-back', text: X.onlyBack, onclick: () => showPick(false) })])]);
       const onlyBox = el('div', { cls: 'paste-five' });
       const only = el('section', { id: 'paste-only', cls: 'paste-only', 'aria-labelledby': 'paste-only-h', hidden: '' }, [el('h3', { id: 'paste-only-h', text: X.onlyTitle }), onlyBox,
         el('div', { cls: 'paste-guide' }, [el('button', { type: 'button', id: 'paste-only-back', text: X.onlyBack, onclick: () => showDirect(false) })])]);
@@ -1191,7 +1225,15 @@ export function setupLlm(app) {
         else { five.render(true); directBtn.focus(); }
         syncGo();
       };
-      body = [offer, ...steps, only];
+      showPick = (on) => {
+        howto.hidden = on; offer.hidden = on; pick.hidden = !on;
+        if (notice) notice.hidden = on;
+        for (const n of steps) n.hidden = on;
+        const b = document.getElementById('dlg-import'); if (b) b.hidden = on;
+        const g = document.getElementById('paste-go-note'); if (g) g.hidden = on;
+        setTimeout(() => { const f = on ? pickList.querySelector('button') : pickBtn; if (f) f.focus(); }, 0);
+      };
+      body = [offer, ...steps, only, pick];
     } else if (mode === 'insert') {
       const { deck, narration } = await readDeck();
       const slides = sectionsOf(deck);
@@ -1233,12 +1275,14 @@ export function setupLlm(app) {
       // 新規作成は画面いっぱいのページ（問いを縦に並べる）。「← 戻る」と Esc で閉じる
       const back = mode === 'new' ? el('button', { type: 'button', id: 'page-back', cls: 'ghost page-back', text: X.back, onclick: () => { const d = document.getElementById('dlg'); if (d.open) d.close('cancel'); } }) : null;
       const shown = ask({ title: opts.batch ? X.batchTitle : X.title[mode], kind: mode === 'new' ? 'paste page' : 'paste',
-        body: [back, howto, fromLead, ...body],
+        body: [back, howto, fromLead, notice, ...body],
         buttons: [{ id: 'cancel', label: X.cancel }, { id: 'import', label: X.go[mode], pri: true }] });
       syncGo();
       if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
       else if (focusTitle) { const f = focusTitle; focusTitle = null; setTimeout(f, 0); }
       const v = await shown;
+      // 「このサンプルを参考に作る」で選んだ：サンプルから始めた新規作成を開き直す（再生の窓の「このサンプルを参考に作る」と同じ）
+      if (v === 'sample' && picked) return aiDialog('new', { sample: picked });
       if (v !== 'import') return false;
       if (unanswered() || outlinePhase() || !fields.ready()) { focusPaste = true; if (!unanswered()) openPaste(); continue; }
       status(X.building[mode]);
