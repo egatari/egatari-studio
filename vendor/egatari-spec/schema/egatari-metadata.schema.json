@@ -191,7 +191,6 @@
           "items": {
             "enum": [
               "talk",
-              "learn",
               "video"
             ]
           }
@@ -213,7 +212,6 @@
             "mode": {
               "enum": [
                 "talk",
-                "learn",
                 "video"
               ]
             },

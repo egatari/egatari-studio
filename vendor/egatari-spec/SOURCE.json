@@ -1,9 +1,7 @@
 {
   "repository": "https://github.com/egatari/egatari-spec",
-  "commit": "3b6f290279921007fbf66d3b00bd35f996b874dc",
-  "snapshot": null,
-  "branch": "main",
-  "note_ref": "the main branch at 3b6f290, not a tag (wd-*): re-vendor the next wd-* tag at rc prep",
+  "commit": "f0856da560a25b5984083a5ab7b41a0c47be84c7",
+  "snapshot": "wd-2026-11-07",
   "files": 224,
   "note": "Copied by tools/sync-spec.mjs. Do not edit; change the spec repository and sync again."
 }
