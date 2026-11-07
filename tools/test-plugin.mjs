@@ -266,6 +266,9 @@ try {
   fs.writeFileSync(file, '');
   assert.deepEqual(videoPlan(file).commands, [['render/render.mjs', file, '--out', file.slice(0, -9) + '.video', '--full']]);
   assert.throws(() => videoPlan(import.meta.filename), /working folder/);
+  // --music（背景の音楽）は render に渡す
+  assert.deepEqual(videoPlan(file, { music: 'bgm.mp3' }).commands, [['render/render.mjs', file, '--out', file.slice(0, -9) + '.video', '--full', '--music', path.resolve('bgm.mp3')]]);
+  assert.deepEqual(videoPlan(tmp, { music: 'bgm.mp3' }).commands[1].slice(-2), ['--music', path.resolve('bgm.mp3')]);
   assert.ok([...folder.commands, ...videoPlan(file).commands].every((args) => !args.some((s) => /synth|tts/.test(s))));
 } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 console.log('ok video entry point uses existing audio only');

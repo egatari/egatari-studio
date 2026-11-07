@@ -3,7 +3,7 @@
 //   --help：使い方を出して終わる
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-pack-catalogue（指示が出すパーツが新しい教材のカタログ 2 で組めて動く）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-audio（編集アプリのプレビューの音声）・test-pronounce（台本の欄の読み方のボタン）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-app-drafts（保存していない変更をブラウザに残して復元する）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-pack-catalogue（指示が出すパーツが新しい教材のカタログ 2 で組めて動く）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-audio（編集アプリのプレビューの音声）・test-pronounce（台本の欄の読み方のボタン）・test-app-earlier（前の版のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-app-mp4（動画（MP4）にする…の窓）・test-app-drafts（保存していない変更をブラウザに残して復元する）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0。npm の包み（test-npm-pack）
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -194,6 +194,8 @@ const steps = [
   ['test-app-drafts', ['tools/test-app-drafts.mjs', path.join(tmp, 'drafts')]],
   // 組み直す保存の確かめ：まだ保存していない文書は聞かない・テーマを変えただけならそのわけだけ（日本語と英語）
   ['test-app-save-rebuild', ['tools/test-app-save-rebuild.mjs', path.join(tmp, 'save-rebuild')]],
+  // 「エクスポート ▸」→「動画（MP4）にする…」（#131）：Colab の動画のノートを開く窓（ファイルの名前・音声の更新が必要な数・保存して／エクスポートして開く・止められたときのリンク。日本語と英語）
+  ['test-app-mp4', ['tools/test-app-mp4.mjs', path.join(tmp, 'app-mp4')]],
   // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）
   ['test-viewer-input-browser', ['tools/test-viewer-input-browser.mjs']],
   ['test-input-focus', ['tools/test-input-focus.mjs', path.join(tmp, 'input-focus')]],
@@ -241,6 +243,8 @@ steps.push(
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
+  // 動画の音声（render.mjs）：5 段階のチャープを --full で書き出し、継ぎ目の誤差 1 標本以内・跳びなし・積み上げた時間と 1 ms 以内・章とクリップの区間・背景の音楽。ffmpeg がなければ書き出しの部分を飛ばす（CI では tier2 が必ず走らせる）
+  ['test-render-audio', ['tools/test-render-audio.mjs', path.join(tmp, 'render-audio')]],
 );
 Object.assign(needs, { 'check kokugo': 'build kokugo' });
 // チャットの AI との行き来：指示（docs/authoring-with-llms*.md・docs/llm-parts/・kit/core/llm-pack-data.mjs）が材料と同じか・大きさ、取り出し・id・修正依頼・読みの検査・見本の取り込みと品質チェックの穴
@@ -286,7 +290,7 @@ const HINT_S = {
   'test-app 1/2': 222, 'test-app 2/2': 222, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
   'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
-  'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35,
+  'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35, 'test-app-mp4': 30, 'test-render-audio': 35,
   'test-check-overflow': 33, 'test-dev-server': 33, 'test-a11y': 30, 'check kokugo': 30, 'test-parts-host': 30, 'test-links': 29, 'test-config-preserve': 28,
   'test-app-player-change': 27, 'test-bar-hint': 26, 'test-yanked': 26, 'test-llm': 26, 'test-live-results': 25, 'test-app-earlier': 24, 'test-exported-from': 24,
   'test-controls': 24, 'test-read-aloud': 24, 'test-file-shape': 23, 'test-viewer-input-browser': 21, 'test-extlinks': 21, 'test-shape': 20, 'test-ref-voice': 20,

@@ -44,6 +44,7 @@ export const COLAB_NOTE_MARK = 'colab-verified';   // docs では <!-- colab-ver
 export const JOB = Object.freeze({ tag: 'tts-job', recordsTag: 'tts-records', v: 1 });
 export const COLAB = Object.freeze({
   repo: 'egatari/egatari-studio', notebook: 'colab/egatari-tts.ipynb',
+  videoNotebook: 'colab/egatari-video.ipynb',   // 動画（MP4）を作るノート（CPU のランタイム。#131）
   ref: 'v0.6.6',   // バッジの URL は版のタグに固定する（リリースの手順で替える。RELEASING.md）
   pause: 0.35,
   models: Object.freeze({ irodori: 'irodori-tts-500m-v3', kokoro: 'kokoro-82m-v1.0' }),
@@ -51,6 +52,7 @@ export const COLAB = Object.freeze({
   notebookVersion: 1,
 });
 export const colabUrl = (ref = COLAB.ref) => `https://colab.research.google.com/github/${COLAB.repo}/blob/${ref}/${COLAB.notebook}`;
+export const colabVideoUrl = (ref = COLAB.ref) => `https://colab.research.google.com/github/${COLAB.repo}/blob/${ref}/${COLAB.videoNotebook}`;
 
 // 取り込みの上限（割り当てる前に課す。zip はダウンロード物）
 export const COLAB_LIMITS = Object.freeze({ zipBytes: 512 * 1048576, memberBytes: AUDIO_LIMITS.fileBytes, recordsBytes: 4 * 1048576, steps: 400, totalBytes: 512 * 1048576 });

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=d52d92feeab2606a -->
+<!-- i18n: pair=reference.md sha256=33badea55f954557 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -546,10 +546,11 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `--scale x` | 既定 1.5（1920×1080） |
 | `--only 鍵,…` | このスライドかステップだけ。ほかはそのまま。スライドの鍵か id（そのスライドの全ステップ）、または `スライドの鍵:ステップ`（1 ステップ）。どれにも当たらないものはエラーで、使えるスライドの鍵を示す |
 | `--full` | `full.mp4` も。章が 2 つ以上なら `chapter_NN.mp4` と `chapters.json` も（全部のクリップが要る） |
+| `--music ファイル` | 背景の音楽（省略可）：動画の全体の下に 1 本流す。台本の声の間は小さくし、終わりで消す（[video.ja.md](video.ja.md#背景の音楽)）。クリップの音声に入るので、キャッシュの鍵にも入る |
 | `--force` | `.render-cache.json` を無視する |
 | `--captions` | 台本の字幕を映像に焼き込む（`?captions=1`）。キャッシュの鍵に入る |
 
-出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, scale, width, height, duration, clipDuration, segments[]`。各ステップは `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。ステップの数より後ろのクリップは消す。
+出力：`clip_NNNN.mp4`、`clip_NNNN.png`、`timeline.out.json`（`source, fps, sampleRate, music, scale, width, height, duration, clipDuration, segments[]`。各ステップは `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`）、`.render-cache.json`。ステップの数より後ろのクリップは消す。
 
 ## 道具
 

@@ -12,13 +12,13 @@ import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { serve } from '../colab/worker-protocol.mjs';
 import { readZip, writeZip, ZipError } from '../kit/core/zip-read.mjs';
-import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_VERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, COLAB_STEPS, COLAB_TIME, colabUrl } from '../kit/core/colab-core.mjs';
+import { buildJob, planImport, parseRecords, readColabZip, decodeStepAudio, expectedCues, COLAB_VERIFIED, COLAB_NOTE_MARK, COLAB_LIMITS, COLAB_STEPS, COLAB_TIME, colabUrl, colabVideoUrl, COLAB } from '../kit/core/colab-core.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { integratedLoudness, encodeWav, PROCESSING, takeEntry } from '../kit/core/audio-core.mjs';
 import { inputHash, sha256Hex } from '../kit/core/portable.mjs';
 import { colabZip } from './colab-fixture.mjs';
-import { notebook, COLAB_PINS } from './make-colab-notebook.mjs';
+import { notebook, videoNotebook, VIDEO_NODE, COLAB_PINS } from './make-colab-notebook.mjs';
 import { sessionFactory, providersFromEnv, cpuNotice, firstLine, actualProvider, supportedBackends } from '../colab/ort-fallback.mjs';
 import { profileSessions, STAGE_NAMES } from '../colab/stage-profile.mjs';
 
@@ -172,6 +172,23 @@ ok('notebook: colab/egatari-tts.ipynb is what tools/make-colab-notebook.mjs make
   assert.ok(colabUrl('v0.5.0').endsWith('/blob/v0.5.0/colab/egatari-tts.ipynb'));
   const text = nb.cells.map((c) => c.source.join('')).join('\n');
   assert.ok(/Google/.test(text) && /プライバシー/.test(text), 'the privacy note is in the notebook (en and ja)');
+});
+ok('video notebook (#131): colab/egatari-video.ipynb is generated; CPU runtime; clones COLAB.ref like the TTS notebook; uploads .ega.html, optional background music, runs tools/video.mjs and downloads full.mp4', () => {
+  assert.equal(fs.readFileSync(path.join(ROOT, 'colab/egatari-video.ipynb'), 'utf8').replace(/\r\n/g, '\n'), videoNotebook());
+  const nb = JSON.parse(videoNotebook());
+  assert.ok(!nb.metadata.accelerator && !(nb.metadata.colab || {}).gpuType, 'no GPU');
+  assert.ok(colabVideoUrl('v0.6.7').endsWith('/blob/v0.6.7/colab/egatari-video.ipynb'));
+  const code = nb.cells.filter((c) => c.cell_type === 'code').map((c) => c.source.join(''));
+  const text = nb.cells.map((c) => c.source.join('')).join('\n');
+  assert.ok(code[0].includes(`STUDIO_REF = "${COLAB.ref}"   #@param`) && code[0].includes('"--branch", STUDIO_REF'), 'STUDIO_REF from COLAB.ref, as in the TTS notebook');
+  assert.ok(code[0].includes(`NODE_VERSION = "${VIDEO_NODE}"`) && /npm ci --ignore-scripts/.test(code[0]) && /playwright-core install --with-deps chromium/.test(code[0]) && /ffmpeg/.test(code[0]));
+  assert.ok(/\.ega\.html/.test(code[1]) && /files\.upload\(\)/.test(code[1]));
+  assert.ok(/MUSIC = False\s+#@param \{type:"boolean"\}/.test(code[2]), 'background music is optional and off by default');
+  assert.ok(!/#@param \{type:"(number|slider|integer)"/.test(text) && !/MUSIC_(START|GAIN|BPM|SEC)/.test(text), 'nothing to set: no seconds, no beat');
+  assert.ok(code[3].includes('"tools/video.mjs", LESSON') && code[3].includes('["--music", MUSIC_PATH]') && code[3].includes('"full.mp4"') && /chapter_\*\.mp4/.test(code[3]));
+  assert.ok(/背景の音楽/.test(text) && /Background music|background music/.test(text) && /プライバシー/.test(text) && /Privacy/.test(text));
+  const engines = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).engines.node;
+  assert.ok(engines.includes('^' + VIDEO_NODE), `VIDEO_NODE ${VIDEO_NODE} is the engines floor (${engines})`);
 });
 ok('notebook header: the same steps as the editor’s C2 (connect → CPU when T4 cannot connect → run all → choose the file → ZIP), ja and en, before the first code cell; only the T4 timing', () => {
   const nb = JSON.parse(notebook()), first = nb.cells[0].source.join('');

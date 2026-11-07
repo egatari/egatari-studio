@@ -4,9 +4,13 @@
 //
 // - 画面は DECK.seek(i, k, t) だけで描く（docs/contract.md §1）。仮想の時刻 t = f/fps でコマを撮る
 // - 動きのある区間 [0, motion)（motion = max(anim, 注目の演出の終わり)）だけを fps で撮り、残り（dur - anim）は最終状態（t = Infinity）の 1 枚を伸ばす
-// - 口述音声は lead 秒の無音のあとに置き、dur まで無音で埋める（音声が dur を超えたら切って警告）
-// - 部品の音は作者の時刻で合成して混ぜる。段階をまたぐ余韻を残す（見る人の延長・ミュートは使わない）
-// - 出力：clip_NNNN.mp4（H.264 yuv420p・固定フレームレート・faststart、AAC）、clip_NNNN.png、
+// - 音声は全体で 1 本（48 kHz）：各段階の口述音声を、積み上げた時間（コマに丸めない）の標本の位置に、lead 秒のあとから置く
+//   （段階の終わりを超えたら切って警告）。継ぎ目で標本がずれず、跳ばない（render/audio-track.mjs）
+// - 部品の音は作者の時刻で合成して同じ 1 本に混ぜる。段階をまたぐ余韻を残す（見る人の延長・ミュートは使わない）
+// - --music <ファイル>：背景の音楽を 1 本、全体の下に流す（台本の声の間は下げ、終わりで消す。拍には合わせない。秒の設定はない）
+// - クリップの音声は、その 1 本をコマの境目で切った続きの区間。full.mp4・章の mp4 の音声も、その 1 本から 1 回だけ AAC にする
+//   （クリップの AAC を繋いで作り直さない：先頭の 1024 標本の遅れと継ぎ目の隙間が出ない）
+// - 出力：clip_NNNN.mp4（H.264 yuv420p・固定フレームレート・faststart、AAC 48 kHz）、clip_NNNN.png、
 //   timeline.out.json（各段階の開始・長さ・題名・章・原稿。字幕・チャプターの印に使える）
 // - --full：全体を 1 本（full.mp4）に。章（timeline の chapter）が 2 つ以上あれば章ごとの mp4 も作る
 // - キャッシュ（<out>/.render-cache.json）：段階ごとの「入力」のハッシュ（スライドの HTML・部品のコード・テーマなど
@@ -22,15 +26,15 @@ import { spawnSync } from 'node:child_process';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { readRegular, READ_LIMITS } from '../kit/bounded-read.mjs';
-import { encodeWav } from '../kit/core/wav-core.mjs';
 import { resolveOnly, unknownOnlyMessage } from './only.mjs';
-import { collectVideoEvents, videoSoundEvents, renderStepSounds, frameStarts } from './sounds.mjs';
+import { collectVideoEvents, videoSoundEvents, renderStepSounds } from './sounds.mjs';
+import { VIDEO_SR, trackLayout, placeNarration, narrationWindows, musicGain, musicBase, limitPeaks } from './audio-track.mjs';
 
-const RENDER_VERSION = 5;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
+const RENDER_VERSION = 6;   // 書き出しの方法を変えたら上げる（キャッシュを捨てる）
 const CACHE_FILE = '.render-cache.json';
 
 function parseArgs(argv) {
-  const o = { fps: 30, scale: 1.5, only: null, full: false, force: false, captions: false, out: null, src: null };
+  const o = { fps: 30, scale: 1.5, only: null, full: false, force: false, captions: false, music: null, out: null, src: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--out') o.out = argv[++i];
@@ -40,14 +44,16 @@ function parseArgs(argv) {
     else if (a === '--full') o.full = true;
     else if (a === '--force') o.force = true;
     else if (a === '--captions') o.captions = true;   // 口述原稿の字幕を映像に焼き込む
+    else if (a === '--music') o.music = argv[++i];   // 背景の音楽（任意）
     else o.src = a;
   }
   if (!o.src || !o.out) {
-    console.error('usage: node render/render.mjs <built.html> --out <dir> [--fps 30] [--scale 1.5] [--only key|id|key:step,...] [--full] [--force]');
+    console.error('usage: node render/render.mjs <built.html> --out <dir> [--fps 30] [--scale 1.5] [--only key|id|key:step,...] [--full] [--force] [--music <file>]');
     process.exit(1);
   }
   if (!Number.isInteger(o.fps) || o.fps < 1 || o.fps > 120) { console.error(`--fps は 1〜120 の整数 / --fps must be an integer in 1..120（${o.fps}）`); process.exit(1); }
   if (!Number.isFinite(o.scale) || o.scale < 0.25 || o.scale > 4) { console.error(`--scale は 0.25〜4 / --scale must be in 0.25..4（${o.scale}）`); process.exit(1); }
+  if (o.music !== null && !(o.music && fs.existsSync(o.music) && fs.statSync(o.music).isFile())) { console.error(`--music のファイルがない / --music file not found（${o.music}）`); process.exit(1); }
   if (o.only && !o.only.size) { console.error('--only に鍵がない / --only needs at least one slide key, id or step key'); process.exit(1); }
   return o;
 }
@@ -83,10 +89,30 @@ function audioFile(src, htmlUrl, tmp, idx) {
   return f;
 }
 
+// 音声のファイルを 48 kHz の PCM にする（ffmpeg で復号。channels：1 か 2）→ [Float32Array, …]
+function decodePcm(file, channels = 1, sr = VIDEO_SR) {
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-i', file, '-vn', '-f', 'f32le', '-acodec', 'pcm_f32le', '-ac', String(channels), '-ar', String(sr), '-'], { maxBuffer: 2 ** 31 - 1 });
+  if (r.error) throw new Error(`ffmpeg を起動できない / cannot run ffmpeg (install ffmpeg and put it on PATH): ${r.error.message}`);
+  if (r.status !== 0) throw new Error(`ffmpeg (decode ${path.basename(file)}) failed:\n${String(r.stderr).slice(-2000)}`);
+  const b = r.stdout, n = Math.floor(b.length / 4 / channels);
+  const f = new Float32Array(b.buffer.slice(b.byteOffset, b.byteOffset + n * channels * 4));
+  const out = Array.from({ length: channels }, () => new Float32Array(n));
+  for (let i = 0; i < n; i++) for (let c = 0; c < channels; c++) out[c][i] = f[i * channels + c];
+  return out;
+}
+// 2 チャンネルの区間 [a, b) を、交互に並べた f32le のバイト列にする（ffmpeg の -f f32le -ac 2 の入力）
+function interleave(ch, a, b) {
+  const n = Math.max(0, b - a), f = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) { f[2 * i] = ch[0][a + i] ?? 0; f[2 * i + 1] = ch[1][a + i] ?? 0; }
+  return Buffer.from(f.buffer);
+}
+const rawAudioArgs = (file) => ['-f', 'f32le', '-ar', String(VIDEO_SR), '-ac', '2', '-i', file];
+const AAC = ['-c:a', 'aac', '-b:a', '192k', '-ar', String(VIDEO_SR), '-ac', '2'];
+
 // 1 段階を mp4 にする。frames: 動きの区間のコマ（PNG のパス）、final: 最終状態の PNG
-// offset：音声の符号化の遅れ（format spec §5.2 startOffset）。その秒数を先頭から切ってから lead だけ遅らせる
+// pcm：この段階の音声（1 本の音声をコマの境目で切った区間。f32le・2 チャンネルのファイル）
 // N：クリップのコマ数（固定フレームレート。frameStarts の境目の差）
-function encodeClip({ frames, final, audio, sounds, N, lead, offset = 0, fps, out }) {
+function encodeClip({ frames, final, pcm, N, fps, out }) {
   const nA = Math.min(frames.length, N);
   const nH = N - nA;
   const args = [];
@@ -104,33 +130,34 @@ function encodeClip({ frames, final, audio, sounds, N, lead, offset = 0, fps, ou
   const nV = (nA > 0) + (nH > 0);
   vf.push(nV > 1 ? `${vlabels}concat=n=${nV}:v=1:a=0,fps=${fps},format=yuv420p[v]` : `${vlabels}fps=${fps},format=yuv420p[v]`);
   const T = (N / fps).toFixed(6);
-  if (audio) {
-    args.push('-i', audio);
-    const ms = Math.max(0, Math.round(lead * 1000));
-    const cut = offset > 0 ? `atrim=start=${offset.toFixed(6)},asetpts=PTS-STARTPTS,` : '';
-    vf.push(`[${vi}:a]${cut}aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo,adelay=${ms}:all=1,apad,atrim=0:${T}[narr]`);
-  } else {
-    args.push('-f', 'lavfi', '-t', T, '-i', 'anullsrc=r=44100:cl=stereo');
-    vf.push(`[${vi}:a]atrim=0:${T}[narr]`);
-  }
-  if (sounds) {
-    args.push('-i', sounds);
-    vf.push(`[${vi + 1}:a]aformat=sample_fmts=fltp:channel_layouts=stereo,apad,atrim=0:${T}[sounds]`);
-    vf.push('[narr][sounds]amix=inputs=2:normalize=0,alimiter=limit=0.98:level=0:latency=1[a]');
-  } else vf.push('[narr]anull[a]');
-  args.push('-filter_complex', vf.join(';'), '-map', '[v]', '-map', '[a]',
+  args.push(...rawAudioArgs(pcm));
+  args.push('-filter_complex', vf.join(';'), '-map', '[v]', '-map', `${vi}:a`,
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-r', String(fps), '-fps_mode', 'cfr',
     '-g', String(fps * 2), '-frames:v', String(N),
-    '-c:a', 'aac', '-b:a', '192k', '-ar', '44100', '-ac', '2', '-t', T,
+    ...AAC, '-t', T,
     '-movflags', '+faststart', out);
   ff(args, path.basename(out));
 }
 
-// 同じ設定のクリップを 1 本に繋ぐ（映像はコピー、音声は作り直して継ぎ目の隙間を出さない）
-function concatClips(files, out, tmp) {
+// 同じ設定のクリップの映像を 1 本に繋ぎ（コピー。各クリップの長さはコマ数で決める）、音声は 1 本の音声の区間 [a, b) を 1 回だけ AAC にする
+// 繋ぐ前に各クリップの映像だけを取り出す：クリップの AAC は先頭の 1024 標本（priming）が負の時刻にあり、concat はファイルの
+// 始まり（その負の時刻）を 0 に合わせるため、音声つきのまま繋ぐと映像が 21 ms 遅れる
+function joinClips(clips, out, tmp, track, a, b, fps) {
+  const vdir = fs.mkdtempSync(path.join(tmp, 'join-'));
+  const vids = clips.map((c, j) => {
+    const v = path.join(vdir, `v_${pad4(j)}.mp4`);
+    ff(['-i', c.file, '-map', '0:v', '-c', 'copy', v], `${path.basename(c.file)} (video)`);
+    return { file: v, frames: c.frames };
+  });
   const list = path.join(tmp, `concat_${path.basename(out)}.txt`);
-  fs.writeFileSync(list, files.map((f) => `file '${f.replace(/'/g, "'\\''")}'`).join('\n') + '\n');
-  ff(['-f', 'concat', '-safe', '0', '-i', list, '-c:v', 'copy', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out], path.basename(out));
+  fs.writeFileSync(list, vids.map((c) => `file '${c.file.replace(/'/g, "'\\''")}'\nduration ${(c.frames / fps).toFixed(6)}`).join('\n') + '\n');
+  const raw = path.join(tmp, `audio_${path.basename(out)}.f32`);
+  fs.writeFileSync(raw, interleave(track, a, b));
+  const frames = clips.reduce((x, c) => x + c.frames, 0);
+  ff(['-f', 'concat', '-safe', '0', '-i', list, ...rawAudioArgs(raw), '-map', '0:v', '-map', '1:a', '-c:v', 'copy', '-frames:v', String(frames),
+    ...AAC, '-t', (frames / fps).toFixed(6), '-movflags', '+faststart', out], path.basename(out));
+  fs.rmSync(raw, { force: true });
+  fs.rmSync(vdir, { recursive: true, force: true });
 }
 
 async function main() {
@@ -162,8 +189,6 @@ async function main() {
     const { tl, narration, ids } = await page.evaluate(() => ({ tl: DECK.timeline(), narration: DECK.NARRATION, ids: DECK.slides.map((x) => x.id || null) }));
     let onlyKeys = null;
     const soundEvents = videoSoundEvents(tl, await page.evaluate(collectVideoEvents), o.fps);
-    // 音色の変更・前の段階からの余韻もキャッシュの入力にする。
-    const soundHash = sha(JSON.stringify(soundEvents), readRegular(fileURLToPath(new URL('../kit/core/sounds.mjs', import.meta.url)), { max: READ_LIMITS.built }));
     // 段階の入力：build 済みの HTML を（スクリプトを動かさずに）読み、スライドごとの HTML と、それ以外（部品のコード・
     // テーマの CSS・deck.js など）に分ける。段階ごとの音声・注目の演出・時間の上書き・原稿は鍵ごとに入れる
     const inputs = await page.evaluate((html) => {
@@ -210,7 +235,35 @@ async function main() {
 
     const segsOut = [];
     // 境目のコマは累積の時刻から決める（段階ごとに丸めると、短い段階が続く曲でずれがたまる）
-    const starts = frameStarts(tl, o.fps);
+    const layout = trackLayout(tl, o.fps, VIDEO_SR);
+    const starts = layout.starts;
+    // 全体の音声を 1 本にする（左右。口述音声と部品の音は両方に同じものを置く）
+    const track = [new Float32Array(layout.total), new Float32Array(layout.total)];
+    for (let n = 0; n < tl.length; n++) {
+      const s = tl[n];
+      const file = audioFile(s.audio, htmlUrl, tmpRoot, n);
+      if (!file) continue;
+      readRegular(file, { max: READ_LIMITS.audio });   // 通常のファイルだけ、上限つきで
+      const [pcm] = decodePcm(file, 1);
+      const skip = Math.round((s.audioOffset || 0) * VIDEO_SR);   // 音声の符号化の遅れ（format spec §5.2 startOffset）を先頭から切る
+      const from = layout.at(s.start + s.lead), to = layout.stepRange(n)[1];
+      const body = pcm.subarray(Math.min(skip, pcm.length));
+      placeNarration(track[0], body, from, to);
+      placeNarration(track[1], body, from, to);
+      if (from + body.length > to + Math.round(VIDEO_SR / 1000)) console.warn(`  ⚠ ${s.key}: 音声（${s.lead}+${(body.length / VIDEO_SR).toFixed(2)} s）が dur（${s.dur.toFixed(2)} s）を超える。末尾を切る`);
+    }
+    if (soundEvents.length) {
+      const pcm = renderStepSounds(soundEvents, 0, layout.total / VIDEO_SR, VIDEO_SR);
+      for (const c of track) for (let i = 0; i < c.length && i < pcm.length; i++) c[i] += pcm[i];
+    }
+    if (o.music) {
+      const m = decodePcm(path.resolve(o.music), 2);
+      const g = musicGain(narrationWindows(tl), layout.total, VIDEO_SR, { base: musicBase(m) });
+      for (let c = 0; c < 2; c++) for (let i = 0; i < layout.total && i < m[c].length; i++) track[c][i] += m[c][i] * g[i];
+      console.log(`  背景の音楽: ${path.basename(o.music)}（${(m[0].length / VIDEO_SR).toFixed(1)} s。声の間は下げ、終わりで消す）`);
+    }
+    if (limitPeaks(track, 0.98, VIDEO_SR)) console.log('  音声の山を 0.98 に抑えた');
+    const sliceHash = (a, b) => sha(interleave(track, a, b));
     let made = 0, skipped = 0, clipT = 0;   // clipT：ここまでのコマ数
     for (let n = 0; n < tl.length; n++) {
       const s = tl[n];
@@ -233,10 +286,10 @@ async function main() {
       const motion = s.motion ?? s.anim;
       const nA = Math.min(Math.ceil(motion * o.fps - 1e-6), N);
       const tmp = fs.mkdtempSync(path.join(tmpRoot, `${clip}-`));
-      const audio = audioFile(s.audio, htmlUrl, tmp, n);
-      const audioHash = audio ? sha(readRegular(audio, { max: READ_LIMITS.audio })) : 'none';
+      const a0 = layout.frameSample(starts[n]), a1 = layout.frameSample(starts[n + 1]);
+      const audioHash = sliceHash(a0, a1);   // このクリップの音声そのもの（前後の段階の余韻・背景の音楽も入る）
       const per = inputs.per[n];
-      const input = sha(globalHash, audioHash, soundHash, JSON.stringify({
+      const input = sha(globalHash, audioHash, JSON.stringify({
         slides: inputs.ok ? per.deps.map((j) => slideHash[j]) : null, data: per.data, key: s.key, i: s.i, k: s.k,
         dur: s.dur, lead: s.lead, anim: s.anim, motion, frames: N, nA, fps: o.fps, scale: o.scale, captions: o.captions }));
       rec.input = input;
@@ -265,22 +318,15 @@ async function main() {
         await shot(s.i, s.k, f / o.fps, file);
         frames.push(file);
       }
-      if (audio && s.lead + s.audioDur > s.dur + 1e-3) console.warn(`  ⚠ ${s.key}: 音声（${s.lead}+${s.audioDur.toFixed(2)} s）が dur（${s.dur.toFixed(2)} s）を超える。末尾を切る`);
-      let sounds = null;
-      if (soundEvents.length) {
-        const pcm = renderStepSounds(soundEvents, (clipT - N) / o.fps, N / o.fps);
-        if (pcm.some((x) => x !== 0)) {
-          sounds = path.join(tmp, 'sounds.wav');
-          fs.writeFileSync(sounds, encodeWav(pcm, 44100));
-        }
-      }
-      encodeClip({ frames, final, audio, sounds, N, lead: s.lead, offset: s.audioOffset || 0, fps: o.fps, out: mp4 });
+      const pcm = path.join(tmp, 'audio.f32');
+      fs.writeFileSync(pcm, interleave(track, a0, a1));
+      encodeClip({ frames, final, pcm, N, fps: o.fps, out: mp4 });
       fs.copyFileSync(final, png);
       cache.clips[clip] = { key: s.key, input, hash };
       saveCache();
       fs.rmSync(tmp, { recursive: true, force: true });
       made++;
-      console.log(`  [${n + 1}/${tl.length}] ${s.key}: ${s.dur.toFixed(2)} s（動き ${nA} コマ${audio ? '、音声あり' : ''}）→ ${clip}.mp4`);
+      console.log(`  [${n + 1}/${tl.length}] ${s.key}: ${s.dur.toFixed(2)} s（動き ${nA} コマ${s.audio ? '、音声あり' : ''}）→ ${clip}.mp4`);
     }
     // 段階の数が減ったときの古いクリップは消す（連番がずれないように）
     for (const f of fs.readdirSync(outDir)) {
@@ -294,7 +340,7 @@ async function main() {
       const c = cache.clips[r.clip.replace(/\.mp4$/, '')];
       return !c || c.input !== r.input || c.key !== r.key || !fs.existsSync(path.join(outDir, r.clip)) || !fs.existsSync(path.join(outDir, r.still));
     }).map((r) => r.key);
-    const meta = { source: src, sourceHash: sha(htmlText), fps: o.fps, scale: o.scale, width: Math.round(W * o.scale), height: Math.round(H * o.scale),
+    const meta = { source: src, sourceHash: sha(htmlText), fps: o.fps, sampleRate: VIDEO_SR, music: o.music ? path.basename(o.music) : null, scale: o.scale, width: Math.round(W * o.scale), height: Math.round(H * o.scale),
       duration: +total.toFixed(3), clipDuration: +(clipT / o.fps).toFixed(6), complete: stale.length === 0, stale, segments: segsOut };
     fs.writeFileSync(path.join(outDir, 'timeline.out.json'), JSON.stringify(meta, null, 1));
     console.log(`完了: 新規 ${made} / キャッシュ ${skipped} → ${outDir}`);
@@ -309,18 +355,20 @@ async function main() {
       const clips = segsOut.map((s) => path.join(outDir, s.clip));
       const missing = clips.filter((f) => !fs.existsSync(f));
       if (missing.length) throw new Error(`--full: クリップが足りない（${missing.length} 本）。--only なしで書き出してから`);
-      concatClips(clips, path.join(outDir, 'full.mp4'), tmpRoot);
+      joinClips(segsOut.map((s) => ({ file: path.join(outDir, s.clip), frames: s.frames })), path.join(outDir, 'full.mp4'), tmpRoot, track, 0, layout.total, o.fps);
       console.log(`  full.mp4: ${(+probe(path.join(outDir, 'full.mp4')).format.duration).toFixed(2)} s（timeline ${total.toFixed(2)} s）`);
       // 章ごと（連続する同じ chapter をまとめる）
       const groups = [];
       for (const s of segsOut) {
-        if (!groups.length || groups.at(-1).chapter !== s.chapter) groups.push({ chapter: s.chapter, clips: [] });
+        if (!groups.length || groups.at(-1).chapter !== s.chapter) groups.push({ chapter: s.chapter, clips: [], f0: starts[s.index], f1: starts[s.index] });
         groups.at(-1).clips.push(path.join(outDir, s.clip));
+        groups.at(-1).frames = (groups.at(-1).frames || []).concat(s.frames);
+        groups.at(-1).f1 = starts[s.index + 1];
       }
       if (groups.length > 1) {
         groups.forEach((g, j) => {
           const name = `chapter_${String(j + 1).padStart(2, '0')}.mp4`;
-          concatClips(g.clips, path.join(outDir, name), tmpRoot);
+          joinClips(g.clips.map((file, j) => ({ file, frames: g.frames[j] })), path.join(outDir, name), tmpRoot, track, layout.frameSample(g.f0), layout.frameSample(g.f1), o.fps);
           console.log(`  ${name}: ${g.chapter || '（章の前）'} ${g.clips.length} 段階`);
         });
         fs.writeFileSync(path.join(outDir, 'chapters.json'), JSON.stringify(groups.map((g, j) => ({ file: `chapter_${String(j + 1).padStart(2, '0')}.mp4`, chapter: g.chapter, clips: g.clips.map((c) => path.basename(c)) })), null, 1));

@@ -1,11 +1,11 @@
-// colab/egatari-tts.ipynb を作る（手で直さない。材料は下のセルの文と colab/egatari_tts.py）。docs の <!-- colab-verified --> の記しも COLAB_VERIFIED に揃える
+// colab/egatari-tts.ipynb と colab/egatari-video.ipynb（動画。#131）を作る（手で直さない。材料は下のセルの文と colab/egatari_tts.py）。docs の <!-- colab-verified --> の記しも COLAB_VERIFIED に揃える
 //   node tools/make-colab-notebook.mjs [--check]
 // ノートブックの核（後処理・cue の測定・zip）は colab/egatari_tts.py にあり、ノートブックはそれをリポジトリから取って呼ぶだけ
 // （ローカルで dry-run できるように。tools/test-colab.mjs）。--check：ファイルが作り直したものと同じか（違えば終了コード 1）
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COLAB, COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME, colabUrl } from '../kit/core/colab-core.mjs';
+import { COLAB, COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME, colabUrl, colabVideoUrl } from '../kit/core/colab-core.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'colab', 'egatari-tts.ipynb');
@@ -252,6 +252,136 @@ export function notebook() {
   return JSON.stringify(nb, null, 1) + '\n';
 }
 
+// ---------------------------------------------------------------- 動画（MP4）を作るノート（#131。TTS とは別の 1 本、CPU のランタイム）
+// .ega.html を上げる → tools/video.mjs（中は render/render.mjs --full）→ full.mp4 を落とす。章が 2 つ以上なら章ごとの mp4 も（zip 1 つ）。
+// 任意の「背景の音楽」：1 本を全体の下に流す（台本の声の間は下げ、終わりで消す。拍には合わせない・秒の設定はない。作者 11/7）
+// Node は Colab の版に頼らず固定の版を入れる（package.json の engines の下限。版を変えるときはここと CI の setup-node を揃える）
+export const VIDEO_NODE = '22.23.4';
+const VIDEO_OUT = path.join(ROOT, 'colab', 'egatari-video.ipynb');
+export function videoNotebook() {
+  const cells = [
+    md([
+      '# Egatari Studio: make a video (MP4) in Colab / Colab で動画（MP4）を作る',
+      '',
+      '**English.** You do not need a video to share a lesson: the Egatari file (`.ega.html`) plays as it is. Make an MP4 only when you need one (for example to upload to an LMS or a video site).',
+      '',
+      '1. Runtime → Change runtime type → “CPU” (no GPU is needed), then press “Connect”',
+      '2. Runtime → Run all',
+      '3. When asked to choose a file, choose the lesson file (`<name>.ega.html`). Save it in the editor first: the video uses the audio that is in the file',
+      '4. Optional: tick `MUSIC` in “Background music” to add one music track under the whole video (it gets quieter while the script is spoken and fades out at the end)',
+      '5. When it finishes, `full.mp4` is downloaded (and a ZIP of one MP4 per chapter, if the lesson has two or more chapters)',
+      '',
+      'It takes about as long as the lesson plays, or longer for lessons with much motion.',
+      '',
+      '**Privacy.** The lesson file (and the music, if you add it) is processed in Google’s Colab environment. Nothing is sent anywhere else. Use it only for material you are allowed to share.',
+      '',
+      '**日本語.** 教材を配るのに動画は要りません。Egatari のファイル（`.ega.html`）のまま再生できます。LMS や動画のサイトに上げるなど、MP4 が要るときだけ使ってください。',
+      '',
+      '1. 「ランタイム」→「ランタイムのタイプを変更」で「CPU」を選び（GPU は要りません）、「接続」を押す',
+      '2. 「ランタイム」→「すべてのセルを実行」',
+      '3. ファイルを選ぶ画面が出たら、教材のファイル（`<名前>.ega.html`）を選ぶ。先にエディタで保存してください。動画には、ファイルに入っている音声が使われます',
+      '4. 省略可：「背景の音楽」の `MUSIC` にチェックを入れると、動画の全体の下に音楽を 1 本流せます（台本の声の間は小さくなり、終わりで消えます）',
+      '5. 終わると `full.mp4` がダウンロードされます（章が 2 つ以上あれば、章ごとの MP4 の ZIP も）',
+      '',
+      '時間は、教材を再生するのと同じくらいかかります（動きの多い教材はもっと）。',
+      '',
+      '**プライバシー.** 教材のファイル（と、付けたときは音楽）は、Google の Colab の環境で処理されます。ほかへは送られません。共有してよいものだけに使ってください。',
+    ].join('\n')),
+    md('## 1. Set up / 準備'),
+    code([
+      '#@title 1. Set up / 準備（CPU で動きます）',
+      `STUDIO_REF = "${COLAB.ref}"   #@param {type:"string"}`,
+      `STUDIO_REPO = "${REPO}"`,
+      `NODE_VERSION = "${VIDEO_NODE}"   # tools/make-colab-notebook.mjs の VIDEO_NODE`,
+      'import os, shutil, subprocess',
+      'def sh(cmd, what):   # 失敗したら、終了コードと出力の最後の 30 行を見せて止まる',
+      '    r = subprocess.run(cmd, shell=isinstance(cmd, str), capture_output=True, text=True)',
+      '    if r.returncode:',
+      '        tail = "\\n".join(((r.stdout or "") + (r.stderr or "")).strip().splitlines()[-30:])',
+      '        raise RuntimeError(f"{what} が失敗しました（終了コード {r.returncode}）:\\n{tail}")',
+      '    return r',
+      'STUDIO_DIR = "/content/egatari-studio"',
+      'shutil.rmtree(STUDIO_DIR, ignore_errors=True)',
+      'sh(["git", "clone", "--quiet", "--depth", "1", "--branch", STUDIO_REF, STUDIO_REPO, STUDIO_DIR], f"git clone（STUDIO_REF={STUDIO_REF!r}）")',
+      'if not os.path.exists(STUDIO_DIR + "/tools/video.mjs"):',
+      '    raise RuntimeError(f"STUDIO_REF={STUDIO_REF!r} には動画の入口（tools/video.mjs）がありません。リリースのタグを STUDIO_REF に指定してください。 / This ref has no tools/video.mjs: set STUDIO_REF to a release tag.")',
+      '# Node（固定の版。Colab に入っている版には頼らない）',
+      'NODE_DIR = f"/content/node-v{NODE_VERSION}-linux-x64"',
+      'if not os.path.exists(NODE_DIR + "/bin/node"):',
+      '    sh(f"curl -fsSL https://nodejs.org/dist/v{NODE_VERSION}/node-v{NODE_VERSION}-linux-x64.tar.xz | tar -xJ -C /content", "Node のダウンロード")',
+      'os.environ["PATH"] = NODE_DIR + "/bin:" + os.environ["PATH"]',
+      'sh(f"cd {STUDIO_DIR} && npm ci --ignore-scripts --no-audit --no-fund", "npm ci")',
+      'sh(f"cd {STUDIO_DIR} && npx playwright-core install --with-deps chromium", "Chromium のインストール")',
+      'if not shutil.which("ffmpeg"):',
+      '    sh("apt-get -qq update && apt-get -qq install -y --no-install-recommends ffmpeg", "ffmpeg のインストール")',
+      'print("env: Node", sh(["node", "--version"], "node").stdout.strip(), "·", sh(["ffmpeg", "-version"], "ffmpeg").stdout.splitlines()[0], "· Studio", STUDIO_REF)',
+    ].join('\n'), true),
+    md('## 2. Upload the lesson file / 教材のファイルをアップロード'),
+    code([
+      '#@title 2. Upload the lesson file (.ega.html) / 教材のファイル（.ega.html）をアップロード',
+      'from google.colab import files',
+      'WORK = "/content/work"',
+      'shutil.rmtree(WORK, ignore_errors=True)',
+      'os.makedirs(WORK)',
+      'up = files.upload()',
+      'if not up: raise RuntimeError("ファイルが選ばれませんでした / no file was uploaded")',
+      'name = os.path.basename(next(iter(up)))',
+      'if not name.endswith(".ega.html"):',
+      '    raise RuntimeError(f"{name}: Egatari のファイル（.ega.html）を選んでください / choose an Egatari file (.ega.html)")',
+      'LESSON = os.path.join(WORK, name)',
+      'open(LESSON, "wb").write(up[next(iter(up))])',
+      'print("lesson:", name, f"({os.path.getsize(LESSON) / 1e6:.1f} MB)")',
+    ].join('\n'), true),
+    md([
+      '## Optional: background music / 背景の音楽（省略可）',
+      '',
+      'Leave it as it is for a video without music. To add music, tick `MUSIC` and pick one audio file (MP3, WAV, M4A …). It plays once under the whole video from the start, gets quieter while the script is spoken and fades out at the end. There is nothing to set (no timing, no beat). **Use only music you have the right to use.**',
+      '',
+      '何も変えなければ、音楽のない動画になります。音楽を付けるときは `MUSIC` にチェックを入れて、音声のファイルを 1 つ（MP3・WAV・M4A など）選びます。始めから動画の全体の下に 1 回流れ、台本の声の間は小さくなり、終わりで消えます。設定するもの（秒・拍）はありません。**使ってよい音楽だけ**にしてください。',
+    ].join('\n')),
+    code([
+      '#@title Optional: background music / 背景の音楽（省略可）',
+      'MUSIC = False   #@param {type:"boolean"}',
+      'MUSIC_PATH = None',
+      'if MUSIC:',
+      '    _up = files.upload()',
+      '    if not _up: raise RuntimeError("ファイルが選ばれませんでした / no file was uploaded")',
+      '    MUSIC_PATH = os.path.join(WORK, "music-" + os.path.basename(next(iter(_up))))',
+      '    open(MUSIC_PATH, "wb").write(_up[next(iter(_up))])',
+      '    print("background music:", os.path.basename(MUSIC_PATH))',
+      'else:',
+      '    print("no background music / 背景の音楽なし")',
+    ].join('\n'), true),
+    md('## 3. Make the video and download it / 動画を作ってダウンロード'),
+    code([
+      '#@title 3. Make the video / 動画を作ってダウンロード',
+      'import glob, time, zipfile',
+      '_t = time.monotonic()',
+      'cmd = ["node", "tools/video.mjs", LESSON] + (["--music", MUSIC_PATH] if MUSIC_PATH else [])',
+      'p = subprocess.Popen(cmd, cwd=STUDIO_DIR, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)',
+      'for line in p.stdout: print(line, end="", flush=True)',
+      'if p.wait():',
+      '    raise RuntimeError(f"動画を作れませんでした（終了コード {p.returncode}。上の出力を見てください） / the video could not be made (exit {p.returncode}; see the output above)")',
+      'OUT = LESSON[: -len(".ega.html")] + ".video"',
+      'print(f"made in {time.monotonic() - _t:.0f} s / {time.monotonic() - _t:.0f} 秒")',
+      'files.download(os.path.join(OUT, "full.mp4"))',
+      'chapters = sorted(glob.glob(os.path.join(OUT, "chapter_*.mp4")))',
+      'if chapters:',
+      '    _zip = os.path.join(WORK, "chapters.zip")',
+      '    with zipfile.ZipFile(_zip, "w", zipfile.ZIP_STORED) as z:',
+      '        for f in chapters: z.write(f, os.path.basename(f))',
+      '    files.download(_zip)',
+      'print("Done. / できました。")',
+    ].join('\n'), true),
+  ];
+  const nb = {
+    cells,
+    metadata: { colab: { provenance: [], name: 'egatari-video.ipynb' }, kernelspec: { display_name: 'Python 3', name: 'python3' }, language_info: { name: 'python' } },
+    nbformat: 4, nbformat_minor: 5,
+  };
+  return JSON.stringify(nb, null, 1) + '\n';
+}
+
 // docs の確かめた範囲の記し（<!-- colab-verified --> と <!-- /colab-verified --> の間）を COLAB_VERIFIED に揃える。en の docs は en、.ja.md は ja
 export const VERIFIED_DOCS = Object.freeze(['docs/editor.md', 'docs/editor.ja.md', 'docs/distributing.md', 'docs/distributing.ja.md']);
 export function syncVerified(text, lang) {
@@ -266,8 +396,11 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1] === fileU
     if (stale.length) { console.error(`the colab-verified note in ${stale.join(', ')} is out of date: run npm run gen`); process.exit(1); }
     if (!fs.existsSync(OUT) || fs.readFileSync(OUT, 'utf8').replace(/\r\n/g, '\n') !== text) { console.error('colab/egatari-tts.ipynb is out of date: run npm run gen'); process.exit(1); }
     console.log('colab/egatari-tts.ipynb is up to date (' + colabUrl() + ')');
+    if (!fs.existsSync(VIDEO_OUT) || fs.readFileSync(VIDEO_OUT, 'utf8').replace(/\r\n/g, '\n') !== videoNotebook()) { console.error('colab/egatari-video.ipynb is out of date: run npm run gen'); process.exit(1); }
+    console.log('colab/egatari-video.ipynb is up to date (' + colabVideoUrl() + ')');
   } else {
     fs.mkdirSync(path.dirname(OUT), { recursive: true }); fs.writeFileSync(OUT, text); console.log('wrote ' + path.relative(ROOT, OUT));
+    fs.writeFileSync(VIDEO_OUT, videoNotebook()); console.log('wrote ' + path.relative(ROOT, VIDEO_OUT));
     for (const d of docs) if (d.old !== d.now) { fs.writeFileSync(d.p, d.now); console.log('wrote ' + d.f); }
   }
 }
