@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=02d9aadc031aa356 -->
+<!-- i18n: pair=reference.md sha256=ffbc1c6ba8a8b467 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -440,7 +440,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
 | 教材が `@egatari/fonts-extra` の字体を選んでいる（教材の CSS か自分のテーマ）のに、その包みが npm の包み `egatari` と一緒に入っていないので、その字体が入らない — `fontsExtraMissing`（入れ方を言う） | エラー |
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
-| スライド・台本・本の見える字に、埋め込んだどの字体にもない字がある（@fontsource にない `∎` など）。その字は開く端末の字体で出る — `fontNotCovered`（教材に 1 回、場所ごとに字を挙げる。`node tools/font-coverage.mjs <組んだ HTML>` でも見られる） | 警告 |
+| スライド・台本・本の見える字に、埋め込んだどの字体にもない字がある（@fontsource にない `∎` など）。その字は開く端末の字体で出る — `fontNotCovered`（教材に 1 回、場所ごとに字を挙げる。`node tools/font-coverage.mjs <組んだ HTML>` でも見られる） | 情報 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
 | パーツの描画が呼び出し順で変わる | エラー |
 | 強調の目印が無い。ステップごとの強調の一覧 | 警告。情報 |

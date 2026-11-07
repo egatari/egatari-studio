@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=24ff94828f70163e -->
+<!-- i18n: pair=reference.ja.md sha256=06772c6de09f27e8 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -441,7 +441,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | on each slide, text of a heading or the body against the background behind it (computed colours; not over images or gradients, not faint text) < 4.5:1, the lowest one per slide — `textContrast` | warn |
 | the lesson chooses a font of `@egatari/fonts-extra` (its CSS or its own theme) and that package is not installed next to the npm package `egatari`, so the font is not embedded — `fontsExtraMissing`, with the install command | error |
 | slide text in a font that is not embedded in the file (the first family of its computed `font-family` is neither embedded nor generic), so it looks different on each device — `fontNotEmbedded`, once per lesson with the names | warn |
-| visible characters of the slides, script or book that no embedded font has (such as `∎`, which @fontsource lacks), so they show in the device's font — `fontNotCovered`, once per lesson with the characters by place (also `node tools/font-coverage.mjs <built HTML>`) | warn |
+| visible characters of the slides, script or book that no embedded font has (such as `∎`, which @fontsource lacks), so they show in the device's font — `fontNotCovered`, once per lesson with the characters by place (also `node tools/font-coverage.mjs <built HTML>`) | info |
 | a chapter divider (`class="slide sec"`) with an `<h2>` and no `<h1>` (the title of a divider is `<h1>`; an `<h2>` is shown the same way) — `secHeading` | warn |
 | part drawing depends on call order | error |
 | emphasis target not found; list of emphasis per step | warn; info |

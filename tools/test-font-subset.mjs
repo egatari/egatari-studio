@@ -18,7 +18,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { initSubsetter, subsetWoff2, subsetFace, SUBSET_TOOL, SUBSET_PINS } from '../kit/font-subset.mjs';
 import { uncoveredGlyphs } from '../kit/core/font-coverage.mjs';
 import { parseRange, fontFaces, FONTS, fontByFamily, playerUiGlyphs } from '../kit/core/build-core.mjs';
@@ -52,7 +52,7 @@ await t('同じ字の集まりなら同じバイト（2 回・順を入れ替え
 });
 
 await t('別のプロセスで作っても同じバイト', () => {
-  const code = `import fs from 'node:fs'; import { initSubsetter, subsetWoff2 } from ${JSON.stringify(path.join(ROOT, 'kit/font-subset.mjs'))};
+  const code = `import fs from 'node:fs'; import { initSubsetter, subsetWoff2 } from ${JSON.stringify(pathToFileURL(path.join(ROOT, 'kit/font-subset.mjs')).href)};
 await initSubsetter(); process.stdout.write(Buffer.from(subsetWoff2(fs.readFileSync(${JSON.stringify(punct.file)}), ${JSON.stringify([...cps].sort(() => 0.5 - Math.random()))})).toString('hex'));`;
   const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', maxBuffer: 64 << 20 });
   assert.equal(r.status, 0, r.stderr);
@@ -180,7 +180,7 @@ const SAMPLES = ['kokugo-kanbun', 'heikin-chuouchi', 'rashomon'];
 await t('見本（国語の漢文・平均と中央値・羅生門）：切り出しても、端末の字体で出る字は増えない。画面の言葉の字も入る', async () => {
   const onDir = path.join(work, 'samples-on'), offDir = path.join(work, 'samples-off');
   const on = await buildExamples(onDir, { names: SAMPLES });
-  const code = `const { buildExamples } = await import(${JSON.stringify(path.join(ROOT, 'tools/examples-portable.mjs'))}); await buildExamples(${JSON.stringify(offDir)}, { names: ${JSON.stringify(SAMPLES)} });`;
+  const code = `const { buildExamples } = await import(${JSON.stringify(pathToFileURL(path.join(ROOT, 'tools/examples-portable.mjs')).href)}); await buildExamples(${JSON.stringify(offDir)}, { names: ${JSON.stringify(SAMPLES)} });`;
   const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { encoding: 'utf8', env: { ...process.env, EGATARI_FONT_SUBSET: '0' }, maxBuffer: 64 << 20 });
   assert.equal(r.status, 0, r.stderr);
   const ui = [...new Set(playerUiGlyphs((f) => fs.readFileSync(path.join(ROOT, 'kit', f), 'utf8')))];
