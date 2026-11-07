@@ -6,8 +6,8 @@
   "license": "MIT",
   "tarball": {
     "file": "egatari-components-v2.4.1.tar.gz",
-    "sha256": "0d2de5a6a213ec6a2f1a0463b9d86273a8599885990409681768c02c4e764761",
-    "bytes": 1030869
+    "sha256": "aa686b0f27e338a518774906f3820b6020c1d7921828f6b9a26bc904cfa0d54d",
+    "bytes": 1030657
   },
   "purposes": [
     {
@@ -632,12 +632,12 @@
         "change"
       ],
       "variants": [],
-      "sha256": "8e78a02f1fe940b65b0e224ec5ebe0427e3b58483253297d8b594b3779660c97",
+      "sha256": "6f1df1087e6d2ea7826d80e11fe21319715a7fd55079a1a7a0a849c785a40474",
       "files": {
         "CHANGELOG.md": "1ca500d766e9c7056ef5971278b5dc0ee78f9b3eafc56f9b5e5a2bd322273fdb",
-        "README.md": "0897db28537a59cf9b2c172a179ede31add3eb5c30052b4a98ec8124604ad71b",
+        "README.md": "c2bb42c705a213fd4618f23d1058c4e5acac224bf4cd66c3b9332c46379a19fb",
         "demo.html": "910efd45b9b25bfe00d6143b9601bf84b18a5c54ef3a1555e9263ce42b68989b",
-        "index.js": "8e78a02f1fe940b65b0e224ec5ebe0427e3b58483253297d8b594b3779660c97"
+        "index.js": "6f1df1087e6d2ea7826d80e11fe21319715a7fd55079a1a7a0a849c785a40474"
       }
     },
     "cycle": {
@@ -1464,12 +1464,12 @@
         "parameter"
       ],
       "variants": [],
-      "sha256": "bd329e8f6556a4087f94b5eede97464acdbe0a64fe3bc89b4554096d525e9ac3",
+      "sha256": "179c5a5f55c43c74ae442a26feaf8028aa02220e91ee6b1ed093125bdc193ebf",
       "files": {
         "CHANGELOG.md": "38080517f6eadce170b9315fb4bb6dde52c006ca8c67b5d748b1849ca9aa4ac4",
-        "README.md": "469e1fcefa34362c7c1b214dcec1f98789883768728347738e331ebe9a94b815",
+        "README.md": "7e1e6acab7b4ff4395e3ad8e641fd69b183a5d719127fa7f98302f4691cb749b",
         "demo.html": "4caf3eb3f2a844e7bdbb0fc01088c13754fa6924210fd2581c2c0e7717a73460",
-        "index.js": "bd329e8f6556a4087f94b5eede97464acdbe0a64fe3bc89b4554096d525e9ac3"
+        "index.js": "179c5a5f55c43c74ae442a26feaf8028aa02220e91ee6b1ed093125bdc193ebf"
       }
     },
     "syntax": {
@@ -1711,9 +1711,9 @@
     "compare/demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
     "compare/index.js": "d19469525912d0503c994957717318f9260ad65ee4dd9878c2b32b9bacb01867",
     "curves/CHANGELOG.md": "1ca500d766e9c7056ef5971278b5dc0ee78f9b3eafc56f9b5e5a2bd322273fdb",
-    "curves/README.md": "0897db28537a59cf9b2c172a179ede31add3eb5c30052b4a98ec8124604ad71b",
+    "curves/README.md": "c2bb42c705a213fd4618f23d1058c4e5acac224bf4cd66c3b9332c46379a19fb",
     "curves/demo.html": "910efd45b9b25bfe00d6143b9601bf84b18a5c54ef3a1555e9263ce42b68989b",
-    "curves/index.js": "8e78a02f1fe940b65b0e224ec5ebe0427e3b58483253297d8b594b3779660c97",
+    "curves/index.js": "6f1df1087e6d2ea7826d80e11fe21319715a7fd55079a1a7a0a849c785a40474",
     "cycle/CHANGELOG.md": "744e69cbd6987800d4a474cb41005b2f2be598e247f34a0bdf8fd972c59e1d73",
     "cycle/README.md": "0e35deea660fa1f02dcf7dd12279acc4541dda10968792c4b246766704db3241",
     "cycle/demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
@@ -1846,9 +1846,9 @@
     "shape/README.md": "f8a0a5dacef6b88e7d53ebfdb4a13cc477231e3f048e76124da68b448fac67d5",
     "shape/index.js": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911",
     "sweep/CHANGELOG.md": "38080517f6eadce170b9315fb4bb6dde52c006ca8c67b5d748b1849ca9aa4ac4",
-    "sweep/README.md": "469e1fcefa34362c7c1b214dcec1f98789883768728347738e331ebe9a94b815",
+    "sweep/README.md": "7e1e6acab7b4ff4395e3ad8e641fd69b183a5d719127fa7f98302f4691cb749b",
     "sweep/demo.html": "4caf3eb3f2a844e7bdbb0fc01088c13754fa6924210fd2581c2c0e7717a73460",
-    "sweep/index.js": "bd329e8f6556a4087f94b5eede97464acdbe0a64fe3bc89b4554096d525e9ac3",
+    "sweep/index.js": "179c5a5f55c43c74ae442a26feaf8028aa02220e91ee6b1ed093125bdc193ebf",
     "syntax/CHANGELOG.md": "c39be4606b5a09b51927c65b245a1cc1e654a2bec3685fe983f23fa6a164c0d8",
     "syntax/README.md": "b10a94b8608539a2996fd3717c2f0a5ab232e434baa303aeca786eb1abe38071",
     "syntax/demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",

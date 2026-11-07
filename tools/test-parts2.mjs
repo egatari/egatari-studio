@@ -533,9 +533,9 @@ for (const [code, what] of [
   const bumped240 = Object.keys(v230.parts).filter((n) => v240.parts[n] !== v230.parts[n]);
   ok(added240.join() === 'particles' && v240.parts.particles === '2.0.0' && bumped240.length === 0,
     `2.4.0: only m-particles 2.0.0 is new; no other part changes version (new: ${added240.join(', ')}; bumped: ${bumped240.join(', ')})`);
-  // 部品庫 2.4.1 の候補（c2-base 23fce2e）：sweep・curves 2.1.0、plot 1.1.0、boxplot・hist・scatter・seq 2.0.3、codetree 2.0.4。ほかは 2.4.0 のまま
+  // 部品庫 2.4.1 の候補（c2-base 9d18ad8）：sweep・curves 2.1.0、plot 1.1.0、boxplot・hist・scatter・seq 2.0.3、codetree 2.0.4。ほかは 2.4.0 のまま
   const v241 = lock2.catalogues['2.4.1'];
-  ok(lock2.default === '2.4.1' && v241 && v241.tarballSha256 === '0d2de5a6a213ec6a2f1a0463b9d86273a8599885990409681768c02c4e764761',
+  ok(lock2.default === '2.4.1' && v241 && v241.tarballSha256 === 'aa686b0f27e338a518774906f3820b6020c1d7921828f6b9a26bc904cfa0d54d',
     'CANDIDATE components 2.4.1 is the default and pinned to the tarball verified here (not yet a components release)');
   const bumped241 = Object.keys(v241.parts).filter((n) => v241.parts[n] !== v240.parts[n]).sort();
   ok(bumped241.join() === 'boxplot,codetree,curves,hist,plot,scatter,seq,sweep' && Object.keys(v241.parts).length === Object.keys(v240.parts).length,

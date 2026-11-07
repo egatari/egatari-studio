@@ -80,10 +80,10 @@ return class extends base.MotionElement {
     xt: {type: "json", default: []}, yt: {type: "json", default: []},
     xl: {type: "string", default: ""}, yl: {type: "string", default: ""},
     digits: {type: "number", default: 2, doc: "表示する値の小数の桁数"},
-    at:     {type: "json",   default: null, doc: "変化ごとの開始秒（values の数 − 1 個、増える順）。あれば変化をすべて段階 1 に入れる", shape: {type: "array", items: {type: "number"}}, example: [0.5, 3]},
-    point:  {type: "json",   default: null, doc: "曲線の上の点：{u, label（{y} がその所の値）, digits}。値が変わると点も動く", shape: {type: "object", properties: {u: {type: "number"}, label: {type: "string"}, digits: {type: "number"}}, required: ["u"]}, example: {u: 9.8, label: "平均待ち {y} 日", digits: 1}},
+    at:     {type: "json",   default: null, doc: "変化ごとの開始秒（増える順）。あれば全部を段階 1 で", shape: {type: "array", items: {type: "number"}}, example: [0.5, 3]},
+    point:  {type: "json",   default: null, doc: "曲線上の点 {u, label（{y} = 値）, digits}", shape: {type: "object", properties: {u: {type: "number"}, label: {type: "string"}, digits: {type: "number"}}, required: ["u"]}, example: {u: 9.8, label: "平均待ち {y} 日", digits: 1}},
     dur: {type: "number", default: 1.2, doc: "1 段階の動きの秒数"},
-    size: {type: "number", default: 0, doc: "目盛り・軸の名前・線の名前・点の字の大きさ（px、24 以上。0 = 既定）"},
+    size: {type: "number", default: 0, doc: "字の大きさ（24 以上。0 = 既定）"},
   };
   get steps(){ return this.getAttribute("steps") !== null ? +this.getAttribute("steps") : this.ats ? 1 : this.props.values.length - 1; }
   // at のときの変化の開始秒（なければ null）。数でない・数が合わない・減る列は知らせて、段階ごとの動きに戻す

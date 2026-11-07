@@ -38,7 +38,7 @@ return class extends base.MotionElement {
     n:   {type: "number", default: 300, doc: "f を描く分割数"},
     dur: {type: "number", default: 1.0, doc: "1 本を引く秒数"},
     lw:  {type: "number", default: 3.5, doc: "線の太さ"},
-    size: {type: "number", default: 0, doc: "目盛り・軸の名前・線の名前の字の大きさ（px、24 以上。0 = 既定）"},
+    size: {type: "number", default: 0, doc: "字の大きさ（24 以上。0 = 既定）"},
   };
   // 系列 i の段階：step（書いてあれば）、なければ i + 1。段階の数はその最大（step がなければ系列の数で、今までと同じ）
   stepOf(s, i){ return s && s.step !== undefined ? s.step : i + 1; }

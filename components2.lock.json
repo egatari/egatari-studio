@@ -850,8 +850,8 @@
     },
     "2.4.1": {
       "tag": "v2.4.1",
-      "tarballSha256": "0d2de5a6a213ec6a2f1a0463b9d86273a8599885990409681768c02c4e764761",
-      "manifestSha256": "e9084bd3c2f9a0712438d8eb5f86f4b95261d493e68a9a9a3667bdd1eb50f1ad",
+      "tarballSha256": "aa686b0f27e338a518774906f3820b6020c1d7921828f6b9a26bc904cfa0d54d",
+      "manifestSha256": "378a0360434f063451d112069eb8db7941982dc689669558742ad4f50f501ee1",
       "parts": {
         "bars": "2.0.2",
         "base": "1.1.0",
@@ -914,7 +914,7 @@
         "codetree-core": "bb139fb1c2e4d010aa82a2c50db120f95f12a0a251cded3130a71dd57dec0274",
         "collect": "e6bbe784ee452d52d534b8fb3a0924e65c49bbb5926139ef5eabd9193500b357",
         "compare": "ae4f864445dff17a19df30c528cb44741558217080f8e6563e0c364025a4d0a6",
-        "curves": "572aef242b714a5ec40265ca7091bea04c430dcfbb7b62fcb6210a9f8ee3f4cb",
+        "curves": "fde0e1e193f6af8fcef914359dfad392c47eedee4fe9b3a4348b8a5aac86b3e6",
         "cycle": "d159f55bb5a72bc67c4ffa856bf9e1735d3c37f5cad9673accffc1e1953182e0",
         "expr": "faf6a2f0b5df589639de624e75c5b20594f517e4426f6415d152809249b00b92",
         "fishbone": "75a20673474b3104da24a7cb0d0483394bed380ff1c108a9a529bcdd1de0f1fb",
@@ -948,7 +948,7 @@
         "score": "abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f",
         "seq": "d0b85253198a592a4300f2b7546eaf34b8fd97743272f698252b337cc1425a9b",
         "shape": "d92842c606795528d1246ddb050ac275e1b72659629185750a6e9ac7fdb763a3",
-        "sweep": "23e2d7e328b55610f3247db2eb554cf6baf6e745a7863b73abefe710a7a7d90a",
+        "sweep": "d838f8e31d48109968856bf1ef5815ab955202fd4e7f6cbe42cf7735a23830a0",
         "syntax": "0eca723150eb30db0b3d3fdbd35b973d5344ac0d0e2ea8ab89d143a0870ab4fd",
         "tape": "693e2aa59e822d38c48eca7271cc020f8e0a6f6189f2409895318ed2a3f0b809",
         "timeline": "6b24ab9b90b4f2275af9f61073fe9d65b8b9d16573d639ae07352f29b8b067a1",
@@ -1278,7 +1278,7 @@
         "license": "MIT"
       },
       "2.1.0": {
-        "sha256": "8e78a02f1fe940b65b0e224ec5ebe0427e3b58483253297d8b594b3779660c97",
+        "sha256": "6f1df1087e6d2ea7826d80e11fe21319715a7fd55079a1a7a0a849c785a40474",
         "kind": "element",
         "tag": "m-curves",
         "requires": {
@@ -2398,7 +2398,7 @@
         "license": "MIT"
       },
       "2.1.0": {
-        "sha256": "bd329e8f6556a4087f94b5eede97464acdbe0a64fe3bc89b4554096d525e9ac3",
+        "sha256": "179c5a5f55c43c74ae442a26feaf8028aa02220e91ee6b1ed093125bdc193ebf",
         "kind": "element",
         "tag": "m-sweep",
         "requires": {
