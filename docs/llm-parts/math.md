@@ -13,7 +13,7 @@ Components of this set, in addition to those of §3:
 |---|---|---|---|
 | `<m-hissan>` | 筆算（たし算・ひき算・かけ算・わり算、小数も）。式を書けば、部品が教科書の手順で計算して書く | ＋−は位ごと、×は 1 段ごと（fine で 1 けたずつ）→たす、÷は商 1 けたごと（per="phase" で たてる・かける・ひく・おろす ごと） | attributes only (no JSON child): `digits="2"` |
 | `<m-numberline>` | 数直線。点・□・ジャンプ・不等式の範囲・0.1 の拡大。2 本で比例数直線 | build の順（既定 ticks,marks,links,jumps,ranges,magnify）に項目 1 つ = 1 段階。whole：全部で 1 段階 | `{lines:{from:num\|str,to:num\|str,step?:num\|str,sub?:int,unit?:str,label?,labels?:str\|any[]}[],marks?:{at:num\|str,line?:int,label?,kind?:"dot"\|"open"\|"box",tone?,show?:int}[],jumps?:{from:num\|str,to:num\|str,line?:int,label?,tone?,show?:int}[],ranges?:[{from?:num\|str,to?:num\|str,incl?:[bool,bool],line?:int,label?,tone?,show?:int} (from or to),…],link?:(any[]\|object)[],magnify?:{from:num\|str,to:num\|str,step?:num\|str,labels?:str\|any[],show?:int}[]}` — lines [{from, to, step, sub, unit, label, labels}] (1 or 2); marks [{at, kind: dot\|open\|box, label}]; jumps [{from, to, label}]; ranges [{from, to, incl: [bool, bool]}]; link [[top value, bottom value]]; magnify [{from, to, step}]. Values are numbers or "1/3" |
-| `<m-sweep>` | パラメータを動かして関数の形の変化を見せる（前の形は灰色で残す） | values の数 − 1 | attributes only (no JSON child): `values="[0,0.5,1]"` |
+| `<m-sweep>` | パラメータを動かして関数の形の変化を見せる（前の形は灰色で残す） | values の数 − 1（at があれば 1） | attributes only (no JSON child): `values="[0,0.5,1]" at="[0.5,3]" point="{"u":9.8,"label":"平均待ち {y} 日","digits":1}"` |
 | `<m-tape>` | テープ図・線分図。全体や部分を括弧で括り、わからない量は □ か ?。行から行へ「2 倍」の矢印 | steps（既定）：行 → 括弧 → 倍の矢印を 1 つずつ。rows：行 1 つ = 1 段階。whole：全部で 1 段階 | `{rows:{label?,tone?,show?:int,segs:{v:num,label?,unknown?:str}[]}[],brace?:{row:int,from:int,to:int,label?,side?:"above"\|"below",show?:int}[],times?:{from:int,to:int,label?,show?:int}[]}` — rows [{label, segs: [{v, label, unknown: "?" \| "□"}]}]; brace [{row, from, to, label, side: above\|below}] (from/to are segment numbers from 0); times [{from, to, label}] (row numbers) |
 
 (* = description added by this guide)
@@ -78,12 +78,18 @@ Data example (child `<script type="application/json">`): `{"lines":[{"from":0,"t
 | `xl` | string | `""` | x axis name (`*italic*` `_sub` `^sup`) * |
 | `yl` | string | `""` | y axis name * |
 | `digits` | number | `2` | 表示する値の小数の桁数 |
+| `at` | json | `null` | 変化ごとの開始秒（values の数 − 1 個、増える順）。あれば変化をすべて段階 1 に入れる |
+| `point` |  |  |  |
+| `size` | number | `0` | 目盛り・軸の名前・線の名前・点の字の大きさ（px、24 以上。0 = 既定） |
 
 「φ が大きいほど〜」を目で確かめさせるときに使う。
 
 `f` の式の中では、動かす値はいつも `c` と書く（`param` は図に表示する名前だけ。`param="η"` でも `f="u*u + c*u"`）。
 
 `f` は算術の式（コードとしては実行しない）：数、`u` と `c`、`Math.exp(…)` `Math.sin(…)` などの `Math` の関数と `Math.PI` などの定数、`+ - * / % **`、比較（`< <= > >= == !=`）、`&& || !`、`? :`、括弧。べき乗は `**`（`^` は書けない）。`-u ** 2` は `-(u ** 2)` か `(-u) ** 2` と書く。書けない式は図の代わりに札が出る。
+- `at="[0.5, 3]"`：変化ごとの開始秒（values の数 − 1 個、増える順）。あれば変化をすべて段階 1 に入れ、決めた秒に始める（音楽や口述に合わせるとき）。前の変化が終わる前に次を始めると知らせる
+- `point='{"u": 9.8, "label": "平均待ち {y} 日", "digits": 1}'`：曲線の上の点。`u` の所の値に点を置き、値が変わると曲線について動く。`label` の `{y}` はその所の値（`digits` 桁、既定は `digits`）。図の範囲（yr）の外になる値では点と字を隠して知らせる
+- `size="40"`：目盛り・軸の名前・線の名前・点の字の大きさ（24 以上。スマートフォンで見る動画など）。余白も字に合わせて広がる
 
 ### `<m-tape>`
 

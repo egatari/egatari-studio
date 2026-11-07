@@ -527,12 +527,19 @@ for (const [code, what] of [
     'CANDIDATE 2.3.0: icons 1.0.0 brings en.json and ja.json (icon words for the editor\'s icon search); the 2.2.0 copy has none');
   // 部品庫 2.4.0（リリース a383099、c2-base 54bf442）：新しいパーツ m-particles 2.0.0（理科の束）だけ。ほかのパーツは版も中身も 2.3.0 のまま
   const v240 = lock2.catalogues['2.4.0'];
-  ok(lock2.default === '2.4.0' && v240 && v240.tag === 'v2.4.0' && v240.tarballSha256 === '4e8202f3b4cd742a78560789976f622c0f0c0380e3452a0274a952b25ee9574d' && v240.manifestSha256 === '468299a10cdb1336f370ff3c16032bd0dc1aef4e271613b64651d68efe06889e',
-    'components 2.4.0 is the default and pinned to the released tarball and manifest (v2.4.0)');
+  ok(v240 && v240.tag === 'v2.4.0' && v240.tarballSha256 === '4e8202f3b4cd742a78560789976f622c0f0c0380e3452a0274a952b25ee9574d' && v240.manifestSha256 === '468299a10cdb1336f370ff3c16032bd0dc1aef4e271613b64651d68efe06889e',
+    'components 2.4.0 is pinned to the released tarball and manifest (v2.4.0)');
   const added240 = Object.keys(v240.parts).filter((n) => !(n in v230.parts));
   const bumped240 = Object.keys(v230.parts).filter((n) => v240.parts[n] !== v230.parts[n]);
   ok(added240.join() === 'particles' && v240.parts.particles === '2.0.0' && bumped240.length === 0,
     `2.4.0: only m-particles 2.0.0 is new; no other part changes version (new: ${added240.join(', ')}; bumped: ${bumped240.join(', ')})`);
+  // 部品庫 2.4.1 の候補（c2-base 23fce2e）：sweep・curves 2.1.0、plot 1.1.0、boxplot・hist・scatter・seq 2.0.3、codetree 2.0.4。ほかは 2.4.0 のまま
+  const v241 = lock2.catalogues['2.4.1'];
+  ok(lock2.default === '2.4.1' && v241 && v241.tarballSha256 === '0d2de5a6a213ec6a2f1a0463b9d86273a8599885990409681768c02c4e764761',
+    'CANDIDATE components 2.4.1 is the default and pinned to the tarball verified here (not yet a components release)');
+  const bumped241 = Object.keys(v241.parts).filter((n) => v241.parts[n] !== v240.parts[n]).sort();
+  ok(bumped241.join() === 'boxplot,codetree,curves,hist,plot,scatter,seq,sweep' && Object.keys(v241.parts).length === Object.keys(v240.parts).length,
+    `CANDIDATE 2.4.1: exactly boxplot, codetree, curves, hist, plot, scatter, seq and sweep get new versions (${bumped241.join(', ')})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
