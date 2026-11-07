@@ -1851,7 +1851,7 @@ function runSeg(rec){
   clearTimeout(auto.atimer);
   if (audioEl && !rec) audioEl.pause();
   var g = auto.tl[auto.idx];
-  if (!g){ stopAuto(); return; }
+  if (!g){ if (videoViewer()) videoEnded = true; stopAuto(); return; }
   // Step ends are on one absolute clock: autoplay's start plus the planned lengths (and extensions) of the steps before.
   // A timer that fires late shortens the next step instead of delaying everything after it. After a long stall
   // (a background tab throttles timers), start again from now rather than rushing through steps, unless this
@@ -2327,7 +2327,53 @@ function start(){
   if (pendingSeek){ var ps = pendingSeek; pendingSeek = null; seek.apply(null, ps); }
   DECK.ready = true;
   document.dispatchEvent(new CustomEvent("deck:ready"));
+  if (videoViewer()) videoStart(true);
 }
+
+// ---------------------------------------------------------------- 見る人が video で開いたとき（Player P1）
+// offer.open.mode や ?mode=video で、書き出しでなく人が開いたとき：開始のボタンを 1 つだけ出し（声には操作が要る。P3）、押したらタイムラインに沿って
+// 最後まで進む。ほかの操作はない。書き出し（render/render.mjs・kit/browser.mjs の captureUrl など）は自動操作のブラウザ（navigator.webdriver）で
+// DECK.seek を呼んで撮るので、そこではボタンを出さず、何も変えない（出力はこれまでと同じ）。発表者ビューの中の画面・編集のプレビューも除く
+function videoViewer(){
+  var wd = false; try { wd = !!navigator.webdriver; } catch (e) {}
+  return DECK.mode === "video" && !wd && !DECK.view && !Q.get("presenter") && !window.DECK_DEV;
+}
+DECK.videoViewer = videoViewer;
+var vStart = null;
+function videoStart(on){
+  if (!on){ if (vStart){ vStart.remove(); vStart = null; } return; }
+  if (vStart) return;
+  var b = vStart = document.createElement("button");
+  b.type = "button"; b.id = "deck-vstart";
+  var lab = DECK.ja ? "再生" : "Play";
+  b.setAttribute("aria-label", lab); b.title = lab;
+  b.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.2v9.6L13 8z" fill="currentColor"/></svg><span>' + lab + "</span>";
+  var st = document.getElementById("deck-vstart-css");
+  if (!st){
+    st = document.createElement("style"); st.id = "deck-vstart-css";
+    st.textContent = "#deck-vstart{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:60;display:inline-flex;align-items:center;gap:10px;" +
+      "padding:16px 28px;border:0;border-radius:999px;background:rgba(20,20,20,.78);color:#fff;font:600 20px/1 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Segoe UI',sans-serif;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.25)}" +
+      "#deck-vstart:hover{background:rgba(20,20,20,.9)}#deck-vstart:focus-visible{outline:3px solid #fff;outline-offset:2px;box-shadow:0 0 0 6px rgba(0,0,0,.55)}#deck-vstart svg{width:22px;height:22px}" +
+      "@media print{#deck-vstart{display:none}}";
+    document.head.appendChild(st);
+  }
+  b.addEventListener("click", function(e){
+    e.preventDefault(); e.stopPropagation();
+    videoStart(false);
+    soundGesture();
+    // 最後まで来ていたら初めから
+    var tl = DECK.timeline(), last = tl[tl.length - 1];
+    if (last && POS.i === last.i && POS.k === last.k && videoEnded){ videoEnded = false; go(0, 0, false); }
+    startAuto();
+  });
+  document.body.appendChild(b);
+  try { b.focus({preventScroll: true}); } catch (e) {}
+}
+var videoEnded = false;
+// 文書が隠れたら一時停止し（P3）、開始のボタンをもう一度出す（声を始め直すには操作が要る）
+document.addEventListener("visibilitychange", function(){
+  if (document.visibilityState === "hidden" && auto && videoViewer()){ stopAuto(true); videoStart(true); }
+});
 
 // ---------------------------------------------------------------- 暗転（b）
 // 窓全体を真っ黒（#000）の覆いで隠す：舞台・ペンの線・字幕・操作の帯・知らせ・キーの一覧のどれよりも上。もう一度 b・クリック・Esc で戻る。
@@ -2461,6 +2507,7 @@ function forwardedKey(k){
 }
 document.addEventListener("keydown", function(e){
   if (DECK.view || !DECK.ready) return;
+  if (vStart || videoViewer()) return;   // 見る人の video：開始のボタンのほかに操作はない（Player P1）
   if (typingIn(e)) return;
   // 暗転の間：b・Esc・矢印・Space・PageUp/PageDown・Home/End で戻る（戻すだけで送らない。ほかの道具の Esc にしない）。Tab は下のボタンに抜けない
   if (isBlack() && !e.metaKey && !e.ctrlKey && !e.altKey && (BLACK_EXIT.test(e.key) || e.key === "Tab")){

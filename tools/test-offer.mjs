@@ -5,6 +5,7 @@
 // 再生器（Chromium）：?mode=learn・offer の learn・埋め込みの {egatari:"mode", mode:"learn"} は talk。offer.open がモードと見え方を選ぶ。
 //   優先：?mode・?layout・埋め込み ＞ この端末で選んだ並べ方 ＞ offer.open ＞ metadata.primary ＞ <html data-mode> ＞ 既定。
 //   offer.faces にない見え方は「表示」の一覧・r・「本で読む」に出ない。offer.modes に talk がなく open がなければ offer の初めのモードで開く
+//   見る人の video（offer.open・?mode=video。自動操作でないブラウザ）：開始のボタン 1 つ、押すとタイムラインで最後まで、帯は出ない。書き出しのブラウザでは出ない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -224,6 +225,43 @@ f.src = 'plain.html?embed=1';
   await close(p);
   p = await open(variant('faces-both', { offer: { faces: ['talk', 'read'] } }), { w: 500, h: 800 });
   ok(J((await state(p)).offered) === '["slides","book"]', 'a narrow screen leaves out Slides and book, as before');
+  await close(p);
+}
+
+// 見る人が video で開いたとき（Player P1、spec 609e145）：開始のボタンが 1 つだけ。押すとタイムラインに沿って最後まで進み、ほかの操作はない。
+// 書き出し（自動操作のブラウザ。navigator.webdriver）ではボタンを出さない。ここでは見る人のブラウザのふりをする（webdriver を false に）
+{
+  const short = (h) => h.replace(/(<script type="application\/json" id="deck-timing">)([\s\S]*?)(<\/script>)/, (m, a, j, b) =>
+    a + JSON.stringify(Object.fromEntries(SL.flatMap(([id]) => ['0', '1'].map((k) => [`${id}:${k}`, { dur: 0.6, hold: 0, lead: 0, pad_after: 0 }])))) + b);
+  const VF = path.join(B, 'out', 'viewer-video.html');
+  fs.writeFileSync(VF, short(fs.readFileSync(variant('vv', { offer: { open: { mode: 'video' } } }), 'utf8')));
+  const c = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  await c.addInitScript(() => Object.defineProperty(Navigator.prototype, 'webdriver', { configurable: true, get: () => false }));
+  for (const [label, file, q] of [['offer.open.mode video', VF, ''], ['?mode=video', path.join(B, 'out', 'plain.html'), '?mode=video']]) {
+    const p = await c.newPage();
+    p.on('pageerror', (e) => errors.push(`${label}: ${e.message}`));
+    await p.goto(fileUrl(file) + q);
+    await p.waitForFunction(() => window.DECK && DECK.ready);
+    const s0 = await p.evaluate(() => ({ mode: DECK.mode, viewer: DECK.videoViewer(), buttons: [...document.querySelectorAll('button')].filter((b) => b.checkVisibility()).map((b) => b.id || b.className), bar: !!document.getElementById('dt-cb'), key: DECK.state().key }));
+    ok(s0.mode === 'video' && s0.viewer && s0.buttons.length === 1 && s0.buttons[0] === 'deck-vstart' && !s0.bar, `${label} for a viewer: one start control and nothing else (${J(s0)})`);
+    await p.keyboard.press('ArrowRight'); await p.waitForTimeout(700);
+    ok(await p.evaluate((k) => DECK.state().key === k && !DECK.playing(), s0.key), `${label}: not a still stage waiting for keys; nothing moves before the start control (keys do nothing)`);
+    if (label === '?mode=video') { await p.close(); continue; }
+    const seen = new Set([s0.key]);
+    await p.click('#deck-vstart');
+    ok(await p.evaluate(() => DECK.playing() && !document.getElementById('deck-vstart')), 'pressing it starts playback and removes the control');
+    const last = await p.evaluate(() => DECK.timeline().at(-1).key);
+    for (let j = 0; j < 80 && !seen.has(last); j++) { seen.add(await p.evaluate(() => DECK.state().key)); await p.waitForTimeout(100); }
+    await p.waitForFunction(() => !DECK.playing(), null, { timeout: 15000 }).catch(() => {});
+    const end = await p.evaluate(() => ({ key: DECK.state().key, playing: DECK.playing(), bar: !!document.getElementById('dt-cb'), vis: [...document.querySelectorAll('button')].filter((b) => b.checkVisibility()).length }));
+    ok(seen.size === SL.length * 2 && end.key === last && !end.playing, `it advances through every step along the timeline to the end (${seen.size} steps seen, ends at ${end.key})`);
+    ok(!end.bar && end.vis === 0, 'no toolbar or other control appears while or after playing');
+    await p.close();
+  }
+  await c.close();
+  // 書き出しのブラウザ（webdriver のまま）では出さない：render/render.mjs は ?mode=video で開いて DECK.seek で撮る
+  const p = await open(VF);
+  ok(await p.evaluate(() => DECK.mode === 'video' && !DECK.videoViewer() && !document.getElementById('deck-vstart') && !DECK.playing()), 'the export browser (navigator.webdriver) gets no start control and no playback, so render is unchanged');
   await close(p);
 }
 

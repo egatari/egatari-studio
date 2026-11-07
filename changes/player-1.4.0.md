@@ -12,3 +12,6 @@
 - Egatari Player 1.4.0: `deck-meta.offer` (format §1.2, Player P1) is applied. The lesson opens in `offer.open` {mode, face}
   (order: `?mode` / `?layout` / embedding, the viewer's remembered layout, `offer.open`, `metadata.primary`, `<html data-mode>`,
   defaults), and faces not in `offer.faces` are left out of View, `r` and Read in the book. Embedding answers `{egatari:"mode"}`
+- Egatari Player 1.4.0: `video` opened by a person (through `offer.open.mode` or `?mode=video` outside the export) shows one
+  **Play** button; pressing it plays the lesson along the timeline to the end with no other controls (Player P1, spec 609e145).
+  The video export runs in an automated browser and is unchanged (same clips, byte for byte)

@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=341c610642893f55 -->
+<!-- i18n: pair=contract.md sha256=a9ff19a346dd0412 -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -29,7 +29,7 @@
 
 ## 2. 表示モード
 
-モードと「先のステップを薄く見せる」は Player P1。Studio の実行系では：`?mode=talk|video`（既定は `talk`。次に `deck-meta.offer.open.mode`、次に `<html data-mode>`）。前の版の `learn` のモードはなくなった（Egatari Player 1.4.0）：`?mode=learn`・`offer` や埋め込みの命令の `learn` は `talk` と読み、パーツの `ctx.mode` は `talk` か `video` だけ。自習は `talk` の再生で行う：再生 / 一時停止（一時停止は同じ所から続く）、ツールバーの前へ / 次へと跳ぶ（数字＋Enter・一覧）は再生の状態を保ち、再生速度は 0.75・1・1.25・1.5・2 倍（`DECK.rate`）。声の高さは保ち、タイムラインの時計も同じ速さで進む（画面は `(i, k, t)` のまま）。発表者の送りのキーは再生を止め、発表者の道具（発表者ビュー・レーザーポインター・ペン）はそのまま。文書が隠れたら再生を止める（Player P3）。`deck-meta.offer`（形式 §1.2）が開くときのモードと見え方、並べ方の選びに出す見え方を決める（[reference](reference.ja.md#再生と進行状況)）。進行状況は `kit/track.js` が記録する（Player P6、[reference](reference.ja.md#再生と進行状況)）。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
+モードと「先のステップを薄く見せる」は Player P1。Studio の実行系では：`?mode=talk|video`（既定は `talk`。次に `deck-meta.offer.open.mode`、次に `<html data-mode>`）。前の版の `learn` のモードはなくなった（Egatari Player 1.4.0）：`?mode=learn`・`offer` や埋め込みの命令の `learn` は `talk` と読み、パーツの `ctx.mode` は `talk` か `video` だけ。自習は `talk` の再生で行う：再生 / 一時停止（一時停止は同じ所から続く）、ツールバーの前へ / 次へと跳ぶ（数字＋Enter・一覧）は再生の状態を保ち、再生速度は 0.75・1・1.25・1.5・2 倍（`DECK.rate`）。声の高さは保ち、タイムラインの時計も同じ速さで進む（画面は `(i, k, t)` のまま）。発表者の送りのキーは再生を止め、発表者の道具（発表者ビュー・レーザーポインター・ペン）はそのまま。文書が隠れたら再生を止める（Player P3）。人が開いた `video`（自動操作のブラウザ `navigator.webdriver` でないとき。エクスポートはそこで `DECK.seek` を呼ぶ）は開始のボタンを 1 つだけ出し、押すとほかの操作なしにタイムラインに沿って最後まで流れる。エクスポートは変わらない。`deck-meta.offer`（形式 §1.2）が開くときのモードと見え方、並べ方の選びに出す見え方を決める（[reference](reference.ja.md#再生と進行状況)）。進行状況は `kit/track.js` が記録する（Player P6、[reference](reference.ja.md#再生と進行状況)）。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
 
 ## 3. パーツ（Web Components）
 

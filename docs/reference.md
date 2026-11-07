@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=530146bbebc3f543 -->
+<!-- i18n: pair=reference.ja.md sha256=ca7f6cae593961a2 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -252,7 +252,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | `?mode=talk` | default: later steps hidden, current step fades in |
 | `?mode=talk&preview=1` | show later steps faintly: everything visible, later steps faded (`--preview-opacity`, default 0.45; elements marked `data-preview="none"` and parts that declare `preview: "none"` stay hidden), the current step and earlier ones at full strength with no mark on the current step (no highlighter, no `.cur` class), emphasis in final state |
 | `?mode=learn` | the former self-study mode, removed in Egatari Player 1.4.0: read as `?mode=talk`, whose toolbar now has playback ([Playback and progress](#playback-and-progress)) |
-| `?mode=video` | for rendering: no tools or toolbar, reduced-motion ignored |
+| `?mode=video` | for rendering: no tools or toolbar, reduced-motion ignored. Opened by a person (not by an automated browser, which is how the export and the tools capture it), video mode shows one **Play** button in the middle; pressing it plays the lesson along the timeline to the end with no other controls (Player P1). `offer.open.mode` `video` opens this way too |
 | `?captions=1` | start with captions on (same as `s`). With `?mode=video` this is the only way to get captions, so a render can burn them in |
 | `?capsize=s` / `m` / `l` | caption size (22 / 27 / 34px); overrides the remembered size; ignored with `?mode=video` |
 | `?presenter=1` | presenter view (opened by `p`) |
