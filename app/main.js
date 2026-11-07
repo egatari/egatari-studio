@@ -539,8 +539,10 @@ function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}
 // theme：組み立てが返したテーマの名前と寸法の宣言（品質チェックの本文の場所の限りと themeMetricsDrift。kit/core/theme-metrics.mjs）
 function previewHtml(base) {
   // 前の版のファイル：ファイルそのもの（自分のプレーヤー）を再生するだけ。この版の仲立ちの頼み（品質チェック・位置）は受けない
-  if (S.earlier && S.earlier.kind === 'file') return withShim(base, { load: S.loads, ...(S.previewMode && S.previewMode !== 'talk' ? { query: '?mode=' + S.previewMode } : {}) });
-  return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}), ...(S.previewMode && S.previewMode !== 'talk' ? { query: '?mode=' + S.previewMode } : {}) }, '\n' + RES.hints);
+  // モードはいつも ?mode= で渡す（教材の deck-meta.offer.open より強い。Player P1：プレビューはメニューで選んだモードで見せる）
+  const query = '?mode=' + (S.previewMode || 'talk');
+  if (S.earlier && S.earlier.kind === 'file') return withShim(base, { load: S.loads, query });
+  return withShim(base, { dev: true, load: S.loads, ...(S.theme ? { theme: S.theme } : {}), query }, '\n' + RES.hints);
 }
 // 表示する文書（信頼する先頭部分 + 組んだデッキのバイトそのもの）から、そのデッキのコードが動くかを決める（format spec §6）。
 // 先頭部分（決まりと仲立ち）と組み立てが入れた実行系の部分（r.trusted）だけを除いて読む。先頭部分は読み込むたびに数（load）だけが変わり、
@@ -2128,6 +2130,7 @@ async function insertDialog() {
 // スライドショーは全画面にもする（f と同じ）。発表は保存した .ega.html をブラウザで開いて行う
 // 先のステップを薄く見せる（内部の名前は lecture。?mode=lecture）はスライドショーの入／切の選び：モードの選びはスライドショーのまま、選びに印
 function setPreviewMode(mode) {
+  if (mode === 'learn') mode = 'talk';   // 前の版の learn（自習）はなくなった：talk の再生（Player P1）
   const was = S.previewMode || 'talk';
   S.previewMode = mode;
   $('b-full').setAttribute('aria-checked', mode !== 'video' ? 'true' : 'false');
@@ -2320,7 +2323,7 @@ window.__APP_TEST = {
   book: () => book.state(),
   bookPanel: (on) => book.togglePanel(on),
   setView: (v) => setView(v),
-  previewMode: (m) => setPreviewMode(m),   // 試験：learn（自習。画面の名前は未定で、メニューにはまだない）も
+  previewMode: (m) => setPreviewMode(m),   // 試験：前の版の learn は talk になる
   attachBusy: () => attach.isBusy(),
   saved: () => (S.portable ? S.portable.saved : null),
   save: (mode) => savePortable(mode || 'save'),

@@ -65,7 +65,7 @@ scope.go(0, 0, false); extension = 1; const extStart = now; scope.next();
 assert.equal(scheduled.length, 4); assert.equal(scheduled.at(-1).events[0].dur, 5);
 assert.equal(scheduled.at(-1).when, extStart / 1000 + 1, 'extension moves .5 to 1 second');
 extension = 0;
-for (const mode of ['talk', 'learn', 'lecture']) {
+for (const mode of ['talk', 'lecture']) {
   deck.mode = mode; scope.go(0, 0, false); scope.next(); tick(now + 600);
   assert.equal(scheduled.at(-1).events[0].sound, 'note', mode);
 }
@@ -109,4 +109,4 @@ deck.seek(0, 1, .8); assert.equal(frames.size, frameCount); scope.ASIDE = 0;
 assert.equal(RUNTIME_NAMESPACES['core/sounds.mjs'], 'Sounds');
 assert.equal(RUNTIME_NAMESPACES['core/sound-preferences.mjs'], 'SoundPreferences');
 for (const f of ['kit/core/sounds.mjs', 'kit/core/sound-preferences.mjs']) assert.ok(PLAYER_FILES.includes(f));
-console.log('ok   live crossings, lazy gesture, tails, back/jump/seek, extension, talk/learn, auxiliary modes, mute/recording and runtime registration');
+console.log('ok   live crossings, lazy gesture, tails, back/jump/seek, extension, talk/lecture, auxiliary modes, mute/recording and runtime registration');

@@ -12,7 +12,7 @@
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
 import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
 import { codeReasons } from './code-scan.mjs';
-import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS } from './build-core.mjs';
+import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS, normalizeOffer, OFFER_MODES, OFFER_FACES } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, resolveComponent, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
@@ -524,6 +524,8 @@ function metadataCheck(m, w, e) {
     }
   }
   if (own(m, 'audience') && !['public', 'individual'].includes(m.audience)) e.push(`${w}.audience: not public or individual`);
+  if (own(m, 'primary') && !OFFER_FACES.includes(m.primary)) e.push(`${w}.primary: not talk or read`);
+  if (own(m, 'offer')) offerCheck(m.offer, `${w}.offer`, e);
   // 本文の引用の書式と一覧・シリーズ（§9C.4・§9C.1A）
   if (own(m, 'citations')) {
     const c = m.citations;
@@ -537,6 +539,24 @@ function metadataCheck(m, w, e) {
   if (own(m, 'series')) {
     const x = m.series;
     if (!isObj(x) || !(typeof x.id === 'string' && x.id.length) || !(typeof x.title === 'string' && x.title.length) || (own(x, 'part') && !(Number.isInteger(x.part) && x.part >= 1))) e.push(`${w}.series: not {id, title, part?}`);
+  }
+}
+// 見せるモードと見え方（§1.2）：{modes?, faces?, open?: {mode?, face?}}。読むときは前の版の learn も通す（再生器は talk と読む。Player P1）。書くものは normalizeOffer で直してある
+function offerCheck(o, w, e) {
+  if (!isObj(o)) { e.push(`${w}: not an object`); return; }
+  const modes = [...OFFER_MODES, 'learn'];
+  for (const [k, ok] of [['modes', modes], ['faces', OFFER_FACES]]) {
+    if (!own(o, k)) continue;
+    const a = o[k];
+    if (!Array.isArray(a) || !a.length || new Set(a).size !== a.length || !a.every((x) => ok.includes(x))) e.push(`${w}.${k}: not a non-empty list of unique ${ok.filter((x) => x !== 'learn').join(', ')}`);
+  }
+  if (own(o, 'open')) {
+    const op = o.open;
+    if (!isObj(op)) e.push(`${w}.open: not an object`);
+    else {
+      if (own(op, 'mode') && !modes.includes(op.mode)) e.push(`${w}.open.mode: not ${OFFER_MODES.join(' or ')}`);
+      if (own(op, 'face') && !OFFER_FACES.includes(op.face)) e.push(`${w}.open.face: not ${OFFER_FACES.join(' or ')}`);
+    }
   }
 }
 // 終えた判定（§9.2）：visitedFraction か reachedEnd のどちらか 1 つまでと、played: true（舞台で再生したものだけを数える）。知らない決まりは残す
@@ -569,6 +589,7 @@ export function validateDeckMeta(m, opts = {}) {
   if (own(m, 'completion')) completionCheck(m.completion, 'deck-meta.completion', e);
   for (const k of ['license', 'copyright', 'attribution']) if (own(m, k) && typeof m[k] !== 'string') e.push(`deck-meta.${k}: not a string`);
   if (own(m, 'creators') && !strArr(m.creators)) e.push('deck-meta.creators: not an array of strings');
+  if (own(m, 'offer')) offerCheck(m.offer, 'deck-meta.offer', e);
   return e;
 }
 // 実行系の deck-audio（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-audio.schema.json）
@@ -665,7 +686,7 @@ const escAttr = (s) => escText(s).replace(/"/g, '&quot;');
 const plain = (s) => String(s).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/\\\(|\\\)/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 // 書き出す metadata：設定のファイル（FORMAT.CONFIG_FILE）の metadata のうち仕様の項目だけ（時刻・メールなどは入れない）
-const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience', 'citations', 'series'];
+const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience', 'citations', 'series', 'primary', 'offer'];
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
 const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom', 'article', 'articleLinks']);
@@ -1281,6 +1302,11 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   const metadata = { title, lang };
   const em = isObj(econf.metadata) ? econf.metadata : {};
   for (const k of META_KEYS) if (own(em, k)) metadata[k] = em[k];
+  // 見せるモードと見え方（§1.2）：設定のファイルになければ、読み取った文書の索引のもの（ほかの書き手の文書を保存し直すとき）。learn は talk に直し、形の合わない値は捨てる
+  const carryMeta = isObj(opts.carry) && isObj(opts.carry.metadata) ? opts.carry.metadata : {};
+  for (const k of ['primary', 'offer']) if (!own(metadata, k) && own(carryMeta, k)) metadata[k] = carryMeta[k];
+  if (own(metadata, 'offer')) { const o = normalizeOffer(metadata.offer); if (o) metadata.offer = o; else delete metadata.offer; }
+  if (own(metadata, 'primary') && !OFFER_FACES.includes(metadata.primary)) delete metadata.primary;
   if (own(em, 'title') && typeof em.title === 'string' && em.title) metadata.title = em.title;
   // player：同梱の再生器（§4.1。kit/core/player.mjs。出した版と中身が同じでなければ "+dev.<commit>"）。generator：書いたソフト（Egatari Studio）
   const pl = await resolvePlayer(env0);
@@ -1325,6 +1351,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     ...(metadata.completion ? { completion: metadata.completion } : {}),
     // 権利の表示と作成者（format spec §4・§7.3）：再生専用の派生は索引を持たないので、ここに写したものだけが残る
     ...Object.fromEntries(DECK_META_RIGHTS.filter((k) => own(metadata, k)).map((k) => [k, k === 'creators' ? [...metadata[k]] : metadata[k]])),
+    // 見せるモードと見え方（§1.2）：再生専用の派生にも残るように deck-meta に写す（Player P1 が読む）
+    ...(metadata.offer ? { offer: JSON.parse(JSON.stringify(metadata.offer)) } : {}),
   };
   const me = validateDeckMeta(deckMeta);
   if (me.length) fail('invalid-deck-meta', me.join('; '), me);

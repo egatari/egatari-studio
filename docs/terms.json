@@ -389,7 +389,7 @@
    "group": "Structure and playback",
    "en": "Show later steps faintly",
    "ja": "先のステップを薄く見せる",
-   "definition": "An option of Slide show (and self-study), like captions: later steps of the slide appear faintly while the current one is shown. Key l.",
+   "definition": "An option of Slide show, like captions: later steps of the slide appear faintly while the current one is shown. Key l.",
    "avoid": {
     "ja": [
      "授業",
@@ -423,19 +423,34 @@
    "note": ""
   },
   {
-   "id": "self-study",
+   "id": "play-pause",
    "group": "Structure and playback",
-   "en": "(to be decided)",
-   "ja": "（未定）",
-   "definition": "Learner-driven mode with playback rate (spec learn). Name to be decided in the UX validation.",
+   "en": "Play / Pause",
+   "ja": "再生 / 一時停止",
+   "definition": "Playback in Slide show (Player P1): plays the lesson along the timeline with its narration; pausing resumes from the same point. The toolbar's previous / next keep playing. Self-study uses it: the former self-study mode (spec learn) was removed in Egatari Player 1.4.0.",
    "avoid": {
     "ja": [],
     "en": []
    },
-   "internal": "learn (spec)",
-   "decided": "",
-   "by": "owner",
-   "note": "Backlog #108."
+   "internal": "autoplay / talk playback (Player P1)",
+   "decided": "2026-11-07",
+   "by": "standards",
+   "note": "Replaces the self-study row (backlog #108): the mode was removed, so it needs no name."
+  },
+  {
+   "id": "playback-speed",
+   "group": "Structure and playback",
+   "en": "Playback speed",
+   "ja": "再生速度",
+   "definition": "Toolbar button and < / > keys in Slide show: 0.75, 1, 1.25, 1.5 or 2×, keeping the pitch of the narration.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "rate (Player P1)",
+   "decided": "2026-11-07",
+   "by": "standards",
+   "note": ""
   },
   {
    "id": "stage",

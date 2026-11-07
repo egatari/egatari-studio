@@ -10,29 +10,59 @@
 "use strict";
 var DECK = window.DECK = window.DECK || {};
 var Q = new URLSearchParams(location.search);
-var REDUCE = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches && Q.get("mode") !== "video";
 var NS = "http://www.w3.org/2000/svg";
 var T = DECK.T = {fade: .45, draw: .7, drawSlow: 1.4, drawDelay: .1, slide: .35, morph: .9, lead: .25, padAfter: .6, hold: 1.2};
 
-// 表示のモード（Player P1）：talk・learn・video。「先のステップを薄く見せる」は talk の選択肢（preview）で、
+// 表示のモード（Player P1）：talk と video だけ。「先のステップを薄く見せる」は talk の選択肢（preview）で、
 // 内部では DECK.mode = "lecture" と書く（?mode=lecture は古い呼び方のまま通す。?mode=talk&preview=1 も同じ。Player P8）。
 // 部品に渡す ctx では mode:"talk"・preview:true（format spec §8.4。ctxMode）
-// learn（自習。?mode=learn）：見る人が再生・一時停止・前へ・次へ・跳ぶ・再生速度（0.75〜2 倍、声の高さは保つ）を操る。再生中に送っても再生を続け、
-// 一時停止はその所から続ける。タイムラインの時計も同じ速さで進む（画面は (i, k, t) のまま）。発表者の道具（発表者ビュー・レーザー・ペン）は出さない。
-// learn の薄く見せるのは DECK.mode を変えずに LEARN_PREVIEW で持つ（previewOn）
-DECK.mode = Q.get("mode") || document.documentElement.getAttribute("data-mode") || "talk";
+// 前の版の learn（自習）はなくなった：?mode=learn・offer・埋め込みの命令の learn は talk と読む（Player P1）。自習は talk の再生で行う：
+// 再生・一時停止（一時停止はその所から続く）・帯の前へ・次へと跳ぶ（再生中なら再生を続ける）・再生速度（0.75〜2 倍、声の高さは保つ）。
+// 発表者の送りのキー（→・Space など）は再生を止める。発表者の道具（発表者ビュー・レーザー・ペン）はそのまま
+// 開くモードの決め方（Player P1）：?mode=（埋め込みの指定も） ＞ deck-meta.offer.open.mode（なく、offer.modes に talk がなければその初め） ＞ <html data-mode> ＞ talk
+function normMode(m){ m = m === null || m === undefined ? "" : String(m); return m === "learn" ? "talk" : m; }
+var MODES = {talk: 1, video: 1, lecture: 1};
+// deck-meta.offer（format spec §1.2。作者の意図で、決まりではない）：{modes, faces, open:{mode, face}}。learn は talk に、知らない値は捨てる。
+// modes・faces が空か無いときは null（全部）。open は offer にあるものだけ
+function readOffer(){
+  var o = null;
+  try { var e = document.getElementById("deck-meta"); o = e ? JSON.parse(e.textContent) : null; o = o && typeof o === "object" ? o.offer : null; } catch (err) { o = null; }
+  var out = {modes: null, faces: null, open: {}};
+  if (!o || typeof o !== "object" || Array.isArray(o)) return out;
+  function list(a, ok){
+    if (!Array.isArray(a)) return null;
+    var r = [];
+    a.forEach(function(x){ x = normMode(x); if (ok[x] && r.indexOf(x) < 0) r.push(x); });
+    return r.length ? r : null;
+  }
+  out.modes = list(o.modes, {talk: 1, video: 1});
+  out.faces = list(o.faces, {talk: 1, read: 1});
+  var op = o.open && typeof o.open === "object" && !Array.isArray(o.open) ? o.open : {};
+  var om = normMode(op.mode);
+  if ((om === "talk" || om === "video") && (!out.modes || out.modes.indexOf(om) >= 0)) out.open.mode = om;
+  if ((op.face === "talk" || op.face === "read") && (!out.faces || out.faces.indexOf(op.face) >= 0)) out.open.face = op.face;
+  return out;
+}
+DECK.OFFER = readOffer();
+DECK.offer = function(){ return JSON.parse(JSON.stringify(DECK.OFFER)); };
+// 発表者ビューとその中の画面（?presenter・?view）は offer.open を使わない（開いた窓のモードのまま）
+(function(){
+  var q = normMode(Q.get("mode")), d = normMode(document.documentElement.getAttribute("data-mode"));
+  var O = DECK.OFFER, om = Q.get("presenter") || Q.get("view") ? "" : O.open.mode || (O.modes && O.modes.indexOf("talk") < 0 ? O.modes[0] : "");
+  DECK.modeFrom = MODES[q] ? "query" : om ? "offer" : MODES[d] ? "html" : "default";
+  DECK.mode = MODES[q] ? q : om || (MODES[d] ? d : "talk");
+})();
 if (DECK.mode === "talk" && Q.get("preview") === "1") DECK.mode = "lecture";
-var LEARN = DECK.mode === "learn", LEARN_PREVIEW = LEARN && Q.get("preview") === "1";
-function previewOn(){ return DECK.mode === "lecture" || (LEARN && LEARN_PREVIEW); }
+var REDUCE = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches && DECK.mode !== "video";
+function previewOn(){ return DECK.mode === "lecture"; }
 DECK.previewOn = previewOn;
 // 先のステップを薄く見せるの入り切り（l・帯のボタン・発表者ビュー）
 function togglePreview(){
-  if (LEARN) LEARN_PREVIEW = !LEARN_PREVIEW;
-  else { DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode); }
+  DECK.mode = DECK.mode === "lecture" ? "talk" : "lecture"; document.documentElement.setAttribute("data-mode", DECK.mode);
   document.documentElement.classList.toggle("deck-preview", previewOn());
 }
 DECK.togglePreview = function(){ togglePreview(); if (DECK.ready) seek(POS.i, POS.k, Infinity); };
-// 再生速度（learn。Player P1）：タイムラインの時計と声の速さ。声の高さは保つ（preservesPitch）
+// 再生速度（talk の再生。Player P1）：タイムラインの時計と声の速さ。声の高さは保つ（preservesPitch）
 var RATES = DECK.RATES = [.75, 1, 1.25, 1.5, 2], RATE = 1;
 // 画面に出す言葉の言語：<html lang> が ja か、lang が無ければ日本語。それ以外は英語
 DECK.ja = /^ja\b/i.test(document.documentElement.lang || "ja");
@@ -642,7 +672,7 @@ function animDur(i, k){
   return d;
 }
 
-// 部品に渡す ctx.mode（format spec §8.4："talk" | "learn" | "video"）：内部の "lecture" は talk（preview は別に渡す）
+// 部品に渡す ctx.mode（format spec §8.4："talk" | "video"）：内部の "lecture" は talk（preview は別に渡す）
 // ctx.slide はスライドの鍵（文字列。format spec §8.1・§8.4）。要素は渡さない（部品が要るなら自分で探す）
 function ctxMode(){ return DECK.mode === "lecture" ? "talk" : DECK.mode; }
 // ctx の残りの欄（format spec §8.4）：lang・slides・go・report・visited。1.x の部品にも渡す（読まないだけ）。ctx.deck は 1.x の部品にだけ
@@ -1547,7 +1577,7 @@ DECK.hasComponentSounds = function(){
   return !!slides && slides.some(function(s){ return s._comps.some(function(c){ return !!(c.constructor && c.constructor.sounds) || typeof c.events === "function"; }); });
 };
 function soundEnabled(){
-  return !ASIDE && !printAside && !Q.get("presenter") && !DECK.view && (ctxMode() === "talk" || ctxMode() === "learn");
+  return !ASIDE && !printAside && !Q.get("presenter") && !DECK.view && ctxMode() === "talk";
 }
 function soundStop(){
   soundHandles.forEach(function(h){ h.handle.stop(); }); soundHandles = []; soundNext = null;
@@ -1600,7 +1630,7 @@ function stepSoundEvents(i, k, base, extension){
   });
   return events;
 }
-// Schedule events {t: step time} for a step whose t = 0 is AudioContext time `at` (step time runs at the playback rate, learn). Same-time events (a chord) share one call.
+// Schedule events {t: step time} for a step whose t = 0 is AudioContext time `at` (step time runs at the playback rate). Same-time events (a chord) share one call.
 // An event whose time has already passed (a late frame, a resume) sounds now, whole, without replaying an earlier tail.
 function soundPlay(events, at, run, next){
   var now = soundContext.currentTime, groups = [];
@@ -1711,6 +1741,8 @@ function play(i, k, animate, from, sounds){
 }
 function go(i, k, animate, stepMove){
   var from = POS.i;
+  // 一時停止した所は、見る人が動いたら捨てる（戻ってきて再生したら、その段階の初めから。再生が自分で進むときは autoGo）
+  if (paused && !autoGo) paused = null;
   i = Math.max(0, Math.min(slides.length - 1, i));
   if (!stepMove) jumpTo = i;   // 1 段階ずつの送り・戻し（自動再生を含む）でない動きは跳ぶ（ctx.entered）
   var sounds = !!(stepMove && animate && DECK.Sounds && DECK.hasComponentSounds());
@@ -1738,6 +1770,10 @@ function prev(){ var i = POS.i, k = POS.k; if (k > 0) go(i, k - 1, false, true);
 // 起動の前（部品の mount の前）の go は開く位置にする（最後の 1 つ。その前に頼まれた seek は捨てる）。送り・戻しは何もしない
 DECK.go = function(i, k, animate){ if (!started){ pendingGo = [i, k]; pendingSeek = null; return; } go(i, k, animate); };
 DECK.next = function(){ if (started) next(); }; DECK.prev = function(){ if (started) prev(); };
+// 再生の操作（Player P1）：帯の前へ・次へと跳ぶ（番号＋Enter・スライド一覧）は再生の状態を保つ。再生中なら送った先の段階の初めから続ける（P4.1 のリンクと同じ）
+function keepPlaying(move){ var was = !!auto; move(); if (was) startAuto(true); }
+DECK.playStep = function(d){ if (started) keepPlaying(function(){ if (d < 0) prev(); else next(); }); };
+DECK.jump = function(i, k){ if (!started){ pendingGo = [i, k || 0]; pendingSeek = null; return; } keepPlaying(function(){ go(i, k || 0, false); }); };
 // 窓（kit/panes.js）からの移動：本の窓のスクロール（cause "seek"、Player P8）・「スライドで見る」（"link"）。同じスライドの中なら跳ばない（ctx.entered）。
 // animate：その段階の動きを初めから見せる（スクロールで入った段階・重ねて見せるとき）
 DECK.move = function(i, k, animate, cause){
@@ -1747,14 +1783,14 @@ DECK.move = function(i, k, animate, cause){
 DECK.state = function(){ var i = POS.i, k = POS.k; return {slide: i + 1, step: k, max: slides[i]._max, key: DECK.stepKey(i, k), mode: DECK.mode, playing: !!auto, rate: RATE, preview: previewOn()}; };
 
 // ---------------------------------------------------------------- 自動再生（音声があれば流し、タイムラインで進む）
-// learn（自習）では「再生」：一時停止（stopAuto(true)）はその段階の中の時刻と声の所を覚え、同じ段階で再生し直せばそこから続ける。
+// 再生（Player P1）：一時停止（stopAuto(true)）はその段階の中の時刻と声の所を覚え、同じ段階で再生し直せばそこから続ける。
 // 段階の中の時刻は実時間 × 再生速度（segT）。速さを変えたら今の時刻で付け替える（rebaseRate）
 var audioEl = null;
 var paused = null;
 function segT(){ return auto && auto.segStart !== undefined ? auto.e0 + (performance.now() - auto.segStart) / 1000 * RATE : 0; }
 function stopAuto(pause){
   if (!auto) return;
-  paused = pause && LEARN && auto.tl[auto.idx] ? {key: auto.tl[auto.idx].key, e: segT(), audio: auto.playing === auto.tl[auto.idx].key && audioEl ? audioEl.currentTime : null} : null;
+  paused = pause && auto.tl[auto.idx] ? {key: auto.tl[auto.idx].key, e: segT(), audio: auto.playing === auto.tl[auto.idx].key && audioEl ? audioEl.currentTime : null} : null;
   clearTimeout(auto.timer); clearTimeout(auto.atimer);
   if (audioEl){ audioEl.pause(); }
   // The current step plays on; the next step's events scheduled ahead do not.
@@ -1782,7 +1818,7 @@ function turnTick(){
   turnNow = key;
   document.dispatchEvent(new CustomEvent("deck:turn", {detail: {i: POS.i, k: POS.k, j: j}}));
 }
-// here：今の位置（もう描いた段階）から始める。go で描き直さない（learn で再生中に送ったとき）
+// here：今の位置（もう描いた段階）から始める。go で描き直さない（再生中に帯の前へ・次へ・跳ぶで送ったとき）
 function startAuto(here){
   var rec = paused; paused = null;
   if (auto){ clearTimeout(auto.timer); clearTimeout(auto.atimer); if (audioEl) audioEl.pause(); auto = null; }
@@ -1820,7 +1856,7 @@ function runSeg(rec){
   // A timer that fires late shortens the next step instead of delaying everything after it. After a long stall
   // (a background tab throttles timers), start again from now rather than rushing through steps, unless this
   // step's sounds are already scheduled on the plan (then the screen catches up with the sound).
-  // learn: a step resumed after a pause (rec) starts from now at the paused step time e0; every other step starts at its time 0.
+  // A step resumed after a pause (rec) starts from now at the paused step time e0; every other step starts at its time 0.
   var now = performance.now();
   if (rec){ auto.segStart = now; auto.e0 = rec.e; }
   else {
@@ -1856,7 +1892,7 @@ function scheduleAutoEnd(){
     auto.idx++; runSeg();
   }, Math.min(remaining * 1000, 2147483000));
 }
-DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(LEARN); else startAuto(); };
+DECK.autoplay = function(on){ if (!started) return; if (on === false || (on === undefined && auto)) stopAuto(true); else startAuto(); };
 DECK.playing = function(){ return !!auto; };
 // 再生速度を変える：段階の動き（liveRun）と自動再生の時刻を今の所で付け替え、声の速さも替える
 function rebaseRate(v){
@@ -1886,8 +1922,8 @@ function rateLabel(){ return (DECK.ja ? "再生速度 " : "Playback speed ") + R
 DECK.rateLabel = rateLabel;
 // 埋め込み（Player P8）：再生の状態と速さが変わるたびに {egatari:"state", playing, rate}
 function postState(){ if (EMBED) post({egatari: "state", playing: !!auto, rate: RATE}); }
-// 文書が隠れたら再生を止める（Player P3。learn では一時停止なので、見えてから再生し直せばそこから続く）
-document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && auto && DECK.mode !== "video") stopAuto(LEARN); });
+// 文書が隠れたら再生を止める（Player P3。一時停止なので、見えてから再生し直せばそこから続く）
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && auto && DECK.mode !== "video") stopAuto(true); });
 
 // ---------------------------------------------------------------- 発表者ビューとの連携（postMessage。file:// でも動く）
 var presenter = null, presenterOpened = null;   // presenter：位置を送る相手（hello の送り元）。presenterOpened：この窓が開いた発表者ビュー
@@ -1954,7 +1990,12 @@ window.addEventListener("message", function(e){
     post({egatari: "links", id: m.id, follow: LINKS.follow});
   } else if (EMBED && e.source === window.parent && (m.egatari === "play" || m.egatari === "pause")){
     // 再生・一時停止（Player P8）。声を始められなければ playBlocked（playAudio）
-    if (m.egatari === "play"){ if (!auto && !EDIT) startAuto(); } else if (auto) stopAuto(LEARN);
+    if (m.egatari === "play"){ if (!auto && !EDIT) startAuto(); } else if (auto) stopAuto(true);
+  } else if (EMBED && e.source === window.parent && m.egatari === "mode"){
+    // 表示のモード（Player P8）：learn は talk と読む（P1）。今のモードなら同じ形で答える。読み込んだ後にモードを替えることはしない（?mode= で読み込み直す）
+    var want = normMode(m.mode), now = ctxMode();
+    if (want === now) post({egatari: "mode", id: m.id, mode: now});
+    else post({egatari: "error", id: m.id, code: "mode", message: want === "talk" || want === "video" ? "the mode is chosen when the lesson loads (?mode=)" : "unknown mode"});
   } else if (EMBED && e.source === window.parent && m.egatari === "rate"){
     var rv = DECK.rate(m.value);
     if (rv !== +m.value) post({egatari: "error", id: m.id, code: "rate", message: "unsupported rate"});
@@ -2393,7 +2434,7 @@ document.addEventListener("webkitfullscreenchange", function(){ fsNoPromise = fa
 document.addEventListener("webkitfullscreenerror", function(){ if (fsNoPromise){ fsNoPromise = false; fsRefused(); } });
 // 送りのキー（矢印・PageUp/PageDown・Home・End）。押したら true
 function navKey(k, shift){
-  var nav = true, was = !!auto;
+  var nav = true;
   if ((k === "ArrowRight" || k === "ArrowDown") && shift) go(POS.i + 1, 0, false);
   else if ((k === "ArrowLeft" || k === "ArrowUp") && shift) go(POS.i - 1, 0, false);
   else if (k === "ArrowRight" || k === "PageDown" || k === " " || k === "ArrowDown") next();
@@ -2401,8 +2442,8 @@ function navKey(k, shift){
   else if (k === "Home") go(0, 0, false);
   else if (k === "End") go(slides.length - 1, 0, false);
   else nav = false;
-  // learn：再生中に送っても再生を続ける（送った先の段階の初めから。Player P4.1 と同じ）。talk では止める
-  if (nav){ if (LEARN && was) startAuto(true); else stopAuto(); }
+  // 発表者の送りのキーは再生を止める（Player P1。帯の前へ・次へは再生を続ける：DECK.playStep）
+  if (nav) stopAuto();
   return nav;
 }
 // 編集の画面（信頼する親。server/editor-ui.js）から送られたキー：編集の画面の枠（見出し・状態の行・ボタン）にフォーカスがあるときに
@@ -2437,15 +2478,16 @@ document.addEventListener("keydown", function(e){
   // フォーカスのあるボタンやリンクは、Enter と Space でそれ自身を押す（送りに使わない）
   if ((k === "Enter" || k === " ") && !buf && e.target && e.target.closest && e.target.closest("button, a[href], [role=button]")) return;
   if (/^[0-9]$/.test(k)){ buf += k; if (j) j.textContent = buf; return; }
-  if (k === "Enter" && buf){ var was = !!auto; if (!(LEARN && was)) stopAuto(); go(parseInt(buf, 10) - 1, 0, false); if (LEARN && was) startAuto(true); buf = ""; if (j) j.textContent = ""; return; }
+  // 番号＋Enter は跳ぶ：再生中なら再生を続ける（Player P1）
+  if (k === "Enter" && buf){ var n = parseInt(buf, 10) - 1; keepPlaying(function(){ go(n, 0, false); }); buf = ""; if (j) j.textContent = ""; return; }
   buf = ""; if (j) j.textContent = "";
   if (navKey(k, e.shiftKey)){ e.preventDefault(); return; }
   if (EDIT && (k === "a" || k === "b" || k === "f")) return;
   if (k === "f") DECK.toggleFullscreen();
-  else if (k === "p"){ if (!LEARN) openPresenter(); }
+  else if (k === "p") openPresenter();
   else if (k === "a") DECK.autoplay();
   else if (k === "l") DECK.togglePreview();
-  else if (k === ">" || k === "<"){ if (LEARN) stepRate(k === ">" ? 1 : -1); }
+  else if (k === ">" || k === "<") stepRate(k === ">" ? 1 : -1);
   else if (k === "b") setBlack(true);
   else if (k === "s") setCaptions();
   else if (k === "S") capSize();

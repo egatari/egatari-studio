@@ -170,7 +170,7 @@ const catDir = path.join(out, 'catalogue-src'), catSrc = path.join(catDir, 'deck
   ok(/egatari-index/.test(fs.readFileSync(path.join(out, 'parts.ega.html'), 'utf8')), 'a 2.0 lesson exports as a single file');
 }
 
-// Small clock/input lesson: the same fixture exercises talk, learn, video and authored output.
+// Small clock/input lesson: the same fixture exercises talk (and a stray ?mode=learn, read as talk), video and authored output.
 const ctxDir = path.join(out, 'ctx-src'), ctxDeck = path.join(out, 'ctx.html');
 fs.cpSync(path.join(ROOT, 'tools/fixtures/parts2'), ctxDir, { recursive: true });
 fs.writeFileSync(path.join(ctxDir, 'deck.html'), `<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Context clock</title></head>
@@ -373,6 +373,7 @@ await p.close();
 // ctx.extend: actual input controls, live time past duration, step/jump reset, authored outputs and autoplay.
 for (const mode of ['talk', 'learn']) {
   const clockPage = await open(fileUrl(ctxDeck) + '?mode=' + mode), cp = clockPage.p;
+  if (mode === 'learn') ok(await cp.evaluate(() => DECK.mode === 'talk' && document.querySelector('#input-clock')._ctx.mode === 'talk'), 'learn: ?mode=learn is read as talk, and parts get ctx.mode "talk" (Player P1)');
   await cp.evaluate(() => DECK.go(0, 1, true));
   const baseline = await cp.evaluate(() => JSON.stringify(DECK.timeline()));
   await cp.locator('[data-extend="60"]').click();

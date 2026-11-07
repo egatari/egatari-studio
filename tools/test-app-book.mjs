@@ -174,19 +174,19 @@ try {
   ok(!!(await pv.evaluate(() => DECK.panes.state().find)), 'reading aids: ⌘F / Ctrl+F in the preview opens the book pane’s own search');
   await page.keyboard.press('Escape');
   ok(await pv.evaluate(() => !(window.__APP_LOAD && document.querySelectorAll('.deck-error').length)) && !(await page.evaluate(() => window.__APP_TEST.state().error)), 'reading aids: no build or player error');
-  // 自習と記録（v0.6.5 D）：プレビューは記録しない（DECK_DEV）。「前回の続きから」は本の窓の 1 つだけ（編集アプリは足さない）。learn のプレビューは速さを操れる
+  // 自習と記録（v0.6.5 D）：プレビューは記録しない（DECK_DEV）。「前回の続きから」は本の窓の 1 つだけ（編集アプリは足さない）。前の版の learn は talk（talk のプレビューも速さを操れる）
   ok(await pv.evaluate(() => DECK.trackingAdapter() === null && DECK.tracking().adapter === null), 'tracking: the sandboxed preview records nothing (no adapter) and raises no error');
   ok(await page.evaluate(() => document.body.textContent.includes('前回の続きから')) === false && await pv.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.children.length === 0 && e.textContent === '前回の続きから').length <= 1), 'resume: at most one 「前回の続きから」 (the player’s), none from the editor');
   {
     const l0 = (await st(page)).loads;
     await page.evaluate(() => window.__APP_TEST.previewMode('learn'));
-    await page.waitForFunction((l0) => { const s = window.__APP_TEST.state(); return s.loads > l0 && s.frameLoaded === s.loads; }, l0, { timeout: scaled(30000) });
+    // 前の版の learn は talk になる（モードは変わらないので読み込み直さない）。talk のプレビューも再生速度を操れて、記録しない
+    await page.waitForTimeout(300);
+    ok(await page.evaluate((l0) => window.__APP_TEST.state().loads === l0, l0), 'learn: the editor reads the former learn as talk (the preview is not reloaded)');
     let lm = null;
-    for (let i = 0; i < 50 && !(lm && lm.mode === 'learn'); i++) { try { const f = await (await page.$('#preview')).contentFrame(); lm = await f.evaluate(() => (window.DECK && DECK.ready ? { mode: DECK.mode, r1: (DECK.rate(1.5), DECK.state().rate), tracking: DECK.tracking().adapter } : null)); } catch { /* 読み込み中 */ } if (!(lm && lm.mode === 'learn')) await page.waitForTimeout(150); }
-    ok(lm && lm.mode === 'learn' && lm.r1 === 1.5 && lm.tracking === null, `learn: the preview plays in learn mode with rate control and no tracking (${JSON.stringify(lm)})`);
-    const l1 = (await st(page)).loads;
-    await page.evaluate(() => window.__APP_TEST.previewMode('talk'));
-    await page.waitForFunction((l1) => { const s = window.__APP_TEST.state(); return s.loads > l1 && s.frameLoaded === s.loads; }, l1, { timeout: scaled(30000) });
+    for (let i = 0; i < 50 && !(lm && lm.mode === 'talk'); i++) { try { const f = await (await page.$('#preview')).contentFrame(); lm = await f.evaluate(() => (window.DECK && DECK.ready ? { mode: DECK.mode, r1: (DECK.rate(1.5), DECK.state().rate), tracking: DECK.tracking().adapter, bar: !!document.querySelector('#dt-cb [data-b="rate"]') } : null)); } catch { /* 読み込み中 */ } if (!(lm && lm.mode === 'talk')) await page.waitForTimeout(150); }
+    ok(lm && lm.mode === 'talk' && lm.r1 === 1.5 && lm.bar && lm.tracking === null, `talk: the preview has playback speed in the toolbar and records nothing (${JSON.stringify(lm)})`);
+    await pv.evaluate(() => DECK.rate(1));
   }
   const h1 = await inBook(page, () => { const a = document.getElementById('egatari-article'); return a ? [...a.querySelectorAll('h1')].map((x) => x.textContent).join(' / ') : null; });
   ok(/平均と中央値/.test(h1 || ''), `view: the book frame shows the rendered article (${h1})`);

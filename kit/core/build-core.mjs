@@ -35,6 +35,33 @@ import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isS
 
 // 設定のファイルの metadata から deck-meta に写す権利の項目（format spec §4 の deck-meta の表。schema/deck-meta.schema.json）。1 ファイル（portable.mjs）も作業フォルダの組み立ても同じものを写す
 export const DECK_META_RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
+// metadata.offer（format spec §1.2：作者が見せるモードと見え方、開くときの {mode, face}）を書く形にする。deck-meta.offer と索引の metadata.offer に使う。
+// 前の版の learn は talk と読む（Player P1）。知らない値・重なりは捨て、空になった modes・faces は書かない。open は offer の中にあるものだけ。
+// 何も残らなければ null（書かない）
+export const OFFER_MODES = ['talk', 'video'];
+export const OFFER_FACES = ['talk', 'read'];
+export function normalizeOffer(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  const list = (a, ok) => {
+    if (!Array.isArray(a)) return null;
+    const r = [];
+    for (let x of a) { if (x === 'learn') x = 'talk'; if (ok.includes(x) && !r.includes(x)) r.push(x); }
+    return r.length ? r : null;
+  };
+  const out = {};
+  const modes = list(o.modes, OFFER_MODES), faces = list(o.faces, OFFER_FACES);
+  if (modes) out.modes = modes;
+  if (faces) out.faces = faces;
+  const op = o.open && typeof o.open === 'object' && !Array.isArray(o.open) ? o.open : null;
+  if (op) {
+    const open = {};
+    const m = op.mode === 'learn' ? 'talk' : op.mode;
+    if (OFFER_MODES.includes(m) && (!modes || modes.includes(m))) open.mode = m;
+    if (OFFER_FACES.includes(op.face) && (!faces || faces.includes(op.face))) open.face = op.face;
+    if (Object.keys(open).length) out.open = open;
+  }
+  return Object.keys(out).length ? out : null;
+}
 
 // ---------------------------------------------------------------- 原稿の解析：スライドの鍵と、編集用の元の位置
 const EDITABLE = new Set(['h1', 'h2', 'p', 'li', 'td', 'th']);
@@ -1058,7 +1085,7 @@ export function build(env0, srcPath, opts = {}) {
   const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${opts.articleCss || ''}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）。
-  // 権利の表示と作成者（license・copyright・attribution・creators。§4・§7.3）も写す：再生器のファイルの情報が deck-meta から出す。形の合わない値は写さない
+  // 権利の表示と作成者（license・copyright・attribution・creators。§4・§7.3）と offer（§1.2）も写す：再生器のファイルの情報と開き方が deck-meta から出る。形の合わない値は写さない
   const folderCompletion = () => {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
     if (!env.exists(cfg) || !inDeck(cfg)) return {};
@@ -1070,6 +1097,9 @@ export function build(env0, srcPath, opts = {}) {
       const v = md[k];
       if (k === 'creators' ? Array.isArray(v) && v.every((x) => typeof x === 'string') : typeof v === 'string') out[k] = k === 'creators' ? [...v] : v;
     }
+    // 見せるモードと見え方（format spec §1.2、Player P1）：再生器が deck-meta.offer を読む
+    const offer = normalizeOffer(md.offer);
+    if (offer) out.offer = offer;
     return out;
   };
   // 2.0 だけの教材は再生器の 1.x 用の土台と公開の補助（DECK.define・DECK.MotionElement・DECK.el …）を外す。ただし作業フォルダの 1.x の部品（legacy）か、

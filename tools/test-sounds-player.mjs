@@ -66,7 +66,7 @@ try {
   assert.equal(await page.evaluate(() => __sound.contexts), 0, 'programmatic playback before gesture stays silent');
   assert.equal(await voices(), 0);
   assert.equal(await page.locator('[data-b="mute"]').count(), 1);
-  for (const mode of ['talk', 'learn']) {
+  for (const mode of ['talk', 'lecture']) {
     await page.evaluate((m) => { DECK.mode = m; DECK.go(0, 0, false); }, mode);
     const before = await voices(); await forward();
     await page.waitForFunction((n) => __sound.voices.length >= n + 5, before);
@@ -144,7 +144,7 @@ try {
   await page.goto(base + '/plain'); await page.waitForFunction(() => window.DECK && DECK.ready);
   assert.equal(await page.locator('[data-b="mute"]').count(), 0, 'no control on a lesson without event-capable components');
   assert.deepEqual(errors, []);
-  console.log('ok   browser: talk/learn crossings, tails, back/jump/seek, extension, print/thumbnails/presenter/video, lazy audio, accessible mute and persistence');
+  console.log('ok   browser: talk/lecture crossings, tails, back/jump/seek, extension, print/thumbnails/presenter/video, lazy audio, accessible mute and persistence');
 } finally {
   if (browser) await browser.close();
   await new Promise((r) => server.close(r));
