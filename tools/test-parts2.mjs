@@ -540,12 +540,12 @@ for (const [code, what] of [
   const bumped241 = Object.keys(v241.parts).filter((n) => v241.parts[n] !== v240.parts[n]).sort();
   ok(bumped241.join() === 'boxplot,codetree,curves,hist,plot,scatter,seq,sweep' && Object.keys(v241.parts).length === Object.keys(v240.parts).length,
     `2.4.1: exactly boxplot, codetree, curves, hist, plot, scatter, seq and sweep get new versions (${bumped241.join(', ')})`);
-  // 部品庫 2.4.2 の候補（c2-base 8677cef）：plot 1.1.1（縦軸の題が目盛りの字に重なるときだけ左へ）と、使う 6 つ（boxplot・hist・scatter・seq 2.0.4、curves・sweep 2.1.1）。指示の中身は 2.4.1 と同じ
+  // 部品庫 2.4.2（リリース b6cf535、c2-base 8677cef）：plot 1.1.1（縦軸の題が目盛りの字に重なるときだけ左へ）と、使う 6 つ（boxplot・hist・scatter・seq 2.0.4、curves・sweep 2.1.1）。指示の中身は 2.4.1 と同じ
   const v242 = lock2.catalogues['2.4.2'];
-  ok(lock2.default === '2.4.2' && v242 && v242.tarballSha256 === 'acedccc6255d387bc7bd2c38aee9941e091f017a0dafa156da8c5b35e938390e',
-    'CANDIDATE components 2.4.2 is the default and pinned to the tarball verified here (not yet a components release)');
+  ok(lock2.default === '2.4.2' && v242 && v242.tarballSha256 === 'acedccc6255d387bc7bd2c38aee9941e091f017a0dafa156da8c5b35e938390e' && v242.manifestSha256 === '3d53039ae12cbdfaeda060931419e254b98526b39a6718b8b5462739cd0d7abe',
+    'components 2.4.2 is the default and pinned to the released tarball and manifest (v2.4.2)');
   const bumped242 = Object.keys(v242.parts).filter((n) => v242.parts[n] !== v241.parts[n]).sort();
-  ok(bumped242.join() === 'boxplot,curves,hist,plot,scatter,seq,sweep', `CANDIDATE 2.4.2: exactly plot and its six users get new versions (${bumped242.join(', ')})`);
+  ok(bumped242.join() === 'boxplot,curves,hist,plot,scatter,seq,sweep', `2.4.2: exactly plot and its six users get new versions (${bumped242.join(', ')})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
