@@ -115,6 +115,8 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
       await page.waitForFunction(() => { const s = window.__APP_TEST.state(), x = window.__APP_TEST.slides(); return !x.busy && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
     };
     const checkShown = () => page.evaluate(() => !document.getElementById('panel').hidden && !!document.querySelector('#panel-body .sum'));
+    // 操作の後、プレビューがその枚へ動き、一覧の選択もそこにある（settle の後に届くことがある。下の「足す」の注）。来なければ確かめの ok が落ちる
+    const landed = (i) => page.waitForFunction((i) => (window.__APP_TEST.state().pos || {}).i === i && window.__APP_TEST.slides().sel === i, i, { timeout: scaled(10000) }).catch(() => {});
     const announced = () => page.waitForFunction(() => document.getElementById('sl-live').textContent.length > 0, null, { timeout: scaled(5000) }).then(() => page.textContent('#sl-live'));
     // 一覧の行は縮図の枠（sandbox の iframe）の上に重なるので、プレビューの上の重ねと同じく、効くまで押し直す（tools/click-retry.mjs）
     const selectRow = (i) => clickUntil(page, `#sl-list [data-i="${i}"]`, () => page.waitForFunction((i) => window.__APP_TEST.slides().sel === i, i, { timeout: scaled(2500) }));
@@ -181,7 +183,13 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         const sec = parseNarration(after.narr).filter((g) => g.slideKey === id);
         ok(sections(after.narr).indexOf(id) === sections(after.narr).indexOf(k[sel]) + 1 && sec.some((g) => g.stepKey === '0' && g.turns.length === 1) && after.narr.includes(`{#${id}}`),
           `${tag}: add "${kind}" adds a narration section "## … {#${id}}" with a placeholder line, after the previous slide's section`);
-        ok(await checkShown() && (await sl()).sel === sel + 1 && (await state()).pos && (await state()).pos.i === sel + 1, `${tag}: add "${kind}": rebuilt, the preview shows the new slide, the quick check ran`);
+        // settle は組み直し・読み込み・品質チェック（一覧の busy）の終わりまで。プレビューが新しい枚へ動いた知らせ（deck-pos）はその後に届くことがある：
+        // 読み込み直した後の位置は、デッキの ready で親が goto を送り返してから決まり、その往復と品質チェックの残り（読みの指定・雛形の字を
+        // 作業場所から読む）のどちらが先に終わるかは決まっていない（遅い macOS の runner で 2 回落ちた）。知らせが届くまで待ってから確かめる。
+        // 品質チェックの板は busy が下りる前に出ている（afterChange が待つ）
+        await landed(sel + 1);
+        const shown = { check: await checkShown(), sel: (await sl()).sel, pos: ((await state()).pos || {}).i };
+        ok(shown.check && shown.sel === sel + 1 && shown.pos === sel + 1, `${tag}: add "${kind}": rebuilt, the preview shows the new slide, the quick check ran${shown.check && shown.sel === sel + 1 && shown.pos === sel + 1 ? '' : ' ' + JSON.stringify({ want: sel + 1, ...shown })}`);
         const errs = await page.$$eval('#panel-body .res.error', (xs) => xs.map((x) => x.textContent));
         const mine = await page.$$eval('#panel-body .res', (xs, n) => xs.filter((x) => x.querySelector('.where').textContent.startsWith(`スライド ${n}：`)).map((x) => [x.classList.contains('warn') ? 'warn' : 'other', x.textContent]), sel + 2);
         const nSteps = sec.length;
@@ -298,11 +306,13 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         let after = await snap(), k2 = keys(after.deck);
         ok(k2[2] === k[1] && k2[1] === k[2] && [...k2].sort().join() === [...k].sort().join(), `${tag}: Alt+↓ moves the slide down; the ids do not change`);
         ok(sections(after.narr).join() === k2.join() && after.man === before.man, `${tag}: the narration sections follow the new order; the audio manifest is untouched (keys)`);
+        await landed(2);   // 動かしたスライドへ（選択が一瞬、前の枚の知らせで戻ることがある。↑ を押す前に落ち着かせる）
         ok(/2 枚目から 3 枚目/.test(await announced()) && (await sl()).sel === 2 && await page.evaluate(() => document.activeElement.id) === 'sl-list', `${tag}: the move is announced; the moved slide stays selected and focused`);
         b0 = (await state()).builds;
         await page.click('#sl-up');
         await settle(b0);
         ok((await snap()).deck === before.deck && (await snap()).narr === before.narr, `${tag}: the ↑ button moves it back (same bytes)`);
+        await landed(1);
         // ドラッグ：2 枚目を 5 枚目の下へ
         b0 = (await state()).builds;
         await page.locator('#sl-o-1').dragTo(page.locator('#sl-o-4'), { targetPosition: { x: 60, y: 70 } });
