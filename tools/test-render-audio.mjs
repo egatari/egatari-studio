@@ -168,6 +168,11 @@ function analyze(cap) {
   }
   return { steps, seams };
 }
+// 音声の長さ：映像と同じ標本の数。ただし古い ffmpeg（Ubuntu の 6.x）は AAC の終わりの詰め物（最後の 1024 標本の枠の残り）を
+// 復号で落とさないので、そのぶん（2048 標本まで）長くてよい（先頭の位置は上の試験で 1 ms 以内を確かめている）。足りないのはだめ
+function tailOk(x, want, what) {
+  assert.ok(x.length >= want - 1 && x.length <= want + 2048, `${what}: audio ${x.length} samples vs video ${want}`);
+}
 const fmt = (a) => JSON.stringify(a, (k, v) => (typeof v === 'number' ? +v.toFixed(3) : v));
 
 const deck = path.join(work, 'deck');
@@ -203,14 +208,14 @@ await t('full.mp4：映像はコマ数どおり、音声は 48 kHz で映像と�
   assert.equal(+v.nb_frames, frames);
   assert.equal(+a.sample_rate, 48000);
   assert.ok(Math.abs(+v.start_time) < 0.001 && Math.abs(+a.start_time) < 0.001, `start ${v.start_time} / ${a.start_time}`);
-  assert.ok(Math.abs(full.length - Math.round(frames / meta.fps * SR)) <= 1, `audio ${full.length} samples vs video ${frames / meta.fps * SR}`);
+  tailOk(full, Math.round(frames / meta.fps * SR), 'full.mp4');
   console.log(`     video ${v.nb_frames} frames ${v.duration} s, audio ${full.length} samples (${(full.length / SR).toFixed(6)} s), start ${v.start_time} / ${a.start_time}`);
 });
 await t('クリップの音声はコマの境目で切った区間（クリップ 2 の先頭が全体の同じ時刻に当たる）', () => {
   const seg = meta.segments[2];
   const clip = decode(path.join(out, seg.clip));
   const off = Math.round(seg.clipStart * SR);
-  assert.equal(clip.length, Math.round(seg.frames / meta.fps * SR));
+  tailOk(clip, Math.round(seg.frames / meta.fps * SR), seg.clip);
   const shifted = new Float32Array(off + clip.length); shifted.set(clip, off);
   const r = xlag(shifted, cuts[2] + 4800, 19200, 0, 480);
   assert.ok(Math.abs(r.lag) <= SR / 1000, `clip 2 lag ${r.lag.toFixed(2)} samples`);
