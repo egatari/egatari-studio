@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-sweep の見本</title>
+<!-- 組み方：node kit/build.mjs components/sweep/demo.html -o components/sweep/out/demo.html -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>幅のパラメータで形が変わる</h2>
+  <div class="body">
+    <m-sweep f="1/(1 + u*u/(c*c))" values="[0.5,1,2]" param="σ" xr="[-4,4]" yr="[0,1.2]" xt="[-4,-2,0,2,4]" yt="[0,0.5,1]"
+             xl="*u*" yl="重み" digits="1" style="height:400px"></m-sweep>
+  </div>
+  <div class="concl"><span>→ σ が大きいほど、遠くの点まで重みが届く</span></div>
+</section>
+
+<section class="slide">
+  <h2>学習率と誤差の減り方</h2>
+  <div class="body">
+    <m-sweep f="((1-c)**2)**u" values="[0.1,0.5,1.8,2.1]" param="ηa" xr="[0,10]" yr="[0,1.5]" xt="[0,5,10]" yt="[0,0.5,1,1.5]"
+             xl="*t*" yl="損失の比" digits="1" style="height:400px"></m-sweep>
+  </div>
+  <div class="concl"><span>→ ηa が 2 を超えると、誤差は減らずに増える</span></div>
+</section>
+
+<section class="slide">
+  <h2>審査が速くなると、待ち時間はどう変わる</h2>
+  <div class="body">
+    <m-sweep f="1/(c - u)" values="[10,12]" param="処理能力" xr="[0,9.9]" yr="[0,6]" xt="[0,5]" yt="[0,2,4,6]"
+             xl="1 日の申請" yl="平均待ち（日）" digits="0" size="36" at="[0.5]" point='{"u": 9.8, "label": "平均待ち {y} 日", "digits": 2}' style="height:400px"></m-sweep>
+  </div>
+  <div class="concl"><span>→ 混むほど、少し速くするだけで待ちが大きく減る（架空）</span></div>
+</section>
+
+</div>
+</body>
+</html>
