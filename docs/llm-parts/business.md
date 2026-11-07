@@ -36,13 +36,12 @@ Data example (child `<script type="application/json">`): `{"rings":[{"key":"TAM"
 
 ### `<m-flow>`: extension for this part set (the component is described in §3)
 
-お金・モノの流れ（ビジネスモデルの図）のための edge の欄（書かなければこれまでと同じ）：
+Business-model edges:
 
-- `kind`：`money`（`--emph` の太線）・`service`（`--term`）・`data`（`--muted` の破線）。`tone` と `dash` を書けばそちらが勝つ
-- `amount`：金額などを太字で添える。`label` もあれば線の反対の側に書く
-- `shift`：線に垂直に（進む向きの右へ）ずらす px。同じ 2 つの箱の行きと帰りを `shift` を同じ値にして 2 本並べる。字はずらした側に書く
-- `pulse`：点の列（`pulse-n` 個、0.22 秒おき）が始点から終点へ `pulse-dur` 秒で流れる。`true` なら辺の段階に（引き終わってから）1 回、`[段階, …]` ならその段階ごとに 1 回（辺の段階でなければ `pulseAt` 秒、既定 0.2 秒から）。位置は (k, t) だけで決まり、流れ終わると消える（最終状態には出ない）。`pulse` の段階は図の段階の数にも数える
-- `cues(k)`：pulse の開始時刻を返す（pulse のない図はこれまでどおり null）。口述原稿の `{cue}` の数と合えば、「お金は〜から〜へ{cue}」に合わせて流れる
+- `kind`: `money` (thick), `service`, `data` (dashed); `tone`/`dash` win
+- `amount`: bold figure
+- `shift`: px right of travel; both directions = 2 parallel lines
+- `pulse`: `pulse-n` dots run start→end in `pulse-dur` s; `true` = once after drawing; `[step, …]` = once per step; pulse steps count
 
 ### Worked example: business (Japanese, sumi theme, m-kpi)
 

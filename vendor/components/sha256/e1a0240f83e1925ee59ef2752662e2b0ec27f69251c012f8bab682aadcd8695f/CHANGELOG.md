@@ -1,0 +1,34 @@
+# m-venn changelog
+
+The part's own versions (Egatari spec §6.1). Releases of the whole library are in the repository's CHANGELOG.md.
+
+## 2.0.2 (components 2.2.0)
+
+- Requires base 1.1.0 (sub- and superscripts at least 24px, a measured text-width estimate).
+- Fix: set and region text widths use base's measured textWidth in the deck's font (digits and Latin were 0.6 em). Bold keeps its 1.04 factor.
+
+## 2.0.1 (components 2.1.2)
+
+- Fix: long set names or a small element made the radius negative, so no circles were drawn; the radius is now at least 60 px and `size` is reported with the width or height that is missing.
+- Fix: a size that is not a number (size="abc") threw; it is now the default 26 and `attr` is reported.
+- Fix: the element had no role or accessible name, and screen readers read the raw svg text; it now has role="img" and an aria-label that states the final state in one sentence (the sets and the items of each region). An author's aria-label is kept, and the svg is aria-hidden.
+- Fix: the clipPath ids carried the old version (venn-2-0-0-); they are now venn-2-0-1-, so two versions can live on one page.
+
+## 2.0.0 (components 2.0.0-rc.1 and 2.0.0)
+
+- Moved to `egatariParts.define({name: "venn", version: "2.0.0", requires: {base: "1.0.0"}, element: "m-venn"})`,
+  extending `base.MotionElement` with `base.el` / `mtext` / `prog` / `lerp` / `variant` / `previewOpacity`;
+  `static partName = "venn"`. The embedded `egatari-variant` block is gone (`base.variant`). The DOM is byte-identical to
+  1.13.0 on its demo at every step, up to the id rewrite below (tools/test-c2-identity.mjs).
+- Ids: its clip paths are `venn-2-0-0-<n>-in<i>` and `venn-2-0-0-<n>-out<i>` (1.13.0: `m-venn-<n>-in<i>`, `-out<i>`),
+  numbered by a counter of the part's own (1.13.0: the class's static `n`, which a frozen class cannot carry).
+  Rewrite in the identity test: `m-venn-\d+` → `venn-2-0-0-\d+`.
+- Items that do not fit their regions even at 24 px are reported with `ctx.report("size", "[venn] …")` (1.13.0:
+  `console.warn("m-venn: …")`). Regions with C in a two-set diagram still throw; base contains it.
+- The preview view is `ctx.preview` alone (1.13.0 also accepted `ctx.mode === "lecture"`).
+- Kept from 1.11: the shape geometry is written again at the end of every render (the raster fix,
+  tools/test-raster-history.mjs).
+
+## 1.13.0
+
+As released in the library's 1.13.0.
