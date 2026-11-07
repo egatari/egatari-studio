@@ -6,6 +6,8 @@
 //                音声は --embed-audio と同じく AAC に圧縮する（ffmpeg がなければ WAV）。docId は原稿のフォルダの FORMAT.CONFIG_FILE に残す
 //   --without-live-results  授業の部屋の結果（学ぶ人の質問と答え。kit/core/live-results.mjs）の添付を 1 ファイルに入れない（入るときは知らせる）
 //   --play-only  その再生専用の派生（<デッキのフォルダ>/<題名><FORMAT.PLAY_EXT>）：原稿を入れず、音声だけを持つ
+//   --scorm      LMS 用の SCORM 1.2 の包み（<デッキのフォルダ>/<題名>.scorm.zip。spec bindings/scorm12.md）：--play-only の出力をそのまま index.html にし、
+//                imsmanifest.xml を足した zip（kit/core/scorm.mjs。時刻と並びを固定：同じ入力から同じバイト）
 //   --components-catalogue 2 | <カタログの版>  部品庫 2.0 のパーツで組む（components2.lock.json。既定は 1.x。作業フォルダの設定のファイルの componentsCatalogue と同じ）
 //   --update-themes  教材が固定した同梱のテーマの前の版（FORMAT.CONFIG_FILE の themes。themes.lock.json）を今の版にして組む（設定のファイルも書き換え、
 //                変わる色を出す）。付けなければ固定した版で組み、知らせる（黙って新しい色にしない。kit/core/themes-lock.mjs）
@@ -34,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 import * as core from './core/build-core.mjs';
 import { abcjs } from './abcjs-node.mjs';
 import { exportPortable, playOnly } from './core/portable.mjs';
+import { scormPackage, completionRule, SCORM_EXT } from './core/scorm.mjs';
 import { liveResultsWarning } from './core/live-results.mjs';
 import { addLive, liveRuntime, mergeLive, parseRoomBlock } from './core/live.mjs';
 import { FORMAT } from './core/format.mjs';
@@ -274,7 +277,7 @@ export function writeOutput(srcPath, out, data) {
 // 名前は必ず .ega.html / .play.ega.html で終わるので、deck.html・narration.md など原稿のファイルには当たらない
 export function defaultPortableOut(srcPath, playOnlyOut = false, title = '') {
   const p = path.parse(path.resolve(srcPath));
-  const ext = playOnlyOut ? FORMAT.PLAY_EXT : FORMAT.FILE_EXT;
+  const ext = playOnlyOut === 'scorm' ? SCORM_EXT : playOnlyOut ? FORMAT.PLAY_EXT : FORMAT.FILE_EXT;
   const byTitle = path.join(p.dir, exportName(title, p.name, ext));
   let st = null;
   try { st = fs.lstatSync(byTitle); } catch { /* まだない */ }
@@ -331,13 +334,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     else if (a[i] === '--embed-audio') opts.embedAudio = true;
     else if (a[i] === '--portable') opts.portable = true;
     else if (a[i] === '--play-only') { opts.portable = true; opts.playOnly = true; }
+    else if (a[i] === '--scorm') { opts.portable = true; opts.playOnly = true; opts.scorm = true; }
     else if (a[i] === '--live') opts.liveFile = a[++i];
     else if (a[i] === '--without-live-results') opts.withoutLiveResults = true;
     else if (a[i] === '--update-themes') opts.updateThemes = true;
     else if (a[i] === '--components-catalogue') opts.componentsCatalogue = a[++i];
     else src = a[i];
   }
-  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable [--without-live-results]] [--play-only [--live room.json]] [--update-themes] [--components-catalogue 2 | <catalogue version>]'); process.exit(1); }
+  if (!src) { console.error('usage: node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable [--without-live-results]] [--play-only [--live room.json]] [--scorm] [--update-themes] [--components-catalogue 2 | <catalogue version>]'); process.exit(1); }
   try { src = resolveDeckArg(src); } catch (e) { console.error(`build: ${e.message}`); process.exit(1); }
   if (opts.updateThemes) {
     let up;
@@ -360,13 +364,21 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     }
     let r;
     try { r = await buildPortable(src, { ...opts }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
-    const out = path.resolve(opts.out || defaultPortableOut(src, opts.playOnly, r.index?.metadata?.title || titleOf(r.html)));
-    try { writeOutput(src, out, r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
+    // LMS 用（SCORM 1.2）：再生専用の出力をそのまま zip に入れる（kit/core/scorm.mjs）
+    let pkg = null;
+    if (opts.scorm) try { pkg = scormPackage(r.html); } catch (e) { console.error(`scorm: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
+    const out = path.resolve(opts.out || defaultPortableOut(src, pkg ? 'scorm' : opts.playOnly, r.index?.metadata?.title || titleOf(r.html)));
+    try { writeOutput(src, out, pkg ? pkg.zip : r.html); } catch (e) { console.error(`portable: ${e.message}`); process.exit(1); }
     const s = r.stats;
     if (r.writes[FORMAT.CONFIG_FILE]) console.log(`  docId ${r.index.docId} -> ${path.join(path.dirname(path.resolve(src)), FORMAT.CONFIG_FILE)}（keep this file with the deck）`);
     const idw = Object.keys(r.writes).filter((k) => k !== FORMAT.CONFIG_FILE);
     if (idw.length) console.log(`  slide ids written back to the working folder (backups in .cache/edits/): ${idw.join(', ')}`);
     console.log(`portable${opts.playOnly ? ' (play-only)' : ''}${opts.live ? ` with live session ${opts.live.room}` : ''}: slides: ${s.slides}, source files: ${s.files}, audio: ${s.audio}, profile: ${r.index.profile}, size: ${(Buffer.byteLength(r.html) / 1024).toFixed(0)} KB\n  -> ${out}`);
+    if (pkg) {
+      const c = completionRule(pkg.completion);
+      const rule = c.kind === 'end' ? 'the last step is reached' : c.kind === 'fraction' ? `${c.percent}% of the steps are reached` : 'every step is reached';
+      console.log(`scorm: SCORM 1.2 package (imsmanifest.xml + index.html), ${pkg.steps} steps, ${(pkg.zip.length / 1024).toFixed(0)} KB; completed when ${rule}${c.played ? ' (played on the slides; reading in the book does not count)' : ''}`);
+    }
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     if (r.stats.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）
     const lw = opts.playOnly ? null : liveResultsWarning(r.stats.liveResults);

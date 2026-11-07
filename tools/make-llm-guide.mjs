@@ -32,6 +32,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
+import { writeZip } from '../kit/core/zip-write.mjs';
 import { parseLock, resolveCatalogueContent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
 import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
@@ -738,49 +739,10 @@ export function generate(opts = {}) {
   return { files, sizes, data, warnings };
 }
 
-// Deterministic ZIP (stored entries, UTF-8 names, 1980-01-01). No dependencies.
-const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
-  for (let k = 0; k < 8; k++) n = (n >>> 1) ^ ((n & 1) ? 0xedb88320 : 0);
-  return n >>> 0;
-});
-function crc32(bytes) {
-  let crc = 0xffffffff;
-  for (const b of bytes) crc = (crc >>> 8) ^ CRC_TABLE[(crc ^ b) & 0xff];
-  return (crc ^ 0xffffffff) >>> 0;
-}
+// Deterministic ZIP (stored entries, UTF-8 names, 1980-01-01; kit/core/zip-write.mjs). No dependencies.
 export function makeSkillZip(files) {
   const entries = Object.entries(files).filter(([f]) => f.startsWith(MAKE_SKILL_DIR + '/')).sort(([a], [b]) => a.localeCompare(b));
-  const local = [], central = [];
-  let offset = 0, centralSize = 0;
-  for (const [file, text] of entries) {
-    const name = Buffer.from('make/' + file.slice(MAKE_SKILL_DIR.length + 1));
-    const bytes = Buffer.from(text), crc = crc32(bytes);
-    const h = Buffer.alloc(30);
-    h.writeUInt32LE(0x04034b50, 0);
-    h.writeUInt16LE(20, 4); // version needed
-    h.writeUInt16LE(0x800, 6); // UTF-8
-    h.writeUInt16LE(33, 12); // DOS date: 1980-01-01
-    h.writeUInt32LE(crc, 14);
-    h.writeUInt32LE(bytes.length, 18);
-    h.writeUInt32LE(bytes.length, 22);
-    h.writeUInt16LE(name.length, 26);
-    const c = Buffer.alloc(46);
-    c.writeUInt32LE(0x02014b50, 0);
-    c.writeUInt16LE(20, 4); // version made by
-    h.copy(c, 6, 4, 30); // shared fields: version through extra length
-    c.writeUInt32LE(offset, 42);
-    local.push(h, name, bytes);
-    central.push(c, name);
-    offset += h.length + name.length + bytes.length;
-    centralSize += c.length + name.length;
-  }
-  const end = Buffer.alloc(22);
-  end.writeUInt32LE(0x06054b50, 0);
-  end.writeUInt16LE(entries.length, 8);
-  end.writeUInt16LE(entries.length, 10);
-  end.writeUInt32LE(centralSize, 12);
-  end.writeUInt32LE(offset, 16);
-  return Buffer.concat([...local, ...central, end]);
+  return Buffer.from(writeZip(entries.map(([file, text]) => ['make/' + file.slice(MAKE_SKILL_DIR.length + 1), Buffer.from(text)])));
 }
 export function writeMakeSkillZip(out, files = generate().files) {
   fs.mkdirSync(out, { recursive: true });

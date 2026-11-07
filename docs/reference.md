@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=f8049b046cc3e3a3 -->
+<!-- i18n: pair=reference.ja.md sha256=1bbf48b003027b45 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -452,7 +452,7 @@ The slides and the script may be in different languages (for example Japanese sl
 
 ## Build
 
-`node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]` (or `npm run build -- …`). Given a folder, it builds the `deck.html` inside it (without one it says what it expected and exits with 1).
+`node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only] [--scorm]` (or `npm run build -- …`). Given a folder, it builds the `deck.html` inside it (without one it says what it expected and exits with 1).
 
 | Option | Meaning |
 |---|---|
@@ -460,7 +460,7 @@ The slides and the script may be in different languages (for example Japanese sl
 | `--theme name` | theme (see [Themes](#themes)) |
 | `--dev` | add `data-src` for the editor and skip glyph subsetting (used by the dev server) |
 | `--embed-audio` | embed audio as AAC 64 kbps mono (needs ffmpeg; otherwise WAV, with a warning). Without it, audio is referenced relative to the output |
-| `--portable`, `--play-only` | an Egatari file that also carries the editable source; see [Egatari file](#egatari-file---portable) |
+| `--portable`, `--play-only`, `--scorm` | an Egatari file that also carries the editable source, its play-only copy, or that copy packaged for an LMS; see [Egatari file](#egatari-file---portable) |
 
 The summary line shows slides, math, parts, font files, script steps, audio steps, theme and size. Caches: subset fonts in `$TMPDIR/motion-slides-fonts/` (keyed by the glyphs, the TTF file's hash and the fonttools version; `uv` runs `fonttools==4.67.0` and `brotli==1.2.0`), compressed audio in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the slide text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the script, string literals of the parts used (without CJK in non-Japanese lessons), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese lessons `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
 
@@ -500,6 +500,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 |---|---|
 | `--portable` | write the Egatari file (default `<working folder>/<lesson title>.ega.html`, at the top of the folder; `-o` sets the path) |
 | `--play-only` | write a play-only copy (default `<working folder>/<lesson title>.play.ega.html`): no source, only the runtime and its audio. Use it for participants when the source or extension data should not be handed out |
+| `--scorm` | write a SCORM 1.2 package for an LMS (default `<working folder>/<lesson title>.scorm.zip`; [SCORM 1.2 binding](https://github.com/egatari/egatari-spec/blob/main/bindings/scorm12.md)): `imsmanifest.xml` (one SCO, identifier `egatari-<docId>`, title from the lesson title) and the play-only copy as `index.html`, byte for byte what `--play-only` writes. Fixed entry order and times, stored without compression, so the same lesson gives the same bytes. No `adlcp:masteryscore`: the player reports *completed* by `metadata.completion` and never sends a score. Refused when `deck-meta.tracking` has no `scorm12` or the resume data could exceed 4096 characters (about 8,000 steps). See [In an LMS with progress (SCORM)](distributing.md#in-an-lms-with-progress-scorm) |
 | `--without-live-results` | with `--portable`: leave out attachments that hold live results (participants' questions and answers). Without it, an Egatari file that contains them prints a warning. Play-only copies never contain them ([Live](distributing.md#live-questions-and-polls-in-class-draft)) |
 | `--update-themes` | rebuild with the current version of bundled themes that `egatari.json` pins to an earlier version (`themes`, below), and rewrite those pins; prints the colors that change |
 

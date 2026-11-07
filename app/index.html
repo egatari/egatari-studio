@@ -35,6 +35,8 @@
           <button type="button" id="b-exportmenu" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
           <div id="m-export" class="menu-list sub-list" role="menu" aria-labelledby="b-exportmenu" hidden>
             <button type="button" id="b-export-play" role="menuitem" data-t="exportPlayOnly"></button>
+            <!-- LMS 用（SCORM 1.2。kit/core/scorm.mjs）：再生専用の写しと imsmanifest.xml の zip をダウンロード -->
+            <button type="button" id="b-export-scorm" role="menuitem" data-t="exportScorm"></button>
             <!-- 印刷（v0.6.5 E5）：スライド（1 枚ずつ）と、本（本のない教材は台本と小さなスライド。A4 縦。app/book.js） -->
             <button type="button" id="b-print" role="menuitem" data-t="printSlides"></button>
             <button type="button" id="b-print-book" role="menuitem" data-t="printScript"></button>

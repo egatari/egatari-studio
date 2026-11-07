@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=d52d92feeab2606a -->
+<!-- i18n: pair=reference.md sha256=f430f4b632dfa8e8 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -451,7 +451,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 ## build
 
-`node kit/build.mjs <deck.html | 作業フォルダ> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only]`（`npm run build -- …` でも）。フォルダを渡すとその中の `deck.html` を組む（`deck.html` がなければ、何が要るかを言って終了コード 1）。
+`node kit/build.mjs <deck.html | 作業フォルダ> [-o 出力.html] [--theme 名前] [--dev] [--embed-audio] [--portable] [--play-only] [--scorm]`（`npm run build -- …` でも）。フォルダを渡すとその中の `deck.html` を組む（`deck.html` がなければ、何が要るかを言って終了コード 1）。
 
 | 選択肢 | 意味 |
 |---|---|
@@ -459,7 +459,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `--theme 名前` | テーマ（[テーマ](#テーマ)） |
 | `--dev` | 編集用の `data-src` を付け、字を絞らない（開発サーバーが使う） |
 | `--embed-audio` | 音声を AAC 64 kbps モノラルで埋め込む（ffmpeg が要る。なければ WAV のまま、警告）。なしでは出力からの相対パスで参照する |
-| `--portable`・`--play-only` | 編集できる原稿も中に持つ Egatari ファイル。[Egatari ファイル](#egatari-ファイル--portable) |
+| `--portable`・`--play-only`・`--scorm` | 編集できる原稿も中に持つ Egatari ファイル、その再生専用の写し、その写しを LMS 用に包んだもの。[Egatari ファイル](#egatari-ファイル--portable) |
 
 最後の行に、スライド・式・パーツ・字のファイル・台本のステップ・音声のステップ・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と台本の文字列、使うパーツの JS の文字列（日本語以外の教材では和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語の教材ではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
@@ -499,6 +499,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 |---|---|
 | `--portable` | Egatari ファイルを書く（既定 `<作業フォルダ>/<教材の題名>.ega.html`。作業フォルダの最上位。`-o` で場所） |
 | `--play-only` | 再生専用の写しを書く（既定 `<作業フォルダ>/<教材の題名>.play.ega.html`）：原稿は入れず、実行系とその音声だけ。原稿や拡張のデータを渡したくない参加者向け |
+| `--scorm` | LMS 用の SCORM 1.2 のパッケージを書く（既定 `<作業フォルダ>/<教材の題名>.scorm.zip`。[SCORM 1.2 の包み方](https://github.com/egatari/egatari-spec/blob/main/bindings/scorm12.md)）：`imsmanifest.xml`（SCO が 1 つ。識別子は `egatari-<docId>`、題は教材の題名）と、再生専用の写しを `index.html` として（`--play-only` が書くものとバイトまで同じ）。項目の並びと時刻を固定し、圧縮しないので、同じ教材からは同じバイトになる。`adlcp:masteryscore` は書かない：プレーヤーが `metadata.completion` のとおりに「完了」を送り、点数は送らない。`deck-meta.tracking` に `scorm12` がないとき、再開のデータが 4096 字を超えうるとき（およそ 8,000 ステップより多い）は断る。[LMS で進み具合を取る（SCORM）](distributing.ja.md#lms-で進み具合を取るscorm) |
 | `--without-live-results` | `--portable` と一緒に：ライブの結果（参加者の質問と答え）の添付を入れない。付けないと、結果の入る Egatari ファイルには知らせを出す。再生専用の写しには決して入らない（[ライブ](distributing.ja.md#ライブ授業中の質問と投票下書き)） |
 | `--update-themes` | `egatari.json` が前の版に固定した同梱のテーマ（下の `themes`）を今の版にして組み、固定も書き換える。変わる色を出す |
 

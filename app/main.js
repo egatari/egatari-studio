@@ -40,6 +40,7 @@ import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
+import { scormPackage, completionRule, SCORM_EXT } from '../kit/core/scorm.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { TEMPLATES } from '../kit/core/slide-ops.mjs';
@@ -2002,8 +2003,7 @@ async function exportPlayOnlyFile(room = null, opts = {}) {
   status(T.exporting);
   let html, name, writes = {}, srcSha = null;
   try {
-    if (P) { html = playOnly(P.original); name = P.name; srcSha = P.index && P.index.sourceSha256; }
-    else { if (book.present()) await book.ensure(); const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true }); html = playOnly(r.html); writes = r.writes; srcSha = r.index && r.index.sourceSha256; name = exportName(r.index?.metadata?.title || titleOf(r.html), deckBase(), FORMAT.FILE_EXT); }   // 1 ファイルの書き出しと同じ名前
+    ({ html, name, writes, srcSha } = await playOnlyCopy());
     // 教材の版（sourceSha256）も拡張に入れる：質問を教材のその版に結び付ける（再生専用の deck-meta からは消えるため）
     if (room) html = addLive(html, { ...room, ...(typeof srcSha === 'string' ? { sourceSha256: srcSha } : {}) }, liveRuntime(LIVE_POLICY_SRC, LIVE_JS));
   } catch (e) { status(''); toast(T.exportFailed + ': ' + failText(e), true); return; }
@@ -2022,6 +2022,57 @@ async function exportPlayOnlyFile(room = null, opts = {}) {
     if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
     if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
   }
+}
+
+// 再生専用の写しを作る（参加者用と LMS 用で同じ）。1 ファイル：保存したもの（P.original）から。作業フォルダ：1 ファイルに組んでから（docId を初めて作ったら writes に）
+// 返すもの：{html, name（1 ファイルの書き出しと同じ名前。拡張子は FORMAT.FILE_EXT）, title, writes, srcSha}
+async function playOnlyCopy() {
+  const P = S.portable;
+  if (P) return { html: playOnly(P.original), name: P.name, title: (P.index && P.index.metadata && P.index.metadata.title) || '', writes: {}, srcSha: P.index && P.index.sourceSha256 };
+  if (book.present()) await book.ensure();
+  const r = await engine.exportPortable(S.deckFile, { withoutLiveResults: true });
+  const title = r.index?.metadata?.title || titleOf(r.html);
+  return { html: playOnly(r.html), name: exportName(title, deckBase(), FORMAT.FILE_EXT), title, writes: r.writes, srcSha: r.index && r.index.sourceSha256 };
+}
+
+// ---------------------------------------------------------------- LMS 用（SCORM 1.2）にエクスポート（kit/core/scorm.mjs、spec bindings/scorm12.md）
+// 再生専用の写しをそのまま index.html にし、imsmanifest.xml を足した zip をダウンロードする。保存していない変更の扱いは参加者用（再生専用）と同じ
+// 完了の決まり（metadata.completion）は窓で平たい言葉にして見せる（作業フォルダは設定のファイル、1 ファイルは索引の metadata。組み立てが deck-meta に写すものと同じ）
+function scormRuleText(c) {
+  const r = completionRule(c);
+  return T.scormRule(r.kind, r.percent, r.played, book.present());
+}
+async function scormExport() {
+  if (!S.ws) return;
+  if (S.portable && S.ws.dirty) { toast(T.scormUnsaved, true); return; }
+  let meta = null;
+  try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); if (c && typeof c.metadata === 'object') meta = c.metadata; } catch { meta = null; }
+  if (!meta && S.portable) meta = S.portable.index.metadata || null;
+  const v = await ask({ title: T.scormTitle,
+    body: [el('p', { id: 'scorm-lead', text: T.scormLead }), el('p', { id: 'scorm-rule', text: scormRuleText(meta && meta.completion) }), el('p', { cls: 'hint', id: 'scorm-hint', text: T.scormHint })],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'download', label: T.scormGo, pri: true }] });
+  if (v !== 'download') return;
+  const ws0 = S.ws, g0 = S.gen;
+  const live = () => S.ws === ws0 && S.gen === g0;
+  if (!(await leftoverGate('export'))) return;
+  if (!live()) return;
+  status(T.exporting);
+  let pkg, name, writes;
+  try {
+    const c = await playOnlyCopy();
+    writes = c.writes;
+    pkg = scormPackage(c.html);
+    const base = c.name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? c.name.slice(0, -FORMAT.FILE_EXT.length) : c.name.replace(/\.html?$/i, '');
+    name = exportName(base, deckBase(), SCORM_EXT);
+  } catch (e) { status(''); toast(T.exportFailed + ': ' + (e && T.scormRefused[e.code] ? T.scormRefused[e.code] : failText(e)), true); return; }
+  if (!live()) { status(''); toast(T.api.cancelled, true); return; }
+  try {
+    for (const [rel, text] of Object.entries(writes)) await ws0.writeText(rel, text, { live });   // 作業フォルダ：初めて作った docId を残す
+  } catch (e) { status(''); toast(String((e && e.message) || e), true); return; }
+  if (window.__APP_TEST) window.__APP_TEST.lastSaveName = name;
+  download(name, pkg.zip, 'application/zip');
+  status(T.exported(time(), (pkg.zip.length / 1048576).toFixed(1)));
+  toast(T.scormToast(name));
 }
 
 function liveMark(room) {
@@ -2174,6 +2225,7 @@ $('b-saveas').onclick = () => saveAsDialog().catch((e) => toast(String(e.message
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
 $('b-export-play').onclick = () => participantExport().catch((e) => toast(String(e.message || e), true));
+$('b-export-scorm').onclick = () => scormExport().catch((e) => toast(String(e.message || e), true));
 $('b-info').onclick = () => lessonInfo().catch((e) => toast(String(e.message || e), true));
 $('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message || e), true));
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
