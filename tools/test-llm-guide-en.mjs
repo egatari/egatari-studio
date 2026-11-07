@@ -130,7 +130,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     const json = execFileSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(pathToFileURL(path.join(dir, 'data.mjs')).href)}).then((m) => process.stdout.write(JSON.stringify(m.PACK)))`], { encoding: 'utf8', maxBuffer: 64 << 20 });
     const oldData = JSON.parse(json);
     assert.match(oldData.partsSrc, /\/v2\.4\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.4\.3\//);
+    assert.match(PACK.partsSrc, /\/v2\.4\.4\//);
     const a = jaDump(PACK), b = jaDump(oldData);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);

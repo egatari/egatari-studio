@@ -45,7 +45,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `a901cf59`
+Pack version: `c0da6aff`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -143,7 +143,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 Some parts are not included in these instructions (for Spread, Compare (amounts or features), Two quantities, Steps of a process, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.4.3/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.4.4/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 

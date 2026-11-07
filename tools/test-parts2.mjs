@@ -546,10 +546,11 @@ for (const [code, what] of [
     'components 2.4.2 is pinned to the released tarball and manifest (v2.4.2)');
   const bumped242 = Object.keys(v242.parts).filter((n) => v242.parts[n] !== v241.parts[n]).sort();
   ok(bumped242.join() === 'boxplot,curves,hist,plot,scatter,seq,sweep', `2.4.2: exactly plot and its six users get new versions (${bumped242.join(', ')})`);
-  // 部品庫 2.4.3（リリース 66b15d6）：標準の 16 のパーツに英語の説明（README.en.md）。index.js はどれも変わらず、版も 2.4.2 のまま
+  // 部品庫 2.4.3（リリース 66b15d6）：標準の 16 のパーツに英語の説明（README.en.md）。index.js はどれも変わらず、版も 2.4.2 のまま。
+  // リリース済みとして凍結（既定は候補 2.4.4 へ）
   const v243 = lock2.catalogues['2.4.3'];
-  ok(lock2.default === '2.4.3' && v243 && v243.tag === 'v2.4.3' && v243.tarballSha256 === '3309c4a438fa46c561fd96f3207d6015946f828a6f99516e0d141745231a9453' && v243.manifestSha256 === 'c3f97121317336cf5daa580c82f8dd089c720f2bb7752533291342a615f09546',
-    'components 2.4.3 is the default and pinned to the released tarball and manifest (v2.4.3)');
+  ok(v243 && v243.tag === 'v2.4.3' && v243.tarballSha256 === '3309c4a438fa46c561fd96f3207d6015946f828a6f99516e0d141745231a9453' && v243.manifestSha256 === 'c3f97121317336cf5daa580c82f8dd089c720f2bb7752533291342a615f09546',
+    'components 2.4.3 is pinned to the released tarball and manifest (v2.4.3)');
   const bumped243 = Object.keys(v243.parts).filter((n) => v243.parts[n] !== v242.parts[n]);
   ok(bumped243.length === 0 && Object.keys(v243.parts).join() === Object.keys(v242.parts).join(), `2.4.3: no part changes version (${bumped243.join(', ') || 'none'})`);
   const EN16 = ['bars', 'cards', 'compare', 'curves', 'cycle', 'fishbone', 'flow', 'kpi', 'menu', 'pie', 'predict', 'quad', 'scatter', 'timeline', 'tree', 'venn'];
@@ -558,6 +559,22 @@ for (const [code, what] of [
   const c2 = (v, n, f) => path.join(ROOT, 'vendor', 'components', 'sha256', v.content[n], f);
   const jsChanged = Object.keys(v243.content).filter((n) => fs.existsSync(c2(v243, n, 'index.js')) && fs.readFileSync(c2(v243, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v242, n, 'index.js'), 'utf8'));
   ok(jsChanged.length === 0, `2.4.3: every index.js is the same as in 2.4.2 (${jsChanged.join(', ') || 'none differ'})`);
+  // 候補 2.4.4（components 側はまだタグ・リリースなし。branch c2-base 3708b7d）：版が上がるのは m-map-japan 2.0.3 だけ
+  // （日本語でないレッスンでは組み込みの島の名前・枠のキャプションを英語で書く：竹島→Takeshima・尖閣諸島→Senkaku Islands・
+  // 沖ノ鳥島→Okinotorishima・南鳥島→Minamitorishima・父島→Chichijima・硫黄島→Iwo To、南西諸島→Nansei Islands・
+  // 小笠原諸島→Ogasawara Islands（異なる縮尺）。英語フォントで漢字の名前が札からはみ出すため）。日本語のレッスンは今までどおり。
+  // ほかのパーツは版も中身も 2.4.3 のまま。既定はこちら
+  const v244 = lock2.catalogues['2.4.4'];
+  ok(lock2.default === '2.4.4' && v244 && v244.tag === 'v2.4.4' && v244.tarballSha256 === '49f92e776872ff3f912524e234a4b19170584db16d0387c20445e80c2b9a25b2' && v244.manifestSha256 === 'f7a598e3ec4945e21b069db0a7e85441522bdda4211f0e050622b7bcafc62eb2',
+    'CANDIDATE 2.4.4 is the default and pinned to the candidate tarball and manifest (v2.4.4)');
+  const bumped244 = Object.keys(v244.parts).filter((n) => v244.parts[n] !== v243.parts[n]);
+  ok(bumped244.join() === 'map-japan' && Object.keys(v244.parts).length === Object.keys(v243.parts).length && v243.parts['map-japan'] === '2.0.2' && v244.parts['map-japan'] === '2.0.3',
+    `CANDIDATE 2.4.4: only m-map-japan gets a new version (2.0.2 → 2.0.3) (${bumped244.join(', ')})`);
+  const mapJapanJs = fs.readFileSync(partFile('map-japan', '2.0.3'), 'utf8');
+  ok(mapJapanJs.includes('"Nansei Islands"') && mapJapanJs.includes('"Ogasawara Islands"') && mapJapanJs.includes('"Takeshima"') && mapJapanJs.includes('"Senkaku Islands"') && mapJapanJs.includes('"Okinotorishima"') && mapJapanJs.includes('"Minamitorishima"') && mapJapanJs.includes('"Chichijima"') && mapJapanJs.includes('"Iwo To"'),
+    'CANDIDATE 2.4.4: m-map-japan 2.0.3 writes the built-in island names and inset captions in English when ctx.lang is not ja');
+  const changed244 = Object.keys(v244.content).filter((n) => !bumped244.includes(n) && v244.content[n] !== v243.content[n]);
+  ok(changed244.length === 0, `CANDIDATE 2.4.4: no other part changes without a version bump (${changed244.join(', ') || 'none'})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
