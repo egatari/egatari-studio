@@ -6,8 +6,8 @@
   "license": "MIT",
   "tarball": {
     "file": "egatari-components-v2.4.4.tar.gz",
-    "sha256": "49f92e776872ff3f912524e234a4b19170584db16d0387c20445e80c2b9a25b2",
-    "bytes": 1049238
+    "sha256": "88e8764e2c0e350ab5d787c363193862b3db0ffd46a16036ae76fce0a033efa2",
+    "bytes": 1051691
   },
   "purposes": [
     {
@@ -1080,6 +1080,7 @@
       "version": "2.0.3",
       "tier": "specialized",
       "set": "maps",
+      "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
       "requires": {
         "base": "1.1.0"
       },
@@ -1093,20 +1094,21 @@
         "sweep",
         "draw"
       ],
-      "sha256": "0159b0d468cac299c8c075c3c0724dbd53a23adf331850fb6967ced2ce6a0f32",
+      "sha256": "1e6807f146ffe6079f12bb9dbaeda1031953ad26a1019cde474c8ec6268d0631",
       "files": {
-        "CHANGELOG.md": "f4fe70b628e944c3ced94111687df715ddcf987fcdabcdbce1e091a3092d9ab4",
+        "CHANGELOG.md": "dd490a6cb96de62de6ccf7f4cc050df04528ae4b5c935571efebaae595869585",
         "README.md": "ee6444d1055788819c564751a248caddb03bd54c597c2c5afcb381e07d3b1a34",
         "demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
-        "index.js": "0159b0d468cac299c8c075c3c0724dbd53a23adf331850fb6967ced2ce6a0f32"
+        "index.js": "1e6807f146ffe6079f12bb9dbaeda1031953ad26a1019cde474c8ec6268d0631"
       }
     },
     "map-world": {
       "kind": "element",
       "tag": "m-map-world",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "tier": "specialized",
       "set": "maps",
+      "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,°×−、。〜あいかがきくけごしすただつてでとにのはばべまらりるれろをァアィイウェエォオカガキギクグケコゴサザシジスズセゼソタダチッツテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュユョヨラリルレロワン・ー上下世中丹主京人以位例値入六共凡出分列前動北千南単口台号合名和図国土地域基塗大太央字定小尖属島州帰度後択捉数文方既日書有朝未本東桁極樺歯民沖洋湾満界目礁秒竹符米級経線緯群舞色衆西見語諸赤足軍連道邦長閣限陸階離韓項領首鮮鳥（）：；",
       "requires": {
         "base": "1.1.0"
       },
@@ -1120,12 +1122,12 @@
         "sweep",
         "draw"
       ],
-      "sha256": "da117cd38b81381dd7479c2839812f2c6776a9b4b3262e5c665043b8501bee0b",
+      "sha256": "4d20de32fe23552cf1b40edecb30de3efa674a0347cb1ab032d3ea5f7cb3fbbe",
       "files": {
-        "CHANGELOG.md": "d687abc43878e445b0237f95f52cedc9cdd0dcdcca0e673f09961a0cd2df72e7",
-        "README.md": "58ccdbcb2826bdece9651ef93b50cb9bb6ca56a67f71fa0b5975769fd8dda044",
+        "CHANGELOG.md": "835e007282e53988affdefc8776ad2101f58475c71f462b354714cd9fda4f4d7",
+        "README.md": "483af93d8894c8b59b9a50af108f358407f04f1c7d36a41a87dd1ccee0530ef2",
         "demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
-        "index.js": "da117cd38b81381dd7479c2839812f2c6776a9b4b3262e5c665043b8501bee0b"
+        "index.js": "4d20de32fe23552cf1b40edecb30de3efa674a0347cb1ab032d3ea5f7cb3fbbe"
       }
     },
     "market": {
@@ -1803,14 +1805,14 @@
     "kpi/README.md": "b64993e19ac8ff6f2527b08ca27518d05a91a004e34aa83deca54466730f6d33",
     "kpi/demo.html": "9e06266e83cc9f04912f8330e03c87e0c1e510c3f2d7ad9fd82680bf822a0f34",
     "kpi/index.js": "ebfdbe90122bbd0cffc5515a7ff1be644a2fade92a646f54cc5a8e5a0c539bbd",
-    "map-japan/CHANGELOG.md": "f4fe70b628e944c3ced94111687df715ddcf987fcdabcdbce1e091a3092d9ab4",
+    "map-japan/CHANGELOG.md": "dd490a6cb96de62de6ccf7f4cc050df04528ae4b5c935571efebaae595869585",
     "map-japan/README.md": "ee6444d1055788819c564751a248caddb03bd54c597c2c5afcb381e07d3b1a34",
     "map-japan/demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
-    "map-japan/index.js": "0159b0d468cac299c8c075c3c0724dbd53a23adf331850fb6967ced2ce6a0f32",
-    "map-world/CHANGELOG.md": "d687abc43878e445b0237f95f52cedc9cdd0dcdcca0e673f09961a0cd2df72e7",
-    "map-world/README.md": "58ccdbcb2826bdece9651ef93b50cb9bb6ca56a67f71fa0b5975769fd8dda044",
+    "map-japan/index.js": "1e6807f146ffe6079f12bb9dbaeda1031953ad26a1019cde474c8ec6268d0631",
+    "map-world/CHANGELOG.md": "835e007282e53988affdefc8776ad2101f58475c71f462b354714cd9fda4f4d7",
+    "map-world/README.md": "483af93d8894c8b59b9a50af108f358407f04f1c7d36a41a87dd1ccee0530ef2",
     "map-world/demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
-    "map-world/index.js": "da117cd38b81381dd7479c2839812f2c6776a9b4b3262e5c665043b8501bee0b",
+    "map-world/index.js": "4d20de32fe23552cf1b40edecb30de3efa674a0347cb1ab032d3ea5f7cb3fbbe",
     "market/CHANGELOG.md": "ddbeca54da4ef13977a3d2a7ebe3e0adb620fdf066d97ee25d0e5d6950357a63",
     "market/README.md": "6221b1a1f04978c13d0a682d03c516b09732d85ad2d0154febf1eebf1df68796",
     "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",

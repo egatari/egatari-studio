@@ -1177,8 +1177,8 @@
     },
     "2.4.4": {
       "tag": "v2.4.4",
-      "tarballSha256": "49f92e776872ff3f912524e234a4b19170584db16d0387c20445e80c2b9a25b2",
-      "manifestSha256": "f7a598e3ec4945e21b069db0a7e85441522bdda4211f0e050622b7bcafc62eb2",
+      "tarballSha256": "88e8764e2c0e350ab5d787c363193862b3db0ffd46a16036ae76fce0a033efa2",
+      "manifestSha256": "62182412c744cc4a010826402998ccc38fab4dc3ab56c93bdb14a2d02e6f6671",
       "parts": {
         "bars": "2.0.2",
         "base": "1.1.0",
@@ -1208,7 +1208,7 @@
         "kobun": "2.0.2",
         "kpi": "2.0.2",
         "map-japan": "2.0.3",
-        "map-world": "2.0.2",
+        "map-world": "2.0.3",
         "market": "2.0.2",
         "markup-reader": "1.0.1",
         "menu": "2.0.2",
@@ -1259,8 +1259,8 @@
         "keyboard": "3dba49cbbf7853212a6e5c393de030430d02b8b1a2ba4c8b722db2bb8afad12f",
         "kobun": "de611e2477042b14eb9c04bb98ad0bbe6d7b44ca829213dd1a7a2b94d8f946ae",
         "kpi": "ef9c8c77ddf2b3953376a2db700c1277f550ea2606eab11cd8e18056dcba84c1",
-        "map-japan": "db5a8bf8377776c919c86d8a203a757bf7a6b563aebe96678ac68202c7689623",
-        "map-world": "9cf9789f26ceaae205d48bb083e823e768413e3b2227f87de09e3cde2105a68b",
+        "map-japan": "8c3d7e9921f249cf45ce26d5a449f2b01fef683f500afed69d0b189312c4464e",
+        "map-world": "bec04685638f8fc1217c380d361fd9a425ffeade0291a4f2b2d4e41a5628e0ef",
         "market": "5b44b272b917246219d2709f1b001964f87a3e07786cc9950087bbb8add3c721",
         "markup-reader": "03550bb20d425aa926258bab18b03bbc0cee292072e01bb6c78c429b3ae92c34",
         "menu": "e2181655ed2050668133e08eb14b5683cda48d6af8d76fd7b551c58798c95287",
@@ -2270,12 +2270,13 @@
         "license": "MIT"
       },
       "2.0.3": {
-        "sha256": "0159b0d468cac299c8c075c3c0724dbd53a23adf331850fb6967ced2ce6a0f32",
+        "sha256": "1e6807f146ffe6079f12bb9dbaeda1031953ad26a1019cde474c8ec6268d0631",
         "kind": "element",
         "tag": "m-map-japan",
         "requires": {
           "base": "1.1.0"
         },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
         "license": "MIT"
       }
     },
@@ -2305,6 +2306,16 @@
         "requires": {
           "base": "1.1.0"
         },
+        "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "4d20de32fe23552cf1b40edecb30de3efa674a0347cb1ab032d3ea5f7cb3fbbe",
+        "kind": "element",
+        "tag": "m-map-world",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,°×−、。〜あいかがきくけごしすただつてでとにのはばべまらりるれろをァアィイウェエォオカガキギクグケコゴサザシジスズセゼソタダチッツテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュユョヨラリルレロワン・ー上下世中丹主京人以位例値入六共凡出分列前動北千南単口台号合名和図国土地域基塗大太央字定小尖属島州帰度後択捉数文方既日書有朝未本東桁極樺歯民沖洋湾満界目礁秒竹符米級経線緯群舞色衆西見語諸赤足軍連道邦長閣限陸階離韓項領首鮮鳥（）：；",
         "license": "MIT"
       }
     },

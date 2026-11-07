@@ -559,17 +559,25 @@ for (const [code, what] of [
   const c2 = (v, n, f) => path.join(ROOT, 'vendor', 'components', 'sha256', v.content[n], f);
   const jsChanged = Object.keys(v243.content).filter((n) => fs.existsSync(c2(v243, n, 'index.js')) && fs.readFileSync(c2(v243, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v242, n, 'index.js'), 'utf8'));
   ok(jsChanged.length === 0, `2.4.3: every index.js is the same as in 2.4.2 (${jsChanged.join(', ') || 'none differ'})`);
-  // 候補 2.4.4（components 側はまだタグ・リリースなし。branch c2-base 3708b7d）：版が上がるのは m-map-japan 2.0.3 だけ
-  // （日本語でないレッスンでは組み込みの島の名前・枠のキャプションを英語で書く：竹島→Takeshima・尖閣諸島→Senkaku Islands・
-  // 沖ノ鳥島→Okinotorishima・南鳥島→Minamitorishima・父島→Chichijima・硫黄島→Iwo To、南西諸島→Nansei Islands・
-  // 小笠原諸島→Ogasawara Islands（異なる縮尺）。英語フォントで漢字の名前が札からはみ出すため）。日本語のレッスンは今までどおり。
-  // ほかのパーツは版も中身も 2.4.3 のまま。既定はこちら
+  // 候補 2.4.4（components 側はまだタグ・リリースなし。branch c2-base 0caefe2）：版が上がるのは m-map-japan・m-map-world 2.0.3 だけ。
+  // 英語の教材（ctx.lang が ja でない）では、国・県・州の名前の札（chip）を Source Sans 3 の字の高さに合わせて高くする（tallFont、
+  // chipSize が size + 8 ではなく Math.ceil(size * 1.43) + 2 で、基線も合わせて動かす）。m-map-japan は組み込みの島の名前・枠の
+  // キャプションも英語で書く（竹島→Takeshima・尖閣諸島→Senkaku Islands・沖ノ鳥島→Okinotorishima・南鳥島→Minamitorishima・
+  // 父島→Chichijima・硫黄島→Iwo To、南西諸島→Nansei Islands・小笠原諸島→Ogasawara Islands（異なる縮尺））。どちらも
+  // 新しく static glyphs（組み込みの字の一覧。字の絞り込みで教材の文にない字も残す、形式 §6.2）を持つ。ほかのパーツは版も中身も
+  // 2.4.3 のまま。既定はこちら
   const v244 = lock2.catalogues['2.4.4'];
-  ok(lock2.default === '2.4.4' && v244 && v244.tag === 'v2.4.4' && v244.tarballSha256 === '49f92e776872ff3f912524e234a4b19170584db16d0387c20445e80c2b9a25b2' && v244.manifestSha256 === 'f7a598e3ec4945e21b069db0a7e85441522bdda4211f0e050622b7bcafc62eb2',
+  ok(lock2.default === '2.4.4' && v244 && v244.tag === 'v2.4.4' && v244.tarballSha256 === '88e8764e2c0e350ab5d787c363193862b3db0ffd46a16036ae76fce0a033efa2' && v244.manifestSha256 === '62182412c744cc4a010826402998ccc38fab4dc3ab56c93bdb14a2d02e6f6671',
     'CANDIDATE 2.4.4 is the default and pinned to the candidate tarball and manifest (v2.4.4)');
-  const bumped244 = Object.keys(v244.parts).filter((n) => v244.parts[n] !== v243.parts[n]);
-  ok(bumped244.join() === 'map-japan' && Object.keys(v244.parts).length === Object.keys(v243.parts).length && v243.parts['map-japan'] === '2.0.2' && v244.parts['map-japan'] === '2.0.3',
-    `CANDIDATE 2.4.4: only m-map-japan gets a new version (2.0.2 → 2.0.3) (${bumped244.join(', ')})`);
+  const bumped244 = Object.keys(v244.parts).filter((n) => v244.parts[n] !== v243.parts[n]).sort();
+  ok(bumped244.join() === 'map-japan,map-world' && Object.keys(v244.parts).length === Object.keys(v243.parts).length &&
+    v243.parts['map-japan'] === '2.0.2' && v244.parts['map-japan'] === '2.0.3' && v243.parts['map-world'] === '2.0.2' && v244.parts['map-world'] === '2.0.3',
+    `CANDIDATE 2.4.4: exactly m-map-japan and m-map-world get a new version (2.0.2 → 2.0.3) (${bumped244.join(', ')})`);
+  for (const name of ['map-japan', 'map-world']) {
+    const js = fs.readFileSync(partFile(name, '2.0.3'), 'utf8');
+    ok(/static glyphs\s*=/.test(js) && js.includes('tallFont') && js.includes('Math.ceil(size * 1.43) + 2'),
+      `CANDIDATE 2.4.4: m-${name} 2.0.3 declares static glyphs and makes its name chips taller in an English lesson (tallFont)`);
+  }
   const mapJapanJs = fs.readFileSync(partFile('map-japan', '2.0.3'), 'utf8');
   ok(mapJapanJs.includes('"Nansei Islands"') && mapJapanJs.includes('"Ogasawara Islands"') && mapJapanJs.includes('"Takeshima"') && mapJapanJs.includes('"Senkaku Islands"') && mapJapanJs.includes('"Okinotorishima"') && mapJapanJs.includes('"Minamitorishima"') && mapJapanJs.includes('"Chichijima"') && mapJapanJs.includes('"Iwo To"'),
     'CANDIDATE 2.4.4: m-map-japan 2.0.3 writes the built-in island names and inset captions in English when ctx.lang is not ja');

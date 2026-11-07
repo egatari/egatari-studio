@@ -119,6 +119,8 @@ function contrast(a, b){ var x = lum(a), y = lum(b); return (Math.max(x, y) + 0.
 
 return class extends base.MotionElement {
   static partName = "map-japan";   // the registry name (define meta name), for report prefixes
+  // 組み込みの名前・見出し・目盛りの字（英語の名前を含む）。組み立てが字を絞り込むとき、教材の文にない字も残すように（形式 §6.2）
+  static glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；";
   static variants = ["fade", "sweep", "draw"];
   // データの形（kit/shape.js）
   static shape = {
@@ -429,11 +431,13 @@ return class extends base.MotionElement {
       return false;
     };
     // 字の札（地の色の角丸の箱に --fg の字）。w, h は札の大きさ
-    var chipSize = function(t, size){ return {w: est(t, size, self) + 10, h: size + 8}; };
+    // 英語の教材の字（Source Sans 3）は字の箱が高い（上 1.024・下 0.4 字）：札をその箱が入る高さにし、基線を箱に合わせる
+    var tallFont = !!ctx.lang && !/^ja\b/i.test(ctx.lang);
+    var chipSize = function(t, size){ return {w: est(t, size, self) + 10, h: tallFont ? Math.ceil(size * 1.43) + 2 : size + 8}; };
     var chip = function(parent, b, t, size, weight){
       var g = D.el("g", {opacity: 0}, parent);
       D.el("rect", {x: b.x.toFixed(1), y: b.y.toFixed(1), width: Math.max(0, b.w).toFixed(1), height: Math.max(0, b.h).toFixed(1), rx: 6, fill: "var(--bg)"}, g);
-      D.el("text", {x: (b.x + b.w / 2).toFixed(1), y: (b.y + b.h / 2 + size * 0.36).toFixed(1), "text-anchor": "middle", "font-size": size, "font-weight": weight || 400, fill: "var(--fg)"}, g).textContent = t;
+      D.el("text", {x: (b.x + b.w / 2).toFixed(1), y: (tallFont ? b.y + 1 + size * 1.024 : b.y + b.h / 2 + size * 0.36).toFixed(1), "text-anchor": "middle", "font-size": size, "font-weight": weight || 400, fill: "var(--fg)"}, g).textContent = t;
       return g;
     };
     // 名前の置き場所：中に入れば anchor に。入らなければまわりの海（陸と強調した地域を避ける）に置いて、引き出し線を引く

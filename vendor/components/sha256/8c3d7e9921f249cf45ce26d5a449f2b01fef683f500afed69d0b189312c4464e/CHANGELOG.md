@@ -5,6 +5,8 @@ The part's own versions (Egatari spec §6.1). Releases of the whole library are 
 ## 2.0.3 (components 2.4.4)
 
 - In an English lesson (ctx.lang not ja) the built-in names are English: Takeshima, Senkaku Islands, Okinotorishima, Minamitorishima, Chichijima, Iwo To, and the inset captions Nansei Islands / Ogasawara Islands (different scale). The Japanese names overflowed their label boxes in the English font. Japanese lessons draw the same as before.
+- Declares static glyphs (built-in names, captions and figures, including the English names), so a built lesson keeps those characters when it subsets its fonts. Without them, built-in names such as Takeshima were drawn in a fallback font and overflowed their label boxes.
+- In an English lesson, name and value chips are as tall as the English font's text box (Source Sans 3: 1.43 em) with the baseline set inside it. They were 32 px for 24 px text, and the quality check reported the text 3 px outside (svgTextBox). Japanese lessons draw the same as before.
 
 ## 2.0.2 (components 2.2.0)
 
