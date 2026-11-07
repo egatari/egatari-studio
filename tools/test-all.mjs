@@ -239,6 +239,8 @@ steps.push(
   // 選べる字体（#133）：選んだ字体だけが入る・英語の斜体・fontNotEmbedded
   ['test-fonts', ['tools/test-fonts.mjs', path.join(tmp, 'fonts')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
+  // 本文の釣り合い（R-balance の段 1、balance。情報だけで、修正依頼に入らない）
+  ['test-check-fill', ['tools/test-check-fill.mjs', path.join(tmp, 'check-fill')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
 );

@@ -213,6 +213,15 @@ export const MESSAGES = {
   desuMasu: { rule: 'R-style', ja: (a) => `スライドの字に です・ます がある（「${a.t}」）：スライドは常体（だ・である、体言止め）で書く。です・ます は口述原稿だけ`, en: (a) => `the slide text uses です・ます (“${a.t}”): write slides in plain style (だ・である or a noun ending); keep です・ます for the narration` },
   rawMath: { rule: 'R-math', ja: (a) => `数式が KaTeX で組まれずに残っている（「${a.t}」）：\\( … \\) か \\[ … \\] で囲み、$ … $ は使わない`, en: (a) => `math was left unrendered (“${a.t}”): wrap it in \\( … \\) or \\[ … \\], not $ … $` },
   katexError: { rule: 'R-math', ja: (a) => `KaTeX が式を組めない（「${a.t}」）：式の書き方を直す（< は \\lt、使えるマクロは \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph）`, en: (a) => `KaTeX cannot render an equation (“${a.t}”): fix its syntax (write < as \\lt; allowed macros are \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph)` },
+  // 本文の釣り合い（R-balance の段 1、情報。kit/core/fill-measure.mjs）：数だけを言う。直し方は段 2 で足す（字で埋めさせない）
+  // 横組み：重心は光学的な中心（上から 45%）に対して、空きは下 − 上。縦組み：重心は左右の真ん中に対して、空きは左 − 右
+  balance: { rule: 'R-balance',
+    ja: (a) => (a.tate
+      ? `中身が右に寄っている（重心が中心より ${Math.abs(Math.round(a.hOffset))}% 右、左に ${Math.round(a.left - a.right)}% の空き）`
+      : `中身が上に寄っている（重心が光学的な中心より ${Math.abs(Math.round(a.vOffset))}% 上、下に ${Math.round(a.bottom - a.top)}% の空き）`),
+    en: (a) => (a.tate
+      ? `Content sits to the right (centre of mass ${Math.abs(Math.round(a.hOffset))}% right of the centre; ${Math.round(a.left - a.right)}% empty on the left)`
+      : `Content sits high (centre of mass ${Math.abs(Math.round(a.vOffset))}% above the optical centre; ${Math.round(a.bottom - a.top)}% empty at the bottom)`) },
   step0: { ja: (a) => `段階 0 の本文：「${a.t}」`, en: (a) => `body text at step 0: “${a.t}”` },
   punctMixed: { rule: 'R-style', ja: (a) => `句読点が混ざっている：${a.minor}が ${a.n} 個あり、デッキの多くは${a.major}：このスライドも${a.major}にそろえる`, en: (a) => `mixed punctuation: ${a.n} × ${a.minor} while most of the deck uses ${a.major}: use ${a.major} here too` },
   // ---------------------------------------------------------------- 口述原稿

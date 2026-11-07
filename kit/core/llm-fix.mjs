@@ -9,7 +9,7 @@
 //   cutOffRequest(err, lang)  返事が切れたときの依頼（閉じていない囲みだけを送り直す／短くして送り直す）
 //   buildFixRequest({problems, deck, narration, lang, limit}) → {text, partial, slides: [id…], rules: [R-…], components: [m-…]}
 //     （前の guide の引数は使わない。渡されても console に知らせて無視する）
-//     problems：[{sev: 'error'|'warn', i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は品質チェックの arg でもよい）
+//     problems：[{sev: 'error'|'warn'（'info' は載せずに捨てる）, i: スライドの番号か null, title, text（人に見せる言葉）, code?, rule?, data?, msg?}]（rule・data は kit/check.mjs --json のもの。data は品質チェックの arg でもよい）
 //     deck・narration が合わせて limit（既定 40,000 字）を超えれば、問題のあるスライドだけ（id で）を載せ、そのスライドだけを返してもらう
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
@@ -135,7 +135,8 @@ export function buildFixRequest({ problems, deck, narration = '', lang = 'en', l
   const rules = guideRules(commonBody(lang === 'ja' ? 'ja' : 'en'));
   const secs = sectionsOf(deck);
   // 言葉からスタックの行とファイルの場所（一時フォルダ・file://・手元のサーバー）を除く（kit/core/error-text.mjs）
-  const list = problems.map((p) => ({ ...p, text: cleanErrorText(p.text), msg: p.msg === undefined ? undefined : cleanErrorText(p.msg), id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
+  // 情報（sev: 'info'。本文の釣り合い balance など）は直すものではないので載せない（エラー・警告だけ）
+  const list = problems.filter((p) => p && p.sev !== 'info' && p.code !== 'balance').map((p) => ({ ...p, text: cleanErrorText(p.text), msg: p.msg === undefined ? undefined : cleanErrorText(p.msg), id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
   const used = [...new Set(list.flatMap((p) => p.rules))].filter((r) => rules.has(r));
   const out = [M.head, '', M.ask, ''];
   const partial = deck.length + narration.length > limit && list.some((p) => p.id);

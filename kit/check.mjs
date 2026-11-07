@@ -26,6 +26,7 @@
 // L. 添付（format spec §3.8）：attachments/ のファイルと egatari.json の attachments（役割がない・役割が正しくない・名前が使えない・大きすぎる・ない。警告）。
 //    役割ごとの型と中身（kit/core/attach-content.mjs）：仕様が MUST NOT とするもの（許されない型・実行できるもの・入れ物・音声と動画・マクロ・JavaScript の
 //    ある PDF など）はエラー、断るべきもの（SHOULD：役割の条件・中身が型と違う・確かめられない）と気をつけるもの（数式として読まれる値など）は警告
+// N. 本文の釣り合い（R-balance の段 1、情報）：最終段階の本文を撮った画素の重心と片寄った空きを測り、上に寄って下が空けば知らせる（kit/fill-scan.mjs）
 // 終了コード：0 = エラーなし、1 = エラーの指摘あり（または引数・組み立ての失敗）、2 = 検査が終わっていない（ブラウザが起動できない・落ちた。JSON は status: "crashed"）
 // 言語：<html lang> が ja 以外（英語など）なら、です・ます／句読点を見ず、字数は文字数（タイトル 60・結論 70 で警告）、
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
@@ -48,6 +49,7 @@ import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { partReportFinding, message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
+import { scanBalance } from './fill-scan.mjs';
 import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from './core/layout-scan.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
@@ -469,6 +471,16 @@ await collectPartReports();
     const name = { jp: '「、。」', en: '「，．」' };
     for (const p of aOut.punct) if (p[minor]) report(p.i, 'warn', 'punctMixed', { minor: name[minor], major: name[major], n: p[minor] });
   }
+}
+
+// ================================================================ N. 本文の釣り合い（R-balance の段 1。kit/fill-scan.mjs）
+// 最終段階の本文（.body）を撮り、地の色でない画素の重心（縦は光学的な中心、横は真ん中に対して）と、外接矩形の片寄った空きを出す。
+// 上に強く寄り、下に大きな空きが片寄るとき知らせる（縦組みは右に寄り左が空くとき）。表紙・章の扉・static は測らない。
+// 結論の行（.concl）は本文の外なので撮らない。知らせは情報だけ（エラー・警告の数、終了コード、修正依頼には入らない）
+phase = 'N 釣り合い';
+for (const f of await scanBalance(page, meta)) {
+  if (f.skip || !f.flagged) continue;
+  report(f.i, 'info', 'balance', { vOffset: f.vOffset, hOffset: f.hOffset, band: f.band, side: f.side, top: f.top, bottom: f.bottom, left: f.left, right: f.right, tate: !!f.tate, bbox: f.bbox });
 }
 
 // ================================================================ B. 口述原稿
