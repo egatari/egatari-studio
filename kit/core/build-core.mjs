@@ -29,7 +29,7 @@ const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runti
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
-import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError } from './parts2.mjs';
+import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError, partGlyphDecls, pickGlyphs } from './parts2.mjs';
 import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash, CSS_URL_RE, themeUrlRel } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
@@ -1077,7 +1077,9 @@ export function build(env0, srcPath, opts = {}) {
   // 字を絞り込むときは、再生器の画面の言葉（実行系の JS の文字列の和文。日本語の教材だけ。tools.js の道具の帯は端末の字体で組むので数えない）も入れる：分割ファイルをまるごと入れていたときは
   // たまたま入っていた字が、絞り込むと欠けて端末の字体で出るので（handoff/font-subset-design-2026-11-05.md §3.1）
   const uiText = subsetOn && isJapanese(lang) ? playerUiGlyphs((f) => read(KIT, f)) : '';
-  const textForFont = glyphText(html + articleHtml, narrationMap(segs, !!opts.dev, false), compJs, lang) + uiText;
+  // 使うパーツが宣言する字（§7.2 の glyphs：パーツが自分で描き、教材の字には出てこない字。m-map-japan の島の名前など）
+  const partText = parts2 ? pickGlyphs(parts2.parts.flatMap((p) => p.glyphDecls || []), lang) : '';
+  const textForFont = glyphText(html + articleHtml, narrationMap(segs, !!opts.dev, false), compJs, lang) + uiText + partText;
   const fonts = fontCss(env, textForFont, subsetOn, lang, usesMincho(html, theme.css, compJs) || /class="egatari-vertical"/.test(articleHtml), warn,
     { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: italicText(html, compJs, isJapanese(lang)), body: bodyFont(theme.css, theme.cfg && theme.cfg.fonts) });
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
@@ -1280,6 +1282,8 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
     }
     const rec = { name: read.meta.name, version: read.meta.version, source: p.source, ...(read.meta.element ? { tag: read.meta.element } : {}), requires: read.meta.requires };
     rec.code = code; rec.fullCode = code;
+    // パーツが宣言する字（地図の島の名前など。字を切り出すときに残す。言語は組み立てが選ぶ：pickGlyphs）。索引には書かない
+    Object.defineProperty(rec, 'glyphDecls', { value: partGlyphDecls(code, meta), enumerable: false });
     if (p.source === 'embedded') rec.path = where;
     if (p.source === 'registry') { rec.sha256 = meta.sha256; rec.license = meta.license; }
     if (meta.build && meta.build.subset) {

@@ -3,4 +3,5 @@
 - Editor, tier A saves: new characters in the script or the book get a font supplement in every embedded font (BIZ UDPMincho and the chosen Japanese fonts too, not only BIZ UDPGothic and Source Sans 3), cut down to those characters. Without the font files (the offline `editor.html` has no Mincho) the editor saves anyway and names the characters that will show in the device's font, instead of refusing.
 
 ### Added
+- Font subsetting keeps the characters each part used declares it draws itself (`glyphs`: in the parts library record, the `egatariParts.define` meta or `static glyphs`; a string, or per language `{ja, en}` of which the lesson's language is used), such as the island names of m-map-japan.
 - The quality checker reports `fontNotCovered` (info) when visible characters are in no embedded font (they show in the device's font); `node tools/font-coverage.mjs <built.html>` lists them.

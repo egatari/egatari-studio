@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=ffbc1c6ba8a8b467 -->
+<!-- i18n: pair=reference.md sha256=148d66a1369ea2ba -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -462,7 +462,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `--embed-audio` | 音声を AAC 64 kbps モノラルで埋め込む（ffmpeg が要る。なければ WAV のまま、警告）。なしでは出力からの相対パスで参照する |
 | `--portable`・`--play-only` | 編集できる原稿も中に持つ Egatari ファイル。[Egatari ファイル](#egatari-ファイル--portable) |
 
-最後の行に、スライド・式・パーツ・字のファイル・台本のステップ・音声のステップ・テーマ・大きさを出す。字：埋め込む字体は、@fontsource の分割ファイルのうち教材の字を持つものを、harfbuzz（WebAssembly の `harfbuzzjs`、`package.json` で版を固定）で使う字だけに切り出し、woff2（`wawoff2`）にして、`unicode-range` を切り出した字にする。Python も TTF も使わず、編集アプリのエクスポートも同じバイトになる。同じ字・同じ分割ファイル・同じ道具の版なら、どの OS でも同じバイト（`tools/test-font-subset.mjs`）。予約された字体名を持つ Source Sans 3・Source Serif 4・Source Code Pro は切り出さない。`EGATARI_FONT_SUBSET=0` で切らずに分割ファイルのまま入れる。`--dev` と開発サーバーは切り出さない。圧縮した音声のキャッシュは `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と台本の文字列、使うパーツの JS の文字列（日本語以外の教材では和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語の教材ではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
+最後の行に、スライド・式・パーツ・字のファイル・台本のステップ・音声のステップ・テーマ・大きさを出す。字：埋め込む字体は、@fontsource の分割ファイルのうち教材の字を持つものを、harfbuzz（WebAssembly の `harfbuzzjs`、`package.json` で版を固定）で使う字だけに切り出し、woff2（`wawoff2`）にして、`unicode-range` を切り出した字にする。Python も TTF も使わず、編集アプリのエクスポートも同じバイトになる。同じ字・同じ分割ファイル・同じ道具の版なら、どの OS でも同じバイト（`tools/test-font-subset.mjs`）。予約された字体名を持つ Source Sans 3・Source Serif 4・Source Code Pro は切り出さない。`EGATARI_FONT_SUBSET=0` で切らずに分割ファイルのまま入れる。`--dev` と開発サーバーは切り出さない。圧縮した音声のキャッシュは `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と台本の文字列、使うパーツの JS の文字列（日本語以外の教材では和文を除く）、パーツが自分で描くと宣言した字（パーツライブラリの記録の `glyphs`・`egatariParts.define` の meta の `glyphs`・`static glyphs`。字列か、`{ja: …, en: …}` なら教材の言語のもの）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語の教材ではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
 
 作業フォルダのパーツ（`<deck>/components/<名前>/index.js`）は実体のパスが作業フォルダの中にあるときだけ、パーツライブラリのパーツは `vendor/components/` の中にあるときだけ読む。作業フォルダのパーツが外を指していれば、警告して読まず、パーツライブラリのものにも替えない。作業フォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。

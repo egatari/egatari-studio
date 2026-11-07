@@ -143,6 +143,40 @@ export function readDefineMeta(code) {
   if (v.element !== undefined && (typeof v.element !== 'string' || !/^[a-z][a-z0-9._-]*-[a-z0-9._-]*$/.test(v.element))) return bad('element is not a custom element name');
   return { meta: { name: v.name, version: v.version, requires, ...(v.element ? { element: v.element } : {}) } };
 }
+// パーツが宣言する字（§6.2・§7.2 の glyphs：パーツが自分で描く字で、教材の字には出てこないもの。地図の島の名前など）。字を切り出すとき、使うパーツのこの字も残す。
+// 宣言はどこにあってもよい（全部を合わせる）：部品庫の記録（manifest・components2.lock.json の glyphs）、egatariParts.define の meta の glyphs、
+// コードの static glyphs = <字列か {言語: 字列} のリテラル>。値は字列（どの教材でも）か、言語ごとの字列 {ja: "…", en: "…"}（教材の言語のものだけ）
+//   partGlyphDecls(code, meta) → [宣言…]（字列か {言語: 字列}）
+//   pickGlyphs(decls, lang) → 字列（言語ごとの宣言は、教材の言語の主な部分（ja・en…）の値。なければ en、それもなければ全部）
+const STATIC_GLYPHS_RE = /\bstatic\s+glyphs\s*=\s*/g;
+const glyphLiteral = (src, i) => {
+  // 字列（"…"）か、値が字列のオブジェクト（{ja: "…", en: "…"}）。metaLiteral と同じ読み方（評価しない）
+  if (src[i] === '"') { let j = i + 1; for (; j < src.length && src[j] !== '"'; j++) if (src[j] === '\\') j++; return JSON.parse(src.slice(i, j + 1)); }
+  if (src[i] !== '{') return null;
+  const o = metaLiteral(src.slice(i).replace(/^(\{[\s\S]*?\})/, '$1,'), 0);
+  return Object.values(o).every((v) => typeof v === 'string') ? o : null;
+};
+const okDecl = (g) => typeof g === 'string' || (isObj(g) && Object.values(g).every((v) => typeof v === 'string'));
+export function partGlyphDecls(code, meta) {
+  const out = [];
+  if (meta && okDecl(meta.glyphs) && meta.glyphs !== '') out.push(meta.glyphs);
+  const src = String(code || '');
+  const d = DEFINE_RE.exec(src);
+  if (d) { try { const v = metaLiteral(src.slice(d.index + d[0].length, d.index + d[0].length + 8192), 0); if (okDecl(v.glyphs)) out.push(v.glyphs); } catch { /* readDefineMeta が知らせる */ } }
+  for (const m of src.matchAll(STATIC_GLYPHS_RE)) { try { const g = glyphLiteral(src, m.index + m[0].length); if (g !== null && okDecl(g)) out.push(g); } catch { /* 読めない宣言は数えない */ } }
+  return out;
+}
+export function pickGlyphs(decls, lang) {
+  const primary = String(lang || '').toLowerCase().split('-')[0] || 'ja';
+  let s = '';
+  for (const g of decls || []) {
+    if (typeof g === 'string') s += g;
+    else if (own(g, primary)) s += g[primary];
+    else if (own(g, 'en')) s += g.en;
+    else s += Object.values(g).join('');
+  }
+  return s;
+}
 // 部品庫のパーツ：字で読んだ meta が固定のファイルの記録（requires・tag）と合うか。合わない点の文を返す
 export function metaMismatch(meta, rec) {
   const e = [];

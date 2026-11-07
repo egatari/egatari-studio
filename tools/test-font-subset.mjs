@@ -11,6 +11,7 @@
 // 9. 見本（羅生門・国語の漢文・平均と中央値）：切り出しても、端末の字体で出る字が増えない（増えたように見える字は、その分割ファイルが字形を持たない字だけ）。
 //    日本語の教材は、プレーヤーの画面の言葉（再生・停止など）の字も入る
 // 10. 段 A：明朝を埋め込んだ文書の新しい字は、ゴシックと明朝の両方に補う。切り出しの道具があれば補いもその字だけ。字の元がなければ断らずに保存し、その字を名指す
+// 11. パーツが宣言する字（glyphs：部品庫の記録・define の meta・static glyphs）：使うパーツの、教材の言語の字を残す（地図の島の名前など）
 // test-all: platform
 import fs from 'node:fs';
 import os from 'node:os';
@@ -74,8 +75,8 @@ const dir = path.join(work, 'ja');
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html>\n<html lang="ja" data-theme="default">\n<head><meta charset="utf-8"><title>字の絞り込み</title></head>\n<body><div id="stage">\n<section class="slide noconcl static" id="s1"><h2>字の絞り込み</h2><div class="body"><p class="mincho">下人の行方は、誰も知らない。</p><p>English text, Source Sans.</p></div></section>\n</div></body></html>\n`);
 fs.writeFileSync(path.join(dir, 'narration.md'), '## s1\n\n[0] 羅生門の下で雨やみを待っていた。\n');
-const build = (out, env = {}) => {
-  const r = spawnSync(process.execPath, ['kit/build.mjs', path.join(dir, 'deck.html'), '-o', out], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, ...env } });
+const build = (out, env = {}, src = path.join(dir, 'deck.html')) => {
+  const r = spawnSync(process.execPath, ['kit/build.mjs', src, '-o', out], { cwd: ROOT, encoding: 'utf8', env: { ...process.env, ...env } });
   assert.equal(r.status, 0, r.stderr);
   return fs.readFileSync(out, 'utf8');
 };
@@ -242,5 +243,37 @@ await t('段 A：明朝を埋め込んだ文書の新しい字は、ゴシック
   assert.deepEqual(uncoveredGlyphs(none.html).missing.map((m) => m.char), ['鬱'], 'and the coverage check reports it');
 });
 
+
+// ---------------------------------------------------------------- 11. パーツが宣言する字
+await t('パーツが宣言する字（glyphs）：宣言はどこにあっても読み、教材の言語の字を残す。m-map-japan の日本語の教材は島の名前（竹島）を持つ', async () => {
+  const { partGlyphDecls, pickGlyphs } = await import('../kit/core/parts2.mjs');
+  const code = 'egatariParts.define({name: "x", version: "1.0.0", element: "m-x", glyphs: "とめ"}, function(){\n  return class extends HTMLElement { static glyphs = {ja: "竹島", en: "Ōshima"}; };\n});\n';
+  const decls = partGlyphDecls(code, { glyphs: { ja: "南鳥島", en: "Minamitorishima" } });
+  assert.deepEqual(decls, [{ ja: '南鳥島', en: 'Minamitorishima' }, 'とめ', { ja: '竹島', en: 'Ōshima' }]);
+  assert.equal(pickGlyphs(decls, 'ja'), '南鳥島とめ竹島');
+  assert.equal(pickGlyphs(decls, 'en-US'), 'Minamitorishimaとめ' + 'Ōshima');
+  assert.equal(pickGlyphs(decls, 'fr'), 'Minamitorishimaとめ' + 'Ōshima', 'another language falls back to en');
+  // 作業フォルダのパーツ（埋め込み）：名前は字のコード（字の番号）から作り、コードの文字列に字が出ない。宣言だけが字を知らせる
+  const part = 'egatariParts.define({name: "islanddemo", version: "0.1.0", element: "m-islanddemo"}, function(){\n' +
+    '  return class extends HTMLElement {\n    static glyphs = {ja: "\\u7af9\\u5cf6", en: "Ogasawara \\u65e5\\u672c"};\n' +
+    '    connectedCallback(){ this.textContent = String.fromCodePoint.apply(null, document.documentElement.lang === "ja" ? [0x7af9, 0x5cf6] : [0x65e5, 0x672c]); }\n  };\n});\n';
+  const covers = (h, fam, ch) => [...h.matchAll(new RegExp(`@font-face\\{font-family:"${fam}"[^}]*unicode-range:([^}]+)\\}`, 'g'))].some((m) => parseRange(m[1]).some(([a, z]) => ch.codePointAt(0) >= a && ch.codePointAt(0) <= z));
+  for (const lang of ['ja', 'en']) {
+    const d = path.join(work, 'glyphs-' + lang);
+    fs.mkdirSync(path.join(d, 'components', 'islanddemo'), { recursive: true });
+    fs.writeFileSync(path.join(d, 'components', 'islanddemo', 'index.js'), part);
+    fs.writeFileSync(path.join(d, 'egatari.json'), JSON.stringify({ componentsCatalogue: JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8')).default }) + '\n');
+    fs.writeFileSync(path.join(d, 'deck.html'), `<!DOCTYPE html>\n<html lang="${lang}" data-theme="default">\n<head><meta charset="utf-8"><title>Islands</title></head>\n<body><div id="stage">\n<section class="slide noconcl static" id="s1"><h2>Islands</h2><div class="body"><m-islanddemo></m-islanddemo>${lang === 'ja' ? '<m-map-japan></m-map-japan>' : ''}</div></section>\n</div></body></html>\n`);
+    fs.writeFileSync(path.join(d, 'narration.md'), '## s1\n\n[0] Islands.\n');
+    const h = build(path.join(work, `glyphs-${lang}.html`), {}, path.join(d, 'deck.html'));
+    if (lang === 'ja') {
+      for (const c of '竹島') assert.ok(covers(h, 'BIZ UDPGothic', c), `ja: ${c} is kept`);
+      // 日本語の教材は、パーツのコードの文字列の和文をみな数える（粗い読み方。宣言の en の「日本」も入る）ので、ここでは確かめない
+    } else {
+      for (const c of '日本') assert.ok(covers(h, 'BIZ UDPGothic', c), `en: ${c} (declared for en, not in any string the build reads) is kept`);
+      for (const c of '竹') assert.ok(!covers(h, 'BIZ UDPGothic', c), `en: ${c} (the ja glyphs) is not kept`);
+    }
+  }
+});
 console.log(`\n${n - fail}/${n} passed`);
 process.exit(fail ? 1 : 0);
