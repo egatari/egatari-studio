@@ -41,7 +41,7 @@
 | [`<m-tree>`](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/README.md) | 1.13.1 | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置は部品が決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | orient, by, link, size, fade, draw | [demo](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/demo.html) |
 | [`<m-venn>`](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/README.md) | 1.13.1 | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数） | size, dur, spread, overlaps | [demo](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/demo.html) |
 
-## 2.x のパーツ（components2.lock.json の既定の版 2.4.1）
+## 2.x のパーツ（components2.lock.json の既定の版 2.4.2）
 
 1.x の目録にない、2.x 専用の要素パーツ（`kind: "element"`）。土台パーツ（`kind: "library"`：base・boxplot-core・codetree-core・
 expr・heatmap-core・hist-core・icons・kanbun-core・markup-reader・plot・shape）は教材の作者が直接書かないので一覧には出さない。
