@@ -105,6 +105,49 @@ function frontmatter(text) {
   for (const line of m[1].split('\n')) { const x = line.match(/^([\w-]+):\s*(.*)$/); if (x) fm[x[1]] = x[2].trim(); }
   return [fm, m[2].trim()];
 }
+// README.en.md（部品庫の英語の説明。README.md の隣）の frontmatter：summary・steps と、props（字下げした「  名前: 英語の説明」の行の表）だけ。
+// 読み方は部品庫の tools/lint.mjs の frontmatterEn() と同じ（ここで新しい決まりを作らない）
+export function frontmatterEn(text) {
+  const m = text.replace(/\r\n?/g, '\n').match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return null;
+  const o = {};
+  let map = null;
+  for (const line of m[1].split('\n')) {
+    const sub = line.match(/^ {2}([\w-]+):\s*(.*)$/), x = line.match(/^([\w-]+):\s*(.*)$/);
+    if (sub && map) map[sub[1]] = sub[2].trim();
+    else if (x) { map = null; if (x[2].trim() === '') o[x[1]] = map = {}; else o[x[1]] = x[2].trim(); }
+  }
+  return o;
+}
+// 英語の指示で、README.en.md のある部品は英語の説明を使う：summary・steps・props の説明（欄ごとに、なければ README.md・index.js のまま）と本文。
+// 名前・構造・props の並びは README.md と index.js のまま。日本語の指示は変えない
+// README.en.md の example:（英語の字の見本。1 行の JSON）は、static shape.example と同じ形（キー・並びの長さ・数・真偽）でなければならない（字だけが違ってよい）
+function sameShape(a, b) {
+  if (typeof a === 'string' && typeof b === 'string') return true;
+  if (Array.isArray(a) || Array.isArray(b)) return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((x, i) => sameShape(x, b[i]));
+  if (a && b && typeof a === 'object' && typeof b === 'object') { const ka = Object.keys(a).sort(), kb = Object.keys(b).sort(); return ka.join() === kb.join() && ka.every((k) => sameShape(a[k], b[k])); }
+  return a === b;
+}
+function enExample(c, text) {
+  const where = `${c.fm.name}: README.en.md example`;
+  let en, src = c.shape && c.shape.example;
+  try { en = JSON.parse(text); } catch (e) { throw new Error(`${where} is not JSON (${e.message})`); }
+  if (src === undefined) throw new Error(`${where}: the part has no static shape.example to replace`);
+  // 字の見本（m-menu の <a href> など、JSON でない static shape.example）は、example: も JSON の字（"…"）で書く
+  if (typeof src === 'string') { try { src = JSON.parse(src); } catch { if (typeof en !== 'string') throw new Error(`${where}: static shape.example is text (not JSON), so example: must be a JSON string`); return en; } }
+  if (!sameShape(src, en)) throw new Error(`${where}: its keys or structure differ from static shape.example (only strings may differ)`);
+  return en;
+}
+function enView(c) {
+  if (!c.en) return c;
+  const { fm, body, ext } = c.en;
+  const shape = typeof fm.example === 'string' && fm.example ? { ...c.shape, example: enExample(c, fm.example) } : c.shape;
+  const pick = (k) => (typeof fm[k] === 'string' && fm[k] ? fm[k] : c.fm[k]);
+  const map = fm.props && typeof fm.props === 'object' ? fm.props : {};
+  const props = new Map([...c.props].map(([n, d]) => [n, { ...d, doc: map[n] || d.doc }]));
+  for (const n of Object.keys(map)) if (!props.has(n)) props.set(n, { type: '', dflt: '', doc: map[n] });
+  return { ...c, fm: { ...c.fm, summary: pick('summary'), steps: pick('steps') }, body, ext, props, shape, timingProps: c.props, enSource: true };
+}
 // static props = { name: {type: "…", default: …, doc: "…"}, … }（1 行に 2 つ以上あってもよい）
 // 値の宣言の中の入れ子（shape: {…}・example: […]）は除いてから読む（{…} が入れ子になると下の正規表現が切れる）
 function dropNested(js) {
@@ -205,6 +248,27 @@ const PACK_EDITS = {
     { find: '  <a href="lesson2.ega.html" data-sub="次の課">返り点の練習</a>\n', ja: '', en: '' },
   ],
 };
+// README.en.md を使う部品の英語の節の言い換え。PACK_EDITS は README.md の日本語に向けたものなので、同じ直しを英語の字に向けて書く
+// （決まりは同じ：find が英語の節になければ失敗）。m-bars の言い換えは大きさだけのもので、英語の字はもう短いので要らない
+const EN_EDITS = {
+  'm-predict': [
+    { find: '| live poll id |', to: '| poll id (no live counts yet) |' },
+    { find: '- `poll="p1"`: live poll totals', to: '- `poll="p1"`: reserved; no live reveals yet (`ctx.live.poll(id)` is null), so viewer/author counts are used' },
+  ],
+  'm-menu': [
+    { find: 'Contents; choosing where to start.', to: 'Contents; choosing where to start. Add the menu after import; in the first draft use a plain list.' },
+    { find: 'ids from `npm run ids`', to: 'ids are added on import' },
+    { find: '  <a href="lesson2.ega.html" data-sub="Next">Drill</a>\n', to: '' },
+  ],
+};
+function applyEnEdits(name, body) {
+  let out = body;
+  for (const e of EN_EDITS[name] || []) {
+    if (!out.includes(e.find)) throw new Error(`EN_EDITS ${name}: ${JSON.stringify(e.find)} is not in the README.en.md entry any more (review tools/make-llm-guide.mjs)`);
+    out = out.replace(e.find, () => e.to);
+  }
+  return out;
+}
 // 一覧の行（内容・データの形の欄）の言い換え。PACK_EDITS と同じ決まり（find が行になければ失敗）。lang があればその言語の行だけ（データの形の注記は言語ごと）
 const ROW_EDITS = {
   'm-keyboard': [
@@ -274,7 +338,8 @@ function splitBlocks(body, file, sets) {
   return { own: own.join('\n'), ext: Object.fromEntries(Object.entries(ext).map(([k, v]) => [k, v.join('\n').trim()])) };
 }
 // 既定のカタログの要素のパーツ（特殊を含む）：[{fm, tier, set, body, ext, props, shape, rawProps}]。set は 'standard'・束の名前・'extra'
-function components(cat, sets) {
+// readmeEn（試験用。generate の opts.readmeEn）：false なら README.en.md を読まない。{タグ: 字}ならそのタグの README.en.md の代わりにその字（null は「ない」）
+function components(cat, sets, readmeEn = {}) {
   const lock = parseLock(read(LOCK_FILE));
   const out = [];
   for (const [name, c] of Object.entries(cat.manifest.components).sort(([a], [b]) => (a < b ? -1 : 1))) {
@@ -291,7 +356,19 @@ function components(cat, sets) {
     const blocks = splitBlocks(body, file, sets);
     if (Object.keys(blocks.ext).length && set !== STANDARD) throw new Error(`${file}: <!-- llm: … --> extension blocks are only for standard parts (this one is ${c.tier})`);
     const cls = js ? classOf(js, fm.name) : null;
-    out.push({ fm, set, build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {} });
+    let en = null;
+    const enOver = readmeEn && Object.hasOwn(readmeEn, fm.name);
+    const etext0 = readmeEn === false ? null : enOver ? readmeEn[fm.name] : fs.existsSync(path.join(dir, 'README.en.md')) ? read(path.relative(ROOT, path.join(dir, 'README.en.md'))) : null;
+    if (typeof etext0 === 'string') {
+      const efile = file.replace(/README\.md\)$/, 'README.en.md)');
+      const etext = etext0.replace(/\r\n?/g, '\n');
+      const efm = frontmatterEn(etext);
+      if (!efm) throw new Error(`${efile}: no frontmatter`);
+      const eblocks = splitBlocks(frontmatter(etext)[1], efile, sets);
+      if (Object.keys(eblocks.ext).sort().join() !== Object.keys(blocks.ext).sort().join()) throw new Error(`${efile}: llm blocks (${Object.keys(eblocks.ext).join(', ') || 'none'}) are not README.md's (${Object.keys(blocks.ext).join(', ') || 'none'})`);
+      en = { fm: efm, body: eblocks.own, ext: eblocks.ext };
+    }
+    out.push({ fm, set, build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {}, ...(en ? { en } : {}) });
   }
   return out;
 }
@@ -354,7 +431,7 @@ function entryOf(c, lang, shown = new Set()) {
   const H = lang === 'ja' ? ['値', '型', '既定', '意味'] : ['prop', 'type', 'default', 'meaning'];
   let sup = false;
   // 秒で測る値（動きの速さ・ずれ）は表に載せない：既定のままで口述原稿に合う（§3 の前書きに書いてある）
-  const rows = (c.fm.props || '').split(',').map((p) => p.trim()).filter(Boolean).filter((p) => !TIMING.test((c.props.get(p) || {}).doc || '')).map((p) => {
+  const rows = (c.fm.props || '').split(',').map((p) => p.trim()).filter(Boolean).filter((p) => !TIMING.test(((c.timingProps || c.props).get(p) || {}).doc || '')).map((p) => {
     const d = c.props.get(p) || { type: '', dflt: '', doc: '' };
     let doc = d.doc;
     if (!doc && AXIS[lang][p]) { doc = AXIS[lang][p] + ' *'; sup = true; }
@@ -364,9 +441,11 @@ function entryOf(c, lang, shown = new Set()) {
   // 系列の見本（抜き出し）がその部品を使っていれば、それが見本になる（#99：大きさを抑える）
   const ex = /^```/m.test(c.body) || shown.has(c.fm.name) ? '' : shapeExample(c, lang);
   // README の「子の JSON：`{…}`。」の行は、一覧の「データの形」の欄と同じことなので、データの形があるときはコードを外し、後ろの文（あれば）だけ残す
-  const body = c.shape && c.shape.schema ? c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join('')) : c.body;
+  const body = !(c.shape && c.shape.schema) ? c.body
+    : c.enSource ? c.body.replace(/^Child JSON: `[^`\n]*`\.?[ \t]*(.*)$/gm, (_, rest) => rest)   // README.en.md の同じ行
+    : c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join(''));
   const details = (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + body;
-  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + demote(stripRepoRefs(applyPackEdits(c.fm.name, details, lang)));
+  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + demote(stripRepoRefs(c.enSource ? applyEnEdits(c.fm.name, details) : applyPackEdits(c.fm.name, details, lang)));
   return { entry: entry.trim(), sup };
 }
 
@@ -583,14 +662,15 @@ ${common}
   return files;
 }
 
-// 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {free, freeSets, paid, paidSets, paidPairs, paidAll}}（KB）, data, warnings}
+// 戻り値：{files: {相対パス: 中身（i18n の印の行なし）}, sizes: {en|ja: {free, freeSets, paid, paidSets, paidPairs, paidAll}}（KB）, data, warnings, enParts}
 //   opts.manifest：言いたいことの表だけを、この manifest から作る（試験用）。opts.tiers：段と束の一覧（新規作成 ④）を差し替える
+//   opts.readmeEn：部品庫の README.en.md を差し替える（試験用。false はどれも読まない。{タグ: 字 | null}）。戻り値の enParts は英語の説明を使った部品
 export function generate(opts = {}) {
   const warnings = [];
   const cat = catalogue();
   const SETS = setsOf(cat.manifest);
   for (const s of SETS) if (!fs.existsSync(rel('tools', 'llm-guide', 'sets', s + '.md'))) throw new Error(`tools/llm-guide/sets/${s}.md is missing (the part set ${s} is in manifest-${cat.version}.json)`);
-  const all = components(cat, SETS);
+  const all = components(cat, SETS, opts.readmeEn);
   const comps = all.filter((c) => c.set !== 'extra');
   // 言いたいこと：既定のカタログの manifest（あれば）か、決めた表（kit/core/purposes.mjs）。札に写らない id・形の合わない項目は知らせる
   const allParts = comps.map((c) => ({ tag: c.fm.name, set: c.set }));
@@ -657,7 +737,10 @@ export function generate(opts = {}) {
     };
     if (!D.common.includes('{{CATALOG}}')) throw new Error(`template${ja ? '.ja' : ''}.md: no {{CATALOG}}`);
     const known = new Set(comps.map((c) => c.fm.name));
-    for (const c of comps) {
+    for (const c0 of comps) {
+      // README.md の言い換え（PACK_EDITS）は README.md の日本語に向けたものなので、英語の説明には掛けない
+      const c = lang === 'en' ? enView(c0) : c0;
+      if (c.enSource && PACK_EDITS[c.fm.name] && !EN_EDITS[c.fm.name]) warnings.push(`${c.fm.name}: README.en.md is used for the en pack; PACK_EDITS (${PACK_EDITS[c.fm.name].length}) are not applied to it and there are no EN_EDITS`);
       const e = entryOf(c, lang, shownInWorked);
       const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, markRefs(demote(stripRepoRefs(x)), c.fm.name, known)]));
       D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
@@ -671,6 +754,16 @@ export function generate(opts = {}) {
     }
     data[lang] = D;
   }
+  // 英語の説明（README.en.md）を使う部品は、README.en.md が決める字（一覧の summary と steps の欄 + 説明の節）の合計が、日本語の同じ合計より長くない
+  // （貼り付けの長さ：UTF-16 + 改行。無料のプランの 31,000 に効くのは指示の合計）。一覧の「データの形」の欄は数えない：その注記は index.js の
+  // static shape.note から来るもので、README.en.md では変えられない
+  const over = [];
+  for (const c of comps.filter((x) => x.en)) {
+    const total = (v, lang) => pasteUnits(cell(v.fm.summary)) + pasteUnits(cell(v.fm.steps)) + pasteUnits(data[lang].components[c.fm.name].entry);
+    const en = total(enView(c), 'en'), ja = total(c, 'ja');
+    if (en > ja) over.push(`${c.fm.name}: en ${en} > ja ${ja} (summary+steps+entry)`);
+  }
+  if (over.length) throw new Error(`README.en.md is longer than README.md in the pack (paste units, UTF-16 + LF):\n  ${over.join('\n  ')}`);
   for (const lang of ['en', 'ja']) if (!data[lang].common.includes(PACK_VERSION)) throw new Error(`template${lang === 'ja' ? '.ja' : ''}.md: no ${PACK_VERSION} line`);
   data.version = createHash('sha256').update(JSON.stringify(data)).digest('hex').slice(0, 8);
   for (const lang of ['en', 'ja']) data[lang].common = data[lang].common.replace(PACK_VERSION, data.version);
@@ -735,7 +828,7 @@ export function generate(opts = {}) {
   files['skills/studio/SKILL.md'] = studioDocs(studioVersion(read('skills/studio/SKILL.md'), data.version));
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
-  return { files, sizes, data, warnings };
+  return { files, sizes, data, warnings, enParts: comps.filter((c) => c.en).map((c) => c.fm.name) };
 }
 
 // Deterministic ZIP (stored entries, UTF-8 names, 1980-01-01). No dependencies.
