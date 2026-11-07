@@ -135,10 +135,10 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 
 ### Studio page (studio.egatari.org)
 - CSP meta: `app/index.html` line 10 (`default-src 'self'`; `connect-src 'self'`; `frame-src 'none'`; `worker-src blob:`; `form-action 'none'`). Referrer: line 11 (`no-referrer`). No `_headers` for the Studio site; deploy is GitHub Pages: `.github/workflows/pages.yml` lines 15–17, 112, 129.
-- Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 152; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` line 264).
-- Same-origin fetches only: lazy fonts `app/main.js` line 69; examples line 169; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 47–52, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 13–17 (skipped on file:, line 12), copied by `tools/build-app.mjs` lines 246–251.
+- Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 158; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` line 264).
+- Same-origin fetches only: lazy fonts `app/main.js` line 69; examples line 232; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 48–54, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 14–18 (skipped on file:, line 13), copied by `tools/build-app.mjs` lines 246–251.
 - Offline single-file `editor.html`: `tools/build-app.mjs` lines 300–311; no TTS window on file: `app/tts-client.js` lines 50, 90.
-- No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 363–416). A web manifest is written: `tools/build-app.mjs` lines 214–218, 236.
+- No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 403–460). A web manifest is written: `tools/build-app.mjs` lines 214–218, 236.
 - No analytics: a grep for analytics/beacon/plausible/gtag/googletagmanager/cloudflareinsights/sentry/telemetry/sendBeacon over `app kit play server lab tools/build-app.mjs tools/build-play.mjs` finds nothing. Page templates: `app/index.html` lines 1–14, `tools/build-app.mjs` lines 233–234, 277–289, 306–309, `play/index.html` lines 1–10.
 
 ### AI voice on this computer
@@ -149,9 +149,9 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - Read-aloud uses local voices only: `kit/core/read-aloud.mjs` lines 3, 99–100; `app/read-aloud.js` line 3.
 
 ### Colab
-- Export and one-time confirmation: `app/audio-panel.js` line 198 (`PRIVACY_KEY`), 214, 865–885; text of the confirmation `app/i18n.js` line 347 (ja) and 744 (en). Job content: `kit/core/colab-core.mjs` lines 79–107 (segments after the reading dictionary, voice names, title up to 120 characters line 79, docId, generator version, recipe).
+- Export and one-time confirmation: `app/audio-panel.js` line 198 (`PRIVACY_KEY`), 214, 865–885; text of the confirmation `app/i18n.js` line 379 (ja) and 806 (en). Job content: `kit/core/colab-core.mjs` lines 79–107 (segments after the reading dictionary, voice names, title up to 120 characters line 79, docId, generator version, recipe).
 - Open link (user click, `target=_blank rel=noopener`): `app/audio-panel.js` line 522; URL `kit/core/colab-core.mjs` line 53 (pinned tag line 47). The user picks the file in Colab: lines 27–39; "Google account required" line 41. Import is a plain `<input type=file>`: `app/audio-panel.js` lines 890–893.
-- Notebook network: `colab/egatari-tts.ipynb` line 52 (git clone), 93 (uv pip install), 199–223 (huggingface_hub; kokoro-onnx release download lines 202–203), 226 (npm), 127 and 161 (`files.upload()`, own reference voice optional), 266 (`files.download`).
+- Notebook network: `colab/egatari-tts.ipynb` line 89 (git clone), 93 (uv pip install), 199–223 (huggingface_hub; kokoro-onnx release download lines 202–203), 226 (npm), 127 and 161 (`files.upload()`, own reference voice optional), 266 (`files.download`).
 
 ### Feedback
 - URL builder: `kit/deck.js` lines 485–511 (default `https://github.com/egatari/egatari-studio/issues/new`, fields version, browser, os, language, mode). Off switch `data-feedback="off"` line 489. Links: `kit/tools.js` lines 1052–1056 and `kit/presenter.js` lines 48–49 (`target=_blank rel=noopener`).
@@ -172,18 +172,18 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - No request logs: `wrangler.production.toml` lines 44–45 (`observability enabled = false`).
 
 ### Gallery and doc links
-- `app/parts-gallery.js` lines 6–8; `app/llm.js` line 741; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 1533, 1950; `app/i18n.js` lines 335–337, 734–736 (all user-click links, `rel=noopener`).
+- `app/parts-gallery.js` lines 6–8; `app/llm.js` line 791; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 2157, 2158; `app/i18n.js` lines 367–369, 796–798 (all user-click links, `rel=noopener`).
 
 ### Fonts
 - No CDN fonts. Studio `font-src 'self' data:` (`app/index.html` line 10); fonts from `fonts/` (`tools/build-app.mjs` lines 88–99, 238–244); the single file embeds them, lines 300–309. Viewer uses system fonts (`play/sw.js` lines 4–5).
 
 ### Storage (Studio)
-- `motion-editor-lang`: `app/i18n.js` lines 9, 13; `app/main.js` line 2165; `app/version-ui.js` line 44.
+- `motion-editor-lang`: `app/i18n.js` lines 11, 15; `app/main.js` line 2367; `app/version-ui.js` line 44.
 - `egatari-colab-privacy-ok`: `app/audio-panel.js` lines 198, 214, 872.
 - `egatari-rec-keep-recording`: `app/rec-mode.js` lines 28, 56, 101.
 - `egatari-slides-open`: `app/slides-panel.js` lines 28, 382, 391.
 - `egatari-studio-live-results-notice`: `app/attachments-panel.js` lines 24–26.
-- sessionStorage `motion-editor-reopen`: `app/main.js` lines 2168, 2175.
+- sessionStorage `motion-editor-reopen`: `app/main.js` lines 2370, 2377.
 - IndexedDB `motion-slides-editor` (handles only, up to 8): `app/fsx.js` lines 121–123, 141–151; `egatari-theme-folder`: `app/theme-folder.js` lines 47–58, `app/my-themes.js` line 70.
 - `.cache/edits/` in the user's folder, up to 30: `app/fsx.js` lines 90–106.
 
@@ -191,7 +191,7 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - `deck-capsize`: `kit/deck.js` lines 1373, 1506. `<format>-player-bar-hint-v1`: `kit/tools.js` lines 803, 947–959. Live pid and joined: `kit/live.js` lines 98–109, 538–567. Position in the address: `kit/deck.js` lines 1732, 2032.
 - Layout, divider, reading settings and "Resumed where you left off": `kit/panes.js` lines 11–14, 28, 38–41, 339, 830–842, 917–945 (not used when embedded, in an LMS or in the preview: lines 931–937).
 - Progress: `kit/track.js` lines 1–14; SCORM 1.2 lines 114–167 (`cmi.core.lesson_status`, `lesson_location`, `suspend_data`, `session_time`); postMessage to the embedding page lines 168–177; this device lines 178–185; choice of one lines 273, 299.
-- Viewer: `play/recents.mjs` lines 1–3, 9–14, 19–52, 57– (OPFS `recent/`, IndexedDB `egatari-viewer`, up to 10); keep on by default `play/main.js` lines 327–344, `SHARED_DEVICE_DEFAULT = false` line 23; clearing on a shared device lines 343–345; install hint line 428; language `play/i18n.mjs` lines 127–133.
+- Viewer: `play/recents.mjs` lines 1–3, 9–14, 19–52, 57– (OPFS `recent/`, IndexedDB `egatari-viewer`, up to 10); keep on by default `play/main.js` lines 372–388, `SHARED_DEVICE_DEFAULT = false` line 23; clearing on a shared device lines 383–387; install hint line 469; language `play/i18n.mjs` lines 127–133.
 - Viewer service worker caches only its own files: `play/sw.js` lines 1–9, 21–27, 64–82; headers `tools/build-play.mjs` lines 40–66; Worker `play/worker.js` lines 5–22; `play/wrangler.production.toml` lines 20–21 (`observability enabled = false`), 12 (custom domain). Share target keeps the file in memory for 60 s: `play/sw.js` lines 10–11, 50–62.
 
 ### Player (`.ega.html`) requests
