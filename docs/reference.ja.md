@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=8fbea782c9a853f9 -->
+<!-- i18n: pair=reference.md sha256=d52d92feeab2606a -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -63,7 +63,7 @@
 | （スライドに何も書かない） | `data-step` も `data-from` もないスライドは、`.body > ul > li` と `.body > ol > li` が順にステップ 1, 2, … になる |
 | `.concl` | 常に最後のステップ（`max + 1`）。ステップの鍵は `concl` |
 | `data-at="秒"` | そのステップの中で、秒だけ遅れて始まる（フェードと `.draw`） |
-| `class="draw"` | SVG の線を描いていく（`pathLength="1"` が要る）。ステップはいちばん近い `data-step` の祖先、自分の `data-step`、なければ 0。0.7 秒 |
+| `class="draw"` | SVG の線を描いていく（`pathLength="1"` が要る）。ステップはいちばん近い `data-step` の祖先、自分の `data-step`、なければ 0。0.7 秒。static のスライドでは、線は描き終わった形で出る（動かない） |
 | `class="draw drawslow"` | 同じく 1.4 秒 |
 | `data-from="k"`（パーツ） | パーツのステップ 1 をスライドのステップ k に合わせる（既定 1） |
 | `steps="n"`（パーツ） | パーツのステップの数を上書きする |

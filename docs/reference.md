@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=7a980764169ceed0 -->
+<!-- i18n: pair=reference.ja.md sha256=f8049b046cc3e3a3 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -63,7 +63,7 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 | (none on the slide) | if a slide has no `data-step` and no `data-from`, each `.body > ul > li` and `.body > ol > li` becomes steps 1, 2, … |
 | `.concl` | always the last step (`max + 1`), step key `concl` |
 | `data-at="s"` | within its step, start s seconds later (fade and `.draw`) |
-| `class="draw"` | SVG stroke drawn in (needs `pathLength="1"`). Step = closest `data-step` ancestor, its own `data-step`, or 0. 0.7 s |
+| `class="draw"` | SVG stroke drawn in (needs `pathLength="1"`). Step = closest `data-step` ancestor, its own `data-step`, or 0. 0.7 s. On a `static` slide, strokes are shown drawn (no animation). |
 | `class="draw drawslow"` | same, 1.4 s |
 | `data-from="k"` (part) | part's first step is slide step k (default 1) |
 | `steps="n"` (part) | override the part's step count |
