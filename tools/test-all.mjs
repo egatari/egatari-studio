@@ -241,6 +241,8 @@ steps.push(
   // 字の絞り込み（wasm、#178 (4)）：同じ字なら同じバイト・縦書きの機能・unicode-range は使う字だけ・RFN の字体は絞らない・字の範囲の点検
   ['test-font-subset', ['tools/test-font-subset.mjs', path.join(tmp, 'font-subset')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
+  // 本文の釣り合い（R-balance の段 1、balance。情報だけで、修正依頼に入らない）
+  ['test-check-fill', ['tools/test-check-fill.mjs', path.join(tmp, 'check-fill')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
 );
