@@ -137,7 +137,8 @@ console.log('button');
 
 // ---------------------------------------------------------------- 2. highlighting
 console.log('highlight');
-const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280, height: 800 }, serviceWorkers: 'block' });
+// tall, so that every highlight of the small book is within the drawn window (only highlights near the screen are drawn: see 9)
+const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280, height: 1600 }, serviceWorkers: 'block' });
 { const { p } = await page(ctx);
   const f = await openBook(p, 'book.ega.html');
   const frameBox = await (await p.$('#lesson')).boundingBox();
@@ -159,7 +160,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   ok(st.record.highlights[1].target.quote.exact === '代表値を 1 つ選ぶ' && !st.record.highlights[1].target.quote.exact.includes('だいひょうち'), 'the quote leaves out ruby readings');
   ok(/右辺で\s*c\s*を含む/.test(st.record.highlights[2].target.quote.exact), `the quote across inline math is the visible text (${st.record.highlights[2].target.quote.exact})`);
   const sz = await sizes(f);
-  ok(sz.y === 2 && sz.p === 1 && sz.b === 1, `painted with the CSS Custom Highlight API (${JSON.stringify(sz)})`);
+  ok(sz.y === 2 && sz.p === 1 && sz.b === 1, `painted in the markup layer (${JSON.stringify(sz)})`);
   ok(await f.evaluate(() => document.getElementById('egatari-article').innerHTML) === before, 'the book\'s HTML is unchanged');
   await shot(p, '01-highlights-light');
   // a tap on a highlight: change its colour
@@ -185,6 +186,20 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   await f2.evaluate(() => { const t = document.getElementById('deck-text'); t.setAttribute('data-dx-bg', 'black'); t.style.fontSize = '24px'; t.style.lineHeight = '2.2'; });
   await sleep(400);
   ok((await highlightRects(f2, 'y')).map((x) => x.t).join('|') === t0 && (await mstate(p)).missing.length === 0, `a new font size, line spacing and background: the same text stays highlighted (${t0} → ${(await highlightRects(f2, 'y')).map((x) => x.t).join('|')}; missing ${(await mstate(p)).missing.length})`);
+  // every painted box still lies on its own highlight's text: the character under the middle of each box is in that highlight's quote
+  const onText = async () => { const quotes = Object.fromEntries((await mstate(p)).record.highlights.map((h) => [h.id, h.target.quote.exact])); return f2.evaluate((quotes) => {
+    const r = document.querySelector('[data-egatari-viewer=layer]').shadowRoot, bad = [];
+    const boxes = [...r.querySelectorAll('.h')];
+    for (const e of boxes) { const b = e.getBoundingClientRect(); if (b.bottom < 0 || b.top > innerHeight) continue; e.scrollIntoView({ block: 'nearest' }); const c = e.getBoundingClientRect(), cr = document.caretRangeFromPoint(c.left + c.width / 2, c.top + c.height / 2);
+      const ch = cr && cr.startContainer.nodeType === 3 ? (cr.startContainer.data[cr.startOffset] || cr.startContainer.data[cr.startOffset - 1] || '') : '';
+      const inReading = cr && cr.startContainer.parentElement && cr.startContainer.parentElement.closest('rt');   // a highlighted ruby base has its reading painted too
+      if (!inReading && (!ch || !quotes[e.getAttribute('data-id')].includes(ch))) bad.push(e.getAttribute('data-id') + ':' + ch); }
+    return { n: boxes.length, bad }; }, quotes); };
+  await f2.evaluate(() => { document.getElementById('deck-text').style.fontSize = '30px'; });
+  await sleep(300);
+  const ot = await onText();
+  ok(ot.n > 0 && ot.bad.length === 0, `after a font size change every box still lies on its highlight's text (${ot.n} boxes; off: ${ot.bad.join(' ')})`);
+  await f2.evaluate(() => { document.getElementById('deck-text').style.fontSize = '24px'; });
   await shot(p, '02-highlights-black');
   await f2.evaluate(() => { const t = document.getElementById('deck-text'); t.setAttribute('data-dx-bg', 'white'); t.style.fontSize = ''; t.style.lineHeight = ''; });
 
@@ -351,7 +366,8 @@ for (const [scheme, vp, name] of [['dark', { width: 1280, height: 800 }, '08-bar
   const { p } = await page(c, scheme);
   const f = await openBook(p, 'book.ega.html');
   const sv = await select(f, '外れ値に', '引っぱられるが'); let pw = null; await until(async () => (pw = await popup(f)));
-  if (vp.width < 500) ok(pw && pw.top >= sv.bottom + 16 && await f.evaluate(() => matchMedia('(pointer: coarse)').matches), `${name}: on a touch screen the window is below the selection, clear of iPad's own callout above it (${pw && pw.top} ≥ ${sv.bottom} + 16)`);
+  if (vp.width < 500) { const pane = await f.evaluate(() => document.getElementById('egatari-article').closest('.dx-body').getBoundingClientRect().bottom);
+    ok(pw && await f.evaluate(() => matchMedia('(pointer: coarse)').matches) && pw.bottom >= pane - 20 && pw.top > sv.bottom + 72, `${name}: on a touch screen the window is docked at the bottom of the book's pane, away from the selection and the system menu next to it (${pw && pw.top}–${pw && pw.bottom}, pane bottom ${pane}, selection bottom ${sv.bottom})`); }
   await press(f, 'y');
   const h0 = (await (await p.$('#lesson')).boundingBox());
   await p.click('#b-markup'); await p.click('#b-recall');
@@ -362,6 +378,54 @@ for (const [scheme, vp, name] of [['dark', { width: 1280, height: 800 }, '08-bar
   await shot(p, name);
   await c.close();
 }
+
+// ---------------------------------------------------------------- 9. the window flips above near the bottom (touch); print; cost at the 2000 cap
+console.log('flip, print, cost');
+{ const c = await browser.newContext({ locale: 'ja-JP', viewport: { width: 375, height: 667 }, serviceWorkers: 'block', hasTouch: true });
+  const { p } = await page(c);
+  const f = await openBook(p, 'book.ega.html');
+  // a selection near the bottom of the screen: no room below, so the window goes above it
+  const near = await f.evaluate(() => {
+    const a = document.getElementById('egatari-article'), body = a.closest('.dx-body');
+    const w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT); let n; while ((n = w.nextNode())) if (n.data.includes('中央値は')) break;
+    const i = n.data.indexOf('中央値は'), r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + 4);
+    body.scrollTop += r.getBoundingClientRect().bottom - (innerHeight - 24);
+    getSelection().removeAllRanges(); getSelection().addRange(r);
+    const b = r.getBoundingClientRect(); return { top: b.top, bottom: b.bottom };
+  });
+  let w = null; await until(async () => (w = await popup(f)));
+  const paneTop = await f.evaluate(() => document.getElementById('egatari-article').closest('.dx-body').getBoundingClientRect().top);
+  ok(w && w.top <= paneTop + 20 && w.bottom < near.top - 72, `touch, a selection near the bottom: the window is docked at the top of the book's pane (${w && w.top}–${w && w.bottom}, pane top ${paneTop}, selection top ${near.top})`);
+  await press(f, 'y'); await until(async () => (await sizes(f)).y === 1);
+  await p.emulateMedia({ media: 'print' });
+  ok(await f.evaluate(() => getComputedStyle(document.querySelector('[data-egatari-viewer=layer]')).display === 'none'), 'print: the markup layer is not printed (stage 1)');
+  await p.emulateMedia({ media: 'screen' });
+  ok(await f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=layer]'); const r = h.shadowRoot; const text = [...r.querySelectorAll('*:not(style)')].map((e) => [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.data).join('')).join('');
+    const s = getSelection(); s.selectAllChildren(h.parentElement); const copied = s.toString(); s.removeAllRanges(); s.selectAllChildren(document.getElementById('egatari-article')); const art = s.toString(); s.removeAllRanges();
+    return h.textContent === '' && text === '' && copied.trim() === art.trim(); }), 'copy: the layer holds no text, so copying the book copies the book\'s text only');
+  // cost: 2000 highlights (the cap) over the book, then a font change: the time of the redraw
+  const N = 2000;
+  const list = await f.evaluate((N) => {
+    const a = document.getElementById('egatari-article'); const w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('rt,rp,.katex-mathml') ? 2 : 1) });
+    let s = '', n; while ((n = w.nextNode())) s += n.data;
+    const out = []; const step = Math.max(1, Math.floor((s.length - 40) / N));
+    for (let k = 0; out.length < N; k = (k + step) % (s.length - 40)) { const ex = s.slice(k + 8, k + 14); if (!ex.trim()) { k++; continue; } out.push({ id: 'h-' + String(out.length).padStart(6, '0'), color: 'ypb'[out.length % 3], target: { section: '', quote: { exact: ex, prefix: s.slice(k, k + 8), suffix: s.slice(k + 14, k + 22) } } }); }
+    return out;
+  }, N);
+  await p.evaluate((list) => document.getElementById('lesson').contentWindow.postMessage({ egaViewer: 'markup-load', list, words: {}, view: { hidden: [], recall: false, recallColors: ['y', 'p', 'b'], bar: false } }, '*'), list);
+  await until(async () => ((await sizes(f)).y + (await sizes(f)).p + (await sizes(f)).b) > 100, 15000);
+  const times = [], layouts = [];
+  for (const fs of ['22px', '26px', '20px']) { await f.evaluate((fs) => { document.getElementById('deck-text').style.fontSize = fs; document.querySelector('[data-egatari-viewer=layer]').removeAttribute('data-ms'); }, fs); await until(() => f.evaluate(() => document.querySelector('[data-egatari-viewer=layer]').hasAttribute('data-ms')), 5000); times.push(+(await f.evaluate(() => document.querySelector('[data-egatari-viewer=layer]').getAttribute('data-ms')))); }
+  const placed = await f.evaluate(() => document.querySelector('[data-egatari-viewer=layer]').shadowRoot.querySelectorAll('.h').length);
+  console.log(`  cost: ${N} highlights (${placed} boxes), redraw after a font change: ${times.join(' / ')} ms `);
+  // only the highlights near the screen are drawn; scrolling far draws the ones there
+  const before = await f.evaluate(() => [...document.querySelector('[data-egatari-viewer=layer]').shadowRoot.querySelectorAll('.h')].map((e) => e.getAttribute('data-id')));
+  await f.evaluate(() => { const b = document.getElementById('egatari-article').closest('.dx-body'); b.scrollTop = b.scrollHeight; });
+  await sleep(400);
+  const after = await f.evaluate(() => { const r = document.querySelector('[data-egatari-viewer=layer]').shadowRoot; const vis = [...r.querySelectorAll('.h')].filter((e) => { const b = e.getBoundingClientRect(); return b.bottom > 0 && b.top < innerHeight; }); return { ids: [...r.querySelectorAll('.h')].map((e) => e.getAttribute('data-id')), visible: vis.length }; });
+  ok(new Set(before).size < N && after.visible > 0 && after.ids.some((id) => !before.includes(id)), `only highlights near the screen are drawn (${new Set(before).size} of ${N}); scrolling to the end draws the ones there (${after.visible} boxes on screen)`);
+  ok(Math.min(...times) < 50, `at the ${N} cap a redraw after a font change takes under 50 ms (${times.join(' / ')} ms)`);
+  await c.close(); }
 
 ok(errors.length === 0, `no page errors (${errors.join(' | ')})`);
 await browser.close(); srv.close();

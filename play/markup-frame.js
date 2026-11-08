@@ -16,7 +16,7 @@
 (function markupFrame() {
   "use strict";
   var parentWin = window.parent;
-  var COLORS = ["y", "p", "b"];
+  var COLORS = ["y", "p", "b"], ID_RE = /^h-[0-9a-f]{1,32}$/;
   var MAXQ = 1000, CTX = 32;
   var supported = typeof Range === "function" && typeof Range.prototype.getClientRects === "function" && typeof Element.prototype.attachShadow === "function";
   function post(m) { m.egaViewer = "markup-" + m.egaViewer; try { parentWin.postMessage(m, "*"); } catch (e) { /* gone */ } }
@@ -94,7 +94,8 @@
   var hidden = function (c) { return S.view.hidden.indexOf(c) >= 0; };
   var masked = function (h) { return S.view.recall && S.view.recallColors.indexOf(h.color) >= 0 && !S.revealed[h.id]; };
   var BAND = { white: { y: "#fff066", p: "#ff9eb0", b: "#79b8ff" }, sepia: { y: "#f5e04a", p: "#f797a8", b: "#70aae6" }, black: { y: "#7d6800", p: "#a5304a", b: "#1f4f94" } };
-  var LAYER_CSS = ".h{position:absolute;pointer-events:none;border-radius:2px}.h.mul{mix-blend-mode:multiply}.h.scr{mix-blend-mode:screen}" +
+  var LAYER_CSS = "@media print{:host{display:none!important}}" +   // stage 1 prints the book as it is; export (stage 2) draws highlights on purpose
+    ".h{position:absolute;pointer-events:none;border-radius:2px}.h.mul{mix-blend-mode:multiply}.h.scr{mix-blend-mode:screen}" +
     ".m{position:absolute;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;pointer-events:auto}" +
     ".k{all:unset;position:absolute;z-index:1;cursor:pointer;border-radius:2px;pointer-events:auto;-webkit-tap-highlight-color:transparent}.k:focus-visible{outline:3px solid #2c63d4;outline-offset:2px;box-shadow:0 0 0 5px #fff}";
   var L = { host: null, root: null, paint: null, mk: null };
@@ -138,43 +139,69 @@
     var out = [], root = r.commonAncestorContainer;
     var push = function (n, a, b) { var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push(rs[i]); };
     if (root.nodeType === 3) { push(root, r.startOffset, r.endOffset); return out; }
-    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) { var p = n.parentElement; return p && p.closest(".katex-mathml,script,style") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } }), n;
-    while ((n = w.nextNode())) {
-      if (!r.intersectsNode(n)) continue;
-      var a = n === r.startContainer ? r.startOffset : 0, b = n === r.endContainer ? r.endOffset : n.data.length;
-      if (b > a && n.data.slice(a, b).trim()) push(n, a, b);
+    // from the range's first text node to its last only (walking the whole section for each highlight is slow at 2000)
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n = r.startContainer;
+    if (n.nodeType !== 3) { var c = n.childNodes[r.startOffset]; w.currentNode = c || n; n = c && c.nodeType === 3 ? c : w.nextNode(); }
+    else w.currentNode = n;
+    var endNode = r.endContainer.nodeType === 3 ? r.endContainer : null;
+    for (; n; n = w.nextNode()) {
+      if (!endNode && !r.intersectsNode(n)) break;
+      var p = n.parentElement;
+      if (!(p && p.closest(".katex-mathml"))) {
+        var a = n === r.startContainer ? r.startOffset : 0, b = n === r.endContainer ? r.endOffset : n.data.length;
+        if (b > a && n.data.slice(a, b).trim()) push(n, a, b);
+      }
+      if (n === endNode) break;
     }
     return out;
   }
   var MK = {};
   function inOrder(a, b) { try { return S.placed[a].compareBoundaryPoints(Range.START_TO_START, S.placed[b]); } catch (e) { return 0; } }
   function bgName() { var pane = document.getElementById("deck-text"), v = pane && pane.getAttribute("data-dx-bg"); return v === "sepia" || v === "black" ? v : "white"; }
+  // Only the highlights near the screen are drawn: the visible part of the book and half a screen before and after it. Ranges in
+  // document order are in reading order on the page, so the first one in that window is found by halving (a few rects), and
+  // drawing stops at the first one past it. Scrolling past half of that margin draws again (no scroll redraw otherwise: the
+  // layer scrolls with the text). At the 2000 cap a full redraw was 130–160 ms in WebKit; this keeps it to what is on screen.
+  var ORDER = [], WIN = null;
+  function scrollerOf() { return S.article && (S.article.closest(".dx-body") || null); }
+  function vertical() { try { return /^vertical/.test(getComputedStyle(S.article).writingMode); } catch (e) { return false; } }
+  function nearIds(filter) {
+    var sc = scrollerOf(), v = vertical(), vr = sc ? sc.getBoundingClientRect() : { top: 0, bottom: innerHeight, left: 0, right: innerWidth, width: innerWidth, height: innerHeight };
+    var m = (v ? vr.width : vr.height) * 0.5;   // half a screen before and after
+    // positions along the reading direction: down the page, or leftward in vertical writing
+    var lo = v ? -(vr.right + m) : vr.top - m, hi = v ? -(vr.left - m) : vr.bottom + m;
+    var list = ORDER.filter(function (id) { return S.placed[id] && filter(id); });
+    var pos = function (id) { var b = S.placed[id].getBoundingClientRect(); return { a: v ? -b.right : b.top, z: v ? -b.left : b.bottom, empty: !b.width && !b.height }; };
+    var a = 0, z = list.length;
+    while (a < z) { var mid = (a + z) >> 1, q = pos(list[mid]); if (q.z < lo) a = mid + 1; else z = mid; }
+    var out = [];
+    for (var k = a; k < list.length; k++) { var q2 = pos(list[k]); if (q2.a > hi && !q2.empty) break; out.push(list[k]); }
+    WIN = sc ? { at: v ? sc.scrollLeft : sc.scrollTop, margin: m, v: v } : null;
+    return out;
+  }
   function paint() {
     var Y = S.article ? layer() : null;
     if (!Y) return;
+    var t0 = performance.now();
     var o = L.host.getBoundingClientRect(), bg = bgName(), blend = bg === "black" ? "scr" : "mul";
     var box = function (q, grow) { grow = grow || {}; return "left:" + (q.left - o.left) + "px;top:" + (q.top - o.top - (grow.up || 0)) + "px;width:" + (q.width + (grow.right || 0)) + "px;height:" + (q.height + (grow.up || 0)) + "px;"; };
-    // the highlights shown (not hidden by a filter, not under a 暗記 band)
-    var frag = document.createDocumentFragment();
-    S.list.forEach(function (h) {
-      var r = S.placed[h.id];
-      if (!r || hidden(h.color) || masked(h)) return;
-      var rs = textRects(r);
-      for (var i = 0; i < rs.length; i++) {
-        if (rs[i].width < 0.5 || rs[i].height < 0.5) continue;
-        var d = document.createElement("div"); d.className = "h " + blend; d.setAttribute("data-id", h.id); d.setAttribute("data-c", h.color);
-        d.style.cssText = box(rs[i]) + "background:" + BAND[bg][h.color];
-        frag.appendChild(d);
-      }
-    });
-    L.paint.textContent = ""; L.paint.appendChild(frag);
-    // 暗記: bands and buttons, kept between redraws so the keyboard's focus stays
-    var ids = S.view.recall ? S.list.filter(function (h) { return S.placed[h.id] && !hidden(h.color) && masked(h); }).map(function (h) { return h.id; }) : [];
-    ids.sort(inOrder);
+    var byId = {}; S.list.forEach(function (h) { byId[h.id] = h; });
+    var near = nearIds(function (id) { return byId[id] && !hidden(byId[id].color); });   // ORDER can be one list behind until placeAll
+    // the highlights shown (not hidden by a filter, not under a 暗記 band): all reads first, then one write
+    var shown = [];
+    near.forEach(function (id) { var h = byId[id]; if (!masked(h)) shown.push([h, textRects(S.placed[id])]); });
+    var html = "";
+    for (var k = 0; k < shown.length; k++) {
+      var h = shown[k][0], rs = shown[k][1];
+      for (var i = 0; i < rs.length; i++) html += '<div class="h ' + blend + '" data-id="' + h.id + '" data-c="' + h.color + '" style="' + box(rs[i]) + "background:" + BAND[bg][h.color] + '"></div>';
+    }
+    L.paint.innerHTML = html;   // ids are checked on arrival (ID_RE), colours are y/p/b and the numbers are made here
+    // 暗記: bands and buttons for the hidden highlights near the screen, kept between redraws so the keyboard's focus stays.
+    // Tab moves through them in reading order; focusing the last one scrolls it into view, which draws the next ones
+    var ids = S.view.recall ? near.filter(function (id) { return masked(byId[id]); }) : [];
     var keep = {}, focusedGone = false, act = L.root.activeElement;
     ids.forEach(function (id) { keep[id] = true; });
     Object.keys(MK).forEach(function (id) { if (keep[id]) return; if (act === MK[id].btn) focusedGone = true; MK[id].btn.remove(); MK[id].bands.remove(); delete MK[id]; });
-    var byId = {}; S.list.forEach(function (h) { byId[h.id] = h; });
     ids.forEach(function (id, n) {
       var h = byId[id], r = S.placed[id], e = MK[id];
       if (!e) {
@@ -187,7 +214,6 @@
       var rs = textRects(r), em = emphasisOf(r), grow = { up: em && !em.vertical ? em.size + 2 : 2, right: em && em.vertical ? em.size : 0 }, first = null;
       for (var i = 0; i < rs.length; i++) {
         var q = rs[i];
-        if (q.width < 0.5 || q.height < 0.5) continue;
         var d = document.createElement("div"); d.className = "m";
         d.style.cssText = box(q, grow) + "height:" + (q.height + grow.up + 2) + "px;background:" + BAND[bg][h.color];
         e.bands.appendChild(d);
@@ -202,6 +228,7 @@
       if (e.btn.nextSibling !== e.bands) L.mk.insertBefore(e.bands, e.btn.nextSibling);
     });
     if (focusedGone) { var next = revealNext; revealNext = null; if (next && MK[next]) MK[next].btn.focus(); else if (ids.length) MK[ids[0]].btn.focus(); }
+    L.host.setAttribute("data-ms", String(Math.round((performance.now() - t0) * 10) / 10));   // the last redraw's time (docs/viewer.md, measured)
   }
   var revealNext = null;
   function reveal(id) {
@@ -222,10 +249,15 @@
   var queued = false;
   function queuePaint() { if (queued || !S.article) return; queued = true; requestAnimationFrame(function () { queued = false; paint(); }); }
   var ro = typeof ResizeObserver === "function" ? new ResizeObserver(queuePaint) : null;
+  // the text can also move when fonts, images or math finish loading late, or a <details> in the book opens or closes
+  if (document.fonts) { try { document.fonts.ready.then(queuePaint); document.fonts.addEventListener("loadingdone", queuePaint); } catch (e) { /* old browser */ } }
+  document.addEventListener("load", function (e) { if (S.article && e.target && e.target.nodeType === 1 && S.article.contains(e.target)) queuePaint(); }, true);
+  document.addEventListener("toggle", function (e) { if (S.article && e.target && S.article.contains(e.target)) queuePaint(); }, true);
   function placeAll() {
     S.placed = {};
     var missing = [];
     if (S.article) S.list.forEach(function (h) { var r = anchor(h); if (r) S.placed[h.id] = r; else missing.push(h.id); });
+    ORDER = Object.keys(S.placed).sort(inOrder);
     paint();
     var sections = {};
     if (S.article) Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) { var hd = s.querySelector("h2,h3"); sections[s.getAttribute("data-section-id")] = hd ? textOf(hd).text.trim().slice(0, 200) : ""; });
@@ -246,6 +278,7 @@
     st.textContent = ".w{position:fixed;display:flex;gap:6px;align-items:center;padding:6px 8px;border-radius:22px;background:#2b2b33;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);font:14px/1 system-ui,-apple-system,sans-serif}" +
       ".w[hidden]{display:none}button{all:unset;box-sizing:border-box;min-width:32px;height:32px;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}" +
       "button:focus-visible{outline:2px solid #fff;outline-offset:2px}.c{width:32px;border:2px solid rgba(255,255,255,.85)}.c[aria-pressed=true]{box-shadow:0 0 0 3px #fff inset}" +
+      ".w.dock{gap:10px;padding:8px 12px;border-radius:30px}.w.dock button{min-width:44px;height:44px;border-radius:22px}.w.dock .c{width:44px}" +
       ".y{background:#fff066}.p{background:#ff9eb0}.b{background:#79b8ff}.d{padding:0 10px;border:1px solid rgba(255,255,255,.6)}";
     pop = document.createElement("div"); pop.className = "w"; pop.setAttribute("role", "toolbar"); pop.hidden = true;
     root.appendChild(st); root.appendChild(pop);
@@ -256,10 +289,13 @@
     pop.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); hidePop(); } });
     document.documentElement.appendChild(host);
   }
-  // Where the window goes: above the text with a mouse. On a touch screen a new selection gets it below (with room for the
-  // selection handle), because iPad's own callout (コピー・調べる …) appears above the selection and covered it there.
+  // Where the window goes. With a mouse, and for a tapped highlight (no selection, so no system menu): just above the text.
+  // For a new selection on a touch screen: docked at the bottom edge of the book's pane, or at its top edge when the selection is
+  // near the bottom. iOS puts its own menu (コピー・調べる …) right above the selection when there is room and right below it
+  // otherwise (seen on an iPad, 2026-11-09), so any place next to the selection was covered in one of the two cases; the edge
+  // away from the selection is free in both. Android's menu also sits next to the selection.
   var touch = function () { try { return matchMedia("(pointer: coarse)").matches; } catch (e) { return false; } };
-  function showPop(rect, forWhat, below) {
+  function showPop(rect, forWhat, dock, top) {
     makePop();
     if (!host.isConnected) document.documentElement.appendChild(host);
     popFor = forWhat;
@@ -268,11 +304,17 @@
     pop.setAttribute("aria-label", W.window);
     COLORS.forEach(function (c) { var b = document.createElement("button"); b.type = "button"; b.className = "c " + c; b.setAttribute("data-a", c); b.setAttribute("aria-label", W[c]); b.title = W[c]; if (forWhat.id) b.setAttribute("aria-pressed", c === cur ? "true" : "false"); pop.appendChild(b); });
     if (forWhat.id) { var d = document.createElement("button"); d.type = "button"; d.className = "d"; d.setAttribute("data-a", "del"); d.textContent = W.del; pop.appendChild(d); }
+    pop.classList.toggle("dock", !!dock);   // finger-sized buttons (44 px) when docked for a touch selection
     pop.hidden = false;
-    var pw = pop.offsetWidth, ph = pop.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    var pw = pop.offsetWidth, ph = pop.offsetHeight, vw = document.documentElement.clientWidth, vv = window.visualViewport, vh = vv ? Math.min(window.innerHeight, vv.height + vv.offsetTop) : window.innerHeight;
     var x = Math.max(8, Math.min(vw - pw - 8, rect.left + rect.width / 2 - pw / 2)), y;
-    if (below) { y = rect.bottom + 28; if (y + ph > vh - 8) y = rect.top - ph - 12; }
-    else { y = rect.top - ph - 12; if (y < 8) y = rect.bottom + 12; }
+    if (dock) {
+      var sc = scrollerOf(), pr = sc ? sc.getBoundingClientRect() : { left: 0, right: vw, top: 0, bottom: vh };
+      x = Math.max(8, Math.min(vw - pw - 8, (Math.max(pr.left, 0) + Math.min(pr.right, vw)) / 2 - pw / 2));
+      var lo = Math.min(pr.bottom, vh) - ph - 16, hi = Math.max(pr.top, 0) + 16;
+      y = rect.bottom + 72 > lo ? hi : lo;   // 72: the selection handle and the system menu below the selection
+      if (y === hi && (top || rect).top - 72 < hi + ph) y = lo;   // a selection filling the pane: keep the bottom
+    } else { y = rect.top - ph - 12; if (y < 8) y = rect.bottom + 12; }
     y = Math.max(8, Math.min(vh - ph - 8, y));
     pop.style.left = Math.round(x) + "px"; pop.style.top = Math.round(y) + "px";
   }
@@ -301,7 +343,7 @@
       var r = sel.getRangeAt(0), t = targetOf(r);
       if (!t) { if (popFor && !popFor.id) hidePop(); return; }
       var rects = r.getClientRects(), first = rects[0] || r.getBoundingClientRect(), last = rects[rects.length - 1] || first;
-      if (touch()) showPop(last, { target: t }, true); else showPop(first, { target: t });
+      if (touch()) showPop(last, { target: t }, true, first); else showPop(first, { target: t }, false);
     }, 220);
   });
   // a tap on a highlight: reveal it (暗記), or open the window to change its colour or delete it
@@ -326,7 +368,11 @@
     e.stopPropagation();
     showPop(hit.rect, { id: hit.h.id });
   }, true);
-  window.addEventListener("scroll", function () { if (popFor) hidePop(); }, true);
+  window.addEventListener("scroll", function (e) {
+    if (popFor) hidePop();
+    var sc = scrollerOf();
+    if (WIN && sc && e.target === sc && Math.abs((WIN.v ? sc.scrollLeft : sc.scrollTop) - WIN.at) > WIN.margin / 2) queuePaint();
+  }, true);
   window.addEventListener("resize", queuePaint);
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
@@ -373,7 +419,7 @@
     var m = e.data;
     if (e.source !== parentWin || !m || typeof m.egaViewer !== "string" || m.egaViewer.indexOf("markup-") !== 0) return;
     if (m.egaViewer === "markup-load" && isList(m.list)) {
-      S.list = m.list.filter(function (h) { return h && typeof h.id === "string" && COLORS.indexOf(h.color) >= 0 && h.target && h.target.quote && typeof h.target.quote.exact === "string"; });
+      S.list = m.list.filter(function (h) { return h && typeof h.id === "string" && ID_RE.test(h.id) && COLORS.indexOf(h.color) >= 0 && h.target && h.target.quote && typeof h.target.quote.exact === "string"; });
       if (m.words && typeof m.words === "object") S.words = m.words;
       setView(m.view);
       placeAll();
