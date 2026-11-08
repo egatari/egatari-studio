@@ -34,8 +34,16 @@
     <span id="lesson-title"></span>
     <span id="lesson-kind" class="badge"></span>
   </div>
+  <div id="markup-bar" role="toolbar" data-i18n-label="mMarkup" aria-label="マークアップ" hidden>
+    <button type="button" id="b-recall" aria-pressed="false"><span class="sw-on" aria-hidden="true"></span><span data-i18n="mRecall">暗記</span></button>
+    <span id="recall-colours" role="group" data-i18n-label="mRecallColours" aria-label="暗記する色" hidden><button type="button" data-c="y" class="csw m-y" aria-pressed="true"></button><button type="button" data-c="p" class="csw m-p" aria-pressed="true"></button><button type="button" data-c="b" class="csw m-b" aria-pressed="true"></button></span>
+    <button type="button" id="b-mlist" data-i18n="mList">一覧</button>
+    <span id="m-filtered" class="small" hidden><span data-i18n="mFiltered">一部の色を非表示中</span> <button type="button" id="b-mshow" class="linklike" data-i18n="mShowAll">すべて表示</button></span>
+    <span id="markup-note" class="small" data-i18n="mShared" hidden>共有の端末なので、ハイライトは保存されません。</span>
+  </div>
   <div class="bar-buttons">
     <button type="button" id="b-live" class="live-btn" hidden aria-controls="live"><span class="dot" aria-hidden="true"></span><span data-i18n="live">ライブ</span><span class="sr-only" id="b-live-state"></span></button>
+    <button type="button" id="b-markup" hidden aria-pressed="false" aria-controls="markup-bar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path d="M4 20h4L19 9l-4-4L4 16v4z M14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg><span data-i18n="mMarkup">マークアップ</span></button>
     <button type="button" id="b-close" hidden data-i18n="close">閉じる</button>
     <button type="button" id="b-lang" lang="en">English</button>
   </div>
@@ -126,6 +134,14 @@
     </aside>
   </section>
 </main>
+<dialog id="m-list" aria-labelledby="m-list-t">
+  <div class="m-top"><h2 id="m-list-t" data-i18n="mListTitle">ハイライトの一覧</h2><button type="button" id="b-mlist-close" data-i18n="linkClose">閉じる</button></div>
+  <div id="m-list-body"></div>
+</dialog>
+<dialog id="m-confirm" aria-describedby="m-confirm-t">
+  <p id="m-confirm-t"></p>
+  <div class="row"><button type="button" id="b-mconfirm-no" data-i18n="mCancel">やめる</button><button type="button" id="b-mconfirm-yes" class="pri danger" data-i18n="mDelete">消す</button></div>
+</dialog>
 <div id="sr" class="sr-only" role="status" aria-live="polite"></div>
 <dialog id="link-box" aria-labelledby="link-t" aria-describedby="link-n">
   <h2 id="link-t"></h2>

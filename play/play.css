@@ -177,3 +177,52 @@ body.headless #bar { display: none; }
 #live[data-mode=strip] button, #live[data-mode=overlay]:not(.poll-open) button { min-height: 24px; height: 24px; min-width: 24px; }
 #live[data-mode=strip] fieldset label { min-height: 24px; height: 24px; padding: 0 8px; margin: 0; background: rgba(127, 127, 127, 0.14); }
 #live[data-mode=strip] fieldset .row { gap: 6px; }
+
+/* markup (play/markup.mjs): the bar replaces the header's content, so nothing appears over the lesson's frame */
+/* the swatches show the colours of a light page in the book in every scheme: the book keeps its own background (文字と背景), which this page cannot see */
+:root { --m-y: #fff066; --m-p: #ff9eb0; --m-b: #79b8ff; }
+#b-markup { display: inline-flex; align-items: center; gap: 6px; }
+#b-markup .ic { flex: none; }
+#b-markup[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+#markup-bar { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
+#bar.markup #lesson-info, #bar.markup #b-close, #bar.markup #b-lang, #bar.markup #b-live { display: none !important; }
+#b-recall { display: inline-flex; align-items: center; gap: 6px; }
+#b-recall .sw-on { width: 28px; height: 16px; border-radius: 8px; background: var(--line); position: relative; flex: none; }
+#b-recall .sw-on::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); transition: left .15s; }
+#b-recall[aria-pressed=true] .sw-on { background: var(--accent); }
+#b-recall[aria-pressed=true] .sw-on::after { left: 14px; }
+#recall-colours { display: inline-flex; gap: 4px; }
+.csw { width: 40px; min-height: 40px; padding: 0; border: 2px solid var(--line); position: relative; }
+.csw[aria-pressed=true] { border-color: var(--fg); }
+.csw[aria-pressed=true]::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1a1a1a; }
+.m-y { background: var(--m-y); } .m-p { background: var(--m-p); } .m-b { background: var(--m-b); }
+#markup-note, #m-filtered { white-space: nowrap; }
+/* one row on a phone (the header's height never changes, so the lesson's frame does not move): no logo, no counts, smaller swatches */
+@media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n { display: none !important; }
+  #markup-bar { gap: 4px; } #markup-bar > button, #b-markup { padding: 4px 8px; } .csw { width: 32px; } #recall-colours { gap: 3px; } }
+@media (max-width: 560px) { #b-markup span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+
+#m-list, #m-confirm { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
+#m-list { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); }
+#m-list::backdrop, #m-confirm::backdrop { background: rgba(0, 0, 0, 0.5); }
+.m-top { display: flex; align-items: center; gap: 8px; }
+.m-top h2 { font-size: 1.125rem; margin: 0; flex: 1; }
+#m-list h3 { font-size: 1rem; margin: 16px 0 4px; }
+#m-list ul { list-style: none; padding: 0; margin: 8px 0; }
+.m-colour { border-bottom: 1px solid var(--line); padding: 8px 0; }
+.m-chead { display: flex; align-items: center; gap: 8px; }
+.m-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.m-name input { flex: 1; min-width: 0; min-height: 36px; font: inherit; font-size: 0.875rem; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+.m-cname { flex: none; font-weight: 600; }
+.m-count { flex: none; color: var(--muted); font-size: 0.875rem; }
+.m-crow { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.m-crow button { font-size: 0.875rem; }
+.m-crow button[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.m-sw { flex: none; width: 20px; height: 20px; border-radius: 5px; border: 1px solid var(--line); }
+.m-item { display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.m-item.m-off { opacity: .5; }
+button.m-q { flex: 1; text-align: left; background: none; border: 0; padding: 6px 4px; min-height: 40px; }
+span.m-q { flex: 1; }
+.m-danger { color: var(--err); }
+button.pri.danger { background: var(--err); border-color: var(--err); color: #fff; }
+#m-confirm .row { display: flex; gap: 8px; justify-content: flex-end; }
