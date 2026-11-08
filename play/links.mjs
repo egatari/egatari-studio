@@ -56,8 +56,12 @@ export function linkBox({ words, dlg }) {
   // the open attribute, not the close event: some browsers deliver close late (headless Chromium), which would pause the wrong request
   let wasOpen = false;
   new MutationObserver(() => { const o = dlg.box.open; if (wasOpen && !o) quietUntil = Date.now() + PAUSE_MS; wasOpen = o; }).observe(dlg.box, { attributes: true, attributeFilter: ['open'] });
+  // the last request: when it came and whether the pause dropped it (for tests: a slow runner can deliver a click after the pause)
+  let last = null;
   function request(link) {
-    if (dlg.box.open || Date.now() < quietUntil) return { shown: false, verdict: 'busy' };
+    const busy = dlg.box.open || Date.now() < quietUntil;
+    last = { at: Date.now(), busy };
+    if (busy) return { shown: false, verdict: 'busy' };
     const S = W();
     const d = decideLink(link, hosts);
     current = null;
@@ -75,5 +79,5 @@ export function linkBox({ words, dlg }) {
     show(d.must ? S.linkCheck : S.linkLeave, d.host || d.scheme + ':', d.url, (d.reasons || []).map((r) => S.why[r] || r), d.url);
     return { shown: true, verdict: d.verdict, url: d.url, must: !!d.must };
   }
-  return { request, hosts, close, quietMs: () => Math.max(0, quietUntil - Date.now()) };
+  return { request, hosts, close, quietMs: () => Math.max(0, quietUntil - Date.now()), last: () => last };
 }

@@ -633,12 +633,20 @@ console.log('links');
   await o.p.keyboard.press('Escape');
   await until(async () => !(await box()).open);
   ok(!(await box()).open, 'Escape closes the box');
-  const quiet = await o.p.evaluate(() => window.__play.links.quietMs());
-  await click('https://example.com/', 'again');
-  await sleep(300);
-  const again = await box();
-  ok(!again.open, `right after a box closes, a new request is ignored for a moment (a lesson cannot keep the box up) (pause left ${quiet} ms${again.open ? ', box: ' + again.title : ''})`);
-  if (again.open) await shut(); else await sleep(1600);
+  // A slow runner can deliver the click after the pause has ended (then the box opens, as it should). So check what the pause did
+  // with the request that arrived: try again (close, click at once) until one arrives inside the pause, and check it was dropped
+  let quiet = 0, again = null, dropped = null;
+  for (let tries = 0; tries < 4; tries++) {
+    quiet = await o.p.evaluate(() => window.__play.links.quietMs());
+    await click('https://example.com/', 'again');
+    await sleep(300);
+    again = await box();
+    const last = await o.p.evaluate(() => window.__play.links.last());
+    if (last && last.busy) { dropped = !again.open; break; }
+    if (again.open) await o.p.click('#b-link-cancel');   // arrived after the pause: close it and try again right away
+  }
+  ok(dropped === true, `right after a box closes, a new request is ignored for a moment (a lesson cannot keep the box up) (pause left ${quiet} ms${again && again.open ? ', box: ' + again.title : ''}${dropped === null ? ', no request arrived inside the pause in 4 tries' : ''})`);
+  if (again && again.open) await shut(); else await sleep(1600);
   await click('javascript:alert(1)', 'x');
   await until(async () => (b = await box()).open);
   ok(b.open && b.openHidden && b.title === 'このリンクは開けません', 'javascript: is refused (no Open button)');
