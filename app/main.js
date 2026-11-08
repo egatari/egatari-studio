@@ -39,6 +39,7 @@ import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
+import { colabVideoUrl } from '../kit/core/colab-core.mjs';
 import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
@@ -1993,10 +1994,47 @@ async function exportPortableFile() {
     for (const [rel, text] of Object.entries(r.writes)) await ws0.writeText(rel, text, { live });
     status(T.exported(time(), (r.html.length / 1048576).toFixed(1)));
     toast(h ? T.portableExportedToast : T.downloadedToast(name));
+    S.lastExport = { ws: ws0, builds: S.builds, name: h ? h.name || name : name };   // 動画（MP4）にする…の窓が、エクスポートの後に変更がないかを見る
+    return true;
   } catch (e) {
     if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
     if (e && e.name !== 'AbortError') toast(String(e.message || e), true); status('');
   }
+}
+
+// ---------------------------------------------------------------- 「エクスポート ▸」→「動画（MP4）にする…」（#131）
+// 動画はブラウザの中では作らない。Google Colab のノート（colab/egatari-video.ipynb）に .ega.html を上げてもらう案内の窓。
+// 主のボタン：1 ファイルで保存していない変更があれば「保存して Colab を開く」、作業フォルダでこの作業場所からまだエクスポートしていない
+// （またはその後に組み直した）なら「Egatari ファイルに保存して Colab を開く」、どちらでもなければ「Colab を開く」。保存・エクスポートの後に新しいタブで開く
+function mp4Need() {
+  if (S.portable) return S.ws && S.ws.dirty ? 'save' : 'open';
+  const x = S.lastExport;
+  return x && x.ws === S.ws && x.builds === S.builds ? 'open' : 'export';
+}
+async function mp4Name() {
+  if (S.portable && S.portable.name) return S.portable.name;
+  if (!S.portable && S.lastExport && S.lastExport.ws === S.ws && S.lastExport.name) return S.lastExport.name;
+  return exportName(await colabTitle(), deckBase(), FORMAT.FILE_EXT);
+}
+function openColabVideo() {
+  const url = colabVideoUrl();
+  if (window.__APP_TEST) window.__APP_TEST.lastColabOpen = url;
+  const w = window.open(url, '_blank');
+  if (w) { try { w.opener = null; } catch { /* 別のオリジン */ } return; }
+  // ポップアップが止められた（保存・ファイルを選ぶ画面のあとは、押した操作が切れていることがある）：リンクを押してもらう
+  ask({ title: T.mp4Title, body: [el('p', { id: 'mp4-blocked', text: T.mp4Blocked }), el('p', {}, [el('a', { id: 'mp4-link', href: url, target: '_blank', rel: 'noopener', text: T.mp4Link })])],
+    buttons: [{ id: 'cancel', label: T.close }] });
+}
+async function mp4Dialog() {
+  if (!S.ws) return;
+  const need = mp4Need(), stale = (S.stale || []).length;
+  const v = await ask({ title: T.mp4Title,
+    body: [el('p', { id: 'mp4-lead', text: T.mp4Lead(await mp4Name()) }), stale ? el('p', { id: 'mp4-stale', cls: 'note', text: T.mp4Stale(stale) }) : null],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'go', label: need === 'save' ? T.mp4SaveOpen : need === 'export' ? T.mp4ExportOpen : T.mp4Open, pri: true }] });
+  if (v !== 'go') return;
+  if (need === 'save') { await savePortable('save'); if (!S.portable || S.ws.dirty) return; }
+  else if (need === 'export') { if (!(await exportPortableFile())) return; }
+  openColabVideo();
 }
 
 // ---------------------------------------------------------------- 再生専用（学生に配る形）を書き出す（kit/core/portable.mjs の playOnly、§3.7）
@@ -2184,6 +2222,7 @@ $('b-saveas').onclick = () => saveAsDialog().catch((e) => toast(String(e.message
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
 $('b-export-play').onclick = () => participantExport().catch((e) => toast(String(e.message || e), true));
+$('b-export-mp4').onclick = () => mp4Dialog().catch((e) => toast(String(e.message || e), true));
 $('b-info').onclick = () => lessonInfo().catch((e) => toast(String(e.message || e), true));
 $('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message || e), true));
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };

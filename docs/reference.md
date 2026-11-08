@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=0b6549fe26d67ddd -->
+<!-- i18n: pair=reference.ja.md sha256=3a5f11db1be75a41 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -550,9 +550,10 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 | `--only key,…` | only these slides or steps; the rest stay as they are. Each item is a slide key or id (all of that slide's steps) or `slideKey:step` (one step). An item that matches nothing is an error that lists the valid slide keys |
 | `--full` | also `full.mp4`, and with two or more chapters `chapter_NN.mp4` and `chapters.json` (needs all clips) |
 | `--force` | ignore `.render-cache.json` |
+| `--music file` | optional background music: one track under the whole video, quieter while the script is spoken, faded out at the end ([video.md](video.md#background-music)). Part of each clip's audio, so it is in the cache key |
 | `--captions` | burn the script captions into the video (`?captions=1`); part of the cache key |
 
-Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, scale, width, height, duration, clipDuration, segments[]` with `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`), `.render-cache.json`. Clips beyond the current number of steps are deleted.
+Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sampleRate, music, scale, width, height, duration, clipDuration, segments[]` with `index, clip, still, key, slideKey, stepKey, i, k, title, chapter, start, dur, anim, lead, audioDur, audioOffset, frames, clipDur, clipStart, start_ms, end_ms, transcript, text`), `.render-cache.json`. Clips beyond the current number of steps are deleted.
 
 ## Tools
 

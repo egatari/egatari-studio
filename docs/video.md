@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=6f02a1c60d6b577e -->
+<!-- i18n: pair=video.ja.md sha256=beee72b90a7f9a39 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -57,9 +57,10 @@ node kit/build.mjs $D --portable      # or --play-only for a play-only copy for 
 | Step | Output |
 |---|---|
 | tts/synth.py | `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` (length, cues, the text passed to TTS), `audio/manifest.json` `{segments:{"key:step":{file,dur,cues,digest,engine}}}` |
-| render.mjs | `clip_NNNN.mp4` (H.264 yuv420p, constant frame rate, faststart, AAC 44.1 kHz), `clip_NNNN.png` (final state), `timeline.out.json`. With `--full`, `full.mp4`; if there are two or more chapters (`sec` slides), `chapter_NN.mp4` |
+| render.mjs | `clip_NNNN.mp4` (H.264 yuv420p, constant frame rate, faststart, AAC 48 kHz stereo), `clip_NNNN.png` (final state), `timeline.out.json`. With `--full`, `full.mp4`; if there are two or more chapters (`sec` slides), `chapter_NN.mp4` |
 
 - NNNN is the serial number in the timeline (starting at 0). 1 step = 1 clip
+- The audio is made once for the whole lesson, as one continuous 48 kHz track: each step's audio is placed at its exact sample position on the cumulative timeline, so the steps join without a gap, an overlap or a click. `full.mp4` and `chapter_NN.mp4` take their audio from that track in one AAC encode (it is not rebuilt from the clips), and are in sync with the timeline to within 1 ms. A clip's audio is the slice of the same track between its first and last frame
 - `start_ms` / `end_ms` / `text` in `timeline.out.json` are times on the joined video (the cumulative start times rounded to whole frames), usable for subtitles or chapter marks
 
 ## Voices
@@ -87,7 +88,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 ## Caching
 
 - **Audio**: if `seg_<digest>.wav` exists, it is not synthesized again. The digest is `segDigest` (kit/narration.mjs), a hash of the speaker, the text for TTS, the voice, the model, the loudness target, the gap between lines, the silence-trimming settings, and the reading dictionary and its rules (the dictionary actually used and `tts/yomi.py`). If any of these changes, it is rebuilt (fixing the dictionary rebuilds every step). Dry-run uses a different digest, so it never mixes with real audio. `--force` rebuilds
-- **Video**: for each step, a hash of "the pixels of the final state, the pixels of one frame in the middle of the motion, the contents of the audio file, dur, lead, anim, fps and scale" is recorded in `<out>/.render-cache.json`, and if it is the same the clip is not made again. Because it captures and compares the screen, the clip is correctly rebuilt even after you change CSS, parts or the theme (if more characters are used and the embedded font changes, a clip may be rebuilt even though it looks the same). `--force` rebuilds everything
+- **Video**: for each step, a hash of "the pixels of the final state, the pixels of one frame in the middle of the motion, the clip's slice of the audio track (its step's audio, sounds from parts and the background music), dur, lead, anim, fps and scale" is recorded in `<out>/.render-cache.json`, and if it is the same the clip is not made again. Because it captures and compares the screen, the clip is correctly rebuilt even after you change CSS, parts or the theme (if more characters are used and the embedded font changes, a clip may be rebuilt even though it looks the same). `--force` rebuilds everything
 - When the number of steps decreases, the leftover `clip_NNNN.*` files are deleted (so that the serial numbers do not shift)
 
 ## Adjusting lengths (timeline.json)
@@ -100,4 +101,12 @@ The length of each step is decided by `DECK.timeline()` (the same for autoplay a
 
 - `pad_after` / `hold` / `lead` lengthen the step while keeping its relation to the audio. `dur` is fixed (if the audio exceeds lead + dur, the end is cut and render warns)
 - Only the motion part (anim) is captured at fps; the rest stretches a single still of the final state. Changing the length does not increase the number of frames captured
-- The audio is placed after lead seconds of silence and padded with silence up to dur. Clip boundaries are the cumulative start times rounded to whole frames, so each clip is within one frame of its dur and the timing never drifts over many steps (a short step still gets at least one frame). Part sounds are placed at the exact cumulative time, not the rounded boundary
+- The audio is placed after lead seconds of silence, at the exact cumulative start time of its step (not rounded to frames), and cut where the next step starts. Clip boundaries are the cumulative start times rounded to whole frames, so each clip is within one frame of its dur and the timing never drifts over many steps (a short step still gets at least one frame). Part sounds are also placed at the exact cumulative time
+
+## Background music
+
+`node tools/video.mjs <working folder|.ega.html> --music <audio file>` (or `render.mjs … --music <file>`) adds one music track under the whole video. It starts with the video and plays once; while the script is spoken it is 12 dB quieter (it goes down 0.25 s before a line and comes back 0.6 s after; gaps shorter than 0.8 s stay down), and it fades out over the last 3 s. Its level is set from the file's loudness (RMS 0.05), so you do not set anything: no seconds, no beat sync. The levels are computed from the known script windows, so the same input always gives the same audio. Use only music you have the right to use. Music is not part of the lesson file (the Egatari file plays without it); it is only added to the video.
+
+## Make the video in Google Colab
+
+Without ffmpeg on your computer, use the video notebook ([colab/egatari-video.ipynb](../colab/egatari-video.ipynb); in the editor, **File ▾ → Export ▸ → Make a video (MP4)…** opens it). It runs on a CPU runtime: choose CPU, **Run all**, upload the lesson file (`<name>.ega.html`) and, optionally, the background music. It runs `tools/video.mjs` on the file and downloads `full.mp4` (and a ZIP of the chapters' MP4 files, if there are two or more chapters). The video uses the audio that is in the file, so save it in the editor first. You do not need a video to share a lesson: the Egatari file plays as it is.

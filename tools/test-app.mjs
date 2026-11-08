@@ -563,7 +563,7 @@ try {
 
     // ---------------------------------------------------------------- 8. 書き出し（ui-redesign）：「組み立てた HTML」は編集アプリから外した（コマンドの node kit/build.mjs に残す）
     ok(await page.evaluate(() => !document.getElementById('b-export') && ![...document.querySelectorAll('#tools button')].some((b) => /組み立てた HTML|built HTML/i.test(b.textContent))), 'export: no “built HTML” export in the editor (CLI only)');
-    ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-print,b-print-book', 'export: File ▸ Export ▸ has For participants (play only)…, Print slides and Print script (folder without a book)');
+    ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-export-mp4,b-print,b-print-book', 'export: File ▸ Export ▸ has For participants (play only)…, Make a video (MP4)…, Print slides and Print script (folder without a book)');
 
     // ---------------------------------------------------------------- 8b. 授業の部屋を付けて配る（tools/test-app-live.mjs）
     await testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame: f, shot });

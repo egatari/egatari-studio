@@ -322,3 +322,6 @@ jobs:
             n=$((n+1))
           done
           [ "$n" -eq 2 ] || { echo "expected 2 clips, got $n"; exit 1; }
+      - name: Video audio seams and sync (tools/test-render-audio.mjs)
+        # 5-step chirp rendered with --full: seam error <= 1 sample at 48 kHz, no click, full.mp4 within 1 ms of the timeline, clips/chapters, background music
+        run: node tools/test-render-audio.mjs "$RUNNER_TEMP/render-audio"
