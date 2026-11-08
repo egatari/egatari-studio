@@ -542,10 +542,47 @@ for (const [code, what] of [
     `2.4.1: exactly boxplot, codetree, curves, hist, plot, scatter, seq and sweep get new versions (${bumped241.join(', ')})`);
   // 部品庫 2.4.2（リリース b6cf535、c2-base 8677cef）：plot 1.1.1（縦軸の題が目盛りの字に重なるときだけ左へ）と、使う 6 つ（boxplot・hist・scatter・seq 2.0.4、curves・sweep 2.1.1）。指示の中身は 2.4.1 と同じ
   const v242 = lock2.catalogues['2.4.2'];
-  ok(lock2.default === '2.4.2' && v242 && v242.tarballSha256 === 'acedccc6255d387bc7bd2c38aee9941e091f017a0dafa156da8c5b35e938390e' && v242.manifestSha256 === '3d53039ae12cbdfaeda060931419e254b98526b39a6718b8b5462739cd0d7abe',
-    'components 2.4.2 is the default and pinned to the released tarball and manifest (v2.4.2)');
+  ok(v242 && v242.tag === 'v2.4.2' && v242.tarballSha256 === 'acedccc6255d387bc7bd2c38aee9941e091f017a0dafa156da8c5b35e938390e' && v242.manifestSha256 === '3d53039ae12cbdfaeda060931419e254b98526b39a6718b8b5462739cd0d7abe',
+    'components 2.4.2 is pinned to the released tarball and manifest (v2.4.2)');
   const bumped242 = Object.keys(v242.parts).filter((n) => v242.parts[n] !== v241.parts[n]).sort();
   ok(bumped242.join() === 'boxplot,curves,hist,plot,scatter,seq,sweep', `2.4.2: exactly plot and its six users get new versions (${bumped242.join(', ')})`);
+  // 部品庫 2.4.3（リリース 66b15d6）：標準の 16 のパーツに英語の説明（README.en.md）。index.js はどれも変わらず、版も 2.4.2 のまま。
+  // リリース済みとして凍結（既定は候補 2.4.4 へ）
+  const v243 = lock2.catalogues['2.4.3'];
+  ok(v243 && v243.tag === 'v2.4.3' && v243.tarballSha256 === '3309c4a438fa46c561fd96f3207d6015946f828a6f99516e0d141745231a9453' && v243.manifestSha256 === 'c3f97121317336cf5daa580c82f8dd089c720f2bb7752533291342a615f09546',
+    'components 2.4.3 is pinned to the released tarball and manifest (v2.4.3)');
+  const bumped243 = Object.keys(v243.parts).filter((n) => v243.parts[n] !== v242.parts[n]);
+  ok(bumped243.length === 0 && Object.keys(v243.parts).join() === Object.keys(v242.parts).join(), `2.4.3: no part changes version (${bumped243.join(', ') || 'none'})`);
+  const EN16 = ['bars', 'cards', 'compare', 'curves', 'cycle', 'fishbone', 'flow', 'kpi', 'menu', 'pie', 'predict', 'quad', 'scatter', 'timeline', 'tree', 'venn'];
+  const withEn = Object.keys(v243.content).filter((n) => fs.existsSync(path.join(ROOT, 'vendor', 'components', 'sha256', v243.content[n], 'README.en.md'))).sort();
+  ok(withEn.join() === EN16.join(), `2.4.3: exactly the 16 standard parts bring README.en.md (${withEn.join(', ')})`);
+  const c2 = (v, n, f) => path.join(ROOT, 'vendor', 'components', 'sha256', v.content[n], f);
+  const jsChanged = Object.keys(v243.content).filter((n) => fs.existsSync(c2(v243, n, 'index.js')) && fs.readFileSync(c2(v243, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v242, n, 'index.js'), 'utf8'));
+  ok(jsChanged.length === 0, `2.4.3: every index.js is the same as in 2.4.2 (${jsChanged.join(', ') || 'none differ'})`);
+  // 部品庫 2.4.4（リリース 24c73f1、tarball・manifest は候補 0caefe2 と同じ）：版が上がるのは m-map-japan・m-map-world 2.0.3 だけ。
+  // 英語の教材（ctx.lang が ja でない）では、国・県・州の名前の札（chip）を Source Sans 3 の字の高さに合わせて高くする（tallFont、
+  // chipSize が size + 8 ではなく Math.ceil(size * 1.43) + 2 で、基線も合わせて動かす）。m-map-japan は組み込みの島の名前・枠の
+  // キャプションも英語で書く（竹島→Takeshima・尖閣諸島→Senkaku Islands・沖ノ鳥島→Okinotorishima・南鳥島→Minamitorishima・
+  // 父島→Chichijima・硫黄島→Iwo To、南西諸島→Nansei Islands・小笠原諸島→Ogasawara Islands（異なる縮尺））。どちらも
+  // 新しく static glyphs（組み込みの字の一覧。字の絞り込みで教材の文にない字も残す、形式 §6.2）を持つ。ほかのパーツは版も中身も
+  // 2.4.3 のまま。既定はこちら
+  const v244 = lock2.catalogues['2.4.4'];
+  ok(lock2.default === '2.4.4' && v244 && v244.tag === 'v2.4.4' && v244.tarballSha256 === '88e8764e2c0e350ab5d787c363193862b3db0ffd46a16036ae76fce0a033efa2' && v244.manifestSha256 === '62182412c744cc4a010826402998ccc38fab4dc3ab56c93bdb14a2d02e6f6671',
+    'components 2.4.4 is the default and pinned to the released tarball and manifest (v2.4.4)');
+  const bumped244 = Object.keys(v244.parts).filter((n) => v244.parts[n] !== v243.parts[n]).sort();
+  ok(bumped244.join() === 'map-japan,map-world' && Object.keys(v244.parts).length === Object.keys(v243.parts).length &&
+    v243.parts['map-japan'] === '2.0.2' && v244.parts['map-japan'] === '2.0.3' && v243.parts['map-world'] === '2.0.2' && v244.parts['map-world'] === '2.0.3',
+    `2.4.4: exactly m-map-japan and m-map-world get a new version (2.0.2 → 2.0.3) (${bumped244.join(', ')})`);
+  for (const name of ['map-japan', 'map-world']) {
+    const js = fs.readFileSync(partFile(name, '2.0.3'), 'utf8');
+    ok(/static glyphs\s*=/.test(js) && js.includes('tallFont') && js.includes('Math.ceil(size * 1.43) + 2'),
+      `2.4.4: m-${name} 2.0.3 declares static glyphs and makes its name chips taller in an English lesson (tallFont)`);
+  }
+  const mapJapanJs = fs.readFileSync(partFile('map-japan', '2.0.3'), 'utf8');
+  ok(mapJapanJs.includes('"Nansei Islands"') && mapJapanJs.includes('"Ogasawara Islands"') && mapJapanJs.includes('"Takeshima"') && mapJapanJs.includes('"Senkaku Islands"') && mapJapanJs.includes('"Okinotorishima"') && mapJapanJs.includes('"Minamitorishima"') && mapJapanJs.includes('"Chichijima"') && mapJapanJs.includes('"Iwo To"'),
+    '2.4.4: m-map-japan 2.0.3 writes the built-in island names and inset captions in English when ctx.lang is not ja');
+  const changed244 = Object.keys(v244.content).filter((n) => !bumped244.includes(n) && v244.content[n] !== v243.content[n]);
+  ok(changed244.length === 0, `2.4.4: no other part changes without a version bump (${changed244.join(', ') || 'none'})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

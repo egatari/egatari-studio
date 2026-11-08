@@ -6,7 +6,7 @@
 //   （原稿のテーマが新しく選べないものなら、選べるテーマ）。本は article/ があるときだけ
 // - 構成を添えた指示：無料のプランで目安に収まる（サンプルのパーツは外す候補にしない）。添える節は約 300 トークン（字数の上限）
 // - 正しくない sample.json を断る（形・分類・パーツ・字数・権利）
-// - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack。目安は fitSize）：pitch の指示は m-bars・m-flow の説明を詳しいまま目安に収まる（英語の無料のプランは貼り付けの長さで ③ まで進む）。
+// - 「このサンプルを参考に作る」の収め方（fitSample・fromSamplePack。目安は fitSize）：pitch の指示は m-bars・m-flow の説明を詳しいまま目安に収まる（英語の無料のプランは v0.6.6 まで貼り付けの長さで ③ まで進んだ。v0.6.7 で英語の説明が部品庫の README.en.md になり、② で収まる）。
 //   越えたときの順（① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツ、無料のプランではさらにサンプルにない標準のパーツを外す → ③ 最後にサンプルのパーツを短く）を作った材料で確かめる。
 //   同梱のサンプルはどれも、どの言語・プランでもサンプルのパーツを残して収まる
 // - 本のあるサンプル（本文 article.md か article/ と sample.json の book: true）：指示はちょうど 1 行（サンプルにも本があり、本は Claude Code で作る）だけ増える。
@@ -144,7 +144,7 @@ for (const L of ['ja', 'en']) for (const plan of ['free', 'paid']) {
   const P = readSample('pitch-fictional');
   const r = fromSamplePack({ sample: { ...P, title: 'Pitch', name: 'pitch-fictional' }, lang: L, plan, second: { title: L === 'ja' ? '新しい事業の提案' : 'A new business' } });
   const fullIn = P.parts.filter((t) => PACK[L].components[t].set === 'standard').every((t) => r.text.includes(entryOf(t, L)));
-  // 英語の無料のプランは貼り付けの長さ 31,000 が先に届く（fitSize）。pitch にはサンプルにない専門のパーツがないので、ほかの中核の 4 つを短くした後は
+  // 英語の無料のプランは貼り付けの長さ 31,000 が先に届く（fitSize）。pitch にはサンプルにない専門のパーツがないので、ほかの中核の 4 つを短くした後に越えれば
   // ③ サンプルの標準のパーツを短くするしかない（fitSample の順どおり）。そのときは、① をすべて済ませてから ③ に進んだことを確かめる
   const third = r.ownShortened.length > 0;
   const orderOk = !third || (plan === 'free' && FREE_CORE.filter((t) => !P.parts.includes(t)).every((t) => r.shortened.includes(t)) && r.ownShortened.every((t) => P.parts.includes(t)));

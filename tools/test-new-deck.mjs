@@ -41,9 +41,12 @@ const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.comp
 // 束を 1 つ選んだ無料のプランの指示で外すパーツ（kit/core/llm-pack-assemble.mjs の SINGLE_SET_DROP_ORDER の順、収まったところで止める。2026-11-06）。
 // 載っていない束は何も外さない。日本語はどの束も中核の 4 つを短くすれば収まる
 const SINGLE_SET_EXPECTED = {
-  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards'], kokugo: ['m-fishbone', 'm-quad'],
+  // v0.6.7：英語の指示が部品庫の英語の説明（README.en.md、16 のパーツ）を読むようになり、外すパーツ 1 つで減る貼り付けの長さが小さくなった。
+  // math は m-pie、maps は m-fishbone、kokugo は m-cycle、science は m-tree を 1 つ多く外す（stats は同じ）
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards', 'm-pie'],
+    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
-    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'] },
+    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'] },
   ja: {},
 };
 for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
