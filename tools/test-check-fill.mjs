@@ -48,7 +48,8 @@ await t('measureBalance: content in the top quarter is top-heavy with a one-side
   assert.ok(!balanceFlagged(m, V), 'text only (no visual): a top-aligned start is normal');
   assert.ok(balanceFlagged(m, { ...V, visual: { n: 1, bottom: 25, left: 0 } }), 'a figure with the empty band right below it');
   assert.ok(balanceFlagged(m, { ...V, visual: { n: 1, bottom: 15, left: 0 } }), 'a one-line caption under the figure');
-  assert.ok(!balanceFlagged(m, { ...V, visual: { n: 1, bottom: 5, left: 0 } }), 'a text block under the figure: treated like text only');
+  assert.ok(balanceFlagged(m, { ...V, visual: { n: 1, bottom: 7, left: 0 } }), 'a two-line caption under the figure (18%)');
+  assert.ok(!balanceFlagged(m, { ...V, visual: { n: 1, bottom: 0, left: 0 } }), 'a text block under the figure (25%): treated like text only');
 });
 await t('visualExtent: the drawn edge of a figure, not its box', () => {
   const im = box([0, 30, 0, 100]);

@@ -24,7 +24,7 @@ export const BALANCE = Object.freeze({
   optical: 45,    // 光学的な中心（上から %）
   tol: 24,        // 地の色との差（各色の最大）がこれ以下なら地
   minRun: 2,      // 外接矩形：1 行・1 列にこの数より少ない地でない画素は数えない
-  below: 15,      // いちばん下の図の描いた下端と中身の下端の間（図の下の字）がこの % まで（縦組みは左右に読み替え）
+  below: 20,      // いちばん下の図の描いた下端と中身の下端の間（図の下の字）がこの % まで（縦組みは左右に読み替え）
 });
 export const BALANCE_SKIP = Object.freeze(['cover', 'sec', 'static']);
 
@@ -70,7 +70,7 @@ export function visualExtent({ data, width, height }, bg, rects, { tol = BALANCE
 }
 
 // 図のないスライド（字だけ）は知らせない：上にそろえて始めるのがデッキの決まりなので、字だけのスライドの下が空くのはふつう。
-// 図があり、片寄った空きがいちばん下の図のすぐ下にあるとき（図と空きの間の中身が本文の高さの BALANCE.below % まで。出典の 1 行ほど）だけ知らせる：
+// 図があり、片寄った空きがいちばん下の図のすぐ下にあるとき（図と空きの間の中身が本文の高さの BALANCE.below % まで。図の下の短い説明、2 行ほど）だけ知らせる：
 // 「図を高くできる」場合。図の下に字の塊が続いて空くのは、字だけのスライドと同じに扱う。縦組みは左右に読み替える
 export function balanceFlagged(m, { tate = false, visual = null, width = 0, height = 0, vOffset = BALANCE.vOffset, band = BALANCE.band, below = BALANCE.below } = {}) {
   if (!m || m.empty || !m.bbox || !visual || visual.bottom === null) return false;
