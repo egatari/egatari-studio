@@ -117,29 +117,69 @@
     }
     return null;
   }
+  // Each hidden highlight has one button (keyboard: Tab in reading order, Enter or Space reveals; the focus ring is on its first
+  // line) and its bands (aria-hidden: a screen reader reads the text itself). The elements are kept between redraws so the focus
+  // stays; a button whose highlight is scrolled out of the book's box stays focusable and brings it into view when focused.
+  var MK = {};
+  function inOrder(a, b) { try { return S.placed[a].compareBoundaryPoints(Range.START_TO_START, S.placed[b]); } catch (e) { return 0; } }
   function drawMasks() {
-    var want = S.view.recall && S.article && S.list.some(function (h) { return S.placed[h.id] && !hidden(h.color) && masked(h); });
-    if (!want) { if (maskLayer) maskLayer.textContent = ""; return; }
+    var ids = S.view.recall && S.article ? S.list.filter(function (h) { return S.placed[h.id] && !hidden(h.color) && masked(h); }).map(function (h) { return h.id; }) : [];
+    ids.sort(inOrder);
+    if (!ids.length && !maskLayer) return;
     makePop();
     if (!host.isConnected) document.documentElement.appendChild(host);
-    if (!maskLayer) { maskLayer = document.createElement("div"); maskLayer.className = "mk"; maskLayer.setAttribute("aria-hidden", "true"); root.insertBefore(maskLayer, pop); }
-    maskLayer.textContent = "";
+    if (!maskLayer) { maskLayer = document.createElement("div"); maskLayer.className = "mk"; root.insertBefore(maskLayer, pop); }
+    var keep = {}, focusedGone = false, act = root.activeElement;
+    ids.forEach(function (id) { keep[id] = true; });
+    Object.keys(MK).forEach(function (id) { if (keep[id]) return; if (act === MK[id].btn) focusedGone = true; MK[id].btn.remove(); MK[id].bands.remove(); delete MK[id]; });
     var pane = document.getElementById("deck-text"), bg = pane && /^(sepia|black)$/.test(pane.getAttribute("data-dx-bg") || "") ? pane.getAttribute("data-dx-bg") : "white";
     var sc = scroller(S.article), clip = sc ? sc.getBoundingClientRect() : { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
-    S.list.forEach(function (h) {
-      var r = S.placed[h.id];
-      if (!r || hidden(h.color) || !masked(h)) return;
-      var rs = r.getClientRects(), em = emphasisOf(r), up = em && !em.vertical ? em.size : 0, right = em && em.vertical ? em.size : 0;
+    var byId = {}; S.list.forEach(function (h) { byId[h.id] = h; });
+    ids.forEach(function (id, n) {
+      var h = byId[id], r = S.placed[id], e = MK[id];
+      if (!e) {
+        e = MK[id] = { btn: document.createElement("button"), bands: document.createElement("div") };
+        e.btn.type = "button"; e.btn.className = "k"; e.btn.setAttribute("data-id", id);
+        e.bands.className = "g"; e.bands.setAttribute("aria-hidden", "true"); e.bands.setAttribute("data-id", id);
+        e.btn.addEventListener("focus", function () { var b = e.btn.getBoundingClientRect(); if (b.width <= 1) { var el = S.placed[id] && (S.placed[id].startContainer.nodeType === 1 ? S.placed[id].startContainer : S.placed[id].startContainer.parentElement); if (el) { try { el.scrollIntoView({ block: "center" }); } catch (x) { el.scrollIntoView(); } queueMasks(); } } });
+      }
+      e.btn.setAttribute("aria-label", (words().reveal || {})[h.color] || "");
+      e.bands.textContent = "";
+      var rs = r.getClientRects(), em = emphasisOf(r), up = em && !em.vertical ? em.size : 0, right = em && em.vertical ? em.size : 0, first = null;
       for (var i = 0; i < rs.length; i++) {
         var q = rs[i], l = Math.max(q.left, clip.left), t = Math.max(q.top - 2 - up, clip.top), rr = Math.min(q.right + right, clip.right), b = Math.min(q.bottom + 2, clip.bottom);
         if (rr - l < 1 || b - t < 1) continue;
         var d = document.createElement("div");
-        d.className = "m"; d.setAttribute("data-id", h.id);
+        d.className = "m";
         d.style.cssText = "left:" + l + "px;top:" + t + "px;width:" + (rr - l) + "px;height:" + (b - t) + "px;background:" + BAND[bg][h.color];
-        maskLayer.appendChild(d);
+        e.bands.appendChild(d);
+        // the button (and its focus ring) covers every piece on the first line (text across inline math or an element is in pieces)
+        if (!first) first = [l, t, rr, b];
+        else if (Math.abs(t - first[1]) < 6) first = [Math.min(first[0], l), Math.min(first[1], t), Math.max(first[2], rr), Math.max(first[3], b)];
       }
+      e.btn.style.cssText = first ? "left:" + first[0] + "px;top:" + first[1] + "px;width:" + (first[2] - first[0]) + "px;height:" + (first[3] - first[1]) + "px" : "left:" + clip.left + "px;top:" + clip.top + "px;width:1px;height:1px;opacity:0";
+      // reading order: move only what is out of place (moving the focused button would drop the focus)
+      var at = maskLayer.children[2 * n];
+      if (at !== e.btn) maskLayer.insertBefore(e.btn, at || null);
+      if (e.btn.nextSibling !== e.bands) maskLayer.insertBefore(e.bands, e.btn.nextSibling);
     });
+    if (focusedGone) { var next = revealNext; revealNext = null; if (next && MK[next]) MK[next].btn.focus(); else if (ids.length) MK[ids[0]].btn.focus(); }
   }
+  var revealNext = null;
+  function reveal(id) {
+    var ids = Object.keys(MK).sort(inOrder), i = ids.indexOf(id);
+    revealNext = root.activeElement === (MK[id] && MK[id].btn) ? ids[i + 1] || null : null;
+    S.revealed[id] = true; paint();
+  }
+  // Enter and Space on a band's button: taken here, before the lesson's player (this script runs first, so its listener does too),
+  // which would otherwise take Space for the next step
+  window.addEventListener("keydown", function (e) {
+    if ((e.key !== "Enter" && e.key !== " ") || !root) return;
+    var t = e.composedPath ? e.composedPath()[0] : null;
+    if (!t || !t.classList || !t.classList.contains("k") || t.getRootNode() !== root) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    if (!e.repeat) reveal(t.getAttribute("data-id"));
+  }, true);
   function queueMasks() { if (maskQueued || !maskLayer || !S.view.recall) return; maskQueued = true; requestAnimationFrame(function () { maskQueued = false; drawMasks(); }); }
   function placeAll() {
     S.placed = {};
@@ -166,6 +206,7 @@
       ".w[hidden]{display:none}button{all:unset;box-sizing:border-box;min-width:32px;height:32px;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}" +
       "button:focus-visible{outline:2px solid #fff;outline-offset:2px}.c{width:32px;border:2px solid rgba(255,255,255,.85)}.c[aria-pressed=true]{box-shadow:0 0 0 3px #fff inset}" +
       ".mk .m{position:fixed;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent}" +
+      ".mk .k{all:unset;position:fixed;z-index:1;cursor:pointer;border-radius:2px;-webkit-tap-highlight-color:transparent}.mk .k:focus-visible{outline:3px solid #2c63d4;outline-offset:2px;box-shadow:0 0 0 5px #fff}" +
       ".y{background:#fff066}.p{background:#ff9eb0}.b{background:#79b8ff}.d{padding:0 10px;border:1px solid rgba(255,255,255,.6)}";
     pop = document.createElement("div"); pop.className = "w"; pop.setAttribute("role", "toolbar"); pop.hidden = true;
     root.appendChild(st); root.appendChild(pop);
@@ -173,11 +214,12 @@
     pop.addEventListener("pointerdown", function (e) { e.preventDefault(); e.stopPropagation(); });
     pop.addEventListener("mousedown", function (e) { e.preventDefault(); e.stopPropagation(); });
     pop.addEventListener("click", function (e) { e.stopPropagation(); var b = e.target.closest ? e.target.closest("button") : null; if (b) choose(b.getAttribute("data-a")); });
+    // a tap on a band, or Enter / Space on its button: reveal that highlight (the keyboard's focus goes on to the next one)
     root.addEventListener("click", function (e) {
-      var m = e.target.closest ? e.target.closest(".m") : null;
+      var m = e.target.closest ? e.target.closest(".k,.g") : null;
       if (!m || !e.isTrusted) return;
       e.preventDefault(); e.stopPropagation();
-      S.revealed[m.getAttribute("data-id")] = true; paint();
+      reveal(m.getAttribute("data-id"));
     });
     pop.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); hidePop(); } });
     document.documentElement.appendChild(host);

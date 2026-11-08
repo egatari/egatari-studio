@@ -10,7 +10,7 @@ import { openRecents } from './recents.mjs';
 import { startLive } from './live-host.mjs';
 import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
-import { markup, clearAllRecords } from './markup.mjs';
+import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { readFileBoundedText } from '../app/bounded-read.js';
 
@@ -398,7 +398,14 @@ function initKeep() {
   $('shared').addEventListener('change', async () => {
     setPref(SHARED_KEY, $('shared').checked ? '1' : '0');
     syncKeep();
-    if ($('shared').checked) { await clearRecents(); await clearAllRecords(); announce(W().sharedOn); }
+    if (!$('shared').checked) return;
+    // highlights are the learner's own work: ask first, with what would go (play/markup.mjs); none saved → switch at once.
+    // やめる turns the switch back off before anything is deleted
+    const n = await countRecords();
+    if (n.highlights > 0 && !(await M.ask(W().mSharedAsk(n.lessons, n.highlights), W().mSharedYes))) {
+      $('shared').checked = false; setPref(SHARED_KEY, '0'); syncKeep(); $('shared').focus(); return;
+    }
+    await clearRecents(); await clearAllRecords(); announce(W().sharedOn);
   });
 }
 async function clearRecents() { if (S.recents) { try { await S.recents.clear(); } catch { /* nothing kept */ } } await renderRecents(); }

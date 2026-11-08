@@ -36,6 +36,15 @@ export async function saveRecord(rec) {
   const d = await db(); if (!d || !rec.docId) return false;
   try { await req(d.transaction(STORE, 'readwrite').objectStore(STORE).put(rec)); return true; } catch { return false; }
 }
+// what is saved on this device: {lessons, highlights} (asked before 「共有の端末」 deletes it)
+export async function countRecords() {
+  const d = await db(); if (!d) return { lessons: 0, highlights: 0 };
+  try {
+    const all = await req(d.transaction(STORE, 'readonly').objectStore(STORE).getAll());
+    const withAny = all.filter((r) => r && Array.isArray(r.highlights) && r.highlights.length);
+    return { lessons: withAny.length, highlights: withAny.reduce((n, r) => n + r.highlights.length, 0) };
+  } catch { return { lessons: 0, highlights: 0 }; }
+}
 export async function clearAllRecords() { const d = await db(); if (!d) return; try { await req(d.transaction(STORE, 'readwrite').objectStore(STORE).clear()); } catch { /* nothing */ } }
 const getNames = () => { try { const v = JSON.parse(localStorage.getItem(NAMES_KEY) || '{}'); return COLORS.reduce((o, c) => ((o[c] = typeof v[c] === 'string' ? v[c].slice(0, 40) : ''), o), {}); } catch { return { y: '', p: '', b: '' }; } };
 const setNames = (n) => { try { localStorage.setItem(NAMES_KEY, JSON.stringify(n)); } catch { /* memory only */ } };
@@ -61,7 +70,8 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
   const view = () => ({ hidden: L.hidden.slice(), recall: L.recall, recallColors: L.recallColors.slice(), bar: L.bar });
   const send = (m) => { const f = L.frame; if (f && f.contentWindow) f.contentWindow.postMessage(m, '*'); };
-  const frameWords = () => ({ y: colourLabel('y'), p: colourLabel('p'), b: colourLabel('b'), del: W().mDelete, window: W().mHighlight });
+  const frameWords = () => ({ y: colourLabel('y'), p: colourLabel('p'), b: colourLabel('b'), del: W().mDelete, window: W().mHighlight,
+    reveal: { y: W().mReveal(colourLabel('y')), p: W().mReveal(colourLabel('p')), b: W().mReveal(colourLabel('b')) } });
   const colourLabel = (c) => { const n = getNames()[c]; return n ? `${W().mColour[c]}（${n}）` : W().mColour[c]; };
   const pushAll = () => send({ egaViewer: 'markup-load', list: L.rec ? L.rec.highlights : [], words: frameWords(), view: view() });
   const pushView = () => send({ egaViewer: 'markup-view', view: view() });
@@ -258,13 +268,20 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     }
   }
   function showList() { if (!L.frame) return; renderList(); els.list.showModal(); }
-  // 「この色を全部消す」: the confirmation is in the page (a dialog), never confirm()
-  let pending = null;
-  function askDelete(c, n) {
-    pending = c;
-    els.confirmText.textContent = W().mDeleteColourAsk(W().mColour[c], n);
+  // confirmations are in the page (a dialog), never confirm(): 「この色を全部消す」, and turning 「共有の端末」 on (play/main.js)
+  let answer = null;
+  function ask(text, yes) {
+    if (answer) answer(false);
+    els.confirmText.textContent = text;
+    els.confirmYes.textContent = yes || W().mDelete;
     els.confirm.showModal();
     els.confirmNo.focus();
+    return new Promise((res) => { answer = res; });
+  }
+  function settle(v) { const a = answer; answer = null; if (els.confirm.open) els.confirm.close(); if (a) a(v); }
+  async function askDelete(c, n) {
+    if (!(await ask(W().mDeleteColourAsk(W().mColour[c], n))) || !L.rec) return;
+    L.rec.highlights = L.rec.highlights.filter((h) => h.color !== c); changed(); els.announce(W().mDeleted);
   }
   function init() {
     els.button.addEventListener('click', () => toggle());
@@ -272,12 +289,9 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     for (const b of els.recallColours.querySelectorAll('button[data-c]')) b.addEventListener('click', () => toggleRecallColour(b.getAttribute('data-c')));
     els.listButton.addEventListener('click', showList);
     els.listClose.addEventListener('click', () => els.list.close());
-    els.confirmNo.addEventListener('click', () => { pending = null; els.confirm.close(); });
-    els.confirmYes.addEventListener('click', () => {
-      const c = pending; pending = null; els.confirm.close();
-      if (!c || !L.rec) return;
-      L.rec.highlights = L.rec.highlights.filter((h) => h.color !== c); changed(); els.announce(W().mDeleted);
-    });
+    els.confirmNo.addEventListener('click', () => settle(false));
+    els.confirmYes.addEventListener('click', () => settle(true));
+    els.confirm.addEventListener('close', () => settle(false));   // Esc
     els.filteredShow.addEventListener('click', () => { L.hidden = []; pushView(); renderBar(); });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape' || !L.bar || e.defaultPrevented || els.list.open || els.confirm.open) return;
@@ -286,7 +300,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   }
   init();
   return {
-    open, close, message, toggle,
+    open, close, message, toggle, ask,
     setWords(w) { W = w; renderBar(); if (L.available && L.loaded) pushAll(); if (els.list.open) renderList(); },
     state: () => ({ available: L.available, bar: L.bar, recall: L.recall, recallColors: L.recallColors.slice(), hidden: L.hidden.slice(), shared: L.shared,
       docId: L.docId, missing: L.missing.slice(), record: L.rec ? JSON.parse(JSON.stringify(L.rec)) : null }),

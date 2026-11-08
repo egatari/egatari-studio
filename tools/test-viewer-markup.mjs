@@ -195,7 +195,21 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   await until(async () => (await sizes(f2))['y-m'] === 1);
   s1 = await sizes(f2);
   ok(s1['y-m'] === 1 && s1.y === 1 && !(await popup(f2)), 'a tap reveals that one highlight (no window)');
+  // keyboard: each hidden highlight has a button in reading order; Enter reveals it and the focus goes on to the next one
+  const kb = () => f2.evaluate(() => { const r = document.querySelector('[data-egatari-viewer=markup]').shadowRoot; const ks = [...r.querySelectorAll('.mk .k')]; return { n: ks.length, focused: ks.indexOf(r.activeElement), label: ks[0] && ks[0].getAttribute('aria-label'), bandsHidden: [...r.querySelectorAll('.mk .g')].every((g) => g.getAttribute('aria-hidden') === 'true') }; });
+  const k0 = await kb();
+  await f2.evaluate(() => document.querySelector('[data-egatari-viewer=markup]').shadowRoot.querySelector('.mk .k').focus());
+  await p.keyboard.press('Enter'); await sleep(200);
+  const k1 = await kb();
+  ok(k0.n === 3 && /^隠したハイライトを表示（(黄|青)）$/.test(k0.label) && k0.bandsHidden, `暗記: one focusable button per hidden highlight, named 「隠したハイライトを表示（…）」; the bands are aria-hidden (${k0.n}, ${k0.label})`);
+  ok(k1.n === 2 && k1.focused === 0, `Enter reveals it and the focus moves to the next hidden highlight (${k1.n} left, focus at ${k1.focused})`);
+  await shot(p, '03b-recall-focus');
+  await p.keyboard.press(' '); await sleep(200);
+  ok((await kb()).n === 1, 'Space reveals the next one');
+  ok((await p.getAttribute('#recall-colours button[data-c="y"]', 'aria-label')) === '暗記する色：黄' && await p.isVisible('#recall-colours .rc-l'), 'the colour switches are named 「暗記する色：黄」…, with the visible word 「暗記する色」 on a wide screen');
+  await p.click('#b-recall'); await p.click('#b-recall');   // 暗記 again: everything hidden again
   await p.click('#recall-colours button[data-c="b"]');
+  s1 = await sizes(f2);
   s1 = await sizes(f2);
   ok(s1['b-m'] === 0 && s1.b === 2, '「暗記する色」: blue turned off is shown');
   await shot(p, '04-recall-colours');
@@ -255,7 +269,49 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   await sleep(300);
   ok((await mstate(p)).record.highlights.length === n0, 'requests with a quote over 1,000 characters, an extra member (docId), an unknown colour or a long prefix are ignored');
   await p.click('#b-markup');
+  await p.evaluate(() => window.__play.markupSaved());
+
+  // ---------------------------------------------------------------- 共有の端末 asks before it deletes saved highlights
+  console.log('shared switch');
+  await p.click('#b-close');
+  const count = () => p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const g = o.result.transaction('lessons').objectStore('lessons').getAll(); g.onsuccess = () => res(g.result.reduce((n, r) => n + r.highlights.length, 0)); }; }));
+  await p.click('#shared');
+  await until(() => p.isVisible('#m-confirm'));
+  ok((await p.textContent('#m-confirm-t')) === 'この端末に保存したハイライトも消します（1 つの教材、2 件）。元に戻せません。' && (await p.textContent('#b-mconfirm-yes')) === '消して切り替える',
+    `turning 共有の端末 on asks first, with the counts (${await p.textContent('#m-confirm-t')})`);
+  await shot(p, '10-shared-ask');
+  await p.click('#b-mconfirm-no');
+  ok(!(await p.isChecked('#shared')) && (await count()) === 2, 'やめる: the switch stays off and the highlights stay');
+  await p.click('#shared'); await until(() => p.isVisible('#m-confirm')); await p.click('#b-mconfirm-yes');
+  await until(async () => (await count()) === 0);
+  ok(await p.isChecked('#shared') && (await count()) === 0, '消して切り替える: shared device on, the saved highlights deleted');
   await ctx.close(); }
+
+// ---------------------------------------------------------------- 6b. split view (slides and book): 暗記 leaves the slide pane alone
+console.log('split');
+{ const { c, p } = await page(null);
+  const f = await openBook(p, 'book.ega.html');
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'split' }, '*'));
+  await until(() => f.evaluate(() => DECK.panes.state().layout === 'split'));
+  await select(f, '外れ値に', '引っぱられるが'); await until(async () => !!(await popup(f))); await press(f, 'y');
+  await select(f, '代表値を', '1 つ選ぶ'); await until(async () => !!(await popup(f))); await press(f, 'b');
+  await p.click('#b-markup'); await p.click('#b-recall'); await sleep(300);
+  const r = await f.evaluate(() => {
+    const st = DECK.panes.state(), text = document.getElementById('deck-text').getBoundingClientRect();
+    const host = document.querySelector('[data-egatari-viewer=markup]');
+    const els = host ? [...host.shadowRoot.querySelectorAll('.mk .m, .mk .k')].map((e) => e.getBoundingClientRect()).filter((b) => b.width > 1) : [];
+    const outside = els.filter((b) => b.left < text.left - 1 || b.right > text.right + 1 || b.top < text.top - 1 || b.bottom > text.bottom + 1).length;
+    const sx = text.left > innerWidth / 2 ? text.left / 2 : (text.right + innerWidth) / 2;   // the middle of the slide side
+    const hit = document.elementFromPoint(sx, innerHeight / 2);
+    return { layout: st.layout, n: els.length, outside, onSlide: hit === host };
+  });
+  ok(r.layout === 'split' && r.n > 0 && r.outside === 0 && !r.onSlide, `split view with 暗記 on: the bands stay inside the book's pane, nothing of the markup over the slides (${JSON.stringify(r)})`);
+  const s0 = await f.evaluate(() => DECK.state());
+  await p.keyboard.press('ArrowRight'); await sleep(400);
+  const s1 = await f.evaluate(() => DECK.state());
+  ok(s1.slide * 100 + s1.step > s0.slide * 100 + s0.step, `with the markup bar open and 暗記 on, → still moves the lesson on (${s0.slide}.${s0.step} → ${s1.slide}.${s1.step})`);
+  await shot(p, '11-split-recall');
+  await c.close(); }
 
 // ---------------------------------------------------------------- 7. shared device
 console.log('shared');

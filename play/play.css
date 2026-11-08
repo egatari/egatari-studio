@@ -191,14 +191,15 @@ body.headless #bar { display: none; }
 #b-recall .sw-on::after { content: ""; position: absolute; left: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--bg); transition: left .15s; }
 #b-recall[aria-pressed=true] .sw-on { background: var(--accent); }
 #b-recall[aria-pressed=true] .sw-on::after { left: 14px; }
-#recall-colours { display: inline-flex; gap: 4px; }
+#recall-colours { display: inline-flex; gap: 4px; align-items: center; }
+.rc-l { font-size: 0.875rem; color: var(--muted); margin: 0 2px 0 4px; white-space: nowrap; }
 .csw { width: 40px; min-height: 40px; padding: 0; border: 2px solid var(--line); position: relative; }
 .csw[aria-pressed=true] { border-color: var(--fg); }
 .csw[aria-pressed=true]::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1a1a1a; }
 .m-y { background: var(--m-y); } .m-p { background: var(--m-p); } .m-b { background: var(--m-b); }
 #markup-note, #m-filtered { white-space: nowrap; }
 /* one row on a phone (the header's height never changes, so the lesson's frame does not move): no logo, no counts, smaller swatches */
-@media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n { display: none !important; }
+@media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n, .rc-l { display: none !important; }
   #markup-bar { gap: 4px; } #markup-bar > button, #b-markup { padding: 4px 8px; } .csw { width: 32px; } #recall-colours { gap: 3px; } }
 @media (max-width: 560px) { #b-markup span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
 
