@@ -170,7 +170,8 @@ try {
     o = await opened(page);
     const exported = await page.evaluate(async () => (await (await window.__APP_TEST.saveHandle.getFile()).text()).length);
     ok(exported > 1000 && o.length === 1 && o[0][0] === URL_, `${lang} folder: exports the Egatari file, then opens Colab (${exported} bytes, ${JSON.stringify(o)})`);
-    d = await dialog(page);
+    // 書き出しの記録は Colab を開いたあとに残る（込んだ macOS では、すぐ開き直すと前の文言のことがある）。文言が変わるまで開き直す
+    for (let i = 0; ; i++) { d = await dialog(page); if (d.go === T.open || i >= 20) break; await page.keyboard.press('Escape'); await page.waitForSelector('#dlg[open]', { state: 'detached' }).catch(() => {}); await page.waitForTimeout(250); }
     ok(d.go === T.open && d.lead === T.lead('exported.ega.html'), `${lang} folder: after the export, “${T.open}” and the exported file's name (${d.lead})`);
 
     // 4. ポップアップが止められた：リンクを押してもらう

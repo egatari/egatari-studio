@@ -157,7 +157,7 @@ try {
   }
   // The app wraps the presenter in #pf and relays through its parent, just like test-input-focus #4 A.
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'no-preference' });
-  const app = await ctx.newPage(); await app.goto(base + '/'); await app.waitForSelector('#drop');
+  const app = await ctx.newPage(); await app.goto(base + '/'); await app.waitForSelector('#drop'); await app.waitForFunction(() => typeof window.__APP_TEST_OPEN === 'function');
   await app.evaluate(async (deck) => {
     const root = await navigator.storage.getDirectory(), dir = await root.getDirectoryHandle('input-fixture', { create: true });
     for (const [name, text] of Object.entries({ 'deck.html': deck, 'egatari.json': '{"componentsCatalogue":"2"}' })) {
