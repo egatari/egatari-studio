@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=b40a91022a55812f -->
+<!-- i18n: pair=distributing.ja.md sha256=87e759e2ce53f968 -->
 # Handing a lesson to participants
 
 English | [日本語](distributing.ja.md)
@@ -40,10 +40,11 @@ To see in the LMS who started and who completed a lesson, hand it out as a **SCO
 
 - **Make it.** In the editor, **File ▾ → Export ▸ For an LMS (SCORM)…**, then **Download**. On the command line, `egatari build <working folder> --scorm` (or `node kit/build.mjs … --scorm`) writes `<lesson title>.scorm.zip` in the working folder. An Egatari file with unsaved changes asks you to save first, as the play-only export does.
 - **What is inside.** The zip holds the play-only copy as `index.html`, byte for byte the file `--play-only` writes, and `imsmanifest.xml` (one SCO; its identifier is `egatari-<docId>`, its title the lesson title). Extracting `index.html` gives the play-only lesson back. The same lesson always gives the same zip (fixed order and times, no compression).
-- **Add it to the LMS.** In Moodle: **Add an activity or resource → SCORM package**, and choose the zip.
+- **Add it to the LMS.** In Moodle: **Add an activity or resource → SCORM package**; in ILIAS: **SCORM/AICC learning module**. Choose the zip.
+- **ILIAS's “percentage”.** If no SCO (this lesson) is selected for learning progress in the module's settings, learners who have not started also show 100%. Tick the SCO, and it shows 100% when completed and 0% before (an ILIAS rule; the lesson cannot change it).
 - **What the LMS records.** The player inside finds the LMS's SCORM API and reports: *incomplete* at the first click or key, the position and the visited steps as it goes (it reopens where the learner left off), *completed* by the lesson's completion rule, and the time spent when it is closed. No score is sent: there is no passed or failed.
 - **When is it completed.** By `metadata.completion` in `egatari.json` (the dialog says it in plain words): by default when every step has been played on the slides or read in the book (or Read with script); `{"visitedFraction": 0.9}` lowers that to 90% of the steps; `{"reachedEnd": true}` needs only the last step; adding `"played": true` counts only steps played on the slides. Once completed it stays completed.
-- **Limits.** The lesson must be exported by a Studio whose player reports through SCORM 1.2 (every Egatari file from this version lists `scorm12` in `deck-meta.tracking`). A lesson with so many steps that the resume data could exceed SCORM 1.2's 4096 characters (about 8,000 steps) is refused. Not yet tried on a real Moodle.
+- **Limits.** The lesson must be exported by a Studio whose player reports through SCORM 1.2 (every Egatari file from this version lists `scorm12` in `deck-meta.tracking`). A lesson with so many steps that the resume data could exceed SCORM 1.2's 4096 characters (about 8,000 steps) is refused. Tried on ILIAS: started, completed, resume and time spent are recorded (also from a phone). In LMSs that cannot take what is sent while the page closes (ILIAS, and Safari in general), resume returns to the last saved position (the last slide change).
 
 ## Presenting in class
 
