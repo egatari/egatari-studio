@@ -70,7 +70,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
   const view = () => ({ hidden: L.hidden.slice(), recall: L.recall, recallColors: L.recallColors.slice(), bar: L.bar });
   const send = (m) => { const f = L.frame; if (f && f.contentWindow) f.contentWindow.postMessage(m, '*'); };
-  const frameWords = () => ({ y: colourLabel('y'), p: colourLabel('p'), b: colourLabel('b'), del: W().mDelete, window: W().mHighlight,
+  const frameWords = () => ({ y: colourLabel('y'), p: colourLabel('p'), b: colourLabel('b'), del: W().mDelete, window: W().mHighlight, pick: W().mPick, close: W().mPickClose,
     reveal: { y: W().mReveal(colourLabel('y')), p: W().mReveal(colourLabel('p')), b: W().mReveal(colourLabel('b')) } });
   const colourLabel = (c) => { const n = getNames()[c]; return n ? `${W().mColour[c]}（${n}）` : W().mColour[c]; };
   const pushAll = () => send({ egaViewer: 'markup-load', list: L.rec ? L.rec.highlights : [], words: frameWords(), view: view() });

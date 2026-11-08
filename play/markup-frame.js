@@ -278,7 +278,8 @@
     st.textContent = ".w{position:fixed;display:flex;gap:6px;align-items:center;padding:6px 8px;border-radius:22px;background:#2b2b33;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);font:14px/1 system-ui,-apple-system,sans-serif}" +
       ".w[hidden]{display:none}button{all:unset;box-sizing:border-box;min-width:32px;height:32px;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}" +
       "button:focus-visible{outline:2px solid #fff;outline-offset:2px}.c{width:32px;border:2px solid rgba(255,255,255,.85)}.c[aria-pressed=true]{box-shadow:0 0 0 3px #fff inset}" +
-      ".w.dock{gap:10px;padding:8px 12px;border-radius:30px}.w.dock button{min-width:44px;height:44px;border-radius:22px}.w.dock .c{width:44px}" +
+      ".w.dock{gap:10px;padding:8px 12px;border-radius:30px}.x{font-size:22px;line-height:1;color:#fff;margin-left:4px}" +
+      ".w.dock button{min-width:44px;height:44px;border-radius:22px}.w.dock .c{width:44px}" +
       ".y{background:#fff066}.p{background:#ff9eb0}.b{background:#79b8ff}.d{padding:0 10px;border:1px solid rgba(255,255,255,.6)}";
     pop = document.createElement("div"); pop.className = "w"; pop.setAttribute("role", "toolbar"); pop.hidden = true;
     root.appendChild(st); root.appendChild(pop);
@@ -302,8 +303,10 @@
     var W = words(), cur = forWhat.id ? (S.list.filter(function (h) { return h.id === forWhat.id; })[0] || {}).color : "";
     pop.textContent = "";
     pop.setAttribute("aria-label", W.window);
+    if (dock) pop.setAttribute("aria-label", W.pick || W.window);   // docked away from the text: say what it is for
     COLORS.forEach(function (c) { var b = document.createElement("button"); b.type = "button"; b.className = "c " + c; b.setAttribute("data-a", c); b.setAttribute("aria-label", W[c]); b.title = W[c]; if (forWhat.id) b.setAttribute("aria-pressed", c === cur ? "true" : "false"); pop.appendChild(b); });
     if (forWhat.id) { var d = document.createElement("button"); d.type = "button"; d.className = "d"; d.setAttribute("data-a", "del"); d.textContent = W.del; pop.appendChild(d); }
+    if (dock) { var x0 = document.createElement("button"); x0.type = "button"; x0.className = "x"; x0.setAttribute("data-a", "close"); x0.setAttribute("aria-label", W.close || "×"); x0.textContent = "×"; pop.appendChild(x0); }
     pop.classList.toggle("dock", !!dock);   // finger-sized buttons (44 px) when docked for a touch selection
     pop.hidden = false;
     var pw = pop.offsetWidth, ph = pop.offsetHeight, vw = document.documentElement.clientWidth, vv = window.visualViewport, vh = vv ? Math.min(window.innerHeight, vv.height + vv.offsetTop) : window.innerHeight;
@@ -311,7 +314,8 @@
     if (dock) {
       var sc = scrollerOf(), pr = sc ? sc.getBoundingClientRect() : { left: 0, right: vw, top: 0, bottom: vh };
       x = Math.max(8, Math.min(vw - pw - 8, (Math.max(pr.left, 0) + Math.min(pr.right, vw)) / 2 - pw / 2));
-      var lo = Math.min(pr.bottom, vh) - ph - 16, hi = Math.max(pr.top, 0) + 16;
+      var lo = Math.min(pr.bottom, vh) - safeBottom() - ph - 16, hi = Math.max(pr.top, 0) + 16;
+      lo = clearOf(x, lo, pw, ph, sc);   // above the player's own bar or captions when they are shown there
       y = rect.bottom + 72 > lo ? hi : lo;   // 72: the selection handle and the system menu below the selection
       if (y === hi && (top || rect).top - 72 < hi + ph) y = lo;   // a selection filling the pane: keep the bottom
     } else { y = rect.top - ph - 12; if (y < 8) y = rect.bottom + 12; }
@@ -319,9 +323,31 @@
     pop.style.left = Math.round(x) + "px"; pop.style.top = Math.round(y) + "px";
   }
   function hidePop() { if (pop) pop.hidden = true; popFor = null; }
+  // the bottom safe area (the Home Screen app's home indicator), as the frame sees it
+  function safeBottom() {
+    var p = document.createElement("div"); p.style.cssText = "position:fixed;bottom:0;height:0;padding-bottom:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none";
+    root.appendChild(p); var v = p.offsetHeight || 0; p.remove(); return v;
+  }
+  // Something of the lesson's own at the docking place (the player's bar, captions): go above it. What is there is found by asking
+  // the page what lies at the window's corners, not by the player's element names, so any player version is covered
+  function clearOf(x, y, pw, ph, sc) {
+    pop.style.visibility = "hidden";
+    for (var tries = 0; tries < 4; tries++) {
+      var over = null, pts = [[x + 4, y + 4], [x + pw - 4, y + 4], [x + 4, y + ph - 4], [x + pw - 4, y + ph - 4], [x + pw / 2, y + ph / 2]];
+      for (var i = 0; i < pts.length && !over; i++) {
+        var e = document.elementFromPoint(pts[i][0], pts[i][1]);
+        if (e && e !== host && sc && !sc.contains(e) && !(L.host && e === L.host)) over = e;
+      }
+      if (!over) break;
+      y = over.getBoundingClientRect().top - ph - 8;
+    }
+    pop.style.visibility = "";
+    return y;
+  }
   function choose(a) {
     var f = popFor;
     if (!f) return;
+    if (a === "close") { dismissed = f.target ? JSON.stringify(f.target) : null; hidePop(); return; }   // the selection stays
     if (f.id) {
       if (a === "del") post({ egaViewer: "del", id: f.id });
       else if (COLORS.indexOf(a) >= 0) post({ egaViewer: "set", id: f.id, color: a });
@@ -333,7 +359,7 @@
   }
 
   // ---------------------------------------------------------------- selecting text in the book
-  var selTimer = 0;
+  var selTimer = 0, dismissed = null;
   document.addEventListener("selectionchange", function () {
     clearTimeout(selTimer);
     selTimer = setTimeout(function () {
@@ -342,6 +368,8 @@
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { if (popFor && !popFor.id) hidePop(); return; }
       var r = sel.getRangeAt(0), t = targetOf(r);
       if (!t) { if (popFor && !popFor.id) hidePop(); return; }
+      if (dismissed === JSON.stringify(t)) return;   // closed with × for this very selection
+      dismissed = null;
       var rects = r.getClientRects(), first = rects[0] || r.getBoundingClientRect(), last = rects[rects.length - 1] || first;
       if (touch()) showPop(last, { target: t }, true, first); else showPop(first, { target: t }, false);
     }, 220);

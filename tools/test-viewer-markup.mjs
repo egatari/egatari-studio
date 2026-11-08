@@ -105,7 +105,7 @@ async function select(f, from, to) {
     return { top: b.top, bottom: rs[rs.length - 1].bottom, text: r.toString() };
   }, [from, to]);
 }
-const popup = (f) => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=markup]'); const w = h && h.shadowRoot.querySelector('.w'); if (!w || w.hidden) return null; const r = w.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, buttons: [...w.querySelectorAll('button')].map((b) => b.getAttribute('data-a')) }; });
+const popup = (f) => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=markup]'); const w = h && h.shadowRoot.querySelector('.w'); if (!w || w.hidden) return null; const r = w.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, label: w.getAttribute('aria-label'), buttons: [...w.querySelectorAll('button')].map((b) => b.getAttribute('data-a')).filter((a) => a !== 'close'), close: !!w.querySelector('button[data-a=close]') }; });
 const press = (f, a) => f.evaluate((a) => document.querySelector('[data-egatari-viewer=markup]').shadowRoot.querySelector(`button[data-a="${a}"]`).click(), a);
 // the markup layer (a shadow tree inside the book's scrolling box, play/markup-frame.js): per colour, how many highlights are painted
 // (y, p, b) and how many are under a 暗記 band (y-m, p-m, b-m)
@@ -368,6 +368,17 @@ for (const [scheme, vp, name] of [['dark', { width: 1280, height: 800 }, '08-bar
   const sv = await select(f, '外れ値に', '引っぱられるが'); let pw = null; await until(async () => (pw = await popup(f)));
   if (vp.width < 500) { const pane = await f.evaluate(() => document.getElementById('egatari-article').closest('.dx-body').getBoundingClientRect().bottom);
     ok(pw && await f.evaluate(() => matchMedia('(pointer: coarse)').matches) && pw.bottom >= pane - 20 && pw.top > sv.bottom + 72, `${name}: on a touch screen the window is docked at the bottom of the book's pane, away from the selection and the system menu next to it (${pw && pw.top}–${pw && pw.bottom}, pane bottom ${pane}, selection bottom ${sv.bottom})`); }
+  if (vp.width < 500) {
+    ok(pw.label === '選んだ字に色を付ける' && pw.close, `${name}: the docked window is named 「選んだ字に色を付ける」 and has ×`);
+    await press(f, 'close'); await sleep(350);
+    ok(!(await popup(f)) && await f.evaluate(() => !getSelection().isCollapsed), `${name}: × closes it and keeps the selection`);
+    // something of the lesson's own where the window would dock (the player's bar, captions): the window goes above it
+    await f.evaluate(() => { const b = document.getElementById('egatari-article').closest('.dx-body').getBoundingClientRect(); const d = document.createElement('div'); d.id = 'fake-bar'; d.style.cssText = `position:fixed;left:0;right:0;top:${b.bottom - 70}px;height:70px;background:#333;z-index:30`; document.body.appendChild(d); });
+    await select(f, '中央値は', '引っぱられにくい'); let pb = null; await until(async () => (pb = await popup(f)));
+    const barTop = await f.evaluate(() => document.getElementById('fake-bar').getBoundingClientRect().top);
+    ok(pb && pb.bottom <= barTop, `${name}: with a bar of the lesson's own at the bottom, the docked window sits above it (${pb && pb.bottom} ≤ ${barTop})`);
+    await f.evaluate(() => document.getElementById('fake-bar').remove());
+  }
   await press(f, 'y');
   const h0 = (await (await p.$('#lesson')).boundingBox());
   await p.click('#b-markup'); await p.click('#b-recall');

@@ -63,7 +63,7 @@ const JA = {
   why: { mismatch: 'リンクの字が、行き先と別のサイトを名指しています', insecure: 'https: ではない行き先です（通信が守られません）', local: 'この端末のファイルを開きます',
     download: 'ファイルをダウンロードします', userinfo: '行き先のアドレスに、ユーザー名やパスワードの形の部分があります', punycode: 'サイト名に、見た目の似た別の文字が使われているかもしれません' },
   // markup (play/markup.mjs; terms: マークアップ・ハイライト・暗記・一覧)
-  mMarkup: 'マークアップ', mHighlight: 'ハイライト', mRecall: '暗記', mRecallColours: '暗記する色', mRecallColour: (c) => `暗記する色：${c}`,
+  mMarkup: 'マークアップ', mHighlight: 'ハイライト', mPick: '選んだ字に色を付ける', mPickClose: '閉じる', mRecall: '暗記', mRecallColours: '暗記する色', mRecallColour: (c) => `暗記する色：${c}`,
   mList: '一覧', mListCount: (n) => `（${n}）`, mListTitle: 'ハイライトの一覧', mColour: { y: '黄', p: '桃', b: '青' }, mCount: (n) => `${n} 件`,
   mNamePh: '色の意味（例：大事な用語）', mNameLabel: (c) => `${c}の意味`,
   mOnly: 'この色だけ表示', mHide: 'この色を非表示', mDeleteColour: 'この色を全部消す',
@@ -76,7 +76,7 @@ const JA = {
   mFull: (n) => `ハイライトは 1 つの教材に ${n} 件までです。いらないものを消してから引いてください。`,
 };
 const EN = {
-  mMarkup: 'Markup', mHighlight: 'Highlight', mRecall: 'Recall', mRecallColours: 'Colours to recall', mRecallColour: (c) => `Recall colour: ${c}`,
+  mMarkup: 'Markup', mHighlight: 'Highlight', mPick: 'Colour the selected text', mPickClose: 'Close', mRecall: 'Recall', mRecallColours: 'Colours to recall', mRecallColour: (c) => `Recall colour: ${c}`,
   mList: 'List', mListCount: (n) => ` (${n})`, mListTitle: 'Highlights', mColour: { y: 'Yellow', p: 'Pink', b: 'Blue' }, mCount: (n) => `${n}`,
   mNamePh: 'What it means (e.g. important terms)', mNameLabel: (c) => `What ${c.toLowerCase()} means`,
   mOnly: 'Show only this colour', mHide: 'Hide this colour', mDeleteColour: 'Delete all of this colour',
