@@ -102,3 +102,12 @@ html[data-font="mincho"]{--font-sans:var(--font-mincho)}
 .slide.layout-tate .body > :not(p,ul,ol,.sub,.note,.arrow,.tate,.box,.thm,h3,blockquote){writing-mode:horizontal-tb;width:100%}
 .slide.layout-tate .body > .tate{height:100%;margin:0}
 .slide.layout-tate .concl{left:48px;right:auto;top:48px;bottom:56px;width:72px;height:auto;writing-mode:vertical-rl;text-orientation:mixed}
+
+/* 試作（v0.6.7-center、本線に入れない）：本文を光学的な中心に置く（R-balance）。本文が短いスライドは、上に寄せずに本文の箱の縦の真ん中に置き、
+   下に 40px の見えない空き（::after）を足して、中身の中心を本文の箱の中心より 20px（本文の高さの約 5%）上に置く（光学的な中心は上から約 45%）。
+   align-content は箱の中の塊の並び（ブロック組み）のまま揃えるので、余白の重なりや部品の幅は変わらない。safe：中身と空きの合計が本文の箱に
+   収まらなければ（本文が長い・高さいっぱいの図）今までどおり上に付く（上へはみ出さない）。段階は opacity で隠すので、段階で位置は動かない。
+   外すもの：表紙・章の扉（.cover・.sec）、縦組みや自分の配置を持つスライド（class に layout- のあるもの）、上で揃える段組み（.body の直下の .cols・grid）。
+   戻すときは、この 2 つの規則を消す */
+.slide:not(.cover,.sec,[class*="layout-"]) > .body:not(:has(> .cols, > [style*="grid"])){align-content:safe center}
+.slide:not(.cover,.sec,[class*="layout-"]) > .body:not(:has(> .cols, > [style*="grid"]))::after{content:"";display:block;height:40px}
