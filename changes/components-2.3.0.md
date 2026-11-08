@@ -1,3 +1,0 @@
-### Changed
-
-- Components 2.0 lessons now use egatari/components **v2.3.0** by default (`components2.lock.json`; 2.2.0 and earlier stay available). `m-codetree` 2.0.3 names itself ハフマン木 / Huffman tree in its text equivalent (aria-label), and New… and the purpose table now call it that too (was 符号の木 / Code tree). `icons` 1.0.0 adds the icon words `en.json` and `ja.json` (for the editor's icon search); the READMEs of `codetree-core` and `m-predict` (学習者 for a learner studying alone) are revised. The npm package leaves out the icon words (about 580 KB; the CLI does not read them), the repository and the site keep them.

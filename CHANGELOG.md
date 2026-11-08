@@ -8,6 +8,113 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.6] - 2026-11-08
+
+### Added
+
+- Editor app: a sample on the first screen plays large; **Make one based on this sample** opens New… with its setting, theme and parts marked “From the sample” (a line under it: “Keeps its structure, theme and parts; the content is new, from your topic.”),
+  only step 2 empty, and adds the sample's structure (heading and point per slide) to the instructions; `?from-sample=<name>` opens the same (backlog #130)
+- `examples/<name>/sample.json` (request, setting, theme, parts, structure, book, language, rights), checked by the build; `studio.newDeck` records `fromSample`
+- **Make one based on this sample** carries over only a bundled theme that New… offers; any other theme in `sample.json` becomes `default`
+  (a sample made for introductions may use a lesson-local brand theme with the Egatari logo, which must never pass to a user's lesson; `sampleTheme` in `kit/core/new-deck-pack.mjs`)
+- A sample with a book (`article/`, `"book": true`) adds one line to the request: books are made in Claude Code, the chat AI makes the slides and narration
+- `node kit/llm-pack.mjs --from-sample <name> [--request …]` prints exactly the instructions the editor copies for that sample (shared `kit/core/new-deck-pack.mjs`)
+- New… from a sample: the sample's parts keep their full descriptions on the free plan; over the limit, the other core parts are shortened first,
+  then specialized parts the sample does not use are left out (on the free plan, then standard parts it does not use, in the single-set order), and only last the sample's own parts are shortened (`fitSample`, editor and command alike)
+- `egatari doctor` checks every vendored part's `index.js` against `components.lock.json` and the manifests' per-file sha256 (`parts`),
+  and says where the default voices are (`voices`)
+- Editor app: unsaved changes to an Egatari file (edits and recordings) are kept in this browser (IndexedDB) a few seconds after each change, and opening the same file again (or the first screen's "Unsaved changes" list) offers to restore them (#55). Each tab keeps its own changes; saving or "Discard changes" deletes them, and help has "Discard all". Working folders are not affected.
+- New…: **Paste the AI’s output** (AI の出力を貼り付ける) under the opening line opens a paste-only form for output you already have (from the make skill in a chat AI, or made before): the two fields of step 5 without steps 1–4, the same import (code blocks, ids, build, quality check and fix request), and **Answer the questions instead** to go back. The name comes from the lesson's `<title>` (else the first `<h1>`), the theme stays as in the deck, and no `studio.newDeck` is written
+- The paste fields (New… step 5, the paste-only form, step 3 of Insert slides and Revise) take the output as a .txt or .md file: **Read from a file** (ファイルから読む) or drop it on a field. It is read through the bounded reader with the pasted deck's limit (32 MB) and then treated exactly like pasted text
+- Editor, AI instructions on the paid plan: wherever the instruction pack can be copied in full (New… step 4, and Insert slides step 2
+  once "Send to a different chat" is ticked), **Save the instructions as a file** is the primary button and **Copy the instructions**
+  the secondary one, with a line under them about attaching long instructions instead of pasting them (Gemini cuts a paste at about
+  30,000 characters; ChatGPT turns a long paste into an attachment by itself; owner's test, 2026-11-05). It downloads
+  `egatari-instructions-ja.txt` / `egatari-instructions-en.txt` (by the pack's language), the exact bytes the copy would put on the
+  clipboard (UTF-8, no BOM). The free plan is unchanged: copying stays the only, primary action
+- Tests: a CI guard next to the existing pack size checks keeps every free pack, ja and en, at most 31,000 counting UTF-16 code units
+  plus one more per line feed (a paste may arrive with CRLF): the standard pack as assembled, and the fitted pack of every combination
+  of part sets New… can tick (`tools/test-new-deck.mjs`). Gemini cut the owner's paste at about 32,173 units, and the free plan has no
+  file to fall back on, so this leaves room for the brief
+- Privacy page ([docs/privacy.md](docs/privacy.md), [日本語](docs/privacy.ja.md)): what Studio, the player and Egatari Viewer send over the internet and keep on the device, how schools can check or block it, site logs, and how long the Live server keeps a Live's contents. An appendix points to the code.
+- **Pronunciation…** in the script drawer (editor app and dev server, #101): select a word or symbol (or put the caret in it) and give its reading; the source gets `{x|y}`, and the drawer shows the reading small above the word (ruby) instead of the braces, with the caret, undo, redo and copy working on the source text. Options: **Apply to all in this script** (other steps are written on save, with a backup) and **Add to dictionary** (kept in this browser and filled in the next time the word is selected; disabled with a one-line reason where the browser keeps no data, such as private browsing). In the editor app the reading can be tried with read-aloud or AI voice on this computer. Selections that are not one word or symbol (R-reading) are refused with what to select. Works for Japanese and English (`θ` → theta, `SQL` → sequel).
+- Editor app, samples: two samples with a book, 平均と中央値は「ズレの測り方」で決まる (`heikin-chuouchi`, 10 slides, horizontal book) and
+  芥川龍之介「羅生門」を読む (`rashomon`, 7 slides, vertical book), copied from egatari/examples. The list marks them **Book**;
+  `examples.json` of the release assets gets `book` for every sample. The four earlier samples are unchanged
+- Viewer: once the first file lands in the recent list (keeping on, shared device off), the page asks the browser once per
+  launch for persistent storage (`navigator.storage.persist()`, errors ignored, never blocking playback), so WebKit
+  (Safari 17+, iOS 17+) stops evicting the origin on its own; the recent files panel shows the browser's actual answer
+  (`navigator.storage.persisted()`) under 「この端末にだけ保存されます」, hidden in shared-device mode or with nothing kept.
+
+### Changed (API)
+
+- `buildPack`, `assemble` and `packWithRequest` (and `partsPackOpts`) take `full`: on the free plan, the standard parts described in full (default the core four; `short` means none). New `fitSample` (`kit/core/llm-pack.mjs`) fits a New… from a sample in the order above
+
+### Changed
+
+- The npm package `egatari` is smaller (55.5 MB to 29.8 MB unpacked, 43.7 MB to 22.0 MB packed): it leaves out the vendored parts'
+  README, demo and changelog files (`vendor/.npmignore`; the build, dev server and check read only `index.js`, and the repository keeps
+  the full copy), the default TTS voices (7.9 MB) and the 6 optional fonts that no bundled theme uses (16.0 MB)
+- Those fonts (Shippori Mincho, Klee One, Source Serif 4, Andika, Atkinson Hyperlegible Next, Source Code Pro) are the new package
+  `@egatari/fonts-extra` (`packages/fonts-extra/`; an optional peer dependency of `egatari`). The default fonts and every font of a
+  bundled theme (Zen Maru Gothic of `asagi`) stay in `egatari`, so every bundled theme works from `npx egatari` alone. The build finds
+  fonts-extra from the `egatari` package and from the current folder; without it, a lesson whose CSS or own theme names one of its fonts
+  gets a build warning and the check error `fontsExtraMissing` with `npm i -D @egatari/fonts-extra`, never a silent fallback.
+  A tag `fonts-extra-vX.Y.Z` publishes it (`.github/workflows/npm-fonts-extra.yml`; the first version by hand, RELEASING.md)
+- `egatari tts` downloads a default voice (`bob`, `alice`, `bob_en`, `alice_en`) that is not in `tts/voices/` on first use, from this
+  repository at the tag pinned in `tts/voices.json`; it refuses a file whose sha256 differs and keeps it in the user's cache folder
+  (`<cache>/egatari/voices/<tag>/`). Offline, it names the URL and the place to put the file by hand. A checkout uses `tts/voices/`
+- Components 2.0 lessons now use egatari/components **v2.3.0** by default (`components2.lock.json`; 2.2.0 and earlier stay available). `m-codetree` 2.0.3 names itself ハフマン木 / Huffman tree in its text equivalent (aria-label), and New… and the purpose table now call it that too (was 符号の木 / Code tree). `icons` 1.0.0 adds the icon words `en.json` and `ja.json` (for the editor's icon search); the READMEs of `codetree-core` and `m-predict` (学習者 for a learner studying alone) are revised. The npm package leaves out the icon words (about 580 KB; the CLI does not read them), the repository and the site keep them.
+- Components 2.0 lessons use egatari/components **v2.4.0** by default ( `components2.lock.json`, earlier catalogues stay available). New part `m-particles` 2.0.0 (set science): particles in motion that show how a state or a change works. Shown in New… as 粒子のモデル / Particle model
+- Components 2.0 lessons use egatari/components **v2.4.1** by default. `m-sweep` 2.1.0 (`point`, `at`, `size`), `m-curves` 2.1.0 (`size`), the shared `plot` 1.1.0 (`fs`, clip clamped), `m-boxplot`, `m-hist`, `m-scatter`, `m-seq` 2.0.3 (need plot 1.1.0; hist and boxplot no longer draw negative heights), `m-codetree` 2.0.4 (levels at least 40 px apart). On the English free plan with the math set, `m-cards` is now also left out (the longer `m-sweep` description); Japanese packs are unaffected
+- Components 2.0 lessons use egatari/components **v2.4.2** by default: the shared `plot` 1.1.1 moves the y-axis title left of the widest tick label only when they would overlap; `m-boxplot`, `m-hist`, `m-scatter`, `m-seq` 2.0.4 and `m-curves`, `m-sweep` 2.1.1 follow it; `m-sweep` also writes the names of grey lines beside the lines, never on them. The AI instructions are unchanged apart from their version line
+- Egatari Viewer: the privacy lines say files are never uploaded (「どこにもアップロードしません」 / "never uploaded anywhere"), the glossary's wording, instead of 「送りません」 / "sent". `npm run lint:terms` now checks the Viewer's strings (`play/*.js`, `play/*.mjs`) as it checks the editor app's
+- Ship one generated book-tools bundle; move the myst packages, vfile and markdown-it to development dependencies so installed packages no longer pull in the parser dependency tree. Check the committed bundle for byte drift with `npm run gen:check`.
+- The make skill's hand-off names the new action: paste into New… → “Paste the AI’s output” (「新規作成…」→「AI の出力を貼り付ける」). The instructions for the chat AI do not change
+- The paid-plan instruction pack cap (`PAID_PACK_KB` in `kit/core/llm-pack-assemble.mjs`) is raised from 120 KB to 150 KB
+- The free plan's instruction limit is now 45 KB **and** a paste length of 31,000 (UTF-16 code units plus line feeds;
+  `FREE_PASTE_UNITS` and `fitSize` in `kit/core/llm-pack-assemble.mjs`), whichever is reached first, for every free pack: New… step 4
+  (the meter, the shortening of the core four and the parts suggested for unticking) and `node kit/llm-pack.mjs` fit to it with the
+  same steps as before (shorten the core four first). English is about one byte per character, so before this every English free
+  pack with a part set was over 31,000 (31,857–38,520) and Gemini cut it when pasted. Now each English pack with a set has the core
+  four shortened; the English standard pack (30,525) is unchanged. Japanese packs (22,000–27,000) and every paid pack are byte for
+  byte the same
+- Free plan, one part set ticked and still over the limit after shortening the core four: the parts left out are now the standard
+  parts outside the core four, in a fixed order (`m-fishbone`, `m-quad`, `m-cycle`, `m-venn`, `m-tree`, `m-timeline`, `m-kpi`,
+  `m-compare`, `m-cards`, `m-pie`, `m-scatter`, `m-curves`; charts last, since the subject sets lean on them; `SINGLE_SET_DROP_ORDER`), stopping as soon as
+  it fits. The set's own parts and the core four are never left out. In English, stats leaves out `m-fishbone` to `m-timeline` (six
+  parts), math the same and `m-kpi`, `m-compare`, kokugo `m-fishbone`, `m-quad`. With two or more sets nothing changes: specialized
+  parts are left out, largest first. `node kit/llm-pack.mjs` names every part it left out on stderr; New… names them as the parts to
+  untick The
+  size table in `docs/authoring-with-llms.md` shows the paste length of each free pack, and `--list` shows it too
+- Egatari Player 1.3.2 (the bundled player that files carry): patch release. A participant joining a Live session sends the join code and the device id in the first message (`join`) instead of in the connection address, so they stay out of proxy and server logs (Live protocol, egatari/live). The Live server accepts both forms during the transition, so files exported with earlier players keep working
+- Egatari Viewer: one line under **ファイルを開く** says that a copy of each opened file is kept on this device (up to 10), or that nothing is kept, with a link to the 「共有の端末」 switch and 「すべて削除」.
+- The turns of the script drawer are one-line rich fields instead of text areas: Enter no longer inserts a line break (it was joined on save anyway).
+- Hosted editor site: releases below the hosting floor (`HOSTED_FROM` in `tools/site-versions.mjs`, now v0.6.0) are no longer served under
+  `/vX.Y.Z/`; that path shows a short Japanese and English page linking to the version's GitHub release and to the latest version. The
+  version lists show only hosted versions, and the size warning names the oldest hosted versions as candidates for the next floor raise
+- Format spec copy (`vendor/egatari-spec`): the snapshot **wd-2026-11-07** (egatari-spec f0856da). Studio follows it except two Player points that come with Egatari Player 1.4.0 in v0.6.7: opening and offering modes and faces per `deck-meta.offer` (Player P9, SHOULD), and the removal of the `learn` mode (the player still accepts `?mode=learn`; `metadata.offer.modes` no longer lists it)
+- Skill `egatari-studio:studio`: the last build is now `npx egatari@0.6.x build <deck> --portable`, so a lesson ends in an Egatari file (`<title>.ega.html`) that plays anywhere and opens in <https://studio.egatari.org/> to edit or add audio. Plain `out/deck.html` is built only when the user asks for plain HTML; the play-only file (`--play-only`) only when asked
+- Skill `egatari-studio:studio`: file info (license, copyright, creators) is asked once, in one line, with the outline; the final build no longer stops to ask. Unanswered fields are left out (never made up), and the final message says so and names the `.ega.html` path
+- Skill `egatari:make`: the hand-off to `egatari-studio:studio` says it finishes with an Egatari file. The instructions for the chat AI do not change
+
+### Removed
+
+- The moved-notice skills `motion-slides`, `motion-slides-video` and `motion-components` (kept for v0.6.4–v0.6.5), and the old names in
+  the descriptions of `egatari:make` and `egatari-studio:studio`. `egatari doctor` still reports old `~/.claude/skills/motion-*` entries
+
+### Fixed
+
+- Quality check: English amounts of money such as `$200`, `$1.2M`, `$5–10`, `costs $3 and $4` or `US$30` are no longer reported as unrendered math (`rawMath`). A `$ … $` pair counts only when its content looks like math (a `\` command, `^`, `_`, `=`, a letter next to an operator, or a single variable); `\(` and `\[` are always reported (kit/core/raw-math.mjs)
+
+### Security
+
+- Bundle the book tools with markdown-it 14.3.3 for the CLI and editor, fixing the five markdown-it 13 advisories and removing the temporary audit exceptions. Keep the v0.6.5 paragraph guard as a second layer.
+- Browser TTS window (`lab/tts-helper.html`): the code it loads from jsDelivr is pinned by content as well as by version. Modules (also those onnxruntime-web and kokoro-js import themselves) are checked by the `integrity` of an import map that the page's policy allows by its hash; the two WebAssembly files are fetched with `integrity` and handed over as bytes. If the import map is not active, nothing is loaded. `node tools/tts-sri.mjs` writes the pages from the table in `lab/tts-engine.mjs`; `--fetch` checks the table against jsDelivr.
+- The TTS window's policy drops `'unsafe-eval'` (`'wasm-unsafe-eval'` is enough for Irodori and Kokoro), sets `worker-src 'none'`, and connects only to `huggingface.co` and `us.aws.cdn.hf.co` (where the pinned files are redirected), not `*.huggingface.co` and `*.hf.co`. `tools/test-lab-csp.mjs` checks the policy and the pins.
+- Kokoro's model, config, tokenizer and voices are pinned to the commit in `KOKORO_REV` and checked by SHA-256 (`KOKORO_FILES`). kokoro-js 1.2.1 ignored the revision and loaded them from `main`.
+- Live: the player and the Egatari Viewer send the join code and the participant's random ID in the first message after connecting (`join`), not in the WebSocket address, so they do not end up in proxy or server logs. Needs the egatari/live server that accepts `join` (deploy it first). The vendored protocol is updated.
+
 ## [0.6.5] - 2026-11-06
 
 ### Added
@@ -1194,7 +1301,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.5...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.6...HEAD
+[0.6.6]: https://github.com/egatari/egatari-studio/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/egatari/egatari-studio/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/egatari/egatari-studio/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/egatari/egatari-studio/compare/v0.6.2...v0.6.3
