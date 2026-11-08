@@ -1,6 +1,6 @@
 {
   "name": "egatari-studio",
-  "version": "0.6.6",
+  "version": "0.6.7-rc.1",
   "description": "Check and build Egatari lessons locally, write parts, and export lessons with existing audio as video. Install egatari too for the make skill.",
   "skills": "./skills/"
 }
