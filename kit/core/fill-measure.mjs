@@ -10,8 +10,10 @@
 // 地の色：スライドの計算された地の色。各色の差がどれも BALANCE.tol 以下の画素は地（アンチエイリアスの縁・薄い罫線）。
 // 外接矩形は、地でない画素が BALANCE.minRun 未満の行・列を空とみなす（ちらばった 1 画素で広げない）。重心は地でない画素すべてで取る。
 //   measureBalance({data, width, height}, bg) → {empty, vOffset, hOffset, band, side, top, bottom, left, right, bbox}
-//   balanceFlagged(m, {tate}) → bool：上に強く寄り（vOffset < −BALANCE.vOffset）、かつ下の空き − 上の空きが BALANCE.band を超える。
-//     縦組み（layout-tate。列は右から左へ進み、空きは左に残る）は横に読み替える：右に寄り（hOffset > BALANCE.vOffset）、かつ左の空き − 右の空きが BALANCE.band を超える
+//   balanceFlagged(m, {tate, visual, width, height}) → bool：本文に図があり、上に強く寄り（vOffset < −BALANCE.vOffset）、下の空き − 上の空きが
+//     BALANCE.band を超え、空きがいちばん下の図のすぐ下にある（図の描いた下端から中身の下端まで BALANCE.below % 以内。「図を高くできる」）。
+//     字だけのスライドは知らせない（上にそろえて始めるのが決まり）。縦組み（layout-tate。列は右から左へ進み、空きは左に残る）は横に読み替える
+//   visualExtent(img, bg, rects) → {n, bottom, left} | null：図（部品・svg・img・table・.katex-display）の描いた画素の端
 //   BALANCE_SKIP：測らないスライドの class（表紙・章の扉・段階のないスライド）
 // 段 2 で直し方の言葉（字で埋めない）を足す。段 1 は数だけを知らせる。
 
@@ -22,6 +24,7 @@ export const BALANCE = Object.freeze({
   optical: 45,    // 光学的な中心（上から %）
   tol: 24,        // 地の色との差（各色の最大）がこれ以下なら地
   minRun: 2,      // 外接矩形：1 行・1 列にこの数より少ない地でない画素は数えない
+  below: 15,      // いちばん下の図の描いた下端と中身の下端の間（図の下の字）がこの % まで（縦組みは左右に読み替え）
 });
 export const BALANCE_SKIP = Object.freeze(['cover', 'sec', 'static']);
 
@@ -50,8 +53,27 @@ export function measureBalance({ data, width, height }, bg, { tol = BALANCE.tol,
   return { empty: false, vOffset, hOffset, band: d > 0 ? Math.round(d * 10) / 10 : 0, side: d > 0 ? side : null, top, bottom, left, right, bbox: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } };
 }
 
-export function balanceFlagged(m, { tate = false, vOffset = BALANCE.vOffset, band = BALANCE.band } = {}) {
-  if (!m || m.empty) return false;
-  if (tate) return m.hOffset > vOffset && m.left - m.right > band;
-  return m.vOffset < -vOffset && m.bottom - m.top > band;
+// 図の描いた端：図の箱（本文の撮った画素の中の位置）の中で地でない画素の、いちばん下の行といちばん左の列（BALANCE.minRun の規則で）。
+// 部品の箱は描いた絵より大きいことがある（高さを与えた m-kpi など）ので、箱の端ではなく描いた端を使う。図がなければ null
+//   visualExtent(img, bg, rects) → {n, bottom, left} | null（bottom は最後の行の次の y、left は最初の列の x）
+export function visualExtent({ data, width, height }, bg, rects, { tol = BALANCE.tol, minRun = BALANCE.minRun } = {}) {
+  if (!rects || !rects.length) return null;
+  const [br, bgG, bb] = bg;
+  const on = (x, y) => { const o = (y * width + x) * 4; return data[o + 3] !== 0 && (Math.abs(data[o] - br) > tol || Math.abs(data[o + 1] - bgG) > tol || Math.abs(data[o + 2] - bb) > tol); };
+  let bottom = -1, left = Infinity;
+  for (const q of rects) {
+    const x0 = Math.max(0, q.x), y0 = Math.max(0, q.y), x1 = Math.min(width, q.x + q.width), y1 = Math.min(height, q.y + q.height);
+    for (let y = y1 - 1; y >= y0 && y + 1 > bottom; y--) { let c = 0; for (let x = x0; x < x1 && c < minRun; x++) if (on(x, y)) c++; if (c >= minRun) { bottom = y + 1; break; } }
+    for (let x = x0; x < x1 && x < left; x++) { let c = 0; for (let y = y0; y < y1 && c < minRun; y++) if (on(x, y)) c++; if (c >= minRun) { left = x; break; } }
+  }
+  return bottom < 0 ? { n: rects.length, bottom: null, left: null } : { n: rects.length, bottom, left };
+}
+
+// 図のないスライド（字だけ）は知らせない：上にそろえて始めるのがデッキの決まりなので、字だけのスライドの下が空くのはふつう。
+// 図があり、片寄った空きがいちばん下の図のすぐ下にあるとき（図と空きの間の中身が本文の高さの BALANCE.below % まで。出典の 1 行ほど）だけ知らせる：
+// 「図を高くできる」場合。図の下に字の塊が続いて空くのは、字だけのスライドと同じに扱う。縦組みは左右に読み替える
+export function balanceFlagged(m, { tate = false, visual = null, width = 0, height = 0, vOffset = BALANCE.vOffset, band = BALANCE.band, below = BALANCE.below } = {}) {
+  if (!m || m.empty || !m.bbox || !visual || visual.bottom === null) return false;
+  if (tate) return m.hOffset > vOffset && m.left - m.right > band && visual.left - m.bbox.x <= (below / 100) * width;
+  return m.vOffset < -vOffset && m.bottom - m.top > band && (m.bbox.y + m.bbox.h) - visual.bottom <= (below / 100) * height;
 }

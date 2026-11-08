@@ -475,12 +475,13 @@ await collectPartReports();
 
 // ================================================================ N. 本文の釣り合い（R-balance の段 1。kit/fill-scan.mjs）
 // 最終段階の本文（.body）を撮り、地の色でない画素の重心（縦は光学的な中心、横は真ん中に対して）と、外接矩形の片寄った空きを出す。
-// 上に強く寄り、下に大きな空きが片寄るとき知らせる（縦組みは右に寄り左が空くとき）。表紙・章の扉・static は測らない。
+// 本文に図（部品・svg・img・table・.katex-display）があり、上に強く寄り、図の下に大きな空きが片寄るとき知らせる（縦組みは右に寄り図の左が空くとき）。
+// 字だけのスライドは知らせない（上にそろえて始めるのが決まり）。表紙・章の扉・static は測らない。
 // 結論の行（.concl）は本文の外なので撮らない。知らせは情報だけ（エラー・警告の数、終了コード、修正依頼には入らない）
 phase = 'N 釣り合い';
 for (const f of await scanBalance(page, meta)) {
   if (f.skip || !f.flagged) continue;
-  report(f.i, 'info', 'balance', { vOffset: f.vOffset, hOffset: f.hOffset, band: f.band, side: f.side, top: f.top, bottom: f.bottom, left: f.left, right: f.right, tate: !!f.tate, bbox: f.bbox });
+  report(f.i, 'info', 'balance', { vOffset: f.vOffset, hOffset: f.hOffset, band: f.band, side: f.side, top: f.top, bottom: f.bottom, left: f.left, right: f.right, tate: !!f.tate, bbox: f.bbox, visual: f.visual });
 }
 
 // ================================================================ B. 口述原稿

@@ -1,5 +1,5 @@
 // 本文の釣り合い（R-balance の段 1、balance）の表：閾値を決めるための道具。品質チェックと同じ測り方（kit/fill-scan.mjs）で、スライドごとに
-// 縦の釣り合い（重心と光学的な中心の差、上に寄ると負）・横の釣り合い（重心と真ん中の差、左に寄ると負）・片寄った空きとその側・知らせるかどうかを出す
+// 図があるか・縦の釣り合い（重心と光学的な中心の差、上に寄ると負）・横の釣り合い（重心と真ん中の差、左に寄ると負）・片寄った空きとその側・知らせるかどうかを出す
 //   node tools/fill-report.mjs <deck.html | フォルダ …> [--json]
 // フォルダは中の deck.html を下へたどって全部（node_modules・out（組み立ての出力）・ドットで始まるフォルダは見ない）。閾値は kit/core/fill-measure.mjs の BALANCE
 import fs from 'node:fs';
@@ -56,15 +56,15 @@ try {
 
 if (asJson) { console.log(JSON.stringify({ thresholds: BALANCE, decks: all }, null, 2)); process.exit(0); }
 const fmt = (x) => (x === undefined ? '' : x.toFixed(1));
-console.log(`flagged when vOffset < -${BALANCE.vOffset}% and bottom - top > ${BALANCE.band}% (layout-tate: hOffset > ${BALANCE.vOffset}% and left - right > ${BALANCE.band}%); optical centre ${BALANCE.optical}% from the top; tolerance ${BALANCE.tol}/255, min run ${BALANCE.minRun} px`);
+console.log(`flagged when the body has a visual (m-*, svg, img, table, .katex-display) whose box ends above the bottom band, vOffset < -${BALANCE.vOffset}% and bottom - top > ${BALANCE.band}% (layout-tate: hOffset > ${BALANCE.vOffset}% and left - right > ${BALANCE.band}%); optical centre ${BALANCE.optical}% from the top; tolerance ${BALANCE.tol}/255, min run ${BALANCE.minRun} px`);
 for (const d of all) {
   console.log(`\n## ${path.relative(process.cwd(), d.deck) || d.deck}`);
   if (d.error) { console.log(`  build failed: ${d.error}`); continue; }
-  console.log('| # | id | vOffset % | hOffset % | one-sided band % | side | flagged | heading |');
-  console.log('|---|---|---|---|---|---|---|---|');
+  console.log('| # | id | visual | vOffset % | hOffset % | one-sided band % | side | flagged | heading |');
+  console.log('|---|---|---|---|---|---|---|---|---|');
   for (const s of d.slides) {
     const t = s.title.length > 30 ? s.title.slice(0, 29) + '…' : s.title;
-    if (s.skip) console.log(`| ${s.n} | ${s.id || ''} | | | | | skip (${s.skip}) | ${t} |`);
-    else console.log(`| ${s.n} | ${s.id || ''} | ${fmt(s.vOffset)} | ${fmt(s.hOffset)} | ${fmt(s.band)} | ${s.side || ''}${s.tate ? ' (tate)' : ''} | ${s.flagged ? 'yes' : ''} | ${t} |`);
+    if (s.skip) console.log(`| ${s.n} | ${s.id || ''} | | | | | | skip (${s.skip}) | ${t} |`);
+    else console.log(`| ${s.n} | ${s.id || ''} | ${s.visual ? 'yes' : 'no'} | ${fmt(s.vOffset)} | ${fmt(s.hOffset)} | ${fmt(s.band)} | ${s.side || ''}${s.tate ? ' (tate)' : ''} | ${s.flagged ? 'yes' : ''} | ${t} |`);
   }
 }

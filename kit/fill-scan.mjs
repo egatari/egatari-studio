@@ -3,11 +3,12 @@
 // 画素から重心と外接矩形を取る（kit/core/fill-measure.mjs）。地の色はスライドの計算された地の色（.body から上へ、初めの透明でない background-color）。
 // 結論の行（.concl）は本文の外（本文の下の決まった場所）にあるので撮らない：下の空きは本文の中身と結論の行の間の空きそのもので、
 // 光学的な中心も本文の箱に対して取る。noconcl のスライドは本文が下まで伸びる（680px まで）ので、その高さに対する % になる。
-//   scanBalance(page, metaList) → [{i, skip: 'cover'|'sec'|'static'|'nobody'|'hidden'|null, tate, ...measureBalance の値, flagged}]
+//   scanBalance(page, metaList) → [{i, skip: 'cover'|'sec'|'static'|'nobody'|'hidden'|null, tate, visual: {n, bottom, left}|null, ...measureBalance の値, flagged}]
+//     visual：本文の中の図（部品 m-…・svg・img・table・.katex-display）の数と、図が描いた画素のいちばん下の端・いちばん左の端（本文の左上から px。kit/core/fill-measure.mjs の visualExtent）
 //   decodePng(buf) → {width, height, data(RGBA)}（8 bit の RGB・RGBA、インターレースなし。Chrome の画面写真の形）
 import zlib from 'node:zlib';
 import { stableCapture } from './browser.mjs';
-import { measureBalance, balanceFlagged, BALANCE_SKIP } from './core/fill-measure.mjs';
+import { measureBalance, balanceFlagged, visualExtent, BALANCE_SKIP } from './core/fill-measure.mjs';
 
 export function decodePng(buf) {
   if (buf.readUInt32BE(0) !== 0x89504e47) throw new Error('fill: not a PNG');
@@ -65,7 +66,18 @@ function prepareSlide([i, max, SKIP]) {
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 1, 1); ctx.fillStyle = css; ctx.fillRect(0, 0, 1, 1);
   const bg = [...ctx.getImageData(0, 0, 1, 1).data].slice(0, 3);
   const clip = { x: Math.round(r.left), y: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) };
-  return { skip: null, tate: s.classList.contains('layout-tate'), bg, clip };
+  // 図（visual）：いちばん外の部品（m-…）、部品と KaTeX の外の svg、img、table、.katex-display。見えている箱だけ。
+  // 本文の撮った画素の中の位置（箱）を返す。描いた端は Node の側で画素から取る（visualExtent）
+  const isPart = (e) => e.localName.startsWith('m-');
+  const inside = (e, test) => { for (let a = e.parentElement; a && a !== body; a = a.parentElement) if (test(a)) return true; return false; };
+  const vis = [...body.querySelectorAll('*')].filter((e) => {
+    if (isPart(e)) return !inside(e, isPart);
+    if (inside(e, isPart)) return false;
+    if (e.localName === 'svg') return !inside(e, (a) => a.localName === 'svg' || a.classList.contains('katex'));
+    return e.localName === 'img' || e.localName === 'table' || e.classList.contains('katex-display');
+  }).map((e) => e.getBoundingClientRect()).filter((q) => q.width >= 4 && q.height >= 4 && q.bottom > r.top && q.top < r.bottom && q.right > r.left && q.left < r.right);
+  const visuals = vis.map((q) => ({ x: Math.round(q.left) - clip.x, y: Math.round(q.top) - clip.y, width: Math.round(q.width), height: Math.round(q.height) }));
+  return { skip: null, tate: s.classList.contains('layout-tate'), bg, clip, visuals };
 }
 
 export async function scanBalance(page, metaList) {
@@ -74,8 +86,10 @@ export async function scanBalance(page, metaList) {
     const p = await page.evaluate(prepareSlide, [m.i, m.max, BALANCE_SKIP]);
     if (p.skip) { out.push({ i: m.i, skip: p.skip }); continue; }
     const png = await stableCapture(page, { clip: p.clip, scale: 'css', type: 'png' });
-    const meas = measureBalance(decodePng(png), p.bg);
-    out.push({ i: m.i, skip: null, tate: p.tate, bg: p.bg, ...meas, flagged: balanceFlagged(meas, { tate: p.tate }) });
+    const img = decodePng(png);
+    const meas = measureBalance(img, p.bg);
+    const visual = visualExtent(img, p.bg, p.visuals);
+    out.push({ i: m.i, skip: null, tate: p.tate, bg: p.bg, visual, ...meas, flagged: balanceFlagged(meas, { tate: p.tate, visual, height: img.height, width: img.width }) });
   }
   return out;
 }
