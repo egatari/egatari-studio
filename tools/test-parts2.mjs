@@ -565,10 +565,10 @@ for (const [code, what] of [
   // キャプションも英語で書く（竹島→Takeshima・尖閣諸島→Senkaku Islands・沖ノ鳥島→Okinotorishima・南鳥島→Minamitorishima・
   // 父島→Chichijima・硫黄島→Iwo To、南西諸島→Nansei Islands・小笠原諸島→Ogasawara Islands（異なる縮尺））。どちらも
   // 新しく static glyphs（組み込みの字の一覧。字の絞り込みで教材の文にない字も残す、形式 §6.2）を持つ。ほかのパーツは版も中身も
-  // 2.4.3 のまま。既定はこちら
+  // 2.4.3 のまま。リリース済みとして凍結（既定は候補 2.5.0 へ）
   const v244 = lock2.catalogues['2.4.4'];
-  ok(lock2.default === '2.4.4' && v244 && v244.tag === 'v2.4.4' && v244.tarballSha256 === '88e8764e2c0e350ab5d787c363193862b3db0ffd46a16036ae76fce0a033efa2' && v244.manifestSha256 === '62182412c744cc4a010826402998ccc38fab4dc3ab56c93bdb14a2d02e6f6671',
-    'components 2.4.4 is the default and pinned to the released tarball and manifest (v2.4.4)');
+  ok(v244 && v244.tag === 'v2.4.4' && v244.tarballSha256 === '88e8764e2c0e350ab5d787c363193862b3db0ffd46a16036ae76fce0a033efa2' && v244.manifestSha256 === '62182412c744cc4a010826402998ccc38fab4dc3ab56c93bdb14a2d02e6f6671',
+    'components 2.4.4 is pinned to the released tarball and manifest (v2.4.4)');
   const bumped244 = Object.keys(v244.parts).filter((n) => v244.parts[n] !== v243.parts[n]).sort();
   ok(bumped244.join() === 'map-japan,map-world' && Object.keys(v244.parts).length === Object.keys(v243.parts).length &&
     v243.parts['map-japan'] === '2.0.2' && v244.parts['map-japan'] === '2.0.3' && v243.parts['map-world'] === '2.0.2' && v244.parts['map-world'] === '2.0.3',
@@ -583,6 +583,18 @@ for (const [code, what] of [
     '2.4.4: m-map-japan 2.0.3 writes the built-in island names and inset captions in English when ctx.lang is not ja');
   const changed244 = Object.keys(v244.content).filter((n) => !bumped244.includes(n) && v244.content[n] !== v243.content[n]);
   ok(changed244.length === 0, `2.4.4: no other part changes without a version bump (${changed244.join(', ') || 'none'})`);
+  // 部品庫 2.5.0（リリース c0ad4bd）：版が上がるのは cards・fishbone・tree 2.0.3 と map-japan 2.0.4 の 4 つ。compare は 2.0.2 のまま（本文は上そろえ、先生 11/8）。
+  // cards：枠は動かさず、カードの中身を余った高さの中で縦中央に置く（README に箇条書きの代わりにカードを使う手引きが加わる）。map-japan：ctx.lang が ja でないとき
+  // 県・地方の名前・凡例・要約・aria-label を英語で書く。fishbone・tree：static shape.note が {en, ja} になる。ほかのパーツは版も index.js も 2.4.4 のまま。既定はこちら
+  const v250 = lock2.catalogues['2.5.0'];
+  ok(lock2.default === '2.5.0' && v250 && v250.tag === 'v2.5.0' && v250.tarballSha256 === '94c62a3891658f5de750d1f9f311bc377be794fdd32bf7003345b25034a09ecb' && v250.manifestSha256 === 'daa289d302493948ef55e8b080f259c58adc1ef42f71f4ef6fca78b147e68c7e',
+    'components 2.5.0 is the default and pinned to the released tarball and manifest (v2.5.0)');
+  const bumped250 = Object.keys(v250.parts).filter((n) => v250.parts[n] !== v244.parts[n]).sort();
+  ok(bumped250.join() === 'cards,fishbone,map-japan,tree' && Object.keys(v250.parts).length === Object.keys(v244.parts).length &&
+    ['cards', 'fishbone', 'tree'].every((n) => v244.parts[n] === '2.0.2' && v250.parts[n] === '2.0.3') && v244.parts['map-japan'] === '2.0.3' && v250.parts['map-japan'] === '2.0.4' && v250.parts.compare === '2.0.2',
+    `2.5.0: exactly cards, fishbone and tree (2.0.2 → 2.0.3) and map-japan (2.0.3 → 2.0.4) get a new version; compare stays 2.0.2 (${bumped250.join(', ')})`);
+  const js250 = Object.keys(v250.content).filter((n) => !bumped250.includes(n) && fs.existsSync(c2(v250, n, 'index.js')) && fs.readFileSync(c2(v250, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v244, n, 'index.js'), 'utf8'));
+  ok(js250.length === 0, `2.5.0: no other part's index.js changes without a version bump (${js250.join(', ') || 'none'})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.4.4",
+  "default": "2.5.0",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -1283,6 +1283,115 @@
         "tree": "25eab59287c5c52f9d2f8a7cee3d61ed513cc1c9ca846bba96b45cd59b39f822",
         "venn": "e1a0240f83e1925ee59ef2752662e2b0ec27f69251c012f8bab682aadcd8695f"
       }
+    },
+    "2.5.0": {
+      "tag": "v2.5.0",
+      "tarballSha256": "94c62a3891658f5de750d1f9f311bc377be794fdd32bf7003345b25034a09ecb",
+      "manifestSha256": "daa289d302493948ef55e8b080f259c58adc1ef42f71f4ef6fca78b147e68c7e",
+      "parts": {
+        "bars": "2.0.2",
+        "base": "1.1.0",
+        "boxplot": "2.0.4",
+        "boxplot-core": "1.0.0",
+        "cards": "2.0.3",
+        "codetree": "2.0.4",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.2",
+        "compare": "2.0.2",
+        "curves": "2.1.1",
+        "cycle": "2.0.3",
+        "expr": "1.0.0",
+        "fishbone": "2.0.3",
+        "flow": "2.0.3",
+        "gendai": "2.0.2",
+        "heatmap": "2.0.2",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.2",
+        "hist": "2.0.4",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.1",
+        "kanbun": "2.0.2",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.3",
+        "kobun": "2.0.2",
+        "kpi": "2.0.2",
+        "map-japan": "2.0.4",
+        "map-world": "2.0.3",
+        "market": "2.0.2",
+        "markup-reader": "1.0.1",
+        "menu": "2.0.2",
+        "numberline": "2.0.2",
+        "orbit": "2.0.3",
+        "particles": "2.0.0",
+        "pie": "2.0.2",
+        "plot": "1.1.1",
+        "predict": "2.0.3",
+        "quad": "2.0.3",
+        "scatter": "2.0.4",
+        "score": "2.1.0",
+        "seq": "2.0.4",
+        "shape": "1.0.0",
+        "sweep": "2.1.1",
+        "syntax": "2.0.2",
+        "tape": "2.0.2",
+        "timeline": "2.0.2",
+        "timer": "2.0.3",
+        "tree": "2.0.3",
+        "venn": "2.0.2"
+      },
+      "content": {
+        "bars": "520606a746b0d38fdc1aa380e665a1b95eead2487b11f389d2ebac4abe8f07cb",
+        "base": "577008a069e7eb08057705a0800d975e82c8dfe0d0ba5fbf4f8974af7b298a7f",
+        "boxplot": "2af8f6248ebd499dd036bffcac49b3e43fd8c74a0435bd256e2b1dbd8141b4d5",
+        "boxplot-core": "fadd24868e2730ec14b8f3f1e9cb75b8577a48b8d71beaa12ef089f7a3ba0a7d",
+        "cards": "f3d5b6ce53f40c5f355a67538ff11b9cd28297da6292125ccb6e055aeddef906",
+        "codetree": "4f96929f3b539c459bb78196251009a5f80e607eebccfae641cec60e979efe0e",
+        "codetree-core": "bb139fb1c2e4d010aa82a2c50db120f95f12a0a251cded3130a71dd57dec0274",
+        "collect": "e6bbe784ee452d52d534b8fb3a0924e65c49bbb5926139ef5eabd9193500b357",
+        "compare": "0cab77d128c5f304c2d2ba32841b0bc5adc54b4e72f6681e0a0dda68c96b5d7e",
+        "curves": "96ad8eaf0ea7c23a31b72657964f23a02165765845991cafc41ee2835b97e40f",
+        "cycle": "0787c5bbf2e61801398aeefc39a3674b1fc0e556173c450b85cafa4201cb44a6",
+        "expr": "faf6a2f0b5df589639de624e75c5b20594f517e4426f6415d152809249b00b92",
+        "fishbone": "782ae2154247b00451fc30aa140bf386d3a7a56ac4ad9ee04916f4bd1d29dda0",
+        "flow": "28238c4fa50a377b96ce8a130ce5bdbf7bfc0536ed9c331499ea22377c43adb6",
+        "gendai": "3c36a26fd78dffdfa114bd7c9ca5cae494117bbcdda14bee5c2a01351e5f2eb2",
+        "heatmap": "2a6b20b93f1169ef2435cdf3bfca57d24c9111fe9aaf8e61f0d049cf8a70e9df",
+        "heatmap-core": "de9607f86221006e7bad43f1f661c751d9a6f8f9c62da5c7e0d7f1249b9afcd6",
+        "hissan": "328a440e91684524068076e96cba5771cdceaa274d4b90033656259f05467135",
+        "hist": "f0ac8d6498c1f51ea963f6c0776937f9dc6d2a9f2ac0fdbe6243d94cc3bbc06d",
+        "hist-core": "07013c263cc595382dbcfd4931ca8b016f9dfb673440adf28911c95bd465cf9d",
+        "icons": "b2dfb4fa290d240024c95e2d24fda887db9fbc5b94f99b5be00c74c488fcfddb",
+        "kakijun": "8af8e00fd248f55ce84fe9989e531ae60bf0eb5d0f059f3a28aa3d9c92a8e1d8",
+        "kanbun": "556e7d45a761c4fa749cde186fb53f6c526ba6ede0b8f0f0bba5ac9e25e0d6f4",
+        "kanbun-core": "f268cf809438c8af63a42f9c9121110fc7263e4d705c40c6206ce46cf7ec167b",
+        "keyboard": "3dba49cbbf7853212a6e5c393de030430d02b8b1a2ba4c8b722db2bb8afad12f",
+        "kobun": "de611e2477042b14eb9c04bb98ad0bbe6d7b44ca829213dd1a7a2b94d8f946ae",
+        "kpi": "ef9c8c77ddf2b3953376a2db700c1277f550ea2606eab11cd8e18056dcba84c1",
+        "map-japan": "b86c0e95622ff3be5fb0b208672ebca5018c34fd192e1b431cfd0fe912df2a7f",
+        "map-world": "bec04685638f8fc1217c380d361fd9a425ffeade0291a4f2b2d4e41a5628e0ef",
+        "market": "5b44b272b917246219d2709f1b001964f87a3e07786cc9950087bbb8add3c721",
+        "markup-reader": "03550bb20d425aa926258bab18b03bbc0cee292072e01bb6c78c429b3ae92c34",
+        "menu": "e2181655ed2050668133e08eb14b5683cda48d6af8d76fd7b551c58798c95287",
+        "numberline": "4e0e5eb48fc20ffc554786a7db66c4f5cee0c42eb0554bdc8c98323cdb168eb4",
+        "orbit": "37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09",
+        "particles": "ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098",
+        "pie": "2f1c797ecd028d04ce12b3d55d8ef9d5a4180d564aa99afb492d0bfc9cd39c94",
+        "plot": "80bf0ca9b592205315d09e2041df5aeb9e123e4129ada03cb4c7e0fd914a3bd7",
+        "predict": "40571cbc11cd649c447da73ede0f89937da344b05d4386abeb4afeecedfe7d3e",
+        "quad": "4dd7e6a02f4128e90d4e2a86cccd9bf267a02cebcff1cdf36e0aaff8848af66e",
+        "scatter": "808f748e76833742bb12a80482b37cb3dedaf3dcd592ee477d611cb40e95b094",
+        "score": "abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f",
+        "seq": "7ad71dad059fd45a875a68e177335e7c13c550edb4e7746f9410a76f5015bc5a",
+        "shape": "d92842c606795528d1246ddb050ac275e1b72659629185750a6e9ac7fdb763a3",
+        "sweep": "7ef95fd3156f83c48e0961765bae7155607393e16485184fd60fb80cb8a63a16",
+        "syntax": "0eca723150eb30db0b3d3fdbd35b973d5344ac0d0e2ea8ab89d143a0870ab4fd",
+        "tape": "693e2aa59e822d38c48eca7271cc020f8e0a6f6189f2409895318ed2a3f0b809",
+        "timeline": "3df7d0ec0c3ed4a6b06fbe3befec78b65a2202e5571580d8b28700a14b7b4321",
+        "timer": "9043427ed434c76fba5b11ddd863c40d99b6157e194cfc729895cbaa4940496c",
+        "tree": "554ed56e1ec963627be86ba1f573099ff57cf4cb22e8e10ce00e2128e30d39e2",
+        "venn": "e1a0240f83e1925ee59ef2752662e2b0ec27f69251c012f8bab682aadcd8695f"
+      }
     }
   },
   "parts": {
@@ -1421,6 +1530,16 @@
       },
       "2.0.2": {
         "sha256": "ca73c8a2811a1165326725a2d4686657f1cab2a1a387af1e91aa35d1aabafb7e",
+        "kind": "element",
+        "tag": "m-cards",
+        "requires": {
+          "base": "1.1.0",
+          "icons": "1.0.0"
+        },
+        "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "2a16252c6b1882c7894e190dc925aafb6868bd82c34c22cafc6e29a709241442",
         "kind": "element",
         "tag": "m-cards",
         "requires": {
@@ -1777,6 +1896,27 @@
       },
       "2.0.2": {
         "sha256": "252a6185e5f4fcf04326ba424ea367cc3640be0d50eeac205443930581689f56",
+        "kind": "element",
+        "tag": "m-fishbone",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "effect.tex": "katex",
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "8a28fd433f9634e3241e9ec7874197ac36b604335ff27862b1153bb2f875bcc1",
         "kind": "element",
         "tag": "m-fishbone",
         "requires": {
@@ -2271,6 +2411,16 @@
       },
       "2.0.3": {
         "sha256": "1e6807f146ffe6079f12bb9dbaeda1031953ad26a1019cde474c8ec6268d0631",
+        "kind": "element",
+        "tag": "m-map-japan",
+        "requires": {
+          "base": "1.1.0"
+        },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
+        "license": "MIT"
+      },
+      "2.0.4": {
+        "sha256": "cb931ae2c89f02656413fc5bd283102a8a78811fb0d564c42fa43fe6780ad9e2",
         "kind": "element",
         "tag": "m-map-japan",
         "requires": {
@@ -3029,6 +3179,26 @@
       },
       "2.0.2": {
         "sha256": "c13117dc7980f87df324e4590673aa93f3ccfcd95f3e1496d970400d30d9744d",
+        "kind": "element",
+        "tag": "m-tree",
+        "requires": {
+          "base": "1.1.0",
+          "markup-reader": "1.0.1"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.0.3": {
+        "sha256": "c8f3810cc2c6ff7f4286391b983859a270863b80b281d743a1bcaac0da16f0f8",
         "kind": "element",
         "tag": "m-tree",
         "requires": {

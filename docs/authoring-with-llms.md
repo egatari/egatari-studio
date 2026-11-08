@@ -24,15 +24,15 @@ This file and the part set packs together are the **full pack**: the standards, 
 
 | Pack | Size | Cap | Paste length | Cap |
 |---|---:|---:|---:|---:|
-| Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 29.5 KB | 45 KB | 30,186 | 31,000 |
+| Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 29.5 KB | 45 KB | 30,283 | 31,000 |
 | Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 32.5 KB | 45 KB | 30,918 | 31,000 |
 | Light instructions: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare, m-cards, m-pie left out) | 32.5 KB | 45 KB | 30,724 | 31,000 |
-| Light instructions: standard + maps (the core four shortened too; m-fishbone left out) | 32.0 KB | 45 KB | 30,930 | 31,000 |
-| Light instructions: standard + kokugo (the core four shortened too; m-fishbone, m-quad, m-cycle left out) | 33.9 KB | 45 KB | 30,718 | 31,000 |
-| Light instructions: standard + english (the core four shortened too) | 27.2 KB | 45 KB | 27,384 | 31,000 |
-| Light instructions: standard + music (the core four shortened too) | 28.8 KB | 45 KB | 28,495 | 31,000 |
-| Light instructions: standard + business (the core four shortened too) | 30.1 KB | 45 KB | 29,429 | 31,000 |
-| Light instructions: standard + tools (the core four shortened too) | 27.9 KB | 45 KB | 27,781 | 31,000 |
+| Light instructions: standard + maps (the core four shortened too; m-fishbone left out) | 32.0 KB | 45 KB | 30,949 | 31,000 |
+| Light instructions: standard + kokugo (the core four shortened too; m-fishbone, m-quad, m-cycle left out) | 33.9 KB | 45 KB | 30,737 | 31,000 |
+| Light instructions: standard + english (the core four shortened too) | 27.2 KB | 45 KB | 27,481 | 31,000 |
+| Light instructions: standard + music (the core four shortened too) | 28.8 KB | 45 KB | 28,592 | 31,000 |
+| Light instructions: standard + business (the core four shortened too) | 30.1 KB | 45 KB | 29,526 | 31,000 |
+| Light instructions: standard + tools (the core four shortened too) | 27.9 KB | 45 KB | 27,878 | 31,000 |
 | Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree left out) | 35.7 KB | 45 KB | 30,659 | 31,000 |
 | Detailed instructions: every standard part | 47.7 KB | 150 KB | — | — |
 | Detailed instructions: every part set (this file and every set pack) | 106.9 KB | 150 KB | — | — |
@@ -45,7 +45,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `c0da6aff`
+Pack version: `69c736a1`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -143,7 +143,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 Some parts are not included in these instructions (for Spread, Compare (amounts or features), Two quantities, Steps of a process, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.4.4/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.5.0/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 
@@ -165,7 +165,7 @@ These standard components may be used in any lesson; a part set, when it is incl
 | `<m-compare>` | Table comparing 2–3 things: one column, the other, then row differences | columns + 1 (diff step; none if no diff/better) | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
 | `<m-curves>` | Lines drawn one at a time on shared axes, each named at its end (no legend) | largest step (default: number of series) | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — the data is the array itself, not {"series": […]}; axes go in attributes (xr="[0,10]" xl="…"); the expression field is f in x (not fn, not u) |
 | `<m-cycle>` | Cycle diagram: stage boxes on a circle clockwise from 12, joined by arc arrows (last back to first too) | number of stages (default 1 per step; per-step n each; node step wins) | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
-| `<m-fishbone>` | Fishbone (cause-and-effect) diagram, one main bone at a time, head last; auto layout | bones + 1 (head), or the largest step | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
+| `<m-fishbone>` | Fishbone (cause-and-effect) diagram, one main bone at a time, head last; auto layout | bones + 1 (head), or the largest step | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — nodes without parent are main bones (categories); their children are causes, grandchildren finer causes (3 levels max) |
 | `<m-flow>` | Flow chart: boxes and arrows by step | largest node/edge step | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | KPI cards by step; count-up, change arrow, note | largest card step (default 1 card = 1 step) | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
 | `<m-menu>` | Grid of slide-link cards (contents); plain <a href="#<slide id>">; visited mark | ceil(cards / per-step) (per-step="0": 0) | child `<a href>` links (not JSON) |
@@ -174,7 +174,7 @@ These standard components may be used in any lesson; a part set, when it is incl
 | `<m-quad>` | 2-axis positioning map (4 quadrants); points one per step | largest step / to.step (1 point = 1 step) | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | Scatter plot; point series by step, then a trend line (least squares or 2 points) | series + trend (default 1 series = 1 step, lines 1 step) | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — points are [x, y] or {"x", "y", "label"}; axes go in attributes (xr="[0,10]" xl="…"); trend is "linear" or {"fit": "linear", "label": "…"} or {"pts": [[x0, y0], [x1, y1]]} |
 | `<m-timeline>` | Timeline; events one by one; periods as bands, overlaps stacked; end exclusive ("1912" = start of 1912) | event count (default 1 per step in time order; per-step n each; node step wins) | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A node with end is a period (a band); lane groups bands into named lanes |
-| `<m-tree>` | Hierarchy tree (org chart, taxonomy), built level by level from the root; auto layout | depth (by="level") or node count (by="node"); or the largest step | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — parent のない節（根）はちょうど 1 つ |
+| `<m-tree>` | Hierarchy tree (org chart, taxonomy), built level by level from the root; auto layout | depth (by="level") or node count (by="node"); or the largest step | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — exactly one node without parent (the root) |
 | `<m-venn>` | Venn of 2–3 sets, one by one; then overlaps with items | sets + 1 (overlaps="each": sets + overlaps with items, or all overlaps if none) | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
 
 ### `<m-bars>`
@@ -218,15 +218,14 @@ Data example (child `<script type="application/json">`): `{"cards":[{"icon":"use
 | `hilite` | string | `""` | last or a number (from 1) |
 | `per-step` | number | `1` | cards per step (0 = all) |
 
-Steps, 3–4 key points, or a 2×2 of cases, as icon cards.
+3–4 short equal points or a 2×2: try cards over bullets; short steps: cards with arrows. Long or unequal items: bullets.
 
 (2–6 cards).
 
-- `title`: required, ≤ 2 lines. `text`: wraps; cut with … and reported if too long
-- `icon`: Tabler outline name (list below); unknown = dashed box, reported
+- `title`: required, ≤ 2 lines. `text`: wraps; overflow cut with …, reported
+- `icon`: Tabler name (below); unknown = dashed box, reported
 - `n`: circle text (`"A"`, `"1"`); `nums` numbers the rest 1, 2, 3 …
 - `tone`: circle and icon colour (`term`, `emph`, `accent2`, `series-1..4`)
-- `layout="grid"`: wide cards put number, icon, title on one line
 - `arrows`; `hilite="last"` or `"3"`: `--emph` frame and fill
 - `variant`: `rise` (default), `fade`, `draw`
 
