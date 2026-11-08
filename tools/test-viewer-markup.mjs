@@ -311,6 +311,14 @@ console.log('split');
   const s1 = await f.evaluate(() => DECK.state());
   ok(s1.slide * 100 + s1.step > s0.slide * 100 + s0.step, `with the markup bar open and 暗記 on, → still moves the lesson on (${s0.slide}.${s0.step} → ${s1.slide}.${s1.step})`);
   await shot(p, '11-split-recall');
+  // slides only, 暗記 still on: the book is not on screen, so no band and nothing of the markup over the slide
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*'));
+  await until(() => f.evaluate(() => DECK.panes.state().layout === 'slides')); await sleep(300);
+  const so = await f.evaluate(() => { const host = document.querySelector('[data-egatari-viewer=markup]'); const vis = host ? [...host.shadowRoot.querySelectorAll('.mk .m, .mk .k')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 1 && b.height > 1; }).length : 0; return { vis, hit: document.elementFromPoint(innerWidth / 2, innerHeight / 2) === host }; });
+  const t0 = await f.evaluate(() => DECK.state());
+  await p.keyboard.press('ArrowRight'); await sleep(400);
+  const t1 = await f.evaluate(() => DECK.state());
+  ok(so.vis === 0 && !so.hit && t1.slide * 100 + t1.step > t0.slide * 100 + t0.step, `slides only with 暗記 on: no band shown, nothing over the slide, → moves on (${JSON.stringify(so)})`);
   await c.close(); }
 
 // ---------------------------------------------------------------- 7. shared device
