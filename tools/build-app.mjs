@@ -22,6 +22,7 @@ import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES, FONT_LIST } from '../kit/core/build-core.mjs';
 import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
 import { buildExamples } from './examples-portable.mjs';
+import { buildFontSubsetJs } from './font-subset-bundle.mjs';
 import { vendorComponents, appComponentFiles, componentLicenseFiles } from './vendor-components.mjs';
 import { excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
 import { generate, makeSkillZip } from './make-llm-guide.mjs';
@@ -176,7 +177,10 @@ const citeprocJs = fs.readFileSync(path.join(CITEPROC_DIR, 'citeproc_commonjs.js
 // 1 ファイル版：別のファイルを読めない（file://）ので、citeproc は手を加えない字のまま <script type="text/plain" id="egatari-citeproc"> に入れる（app.js の外。
 // 縮める道具を通さない。app/article-loader.js がその字を読む）。その字が script の要素を閉じたり開いたりしないこと
 if (/<\/?script/i.test(citeprocJs)) throw new Error('citeproc_commonjs.js contains a script tag; it cannot be carried as is in editor.html');
-resourcesSingle.lazyJs = { article: articleJs };
+// 字の切り出しの道具（app/font-subset-tools.js。#178 (4)）：app.js に入れず、持ち運べる 1 ファイルに書き出すときにだけ読み込む
+// （app/font-subset-loader.js。配信版は dist/font-subset.js、1 ファイル版は字として入れる）。組み方は tools/font-subset-bundle.mjs
+const fontSubsetJs = await buildFontSubsetJs(version);
+resourcesSingle.lazyJs = { article: articleJs, fontSubset: fontSubsetJs };
 // res：アプリに入れる資源（配信版は resources、1 ファイル版は明朝を除いた resourcesSingle）
 const plugin = (res) => ({
   name: 'app',
@@ -223,10 +227,16 @@ const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
 for (const f of fs.readdirSync(ED)) if (/^egatari-make-.*-(ja|en)\.zip$/.test(f)) fs.rmSync(path.join(ED, f));
 for (const [lang, bytes] of Object.entries(makeSkillZips)) fs.writeFileSync(path.join(ED, `egatari-make-${version}-${lang}.zip`), bytes);
-for (const f of ['index.html', 'app.js', 'article-tools.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'article-tools.js', 'font-subset.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'article-tools.js'), articleJs);
+fs.writeFileSync(path.join(ED, 'font-subset.js'), fontSubsetJs);
+// 字の切り出しの道具の使用条件（harfbuzzjs・wawoff2。NOTICE）
+for (const [pkg, dir] of [['harfbuzzjs', path.join(path.dirname(require.resolve('harfbuzzjs/dist/harfbuzz-subset.wasm')), '..')], ['wawoff2', path.dirname(require.resolve('wawoff2/package.json'))]]) {
+  fs.mkdirSync(path.join(ED, 'vendor', 'font-subset', pkg), { recursive: true });
+  fs.copyFileSync(path.join(dir, 'LICENSE'), path.join(ED, 'vendor', 'font-subset', pkg, 'LICENSE'));
+}
 fs.mkdirSync(path.join(ED, 'vendor', 'citeproc'), { recursive: true });
 for (const f of ['citeproc_commonjs.js', 'LICENSE', 'package.json']) fs.copyFileSync(path.join(CITEPROC_DIR, f), path.join(ED, 'vendor', 'citeproc', f));
 for (const f of ['CPAL', 'SOURCE.json']) fs.copyFileSync(rel('vendor', 'citeproc', f), path.join(ED, 'vendor', 'citeproc', f));
@@ -295,7 +305,7 @@ if (PARTS) {
 }
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';
 if (examples.length) console.log(`dist/examples/: ${examples.map((x) => `${x.file} ${kb(x.bytes)}`).join(', ')}`);
-console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), article-tools.js ${kb(Buffer.byteLength(articleJs))} (loaded for books only), vendor/citeproc ${kb(Buffer.byteLength(citeprocJs))}, fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
+console.log(`dist/ (hosted editor): app.js ${kb(js.length)} (reader worker ${kb(workerJs.length)}), article-tools.js ${kb(Buffer.byteLength(articleJs))} (loaded for books only), font-subset.js ${kb(Buffer.byteLength(fontSubsetJs))} (loaded on export), vendor/citeproc ${kb(Buffer.byteLength(citeprocJs))}, fonts ${lazy.length} files ${kb(fontBytes)} -> ${ED}`);
 
 // 1 ファイル版：dist/editor.html（字を全部埋め込む。明朝は入れない）
 if (SINGLE) {

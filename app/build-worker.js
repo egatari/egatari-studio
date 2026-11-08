@@ -15,6 +15,7 @@
 import { createEngine } from './engine.js';
 import { documentReasons, codeReasons } from '../kit/core/code-scan.mjs';
 import { setArticleHost } from './article-host.js';
+import { memoSubset } from './font-subset-loader.js';
 
 // 本の道具（app/article-tools.js）は、この字の後ろにつなげられて動く（app/build-client.js の setExtra）：その前に、道具が使う部品を置く
 setArticleHost();
@@ -23,6 +24,14 @@ const articleOf = () => {
   const tools = self.__egatariArticle || null;
   if (!tools) return null;
   return { tools, csl: self.__egatariCSL ? tools.cslWith(self.__egatariCSL) : null, steps: (links) => rpc('steps', links) };
+};
+
+// 字の切り出しの道具（app/font-subset-tools.js。つなげたときだけある：app/build-client.js の setExtra(…, 'fontSubset')）。exportHtml（AI の返事の貼り付け）だけが使う
+let subsetP = null;
+const fontSubsetOf = () => {
+  if (!self.__egatariFontSubset) return Promise.resolve(null);
+  if (!subsetP) subsetP = self.__egatariFontSubset.init().then(memoSubset, (e) => { console.warn('[editor] font subsetter failed in the build worker', e); return null; });
+  return subsetP;
 };
 
 let engine = null, wsId = null, seq = 0, gen = 0, proxy = null, themesId = null, tproxy = null;
@@ -54,7 +63,7 @@ self.onmessage = async (e) => {
     if (m.ok) p.resolve(m.value); else p.reject(Object.assign(new Error(m.error.message), { code: m.error.code }, Number.isFinite(m.error.n) ? { n: m.error.n } : {}));
     return;
   }
-  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p), { renderAbc: (job) => rpc('abcjs', job), article: articleOf }); return; }
+  if (m.init) { gen = m.gen; engine = createEngine(m.res, (p) => rpc('lazy', p), { renderAbc: (job) => rpc('abcjs', job), article: articleOf, fontSubset: fontSubsetOf }); return; }
   try {
     let value = null;
     if (m.op === 'probe') value = self[m.name] === undefined ? null : String(self[m.name]);
@@ -70,7 +79,7 @@ self.onmessage = async (e) => {
         const r = await engine.build(m.file, m.opts || {});
         value = { html: r.html, trusted: r.trusted, stats: r.stats, slides: r.slides, theme: r.theme || null, previewAudio: r.previewAudio || null, reasons: typeof m.prefix === 'string' ? rendered(r, m.prefix) : null };
       } else if (m.op === 'exportIndex') {
-        const r = await engine.exportPortable(m.file, m.opts || {});
+        const r = await engine.exportPortable(m.file, { ...(m.opts || {}), subset: false });   // 索引だけ：字は切り出さない（索引は字によらない）
         value = { index: r.index, registryEquivalent: r.registryEquivalent || [], yanked: (r.stats && r.stats.yanked) || [], themePinned: (r.stats && r.stats.themePinned) || [], themeVersions: (r.stats && r.stats.themeVersions) || {} };
       } else if (m.op === 'exportHtml') {
         // 持ち運べる 1 ファイルそのもの（AI の返事の貼り付け：メモリの上の原稿を、開く前に 1 ファイルにする。app/llm.js）

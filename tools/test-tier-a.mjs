@@ -18,7 +18,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { tierA, scanLayout, jsonObjectAt, deepEqual } from '../kit/core/tier-a.mjs';
 import { parseNarration, narrationMap, marksMap } from '../kit/core/narration-core.mjs';
-import { fontFaces, FONTS } from '../kit/core/build-core.mjs';
+import { fontFaces, FONTS, fontByFamily } from '../kit/core/build-core.mjs';
 import { buildPortable, nodeEnv } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
 import { silentWav, addUnknownMembers } from './portable-fixtures.mjs';
@@ -34,7 +34,7 @@ const tests = [];
 const ok = (name, fn) => tests.push([name, fn]);
 const enc = new TextEncoder(), dec = new TextDecoder();
 const plain = (o) => JSON.parse(JSON.stringify(o));
-const FONTS_SRC = { faces: (k) => fontFaces(nodeEnv, FONTS[k]), load: async (f) => nodeEnv.readBase64(f) };
+const FONTS_SRC = { faces: (k) => fontFaces(nodeEnv, FONTS[k] || fontByFamily(k)), load: async (f) => nodeEnv.readBase64(f) };
 
 // ---------------------------------------------------------------- 教材の用意
 function withAudio(dir) {

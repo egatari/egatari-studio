@@ -136,10 +136,10 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 ### Studio page (studio.egatari.org)
 - CSP meta: `app/index.html` line 10 (`default-src 'self'`; `connect-src 'self'`; `frame-src 'none'`; `worker-src blob:`; `form-action 'none'`). Referrer: line 11 (`no-referrer`). No `_headers` for the Studio site; deploy is GitHub Pages: `.github/workflows/pages.yml` lines 15–17, 112, 129.
 - Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 158; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` line 264).
-- Same-origin fetches only: lazy fonts `app/main.js` line 69; examples line 232; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 48–54, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 14–18 (skipped on file:, line 13), copied by `tools/build-app.mjs` lines 246–251.
-- Offline single-file `editor.html`: `tools/build-app.mjs` lines 300–311; no TTS window on file: `app/tts-client.js` lines 50, 90.
-- No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 404–457). A web manifest is written: `tools/build-app.mjs` lines 214–218, 236.
-- No analytics: a grep for analytics/beacon/plausible/gtag/googletagmanager/cloudflareinsights/sentry/telemetry/sendBeacon over `app kit play server lab tools/build-app.mjs tools/build-play.mjs` finds nothing outside `kit/vendor/` (the bundled third-party book tools, where the only matches are the top-level domain "analytics" in linkify's list and "gTag" inside the SVG helper `adjustTokenSVGTagName`). Page templates: `app/index.html` lines 1–14, `tools/build-app.mjs` lines 233–234, 277–289, 306–309, `play/index.html` lines 1–10.
+- Same-origin fetches only: lazy fonts `app/main.js` line 70; examples line 235; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 48–54, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 14–18 (skipped on file:, line 13), copied by `tools/build-app.mjs` lines 256–261; the font subsetter `font-subset.js` (only when an Egatari file is exported) `app/font-subset-loader.js` line 18 (from the page itself on file:, line 17), written by `tools/build-app.mjs` line 234.
+- Offline single-file `editor.html`: `tools/build-app.mjs` lines 310–321; no TTS window on file: `app/tts-client.js` lines 50, 90.
+- No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 404–457). A web manifest is written: `tools/build-app.mjs` lines 218–222, 246.
+- No analytics: a grep for analytics/beacon/plausible/gtag/googletagmanager/cloudflareinsights/sentry/telemetry/sendBeacon over `app kit play server lab tools/build-app.mjs tools/build-play.mjs` finds nothing outside `kit/vendor/` (the bundled third-party book tools, where the only matches are the top-level domain "analytics" in linkify's list and "gTag" inside the SVG helper `adjustTokenSVGTagName`). Page templates: `app/index.html` lines 1–14, `tools/build-app.mjs` lines 243–244, 287–299, 316–319, `play/index.html` lines 1–10.
 
 ### AI voice on this computer
 - Window and trigger: `app/tts-client.js` lines 71–83 (opens `lab/tts-helper.html`, window `studio-tts`); confirmation before first use lines 99–102; only text and voice name go in, PCM comes out, lines 10–13, 107. Sizes shown lines 21–22, labels lines 42–46.
@@ -172,18 +172,18 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - No request logs: `wrangler.production.toml` lines 44–45 (`observability enabled = false`).
 
 ### Gallery and doc links
-- `app/parts-gallery.js` lines 6–8; `app/llm.js` line 791; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 1727, 2146; `app/i18n.js` lines 367–369, 796–798 (all user-click links, `rel=noopener`).
+- `app/parts-gallery.js` lines 6–8; `app/llm.js` line 791; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 1730, 2154; `app/i18n.js` lines 367–369, 796–798 (all user-click links, `rel=noopener`).
 
 ### Fonts
-- No CDN fonts. Studio `font-src 'self' data:` (`app/index.html` line 10); fonts from `fonts/` (`tools/build-app.mjs` lines 88–99, 238–244); the single file embeds them, lines 300–309. Viewer uses system fonts (`play/sw.js` lines 4–5).
+- No CDN fonts. Studio `font-src 'self' data:` (`app/index.html` line 10); fonts from `fonts/` (`tools/build-app.mjs` lines 89–100, 248–254); the single file embeds them, lines 300–309. Viewer uses system fonts (`play/sw.js` lines 4–5).
 
 ### Storage (Studio)
-- `motion-editor-lang`: `app/i18n.js` lines 11, 15; `app/main.js` line 2367; `app/version-ui.js` line 44.
+- `motion-editor-lang`: `app/i18n.js` lines 11, 15; `app/main.js` line 2377; `app/version-ui.js` line 44.
 - `egatari-colab-privacy-ok`: `app/audio-panel.js` lines 198, 214, 872.
 - `egatari-rec-keep-recording`: `app/rec-mode.js` lines 28, 56, 101.
 - `egatari-slides-open`: `app/slides-panel.js` lines 28, 382, 391.
 - `egatari-studio-live-results-notice`: `app/attachments-panel.js` lines 24–26.
-- sessionStorage `motion-editor-reopen`: `app/main.js` lines 2370, 2377.
+- sessionStorage `motion-editor-reopen`: `app/main.js` lines 2380, 2387.
 - IndexedDB `motion-slides-editor` (handles only, up to 8): `app/fsx.js` lines 121–123, 141–151; `egatari-theme-folder`: `app/theme-folder.js` lines 47–58, `app/my-themes.js` line 70.
 - `.cache/edits/` in the user's folder, up to 30: `app/fsx.js` lines 90–106.
 

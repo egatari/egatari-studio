@@ -34,7 +34,8 @@ import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/part
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
 import { draftStore, createDraftKeeper } from './drafts.js';
-import { tierA } from '../kit/core/tier-a.mjs';
+import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
+import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -75,7 +76,9 @@ const loadLazy = async (p) => {
 // 本（format spec §9C。app/book.js）：本のある教材を開いたときにだけ、本の道具を読み込む（app/article-loader.js）
 const articleLoader = createArticleLoader(RES);
 let book = null;
-const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job), article: () => (book ? book.engineArticle() : null) });
+// 字の切り出しの道具（書き出すときにだけ読み込む。app/font-subset-loader.js）
+const fontSubsetLoader = createFontSubsetLoader(RES);
+const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job), article: () => (book ? book.engineArticle() : null), fontSubset: () => fontSubsetLoader.subsetFont() });
 // 開いたデッキの組み立てと判定は Worker で（app/build-client.js。ページを固めず、期限を過ぎたら止める）。保存・書き出しの組み立ては
 // このページの engine で（確かめた後のデッキ。組み立ての上限は同じ）
 const builder = createBuildClient(RES, loadLazy, { steps: (links) => askSteps(links) });
@@ -1811,7 +1814,7 @@ async function savePortableBound(mode) {
   if (!live()) { cancelled(); return; }
   status(T.saving);
   P.lastRefusal = null; P.lastTierA = null;
-  let saveWarnings = [];
+  let saveWarnings = [], uncovered = '';
   const CFG = FORMAT.CONFIG_FILE;
   let identity = null, cfgText = null;
   // 保存するものの版（memfs の revision）。保存の途中で編集があれば版が変わるので、終わっても「保存した」にしない
@@ -1827,7 +1830,7 @@ async function savePortableBound(mode) {
   }
   let html, index, deckMeta, tier, narrB = null;
   try {
-    let a = await tierA(P.original, files, { identity, fonts: engine.fonts });
+    let a = await tierA(P.original, files, { identity, fonts: engine.fonts, fontSubset: () => fontSubsetLoader.subsetFont() });
     if (!live()) { cancelled(); return; }
     // 本文を直した（§9C.1）：本文だけを組み直して入れる（スライドは組み直さない）。本文に誤り（§9C.8）があれば保存しない
     if (!a.ok && a.code === 'article-changed') {
@@ -1839,10 +1842,15 @@ async function savePortableBound(mode) {
         await ask({ title: T.book.saveErrTitle, kind: 'warn', body: [el('p', { id: 'book-save-errors', text: T.book.saveErrLead }), el('ul', {}, rs.errors.slice(0, 12).map((x) => el('li', { text: x.text })))], buttons: [{ id: 'ok', label: T.ok, pri: true }] });
         return;
       }
-      a = await tierA(P.original, files, { identity, fonts: engine.fonts, article: { html: rs.html } });
+      a = await tierA(P.original, files, { identity, fonts: engine.fonts, fontSubset: () => fontSubsetLoader.subsetFont(), article: { html: rs.html } });
       if (!live()) { cancelled(); return; }
     }
-    if (a.ok) { html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; saveWarnings = a.warnings || []; if (typeof a.config === 'string') cfgText = a.config; }
+    if (a.ok) {
+      html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; if (typeof a.config === 'string') cfgText = a.config;
+      // 字の補いのない新しい字（字体のファイルを持たない版のアプリ・どの字体にもない字）：断らずに保存し、画面の言葉で名指す（決めごと 3。保存の知らせにも）
+      uncovered = (a.changes && a.changes.uncovered) || '';
+      saveWarnings = (a.warnings || []).filter((w) => !w.startsWith(FONT_FALLBACK_WARN)).concat(uncovered ? [T.fontFallback(uncovered)] : []);
+    }
     else {
       P.lastRefusal = { code: a.code, reason: a.reason };
       if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
@@ -1924,7 +1932,7 @@ async function savePortableBound(mode) {
     if (!clean) console.warn('[editor] edited while saving: the newer edits are not in the saved file (still unsaved)');
     // 段 A の知らせ（音声も消した段階など）は警告の一覧に入れ、保存の知らせ（toast）にも件数を出す
     if (saveWarnings.length) { for (const w of saveWarnings) console.warn('[editor] save:', w); S.warn.push(...saveWarnings); showWarn(); }
-    toast((h ? T.savedToast(P.name) : T.downloadedToast(P.name)) + (mode === 'new' ? T.newLessonToast : '') + (saveWarnings.length ? T.saveWarned(saveWarnings.length) : ''), saveWarnings.length > 0);
+    toast((h ? T.savedToast(P.name) : T.downloadedToast(P.name)) + (mode === 'new' ? T.newLessonToast : '') + (uncovered ? T.fontFallbackToast(uncovered) : '') + (saveWarnings.length ? T.saveWarned(saveWarnings.length) : ''), saveWarnings.length > 0);
     showNotice();
   } catch (e) {
     if (e && e.name === 'Cancelled') { cancelled(); return; }
@@ -2339,6 +2347,8 @@ window.__APP_TEST = {
   themeFolder: () => ({ name: TF.handle ? TF.handle.name : null, state: TF.state, inBuild: !!engine.themeWorkspace, mine: [...TZ.themes.keys()].sort() }),
   initThemeFolder: () => initThemeFolder(),
   build: async (opts) => (await engine.build(S.deckFile, opts || {})).html,
+  // 持ち運べる 1 ファイルへの書き出し（字の切り出しを含む。保存も作業場所も書かない）→ {html, fontSubset}
+  exportPortable: async (opts) => { const r = await engine.exportPortable(S.deckFile, opts || {}); return { html: r.html, fontSubset: !!r.fontSubset }; },
   rebuild: () => rebuild('test'),
   slides: () => slidesPanel.state(),
   reloadPreview: () => loadFrame(),
@@ -2384,7 +2394,9 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 })();
 
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
+// AI の返事の貼り付けは Worker で 1 ファイルにする：その前に、字の切り出しの道具を Worker につなげる（読めなければ分割ファイルのまま）
+const fontSubsetForWorker = async () => { builder.setExtra(await fontSubsetLoader.workerPrelude(), 'fontSubset'); };
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

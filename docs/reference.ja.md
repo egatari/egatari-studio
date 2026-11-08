@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=d52d92feeab2606a -->
+<!-- i18n: pair=reference.md sha256=148d66a1369ea2ba -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -440,6 +440,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
 | 教材が `@egatari/fonts-extra` の字体を選んでいる（教材の CSS か自分のテーマ）のに、その包みが npm の包み `egatari` と一緒に入っていないので、その字体が入らない — `fontsExtraMissing`（入れ方を言う） | エラー |
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
+| スライド・台本・本の見える字に、埋め込んだどの字体にもない字がある（@fontsource にない `∎` など）。その字は開く端末の字体で出る — `fontNotCovered`（教材に 1 回、場所ごとに字を挙げる。`node tools/font-coverage.mjs <組んだ HTML>` でも見られる） | 情報 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
 | パーツの描画が呼び出し順で変わる | エラー |
 | 強調の目印が無い。ステップごとの強調の一覧 | 警告。情報 |
@@ -461,7 +462,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `--embed-audio` | 音声を AAC 64 kbps モノラルで埋め込む（ffmpeg が要る。なければ WAV のまま、警告）。なしでは出力からの相対パスで参照する |
 | `--portable`・`--play-only` | 編集できる原稿も中に持つ Egatari ファイル。[Egatari ファイル](#egatari-ファイル--portable) |
 
-最後の行に、スライド・式・パーツ・字のファイル・台本のステップ・音声のステップ・テーマ・大きさを出す。キャッシュ：絞った字は `$TMPDIR/motion-slides-fonts/`（使う字・TTF のハッシュ・fonttools の版で鍵を作る。`uv` で `fonttools==4.67.0` と `brotli==1.2.0` を使う）、圧縮した音声は `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と台本の文字列、使うパーツの JS の文字列（日本語以外の教材では和文を除く）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語の教材ではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
+最後の行に、スライド・式・パーツ・字のファイル・台本のステップ・音声のステップ・テーマ・大きさを出す。字：埋め込む字体は、@fontsource の分割ファイルのうち教材の字を持つものを、harfbuzz（WebAssembly の `harfbuzzjs`、`package.json` で版を固定）で使う字だけに切り出し、woff2（`wawoff2`）にして、`unicode-range` を切り出した字にする。Python も TTF も使わず、編集アプリのエクスポートも同じバイトになる。同じ字・同じ分割ファイル・同じ道具の版なら、どの OS でも同じバイト（`tools/test-font-subset.mjs`）。予約された字体名を持つ Source Sans 3・Source Serif 4・Source Code Pro は切り出さない。`EGATARI_FONT_SUBSET=0` で切らずに分割ファイルのまま入れる。`--dev` と開発サーバーは切り出さない。圧縮した音声のキャッシュは `$TMPDIR/motion-slides-audio/`。埋め込む字：HTML の文字参照と `\u` エスケープをほどいた原稿の字、`<script type="application/json">` と台本の文字列、使うパーツの JS の文字列（日本語以外の教材では和文を除く）、パーツが自分で描くと宣言した字（パーツライブラリの記録の `glyphs`・`egatariParts.define` の meta の `glyphs`・`static glyphs`。字列か、`{ja: …, en: …}` なら教材の言語のもの）、印字できる ASCII（数字、ページ番号の `/`）、`Appendix`、日本語の教材ではさらに `付録` とよく使う和文の約物。ローカルの素材は[素材](#素材build-で埋め込む)のとおり埋め込む。
 
 
 作業フォルダのパーツ（`<deck>/components/<名前>/index.js`）は実体のパスが作業フォルダの中にあるときだけ、パーツライブラリのパーツは `vendor/components/` の中にあるときだけ読む。作業フォルダのパーツが外を指していれば、警告して読まず、パーツライブラリのものにも替えない。作業フォルダの中の出力（`out/…`）と `egatari.json` は、シンボリックリンク（そのファイルか途中のフォルダ）を通しては書かない。リンクがあれば書かずに失敗する。

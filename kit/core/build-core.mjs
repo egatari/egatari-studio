@@ -13,6 +13,8 @@
 //   env.katexDir                   katex の dist（katex.min.css・katex.min.js・fonts/）
 //   env.fontDir(pkg)               @fontsource の包みの場所（{w}.css と files/）
 //   env.version                    デッキに入れる版（DECK.VERSION）
+//   env.subsetFont(bytes, cps, file) 任意。分割ファイル（woff2）を字の番号 cps だけに切り出す → {b64：woff2 の base64, cps：切り出した字が持つ字}（kit/core/font-subset-core.mjs。Node は kit/font-subset.mjs、
+//                                  編集アプリは app/font-subset-loader.js）。あれば @fontsource の分割ファイルを切り出し、unicode-range をその字にする（opts.subset が false か dev なら使わない）
 //   env.subset(text, font)         任意。使っている字だけに絞った BIZ UDPゴシック（font が 'mincho' なら BIZ UDP明朝）（{css, n, bytes} か null）
 //   env.compressAudio(file)        任意。埋め込む音声を小さくしたファイル（できなければ元のまま）。env.audioFailed() で失敗を知る
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
@@ -27,7 +29,7 @@ const RUNTIME_FORMAT_ALL = Object.freeze({ ...RUNTIME_FORMAT, attachTypes: runti
 import { faviconLink, wantsFavicon } from './favicon.mjs';
 import { KATEX_RANGES } from './katex-ranges.mjs';
 import { readLock, vendorDir, resolveComponent, pickVersion, configPins, yankedInfo } from './components-lock.mjs';
-import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError } from './parts2.mjs';
+import { readLock2, pickCatalogue, resolveParts, readDefineMeta, metaMismatch, renderFields, subsetCode, lessonText, deckElements, catalogueHint, notInCatalogueError, partGlyphDecls, pickGlyphs } from './parts2.mjs';
 import { readThemesLock, themesVendorDir, pickThemeVersion, configThemePins, themeUpdate, themePinnedWarning, excludedFromThemeHash, CSS_URL_RE, themeUrlRel } from './themes-lock.mjs';
 import { documentReasons, SCRIPTING } from './code-scan.mjs';
 import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-core.mjs';
@@ -317,6 +319,9 @@ function jsonStrings(v, out) {
 }
 // JS の文字列リテラルの中身（注釈は先に除く。粗いが、字を集めるだけなので足りる）
 const jsLiterals = (js) => [...js.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[\s;{}(),])\/\/[^\n]*/g, '$1').matchAll(/(["'`])((?:\\.|(?!\1)[^\\])*?)\1/g)].map((m) => m[2]).join('\n');
+// プレーヤーの画面の言葉の和文の字（実行系の JS の文字列。字を切り出すときに日本語の教材に入れる。tools.js の道具の帯は端末の字体で組むので数えない）
+export const PLAYER_UI_FILES = Object.freeze(['deck.js', 'presenter.js', 'panes.js', 'track.js']);
+export const playerUiGlyphs = (readKit) => (unescapeJs(jsLiterals(PLAYER_UI_FILES.map(readKit).join('\n'))).match(CJK) || []).join('');
 export function glyphText(html, narration, compJs = '', lang = '') {
   const h = html.replace(/data:[^"')\s]+/g, '');
   const json = [];
@@ -328,17 +333,36 @@ export function glyphText(html, narration, compJs = '', lang = '') {
   return RUNTIME_GLYPHS + (isJapanese(lang) ? RUNTIME_GLYPHS_JA : '') + decodeEntities(h) + '\n' + unescapeJs(h) + '\n' + json.join('\n') + '\n' + JSON.stringify(narration) + jsonStrings(narration, []).join('\n') + comp;
 }
 
+// 字を絞り込まない字体：予約された字体名（OFL の Reserved Font Name）を持つもの。絞り込んだものは OFL の「改変版」にあたりうるので、
+// 分割ファイルをそのまま入れる（Source Sans 3・Source Serif 4・Source Code Pro は RFN「Source」。どれもラテン文字の小さな分割ファイル）
+export const NO_SUBSET_PKGS = Object.freeze(new Set(['@fontsource/source-sans-3', '@fontsource/source-serif-4', '@fontsource/source-code-pro']));
 // 分割ファイル（unicode-range ごと）のうち、使っている字を含むものだけを埋め込む
-function rangeCss(env, fonts, text, italic = false) {
+// sub：字の絞り込み（#178 (4)）。env.subsetFont(woff2 のバイト, 字の番号の配列, 分割ファイルの場所) → base64 があれば、当たった分割ファイルを、その中で使う字だけに絞り、
+// unicode-range をその字にする（§7.2。段 A の字の補いが、どの字を持つかを範囲から知る）。字は小さい順に渡すので、字を集めた順によらない
+const fromB64 = (b64) => { const s = atob(b64 || ''), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; };
+function rangeCss(env, fonts, text, italic = false, sub = false) {
   const used = new Set();
-  for (const ch of text) used.add(ch.codePointAt(0));
-  const hit = (r) => { for (const [a, b] of r) for (const c of used) if (c >= a && c <= b) return true; return false; };
+  for (const ch of text) { const c = ch.codePointAt(0); if (c >= 0x20) used.add(c); }
+  const sorted = [...used].sort((a, b) => a - b);
+  const mineOf = (r) => sorted.filter((c) => r.some(([a, b]) => c >= a && c <= b));
   let css = '', n = 0, bytes = 0;
-  for (const f of fonts.flatMap((x) => fontFaces(env, x, x.weights || [400, 700], italic))) {
-    if (!hit(f.range)) continue;
-    const b64 = env.readBase64(f.file);
+  for (const x of fonts) for (const f of fontFaces(env, x, x.weights || [400, 700], italic)) {
+    const mine = mineOf(f.range);
+    if (!mine.length) continue;
+    let b64, face = f;
+    if (sub && typeof env.subsetFont === 'function' && !NO_SUBSET_PKGS.has(x.pkg)) {
+      // 分割ファイルをまだ読んでいない（編集アプリは足りないものを記録して空を返し、読んでから組み直す）：空のまま進む
+      const src = typeof env.readBytes === 'function' ? env.readBytes(f.file) : fromB64(env.readBase64(f.file));
+      if (!src || !src.length) b64 = '';
+      else {
+        // unicode-range は切り出した字が本当に持つ字（分割ファイルの範囲にあっても字形のない字は書かない。§7.2）。1 字も持たなければ入れない
+        const r = env.subsetFont(src, mine, f.file);
+        if (!r.cps.length) continue;
+        b64 = r.b64; face = { ...f, range: rangesOf(String.fromCodePoint(...r.cps)) };
+      }
+    } else b64 = env.readBase64(f.file);
     bytes += b64.length; n++;
-    css += fontFaceCss(f, b64);
+    css += fontFaceCss(face, b64);
   }
   return { css, n, bytes };
 }
@@ -373,7 +397,7 @@ function fontCss(env, text, subset, lang, mincho = false, warn = [], more = {}) 
   // 日本語の教材は強調の中のラテン文字だけで、強調の中のラテン文字をこの斜体で出す
   if (more.italic && hasFont(env, FONTS.sans3, true)) {
     let it = { css: '', n: 0, bytes: 0 };
-    for (const wt of [400, 700]) if (more.italic[wt]) it = add(it, rangeCss(env, [{ ...FONTS.sans3, weights: [wt] }], more.italic[wt], true));
+    for (const wt of [400, 700]) if (more.italic[wt]) it = add(it, rangeCss(env, [{ ...FONTS.sans3, weights: [wt] }], more.italic[wt], true, subset));
     if (it.n) g = add(g, isJapanese(lang) ? { ...it, css: it.css + `:is(em,i,cite){font-family:"${FONTS.sans3.family}",var(--font-sans)}\n` } : it);
   }
   for (const f of more.chosen || []) {
@@ -383,31 +407,32 @@ function fontCss(env, text, subset, lang, mincho = false, warn = [], more = {}) 
       else warn.push(`字体「${f.family}」の字がないので埋め込まない（開く端末の字体で出る）。npm ci`);
       continue;
     }
-    g = add(g, rangeCss(env, [f], text));
-    if (f.italic) g = add(g, rangeCss(env, [f], text, true));
+    g = add(g, rangeCss(env, [f], text, false, subset));
+    if (f.italic) g = add(g, rangeCss(env, [f], text, true, subset));
   }
   if (!mincho) return g;
   // 明朝は和文（ラテン文字より後ろ）のための字。英語などのデッキでは Source Sans 3 が持たない字だけ
   const t = isJapanese(lang) ? text : [...new Set(text)].filter((c) => c.codePointAt(0) > LATIN_MAX).join('');
   if (!t) return g;
-  const m = (subset && env.subset ? env.subset(t, 'mincho') : null) || (hasFont(env, FONTS.mincho) ? rangeCss(env, [FONTS.mincho], t) : null);
+  // 字の絞り込みは、wasm のもの（env.subsetFont。分割ファイルを絞る）を先に、なければ fonts/ の TTF と fonttools（env.subset）
+  const m = (subset && env.subset && !env.subsetFont ? env.subset(t, 'mincho') : null) || (hasFont(env, FONTS.mincho) ? rangeCss(env, [FONTS.mincho], t, false, subset) : null);
   if (!m) { warn.push('明朝（BIZ UDP明朝）の字がないので埋め込まない（開く端末の明朝で表示されます）。node tools/get-fonts.mjs か npm ci'); return g; }
   return add(g, m);
 }
 function fontCssGothic(env, text, subset, lang) {
-  const sub = (t) => (subset && env.subset ? env.subset(t) : null);
+  const sub = (t) => (subset && env.subset && !env.subsetFont ? env.subset(t) : null);
   if (isJapanese(lang)) {
     const r = sub(text); if (r) return r;
-    return rangeCss(env, [FONTS.biz], text);
+    return rangeCss(env, [FONTS.biz], text, false, subset);
   }
   // 英語など：ラテン文字は Source Sans 3、それより後ろの字（和文・矢印など）だけを BIZ UDPゴシックで
-  const latin = rangeCss(env, [FONTS.sans3], text);
+  const latin = rangeCss(env, [FONTS.sans3], text, false, subset);
   // Source Sans 3 の分割ファイルが持たない字だけを BIZ UDPゴシックに回す（引用符・ダッシュなどは Source Sans 3 で出す）
   const sansRanges = fontFaces(env, FONTS.sans3).flatMap((f) => f.range);
   const inSans = (c) => sansRanges.some(([lo, hi]) => c >= lo && c <= hi);
   const rest = [...new Set(text)].filter((c) => { const cp = c.codePointAt(0); return cp > LATIN_MAX && !inSans(cp); }).join('');
   let biz = { css: '', n: 0, bytes: 0 };
-  if (rest) biz = sub(rest) || rangeCss(env, [FONTS.biz], rest);
+  if (rest) biz = sub(rest) || rangeCss(env, [FONTS.biz], rest, false, subset);
   // 本文の字の差し替えと字間・行間は kit/latin.css（テーマの後に置く）
   return { css: latin.css + biz.css, n: latin.n + biz.n, bytes: latin.bytes + biz.bytes };
 }
@@ -724,6 +749,8 @@ export function chargedEnv(env, bud) {
     return typeof r === 'string' ? { v: r, len: 0 } : { v: r.path, len: r.read };
   });
   // 字の絞り込み（Node）は env の外で字のファイルを読み、できた CSS を返す：使う前にその大きさを数える
+  // 分割ファイルの絞り込み（wasm）：元の分割ファイルは w.readBytes で数えて読む。できた base64 も数える
+  if (typeof env.subsetFont === 'function') w.subsetFont = (bytes, cps, file) => { const r = env.subsetFont(bytes, cps, file); bud.read(r.b64.length); return r; };
   if (typeof env.subset === 'function') w.subset = (t, font) => { const r = env.subset(t, font); if (r && typeof r.css === 'string') bud.read(utf8Length(r.css)); return r; };
   return w;
 }
@@ -1046,8 +1073,14 @@ export function build(env0, srcPath, opts = {}) {
   // opts.articleHtml：再生器の本の窓に出す本文（format spec §9C.6 の <article id="egatari-article">。入れるのは呼び手で、runtimePrefix の中）。
   // その字も絞り込みに数え、縦書き（明朝で組む）なら明朝の字を入れる。opts.articleCss はその体裁（kit/core/article-render.mjs の ARTICLE_CSS）
   const articleHtml = opts.articleHtml || '';
-  const textForFont = glyphText(html + articleHtml, narrationMap(segs, !!opts.dev, false), compJs, lang);
-  const fonts = fontCss(env, textForFont, opts.subset !== false && !opts.dev, lang, usesMincho(html, theme.css, compJs) || /class="egatari-vertical"/.test(articleHtml), warn,
+  const subsetOn = opts.subset !== false && !opts.dev;
+  // 字を絞り込むときは、再生器の画面の言葉（実行系の JS の文字列の和文。日本語の教材だけ。tools.js の道具の帯は端末の字体で組むので数えない）も入れる：分割ファイルをまるごと入れていたときは
+  // たまたま入っていた字が、絞り込むと欠けて端末の字体で出るので（handoff/font-subset-design-2026-11-05.md §3.1）
+  const uiText = subsetOn && isJapanese(lang) ? playerUiGlyphs((f) => read(KIT, f)) : '';
+  // 使うパーツが宣言する字（§7.2 の glyphs：パーツが自分で描き、教材の字には出てこない字。m-map-japan の島の名前など）
+  const partText = parts2 ? pickGlyphs(parts2.parts.flatMap((p) => p.glyphDecls || []), lang) : '';
+  const textForFont = glyphText(html + articleHtml, narrationMap(segs, !!opts.dev, false), compJs, lang) + uiText + partText;
+  const fonts = fontCss(env, textForFont, subsetOn, lang, usesMincho(html, theme.css, compJs) || /class="egatari-vertical"/.test(articleHtml), warn,
     { chosen: chosenFonts(theme.css + '\n' + deckCss(html), theme.cfg && theme.cfg.fonts), italic: italicText(html, compJs, isJapanese(lang)), body: bodyFont(theme.css, theme.cfg && theme.cfg.fonts) });
   // 信頼する部分（字・テーマ・実行系の CSS と、実行系のスクリプト）の中身は、それを入れた要素から抜け出せないようにする（</style・</script・<!--）
   const styleSafe = (t) => String(t).replace(/<\/style/gi, '<\\/style').replace(/<!--/g, '<\\!--');
@@ -1249,6 +1282,8 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
     }
     const rec = { name: read.meta.name, version: read.meta.version, source: p.source, ...(read.meta.element ? { tag: read.meta.element } : {}), requires: read.meta.requires };
     rec.code = code; rec.fullCode = code;
+    // パーツが宣言する字（地図の島の名前など。字を切り出すときに残す。言語は組み立てが選ぶ：pickGlyphs）。索引には書かない
+    Object.defineProperty(rec, 'glyphDecls', { value: partGlyphDecls(code, meta), enumerable: false });
     if (p.source === 'embedded') rec.path = where;
     if (p.source === 'registry') { rec.sha256 = meta.sha256; rec.license = meta.license; }
     if (meta.build && meta.build.subset) {

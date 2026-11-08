@@ -9,6 +9,7 @@
 //    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
 //    本文の場所の限りはテーマの寸法の宣言（theme.json の metrics、contract §12）から導き、描いた箱が宣言と違えば themeMetricsDrift（警告、デッキに 1 回）。
 //    読めない宣言は themeMetricsInvalid（警告、デッキに 1 回）。同梱の字体が読み込めなければ測らずに metricsFontLoad（警告、デッキに 1 回）
+//    埋め込んだ字体のどれにもない見える字（スライド・台本・本）は fontNotCovered（情報、デッキに 1 回。端末の字体で出るだけで、v0.6.6 までと見え方は同じ。kit/core/font-coverage.mjs）
 // B. 口述原稿（narration.md）との対応：抜け・式の読み上げ・長すぎる 1 ターン・雛形のままの仮の行とスライドの字（警告）
 // C. パレットのコントラスト（WCAG）
 // D. 部品の再現性（呼び出し順で絵が変わらないか）
@@ -52,6 +53,7 @@ import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
 import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
+import { uncoveredGlyphs } from './core/font-coverage.mjs';
 
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
@@ -135,6 +137,12 @@ for (const w of built.stats.warn) {
 if (metricsWarn.length) report(null, 'warn', 'themeMetricsInvalid', { theme: themeInfo.name, list: metricsWarn });
 // 黙って端末の字体にしない：入れ方を言うエラー（同じ字体は fontNotEmbedded に重ねて出さない）
 if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: extraMissing, pkg: FONTS_EXTRA_PKG, install: FONTS_EXTRA_INSTALL });
+// 情報（警告ではない：その字はこれまでも端末の字体で出ていた。AI への指示の見本の N₀ のように、直さなくてよいことも多い）。埋め込んだ字体のどれにもない、見える字（kit/core/font-coverage.mjs。組み立ては使う字だけを切り出すので、字体が持たない字は端末の字体で出る。#178 (4)）
+{
+  const cov = uncoveredGlyphs(built.html);
+  const groups = ['slides', 'narration', 'article'].map((where) => ({ where, chars: cov.missing.filter((m) => m.where === where).map((m) => m.char).join('') })).filter((g) => g.chars);
+  if (groups.length) report(null, 'info', 'fontNotCovered', { groups, chars: cov.missing.map((m) => m.char).join('') });
+}
 
 // ================================================================ I. スライドの id と鍵
 {

@@ -1349,6 +1349,7 @@ export function setupLlm(app) {
   async function openFiles(files, name, extra) {
     const ws = memoryWorkspace('pasted', files);
     let html;
+    if (app.fontSubsetForWorker) await app.fontSubsetForWorker();   // 字を教材が使う字だけに切り出す（コマンドの組み立てと同じ。#178 (4)）
     try { html = (await app.builder.exportHtml(ws, 'deck.html', {}, { timeout: app.buildTimeout() })).html; }
     catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
     const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name, fresh: true, ...extra });
@@ -1408,6 +1409,7 @@ export function setupLlm(app) {
       const P = S.portable;
       const ws = memoryWorkspace('pasted', files);
       let html;
+      if (app.fontSubsetForWorker) await app.fontSubsetForWorker();   // 字を教材が使う字だけに切り出す（コマンドの組み立てと同じ。#178 (4)）
       try { html = (await app.builder.exportHtml(ws, file, { carry: P.index }, { timeout: app.buildTimeout() })).html; }
       catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
       const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name: P.name, handle: P.handle, fresh: P.rightsOk, replacing: true });

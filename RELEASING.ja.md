@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=a609f289a5c94d9b -->
+<!-- i18n: pair=RELEASING.md sha256=3589cc8aab42c517 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -12,6 +12,8 @@
    **同梱のプレーヤー。** ファイルは `player` {name, version} を持つ（形式の仕様 §4.1）。`kit/player.json` に Egatari Player の版、`kit/player.lock.json` に最後にリリースしたプレーヤーの版と SHA-256（`kit/core/player.mjs` の `PLAYER_FILES` のファイル：`kit/deck.js` とそれが入れる `kit/core` のモジュール、`presenter.js`・`tools.js`・`shape.js`、実行系の CSS、ライブのプレーヤー）がある。本の組版の CSS（`kit/core/article-render.mjs` の `ARTICLE_CSS`）は、テーマやスライドの CSS と同じく、組み立てが教材の中に書き出すものなので、プレーヤーのハッシュではなく `generator` の版で区別する。プレーヤーのファイルが lock と同じ組み立ては版をそのまま書き、ほかは `<版>+dev.<commit>`（git がなければ `+dev`）を書く。候補のタグを付ける前に `npm run player:check -- --strict` を走らせ、前のリリースからプレーヤーが変わっていれば `npm run player:bump -- patch|minor|major`（最初のリリースは `major` で 1.0.0）、`changes/player-<版>.md` を書き足し、`npm run gen:check` してコミットする（候補のファイルが版をそのまま持つように）。ブランチでは `npm run player:check` は知らせるだけ。
 
    **仕様の日付の版。** 候補のタグを付ける前に、`vendor/egatari-spec` が egatari-spec の最新の `wd-*` の版と同じであること（`vendor/egatari-spec/SOURCE.json` に `"snapshot": "wd-YYYY-MM-DD"` があり、`node tools/spec-snapshot.mjs --check` が `ok` と出す）。写すには `node tools/sync-spec.mjs <仕様の clone> --ref wd-YYYY-MM-DD`。最新の版のあとで仕様が変わっていたら、先に仕様の担当者に新しい版を切ってもらう。
+
+   **字の切り出しの道具。** `harfbuzzjs` と `wawoff2` は `package.json` で版をちょうどに固定する（`kit/core/font-subset-core.mjs` の `SUBSET_PINS`）。これらと `@fontsource` の包みが、埋め込む字のバイトを決める。版を上げると出力が変わる（KaTeX の版を上げるのと同じ）：`SUBSET_PINS` と `tools/test-font-subset.mjs` の固定した sha256 を直し（`PRINT_PINS=1 node tools/test-font-subset.mjs` で出る）、`changes/` に書く。
 
    **`package.json` の版。** `npm.yml` は、タグが `v` + `package.json` の `version` に等しいときだけ公開する。そこで候補のタグを付ける前に、版を候補の版にする（候補は dist-tag `next` に出て、`latest` は直近のリリースのまま）。`--rc` は版だけを、手順 4 と同じファイル（`package.json`・`package-lock.json`・2 つの `plugin.json`・2 つの `marketplace.json`）で変え、`node tools/make-llm-guide.mjs` を動かし直して、スキルの docs へのリンクと CLI の小版を版に合わせる（`npm run gen:check` と `tools/test-plugin.mjs` は、どれも `package.json` と同じであることを求める）。`CHANGELOG.md` と `changes/` には触らない：
 

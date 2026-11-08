@@ -106,6 +106,17 @@ function subsetCss(text, font = 'gothic') {
   return { css: out.join('\n') + '\n', n: out.length, bytes: 0 };
 }
 
+// 字の絞り込み（wasm。#178 (4)。kit/font-subset.mjs）：@fontsource の分割ファイルを使う字だけに絞る。Python・TTF は要らない。
+// 使えなければ（wasm を読めない）分割ファイルをそのまま入れる。EGATARI_FONT_SUBSET=0 で切る（比べるため）
+let subsetFont = null;
+if (process.env.EGATARI_FONT_SUBSET !== '0') {
+  try {
+    const fsub = await import('./font-subset.mjs');
+    await fsub.initSubsetter();
+    subsetFont = (bytes, cps) => { const r = fsub.subsetFace(bytes, cps); return { b64: Buffer.from(r.woff2).toString('base64'), cps: r.cps }; };
+  } catch (e) { console.warn('  ⚠ 字の絞り込み（wasm）を使えない（分割ファイルを使う）: ' + e.message); }
+}
+
 // ---------------------------------------------------------------- 音声の圧縮
 // 埋め込む音声は AAC（64 kbps・モノラル）にする。WAV のままだと 5 分で 30 MB を超える。結果はキャッシュする
 // max：読んでよいバイト数（chargedEnv が読む前に数えた大きさ）。元のファイルは上限つきで 1 回だけ読み（通常のファイルだけ。FIFO で止まらない）、
@@ -221,6 +232,7 @@ export const nodeEnv = {
   // 利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes。kit/theme-dirs.mjs）：読むたびに求め直す（組み立てが 1 回だけ読む）
   get themeDirs() { return userThemeDirs(); },
   subset: subsetCss,
+  ...(subsetFont ? { subsetFont } : {}),
   compressAudio,
   audioFailed: () => !!compressAudio.failed,
 };
