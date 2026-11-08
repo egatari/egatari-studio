@@ -1,0 +1,3 @@
+### Changed
+
+- Components 2.0 lessons use egatari/components **v2.5.0 (candidate)** by default. `m-cards` 2.0.3: card content is centred vertically in the spare height of the card, and the cards README gains guidance on using cards instead of bullets. `m-compare` 2.0.3: rows grow by up to one text line, and the rest centres the table. `m-map-japan` 2.0.4: prefecture and region names, the legend, the summary and the `aria-label` are written in English when `ctx.lang` is not `ja`. `m-fishbone` and `m-tree` 2.0.3: `static shape.note` becomes `{en, ja}`. Japanese lessons draw as before apart from the cards and compare layout. No other part changes version

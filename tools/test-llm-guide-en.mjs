@@ -83,19 +83,14 @@ ok('EN_EDITS: the m-menu import note and the m-predict no-live-counts lines are 
   assert.deepEqual(base.warnings.filter((w) => /README\.en\.md is used for the en pack/.test(w)), ['m-bars: README.en.md is used for the en pack; PACK_EDITS (1) are not applied to it and there are no EN_EDITS']);
 });
 
-ok('no Japanese in the 16 parts\' en sections except the shape.note of m-fishbone and m-tree (in the catalogue row)', () => {
+ok('no Japanese in the 16 parts\' en sections (components 2.5.0: the shape.note of m-fishbone and m-tree is {en, ja} now)', () => {
   const J = /[　-ヿ㐀-鿿＀-￯]+/g;
   const hits = [];
   for (const t of EN16) {
     const c = PACK.en.components[t];
     for (const [k, v] of [['row', c.row], ['entry', c.entry], ...Object.entries(c.ext || {}).map(([s, x]) => ['ext ' + s, x])]) for (const m of (v || '').match(J) || []) hits.push(`${t} ${k}: ${m}`);
   }
-  assert.deepEqual(hits, [
-    'm-fishbone row: のない節が大骨（分類）、その子が原因、孫が細かい原因（',
-    'm-fishbone row: 段まで）',
-    'm-tree row: のない節（根）はちょうど',
-    'm-tree row: つ',
-  ]);
+  assert.deepEqual(hits, []);
 });
 
 // 日本語の指示を、言いたいことの束の組み合わせ（9 つの束のすべての部分集合）× 無料（短くする・しない）・有料で組み立てる。版の行と partsSrc は揃える
@@ -130,8 +125,11 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     const json = execFileSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(pathToFileURL(path.join(dir, 'data.mjs')).href)}).then((m) => process.stdout.write(JSON.stringify(m.PACK)))`], { encoding: 'utf8', maxBuffer: 64 << 20 });
     const oldData = JSON.parse(json);
     assert.match(oldData.partsSrc, /\/v2\.4\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.4\.4\//);
-    const a = jaDump(PACK), b = jaDump(oldData);
+    assert.match(PACK.partsSrc, /\/v2\.5\.0\//);
+    // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
+    const cur = structuredClone(PACK);
+    cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
+    const a = jaDump(cur), b = jaDump(oldData);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);
     assert.ok(a.some((x) => x.includes('<version>')) && a.some((x) => x.includes('<partsSrc>')));
