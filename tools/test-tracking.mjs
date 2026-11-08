@@ -1,7 +1,7 @@
-// 自習（learn）と進み具合の記録（kit/track.js。Player P1・P6、format spec §9.2、spec bindings/scorm12.md）の確認：Chromium で
+// talk の再生（自習。learn はなくなった）と進み具合の記録（kit/track.js。Player P1・P6、format spec §9.2、spec bindings/scorm12.md）の確認：Chromium で
 //   node tools/test-tracking.mjs [作業フォルダ] [--shots]
-// 自習：帯（再生・一時停止・再生速度、発表者の道具がない）・x/d/v/p が効かない・再生速度（0.75〜2 倍）でタイムラインも声も速くなり声の高さを保つ・
-//   一時停止はその所から続く・再生中に送っても再生を続ける（talk では止まる）・薄く見せるの入り切りで learn のまま・文書が隠れたら止まる
+// 再生：?mode=learn は talk・帯（前へ・再生 / 一時停止・次へ・再生速度と、発表者の道具）・再生速度（0.75〜2 倍）でタイムラインも声も速くなり声の高さを保つ・
+//   一時停止はその所から続く・帯の前へ・次へと跳ぶは再生を続け、発表者の送りのキーは止める・文書が隠れたら止まる
 // 記録：舞台で再生したステップ（via stage）と本で読んだステップ（via text：節が 3 秒見えていた。読み飛ばしは数えない。縦書きも。台本で読むも）を別々に持つ・
 //   終えた判定（既定・visitedFraction・reachedEnd・played: true）・postMessage の出来事・SCORM 1.2 の模型が受ける呼び出し（初め・位置・再開データ・
 //   終えた・終わり・再開・振り返り・教材が変わったとき）・1 ファイルの deck-meta.tracking と completion
@@ -121,25 +121,28 @@ async function scrollToSec(p, sel) {
   }, sel);
 }
 
-// ---------------------------------------------------------------- 1. 自習（learn）の帯とキー
+// ---------------------------------------------------------------- 1. talk の再生の帯とキー（Player P1：learn はなくなり、自習は talk の再生）
 {
-  const p = await open(S, { q: '?mode=learn' });
-  const s0 = await p.evaluate(() => ({ mode: DECK.state().mode, layout: DECK.panes.state().layout, html: document.documentElement.getAttribute('data-mode') }));
-  ok(s0.mode === 'learn' && s0.html === 'learn', `?mode=learn opens learn (${JSON.stringify(s0)})`);
-  ok(s0.layout === 'split', 'learn on a wide screen opens slides and script');
+  // 迷子の ?mode=learn は talk（帯も talk と同じ。広い画面でもスライドで開く）
+  const l = await open(S, { q: '?mode=learn' });
+  const l0 = await l.evaluate(() => ({ mode: DECK.state().mode, ctx: DECK.mode, layout: DECK.panes.state().layout, html: document.documentElement.getAttribute('data-mode') }));
+  ok(l0.mode === 'talk' && l0.html === 'talk' && l0.layout === 'slides', `?mode=learn opens talk in Slides (${JSON.stringify(l0)})`);
+  await l.context().close();
+  const lp = await open(S, { q: '?mode=learn&preview=1' });
+  ok(await lp.evaluate(() => DECK.state().preview === true && DECK.state().mode === 'lecture'), '?mode=learn&preview=1 is talk with later steps faintly');
+  await lp.context().close();
+  const p = await open(S);
   const btns = await p.evaluate(() => [...document.querySelectorAll('#dt-cb [data-b]')].map((b) => b.getAttribute('data-b')));
-  ok(['prev', 'auto', 'next', 'rate'].every((b) => btns.includes(b)), `the learn toolbar has prev, play, next and playback speed (${btns.join(',')})`);
-  ok(['laser', 'pen', 'vpen', 'clear', 'pres'].every((b) => !btns.includes(b)), 'the learn toolbar has no presenter tools (laser, pen, fading pen, clear, presenter view)');
+  ok(btns.slice(0, 4).join() === 'prev,auto,next,rate', `the talk toolbar starts with previous, play, next and playback speed (${btns.join(',')})`);
+  ok(['laser', 'pen', 'vpen', 'clear', 'pres'].every((b) => btns.includes(b)), 'the presenter tools stay in talk (laser, pen, fading pen, clear, presenter view)');
   const lab = await p.evaluate(() => [document.querySelector('#dt-cb [data-b="auto"]').getAttribute('aria-label'), document.querySelector('#dt-cb [data-b="rate"]').getAttribute('aria-label'), document.querySelector('#dt-cb [data-b="rate"]').textContent]);
   ok(lab[0] === '再生' && lab[1] === '再生速度：1×' && lab[2] === '1×', `play and playback speed labels (${lab.join(' | ')})`);
   await p.click('#stage', { position: { x: 300, y: 300 } });
-  for (const k of ['x', 'd', 'v']) { await p.keyboard.press(k); ok(await p.evaluate(() => DECK.tools.mode()) === null, `learn: ${k} does not start a presenter tool`); }
-  const pages = p.context().pages().length;
-  await p.keyboard.press('p'); await wait(p, 300);
-  ok(p.context().pages().length === pages, 'learn: p does not open the presenter view');
+  await p.keyboard.press('x'); ok(await p.evaluate(() => DECK.tools.mode()) === 'laser', 'talk: x still starts the laser pointer');
+  await p.keyboard.press('Escape');
   await p.keyboard.press('?');
   const help = await p.evaluate(() => document.getElementById('dt-help').textContent);
-  ok(/再生速度/.test(help) && !/レーザーポインター/.test(help) && !/発表者ビュー（|発表者ビュー$/.test(help.replace(/発表者ビューから抜けられない.*/, '')), 'learn help lists playback speed and no presenter tools');
+  ok(/再生速度/.test(help) && /一時停止/.test(help) && /レーザーポインター/.test(help) && /発表者ビュー/.test(help), 'talk help lists play / pause, playback speed and the presenter tools');
   await p.keyboard.press('Escape');
   // 再生速度：ボタンで 1 → 1.25、> で 1.5、< で 1.25、端で止まる、DECK.rate は 5 つの値だけ
   await p.click('#dt-cb [data-b="rate"]');
@@ -148,16 +151,16 @@ async function scrollToSec(p, sel) {
   await p.keyboard.press('<'); ok(await p.evaluate(() => DECK.rate()) === 1.25, '< makes it slower (1.25×)');
   ok(await p.evaluate(() => [DECK.rate(3), DECK.rate(0.5), DECK.rate(2), DECK.rate(0.75)].join()) === '1.25,1.25,2,0.75', 'only 0.75, 1, 1.25, 1.5 and 2 are accepted');
   ok(await p.evaluate(() => document.querySelector('#dt-cb [data-b="rate"]').textContent) === '0.75×', 'the button shows the current speed');
-  // 薄く見せる：learn のまま入り切り
+  // 薄く見せる：talk の選び
   await p.keyboard.press('l');
-  ok(await p.evaluate(() => DECK.state().mode === 'learn' && DECK.state().preview === true), 'l in learn turns on later-steps-faintly and stays in learn');
+  ok(await p.evaluate(() => DECK.state().preview === true), 'l turns on later-steps-faintly');
   await p.keyboard.press('l');
-  ok(await p.evaluate(() => DECK.state().preview === false), 'l again turns it off');
-  await shot(p, '01-learn-bar');
+  ok(await p.evaluate(() => DECK.state().preview === false && DECK.state().mode === 'talk'), 'l again turns it off (talk)');
+  await shot(p, '01-talk-bar');
   await p.context().close();
 }
 
-// ---------------------------------------------------------------- 2. 自習の再生：速さ・一時停止・送り・隠れたら止まる・声
+// ---------------------------------------------------------------- 2. talk の再生：速さ・一時停止・帯の送りと跳ぶ（再生を続ける）・キーの送り（止まる）・隠れたら止まる・声
 {
   const tl = async (p) => p.evaluate(() => DECK.timeline().map((g) => ({ key: g.key, dur: g.dur })));
   // 1 段階が進むまでの時間（実時間の秒）
@@ -171,7 +174,7 @@ async function scrollToSec(p, sel) {
     await p.evaluate(() => DECK.autoplay(false));
     return dt;
   };
-  const p = await open(S, { q: '?mode=learn&layout=slides' });
+  const p = await open(S, { q: '?layout=slides' });
   const d = (await tl(p)).find((g) => g.key === `${SLIDES[1][0]}:1`).dur;
   const t1 = await advance(p, 1), t2 = await advance(p, 2);
   ok(Math.abs(t1 - d) < 0.6 && Math.abs(t2 - d / 2) < 0.6, `at 2× a step advances in half the time (dur ${d.toFixed(2)} s: 1× ${t1.toFixed(2)} s, 2× ${t2.toFixed(2)} s)`);
@@ -189,25 +192,32 @@ async function scrollToSec(p, sel) {
   await p.waitForFunction((k) => DECK.state().key !== k, pausedKey[0], { timeout: scaled(30000) });
   const rest = (Date.now() - tr0) / 1000;
   ok(rest < d * 0.6, `play after pause continues from where it paused (rest ${rest.toFixed(2)} s of ${d.toFixed(2)} s)`);
-  // 再生中に送る：learn では再生を続ける
+  // 帯の前へ・次へと跳ぶ（番号＋Enter・スライド一覧）：再生中なら再生を続ける
   ok(await p.evaluate(() => DECK.playing()), 'still playing after the paused step ended');
+  const k1 = await p.evaluate(() => DECK.state().key);
+  await p.evaluate(() => document.querySelector('#dt-cb [data-b="next"]').click()); await wait(p, 100);
+  ok(await p.evaluate((k) => DECK.playing() && DECK.state().key !== k, k1), 'toolbar next while playing moves on and keeps playing');
+  await p.evaluate(() => document.querySelector('#dt-cb [data-b="prev"]').click()); await wait(p, 100);
+  ok(await p.evaluate(() => DECK.playing()), 'toolbar previous while playing keeps playing');
+  await p.keyboard.press('3'); await p.keyboard.press('Enter'); await wait(p, 100);
+  ok(await p.evaluate(() => DECK.playing() && DECK.state().slide === 3), 'jump (3 Enter) while playing keeps playing');
+  await p.evaluate(() => DECK.tools.overview(true)); await wait(p, 200);
+  await p.evaluate(() => document.querySelectorAll('#dt-ov .dt-cell, .dt-cell')[1].click()); await wait(p, 150);
+  ok(await p.evaluate(() => DECK.playing() && DECK.state().slide === 2), 'jump from the slide overview while playing keeps playing');
+  // 発表者の送りのキーは再生を止める（Player P1）
   await p.keyboard.press('ArrowRight'); await wait(p, 100);
-  ok(await p.evaluate(() => DECK.playing()), 'learn: → while playing keeps playing');
-  await p.keyboard.press('ArrowLeft'); await wait(p, 100);
-  ok(await p.evaluate(() => DECK.playing()), 'learn: ← while playing keeps playing');
+  ok(await p.evaluate(() => DECK.playing()) === false, 'talk: the presenter key → pauses playback');
+  // 止まっているときの帯の次へは止まったまま
+  await p.evaluate(() => document.querySelector('#dt-cb [data-b="next"]').click()); await wait(p, 100);
+  ok(await p.evaluate(() => DECK.playing()) === false, 'toolbar next while paused stays paused');
   // 文書が隠れたら止まる（Player P3）
+  await p.evaluate(() => DECK.autoplay(true));
   await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' }); document.dispatchEvent(new Event('visibilitychange')); });
   ok(await p.evaluate(() => DECK.playing()) === false, 'hidden page: playback pauses');
   await p.evaluate(() => { Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' }); document.dispatchEvent(new Event('visibilitychange')); });
   await p.context().close();
-  // talk では送ると止まる（今までどおり）
-  const t = await open(S, { q: '?layout=slides' });
-  await t.evaluate(() => DECK.autoplay(true)); await wait(t, 200);
-  await t.keyboard.press('ArrowRight'); await wait(t, 100);
-  ok(await t.evaluate(() => DECK.playing()) === false, 'talk: → while playing stops autoplay (unchanged)');
-  await t.context().close();
   // 声：再生速度と声の高さを保つこと（audio 要素の playbackRate・preservesPitch）
-  const a = await open(AUD, { q: '?mode=learn&layout=slides', init: { fn: () => {
+  const a = await open(AUD, { q: '?layout=slides', init: { fn: () => {
     window.__audio = []; window.__srcSets = 0;
     const d = Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, 'src');
     Object.defineProperty(HTMLMediaElement.prototype, 'src', { configurable: true, get() { return d.get.call(this); }, set(v) { window.__srcSets++; d.set.call(this, v); } });

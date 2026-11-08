@@ -78,7 +78,7 @@ function words(){
     divider: HAS_ART ? L("スライドと本の境目", "Divider between slides and book") : L("スライドと台本の境目", "Divider between slides and script"),
     readIn: L("本で読む", "Read in the book"), watch: L("スライドで見る", "Watch on slides"),
     backPlay: L("再生中の所に戻る", "Back to the playing part"), back: L("戻る", "Back"), close: L("閉じる", "Close"),
-    prev: L("前へ", "Previous"), next: L("次へ", "Next"), play: L("自動再生", "Autoplay"), stop: L("自動再生を止める", "Stop autoplay"),
+    prev: L("前へ", "Previous"), next: L("次へ", "Next"), play: L("再生", "Play"), stop: L("一時停止", "Pause"),
     // 読むための道具（docs/terms.json：contents・book-background。ほかは王道の言い方）
     contents: L("目次", "Contents"), search: L("検索", "Search"),
     searchIn: HAS_ART ? L("本の中を検索", "Search in the book") : L("台本の中を検索", "Search in the script"),
@@ -88,8 +88,6 @@ function words(){
     bg: L("背景", "Background"), white: L("白", "White"), sepia: L("セピア", "Sepia"), black: L("黒", "Black"),
     resumed: L("前回の続きから", "Resumed where you left off"), fromStart: L("最初から", "Start over"),
     progress: L("進行状況", "Progress"), enlarge: L("拡大", "Enlarge")};
-  // 自習（learn）では再生・一時停止（kit/tools.js の帯と同じ言葉）
-  if (DECK.mode === "learn"){ w.play = L("再生", "Play"); w.stop = L("一時停止", "Pause"); }
   return w;
 }
 function stepTarget(a){
@@ -216,6 +214,7 @@ function ensurePane(){
   var play = btn("dx-play", T.play, ICON.play, function(){ DECK.autoplay(); });
   play.setAttribute("aria-pressed", "false"); play.setAttribute("aria-keyshortcuts", "a");
   var view = btn("dx-view", T.view, ICON.view, function(b){ menu(b); });
+  if (offered().length < 2) view.hidden = true;   // 見せる並べ方が 1 つだけ（deck-meta.offer.faces）
   view.setAttribute("aria-haspopup", "menu"); view.setAttribute("aria-expanded", "false"); view.setAttribute("aria-keyshortcuts", "r");
   var toc = btn("dx-toc", T.contents, ICON.toc, function(b){ openToc(b); });
   var find = btn("dx-find", T.search, ICON.find, function(){ openFind(); });
@@ -358,11 +357,23 @@ function setLayout(name, o){
   if (EMBED && o.reply) try { window.parent.postMessage({egatari: "layout", id: o.reply.id, layout: SPEC_OUT[name]}, "*"); } catch (e) {}
   if (before !== name) say(name === "slides" ? T.slides : name === "book" ? T.book : T.split);
 }
+// 見せる見え方（deck-meta.offer.faces。Player P1・format spec §1.2）：talk はスライド（舞台）、read は本の窓（本か台本で読む）。
+// スライドと本は両方を見せるときだけ。offer が無ければ全部。見る人・ホストの指定（?layout=・埋め込みの layout）は offer より強い
+function faceOk(name){
+  var f = DECK.OFFER && DECK.OFFER.faces;
+  if (!f) return true;
+  var talk = f.indexOf("talk") >= 0, read = f.indexOf("read") >= 0;
+  return name === "slides" ? talk : name === "book" ? read : talk && read;
+}
+// 選べる並べ方（「表示」の一覧と r の順）
+function offered(){ return ["slides", "split", "book"].filter(function(n){ return faceOk(n) && (n !== "split" || splitFits()); }); }
 function cycle(){
-  var order = splitFits() ? ["slides", "split", "book"] : ["slides", "book"];
+  var order = offered();
+  if (order.length < 2) return;
   setLayout(order[(order.indexOf(P.layout) + 1) % order.length], {persist: true});
 }
-// 開いたときの並べ方（Player P1・P2）：?layout=（埋め込みの指定も） ＞ この端末で前に選んだもの ＞ offer.open ＞ metadata.primary ＞ モードの既定
+// 開いたときの並べ方（Player P1・P2）：?layout=（埋め込みの指定も） ＞ この端末で前に選んだもの（offer.faces にあるものだけ） ＞ offer.open.face ＞
+// metadata.primary ＞ 既定（スライド。スライドを見せないなら本）。offer.faces にない見え方は、指定がなければ開かない
 function metaPrimary(){
   var m = DECK.META || {};
   if (m.primary) return m.primary;
@@ -375,12 +386,11 @@ function initialLayout(){
   var q = SPEC_IN[Q.get("layout") || ""];
   if (q) return q;
   var r = SPEC_IN[stored(docKey()) || ""];
-  if (r) return r;
-  var open = (DECK.META && DECK.META.offer && DECK.META.offer.open) || {};
-  var face = open.face || metaPrimary(), mode = open.mode || Q.get("mode") || DECK.mode;
-  if (face === "read") return "book";
-  if (mode === "learn") return splitFits() ? "split" : "book";
-  return "slides";
+  if (r && faceOk(r)) return r;
+  var open = (DECK.OFFER && DECK.OFFER.open) || {}, face = open.face || metaPrimary();
+  if (face === "read" && faceOk("book")) return "book";
+  if (face === "talk" && faceOk("slides")) return "slides";
+  return faceOk("slides") ? "slides" : "book";
 }
 
 // ---------------------------------------------------------------- 同期
@@ -521,7 +531,7 @@ function syncBackBtn(){ if (P.head) P.head.querySelector(".dx-back").hidden = !(
 
 // ---------------------------------------------------------------- 本で読む（スライド → 本。§9C.5）
 function placeReadIn(){
-  var show = HAS_ART && P.layout === "slides" && !P.ov && !!P.secOf[P.pos.i];
+  var show = HAS_ART && P.layout === "slides" && !P.ov && !!P.secOf[P.pos.i] && faceOk(splitFits() ? "split" : "book");
   if (!show){ if (P.readIn) P.readIn.hidden = true; return; }
   if (!P.readIn){
     P.readIn = btn("", T.readIn, ICON.book, function(b, e){ readInBook(e && e.detail === 0 ? b : null); });
@@ -993,7 +1003,7 @@ function menu(anchor){
   if (P.menu){ closeMenu(); return; }
   var m = P.menu = el("div"); m.id = "deck-layouts"; m.setAttribute("role", "menu"); m.setAttribute("aria-label", T.view);
   [["slides", T.slides], ["split", T.split], ["book", T.book]].forEach(function(x){
-    if (x[0] === "split" && !splitFits()) return;
+    if (offered().indexOf(x[0]) < 0) return;
     var it = el("button", "dx-mi"); it.type = "button"; it.setAttribute("role", "menuitemradio");
     var on = P.layout === x[0];
     it.setAttribute("aria-checked", on ? "true" : "false");
@@ -1257,7 +1267,9 @@ DECK.panes = {
       marked: P.marked ? (P.marked.getAttribute("data-section-id") || P.marked.getAttribute("data-step-key") || "") : null};
   },
   // キーの一覧（kit/tools.js の ?）の r の行：並べ方の名前の順
-  order: function(){ return T ? [T.slides, T.split, T.book].join(" → ") : ""; },
+  order: function(){ return T ? offered().map(function(n){ return T[n]; }).join(" → ") : ""; },
+  // 選べる並べ方（deck-meta.offer.faces と画面の幅から。kit/tools.js の「表示」のボタンと ? の r の行）
+  offered: function(){ return offered(); },
   watch: function(i, k){ if (T) openOverlay(i, k || 0, null); },
   close: function(){ closeOverlay(); },
   // 読んだかを見る所（kit/track.js。Player P6 の via "text"）：本の窓の本文の欄と、読む単位 {el, steps: [[i, k]…]}。

@@ -14,7 +14,9 @@
 var DECK = window.DECK = window.DECK || {};
 var CFG = DECK.LIVE_CFG || {};
 var Q = new URLSearchParams(location.search);
-var MODE = Q.get("mode") || document.documentElement.getAttribute("data-mode") || "talk";
+// モードは実行系（kit/deck.js）が決めたもの（?mode= ＞ deck-meta.offer.open ＞ <html data-mode>。Player P1）。前の版の learn は talk
+var MODE = DECK.mode || Q.get("mode") || document.documentElement.getAttribute("data-mode") || "talk";
+if (MODE === "learn") MODE = "talk";
 // 動画・発表者ビュー・その中の画面では、板も作らない
 if (MODE === "video" || Q.get("presenter") || Q.get("view")) return;
 var LP = typeof DECK.LivePolicy === "function" ? DECK.LivePolicy() : null;
