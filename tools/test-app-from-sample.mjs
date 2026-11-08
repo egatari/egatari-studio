@@ -7,7 +7,9 @@
 //    ① を変えると札が消える。［作成］→ egatari.json の studio.newDeck に fromSample、componentsCatalogue は 2.x の既定のカタログ
 // F2 同じ人が、ふつうの新規作成…：サンプルの知らせ・構成の印・札は出ない
 // F3 会社員（en）：egatari.org の「Studio でこのサンプルを参考に作る」（?from-sample=pitch-fictional）→ 同じ流れがすぐ開き、URL から引数が消える。
-//    知らない名前は知らせて、はじめの画面のまま
+//    知らない名前は、ふつうの新規作成を開いて 1 行で知らせる（v0.6.7）。凍結した写し（/vX.Y.Z/ の下に置いた同じ組み立て）でも同じに開く
+// F7 高校の国語の先生（ja、v0.6.7）：新規作成のはじめの画面の 3 つめの入口「このサンプルを参考に作る」→ サンプルを選ぶ画面（はじめの画面と同じ一覧）→
+//    選ぶと、サンプルのカードのボタンと同じ、サンプルから始めた新規作成。「問いに答えて作る」で戻れる
 // F6 コマンドの kit/llm-pack.mjs --from-sample（規格の評価 B が使う）は、画面で写す指示とバイトまで同じ：4 つのサンプル × 無料・有料 × ja・en
 //    （② にタイトルを書き、［候補を外す］があれば押してから写す）。内容も書いたもの（--request のファイルの 2 行目から）も 1 つ
 // F4 「コピーを開いて編集」：ふつうのファイルと同じ道で開く（minimal）。一覧と sha256 の合わないファイルは再生しない
@@ -40,7 +42,8 @@ const worked = (n, f) => fs.readFileSync(path.join(ROOT, 'tools', 'llm-guide', '
 execFileSync(process.execPath, [path.join(ROOT, 'tools', 'build-app.mjs'), '--out', DIST], { stdio: 'pipe' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json' };
 const srv = http.createServer((req, res) => {
-  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  // /v9.9.9/ の下は凍結した写し（Pages の /vX.Y.Z/ と同じに、同じ組み立てを下の道に置く）
+  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname).replace(/^\/v9\.9\.9\//, '/');
   const file = path.join(DIST, p.endsWith('/') ? p + 'index.html' : p);
   if (!file.startsWith(DIST + path.sep) || !fs.existsSync(file) || !fs.statSync(file).isFile()) { res.writeHead(404); return res.end(); }
   res.writeHead(200, { 'content-type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -51,13 +54,13 @@ const BASE = `http://127.0.0.1:${srv.address().port}/`;
 const browser = await launch();
 const errs = [];
 
-const open = async (lang, tag, query = '') => {
+const open = async (lang, tag, query = '', dir = '') => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: lang === 'ja' ? 'ja-JP' : 'en-US' });
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(BASE).origin }).catch(() => {});
   const p = await ctx.newPage();
   p.on('pageerror', (e) => errs.push(`${tag} pageerror: ${e.message}`));
   p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(`${tag} console: ${m.text()}`); });
-  await p.goto(BASE + '?lang=' + lang + query);
+  await p.goto(BASE + dir + '?lang=' + lang + query);
   await p.waitForSelector('#drop');
   return p;
 };
@@ -125,7 +128,7 @@ try {
   ok(await p1.isChecked('#paste-use-structure') && (await text(p1, '#paste-structure-row')) === `サンプル「漢文を読む――返り点から書き下し文へ」の構成（${KS.structure.length} 枚の見出しと要点）を指示に添える`,
     'F1 ④: 「…の構成…を指示に添える」 is ticked');
   const withBytes = await meterBytes(p1);
-  ok(withBytes <= PACK_CAP_KB.free * 1024 || (await p1.isVisible('#paste-trim')), `F1 ④: the free plan’s instructions fit ${PACK_CAP_KB.free} KB after fitting (${(withBytes / 1024).toFixed(1)} KB)`);
+  ok(withBytes <= PACK_CAP_KB.free * 1024 || (await p1.isVisible('#paste-trim')), `F1 ④: the light instructions fit ${PACK_CAP_KB.free} KB after fitting (${(withBytes / 1024).toFixed(1)} KB)`);
   const c1 = await copy(p1);
   const tail = c1.slice(c1.indexOf('# 頼みたいこと'));
   ok(tail.includes('- タイトル（表紙にそのまま使う）：論語を読む') && tail.includes('- テーマ：kokugo') && tail.includes('- 場面：授業・研修／授業（小・中・高）') && tail.includes('## 倣うサンプルの構成')
@@ -188,11 +191,71 @@ try {
     'F3: English instructions carry the Japanese sample’s headings as they are, under an English lead');
   await shot(p3, 'from-sample-en-send.png');
   await p3.context().close();
-  const p3b = await open('en', 'f3b', '&from-sample=no-such-sample');
-  await p3b.waitForSelector('#toast.show');
-  ok((await text(p3b, '#toast')) === 'Sample “no-such-sample” is not in this version of Studio. Choose one in the list of Samples on the first screen.' && !(await p3b.$('#dlg[open]')) && await p3b.isVisible('#welcome'),
-    'F3: an unknown sample name is reported, and the first screen stays');
-  await p3b.context().close();
+  // 知らない名前：ふつうの新規作成（① から。サンプルの知らせ・札はない）を開き、上に 1 行で知らせる（en と ja）
+  for (const [lang, want] of [['en', 'Sample “no-such-sample” not found. New… is open.'], ['ja', 'サンプル「no-such-sample」が見つかりません。新規作成を開きました']]) {
+    const p3b = await open(lang, 'f3b-' + lang, '&from-sample=no-such-sample');
+    await p3b.waitForSelector('#dlg[open] #paste-step-kind');
+    ok((await text(p3b, '#ai-sample-missing')) === want && (await p3b.getAttribute('#ai-sample-missing', 'role')) === 'status' && !(await p3b.$('#ai-from-sample')) && !(await badgeOn(p3b, 'kind'))
+      && await p3b.getAttribute('#paste-step-kind-btn', 'aria-current') === 'step' && !(await p3b.evaluate(() => location.search.includes('from-sample'))) && !(await p3b.isVisible('#toast.show')),
+      `F3 (${lang}): an unknown sample name opens New… as usual (at ①) with one line: ${JSON.stringify(await text(p3b, '#ai-sample-missing'))}`);
+    await p3b.context().close();
+  }
+  // 凍結した写し（/v9.9.9/）の中：その写しの組み立てに入っているサンプルで、根と同じに開く（何も読みに行かない）
+  const p3c = await open('ja', 'f3c', '&from-sample=kokugo-kanbun', 'v9.9.9/');
+  await p3c.waitForSelector('#dlg[open] #paste-step-content.current');
+  ok((await text(p3c, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。'
+    && (await p3c.inputValue('#paste-theme')) === 'kokugo' && await badgeOn(p3c, 'kind') && (await p3c.evaluate(() => location.pathname + location.search)) === '/v9.9.9/?lang=ja',
+    'F3: inside a frozen copy (/v9.9.9/?lang=ja&from-sample=kokugo-kanbun) New… opens from the sample the same way, and the parameter leaves the address');
+  await p3c.context().close();
+  const p3d = await open('en', 'f3d', '&from-sample=no-such-sample', 'v9.9.9/');
+  await p3d.waitForSelector('#dlg[open] #ai-sample-missing');
+  ok((await text(p3d, '#ai-sample-missing')) === 'Sample “no-such-sample” not found. New… is open.', 'F3: inside a frozen copy an unknown name gets the same notice');
+  await p3d.context().close();
+
+  // ================================================================ F7 新規作成のはじめの画面の「このサンプルを参考に作る」
+  const p7 = await open('ja', 'f7');
+  await p7.click('#w-new');
+  await p7.waitForSelector('#dlg[open] #paste-step-kind');
+  const entry = await p7.evaluate(() => { const o = document.getElementById('paste-direct-offer'); return { kids: [...o.querySelectorAll('button')].map((b) => [b.id, b.textContent, b.getAttribute('aria-describedby')]),
+    hint: (document.getElementById('paste-from-sample-hint') || {}).textContent, howto: document.getElementById('ai-howto').nextElementSibling.id }; });
+  ok(JSON.stringify(entry.kids) === JSON.stringify([['paste-direct', 'AI の出力を貼り付ける', 'paste-direct-hint'], ['paste-from-sample', 'このサンプルを参考に作る', 'paste-from-sample-hint']])
+    && entry.hint === '構成・テーマ・パーツを引き継ぎます。中身はあなたの題材で新しく作ります' && entry.howto === 'paste-direct-offer',
+    'F7: New…’s first screen has a third entry next to 「AI の出力を貼り付ける」: 「このサンプルを参考に作る」 with its line under it: ' + JSON.stringify(entry));
+  await shot(p7, 'from-sample-entry.png');
+  await p7.click('#paste-from-sample');
+  await p7.waitForSelector('#paste-samples:not([hidden])');
+  await p7.waitForFunction(() => document.activeElement && document.activeElement.closest('#paste-samples-list'), null, { timeout: 5000 }).catch(() => {});
+  const picker = await p7.evaluate(() => ({ h: document.getElementById('paste-samples-h').textContent,
+    rows: [...document.querySelectorAll('#paste-samples-list li')].map((li) => [li.dataset.example, li.querySelector('button').textContent, li.querySelector('button').getAttribute('aria-label')]),
+    hidden: ['ai-howto', 'paste-direct-offer', 'paste-step-kind', 'paste-step-send', 'paste-step-paste', 'dlg-import'].filter((id) => { const e = document.getElementById(id); return e && e.getClientRects().length; }),
+    focus: document.activeElement && document.activeElement.closest('li') && document.activeElement.closest('li').dataset.example }));
+  ok(picker.h === '参考にするサンプルを選んでください' && picker.rows.map((r) => r[0]).join() === EXAMPLES.join() && picker.rows.every((r) => r[1] === '選ぶ' && r[2].startsWith('選ぶ: ')) && !picker.hidden.length && picker.focus === EXAMPLES[0],
+    'F7: it opens the sample picker (the same list as the first screen, each with 「選ぶ」), hides the questions and 「作成」, and the focus is on the first sample: ' + JSON.stringify(picker));
+  await shot(p7, 'from-sample-picker.png');
+  await p7.click('#paste-samples-back');
+  await p7.waitForFunction(() => document.activeElement && document.activeElement.id === 'paste-from-sample', null, { timeout: 5000 }).catch(() => {});
+  ok(await p7.isHidden('#paste-samples') && await p7.isVisible('#paste-step-kind') && await p7.isVisible('#dlg-import') && await p7.evaluate(() => document.activeElement && document.activeElement.id === 'paste-from-sample'),
+    'F7: 「問いに答えて作る」 goes back to the questions (focus on the entry)');
+  await p7.click('#paste-from-sample');
+  await p7.click('#paste-samples-list li[data-example="kokugo-kanbun"] button');
+  await p7.waitForSelector('#dlg[open] #ai-from-sample');
+  await p7.waitForSelector('#paste-step-content.current');
+  ok((await text(p7, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。'
+    && (await answer(p7, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await badgeOn(p7, 'kind') && (await p7.inputValue('#paste-theme')) === 'kokugo' && (await p7.inputValue('#paste-title')) === ''
+    && !(await p7.$('#paste-from-sample')) && await p7.evaluate(() => document.activeElement && document.activeElement.id === 'paste-title'),
+    'F7: choosing 漢文 enters the from-sample path in the same state as the sample card’s button (① ③ from the sample, ② open and empty; no third entry inside it)');
+  await p7.fill('#paste-title', '論語を読む');
+  await p7.click('#paste-next-content');
+  await p7.waitForSelector('#paste-step-send.current');
+  ok((await fromBadges(p7)) === [...KS.parts].sort().join() && await p7.isChecked('#paste-use-structure'), 'F7 ④: the sample’s parts are ticked with 「サンプルから」 and its structure is added, as from the card');
+  const c7 = await copy(p7);
+  const p7c = await open('ja', 'f7c', '&from-sample=kokugo-kanbun');
+  await p7c.waitForSelector('#paste-step-content.current');
+  await p7c.fill('#paste-title', '論語を読む');
+  await p7c.click('#paste-next-content');
+  await p7c.waitForSelector('#paste-step-send.current');
+  ok(c7 === (await copy(p7c)), 'F7: the instructions copied after the picker are byte for byte those of ?from-sample=kokugo-kanbun');
+  await p7.context().close(); await p7c.context().close();
 
   // ================================================================ F4 コピーを開いて編集・合わないファイル
   const p4 = await open('ja', 'f4');

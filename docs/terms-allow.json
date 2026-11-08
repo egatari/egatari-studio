@@ -400,7 +400,7 @@
     },
     {
       "file": "app/*.js",
-      "pattern": "Sample “|the sample “|the sample’s",
+      "pattern": "Sample “|the sample “|the sample’s|the sample to base",
       "term": "voice-sample",
       "reason": "The sample lessons (the sample term) in the sample window and New… from a sample (backlog #130), not the voice preview."
     },

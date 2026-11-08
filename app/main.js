@@ -262,14 +262,16 @@ async function playExample(x) {
   if (v === 'like') { await llm.newWithAi({ sample: { name: x.name, title: x.title, ...s } }); return true; }
   return false;
 }
-// egatari.org のサンプルのページの「Studio でこのサンプルを参考に作る」：?from-sample=<名前> で新規作成を同じ形で開く（一覧にない名前は知らせて、はじめの画面）
+// egatari.org のサンプルのページの「Studio でこのサンプルを参考に作る」：?from-sample=<名前>（examples.json の名前）で新規作成を、サンプルのカードの
+// 「このサンプルを参考に作る」と同じ形で開く。一覧（RES.examples）はこの版のアプリに組み込んであるので、サイトの根でも凍結した写し（/vX.Y.Z/）でも、
+// 1 ファイル版でも、その版のサンプルで開く（何も読みに行かない）。一覧にない名前は、ふつうの新規作成を開いて 1 行で知らせる。空の名前はふつうの新規作成
 async function openFromSampleParam() {
   let name = null;
   try { name = new URLSearchParams(location.search).get('from-sample'); } catch { return; }
   if (name === null) return;
   try { const u = new URL(location.href); u.searchParams.delete('from-sample'); history.replaceState(history.state, '', u.href); } catch { /* 残っても開き直すだけ */ }
   const x = (Array.isArray(RES.examples) ? RES.examples : []).find((e) => e.name === name && e.sample);
-  if (!x) { toast(T.exampleUnknown(name), true); return; }
+  if (!x) { await llm.newWithAi(name.trim() ? { notice: T.exampleUnknown(name.length > 80 ? name.slice(0, 80) + '…' : name) } : {}); return; }
   await llm.newWithAi({ sample: { name: x.name, title: x.title, ...x.sample } });
 }
 async function pickFolder() {
@@ -2396,7 +2398,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
 // AI の返事の貼り付けは Worker で 1 ファイルにする：その前に、字の切り出しの道具を Worker につなげる（読めなければ分割ファイルのまま）
 const fontSubsetForWorker = async () => { builder.setExtra(await fontSubsetLoader.workerPrelude(), 'fontSubset'); };
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeOptions, loadOtherTheme: () => loadThemeDialog() });
+const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, examples: RES.examples, themeOptions, loadOtherTheme: () => loadThemeDialog() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

@@ -1410,38 +1410,46 @@
    "note": ""
   },
   {
-   "id": "free-plan",
+   "id": "light-instructions",
    "group": "New lesson, insert, revise (chat AI)",
-   "en": "Free plan (of the chat AI)",
-   "ja": "無料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a free plan; the suggested size limit of the instructions is 45 KB. Always shown as 「チャットの AI：無料のプラン」, never alone: Egatari itself is free and has no plans.",
+   "en": "Light instructions",
+   "ja": "軽量の指示",
+   "definition": "The shorter instructions for any chat AI (New… step 4, option 「軽量（どの AI でも）」 / “Light (any AI)”, marked 「迷ったらこちら」 / “If unsure”; the default). Suggested size limit 45 KB and 31,000 UTF-16 code units plus line feeds so that a paste is not cut, whichever is reached first; depending on the parts chosen, part descriptions are shortened or some parts are left out. Shown short as 軽量 / Light in the answered line.",
    "avoid": {
     "ja": [
+     "無料のプラン",
      "無料版"
     ],
-    "en": []
+    "en": [
+     "free plan"
+    ]
    },
    "internal": "plan: free",
-   "decided": "2026-11-03",
+   "decided": "2026-11-07",
    "by": "owner",
-   "note": "backlog #169: raised from 40 KB to 45 KB"
+   "note": "replaces free-plan (無料のプラン, 2026-11-03): the question now asks which instructions to use, not the chat AI's plan; the pack text is unchanged"
   },
   {
-   "id": "paid-plan",
+   "id": "detailed-instructions",
    "group": "New lesson, insert, revise (chat AI)",
-   "en": "Paid plan (of the chat AI)",
-   "ja": "有料のプラン（チャットの AI の）",
-   "definition": "The user's chat AI is on a paid plan; the suggested size limit of the instructions is 150 KB. Always shown with 「チャットの AI：」.",
+   "en": "Detailed instructions",
+   "ja": "詳細の指示",
+   "definition": "The long instructions that describe every part in full (New… step 4, option 「詳細（有料の AI 向け）」 / “Detailed (for paid AI plans)”), for chat AIs that read long text. Suggested size limit 150 KB (a cap, not unlimited); Save the instructions as a file is the primary action. Shown short as 詳細 / Detailed in the answered line.",
    "avoid": {
     "ja": [
-     "有料版"
+     "有料のプラン",
+     "有料版",
+     "無制限"
     ],
-    "en": []
+    "en": [
+     "paid plan",
+     "unlimited"
+    ]
    },
    "internal": "plan: paid",
-   "decided": "2026-11-06",
+   "decided": "2026-11-07",
    "by": "owner",
-   "note": "raised from 120 KB to 150 KB; v0.6.6 also adds Save the instructions as a file as the paid-plan primary action (Gemini cuts a paste at ~32,768 characters, owner's test 2026-11-05)"
+   "note": "replaces paid-plan (有料のプラン, 2026-11-06; cap raised from 120 KB to 150 KB). 無制限 is false: the cap is 150 KB"
   },
   {
    "id": "tools",

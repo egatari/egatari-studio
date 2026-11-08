@@ -66,9 +66,11 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     const i = file.search(/^# (Instructions for the AI|AI への指示)\s*$/m);
     const paidCommon = commonBody(lang, { plan: 'paid' });
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
-    assert.ok(file.includes(lang === 'en' ? 'For a chat AI on a free plan, copy the instructions from “New” in the editor; they are a lighter version.' : '無料のプランのチャットの AI に送るときは、編集アプリの「新規作成」でコピーしてください。軽くした指示になります。'), lang + ': the free-plan line at the top');
-    assert.ok(/\| (Free plan: every standard part|無料のプラン：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Paid plan: every part set|有料のプラン：すべての束)[^|]*\| [\d.]+ KB \| 150 KB \|/.test(file),
-      lang + ': the size table lists the free standard pack and the paid full pack');
+    // 軽量の指示・詳細の指示（v0.6.7。前は無料のプラン・有料のプラン。内部の名前は plan の free・paid のまま）
+    assert.ok(file.includes(lang === 'en' ? 'For a free chat AI, choose the light instructions in the editor’s “New” and copy them; they are a lighter version.' : '無料のチャットの AI に送るときは、編集アプリの「新規作成」で軽量の指示を選んでコピーしてください。軽くした指示になります。'), lang + ': the light-instructions line at the top');
+    assert.ok(/\| (Light instructions: every standard part|軽量の指示：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Detailed instructions: every part set|詳細の指示：すべての束)[^|]*\| [\d.]+ KB \| 150 KB \|/.test(file),
+      lang + ': the size table lists the light standard pack and the detailed full pack');
+    assert.ok(!/無料のプラン|有料のプラン|[Ff]ree plan|[Pp]aid plan/.test(file.slice(0, i)), lang + ': the preamble no longer speaks of the chat AI’s plan');
     const paidParts = SETS.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
     assert.equal([commonBody(lang, { plan: 'paid', sets: 'all' }).trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ sets: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
     for (const t of Object.keys(PACK.en.components)) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);

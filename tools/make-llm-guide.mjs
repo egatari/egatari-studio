@@ -584,7 +584,7 @@ Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egata
 
 ## パーツを選ぶ
 
-構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や無料・有料の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 ${links}
 
@@ -633,7 +633,7 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
 
 ${links}
 
@@ -813,8 +813,8 @@ export function generate(opts = {}) {
     // 無料のプランの行は貼り付けの長さ（UTF-16 の単位の数＋改行の数）とその上限も。有料のプランはファイルで渡せるので —
     const n0 = (n) => n.toLocaleString('en-US');
     const rows = ja
-      ? [[`無料のプラン：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`無料のプラン：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['有料のプラン：標準のパーツすべて', z.paid, LIMITS.paid], [`有料のプラン：すべての束（このファイルとすべての束の指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
-      : [[`Free plan: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`Free plan: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too' + (z.freeFit[s].dropped.length ? `; ${z.freeFit[s].dropped.join(', ')} left out` : '') + ')' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['Paid plan: every standard part', z.paid, LIMITS.paid], [`Paid plan: every part set (this file and every set pack)${z.paidAll > LIMITS.paid ? '; over the cap it is a warning only' : ''}`, z.paidAll, LIMITS.paid]];
+      ? [[`軽量の指示：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`軽量の指示：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['詳細の指示：標準のパーツすべて', z.paid, LIMITS.paid], [`詳細の指示：すべての束（このファイルとすべての束の指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
+      : [[`Light instructions: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`Light instructions: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too' + (z.freeFit[s].dropped.length ? `; ${z.freeFit[s].dropped.join(', ')} left out` : '') + ')' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['Detailed instructions: every standard part', z.paid, LIMITS.paid], [`Detailed instructions: every part set (this file and every set pack)${z.paidAll > LIMITS.paid ? '; over the cap it is a warning only' : ''}`, z.paidAll, LIMITS.paid]];
     const table = (ja ? '| 指示 | 大きさ | 上限 | 貼り付けの長さ | 上限 |\n|---|---:|---:|---:|---:|\n' : '| Pack | Size | Cap | Paste length | Cap |\n|---|---:|---:|---:|---:|\n')
       + rows.map(([w, kb, cap, paste]) => `| ${w} | ${f1(kb)} | ${cap} KB | ${paste === undefined ? '—' : n0(paste)} | ${paste === undefined ? '—' : n0(LIMITS.paste)} |`).join('\n');
     const preamble = pre[lang].replace('{{SIZE_TABLE}}', table).replace('{{SETS_LIST}}', list);

@@ -27,7 +27,7 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and free/paid filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
 
 - [standard](references/parts/en/standard.md)
 - [stats](references/parts/en/stats.md)
