@@ -1,14 +1,14 @@
 // Egatari Viewer: markup inside the lesson's frame (stage 1: highlights in the book, and 暗記). Part of the page's trusted
 // prefix, after play/lesson-shim.js (tools/build-play.mjs). It runs in the sandboxed frame with no more power than the lesson,
 // and the page keeps the highlights (play/markup.mjs): this script only paints what the page sends and asks the page for changes.
-//   - Painting: the CSS Custom Highlight API (Chrome 105+, Safari 17.2+). The lesson's HTML is never changed. Without the API
-//     the page is told {supported: false} and offers no markup.
+//   - Painting: boxes in this script's own layer inside the book's scrolling box (below, "painting"). The book's text and markup
+//     are never changed; the layer is one element added after the article.
 //   - Anchors (egatari-spec annotations.md, Highlight record): the data-section-id of the article section ("" outside any section)
 //     and a text quote {exact, prefix, suffix} of the rendered text, so a highlight survives a new font size, line spacing,
 //     background or page layout, and small edits of the lesson. Ruby readings (rt, rp) and KaTeX's hidden MathML are not text here.
-//   - The small window next to a selection (or a tapped highlight): three colours, and 消す on a highlight. Above the selection,
-//     so the system's own callout (iPad) and the selection handles stay free.
-//   - 暗記: the text of the chosen colours turns transparent and only the colour band is left; a tap reveals one highlight.
+//   - The small window next to a selection (or a tapped highlight): three colours, and 消す on a highlight. Above it with a mouse,
+//     below a selection on a touch screen (iPad's own callout is above it).
+//   - 暗記: an opaque band of the colour over the text of the chosen colours; a tap reveals one highlight.
 // Messages (all {egaViewer: "markup-…"}; the page checks every one):
 //   to the page   hello {supported, article}  add {color, target}  set {id, color}  del {id}  status {missing:[id], sections:{id: title}}  esc
 //   from the page load {list, words, view}  view {view}  jump {id}
@@ -18,7 +18,7 @@
   var parentWin = window.parent;
   var COLORS = ["y", "p", "b"];
   var MAXQ = 1000, CTX = 32;
-  var supported = typeof CSS !== "undefined" && !!CSS.highlights && typeof Highlight === "function";
+  var supported = typeof Range === "function" && typeof Range.prototype.getClientRects === "function" && typeof Element.prototype.attachShadow === "function";
   function post(m) { m.egaViewer = "markup-" + m.egaViewer; try { parentWin.postMessage(m, "*"); } catch (e) { /* gone */ } }
 
   var S = { list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
@@ -82,29 +82,44 @@
   }
   function anchor(h) { return findIn(sectionEl(h.target.section), h.target.quote) || findIn(S.article, h.target.quote); }
 
-  // ---------------------------------------------------------------- painting
+  // ---------------------------------------------------------------- painting: this script's own layer inside the book's scrolling box
+  // Highlights are boxes in a layer (a shadow tree, so the lesson's styles cannot reach it) placed in the book's scrolling box
+  // (.dx-body, position: relative), so they scroll with the text with no delay. They are blended with the text (multiply on a light
+  // page, screen on black), so the text reads as under a marker, and they let taps and selections through.
+  // Not the CSS Custom Highlight API: Safari (iPad) never paints it on ruby bases, and leaves old paint on screen after a highlight is
+  // deleted or recoloured until something else repaints.
+  // 暗記: an opaque band of the highlight's colour over the text (also covering ruby and emphasis marks (傍点)); a tap on it reveals
+  // that highlight. Each hidden highlight also has a button for the keyboard (Tab in reading order, after the book's own links;
+  // Enter or Space reveals; the focus ring is on its first line), and the browser scrolls a focused one into view.
   var hidden = function (c) { return S.view.hidden.indexOf(c) >= 0; };
   var masked = function (h) { return S.view.recall && S.view.recallColors.indexOf(h.color) >= 0 && !S.revealed[h.id]; };
-  function paint() {
-    if (!supported) return;
-    var sets = {};
-    COLORS.forEach(function (c) { sets["ega-" + c] = []; sets["ega-" + c + "-m"] = []; });
-    S.list.forEach(function (h) {
-      var r = S.placed[h.id];
-      if (!r || hidden(h.color)) return;
-      sets["ega-" + h.color + (masked(h) ? "-m" : "")].push(r);
-    });
-    Object.keys(sets).forEach(function (k) { var hl = new Highlight(); sets[k].forEach(function (r) { hl.add(r); }); if (k.slice(-2) === "-m") hl.priority = 1; CSS.highlights.set(k, hl); });
-    drawMasks();
-  }
-  // 暗記: an opaque band of the highlight's colour over each hidden highlight, in this script's own layer (not in the book's HTML).
-  // A transparent text colour alone is not enough: Safari keeps painting ruby bases and emphasis marks (傍点) of highlighted text.
-  // The bands follow scrolling and reflow, are clipped to the book's scrolling box, and a tap on one reveals that highlight.
   var BAND = { white: { y: "#fff066", p: "#ff9eb0", b: "#79b8ff" }, sepia: { y: "#f5e04a", p: "#f797a8", b: "#70aae6" }, black: { y: "#7d6800", p: "#a5304a", b: "#1f4f94" } };
-  var maskLayer = null, maskQueued = false;
-  function scroller(el) {
-    for (var e = el; e && e !== document.documentElement; e = e.parentElement) { var o = getComputedStyle(e); if (/(auto|scroll)/.test(o.overflowY + o.overflowX) && (e.scrollHeight > e.clientHeight || e.scrollWidth > e.clientWidth)) return e; }
-    return null;
+  var LAYER_CSS = ".h{position:absolute;pointer-events:none;border-radius:2px}.h.mul{mix-blend-mode:multiply}.h.scr{mix-blend-mode:screen}" +
+    ".m{position:absolute;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;pointer-events:auto}" +
+    ".k{all:unset;position:absolute;z-index:1;cursor:pointer;border-radius:2px;pointer-events:auto;-webkit-tap-highlight-color:transparent}.k:focus-visible{outline:3px solid #2c63d4;outline-offset:2px;box-shadow:0 0 0 5px #fff}";
+  var L = { host: null, root: null, paint: null, mk: null };
+  function layer() {
+    var a = S.article, sc = a && (a.closest(".dx-body") || a.parentElement);
+    if (!sc) return null;
+    if (!L.host) {
+      L.host = document.createElement("div");
+      L.host.setAttribute("data-egatari-viewer", "layer");
+      L.host.setAttribute("aria-hidden", "false");
+      L.host.style.cssText = "position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;z-index:3;margin:0;padding:0;border:0";
+      L.root = L.host.attachShadow({ mode: "open" });
+      var st = document.createElement("style"); st.textContent = LAYER_CSS;
+      L.paint = document.createElement("div"); L.paint.setAttribute("aria-hidden", "true");
+      L.mk = document.createElement("div"); L.mk.className = "mk";
+      L.root.appendChild(st); L.root.appendChild(L.paint); L.root.appendChild(L.mk);
+      L.root.addEventListener("click", function (e) {
+        var m = e.target.closest ? e.target.closest(".k,.g") : null;
+        if (!m || !e.isTrusted) return;
+        e.preventDefault(); e.stopPropagation();
+        reveal(m.getAttribute("data-id"));
+      });
+    }
+    if (L.host.parentNode !== sc) sc.appendChild(L.host);
+    return L;
   }
   // emphasis marks (傍点) are drawn outside the text's box: above it, or to its right in vertical writing. How far a band must reach
   function emphasisOf(r) {
@@ -117,23 +132,48 @@
     }
     return null;
   }
-  // Each hidden highlight has one button (keyboard: Tab in reading order, Enter or Space reveals; the focus ring is on its first
-  // line) and its bands (aria-hidden: a screen reader reads the text itself). The elements are kept between redraws so the focus
-  // stays; a button whose highlight is scrolled out of the book's box stays focusable and brings it into view when focused.
+  // The boxes of the text in a range, line by line. Not Range.getClientRects() alone: it also returns the box of every element the
+  // range wholly contains (an <em>, a ruby), which would paint those parts twice. Text in the hidden MathML is left out
+  function textRects(r) {
+    var out = [], root = r.commonAncestorContainer;
+    var push = function (n, a, b) { var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push(rs[i]); };
+    if (root.nodeType === 3) { push(root, r.startOffset, r.endOffset); return out; }
+    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) { var p = n.parentElement; return p && p.closest(".katex-mathml,script,style") ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } }), n;
+    while ((n = w.nextNode())) {
+      if (!r.intersectsNode(n)) continue;
+      var a = n === r.startContainer ? r.startOffset : 0, b = n === r.endContainer ? r.endOffset : n.data.length;
+      if (b > a && n.data.slice(a, b).trim()) push(n, a, b);
+    }
+    return out;
+  }
   var MK = {};
   function inOrder(a, b) { try { return S.placed[a].compareBoundaryPoints(Range.START_TO_START, S.placed[b]); } catch (e) { return 0; } }
-  function drawMasks() {
-    var ids = S.view.recall && S.article ? S.list.filter(function (h) { return S.placed[h.id] && !hidden(h.color) && masked(h); }).map(function (h) { return h.id; }) : [];
+  function bgName() { var pane = document.getElementById("deck-text"), v = pane && pane.getAttribute("data-dx-bg"); return v === "sepia" || v === "black" ? v : "white"; }
+  function paint() {
+    var Y = S.article ? layer() : null;
+    if (!Y) return;
+    var o = L.host.getBoundingClientRect(), bg = bgName(), blend = bg === "black" ? "scr" : "mul";
+    var box = function (q, grow) { grow = grow || {}; return "left:" + (q.left - o.left) + "px;top:" + (q.top - o.top - (grow.up || 0)) + "px;width:" + (q.width + (grow.right || 0)) + "px;height:" + (q.height + (grow.up || 0)) + "px;"; };
+    // the highlights shown (not hidden by a filter, not under a 暗記 band)
+    var frag = document.createDocumentFragment();
+    S.list.forEach(function (h) {
+      var r = S.placed[h.id];
+      if (!r || hidden(h.color) || masked(h)) return;
+      var rs = textRects(r);
+      for (var i = 0; i < rs.length; i++) {
+        if (rs[i].width < 0.5 || rs[i].height < 0.5) continue;
+        var d = document.createElement("div"); d.className = "h " + blend; d.setAttribute("data-id", h.id); d.setAttribute("data-c", h.color);
+        d.style.cssText = box(rs[i]) + "background:" + BAND[bg][h.color];
+        frag.appendChild(d);
+      }
+    });
+    L.paint.textContent = ""; L.paint.appendChild(frag);
+    // 暗記: bands and buttons, kept between redraws so the keyboard's focus stays
+    var ids = S.view.recall ? S.list.filter(function (h) { return S.placed[h.id] && !hidden(h.color) && masked(h); }).map(function (h) { return h.id; }) : [];
     ids.sort(inOrder);
-    if (!ids.length && !maskLayer) return;
-    makePop();
-    if (!host.isConnected) document.documentElement.appendChild(host);
-    if (!maskLayer) { maskLayer = document.createElement("div"); maskLayer.className = "mk"; root.insertBefore(maskLayer, pop); }
-    var keep = {}, focusedGone = false, act = root.activeElement;
+    var keep = {}, focusedGone = false, act = L.root.activeElement;
     ids.forEach(function (id) { keep[id] = true; });
     Object.keys(MK).forEach(function (id) { if (keep[id]) return; if (act === MK[id].btn) focusedGone = true; MK[id].btn.remove(); MK[id].bands.remove(); delete MK[id]; });
-    var pane = document.getElementById("deck-text"), bg = pane && /^(sepia|black)$/.test(pane.getAttribute("data-dx-bg") || "") ? pane.getAttribute("data-dx-bg") : "white";
-    var sc = scroller(S.article), clip = sc ? sc.getBoundingClientRect() : { left: 0, top: 0, right: innerWidth, bottom: innerHeight };
     var byId = {}; S.list.forEach(function (h) { byId[h.id] = h; });
     ids.forEach(function (id, n) {
       var h = byId[id], r = S.placed[id], e = MK[id];
@@ -141,46 +181,47 @@
         e = MK[id] = { btn: document.createElement("button"), bands: document.createElement("div") };
         e.btn.type = "button"; e.btn.className = "k"; e.btn.setAttribute("data-id", id);
         e.bands.className = "g"; e.bands.setAttribute("aria-hidden", "true"); e.bands.setAttribute("data-id", id);
-        e.btn.addEventListener("focus", function () { var b = e.btn.getBoundingClientRect(); if (b.width <= 1) { var el = S.placed[id] && (S.placed[id].startContainer.nodeType === 1 ? S.placed[id].startContainer : S.placed[id].startContainer.parentElement); if (el) { try { el.scrollIntoView({ block: "center" }); } catch (x) { el.scrollIntoView(); } queueMasks(); } } });
       }
       e.btn.setAttribute("aria-label", (words().reveal || {})[h.color] || "");
-      e.bands.textContent = "";
-      var rs = r.getClientRects(), em = emphasisOf(r), up = em && !em.vertical ? em.size : 0, right = em && em.vertical ? em.size : 0, first = null;
+      e.bands.textContent = ""; e.bands.setAttribute("data-c", h.color);
+      var rs = textRects(r), em = emphasisOf(r), grow = { up: em && !em.vertical ? em.size + 2 : 2, right: em && em.vertical ? em.size : 0 }, first = null;
       for (var i = 0; i < rs.length; i++) {
-        var q = rs[i], l = Math.max(q.left, clip.left), t = Math.max(q.top - 2 - up, clip.top), rr = Math.min(q.right + right, clip.right), b = Math.min(q.bottom + 2, clip.bottom);
-        if (rr - l < 1 || b - t < 1) continue;
-        var d = document.createElement("div");
-        d.className = "m";
-        d.style.cssText = "left:" + l + "px;top:" + t + "px;width:" + (rr - l) + "px;height:" + (b - t) + "px;background:" + BAND[bg][h.color];
+        var q = rs[i];
+        if (q.width < 0.5 || q.height < 0.5) continue;
+        var d = document.createElement("div"); d.className = "m";
+        d.style.cssText = box(q, grow) + "height:" + (q.height + grow.up + 2) + "px;background:" + BAND[bg][h.color];
         e.bands.appendChild(d);
         // the button (and its focus ring) covers every piece on the first line (text across inline math or an element is in pieces)
-        if (!first) first = [l, t, rr, b];
-        else if (Math.abs(t - first[1]) < 6) first = [Math.min(first[0], l), Math.min(first[1], t), Math.max(first[2], rr), Math.max(first[3], b)];
+        if (!first) first = [q.left, q.top - grow.up, q.right + grow.right, q.bottom + 2];
+        else if (Math.abs(q.top - grow.up - first[1]) < 6) first = [Math.min(first[0], q.left), Math.min(first[1], q.top - grow.up), Math.max(first[2], q.right + grow.right), Math.max(first[3], q.bottom + 2)];
       }
-      e.btn.style.cssText = first ? "left:" + first[0] + "px;top:" + first[1] + "px;width:" + (first[2] - first[0]) + "px;height:" + (first[3] - first[1]) + "px" : "left:" + clip.left + "px;top:" + clip.top + "px;width:1px;height:1px;opacity:0";
+      e.btn.style.cssText = first ? "left:" + (first[0] - o.left) + "px;top:" + (first[1] - o.top) + "px;width:" + (first[2] - first[0]) + "px;height:" + (first[3] - first[1]) + "px" : "left:0;top:0;width:1px;height:1px;opacity:0";
       // reading order: move only what is out of place (moving the focused button would drop the focus)
-      var at = maskLayer.children[2 * n];
-      if (at !== e.btn) maskLayer.insertBefore(e.btn, at || null);
-      if (e.btn.nextSibling !== e.bands) maskLayer.insertBefore(e.bands, e.btn.nextSibling);
+      var at = L.mk.children[2 * n];
+      if (at !== e.btn) L.mk.insertBefore(e.btn, at || null);
+      if (e.btn.nextSibling !== e.bands) L.mk.insertBefore(e.bands, e.btn.nextSibling);
     });
     if (focusedGone) { var next = revealNext; revealNext = null; if (next && MK[next]) MK[next].btn.focus(); else if (ids.length) MK[ids[0]].btn.focus(); }
   }
   var revealNext = null;
   function reveal(id) {
     var ids = Object.keys(MK).sort(inOrder), i = ids.indexOf(id);
-    revealNext = root.activeElement === (MK[id] && MK[id].btn) ? ids[i + 1] || null : null;
+    revealNext = L.root && L.root.activeElement === (MK[id] && MK[id].btn) ? ids[i + 1] || null : null;
     S.revealed[id] = true; paint();
   }
   // Enter and Space on a band's button: taken here, before the lesson's player (this script runs first, so its listener does too),
   // which would otherwise take Space for the next step
   window.addEventListener("keydown", function (e) {
-    if ((e.key !== "Enter" && e.key !== " ") || !root) return;
+    if ((e.key !== "Enter" && e.key !== " ") || !L.root) return;
     var t = e.composedPath ? e.composedPath()[0] : null;
-    if (!t || !t.classList || !t.classList.contains("k") || t.getRootNode() !== root) return;
+    if (!t || !t.classList || !t.classList.contains("k") || t.getRootNode() !== L.root) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (!e.repeat) reveal(t.getAttribute("data-id"));
   }, true);
-  function queueMasks() { if (maskQueued || !maskLayer || !S.view.recall) return; maskQueued = true; requestAnimationFrame(function () { maskQueued = false; drawMasks(); }); }
+  // the text moves without the DOM changing (font size, line spacing, width, rotation): paint again on the next frame
+  var queued = false;
+  function queuePaint() { if (queued || !S.article) return; queued = true; requestAnimationFrame(function () { queued = false; paint(); }); }
+  var ro = typeof ResizeObserver === "function" ? new ResizeObserver(queuePaint) : null;
   function placeAll() {
     S.placed = {};
     var missing = [];
@@ -205,8 +246,6 @@
     st.textContent = ".w{position:fixed;display:flex;gap:6px;align-items:center;padding:6px 8px;border-radius:22px;background:#2b2b33;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);font:14px/1 system-ui,-apple-system,sans-serif}" +
       ".w[hidden]{display:none}button{all:unset;box-sizing:border-box;min-width:32px;height:32px;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}" +
       "button:focus-visible{outline:2px solid #fff;outline-offset:2px}.c{width:32px;border:2px solid rgba(255,255,255,.85)}.c[aria-pressed=true]{box-shadow:0 0 0 3px #fff inset}" +
-      ".mk .m{position:fixed;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent}" +
-      ".mk .k{all:unset;position:fixed;z-index:1;cursor:pointer;border-radius:2px;-webkit-tap-highlight-color:transparent}.mk .k:focus-visible{outline:3px solid #2c63d4;outline-offset:2px;box-shadow:0 0 0 5px #fff}" +
       ".y{background:#fff066}.p{background:#ff9eb0}.b{background:#79b8ff}.d{padding:0 10px;border:1px solid rgba(255,255,255,.6)}";
     pop = document.createElement("div"); pop.className = "w"; pop.setAttribute("role", "toolbar"); pop.hidden = true;
     root.appendChild(st); root.appendChild(pop);
@@ -214,17 +253,13 @@
     pop.addEventListener("pointerdown", function (e) { e.preventDefault(); e.stopPropagation(); });
     pop.addEventListener("mousedown", function (e) { e.preventDefault(); e.stopPropagation(); });
     pop.addEventListener("click", function (e) { e.stopPropagation(); var b = e.target.closest ? e.target.closest("button") : null; if (b) choose(b.getAttribute("data-a")); });
-    // a tap on a band, or Enter / Space on its button: reveal that highlight (the keyboard's focus goes on to the next one)
-    root.addEventListener("click", function (e) {
-      var m = e.target.closest ? e.target.closest(".k,.g") : null;
-      if (!m || !e.isTrusted) return;
-      e.preventDefault(); e.stopPropagation();
-      reveal(m.getAttribute("data-id"));
-    });
     pop.addEventListener("keydown", function (e) { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); hidePop(); } });
     document.documentElement.appendChild(host);
   }
-  function showPop(rect, forWhat) {
+  // Where the window goes: above the text with a mouse. On a touch screen a new selection gets it below (with room for the
+  // selection handle), because iPad's own callout (コピー・調べる …) appears above the selection and covered it there.
+  var touch = function () { try { return matchMedia("(pointer: coarse)").matches; } catch (e) { return false; } };
+  function showPop(rect, forWhat, below) {
     makePop();
     if (!host.isConnected) document.documentElement.appendChild(host);
     popFor = forWhat;
@@ -235,8 +270,10 @@
     if (forWhat.id) { var d = document.createElement("button"); d.type = "button"; d.className = "d"; d.setAttribute("data-a", "del"); d.textContent = W.del; pop.appendChild(d); }
     pop.hidden = false;
     var pw = pop.offsetWidth, ph = pop.offsetHeight, vw = document.documentElement.clientWidth, vh = window.innerHeight;
-    var x = Math.max(8, Math.min(vw - pw - 8, rect.left + rect.width / 2 - pw / 2)), y = rect.top - ph - 12;
-    if (y < 8) y = Math.min(vh - ph - 8, rect.bottom + 12);
+    var x = Math.max(8, Math.min(vw - pw - 8, rect.left + rect.width / 2 - pw / 2)), y;
+    if (below) { y = rect.bottom + 28; if (y + ph > vh - 8) y = rect.top - ph - 12; }
+    else { y = rect.top - ph - 12; if (y < 8) y = rect.bottom + 12; }
+    y = Math.max(8, Math.min(vh - ph - 8, y));
     pop.style.left = Math.round(x) + "px"; pop.style.top = Math.round(y) + "px";
   }
   function hidePop() { if (pop) pop.hidden = true; popFor = null; }
@@ -263,8 +300,8 @@
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { if (popFor && !popFor.id) hidePop(); return; }
       var r = sel.getRangeAt(0), t = targetOf(r);
       if (!t) { if (popFor && !popFor.id) hidePop(); return; }
-      var rects = r.getClientRects(), first = rects[0] || r.getBoundingClientRect();
-      showPop(first, { target: t });
+      var rects = r.getClientRects(), first = rects[0] || r.getBoundingClientRect(), last = rects[rects.length - 1] || first;
+      if (touch()) showPop(last, { target: t }, true); else showPop(first, { target: t });
     }, 220);
   });
   // a tap on a highlight: reveal it (暗記), or open the window to change its colour or delete it
@@ -284,13 +321,13 @@
     if (sel && !sel.isCollapsed) return;
     var hit = hitAt(e.clientX, e.clientY);
     if (!hit) { if (popFor) hidePop(); return; }
-    if (masked(hit.h)) { e.preventDefault(); e.stopPropagation(); S.revealed[hit.h.id] = true; paint(); return; }
+    if (masked(hit.h)) { e.preventDefault(); e.stopPropagation(); reveal(hit.h.id); return; }
     if (e.target.closest && e.target.closest("a[href],button,input,summary")) return;   // a link under a highlight still works
     e.stopPropagation();
     showPop(hit.rect, { id: hit.h.id });
   }, true);
-  window.addEventListener("scroll", function () { if (popFor) hidePop(); queueMasks(); }, true);
-  window.addEventListener("resize", queueMasks);
+  window.addEventListener("scroll", function () { if (popFor) hidePop(); }, true);
+  window.addEventListener("resize", queuePaint);
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     if (popFor) { hidePop(); e.preventDefault(); e.stopPropagation(); return; }
@@ -298,27 +335,27 @@
   }, true);
 
   // ---------------------------------------------------------------- the book appearing, or being rebuilt
-  var css = document.createElement("style");
-  css.textContent =
-    "::highlight(ega-y){background-color:#fff066}::highlight(ega-p){background-color:#ff9eb0}::highlight(ega-b){background-color:#79b8ff}" +
-    "#deck-text[data-dx-bg=sepia] ::highlight(ega-y){background-color:#f5e04a}#deck-text[data-dx-bg=sepia] ::highlight(ega-p){background-color:#f797a8}#deck-text[data-dx-bg=sepia] ::highlight(ega-b){background-color:#70aae6}" +
-    "#deck-text[data-dx-bg=black] ::highlight(ega-y){background-color:#7d6800}#deck-text[data-dx-bg=black] ::highlight(ega-p){background-color:#a5304a}#deck-text[data-dx-bg=black] ::highlight(ega-b){background-color:#1f4f94}" +
-    "::highlight(ega-y-m),::highlight(ega-p-m),::highlight(ega-b-m){color:transparent;-webkit-text-fill-color:transparent;text-emphasis-color:transparent;-webkit-text-emphasis-color:transparent;text-decoration-color:transparent;text-shadow:none}::highlight(ega-y-m){background-color:#fff066}::highlight(ega-p-m){background-color:#ff9eb0}::highlight(ega-b-m){background-color:#79b8ff}" +
-    "#deck-text[data-dx-bg=sepia] ::highlight(ega-y-m){background-color:#f5e04a}#deck-text[data-dx-bg=sepia] ::highlight(ega-p-m){background-color:#f797a8}#deck-text[data-dx-bg=sepia] ::highlight(ega-b-m){background-color:#70aae6}" +
-    "#deck-text[data-dx-bg=black] ::highlight(ega-y-m){background-color:#7d6800}#deck-text[data-dx-bg=black] ::highlight(ega-p-m){background-color:#a5304a}#deck-text[data-dx-bg=black] ::highlight(ega-b-m){background-color:#1f4f94}" +
-    "";
   var said = null, moTimer = 0;
   function look() {
     var a = document.getElementById("egatari-article");
-    if (a !== S.article) { S.article = a; if (a) placeAll(); }
+    if (a !== S.article) {
+      S.article = a;
+      if (ro) { ro.disconnect(); if (a) { ro.observe(a); if (a.closest(".dx-body")) ro.observe(a.closest(".dx-body")); } }
+      if (a) placeAll(); else if (L.host) L.host.remove();
+    }
     else if (a && stale()) placeAll();
     var now = supported + ":" + !!a;
     if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: !!a }); }
   }
   function start() {
-    (document.head || document.documentElement).appendChild(css);
     look();
-    new MutationObserver(function () { clearTimeout(moTimer); moTimer = setTimeout(look, 150); queueMasks(); }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "data-dx-bg", "hidden"] });
+    // a change in the book (rebuilt, or its font size, spacing or background): find the places again, and paint on the next frame
+    new MutationObserver(function (recs) {
+      var mine = true;
+      for (var i = 0; i < recs.length && mine; i++) if (recs[i].target !== L.host && !(recs[i].addedNodes.length === 1 && recs[i].addedNodes[0] === L.host)) mine = false;
+      if (mine) return;
+      clearTimeout(moTimer); moTimer = setTimeout(look, 150); queuePaint();
+    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "data-dx-bg", "hidden"] });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 
