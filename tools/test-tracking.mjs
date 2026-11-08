@@ -443,9 +443,13 @@ f.src = 'deck.html' + location.search;
   ok(x.pos === `${SLIDES[0][0]}:0` && x.state.stage.join() === '0', `changed lesson: resume data ignored, starts at the beginning (${x.pos})`);
   // 終える：lesson_status completed、終わりの exit は ""
   const f = await run(base, async (p) => { await p.click('#stage', { position: { x: 200, y: 300 } }); for (let j = 0; j < nSteps; j++) await p.keyboard.press('ArrowRight'); await wait(p, 100); });
-  ok(sets(f.calls, 'cmi.core.lesson_status').pop() === 'completed' && sets(f.calls, 'cmi.core.exit')[0] === '', 'completing sets lesson_status completed and exit ""');
+  // 保存のたびに session_time と exit も書く（閉じる間の保存が届かない LMS のため）：終える前は suspend、終えた後は ""
   const fc = f.calls.findIndex((y) => y[1] === 'cmi.core.lesson_status' && y[2] === 'completed');
-  ok(f.calls[fc + 1] && f.calls[fc + 1][0] === 'LMSCommit', 'LMSCommit right after completed');
+  const exits = (a) => a.filter((y) => y[0] === 'LMSSetValue' && y[1] === 'cmi.core.exit').map((y) => y[2]);
+  ok(sets(f.calls, 'cmi.core.lesson_status').pop() === 'completed' && exits(f.calls.slice(0, fc)).every((v) => v === 'suspend') && exits(f.calls.slice(fc)).length && exits(f.calls.slice(fc)).every((v) => v === ''),
+    `completing sets lesson_status completed; exit is suspend before and "" from then on (${exits(f.calls.slice(0, fc)).join()} | ${exits(f.calls.slice(fc)).join()})`);
+  const next = f.calls.slice(fc + 1).filter((y) => !(y[0] === 'LMSSetValue' && (y[1] === 'cmi.core.session_time' || y[1] === 'cmi.core.exit')));
+  ok(next[0] && next[0][0] === 'LMSCommit', 'LMSCommit right after completed (after writing session_time and exit)');
   // 振り返り（review）：終わりまで何も書かない
   const v = await run({ ...base, 'cmi.core.lesson_mode': 'review', 'cmi.core.lesson_status': 'completed' }, async (p) => { await p.click('#stage', { position: { x: 200, y: 300 } }); for (let j = 0; j < 4; j++) await p.keyboard.press('ArrowRight'); });
   const vs = v.calls.filter((y) => y[0] === 'LMSSetValue').map((y) => y[1]);

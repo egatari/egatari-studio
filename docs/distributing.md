@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=f28779247247da81 -->
+<!-- i18n: pair=distributing.ja.md sha256=87e759e2ce53f968 -->
 # Handing a lesson to participants
 
 English | [日本語](distributing.ja.md)
@@ -10,6 +10,7 @@ A lesson goes out as one HTML file: the [Egatari file (`.ega.html`)](reference.m
 | Google Drive (and Google Classroom, which shares through Drive) | “Download the file, then open it in your browser.” | The Drive preview shows HTML as text or not at all; it does not run the lesson. Share the file with the people who need it (or “anyone with the link”) |
 | Email | “Save the attachment, then open it in your browser.” | Mind the size limit of the mail system (often 20–25 MB; audio makes the file larger). Some school mail filters block or strip `.html` attachments: send a `.zip` of the file, or a Drive link, instead |
 | LMS (Moodle, Canvas, Classroom, …) | “Download the file, then open it.” | Upload it as a file resource and, if the LMS offers it, set the display to download. Shown inside the LMS page, scripts may be blocked and the lesson may not play |
+| LMS with progress (Moodle and other SCORM 1.2 LMSs) | nothing: they open the activity in the LMS | Export a SCORM package and add it as a SCORM activity; the LMS records started, completed, where they left off and time spent. See [In an LMS with progress (SCORM)](#in-an-lms-with-progress-scorm) |
 | Your own web space (a school web server, GitHub Pages, …) | the URL | Opens directly, also on phones and tablets. Any static hosting works; nothing runs on the server |
 
 **Where an Egatari file runs** (checked against the vendors' documentation, 2026-10-23; not tried on every device):
@@ -32,6 +33,18 @@ A lesson goes out as one HTML file: the [Egatari file (`.ega.html`)](reference.m
 - **Check before class.** Open the file you will hand out on a computer that is not yours, the way participants will (download, then open), and play one slide with audio
 - **Keep the editable file.** Hand out the play-only copy and keep the Egatari file or the working folder to edit later; a play-only copy cannot be edited
 - **Audio without WebGPU.** The editor can make AI voice in the cloud (Google Colab) on a computer without WebGPU ([Make AI voice in the cloud](editor.md#make-ai-audio-in-the-cloud-google-colab)). <!-- colab-verified --> Verified: 2026-10-23, CPU (at a workshop, Irodori). 2026-10-24, T4 with the cuda13 pin set: Irodori 23 steps in 42 s, Kokoro 59 steps in 30 s. 2026-10-25, the owner's hand check (10 steps, one speaker; 209 Japanese / 518 English characters): T4 Japanese (Irodori) load 34 s, synthesis 19 s; T4 English (Kokoro) load 4 s, synthesis 4 s; CPU English load 7 s, synthesis 33 s (about 3 s per step, fine); CPU Japanese load 1 min, about 60 s per step at steps=40; a single step timed by hand took 90 s at steps=40 and 52.5 s at steps=16 (before this version, with fp16 weights and the reference voice encoded on every call).<!-- /colab-verified --> **Privacy:** in Colab the script text is processed in Google's environment, so use it only for text you may share; the exported `tts-job.json` holds the text to read and the voice names, nothing else from the lesson.
+
+## In an LMS with progress (SCORM)
+
+To see in the LMS who started and who completed a lesson, hand it out as a **SCORM 1.2 package** instead of a plain file. Moodle tracks SCORM 1.2 without plugins, and most other LMSs take it too.
+
+- **Make it.** In the editor, **File ▾ → Export ▸ For an LMS (SCORM)…**, then **Download**. On the command line, `egatari build <working folder> --scorm` (or `node kit/build.mjs … --scorm`) writes `<lesson title>.scorm.zip` in the working folder. An Egatari file with unsaved changes asks you to save first, as the play-only export does.
+- **What is inside.** The zip holds the play-only copy as `index.html`, byte for byte the file `--play-only` writes, and `imsmanifest.xml` (one SCO; its identifier is `egatari-<docId>`, its title the lesson title). Extracting `index.html` gives the play-only lesson back. The same lesson always gives the same zip (fixed order and times, no compression).
+- **Add it to the LMS.** In Moodle: **Add an activity or resource → SCORM package**; in ILIAS: **SCORM/AICC learning module**. Choose the zip.
+- **ILIAS's “percentage”.** If no SCO (this lesson) is selected for learning progress in the module's settings, learners who have not started also show 100%. Tick the SCO, and it shows 100% when completed and 0% before (an ILIAS rule; the lesson cannot change it).
+- **What the LMS records.** The player inside finds the LMS's SCORM API and reports: *incomplete* at the first click or key, the position and the visited steps as it goes (it reopens where the learner left off), *completed* by the lesson's completion rule, and the time spent when it is closed. No score is sent: there is no passed or failed.
+- **When is it completed.** By `metadata.completion` in `egatari.json` (the dialog says it in plain words): by default when every step has been played on the slides or read in the book (or Read with script); `{"visitedFraction": 0.9}` lowers that to 90% of the steps; `{"reachedEnd": true}` needs only the last step; adding `"played": true` counts only steps played on the slides. Once completed it stays completed.
+- **Limits.** The lesson must be exported by a Studio whose player reports through SCORM 1.2 (every Egatari file from this version lists `scorm12` in `deck-meta.tracking`). A lesson with so many steps that the resume data could exceed SCORM 1.2's 4096 characters (about 8,000 steps) is refused. Tried on ILIAS: started, completed, resume and time spent are recorded (also from a phone). In LMSs that cannot take what is sent while the page closes (ILIAS, and Safari in general), resume returns to the last saved position (the last slide change).
 
 ## Presenting in class
 

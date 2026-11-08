@@ -129,11 +129,15 @@ function scormAdapter(api){
   };
   var get = function(k){ return call("LMSGetValue", k); };
   var set = function(k, v){ if (!finished) call("LMSSetValue", k, v); };
-  var commit = function(){ if (finished) return; clearTimeout(commitT); commitT = 0; commitAt = Date.now(); call("LMSCommit", ""); };
+  // 保存のたびに、ここまでの時間（session_time）と出口（exit：終えていなければ suspend）も書く。閉じる間（pagehide）の保存は届かないことがある：
+  // ILIAS の SCORM 1.2 は同期の XHR で送り、Chrome・Safari はページを閉じる間の同期の XHR を止める。そのとき exit と時間が残らず、次は最初から・時間は 0 になる
+  var stamp = function(){ set("cmi.core.session_time", time()); set("cmi.core.exit", done ? "" : "suspend"); };
+  var commit = function(){ if (finished) return; clearTimeout(commitT); commitT = 0; commitAt = Date.now(); if (!review) stamp(); call("LMSCommit", ""); };
   var later = function(){ if (commitT) return; commitT = setTimeout(commit, Math.max(0, commitAt + COMMIT_GAP - Date.now())); };
+  // CMITimespan（HHHH:MM:SS.SS）。百分の一秒の整数で数える（59.996 秒を "60.00" にしない）。9999 時間で止める
   var time = function(){
-    var s = (Date.now() - t0) / 1000, h = Math.floor(s / 3600), mm = Math.floor(s % 3600 / 60), ss = (s % 60).toFixed(2);
-    return ("000" + h).slice(-4) + ":" + ("0" + mm).slice(-2) + ":" + (ss.length < 5 ? "0" : "") + ss;
+    var cs = Math.min(Math.round((Date.now() - t0) / 10), 359999999), pad = function(x, k){ return ("000" + x).slice(-k); };
+    return pad(Math.floor(cs / 360000), 4) + ":" + pad(Math.floor(cs / 6000) % 60, 2) + ":" + pad(Math.floor(cs / 100) % 60, 2) + "." + pad(cs % 100, 2);
   };
   var a = {name: "scorm12", resumeAt: null,
     init: function(){
@@ -155,10 +159,11 @@ function scormAdapter(api){
     },
     completed: function(){ if (review || lmsDone) return; lmsDone = true; set("cmi.core.lesson_status", "completed"); commit(); },
     hidden: function(){ commit(); },
+    // beforeunload：pagehide より先に来る。ILIAS は Chrome でこの出来事の中なら sendBeacon で送る（basisAPI.js の useSendBeacon）。終えるのは pagehide のまま
+    leaving: function(){ commit(); },
     end: function(){
       if (finished) return;
-      set("cmi.core.session_time", time());
-      set("cmi.core.exit", done ? "" : "suspend");
+      if (review) stamp();   // 見直し（review）では閉じるときだけ書く
       commit(); call("LMSFinish", ""); finished = true;
     },
     finished: function(){ return finished; }
@@ -290,6 +295,7 @@ function init(){
     if (document.visibilityState === "hidden"){ since.clear(); lastStageKey = null; adapter.hidden(); }
     else { onStage(); schedule(); }
   });
+  if (adapter.leaving) window.addEventListener("beforeunload", function(){ adapter.leaving(); });
   window.addEventListener("pagehide", function(){ adapter.end(); });
   window.addEventListener("pageshow", function(e){ if (e.persisted && adapter.finished && adapter.finished() && !document.getElementById("deck-track-notice")) notice(); });
   onStage(); schedule();

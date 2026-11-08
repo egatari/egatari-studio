@@ -15,3 +15,5 @@
 - Egatari Player 1.4.0: `video` opened by a person (through `offer.open.mode` or `?mode=video` outside the export) shows one
   **Play** button; pressing it plays the lesson along the timeline to the end with no other controls (Player P1, spec 609e145).
   The video export runs in an automated browser and is unchanged (same clips, byte for byte)
+- Egatari Player 1.4.0: in an LMS with SCORM 1.2, every commit also writes `cmi.core.session_time` and `cmi.core.exit`, and the
+  player commits on `beforeunload` too, so resume and time spent reach LMSs that store with synchronous requests (ILIAS) (`kit/track.js`)

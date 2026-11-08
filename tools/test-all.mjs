@@ -125,6 +125,7 @@ const steps = [
   ['test-book-css', ['tools/test-book-css.mjs', path.join(tmp, 'book-css')]],   // 本の窓をスライドのテーマの要素の規則から隔てる・縦書きの本の表（§9C.6）：book・split・縦書き・印刷・WebKit（入っていなければ skip）
   ['test-tracking', ['tools/test-tracking.mjs', path.join(tmp, 'tracking')]],   // talk の再生（自習。learn はなくなった）と進み具合の記録（kit/track.js。Player P1・P6・§9.2・SCORM 1.2）：再生速度・舞台と本で読む・終えた判定・postMessage・SCORM の模型
   ['test-offer', ['tools/test-offer.mjs', path.join(tmp, 'offer')]],   // 見せるモードと見え方（metadata.offer → deck-meta.offer。§1.2・Player P1・P2・P8）：learn は talk・offer.open・優先の順・見せる見え方だけ
+  ['test-scorm', ['tools/test-scorm.mjs', path.join(tmp, 'scorm')]],   // LMS 用の SCORM 1.2 の包み（kit/core/scorm.mjs・zip-write.mjs・build --scorm、spec bindings/scorm12.md）：zip の形・決まったバイト・imsmanifest.xml・親の窓の API で終えた判定
   // 授業の外へ出るリンク（format spec §11）：決まり（kit/core/link-policy.mjs）の単体と、確認の箱・開かない scheme・動画・sandbox の枠
   ['test-extlinks', ['tools/test-extlinks.mjs', path.join(tmp, 'extlinks')]],
   ['test-dev-server', ['tools/test-dev-server.mjs', path.join(tmp, 'dev')]],
@@ -192,6 +193,7 @@ const steps = [
   ['test-app-from-sample', ['tools/test-app-from-sample.mjs', path.join(tmp, 'from-sample')]],
   // 手で書き換えた・崩れた書き出しの印（format spec §3.1）：断る窓か開くか（どちらもページは答える）、食い違う写しは「書き出したあと直した」
   ['test-app-exported-marker', ['tools/test-app-exported-marker.mjs', path.join(tmp, 'exported-marker')]],
+  ['test-app-scorm', ['tools/test-app-scorm.mjs', path.join(tmp, 'app-scorm')]],   // エクスポート ▸ LMS 用（SCORM）…：窓の言葉（完了の決まり）・キャンセル・ダウンロードした zip の中身・保存していない変更
   ['test-app-drafts', ['tools/test-app-drafts.mjs', path.join(tmp, 'drafts')]],
   // 組み直す保存の確かめ：まだ保存していない文書は聞かない・テーマを変えただけならそのわけだけ（日本語と英語）
   ['test-app-save-rebuild', ['tools/test-app-save-rebuild.mjs', path.join(tmp, 'save-rebuild')]],

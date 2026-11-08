@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=a8fe9a47f5c07de5 -->
+<!-- i18n: pair=reference.ja.md sha256=dbf83805461f03b2 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -457,7 +457,7 @@ The slides and the script may be in different languages (for example Japanese sl
 
 ## Build
 
-`node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only]` (or `npm run build -- …`). Given a folder, it builds the `deck.html` inside it (without one it says what it expected and exits with 1).
+`node kit/build.mjs <deck.html | working folder> [-o out.html] [--theme name] [--dev] [--embed-audio] [--portable] [--play-only] [--scorm]` (or `npm run build -- …`). Given a folder, it builds the `deck.html` inside it (without one it says what it expected and exits with 1).
 
 | Option | Meaning |
 |---|---|
@@ -465,7 +465,7 @@ The slides and the script may be in different languages (for example Japanese sl
 | `--theme name` | theme (see [Themes](#themes)) |
 | `--dev` | add `data-src` for the editor and skip glyph subsetting (used by the dev server) |
 | `--embed-audio` | embed audio as AAC 64 kbps mono (needs ffmpeg; otherwise WAV, with a warning). Without it, audio is referenced relative to the output |
-| `--portable`, `--play-only` | an Egatari file that also carries the editable source; see [Egatari file](#egatari-file---portable) |
+| `--portable`, `--play-only`, `--scorm` | an Egatari file that also carries the editable source, its play-only copy, or that copy packaged for an LMS; see [Egatari file](#egatari-file---portable) |
 
 The summary line shows slides, math, parts, font files, script steps, audio steps, theme and size. Fonts: of the @fontsource chunks that hold the lesson's characters, each is cut down to the characters used with harfbuzz (WebAssembly, `harfbuzzjs`, pinned in `package.json`), re-encoded as woff2 (`wawoff2`), and declared with a `unicode-range` of exactly the kept characters. No Python or TTF files are needed, and the editor's export gives the same bytes. The same characters, chunks and tool versions give the same bytes on every OS (`tools/test-font-subset.mjs`). Source Sans 3, Source Serif 4 and Source Code Pro, which have a Reserved Font Name, are not subset. `EGATARI_FONT_SUBSET=0` embeds the chunks whole. `--dev` and the dev server do not subset. Compressed audio is cached in `$TMPDIR/motion-slides-audio/`. Glyphs embedded: the slide text after decoding HTML entities and `\u` escapes, strings in `<script type="application/json">` and the script, string literals of the parts used (without CJK in non-Japanese lessons), the characters a part declares it draws itself (`glyphs` in the parts library record, in its `egatariParts.define` meta or as `static glyphs`; a string, or `{ja: …, en: …}` of which the lesson's language is used), printable ASCII (digits, `/` for page numbers), `Appendix`, and for Japanese lessons `付録` and common Japanese punctuation. Local assets are embedded as described in [Assets](#assets-embedded-at-build-time).
 
@@ -505,6 +505,7 @@ The build counts while it expands and stops with `build-too-large` as soon as a 
 |---|---|
 | `--portable` | write the Egatari file (default `<working folder>/<lesson title>.ega.html`, at the top of the folder; `-o` sets the path) |
 | `--play-only` | write a play-only copy (default `<working folder>/<lesson title>.play.ega.html`): no source, only the runtime and its audio. Use it for participants when the source or extension data should not be handed out |
+| `--scorm` | write a SCORM 1.2 package for an LMS (default `<working folder>/<lesson title>.scorm.zip`; [SCORM 1.2 binding](https://github.com/egatari/egatari-spec/blob/main/bindings/scorm12.md)): `imsmanifest.xml` (one SCO, identifier `egatari-<docId>`, title from the lesson title) and the play-only copy as `index.html`, byte for byte what `--play-only` writes. Fixed entry order and times, stored without compression, so the same lesson gives the same bytes. No `adlcp:masteryscore`: the player reports *completed* by `metadata.completion` and never sends a score. Refused when `deck-meta.tracking` has no `scorm12` or the resume data could exceed 4096 characters (about 8,000 steps). See [In an LMS with progress (SCORM)](distributing.md#in-an-lms-with-progress-scorm) |
 | `--without-live-results` | with `--portable`: leave out attachments that hold live results (participants' questions and answers). Without it, an Egatari file that contains them prints a warning. Play-only copies never contain them ([Live](distributing.md#live-questions-and-polls-in-class-draft)) |
 | `--update-themes` | rebuild with the current version of bundled themes that `egatari.json` pins to an earlier version (`themes`, below), and rewrite those pins; prints the colors that change |
 

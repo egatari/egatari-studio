@@ -65,6 +65,23 @@ const ja = {
   noSlide: 'スライドがありません',
   playTitle: '参加者用（再生専用）にエクスポート', playLead: `参加者に配る Egatari ファイル（再生専用・${FORMAT.PLAY_EXT}）をエクスポートします。ブラウザで開けば再生でき、編集はできません`,
   playLive: 'ライブ（質問・投票）を付ける', playGo: 'エクスポート…', liveMark: (d) => `（ライブ ${d}）`,
+  // LMS 用（SCORM 1.2）にエクスポート（app/main.js の scormExport、kit/core/scorm.mjs）。kind：'all' | 'fraction' | 'end'、book：本のある教材か（なければ台本で読む）
+  scormTitle: 'LMS 用（SCORM）にエクスポート',
+  scormLead: 'Moodle などの LMS に「SCORM パッケージ」として追加できる ZIP ファイル（SCORM 1.2）をダウンロードします。中身は参加者用（再生専用）の Egatari ファイルです。LMS には、始めたか・完了したか・どこまで進んだか（次に開くと続きから）・学習した時間が記録されます',
+  scormRule: (kind, pct, played, book) => {
+    const read = book ? '本で読む' : '台本で読む';
+    if (kind === 'end') return played ? '最後のステップをスライドで再生すると「完了」になります' : '最後のステップまで進むと「完了」になります';
+    const which = kind === 'fraction' ? `ステップの ${pct}% 以上` : 'すべてのステップ';
+    return played ? `${which}をスライドで再生すると「完了」になります（${read}だけでは数えません）` : `${which}を、スライドで再生するか${read}と「完了」になります`;
+  },
+  scormHint: '完了の条件は、教材の設定のファイル（egatari.json の metadata.completion）に書かれたものです。点数（合格・不合格）は記録されません',
+  scormGo: 'ダウンロード',
+  scormUnsaved: '保存していない変更があります。LMS 用（SCORM）は保存したものから作るので、先に「保存」してください',
+  scormToast: (n) => `${n} をダウンロードしました。LMS で「SCORM パッケージ」として追加してください`,
+  scormRefused: {
+    'scorm-too-many-steps': 'ステップが多すぎて、LMS が続きの位置を覚えきれません（SCORM 1.2 の上限）。教材を分けてください',
+    'scorm-no-tracking': 'この教材のプレーヤーは LMS に進行状況を記録できません。新しい Egatari Studio で保存し直してください',
+  },
   infoTitle: 'ファイルの情報', infoLead: '題・ライセンス・作成者は、教材の設定のファイル（egatari.json の metadata）に書かれたものです', infoNone: 'まだ書かれていません',
   infoEditFolder: '今は、ここでは書き換えられません。作業フォルダの egatari.json の metadata を直すと反映されます', infoEditFile: '今は、ここでは書き換えられません', infoAttach: '添付',
   outlineNotice: (left, n) => `構成案：残り ${left} 枚（全 ${n} 枚）。`, outlineNextBtn: (k) => `次の ${k} 枚を頼む`,
@@ -121,7 +138,7 @@ const ja = {
   mp4Stale: (n) => `${n} ステップの音声の更新が必要です（動画もその音声のままになります）`,
   mp4Open: 'Colab を開く', mp4SaveOpen: '保存して Colab を開く', mp4ExportOpen: 'Egatari ファイルに保存して Colab を開く',
   mp4Blocked: 'Colab を新しいタブで開けませんでした。下のリンクから開いてください', mp4Link: 'Google Colab を開く',
-  exportPlayOnly: '参加者用（再生専用）…', playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
+  exportPlayOnly: '参加者用（再生専用）…', exportScorm: 'LMS 用（SCORM）…', playOnlyUnsaved: '保存していない変更があります。再生専用は保存したものから作るので、先に「保存」してください',
   playOnlyToast: '再生専用の Egatari ファイルをエクスポートしました（編集はできません。ブラウザで開けば再生できます）',
   playOnlyLiveToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生専用）をエクスポートしました。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
   playOnlyLiveSetupToast: (room) => `ライブ（ライブ ID ${room}）付きの Egatari ファイル（再生専用）をエクスポートしました。ホストのページにまだ文字列を貼っていなければ、1 回だけ貼ってライブを作ってください。ライブの時間のあいだ、参加者がファイルを開いて「参加する」を押すとつながります`,
@@ -508,6 +525,22 @@ const en = {
   noSlide: 'There are no slides',
   playTitle: 'Export for participants (play-only)', playLead: `Exports the Egatari file (play-only, ${FORMAT.PLAY_EXT}) you hand to participants. It plays when opened in a browser and cannot be edited`,
   playLive: 'Add Live (questions and polls)', playGo: 'Export…', liveMark: (d) => ` (live ${d})`,
+  scormTitle: 'Export for an LMS (SCORM)',
+  scormLead: 'Downloads a ZIP file (SCORM 1.2) that you can add to an LMS such as Moodle as a “SCORM package”. It holds the Egatari file for participants (play-only). The LMS records whether it was started and completed, how far it got (it reopens where it left off) and the time spent',
+  scormRule: (kind, pct, played, book) => {
+    const read = book ? 'read in the book' : 'read with script';
+    if (kind === 'end') return played ? 'It is “completed” when the last step is played on the slides' : 'It is “completed” when the last step is reached';
+    const which = kind === 'fraction' ? `at least ${pct}% of the steps are` : 'every step is';
+    return played ? `It is “completed” when ${which} played on the slides (steps only ${read} do not count)` : `It is “completed” when ${which} played on the slides or ${read}`;
+  },
+  scormHint: 'The completion rule is what the lesson’s settings file says (metadata.completion in egatari.json). No score (passed or failed) is recorded',
+  scormGo: 'Download',
+  scormUnsaved: 'There are unsaved changes. The LMS copy is made from the saved file, so Save first.',
+  scormToast: (n) => `Downloaded ${n}. In the LMS, add it as a “SCORM package”.`,
+  scormRefused: {
+    'scorm-too-many-steps': 'There are too many steps for the LMS to remember where the learner is (the SCORM 1.2 limit). Split the lesson',
+    'scorm-no-tracking': 'The player in this lesson cannot report progress to an LMS. Save it again with a newer Egatari Studio',
+  },
   infoTitle: 'File info', infoLead: 'The title, license and creators are what the lesson’s settings file says (metadata in egatari.json)', infoNone: 'Not given yet',
   infoEditFolder: 'They cannot be changed here yet. Edit metadata in egatari.json in the working folder and it shows here', infoEditFile: 'They cannot be changed here yet', infoAttach: 'Attachments',
   outlineNotice: (left, n) => `Outline: ${left} slides left (of ${n}).`, outlineNextBtn: (k) => `Ask for the next ${k}`,
@@ -562,7 +595,7 @@ const en = {
   mp4Stale: (n) => `${n} step${n === 1 ? '' : 's'}: audio needs updating (the video gets the audio as it is)`,
   mp4Open: 'Open Colab', mp4SaveOpen: 'Save and open Colab', mp4ExportOpen: 'Save as Egatari file and open Colab',
   mp4Blocked: 'Colab could not be opened in a new tab. Open it with the link below.', mp4Link: 'Open Google Colab',
-  exportPlayOnly: 'For participants (play-only)…', playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
+  exportPlayOnly: 'For participants (play-only)…', exportScorm: 'For an LMS (SCORM)…', playOnlyUnsaved: 'There are unsaved changes. The play-only copy is made from the saved file, so Save first.',
   playOnlyToast: 'Exported a play-only Egatari file (it cannot be edited; it plays when opened in a browser).',
   playOnlyLiveToast: (room) => `Exported an Egatari file (play-only) with Live (Live ID ${room}). During the live time, participants who open it and press Join are connected.`,
   playOnlyLiveSetupToast: (room) => `Exported an Egatari file (play-only) with Live (Live ID ${room}). If you have not pasted the string on the host page yet, paste it there once to create the Live. During the live time, participants who open it and press Join are connected.`,

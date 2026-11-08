@@ -16,7 +16,7 @@ const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 // 名前 → [スクリプト, 説明（日本語 / English）, 引数の形]
 const SCRIPTS = {
   new: ['tools/new.mjs', '新しい作業フォルダを雛形から作る / create a working folder from the template', '<folder> [--lang en|ja] [--theme name] [--title "…"]'],
-  build: ['kit/build.mjs', '原稿を 1 つの HTML に組む / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--embed-audio] [--theme name] …'],
+  build: ['kit/build.mjs', '原稿を 1 つの HTML に組む / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--scorm] [--embed-audio] [--theme name] …'],
   check: ['kit/check.mjs', '品質チェック（ブラウザが要る）/ quality check (needs a browser)', '<deck.html> [--json]'],
   dev: ['server/dev.mjs', '開発サーバー（ブラウザで編集）/ dev server (edit in the browser)', '<deck.html> [--port 8730] [--theme name]'],
   sheet: ['tools/sheet.mjs', '全スライドの最終段階を 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
