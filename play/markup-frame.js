@@ -106,7 +106,10 @@
       L.host = document.createElement("div");
       L.host.setAttribute("data-egatari-viewer", "layer");
       L.host.setAttribute("aria-hidden", "false");
-      L.host.style.cssText = "position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;z-index:3;margin:0;padding:0;border:0";
+      // no z-index, opacity, transform or isolation here: any of them makes the layer its own stacking context, and then the
+      // blended boxes mix with nothing instead of the text under them (Safari on an iPad then showed solid colour over the text).
+      // Positioned and after the article, the layer still paints over the text
+      L.host.style.cssText = "position:absolute;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;margin:0;padding:0;border:0;isolation:auto";
       L.root = L.host.attachShadow({ mode: "open" });
       var st = document.createElement("style"); st.textContent = LAYER_CSS;
       L.paint = document.createElement("div"); L.paint.setAttribute("aria-hidden", "true");

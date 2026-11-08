@@ -159,6 +159,8 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   ok(st.record.highlights.length === 4 && st.record.highlights.every((h) => h.target.section && h.target.quote.exact && h.created), `4 highlights recorded with a section and a quote (${st.record.highlights.map((h) => h.target.section + ':' + h.target.quote.exact).join(' | ')})`);
   ok(st.record.highlights[1].target.quote.exact === '代表値を 1 つ選ぶ' && !st.record.highlights[1].target.quote.exact.includes('だいひょうち'), 'the quote leaves out ruby readings');
   ok(/右辺で\s*c\s*を含む/.test(st.record.highlights[2].target.quote.exact), `the quote across inline math is the visible text (${st.record.highlights[2].target.quote.exact})`);
+  ok(await f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=layer]'), c = getComputedStyle(h); return c.zIndex === 'auto' && c.isolation === 'auto' && c.opacity === '1' && c.transform === 'none' && c.position === 'absolute'; }),
+    'the layer forms no stacking context of its own (no z-index, isolation, opacity or transform), so the blended boxes mix with the text under them');
   const sz = await sizes(f);
   ok(sz.y === 2 && sz.p === 1 && sz.b === 1, `painted in the markup layer (${JSON.stringify(sz)})`);
   ok(await f.evaluate(() => document.getElementById('egatari-article').innerHTML) === before, 'the book\'s HTML is unchanged');
