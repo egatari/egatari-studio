@@ -125,10 +125,12 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     const json = execFileSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(pathToFileURL(path.join(dir, 'data.mjs')).href)}).then((m) => process.stdout.write(JSON.stringify(m.PACK)))`], { encoding: 'utf8', maxBuffer: 64 << 20 });
     const oldData = JSON.parse(json);
     assert.match(oldData.partsSrc, /\/v2\.4\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.5\.0\//);
+    assert.match(PACK.partsSrc, /\/v2\.5\.1\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(PACK);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
+    // 部品庫 2.5.1 で m-map-japan の README（日本語）に階級の決まりが加わった。同じく v0.6.6 のものに揃えて比べる
+    cur.ja.components['m-map-japan'] = oldData.ja.components['m-map-japan'];
     const a = jaDump(cur), b = jaDump(oldData);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);
