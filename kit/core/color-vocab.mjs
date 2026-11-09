@@ -1,4 +1,4 @@
-// テーマの色の語彙の外の色（format spec §8.4「Theme colours」）を原稿（deck.html）から探す。品質チェック（kit/check.mjs）が警告にする（R-colors。
+// テーマの色の語彙の外の色（format spec §8.4「Theme colours」）を原稿（deck.html）から探す。品質チェック（kit/check.mjs）が情報として知らせる（R-colors。修正依頼には入れない。
 // 教材は組める：スライドは SHOULD）。Node にもブラウザにも依存しない
 //   colorsOutsideVocabulary(src) → [{kind, items: [{what, n, line}], n, line}]（見つかった kind だけ。items は値ごとに 1 つ、出た順。n は数、line は最初の行）
 //     kind 'literal'：色をじかに書いたもの。16 進（#rgb #rgba #rrggbb #rrggbbaa）、色の関数（rgb() rgba() hsl() hsla() hwb() lab() lch() oklab() oklch() color()）、

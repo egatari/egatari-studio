@@ -135,8 +135,8 @@ export function buildFixRequest({ problems, deck, narration = '', lang = 'en', l
   const rules = guideRules(commonBody(lang === 'ja' ? 'ja' : 'en'));
   const secs = sectionsOf(deck);
   // 言葉からスタックの行とファイルの場所（一時フォルダ・file://・手元のサーバー）を除く（kit/core/error-text.mjs）
-  // 情報（sev: 'info'。本文の釣り合い balance など）は直すものではないので載せない（エラー・警告だけ）
-  const list = problems.filter((p) => p && p.sev !== 'info' && p.code !== 'balance').map((p) => ({ ...p, text: cleanErrorText(p.text), msg: p.msg === undefined ? undefined : cleanErrorText(p.msg), id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
+  // 情報（sev: 'info'。本文の釣り合い balance・語彙の外の色 colorOutside など）は直すものではないので載せない（エラー・警告だけ）
+  const list = problems.filter((p) => p && p.sev !== 'info' && p.code !== 'balance' && p.code !== 'colorOutside').map((p) => ({ ...p, text: cleanErrorText(p.text), msg: p.msg === undefined ? undefined : cleanErrorText(p.msg), id: p.i !== null && p.i !== undefined && secs[p.i] ? secs[p.i].id : null, rules: rulesFor(p) }));
   const used = [...new Set(list.flatMap((p) => p.rules))].filter((r) => rules.has(r));
   const out = [M.head, '', M.ask, ''];
   const partial = deck.length + narration.length > limit && list.some((p) => p.id);

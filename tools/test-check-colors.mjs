@@ -4,7 +4,7 @@
 //    じかに書いた色（16 進・色の関数・色の名前・var() の予備の値）は literal、相対色の構文（oklch・lch・hsl・hwb・rgb・lab・oklab・color() の from）で
 //    色相を変えた色は hue。元の色がじかに書いた色なら literal だけ
 // 2. 原稿の見るところ：<style> の宣言の値（セレクタの #id は色ではない）・style 属性・SVG の色の属性。<script> と url(#…) は見ない
-// 3. kit/check.mjs --json：種類ごとに 1 つの警告 colorOutside（rule R-colors）、エラーにしない。見本（tools/fixtures/check-colors/）の
+// 3. kit/check.mjs --json：種類ごとに 1 つの情報 colorOutside（rule R-colors）、警告にもエラーにもしない。修正依頼（kit/core/llm-fix.mjs）には入らない。見本（tools/fixtures/check-colors/）の
 //    許すものの slide には出ない
 // 4. 知らせの言葉（kit/check-messages.mjs）：日本語と英語、--lit を含む変数の一覧
 import fs from 'node:fs';
@@ -60,7 +60,7 @@ await t('見るところ：<style> の値（セレクタの #id は色ではな�
 });
 
 let res = null;
-await t('品質チェック（kit/check.mjs --json）：見本の原稿に colorOutside の警告が種類ごとに 1 つ（rule R-colors）。許すものは出ない。エラーにしない', () => {
+await t('品質チェック（kit/check.mjs --json）：見本の原稿に colorOutside の情報が種類ごとに 1 つ（rule R-colors）。許すものは出ない。警告にもエラーにもしない', () => {
   for (const f of ['deck.html', 'narration.md']) fs.copyFileSync(path.join(FIX, f), path.join(work, f));
   const b = spawnSync(process.execPath, ['kit/build.mjs', path.join(work, 'deck.html')], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(b.status, 0, b.stderr);
@@ -68,7 +68,7 @@ await t('品質チェック（kit/check.mjs --json）：見本の原稿に color
   res = JSON.parse(c.stdout);
   const got = res.results.filter((x) => x.code === 'colorOutside');
   assert.deepEqual(got.map((x) => x.data.kind).sort(), ['hue', 'literal']);
-  assert.ok(got.every((x) => x.sev === 'warn' && x.rule === 'R-colors'), JSON.stringify(got));
+  assert.ok(got.every((x) => x.sev === 'info' && x.rule === 'R-colors'), JSON.stringify(got));
   const hue = got.find((x) => x.data.kind === 'hue'), lit = got.find((x) => x.data.kind === 'literal');
   assert.deepEqual(hue.data.items.map((i) => i.what), [
     'oklch(from var(--accent2) l c calc(h + 30))', 'rgb(from var(--term) r g calc(b + 40))', 'hsl(from var(--emph) calc(h + 180) s l)', 'lab(from var(--emph) l calc(a * -1) b)',
@@ -77,6 +77,19 @@ await t('品質チェック（kit/check.mjs --json）：見本の原稿に color
   const body = fs.readFileSync(path.join(FIX, 'deck.html'), 'utf8');
   for (const ok of ['var(--lit)', 'color-mix(in oklch, var(--emph) 25%, var(--bg))', 'oklch(from var(--emph) min(l, 0.45) c h)']) assert.ok(body.includes(ok), ok);
   assert.ok(!res.results.some((x) => x.sev === 'error'), JSON.stringify(res.results.filter((x) => x.sev === 'error')));
+});
+
+await t('修正依頼（kit/core/llm-fix.mjs の buildFixRequest）：colorOutside は情報なので載らない。同じ品質チェックのエラー・警告は載る', async () => {
+  const { buildFixRequest } = await import('../kit/core/llm-fix.mjs');
+  assert.ok(res, 'no check results');
+  const probs = res.results.map((x) => ({ sev: x.sev, i: null, title: '', text: x.msg, code: x.code, rule: x.rule, data: x.data, msg: x.msg }));
+  const c = probs.find((p) => p.code === 'colorOutside');
+  assert.ok(c && c.sev === 'info');
+  // デッキは空で渡す（デッキの中の色の値と混ざらないように。指摘の一覧だけを見る）
+  const fr = buildFixRequest({ problems: [...probs, { sev: 'warn', i: null, title: '', text: 'KEEP-ME', code: 'x' }], deck: '', narration: '', lang: 'en' });
+  const text = typeof fr === 'string' ? fr : JSON.stringify(fr);
+  assert.ok(text.includes('KEEP-ME'), 'a warning is listed');
+  assert.ok(!text.includes('#ffcc00') && !text.includes('calc(h + 30)'), 'colorOutside is not listed');
 });
 
 await t('知らせの言葉：日本語と英語。どちらも場所の数・最初の行・値を言い、literal は var(--lit) を含む変数を挙げる', () => {

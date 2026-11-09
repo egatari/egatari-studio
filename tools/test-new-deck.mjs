@@ -44,8 +44,7 @@ const SINGLE_SET_EXPECTED = {
   // v0.6.7：英語の指示が部品庫の英語の説明（README.en.md、16 のパーツ）を読むようになり、外すパーツ 1 つで減る貼り付けの長さが小さくなった。
   // math は m-pie、maps は m-fishbone、kokugo は m-cycle、science は m-tree を 1 つ多く外す（stats は同じ）
   en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards', 'm-pie'],
-    // v0.6.8：色の一覧に光 --lit の 1 行（貼り付けの長さ 63）を足し、maps は m-quad も外す
-    maps: ['m-fishbone', 'm-quad'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
+    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
     science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'] },
   ja: {},

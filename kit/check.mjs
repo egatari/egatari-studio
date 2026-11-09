@@ -158,10 +158,11 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   }
   // 1.0 の語彙にない書き方（format spec §8.0）：色のクラス blue・red・gray、data-steps・data-anim、<html data-mode="lecture">。警告だけ（教材は組める）
   for (const x of legacyVocabulary(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(null, 'warn', x.code, x);
-  // テーマの色の語彙の外の色（format spec §8.4、R-colors）：じかに書いた色と、相対色の構文で色相を変えた色。種類ごとに 1 つの警告（値は 6 つまで並べる）。
+  // テーマの色の語彙の外の色（format spec §8.4、R-colors）：じかに書いた色と、相対色の構文で色相を変えた色。種類ごとに 1 つの情報（値は 6 つまで並べる）。
+  // 情報なので修正依頼（kit/core/llm-fix.mjs）には入らない（規格の担当の判断、2026-11-09）。
   // var(--役割)・color-mix() で役割どうし・役割と --bg を混ぜた色・色相を保って明るさや不透明度だけを変えた相対色は知らせない（kit/core/color-vocab.mjs）
   for (const x of colorsOutsideVocabulary(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) {
-    report(null, 'warn', 'colorOutside', { kind: x.kind, n: x.n, line: x.line, items: x.items, list: x.items.slice(0, 6).map((i) => i.what).join(', ') + (x.items.length > 6 ? ', …' : '') });
+    report(null, 'info', 'colorOutside', { kind: x.kind, n: x.n, line: x.line, items: x.items, list: x.items.slice(0, 6).map((i) => i.what).join(', ') + (x.items.length > 6 ? ', …' : '') });
   }
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));

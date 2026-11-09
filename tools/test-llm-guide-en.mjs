@@ -129,10 +129,10 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(PACK);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
-    // v0.6.8 で色の一覧に光 --lit の 1 行を足した（format spec §8.4）。その 1 行だけは除いて比べる
-    const LIT_JA = '\n  - `--lit`：光と、光が照らすもの。輪郭線を付けた塗りに使う';
-    assert.ok(cur.ja.common.includes(LIT_JA), 'the --lit line of the ja colour list');
-    cur.ja.common = cur.ja.common.replace(LIT_JA, '');
+    // v0.6.8 で science の束の指示に光 --lit の 1 行を足した（format spec §8.4）。その 1 行だけは除いて比べる（共通の本体はそのまま）
+    const LIT_JA = '\n\n色は R-colors のものに加えて `--lit` も使える：光と、光が照らすもの。輪郭線を付けた塗りに使う。';
+    assert.ok(cur.ja.sets.science.includes(LIT_JA), 'the --lit line of the ja science set');
+    cur.ja.sets.science = cur.ja.sets.science.replace(LIT_JA, '');
     const a = jaDump(cur), b = jaDump(oldData);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);

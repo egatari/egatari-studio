@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=6a4b889919cf6811 -->
+<!-- i18n: pair=reference.md sha256=f6c74989751968ae -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -441,7 +441,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 1 ターンが 200 字（日本語）/ 60 語（ほかの言語）を超える | 情報 |
 | 台本の言語がスライドの言語と違う（`narrLang`） | 情報 |
 | `--fg --term --emph --title --accent2` と `--bg` のコントラストが 4.5:1 未満。`--muted` が 3:1 未満 | エラー。警告 |
-| 原稿の中の、テーマの色の語彙の外の色（format spec §8.4、R-colors）。見るのは `<style>` の値・`style` 属性・SVG と HTML の色の属性（`fill`・`stroke`・`stop-color`・`flood-color`・`lighting-color`・`color`・`bgcolor`。`<script>` は見ない）。色をじかに書いたもの（16 進、`rgb()` `hsl()` `hwb()` `lab()` `lch()` `oklab()` `oklch()` `color()`、色を取るプロパティの中の色の名前、`var(--x, …)` のじかに書いた予備の値）と、相対色の構文で色相を変えた色（`oklch` `lch` `hsl` `hwb` は色相の成分が `h` そのもの以外（`calc(h + 30)`・数）、`rgb` と `color()` は成分のどれかが自分の名前以外、`lab` `oklab` は `a` か `b` を変えたもの）。許すもの：どの役割の `var(--…)`（`--lit` も）、役割どうし・役割と `--bg` を混ぜる `color-mix()`、色相を保って明るさ・鮮やかさ・不透明度だけを変えた相対色（`default` が `--title` を作るのと同じ） — `colorOutside`。種類ごとに 1 つで、値を並べる（`kit/core/color-vocab.mjs`） | 警告 |
+| 原稿の中の、テーマの色の語彙の外の色（format spec §8.4、R-colors）。見るのは `<style>` の値・`style` 属性・SVG と HTML の色の属性（`fill`・`stroke`・`stop-color`・`flood-color`・`lighting-color`・`color`・`bgcolor`。`<script>` は見ない）。色をじかに書いたもの（16 進、`rgb()` `hsl()` `hwb()` `lab()` `lch()` `oklab()` `oklch()` `color()`、色を取るプロパティの中の色の名前、`var(--x, …)` のじかに書いた予備の値）と、相対色の構文で色相を変えた色（`oklch` `lch` `hsl` `hwb` は色相の成分が `h` そのもの以外（`calc(h + 30)`・数）、`rgb` と `color()` は成分のどれかが自分の名前以外、`lab` `oklab` は `a` か `b` を変えたもの）。許すもの：どの役割の `var(--…)`（`--lit` も）、役割どうし・役割と `--bg` を混ぜる `color-mix()`、色相を保って明るさ・鮮やかさ・不透明度だけを変えた相対色（`default` が `--title` を作るのと同じ） — `colorOutside`。種類ごとに 1 つで、値を並べる（`kit/core/color-vocab.mjs`）。情報なので修正依頼には入らない | 情報 |
 | スライドごとに、見出しと本文の字と、その後ろの地のコントラスト（計算した色。画像・グラデーションの上と薄く見せている字は測らない）が 4.5:1 未満。いちばん低いものを 1 つ — `textContrast` | 警告 |
 | 教材が `@egatari/fonts-extra` の字体を選んでいる（教材の CSS か自分のテーマ）のに、その包みが npm の包み `egatari` と一緒に入っていないので、その字体が入らない — `fontsExtraMissing`（入れ方を言う） | エラー |
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
@@ -575,7 +575,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る。整数の px で、どの端も限りが緩くなる側へ 1px 未満で外向きに丸める。同梱の字体が読み込めなければ測らずに終了コード 2）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
 | `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
-| `node tools/test-check-colors.mjs [作業フォルダ]` | テーマの色の語彙の外の色（`colorOutside`）：値の種類ごとの決まり、原稿のどこを見るか、`tools/fixtures/check-colors/` の品質チェック（`var(--lit)`・役割の `color-mix()`・色相を保った相対色は出ない。色相を変えた `oklch` `rgb` `hsl` `lab` と、じかに書いた予備の値は出る） |
+| `node tools/test-check-colors.mjs [作業フォルダ]` | テーマの色の語彙の外の色（`colorOutside`）：値の種類ごとの決まり、原稿のどこを見るか、`tools/fixtures/check-colors/` の品質チェック（`var(--lit)`・役割の `color-mix()`・色相を保った相対色は出ない。色相を変えた `oklch` `rgb` `hsl` `lab` と、じかに書いた予備の値は情報として出て、修正依頼には入らない） |
 | `node tools/test-themes.mjs [作業フォルダ] [--shots <フォルダ>]` | 同梱のどのテーマでも、サンプルの教材が組めて品質チェックを通る。役割の色のコントラスト・色覚の模擬・ペンの色（[テーマ](#テーマ)）。`tokens.css` の `look` の形が `kit/core/theme-shapes.mjs` と同じ。数字の表を出し、`--shots` ならテーマごとの 1 枚の画像も |
 | `node tools/test-fonts.mjs [作業フォルダ]` | 字体：選んだ字体だけが入る（`theme.json` の `fonts` か CSS の名指し）、英語の教材と日本語の教材の `<em>`・`<i>` の中のラテン文字の Source Sans 3 の斜体、ファイルに入っていない字体の `fontNotEmbedded` |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |

@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 7855d763**
+**Instruction version: 273c153c**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
@@ -65,7 +65,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `7855d763`
+Pack version: `273c153c`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -116,7 +116,6 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
 - **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the narration section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
 - **R-colors** Colors only through the theme: the classes above and the math macros `\hlE` `\hlT` `\hlM`; no hex, `rgb()`, named colors, `\color` or `\textcolor`. In a component or inline SVG: **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style="stroke:var(--emph)"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)
-  - `--lit`: light and what it lights, a fill with an outline
 
 ### 2.3 Steps (reveal order = speaking order)
 
