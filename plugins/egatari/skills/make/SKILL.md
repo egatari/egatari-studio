@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：69c736a1**
+**指示の版：7855d763**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がない道具では案内を省き、`egatari --version` の版を利用者に伝える。
@@ -65,7 +65,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 # AI への指示
 
-指示の版：`69c736a1`
+指示の版：`7855d763`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -116,6 +116,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 - 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
 - **R-headings** スライドの見出し（表紙と扉は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を足す）。そのスライドの台本の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）
 - **R-colors** 色はテーマだけで：上の class と式のマクロ `\hlE` `\hlT` `\hlM`。16 進・`rgb()`・色の名前・`\color`・`\textcolor` は使わない。パーツや SVG の中では：**色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
+  - `--lit`：光と、光が照らすもの。輪郭線を付けた塗りに使う
 
 ### 2.3 ステップ（出す順 = 話す順）
 

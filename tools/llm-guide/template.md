@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=6cd71bcd343e541a -->
+<!-- i18n: pair=template.ja.md sha256=13576aba9bea60c9 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -83,6 +83,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
 - **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the narration section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
 - **R-colors** Colors only through the theme: the classes above and the math macros `\hlE` `\hlT` `\hlM`; no hex, `rgb()`, named colors, `\color` or `\textcolor`. In a component or inline SVG: {{contract §3 "**Use only the theme's CSS variables"}}
+  - `--lit`: light and what it lights, a fill with an outline
 
 ### 2.3 Steps (reveal order = speaking order)
 
