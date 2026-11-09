@@ -27,7 +27,7 @@ This file and the part set packs together are the **full pack**: the standards, 
 | Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 29.5 KB | 45 KB | 30,283 | 31,000 |
 | Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 32.5 KB | 45 KB | 30,918 | 31,000 |
 | Light instructions: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare, m-cards, m-pie left out) | 32.5 KB | 45 KB | 30,724 | 31,000 |
-| Light instructions: standard + maps (the core four shortened too; m-fishbone left out) | 32.0 KB | 45 KB | 30,949 | 31,000 |
+| Light instructions: standard + maps (the core four shortened too; m-fishbone left out) | 32.0 KB | 45 KB | 30,935 | 31,000 |
 | Light instructions: standard + kokugo (the core four shortened too; m-fishbone, m-quad, m-cycle left out) | 33.9 KB | 45 KB | 30,737 | 31,000 |
 | Light instructions: standard + english (the core four shortened too) | 27.2 KB | 45 KB | 27,481 | 31,000 |
 | Light instructions: standard + music (the core four shortened too) | 28.8 KB | 45 KB | 28,592 | 31,000 |
@@ -45,7 +45,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `273c153c`
+Pack version: `03b74c31`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -143,7 +143,7 @@ You will write one short **Egatari lesson**: an HTML slide deck with step-by-ste
 
 Some parts are not included in these instructions (for Spread, Compare (amounts or features), Two quantities, Steps of a process, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.5.0/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.5.1/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 

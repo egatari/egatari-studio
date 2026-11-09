@@ -41,7 +41,7 @@
 | [`<m-tree>`](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/README.md) | 1.13.1 | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置は部品が決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | orient, by, link, size, fade, draw | [demo](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/demo.html) |
 | [`<m-venn>`](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/README.md) | 1.13.1 | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数） | size, dur, spread, overlaps | [demo](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/demo.html) |
 
-## 2.x のパーツ（components2.lock.json の既定の版 2.5.0）
+## 2.x のパーツ（components2.lock.json の既定の版 2.5.1）
 
 1.x の目録にない、2.x 専用の要素パーツ（`kind: "element"`）。土台パーツ（`kind: "library"`：base・boxplot-core・codetree-core・
 expr・heatmap-core・hist-core・icons・kanbun-core・markup-reader・plot・shape）は教材の作者が直接書かないので一覧には出さない。
@@ -49,7 +49,7 @@ expr・heatmap-core・hist-core・icons・kanbun-core・markup-reader・plot・s
 | 部品 | 版 | 内容 | 段階の数 | 受け取る値 | 見本 |
 |---|---|---|---|---|---|
 | [`<m-cards>`](sha256/f3d5b6ce53f40c5f355a67538ff11b9cd28297da6292125ccb6e055aeddef906/README.md) | 2.0.3 | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、段階ごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 段階。per-step で n 枚ずつ） | layout, arrows, nums, hilite, per-step, stagger, dur | [demo](sha256/f3d5b6ce53f40c5f355a67538ff11b9cd28297da6292125ccb6e055aeddef906/demo.html) |
-| [`<m-orbit>`](sha256/37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09/README.md) | 2.0.3 | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 段階。visit で決める） | mode, hemisphere, sun, earth, moon, observer, size, dur | [demo](sha256/37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09/demo.html) |
+| [`<m-orbit>`](sha256/2e9a35ce9e289196d0b5fd24b8546cf6e0f4a6df857e69f4f78e686cabb00e61/README.md) | 2.0.4 | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 段階。visit で決める） | mode, hemisphere, sun, earth, moon, observer, size, dur | [demo](sha256/2e9a35ce9e289196d0b5fd24b8546cf6e0f4a6df857e69f4f78e686cabb00e61/demo.html) |
 | [`<m-particles>`](sha256/ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098/README.md) | 2.0.0 | 状態変化の粒子の並び方と間隔、化学変化で保存される原子の数を見せる | state は states の数 − 1（既定 2）。reaction は反応前→原子に分かれる→反応後の 3 段階 | mode, count, size, dur, volume, motion | [demo](sha256/ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098/demo.html) |
 | [`<m-score>`](sha256/abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f/README.md) | 2.1.0 | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 段階。by="measure" なら 1 小節＝1 段階（per-step="N" なら N 小節。弱起の小節は次の段階に入る） | by, names, per-step | [demo](sha256/abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f/demo.html) |
 

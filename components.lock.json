@@ -3141,19 +3141,22 @@
         "2.0.0",
         "2.0.1",
         "2.0.2",
-        "2.0.3"
+        "2.0.3",
+        "2.0.4"
       ],
       "sha256": {
         "2.0.0": "6440523fdf4b08fe23bda918d6db8c4656a58a74bb81d4de8b205113483316a8",
         "2.0.1": "dbbd262ab28045a0f5e0cbec09b6068a0343668bf21e61bb02f8d0c4c1bc2ea7",
         "2.0.2": "7dbbb3852a77a1a3dcfba8c69574d2a87e6b87adbfa84f30c0359e2bae0afb2b",
-        "2.0.3": "d93729f39a0753001c9eef8ad2c12827aff99ff1807cb6891afb9e29b5c3491d"
+        "2.0.3": "d93729f39a0753001c9eef8ad2c12827aff99ff1807cb6891afb9e29b5c3491d",
+        "2.0.4": "b52d8e779ee991153bb3143733e4e2a4b72d08adda31c927992617ddf2097b0b"
       },
       "content": {
         "2.0.0": "41fb94497e0230488b8eb37688bd07109cdd5a03948b892ba621345a1a6314dd",
         "2.0.1": "b3ebd4ffde8bc39c7f9100642307cd83b9d32e072f1f894e7c4d6996a6cc0d21",
         "2.0.2": "6177d9adeb09f8c72c4105e521f723202623d8887ee9e03e53aec51073d33123",
-        "2.0.3": "37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09"
+        "2.0.3": "37ea0051e8a1f2d7c2fa2d38e57730e5a3b1afabe9037a74fcad6e6f05356c09",
+        "2.0.4": "2e9a35ce9e289196d0b5fd24b8546cf6e0f4a6df857e69f4f78e686cabb00e61"
       },
       "catalogue": "2"
     },
