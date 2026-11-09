@@ -250,6 +250,8 @@ steps.push(
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 本文の釣り合い（R-balance の段 1、balance。情報だけで、修正依頼に入らない）
   ['test-check-fill', ['tools/test-check-fill.mjs', path.join(tmp, 'check-fill')]],
+  // 同じ重さの短い要点だけの本文の提案（backlog #189、cardsHint。情報だけで、修正依頼に入らない）
+  ['test-check-cards-hint', ['tools/test-check-cards-hint.mjs', path.join(tmp, 'check-cards-hint')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
   // 動画の音声（render.mjs）：5 段階のチャープを --full で書き出し、継ぎ目の誤差 1 標本以内・跳びなし・積み上げた時間と 1 ms 以内・章とクリップの区間・背景の音楽。ffmpeg がなければ書き出しの部分を飛ばす（CI では tier2 が必ず走らせる）

@@ -225,6 +225,8 @@ export const MESSAGES = {
   desuMasu: { rule: 'R-style', ja: (a) => `スライドの字に です・ます がある（「${a.t}」）：スライドは常体（だ・である、体言止め）で書く。です・ます は口述原稿だけ`, en: (a) => `the slide text uses です・ます (“${a.t}”): write slides in plain style (だ・である or a noun ending); keep です・ます for the narration` },
   rawMath: { rule: 'R-math', ja: (a) => `数式が KaTeX で組まれずに残っている（「${a.t}」）：\\( … \\) か \\[ … \\] で囲み、$ … $ は使わない`, en: (a) => `math was left unrendered (“${a.t}”): wrap it in \\( … \\) or \\[ … \\], not $ … $` },
   katexError: { rule: 'R-math', ja: (a) => `KaTeX が式を組めない（「${a.t}」）：式の書き方を直す（< は \\lt、使えるマクロは \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph）`, en: (a) => `KaTeX cannot render an equation (“${a.t}”): fix its syntax (write < as \\lt; allowed macros are \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph)` },
+  // 同じ重さの短い要点だけの本文（kit/core/layout-scan.mjs、backlog #189。情報だけ：直すかは作成者が決める）
+  cardsHint: { rule: 'R-purpose', ja: () => '同じ重さの短い要点なら、カード（m-cards）にすると見やすいことがあります', en: () => 'Short, equal points may read better as cards (m-cards)' },
   // 本文の釣り合い（R-balance の段 1、情報。kit/core/fill-measure.mjs）：数だけを言う。直し方は段 2 で足す（字で埋めさせない）
   // 横組み：重心は光学的な中心（上から 45%）に対して、空きは下 − 上。縦組み：重心は左右の真ん中に対して、空きは左 − 右
   balance: { rule: 'R-balance',

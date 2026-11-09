@@ -250,6 +250,12 @@ function quickCheck(fonts){
     if (hasC) { keys.push("concl"); valid.concl = true; }
     Object.keys(DECK.NARRATION[s._key] || {}).forEach(function(sk){ if (!valid[sk]) add(i, "error", "orphanNarration", {step: sk, max: smax, cstep: hasC ? smax : -1, static: isStatic, keys: keys, comps: bad}); });
   }); });
+  // cardsHint は 1 つの教材で最大 arg.cap 個（長さのそろい方 arg.ratio の小さい順、同じなら前のスライド。kit/check.mjs と同じ）
+  var hints = out.filter(function(r){ return r.code === "cardsHint"; });
+  if (hints.length > 1) {
+    var keep = hints.map(function(r, k){ return {r: r, k: k}; }).sort(function(x, y){ return x.r.arg.ratio - y.r.arg.ratio || x.k - y.k; }).slice(0, hints[0].arg.cap).map(function(x){ return x.r; });
+    out = out.filter(function(r){ return r.code !== "cardsHint" || keep.indexOf(r) >= 0; });
+  }
   // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）
   // 同梱の字体が読み込めていなければ測らない（代わりの字体では測らない）：metricsFontLoad
   // ファイルに入っていない字体（コマンド版と同じ。metricsFonts の foreign）

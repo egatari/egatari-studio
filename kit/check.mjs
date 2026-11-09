@@ -446,7 +446,7 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS])
     const issues = [], warns = [];
     const body = s.querySelector('.body');
     // はみ出し・切れ・字の大きさ・字数（kit/core/layout-scan.mjs。編集アプリの品質チェックと同じ関数）
-    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT, overlap: OVERLAP, metrics: METRICS })) (f.sev === 'error' ? issues : warns).push([f.code, f.a]);
+    for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT, overlap: OVERLAP, metrics: METRICS })) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
     if (body) {
       const txt = (() => { const c = body.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); document.body.appendChild(c); c.style.cssText = 'position:absolute;left:-99999px;width:' + body.clientWidth + 'px'; const r = c.innerText; c.remove(); return r; })();
       // 句読点はデッキの中でそろっていればよい（どちらにするかは元の原稿に合わせる）。数えて後で比べる
@@ -477,7 +477,10 @@ if (foreign.length) report(null, 'warn', 'fontNotEmbedded', { fonts: foreign });
 if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: themeInfo.name, declared: !!themeInfo.declared, items: probe.items });
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
-for (const { i, issues } of aOut.soft) for (const [code, a] of issues) report(i, 'warn', code, a);
+// cardsHint は 1 つの教材で最大 a.cap 個（長さのそろい方 a.ratio の小さい順、同じなら前のスライド）。残りは出さない（kit/core/layout-scan.mjs の CH.cap）
+const cardsHints = [];
+for (const { i, issues } of aOut.soft) for (const [code, a, sev] of issues) { if (code === 'cardsHint') cardsHints.push({ i, a }); else report(i, sev === 'info' ? 'info' : 'warn', code, a); }
+cardsHints.map((h, k) => ({ ...h, k })).sort((x, y) => x.a.ratio - y.a.ratio || x.k - y.k).slice(0, cardsHints[0] ? cardsHints[0].a.cap : 0).sort((x, y) => x.k - y.k).forEach((h) => report(h.i, 'info', 'cardsHint', h.a));
 await collectPartReports();
 {
   const tot = aOut.punct.reduce((a, p) => ({ jp: a.jp + p.jp, en: a.en + p.en }), { jp: 0, en: 0 });
