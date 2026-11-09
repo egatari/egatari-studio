@@ -471,7 +471,7 @@ export function layoutScan(s, o) {
 
   // 同じ重さの短い要点だけの本文はカード（m-cards）が見やすいことがある（backlog #189、R-purpose。情報だけ。直すかは作成者が決める）
   // 字だけ：本文の直下が 1 つの ul（li が 3〜4 つ）と、あっても短い導入の p 1 つだけ。入れ子の ul・ol、ol、パーツ（m-…）・svg・img・table・数式の別行は対象にしない。
-  // 1 つ 30 字まで（日本語は字数の数え方 units：全角 1・半角 0.5、英語など日本語でないデッキは文字数）、長さは最長 ÷ 最短 が 2 以下。表紙・章の扉・static・縦組みは見ない
+  // 1 つ 30 字まで（日本語は字数の数え方 units：全角 1・半角 0.5、英語など日本語でないデッキは文字数）、長さは最長 ÷ 最短 が 2 以下。数式を含む項目・順を表す項目（まず・次に・そこで・最後に、first・next・then・finally で始まる、または → を含む）があれば見ない。表紙・章の扉・static・縦組みは見ない
   {
     const CH = { min: 3, max: 4, len: 30, ratio: 2, lead: 60 };
     const bchildren = body ? [...body.children] : [];
@@ -482,7 +482,10 @@ export function layoutScan(s, o) {
       const len = (t) => (JA ? units(t) : [...t].length);
       const ts = lis.map((li) => vis(li).replace(/\s+/g, ' ').trim());
       const lead = ps.length ? vis(ps[0]).replace(/\s+/g, ' ').trim() : '';
-      if (lis.length >= CH.min && lis.length <= CH.max && lis.every((li) => li.tagName === 'LI') && ts.every((t) => t) && len(lead) <= CH.lead) {
+      // 数式を含む項目（組まれた KaTeX の .katex、または組まれずに残った \( \) \[ \] と $…$）と、順を表す項目（まず・次に・そこで・最後に / first・next・then・finally で始まる、または → を含む）は、カードにしない
+      const math = lis.some((li) => li.querySelector('.katex')) || ts.some((t) => /\\[(\[]|\$[^$]+\$/.test(t));
+      const seq = ts.some((t) => /^[\s\p{P}\p{S}]*(まず|次に|そこで|最後に|(first|next|then|finally)\b)/iu.test(t) || t.includes('→'));
+      if (!math && !seq && lis.length >= CH.min && lis.length <= CH.max && lis.every((li) => li.tagName === 'LI') && ts.every((t) => t) && len(lead) <= CH.lead) {
         const ls = ts.map(len), mx = Math.max.apply(null, ls), mn = Math.min.apply(null, ls);
         if (mx <= CH.len && mx / mn <= CH.ratio) add('info', 'cardsHint', { n: lis.length, max: mx, min: mn });
       }

@@ -22,8 +22,8 @@ const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + nam
 
 let res = null;
 // 見本のスライドの番号（1 から。tools/fixtures/check-cards-hint/deck.html の並び）
-const FIRE = [1, 2, 3];   // fire-3・fire-4・fire-lead
-const QUIET = [4, 5, 6, 7, 8, 9, 10, 11];   // no-2・no-5・no-long・no-unequal・no-nested・no-ol・no-part・no-static
+const FIRE = [1, 2, 3, 12];   // fire-3・fire-4・fire-lead・fire-midword（そこで が文頭でない）
+const QUIET = [4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16];   // no-2・no-5・no-long・no-unequal・no-nested・no-ol・no-part・no-static・no-math（式）・no-seq-ja（まず・次に・最後に）・no-seq-ja2（そこで）・no-arrow（→）
 const run = (dir, deck) => {
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'deck.html'), deck);
@@ -88,6 +88,16 @@ await t('境目：30 字ちょうどは知らせ、31 字は知らせない。�
   assert.equal(spawnSync(process.execPath, ['kit/build.mjs', path.join(en, 'deck.html')], { cwd: ROOT, encoding: 'utf8' }).status, 0);
   const re = JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(en, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
   assert.deepEqual(hits(re).map((x) => x.slide), [1]);
+  // 順を表す英語の語（大文字小文字を問わず、先頭の記号の後）・語の一部は順の語にしない・組まれずに残った TeX・$…$
+  const e2 = path.join(work, 'edge-en2'), l3 = (a, b, c) => `<ul><li>${a}</li><li>${b}</li><li>${c}</li></ul>`;
+  const ids2 = ['q-first', 'q-then', 'q-dollar', 'f-word', 'f-mid'];
+  fs.mkdirSync(e2, { recursive: true });
+  fs.writeFileSync(path.join(e2, 'deck.html'), mk(deck('q-first', '', l3('First, collect', 'Gather more', 'Clean it up')) + deck('q-then', '', l3('Fast to run', '- THEN tune it', 'Easy to read'))
+    + deck('q-dollar', '', l3('Mean is $\\mu$', 'Spread is wide', 'Easy to read')) + deck('f-word', '', l3('Firstly it is fast', 'Nextgen tools ok', 'Easy to read')) + deck('f-mid', '', l3('Fast, then slow', 'Simple, first of all', 'Easy to read')), 'en'));
+  fs.writeFileSync(path.join(e2, 'narration.md'), ids2.map((id) => `## ${id} {#s-${id}}\n\n[0] A test.\n`).join('\n'));
+  assert.equal(spawnSync(process.execPath, ['kit/build.mjs', path.join(e2, 'deck.html')], { cwd: ROOT, encoding: 'utf8' }).status, 0);
+  const r2 = JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(e2, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
+  assert.deepEqual(hits(r2).map((x) => ids2[x.slide - 1]), ['f-word', 'f-mid']);
 });
 
 console.log(fail ? `${fail} of ${n} failed` : `all ${n} ok`);
