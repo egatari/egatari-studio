@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // egatari コマンド（npm の包み egatari の bin。npx egatari …）：各スクリプトに振り分けるだけ
-//   egatari new|ids|check|build|dev|sheet|comment-shots|portable|video|tts|doctor|skills update [引数…]、egatari --version、egatari --help
+//   egatari new|ids|ids-of|check|build|dev|sheet|comment-shots|portable|video|tts|doctor|skills update [引数…]、egatari --version、egatari --help
 // 引数はそのままスクリプトに渡す。相対パスは呼び出した場所（cwd）から解く（INIT_CWD も cwd にそろえる）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -22,6 +22,7 @@ const SCRIPTS = {
   sheet: ['tools/sheet.mjs', '全スライドの最終段階を 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
   'comment-shots': ['tools/comment-shots.mjs', '開発サーバーのコメントの画面を撮る / screenshots of open dev-server comments', '<folder | deck.html> [id …] [--all]'],
   ids: ['tools/ids.mjs', 'スライドに安定した id を付ける / give slides stable ids', '<folder | deck.html> [--dry-run]'],
+  'ids-of': ['tools/ids-of.mjs', 'Egatari ファイルの docId・sourceSha256・ファイル全体の SHA-256 を 1 行ずつ出す / print docId, sourceSha256 and the whole-file SHA-256 of Egatari files', '<file.ega.html> [<file> …] [--json]'],
   portable: ['tools/portable.mjs', '1 ファイル（.ega.html）と作業フォルダの行き来 / single file (.ega.html) <-> working folder', 'unpack|pack|attach|compare …'],
   video: ['render/render.mjs', '音声の入った教材を動画に（ffmpeg が要る。音声は作らない）/ export a lesson with its audio to video (needs ffmpeg; makes no audio)', '<folder | .ega.html>  または / or  <out/deck.html> --out <dir> [--full] [--only key,…]'],
 };
