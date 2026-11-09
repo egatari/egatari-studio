@@ -1967,8 +1967,9 @@ async function exportPortableFile() {
   if (!(await leftoverGate('export'))) return;
   const ws0 = S.ws, g0 = S.gen;
   status(T.exporting);
-  let r;
+  let r, before = null;
   try {
+    before = await ws0.list().catch(() => null);   // 書き出す前の作業フォルダ（動画の窓が、書き出しの後に変更がないかを見る。下の S.lastExport）
     if (book.present()) await book.ensure();   // 本のある作業フォルダ（本の道具がページに要る）
     r = await engine.exportPortable(S.deckFile, { fromFolder: true });   // 作業フォルダからの書き出し：書き出しの印（exportedFrom、§3.1）を書く
   }
@@ -1997,7 +1998,7 @@ async function exportPortableFile() {
     for (const [rel, text] of Object.entries(r.writes)) await ws0.writeText(rel, text, { live });
     status(T.exported(time(), (r.html.length / 1048576).toFixed(1)));
     toast(h ? T.portableExportedToast : T.downloadedToast(name));
-    S.lastExport = { ws: ws0, builds: S.builds, name: h ? h.name || name : name };   // 動画（MP4）にする…の窓が、エクスポートの後に変更がないかを見る
+    S.lastExport = { ws: ws0, sig: await exportedSig(ws0, before, [...Object.keys(r.writes), ...(h ? await relIn(ws0, h) : [])]), name: h ? h.name || name : name };
     return true;
   } catch (e) {
     if (e && e.name === 'Cancelled') { status(''); toast(T.api.cancelled, true); return; }
@@ -2005,14 +2006,32 @@ async function exportPortableFile() {
   }
 }
 
+// 動画（MP4）にする…の窓が、エクスポートの後に変更がないかを見る印：書き出しの後の作業フォルダの中身の印（signature）。
+// 組み直した回数（S.builds）では見ない：書き出しが自分で書いたもの（作業フォルダに保存した .ega.html、初めて作った docId の egatari.json）を
+// 外での変更の見張り（startPoll）が見つけて組み直すので、回数は作成者が何も変えなくても増える（込んだ macOS では窓を開く前に増えた）。
+// 書き出しの前と後で、書き出しが書いたもの（own）のほかに変わったものがあれば（書き出しの間の変更）null（もう一度エクスポートを求める）
+async function exportedSig(ws, before, own) {
+  if (!before) return null;
+  try {
+    const after = await ws.list(), skip = new Set(own);
+    const rest = (l) => signature({ files: new Map([...l.files].filter(([rel]) => !skip.has(rel))) });
+    return rest(before) === rest(after) ? signature(after) : null;
+  } catch { return null; }
+}
+// 保存した先（ファイルのハンドル）が作業フォルダの中なら、その中のパス（[rel]）。外・調べられないなら []
+async function relIn(ws, h) {
+  try { const p = ws.handle && ws.handle.resolve ? await ws.handle.resolve(h) : null; return p ? [p.join('/')] : []; } catch { return []; }
+}
+
 // ---------------------------------------------------------------- 「エクスポート ▸」→「動画（MP4）にする…」（#131）
 // 動画はブラウザの中では作らない。Google Colab のノート（colab/egatari-video.ipynb）に .ega.html を上げてもらう案内の窓。
 // 主のボタン：1 ファイルで保存していない変更があれば「保存して Colab を開く」、作業フォルダでこの作業場所からまだエクスポートしていない
-// （またはその後に組み直した）なら「Egatari ファイルに保存して Colab を開く」、どちらでもなければ「Colab を開く」。保存・エクスポートの後に新しいタブで開く
-function mp4Need() {
+// （またはその後に作業フォルダの中身が変わった）なら「Egatari ファイルに保存して Colab を開く」、どちらでもなければ「Colab を開く」。保存・エクスポートの後に新しいタブで開く
+async function mp4Need() {
   if (S.portable) return S.ws && S.ws.dirty ? 'save' : 'open';
   const x = S.lastExport;
-  return x && x.ws === S.ws && x.builds === S.builds ? 'open' : 'export';
+  if (!x || x.ws !== S.ws || !x.sig) return 'export';
+  try { return signature(await S.ws.list()) === x.sig ? 'open' : 'export'; } catch { return 'export'; }
 }
 async function mp4Name() {
   if (S.portable && S.portable.name) return S.portable.name;
@@ -2030,7 +2049,7 @@ function openColabVideo() {
 }
 async function mp4Dialog() {
   if (!S.ws) return;
-  const need = mp4Need(), stale = (S.stale || []).length;
+  const need = await mp4Need(), stale = (S.stale || []).length;
   const v = await ask({ title: T.mp4Title,
     body: [el('p', { id: 'mp4-lead', text: T.mp4Lead(await mp4Name()) }), stale ? el('p', { id: 'mp4-stale', cls: 'note', text: T.mp4Stale(stale) }) : null],
     buttons: [{ id: 'cancel', label: T.cancel }, { id: 'go', label: need === 'save' ? T.mp4SaveOpen : need === 'export' ? T.mp4ExportOpen : T.mp4Open, pri: true }] });

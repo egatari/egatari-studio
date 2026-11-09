@@ -5,8 +5,10 @@
 //   1. 1 ファイル（保存済み）：項目がある・窓の文にファイルの名前・音声の更新が必要なステップの 1 行・主のボタンは「Colab を開く」・新しいタブで Colab の動画のノート
 //   2. 1 ファイル（保存していない変更）：主のボタンは「保存して Colab を開く」→ 保存してから開く。保存の後は「Colab を開く」
 //   3. 作業フォルダ（まだエクスポートしていない）：「Egatari ファイルに保存して Colab を開く」→ エクスポートしてから開く。その後は「Colab を開く」
+//      （エクスポートが自分で書いたもので組み直しても。組み直しは記録の後に必ず起こす）
 //   4. 新しいタブを開けなかった（ポップアップが止められた）：リンクを押してもらう窓
-//   5. 英語の画面：同じ窓の英語
+//   5. 作業フォルダでエクスポートの後に原稿を変えた：もう一度「Egatari ファイルに保存して Colab を開く」
+//   6. 英語の画面：同じ窓の英語
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -42,6 +44,8 @@ execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack'
 const lesson = fs.readFileSync(packed, 'utf8');
 const folderFiles = {};
 for (const rel of ['deck.html', 'narration.md', FORMAT.CONFIG_FILE, 'audio/manifest.json', 'audio/a.wav']) folderFiles[rel] = fs.readFileSync(path.join(src, rel)).toString('base64');
+// 作業フォルダは docId のない設定のファイルで：エクスポートが初めて docId を作り、egatari.json に書き戻す（エクスポートが自分で書くもの）
+{ const { docId, ...rest } = JSON.parse(fs.readFileSync(path.join(src, FORMAT.CONFIG_FILE), 'utf8')); folderFiles[FORMAT.CONFIG_FILE] = Buffer.from(JSON.stringify(rest, null, 2) + '\n').toString('base64'); }
 const title = JSON.parse(fs.readFileSync(path.join(src, FORMAT.CONFIG_FILE), 'utf8'))?.metadata?.title || '勾配降下法の基本';
 const URL_ = colabVideoUrl();
 
@@ -170,15 +174,33 @@ try {
     o = await opened(page);
     const exported = await page.evaluate(async () => (await (await window.__APP_TEST.saveHandle.getFile()).text()).length);
     ok(exported > 1000 && o.length === 1 && o[0][0] === URL_, `${lang} folder: exports the Egatari file, then opens Colab (${exported} bytes, ${JSON.stringify(o)})`);
-    // 書き出しの記録は Colab を開いたあとに残る（込んだ macOS では、すぐ開き直すと前の文言のことがある）。文言が変わるまで開き直す
-    for (let i = 0; ; i++) { d = await dialog(page); if (d.go === T.open || i >= 20) break; await page.keyboard.press('Escape'); await page.waitForSelector('#dlg[open]', { state: 'detached' }).catch(() => {}); await page.waitForTimeout(250); }
-    ok(d.go === T.open && d.lead === T.lead('exported.ega.html'), `${lang} folder: after the export, “${T.open}” and the exported file's name (${d.lead})`);
+    const cfg = await page.evaluate(async () => (await (await window.__dir.getFileHandle('egatari.json')).getFile()).text());
+    ok(/"docId"/.test(cfg), `${lang} folder: the export wrote the new docId back to egatari.json`);
+    // エクスポートが自分で書いたもの（作業フォルダの .ega.html と egatari.json）を外での変更の見張りが見つけて組み直すのは、書き出しの記録の後。
+    // 込んだ macOS ではいつもそうなる（組み直した回数で見ていたので、ずっと「Egatari ファイルに保存して…」のままだった）。ここでは必ずそうする：
+    // 記録の後に組み直し、見張りの間隔（1.5 秒）の 2 倍を待って、見張りの組み直しも済ませてから開く
+    const b1 = (await state(page)).builds;
+    await page.evaluate(() => window.__APP_TEST.rebuild());
+    await page.waitForTimeout(3000);
+    await page.waitForFunction(() => !window.__APP_TEST.state().building, null, { timeout: scaled(60000) });
+    const b2 = (await state(page)).builds;
+    d = await dialog(page);
+    ok(b2 > b1 && d.go === T.open && d.lead === T.lead('exported.ega.html'), `${lang} folder: after the export (and rebuilds after it, ${b1} → ${b2}), “${T.open}” and the exported file's name (${d.go} / ${d.lead})`);
 
     // 4. ポップアップが止められた：リンクを押してもらう
     await stubOpen(page, true);
     await clickDlg(page, '#dlg-go');
     await page.waitForSelector('#dlg[open] #mp4-blocked', { timeout: scaled(10000) });
     ok((await page.getAttribute('#mp4-link', 'href')) === URL_ && (await page.getAttribute('#mp4-link', 'target')) === '_blank', `${lang}: when the new tab is blocked, a link to the notebook`);
+    await clickDlg(page, '#dlg-cancel');
+
+    // 5. エクスポートの後に作成者が原稿を変えた：もう一度「Egatari ファイルに保存して Colab を開く」
+    await page.evaluate(async () => {
+      const h = await window.__dir.getFileHandle('narration.md'), t = await (await h.getFile()).text();
+      const w = await h.createWritable(); await w.write(t + '\n'); await w.close();
+    });
+    d = await dialog(page);
+    ok(d.go === T.exp, `${lang} folder, changed after the export: the main button is “${T.exp}” again (${d.go})`);
     await clickDlg(page, '#dlg-cancel');
     await ctx.close();
   }
