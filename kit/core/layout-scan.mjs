@@ -469,6 +469,26 @@ export function layoutScan(s, o) {
   // 章の扉（.sec）の題は h1。h2 だけで書いた扉を知らせる（#128。CSS は h2 も読めるようにしたが、書き方は h1 にそろえる）
   if (s.classList.contains('sec') && s.querySelector('h2') && !s.querySelector('h1')) add('warn', 'secHeading', { t: sample((s.querySelector('h2').textContent || '').replace(/\s+/g, ' ').trim()) });
 
+  // 同じ重さの短い要点だけの本文はカード（m-cards）が見やすいことがある（backlog #189、R-purpose。情報だけ。直すかは作成者が決める）
+  // 字だけ：本文の直下が 1 つの ul（li が 3〜4 つ）と、あっても短い導入の p 1 つだけ。入れ子の ul・ol、ol、パーツ（m-…）・svg・img・table・数式の別行は対象にしない。
+  // 1 つ 30 字まで（日本語は字数の数え方 units：全角 1・半角 0.5、英語など日本語でないデッキは文字数）、長さは最長 ÷ 最短 が 2 以下。表紙・章の扉・static・縦組みは見ない
+  {
+    const CH = { min: 3, max: 4, len: 30, ratio: 2, lead: 60 };
+    const bchildren = body ? [...body.children] : [];
+    const uls = bchildren.filter((e) => e.tagName === 'UL'), ps = bchildren.filter((e) => e.tagName === 'P');
+    if (body && !tate && !['cover', 'sec', 'static'].some((x) => s.classList.contains(x)) && uls.length === 1 && ps.length <= 1 && bchildren.length === uls.length + ps.length
+      && !body.querySelector('ol, table, svg, img, canvas, video, .katex-display, ul ul') && ![...body.querySelectorAll('*')].some((e) => e.tagName.includes('-'))) {
+      const lis = [...uls[0].children];
+      const len = (t) => (JA ? units(t) : [...t].length);
+      const ts = lis.map((li) => vis(li).replace(/\s+/g, ' ').trim());
+      const lead = ps.length ? vis(ps[0]).replace(/\s+/g, ' ').trim() : '';
+      if (lis.length >= CH.min && lis.length <= CH.max && lis.every((li) => li.tagName === 'LI') && ts.every((t) => t) && len(lead) <= CH.lead) {
+        const ls = ts.map(len), mx = Math.max.apply(null, ls), mn = Math.min.apply(null, ls);
+        if (mx <= CH.len && mx / mn <= CH.ratio) add('info', 'cardsHint', { n: lis.length, max: mx, min: mn });
+      }
+    }
+  }
+
   // 字と地のコントラスト（見出しと本文。計算した色で。WCAG 4.5:1 より低ければ警告。#128）：地は字の要素から上へ、色のある最初の background-color
   // （背景の画像・グラデーションのある所、半透明の重ね、薄く見せている要素は測らない）。いちばん低いものを 1 つ知らせる
   {
