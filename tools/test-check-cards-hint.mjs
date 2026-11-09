@@ -37,7 +37,8 @@ const hits = (r) => r.results.filter((x) => x.code === 'cardsHint');
 
 // 見本の 4 つの候補は上限（2）を超えるので、2 つずつに分けた原稿で、どれも出ることを確かめる（上限は最後の試験）
 const part = (keep) => {
-  const src = fs.readFileSync(path.join(FIX, 'deck.html'), 'utf8'), secs = src.match(/<section[\s\S]*?<\/section>\n/g), nar = fs.readFileSync(path.join(FIX, 'narration.md'), 'utf8').split(/(?=^## )/m);
+  const crlf = (f) => fs.readFileSync(path.join(FIX, f), 'utf8').replace(/\r\n/g, '\n');   // Windows の checkout は CRLF のことがある
+  const src = crlf('deck.html'), secs = src.match(/<section[\s\S]*?<\/section>\n/g), nar = crlf('narration.md').split(/(?=^## )/m);
   const ks = secs.map((_, k) => k + 1).filter((k) => QUIET.includes(k) || keep.includes(k));
   const out = { deck: src.replace(/<section[\s\S]*<\/section>\n/, ks.map((k) => secs[k - 1]).join('')), narr: ks.map((k) => nar[k - 1]).join('') };
   return { ks, ...out };
