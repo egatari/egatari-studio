@@ -35,12 +35,27 @@ const run = (dir, deck) => {
 };
 const hits = (r) => r.results.filter((x) => x.code === 'cardsHint');
 
+// 見本の 4 つの候補は上限（2）を超えるので、2 つずつに分けた原稿で、どれも出ることを確かめる（上限は最後の試験）
+const part = (keep) => {
+  const src = fs.readFileSync(path.join(FIX, 'deck.html'), 'utf8'), secs = src.match(/<section[\s\S]*?<\/section>\n/g), nar = fs.readFileSync(path.join(FIX, 'narration.md'), 'utf8').split(/(?=^## )/m);
+  const ks = secs.map((_, k) => k + 1).filter((k) => QUIET.includes(k) || keep.includes(k));
+  const out = { deck: src.replace(/<section[\s\S]*<\/section>\n/, ks.map((k) => secs[k - 1]).join('')), narr: ks.map((k) => nar[k - 1]).join('') };
+  return { ks, ...out };
+};
+const runPart = (name, keep) => {
+  const { ks, deck, narr } = part(keep), dir = path.join(work, name);
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'deck.html'), deck);
+  fs.writeFileSync(path.join(dir, 'narration.md'), narr);
+  assert.equal(spawnSync(process.execPath, ['kit/build.mjs', path.join(dir, 'deck.html')], { cwd: ROOT, encoding: 'utf8' }).status, 0);
+  const r = JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
+  return { r, ks, got: hits(r).map((x) => ks[x.slide - 1]) };
+};
 await t('品質チェック（kit/check.mjs --json）：3 つ・4 つの短い要点（導入の p があっても）に cardsHint が 1 つずつ。ほかのスライドには出ない', () => {
-  res = run(path.join(work, 'main'), fs.readFileSync(path.join(FIX, 'deck.html'), 'utf8'));
-  const got = hits(res);
-  const ids = got.map((x) => x.slide);
-  assert.deepEqual(ids, FIRE, 'cardsHint on slides ' + ids.join(','));
-  for (const id of QUIET) assert.ok(!ids.includes(id), id + ' must stay quiet');
+  const A = runPart('part-a', [1, 2]), B = runPart('part-b', [3, 12]);
+  assert.deepEqual(A.got, [1, 2], 'cardsHint on slides ' + A.got.join(','));
+  assert.deepEqual(B.got, [3, 12], 'cardsHint on slides ' + B.got.join(','));
+  res = A.r;
 });
 await t('情報だけ：sev は info、rule は R-purpose、エラーにも警告にもならない。言葉は 2 つの言語とも決まった文', () => {
   const got = hits(res);
@@ -98,6 +113,21 @@ await t('境目：30 字ちょうどは知らせ、31 字は知らせない。�
   assert.equal(spawnSync(process.execPath, ['kit/build.mjs', path.join(e2, 'deck.html')], { cwd: ROOT, encoding: 'utf8' }).status, 0);
   const r2 = JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(e2, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
   assert.deepEqual(hits(r2).map((x) => ids2[x.slide - 1]), ['f-word', 'f-mid']);
+});
+
+await t('1 つの教材で最大 2 つ（CH.cap）：3 つ以上の候補があれば、長さのそろい方（最長 ÷ 最短）のよい順に 2 つ。同じなら前のスライド。出す順はスライドの順', () => {
+  const li = (k) => `<li>${'あ'.repeat(k)}</li>`, sl = (id, a, b, c) => `<section class="slide noconcl" id="s-${id}"><h2>${id}</h2><div class="body"><ul>${li(a)}${li(b)}${li(c)}</ul></div></section>\n`;
+  const ids = ['c10', 'c12', 'c15', 'c20', 'c10b'];
+  const dir = path.join(work, 'cap');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html>\n<html lang="ja" data-theme="default">\n<head><meta charset="utf-8"><title>cap</title></head>\n<body><div id="stage">\n${sl('c10', 10, 10, 10)}${sl('c12', 10, 12, 11)}${sl('c15', 10, 15, 12)}${sl('c20', 10, 20, 15)}${sl('c10b', 12, 12, 12)}</div></body></html>\n`);
+  fs.writeFileSync(path.join(dir, 'narration.md'), ids.map((id) => `## ${id} {#s-${id}}\n\n[0] 試験。\n`).join('\n'));
+  assert.equal(spawnSync(process.execPath, ['kit/build.mjs', path.join(dir, 'deck.html')], { cwd: ROOT, encoding: 'utf8' }).status, 0);
+  const r = JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
+  assert.deepEqual(hits(r).map((x) => ids[x.slide - 1]), ['c10', 'c10b']);
+  // 見本の 4 つの候補を 1 つの原稿に入れても 2 つだけ出る（長さのそろい方がよい 2 つ）
+  const all = hits(run(path.join(work, 'main'), fs.readFileSync(path.join(FIX, 'deck.html'), 'utf8')));
+  assert.equal(all.length, 2, all.map((x) => x.slide).join(','));
 });
 
 console.log(fail ? `${fail} of ${n} failed` : `all ${n} ok`);

@@ -477,7 +477,10 @@ if (foreign.length) report(null, 'warn', 'fontNotEmbedded', { fonts: foreign });
 if (probe.items.length) report(null, 'warn', 'themeMetricsDrift', { theme: themeInfo.name, declared: !!themeInfo.declared, items: probe.items });
 for (const { i, text } of aOut.step0) report(i, 'info', 'step0', { t: text }, '0');
 for (const { i, issues } of aOut.style) for (const [code, a] of issues) report(i, 'error', code, a);
-for (const { i, issues } of aOut.soft) for (const [code, a, sev] of issues) report(i, sev === 'info' ? 'info' : 'warn', code, a);
+// cardsHint は 1 つの教材で最大 a.cap 個（長さのそろい方 a.ratio の小さい順、同じなら前のスライド）。残りは出さない（kit/core/layout-scan.mjs の CH.cap）
+const cardsHints = [];
+for (const { i, issues } of aOut.soft) for (const [code, a, sev] of issues) { if (code === 'cardsHint') cardsHints.push({ i, a }); else report(i, sev === 'info' ? 'info' : 'warn', code, a); }
+cardsHints.map((h, k) => ({ ...h, k })).sort((x, y) => x.a.ratio - y.a.ratio || x.k - y.k).slice(0, cardsHints[0] ? cardsHints[0].a.cap : 0).sort((x, y) => x.k - y.k).forEach((h) => report(h.i, 'info', 'cardsHint', h.a));
 await collectPartReports();
 {
   const tot = aOut.punct.reduce((a, p) => ({ jp: a.jp + p.jp, en: a.en + p.en }), { jp: 0, en: 0 });
