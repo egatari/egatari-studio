@@ -155,7 +155,7 @@ function Plot(box, o){
     y: function(v){ return H - m.b - (v - o.yr[0]) / (o.yr[1] - o.yr[0]) * (H - m.t - m.b); }};
   var cid = "clip" + (++Plot.n);
   var cp = el("clipPath", {id: cid}, el("defs", {}, svg));
-  el("rect", {x: m.l, y: m.t - 4, width: W - m.l - m.r, height: H - m.t - m.b + 4}, cp);
+  el("rect", {x: m.l, y: m.t - 4, width: Math.max(0, W - m.l - m.r), height: Math.max(0, H - m.t - m.b + 4)}, cp);
   p.clip = "url(#" + cid + ")";
   var ax = el("g", {class: "axes"}, svg);
   var K = "var(--fg)";
