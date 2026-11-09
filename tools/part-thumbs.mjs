@@ -19,7 +19,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const OUT = path.join(ROOT, 'app', 'part-thumbs.js');
 const W = 192, H = 120;
 // 暗い画面の見本の色（編集アプリの暗い画面 app/app.css の --panel に合わせた地。テーマの変数だけを替える）
-const DARK = ':root{--base:#8fb3ff;--fg:#e8eaf0;--bg:#20232a;--title:#8fb3ff;--term:#8fb3ff;--emph:#ff8f73;--accent2:#e2b35e;--complement:#e2b35e;'
+const DARK = ':root{--base:#8fb3ff;--fg:#e8eaf0;--bg:#20232a;--title:#8fb3ff;--term:#8fb3ff;--emph:#ff8f73;--lit:#FFE000;--accent2:#e2b35e;--complement:#e2b35e;'
   + '--muted:#a3abbb;--line:#454a56;--rule:#8fb3ff;--base-tint:#33405c;--base-wash:#272d3a;--comp-tint:#4a3d24;--term-tint:#272d3a;--emph-tint:#4a2a24;'
   + '--concl-bg:#2a2d33;--series-1:#8fb3ff;--series-2:#ff8f73;--series-3:#e2b35e;--series-4:#a3abbb}html,body,#stage,.slide{background:#20232a!important;color:#e8eaf0}';
 

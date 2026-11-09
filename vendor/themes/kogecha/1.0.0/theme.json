@@ -1,0 +1,10 @@
+{
+  "name": "kogecha",
+  "extends": "default",
+  "version": "1.0.0",
+  "look": {
+    "heading": "double",
+    "cover": "frame",
+    "concl": "left-rule"
+  }
+}

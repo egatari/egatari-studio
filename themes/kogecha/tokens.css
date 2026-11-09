@@ -7,6 +7,7 @@
   --cover-bg: #f3ece1;
   --sec-bg: #3d3132;
   --series-3: var(--accent2);
+  --lit: #EDB91A;                    /* 光と照らされる側。落ち着いた金茶寄りの黄（生成り地 1.7:1。1.1.0） */
 }
 /* look heading: double */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:6px double var(--base)}

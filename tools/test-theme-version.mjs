@@ -47,7 +47,10 @@ ok(pickThemeVersion(LOCK, 'default', OLD).pinned && !pickThemeVersion(LOCK, 'def
   ok(u.to === NEW && u.tokens.length === 3 && u.tokens.some((x) => x.token === '--emph' && x.from === '#C50516' && x.to === '#BE3012') && u.tokens.some((x) => x.token === '--muted' && x.from === '#6E6E6E' && x.to === '#5C5853') && u.tokens.some((x) => x.token === '--concl-bg' && x.from === '#FFFFFF' && x.to === '#F5F5F5'), 'update from 1.0.0: --emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5 ' + JSON.stringify(u.tokens));
   // 1.2.0：結論の行（左の縦線・淡い灰の地 --concl-bg）。1.1.0 から変わる色は --concl-bg だけ
   const u11 = themeUpdate(LOCK, 'default', '1.1.0');
-  ok(NEW === '1.2.0' && D.versions.includes('1.1.0') && u11.to === NEW && u11.tokens.length === 1 && u11.tokens[0].token === '--concl-bg' && u11.tokens[0].to === '#F5F5F5', 'update from 1.1.0: only --concl-bg #FFFFFF → #F5F5F5 ' + JSON.stringify(u11.tokens));
+  // 1.3.0：役割 --lit を足しただけ（今までの色は変わらない。changes の tokens は空）。1.1.0 からも 1.2.0 からも、変わる色は --concl-bg だけ
+  const u12 = themeUpdate(LOCK, 'default', '1.2.0');
+  ok(u12.to === NEW && u12.tokens.length === 0 && u12.reasons.length === 1 && /--lit/.test(u12.reasons[0]), 'update from 1.2.0: no colour changes (1.3.0 only adds --lit) ' + JSON.stringify(u12));
+  ok(NEW === '1.3.0' && D.versions.includes('1.1.0') && D.versions.includes('1.2.0') && u11.to === NEW && u11.tokens.length === 1 && u11.tokens[0].token === '--concl-bg' && u11.tokens[0].to === '#F5F5F5', 'update from 1.1.0: only --concl-bg #FFFFFF → #F5F5F5 ' + JSON.stringify(u11.tokens));
 }
 ok(themesLockProblems({ themes: { default: { current: '1.0.0', versions: ['1.0.0', '1.1.0'], sha256: { '1.0.0': 'a'.repeat(64), '1.1.0': 'b'.repeat(64) } } } }).some((x) => /latest/.test(x)), 'lock: current must be the latest version');
 ok(themesLockProblems({ themes: { '../x': { current: '1.0.0', versions: ['1.0.0'], sha256: { '1.0.0': 'a'.repeat(64) } } } }).some((x) => /registry name/.test(x)), 'lock: names are registry names');
@@ -95,7 +98,7 @@ function deckDir(name, themes, src = 'minimal') {
   const src = deckDir('cli-up', { default: OLD });
   const u = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '--update-themes'], { encoding: 'utf8' });
   const conf = JSON.parse(fs.readFileSync(path.join(path.dirname(src), FORMAT.CONFIG_FILE), 'utf8'));
-  ok(u.status === 0 && /theme updated: default 1\.0\.0 → 1\.2\.0 \(--emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5\)/.test(u.stdout) && !/theme pinned/.test(u.stderr), 'CLI --update-themes: says what changes and builds without the warning');
+  ok(u.status === 0 && /theme updated: default 1\.0\.0 → 1\.3\.0 \(--emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5\)/.test(u.stdout) && !/theme pinned/.test(u.stderr), 'CLI --update-themes: says what changes and builds without the warning');
   ok(conf.themes.default === NEW && conf.docId, `CLI --update-themes: ${FORMAT.CONFIG_FILE} now pins ${NEW} (other fields kept)`);
   const c = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), deckDir('clicheck', { default: OLD }), '--json'], { encoding: 'utf8' });
   let j = null; try { j = JSON.parse(c.stdout); } catch { /* */ }
@@ -209,16 +212,17 @@ fs.writeFileSync(oldFile, pold.html);
 }
 
 // ---------------------------------------------------------------- 6. どのテーマも自分の版を記録する（format spec §3.8・§6）
-// 同梱の kokugo は 1.0.0（バイトは変えない：前に記録した sha256 のまま）。business は 1.0.1（1.0.0 は前に記録した sha256 のまま vendor/themes/business/1.0.0 に）。
+// 同梱の kokugo の 1.0.0 は前に記録した sha256 のまま（1.1.0 で --lit を足し、1.0.0 は vendor/themes/kokugo/1.0.0 に）。business の 1.0.0 も前に記録した sha256 のまま
+// vendor/themes/business/1.0.0 に（1.0.1 は --emph、1.1.0 は --lit）。
 // 版のない利用者のテーマは "local"。
 // 1 ファイルの egatari.json の themes は index.themes のどの項目もその版で、ちょうどそれだけ（親のテーマ extends も）
 {
   const SHA_3CBD96A = { kokugo: 'b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2', business: '3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880' };
   const pinsOf = (r) => JSON.parse(Buffer.from(r.files[FORMAT.CONFIG_FILE]).toString('utf8')).themes;
   const exact = (r) => { const p = pinsOf(r) || {}; return Object.keys(p).length === r.index.themes.length && r.index.themes.every((t) => p[t.name] === t.version); };
-  const CUR = { kokugo: '1.0.0', business: '1.0.1' };
-  ok(themeDirSha(path.join(ROOT, 'themes', 'kokugo')) === SHA_3CBD96A.kokugo, 'kokugo: themes/kokugo unchanged (the sha256 recorded before)');
-  ok(themeDirSha(path.join(ROOT, 'vendor', 'themes', 'business', '1.0.0')) === SHA_3CBD96A.business && themeDirSha(path.join(ROOT, 'themes', 'business')) === LOCK.themes.business.sha256['1.0.1'], 'business: the 1.0.0 copy keeps the sha256 recorded before; themes/business is 1.0.1');
+  const CUR = { kokugo: '1.1.0', business: '1.1.0' };
+  ok(themeDirSha(path.join(ROOT, 'vendor', 'themes', 'kokugo', '1.0.0')) === SHA_3CBD96A.kokugo && themeDirSha(path.join(ROOT, 'themes', 'kokugo')) === LOCK.themes.kokugo.sha256['1.1.0'], 'kokugo: the 1.0.0 copy keeps the sha256 recorded before; themes/kokugo is 1.1.0');
+  ok(themeDirSha(path.join(ROOT, 'vendor', 'themes', 'business', '1.0.0')) === SHA_3CBD96A.business && themeDirSha(path.join(ROOT, 'themes', 'business')) === LOCK.themes.business.sha256['1.1.0'], 'business: the 1.0.0 copy keeps the sha256 recorded before; themes/business is 1.1.0');
   for (const name of ['kokugo', 'business']) {
     ok(LOCK.themes[name] && LOCK.themes[name].current === CUR[name] && LOCK.themes[name].sha256['1.0.0'] === SHA_3CBD96A[name], `${name}: current ${CUR[name]} in themes.lock.json, 1.0.0 with the sha256 recorded before`);
     const deck = deckDir('own-' + name);

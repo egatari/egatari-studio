@@ -8,6 +8,12 @@
 //    色覚の模擬（Machado ほか 2009、強さ 1.0、線形 RGB）：強調の赤 --emph と基調色 --term の差 ΔE*ab が 3 色型・1 型・2 型で 35 以上
 //      （テーマの見比べ 2026-10-27 の線。常盤・焦茶をこれで直した）、CIEDE2000 で 3 色型・1 型・2 型・3 型 20 以上（テーマの工房の C4）、
 //      --emph と本文 --fg の CIEDE2000 が 1 型で 20 以上（C5）
+//    光 --lit（format spec §8.4。塗りの色で、いつも輪郭線と一緒に描く）：--emph との差が --emph と --term と同じ線（ΔE*ab 35 を 3 色型・1 型・2 型、
+//      CIEDE2000 20 を 4 つの型）。明るい地の上では輪郭線が見分けを担うので、--bg とのコントラストは測って表に出すだけ（3:1 を求めない）。
+//      テーマごとの tokens.css が自分で宣言する（親の値に頼らない）
+//    暗い地の --lit：同梱のテーマに暗い版はなく、暗い地の役割の色はパーツの絵の暗い版（tools/part-thumbs.mjs の DARK）だけ。そこの --lit は
+//      --bg と 3:1 以上（WCAG 1.4.11）、--emph との差 ΔE*ab 35 以上（4 つの型）。CIEDE2000 は表に出すだけ（DARK の --emph は淡い朱 #ff8f73 で、
+//      2 型の模擬ではどの暖かい黄とも 17 ほどしか離れない）
 // 3. ペンの色（kit/tools.js の PEN_COLOR。テーマによらない赤 #FF4B00・青 #005AFF・黒 #000000）：どのテーマの地 --bg の上でも線のコントラスト 3:1（WCAG 1.4.11）、
 //    3 色の組の差 ΔE*ab が 3 色型・1 型・2 型・3 型で 35 以上（テーマの赤・青と同じ線）
 // 4. 形の断片（kit/core/theme-shapes.mjs）：theme.json の look の形が tokens.css にそのまま写してある。テーマの CSS は :where() で包まない
@@ -41,7 +47,10 @@ const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + nam
 const THEMES = fs.readdirSync(path.join(ROOT, 'themes')).filter((d) => fs.existsSync(path.join(ROOT, 'themes', d, 'tokens.css'))).sort();
 const PEN_SRC = fs.readFileSync(path.join(ROOT, 'kit', 'tools.js'), 'utf8');
 const PEN = JSON.parse((PEN_SRC.match(/var PEN_COLOR = (\{[^}]*\});/) || [])[1].replace(/(\w+):/g, '"$1":'));
-const MIN = { text: 4.5, line: 3, emphTerm76: 35, emphTerm00: 20, emphFg00: 20, pen76: 35 };
+const MIN = { text: 4.5, line: 3, emphTerm76: 35, emphTerm00: 20, emphFg00: 20, pen76: 35, litEmph76: 35, litEmph00: 20, litDarkBg: 3 };
+// パーツの絵の暗い版の役割の色（tools/part-thumbs.mjs の DARK）
+const DARK_SRC = (fs.readFileSync(path.join(ROOT, 'tools', 'part-thumbs.mjs'), 'utf8').match(/const DARK = ('[^\n]*'(?:\s*\+\s*'[^\n]*')*);/) || [])[1] || '';
+const DARK = Object.fromEntries([...DARK_SRC.matchAll(/--([a-z0-9-]+):(#[0-9a-fA-F]{6})/g)].map((m) => [m[1], m[2]]));
 const fix = (x, d = 2) => Number(x).toFixed(d);
 
 await t('選べるテーマ：藍・墨・国語・常盤・江戸紫・焦茶・浅葱の 7 つ（この順）で、どれも同梱。business は選べないが同梱のまま（記録した教材を組む）', () => {
@@ -50,7 +59,7 @@ await t('選べるテーマ：藍・墨・国語・常盤・江戸紫・焦茶�
   assert.deepEqual(RETIRED, ['business']);
   assert.ok(THEMES.includes('business'));
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'themes.lock.json'), 'utf8'));
-  for (const x of ['sumi', 'tokiwa', 'murasaki', 'kogecha', 'asagi']) assert.equal(lock.themes[x].current, '1.0.0', x);
+  for (const x of ['sumi', 'tokiwa', 'murasaki', 'kogecha', 'asagi']) assert.equal(lock.themes[x].current, '1.1.0', x);
 });
 
 await t('形の断片：theme.json の look の形が tokens.css にそのまま写してあり、ほかの形の印はない。:where() で包まない', () => {
@@ -68,6 +77,18 @@ await t('形の断片：theme.json の look の形が tokens.css にそのまま
     }
     if (name !== 'default') assert.ok(!/:where\(/.test(css.replace(/\/\*[\s\S]*?\*\//g, '')), `${name}: tokens.css uses :where() (it lowers specificity below the built-in rules)`);
   }
+});
+
+await t('光 --lit：同梱のテーマはどれも自分の tokens.css で --lit を宣言する。パーツの絵の暗い版（part-thumbs の DARK）の --lit は暗い地と 3:1 以上、--emph と ΔE*ab 35 以上（4 つの型）', () => {
+  for (const name of THEMES) {
+    const css = fs.readFileSync(path.join(ROOT, 'themes', name, 'tokens.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    assert.match(css, /--lit\s*:\s*#[0-9a-fA-F]{6}\s*;/, `${name}: tokens.css does not declare --lit`);
+  }
+  assert.ok(DARK.lit && DARK.bg && DARK.emph, 'part-thumbs DARK lacks --lit, --bg or --emph');
+  const c = contrast(DARK.lit, DARK.bg);
+  assert.ok(c >= MIN.litDarkBg, `dark --lit ${DARK.lit} on --bg ${DARK.bg}: ${fix(c)}:1 < 3:1`);
+  for (const k of VISION) { const d = deUnder(DARK.lit, DARK.emph, k); assert.ok(d >= MIN.litEmph76, `dark --lit vs --emph ΔE*ab under ${k}: ${fix(d, 1)} < ${MIN.litEmph76}`); }
+  console.log(`     dark (part-thumbs) --lit ${DARK.lit} on ${DARK.bg} ${fix(c)}:1 | vs --emph ${DARK.emph} ΔE*ab N/P/D/T ${VISION.map((k) => fix(deUnder(DARK.lit, DARK.emph, k), 0)).join('/')} | ΔE00 ${VISION.map((k) => fix(deUnder(DARK.lit, DARK.emph, k, 'de2000'), 1)).join('/')}`);
 });
 
 // Node の部分だけを走らせる環境でも、未検査を通過扱いにしないよう明示する。
@@ -104,7 +125,7 @@ try {
           const rgb = (css) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); return [...cx.getImageData(0, 0, 1, 1).data].slice(0, 3).map((x) => x / 255); };
           const tok = (n) => { const e = document.createElement('i'); e.style.color = `var(--${n})`; document.body.appendChild(e); const c = getComputedStyle(e).color; e.remove(); return rgb(c); };
           const out = {};
-          for (const k of ['fg', 'bg', 'title', 'term', 'emph', 'muted', 'base', 'concl-bg', 'cover-bg', 'sec-bg']) out[k] = tok(k);
+          for (const k of ['fg', 'bg', 'title', 'term', 'emph', 'muted', 'base', 'concl-bg', 'cover-bg', 'sec-bg', 'lit']) out[k] = tok(k);
           // 章の扉の字（--sec-fg。既定は白）・表紙の題・ふつうのスライドの見出しの字とその地は、描いた要素から
           const bgOf = (e) => { for (let a = e; a; a = a.parentElement) { const b = getComputedStyle(a).backgroundColor; if (b && !/rgba\(.*,\s*0\)$/.test(b) && b !== 'transparent') return rgb(b); } return [1, 1, 1]; };
           const sec = document.querySelector('#t-sec h1'), cov = document.querySelector('#t-cover h1'), h2 = document.querySelector('#t-list > h2');
@@ -121,12 +142,16 @@ try {
       const et76 = Object.fromEntries(VISION.map((k) => [k, deUnder(v.emph, v.term, k)]));
       const et00 = Object.fromEntries(VISION.map((k) => [k, deUnder(v.emph, v.term, k, 'de2000')]));
       const ef00 = deUnder(v.emph, v.fg, 'protan', 'de2000');
-      rows.push({ name, base: rgb2hex(v.base), bg: rgb2hex(v.bg), c, et76, et00, ef00, v });
+      const lit = { bg: contrast(v.lit, v.bg), e76: Object.fromEntries(VISION.map((k) => [k, deUnder(v.lit, v.emph, k)])), e00: Object.fromEntries(VISION.map((k) => [k, deUnder(v.lit, v.emph, k, 'de2000')])) };
+      rows.push({ name, base: rgb2hex(v.base), bg: rgb2hex(v.bg), c, et76, et00, ef00, lit, v });
       const low = Object.entries(c).filter(([, r]) => r < MIN.text).map(([k, r]) => `${k} ${fix(r)}:1`);
       assert.deepEqual(low, [], 'contrast below 4.5:1');
       for (const k of ['normal', 'protan', 'deutan']) assert.ok(et76[k] >= MIN.emphTerm76, `--emph vs --term ΔE*ab under ${k}: ${fix(et76[k], 1)} < ${MIN.emphTerm76}`);
       for (const k of VISION) assert.ok(et00[k] >= MIN.emphTerm00, `--emph vs --term ΔE00 under ${k}: ${fix(et00[k], 1)} < ${MIN.emphTerm00}`);
       assert.ok(ef00 >= MIN.emphFg00, `--emph vs --fg ΔE00 under protan: ${fix(ef00, 1)} < ${MIN.emphFg00}`);
+      // 光 --lit：--emph と分かれる（--emph と --term と同じ線）。--bg とのコントラストは表に出すだけ（輪郭線と一緒に描く塗り）
+      for (const k of ['normal', 'protan', 'deutan']) assert.ok(lit.e76[k] >= MIN.litEmph76, `--lit vs --emph ΔE*ab under ${k}: ${fix(lit.e76[k], 1)} < ${MIN.litEmph76}`);
+      for (const k of VISION) assert.ok(lit.e00[k] >= MIN.litEmph00, `--lit vs --emph ΔE00 under ${k}: ${fix(lit.e00[k], 1)} < ${MIN.litEmph00}`);
     });
     await t(`${name}：ペンの赤・青・黒は地の上で 3:1 以上、色覚の模擬で互いに ΔE*ab 35 以上`, () => {
       assert.ok(v, 'colours were not read');
@@ -157,5 +182,7 @@ for (const r of rows) {
   const c = r.c;
   console.log(`${r.name.padEnd(10)} ${r.base} ${r.bg}           ${[c.fg, c.term, c.emph, c.muted, c.title, c.concl, c.sec, c.cover, c.h2].map((x) => fix(x, 1).padStart(4)).join(' ')} | ${VISION.map((k) => fix(r.et76[k], 0).padStart(3)).join('/')}                | ${VISION.map((k) => fix(r.et00[k], 1)).join('/')} | ${fix(r.ef00, 1).padStart(5)}          | ${r.pen ? Object.values(r.pen).map((x) => fix(x, 2)).join('/') : '-'}   ${r.penMin ? fix(r.penMin, 0) + ' (' + r.penMinAt + '), vs bg ' + fix(r.penBgMin, 0) : ''}`);
 }
+console.log('\ntheme      --lit    on --bg | lit–emph ΔE*ab N/P/D/T | ΔE00 N/P/D/T');
+for (const r of rows) if (r.lit) console.log(`${r.name.padEnd(10)} ${rgb2hex(r.v.lit)} ${fix(r.lit.bg).padStart(5)}:1 | ${VISION.map((k) => fix(r.lit.e76[k], 0).padStart(3)).join('/')}            | ${VISION.map((k) => fix(r.lit.e00[k], 1)).join('/')}`);
 console.log(fail ? `${fail} of ${n} failed` : `all ${n} ok`);
 process.exit(fail ? 1 : 0);

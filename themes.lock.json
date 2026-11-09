@@ -1,14 +1,16 @@
 {
   "themes": {
     "business": {
-      "current": "1.0.1",
+      "current": "1.1.0",
       "versions": [
         "1.0.0",
-        "1.0.1"
+        "1.0.1",
+        "1.1.0"
       ],
       "sha256": {
         "1.0.0": "3d6b4175f6bbb71b24ae3b1288cacfe0fce2138dccf0eda4b6887032a062c880",
-        "1.0.1": "ca94935076466e609eeed615e077edef0f0e8fb21994bc6614b78303846fae69"
+        "1.0.1": "ca94935076466e609eeed615e077edef0f0e8fb21994bc6614b78303846fae69",
+        "1.1.0": "e9b8da437c19f45ec0ac30d8e2db70af2c15179064d83892fd1a677ac57b4ccc"
       },
       "changes": {
         "1.0.1": {
@@ -21,20 +23,27 @@
               "to": "#BA3C05"
             }
           ]
+        },
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #F2C300, a yellow kept away from the orange --emph, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
         }
       }
     },
     "default": {
-      "current": "1.2.0",
+      "current": "1.3.0",
       "versions": [
         "1.0.0",
         "1.1.0",
-        "1.2.0"
+        "1.2.0",
+        "1.3.0"
       ],
       "sha256": {
         "1.0.0": "d5486df8f7bc6df2f31e6d155f4d22583b5e12fca45ed434e74372788a953d0b",
         "1.1.0": "afdeb965d6f6ce7d221fbe302fdcdd6414df65fcb41554600a6947994162330c",
-        "1.2.0": "4b607693e914552cbff5143df415d98aeb00b4be229a7b6446d874f5853b7c1a"
+        "1.2.0": "4b607693e914552cbff5143df415d98aeb00b4be229a7b6446d874f5853b7c1a",
+        "1.3.0": "97537e8e5e32ec2b74df74dd4ce247e476e742d1910e08847adedeebd337b953"
       },
       "changes": {
         "1.1.0": {
@@ -63,61 +72,120 @@
               "to": "#F5F5F5"
             }
           ]
+        },
+        "1.3.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights: the sun, a lamp, the lit side of the Moon), a warm yellow #F5B800 for fills drawn with an outline (1.8:1 on white, so never used alone or for text); under colour-vision simulation it stays apart from --emph (ΔE*ab ≥ 42, ΔE00 ≥ 28). No existing colour changes",
+          "tokens": []
         }
       }
     },
     "kokugo": {
-      "current": "1.0.0",
+      "current": "1.1.0",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.1.0"
       ],
       "sha256": {
-        "1.0.0": "b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2"
+        "1.0.0": "b4d4f73585cf84f2de29ff28516fb9b7fac95c9a453130bb1d80b8c3306f15a2",
+        "1.1.0": "a75451c67ac68a92021aae7b19bd0d5944c4992a5bbe4d8c64396ff87c97da46"
+      },
+      "changes": {
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #F8B500, yamabuki yellow, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
+        }
       }
     },
     "sumi": {
-      "current": "1.0.0",
+      "current": "1.1.0",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.1.0"
       ],
       "sha256": {
-        "1.0.0": "a8ec5ae630ed5d399bca109c36cab9066329f312e5b0512b20498e5e6a0db0f4"
+        "1.0.0": "a8ec5ae630ed5d399bca109c36cab9066329f312e5b0512b20498e5e6a0db0f4",
+        "1.1.0": "b6ad19b0601da495219040dff46160abd623c380cd183a19055b4203878dadf8"
+      },
+      "changes": {
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #F2C300, a yellow kept away from the orange --emph, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
+        }
       }
     },
     "tokiwa": {
-      "current": "1.0.0",
+      "current": "1.1.0",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.1.0"
       ],
       "sha256": {
-        "1.0.0": "b44963f640db4cde9b16bd7c93d01325690d1072c90922111a4774b527174579"
+        "1.0.0": "b44963f640db4cde9b16bd7c93d01325690d1072c90922111a4774b527174579",
+        "1.1.0": "73b5fe9cdfa0ce1648c73f346f72382c8945fb50f8c144626599fb27868aaeaa"
+      },
+      "changes": {
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #F5C000, rapeseed yellow, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
+        }
       }
     },
     "murasaki": {
-      "current": "1.0.0",
+      "current": "1.1.0",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.1.0"
       ],
       "sha256": {
-        "1.0.0": "e1d3ecb04a4a42808a780f3f8a3d94e849a644b1c68c5d4f410a5cde9f66ab86"
+        "1.0.0": "e1d3ecb04a4a42808a780f3f8a3d94e849a644b1c68c5d4f410a5cde9f66ab86",
+        "1.1.0": "56d9b1eb518dc05cc50ef70357e45ae361337041ebb9536cd04e408bda68aff5"
+      },
+      "changes": {
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #F3BE00, a yellow opposite the purple, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
+        }
       }
     },
     "kogecha": {
-      "current": "1.0.0",
+      "current": "1.1.0",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.1.0"
       ],
       "sha256": {
-        "1.0.0": "e364c687acb0ae78aa560ae2b785fcf8b4aed4392fc3a8c113a517391e9f3258"
+        "1.0.0": "e364c687acb0ae78aa560ae2b785fcf8b4aed4392fc3a8c113a517391e9f3258",
+        "1.1.0": "74158847f3ce64db3a94202705f9cd6c416e3f1b0331da234e28a39e79a62f83"
+      },
+      "changes": {
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #EDB91A, a subdued golden yellow, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
+        }
       }
     },
     "asagi": {
-      "current": "1.0.0",
+      "current": "1.1.0",
       "versions": [
-        "1.0.0"
+        "1.0.0",
+        "1.1.0"
       ],
       "sha256": {
-        "1.0.0": "e35712155c3d2122e8e2f149899e555d83ea6de0b9659facbd32b498d30f4511"
+        "1.0.0": "e35712155c3d2122e8e2f149899e555d83ea6de0b9659facbd32b498d30f4511",
+        "1.1.0": "65cadb2e52800d4dd8ead1eee9eead8987255386a330faf5c0122c827c33256a"
+      },
+      "changes": {
+        "1.1.0": {
+          "date": "2026-11-09",
+          "reason": "new role --lit (light and what it lights), #FFCE3A, a bright yellow, for fills drawn with an outline; under colour-vision simulation it stays apart from --emph. No existing colour changes",
+          "tokens": []
+        }
       }
     }
   }

@@ -1,0 +1,17 @@
+/* 浅葱（asagi）：くすんだ浅葱に丸ゴシック（Zen Maru Gothic、OFL。組み立てが使う字だけを埋め込む：theme.json の fonts）、淡い地。
+   小学校・広報・案内向け。見出しは淡い地の角丸、結論の行も角丸、表紙の右上に大きな丸。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #1d6a85;                 /* 浅葱（白地 5.8:1） */
+  --bg: #fbfaf6;
+  --cover-bg: #eaf3f5;
+  --font-sans: "Zen Maru Gothic", "BIZ UDPGothic", sans-serif;
+}
+/* look heading: soft */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:0;background:var(--base-wash);border-radius:16px;padding:8px 22px}
+/* /look */
+/* look cover: circle */
+.slide.cover::before{left:auto;right:-80px;top:-80px;width:300px;height:300px;border-radius:50%;background:var(--base-tint)}
+/* /look */
+/* look concl: rounded */
+.slide:not(.layout-tate) .concl{border:2.3px solid var(--emph);border-radius:36px;padding-left:24px}
+/* /look */
