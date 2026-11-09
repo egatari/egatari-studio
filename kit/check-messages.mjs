@@ -102,6 +102,13 @@ export const MESSAGES = {
     en: (a) => `the class “${a.what}” names a colour and is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): use the meaning class “${a.to}” (term for terms and questions, emph for conclusions and problems, muted for known results)` },
   legacyStepAttr: { ja: (a) => `${a.what} は 1.0 の語彙にない（${a.n} か所、最初は ${a.line} 行目）：ステップの数と動きは要素の data-step と data-at、線の class="draw"、パーツの steps から決まる（format spec §8.0）。${a.what} を外す`,
     en: (a) => `${a.what} is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): the number of steps and the motion come from data-step and data-at on elements, class="draw" on strokes and the steps of parts (format spec §8.0); remove ${a.what}` },
+  // テーマの色の語彙の外の色（format spec §8.4。kit/core/color-vocab.mjs）：じかに書いた色（literal）と、相対色で色相を変えた色（hue）。警告だけ（教材は組める）
+  colorOutside: { rule: 'R-colors', ja: (a) => (a.kind === 'hue'
+    ? `相対色の構文で色相を変えた色は、役割のない新しい色になる（${a.n} か所、最初は ${a.line} 行目：${a.list}）：役割の色 var(--emph) などをそのまま使う。淡くするなら color-mix() で役割と --bg を混ぜ、明るさ・不透明度だけを変えるなら色相は h のまま`
+    : `色をじかに書いている（${a.n} か所、最初は ${a.line} 行目：${a.list}）：テーマの class（term・emph・muted）か変数 var(--fg) var(--term) var(--emph) var(--muted) var(--accent2) var(--line) var(--lit) を使う`),
+    en: (a) => (a.kind === 'hue'
+      ? `a colour derived by changing the hue (relative colour syntax) is a new colour without a role (${a.n} place(s), first on line ${a.line}: ${a.list}): use the role colour as it is (var(--emph) …); to make it lighter, mix the role with --bg in color-mix(), and when only lightness or opacity changes keep the hue h`
+      : `colours are written directly (${a.n} place(s), first on line ${a.line}: ${a.list}): use the theme's classes (term, emph, muted) or variables var(--fg) var(--term) var(--emph) var(--muted) var(--accent2) var(--line) var(--lit)`) },
   legacyLectureMode: { ja: (a) => `<html data-mode="lecture"> は 1.0 の語彙にない（${a.line} 行目）：見せ方は再生の設定の「先のステップを薄く見せる」で選ぶ。原稿からは外す`,
     en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the participant chooses “Show later steps faintly” in the player; remove it from the source` },
   narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し${quoteJa(a.heading)}がスライドの見出し${quoteJa(a.slide)}と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },

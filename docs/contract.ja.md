@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=a9ff19a346dd0412 -->
+<!-- i18n: pair=contract.md sha256=645caaac9dd318b3 -->
 # 約束事（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -54,6 +54,7 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 - 見ている人のものでない描画（印刷・スライド一覧・品質チェック・動画のコマ）はスライドに入ったことにしない：`ctx.entered` は `false` のまま、見ている位置に戻るときも学習者の入力を消さない。別の位置を描いて戻る道具は、`DECK.seek` を `DECK.aside(fn)` の中で呼ぶ
 - 手で動かした状態：パーツの中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると、実行系はそのパーツに触れた印を付け、次にステップに入るとき（どの `DECK.seek` や `DECK.go` も、リンク、発表者ビューの指示、印刷）、まず別のステップ（t = Infinity）で描いてから (k, t) を `ctx.reset = true` で描く。触れていないパーツは 1 回だけ描く
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
+- 光：`var(--lit)` は光と、光が照らすもの（太陽・灯り・月の明るい側。format §8.4）。塗りの色で、字の色には使わない。これで塗った形には `var(--fg)` か `var(--muted)` の輪郭線も付ける。使うパーツは、ほかの役割から作った予備の値を付ける（`var(--lit, var(--bg))` や、役割どうしの `color-mix()`）。`--lit` より前に作られたテーマでも動くように。役割の色相を変えて作った色（相対色の構文。`oklch(from var(--accent2) l c calc(h + 30))` など）は役割を持たず、品質チェックはじかに書いた色と同じく知らせる（`colorOutside`）。役割どうし・役割と `--bg` の `color-mix()` はよい
 - データ：検算したスクリプトが出した数だけを使う。パーツの子に `<script type="application/json">{{JSON:file.json}}</script>` を置き、`this.data` で読む（直下の子にちょうど 1 つ。2 つ以上なら `this.data` は `null` で、スライドは独自のコードを持つものとして扱う）
 - データの形は `static shape` で宣言する（`kit/shape.js`：JSON Schema の小さな部分集合 `{schema, example, note?}`。文で書くパーツは `{text: true, example}`、子の `<a href>` は `{links: true, example}`。json の属性は `static props` に `shape` を持てる）。実行系はステップを数える前に確かめる：合わないとき、または `mount`・`render` が例外を投げたときは描かず、その場に何が悪いかを書いた代わり（`.m-error`）を出し、ステップの数は `steps` 属性（なければ 0）、問題は `DECK.componentErrors` へ（品質チェックがコマンドでもブラウザでも読む。スタックは出さない）。指示のパーツの一覧に形と例が出る
 - 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/sha256/<hash>/` に持ち、パーツごとの既定の版を `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだ版はすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
