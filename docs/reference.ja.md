@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=f6c74989751968ae -->
+<!-- i18n: pair=reference.md sha256=3f7accae84ddecdc -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -512,6 +512,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 `npm run portable -- unpack <ファイル> <フォルダ> [--force]` は原稿と音声を `<フォルダ>` に出す（音声の記録から `audio/manifest.json` も作るので、そのフォルダはそのまま build・pack できる）。ファイルは文字列として読み、中のスクリプトは動かさない。索引とすべての hash、仕様の上限とパスの規則を確かめ、`<フォルダ>` の外やシンボリックリンクを通る書き込みは断り、空でない `<フォルダ>` は `--force` がなければ断る。`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only] [--without-live-results]` はそのフォルダで `build --portable` をするのと同じ。展開したフォルダをまとめると同じファイルに戻る。`npm run portable -- attach <フォルダ> <results.json> [--en]` は、ライブのサーバーからダウンロードした結果を、作業フォルダの役割 `data` の添付にする（`attachments/live-<部屋>-<日付>.json`、題は「ライブの結果（<id>、<日付>）」。`--en` で英語）。写しの Schema の結果でないもの・10 MiB を超えるもの・§3.8 の中身の検査に通らないもの・もう足した結果は断り、ライブの id が `egatari.json` の `extensions.live.room` と違えば知らせて足す。`npm run portable -- compare <ファイル> <フォルダ>` は、作業フォルダからエクスポートした写しとそのフォルダ（`egatari.json` の `docId` が同じ）を受け取り、エクスポートの後にどちらを直したかを原稿の hash で言う：`same`（どちらも直していない）・`copy`（写しを直した。写しを展開すればフォルダに戻せる）・`folder`（フォルダを直した。エクスポートし直す）・`both`（両方。どちらを残すかを選ぶ。混ぜない）。何も書かない。`exportedFrom` のないファイルと、ほかの教材のフォルダは断る。
 
+`npx egatari ids-of <file.ega.html> […]` は、教材の版を管理する組織のためのコマンドで、Egatari ファイルごとに 3 つを出す。`sourceSha256` は原稿の版を表す：原稿のファイルだけを対象にし、音声と組んだ部分は含まない（形式 §3.4）ので、音声を作り直しても組み直しても変わらない。ファイル全体の SHA-256 はファイルそのものを表し、配布や LMS への登録のときの照合に使う（1 バイトでも変われば変わる）。`docId` は版をまたいで同じ教材を指す。誰が公開したかは署名（形式 §10）の役目で、この版ではまだ実装していない。どちらの hash も、ファイルを作った人は示さない。
+
 Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#egatari-ファイルフォルダなし)）は、ほかに、中に入った `audio/manifest.json`（いつも音声の記録から作るもの）と、`docId` が索引と違う設定のファイルも断り、原稿の hash を files から計算し直す。索引や実行系のメタデータの値と違えば、組んだ教材と原稿が食い違うと知らせる。新しい major の版のファイルと、読み手の実装していない機能を必須とするファイルは、索引と塊が 1.x の規則で確かめられたときだけ原稿を取り出せる（`readPortable(text, {extract: true})` と編集アプリの「作業フォルダにエクスポート…」）。編集もエクスポート（作り直し）もしない。
 
 #### 組み直さない編集（段 A）
@@ -566,6 +568,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 |---|---|
 | `npm run new -- <フォルダ> [--lang en\|ja] [--theme 名前] [--title "…"]` | きれいなテンプレートから新しい作業フォルダ（`deck.html` と `narration.md`、`"componentsCatalogue": "2"` の `egatari.json`）を作る。空でないフォルダには書かない |
 | `npm run ids -- <作業フォルダ \| deck.html> [--dry-run]` | id のないスライドに新しい id（`s-` と base32 の 6 字、乱数）を付け、`narration.md` の見出しを `## 見出し {#id}` にし、`audio/manifest.json`・`timeline.json`・`comments.json` と `data-morph="…"` の鍵を付け替える。音声は作り直さない。控えは `.cache/edits/`、改行はそのまま、2 回目は何も変えない。鍵の重なり・id の衝突・規則に合わない id のある教材では何もしない |
+| `npm run ids-of -- <file.ega.html> […] [--json]`（`npx egatari ids-of`） | Egatari ファイルの身元をファイルごとに 1 行で出す（タブ区切りで `docId`・`sourceSha256`・ファイル全体の SHA-256。`--json` は ファイルごとに 1 つの JSON で `file`・`docId`・`sourceSha256`・`fileSha256`）。`sourceSha256` はファイルの原稿から計算し直し、ファイルに書かれた値と違えば stderr に警告する。再生専用のファイルは原稿がないので `sourceSha256` は `-`（JSON では `null`）。読めないファイルや Egatari ファイルでないものは stderr にエラーを書いて終了コード 1（ほかのファイルは出す） |
 | `npm run portable -- unpack <ファイル> <フォルダ> [--force]`・`npm run portable -- pack <フォルダ> [-o ファイル] [--play-only] [--without-live-results]`・`npm run portable -- attach <フォルダ> <results.json>`・`npm run portable -- compare <ファイル> <フォルダ>` | Egatari ファイル ↔ フォルダ。[Egatari ファイル](#egatari-ファイル--portable) |
 | `npm run player:check [-- --strict]`・`npm run player:bump -- patch\|minor\|major` | 同梱のプレーヤー（Egatari Player）：そのファイル（`kit/core/player.mjs` の `PLAYER_FILES`）を `kit/player.lock.json` のリリースと比べる（知らせるだけ。`--strict` は違えば失敗。リリース候補の前に）。bump は新しい版を `kit/player.json` と lock に書き、`changes/player-<版>.md` を足す。[RELEASING.ja.md](../RELEASING.ja.md) |
 | `npm run build:app` | 編集アプリを作る：`dist/` の配信版（GitHub Pages 用。`dist/index.html`）と、オフライン版のエディタ `dist/editor.html`。[editor.ja.md](editor.ja.md) |
