@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head><meta charset="utf-8"><title>色の語彙の検査</title>
+<style>
+/* 許すもの：役割の変数（--lit も）、役割と --bg を混ぜた色、色相を保った相対色 */
+#s-ok .sun{fill:var(--lit);stroke:var(--fg);stroke-width:3}
+#s-ok .wash{background:color-mix(in oklch, var(--emph) 25%, var(--bg))}
+#s-ok .dim{color:oklch(from var(--emph) min(l, 0.45) c h)}
+/* 知らせるもの：相対色の構文で色相を変えた色（oklch・rgb・hsl・lab） */
+#s-hue .a{color:oklch(from var(--accent2) l c calc(h + 30))}
+#s-hue .b{color:rgb(from var(--term) r g calc(b + 40))}
+#s-hue .c{color:hsl(from var(--emph) calc(h + 180) s l)}
+#s-hue .d{color:lab(from var(--emph) l calc(a * -1) b)}
+</style></head>
+<body><div id="stage">
+<section class="slide noconcl" id="s-ok"><h2>役割の色だけを使う</h2><div class="body">
+<svg viewBox="0 0 200 100" width="200" height="100" aria-label="太陽"><circle class="sun" cx="50" cy="50" r="30"/></svg>
+<p class="wash">役割と地を混ぜた淡い地</p>
+<p class="dim">明るさだけを変えた結論の色</p>
+</div></section>
+<section class="slide noconcl" id="s-hue"><h2>色相を変えた色</h2><div class="body">
+<p class="a">色相を 30 度回した</p><p class="b">青の成分だけを変えた</p><p class="c">補色にした</p><p class="d">a を反転した</p>
+</div></section>
+<section class="slide noconcl" id="s-fallback"><h2>じかに書いた予備の色</h2><div class="body">
+<svg viewBox="0 0 200 100" width="200" height="100" aria-label="灯り"><circle cx="50" cy="50" r="30" style="fill:var(--lit, #ffcc00);stroke:var(--fg)"/></svg>
+</div></section>
+</div></body></html>

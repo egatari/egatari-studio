@@ -239,6 +239,8 @@ steps.push(
   ['test-check-svg-overlap', ['tools/test-check-svg-overlap.mjs', path.join(tmp, 'check-svg-overlap')]],
   // 章の扉の h2（#128）と、字と地のコントラストの警告
   ['test-check-contrast', ['tools/test-check-contrast.mjs', path.join(tmp, 'check-contrast')]],
+  // テーマの色の語彙の外の色（format spec §8.4、R-colors）：じかに書いた色と、相対色の構文で色相を変えた色の colorOutside。var(--lit)・color-mix() の役割は許す
+  ['test-check-colors', ['tools/test-check-colors.mjs', path.join(tmp, 'check-colors')]],
   // 同梱のテーマ（#129）とペンの色（#132）：テーマごとに見本を組み、品質チェック・役割の色のコントラストと色覚の模擬・ペンの 3 色の地の上の比と差・形の断片
   ['test-themes', ['tools/test-themes.mjs', path.join(tmp, 'themes'), '--shots', path.join(tmp, 'themes-shots')]],
   // 選べる字体（#133）：選んだ字体だけが入る・英語の斜体・fontNotEmbedded

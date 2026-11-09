@@ -5,6 +5,7 @@
   --bg: #fbfaf6;
   --cover-bg: #eaf3f5;
   --font-sans: "Zen Maru Gothic", "BIZ UDPGothic", sans-serif;
+  --lit: #FFCE3A;                    /* 光と照らされる側。明るい黄（淡い地 1.4:1。1.1.0） */
 }
 /* look heading: soft */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:0;background:var(--base-wash);border-radius:16px;padding:8px 22px}

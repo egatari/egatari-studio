@@ -1,0 +1,10 @@
+{
+  "name": "tokiwa",
+  "extends": "default",
+  "version": "1.0.0",
+  "look": {
+    "heading": "thick-square",
+    "cover": "top-band-wide",
+    "concl": "left-rule"
+  }
+}

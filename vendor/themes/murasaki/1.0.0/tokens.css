@@ -1,0 +1,12 @@
+/* 江戸紫（murasaki）：ロゴの紺藍に近い紫。研究・一般向けの講演向け。見出しの左に縦の帯（下線なし）、表紙は下に紫の帯。
+   形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #5a3d8f;                 /* 江戸紫 */
+}
+/* look heading: left-bar */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:0;border-left:10px solid var(--base);padding:4px 0 4px 18px}
+/* /look */
+/* look cover: bottom-band */
+.slide.cover::before{top:auto;bottom:0;height:120px}
+.slide.cover .au{top:420px}
+/* /look */

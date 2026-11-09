@@ -2,6 +2,7 @@
    赤との差を保つため緑を少し青に寄せた（1 型の模擬で赤との差 ΔE 33 → 40）。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
 :root{
   --base: #0a5753;                 /* 常盤 */
+  --lit: #F5C000;                    /* 光と照らされる側。菜の花の黄（白地 1.7:1。1.1.0） */
 }
 /* look heading: thick-square */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom-width:5px;padding-left:34px}

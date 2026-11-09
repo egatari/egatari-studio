@@ -1,0 +1,14 @@
+{
+  "name": "asagi",
+  "extends": "default",
+  "version": "1.0.0",
+  "fonts": {
+    "body": "Zen Maru Gothic",
+    "heading": "Zen Maru Gothic"
+  },
+  "look": {
+    "heading": "soft",
+    "cover": "circle",
+    "concl": "rounded"
+  }
+}

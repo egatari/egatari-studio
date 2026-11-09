@@ -9,4 +9,5 @@
   --cover-bg: #f6f1e6;
   --font-sans: var(--font-mincho);
   --font-cap: "BIZ UDPGothic", "Hiragino Sans", sans-serif;
+  --lit: #F8B500;                    /* 光と照らされる側。山吹色（生成り地 1.8:1。1.1.0） */
 }
