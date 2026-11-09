@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "egatari",
-      "version": "0.6.7",
+      "version": "0.6.8-rc.1",
       "source": {
         "source": "local",
         "path": "./plugins/egatari"
@@ -20,7 +20,7 @@
     },
     {
       "name": "egatari-studio",
-      "version": "0.6.7",
+      "version": "0.6.8-rc.1",
       "source": {
         "source": "local",
         "path": "./"
