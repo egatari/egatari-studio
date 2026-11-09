@@ -1922,6 +1922,22 @@ function rateLabel(){ return (DECK.ja ? "再生速度 " : "Playback speed ") + R
 DECK.rateLabel = rateLabel;
 // 埋め込み（Player P8）：再生の状態と速さが変わるたびに {egatari:"state", playing, rate}
 function postState(){ if (EMBED) post({egatari: "state", playing: !!auto, rate: RATE}); }
+// 埋め込み（Player P8）：読み込んで命令を受けられるようになったら 1 度だけ {egatari:"ready", version, docId, sourceSha256?, timeline}。
+// version は動いているプレーヤーの版（DECK.VERSION）。docId・sourceSha256 は deck-meta から（docId のないふつうの build では null、sourceSha256 は持ち運べる形式だけ）。
+// timeline は段階ごとに {slideIndex, slideKey, stepKey, slideTitle, dur}（DECK.timeline と同じ順と長さ）。start() が部品の mount と並べの後、
+// 初めの position より前に送る。親がこれを受けて送る命令は後のタスクで届くので、そのときには DECK.ready が立っている
+var readySent = false;
+function postReady(){
+  if (!EMBED || readySent) return;
+  readySent = true;
+  var m = DECK.META, msg = {egatari: "ready", version: DECK.VERSION, docId: typeof m.docId === "string" ? m.docId : null};
+  if (typeof m.sourceSha256 === "string") msg.sourceSha256 = m.sourceSha256;
+  // タイムラインを作れなくても起動は止めない（空のタイムラインで知らせる）
+  try { msg.timeline = DECK.timeline().map(function(x){
+    return {slideIndex: x.i, slideKey: x.slideKey, stepKey: stepKey(slides[x.i], x.k), slideTitle: x.title, dur: x.dur};
+  }); } catch (e) { console.warn("deck.js: ready: " + errText(e)); msg.timeline = []; }
+  post(msg);
+}
 // 文書が隠れたら再生を止める（Player P3。一時停止なので、見えてから再生し直せばそこから続く）
 document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && auto && DECK.mode !== "video") stopAuto(true); });
 
@@ -2323,6 +2339,7 @@ function start(){
   if (h0.error){ console.warn("deck.js: #" + hs + ": " + h0.error); h0 = {i: 0, k: 0}; }
   DECK.openHash = hs;   // 開いたときの #（kit/panes.js の「前回の続きから」は、# で場所を指して開いたときには使わない）
   if (pendingGo){ h0 = {i: pendingGo[0], k: pendingGo[1]}; pendingGo = null; }
+  postReady();   // 埋め込み（Player P8）：初めの position の前に
   POS.setCause("seek"); go(h0.i, h0.k, false); POS.setCause(null);
   if (pendingSeek){ var ps = pendingSeek; pendingSeek = null; seek.apply(null, ps); }
   DECK.ready = true;

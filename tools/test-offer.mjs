@@ -2,7 +2,7 @@
 //   node tools/test-offer.mjs [作業フォルダ]
 // 組み立て：metadata.offer を deck-meta.offer に写す（作業フォルダの build・1 ファイル・再生専用）。learn は talk に、知らない値・重なりは捨て、open は offer の中だけ。
 //   索引の metadata.offer も同じ形。normalizeOffer の表。読むときは前の版の learn も誤りにしない
-// 再生器（Chromium）：?mode=learn・offer の learn・埋め込みの {egatari:"mode", mode:"learn"} は talk。offer.open がモードと見え方を選ぶ。
+// 再生器（Chromium）：?mode=learn・offer の learn・埋め込みの {egatari:"mode", mode:"learn"} は talk。埋め込みの {egatari:"ready"}（1 度だけ、初めの position の前、受けてすぐの命令が効く）。offer.open がモードと見え方を選ぶ。
 //   優先：?mode・?layout・埋め込み ＞ この端末で選んだ並べ方 ＞ offer.open ＞ metadata.primary ＞ <html data-mode> ＞ 既定。
 //   offer.faces にない見え方は「表示」の一覧・r・「本で読む」に出ない。offer.modes に talk がなく open がなければ offer の初めのモードで開く
 //   見る人の video（offer.open・?mode=video。自動操作でないブラウザ）：開始のボタン 1 つ、押すとタイムラインで最後まで、帯は出ない。書き出しのブラウザでは出ない
@@ -124,24 +124,57 @@ const close = (p) => p.context().close();
   p = await open(variant('learn-html', {}, { dataMode: 'learn' }));
   ok((await state(p)).mode === 'talk', '<html data-mode="learn"> is read as talk');
   await close(p);
-  // 埋め込み（Player P8）：親の窓からの {egatari:"mode"}
+  // 埋め込み（Player P8）：読み込んだら {egatari:"ready"} が 1 度だけ、初めの position より前に届く。親はそれを受けたらすぐに命令を送る
+  // （同じ知らせの中で送る。待ちの推し量りはしない）：{egatari:"mode"}・{egatari:"rate"}・{egatari:"layout"} が効く
   const host = path.join(B, 'out', 'host.html');
   fs.writeFileSync(host, `<!doctype html><meta charset="utf-8"><body><iframe id="f" style="width:960px;height:540px"></iframe><script>
 window.msgs = []; var f = document.getElementById('f');
-addEventListener('message', function(e){ if (e.source === f.contentWindow) window.msgs.push(e.data); });
+addEventListener('message', function(e){
+  if (e.source !== f.contentWindow) return;
+  window.msgs.push(e.data);
+  if (e.data && e.data.egatari === 'ready'){
+    var w = f.contentWindow;
+    w.postMessage({ egatari: 'mode', id: 'm1', mode: 'learn' }, '*'); w.postMessage({ egatari: 'mode', id: 'm2', mode: 'video' }, '*');
+    w.postMessage({ egatari: 'rate', id: 'r1', value: 1.5 }, '*'); w.postMessage({ egatari: 'layout', id: 'l1', layout: 'flow' }, '*');
+  }
+});
 f.src = 'plain.html?embed=1';
 </script></body>`);
   const c = await browser.newContext({ viewport: { width: 1200, height: 800 } });
   const hp = await c.newPage();
+  hp.on('pageerror', (e) => errors.push(`host: ${e.message}`));
   await hp.goto(fileUrl(host));
-  await hp.waitForFunction(() => window.msgs.some((m) => m && m.egatari === 'position'), null, { timeout: 20000 });
-  await hp.evaluate(() => { const w = document.getElementById('f').contentWindow; w.postMessage({ egatari: 'mode', id: 'm1', mode: 'learn' }, '*'); w.postMessage({ egatari: 'mode', id: 'm2', mode: 'video' }, '*'); w.postMessage({ egatari: 'rate', id: 'r1', value: 1.5 }, '*'); });
-  await hp.waitForFunction(() => window.msgs.some((m) => m.id === 'm2') && window.msgs.some((m) => m.egatari === 'state' && m.rate === 1.5), null, { timeout: 10000 });
+  await hp.waitForFunction(() => window.msgs.some((m) => m && m.egatari === 'ready'), null, { timeout: 20000 });
+  await hp.waitForFunction(() => window.msgs.some((m) => m.id === 'm2') && window.msgs.some((m) => m.id === 'l1') && window.msgs.some((m) => m.egatari === 'state' && m.rate === 1.5), null, { timeout: 10000 });
+  await hp.waitForTimeout(300);
   const ms = await hp.evaluate(() => window.msgs);
-  const m1 = ms.find((m) => m.id === 'm1'), m2 = ms.find((m) => m.id === 'm2');
-  ok(m1 && m1.egatari === 'mode' && m1.mode === 'talk', `embedding: {egatari:"mode", mode:"learn"} is read as talk (${J(m1)})`);
+  const readies = ms.filter((m) => m && m.egatari === 'ready'), r = readies[0];
+  const iReady = ms.indexOf(r), iPos = ms.findIndex((m) => m && m.egatari === 'position');
+  ok(readies.length === 1, `embedding: {egatari:"ready"} is sent exactly once (${readies.length})`);
+  ok(iReady >= 0 && iPos > iReady, `embedding: ready comes before the first position (ready #${iReady}, position #${iPos})`);
+  const fr = hp.frames().find((f) => f.url().includes('embed=1'));
+  const fm = scriptJson(base, 'deck-meta'), want = await fr.evaluate(() => DECK.timeline().map((x) => [x.i, x.slideKey, x.title, x.dur]));
+  const tl = r && Array.isArray(r.timeline) ? r.timeline : [];
+  ok(r && typeof r.version === 'string' && r.version.length > 0 && r.version === await fr.evaluate(() => DECK.VERSION), `embedding: ready.version is the running player's version (${r && r.version})`);
+  ok(r && r.docId === (typeof fm.docId === 'string' ? fm.docId : null) && (fm.sourceSha256 ? r.sourceSha256 === fm.sourceSha256 : !('sourceSha256' in r)), `embedding: ready.docId and sourceSha256 come from deck-meta (${r && r.docId}, ${r && r.sourceSha256})`);
+  ok(tl.length === SL.length * 2 && tl.every((x, j) => J(Object.keys(x)) === J(['slideIndex', 'slideKey', 'stepKey', 'slideTitle', 'dur']) && J([x.slideIndex, x.slideKey, x.slideTitle, x.dur]) === J(want[j])) &&
+    J(tl.map((x) => x.slideKey + ':' + x.stepKey)) === J(SL.flatMap(([id]) => [id + ':0', id + ':1'])), `embedding: ready.timeline has one {slideIndex, slideKey, stepKey, slideTitle, dur} per step, as DECK.timeline (${J(tl[0])})`);
+  const m1 = ms.find((m) => m.id === 'm1'), m2 = ms.find((m) => m.id === 'm2'), l1 = ms.find((m) => m.id === 'l1');
+  ok(m1 && m1.egatari === 'mode' && m1.mode === 'talk', `embedding: {egatari:"mode", mode:"learn"} sent right after ready is read as talk (${J(m1)})`);
   ok(m2 && m2.egatari === 'error' && m2.code === 'mode', `embedding: changing to another mode after loading answers an error (${J(m2)})`);
-  ok(ms.some((m) => m.egatari === 'state' && m.rate === 1.5), 'embedding: {egatari:"rate"} sets the playback rate in talk and the player reports state');
+  ok(ms.some((m) => m.egatari === 'state' && m.rate === 1.5), 'embedding: {egatari:"rate"} sent right after ready sets the playback rate in talk and the player reports state');
+  ok(l1 && l1.egatari === 'layout' && l1.layout === 'flow' && await fr.evaluate(() => DECK.panes.layout()) === 'book', `embedding: {egatari:"layout"} sent right after ready takes effect (${J(l1)})`);
+  // 読み込み直すと、新しい文書がもう 1 度 ready を送る（文書ごとに 1 度）
+  await hp.evaluate(() => { window.msgs = []; }); await fr.evaluate(() => location.reload());
+  await hp.waitForFunction(() => window.msgs.some((m) => m && m.egatari === 'position'), null, { timeout: 20000 });
+  await hp.waitForTimeout(300);
+  ok((await hp.evaluate(() => window.msgs.filter((m) => m && m.egatari === 'ready').length)) === 1, 'embedding: a reloaded frame sends ready once again (once per document)');
+  // Egatari ファイル：version は deck-meta.player.version、docId と sourceSha256 は deck-meta の値
+  await hp.evaluate((src) => { window.msgs = []; document.getElementById('f').src = src; }, fileUrl(path.join(D, ega)) + '?embed=1');
+  await hp.waitForFunction(() => window.msgs.some((m) => m && m.egatari === 'ready'), null, { timeout: 20000 });
+  const pr = await hp.evaluate(() => window.msgs.find((m) => m && m.egatari === 'ready'));
+  ok(pr.version === pMeta.player.version && pr.docId === pMeta.docId && pr.sourceSha256 === pMeta.sourceSha256 && pr.timeline.length === SL.length * 2,
+    `embedding an Egatari file: ready carries the player version, docId and sourceSha256 of deck-meta (${pr.version}, ${pr.docId}, ${String(pr.sourceSha256).slice(0, 12)}…)`);
   await c.close();
 }
 

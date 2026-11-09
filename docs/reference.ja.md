@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=f6c74989751968ae -->
+<!-- i18n: pair=reference.md sha256=771fafa070f4670f -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -260,7 +260,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 | `?view=follow` / `?view=next` | 内部用：発表者ビューの中の画面 |
 | `#N` | N 枚目（1 始まり）で開く。移動すると書き換わる |
 | `#<スライドの id>` / `#<スライドの id>:<ステップの鍵>` | そのスライド（ステップ 0）かステップ（`0`・`1`・… か `concl`）の最終状態で開く（[contract §9](contract.ja.md#9-スライドへのリンク)） |
-| `?embed=1` | iframe の中で：ステップが変わるたびに親へ `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く |
+| `?embed=1` | iframe の中で：教材を読み込んで命令を受けられるようになったら、親へ `{egatari:"ready", version, docId, sourceSha256?, timeline}` を 1 度送る（初めの `position` より前。`version` はプレーヤーの版、`docId` は作業フォルダの組み立てでは `null`、`sourceSha256` は Egatari ファイルだけ、`timeline` はステップごとに `{slideIndex, slideKey, stepKey, slideTitle, dur}`）。ステップが変わるたびに `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く。親は `ready` を受けたらすぐに命令を送ってよい。送り先の origin は `*` |
 | `?links=0` | `?embed=1` と一緒に：スライドへのリンクで動かず、代わりに `{egatari:"linkRefused", slideKey, stepKey}` を送る |
 | `?layout=slides` / `flow` / `split` | スライドだけ・本だけ・スライドと本を並べて開く（[スライドと本](#スライドと本)）。`pages` は今は本をスクロールで開く。この端末で覚えた並べ方より優先。`?embed=1` では親が `{egatari:"layout", id?, layout}` を送ってもよく、同じ形で今の並べ方を答える |
 

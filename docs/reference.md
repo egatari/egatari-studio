@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=944e71abe4a3333f -->
+<!-- i18n: pair=reference.ja.md sha256=be6d8e07a11d8550 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -260,7 +260,7 @@ For 国語 lessons (kanbun, classical and modern Japanese). The example is [`exa
 | `?view=follow` / `?view=next` | internal: the iframes inside the presenter view |
 | `#N` | open at slide N (1-based); updated while navigating |
 | `#<slide id>` / `#<slide id>:<stepKey>` | open at that slide (step 0) or step (`0`, `1`, … or `concl`), in its final state ([contract §9](contract.md#9-links-to-slides)) |
-| `?embed=1` | in a frame: post `{egatari:"position", slideKey, stepKey, t, cause}` to the parent on every step change and accept `{egatari:"links", follow}` from it |
+| `?embed=1` | in a frame: once the lesson has loaded and can take commands, post `{egatari:"ready", version, docId, sourceSha256?, timeline}` to the parent once (before the first `position`; `version` is the player version, `docId` is `null` in a working-folder build, `sourceSha256` only in an Egatari file, `timeline` has one `{slideIndex, slideKey, stepKey, slideTitle, dur}` per step); post `{egatari:"position", slideKey, stepKey, t, cause}` on every step change; accept `{egatari:"links", follow}` from it. A host can send commands as soon as `ready` arrives. Messages go to target origin `*` |
 | `?links=0` | with `?embed=1`: links to slides do not move the player; it posts `{egatari:"linkRefused", slideKey, stepKey}` instead |
 | `?layout=slides` / `flow` / `split` | open with the slides only, the book only, or slides and book side by side ([Slides and book](#slides-and-book)); `pages` opens the book scrolled for now. Wins over the layout remembered on this device. With `?embed=1` the host can also send `{egatari:"layout", id?, layout}`; the player answers with the same message and the layout it shows |
 
