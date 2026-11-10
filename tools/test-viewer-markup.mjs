@@ -293,6 +293,33 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   });
   await sleep(300);
   ok((await mstate(p)).record.highlights.length === n0, 'requests with a quote over 1,000 characters, an extra member (docId), an unknown colour or a long prefix are ignored');
+  // more hostile shapes (dev review): non-string ids, __proto__ / constructor keys, an oversize or broken status
+  const before4 = JSON.stringify((await mstate(p)).record.highlights);
+  await f4.evaluate(() => {
+    const P = (m) => parent.postMessage(m, '*');
+    P({ egaViewer: 'markup-set', id: 123, color: 'y' }); P({ egaViewer: 'markup-set', id: { toString: null }, color: 'p' });
+    P({ egaViewer: 'markup-del', id: 42 }); P({ egaViewer: 'markup-del', id: ['h-1'] }); P({ egaViewer: 'markup-del', id: null });
+    P(JSON.parse('{"egaViewer":"markup-add","color":"y","target":{"section":"","quote":{"exact":"平均","prefix":"","suffix":""},"__proto__":{"polluted":1}}}'));
+    P(JSON.parse('{"egaViewer":"markup-add","color":"y","__proto__":{"polluted":1},"target":{"section":"","quote":{"exact":"平均","prefix":"","suffix":""}}}'));
+    P(JSON.parse('{"egaViewer":"markup-add","color":"y","constructor":{"prototype":{"polluted":1}},"target":{"section":"","quote":{"exact":"平均","prefix":"","suffix":""}}}'));
+    const big = {}; for (let i = 0; i < 600; i++) big['s-' + i] = 'x';
+    P({ egaViewer: 'markup-status', missing: [], sections: big });
+    P({ egaViewer: 'markup-status', sections: { a: 'b' } });
+    P({ egaViewer: 'markup-status', missing: 'h-1', sections: {} });
+    P(JSON.parse('{"egaViewer":"markup-status","missing":[],"sections":{"__proto__":"x","constructor":"y","toString":"z"}}'));
+  });
+  await sleep(400);
+  ok(JSON.stringify((await mstate(p)).record.highlights) === before4 && await p.evaluate(() => ({}).polluted === undefined && Object.prototype.polluted === undefined && typeof ({}).toString === 'function'),
+    'non-string ids on set and del, __proto__ / constructor members, an oversize sections map and a status without a list change nothing and pollute nothing');
+  // the meanings a learner gives colours stay in the page: the frame gets the plain colour words
+  await p.click('#b-mlist');   // the bar is still open from the list check above
+  await f4.evaluate(() => { window.__seen = []; addEventListener('message', (e) => { if (e.data && e.data.egaViewer === 'markup-load') window.__seen.push(JSON.stringify(e.data.words)); }); });
+  await p.fill('#m-list .m-colour:nth-child(1) input', '秘密の意味'); await p.press('#m-list .m-colour:nth-child(1) input', 'Enter'); await p.click('#m-list h2');
+  await sleep(300);
+  const seen = await f4.evaluate(() => window.__seen);
+  ok(seen.length > 0 && seen.every((w) => !w.includes('秘密の意味')), `a colour's meaning is not sent into the lesson's frame (${seen.length} loads seen)`);
+  await p.fill('#m-list .m-colour:nth-child(1) input', ''); await p.press('#m-list .m-colour:nth-child(1) input', 'Enter');
+  await p.click('#b-mlist-close');
   await p.click('#b-markup');
   await p.evaluate(() => window.__play.markupSaved());
 
@@ -311,6 +338,24 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   await until(async () => (await count()) === 0);
   ok(await p.isChecked('#shared') && (await count()) === 0, '消して切り替える: shared device on, the saved highlights deleted');
   await ctx.close(); }
+
+// ---------------------------------------------------------------- 5b. the 2,000 cap: a stored record over it is cut, and no add goes past it
+console.log('cap');
+{ const { c, p } = await page(null);
+  let f = await openBook(p, 'book.ega.html');
+  const docId = (await mstate(p)).docId;
+  await p.evaluate((docId) => new Promise((res) => {
+    const hs = Array.from({ length: 2100 }, (_, i) => ({ id: 'h-' + i.toString(16).padStart(6, '0'), color: 'ypb'[i % 3], target: { section: '', quote: { exact: '平均', prefix: '', suffix: '' } }, created: '2026-11-10T00:00:00Z', modified: '2026-11-10T00:00:00Z' }));
+    const o = indexedDB.open('egatari-viewer-notes', 1); o.onupgradeneeded = () => o.result.createObjectStore('lessons', { keyPath: 'docId' });
+    o.onsuccess = () => { const t = o.result.transaction('lessons', 'readwrite'); t.objectStore('lessons').put({ docId, madeOn: {}, highlights: hs }); t.oncomplete = () => res(); };
+  }), docId);
+  await p.click('#b-close'); f = await openBook(p, 'book.ega.html');
+  await until(async () => (await mstate(p)).record.highlights.length === 2000);
+  ok((await mstate(p)).record.highlights.length === 2000, 'a stored record over the cap is cut to 2,000 when the lesson opens');
+  await f.evaluate(() => { for (let i = 0; i < 50; i++) parent.postMessage({ egaViewer: 'markup-add', color: 'y', target: { section: '', quote: { exact: '中央値', prefix: '', suffix: '' } } }, '*'); });
+  await sleep(800);
+  ok((await mstate(p)).record.highlights.length === 2000 && /2000 件まで/.test(await p.textContent('#sr')), 'a flood of adds past the cap adds nothing and says so (「ハイライトは 1 つの教材に 2000 件までです。…」)');
+  await c.close(); }
 
 // ---------------------------------------------------------------- 6a. 暗記 over ruby and a display equation
 console.log('ruby and math');

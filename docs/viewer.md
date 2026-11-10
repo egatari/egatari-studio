@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=4a72a80e1182f50a -->
+<!-- i18n: pair=viewer.ja.md sha256=2f245f0d6657125a -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -42,7 +42,7 @@ A learner can highlight text in a lesson's book and practise recall on it (stage
   | black `#000000` | `#7d6800` | `#a5304a` | `#1f4f94` | 64 | 42 | 32 | 44 | 4.6 / 5.7 / 6.8 |
 
   The weakest pairs are pink–blue (protan) and yellow–pink (tritan). Yellow on white under tritanopia is only ΔE 16 from the page: faint, but the band still reads.
-- **How it is kept apart.** The frame side (`play/markup-frame.js`) is part of the trusted prefix, after the shim; it paints, anchors and asks. The page side (`play/markup.mjs`) keeps the record and accepts `{egaViewer: "markup-…"}` requests only from the frame, in exact shapes with bounded sizes, at most 2,000 highlights per lesson, and always for the `docId` it read from the file itself. **Known limit:** the frame's script runs beside the lesson's, so lesson script can read the highlights the page sends in and can ask for changes to its own lesson's record. It cannot send them anywhere (the frame's `connect-src 'none'`) and cannot reach another lesson's record.
+- **How it is kept apart.** The frame side (`play/markup-frame.js`) is part of the trusted prefix, after the shim; it paints, anchors and asks. The page side (`play/markup.mjs`) keeps the record and accepts `{egaViewer: "markup-…"}` requests only from the frame, in exact shapes with bounded sizes, at most 2,000 highlights per lesson, and always for the `docId` it read from the file itself. **Known limit:** the frame's script runs beside the lesson's, so lesson script can read the highlights the page sends in and can recolour or delete them. The record is chosen by the `docId` the file declares, and docIds are not secret (every copy of a lesson carries its own), so a hostile file that declares another lesson's docId gets that lesson's highlights and can change them. It cannot send them anywhere (the frame's `connect-src 'none'`) and cannot reach any record whose docId it does not declare. The meanings a learner gives colours stay in the page: the frame gets the plain colour words only. While the markup bar is open, Esc pressed in the lesson closes the bar and does not reach the lesson's player.
 - `tools/test-viewer-markup.mjs` (Chromium; `--webkit` for WebKit) checks all of the above, including highlights across emphasis, ruby, inline math and a term link, a revised lesson, forged requests, the keyboard in 暗記, Slides and book (nothing over the slides, the arrow keys still move the lesson) and the phone width.
 - **Later:** the Markup button inside the presentation bar itself (a hook in the player, `kit/`), the script pane (台本で読む), notes, the pen on slides, `.ega-notes` export and import.
 

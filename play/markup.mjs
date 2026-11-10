@@ -70,8 +70,11 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
   const view = () => ({ hidden: L.hidden.slice(), recall: L.recall, recallColors: L.recallColors.slice(), bar: L.bar });
   const send = (m) => { const f = L.frame; if (f && f.contentWindow) f.contentWindow.postMessage(m, '*'); };
-  const frameWords = () => ({ y: colourLabel('y'), p: colourLabel('p'), b: colourLabel('b'), del: W().mDelete, window: W().mHighlight, pick: W().mPick, close: W().mPickClose,
-    reveal: { y: W().mReveal(colourLabel('y')), p: W().mReveal(colourLabel('p')), b: W().mReveal(colourLabel('b')) } });
+  // the frame gets the plain colour words only: the meanings a learner gives colours (getNames) stay in this page and never reach
+  // a lesson's frame
+  const C = (c) => W().mColour[c];
+  const frameWords = () => ({ y: C('y'), p: C('p'), b: C('b'), del: W().mDelete, window: W().mHighlight, pick: W().mPick, close: W().mPickClose,
+    reveal: { y: W().mReveal(C('y')), p: W().mReveal(C('p')), b: W().mReveal(C('b')) } });
   const colourLabel = (c) => { const n = getNames()[c]; return n ? `${W().mColour[c]}（${n}）` : W().mColour[c]; };
   const pushAll = () => send({ egaViewer: 'markup-load', list: L.rec ? L.rec.highlights : [], words: frameWords(), view: view() });
   const pushView = () => send({ egaViewer: 'markup-view', view: view() });
@@ -125,8 +128,8 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
       case 'markup-status': {
         if (!keys(m, ['egaViewer', 'missing', 'sections']) || !Array.isArray(m.missing) || m.missing.length > MAX || !m.sections || typeof m.sections !== 'object') break;
         L.missing = m.missing.filter((x) => isStr(x, 40));
-        const s = {}; let n = 0;
-        for (const [k, v] of Object.entries(m.sections)) { if (++n > 500) break; if (isStr(k, 200) && isStr(v, 200)) s[k] = v; }
+        const s = Object.create(null); let n = 0;   // no prototype: a key named __proto__ is just a key
+        for (const [k, v] of Object.entries(m.sections)) { if (++n > 500) break; if (isStr(k, 200) && isStr(v, 200) && k !== '__proto__') s[k] = v; }
         L.sections = s;
         if (els.list.open) renderList();
         break;
