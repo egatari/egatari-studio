@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=9bc2a12287639729 -->
+<!-- i18n: pair=reference.md sha256=a48d2897c4205d77 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -260,7 +260,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 | `?view=follow` / `?view=next` | 内部用：発表者ビューの中の画面 |
 | `#N` | N 枚目（1 始まり）で開く。移動すると書き換わる |
 | `#<スライドの id>` / `#<スライドの id>:<ステップの鍵>` | そのスライド（ステップ 0）かステップ（`0`・`1`・… か `concl`）の最終状態で開く（[contract §9](contract.ja.md#9-スライドへのリンク)） |
-| `?embed=1` | iframe の中で：教材を読み込んで命令を受けられるようになったら、親へ `{egatari:"ready", version, docId, sourceSha256?, timeline}` を 1 度送る（初めの `position` より前。`version` はプレーヤーの版、`docId` は作業フォルダの組み立てでは `null`、`sourceSha256` は Egatari ファイルだけ、`timeline` はステップごとに `{slideIndex, slideKey, stepKey, slideTitle, dur}`）。ステップが変わるたびに `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く。親は `ready` を受けたらすぐに命令を送ってよい。送り先の origin は `*` |
+| `?embed=1` | iframe の中で：教材を読み込んで命令を受けられるようになったら、親へ `{egatari:"ready", version, docId, sourceSha256?, timeline}` を 1 度送る（初めの `position` より前。`version` はプレーヤーの版、`docId` は作業フォルダの組み立てでは `null`、`sourceSha256` は Egatari ファイルだけ、`timeline` はステップごとに `{slideIndex, slideKey, stepKey, slideTitle, dur}`）。ステップが変わるたびに `{egatari:"position", slideKey, stepKey, t, cause}` を送り、親からの `{egatari:"links", follow}` を聞く。親は `ready` を受けたらすぐに命令を送ってよい。送り先の origin は `*`。命令と知らせの全体は[埋め込み](#埋め込み) |
 | `?links=0` | `?embed=1` と一緒に：スライドへのリンクで動かず、代わりに `{egatari:"linkRefused", slideKey, stepKey}` を送る |
 | `?layout=slides` / `flow` / `split` | スライドだけ・本だけ・スライドと本を並べて開く（[スライドと本](#スライドと本)）。`pages` は今は本をスクロールで開く。この端末で覚えた並べ方より優先。`?embed=1` では親が `{egatari:"layout", id?, layout}` を送ってもよく、同じ形で今の並べ方を答える |
 
@@ -295,7 +295,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 ### ツールバー（開いたときに出て、その後はマウスを動かす・タップすると出る）
 
-教材を開くと、ツールバーを 5 秒ほど見せる。その端末で初めてのとき（`localStorage` に覚える。使えないときは毎回）は、帯の上に出し方の 1 行「マウスを画面の下に動かす（タップする）と、ツールバーが出ます」（指で操る端末、`(hover: none)` では「画面をタップすると、ツールバーが出ます」）を添え（読み上げソフトには読ませない。キーボードでは Tab でツールバーに入れる）、ツールバーが隠れると消す。その後は、マウスを動かす（タッチの画面ではスライドをタップする。そのタップでスライドは進まない）と出て、動かさずに 2.5 秒たつと隠れる（ポインターがツールバーの上にあるとき・フォーカスがあるときは隠れない）。隠れている間は、左下の小さく薄いボタン「ツールバーを表示」で、クリック・タップ・キーボードで出せる（Tab で選べ、Enter でツールバーの最初のボタンにフォーカスが移る。クリック・タップではフォーカスはスライドのまま）。隠れたツールバーを出すタップと、取っ手のタップは、出すだけで、ツールバーのボタンを押したことにはならない。取っ手と出し方の 1 行は、動画・発表者ビューの中の画面・`embed=1&controls=0`（ツールバーも出さない）・印刷では出ない。幅の狭い画面（縦に持ったスマートフォンなど）では、ツールバーは画面の幅に収まるように 2 行に折り返し、スライドは画面の幅に合わせて縮む。
+教材を開くと、ツールバーを 5 秒ほど見せる。その端末で初めてのとき（`localStorage` に覚える。使えないときは毎回）は、帯の上に出し方の 1 行「マウスを画面の下に動かす（タップする）と、ツールバーが出ます」（指で操る端末、`(hover: none)` では「画面をタップすると、ツールバーが出ます」）を添え（読み上げソフトには読ませない。キーボードでは Tab でツールバーに入れる）、ツールバーが隠れると消す。その後は、マウスを動かす（タッチの画面ではスライドをタップする。そのタップでスライドは進まない）と出て、動かさずに 2.5 秒たつと隠れる（ポインターがツールバーの上にあるとき・フォーカスがあるときは隠れない）。隠れている間は、左下の小さく薄いボタン「ツールバーを表示」で、クリック・タップ・キーボードで出せる（Tab で選べ、Enter でツールバーの最初のボタンにフォーカスが移る。クリック・タップではフォーカスはスライドのまま）。隠れたツールバーを出すタップと、取っ手のタップは、出すだけで、ツールバーのボタンを押したことにはならない。取っ手と出し方の 1 行は、動画・発表者ビューの中の画面・`embed=1&controls=0`（ツールバーも出さない）・親の `{egatari:"controls", visible:false}` の後・印刷では出ない。幅の狭い画面（縦に持ったスマートフォンなど）では、ツールバーは画面の幅に収まるように 2 行に折り返し、スライドは画面の幅に合わせて縮む。
 
 ボタン：前へ、**再生** / **一時停止**、次へ、**再生速度**（前へ・次へと速さは再生の操作で、再生中に前へ・次へを押しても再生を続ける）、レーザーポインター、ペン、消えるペン（ペンの 2 つは右上の点が今の色。ペンの間は後ろに赤・青・黒の色のボタンが出て、押すとその色になる。選んでいる色は aria-pressed）、書き込みを消す（道具によらずこのスライド）、一覧、先のステップを薄く見せる、字幕、**読み上げで聞く（音声ファイルにはなりません）**（ブラウザに音声合成があり、台本があって音声のないステップがあるときだけ。[読み上げで聞く](#読み上げで聞く)）、発表者ビュー、全画面、キーの一覧、どこかのステップの音声が TTS なら小さな札「AI 音声」（format spec §7.3）。Tab で帯に入れ（フォーカスがある間は隠れない）、Enter / Space で押すとフォーカスはそのボタンに残り、Esc でスライドに戻る。マウスで押したときはフォーカスを残さない。スライドの下に 44px 以上の余白があれば余白に、なければ下端に重ね、そのときはマウスが下のほうに来たときだけ出す。印刷と動画には出ない。
 
@@ -308,6 +308,35 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 進行状況（Player P6、format spec §9.2）は 1 つの口で記録する。探す順は、SCORM 1.2 の `API`（この窓と親の窓 7 段まで、次に開いた窓。[SCORM 1.2 の包み方](https://github.com/egatari/egatari-spec/blob/main/bindings/scorm12.md)）、`?embed=1` の枠の親（`postMessage`）、この端末（`localStorage`）。ステップは、スライドが見えているとき（スライド・スライドと本・スライドで見る。本だけでは台本の今のスライドが再生している間だけ）に、舞台が自分で（再生・次へ・スライドのクリック・ステップへのリンクで）そこへ来たら**再生した**（`via: "stage"`）。舞台が本に付いていって動いただけの所は再生したことにしない。ステップは、本のその節（台本で読むではその台本）が 3 秒見えていたら**読んだ**（`via: "text"`）とする。スクロールで通り過ぎただけでは数えない。2 つは別々に持つ。すべてのステップを再生したか読んだら、または `metadata.completion` の決まり（`visitedFraction`・`reachedEnd`、再生したものだけを数える `played: true`）を満たしたら終えたことになる。出来事：`started`・`step` `{slideKey, stepKey, index, total, via}`・`completed`・`suspend` `{location, data}`。SCORM の `cmi.suspend_data` は `{"v":1,"n","h","seen","stage","text"}`：`seen` は包み方のとおり（再生したか読んだか）、`stage` と `text` はその 2 つ（省かない）。SCORM の API か埋め込みの親が見つかったときは、その位置が勝ち、この端末の**前回の続きから**は使わない。編集のプレビュー・動画・発表者ビューでは記録せず、ファイルには何も書かない。Egatari ファイルは `deck-meta.tracking` に `["scorm12","postmessage","local"]` を書く。どの組み立ても（作業フォルダの `out/deck.html` も）`egatari.json` の `metadata.completion` を `deck-meta.completion` に写す。
 
 `?` の一覧の下に「フィードバックを送る」のリンクと版（例：`v0.2.0`）がある。版（プレーヤーの版。ファイルを作った Studio の版が違えば context に添える）・ブラウザ・OS・教材の言語・モードだけを入れたフィードバックの form を開く。教材の中身は送らない。動画・印刷・`data-feedback="off"` のときは出ない。
+
+### 埋め込み
+
+`?embed=1` を付けて教材を `<iframe>` に入れた親のページは、`postMessage` で教材を動かす（Player P8）。プレーヤーは `ready` を送った後、`window.parent` からの、文字列の `egatari` を持つオブジェクトだけを受け取る。送り先の origin は `*`。命令には `id` を付けてよく、答えに同じ `id` を付けて返す。時刻は秒。`t` が `null` ならそのステップの最終状態。
+
+| 命令（親 → プレーヤー） | 働きと答え |
+|---|---|
+| `{egatari:"seek", id?, slide, step, t}` | そのステップの時刻 `t` へ。`slide` はスライドの鍵（`ready.timeline[].slideKey`）か 0 からの番号、`step` はステップの鍵（`"0"`・`"1"`・… か `"concl"`。整数はその鍵と読む。なければ `"0"`）、`t` は秒か `null`（なければ `null`）。再生の状態は保つ：再生中なら `t` から続ける（`t` が `null` ならステップの初めから。ツールバーで跳ぶときと同じ）。この seek による `position` の後に `{egatari:"seeked", id?, slideKey, stepKey, t}` を答える |
+| `{egatari:"play", id?}` / `{egatari:"pause", id?}` | 再生 / 一時停止。ブラウザが音声を始めさせなければ `playBlocked` |
+| `{egatari:"rate", id?, value}` | 再生速度（0.75・1・1.25・1.5・2） |
+| `{egatari:"mode", id?, mode}` | 今のモードを `{egatari:"mode", id?, mode}` で答える。ほかのモードは error（モードは開くときに `?mode=` で決まる） |
+| `{egatari:"layout", id?, layout}` | `slides`・`flow`・`split`。`{egatari:"layout", id?, layout}` で答える |
+| `{egatari:"preview", id?, on}` | 先のステップを薄く見せる（`true`）・見せない（`false`）。`l` キーと同じ。`{egatari:"preview", id?, on}` で答える。動画では使えない |
+| `{egatari:"controls", id?, visible}` | プレーヤー自身の操作を出す・隠す：ツールバー・取っ手・出し方の 1 行・本の再生と表示のボタン（`controls=0` と同じもの）。キーは効いたまま。`{egatari:"controls", id?, visible}` で答える。`controls=0` で開いた後の `visible:true` はツールバーを作って出す |
+| `{egatari:"links", id?, follow}` | スライドへのリンクで動くか。`{egatari:"links", id?, follow}` で答える |
+| `{egatari:"snapshot", id, …}` | 作っていない（Player P8 では OPTIONAL）：`{egatari:"error", id, code:"unsupported"}` を答える |
+
+| 知らせ（プレーヤー → 親） | いつ |
+|---|---|
+| `{egatari:"ready", version, docId, sourceSha256?, timeline}` | 読み込んだ文書ごとに 1 度、初めの `position` より前（[URL の引数](#url-の引数)の `?embed=1`） |
+| `{egatari:"position", slideKey, stepKey, t, cause}` | ステップが変わるたび。`cause` は `play`・`seek`・`control`・`link` |
+| `{egatari:"stepEnded", slideKey, stepKey}` | 再生がそのステップを終わりまで流した。飛ばしたステップ（次へ・跳ぶ・`seek`）や、終わる前に一時停止・停止したときは送らない |
+| `{egatari:"ended"}` | 再生がタイムラインの最後のステップを終わりまで流した。そのステップの `stepEnded` と、`playing: false` の `state` の後に来る |
+| `{egatari:"state", playing, rate}` | 再生の状態か速さが変わるたび |
+| `{egatari:"playBlocked"}` | 利用者の操作がないので音声を始められなかった |
+| `{egatari:"linkRefused", slideKey, stepKey}` | スライドへのリンクで動かなかった（`?links=0` か `links` の `follow:false`） |
+| `{egatari:"error", id?, code, message}` | 命令が失敗した。`snapshot` と知らない命令は `unsupported`、使えない引数はその命令の名前（`seek`・`preview`・`controls`・`mode`・`rate`・`layout`・`links`）で、プレーヤーは動かない |
+
+台本の話の切り替わり（`turn`、Player P8 では OPTIONAL）は送らない。`postMessage` の口の進行状況の出来事は[再生と進行状況](#再生と進行状況)にある。
 
 ### スライドと本
 

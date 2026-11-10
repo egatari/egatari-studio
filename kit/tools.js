@@ -158,6 +158,8 @@ css(
   " color:#fff;background:rgba(20,20,20,.45);opacity:0;cursor:pointer;transition:opacity .25s}" +
   "#dt-handle.show{opacity:.3}#dt-handle.show:hover,#dt-handle.show:focus-visible{opacity:.85}" +
   "#dt-handle:focus-visible{outline:2px solid #fff;outline-offset:1px;box-shadow:0 0 0 4px rgba(0,0,0,.55)}" +
+  // 埋め込みで親が操作を隠したとき（{egatari:"controls", visible:false}、Player P8）：帯・取っ手・出し方の 1 行を出さない（Tab でも入らない）
+  "html.deck-nocontrols #dt-cb,html.deck-nocontrols #dt-handle,html.deck-nocontrols #dt-hint{display:none}" +
   "#dt-cb button{all:unset;position:relative;box-sizing:border-box;width:32px;height:32px;border-radius:8px;cursor:pointer;color:rgba(255,255,255,.86);" +
   " display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:background .12s,color .12s}" +
   "#dt-cb button:hover{background:rgba(255,255,255,.14);color:#fff}" +
@@ -286,6 +288,8 @@ function build(){
   // 埋め込みで親が操作を隠したとき（?embed=1&controls=0、Player P8）は帯を作らない（取っ手も出し方の行もない）
   var noControls = Q.get("embed") === "1" && /^(0|false|no|off)$/i.test(Q.get("controls") || "");
   if (!FOLLOW){ if (!noControls) buildBar(); loadAttachments(); }
+  // 埋め込みの {egatari:"controls", visible}（kit/deck.js）：隠すのは html.deck-nocontrols（下の CSS）。?controls=0 で作らなかった帯は、出すときに作る
+  document.addEventListener("deck:controls", function(e){ if (e.detail && e.detail.visible && !cb && !FOLLOW) buildBar(); });
 }
 
 // ---------------------------------------------------------------- 添付（format spec §3.8）：ダウンロードだけ

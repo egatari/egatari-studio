@@ -78,6 +78,8 @@ Object.assign(scope, {
   clearTimeout: (id) => timers.delete(id),
   // Sound scheduling state that play()/stopAuto() read (the sound hook itself is not loaded here).
   autoGo: null, soundNext: null, soundHandles: [], soundCancelAhead() {},
+  // The embedding hooks (Player P8) that play() and the autoplay end read: not embedded here.
+  seekAt: null, EMBED: false, post() {},
   seek(i, k, t, from, cont) {
     scope.viewerAt(i, k, !cont && scope.jump);
     scope.jump = false;
