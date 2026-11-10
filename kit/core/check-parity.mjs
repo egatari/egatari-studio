@@ -1,10 +1,29 @@
 // 品質チェックのコマンド版（kit/check.mjs）と編集アプリ（app/frame-shim.js・app/main.js・app/llm.js）の揃え方。tools/test-check-parity.mjs が使う
 // コマンド版が出す code は、ここの CLI_ONLY にない限り、同じ教材で編集アプリも出す（v0.6.9：rawMath がコマンド版だけにあり、
 // 規格の担当の評価は通るのに、Studio の利用者には見えず修正依頼にも入らなかった）。Node にもブラウザにも依存しない
+//   IN_EDITOR        編集アプリの品質チェックがコマンド版と同じ名前で出す code（kit/check-messages.mjs の MESSAGES のキー）
 //   CLI_ONLY         コマンド版だけの code → そのわけ（1 行）。前方一致の印は CLI_ONLY_PREFIX
+//   MESSAGES のキーは、IN_EDITOR・CLI_ONLY（と CLI_ONLY_PREFIX）・EDITOR_ALIAS と BUILD_WARN の行き先の、ちょうど 1 つに入る（tools/test-check-parity.mjs の 0.）。
+//   新しい code を足したら、どれかに入れないと試験が落ちる（v0.6.9：rawMath がどこにも入らないまま、コマンド版だけにあった）
 //   EDITOR_ALIAS     編集アプリが前からの名前で出す code → コマンド版の code
 //   BUILD_WARN       編集アプリが品質チェックの板の「組み立ての警告」（S.warn）に出すもの：コマンド版の code → その警告の行の形
 //   cliOnly(code)    わけ（CLI_ONLY か CLI_ONLY_PREFIX）か null
+export const IN_EDITOR = Object.freeze([
+  // 原稿の文字列から（kit/core/check-source.mjs）
+  'slideId', 'legacyDataKey', 'legacyIndex', 'legacyColorClass', 'legacyStepAttr', 'legacyLectureMode', 'colorOutside', 'narrHeadingDiffers',
+  'narrNote', 'narrFormula', 'turnLong', 'narrLang',
+  // app/main.js・app/llm.js（作業場所の原稿と台本から）
+  'refVoice', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral',
+  // 体裁の検査（kit/core/layout-scan.mjs。bodyBottom・bodyRight は EDITOR_ALIAS）
+  'titleLong', 'titleLongEn', 'titleColon', 'tateTitle', 'conclLong', 'conclLongEn', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft',
+  'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak',
+  'secHeading', 'textContrast', 'cardsHint',
+  // プレビューの中（app/frame-shim.js）
+  'themeMetricsDrift', 'metricsFontLoad', 'fontNotEmbedded', 'desuMasu', 'rawMath', 'katexError', 'punctMixed', 'narrRecheck',
+  'linkEmpty', 'linkUnknown', 'linkNumberRange', 'linkNoConcl', 'linkStepRange', 'linkBadStep', 'linkNumber', 'linkNoId', 'linkCount',
+  'markMissing', 'morphNoSrc', 'morphNoIds', 'morphPairs', 'morphLater', 'morphDupSrc', 'morphDupDst', 'imgAlt', 'svgName', 'compName',
+  'compLayout', 'compReport', 'compData', 'consoleError',
+]);
 export const CLI_ONLY = Object.freeze({
   balance: 'needs screenshots: it rasterizes the slide body to find the centre of mass (kit/fill-scan.mjs)',
   compOrder: 'needs screenshots: reopens the deck and compares renders of every component step in two orders (slow)',
@@ -29,8 +48,12 @@ export const CLI_ONLY_PREFIX = Object.freeze({
   article: 'the editor validates the book in its Book panel (app/book.js, same validateArticle)',
 });
 export const EDITOR_ALIAS = Object.freeze({
-  overflowBottom: 'bodyBottom', overflowRight: 'bodyRight', titleLong: 'titleLong', titleLongEn: 'titleLongEn', conclLong: 'conclLong', conclLongEn: 'conclLongEn',
+  overflowBottom: 'bodyBottom', overflowRight: 'bodyRight',
   noNarration: 'narrMissing', orphanNarration: 'narrOrphan', contrast: 'contrastLow', audioStale: 'audio: stale',
+});
+// コマンド版が MESSAGES にない名前で出す code（言葉をそのまま code にしている）→ そのわけ。EDITOR_ALIAS の行き先に使ってよい
+export const NON_MESSAGE_CODES = Object.freeze({
+  'audio: stale': 'kit/check.mjs (K) reports stale audio with its text as the code; the editor reports it as audioStale',
 });
 export const BUILD_WARN = Object.freeze({
   build: /^(?!theme-metrics: |mark: 目印|slide key: )/,

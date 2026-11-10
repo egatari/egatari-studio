@@ -2,6 +2,8 @@
 //   node tools/test-check-parity.mjs [作業用のフォルダ]
 // 見本（tools/fixtures/check-parity）：en-rawmath（英語の教材に $…$ の数式が 4 枚残る。持ち主の報告：コマンド版は rawMath のエラーと R-formula の警告を出すのに、
 // 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない）。
+// 0. 静的な棚卸し：MESSAGES のどの code も IN_EDITOR・CLI_ONLY（CLI_ONLY_PREFIX）・EDITOR_ALIAS と BUILD_WARN の行き先のちょうど 1 つに入る。
+//    一覧が MESSAGES にない code を名指さない。IN_EDITOR の code は編集アプリの道筋のファイルに文字列として現れる（見本が出さない code も見る）
 // 1. コマンド版を --json で走らせ、見本が狙った code を出すこと
 // 2. 編集アプリ（tools/build-app.mjs で組み、127.0.0.1 で配る）で同じ見本を作業フォルダ（OPFS）として開き、品質チェックの結果（app/main.js の checkResults：
 //    プレビューの答え＋原稿の文字列からの指摘＋組み立ての警告）を集める
@@ -15,7 +17,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { shareBrowser, launch } from '../kit/browser.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
-import { CLI_ONLY, CLI_ONLY_PREFIX, EDITOR_ALIAS, BUILD_WARN, cliCode, cliOnly } from '../kit/core/check-parity.mjs';
+import { IN_EDITOR, CLI_ONLY, CLI_ONLY_PREFIX, EDITOR_ALIAS, BUILD_WARN, NON_MESSAGE_CODES, cliCode, cliOnly } from '../kit/core/check-parity.mjs';
 import { scaled } from './wait-scale.mjs';
 // ブラウザは 1 つだけ起動し、子のプロセス（kit/check.mjs）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser）
 await shareBrowser();
@@ -40,6 +42,35 @@ ok(Object.keys(CLI_ONLY).every((c) => MESSAGES[c]) && Object.values(CLI_ONLY).ev
   'allowlist: every CLI_ONLY entry is a known check code with a one-line reason');
 ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c.startsWith(p))) && cliOnly('attachForbidden') && cliOnly('articleXref') && !cliOnly('rawMath') && !cliOnly('attach'),
   'allowlist: the prefix entries match real codes (attach…, article…) and nothing else');
+
+{
+  const codes = Object.keys(MESSAGES);
+  const classes = (c) => [
+    IN_EDITOR.includes(c) && 'IN_EDITOR',
+    Object.hasOwn(CLI_ONLY, c) && 'CLI_ONLY',
+    !Object.hasOwn(CLI_ONLY, c) && cliOnly(c) && 'CLI_ONLY_PREFIX',
+    Object.values(EDITOR_ALIAS).includes(c) && 'EDITOR_ALIAS',
+    Object.hasOwn(BUILD_WARN, c) && 'BUILD_WARN',
+  ].filter(Boolean);
+  const none = codes.filter((c) => classes(c).length === 0), twice = codes.filter((c) => classes(c).length > 1).map((c) => `${c} (${classes(c).join(' + ')})`);
+  const dupIn = IN_EDITOR.filter((c, k) => IN_EDITOR.indexOf(c) !== k);
+  ok(!none.length, `inventory: every MESSAGES code (${codes.length}) is classified` + (none.length ? ': unclassified ' + none.join(', ') : ''));
+  ok(!twice.length && !dupIn.length, 'inventory: no code is classified twice' + (twice.length || dupIn.length ? ': ' + [...twice, ...dupIn.map((c) => c + ' (IN_EDITOR twice)')].join(', ') : ''));
+  const known = (c) => Object.hasOwn(MESSAGES, c);
+  const stray = [...IN_EDITOR.filter((c) => !known(c)).map((c) => 'IN_EDITOR ' + c), ...Object.keys(CLI_ONLY).filter((c) => !known(c)).map((c) => 'CLI_ONLY ' + c),
+    ...Object.values(EDITOR_ALIAS).filter((c) => !known(c) && !Object.hasOwn(NON_MESSAGE_CODES, c)).map((c) => 'EDITOR_ALIAS → ' + c),
+    ...Object.keys(BUILD_WARN).filter((c) => !known(c)).map((c) => 'BUILD_WARN ' + c),
+    ...Object.keys(NON_MESSAGE_CODES).filter((c) => known(c) || !Object.values(EDITOR_ALIAS).includes(c)).map((c) => 'NON_MESSAGE_CODES ' + c)];
+  ok(!stray.length, 'inventory: IN_EDITOR, CLI_ONLY, the alias targets and BUILD_WARN name only MESSAGES codes' + (stray.length ? ': ' + stray.join(', ') : ''));
+  const counts = { IN_EDITOR: 0, CLI_ONLY: 0, CLI_ONLY_PREFIX: 0, EDITOR_ALIAS: 0, BUILD_WARN: 0 };
+  for (const c of codes) for (const k of classes(c)) counts[k]++;
+  console.log('  info inventory: ' + Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
+  // 道筋：編集アプリが code を出すファイル（プレビューの中・原稿の文字列・作業場所の台本と音声）に、その code が文字列で現れる
+  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs']
+    .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
+  const unreached = IN_EDITOR.filter((c) => !new RegExp(`["'\`]${c}["'\`]`).test(src));
+  ok(!unreached.length, `inventory: every IN_EDITOR code (${IN_EDITOR.length}) appears as a string in the editor's check path` + (unreached.length ? ': not found ' + unreached.join(', ') : ''));
+}
 
 // ---------------------------------------------------------------- 1. コマンド版
 const CLI = {};
