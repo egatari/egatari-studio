@@ -191,6 +191,8 @@ const steps = [
   ['test-app-book', ['tools/test-app-book.mjs', path.join(tmp, 'app-book')]],
   // 「このサンプルを参考に作る」（backlog #130）：サンプルを大きく再生する窓・新規作成に場面・見た目・パーツと構成・?from-sample=・コピーを開いて編集
   ['test-app-from-sample', ['tools/test-app-from-sample.mjs', path.join(tmp, 'from-sample')]],
+  // AI の返事を取り込む間の待ちの表示（v0.6.9）：作成・サンプルから・置き換えで、窓が閉じたこまから教材が見えるまで覆う。組めない返事は窓に戻る
+  ['test-app-paste-wait', ['tools/test-app-paste-wait.mjs', path.join(tmp, 'paste-wait')]],
   // 手で書き換えた・崩れた書き出しの印（format spec §3.1）：断る窓か開くか（どちらもページは答える）、食い違う写しは「書き出したあと直した」
   ['test-app-exported-marker', ['tools/test-app-exported-marker.mjs', path.join(tmp, 'exported-marker')]],
   ['test-app-scorm', ['tools/test-app-scorm.mjs', path.join(tmp, 'app-scorm')]],   // エクスポート ▸ LMS 用（SCORM）…：窓の言葉（完了の決まり）・キャンセル・ダウンロードした zip の中身・保存していない変更
