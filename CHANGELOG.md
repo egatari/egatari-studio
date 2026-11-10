@@ -8,6 +8,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.9] - 2026-11-11
+
+### Added
+
+- New part set `data` (情報・データサイエンス / Data science and code; components 2.6.0, candidate): `m-mapping` (random variable mapping), `m-sampling` (sampling), `m-ci` (confidence intervals), `m-folds` (cross-validation), `m-balance` (expectation as a balance point) and `m-code` (code walkthrough). It has its own AI instructions (`docs/llm-parts/data(.ja).md`), is listed after stats wherever part sets are offered (New…, Insert slide's full instructions, `node kit/llm-pack.mjs --sets data`), and is suggested in New… for words such as data science, programming or cross-validation
+- Egatari Player 1.5.0: an embedded lesson (`?embed=1`) takes the remaining Player P8 commands. `{egatari:"seek", id?, slide, step, t}` (slide key or index from 0, step key, seconds or `null` for the final state) moves there, keeping the playing state, and replies `{egatari:"seeked", id?, slideKey, stepKey, t}` after the `position`;
+  `{egatari:"preview", id?, on}` and `{egatari:"controls", id?, visible}` switch the faint preview of later steps and the player's own controls at run time and reply in the same shape
+- Egatari Player 1.5.0: an embedded lesson sends `{egatari:"stepEnded", slideKey, stepKey}` when playback has played a step to its end (not for skipped steps or when paused) and `{egatari:"ended"}` after the last step.
+  `snapshot` (OPTIONAL in Player P8) and unknown commands reply `{egatari:"error", id, code:"unsupported"}`; bad arguments reply `error` with the command's name as `code`, as `mode`, `rate` and `layout` already did
+- Themes: eleven object colours `--obj-white`, `--obj-black`, `--obj-red`, `--obj-green`, `--obj-yellow`, `--obj-blue`, `--obj-brown`, `--obj-purple`, `--obj-pink`, `--obj-orange` and `--obj-gray`, for colours that are themselves the content (balls in a bag, litmus paper, traffic lights; format spec §8.4). They are always shown with the colour's name or initial, and white, black and colours near the background with an outline; a part that uses one gives a fallback, which may be a literal colour of that name. Every bundled theme sets all eleven: `default` (1.4.0) `#FFFFFF` `#222222` `#E0242B` `#2E9E44` `#F5D90A` `#1E6FD9` `#8B5A2B` `#8E44AD` `#F27BB0` `#F28C1A` `#8C8C8C`, the same in `sumi`, `kokugo`, `tokiwa`, `murasaki` and `business`; `kogecha` a little less saturated and `asagi` a little brighter (each 1.2.0). No existing colour changes; earlier versions stay in `vendor/themes/`
+  `node tools/test-themes.mjs` checks each colour's OKLCH hue window, lightness and chroma, that adjacent names (red–orange, blue–purple, brown–red, gray–white …) are at least ΔE00 20 apart, and prints each colour's contrast with `--bg`
+- Quality check: a literal fallback in `var(--obj-…, …)` is not reported as a colour outside the theme's vocabulary (`colorOutside`), since the format lets an object colour fall back to a literal colour of that name
+- Egatari Viewer: markup, stage 1. Highlight text in a lesson's book in three colours (drawn in the Viewer's own layer in the book's scrolling box; the lesson's text and markup unchanged), practise recall (暗記: the chosen colours hidden, revealed one at a time), and a list with colour filters and names. Highlights are kept on this device only (IndexedDB, one record per docId, not on a shared device) and re-attach after the lesson is revised (egatari-spec annotations.md, Highlight record).
+
+### Changed
+
+- Components 2.0 lessons use egatari/components **v2.6.0** (candidate) by default. `m-curves` 2.2.0 adds `area` / `areaLabel`: shade between a line and the x-axis over one or several spans (rejection regions, p-values, probabilities), with a label above each span. The new part set `data` (see Added) comes with this release. No other part changes version
+- `egatari check --json`: the stale-audio finding's code is now `audioStale` (was `audio: stale`); the message is unchanged.
+- Egatari Player 1.5.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. Hosts can now drive an embedded lesson with every required Player P8 command and follow playback through `stepEnded` and `ended`. The presenter view's top-right pane is now **Next slide** (「次のスライド」): it shows the next slide in its final state, with all its steps, even while the current slide still has steps to go (with animation, the old pane showed only the next step). On the last slide it shows a plain “End” (「終わり」). The script pane still shows the next step's script under “Next step”
+- Egatari Player 1.5.0: the presenter view's current pane always shows the slide's later steps faintly, like `l` and the preview (at the theme's `--preview-opacity`). This is the presenter's own view: the main window does not change. `l` and its button in the presenter view now turn showing later steps faintly on or off on the main window only, and the button shows the main window's state. No keys were added
+- Format spec copy (`vendor/egatari-spec`): the snapshot **wd-2026-11-10** (egatari-spec 6d93c49). Conforms to WD 2026-11-10 except §8.2 language spans ({lang:…|…}). Not implemented yet, planned for v0.6.10. Files that use spans get a different inputHash from the §5.4 rule until then, so their audio will be regenerated once after the upgrade.
+
+### Fixed
+
+- `egatari check` (and `node kit/check.mjs`) refuses a built `.ega.html` with exit code 2 and the message “.ega.html is a built file. Run the quality check on the source instead (the working folder or deck.html)”; with `--json` it prints `status: "refused"` and no results. It used to read the built file as a deck source and report false overflows, missing narration and overlaps. Checking the source embedded in a `.ega.html` is planned for v0.6.10.
+- Editor app: the quality check now reports raw math left in the slides (`rawMath`, such as a leftover `$…$` in an English lesson) as an error, with the same message as `npm run check`, and includes it in the fix request with the R-math standard
+- Editor app: the quality check now also runs the other checks that `npm run check` had alone and that need no screenshots or files on disk: です・ます and mixed punctuation, script that reads a formula, broken `{note:}`, long turns and the script language, links to slides, emphasis targets, morphs, image and figure names, slide ids and legacy keys, source outside the 1.0 vocabulary and colours outside the theme's vocabulary (info). Findings the fix request did not map to a standard now take it from the check messages (`ruleOf`)
+- `tools/test-check-parity.mjs` (in `npm test`) fails when `npm run check` reports a code that the editor's check lacks, unless it is on `CLI_ONLY` in `kit/core/check-parity.mjs` with its reason
+- Editor app: the Japanese quote template now reads 「引用する文をここに書く」 (plain form), so a new quote slide no longer trips the です・ます check; the earlier text is still found as template text
+- The narration check (`narrFormula`, R-formula) no longer reports code identifiers joined with `_` (`cross_val_score`, `random_state`, `train_test_split`) as an equation read aloud. A name counts as an identifier when one of its parts is a word of three letters or more; subscripts such as `x_1`, `x_t`, `a_ij` and `\alpha_t` are still reported. Hyphenated words such as `scikit-learn` were never reported
+- The same check reads a reading `{x|よみ}` by its spoken form: a single symbol with its reading (`{E_i|イーアイ}`, `{θ|シータ}`), which R-reading allows, is no longer reported, and an expression under one reading (`{E_i + E_j|…}`) is left to `readingExpr` instead of being reported twice
+- Editor app: after **Create** with a pasted AI output (also from a sample) and **Replace** on an Egatari file, the wait logo shows
+  “Creating the lesson…” / “Replacing…” until the lesson appears, instead of the start screen (or the old lesson) with no sign of progress for 1–2 seconds
+
 ## [0.6.8] - 2026-11-10
 
 ### Added
@@ -1412,7 +1446,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.8...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.9...HEAD
+[0.6.9]: https://github.com/egatari/egatari-studio/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/egatari/egatari-studio/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/egatari/egatari-studio/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/egatari/egatari-studio/compare/v0.6.5...v0.6.6

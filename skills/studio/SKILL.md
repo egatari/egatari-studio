@@ -134,7 +134,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
      logos/cover.png
      LICENSE      ロゴ・字体の使用の条件（Egatari ファイルに一緒に入る）
    ```
-   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.9-rc.1/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
+   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.9/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
    - 字体を替えるなら `theme.json` の `fonts`（Studio が入れられる一覧から）。
    - 表紙の背景に画像を敷くには、画像をテーマのフォルダに置き、`tokens.css` で相対の `url()` を書く（例：`--cover-bg: url(cover.png) center/cover no-repeat;`）。組み立てが画像を埋め込み、テーマの hash と Egatari ファイルにも入る。テーマのフォルダの外のファイルは使えない（警告が出て拒まれる）。ないファイルは警告が出て `url()` のまま残る。ロゴは `theme.json` の `logos`。
 3. **確かめる**：サンプルの教材を `--theme <名前>` で組み、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
