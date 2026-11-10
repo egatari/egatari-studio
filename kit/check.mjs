@@ -68,6 +68,15 @@ if (!arg0) {
   console.error('usage: node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]');
   process.exit(1);
 }
+// 組み立てた後の 1 ファイル（.ega.html）は原稿ではない：デッキとして読むと、はみ出し・台本なし・重なりを誤って出す。断る（終了コード 2：
+//   「エラー 0」でも「指摘あり」でもない、検査していない）。中に入った原稿を取り出して検査するのは v0.6.10
+if (/\.ega\.html?$/i.test(arg0)) {
+  const ja = '.ega.html は組み立てた後のファイルです。品質チェックは原稿（フォルダか deck.html）にかけてください';
+  const en = '.ega.html is a built file. Run the quality check on the source instead (the working folder or deck.html)';
+  console.error(`check: ${langArg === 'en' ? en : langArg === 'ja' ? ja : ja + '\n       ' + en}`);
+  if (asJson) console.log(JSON.stringify({ ok: false, status: 'refused', reason: 'egaFile', lang: langArg === 'en' ? 'en' : 'ja', counts: { error: 0, warn: 0, info: 0 }, results: [] }, null, 2));
+  process.exit(2);
+}
 // 作業フォルダを渡したら、その中の deck.html（組み立てと同じ。フォルダは「通常のファイルでない」と紛らわしく断られていた）
 let src;
 try { src = resolveDeckArg(arg0); } catch (e) { console.error(`check: ${e.message}`); process.exit(1); }

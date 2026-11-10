@@ -114,5 +114,27 @@ t('実際の crashed の出力を parseCheck が拒む', () => {
   assert.throws(() => parseCheck(r.stdout, r.status), /did not finish/);
 });
 
+// ---- 4. 組み立てた後の .ega.html は断る（原稿として読むと誤った指摘を出す。取り出して検査するのは v0.6.10）
+t('.ega.html を渡すと断る：終了コード 2・JSON は status: "refused"・指摘なし。ファイルは読まない', () => {
+  const ega = path.join(work, 'lesson.ega.html');
+  fs.writeFileSync(ega, '<!doctype html><html lang="ja"><body><section><h2>x</h2></section></body></html>');
+  const r = check(ega);
+  assert.equal(r.status, 2, r.stderr);
+  const j = JSON.parse(r.stdout);
+  assert.equal(j.status, 'refused');
+  assert.equal(j.ok, false);
+  assert.deepEqual(j.results, []);
+  assert.match(r.stderr, /組み立てた後のファイル/);
+  assert.match(r.stderr, /is a built file/);
+  assert.throws(() => parseCheck(r.stdout, r.status));
+  const en = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), ega, '--lang', 'en'], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(en.status, 2);
+  assert.equal(en.stdout, '');
+  assert.match(en.stderr, /is a built file/);
+  assert.doesNotMatch(en.stderr, /組み立てた/);
+  const upper = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(work, 'Lesson.EGA.HTML')], { cwd: ROOT, encoding: 'utf8' });
+  assert.equal(upper.status, 2);
+});
+
 console.log(`\n${n - fail}/${n} passed`);
 process.exit(fail ? 1 : 0);
