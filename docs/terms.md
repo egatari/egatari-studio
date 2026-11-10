@@ -55,7 +55,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | highlight | Highlight | ハイライト | Egatari Viewer v0.7: a learner's colour mark over text in the book or script (Kindle, Apple Books). Not the Studio edit tool marker (マーカー). Viewer v0.7 term (not in the UI yet). マーカー / Marker stays the Studio edit-mode tool. |  |  | 2026-11-06 (owner) |
 | note | Note | メモ | Egatari Viewer v0.7: a learner's note anchored to text, a figure or a slide (Kindle, Apple Books). Not comment (コメント), which stays the note to the AI. Viewer v0.7 term (not in the UI yet). コメント / Comment stays the note to the AI. |  |  | 2026-11-06 (owner) |
 | recall | Recall | 暗記 | Egatari Viewer v0.7: the switch in the markup bar that hides highlighted text; tapping reveals it one by one. Viewer v0.7 term (not in the UI yet). |  |  | 2026-11-06 (owner) |
-| presenter-view | Presenter view | 発表者ビュー | A second window with the script, next step and tools (key p). |  |  | 2026-10-24 (owner) |
+| presenter-view | Presenter view | 発表者ビュー | A second window with the script, next slide and tools (key p). |  |  | 2026-10-24 (owner) |
 | black-screen | Black screen | 黒い画面 | Blank the screen during a presentation (key b). | 暗転 / blackout |  | 2026-10-25 (owner) |
 | laser-pointer | Laser pointer | レーザーポインター | A pointer dot during a presentation (key x). | レーザー / laser |  | 2026-10-25 (owner) |
 | pen | Pen | ペン | Draw on the slide during a presentation (key d). |  |  |  (owner) |

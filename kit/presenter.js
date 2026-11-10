@@ -1,5 +1,6 @@
 // 発表者ビュー（presenter.js）。本体で p を押すと、同じ HTML を ?presenter=1 で開く
-// 左：今の画面、右上：次の段階、右下：口述原稿（カンペ）、上：位置・経過時間・時刻
+// 左：今の画面（先のステップを薄く見せる。発表者だけの見え方で、本体の画面は変えない）、右上：次のスライド（すべてのステップを出した最後の姿。
+// 最後のスライドでは「終わり」）、右下：口述原稿（カンペ）、上：位置・経過時間・時刻
 // 本体とは postMessage でやり取りする（file:// でも動く）
 // ボタンは Tab で選べ（枠は :focus-visible のときだけ）、名前（aria-label）と、道具は入／切（aria-pressed）を持つ
 (function(){
@@ -7,11 +8,11 @@
 var DECK = window.DECK;
 // 画面の言葉（<html lang> が ja 以外なら英語。deck.js の DECK.ja）
 var L = DECK.ja === false
-  ? {cur: "Current slide", nextFrame: "Next step preview", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next", notes: "Script", slide: "Slide ", step: "Step ", none: "(no script)", nextStep: "Next step",
+  ? {cur: "Current slide", nextFrame: "Next slide", end: "End", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next slide", notes: "Script", slide: "Slide ", step: "Step ", none: "(no script)", nextStep: "Next step",
      laser: "Laser pointer (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Show later steps faintly (l)",
      feedback: "Send feedback", back: "Back", close: "Close presenter view (p)", tap: "Click here to control", black: "Black screen", blackT: "The audience screen is black (b, or click it, to return)",
      legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "black screen"], ["x", "laser pointer"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool / close"], ["p", "close"]]}
-  : {cur: "今の画面", nextFrame: "次のステップの画面", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次", notes: "台本", slide: "スライド ", step: "ステップ ", none: "（台本なし）", nextStep: "次のステップ",
+  : {cur: "今の画面", nextFrame: "次のスライド", end: "終わり", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次のスライド", notes: "台本", slide: "スライド ", step: "ステップ ", none: "（台本なし）", nextStep: "次のステップ",
      laser: "レーザーポインター（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消す", over: "本体でスライド一覧（o）", lect: "先のステップを薄く見せる（l）",
      feedback: "フィードバックを送る", back: "戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "黒い画面中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
      legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "黒い画面"], ["x", "レーザーポインター"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
@@ -57,7 +58,7 @@ DECK.presenterView = function(){
     '  <span id="pv-timer" role="timer">00:00</span><span id="pv-clock"></span>' +
     '  <button type="button" id="pv-close">' + L.close + '</button></header>' +
     ' <main><div id="pv-cur"><iframe id="f-cur" title="' + L.cur + '"></iframe></div>' +
-    '  <aside><div id="pv-next"><div class="lab">' + L.next + '</div><iframe id="f-next" title="' + L.nextFrame + '" tabindex="-1"></iframe></div>' +
+    '  <aside><div id="pv-next"><div class="lab">' + L.next + '</div><iframe id="f-next" title="' + L.nextFrame + '" tabindex="-1"></iframe><div id="pv-end" hidden>' + L.end + '</div></div>' +
     '   <div id="pv-notes"><div class="lab">' + L.notes + '</div><div id="pv-text"></div></div></aside></main>' +
     ' <footer id="pv-keys">' + legend + '</footer>' +
     '</div>';
@@ -74,6 +75,9 @@ DECK.presenterView = function(){
     "#pv aside{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}" +
     // 「次」の画面は見るだけ：押しても中にフォーカスを入れない（中のデッキはキーを受けないので、キーが止まってしまう）。押すと発表者ビューに残る
     "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85;pointer-events:none}" +
+    "#pv-next iframe[hidden],#pv-end[hidden]{display:none}" +
+    // 最後のスライドの「次のスライド」：画面と同じ大きさの、ただの「終わり」
+    "#pv-end{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;background:#000;color:#bbb;font-size:28px;letter-spacing:.08em}" +
     "#pv .lab{font-size:13px;color:#999;margin-bottom:4px}" +
     "#pv-notes{flex:1;overflow:auto;background:#262626;border-radius:8px;padding:10px 14px}" +
     "#pv-text .ai{font-size:12px;color:#aaa;margin:0 0 6px}" +
@@ -102,7 +106,11 @@ DECK.presenterView = function(){
     "#pv-keys kbd{display:inline-block;padding:0 5px;border:1px solid #444;border-radius:4px;background:#222;color:#ddd;font:600 11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}";
   document.head.appendChild(st);
   var fc = document.getElementById("f-cur"), fn = document.getElementById("f-next");
-  fc.src = base + q + sep + "view=follow"; fn.src = base + q + sep + "view=next";
+  // 「今の画面」はいつも先のステップを薄く見せる（preview=1。本体の l・プレビューと同じ描き方で、濃さはテーマの --preview-opacity）。
+  // 発表者だけの見え方なので、本体の画面のモードは変えない。q に preview があれば除く
+  var fq = q.replace(/([?&])preview=[^&]*&?/, "$1").replace(/[?&]$/, "");
+  fc.src = base + fq + (fq ? "&" : "?") + "view=follow&preview=1"; fn.src = base + q + sep + "view=next";
+  var fe = document.getElementById("pv-end");
   var pos = null, started = Date.now();
   // 暗転（本体の b）：札を出し、今の画面を薄くする（発表者には中身を見せたまま）
   function setBlack(on){
@@ -138,8 +146,11 @@ DECK.presenterView = function(){
     bb.hidden = !pos.back;
     if (pos.back){ var c = DECK.ja === false ? ": " : "："; bb.textContent = "← " + L.back + c + pos.back; bb.title = L.back + c + pos.back + (DECK.ja === false ? " (Backspace / Alt+←)" : "（Backspace / Alt+←）"); bb.setAttribute("aria-label", L.back + c + pos.back); }
     fc.contentWindow && fc.contentWindow.postMessage({type: "deck-goto", i: pos.i, k: pos.k, animate: true, viewer: pos.viewer}, "*");
-    var ni = pos.k < pos.max ? pos.i : pos.i + 1, nk = pos.k < pos.max ? pos.k + 1 : 0;
-    fn.contentWindow && fn.contentWindow.postMessage({type: "deck-goto", i: ni, k: nk, animate: false}, "*");
+    // 次のスライド：段階が残っていても次のスライドを、すべてのステップを出した姿で（k は大きく送り、デッキが最後の段階に収める）。
+    // 最後のスライドでは「終わり」
+    var last = pos.i >= pos.n - 1;
+    fn.hidden = last; fe.hidden = !last;
+    if (!last && fn.contentWindow) fn.contentWindow.postMessage({type: "deck-goto", i: pos.i + 1, k: 1e9, animate: false}, "*");
     var cur = notes(pos.key), nxt = pos.nextKey ? notes(pos.nextKey) : [];
     // 合成した声・作り方の記録がない音声の段階：口述原稿の上に 1 行（format spec §7.3。キーの一覧と同じ文）
     var vn = DECK.voiceNote ? DECK.voiceNote(pos.key) : "";
@@ -207,8 +218,21 @@ DECK.presenterView = function(){
   // 道具のボタン：キーと同じ（tools.js の DECK.ptools.key）。フォーカスを奪わないので、押した後も矢印で送れる
   [].forEach.call(document.querySelectorAll("#pv button"), function(b){ b.addEventListener("mousedown", function(e){ e.preventDefault(); }); });
   [].forEach.call(document.querySelectorAll("#pv .pv-tools button"), function(b){
-    b.onclick = function(e){ if (b.hasAttribute("data-c")) PT.color(+b.getAttribute("data-c")); else PT.key(b.getAttribute("data-k")); if (e.detail !== 0) b.blur(); };
+    b.onclick = function(e){ if (b.hasAttribute("data-c")) PT.color(+b.getAttribute("data-c")); else if (b.getAttribute("data-k") === "l") lectAudience(); else PT.key(b.getAttribute("data-k")); if (e.detail !== 0) b.blur(); };
   });
+  // 先のステップを薄く見せる（l・そのボタン）：切り替えるのは本体の画面だけ。「今の画面」はいつも薄く見せるので、
+  // tools.js が「今の画面」にも送る l の命令は送らせない（窓の捕捉の段で受けて、本体にだけ送る）。キーは増やさず、l の意味も変えない
+  var audPrev = DECK.mode === "lecture";
+  function lectAudience(){
+    try { if (opener && !opener.closed) opener.postMessage({type: "deck-tool", cmd: "key", key: "l"}, "*"); } catch (e) {}
+    audPrev = !audPrev; syncTools();
+  }
+  window.addEventListener("keydown", function(e){
+    if (e.key !== "l" || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+    var t = e.target;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    e.preventDefault(); e.stopImmediatePropagation(); unTap(); lectAudience();
+  }, true);
   function syncTools(){
     var m = PT && PT.mode();
     var c = PT && PT.color ? PT.color() : 0, sw = document.querySelector("#pv .pv-sw");
@@ -216,7 +240,7 @@ DECK.presenterView = function(){
     [].forEach.call(document.querySelectorAll("#pv .pv-sw button"), function(b){ b.setAttribute("aria-pressed", +b.getAttribute("data-c") === c ? "true" : "false"); });
     [].forEach.call(document.querySelectorAll("#pv .pv-dot"), function(d){ d.style.background = PT.hex ? PT.hex[PT.colors[c]] : "var(--" + PT.colors[c] + ")"; });
     [].forEach.call(document.querySelectorAll("#pv .pv-tools [data-b]"), function(b){
-      var n = b.getAttribute("data-b"), on = n === "lect" ? DECK.mode === "lecture" : n === m;   // 先のステップを薄く見せる：字幕と同じ入／切
+      var n = b.getAttribute("data-b"), on = n === "lect" ? audPrev : n === m;   // 先のステップを薄く見せる（本体の画面）：字幕と同じ入／切
       b.classList.toggle("on", on);
       if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", on ? "true" : "false");
     });
