@@ -19,6 +19,8 @@ const ok = (name, fn) => {
   try { fn(); console.log('  ok   ' + name); } catch (e) { failed++; console.log('  FAIL ' + name + '\n       ' + String(e && e.stack || e).split('\n').join('\n       ')); }
 };
 // 部品庫 2.4.3 で README.en.md のある標準のパーツ（16）
+// 部品庫 2.6.0（候補）の束 data の 6 つも README.en.md を持つ（専門のパーツ）
+const DATA6 = ['m-balance', 'm-ci', 'm-code', 'm-folds', 'm-mapping', 'm-sampling'];
 const EN16 = ['m-bars', 'm-cards', 'm-compare', 'm-curves', 'm-cycle', 'm-fishbone', 'm-flow', 'm-kpi', 'm-menu', 'm-pie', 'm-predict', 'm-quad', 'm-scatter', 'm-timeline', 'm-tree', 'm-venn'];
 const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
 const content = lock2.catalogues[lock2.default].content;
@@ -36,8 +38,9 @@ ok('frontmatterEn: top-level keys, the indented props map, CRLF; no frontmatter 
   assert.equal(frontmatterEn('summary: no fence\n'), null);
 });
 
-ok('the 16 standard parts with README.en.md are the ones read for the en pack, and each has summary and steps', () => {
-  assert.deepEqual([...base.enParts].sort(), EN16);
+ok('the 16 standard parts and the 6 data parts with README.en.md are the ones read for the en pack, and each has summary and steps', () => {
+  assert.deepEqual([...base.enParts].sort(), [...EN16, ...DATA6].sort());
+  for (const t of DATA6) { const fm = frontmatterEn(readmeEn(t)); assert.ok(fm && fm.summary && fm.steps, `${t}: summary and steps`); assert.equal(PACK.en.components[t].set, 'data', `${t} is a data part`); }
   for (const t of EN16) {
     const fm = frontmatterEn(readmeEn(t));
     assert.ok(fm && fm.summary && fm.steps, `${t}: summary and steps`);
@@ -83,10 +86,10 @@ ok('EN_EDITS: the m-menu import note and the m-predict no-live-counts lines are 
   assert.deepEqual(base.warnings.filter((w) => /README\.en\.md is used for the en pack/.test(w)), ['m-bars: README.en.md is used for the en pack; PACK_EDITS (1) are not applied to it and there are no EN_EDITS']);
 });
 
-ok('no Japanese in the 16 parts\' en sections (components 2.5.0: the shape.note of m-fishbone and m-tree is {en, ja} now)', () => {
+ok('no Japanese in the 16 standard and 6 data parts\' en sections (components 2.5.0: the shape.note of m-fishbone and m-tree is {en, ja} now)', () => {
   const J = /[　-ヿ㐀-鿿＀-￯]+/g;
   const hits = [];
-  for (const t of EN16) {
+  for (const t of [...EN16, ...DATA6]) {
     const c = PACK.en.components[t];
     for (const [k, v] of [['row', c.row], ['entry', c.entry], ...Object.entries(c.ext || {}).map(([s, x]) => ['ext ' + s, x])]) for (const m of (v || '').match(J) || []) hits.push(`${t} ${k}: ${m}`);
   }
@@ -125,7 +128,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     const json = execFileSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(pathToFileURL(path.join(dir, 'data.mjs')).href)}).then((m) => process.stdout.write(JSON.stringify(m.PACK)))`], { encoding: 'utf8', maxBuffer: 64 << 20 });
     const oldData = JSON.parse(json);
     assert.match(oldData.partsSrc, /\/v2\.4\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.5\.1\//);
+    assert.match(PACK.partsSrc, /\/v2\.6\.0\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(PACK);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
@@ -135,6 +138,14 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     cur.ja.sets.science = cur.ja.sets.science.replace(LIT_JA, '');
     // 部品庫 2.5.1 で m-map-japan の README（日本語）に階級の決まりが加わった。同じく v0.6.6 のものに揃えて比べる
     cur.ja.components['m-map-japan'] = oldData.ja.components['m-map-japan'];
+    // 部品庫 2.6.0（候補）で m-curves 2.2.0 に area が加わった。その部品の日本語の指示も v0.6.6 のものに揃えて比べる
+    cur.ja.components['m-curves'] = oldData.ja.components['m-curves'];
+    // 部品庫 2.6.0（候補）で新しい束 data（情報・データサイエンス）が加わった。その束とそのパーツを除いて比べる（ほかの束の組み合わせはそのまま）
+    const DATA = cur.parts.filter((p) => p.set === 'data').map((p) => p.tag);
+    assert.deepEqual(DATA, ['m-balance', 'm-ci', 'm-code', 'm-folds', 'm-mapping', 'm-sampling']);
+    cur.sets = cur.sets.filter((x) => x !== 'data');
+    cur.parts = cur.parts.filter((p) => p.set !== 'data');
+    for (const L of ['en', 'ja']) { delete cur[L].sets.data; for (const t of DATA) delete cur[L].components[t]; }
     const a = jaDump(cur), b = jaDump(oldData);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);

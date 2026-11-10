@@ -627,7 +627,8 @@
         "2.0.1",
         "2.0.2",
         "2.1.0",
-        "2.1.1"
+        "2.1.1",
+        "2.2.0"
       ],
       "sha256": {
         "1.0.0": "87140b4461fe1595514c712cf1a0c87b0e7fe4607138702df4d950dd6984144c",
@@ -656,7 +657,8 @@
         "2.0.1": "c932e8c83bc2b9a8199bdf9c56e39e7bf5b9ed6980cb1b46bdcbefd20be81126",
         "2.0.2": "59519c0484932a018a8adf13999b5c198a1c06974607bd331793b5e379d2a2b9",
         "2.1.0": "6f1df1087e6d2ea7826d80e11fe21319715a7fd55079a1a7a0a849c785a40474",
-        "2.1.1": "0c07349365739345e3d2ec294953d72dbb1599c9685925ec51d8cd832ae09701"
+        "2.1.1": "0c07349365739345e3d2ec294953d72dbb1599c9685925ec51d8cd832ae09701",
+        "2.2.0": "d85caa5d9121289004afe8147e2d934b7d33a91f55f56260c291545a95730150"
       },
       "crlfSha256": {
         "1.0.0": "39e1b134ad1c6a99cb3b108953e05c29b703473babc575bf09e201fcf17eaac9",
@@ -709,7 +711,8 @@
         "2.0.1": "afcc0d2ca964536fb7a4a0997bede6b16a2049fd2a6ff298e1b8592f236257f7",
         "2.0.2": "a6ad6867e21b4ffab426919d62f4293cbb447c7307f8f92e4a8c8d7c285fca6a",
         "2.1.0": "fde0e1e193f6af8fcef914359dfad392c47eedee4fe9b3a4348b8a5aac86b3e6",
-        "2.1.1": "f9643ffeae11d30f6ae947fee7ed6615e2494bd5bf18c747975bcd3f75871e91"
+        "2.1.1": "f9643ffeae11d30f6ae947fee7ed6615e2494bd5bf18c747975bcd3f75871e91",
+        "2.2.0": "90ed438b40ed8d765348834b2bed2baad9b0053c2168c218335b6d95b9c80283"
       }
     },
     "cycle": {
@@ -3170,6 +3173,84 @@
       },
       "content": {
         "2.0.0": "ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098"
+      },
+      "catalogue": "2"
+    },
+    "balance": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "0e71ee08c6fd07ed89d702c102b311b2fafc1aad8594ff9cbf890b6cda10fbce"
+      },
+      "content": {
+        "2.0.0": "1298d779fe60ccfc09747fbdba47e2111175bd7fd2385a5b68c8f2644cd267be"
+      },
+      "catalogue": "2"
+    },
+    "ci": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "dadb20634cf3de920bb175417aab55ef7d1fa25fe007418900a1379dc0557616"
+      },
+      "content": {
+        "2.0.0": "a69ab76ff7d0746d093b4e606d7b113be921cbb156edc16c2ad40aafab280d42"
+      },
+      "catalogue": "2"
+    },
+    "code": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc"
+      },
+      "content": {
+        "2.0.0": "a21437e5d7f10dfa017b8529dc3b3597cb07d4a14032005d0cdcdc210decd3a3"
+      },
+      "catalogue": "2"
+    },
+    "folds": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "d5d1c993132c5d4a4bae8bbf26c62a5cd33edd79d352b1264e6ae64611d60d2b"
+      },
+      "content": {
+        "2.0.0": "d75c461bb7b2b1c9a2b6d15bee1e11bcec88ef94931174d6b222cd309f6a0287"
+      },
+      "catalogue": "2"
+    },
+    "mapping": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "4f366e498fd3b74bdff043cc0f570b668704897e6bd98e835235d810951dad33"
+      },
+      "content": {
+        "2.0.0": "decb7c026527ea269a401efedcb5d4d56d186074b286d2f94772068bef56b256"
+      },
+      "catalogue": "2"
+    },
+    "sampling": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "c45be3629eb58c430def3ea290f7a29df464e8e057fe09039c71bcb256a7e862"
+      },
+      "content": {
+        "2.0.0": "7aea8341beffcd4ad95c12b7e7e3be3f0f52eb7932d424be9e74e2fbd7339e45"
       },
       "catalogue": "2"
     }

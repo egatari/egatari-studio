@@ -58,6 +58,12 @@ const LOCAL = {
   'm-score': { ja: '楽譜', en: 'Score', icon: 'keyboard', desc: { ja: '五線譜を 1 音ずつ出して鳴らす', en: 'Staff notation, one note at a time, with sound' } },
   'm-particles': { icon: 'cycle', desc: { ja: '粒子の動きで、状態や変化の仕組みを見せる', en: 'Particles in motion, showing how a state or a change works' } },
   'm-orbit': { ja: '月の満ち欠け', en: 'Moon phases', icon: 'cycle', desc: { ja: '月の位置と見える形を並べて動かす', en: 'The Moon’s position and its visible shape, moving together' } },
+  'm-mapping': { icon: 'dist', desc: { ja: '実験の結果を数値に対応させ、確率分布を作る', en: 'Maps outcomes to numbers and builds a probability distribution' } },
+  'm-sampling': { icon: 'collect', desc: { ja: '母集団から標本を取り、標本分布を積み上げる', en: 'Draws samples from a population and builds up the sampling distribution' } },
+  'm-ci': { icon: 'boxplot', desc: { ja: '区間を重ね、母平均を含む割合で信頼水準を示す', en: 'Repeated intervals; the share that contains the mean shows the confidence level' } },
+  'm-folds': { icon: 'matrix', desc: { ja: '検証用の区画を順に替え、誤差と平均を示す', en: 'Rotates the validation fold and shows each error and the mean' } },
+  'm-balance': { icon: 'numberline', desc: { ja: '確率の重りを置き、期待値でつり合う様子を示す', en: 'Probabilities as weights that balance at the expected value' } },
+  'm-code': { icon: 'syntax', desc: { ja: '短いコードを行ごとに説明し、出力を見せる', en: 'Explains short code line by line, then shows the output' } },
 };
 // 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）
 export const PART_LABELS = Object.freeze(Object.fromEntries([...Object.keys(LOCAL), ...Object.keys(MANIFEST_NAMES).filter((t) => !LOCAL[t])]

@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=a9dd54ac86c0b0ed -->
+<!-- i18n: pair=editor.md sha256=48dbc8254fb41929 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -229,7 +229,7 @@ Egatari ファイルを直している間、保存していない変更をこの
 
 ## チャットの AI で下書きする（貼り付けと修正依頼）
 
-初めの下書きは、コーディング道具なしで、チャットの AI（claude.ai・Gemini・ChatGPT など）にも書かせられる。AI への指示の全体（詳細の指示）は [authoring-with-llms.ja.md](authoring-with-llms.ja.md)（[English](authoring-with-llms.md)。規格・出力の形と標準パーツ）と、材料の種類ごとの**束の指示** [llm-parts/](llm-parts/)：`stats`・`math`・`maps`・`kokugo`・`english`・`music`・`business`・`tools`・`science`。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest から決まり、標準パーツはいつも、専門のパーツはその束があるときだけ指示に入り、特殊のパーツは入らない（backlog #125）。④ で軽量の指示を選ぶと、編集アプリは軽い指示をコピーする（下の ④）：中核の 4 つのほかの標準パーツは、パーツの一覧の 1 行だけにする。`node tools/make-llm-guide.mjs` が約束事・パーツの README・`tools/llm-guide/` から作り、古くなるか大きさの上限（`kit/core/llm-pack-assemble.mjs` の `PACK_CAP_KB`：軽量の指示は標準パーツすべてで 45 KB、詳細の指示は標準パーツとどの 2 つの束の組でも 150 KB）を超えると `npm test` が失敗する。`npm run gen` は軽量の指示の束ごとの大きさ（新規作成と同じに収めたもの。`kit/core/llm-pack-assemble.mjs` の `fitPack`：45 KB を越えたら中核の 4 つも短くし、それでも越えれば専門のパーツを外す）と、詳細の指示のいちばん大きい組の大きさを出す。詳細の指示ですべての束を一度に選んだ指示も 150 KB の上限に収まる（収まらないときだけ知らせるだけ）。上限を超えたときは、どの指示か（軽量・詳細、言語、束）、何バイト超えたか、大きい節 3 つを出す。`node kit/llm-pack.mjs --sets stats,math --lang ja` はエディタが軽量の指示でその束を選んだときと同じに収めた文章を出す（中核の 4 つを短くした・専門のパーツを外したときは stderr に出す。`--no-fit` で組み立てたままの指示）。`--plan paid` でどのパーツも詳しく、`--sets all --plan paid` で全体。`--list` で束と、軽量の指示の収めた大きさと収める前の大きさ（KB は UTF-8 のバイト数 / 1024）。`--help` で使い方。
+初めの下書きは、コーディング道具なしで、チャットの AI（claude.ai・Gemini・ChatGPT など）にも書かせられる。AI への指示の全体（詳細の指示）は [authoring-with-llms.ja.md](authoring-with-llms.ja.md)（[English](authoring-with-llms.md)。規格・出力の形と標準パーツ）と、材料の種類ごとの**束の指示** [llm-parts/](llm-parts/)：`stats`・`data`・`math`・`maps`・`kokugo`・`english`・`music`・`business`・`tools`・`science`。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest から決まり、標準パーツはいつも、専門のパーツはその束があるときだけ指示に入り、特殊のパーツは入らない（backlog #125）。④ で軽量の指示を選ぶと、編集アプリは軽い指示をコピーする（下の ④）：中核の 4 つのほかの標準パーツは、パーツの一覧の 1 行だけにする。`node tools/make-llm-guide.mjs` が約束事・パーツの README・`tools/llm-guide/` から作り、古くなるか大きさの上限（`kit/core/llm-pack-assemble.mjs` の `PACK_CAP_KB`：軽量の指示は標準パーツすべてで 45 KB、詳細の指示は標準パーツとどの 2 つの束の組でも 150 KB）を超えると `npm test` が失敗する。`npm run gen` は軽量の指示の束ごとの大きさ（新規作成と同じに収めたもの。`kit/core/llm-pack-assemble.mjs` の `fitPack`：45 KB を越えたら中核の 4 つも短くし、それでも越えれば専門のパーツを外す）と、詳細の指示のいちばん大きい組の大きさを出す。詳細の指示ですべての束を一度に選んだ指示も 150 KB の上限に収まる（収まらないときだけ知らせるだけ）。上限を超えたときは、どの指示か（軽量・詳細、言語、束）、何バイト超えたか、大きい節 3 つを出す。`node kit/llm-pack.mjs --sets stats,math --lang ja` はエディタが軽量の指示でその束を選んだときと同じに収めた文章を出す（中核の 4 つを短くした・専門のパーツを外したときは stderr に出す。`--no-fit` で組み立てたままの指示）。`--plan paid` でどのパーツも詳しく、`--sets all --plan paid` で全体。`--list` で束と、軽量の指示の収めた大きさと収める前の大きさ（KB は UTF-8 のバイト数 / 1024）。`--help` で使い方。
 
 **新規作成…** の **指示をコピー** の横に **AI のスキルをダウンロード** を出す。添え書きは「Claude などのチャットの AI に入れると、指示書を貼らずに作れます」。画面の言語（ja または en）の make の ZIP をチャットの AI に入れ、その出力を Studio に貼り付ける。
 

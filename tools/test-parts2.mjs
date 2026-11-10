@@ -596,16 +596,33 @@ for (const [code, what] of [
   const js250 = Object.keys(v250.content).filter((n) => !bumped250.includes(n) && fs.existsSync(c2(v250, n, 'index.js')) && fs.readFileSync(c2(v250, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v244, n, 'index.js'), 'utf8'));
   ok(js250.length === 0, `2.5.0: no other part's index.js changes without a version bump (${js250.join(', ') || 'none'})`);
   // 部品庫 2.5.1（リリース eb220ad）：版が上がるのは orbit 2.0.4 だけ（光の塗りを var(--lit, <前の色>) で書く。テーマの --lit は v0.6.8）。
-  // map-japan は README に階級の決まりを足しただけ（index.js と版は 2.0.4 のまま）。既定はこちら
+  // map-japan は README に階級の決まりを足しただけ（index.js と版は 2.0.4 のまま）。リリース済みとして凍結（既定は候補 2.6.0 へ）
   const v251 = lock2.catalogues['2.5.1'];
-  ok(lock2.default === '2.5.1' && v251 && v251.tag === 'v2.5.1' && v251.tarballSha256 === '23c9f8ffb4324883089bf24d575cedead60875a148c42cba43e17a9460bce846' && v251.manifestSha256 === 'd60e3c03b1ecd0e18ad52f538eb63a260cb2676ee78cdd252a0080b6edefdf7a',
-    'components 2.5.1 is the default and pinned to the released tarball and manifest (v2.5.1)');
+  ok(v251 && v251.tag === 'v2.5.1' && v251.tarballSha256 === '23c9f8ffb4324883089bf24d575cedead60875a148c42cba43e17a9460bce846' && v251.manifestSha256 === 'd60e3c03b1ecd0e18ad52f538eb63a260cb2676ee78cdd252a0080b6edefdf7a',
+    'components 2.5.1 is pinned to the released tarball and manifest (v2.5.1)');
   const bumped251 = Object.keys(v251.parts).filter((n) => v251.parts[n] !== v250.parts[n]).sort();
   ok(bumped251.join() === 'orbit' && v251.parts.orbit === '2.0.4' && Object.keys(v251.parts).length === Object.keys(v250.parts).length,
     `2.5.1: exactly orbit gets a new version (2.0.4) (${bumped251.join(', ')})`);
   ok(/var\(--lit\s*,/.test(fs.readFileSync(c2(v251, 'orbit', 'index.js'), 'utf8')), '2.5.1: m-orbit 2.0.4 fills light with var(--lit, …) and a fallback');
   const js251 = Object.keys(v251.content).filter((n) => !bumped251.includes(n) && fs.existsSync(c2(v251, n, 'index.js')) && fs.readFileSync(c2(v251, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v250, n, 'index.js'), 'utf8'));
   ok(js251.length === 0, `2.5.1: no other part's index.js changes without a version bump (${js251.join(', ') || 'none'})`);
+  // 候補 2.6.0（components 側はまだタグ・リリースなし。c2-base af839aa。前の候補 779311d・6e1b78c を置き換え）：版が上がるのは m-curves 2.2.0（area）だけ。新しい束 data
+  // （情報・データサイエンス / Data science and code）のパーツ m-mapping・m-sampling・m-ci・m-folds・m-balance・m-code 2.0.0 が入る。
+  // ほかのパーツは版も index.js も 2.5.1 のまま。manifest・tarball の sha256 は manifest.json のもの。既定はこちら
+  const v260 = lock2.catalogues['2.6.0'];
+  ok(lock2.default === '2.6.0' && v260 && v260.tag === 'v2.6.0' && v260.tarballSha256 === '7ca2a9b06da57de28341c4f1c7c157c01e2c3373b6ee793261ad5e3d28ba81e2' && v260.manifestSha256 === 'c41a3dcab3ef297f61c16487319b1495bf9d0f3b386e8ff1823e1796bee8ce41',
+    'CANDIDATE 2.6.0: the default, pinned to the candidate tarball and manifest (v2.6.0)');
+  const DATA260 = ['balance', 'ci', 'code', 'folds', 'mapping', 'sampling'];
+  const added260 = Object.keys(v260.parts).filter((n) => !(n in v251.parts)).sort();
+  const bumped260 = Object.keys(v251.parts).filter((n) => v260.parts[n] !== v251.parts[n]).sort();
+  ok(added260.join() === DATA260.join() && DATA260.every((n) => v260.parts[n] === '2.0.0') && Object.keys(v251.parts).every((n) => n in v260.parts),
+    `CANDIDATE 2.6.0: exactly the six data parts are new, all 2.0.0 (${added260.join(', ')})`);
+  ok(bumped260.join() === 'curves' && v251.parts.curves === '2.1.1' && v260.parts.curves === '2.2.0',
+    `CANDIDATE 2.6.0: exactly m-curves gets a new version (2.1.1 → 2.2.0) (${bumped260.join(', ')})`);
+  const m260 = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.6.0.json'), 'utf8'));
+  ok(DATA260.every((n) => m260.components[n].tier === 'specialized' && m260.components[n].set === 'data'), 'CANDIDATE 2.6.0: the six new parts are specialized parts of the set data');
+  const js260 = Object.keys(v260.content).filter((n) => !bumped260.includes(n) && !added260.includes(n) && fs.existsSync(c2(v260, n, 'index.js')) && fs.readFileSync(c2(v260, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v251, n, 'index.js'), 'utf8'));
+  ok(js260.length === 0, `CANDIDATE 2.6.0: no other part's index.js changes without a version bump (${js260.join(', ') || 'none'})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

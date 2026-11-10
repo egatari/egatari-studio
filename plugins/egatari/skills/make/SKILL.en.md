@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 03b74c31**
+**Instruction version: fae851f3**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
@@ -31,6 +31,7 @@ Choose the parts for the outline from the standard parts and the specialized set
 
 - [standard](references/parts/en/standard.md)
 - [stats](references/parts/en/stats.md)
+- [data](references/parts/en/data.md)
 - [math](references/parts/en/math.md)
 - [maps](references/parts/en/maps.md)
 - [kokugo](references/parts/en/kokugo.md)
@@ -65,7 +66,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `03b74c31`
+Pack version: `fae851f3`
 
 You will write one short **Egatari lesson**: an HTML slide deck with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and narration in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 

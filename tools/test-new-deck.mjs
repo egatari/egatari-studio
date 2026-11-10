@@ -120,6 +120,9 @@ ok('initial ticks (#124 §2.2): every standard part; a specialized set from the 
   assert.deepEqual(recommend({ text: 'ソースコードの読み方', lang: 'ja' }), []);
   assert.deepEqual(recommend({ text: '関係詞の節', lang: 'ja' }).map((r) => r.set), ['english']);
   assert.deepEqual(recommend({ text: 'てこのはたらき', lang: 'ja' }), []);
+  // 束 data（部品庫 2.6.0）：情報・データサイエンス・プログラミングの言葉
+  assert.deepEqual(recommend({ text: '情報Iのプログラミング', lang: 'ja' }), [{ set: 'data', word: '情報I' }]);
+  assert.deepEqual(recommend({ text: 'Cross-validation in Python', lang: 'en' }), [{ set: 'data', word: 'Cross-validation' }]);
   // 英語の画面は英語の表
   assert.deepEqual(recommend({ text: 'Chords on the piano', lang: 'en' }), [{ set: 'music', word: 'Chords' }]);
   assert.deepEqual(recommend({ text: '漢詩', lang: 'en' }), []);
@@ -294,11 +297,11 @@ ok('purposes: the tiles are the default catalogue manifest\'s own purposes (16),
   assert.equal(PURPOSES.source, 'manifest');
   assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
-  // m-bars は 3 つの札に使う：全部外したときだけ使わせない
-  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-numberline']);
-  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
+  // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-folds（部品庫 2.6.0 の束 data）の札は compare だけ（model は札なし）
+  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-folds', 'm-numberline']);
+  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-folds', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
   // m-kakijun は 2.2.0 候補で extra に移り（backlog #170）、process の部品からは外れる（extra は purposes の計算に入らない）
-  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-cards', 'm-flow', 'm-hissan']);
+  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-cards', 'm-code', 'm-flow', 'm-hissan']);   // m-code（束 data）の札は process だけ
   assert.deepEqual(componentsOff([], PURPOSES), []);
   // 札のない言いたいことの部品（m-kanbun・m-sweep など）は外せない（束から入る）。特殊のパーツは指示にないので札も持たない
   assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect', 'm-codetree'].some((t) => PURPOSES.components[t]));
@@ -580,7 +583,7 @@ ok('packs name no part outside their own catalog: no set, every single set and e
 });
 ok('pack: turning purposes off removes the parts used only for them from the catalog (standard and sets) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);
-  assert.deepEqual(off, ['m-cards', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu']);
+  assert.deepEqual(off, ['m-cards', 'm-code', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu']);
   const full = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', plan: 'paid' });
   const cut = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', exclude: off, off: ['key-number', 'process', 'contents'], plan: 'paid' });
   assert.ok(full.includes('### `<m-flow>`') && full.includes('### `<m-kpi>`') && full.includes('| `<m-menu>` |'));
