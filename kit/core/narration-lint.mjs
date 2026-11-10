@@ -124,11 +124,16 @@ function denseOps(s, ops, n) {
   }
   return false;
 }
+// コードの識別子（cross_val_score・random_state・train_test_split）は語で、式ではない：英字で始まり _ でつないだ 2 つ以上の部分のうち、
+//   どれかが 3 字以上の英字の並び。x_1・x_t・a_ij・\alpha_t（バックスラッシュは別に数える）のような下付きは式のまま
+const IDENT_RE = /(?<![A-Za-z0-9_\\])[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+(?![A-Za-z0-9_])/g;
+const dropIdents = (s) => s.replace(IDENT_RE, (w) => (w.split('_').some((p) => /^[A-Za-z]{3,}/.test(p)) ? ' ' : w));
 // 日本語の発言：バックスラッシュ・^・_、15 字に = + − × * が 4 つ以上、記号らしい英字が密（英字の名前・語は数えない）
 //   名前・語とみなす英字の並び：3 字以上（sin・log などの関数の名前を除く）か、2 字以上の大文字（AI・HTML）。
 //   残る英字（x・ax・dx・f など）が 4 つ以上で、名前・語を除いた後の字（空白を除く）の半分を超えれば式。
 //   前の規則（英字をすべて数える）より警告が増えることはない
 function formulaLikeJa(s) {
+  s = dropIdents(s);
   if (/\\|\^|_/.test(s)) return true;
   if (denseOps(s, '=+−×*', 4)) return true;
   const rest = s.replace(/[A-Za-z]+/g, (w) => (w.length >= 3 && !MATH_WORDS.has(w.toLowerCase())) || /^[A-Z]{2,}$/.test(w) ? '' : w);
@@ -138,6 +143,7 @@ function formulaLikeJa(s) {
 }
 // 英語の発言：ラテン文字が多いのは当たり前なので、バックスラッシュ・^・_ と、15 字に演算子 3 つ以上だけを見る
 function formulaLikeEn(s) {
+  s = dropIdents(s);
   if (/\\|\^|_/.test(s)) return true;
   return denseOps(s, '=+−×*<>≤≥/', 3);
 }

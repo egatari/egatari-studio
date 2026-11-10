@@ -74,4 +74,11 @@ ok('名前を除いても前の規則より警告が増えない（全角・半�
   }
 });
 
+ok('コードの識別子（_ でつないだ名前）とハイフンの語は式ではない（R-formula の誤検出）', () => {
+  for (const t of ['同じことを、scikit-learn の関数 cross_val_score で', '続く 2 行で、ロジスティック回帰のモデルを作り、cross_val_score', 'random_state を 0 に、max_depth を 3 にします', 'train_test_split で分けます']) assert.equal(formulaLike(t, 'ja'), false, t);
+  for (const t of ['call cross_val_score with five folds', 'set random_state to zero']) assert.equal(formulaLike(t, 'en'), false, t);
+  for (const t of ['x_1 と x_2 の和', 'x_t を更新する', 'a_ij の和', '\\alpha_t を下げる']) assert.equal(formulaLike(t, 'ja'), true, t);
+  for (const t of ['take x_1 here', 'update w_t']) assert.equal(formulaLike(t, 'en'), true, t);
+});
+
 console.log(`${n} ok`);
