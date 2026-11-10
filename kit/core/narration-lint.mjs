@@ -33,6 +33,12 @@ function bare(display) {
     .replace(/\*+(?![A-Za-zͰ-Ͽ0-9(])/g, '');     // 後置の星（Q*、x*_i）。a*b の * は掛け算として残す
   return x;
 }
+// 式の検査（narrFormula）に使う発言の文字：読みの指定 {x|よみ} は読みのほうで見る。1 つの記号の読み（{E_i|イーアイ}・{θ|シータ}・{N₀|エヌゼロ}）
+//   は R-reading が認める書き方、式に 1 つの読み（{1-η|…}・{E_i + E_j|…}）は readingExpr が受け持つので、どちらも narrFormula では数えない。
+//   {mark:…|…}・{cue}・注は除く
+export function formulaText(raw) {
+  return stripNotes(String(raw)).replace(/\{cue\}/g, '').replace(READING, (m, d, r) => (/^mark:/.test(d.trim()) ? '' : r.trim()));
+}
 export function readingProblems(raw) {
   const out = [];
   for (const m of stripNotes(raw).matchAll(READING)) {

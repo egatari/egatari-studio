@@ -45,7 +45,7 @@ import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
 import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
 import { normalizeKey, noteProblems } from './narration.mjs';
-import { readingProblems, orphanSteps, orphanDetail, formulaLike, narrationLang, textLang } from './core/narration-lint.mjs';
+import { readingProblems, orphanSteps, orphanDetail, formulaLike, formulaText, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { partReportFinding, message, where, ruleOf } from './check-messages.mjs';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
@@ -527,12 +527,17 @@ if (isJapanese(NL.lang) !== JA) report(null, 'info', 'narrLang', { lang: NL.lang
 // 部品のデータが合わず描けないスライド（compData）：その部品の段階は 0 になり、段階の数がデータと合わない。そこで数えた口述原稿の抜け・余り
 // （narrMissing・narrOrphan）は出さない（修正依頼が正しい口述原稿を消させないように）。代わりに、データを直した後に確かめ直すと 1 行で知らせる
 for (const [i, comps] of badComps) if (i !== null && i !== undefined && meta[i]) report(i, 'info', 'narrRecheck', { comps: [...new Set(comps)] });
+// 式の検査は元の文字列から（1 つの記号の読みは読みのほうで見る。narration-lint.mjs の formulaText）
+const RAW_TURNS = new Map();
+for (const seg of built.segs || []) RAW_TURNS.set(`${seg.slideKey}\u0000${seg.stepKey}`, seg.turns.map((t) => t.raw));
 for (const { i, stepKey, turns } of narrInfo) {
   if (badComps.has(i)) continue;
   if (turns.length === 0) { report(i, 'warn', 'narrMissing', { step: stepKey }, stepKey); continue; }
-  for (const t of turns) {
+  const raws = RAW_TURNS.get(`${meta[i]?.key}\u0000${stepKey}`);
+  for (const [ti, t] of turns.entries()) {
     const tl = textLang(t.text, NL.lang);
-    if (formulaLike(t.text, tl)) report(i, 'warn', 'narrFormula', { t: t.text.slice(0, 40) }, stepKey);
+    const ft = raws && raws.length === turns.length && raws[ti] != null ? formulaText(raws[ti]) : t.text;
+    if (formulaLike(ft, tl)) report(i, 'warn', 'narrFormula', { t: t.text.slice(0, 40) }, stepKey);
     if (tl === 'ja' && t.text.length > 200) report(i, 'info', 'turnLong', { n: t.text.length, unit: '字' }, stepKey);
     const words = t.text.trim().split(/\s+/).length;
     if (tl !== 'ja' && words > 60) report(i, 'info', 'turnLong', { n: words, unit: '語' }, stepKey);
