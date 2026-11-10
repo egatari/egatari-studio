@@ -41,16 +41,22 @@
 | [`<m-tree>`](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/README.md) | 1.13.1 | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置は部品が決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | orient, by, link, size, fade, draw | [demo](sha256/e0daed8338f51de7e86b5980a098394298455972218370ee65331ca48f7f9696/demo.html) |
 | [`<m-venn>`](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/README.md) | 1.13.1 | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数） | size, dur, spread, overlaps | [demo](sha256/82b2dbc925a4ae4511bb48ccb1777a3932313ac7e18cb91572371d272a930980/demo.html) |
 
-## 2.x のパーツ（components2.lock.json の既定の版 2.5.1）
+## 2.x のパーツ（components2.lock.json の既定の版 2.6.0）
 
 1.x の目録にない、2.x 専用の要素パーツ（`kind: "element"`）。土台パーツ（`kind: "library"`：base・boxplot-core・codetree-core・
 expr・heatmap-core・hist-core・icons・kanbun-core・markup-reader・plot・shape）は教材の作者が直接書かないので一覧には出さない。
 
 | 部品 | 版 | 内容 | 段階の数 | 受け取る値 | 見本 |
 |---|---|---|---|---|---|
+| [`<m-balance>`](sha256/1298d779fe60ccfc09747fbdba47e2111175bd7fd2385a5b68c8f2644cd267be/README.md) | 2.0.0 | 確率の重りを置き、支点が期待値でつり合う様子を示す | 数直線と重り→支点を期待値へ→値と和の式（3 段階） | dur, digits, size | [demo](sha256/1298d779fe60ccfc09747fbdba47e2111175bd7fd2385a5b68c8f2644cd267be/demo.html) |
 | [`<m-cards>`](sha256/f3d5b6ce53f40c5f355a67538ff11b9cd28297da6292125ccb6e055aeddef906/README.md) | 2.0.3 | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、段階ごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 段階。per-step で n 枚ずつ） | layout, arrows, nums, hilite, per-step, stagger, dur | [demo](sha256/f3d5b6ce53f40c5f355a67538ff11b9cd28297da6292125ccb6e055aeddef906/demo.html) |
+| [`<m-ci>`](sha256/a69ab76ff7d0746d093b4e606d7b113be921cbb156edc16c2ad40aafab280d42/README.md) | 2.0.0 | 正規標本の区間を重ね、母平均を含む割合で信頼水準を説明する | 軸と μ→区間を順に→含む数と外れの強調（3 段階） | dur, fast, size | [demo](sha256/a69ab76ff7d0746d093b4e606d7b113be921cbb156edc16c2ad40aafab280d42/demo.html) |
+| [`<m-code>`](sha256/10f1dbe3ccd062dfed08061e38658c1825745dbd1ba3112de4b8dd14476ff05a/README.md) | 2.0.0 | 短いコードを行ごとに説明し、最後に出力を見せる | コード全体→説明を順に→出力（説明数＋1、出力ありは＋2） | dur, size, outputPos | [demo](sha256/10f1dbe3ccd062dfed08061e38658c1825745dbd1ba3112de4b8dd14476ff05a/demo.html) |
+| [`<m-folds>`](sha256/bcfe1c93fa5c68ff65efd83db1a210936c9a8b65cd42d906ef292725b149fd6a/README.md) | 2.0.0 | 検証用の区画を順に替え、各分割の誤差と平均を示す | 分割を 1 行ずつ→平均（k + 1 段階） | dur, size | [demo](sha256/bcfe1c93fa5c68ff65efd83db1a210936c9a8b65cd42d906ef292725b149fd6a/demo.html) |
+| [`<m-mapping>`](sha256/decb7c026527ea269a401efedcb5d4d56d186074b286d2f94772068bef56b256/README.md) | 2.0.0 | 実験の結果を数値へ対応させ、同じ値になる結果をまとめて確率分布を作る | 結果の札→対応の矢印→同じ値の色と個数・確率の和→分布の横棒の 4 段階 | dur, stagger, digits, size | [demo](sha256/decb7c026527ea269a401efedcb5d4d56d186074b286d2f94772068bef56b256/demo.html) |
 | [`<m-orbit>`](sha256/2e9a35ce9e289196d0b5fd24b8546cf6e0f4a6df857e69f4f78e686cabb00e61/README.md) | 2.0.4 | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 段階。visit で決める） | mode, hemisphere, sun, earth, moon, observer, size, dur | [demo](sha256/2e9a35ce9e289196d0b5fd24b8546cf6e0f4a6df857e69f4f78e686cabb00e61/demo.html) |
 | [`<m-particles>`](sha256/ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098/README.md) | 2.0.0 | 状態変化の粒子の並び方と間隔、化学変化で保存される原子の数を見せる | state は states の数 − 1（既定 2）。reaction は反応前→原子に分かれる→反応後の 3 段階 | mode, count, size, dur, volume, motion | [demo](sha256/ec132caf4b4fd019fab20f9e9d6bc86266e30eb80a4fb8d2de4ca440ad45a098/demo.html) |
+| [`<m-sampling>`](sha256/7aea8341beffcd4ad95c12b7e7e3be3f0f52eb7932d424be9e74e2fbd7339e45/README.md) | 2.0.0 | 母集団から標本を取り、比率・平均の標本分布を積む | 母集団→抽出→統計量と点→反復の 4 段階 | dur, stagger, fast, size | [demo](sha256/7aea8341beffcd4ad95c12b7e7e3be3f0f52eb7932d424be9e74e2fbd7339e45/demo.html) |
 | [`<m-score>`](sha256/abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f/README.md) | 2.1.0 | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 段階。by="measure" なら 1 小節＝1 段階（per-step="N" なら N 小節。弱起の小節は次の段階に入る） | by, names, per-step | [demo](sha256/abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f/demo.html) |
 
 名前で引く線のアイコン（土台パーツ `icons`）は[この README](sha256/b2dfb4fa290d240024c95e2d24fda887db9fbc5b94f99b5be00c74c488fcfddb/README.md) を見る。

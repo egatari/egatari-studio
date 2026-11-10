@@ -42,7 +42,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
 const read = (...p) => fs.readFileSync(rel(...p), 'utf8').replace(/\r\n/g, '\n');
 // 束の並び（parts-tiers §1.1 の順。manifest にあってここにない束は、後ろに名前の順で足す）
-export const SET_ORDER = ['stats', 'math', 'maps', 'kokugo', 'english', 'music', 'business', 'tools'];
+export const SET_ORDER = ['stats', 'data', 'math', 'maps', 'kokugo', 'english', 'music', 'business', 'tools'];
 // 前の系列（部品庫 1.x の series）の名前 → 束。README の <!-- llm: 系列 --> の拡張の節を束に読み替える（部品庫が束の名前に直したら要らない）
 export const LEGACY_SERIES = Object.freeze({ academic: ['stats', 'math', 'science'], business: ['business'], kokugo: ['kokugo'], english: ['english'], music: ['music'], social: ['maps'], info: [] });
 export const DATA_FILE = 'kit/core/llm-pack-data.mjs';

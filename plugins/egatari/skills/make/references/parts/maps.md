@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # maps のパーツ
 
-指示の版：03b74c31
+指示の版：9a2b4790
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

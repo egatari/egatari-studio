@@ -10,7 +10,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ、Claude Code は `/plugin install egatari@egatari`、Codex は `codex plugin add egatari@egatari` を案内する。
 
 <!-- generated: instruction-version -->
-**指示の版：03b74c31**
+**指示の版：9a2b4790**
 <!-- /generated: instruction-version -->
 
 make の版の行と違えば、両方のプラグインを更新するよう利用者に伝える。
@@ -153,7 +153,7 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 - 一覧：`<root>/vendor/components/CATALOG.md`（全部のパーツの内容・ステップの数・受け取る値）。構成案の前に全部読む。使うと決めたパーツは `README.md`（書き方・データの形・台本との合わせ方）と `demo.html`（動く例）を読む。置き場所は `<root>/vendor/components/sha256/<hash>/`：`<hash>` は `<root>/components.lock.json` の `components.<名前>.content` の、既定の版（同じところの `default`）の値
 - 分け方：パーツライブラリ 2.0 の manifest `<root>/vendor/components-2/manifest-<版>.json`（版は `<root>/components2.lock.json` の `default`）の `components.<名前>`
   - `tier`：`standard`（標準）・`specialized`（専門）・`extra`（特殊）。スキルではどれも使える
-  - `set`：専門パーツのセット（例：`stats`・`math`・`maps`・`kokugo`・`english`・`music`・`business`・`tools`）。固定の分野一覧で絞らず、manifest の値を読む
+  - `set`：専門パーツのセット（例：`stats`・`data`・`math`・`maps`・`kokugo`・`english`・`music`・`business`・`tools`）。固定の分野一覧で絞らず、manifest の値を読む
   - `kind`：`element` は教材に置くパーツ、`library` はほかのパーツが使うライブラリ
   - `display`：タグとは別の表示名。あれば利用者への名前に使う
   - `purposes`：そのパーツが合う伝えたいこと（`purposes` の `id`。名前は `purposes` の `ja`）

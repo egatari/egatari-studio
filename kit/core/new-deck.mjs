@@ -94,6 +94,7 @@ export const CATEGORIES = [
 // 束そのものは manifest の set から読む（ここにない束は、名前のまま出す）
 export const SET_LABELS = [
   { set: 'stats', label: { ja: '統計の図', en: 'Statistics charts' }, inside: { ja: 'ヒストグラム・箱ひげ図・ヒートマップ', en: 'Histograms, box plots, heatmaps' } },
+  { set: 'data', label: { ja: '情報・データサイエンス', en: 'Data science and code' }, inside: { ja: '標本抽出・信頼区間・交差検証・コードの解説', en: 'Sampling, confidence intervals, cross-validation, code walkthroughs' } },
   { set: 'math', label: { ja: '算数・数学', en: 'Arithmetic and mathematics' }, inside: { ja: '筆算・数直線・テープ図・関数', en: 'Column arithmetic, number lines, tape diagrams, functions' } },
   { set: 'maps', label: { ja: '地図', en: 'Maps' }, inside: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' } },
   { set: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' } },
@@ -120,6 +121,7 @@ const SUBJECT_FIRST = ['class'];
 export const WORDS = Object.freeze({
   ja: {
     stats: ['分布', '統計', 'データ', 'ヒストグラム', '箱ひげ', '相関', 'ベイズ', '推定', '検定'],
+    data: ['データサイエンス', '情報I', '情報Ⅰ', 'プログラミング', '交差検証', '信頼区間', '標本抽出', '確率変数', '期待値'],
     math: ['筆算', 'わり算', '割り算', 'かけ算', '掛け算', '分数', '割合', '数直線', 'テープ図', '関数'],
     maps: ['地図', '都道府県', '地方', '世界', { w: '国', not: ['国語'] }, '人口', '地域'],
     kokugo: ['国語', '漢文', '漢詩', '古文', '現代文', '評論', '小説', '書き順', 'ひらがな'],
@@ -130,6 +132,7 @@ export const WORDS = Object.freeze({
   },
   en: {
     stats: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian', 'estimation', 'hypothesis test', 'hypothesis testing'],
+    data: ['data science', 'programming', 'cross-validation', 'confidence interval', 'confidence intervals', 'sampling', 'random variable', 'random variables', 'expected value'],
     math: ['long division', 'column addition', 'multiplication', 'division', 'fraction', 'fractions', 'ratio', 'ratios', 'percentage', 'percentages', 'number line', 'tape diagram', 'function', 'functions'],
     maps: ['map', 'maps', 'prefecture', 'prefectures', 'region', 'regions', 'world', 'country', 'countries', 'population'],
     kokugo: ['kanbun', 'kobun', 'kanshi', 'classical Japanese', 'classical Chinese', 'stroke order', 'hiragana', 'katakana', 'kanji'],
