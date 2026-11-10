@@ -13,7 +13,7 @@ export const IN_EDITOR = Object.freeze([
   'slideId', 'legacyDataKey', 'legacyIndex', 'legacyColorClass', 'legacyStepAttr', 'legacyLectureMode', 'colorOutside', 'narrHeadingDiffers',
   'narrNote', 'narrFormula', 'turnLong', 'narrLang',
   // app/main.js・app/llm.js（作業場所の原稿と台本から）
-  'refVoice', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral',
+  'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral',
   // 体裁の検査（kit/core/layout-scan.mjs。bodyBottom・bodyRight は EDITOR_ALIAS）
   'titleLong', 'titleLongEn', 'titleColon', 'tateTitle', 'conclLong', 'conclLongEn', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft',
   'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak',
@@ -49,18 +49,12 @@ export const CLI_ONLY_PREFIX = Object.freeze({
 });
 export const EDITOR_ALIAS = Object.freeze({
   overflowBottom: 'bodyBottom', overflowRight: 'bodyRight',
-  noNarration: 'narrMissing', orphanNarration: 'narrOrphan', contrast: 'contrastLow', audioStale: 'audio: stale',
-});
-// コマンド版が MESSAGES にない名前で出す code（言葉をそのまま code にしている）→ そのわけ。EDITOR_ALIAS の行き先に使ってよい
-export const NON_MESSAGE_CODES = Object.freeze({
-  'audio: stale': 'kit/check.mjs (K) reports stale audio with its text as the code; the editor reports it as audioStale',
+  noNarration: 'narrMissing', orphanNarration: 'narrOrphan', contrast: 'contrastLow',
 });
 export const BUILD_WARN = Object.freeze({
   build: /^(?!theme-metrics: |mark: 目印|slide key: )/,
   themeMetricsInvalid: /^theme-metrics: /,
 });
-// コマンド版の音声が古い段階（K）は code に言葉を入れている（'audio: stale — …'）：頭だけで比べる
-export const cliCode = (code) => (/^audio: stale/.test(code) ? 'audio: stale' : code);
 export function cliOnly(code) {
   if (Object.hasOwn(CLI_ONLY, code)) return CLI_ONLY[code];
   for (const [p, why] of Object.entries(CLI_ONLY_PREFIX)) if (code.startsWith(p) && code.length > p.length && /[A-Z]/.test(code[p.length])) return why;

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=ff4545fa41ef3769 -->
+<!-- i18n: pair=reference.md sha256=3378828d5c45c61e -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -436,7 +436,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 組まれていない式、KaTeX のエラー | エラー |
 | 教材の中で「、。」と「，．」が混ざる（日本語） | 警告 |
 | 編集アプリのスライド一覧のテンプレートのまま（`kit/core/template-text.mjs`）：仮の印 `✎` で始まる台本の行（`narrPlaceholder`）、テンプレートの字（「新しいスライドの見出し」「1 つ目の項目」など）のままのスライドの字（`templateText`）。仮の行は TTS が読み、字幕と読める層にも出るので、TTS（`tools/narration-json.mjs`・`tts/synth.py`）・`--portable`・`--play-only`・編集アプリの TTS とエクスポートは先に一覧を出す | 警告 |
-| 古い音声：ステップの音声がほかの台本から作られている（`inputHash` が違うか `null`。`inputHash` がなければ TTS の控え `audio/seg_<digest>.json` で比べる）— `audio: stale` | 警告 |
+| 古い音声：ステップの音声がほかの台本から作られている（`inputHash` が違うか `null`。`inputHash` がなければ TTS の控え `audio/seg_<digest>.json` で比べる）— `audioStale` | 警告 |
 | 式を読み上げている台本（発言ごとにその言語の規則で。下を参照。「Markdown と HTML」のように英字の名前を挙げるだけの日本語の文は式としない） | 警告 |
 | 1 ターンが 200 字（日本語）/ 60 語（ほかの言語）を超える | 情報 |
 | 台本の言語がスライドの言語と違う（`narrLang`） | 情報 |

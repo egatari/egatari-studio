@@ -1,3 +1,7 @@
+### Changed
+
+- `egatari check --json`: the stale-audio finding's code is now `audioStale` (was `audio: stale`); the message is unchanged.
+
 ### Fixed
 
 - Editor app: the quality check now reports raw math left in the slides (`rawMath`, such as a leftover `$…$` in an English lesson) as an error, with the same message as `npm run check`, and includes it in the fix request with the R-math standard

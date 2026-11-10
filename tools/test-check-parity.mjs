@@ -17,8 +17,9 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { shareBrowser, launch } from '../kit/browser.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
-import { IN_EDITOR, CLI_ONLY, CLI_ONLY_PREFIX, EDITOR_ALIAS, BUILD_WARN, NON_MESSAGE_CODES, cliCode, cliOnly } from '../kit/core/check-parity.mjs';
+import { IN_EDITOR, CLI_ONLY, CLI_ONLY_PREFIX, EDITOR_ALIAS, BUILD_WARN, cliOnly } from '../kit/core/check-parity.mjs';
 import { scaled } from './wait-scale.mjs';
+import { silentWav } from './portable-fixtures.mjs';
 // ブラウザは 1 つだけ起動し、子のプロセス（kit/check.mjs）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser）
 await shareBrowser();
 
@@ -30,10 +31,19 @@ let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
 
 const FIX = path.join(ROOT, 'tools', 'fixtures', 'check-parity');
-const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }];
+// en-stale：en-rawmath の写しに、今の台本から作っていない音声（inputHash が null）を 1 つ足したもの（audioStale。作業用のフォルダに作る）
+const STALE = path.join(work, 'en-stale');
+fs.rmSync(STALE, { recursive: true, force: true });
+fs.cpSync(path.join(FIX, 'en-rawmath'), STALE, { recursive: true });
+fs.mkdirSync(path.join(STALE, 'audio'), { recursive: true });
+fs.writeFileSync(path.join(STALE, 'audio', 'a.wav'), silentWav(1));
+fs.writeFileSync(path.join(STALE, 'audio', 'manifest.json'), JSON.stringify({ segments: { 's-attn:0': { file: 'a.wav', dur: 1, inputHash: null } } }));
+const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }];
+const dirOf = (f) => f.dir || path.join(FIX, f.name);
 // 見本が出すはずの code（見本を直して減ったら気づくように）
 const WANT = {
   'en-rawmath': ['rawMath', 'narrFormula', 'narrNote', 'narrOrphan', 'narrMissing', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'linkCount', 'legacyColorClass', 'colorOutside'],
+  'en-stale': ['audioStale', 'rawMath'],
   'ja-mix': ['desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing'],
 };
 
@@ -58,9 +68,8 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
   ok(!twice.length && !dupIn.length, 'inventory: no code is classified twice' + (twice.length || dupIn.length ? ': ' + [...twice, ...dupIn.map((c) => c + ' (IN_EDITOR twice)')].join(', ') : ''));
   const known = (c) => Object.hasOwn(MESSAGES, c);
   const stray = [...IN_EDITOR.filter((c) => !known(c)).map((c) => 'IN_EDITOR ' + c), ...Object.keys(CLI_ONLY).filter((c) => !known(c)).map((c) => 'CLI_ONLY ' + c),
-    ...Object.values(EDITOR_ALIAS).filter((c) => !known(c) && !Object.hasOwn(NON_MESSAGE_CODES, c)).map((c) => 'EDITOR_ALIAS → ' + c),
-    ...Object.keys(BUILD_WARN).filter((c) => !known(c)).map((c) => 'BUILD_WARN ' + c),
-    ...Object.keys(NON_MESSAGE_CODES).filter((c) => known(c) || !Object.values(EDITOR_ALIAS).includes(c)).map((c) => 'NON_MESSAGE_CODES ' + c)];
+    ...Object.values(EDITOR_ALIAS).filter((c) => !known(c)).map((c) => 'EDITOR_ALIAS → ' + c),
+    ...Object.keys(BUILD_WARN).filter((c) => !known(c)).map((c) => 'BUILD_WARN ' + c)];
   ok(!stray.length, 'inventory: IN_EDITOR, CLI_ONLY, the alias targets and BUILD_WARN name only MESSAGES codes' + (stray.length ? ': ' + stray.join(', ') : ''));
   const counts = { IN_EDITOR: 0, CLI_ONLY: 0, CLI_ONLY_PREFIX: 0, EDITOR_ALIAS: 0, BUILD_WARN: 0 };
   for (const c of codes) for (const k of classes(c)) counts[k]++;
@@ -74,13 +83,14 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
 
 // ---------------------------------------------------------------- 1. コマンド版
 const CLI = {};
-for (const { name, lang } of FIXTURES) {
-  const r = spawnSync(process.execPath, ['kit/check.mjs', path.join(FIX, name), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
+for (const f of FIXTURES) {
+  const { name, lang } = f;
+  const r = spawnSync(process.execPath, ['kit/check.mjs', dirOf(f), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
   let j = null;
   try { j = JSON.parse(r.stdout); } catch { j = null; }
   ok(j && Array.isArray(j.results) && j.lang === lang, `cli ${name}: check --json ran (exit ${r.status}, lang ${j && j.lang})` + (j ? '' : '\n       ' + String(r.stderr).slice(0, 400)));
   CLI[name] = j ? j.results : [];
-  const codes = new Set(CLI[name].map((x) => cliCode(x.code)));
+  const codes = new Set(CLI[name].map((x) => x.code));
   const lack = WANT[name].filter((c) => !codes.has(c));
   ok(!lack.length, `cli ${name}: the fixture triggers the codes it is meant to (${WANT[name].length})` + (lack.length ? ': missing ' + lack.join(', ') : ''));
 }
@@ -106,18 +116,25 @@ const browser = await launch();
 const errs = [];
 
 try {
-  for (const { name, lang } of FIXTURES) {
+  for (const fx of FIXTURES) {
+    const { name, lang } = fx;
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: lang === 'en' ? 'en-US' : 'ja-JP' });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errs.push(`${name} pageerror: ${e.message}`));
     await page.goto(`${HOST}?lang=${lang}`);
     await page.waitForFunction(() => !!window.__APP_TEST && !!window.__APP_TEST_OPEN);
-    const files = Object.fromEntries(fs.readdirSync(path.join(FIX, name)).map((f) => [f, fs.readFileSync(path.join(FIX, name, f), 'utf8')]));
+    const files = Object.fromEntries(fs.readdirSync(dirOf(fx), { recursive: true }).filter((f) => fs.statSync(path.join(dirOf(fx), f)).isFile())
+      .map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(dirOf(fx), f)).toString('base64')]));
     await page.evaluate(async ([dir, files]) => {
       const root = await navigator.storage.getDirectory();
       await root.removeEntry(dir, { recursive: true }).catch(() => {});
       const d = await root.getDirectoryHandle(dir, { create: true });
-      for (const [rel, text] of Object.entries(files)) { const w = await (await d.getFileHandle(rel, { create: true })).createWritable(); await w.write(text); await w.close(); }
+      for (const [rel, b64] of Object.entries(files)) {
+        const parts = rel.split('/'); let dir = d;
+        for (const p of parts.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: true });
+        const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+        const w = await (await dir.getFileHandle(parts[parts.length - 1], { create: true })).createWritable(); await w.write(bytes); await w.close();
+      }
       window.__testDir = d;
     }, ['parity-' + name, files]);
     ok((await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir))) === true, `editor ${name}: opened the working folder`);
@@ -130,7 +147,7 @@ try {
     // 3. コマンド版の code はどれも編集アプリにもある（CLI_ONLY を除く）
     const have = new Set(results.map((r) => EDITOR_ALIAS[r.code] || r.code));
     for (const [code, re] of Object.entries(BUILD_WARN)) if ((st.warn || []).some((w) => re.test(w))) have.add(code);
-    const cliCodes = [...new Set(CLI[name].map((x) => cliCode(x.code)))].sort();
+    const cliCodes = [...new Set(CLI[name].map((x) => x.code))].sort();
     const missing = cliCodes.filter((c) => !have.has(c) && !cliOnly(c));
     ok(!missing.length, `parity ${name}: every code the command line reports is in the editor's check, or listed in CLI_ONLY (${cliCodes.length} codes)` + (missing.length ? ': missing ' + missing.join(', ') : ''));
     // 同じ code はスライドも同じ（スライドごとの指摘：rawMath・desuMasu など、本文と台本と原稿から見るもの）
@@ -155,6 +172,12 @@ try {
     // 修正依頼：エラー・警告はすべて入る（情報は入らない）
     for (const r of results.filter((x) => x.sev !== 'info' && x.arg && typeof x.arg === 'object' && MESSAGES[x.code])) {
       ok(req.includes(message(lang, r.code, r.arg)), `fix request ${name}: includes the ${r.code} finding`);
+    }
+    if (name === 'en-stale') {
+      const c = CLI[name].filter((x) => x.code === 'audioStale'), e = results.filter((x) => x.code === 'audioStale');
+      ok(c.length === 1 && c[0].sev === 'warn' && c[0].slide === 2 && c[0].data.k === 's-attn:0' && c[0].msg.endsWith(message('en', 'audioStale', { k: 's-attn:0', kind: 'tts' })) && /^Slide 2 .*: audio: stale — 段階 s-attn:0 の音声は/.test(c[0].msg),
+        `cli en-stale: the stale audio is code audioStale (warn, slide 2) with the old message text: ${c[0] && c[0].msg}`);
+      ok(e.length === 1 && e[0].sev === 'warn' && e[0].i === 1, 'editor en-stale: the same step is reported as audioStale');
     }
     if (name === 'en-rawmath') {
       const raw = results.filter((x) => x.code === 'rawMath');
