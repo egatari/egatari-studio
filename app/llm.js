@@ -401,6 +401,12 @@ export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN, download } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
+  // 窓を閉じてから教材が見えるまで（新規作成・Egatari ファイルの置き換え）、待つ間のロゴ（「開いています…」と同じ。app/wait-logo.js の cover）で覆う。
+  // 返事から組み、開き、最初に組み直すまで（合わせて 1〜2 秒）、はじめの画面にも前の教材にも戻らない。作り終えた・誤りで窓に戻るときに消す
+  let uncover = null;
+  const covers = (mode) => mode === 'new' || (mode === 'replace' && !!S.portable);
+  const startCover = (mode) => { if (!uncover && app.cover) uncover = app.cover(mode === 'new' ? T.waitCreating : X.building.replace); };
+  const endCover = () => { if (uncover) { const f = uncover; uncover = null; f(); } };
   // 束の名前（挿入の「指示の全体も付ける」の一覧）：中の図と、教科・用途の名前（kit/core/new-deck.mjs の SET_LABELS の inside・label）
   const setName = Object.fromEntries(SET_LABELS.map((x) => [x.set, LANG === 'ja' ? `${x.inside.ja}（${x.label.ja}）` : `${x.inside.en} (${x.label.en})`]));
   // 品質チェックの新しい知らせの言葉（app/i18n.js の checkMsg に足す）
@@ -1276,18 +1282,21 @@ export function setupLlm(app) {
       const back = mode === 'new' ? el('button', { type: 'button', id: 'page-back', cls: 'ghost page-back', text: X.back, onclick: () => { const d = document.getElementById('dlg'); if (d.open) d.close('cancel'); } }) : null;
       const shown = ask({ title: opts.batch ? X.batchTitle : X.title[mode], kind: mode === 'new' ? 'paste page' : 'paste',
         body: [back, howto, fromLead, notice, ...body],
-        buttons: [{ id: 'cancel', label: X.cancel }, { id: 'import', label: X.go[mode], pri: true }] });
+        buttons: [{ id: 'cancel', label: X.cancel }, { id: 'import', label: X.go[mode], pri: true }],
+        // 押せる［作成］［置き換える］：窓が閉じる前に覆う（閉じた窓の後ろの、はじめの画面を 1 こまも見せない）
+        validate: (id) => { if (id === 'import' && covers(mode) && !unanswered() && !outlinePhase() && fields.ready()) startCover(mode); return true; } });
       syncGo();
       if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
       else if (focusTitle) { const f = focusTitle; focusTitle = null; setTimeout(f, 0); }
       const v = await shown;
+      if (v !== 'import') endCover();
       // 「このサンプルを参考に作る」で選んだ：サンプルから始めた新規作成を開き直す（再生の窓の「このサンプルを参考に作る」と同じ）
       if (v === 'sample' && picked) return aiDialog('new', { sample: picked });
       if (v !== 'import') return false;
       if (unanswered() || outlinePhase() || !fields.ready()) { focusPaste = true; if (!unanswered()) openPaste(); continue; }
       status(X.building[mode]);
       let res;
-      try { res = await finish({ ...fields.data(), direct }, mode); } finally { status(''); }
+      try { res = await finish({ ...fields.data(), direct }, mode); } finally { status(''); endCover(); }
       if (res === null) return true;   // 窓は閉じた：貼り付けの段を開き直さない（開き直すと、もう閉じた窓の計算が走る）
       focusPaste = true; openPaste();
       msg.hidden = false; msg.textContent = res;
@@ -1397,6 +1406,7 @@ export function setupLlm(app) {
     try { html = (await app.builder.exportHtml(ws, 'deck.html', {}, { timeout: app.buildTimeout() })).html; }
     catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
     const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name, fresh: true, ...extra });
+    endCover();   // 教材が見えた（取り消したときは、はじめの画面のまま）
     if (!ok) return null;   // 取り消した（コードの確かめ・未保存の変更）：窓は閉じる
     // 保存するまでファイルには書いていない（閉じる前に知らせる）
     try { const t = await S.ws.readText('narration.md', { max: READ_LIMITS.narration }); await S.ws.writeText('narration.md', t || ''); } catch { /* 無視 */ }
@@ -1457,6 +1467,7 @@ export function setupLlm(app) {
       try { html = (await app.builder.exportHtml(ws, file, { carry: P.index }, { timeout: app.buildTimeout() })).html; }
       catch (e) { return `${X.buildFailed}: ${buildFailText(e)}`; }
       const ok = await app.openPortable({ bytes: new TextEncoder().encode(html), name: P.name, handle: P.handle, fresh: P.rightsOk, replacing: true });
+      endCover();
       if (!ok) return null;
       try { await S.ws.writeText('narration.md', ids.narration); } catch { /* 無視 */ }
       app.updateName();

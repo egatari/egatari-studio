@@ -2529,7 +2529,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
 // AI の返事の貼り付けは Worker で 1 ファイルにする：その前に、字の切り出しの道具を Worker につなげる（読めなければ分割ファイルのまま）
 const fontSubsetForWorker = async () => { builder.setExtra(await fontSubsetLoader.workerPrelude(), 'fontSubset'); };
-const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, examples: RES.examples, themeOptions, loadOtherTheme: () => loadThemeDialog() });
+const llm = setupLlm({ S, $, el, ask, cover: (text) => wait.cover(text), toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, examples: RES.examples, themeOptions, loadOtherTheme: () => loadThemeDialog() });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };

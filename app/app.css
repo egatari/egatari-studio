@@ -101,6 +101,8 @@ main{flex:1;min-height:0;display:flex}
 .wait-logo{display:block;width:96px;height:96px}
 #wait{position:fixed;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:color-mix(in srgb,var(--bg) 94%,transparent);color:var(--muted)}
 #wait[hidden]{display:none}
+/* AI の返事から教材を作る間（app/llm.js）：すぐに不透明に覆う（はじめの画面を見せない） */
+#wait.cover{background:var(--bg)}
 #wait-badge{position:fixed;right:16px;bottom:34px;z-index:9;pointer-events:none}
 #wait-badge .wait-logo{width:56px;height:56px}
 #errbox{position:absolute;inset:0;background:rgba(20,8,8,.82);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:40px 16px}
