@@ -6,8 +6,8 @@
   "license": "MIT",
   "tarball": {
     "file": "egatari-components-v2.6.0.tar.gz",
-    "sha256": "7ca2a9b06da57de28341c4f1c7c157c01e2c3373b6ee793261ad5e3d28ba81e2",
-    "bytes": 1101815
+    "sha256": "9d885544d1d5e1856a3a78172b67471000350b80d3bbcbf70d42709e3e951204",
+    "bytes": 1102908
   },
   "purposes": [
     {
@@ -595,13 +595,13 @@
         "model"
       ],
       "variants": [],
-      "sha256": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc",
+      "sha256": "e66ec3b6cb89b7a4b1032e20209b4a027244cac7e6ba7a4cd0e69ab4bd3b142a",
       "files": {
-        "CHANGELOG.md": "7eb87fd9e3274555c3d0deb718c229090eebef6795ea8e3e431f04c6c737aeb1",
-        "README.en.md": "0db8601b7cc0d10f31399f91b28749e99770d921ca4c5e5b77ba8933c1e5794c",
-        "README.md": "f5cc683180c2f0c76034a1735762c66523fab8570efc89aa8ed60ceedcaff646",
+        "CHANGELOG.md": "2da8cb4db5360029662deffac6060249a724537d686f5f098a7f5e0d4c6b7631",
+        "README.en.md": "b407792aff79fe1203d17ababa6283ec2b69f0c90af4a6e67595eebf14ca1cda",
+        "README.md": "46f5e7382139fb064411a92e952e253684f78609d69ce45506b2e94deba461cf",
         "demo.html": "fa390c1249a5d3f716c68eb86d450047e593896c987fdf3c8e221999d6b4a3d2",
-        "index.js": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc"
+        "index.js": "e66ec3b6cb89b7a4b1032e20209b4a027244cac7e6ba7a4cd0e69ab4bd3b142a"
       }
     },
     "codetree": {
@@ -1889,11 +1889,11 @@
     "ci/README.md": "5f87ea332c7206621e8872a4e47d0816f8ec0d596bc9babc63a376e5246c5f1e",
     "ci/demo.html": "fa5be1bdaf231de31b04b8a929f722722c88c56df04b01708bc8302dfc9b82fd",
     "ci/index.js": "dadb20634cf3de920bb175417aab55ef7d1fa25fe007418900a1379dc0557616",
-    "code/CHANGELOG.md": "7eb87fd9e3274555c3d0deb718c229090eebef6795ea8e3e431f04c6c737aeb1",
-    "code/README.en.md": "0db8601b7cc0d10f31399f91b28749e99770d921ca4c5e5b77ba8933c1e5794c",
-    "code/README.md": "f5cc683180c2f0c76034a1735762c66523fab8570efc89aa8ed60ceedcaff646",
+    "code/CHANGELOG.md": "2da8cb4db5360029662deffac6060249a724537d686f5f098a7f5e0d4c6b7631",
+    "code/README.en.md": "b407792aff79fe1203d17ababa6283ec2b69f0c90af4a6e67595eebf14ca1cda",
+    "code/README.md": "46f5e7382139fb064411a92e952e253684f78609d69ce45506b2e94deba461cf",
     "code/demo.html": "fa390c1249a5d3f716c68eb86d450047e593896c987fdf3c8e221999d6b4a3d2",
-    "code/index.js": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc",
+    "code/index.js": "e66ec3b6cb89b7a4b1032e20209b4a027244cac7e6ba7a4cd0e69ab4bd3b142a",
     "codetree-core/README.md": "a544b8348d8f5d7284cb1a95564b33fd958a39d75a0acf1685d4bd61c670f0dd",
     "codetree-core/index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
     "codetree/CHANGELOG.md": "1e328e969128828b278c3669f082f9f86ea59380f3604812ef031d8d0253437d",

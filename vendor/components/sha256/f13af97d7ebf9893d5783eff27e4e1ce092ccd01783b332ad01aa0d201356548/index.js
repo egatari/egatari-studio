@@ -119,14 +119,39 @@ return class extends base.MotionElement {
       nx = 0; nw = right ? codeW : W;
       areaH = H - (!right && output.length ? outputH + 16 : 0);
     }
-    var bandH = !beside && d.steps.length ? noteRow + 16 : 0, bandSpace = bandH ? bandH + 8 : 0;
-    var capacity = Math.max(0, Math.floor((areaH - header - pad - bandSpace) / row));
-    var count = Math.min(16, program.length, capacity), codeH = header + count * row + pad;
-    var neededH = Math.ceil(header + program.length * row + pad + bandSpace + (!right && output.length ? outputH + 16 : 0));
+    // 下帯の最終一覧：説明ごとに行の範囲を付け（「3–4：…」）、説明の途中では折らずに行へ詰める。字は 24px、行間は字の箱 1.45em
+    var listFont = Math.max(24, nf - 2), listRow = Math.ceil(listFont * 1.45);
+    var items = d.steps.map(function(s){ var r = Array.isArray(s.lines) ? s.lines : []; var x = r[0], y = r.length > 1 ? r[1] : r[0]; return x + (y === x ? "" : "–" + y) + (T === TEXT.ja ? "：" : ": ") + s.note.replace(/\s*\n\s*/g, " "); });
+    // 出力が下に回るときは説明帯の右に並べ、帯と出力の高い方だけを使う
+    var sideW = Math.max(120, outNatural);
+    var side = !beside && !right && output.length > 0 && P.outputPos === "auto" && d.steps.length > 0 && outNatural <= W * 0.45 && W - sideW - gap >= W * 0.4;
+    if (side){ nw = W - sideW - gap; areaH = H; }
+    var list = [];
+    if (!beside && d.steps.length){
+      var cur = "", sep = T === TEXT.ja ? "　" : "   ";
+      items.forEach(function(t){
+        var cand = cur ? cur + sep + t : t;
+        if (cur && base.textWidth(cand, listFont, {font: self}) > nw - 24){ list.push(cur); cur = t; } else cur = cand;
+      });
+      if (cur) list.push(cur);
+    }
+    // 高さの式は 1 つ：コード部 + 帯（一覧 r 行）と横の出力の高い方 + 下の出力。報告もこの式で数える
+    function bandFor(r){ return r ? noteRow + 16 + (r - 1) * listRow : 0; }
+    function need(n, r){ var zone = Math.max(bandFor(r), side ? outputH : 0); return Math.ceil(header + n * row + pad + (zone ? 8 + zone : 0) + (!right && !side && output.length ? outputH + 16 : 0)); }
+    var want = Math.min(16, program.length), rows = list.length, fullList = true;
+    function fitsAt(h, r){ return Math.max(0, Math.floor((h - need(0, r)) / row)); }
+    var capacity = fitsAt(H, rows);
+    if (capacity < want && rows > 1 && fitsAt(H, 1) >= want){ fullList = false; capacity = fitsAt(H, 1); }   // コードを全部残し、最終一覧は最後の説明だけ
+    var bandH = bandFor(fullList ? rows : Math.min(1, rows)), bandSpace = bandH ? bandH + 8 : 0;
+    var count = Math.min(want, capacity), codeH = header + count * row + pad;
+    var neededH = need(want, rows), SLIDE = 440;
+    function advice(){
+      return neededH <= SLIDE ? "give the element about " + neededH + " px" : "more than a slide body under a heading (about " + SLIDE + " px) holds; " + SLIDE + " px fits " + Math.min(want, fitsAt(SLIDE, rows)) + " lines with these notes: show fewer lines, shorten notes or split the slide";
+    }
     var textX = pad + numW, firstY = header + fs, textW = Math.max(0, codeW - textX - pad);
-    if (count < program.length) ctx.report("layout", "[code] " + program.length + " lines; this height fits " + Math.min(16, capacity) + " (give the element about " + neededH + " px, or show fewer lines)" + (program.length > 16 ? "; at most 16 lines per panel" : ""));
+    if (count < program.length) ctx.report("layout", "[code] " + program.length + " lines; this height fits " + Math.min(16, capacity) + " (" + advice() + (neededH <= SLIDE ? ", or show fewer lines" : "") + ")" + (program.length > 16 ? "; at most 16 lines per panel" : ""));
     if (monoWidth(longest, fs) > textW) ctx.report("layout", "[code] the longest line is " + [...longest].length + " characters; this width fits " + Math.floor(textW / (0.6 * fs)) + " at " + fs + "px (break the line)");
-    this.geometry = {codeW: codeW, codeH: codeH, nx: nx, nw: nw, row: row, firstY: firstY, right: right, count: count, neededH: neededH, bandH: bandH, noteLayout: this.noteLayout};
+    this.geometry = {side: side, listRows: rows, codeW: codeW, codeH: codeH, nx: nx, nw: nw, row: row, firstY: firstY, right: right, count: count, neededH: neededH, bandH: bandH, noteLayout: this.noteLayout};
     this.codeLayer = base.el("g", {opacity: 0}, this.svg);
     function panel(g, x, y, w, h){ base.el("rect", {x: x, y: y, width: Math.max(1, w), height: Math.max(1, h), rx: 12, fill: "var(--term-tint, color-mix(in srgb, var(--fg) 5%, var(--bg)))", stroke: "var(--line)", "stroke-width": 2}, g); }
     panel(this.codeLayer, 1, 1, codeW - 2, codeH - 2);
@@ -154,12 +179,13 @@ return class extends base.MotionElement {
     this.svg.setAttribute("style", "overflow:hidden");
     if (!count) this.label(this.codeLayer, Math.min(pad, W / 4), Math.min(fs, H), "…", fs);
     nextY = header;
-    var bandY = codeH + 8, bandRoom = Math.max(0, areaH - bandY), bandRows = Math.max(0, Math.floor((bandRoom - 16) / noteRow));
-    function proseCut(s, width){
-      if (base.textWidth(s, nf, {font: self}) <= width) return s;
+    var bandY = codeH + 8, bandRoom = Math.max(0, areaH - bandY);
+    function proseCut(s, width, f){
+      f = f || nf;
+      if (base.textWidth(s, f, {font: self}) <= width) return s;
       var chars = [...s];
-      while (chars.length && base.textWidth(chars.join("") + "…", nf, {font: self}) > width) chars.pop();
-      return width >= nf ? chars.join("") + "…" : "";
+      while (chars.length && base.textWidth(chars.join("") + "…", f, {font: self}) > width) chars.pop();
+      return width >= f ? chars.join("") + "…" : "";
     }
     function marker(a, b){ return T === TEXT.ja ? a + (b === a ? "" : "–" + b) + " 行目" : (a === b ? "line " + a : "lines " + a + "–" + b); }
     this.notes = d.steps.map(function(s, j){
@@ -176,7 +202,7 @@ return class extends base.MotionElement {
         labels = text.map(function(t, k){ return self.label(g, nx + 12, top + 8 + nf + k * noteRow, t, nf); });
         nextY = top + h + 8;
       } else {
-        top = bandY; h = Math.min(bandH, bandRoom);
+        top = bandY; h = Math.min(bandFor(1), bandRoom);
         var prefix = marker(a, b) + " · ", prefixW = base.textWidth(prefix, nf, {font: self}), room = Math.max(0, nw - 24 - prefixW);
         var width = base.textWidth(s.note, nf, {font: self});
         if (width > room || lines(s.note).length > 1){
@@ -191,27 +217,17 @@ return class extends base.MotionElement {
     });
     this.finalNotes = base.el("g", {opacity: 0}, this.svg);
     if (!beside && d.steps.length){
-      // 最後の一覧：説明ごとに行の範囲を付け（「3–4：…」）、説明の途中では折らずに行へ詰める
-      var items = d.steps.map(function(s){ var r = Array.isArray(s.lines) ? s.lines : []; var x = r[0], y = r.length > 1 ? r[1] : r[0]; return x + (y === x ? "" : "–" + y) + (T === TEXT.ja ? "：" : ": ") + s.note.replace(/\s*\n\s*/g, " "); });
-      var list = [], cur = "", sep = "　　";
-      items.forEach(function(t){
-        var cand = cur ? cur + sep + t : t;
-        if (cur && base.textWidth(cand, nf, {font: self}) > nw - 24){ list.push(cur); cur = t; } else cur = cand;
-      });
-      if (cur) list.push(cur);
-      list = list.map(function(t){ return proseCut(t, nw - 24); });
-      var listFits = list.length <= bandRows;
-      if (!listFits){
-        ctx.report("layout", "[code] " + d.steps.length + " final notes need " + (list.length * noteRow + 16) + " px in the band; " + Math.floor(bandRoom) + " px available (give the element about " + Math.ceil(H + list.length * noteRow + 16 - bandRoom) + " px, or shorten notes); showing the last note");
-        var last = d.steps[d.steps.length - 1];
-        list = [proseCut(items[items.length - 1], nw - 24)];
+      list = list.map(function(t){ return proseCut(t, nw - 24, listFont); });
+      if (!fullList || bandFor(list.length) > bandRoom){
+        ctx.report("layout", "[code] " + d.steps.length + " final notes need " + list.length + " band rows (" + bandFor(list.length) + " px); this height fits " + Math.max(0, Math.floor((bandRoom - noteRow - 16) / listRow) + 1) + " (" + advice() + "); showing the last note");
+        list = [proseCut(items[items.length - 1], nw - 24, listFont)];
       }
-      base.el("rect", {x: 1, y: bandY, width: Math.max(1, nw - 2), height: Math.max(1, Math.min(bandRoom, list.length * noteRow + 16)), rx: 8, fill: "var(--bg)", stroke: "var(--line)", "stroke-width": 2}, this.finalNotes);
-      list.forEach(function(s, i){ self.label(self.finalNotes, 12, bandY + 8 + nf + i * noteRow, s, nf); });
+      base.el("rect", {x: 1, y: bandY, width: Math.max(1, nw - 2), height: Math.max(1, Math.min(bandRoom, bandFor(list.length))), rx: 8, fill: "var(--bg)", stroke: "var(--line)", "stroke-width": 2}, this.finalNotes);
+      list.forEach(function(s, i){ self.label(self.finalNotes, 12, bandY + 8 + nf + i * listRow, s, listFont); });
     }
     this.outputLayer = base.el("g", {opacity: 0}, this.svg);
     if (output.length){
-      var ox = right ? W - outW : 0, oy = right ? 0 : areaH + 16, ow = right ? outW : codeW;
+      var ox = right ? W - outW : side ? W - sideW : 0, oy = right ? 0 : side ? codeH + 8 : areaH + 16, ow = right ? outW : side ? sideW : codeW;
       var oc = Math.max(0, Math.min(8, output.length, Math.floor((H - oy - header - pad) / row)));
       panel(this.outputLayer, ox + 1, oy + 1, ow - 2, header + oc * row + pad - 2);
       self.label(this.outputLayer, ox + pad, oy + pad + fs, cut(T.output, ow - 2 * pad, fs), fs);
