@@ -1571,7 +1571,7 @@ var soundContext = null, soundHandles = [], soundForced = false, soundResuming =
 // the whole step when it starts (up to SOUND_AHEAD seconds ahead, rolling for longer steps), and in autoplay the next
 // step as well, so a stalled main thread (no frames for a while) never makes a note late.
 // Each handle remembers its run and step time so that a step change, extension or pause can cancel what has not sounded.
-var SOUND_AHEAD = 30, soundClock = null, soundNext = null, autoGo = null;
+var SOUND_AHEAD = 30, soundClock = null, soundNext = null, autoGo = null, seekAt = null;   // seekAt：埋め込みの seek の {i, k, t}（play が使う）
 var soundMute = DECK.SoundPreferences ? DECK.SoundPreferences.createMuteSetting() : null;
 DECK.hasComponentSounds = function(){
   return !!slides && slides.some(function(s){ return s._comps.some(function(c){ return !!(c.constructor && c.constructor.sounds) || typeof c.events === "function"; }); });
@@ -1717,8 +1717,10 @@ function play(i, k, animate, from, sounds){
   stopLoop();
   announce(i, k);
   if (CAP.on && CAP_LIVE) capRestart(i, k);
-  POS.setT(!animate || REDUCE ? null : 0);
-  if (!animate || (REDUCE && !(animDur(i, k) > 0) && !sounds)){ seek(i, k, Infinity); POS.publish(); return; }
+  // 埋め込みの seek（Player P8）で段階の中の時刻 t を頼まれたら、その t で描き、位置の知らせも t にする（seekAt）
+  var at = seekAt && seekAt.i === i && seekAt.k === k ? seekAt.t : null;
+  POS.setT(at !== null ? at : !animate || REDUCE ? null : 0);
+  if (!animate || (REDUCE && !(animDur(i, k) > 0) && !sounds)){ seek(i, k, at !== null ? at : Infinity); POS.publish(); return; }
   if (i !== POS.i){ slides[POS.i]._tok++; slides[POS.i]._legacyAt = undefined; }
   legacy(slides[i], k, REDUCE);   // 動きを減らす設定で時計の部品のために回すときも、ほかは最後の状態
   var d = REDUCE ? animDur(i, k) : Math.max(animDur(i, k), previewOn() ? 0 : marksEnd(i, k), k === 0 && from >= 0 && morphSrc(i) === from ? T.morph : 0);
@@ -1836,10 +1838,11 @@ function ensureAudio(){
     audioEl.addEventListener("timeupdate", function(){ if (CAP.on && auto) drawCaption(POS.i, POS.k, Infinity); turnTick(); });
   }
 }
-function playAudio(g, at){
+// at：声の所（一時停止から続けるとき。src はそのまま）。load：src を入れ直して at から（埋め込みの seek で段階の途中から再生するとき）
+function playAudio(g, at, load){
   ensureAudio();
   if (auto) auto.playing = g.key;
-  if (at === undefined){ audioEl.src = g.audio; audioEl.currentTime = g.audioOffset || 0; }
+  if (at === undefined || load){ audioEl.src = g.audio; audioEl.currentTime = at === undefined ? g.audioOffset || 0 : at; }
   audioEl.preservesPitch = true; audioEl.mozPreservesPitch = true; audioEl.webkitPreservesPitch = true;
   audioEl.playbackRate = RATE;
   var pr = audioEl.play();
@@ -1851,7 +1854,8 @@ function runSeg(rec){
   clearTimeout(auto.atimer);
   if (audioEl && !rec) audioEl.pause();
   var g = auto.tl[auto.idx];
-  if (!g){ if (videoViewer()) videoEnded = true; stopAuto(); return; }
+  // タイムラインの最後の段階を流し終えた。埋め込み（Player P8）では state（止まった）の後に {egatari:"ended"}
+  if (!g){ if (videoViewer()) videoEnded = true; stopAuto(); if (EMBED) post({egatari: "ended"}); return; }
   // Step ends are on one absolute clock: autoplay's start plus the planned lengths (and extensions) of the steps before.
   // A timer that fires late shortens the next step instead of delaying everything after it. After a long stall
   // (a background tab throttles timers), start again from now rather than rushing through steps, unless this
@@ -1873,7 +1877,7 @@ function runSeg(rec){
   turnTick();
   if (g.audio){
     ensureAudio();
-    if (rec && rec.audio !== null) playAudio(g, rec.audio);
+    if (rec && rec.audio !== null) playAudio(g, rec.audio, !!rec.load);
     else auto.atimer = setTimeout(function(){ if (auto) playAudio(g); }, Math.max(0, auto.segStart + Math.max(0, g.lead - auto.e0) / RATE * 1000 - performance.now()));
   }
   scheduleAutoEnd();
@@ -1889,6 +1893,8 @@ function scheduleAutoEnd(){
     // Long extensions may exceed a browser timer's maximum delay.
     if (remaining > 2147483){ scheduleAutoEnd(); return; }
     auto.segStart += Math.max(0, g.dur + DECK.stepExtension(g.i, g.k) - auto.e0) / RATE * 1000;
+    // 埋め込み（Player P8）：再生でこの段階を終わりまで流した（飛ばした段階・手で送った段階には送らない）
+    if (EMBED) post({egatari: "stepEnded", slideKey: g.slideKey, stepKey: stepKey(slides[g.i], g.k)});
     auto.idx++; runSeg();
   }, Math.min(remaining * 1000, 2147483000));
 }
@@ -2000,10 +2006,34 @@ window.addEventListener("message", function(e){
     // 同じスライドの中の送りは跳ばない（ctx.entered。本体の位置についていくだけ）
   } else if (m.type === "deck-input-state" && DECK.view === "follow" && e.source === window.parent){
     mirrorInput(m.viewer);
-  } else if (EMBED && e.source === window.parent && m.egatari === "links" && typeof m.follow === "boolean"){
+  } else if (EMBED && e.source === window.parent && m.egatari === "links"){
     // 親がリンクで動くのを止める・許す（format spec §9.1A。止めている間は linkRefused を送る）
+    if (typeof m.follow !== "boolean"){ post({egatari: "error", id: m.id, code: "links", message: "follow must be true or false"}); return; }
     LINKS.follow = m.follow;
     post({egatari: "links", id: m.id, follow: LINKS.follow});
+  } else if (EMBED && e.source === window.parent && m.egatari === "seek"){
+    // 位置へ（Player P8）：{egatari:"seek", id?, slide, step, t}。当てたら position の後に {egatari:"seeked", id?, slideKey, stepKey, t}
+    var sp = resolveSeek(m);
+    if (sp.error){ post({egatari: "error", id: m.id, code: "seek", message: sp.error}); return; }
+    var st = seekTo(sp.i, sp.k, sp.t);
+    post({egatari: "seeked", id: m.id, slideKey: slides[sp.i]._key, stepKey: stepKey(slides[sp.i], sp.k), t: st});
+  } else if (EMBED && e.source === window.parent && m.egatari === "preview"){
+    // 先のステップを薄く見せる（Player P1・P8）：{egatari:"preview", id?, on}。l と同じ入り切り。同じ形で答える
+    if (typeof m.on !== "boolean"){ post({egatari: "error", id: m.id, code: "preview", message: "on must be true or false"}); return; }
+    if (DECK.mode === "video"){ post({egatari: "error", id: m.id, code: "preview", message: "no preview in video mode"}); return; }
+    if (previewOn() !== m.on) DECK.togglePreview();
+    post({egatari: "preview", id: m.id, on: previewOn()});
+  } else if (EMBED && e.source === window.parent && m.egatari === "controls"){
+    // プレーヤー自身の操作（帯・取っ手・出し方の 1 行・窓の再生と表示のボタン）を隠す・出す（Player P8。?controls=0 と同じもの）。同じ形で答える
+    if (typeof m.visible !== "boolean"){ post({egatari: "error", id: m.id, code: "controls", message: "visible must be true or false"}); return; }
+    setControls(m.visible);
+    post({egatari: "controls", id: m.id, visible: m.visible});
+  } else if (EMBED && e.source === window.parent && m.egatari === "snapshot"){
+    // 位置の画像（Player P8 では OPTIONAL）：このプレーヤーは作らない
+    post({egatari: "error", id: m.id, code: "unsupported", message: "snapshot is not supported by this player"});
+  } else if (EMBED && e.source === window.parent && typeof m.egatari === "string" && EMBED_CMDS.indexOf(m.egatari) < 0){
+    // 知らない命令（Player P8 の turn は知らせで、命令ではない）
+    post({egatari: "error", id: m.id, code: "unsupported", message: "unknown command: " + m.egatari.slice(0, 40)});
   } else if (EMBED && e.source === window.parent && (m.egatari === "play" || m.egatari === "pause")){
     // 再生・一時停止（Player P8）。声を始められなければ playBlocked（playAudio）
     if (m.egatari === "play"){ if (!auto && !EDIT) startAuto(); } else if (auto) stopAuto(true);
@@ -2018,6 +2048,45 @@ window.addEventListener("message", function(e){
   }
 });
 
+// 埋め込みの命令（Player P8）。layout は kit/panes.js が受ける。ほかの名前には error（unsupported）で答える
+var EMBED_CMDS = ["seek", "play", "pause", "rate", "mode", "layout", "preview", "controls", "snapshot", "links"];
+// seek の slide（スライドの鍵か 0 からの番号）・step（段階の鍵。数字でもよい。なければ 0）・t（秒。null・なしは ∞）を {i, k, t} に。読めなければ {error}
+function resolveSeek(m){
+  var i = typeof m.slide === "string" ? slideIndexOf(m.slide) : typeof m.slide === "number" && Math.floor(m.slide) === m.slide && m.slide >= 0 && m.slide < slides.length ? m.slide : -2;
+  if (i === -2) return {error: "slide must be a slideKey or an index from 0 to " + (slides.length - 1)};
+  if (i < 0) return {error: "unknown slide"};
+  var sk = m.step == null ? "0" : typeof m.step === "string" ? m.step : typeof m.step === "number" && Math.floor(m.step) === m.step ? String(m.step) : null;
+  if (sk === null) return {error: "step must be a stepKey"};
+  var k = stepIndexOf(slides[i], sk);
+  if (typeof k === "string") return {error: k};
+  if (!(m.t == null || (typeof m.t === "number" && isFinite(m.t) && m.t >= 0))) return {error: "t must be seconds (0 or more) or null"};
+  return {i: i, k: k, t: m.t == null ? null : m.t};
+}
+// (i, k, t) へ（t null は最終状態）。再生の状態は保つ：再生中なら t から（t null なら段階の初めから。帯の跳ぶと同じ）続ける。当てた t を返す
+function seekTo(i, k, t){
+  var was = !!auto;
+  if (was) stopAuto();
+  POS.setCause("seek");
+  try {
+    if (!was || t === null){ seekAt = t === null ? null : {i: i, k: k, t: t}; go(i, k, false); }
+    else {
+      // 段階の動きを t から実時間で流す（自動再生と同じ autoGo の入口。e0 = t）
+      var g = DECK.timeline().find(function(x){ return x.i === i && x.k === k; });
+      seekAt = {i: i, k: k, t: t};
+      autoGo = {i: i, k: k, start: performance.now(), e0: t, dur: g ? g.dur : 0, next: null};
+      try { go(i, k, true); } finally { autoGo = null; }
+      // 一時停止から続けるのと同じ道で再生を始める：段階の中の時刻 t、声は lead を過ぎていればその所から
+      if (g) paused = {key: g.key, e: t, audio: g.audio && t >= g.lead ? (g.audioOffset || 0) + t - g.lead : null, load: true};
+    }
+  } finally { seekAt = null; POS.setCause(null); }
+  if (was) startAuto(true);
+  syncBack();
+  return was && t === null ? 0 : t;
+}
+function setControls(on){
+  document.documentElement.classList.toggle("deck-nocontrols", !on);
+  document.dispatchEvent(new CustomEvent("deck:controls", {detail: {visible: on}}));
+}
 // ---------------------------------------------------------------- スライドへのリンク（format spec §9.1A。docs/contract.md §9）
 // <a href="#<スライドの id>"> はそのスライドの段階 0、<a href="#<id>:<段階の鍵>"> はその段階（段階の鍵は 0・1・… か concl）。
 // 段階の鍵は最後の : で切る（旧来の鍵は : を含みうる）。数字だけの #N（1 から）はこれまでどおりスライドの番号。
@@ -2048,13 +2117,19 @@ function resolveFragment(f){
   if (i < 0) return {error: "unknown slide", slide: f.lastIndexOf(":") > 0 ? f.slice(0, f.lastIndexOf(":")) : f};
   var s = slides[i], out = {i: i, k: 0, key: s._key, id: s.id || null};
   if (sk === null) return out;
-  if (sk === "concl"){ if (s._cstep < 0) return {error: "no concl step", slide: s._key, step: sk, i: i}; out.k = s._cstep; return out; }
-  if (!/^(0|[1-9][0-9]{0,2})$/.test(sk)) return {error: "not a step key", slide: s._key, step: sk, i: i};
-  var k = +sk;
-  // 結論の段階の鍵は concl（数字では指さない）
-  if (k > s._max || k === s._cstep) return {error: "step out of range", slide: s._key, step: sk, i: i, max: s._cstep >= 0 ? s._cstep - 1 : s._max};
+  var k = stepIndexOf(s, sk);
+  if (typeof k === "string") return k === "step out of range" ? {error: k, slide: s._key, step: sk, i: i, max: s._cstep >= 0 ? s._cstep - 1 : s._max} : {error: k, slide: s._key, step: sk, i: i};
   out.k = k;
   return out;
+}
+// 段階の鍵（0・1・… か concl）を段階の番号に。読めなければわけの文字列
+function stepIndexOf(s, sk){
+  if (sk === "concl") return s._cstep < 0 ? "no concl step" : s._cstep;
+  if (!/^(0|[1-9][0-9]{0,2})$/.test(sk)) return "not a step key";
+  var k = +sk;
+  // 結論の段階の鍵は concl（数字では指さない）
+  if (k > s._max || k === s._cstep) return "step out of range";
+  return k;
 }
 DECK.resolveFragment = resolveFragment;
 // 位置の書き方（id があれば <id>[:<段階の鍵>]。id のない旧来のスライドは段階 0 なら <番号>、ほかは <鍵>:<段階の鍵>）
