@@ -21,7 +21,9 @@
 //
 // この関数は文字列にしてページに入れる（check.mjs は page.evaluate、編集アプリは仲立ちの文字列に埋める）。
 // だから外の名前を使わない（中だけで閉じる）。仲立ちはデッキの script の要素の中にそのまま入るので、閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
-//
+
+import { findRawMath } from './raw-math.mjs';
+
 // わざと切る印（CLIP_ATTR。docs/contract.md §10）：その要素の中（子孫も、SVG の字も）は、箱で切れる・スライドの外に出る・
 // 図の箱からはみ出す、の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）を見ない。縦横どちらにも効く。前からの検査（bodyBottom など）には効かない
 export const CLIP_ATTR = 'data-clip';
@@ -650,9 +652,10 @@ export async function metricsFonts(doc, timeoutMs) {
   return { ok: !missing.length, missing: [...new Set(missing)], foreign: [...foreign].sort() };
 }
 
-// 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）と印の名前を渡す形にする。
-// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP という名前で使える）
+// 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）・残った数式の検出（findRawMath）と印の名前を渡す形にする。
+// 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・findRawMath・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP という名前で使える）
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
-  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts})`;
+  // findRawMath（kit/core/raw-math.mjs）：組まれずに残った数式（rawMath）。コマンド版（kit/check.mjs）と同じ関数を仲立ちにも渡す
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts, findRawMath){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts}, ${findRawMath})`;
 }

@@ -237,6 +237,9 @@ steps.push(
   // 切れる字・外に出る字（backlog #52）と、ブラウザ版の品質チェックがコマンド版と同じ体裁の検査を使うこと（#51）
   ['test-check-overflow', ['tools/test-check-overflow.mjs', path.join(tmp, 'check-overflow')]],
   ['test-check-svg-overlap', ['tools/test-check-svg-overlap.mjs', path.join(tmp, 'check-svg-overlap')]],
+  // 品質チェックのコマンド版と編集アプリが同じ指摘を出すこと（v0.6.9：英語の教材に残った $…$ の rawMath が編集アプリに出なかった）。
+  // コマンド版だけのものは kit/core/check-parity.mjs の CLI_ONLY（わけを 1 行）。編集アプリを組んで配り、修正依頼に rawMath が入ることも
+  ['test-check-parity', ['tools/test-check-parity.mjs', path.join(tmp, 'check-parity')]],
   // 章の扉の h2（#128）と、字と地のコントラストの警告
   ['test-check-contrast', ['tools/test-check-contrast.mjs', path.join(tmp, 'check-contrast')]],
   // テーマの色の語彙の外の色（format spec §8.4、R-colors）：じかに書いた色と、相対色の構文で色相を変えた色の colorOutside。var(--lit)・color-mix() の役割は許す
@@ -302,7 +305,7 @@ const HINT_S = {
   'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
   'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35, 'test-app-mp4': 30, 'test-render-audio': 35,
-  'test-check-overflow': 33, 'test-dev-server': 33, 'test-a11y': 30, 'check kokugo': 30, 'test-parts-host': 30, 'test-links': 29, 'test-config-preserve': 28,
+  'test-check-overflow': 33, 'test-check-parity': 30, 'test-dev-server': 33, 'test-a11y': 30, 'check kokugo': 30, 'test-parts-host': 30, 'test-links': 29, 'test-config-preserve': 28,
   'test-app-player-change': 27, 'test-bar-hint': 26, 'test-yanked': 26, 'test-llm': 26, 'test-live-results': 25, 'test-app-earlier': 24, 'test-exported-from': 24,
   'test-controls': 24, 'test-read-aloud': 24, 'test-file-shape': 23, 'test-viewer-input-browser': 21, 'test-extlinks': 21, 'test-shape': 20, 'test-ref-voice': 20,
   'test-colab': 17, 'test-blackout': 17, 'test-ink-comments': 16, 'check tmlr2026': 16, 'test-tools': 16, 'test-preview': 15, 'check pitch': 15, 'test-favicon': 12,
