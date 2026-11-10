@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # data parts
 
-Instruction version: 9a2b4790
+Instruction version: fae851f3
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
@@ -49,11 +49,11 @@ Data example (child `<script type="application/json">`): `{"lang":"python","code
 
 `<m-code>` child JSON.
 
-- `code`: ≤16 lines; ~60 chars/line.
-- `lang`: tag; `steps[{lines,note}]`: 1-based inclusive range, note.
-- `output`: text, ≤8 lines.
+- `code`: 1184px/24px: ~76 chars/line; 440px: 9 lines, one note row, right/no output; ≤16 lines (~680px).
+- `lang`: tag; `steps[{lines,note}]`: 1-based range, note.
+- `output`: ≤8 lines.
 
-Narration never reads code aloud; say what the line does.
+Narration: explain each line; never read code aloud.
 
 ### `<m-folds>`
 
@@ -64,7 +64,7 @@ Data example (child `<script type="application/json">`): `{"k":5,"errors":[0.21,
 | `size` | number | `0` | Text px |
 
 JSON:
-- `k`: integer 2–10.
+- `k`: 2–10; k=5: ≥316px tall (264 without errors)
 - `errors`: k errors (optional).
 - `labels`: k names (optional).
 

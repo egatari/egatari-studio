@@ -17,6 +17,12 @@
   <div class="body"><m-code style="height:440px"><script type="application/json">{"lang":"python","code":"def mean(values):\n    total = 0\n    for value in values:\n        total += value\n    return total / len(values)\n\nprint(mean([2, 4, 6]))","steps":[{"lines":[1,2],"note":"関数を定義し、合計を 0 にする"},{"lines":[3,4],"note":"値を一つずつ合計する"},{"lines":[5,7],"note":"個数で割り、関数の結果を表示"}],"output":"4.0"}</script></m-code></div>
   <div class="concl"><span>合計を個数で割ると平均になる</span></div>
 </section>
+<section class="slide">
+  <h2>交差検証のコード（scikit-learn）</h2>
+  <div class="body"><m-code style="height:420px"><script type="application/json">{"lang": "python", "code": "from sklearn.model_selection import cross_val_score\nfrom sklearn.tree import DecisionTreeClassifier\nfrom sklearn.datasets import load_iris\nX, y = load_iris(return_X_y=True)\nmodel = DecisionTreeClassifier(max_depth=3, random_state=0)\nscores = cross_val_score(model, X, y, cv=5)\nprint(scores.mean())", "steps": [{"lines": [1, 3], "note": "道具を読み込む"}, {"lines": [4], "note": "アヤメのデータ"}, {"lines": [5], "note": "決定木を用意"}, {"lines": [6, 7], "note": "5 分割で検証し平均"}], "output": "0.96"}</script></m-code></div>
+  <div class="concl"><span>データを 5 つに分け、検証する区画を替えて平均する</span></div>
+</section>
+
 </div>
 </body>
 </html>

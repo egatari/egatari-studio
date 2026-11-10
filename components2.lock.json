@@ -1504,8 +1504,8 @@
     },
     "2.6.0": {
       "tag": "v2.6.0",
-      "tarballSha256": "f85207d27353c577cbaf0458c30efaf0c86e889114b25708b9cd8a65ce9598b0",
-      "manifestSha256": "0d8178cf6b8e3f5a88dcb74fef745a0365271aff68093613131fee4386fba343",
+      "tarballSha256": "7ca2a9b06da57de28341c4f1c7c157c01e2c3373b6ee793261ad5e3d28ba81e2",
+      "manifestSha256": "c41a3dcab3ef297f61c16487319b1495bf9d0f3b386e8ff1823e1796bee8ce41",
       "parts": {
         "balance": "2.0.0",
         "bars": "2.0.2",
@@ -1572,7 +1572,7 @@
         "boxplot-core": "fadd24868e2730ec14b8f3f1e9cb75b8577a48b8d71beaa12ef089f7a3ba0a7d",
         "cards": "f3d5b6ce53f40c5f355a67538ff11b9cd28297da6292125ccb6e055aeddef906",
         "ci": "a69ab76ff7d0746d093b4e606d7b113be921cbb156edc16c2ad40aafab280d42",
-        "code": "10f1dbe3ccd062dfed08061e38658c1825745dbd1ba3112de4b8dd14476ff05a",
+        "code": "a21437e5d7f10dfa017b8529dc3b3597cb07d4a14032005d0cdcdc210decd3a3",
         "codetree": "4f96929f3b539c459bb78196251009a5f80e607eebccfae641cec60e979efe0e",
         "codetree-core": "bb139fb1c2e4d010aa82a2c50db120f95f12a0a251cded3130a71dd57dec0274",
         "collect": "e6bbe784ee452d52d534b8fb3a0924e65c49bbb5926139ef5eabd9193500b357",
@@ -1582,7 +1582,7 @@
         "expr": "faf6a2f0b5df589639de624e75c5b20594f517e4426f6415d152809249b00b92",
         "fishbone": "782ae2154247b00451fc30aa140bf386d3a7a56ac4ad9ee04916f4bd1d29dda0",
         "flow": "28238c4fa50a377b96ce8a130ce5bdbf7bfc0536ed9c331499ea22377c43adb6",
-        "folds": "bcfe1c93fa5c68ff65efd83db1a210936c9a8b65cd42d906ef292725b149fd6a",
+        "folds": "d75c461bb7b2b1c9a2b6d15bee1e11bcec88ef94931174d6b222cd309f6a0287",
         "gendai": "3c36a26fd78dffdfa114bd7c9ca5cae494117bbcdda14bee5c2a01351e5f2eb2",
         "heatmap": "2a6b20b93f1169ef2435cdf3bfca57d24c9111fe9aaf8e61f0d049cf8a70e9df",
         "heatmap-core": "de9607f86221006e7bad43f1f661c751d9a6f8f9c62da5c7e0d7f1249b9afcd6",
@@ -1805,7 +1805,7 @@
     },
     "code": {
       "2.0.0": {
-        "sha256": "9189252bf602450e11398151ad9c0f247e72af2409bbca9dbdbb8662c53427bb",
+        "sha256": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc",
         "kind": "element",
         "tag": "m-code",
         "requires": {
@@ -2297,7 +2297,7 @@
     },
     "folds": {
       "2.0.0": {
-        "sha256": "4ecea4b39fda7f29b555346349ebc84da6afacfccce89d5abcd8715fad1f86b1",
+        "sha256": "d5d1c993132c5d4a4bae8bbf26c62a5cd33edd79d352b1264e6ae64611d60d2b",
         "kind": "element",
         "tag": "m-folds",
         "requires": {

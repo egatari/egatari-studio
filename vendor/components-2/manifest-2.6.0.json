@@ -6,8 +6,8 @@
   "license": "MIT",
   "tarball": {
     "file": "egatari-components-v2.6.0.tar.gz",
-    "sha256": "f85207d27353c577cbaf0458c30efaf0c86e889114b25708b9cd8a65ce9598b0",
-    "bytes": 1096855
+    "sha256": "7ca2a9b06da57de28341c4f1c7c157c01e2c3373b6ee793261ad5e3d28ba81e2",
+    "bytes": 1101815
   },
   "purposes": [
     {
@@ -595,13 +595,13 @@
         "model"
       ],
       "variants": [],
-      "sha256": "9189252bf602450e11398151ad9c0f247e72af2409bbca9dbdbb8662c53427bb",
+      "sha256": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc",
       "files": {
         "CHANGELOG.md": "7eb87fd9e3274555c3d0deb718c229090eebef6795ea8e3e431f04c6c737aeb1",
-        "README.en.md": "35d818ef080da50cbdec31dfc6e06fa88eab992124d2091df160b2063934c291",
-        "README.md": "cb18f5692252f8c99c159b2ab1f4ef28155ff31a96700ddff33102fd86bb0d46",
-        "demo.html": "731acdaee72f9e6a899d54c1628c49f8e6a4029a96480f57f17dfb3251974df9",
-        "index.js": "9189252bf602450e11398151ad9c0f247e72af2409bbca9dbdbb8662c53427bb"
+        "README.en.md": "0db8601b7cc0d10f31399f91b28749e99770d921ca4c5e5b77ba8933c1e5794c",
+        "README.md": "f5cc683180c2f0c76034a1735762c66523fab8570efc89aa8ed60ceedcaff646",
+        "demo.html": "fa390c1249a5d3f716c68eb86d450047e593896c987fdf3c8e221999d6b4a3d2",
+        "index.js": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc"
       }
     },
     "codetree": {
@@ -866,13 +866,13 @@
       ],
       "variants": [],
       "preview": "none",
-      "sha256": "4ecea4b39fda7f29b555346349ebc84da6afacfccce89d5abcd8715fad1f86b1",
+      "sha256": "d5d1c993132c5d4a4bae8bbf26c62a5cd33edd79d352b1264e6ae64611d60d2b",
       "files": {
         "CHANGELOG.md": "7694586e6ca3661b791998548d2c7335a599118ce8b27b628bdec5084d8b45f8",
-        "README.en.md": "f3423e2fd40c27381d1750154ad331076d39ddd938549d2428c78309c4b29636",
-        "README.md": "1338c3c09b79b2656f1c8cd5ec0c5ef6ab4cb2f4a236775d86aadc02a45c7c5e",
+        "README.en.md": "e92970327f0651f2355e5b5671c830b0e0ce74aa5abd0b6201f803102a6b6d34",
+        "README.md": "51973a099a0562d913a1f8733f8786491945bd1785aa00d3890dd9e0b9d0b002",
         "demo.html": "f92b84d0886e21ab94dbb5772c08d049101e7d4b34a8ad44fddbca8508246d77",
-        "index.js": "4ecea4b39fda7f29b555346349ebc84da6afacfccce89d5abcd8715fad1f86b1"
+        "index.js": "d5d1c993132c5d4a4bae8bbf26c62a5cd33edd79d352b1264e6ae64611d60d2b"
       }
     },
     "gendai": {
@@ -1890,10 +1890,10 @@
     "ci/demo.html": "fa5be1bdaf231de31b04b8a929f722722c88c56df04b01708bc8302dfc9b82fd",
     "ci/index.js": "dadb20634cf3de920bb175417aab55ef7d1fa25fe007418900a1379dc0557616",
     "code/CHANGELOG.md": "7eb87fd9e3274555c3d0deb718c229090eebef6795ea8e3e431f04c6c737aeb1",
-    "code/README.en.md": "35d818ef080da50cbdec31dfc6e06fa88eab992124d2091df160b2063934c291",
-    "code/README.md": "cb18f5692252f8c99c159b2ab1f4ef28155ff31a96700ddff33102fd86bb0d46",
-    "code/demo.html": "731acdaee72f9e6a899d54c1628c49f8e6a4029a96480f57f17dfb3251974df9",
-    "code/index.js": "9189252bf602450e11398151ad9c0f247e72af2409bbca9dbdbb8662c53427bb",
+    "code/README.en.md": "0db8601b7cc0d10f31399f91b28749e99770d921ca4c5e5b77ba8933c1e5794c",
+    "code/README.md": "f5cc683180c2f0c76034a1735762c66523fab8570efc89aa8ed60ceedcaff646",
+    "code/demo.html": "fa390c1249a5d3f716c68eb86d450047e593896c987fdf3c8e221999d6b4a3d2",
+    "code/index.js": "cf29811000b2a3025b556428c7829eb1bdb0eb4ac8998777af2773b50c1629bc",
     "codetree-core/README.md": "a544b8348d8f5d7284cb1a95564b33fd958a39d75a0acf1685d4bd61c670f0dd",
     "codetree-core/index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
     "codetree/CHANGELOG.md": "1e328e969128828b278c3669f082f9f86ea59380f3604812ef031d8d0253437d",
@@ -1932,10 +1932,10 @@
     "flow/demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
     "flow/index.js": "ad6cb79c15b5131c2ba9076ce14124d643936bcf997d19428e57717eda224f1f",
     "folds/CHANGELOG.md": "7694586e6ca3661b791998548d2c7335a599118ce8b27b628bdec5084d8b45f8",
-    "folds/README.en.md": "f3423e2fd40c27381d1750154ad331076d39ddd938549d2428c78309c4b29636",
-    "folds/README.md": "1338c3c09b79b2656f1c8cd5ec0c5ef6ab4cb2f4a236775d86aadc02a45c7c5e",
+    "folds/README.en.md": "e92970327f0651f2355e5b5671c830b0e0ce74aa5abd0b6201f803102a6b6d34",
+    "folds/README.md": "51973a099a0562d913a1f8733f8786491945bd1785aa00d3890dd9e0b9d0b002",
     "folds/demo.html": "f92b84d0886e21ab94dbb5772c08d049101e7d4b34a8ad44fddbca8508246d77",
-    "folds/index.js": "4ecea4b39fda7f29b555346349ebc84da6afacfccce89d5abcd8715fad1f86b1",
+    "folds/index.js": "d5d1c993132c5d4a4bae8bbf26c62a5cd33edd79d352b1264e6ae64611d60d2b",
     "gendai/CHANGELOG.md": "b17933a895dadca6a56877437a22d87dfa44710d8aa473a0656baef80a65d995",
     "gendai/README.md": "8a33912bad0c0e8b1ccb13d5342925d5fdf414c18253b5757ed6255e651c1568",
     "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",

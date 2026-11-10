@@ -42,9 +42,20 @@ return class extends base.MotionElement {
     if (!this.getAttribute("aria-label")) this.setAttribute("aria-label", summary + (errors ? "; " + T.mean + " " + fmt(mean) : ""));
     var W = Math.max(1, this.clientWidth), H = Math.max(1, this.clientHeight), fs = this.fs, line = fs * 1.45 + 4;
     var width = function(s){ return base.textWidth(s, fs, {font: self}); };
-    var errorWidth = errors ? Math.max(width(T.error), width(T.mean + " " + fmt(mean)), ...errors.map(function(v){ return width(fmt(v)); })) + 8 : 0;
+    var errorWidth = errors ? Math.max(width(T.error), width(T.mean + " " + fmt(mean)), ...errors.map(function(v){ return Math.max(width(fmt(v)), fmt(v).length * fs * 0.62); })) + 8 : 0;
     var left = Math.max(42, width(String(d.k)) + 16), ex = W - errorWidth - 8, right = errors ? ex - 20 : W - 8;
-    var bw = (right - left) / d.k, top = 2 * line + 16, rh = Math.max(44, line + 4), bh = rh - 6;
+    var bw = (right - left) / d.k, top = 2 * line + 16;
+    var footer = errors ? line + fs * 0.4 : 0, minRow = Math.max(32, Math.ceil(fs * 1.2));
+    var minHeight = Math.ceil(top + d.k * minRow + footer + 4);
+    var rh = Math.max(minRow, Math.min(Math.max(44, line + 4), (H - top - footer - 4) / d.k)), bh = rh - 6;
+    var letters = bh >= fs * 1.43;
+    this.geometry = {row: rh, minRow: minRow, minHeight: minHeight, letters: letters};
+    // Compact row numbers/errors use a monospace font whose box fits 32px rows.
+    function rowLabel(g, x, y, s, anchor){
+      var e = self.label(g, x, y, s, anchor);
+      if (!letters) e.setAttribute("style", "font-family:ui-monospace, Menlo, Consolas, monospace;fill:var(--fg)");
+      return e;
+    }
     this.svg = base.el("svg", {viewBox: "0 0 " + W + " " + H, width: W, height: H, "aria-hidden": "true"}, this);
     this.header = base.el("g", {opacity: 0}, this.svg);
     function swatch(x, validate, text){
@@ -53,22 +64,24 @@ return class extends base.MotionElement {
     }
     var legend2 = 8 + 42 + width(T.train) + 28;
     swatch(8, false, T.train); swatch(legend2, true, T.validate);
-    var small = legend2 + 42 + width(T.validate) > W - 8 || bw < 8;
+    var legendWidth = Math.ceil(legend2 + 42 + width(T.validate) + 8);
+    if (legendWidth > W) ctx.report("size", "[folds] legend needs " + legendWidth + " px width; element has " + W + " px");
+    if (bw < 8) ctx.report("size", "[folds] " + d.k + " blocks have " + Math.floor(bw) + " px each; allow at least 8 px per block");
     labels.forEach(function(s, i){
       self.label(self.header, left + (i + 0.5) * bw, 2 * line, s, "middle");
-      if (width(s) > bw - 8) small = true;
+      if (width(s) > bw - 8) ctx.report("size", "[folds] label " + (i + 1) + " needs " + Math.ceil(width(s)) + " px; block fits " + Math.max(0, Math.floor(bw - 8)) + " px (shorten the label)");
     });
     if (errors) this.label(this.header, ex, 2 * line, T.error);
     this.rows = labels.map(function(_, i){
       var g = base.el("g", {opacity: 0}, self.svg), y = top + i * rh;
-      self.label(g, left - 12, y + bh / 2 + fs * 0.31, String(i + 1), "end");
+      rowLabel(g, left - 12, y + bh / 2 + fs * 0.31, String(i + 1), "end");
       var blocks = labels.map(function(_, j){
         var valid = i === j, x = left + j * bw + 3;
         var rect = base.el("rect", {x: x, y: y, width: Math.max(1, bw - 6), height: bh, rx: 3, fill: valid ? "var(--emph-tint)" : "var(--term-tint)", stroke: valid ? "var(--emph)" : "none", "stroke-width": 3}, g);
-        if (bw - 6 >= 40) self.label(g, x + (bw - 6) / 2, y + bh / 2 + fs * 0.31, valid ? T.v : T.t, "middle");
+        if (letters && bw - 6 >= 40) self.label(g, x + (bw - 6) / 2, y + bh / 2 + fs * 0.31, valid ? T.v : T.t, "middle");
         return {rect: rect, validation: valid};
       });
-      if (errors) self.label(g, ex, y + bh / 2 + fs * 0.31, fmt(errors[i]));
+      if (errors) rowLabel(g, ex, y + bh / 2 + fs * 0.31, fmt(errors[i]));
       return {g: g, blocks: blocks};
     });
     this.finalLayer = base.el("g", {opacity: 0}, this.svg);
@@ -77,8 +90,7 @@ return class extends base.MotionElement {
       base.el("line", {x1: ex, x2: W - 8, y1: bottom + 6, y2: bottom + 6, stroke: "var(--muted)", "stroke-width": 2}, this.finalLayer);
       this.label(this.finalLayer, ex, finalY, T.mean + " " + fmt(mean));
     }
-    if ((errors ? finalY + fs * 0.4 : bottom) > H - 4) small = true;
-    if (small) ctx.report("size", "[folds] rows, block labels or legend do not fit; enlarge the element or shorten labels");
+    if (H < minHeight) ctx.report("size", "[folds] k = " + d.k + " needs at least " + minHeight + " px height (header " + top.toFixed(1) + " + " + d.k + " × " + minRow + " rows + " + (footer + 4).toFixed(1) + " footer); element has " + H + " px");
   }
   render(k, t){
     if (!this.model) return;
