@@ -87,6 +87,27 @@
             "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
           }
         },
+        "voices": {
+          "description": "Voices for the language spans of the narration (§8.2), by BCP 47 language tag; each value has the form of voice",
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$"
+          },
+          "additionalProperties": {
+            "description": "Public voice identifiers by role, never file-system paths",
+            "type": "object",
+            "propertyNames": {
+              "enum": [
+                "expert",
+                "novice"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+            }
+          }
+        },
         "seed": {
           "type": [
             "integer",

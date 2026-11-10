@@ -180,6 +180,9 @@ ok('拡張の行：CRLF でも読め、書き換えで位置・中身・改行�
 });
 
 // ---------------------------------------------------------------- <仕様の写し>/fixtures/input-hash（鍵と inputHash）
+// 合わないと分かっている例（この版の例外。これだけ）：言語の区切り {lang:…|…}（§8.2）の 4 つ目の canonical の要素（§5.4）をまだ作らない（v0.6.10 で入れる）。
+// これらは「まだ合わない」ことを確かめる。区切りを入れて合うようになったらこの試験が落ち、ここから消すことになる。ほかの例が合わなければ今までどおり失敗
+const EXPECTED_FAIL = new Set(['s-m7c2xa:0', 's-m7c2xa:1', 's-m7c2xa:2']);
 ok('仕様の写しの fixtures/input-hash：鍵と canonical・inputHash が一致する', () => {
   const dir = SPEC_INPUT_HASH;
   const expected = JSON.parse(fs.readFileSync(path.join(dir, 'expected.json'), 'utf8'));
@@ -187,11 +190,16 @@ ok('仕様の写しの fixtures/input-hash：鍵と canonical・inputHash が一
   assert.deepEqual(segs.map((s) => `${s.slideKey}:${s.stepKey}`), Object.keys(expected));
   // §5.4 の canonical（ここでは試験の中で組む。index に入れるのは後の段階）
   const token = (b) => b.type === 'cue' ? 'cue' : b.type === 'clear' ? 'mark:clear' : `mark:${b.id}|${b.effect}` + (b.hold === null ? '' : `|hold=${b.hold}`);
+  const failed = [];
   for (const s of segs) {
+    const id = `${s.slideKey}:${s.stepKey}`;
     const canonical = JSON.stringify(s.turns.map((t) => [t.role, t.ttsParts, t.bounds.map(token)]));
-    const e = expected[`${s.slideKey}:${s.stepKey}`];
-    assert.equal(canonical, e.canonical);
-    assert.equal(crypto.createHash('sha256').update(canonical, 'utf8').digest('hex'), e.inputHash);
+    const e = expected[id];
+    const same = canonical === e.canonical && crypto.createHash('sha256').update(canonical, 'utf8').digest('hex') === e.inputHash;
+    if (EXPECTED_FAIL.has(id)) { if (same) failed.push(`${id} now matches: remove it from EXPECTED_FAIL`); continue; }
+    if (!same) failed.push(`${id}: canonical ${canonical} ≠ ${e.canonical}`);
   }
+  for (const id of EXPECTED_FAIL) if (!(id in expected)) failed.push(`${id} is in EXPECTED_FAIL but not in the spec vectors`);
+  assert.deepEqual(failed, []);
 });
 console.log(`narration: ${n} ok`);

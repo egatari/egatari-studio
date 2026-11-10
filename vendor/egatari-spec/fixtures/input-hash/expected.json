@@ -10,5 +10,17 @@
   "s-k3f9q2:concl": {
     "canonical": "[[\"expert\",[\"つまり、ファイの向きに進みます。\"],[]]]",
     "inputHash": "7499c301852353ca3000c4cf42b8e2151cbc872a125a97aae31345de77bfc36d"
+  },
+  "s-m7c2xa:0": {
+    "canonical": "[[\"expert\",[\"この文を区切ります。My brother plays tennis every Sunday.\"],[],[[[\"\",\"この文を区切ります。\"],[\"en\",\"My brother plays tennis every Sunday.\"]]]]]",
+    "inputHash": "d7a04e4a0586740412850ce9bf6a6bdafacb77cbdf66357b536d17b075ae9b15"
+  },
+  "s-m7c2xa:1": {
+    "canonical": "[[\"expert\",[\"She is happy. 彼女は幸せだ、という文になります。\"],[],[[[\"en\",\"She is happy.\"],[\"\",\" 彼女は幸せだ、という文になります。\"]]]]]",
+    "inputHash": "f23ec68993d3c3e3d2e9344466501c60935b70a05e6fbd5495acbbe0e6ddd490"
+  },
+  "s-m7c2xa:2": {
+    "canonical": "[[\"expert\",[\"every Sunday\",\"は「毎週日曜日に」です。\"],[\"cue\"],[[[\"en\",\"every Sunday\"]],[[\"\",\"は「毎週日曜日に」です。\"]]]]]",
+    "inputHash": "3da34df1b463786c71c0183d1f7a02ebca411457f327575a5d245c8e91333211"
   }
 }
