@@ -10,8 +10,10 @@ import { openRecents } from './recents.mjs';
 import { startLive } from './live-host.mjs';
 import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
+import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { readFileBoundedText } from '../app/bounded-read.js';
+import { readFileBounded } from '../app/bounded-read.js';
+import { sha256Hex } from './markup.mjs';
 
 /* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
 const VERSION = __PLAY_VERSION__;
@@ -41,6 +43,7 @@ function setLang(l) {
   if (S.playing) $('lesson-kind').textContent = S.playing.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
   renderRecents();
   renderInstallHint();
+  if (M) M.setWords(W);
 }
 
 // ---------------------------------------------------------------- reading a file (in a Worker: play/reader-worker.mjs)
@@ -67,7 +70,9 @@ async function openChecked(blob, name, opts) {
   if (blob.size > MAX_BYTES) { showMsg(W().errTooLarge(MAX_BYTES / 1024 / 1024)); return false; }
   announce(W().reading);
   let text;
-  try { text = (await readFileBoundedText(blob, { max: MAX_BYTES, what: 'lesson' })).text; } catch (e) { showMsg(e && e.code === 'read-over' ? W().errTooLarge(MAX_BYTES / 1024 / 1024) : W().errRead); return false; }
+  // the bytes are read once, through the bounded reader: the text to play, and the file's SHA-256 for the markup record (madeOn)
+  let fileSha = Promise.resolve('');
+  try { const bytes = await readFileBounded(blob, { max: MAX_BYTES, what: 'lesson' }); text = new TextDecoder().decode(bytes); fileSha = sha256Hex(bytes); } catch (e) { showMsg(e && e.code === 'read-over' ? W().errTooLarge(MAX_BYTES / 1024 / 1024) : W().errRead); return false; }
   const r = await scan(text);
   if (!r || !r.ok) { showMsg(r && r.error === 'not-egatari' ? W().errNotEgatari : W().errParse); return false; }
   const info = { name: String(name || 'lesson.ega.html').slice(0, 300), title: r.meta.title, kind: r.kind, docId: r.meta.docId };
@@ -75,7 +80,7 @@ async function openChecked(blob, name, opts) {
   else if ($('keep').checked && !$('shared').checked && S.recents && S.recents.kind !== 'none') {
     try { await S.recents.add(blob, info); maybeRequestPersist(); } catch { /* storage full or blocked: still play */ }
   }
-  play(text, r, info);
+  play(text, r, info, fileSha);
   return true;
 }
 
@@ -83,11 +88,11 @@ async function openChecked(blob, name, opts) {
 // A lesson with Live starts on a start screen (Join, or 「参加しないで見る」) and the frame is placed only after that, so the Join
 // tap can never meet the lesson's frame. Then the layout is chosen once from the lesson's activities and the screen
 // (play/layout.mjs) and kept while the lesson plays; only a rotation (or a window resize) lays it out again.
-function play(text, r, info) {
+function play(text, r, info, fileSha = Promise.resolve('')) {
   closeLesson(true);
   const live = r.live && LP.validate(r.live, { key: true }).length === 0 ? r.live : null;
   const title = r.meta.title || info.name;
-  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, started: false };
+  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, sourceSha256: r.meta.sourceSha256 || '', fileSha, started: false };
   S.doc = lessonDocument(text, { shim: __LESSON_SHIM__, hideLive: !!r.live });
   S.title = title;
   document.body.classList.add('playing');
@@ -128,6 +133,8 @@ function startFrame() {
   applyLayout();                       // everything around the frame is placed first
   $('stage-wrap').appendChild(S.frame);
   const f = S.frame;
+  // markup (play/markup.mjs): the docId is the one read from this file, never one from the frame
+  M.open({ frame: f, docId: S.playing.docId, sourceSha256: S.playing.sourceSha256, fileSha: S.playing.fileSha, shared: $('shared').checked });
   try { f.focus(); } catch { /* not focusable yet */ }
   // Chrome gives the focus to the frame's first, empty document and keeps the keys in this page once the lesson replaces it;
   // so focus it again when the lesson has loaded, unless the viewer has meanwhile moved the focus elsewhere in this page.
@@ -253,6 +260,7 @@ function onLive(kind, n) {
   if (kind === 'polls' && n === 0) setPollView(false);
 }
 function closeLesson(quiet) {
+  if (M) M.close();
   if (S.frame && fsElement() === S.frame) fsRequest(false);
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
@@ -291,6 +299,7 @@ window.addEventListener('message', (e) => {
   if (!f || e.source !== f.contentWindow || e.origin !== 'null') return;
   const m = e.data;
   if (!m || typeof m !== 'object') return;
+  if (M.message(m)) return;            // markup requests (play/markup.mjs checks each one)
   // spec §9.4 openLink: {egatari, href, text, download?}; text at most 200 characters; download only as true.
   // Untrusted: links.request applies §11 and asks for a tap; a download is refused (the frame cannot save files)
   if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
@@ -301,6 +310,14 @@ window.addEventListener('message', (e) => {
   else if (m.egaViewer === 'fullscreen' && typeof m.on === 'boolean' && Object.keys(m).length === 2) fsRequest(m.on);
 });
 
+// the learner's markup: highlights and 暗記 in the book (play/markup.mjs, play/markup-frame.js)
+const M = framed ? null : markup({
+  words: W,
+  els: { header: $('bar'), button: $('b-markup'), bar: $('markup-bar'), recall: $('b-recall'), recallColours: $('recall-colours'), listButton: $('b-mlist'),
+    note: $('markup-note'), filtered: $('m-filtered'), filteredShow: $('b-mshow'), list: $('m-list'), listBody: $('m-list-body'), listClose: $('b-mlist-close'),
+    confirm: $('m-confirm'), confirmText: $('m-confirm-t'), confirmNo: $('b-mconfirm-no'), confirmYes: $('b-mconfirm-yes'), announce: (t) => announce(t) },
+  onPersist: () => maybeRequestPersist(),
+});
 const links = linkBox({ words: W, dlg: { box: $('link-box'), title: $('link-t'), host: $('link-host'), url: $('link-url'), notes: $('link-n'), cancel: $('b-link-cancel'), open: $('a-link-open') } });
 
 // ---------------------------------------------------------------- recent files
@@ -383,7 +400,14 @@ function initKeep() {
   $('shared').addEventListener('change', async () => {
     setPref(SHARED_KEY, $('shared').checked ? '1' : '0');
     syncKeep();
-    if ($('shared').checked) { await clearRecents(); announce(W().sharedOn); }
+    if (!$('shared').checked) return;
+    // highlights are the learner's own work: ask first, with what would go (play/markup.mjs); none saved → switch at once.
+    // やめる turns the switch back off before anything is deleted
+    const n = await countRecords();
+    if (n.highlights > 0 && !(await M.ask(W().mSharedAsk(n.lessons, n.highlights), W().mSharedYes))) {
+      $('shared').checked = false; setPref(SHARED_KEY, '0'); syncKeep(); $('shared').focus(); return;
+    }
+    await clearRecents(); await clearAllRecords(); announce(W().sharedOn);
   });
 }
 async function clearRecents() { if (S.recents) { try { await S.recents.clear(); } catch { /* nothing kept */ } } await renderRecents(); }
@@ -543,7 +567,7 @@ async function main() {
   initShare();
   let reg = null;
   initSW().then((r) => { reg = r; });
-  window.__play = { version: VERSION, state: () => ({ playing: S.playing, layout: S.layout, live: S.live ? S.live.state() : null, store: S.recents && S.recents.kind, sw: !!reg }), openFile, links };
+  window.__play = { version: VERSION, state: () => ({ playing: S.playing, layout: S.layout, live: S.live ? S.live.state() : null, store: S.recents && S.recents.kind, sw: !!reg, markup: M.state() }), openFile, links, markupSaved: () => M.saved() };
   document.documentElement.setAttribute('data-ready', '');
 }
 main();

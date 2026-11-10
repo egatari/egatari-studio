@@ -5,7 +5,7 @@
 //   scanLesson(text) → {ok: true, kind: 'editable' | 'play-only', meta, live, liveFrom}
 //                    | {ok: false, error: 'not-egatari' | 'parse' | 'too-complex'}
 //     kind      'editable' when the archive layer (the index) is present (a portable file), else 'play-only' (spec §2, §3.7)
-//     meta      {title, lang, docId, portable} from deck-meta
+//     meta      {title, lang, docId, portable} from deck-meta, and sourceSha256 from the archive index (portable files only)
 //     live      extensions.live as written in the file (deck-extensions in a play-only file, the index in an editable one), or null.
 //               The caller validates it (kit/core/live-policy.mjs); nothing here trusts it
 //     liveFrom  'deck-extensions' | 'index' | null
@@ -50,7 +50,8 @@ export function scanLesson(text) {
   if (!dm || dm.format !== FORMAT.FORMAT_ID) return { ok: false, error: 'not-egatari' };
   const index = found.has(FORMAT.INDEX_ID) ? json(FORMAT.INDEX_ID, FORMAT.MIME) : null;
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
-  const meta = { title: str(dm.title, 300), lang: str(dm.lang, 35), docId: str(dm.docId, 100), portable: dm.portable === true };
+  const meta = { title: str(dm.title, 300), lang: str(dm.lang, 35), docId: str(dm.docId, 100), portable: dm.portable === true,
+    sourceSha256: index && /^[0-9a-f]{64}$/.test(index.sourceSha256 || '') ? index.sourceSha256 : '' };   // the lesson's version (play/markup.mjs madeOn)
   let live = null, liveFrom = null;
   const ext = json('deck-extensions', 'application/json');
   if (ext && isObj(ext.live)) { live = ext.live; liveFrom = 'deck-extensions'; }

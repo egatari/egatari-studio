@@ -173,6 +173,8 @@ const steps = [
   ['test-play', ['tools/test-play.mjs', path.join(tmp, 'play')]],
   // Egatari Viewer を Playwright の WebKit で iPad の大きさに（WebKit が入っていなければ skip で通る：npx playwright-core install webkit）
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
+  // Viewer のマークアップ（本の書き込み・暗記）：枠の中の層、ページの側の検査（形・上限・docId）、共有の端末、鍵盤、試験の形の偽の頼み
+  ['test-viewer-markup', ['tools/test-viewer-markup.mjs', path.join(tmp, 'viewer-markup')]],
   // 全画面（f・帯の「全画面」）：Viewer のページが枠そのものを全画面にし状態を教材に戻す・教材だけでは全画面にできない・要素の全画面がない所（iPhone）で
   // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
   ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
