@@ -30,7 +30,7 @@ fs.rmSync(work, { recursive: true, force: true }); fs.mkdirSync(work, { recursiv
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fails++; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const until = async (f, ms = 8000) => { ms = scaled(ms); const t = Date.now(); while (Date.now() - t < ms) { try { if (await f()) return true; } catch { /* retry */ } await sleep(60); } try { return !!(await f()); } catch { return false; } };
+const until = async (f, ms = 8000) => { ms = scaled(ms); const t = Date.now(); while (Date.now() - t < ms) { try { if (await f()) return true; } catch { /* retry */ } await sleep(scaled(60)); } try { return !!(await f()); } catch { return false; } };
 
 // ---------------------------------------------------------------- fixtures: the book, its play-only copy, and a revised copy
 const bookDir = path.join(work, 'book');
@@ -131,6 +131,13 @@ const highlightRects = (f, key) => f.evaluate(async ([L, key]) => { const m = /-
   return firsts.map((e) => { const b = e.getBoundingClientRect(), x = b.left + Math.min(6, b.width / 2), y = b.top + b.height / 2; let t = '';
     if (!m) { const cr = document.caretRangeFromPoint ? document.caretRangeFromPoint(x + 2, y) : null; t = cr && cr.startContainer.nodeType === 3 ? cr.startContainer.data.trim().slice(0, 12) : ''; }
     return { x, y, t }; }); }, [LAYER, key]);
+// do something that makes the markup layer redraw, and wait for that redraw (the layer stamps data-ms on each one)
+const redrawn = async (f, act) => { await f.evaluate((L) => { const h = document.querySelector(L); if (h) h.removeAttribute('data-ms'); }, LAYER); await act(); await until(() => f.evaluate((L) => { const h = document.querySelector(L); return !!h && h.hasAttribute('data-ms'); }, LAYER)); await f.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res())))); };
+// scroll the book so that `sel` is in the middle, and wait until the scroll and the layer's redraw have settled
+const lookAt = (f, sel) => f.evaluate(async (sel) => { document.querySelector(sel).scrollIntoView({ block: 'center' });
+  const sc = document.getElementById('egatari-article').closest('.dx-body'), frame = () => new Promise((res) => requestAnimationFrame(() => res()));
+  let last = NaN; for (let k = 0; k < 60; k++) { await frame(); const t = sc ? sc.scrollTop : scrollY; if (t === last) break; last = t; }
+  await frame(); await frame(); }, sel);
 const tapAt = async (p, x, y) => { const b = await (await p.$('#lesson')).boundingBox(); await p.mouse.click(b.x + x, b.y + y); };
 const shot = async (p, n) => { if (SHOTS) await p.screenshot({ path: path.join(work, `${WEBKIT ? 'wk-' : ''}${n}.png`) }); };
 const HL = [
@@ -143,7 +150,7 @@ const HL = [
 // ---------------------------------------------------------------- 1. no book: no Markup button
 console.log('button');
 { const { c, p } = await page();
-  await p.setInputFiles('#file', FIX['nobook.play.ega.html']); await lesson(p); await sleep(600);
+  await p.setInputFiles('#file', FIX['nobook.play.ega.html']); await lesson(p); await sleep(scaled(600));
   ok(!(await p.isVisible('#b-markup')), 'a lesson without a book shows no Markup button (stage 1 marks up the book only)');
   await c.close(); }
 
@@ -197,8 +204,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   // font size, line spacing and background: the highlights stay on the same text
   await until(async () => (await highlightRects(f2, 'y')).every((x) => x.t));   // the book may be rebuilt once after it opens; the anchors follow
   const t0 = (await highlightRects(f2, 'y')).map((x) => x.t).join('|');
-  await f2.evaluate(() => { const t = document.getElementById('deck-text'); t.setAttribute('data-dx-bg', 'black'); t.style.fontSize = '24px'; t.style.lineHeight = '2.2'; });
-  await sleep(400);
+  await redrawn(f2, () => f2.evaluate(() => { const t = document.getElementById('deck-text'); t.setAttribute('data-dx-bg', 'black'); t.style.fontSize = '24px'; t.style.lineHeight = '2.2'; }));
   ok((await highlightRects(f2, 'y')).map((x) => x.t).join('|') === t0 && (await mstate(p)).missing.length === 0, `a new font size, line spacing and background: the same text stays highlighted (${t0} → ${(await highlightRects(f2, 'y')).map((x) => x.t).join('|')}; missing ${(await mstate(p)).missing.length})`);
   // every painted box still lies on its own highlight's text: the character under the middle of each box is in that highlight's quote
   const onText = async () => { const quotes = Object.fromEntries((await mstate(p)).record.highlights.map((h) => [h.id, h.target.quote.exact])); return f2.evaluate((quotes) => {
@@ -209,8 +215,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
       const inReading = cr && cr.startContainer.parentElement && cr.startContainer.parentElement.closest('rt');   // a highlighted ruby base has its reading painted too
       if (!inReading && (!ch || !quotes[e.getAttribute('data-id')].includes(ch))) bad.push(e.getAttribute('data-id') + ':' + ch); }
     return { n: boxes.length, bad }; }, quotes); };
-  await f2.evaluate(() => { document.getElementById('deck-text').style.fontSize = '30px'; });
-  await sleep(300);
+  await redrawn(f2, () => f2.evaluate(() => { document.getElementById('deck-text').style.fontSize = '30px'; }));
   const ot = await onText();
   ok(ot.n > 0 && ot.bad.length === 0, `after a font size change every box still lies on its highlight's text (${ot.n} boxes; off: ${ot.bad.join(' ')})`);
   await f2.evaluate(() => { document.getElementById('deck-text').style.fontSize = '24px'; });
@@ -223,7 +228,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   await p.click('#b-recall');
   let s1 = await sizes(f2);
   ok(s1['y-m'] === 2 && s1['b-m'] === 2 && s1.y === 0 && s1.b === 0, `暗記 hides the text of every colour by default (${JSON.stringify(s1)})`);
-  await highlightRects(f2, 'y-m'); await sleep(200);
+  await highlightRects(f2, 'y-m');
   ok((await bands(f2)) >= 1, `暗記 lays an opaque band over hidden highlights on screen (${await bands(f2)})`);
   ok(await p.isVisible('#recall-colours'), '「暗記する色」 shows while 暗記 is on');
   await shot(p, '03-recall');
@@ -236,12 +241,12 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   const kb = () => f2.evaluate(() => { const r = document.querySelector('[data-egatari-viewer=layer]').shadowRoot; const ks = [...r.querySelectorAll('.mk .k')]; return { n: ks.length, focused: ks.indexOf(r.activeElement), label: ks[0] && ks[0].getAttribute('aria-label'), bandsHidden: [...r.querySelectorAll('.mk .g')].every((g) => g.getAttribute('aria-hidden') === 'true') }; });
   const k0 = await kb();
   await f2.evaluate(() => document.querySelector('[data-egatari-viewer=layer]').shadowRoot.querySelector('.mk .k').focus());
-  await p.keyboard.press('Enter'); await sleep(200);
+  await p.keyboard.press('Enter'); await until(async () => (await kb()).n === k0.n - 1);
   const k1 = await kb();
   ok(k0.n === 3 && /^隠したハイライトを表示（(黄|青)）$/.test(k0.label) && k0.bandsHidden, `暗記: one focusable button per hidden highlight, named 「隠したハイライトを表示（…）」; the bands are aria-hidden (${k0.n}, ${k0.label})`);
   ok(k1.n === 2 && k1.focused === 0, `Enter reveals it and the focus moves to the next hidden highlight (${k1.n} left, focus at ${k1.focused})`);
   await shot(p, '03b-recall-focus');
-  await p.keyboard.press(' '); await sleep(200);
+  { const n = (await kb()).n; await p.keyboard.press(' '); await until(async () => (await kb()).n === n - 1); }
   ok((await kb()).n === 1, 'Space reveals the next one');
   ok((await p.getAttribute('#recall-colours button[data-c="y"]', 'aria-label')) === '暗記する色：黄' && await p.isVisible('#recall-colours .rc-l'), 'the colour switches are named 「暗記する色：黄」…, with the visible word 「暗記する色」 on a wide screen');
   await p.click('#b-recall'); await p.click('#b-recall');   // 暗記 again: everything hidden again
@@ -303,7 +308,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
     parent.postMessage({ egaViewer: 'markup-add', color: 'r', target: { section: '', quote: { exact: 'a', prefix: '', suffix: '' } } }, '*');
     parent.postMessage({ egaViewer: 'markup-add', color: 'y', target: { section: '', quote: { exact: 'a', prefix: 'p'.repeat(33), suffix: '' } } }, '*');
   });
-  await sleep(300);
+  await sleep(scaled(300));
   ok((await mstate(p)).record.highlights.length === n0, 'requests with a quote over 1,000 characters, an extra member (docId), an unknown colour or a long prefix are ignored');
   // more hostile shapes (dev review): non-string ids, __proto__ / constructor keys, an oversize or broken status
   const before4 = JSON.stringify((await mstate(p)).record.highlights);
@@ -320,14 +325,14 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
     P({ egaViewer: 'markup-status', missing: 'h-1', sections: {} });
     P(JSON.parse('{"egaViewer":"markup-status","missing":[],"sections":{"__proto__":"x","constructor":"y","toString":"z"}}'));
   });
-  await sleep(400);
+  await sleep(scaled(400));
   ok(JSON.stringify((await mstate(p)).record.highlights) === before4 && await p.evaluate(() => ({}).polluted === undefined && Object.prototype.polluted === undefined && typeof ({}).toString === 'function'),
     'non-string ids on set and del, __proto__ / constructor members, an oversize sections map and a status without a list change nothing and pollute nothing');
   // the meanings a learner gives colours stay in the page: the frame gets the plain colour words
   await p.click('#b-mlist');   // the bar is still open from the list check above
   await f4.evaluate(() => { window.__seen = []; addEventListener('message', (e) => { if (e.data && e.data.egaViewer === 'markup-load') window.__seen.push(JSON.stringify(e.data.words)); }); });
   await p.fill('#m-list .m-colour:nth-child(1) input', '秘密の意味'); await p.press('#m-list .m-colour:nth-child(1) input', 'Enter'); await p.click('#m-list h2');
-  await sleep(300);
+  await sleep(scaled(300));
   const seen = await f4.evaluate(() => window.__seen);
   ok(seen.length > 0 && seen.every((w) => !w.includes('秘密の意味')), `a colour's meaning is not sent into the lesson's frame (${seen.length} loads seen)`);
   await p.fill('#m-list .m-colour:nth-child(1) input', ''); await p.press('#m-list .m-colour:nth-child(1) input', 'Enter');
@@ -365,7 +370,7 @@ console.log('cap');
   await until(async () => (await mstate(p)).record.highlights.length === 2000);
   ok((await mstate(p)).record.highlights.length === 2000, 'a stored record over the cap is cut to 2,000 when the lesson opens');
   await f.evaluate(() => { for (let i = 0; i < 50; i++) parent.postMessage({ egaViewer: 'markup-add', color: 'y', target: { section: '', quote: { exact: '中央値', prefix: '', suffix: '' } } }, '*'); });
-  await sleep(800);
+  await until(async () => /2000 件まで/.test(await p.textContent('#sr')));
   ok((await mstate(p)).record.highlights.length === 2000 && /2000 件まで/.test(await p.textContent('#sr')), 'a flood of adds past the cap adds nothing and says so (「ハイライトは 1 つの教材に 2000 件までです。…」)');
   await c.close(); }
 
@@ -377,9 +382,9 @@ console.log('ruby and math');
   await f.evaluate(() => { const m = document.querySelector('#egatari-article .egatari-math'); m.scrollIntoView({ block: 'center' }); const r = document.createRange(); r.selectNodeContents(m); getSelection().removeAllRanges(); getSelection().addRange(r); });
   await until(async () => !!(await popup(f))); await press(f, 'b');
   await until(async () => (await mstate(p)).record.highlights.length === 2);
-  await p.click('#b-markup'); await p.click('#b-recall'); await sleep(300);
+  await p.click('#b-markup'); await redrawn(f, () => p.click('#b-recall'));
   const ids = (await mstate(p)).record.highlights.map((h) => h.id);
-  const look = async (sel) => { await f.evaluate((sel) => document.querySelector(sel).scrollIntoView({ block: 'center' }), sel); await sleep(400); };
+  const look = (sel) => lookAt(f, sel);
   await look('#egatari-article ruby');
   const r0 = await f.evaluate((ids) => { const L = document.querySelector('[data-egatari-viewer=layer]').shadowRoot; const rt = [...document.querySelectorAll('#egatari-article ruby rt')].find((x) => x.textContent === 'だいひょうち').getBoundingClientRect();
     return [...L.querySelectorAll(`.g[data-id="${ids[0]}"] .m`)].map((e) => e.getBoundingClientRect()).some((b) => b.left <= rt.left + 1 && b.right >= rt.right - 1 && b.top <= rt.top + 1 && b.bottom >= rt.bottom - 1); }, ids);
@@ -404,7 +409,7 @@ console.log('split');
   await until(() => f.evaluate(() => DECK.panes.state().layout === 'split'));
   await select(f, '外れ値に', '引っぱられるが'); await until(async () => !!(await popup(f))); await press(f, 'y');
   await select(f, '代表値を', '1 つ選ぶ'); await until(async () => !!(await popup(f))); await press(f, 'b');
-  await p.click('#b-markup'); await p.click('#b-recall'); await sleep(300);
+  await p.click('#b-markup'); await redrawn(f, () => p.click('#b-recall'));
   const r = await f.evaluate(() => {
     const st = DECK.panes.state(), text = document.getElementById('deck-text').getBoundingClientRect();
     const host = document.querySelector('[data-egatari-viewer=layer]');
@@ -416,16 +421,16 @@ console.log('split');
   });
   ok(r.layout === 'split' && r.n > 0 && r.outside === 0 && !r.onSlide, `split view with 暗記 on: the bands stay inside the book's pane, nothing of the markup over the slides (${JSON.stringify(r)})`);
   const s0 = await f.evaluate(() => DECK.state());
-  await p.keyboard.press('ArrowRight'); await sleep(400);
+  await p.keyboard.press('ArrowRight'); await until(() => f.evaluate((s0) => { const s = DECK.state(); return s.slide * 100 + s.step > s0.slide * 100 + s0.step; }, s0));
   const s1 = await f.evaluate(() => DECK.state());
   ok(s1.slide * 100 + s1.step > s0.slide * 100 + s0.step, `with the markup bar open and 暗記 on, → still moves the lesson on (${s0.slide}.${s0.step} → ${s1.slide}.${s1.step})`);
   await shot(p, '11-split-recall');
   // slides only, 暗記 still on: the book is not on screen, so no band and nothing of the markup over the slide
   await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*'));
-  await until(() => f.evaluate(() => DECK.panes.state().layout === 'slides')); await sleep(300);
+  await until(() => f.evaluate(() => DECK.panes.state().layout === 'slides')); await sleep(scaled(300));
   const so = await f.evaluate(() => { const host = document.querySelector('[data-egatari-viewer=layer]'); const vis = host ? [...host.shadowRoot.querySelectorAll('.mk .m, .mk .k, .h')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 1 && b.height > 1; }).length : 0; return { vis, hit: document.elementFromPoint(innerWidth / 2, innerHeight / 2) === host }; });
   const t0 = await f.evaluate(() => DECK.state());
-  await p.keyboard.press('ArrowRight'); await sleep(400);
+  await p.keyboard.press('ArrowRight'); await until(() => f.evaluate((t0) => { const s = DECK.state(); return s.slide * 100 + s.step > t0.slide * 100 + t0.step; }, t0));
   const t1 = await f.evaluate(() => DECK.state());
   ok(so.vis === 0 && !so.hit && t1.slide * 100 + t1.step > t0.slide * 100 + t0.step, `slides only with 暗記 on: no band shown, nothing over the slide, → moves on (${JSON.stringify(so)})`);
   await c.close(); }
@@ -439,7 +444,7 @@ console.log('shared');
   ok(await p.isVisible('#markup-note') && (await p.textContent('#markup-note')) === '共有の端末なので、ハイライトは保存されません。', 'shared device: the bar says highlights are not saved');
   await select(f, '外れ値に', '引っぱられるが'); await until(async () => !!(await popup(f))); await press(f, 'p');
   await until(async () => (await mstate(p)).record.highlights.length === 1);
-  await sleep(300);
+  await sleep(scaled(300));
   const n = await p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const d = o.result; if (!d.objectStoreNames.contains('lessons')) return res(0); const g = d.transaction('lessons').objectStore('lessons').count(); g.onsuccess = () => res(g.result); }; o.onerror = () => res(0); }));
   ok(n === 0, 'shared device: nothing is written to this device');
   await shot(p, '07-shared');
@@ -456,7 +461,7 @@ for (const [scheme, vp, name] of [['dark', { width: 1280, height: 800 }, '08-bar
     ok(pw && await f.evaluate(() => matchMedia('(pointer: coarse)').matches) && pw.bottom >= pane - 20 && pw.top > sv.bottom + 72, `${name}: on a touch screen the window is docked at the bottom of the book's pane, away from the selection and the system menu next to it (${pw && pw.top}–${pw && pw.bottom}, pane bottom ${pane}, selection bottom ${sv.bottom})`); }
   if (vp.width < 500) {
     ok(pw.label === '選んだ字に色を付ける' && pw.close, `${name}: the docked window is named 「選んだ字に色を付ける」 and has ×`);
-    await press(f, 'close'); await sleep(350);
+    await press(f, 'close'); await until(async () => !(await popup(f)));
     ok(!(await popup(f)) && await f.evaluate(() => !getSelection().isCollapsed), `${name}: × closes it and keeps the selection`);
     // something of the lesson's own where the window would dock (the player's bar, captions): the window goes above it
     await f.evaluate(() => { const b = document.getElementById('egatari-article').closest('.dx-body').getBoundingClientRect(); const d = document.createElement('div'); d.id = 'fake-bar'; d.style.cssText = `position:fixed;left:0;right:0;top:${b.bottom - 70}px;height:70px;background:#333;z-index:30`; document.body.appendChild(d); });
@@ -518,7 +523,9 @@ console.log('flip, print, cost');
   // only the highlights near the screen are drawn; scrolling far draws the ones there
   const before = await f.evaluate(() => [...document.querySelector('[data-egatari-viewer=layer]').shadowRoot.querySelectorAll('.h')].map((e) => e.getAttribute('data-id')));
   await f.evaluate(() => { const b = document.getElementById('egatari-article').closest('.dx-body'); b.scrollTop = b.scrollHeight; });
-  await sleep(400);
+  // wait for the layer to redraw at the new place: boxes on screen, the same set two frames running
+  const onScreen = () => f.evaluate(() => [...document.querySelector('[data-egatari-viewer=layer]').shadowRoot.querySelectorAll('.h')].filter((e) => { const b = e.getBoundingClientRect(); return b.bottom > 0 && b.top < innerHeight; }).map((e) => e.getAttribute('data-id')).join());
+  { let prev = null; await until(async () => { const now = await onScreen(); const done = now !== '' && now === prev; prev = now; return done; }, 15000); }
   const after = await f.evaluate(() => { const r = document.querySelector('[data-egatari-viewer=layer]').shadowRoot; const vis = [...r.querySelectorAll('.h')].filter((e) => { const b = e.getBoundingClientRect(); return b.bottom > 0 && b.top < innerHeight; }); return { ids: [...r.querySelectorAll('.h')].map((e) => e.getAttribute('data-id')), visible: vis.length }; });
   ok(new Set(before).size < N && after.visible > 0 && after.ids.some((id) => !before.includes(id)), `only highlights near the screen are drawn (${new Set(before).size} of ${N}); scrolling to the end draws the ones there (${after.visible} boxes on screen)`);
   // 50 ms on a desktop; a shared CI runner is slower and uneven, so there the bound is looser (the number is printed either way)
