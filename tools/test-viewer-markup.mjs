@@ -312,6 +312,33 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   ok(await p.isChecked('#shared') && (await count()) === 0, '消して切り替える: shared device on, the saved highlights deleted');
   await ctx.close(); }
 
+// ---------------------------------------------------------------- 6a. 暗記 over ruby and a display equation
+console.log('ruby and math');
+{ const { c, p } = await page(null);
+  const f = await openBook(p, 'book.ega.html');
+  await select(f, '代表値を', '代表値'); await until(async () => !!(await popup(f))); await press(f, 'y');
+  await f.evaluate(() => { const m = document.querySelector('#egatari-article .egatari-math'); m.scrollIntoView({ block: 'center' }); const r = document.createRange(); r.selectNodeContents(m); getSelection().removeAllRanges(); getSelection().addRange(r); });
+  await until(async () => !!(await popup(f))); await press(f, 'b');
+  await until(async () => (await mstate(p)).record.highlights.length === 2);
+  await p.click('#b-markup'); await p.click('#b-recall'); await sleep(300);
+  const ids = (await mstate(p)).record.highlights.map((h) => h.id);
+  const look = async (sel) => { await f.evaluate((sel) => document.querySelector(sel).scrollIntoView({ block: 'center' }), sel); await sleep(400); };
+  await look('#egatari-article ruby');
+  const r0 = await f.evaluate((ids) => { const L = document.querySelector('[data-egatari-viewer=layer]').shadowRoot; const rt = [...document.querySelectorAll('#egatari-article ruby rt')].find((x) => x.textContent === 'だいひょうち').getBoundingClientRect();
+    return [...L.querySelectorAll(`.g[data-id="${ids[0]}"] .m`)].map((e) => e.getBoundingClientRect()).some((b) => b.left <= rt.left + 1 && b.right >= rt.right - 1 && b.top <= rt.top + 1 && b.bottom >= rt.bottom - 1); }, ids);
+  await shot(p, '12a-recall-ruby');
+  await look('#egatari-article .egatari-math');
+  const r = await f.evaluate((ids) => {
+    const L = document.querySelector('[data-egatari-viewer=layer]').shadowRoot;
+    const bands = (id) => [...L.querySelectorAll(`.g[data-id="${id}"] .m`)].map((e) => e.getBoundingClientRect());
+    const eq = document.querySelector('#egatari-article .egatari-math .katex-display, #egatari-article .egatari-math .katex').getBoundingClientRect();
+    return { eqBands: bands(ids[1]).length, eqBox: bands(ids[1])[0] && { w: Math.round(bands(ids[1])[0].width), eqW: Math.round(eq.width) } };
+  }, ids);
+  ok(r0, '暗記 over a ruby base also hides its reading (furigana)');
+  ok(r.eqBands === 1, `暗記 over a display equation is one band, not a band per symbol (${r.eqBands} band(s), ${JSON.stringify(r.eqBox)})`);
+  await shot(p, '12b-recall-math');
+  await c.close(); }
+
 // ---------------------------------------------------------------- 6b. split view (slides and book): 暗記 leaves the slide pane alone
 console.log('split');
 { const { c, p } = await page(null);

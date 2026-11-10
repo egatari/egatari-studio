@@ -139,24 +139,55 @@
   // The boxes of the text in a range, line by line. Not Range.getClientRects() alone: it also returns the box of every element the
   // range wholly contains (an <em>, a ruby), which would paint those parts twice. Text in the hidden MathML is left out
   function textRects(r) {
-    var out = [], root = r.commonAncestorContainer;
-    var push = function (n, a, b) { var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push(rs[i]); };
-    if (root.nodeType === 3) { push(root, r.startOffset, r.endOffset); return out; }
-    // from the range's first text node to its last only (walking the whole section for each highlight is slow at 2000)
-    var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n = r.startContainer;
-    if (n.nodeType !== 3) { var c = n.childNodes[r.startOffset]; w.currentNode = c || n; n = c && c.nodeType === 3 ? c : w.nextNode(); }
-    else w.currentNode = n;
-    var endNode = r.endContainer.nodeType === 3 ? r.endContainer : null;
-    for (; n; n = w.nextNode()) {
-      if (!endNode && !r.intersectsNode(n)) break;
-      var p = n.parentElement;
-      if (!(p && p.closest(".katex-mathml"))) {
-        var a = n === r.startContainer ? r.startOffset : 0, b = n === r.endContainer ? r.endOffset : n.data.length;
-        if (b > a && n.data.slice(a, b).trim()) push(n, a, b);
+    var out = [], root = r.commonAncestorContainer, rubies = [];
+    // each piece is tagged with its display equation (if any), so that a whole equation becomes one box below
+    var push = function (n, a, b) {
+      var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(), p = n.parentElement;
+      var g = p && (p.closest(".egatari-math") || p.closest(".katex-display")), rb = p && p.closest("ruby");
+      if (rb && !(p.closest("rt,rp")) && rubies.indexOf(rb) < 0) rubies.push(rb);
+      for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push({ q: rs[i], g: g });
+    };
+    if (root.nodeType === 3) push(root, r.startOffset, r.endOffset);
+    else {
+      // from the range's first text node to its last only (walking the whole section for each highlight is slow at 2000)
+      var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), n = r.startContainer;
+      if (n.nodeType !== 3) { var c = n.childNodes[r.startOffset]; w.currentNode = c || n; n = c && c.nodeType === 3 ? c : w.nextNode(); }
+      else w.currentNode = n;
+      var endNode = r.endContainer.nodeType === 3 ? r.endContainer : null;
+      for (; n; n = w.nextNode()) {
+        if (!endNode && !r.intersectsNode(n)) break;
+        var p = n.parentElement;
+        if (!(p && p.closest(".katex-mathml,rp"))) {
+          var a = n === r.startContainer ? r.startOffset : 0, b = n === r.endContainer ? r.endOffset : n.data.length;
+          if (b > a && n.data.slice(a, b).trim()) push(n, a, b);
+        }
+        if (n === endNode) break;
       }
-      if (n === endNode) break;
     }
-    return out;
+    // a highlighted ruby base takes its reading with it: 暗記 must hide the furigana too, or it gives the answer away
+    rubies.forEach(function (rb) { Array.prototype.forEach.call(rb.querySelectorAll("rt"), function (rt) { var rs = rt.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5) out.push({ q: rs[i], g: null }); }); });
+    return mergeRects(out);
+  }
+  // One box per display equation, and one per line elsewhere (pieces whose spans across the line overlap: text, inline math with
+  // its sub- and superscripts, a ruby base with its reading), so neither the colour nor a 暗記 band is jagged
+  function mergeRects(list) {
+    var v = vertical(), groups = [], lines = [];
+    var U = function (a, q) { return a ? { left: Math.min(a.left, q.left), top: Math.min(a.top, q.top), right: Math.max(a.right, q.right), bottom: Math.max(a.bottom, q.bottom) } : { left: q.left, top: q.top, right: q.right, bottom: q.bottom }; };
+    list.forEach(function (it) {
+      if (it.g) { for (var i = 0; i < groups.length; i++) if (groups[i].g === it.g) { groups[i].b = U(groups[i].b, it.q); return; } groups.push({ g: it.g, b: U(null, it.q) }); return; }
+      var q = it.q, a0 = v ? q.left : q.top, a1 = v ? q.right : q.bottom;
+      for (var k = 0; k < lines.length; k++) { var L0 = v ? lines[k].left : lines[k].top, L1 = v ? lines[k].right : lines[k].bottom; if (a0 < L1 - 1 && a1 > L0 + 1) { lines[k] = U(lines[k], q); return; } }
+      lines.push(U(null, q));
+    });
+    // a line can grow into the next one through a tall piece: merge again until nothing overlaps
+    for (var again = true; again;) {
+      again = false;
+      for (var x = 0; x < lines.length && !again; x++) for (var y = x + 1; y < lines.length && !again; y++) {
+        var A = lines[x], B = lines[y], o = v ? (A.left < B.right - 1 && A.right > B.left + 1) : (A.top < B.bottom - 1 && A.bottom > B.top + 1);
+        if (o) { lines[x] = U(A, B); lines.splice(y, 1); again = true; }
+      }
+    }
+    return lines.concat(groups.map(function (g) { return g.b; })).map(function (b) { return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, width: b.right - b.left, height: b.bottom - b.top }; });
   }
   var MK = {};
   function inOrder(a, b) { try { return S.placed[a].compareBoundaryPoints(Range.START_TO_START, S.placed[b]); } catch (e) { return 0; } }
