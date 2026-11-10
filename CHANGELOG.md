@@ -8,6 +8,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.8] - 2026-11-10
+
+### Added
+
+- `egatari ids-of <file.ega.html> […]` (also `npm run ids-of`): prints the identity of Egatari files, one line per file, for organisations that manage lesson versions. Tab-separated by default: `docId`, `sourceSha256` (recomputed from the file's source, format §3.4: it identifies the version of the source and leaves out audio and built parts) and the SHA-256 of the whole file (identifies the file itself, for checking at distribution or LMS upload). `--json` prints one JSON object per file (`file`, `docId`, `sourceSha256`, `fileSha256`). If the recomputed `sourceSha256` differs from the value written in the file, a warning goes to stderr and the exit code stays 0. A play-only file has no source: `sourceSha256` is `-` (`null` in JSON). A file that cannot be read or is not an Egatari file is an error (stderr, exit code 1; the other files are still printed). Who released a file is a matter for signatures (format §10, not implemented yet). `node tools/test-ids-of.mjs` tests it
+- Quality check: a text slide whose body is only 3 or 4 short bullets of similar length gets an information finding, “Short, equal points may read better as cards (m-cards)” (`cardsHint`, R-purpose, backlog #189). The body must hold exactly one unordered list (and at most one short lead paragraph) and nothing else (no ordered list, nested list, part, figure, image, table or display equation); each item is at most 30 characters (Japanese decks count full-width 1 and half-width 0.5, as elsewhere in the check) and the longest is at most twice the shortest. A list is not suggested when an item has inline math, or when the items read as a sequence (an item starts with まず・次に・そこで・最後に or first/next/then/finally, or contains →). At most 2 are reported per lesson: the slides whose items are most even in length. Cover, section divider, `static` and vertical slides are skipped. It is information only: not a warning, and never part of fix requests, so the author decides. The editor's quality check shows it too. The AI instructions and generated packs are unchanged
+- Egatari Player 1.4.1: an embedded lesson (`?embed=1`) now sends `{egatari:"ready", version, docId, sourceSha256?, timeline}` to the host once it has loaded and can take commands (Player P8), before the first `position`. Hosts no longer need to wait for `position` before sending commands
+- Themes: a new colour role `--lit`, light and what it lights (the sun, a lamp, the lit side of the Moon; format spec §8.4). It is a fill colour drawn with an outline, never a text colour, and a part that uses it gives a fallback from the other roles (`var(--lit, …)`). Every bundled theme sets a warm yellow: `default` `#F5B800` (1.3.0), `sumi` and `business` `#F2C300`, `kokugo` `#F8B500`, `tokiwa` `#F5C000`, `murasaki` `#F3BE00`, `kogecha` `#EDB91A`, `asagi` `#FFCE3A` (each 1.1.0). No existing colour changes; earlier versions stay in `vendor/themes/`. `node tools/test-themes.mjs` checks that `--lit` stays apart from `--emph` under colour-vision simulation with the limits used for `--emph` against `--term`, and prints its contrast with `--bg`
+- Quality check: colours outside the theme's vocabulary in the source are reported (`colorOutside`, R-colors, information only: not part of fix requests): colours written directly (hex, `rgb()` `oklch()` and the other colour functions, colour names, a literal fallback in `var()`) and colours derived by changing the hue with relative colour syntax (`oklch(from var(--accent2) l c calc(h + 30))`, and likewise `rgb` `hsl` `hwb` `lab` `lch` `oklab` `color()`). `var(--lit)` and the other roles, `color-mix()` of roles and `--bg`, and relative colours that keep the hue and change only lightness, chroma or alpha are not reported
+- AI instructions: the science part set gains one line, “Also usable as a colour, besides those of R-colors: `--lit`, light and what it lights, a fill with an outline.” The common instructions and the other sets are unchanged
+
+### Changed
+
+- Components 2.0 lessons use egatari/components **v2.5.1** by default. `m-orbit` 2.0.4 fills the lit side of bodies and the light source with the theme role `--lit` (with its previous colour as a fallback for themes that do not declare it). The `m-map-japan` README states the rule for class boundaries (the AI instructions for maps change by a few characters). No other part changes version
+- Format spec copy (`vendor/egatari-spec`): the snapshot **wd-2026-11-09** (egatari-spec 6c2e1b2): the theme role `--lit` and hue-changed relative colours (§8.4), SCORM packages (§2.1, §2.2), Player P1, and Player P8 (`ready` settled; `snapshot` optional). Studio follows it except the remaining Player P8 commands and events (`seek`/`seeked`, `preview`, `controls`, `stepEnded`, `ended`, and the `unsupported` reply to `snapshot`), which come in v0.6.9
+
+### Fixed
+
+- Editor: after exporting a working folder as an Egatari file, “Make a video (MP4)…” offered “Open Colab” only until the editor noticed its own export (the `.ega.html` saved in the working folder, or `egatari.json` with a new `docId`) and rebuilt the preview, about a second and a half later; from then on it kept asking to export again although nothing had changed. The dialog now compares the working folder with its state right after the export, so it says “Open Colab” until the author changes something, including a change the preview has not picked up yet
+- Egatari Player 1.4.1 (the bundled player that files carry, `player` in the index and `deck-meta`): patch release. The axis chart helper (`DECK.Plot`, used by `m-sweep` and other plotting parts) no longer writes a clip rectangle with a negative width or height when a part is mounted before its box has a size (for example while the editor's preview is being replaced). Browsers logged this as an invalid SVG attribute; the chart itself was not affected
+
 ## [0.6.7] - 2026-11-09
 
 ### Added
@@ -1391,7 +1412,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.7...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.8...HEAD
+[0.6.8]: https://github.com/egatari/egatari-studio/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/egatari/egatari-studio/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/egatari/egatari-studio/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/egatari/egatari-studio/compare/v0.6.4...v0.6.5
