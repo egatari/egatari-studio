@@ -8,6 +8,18 @@
   --sec-bg: #3d3132;
   --series-3: var(--accent2);
   --lit: #EDB91A;                    /* 光と照らされる側。落ち着いた金茶寄りの黄（生成り地 1.7:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。焦茶の落ち着いた配色に合わせて鮮やかさを少し抑えた（色の名前の範囲は同じ）。名前か頭文字を添え、白・黒には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #2A2523;
+  --obj-red:     #C8323A;
+  --obj-green:   #3C8A4E;
+  --obj-yellow:  #E6C619;
+  --obj-blue:    #2F66B8;
+  --obj-brown:   #7A5230;
+  --obj-purple:  #7E4A9E;
+  --obj-pink:    #DC86AE;
+  --obj-orange:  #D9822B;
+  --obj-gray:    #8A8782;
 }
 /* look heading: double */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:6px double var(--base)}

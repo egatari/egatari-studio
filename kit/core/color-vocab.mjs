@@ -6,8 +6,10 @@
 //     kind 'hue'    ：相対色の構文（rgb(from …) hsl(from …) oklch(from …) color(from …) など）で、色相を変えたもの。役割のない新しい色になる（§8.4）
 // 見るところ：<style> の宣言の値、style 属性、SVG と HTML の色の属性（fill・stroke・stop-color・flood-color・lighting-color・color・bgcolor）。
 // <script> の中は見ない（部品の JavaScript の文字列は色かどうか分からない）。url(…) と文字列（"…" '…'）とコメントは飛ばす。
-// 許すもの：var(--役割)（どの名前でも。var() は色をじかに書いたものではない。--lit も）、transparent・currentColor・none・inherit など、color-mix()
+// 許すもの：var(--役割)（どの名前でも。var() は色をじかに書いたものではない。--lit も、物の色 --obj-red などの 11 色も）、transparent・currentColor・none・inherit など、color-mix()
 // （中の色が許すものだけなら。役割どうし・役割と --bg を混ぜた色は役割を保つ：§8.4）。
+// 物の色 var(--obj-…, 予備) の予備の値の中だけは、じかに書いた色を知らせない（§8.4：物の色の予備はその名前の色をじかに書いてよい。名前に合う色かどうかは見ない）。
+// その中でも色相を変えた相対色は知らせる。
 // 相対色の決まり（保守的な読み：既定のテーマが --title を oklch(from var(--base) min(l, 0.32) c h) で作り、淡色を color-mix で作るのと同じく、
 // 色相を保って明るさ・鮮やかさ・不透明度を変えた色は役割を保つ。§8.4 が知らせると言うのは色相を変えたものだけ）：
 //   色相のある空間（hsl hwb lch oklch）：色相の成分が `h` そのもの以外（calc(h + 30)・数・ほかの成分の名前・none）なら 'hue'。ほかの成分（明るさ・鮮やかさ・白・黒）と
@@ -34,6 +36,8 @@ const CHANNELS = { rgb: ['r', 'g', 'b'], rgba: ['r', 'g', 'b'], hsl: ['h', 's', 
 // 色の名前を色として読むプロパティ（16 進と色の関数はどのプロパティでも色）
 const COLOR_PROP = /^(?:--|color$|background|border|outline|fill$|stroke$|stop-color$|flood-color$|lighting-color$|text-decoration|text-emphasis|box-shadow$|text-shadow$|caret-color$|accent-color$|column-rule|-webkit-text-(?:stroke|fill)|filter$|scrollbar-color$)/i;
 const COLOR_ATTR = new Set(['fill', 'stroke', 'stop-color', 'flood-color', 'lighting-color', 'color', 'bgcolor']);
+// 物の色の役割（format spec §8.4。11 の基本色名）
+const OBJ_ROLE = /^--obj-(?:white|black|red|green|yellow|blue|brown|purple|pink|orange|gray)$/;
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 // 値を字句に分ける：{t: 'fn', name, args: [字句…]} | {t: 'id', s} | {t: 'hex', s} | {t: 'op', s}（, / など）| {t: 'num', s}
@@ -111,7 +115,9 @@ function scan(tokens, colorCtx, add) {
     }
     if (x.name === 'var') {   // var(--x, 予備)：名前は飛ばし、予備の値だけを見る
       const comma = x.args.findIndex((a) => a.t === 'op' && a.s === ',');
-      if (comma >= 0) scan(x.args.slice(comma + 1), true, add);
+      // 物の色 var(--obj-red, …) の予備は、その名前の色をじかに書いてよい（§8.4）。色相を変えた相対色は知らせる
+      const obj = x.args[0] && x.args[0].t === 'id' && OBJ_ROLE.test(x.args[0].s);
+      if (comma >= 0) scan(x.args.slice(comma + 1), true, obj ? (k, w) => { if (k !== 'literal') add(k, w); } : add);
       continue;
     }
     scan(x.args, colorCtx || x.name === 'color-mix' || /gradient$/.test(x.name) || x.name === 'light-dark' || x.name === 'drop-shadow', add);

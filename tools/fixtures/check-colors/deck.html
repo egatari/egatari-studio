@@ -6,6 +6,8 @@
 #s-ok .sun{fill:var(--lit);stroke:var(--fg);stroke-width:3}
 #s-ok .wash{background:color-mix(in oklch, var(--emph) 25%, var(--bg))}
 #s-ok .dim{color:oklch(from var(--emph) min(l, 0.45) c h)}
+/* 許すもの：物の色（--obj-*。予備はその名前の色をじかに書いてよい）と、物の色どうしの color-mix() */
+#s-obj .mix{background:color-mix(in oklch, var(--obj-yellow, yellow), var(--obj-green))}
 /* 知らせるもの：相対色の構文で色相を変えた色（oklch・rgb・hsl・lab） */
 #s-hue .a{color:oklch(from var(--accent2) l c calc(h + 30))}
 #s-hue .b{color:rgb(from var(--term) r g calc(b + 40))}
@@ -23,5 +25,9 @@
 </div></section>
 <section class="slide noconcl" id="s-fallback"><h2>じかに書いた予備の色</h2><div class="body">
 <svg viewBox="0 0 200 100" width="200" height="100" aria-label="灯り"><circle cx="50" cy="50" r="30" style="fill:var(--lit, #ffcc00);stroke:var(--fg)"/></svg>
+</div></section>
+<section class="slide noconcl" id="s-obj"><h2>物の色</h2><div class="body">
+<svg viewBox="0 0 200 100" width="200" height="100" aria-label="赤い玉と青い玉"><circle cx="50" cy="50" r="30" style="fill:var(--obj-red, red);stroke:var(--fg)"/><text x="50" y="58" text-anchor="middle">赤</text><circle cx="140" cy="50" r="30" fill="var(--obj-blue, #1e6fd9)" stroke="var(--fg)"/><text x="140" y="58" text-anchor="middle">青</text></svg>
+<p class="mix">黄緑</p>
 </div></section>
 </div></body></html>
