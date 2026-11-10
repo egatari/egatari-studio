@@ -427,7 +427,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       `llm replace (working folder): a reply with one slide replaces just that slide in deck.html and the quality check answers (${r2.ms} ms): ${r2.sum}`);
     // 結果が 0 件でも、説明の文は途中で切れず、エラーがあれば修正依頼のボタンが出ることを言う
     const note0 = await p.textContent('#panel-body .hint');
-    ok(/^The browser quality checker \(size, length, missing script, color contrast\)\.( |$)/.test(note0) && /“Copy a fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
+    ok(/^The browser quality checker \(size, length, math, script, links, color contrast and more\)\.( |$)/.test(note0) && /“Copy a fix request for your AI”/.test(note0) && /appears here/.test(note0) && !/npm run check/.test(note0) && !(await p.$('#b-fixreq')),
       'llm quality check: with no results, the note says the fix request button appears when there are errors: ' + note0);
 
     // ② の［コピー］は主ボタンで、何度でも写し直せる（クリップボードが上書きされた後に［変更］で開き直して、もう一度）。新規作成の ④ と同じ

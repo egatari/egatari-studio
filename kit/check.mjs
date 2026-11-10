@@ -193,7 +193,7 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
     const sj = e && typeof e === 'object' && !('inputHash' in e) && /^[0-9a-f]{1,64}$/.test(String(e.digest || '')) ? readJson(path.join('audio', `seg_${e.digest}.json`)) : null;
     if ((await audioState(e, seg, sj)) === 'stale') {
       const i = slideOf.has(seg.slideKey) ? slideOf.get(seg.slideKey) : null;
-      report(i, 'warn', `audio: stale — 段階 ${k} の音声は今の口述原稿から作ったものではない（${e && e.kind === 'recorded' ? '録音' : e && e.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`);
+      report(i, 'warn', 'audioStale', { k, kind: e && e.kind === 'recorded' ? 'recorded' : e && e.kind === 'imported' ? 'imported' : 'tts' });
     }
   }
 }

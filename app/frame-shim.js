@@ -8,6 +8,7 @@
 //   theme   プレビュー：組み立てが返したテーマ {name, metrics, declared}（kit/core/theme-metrics.mjs）。品質チェックの本文の場所の限りと、寸法のずれ（themeMetricsDrift）に使う。
 //           なければ既定の寸法（今までと同じ限り）
 // layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数・測る前の字体の確かめと、わざと切る印・小さい注記の印・重ね字の印の名前（kit/core/layout-scan.mjs）。
+// findRawMath：組まれずに残った数式（rawMath。kit/core/raw-math.mjs。コマンド版と同じ関数）。
 // app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
@@ -203,16 +204,19 @@ function previewAudio(items){
   }
 }
 
-// ---------------------------------------------------------------- 品質チェック（kit/check.mjs の一部：はみ出し・切れ・文字の大きさ・字数・口述原稿・コントラスト）
+// ---------------------------------------------------------------- 品質チェック（kit/check.mjs のうち、プレビューの文書だけで見られるもの）
 // はみ出し・切れ・文字の大きさ・字数は kit/core/layout-scan.mjs（コマンド版と同じ）。縦組みの限り・結論の行の高さ・図の中の字の大きさ・
 // 箱で切れる字・スライドの外に出る図の字・図の箱からはみ出す字・本文の外の字も見る（backlog #51・#52）
-// 部品の再現性・タイムライン・モーフ・読み上げ・です・ます・句読点の検査はしない（全部の検査は CLI の npm run check）
+// 本文の字（コマンド版の A と同じ）：残った数式（rawMath）・です・ます（desuMasu）・句読点の混在（punctMixed）。
+// スライドへのリンク（J）・目印（F の markMissing）・モーフ（G）・読み上げ（H：imgAlt・svgName・compName）もコマンド版と同じ code と値。
+// 原稿の文字列から見るもの（読みの指定・{note:}・式らしい台本・1.0 の語彙にない書き方・語彙の外の色・id と鍵）は app/main.js と app/llm.js。
+// しないもの（コマンド版だけ。kit/core/check-parity.mjs の CLI_ONLY）：部品の再現性・本文の釣り合い（画面を撮る）・タイムラインと印の一覧（情報）など
 // コマンド版の code → ブラウザ版の前からの code（app/i18n.js の checkMsg と kit/core/llm-fix.mjs の BY_CODE が知っているもの）
 var LEGACY = {titleLong: "titleLong", titleLongEn: "titleLongEn", conclLong: "conclLong", conclLongEn: "conclLongEn", conclOverflow: "conclOverflow", bodyBottom: "overflowBottom", bodyRight: "overflowRight", smallText: "smallText"};
 function quickCheck(fonts){
   var DECK = window.DECK;
   if (!DECK || !DECK.slides) return jsErrors.map(function(t){ return {i: null, title: "", sev: "error", code: "consoleError", arg: t}; });
-  var JA = DECK.ja !== false, S = DECK.slides, out = [];
+  var JA = DECK.ja !== false, S = DECK.slides, out = [], punct = [];
   var TH = cfg.theme || null, METRICS = TH && TH.metrics || null;
   var st = DECK.state(), back = {i: st.slide - 1, k: st.step};
   var add = function(i, sev, code, arg){ out.push({i: i, title: i === null ? "" : ((S[i].querySelector("h2, h1") || {}).textContent || S[i]._key).replace(/\s+/g, " ").trim(), sev: sev, code: code, arg: arg}); };
@@ -227,6 +231,21 @@ function quickCheck(fonts){
       if (!code) return add(i, f.sev, f.code, a);
       add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
     });
+    // 本文の字（kit/check.mjs の A と同じ：KaTeX の読み上げ用の MathML を除いた innerText）：です・ます（日本語のデッキ）・残った数式（$…$・\( \[）・句読点を数える
+    var body = s.querySelector(".body");
+    if (body) {
+      var bc = body.cloneNode(true);
+      bc.querySelectorAll(".katex-mathml").forEach(function(x){ x.remove(); });
+      document.body.appendChild(bc);
+      bc.style.cssText = "position:absolute;left:-99999px;width:" + body.clientWidth + "px";
+      var txt = bc.innerText;
+      bc.remove();
+      if (JA) punct.push({i: i, jp: (txt.match(/[、。]/g) || []).length, en: (txt.match(/[，．]/g) || []).length});
+      var dm = JA && txt.match(/[^\n。．]{0,14}(です|ます)(?=[。．、，」）\s]|$)/m);
+      if (dm) add(i, "error", "desuMasu", {t: dm[0].trim()});
+      var rm = findRawMath(txt);
+      if (rm) add(i, "error", "rawMath", {t: rm.text.trim()});
+    }
     if (s.querySelector(".body .katex-error")) add(i, "error", "katexError");
     // 口述原稿：段階ごと（static のスライドは段階 0 だけ）。スライドにない段階の口述原稿（[k] が段階を超える・結論のない [concl]）はエラー
     // 部品のデータが合わず描けないスライド：その部品の段階は 0 になるので、口述原稿の抜け・余りは出さず、データを直した後に確かめ直すと知らせる（kit/check.mjs の narrRecheck）
@@ -256,6 +275,16 @@ function quickCheck(fonts){
     var keep = hints.map(function(r, k){ return {r: r, k: k}; }).sort(function(x, y){ return x.r.arg.ratio - y.r.arg.ratio || x.k - y.k; }).slice(0, hints[0].arg.cap).map(function(x){ return x.r; });
     out = out.filter(function(r){ return r.code !== "cardsHint" || keep.indexOf(r) >= 0; });
   }
+  // 句読点はデッキの中でそろっていればよい：少ないほうを使うスライドに警告（kit/check.mjs と同じ）
+  var tot = punct.reduce(function(a, p){ return {jp: a.jp + p.jp, en: a.en + p.en}; }, {jp: 0, en: 0});
+  if (tot.jp && tot.en) {
+    var major = tot.jp >= tot.en ? "jp" : "en", minor = major === "jp" ? "en" : "jp", pname = {jp: "「、。」", en: "「，．」"};
+    punct.forEach(function(p){ if (p[minor]) add(p.i, "warn", "punctMixed", {minor: pname[minor], major: pname[major], n: p[minor]}); });
+  }
+  linkCheck(add);
+  markCheck(add);
+  morphCheck(add);
+  a11yCheck(add);
   // テーマの寸法の宣言と描いた箱（コマンド版と同じ関数。デッキに 1 回）
   // 同梱の字体が読み込めていなければ測らない（代わりの字体では測らない）：metricsFontLoad
   // ファイルに入っていない字体（コマンド版と同じ。metricsFonts の foreign）
@@ -290,5 +319,84 @@ function quickCheck(fonts){
   } catch (e) {}
   if (!DECK.aside) DECK.go(back.i, back.k, false);
   return out;
+}
+// スライドへのリンク（kit/check.mjs の J と同じ。format spec §9.1A）：行き先がない・段階が範囲の外はエラー、番号（#N）・id のないスライドの鍵へのリンクは警告。
+// ほかのファイルへのリンク（ファイルがあるか、linkFileMissing）は作業フォルダのファイルを見るのでコマンド版だけ（ここでは数えるだけ）
+function linkCheck(add){
+  var D = window.DECK;
+  if (!D.linkFragment || !D.resolveFragment) return;
+  var n = 0, good = 0, other = 0;
+  D.slides.forEach(function(s, i){
+    [].forEach.call(s.querySelectorAll("a[href]"), function(a){
+      n++;
+      var href = a.getAttribute("href"), f = D.linkFragment(a);
+      var L = {text: (a.textContent || "").replace(/\s+/g, " ").trim().slice(0, 30) || href, href: href};
+      var w = function(o){ for (var k in o) L[k] = o[k]; return L; };
+      if (f === null) { other++; return; }
+      var r = f ? D.resolveFragment(f) : {error: "empty"};
+      if (r.error === "empty") add(i, "warn", "linkEmpty", L);
+      else if (r.error === "unknown slide") add(i, "error", "linkUnknown", w({slide: r.slide}));
+      else if (r.error === "slide number out of range") add(i, "error", "linkNumberRange", w({slide: r.slide, count: D.slides.length}));
+      else if (r.error === "no concl step") add(i, "error", "linkNoConcl", w({slide: r.slide}));
+      else if (r.error === "step out of range") add(i, "error", "linkStepRange", w({slide: r.slide, step: r.step, max: r.max, concl: !!(D.slides[r.i] && D.slides[r.i]._max > r.max)}));
+      else if (r.error) add(i, "error", "linkBadStep", w({step: r.step}));
+      else { good++; if (r.legacy) add(i, "warn", "linkNumber", L); else if (!r.id) add(i, "warn", "linkNoId", w({key: r.key})); }
+    });
+  });
+  if (n) add(null, "info", "linkCount", {ok: good, other: other});
+}
+// 注目の演出の目印（kit/check.mjs の F と同じ。DECK.marks：部品が作った要素も含めて実際の画面で探す）
+function markCheck(add){
+  var D = window.DECK;
+  if (!D.marks || !D.stepKey) return;
+  D.slides.forEach(function(s, i){
+    for (var k = 0; k <= s._max; k++) {
+      var sk = D.stepKey(i, k).slice(s._key.length + 1);
+      D.marks(i, k).forEach(function(m){ if (!m.found) add(i, "warn", "markMissing", {id: m.id, step: sk}); });
+    }
+  });
+}
+// モーフ（data-morph。kit/check.mjs の G と同じ）
+function morphCheck(add){
+  var D = window.DECK;
+  if (!D.morph) return;
+  D.slides.forEach(function(s, i){
+    var m = D.morph(i);
+    if (!m) return;
+    if (!m.src) { add(i, "warn", "morphNoSrc", {want: m.want}); return; }
+    if (!m.ids.length) add(i, "warn", "morphNoIds", {src: m.src});
+    else add(i, "info", "morphPairs", {src: m.src, ids: m.ids.join(", ")});
+    if (m.later.length) add(i, "info", "morphLater", {ids: m.later.join(", ")});
+    m.dupSrc.forEach(function(id){ add(i, "warn", "morphDupSrc", {id: id}); });
+    m.dupDst.forEach(function(id){ add(i, "warn", "morphDupDst", {id: id}); });
+  });
+}
+// 読み上げ（kit/check.mjs の H と同じ）：alt の無い <img>・名前の無い SVG の図（警告）と部品（情報）
+function a11yCheck(add){
+  var D = window.DECK;
+  var named = function(e, root){
+    for (var a = e; a && a !== root; a = a.parentElement) {
+      if ((a.getAttribute("aria-label") || "").trim() || a.hasAttribute("aria-labelledby")) return true;
+      if (a.tagName === "FIGURE" && a.querySelector("figcaption")) return true;
+    }
+    var t = e.querySelector(":scope > title");
+    return !!t && !!t.textContent.trim();
+  };
+  var hidden = function(e, root){ for (var a = e; a && a !== root; a = a.parentElement) if (a.getAttribute("aria-hidden") === "true" || /^(presentation|none)$/.test(a.getAttribute("role") || "")) return true; return false; };
+  D.slides.forEach(function(s, i){
+    // 部品の要素（s._comps）。ほかの版の再生器では要素でないものが入ることがあるので、要素だけ
+    var comps = (s._comps || []).filter(function(c){ return c && c.nodeType === 1; });
+    var imgs = [].filter.call(s.querySelectorAll("img"), function(e){ return !e.hasAttribute("alt") && !hidden(e, s); }).map(function(e){ return (e.getAttribute("src") || "").replace(/^data:([^;,]+).*/, "data:$1").slice(0, 60); });
+    var cn = comps.filter(function(c){ return !hidden(c, s) && !named(c, s) && !(c.getAttribute("title") || "").trim(); }).map(function(c){ return c.tagName.toLowerCase(); });
+    var svgs = [].filter.call(s.querySelectorAll("svg"), function(g){
+      if (g.parentElement.closest("svg") || g.closest(".katex") || g.classList.contains("marks") || hidden(g, s)) return false;
+      if (comps.some(function(c){ return c.contains(g); })) return false;
+      var r = g.getBoundingClientRect();
+      return r.width * r.height >= 120 * 80 && !named(g, s);
+    }).length;
+    if (imgs.length) add(i, "warn", "imgAlt", {n: imgs.length, list: imgs.join(", ")});
+    if (svgs) add(i, "warn", "svgName", {n: svgs});
+    if (cn.length) add(i, "info", "compName", {list: cn.filter(function(t, k){ return cn.indexOf(t) === k; }).join(", ")});
+  });
 }
 })

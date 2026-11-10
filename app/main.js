@@ -37,6 +37,7 @@ import { draftStore, createDraftKeeper } from './drafts.js';
 import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
+import { sourceFindings } from '../kit/core/check-source.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { colabVideoUrl } from '../kit/core/colab-core.mjs';
@@ -1224,6 +1225,11 @@ async function checkResults(rec) {
     for (const x of left.slides) results.push({ sev: 'warn', code: 'templateText', arg: x.texts.join('」「'), i: x.index, title: title(x.index) });
     for (const p of left.steps) { const i = (S.slides || []).findIndex((x) => x.key === p.slideKey); results.push({ sev: 'warn', code: 'narrPlaceholder', arg: p.stepKey, i: i < 0 ? null : i, title: title(i < 0 ? null : i) }); }
   }
+  // 原稿の文字列だけで決まる指摘（id と鍵・1.0 の語彙にない書き方・語彙の外の色・{note:}・式らしい台本など。kit/core/check-source.mjs。kit/check.mjs と同じ code と値）
+  {
+    const title = (i) => (i === null || !S.slides[i] ? '' : S.slides[i].heading || '');
+    for (const f of await sourceChecks()) results.push({ sev: f.sev, code: f.code, arg: f.a, step: f.step, i: f.i, title: title(f.i) });
+  }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k.slice(k.lastIndexOf(':') + 1), i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
   // 参照音声（AI 音声が声をまねる元の録音。voice.json がパスで指すもの）が作業フォルダの中にある：教材には入れない（format spec §5 の recipe。
@@ -1255,6 +1261,8 @@ async function quickCheck() {
   if (!results) { openPanel(T.checkTitle, [el('p', { id: 'check-panel', text: T.checkFailed }), buildWarnBox()]); return; }
   const errs = results.filter((r) => r.sev === 'error').length, warns = results.filter((r) => r.sev === 'warn').length + S.warn.length;
   showBadge(errs, warns - S.warn.length);
+  // 修正依頼に入るもの（エラー・警告）があるときだけ「AI への修正依頼をコピー」を出す（情報だけなら直すものはない。kit/core/llm-fix.mjs も情報を載せない）
+  const fixable = results.some((r) => r.sev === 'error' || r.sev === 'warn');
   const items = results.map((r) => el('div', { cls: 'res ' + r.sev, onclick: () => { if (r.i !== null) f.postMessage({ type: 'app-go', i: r.i, k: 0 }, '*'); } }, [
     el('span', { cls: 'sev', text: r.sev === 'error' ? T.sevError : r.sev === 'info' ? T.sevInfo : T.sevWarn }),
     el('span', { text: T.checkMsg(r.code, r.arg) }),
@@ -1263,11 +1271,21 @@ async function quickCheck() {
   openPanel(T.checkTitle, [
     el('div', { id: 'check-panel', cls: 'sum', text: T.checkSummary(errs, warns) }),
     buildWarnBox(),
-    el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, results.length > 0) }),
+    el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, fixable) }),
     // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
-    el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(results.length ? [llm.fixButton(results)] : [])]),
+    el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(fixable ? [llm.fixButton(results)] : [])]),
     ...items,
   ]);
+}
+// 原稿の文字列だけで決まる品質チェックの指摘（kit/core/check-source.mjs）：作業場所の deck.html・narration.md・voice.json の lang から。読めなければなし
+async function sourceChecks() {
+  if (!S.ws) return [];
+  let deck = null, narr = '', voiceLang;
+  try { deck = await S.ws.readText(S.deckFile, { max: READ_LIMITS.source }); } catch { deck = null; }
+  if (!deck) return [];
+  try { narr = (await S.ws.readText('narration.md', { max: READ_LIMITS.narration })) || ''; } catch { narr = ''; }
+  try { const v = await S.ws.readText('voice.json', { max: READ_LIMITS.json }); voiceLang = v ? JSON.parse(v)?.lang : undefined; } catch { voiceLang = undefined; }
+  try { return sourceFindings({ deck, narration: narr, voiceLang }); } catch { return []; }
 }
 // ---------------------------------------------------------------- 雛形のまま（kit/core/template-text.mjs）：品質チェック・TTS の前・書き出しの前
 // 作業場所の原稿（deck.html）と口述原稿から、スライド一覧の雛形の字と仮の口述原稿の行（「✎ 」）を探す。読めなければ何もないことにする
@@ -2515,3 +2533,5 @@ const llm = setupLlm({ S, $, el, ask, toast, status, T, EN, downloadAiSkill, dow
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };
+// 試験（tools/test-check-parity.mjs）：品質チェックの結果（板と修正依頼が使うもの。プレビューの答え＋原稿の文字列からの指摘）
+window.__APP_TEST.checkResults = () => checkResults();

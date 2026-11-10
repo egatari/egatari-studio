@@ -125,6 +125,11 @@ export const MESSAGES = {
   linkCount: { ja: (a) => `スライドへのリンク：${a.ok} 本（ほかのファイルへ ${a.other} 本）`, en: (a) => `links to slides: ${a.ok} (to other files: ${a.other})` },
   // ---------------------------------------------------------------- 参照音声（AI 音声が声をまねる元の録音。format spec §5 の recipe。kit/core/ref-voice.mjs）
   // where：slides（スライドが使う：エクスポートが断る）・audio（audio/manifest.json の段階の音声：入れない）・attachments（添付：入れない）・folder（作業フォルダのほかの所）
+  // 音声が古い段階（K。format spec §5.4）。v0.6.8 までは code が言葉そのもの（'audio: stale — …'）だった。言葉は変えない（日本語だけ）
+  audioStale: {
+    ja: (a) => `audio: stale — 段階 ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
+    en: (a) => `audio: stale — 段階 ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
+  },
   refVoice: {
     ja: (a) => `参照音声「${a.path}」（voice.json の声の元の録音）が${{ slides: 'スライドで使われている：教材には参照音声を入れないので、Egatari ファイル（.ega.html）へのエクスポートは断る。スライドから外す', audio: ' audio/manifest.json で段階の音声になっている：Egatari ファイル（.ega.html）には入れない（その段階は音声なし）。その声で作った音声に替える', attachments: '添付の場所（attachments/）にある：Egatari ファイル（.ega.html）には入れない', folder: '作業フォルダの中にある：Egatari ファイル（.ega.html）には入れないが、作業フォルダごと人に渡すと一緒に渡る' }[a.where]}。録音は作業フォルダの外に置き、voice.json にはその場所か名前を書く（教材には、その声で作った音声だけが入る）`,
     en: (a) => `the reference voice “${a.path}” (the recording a voice in voice.json imitates) ${{ slides: 'is used by the slides: a lesson does not carry reference voices, so export to an Egatari file (.ega.html) is refused. Remove it from the slides', audio: 'is a step\'s audio in audio/manifest.json: it is left out of the Egatari file (.ega.html) and that step has no audio. Replace it with audio made with the voice', attachments: 'is in the attachments folder (attachments/): it is left out of the Egatari file (.ega.html)', folder: 'is inside the working folder: it is left out of the Egatari file (.ega.html), but goes along if you share the whole working folder' }[a.where]}. Keep the recording outside the working folder and give its location or name in voice.json (a lesson carries only the audio made with the voice)`,
