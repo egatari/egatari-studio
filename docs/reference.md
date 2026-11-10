@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=7e4408a1c49efc71 -->
+<!-- i18n: pair=reference.ja.md sha256=1a7daf69b3b5c531 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -381,7 +381,7 @@ Not added in `?mode=video` or the presenter-view iframes, and none of it changes
 
 ### Presenter view
 
-Current screen (left), next step (top right), script of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser pointer, pen, fading pen, clear, overview, show later steps faintly; while a pen is active, the same Red/Blue/Black swatches, synced with the main window by color index), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l. Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
+Current screen (left; always shows the later steps of the slide faintly, like `l`, at the theme's `--preview-opacity`; this is the presenter's own view and does not change the main window), **Next slide** (top right; the next slide in its final state, with all its steps shown, even when the current slide still has steps to go; on the last slide, a plain “End”), script of this and the next step (bottom right; Novice turns labelled), slide/step counter, autoplay button, tool buttons (laser pointer, pen, fading pen, clear, overview, show later steps faintly; while a pen is active, the same Red/Blue/Black swatches, synced with the main window by color index), timer with reset (⟲), clock. Keys in the presenter window: → ↓ Space PageDown / ← ↑ PageUp, a, x, d, v, Shift+d, Backspace, Esc, o, l (`l` and its button turn showing later steps faintly on or off on the main window only). Ink drawn on the left screen appears on the main window. Communicates by `postMessage`, so it works from `file://`. The key row ends with a **Send feedback** link (same as in the `?` help).
 
 ### Print and PDF
 

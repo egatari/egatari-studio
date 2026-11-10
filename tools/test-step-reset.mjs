@@ -162,7 +162,8 @@ if (!only || only.includes('kobun')) {
 if (!only || only.includes('kobun')) {
   const deck = path.join(out, 'kobun', 'demo.html');
   const ref = await b.newPage({ viewport: { width: 1280, height: 720 } });
-  await ref.goto(fileUrl(deck) + '?view=follow');
+  // 発表者ビューの今の画面はいつも先のステップを薄く見せる（Player 1.5.0、#192）：見本も preview=1 で描く
+  await ref.goto(fileUrl(deck) + '?view=follow&preview=1');
   await ref.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: scaled(15000) });
   await ref.addStyleTag({ content: HIDE });
   await goTo(ref, 0, 2);
