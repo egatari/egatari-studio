@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-code の見本</title>
+</head>
+<body>
+<div id="stage">
+<section class="slide">
+  <h2>店ごとの売上平均を計算する</h2>
+  <div class="body"><m-code style="height:440px"><script type="application/json">{"lang":"python","code":"import pandas as pd\ndf = pd.read_csv(\"sales.csv\")\ndf.groupby(\"store\")[\"sales\"].mean()","steps":[{"lines":[1],"note":"pandas を読み込む"},{"lines":[2],"note":"CSV を表として読む"},{"lines":[3],"note":"店ごとの平均"}],"output":"store\nA    120.5\nB     98.0"}</script></m-code></div>
+  <div class="concl"><span>架空の売上データ。店ごとにまとめてから平均を求める</span></div>
+</section>
+<section class="slide">
+  <h2>繰り返しで平均を求める</h2>
+  <div class="body"><m-code style="height:440px"><script type="application/json">{"lang":"python","code":"def mean(values):\n    total = 0\n    for value in values:\n        total += value\n    return total / len(values)\n\nprint(mean([2, 4, 6]))","steps":[{"lines":[1,2],"note":"関数を定義し、合計を 0 にする"},{"lines":[3,4],"note":"値を一つずつ合計する"},{"lines":[5,7],"note":"個数で割り、関数の結果を表示"}],"output":"4.0"}</script></m-code></div>
+  <div class="concl"><span>合計を個数で割ると平均になる</span></div>
+</section>
+</div>
+</body>
+</html>
