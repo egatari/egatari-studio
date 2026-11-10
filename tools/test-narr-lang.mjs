@@ -2,7 +2,7 @@
 // test-all: unit（tools/test-all.mjs が見つけて、引数なしで走らせる）
 //   node tools/test-narr-lang.mjs
 import assert from 'node:assert/strict';
-import { narrationLang, textLang, formulaLike } from '../kit/core/narration-lint.mjs';
+import { narrationLang, textLang, formulaLike, formulaText, readingProblems } from '../kit/core/narration-lint.mjs';
 
 let n = 0;
 const ok = (name, f) => { f(); n++; console.log(`  ok ${name}`); };
@@ -79,6 +79,18 @@ ok('コードの識別子（_ でつないだ名前）とハイフンの語は�
   for (const t of ['call cross_val_score with five folds', 'set random_state to zero']) assert.equal(formulaLike(t, 'en'), false, t);
   for (const t of ['x_1 と x_2 の和', 'x_t を更新する', 'a_ij の和', '\\alpha_t を下げる']) assert.equal(formulaLike(t, 'ja'), true, t);
   for (const t of ['take x_1 here', 'update w_t']) assert.equal(formulaLike(t, 'en'), true, t);
+});
+
+ok('1 つの記号の読みは読みのほうで式を見る（{E_i|イーアイ} は式ではない）。式の読みは readingExpr の受け持ち', () => {
+  const r = 'まず 1 つの区画を検証用に取り置き、残りの区画でモデルを訓練して、検証の誤差 {E_i|イーアイ} を測ります。これを検証の区画を替えながら {mark:k-num|circle}{K|ケイ} 回繰り返し、最後に平均を取ります。';
+  assert.equal(formulaLike(formulaText(r), 'ja'), false);
+  for (const x of ['{θ|シータ} を下げる', '{N₀|エヌゼロ} から始める', '{x_t|エックスティー} を更新する', '{x^2|エックスにじょう} の形']) assert.equal(formulaLike(formulaText(x), 'ja'), false, x);
+  // 読みの外の式は今までどおり
+  assert.equal(formulaLike(formulaText('{E_i|イーアイ} と x_1 の和'), 'ja'), true);
+  // 式に 1 つの読み：narrFormula ではなく readingExpr
+  const e = '{E_i + E_j|イーアイ たす イージェー} を足す';
+  assert.deepEqual(readingProblems(e).map((p) => p.why), ['operator']);
+  assert.equal(formulaLike(formulaText(e), 'ja'), false, 'not narrFormula as well');
 });
 
 console.log(`${n} ok`);

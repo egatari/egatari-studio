@@ -9,7 +9,7 @@ import { analyzeSlideIds, isJapanese } from './build-core.mjs';
 import { legacyVocabulary } from './legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './color-vocab.mjs';
 import { parseNarration, normalizeKey, noteProblems } from './narration-parse.mjs';
-import { narrationLang, textLang, formulaLike } from './narration-lint.mjs';
+import { narrationLang, textLang, formulaLike, formulaText } from './narration-lint.mjs';
 
 export function sourceFindings({ deck, narration = '', voiceLang } = {}) {
   const out = [];
@@ -46,7 +46,7 @@ export function sourceFindings({ deck, narration = '', voiceLang } = {}) {
     for (const t of seg.turns) {
       for (const p of noteProblems(t.raw)) add(i, 'error', 'narrNote', { t: p.text, line: seg.line }, seg.stepKey);
       const tx = String(t.display || ''), tl = textLang(tx, NL.lang);
-      if (formulaLike(tx, tl)) add(i, 'warn', 'narrFormula', { t: tx.slice(0, 40) }, seg.stepKey);
+      if (formulaLike(t.raw != null ? formulaText(t.raw) : tx, tl)) add(i, 'warn', 'narrFormula', { t: tx.slice(0, 40) }, seg.stepKey);
       if (tl === 'ja' && tx.length > 200) add(i, 'info', 'turnLong', { n: tx.length, unit: '字' }, seg.stepKey);
       const words = tx.trim().split(/\s+/).length;
       if (tl !== 'ja' && words > 60) add(i, 'info', 'turnLong', { n: words, unit: '語' }, seg.stepKey);
