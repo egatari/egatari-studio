@@ -87,6 +87,9 @@ ok('1 つの記号の読みは読みのほうで式を見る（{E_i|イーアイ
   for (const x of ['{θ|シータ} を下げる', '{N₀|エヌゼロ} から始める', '{x_t|エックスティー} を更新する', '{x^2|エックスにじょう} の形']) assert.equal(formulaLike(formulaText(x), 'ja'), false, x);
   // 読みの外の式は今までどおり
   assert.equal(formulaLike(formulaText('{E_i|イーアイ} と x_1 の和'), 'ja'), true);
+  // 記号の定義の文（ds-cv-code の supply-demand）：読みのない Q_D・Q_S は式、読みを付けたものは式でない
+  for (const t of ['Pは商品の価格、Q_Dは、その価格で買いたい数量である需要量です。', 'Q_Sは、その価格で売りたい数量である供給量を表します。']) assert.equal(formulaLike(formulaText(t), 'ja'), true, t);
+  for (const t of ['{P|ピー}は商品の価格、{Q_D|キューディー}は、その価格で買いたい数量である需要量です。', '{Q_S|キューエス}は、その価格で売りたい数量である供給量を表します。']) assert.equal(formulaLike(formulaText(t), 'ja'), false, t);
   // 式に 1 つの読み：narrFormula ではなく readingExpr
   const e = '{E_i + E_j|イーアイ たす イージェー} を足す';
   assert.deepEqual(readingProblems(e).map((p) => p.why), ['operator']);
