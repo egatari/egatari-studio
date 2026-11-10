@@ -606,11 +606,11 @@ for (const [code, what] of [
   ok(/var\(--lit\s*,/.test(fs.readFileSync(c2(v251, 'orbit', 'index.js'), 'utf8')), '2.5.1: m-orbit 2.0.4 fills light with var(--lit, …) and a fallback');
   const js251 = Object.keys(v251.content).filter((n) => !bumped251.includes(n) && fs.existsSync(c2(v251, n, 'index.js')) && fs.readFileSync(c2(v251, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v250, n, 'index.js'), 'utf8'));
   ok(js251.length === 0, `2.5.1: no other part's index.js changes without a version bump (${js251.join(', ') || 'none'})`);
-  // 候補 2.6.0（components 側はまだタグ・リリースなし。c2-base af839aa。前の候補 779311d・6e1b78c を置き換え）：版が上がるのは m-curves 2.2.0（area）だけ。新しい束 data
+  // 候補 2.6.0（components 側はまだタグ・リリースなし。c2-base fe397d2。前の候補 779311d・6e1b78c・af839aa を置き換え）：版が上がるのは m-curves 2.2.0（area）だけ。新しい束 data
   // （情報・データサイエンス / Data science and code）のパーツ m-mapping・m-sampling・m-ci・m-folds・m-balance・m-code 2.0.0 が入る。
   // ほかのパーツは版も index.js も 2.5.1 のまま。manifest・tarball の sha256 は manifest.json のもの。既定はこちら
   const v260 = lock2.catalogues['2.6.0'];
-  ok(lock2.default === '2.6.0' && v260 && v260.tag === 'v2.6.0' && v260.tarballSha256 === '7ca2a9b06da57de28341c4f1c7c157c01e2c3373b6ee793261ad5e3d28ba81e2' && v260.manifestSha256 === 'c41a3dcab3ef297f61c16487319b1495bf9d0f3b386e8ff1823e1796bee8ce41',
+  ok(lock2.default === '2.6.0' && v260 && v260.tag === 'v2.6.0' && v260.tarballSha256 === '9d885544d1d5e1856a3a78172b67471000350b80d3bbcbf70d42709e3e951204' && v260.manifestSha256 === 'b30ebf1e7b488eb27418af16787c188844666cc956d921584f3287de640eb997',
     'CANDIDATE 2.6.0: the default, pinned to the candidate tarball and manifest (v2.6.0)');
   const DATA260 = ['balance', 'ci', 'code', 'folds', 'mapping', 'sampling'];
   const added260 = Object.keys(v260.parts).filter((n) => !(n in v251.parts)).sort();

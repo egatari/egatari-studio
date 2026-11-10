@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # kokugo parts
 
-Instruction version: fae851f3
+Instruction version: b2ad9e7c
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|

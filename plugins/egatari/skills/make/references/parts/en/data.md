@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # data parts
 
-Instruction version: fae851f3
+Instruction version: b2ad9e7c
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
@@ -49,7 +49,7 @@ Data example (child `<script type="application/json">`): `{"lang":"python","code
 
 `<m-code>` child JSON.
 
-- `code`: 1184px/24px: ~76 chars/line; 440px: 9 lines, one note row, right/no output; ≤16 lines (~680px).
+- `code`: ≤76 chars/line; height ≈ 132+34×lines+35×(list rows−1), ~40 chars/row; >440px: cut/split.
 - `lang`: tag; `steps[{lines,note}]`: 1-based range, note.
 - `output`: ≤8 lines.
 
