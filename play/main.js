@@ -12,7 +12,8 @@ import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
 import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { readFileBoundedText } from '../app/bounded-read.js';
+import { readFileBounded } from '../app/bounded-read.js';
+import { sha256Hex } from './markup.mjs';
 
 /* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
 const VERSION = __PLAY_VERSION__;
@@ -69,7 +70,9 @@ async function openChecked(blob, name, opts) {
   if (blob.size > MAX_BYTES) { showMsg(W().errTooLarge(MAX_BYTES / 1024 / 1024)); return false; }
   announce(W().reading);
   let text;
-  try { text = (await readFileBoundedText(blob, { max: MAX_BYTES, what: 'lesson' })).text; } catch (e) { showMsg(e && e.code === 'read-over' ? W().errTooLarge(MAX_BYTES / 1024 / 1024) : W().errRead); return false; }
+  // the bytes are read once, through the bounded reader: the text to play, and the file's SHA-256 for the markup record (madeOn)
+  let fileSha = Promise.resolve('');
+  try { const bytes = await readFileBounded(blob, { max: MAX_BYTES, what: 'lesson' }); text = new TextDecoder().decode(bytes); fileSha = sha256Hex(bytes); } catch (e) { showMsg(e && e.code === 'read-over' ? W().errTooLarge(MAX_BYTES / 1024 / 1024) : W().errRead); return false; }
   const r = await scan(text);
   if (!r || !r.ok) { showMsg(r && r.error === 'not-egatari' ? W().errNotEgatari : W().errParse); return false; }
   const info = { name: String(name || 'lesson.ega.html').slice(0, 300), title: r.meta.title, kind: r.kind, docId: r.meta.docId };
@@ -77,7 +80,7 @@ async function openChecked(blob, name, opts) {
   else if ($('keep').checked && !$('shared').checked && S.recents && S.recents.kind !== 'none') {
     try { await S.recents.add(blob, info); maybeRequestPersist(); } catch { /* storage full or blocked: still play */ }
   }
-  play(text, r, info, blob);
+  play(text, r, info, fileSha);
   return true;
 }
 
@@ -85,11 +88,11 @@ async function openChecked(blob, name, opts) {
 // A lesson with Live starts on a start screen (Join, or 「参加しないで見る」) and the frame is placed only after that, so the Join
 // tap can never meet the lesson's frame. Then the layout is chosen once from the lesson's activities and the screen
 // (play/layout.mjs) and kept while the lesson plays; only a rotation (or a window resize) lays it out again.
-function play(text, r, info, blob = null) {
+function play(text, r, info, fileSha = Promise.resolve('')) {
   closeLesson(true);
   const live = r.live && LP.validate(r.live, { key: true }).length === 0 ? r.live : null;
   const title = r.meta.title || info.name;
-  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, sourceSha256: r.meta.sourceSha256 || '', blob, started: false };
+  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, sourceSha256: r.meta.sourceSha256 || '', fileSha, started: false };
   S.doc = lessonDocument(text, { shim: __LESSON_SHIM__, hideLive: !!r.live });
   S.title = title;
   document.body.classList.add('playing');
@@ -131,8 +134,7 @@ function startFrame() {
   $('stage-wrap').appendChild(S.frame);
   const f = S.frame;
   // markup (play/markup.mjs): the docId is the one read from this file, never one from the frame
-  M.open({ frame: f, docId: S.playing.docId, sourceSha256: S.playing.sourceSha256, fileBlob: S.playing.blob, shared: $('shared').checked });
-  S.playing.blob = null;
+  M.open({ frame: f, docId: S.playing.docId, sourceSha256: S.playing.sourceSha256, fileSha: S.playing.fileSha, shared: $('shared').checked });
   try { f.focus(); } catch { /* not focusable yet */ }
   // Chrome gives the focus to the frame's first, empty document and keeps the keys in this page once the lesson replaces it;
   // so focus it again when the lesson has loaded, unless the viewer has meanwhile moved the focus elsewhere in this page.

@@ -9,7 +9,7 @@
 // On a shared device nothing is saved: the highlights live in memory until the lesson closes.
 //
 //   const M = markup({els, words, onPersist})
-//   M.open({frame, docId, sourceSha256, fileBlob, shared})   M.close()   M.message(m) → true when it was a markup message
+//   M.open({frame, docId, sourceSha256, fileSha, shared})   fileSha: a promise of the file's SHA-256 (hex), from the bytes play/main.js read   M.close()   M.message(m) → true when it was a markup message
 //   M.setWords(words)   M.toggle(on?)   M.state()
 const COLORS = ['y', 'p', 'b'];
 const MAX = 2000, MAXQ = 1000, CTX = 32;
@@ -60,13 +60,14 @@ function cleanTarget(t) {
   return { section: t.section, quote: { exact: q.exact, prefix: q.prefix, suffix: q.suffix } };
 }
 const newId = () => { const b = crypto.getRandomValues(new Uint8Array(8)); return 'h-' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''); };
-async function sha256(blob) {
-  try { const h = await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()); return Array.from(new Uint8Array(h), (x) => x.toString(16).padStart(2, '0')).join(''); } catch { return ''; }
+// the SHA-256 of bytes already read (play/main.js reads the file once, through app/bounded-read.js)
+export async function sha256Hex(bytes) {
+  try { const h = await crypto.subtle.digest('SHA-256', bytes); return Array.from(new Uint8Array(h), (x) => x.toString(16).padStart(2, '0')).join(''); } catch { return ''; }
 }
 
 export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }) {
   let W = words;
-  const L = { frame: null, docId: '', sourceSha256: '', fileBlob: null, shared: false, rec: null, available: false, bar: false,
+  const L = { frame: null, docId: '', sourceSha256: '', fileSha: Promise.resolve(''), shared: false, rec: null, available: false, bar: false,
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
   const view = () => ({ hidden: L.hidden.slice(), recall: L.recall, recallColors: L.recallColors.slice(), bar: L.bar });
   const send = (m) => { const f = L.frame; if (f && f.contentWindow) f.contentWindow.postMessage(m, '*'); };
@@ -83,7 +84,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     if (L.shared || !L.docId || !L.rec) return;
     const rec = L.rec;
     L.saveChain = L.saveChain.then(async () => {
-      if (!rec.madeOn.fileSha256 && L.fileBlob) rec.madeOn.fileSha256 = await sha256(L.fileBlob);
+      if (!rec.madeOn.fileSha256) rec.madeOn.fileSha256 = await L.fileSha;
       const ok = await saveRecord(JSON.parse(JSON.stringify(rec)));
       if (ok && rec.highlights.length) onPersist();
     });
@@ -142,9 +143,9 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   }
 
   // ---------------------------------------------------------------- opening and closing a lesson
-  async function open({ frame, docId, sourceSha256 = '', fileBlob = null, shared = false }) {
+  async function open({ frame, docId, sourceSha256 = '', fileSha = Promise.resolve(''), shared = false }) {
     close();
-    Object.assign(L, { frame, docId: String(docId || ''), sourceSha256: String(sourceSha256 || ''), fileBlob, shared, loaded: false, missing: [], sections: {} });
+    Object.assign(L, { frame, docId: String(docId || ''), sourceSha256: String(sourceSha256 || ''), fileSha: Promise.resolve(fileSha).catch(() => ''), shared, loaded: false, missing: [], sections: {} });
     let rec = shared ? null : await loadRecord(L.docId);
     if (L.frame !== frame) return;
     if (!rec || !Array.isArray(rec.highlights)) rec = { docId: L.docId, madeOn: {}, highlights: [] };

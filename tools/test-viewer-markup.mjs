@@ -14,6 +14,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { webkit } from 'playwright-core';
 import { launch } from '../kit/browser.mjs';
@@ -181,7 +182,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   await until(async () => (await sizes(f2)).b === 2);
   ok(((x) => x.y === 2 && x.p === 0 && x.b === 2 && !x['y-m'] && !x['p-m'] && !x['b-m'])(await sizes(f2)), `opened again after a reload: the same highlights (kept in this browser) ${JSON.stringify(await sizes(f2))}`);
   const rec = await p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const g = o.result.transaction('lessons').objectStore('lessons').getAll(); g.onsuccess = () => res(g.result); }; }));
-  ok(rec.length === 1 && /^[0-9a-f]{64}$/.test(rec[0].madeOn.fileSha256) && /^[0-9a-f]{64}$/.test(rec[0].madeOn.sourceSha256 || ''), `the record: one per docId, madeOn has fileSha256 and (portable) sourceSha256 (${JSON.stringify(sha)})`);
+  ok(rec.length === 1 && rec[0].madeOn.fileSha256 === crypto.createHash('sha256').update(fs.readFileSync(FIX['book.ega.html'])).digest('hex') && /^[0-9a-f]{64}$/.test(rec[0].madeOn.sourceSha256 || ''), `the record: one per docId, madeOn has the file's own SHA-256 and (portable) sourceSha256 (${JSON.stringify(sha)})`);
   // font size, line spacing and background: the highlights stay on the same text
   await until(async () => (await highlightRects(f2, 'y')).every((x) => x.t));   // the book may be rebuilt once after it opens; the anchors follow
   const t0 = (await highlightRects(f2, 'y')).map((x) => x.t).join('|');
