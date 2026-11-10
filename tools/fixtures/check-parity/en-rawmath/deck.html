@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attention Is All You Need</title>
+<!--
+  Fixture for tools/test-check-parity.mjs: an English lesson with raw $…$ math left on four slides (the owner's report, v0.6.9),
+  plus other findings that the command-line check and the editor's check must both report.
+-->
+<style>
+.hot { color: #e11d48; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-cover">
+  <div class="venue">Reading group</div>
+  <h1>Attention Is All You Need</h1>
+  <div class="au">Presenter</div>
+</section>
+
+<section class="slide" id="s-attn">
+  <h2>Scaled dot-product attention</h2>
+  <div class="body">
+    <ul>
+      <li>Each query is compared with every key: $QK^T$</li>
+      <li>The scores are scaled by $\sqrt{d_k}$ before the softmax</li>
+      <li data-step="1">The output is a weighted sum of the values</li>
+    </ul>
+  </div>
+  <div class="concl"><span>Attention is a soft lookup table</span></div>
+</section>
+
+<section class="slide" id="s-heads">
+  <h2>Multi-head attention</h2>
+  <div class="body">
+    <ul>
+      <li>Run $h = 8$ attention heads in parallel</li>
+      <li>Each head projects to $d_k = d_{model}/h$ dimensions</li>
+      <li class="blue">Heads look at different relations</li>
+    </ul>
+  </div>
+  <div class="concl"><span>Several heads, several views</span></div>
+</section>
+
+<section class="slide" id="s-pos">
+  <h2>Positional encoding</h2>
+  <div class="body">
+    <p>Sinusoids of different frequencies: $PE_{pos,2i} = \sin(pos/10000^{2i/d})$</p>
+    <p>The model has no recurrence, so order must be added to the input. Costs $200 per run are not math.</p>
+    <img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" width="40" height="40">
+  </div>
+  <div class="concl"><span>Order comes from the encoding</span></div>
+</section>
+
+<section class="slide" id="s-cost">
+  <h2>Why self-attention</h2>
+  <div class="body">
+    <p>Per-layer cost is $O(n^2 d)$ but every path has length $1$</p>
+    <p>See <a href="#s-nowhere">the missing slide</a>, <a href="#3">slide three</a> and <a href="#s-attn:9">a step that is not there</a>.</p>
+    <svg viewBox="0 0 300 200" width="300" height="200"><rect x="10" y="10" width="280" height="180" fill="none" stroke="var(--fg)"/></svg>
+  </div>
+  <div class="concl"><span>Short paths make long-range learning easier</span></div>
+</section>
+
+<section class="slide" id="s-wrap">
+  <h2>Summary</h2>
+  <div class="body">
+    <ul>
+      <li>Attention replaces recurrence</li>
+      <li>Training is highly parallel</li>
+    </ul>
+  </div>
+  <div class="concl"><span>Attention is all you need</span></div>
+</section>
+
+</div>
+</body>
+</html>

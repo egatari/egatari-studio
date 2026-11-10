@@ -28,9 +28,9 @@ import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, BATCH } from '../kit/core/llm-outline.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
-import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
+import { buildFixRequest, cutOffRequest, rulesFor } from '../kit/core/llm-fix.mjs';
 import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
-import { message, MESSAGES } from '../kit/check-messages.mjs';
+import { message, MESSAGES, ruleOf } from '../kit/check-messages.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
@@ -1521,9 +1521,12 @@ export function setupLlm(app) {
       const o = { stepKey: seg.stepKey, line: seg.line, end: seg.end };
       return { ...r.arg, line: seg.line, end: seg.end, ...orphanDetail(o, r.arg, narrText) };
     };
-    const probs = (results || []).filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift' && r.code !== 'metricsFontLoad').map((r) => { const arg = withLines(r); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, text: T.checkMsg(r.code, arg) }; });
+    // 規格の名前：修正依頼の表（kit/core/llm-fix.mjs の BY_CODE）になければ、コマンド版の言葉の表（kit/check-messages.mjs の ruleOf）から（rawMath の R-math など）
+    const ruleFor = (code, arg) => { if (rulesFor({ code }).length) return null; try { return ruleOf(code, arg && typeof arg === 'object' ? arg : {}); } catch { return null; } };
+    const probs = (results || []).filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift' && r.code !== 'metricsFontLoad').map((r) => { const arg = withLines(r), rule = ruleFor(r.code, arg); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, ...(rule ? { rule } : {}), text: T.checkMsg(r.code, arg) }; });
     // 組み立ての知らせのうち、原稿の書き方に関わるもの（行き先のない口述原稿・目印・段階の番号など）
-    for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });
+    // 目印が見つからない（mark: 目印…）は品質チェックの markMissing が部品の作った要素も含めて実際の画面で見るので、重ねて載せない（kit/check.mjs と同じ）
+    for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w) && !/^mark: 目印/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });
     return probs;
   }
   // 開いているメモ（comments.json。読めなければなし）。点や手描きのメモの画像は backlog #90

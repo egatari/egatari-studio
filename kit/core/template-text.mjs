@@ -23,7 +23,7 @@ export const TEMPLATE_TEXT = Object.freeze({
     'two-cols': { h: '2 つを比べる見出し', a: '左の列の見出し', b: '右の列の見出し', la: '左の列の項目', lb: '右の列の項目', concl: '⇒ 比べて分かること', n: '左と右を比べて話すことを書く', nc: '結論の行で話すことを書く' },
     figure: { h: '図の題', fig: '図をここに', cap: '図 1：図の説明', concl: '→ 図から読み取れること', n: '図を指しながら話すことを書く', nc: '結論の行で話すことを書く' },
     section: { h: '新しい章の題', lead: 'この章で話すこと', n: 'この章で話すことを書く' },
-    quote: { h: '引用の題', q: '「引用する文をここに書きます」', cite: '— 出典', n: '引用を読み上げ、何を言っているかを書く' },
+    quote: { h: '引用の題', q: '「引用する文をここに書く」', cite: '— 出典', n: '引用を読み上げ、何を言っているかを書く' },
   },
   en: {
     'title-body': { h: 'New slide heading', li: ['First point', 'Second point'], concl: '⇒ The point of this slide', n: 'Write what you say on this slide', ni: ['Write what you say with the first point', 'Write what you say with the second point'], nc: 'Write what you say with the conclusion line' },
@@ -35,8 +35,10 @@ export const TEMPLATE_TEXT = Object.freeze({
 });
 const NARR_KEYS = new Set(['n', 'ni', 'nc']);
 const norm = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
-export const TEMPLATE_DEFAULTS = Object.freeze([...new Set(Object.values(TEMPLATE_TEXT).flatMap((L) => Object.values(L).flatMap((t) =>
-  Object.entries(t).filter(([k]) => !NARR_KEYS.has(k)).flatMap(([, v]) => [].concat(v)).map(norm))))]);
+// 前の版の雛形の字（今は書かないが、残っていれば雛形のままとして知らせる）。引用の雛形は v0.6.8 まで です・ます で、品質チェックの desuMasu に当たった
+const EARLIER_DEFAULTS = ['「引用する文をここに書きます」'];
+export const TEMPLATE_DEFAULTS = Object.freeze([...new Set([...Object.values(TEMPLATE_TEXT).flatMap((L) => Object.values(L).flatMap((t) =>
+  Object.entries(t).filter(([k]) => !NARR_KEYS.has(k)).flatMap(([, v]) => [].concat(v)).map(norm))), ...EARLIER_DEFAULTS.map(norm)])]);
 const DEFAULTS = new Set(TEMPLATE_DEFAULTS);
 
 export function placeholderSteps(narration) {

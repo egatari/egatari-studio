@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=10961cc64ac73277 -->
+<!-- i18n: pair=editor.ja.md sha256=5e49923d4d2e3e19 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -70,7 +70,7 @@ A web page that opens a working folder directly and does what the [dev server](d
 
    A dot (●) after **File ▾** means an Egatari file has unsaved changes.
    - **Help (?)** also offers **Download the AI skill**, the same language and version as **New…**.
-   - **Quality check:** the browser quality checker, a subset of `npm run check` that runs in the preview (overflow, font size, title / conclusion length, missing script, palette contrast). The layout part (overflow and the vertical-layout limits, text cut off by a box or going off the slide, font size in figures, title and conclusion length) is the same code as the command (`kit/core/layout-scan.mjs`). Click a result to go to the slide. It is a hint, not the full quality check: there are no part determinism, timeline, morph or accessibility checks, and the numbers can differ slightly from the command quality checker because the window differs.
+   - **Quality check:** the browser quality checker. It runs the checks of `npm run check` in the preview and on the source, with the same codes and messages: layout (overflow and the vertical-layout limits, text cut off by a box or going off the slide, font size in figures, title and conclusion length; the same `kit/core/layout-scan.mjs`), unrendered math such as leftover `$…$`, です・ます and punctuation, missing script, script that reads a formula, links to slides, emphasis targets, morphs, image and figure names, slide ids and keys, source outside the 1.0 vocabulary, and palette contrast. Click a result to go to the slide. Only the command has the checks that take screenshots (part determinism, body balance) or read files on disk, and the info lists ([Reference: In the editor](reference.md#quality-checker)). The numbers can differ slightly from the command quality checker because the window differs.
    - The built HTML (`out/deck.html`) is no longer exported from the editor; build it with `node kit/build.mjs` on the command line.
    - **File ▾ → Save as…** (working folder): writes the lesson with its source and audio as one Egatari file (editable, `.ega.html`) to give to others; the working folder stays as it is.
    - **File ▾ → Export ▸ → For participants (play-only)…:** an Egatari file without the source (format §3.7, the same as `--play-only`): it plays in any browser and cannot be edited. For an Egatari file it is made from the saved file (Save first if there are unsaved changes); for a working folder from the folder. The dialog has a checkbox **Add Live (questions and polls)**; the file name is the lesson title with `.play.ega.html`.

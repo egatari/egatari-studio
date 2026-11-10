@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>品質チェックの見本</title>
+<!--
+  tools/test-check-parity.mjs の見本：日本語のデッキで、です・ます、句読点の混在、モーフの相手がない、旧来の鍵、data-steps など。
+-->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide" id="s-desu">
+  <h2>文体をそろえる</h2>
+  <div class="body">
+    <ul>
+      <li>スライドの字は言い切りで書きます。</li>
+      <li>台本は話し言葉にする．</li>
+    </ul>
+  </div>
+  <div class="concl"><span>⇒ スライドは常体，台本は敬体</span></div>
+</section>
+
+<section class="slide" data-key="old-key">
+  <h2>句読点をそろえる</h2>
+  <div class="body">
+    <p>読点と句点は、デッキの中で一つに決める。</p>
+    <p data-steps="2">ここでは「、。」を使う。</p>
+  </div>
+  <div class="concl"><span>⇒ 一つのデッキに一つの決まり</span></div>
+</section>
+
+<section class="slide" id="s-morph" data-morph="s-none">
+  <h2>モーフの相手</h2>
+  <div class="body">
+    <p data-id="x">相手のないモーフ</p>
+  </div>
+  <div class="concl"><span>⇒ 元のスライドを指す</span></div>
+</section>
+
+<section class="slide noconcl">
+  <div class="body">
+    <p>見出しのないスライド</p>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
