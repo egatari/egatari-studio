@@ -28,6 +28,18 @@
   --emph-tint: #fbe7e3;
   --concl-bg:  #F5F5F5;                         /* 結論の行の地。無彩のごく淡い灰（--emph の字 5.3:1・--fg 14.6:1。色覚の型と白黒でも見え方が同じ。1.2.0） */
   --lit:     #F5B800;                         /* 光と、光が照らすもの（太陽・灯り・月の明るい側）。山吹寄りの黄（白地 1.8:1。字の色ではない：輪郭線と一緒に描く。色覚の模擬でも --emph と分かれる。1.3.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色（袋の玉・リトマス紙・信号）。11 の基本色名。色だけで伝えない：名前か頭文字を添え、白・黒と地に近い色には輪郭線（--fg か --muted）。1.4.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
 
   /* 先のステップを薄く見せるときの濃さ（format spec §8.4 の --preview-opacity。プレーヤーも部品もこれを読む） */
   --preview-opacity: .45;

@@ -6,6 +6,18 @@
   --cover-bg: #eaf3f5;
   --font-sans: "Zen Maru Gothic", "BIZ UDPGothic", sans-serif;
   --lit: #FFCE3A;                    /* 光と照らされる側。明るい黄（淡い地 1.4:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。小学校・広報向けに少し明るく。名前か頭文字を添え、白・黒と地に近い色には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #262626;
+  --obj-red:     #E8383D;
+  --obj-green:   #36A852;
+  --obj-yellow:  #FFDC1E;
+  --obj-blue:    #2B7BE0;
+  --obj-brown:   #915F33;
+  --obj-purple:  #9650B8;
+  --obj-pink:    #F58CBC;
+  --obj-orange:  #F59A23;
+  --obj-gray:    #949494;
 }
 /* look heading: soft */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:0;background:var(--base-wash);border-radius:16px;padding:8px 22px}

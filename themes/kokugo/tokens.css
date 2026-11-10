@@ -10,4 +10,16 @@
   --font-sans: var(--font-mincho);
   --font-cap: "BIZ UDPGothic", "Hiragino Sans", sans-serif;
   --lit: #F8B500;                    /* 光と照らされる側。山吹色（生成り地 1.8:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。default と同じ値（どのテーマでも赤い玉は同じ赤）。名前か頭文字を添え、白・黒と地に近い色には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
 }

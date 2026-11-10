@@ -1,6 +1,6 @@
 // テーマの色の語彙の外の色（format spec §8.4、R-colors。kit/core/color-vocab.mjs の colorsOutsideVocabulary と kit/check.mjs の colorOutside）の試験
 //   node tools/test-check-colors.mjs [作業フォルダ]
-// 1. 値ごとの決まり（Node だけ）：var(--lit) などの役割・color-mix() で役割どうし・役割と --bg を混ぜた色・色相を保った相対色は知らせない。
+// 1. 値ごとの決まり（Node だけ）：var(--lit) などの役割・物の色 var(--obj-red)（予備にその名前の色をじかに書いてもよい）・color-mix() で役割どうし・役割と --bg を混ぜた色・色相を保った相対色は知らせない。
 //    じかに書いた色（16 進・色の関数・色の名前・var() の予備の値）は literal、相対色の構文（oklch・lch・hsl・hwb・rgb・lab・oklab・color() の from）で
 //    色相を変えた色は hue。元の色がじかに書いた色なら literal だけ
 // 2. 原稿の見るところ：<style> の宣言の値（セレクタの #id は色ではない）・style 属性・SVG の色の属性。<script> と url(#…) は見ない
@@ -28,6 +28,13 @@ const kinds = (v) => colorsInValue(v).map((x) => x.kind);
 await t('許すもの：var(--lit) とほかの役割、color-mix() で役割どうし・役割と --bg、transparent・currentColor・none、url(#…)', () => {
   for (const v of ['var(--lit)', 'var(--emph)', 'var(--lit, var(--emph))', 'color-mix(in oklch, var(--emph) 30%, var(--bg))', 'color-mix(in srgb, var(--lit), var(--term))',
     '1px solid var(--line)', 'transparent', 'currentColor', 'none', 'url(#grad)', 'linear-gradient(var(--bg), var(--term-tint))']) assert.deepEqual(kinds(v), [], v);
+});
+await t('物の色 --obj-*（§8.4）：var(--obj-red) などの 11 色、物の色どうしの color-mix() は知らせない。予備にその名前の色をじかに書いてもよい。ほかの役割の予備・物の色でない名前は今までどおり', () => {
+  for (const v of ['var(--obj-white)', 'var(--obj-black)', 'var(--obj-red)', 'var(--obj-green)', 'var(--obj-yellow)', 'var(--obj-blue)', 'var(--obj-brown)', 'var(--obj-purple)',
+    'var(--obj-pink)', 'var(--obj-orange)', 'var(--obj-gray)', 'var(--obj-red, red)', 'var(--obj-blue, #1e6fd9)', 'var(--obj-gray, rgb(140 140 140))', 'var(--obj-yellow, var(--lit))',
+    'color-mix(in oklch, var(--obj-yellow) 50%, var(--obj-green))', 'color-mix(in oklch, var(--obj-red), var(--bg))', '2px solid var(--obj-black, black)']) assert.deepEqual(kinds(v), [], v);
+  for (const v of ['var(--lit, #ffcc00)', 'var(--obj-cyan, cyan)', 'var(--objred, red)']) assert.deepEqual(kinds(v), ['literal'], v);
+  assert.deepEqual(kinds('var(--obj-red, oklch(from var(--emph) l c calc(h + 30)))'), ['hue']);
 });
 await t('色相を保った相対色は知らせない（明るさ・鮮やかさ・不透明度だけ。既定のテーマの --title と同じ作り方）', () => {
   for (const v of ['oklch(from var(--emph) min(l, 0.4) c h)', 'oklch(from var(--emph) l c h / 50%)', 'lch(from var(--term) calc(l + 10) c h)', 'hsl(from var(--emph) h s calc(l * 1.2))',
@@ -75,7 +82,8 @@ await t('品質チェック（kit/check.mjs --json）：見本の原稿に color
   ]);
   assert.deepEqual(lit.data.items.map((i) => i.what), ['#ffcc00']);
   const body = fs.readFileSync(path.join(FIX, 'deck.html'), 'utf8');
-  for (const ok of ['var(--lit)', 'color-mix(in oklch, var(--emph) 25%, var(--bg))', 'oklch(from var(--emph) min(l, 0.45) c h)']) assert.ok(body.includes(ok), ok);
+  for (const ok of ['var(--lit)', 'color-mix(in oklch, var(--emph) 25%, var(--bg))', 'oklch(from var(--emph) min(l, 0.45) c h)', 'var(--obj-red, red)', 'var(--obj-blue, #1e6fd9)',
+    'color-mix(in oklch, var(--obj-yellow, yellow), var(--obj-green))']) assert.ok(body.includes(ok), ok);
   assert.ok(!res.results.some((x) => x.sev === 'error'), JSON.stringify(res.results.filter((x) => x.sev === 'error')));
 });
 

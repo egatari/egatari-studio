@@ -16,6 +16,18 @@
   --series-3: var(--accent2);
   --series-4: #8a8f94;
   --lit: #F2C300;                    /* 光と照らされる側。黄（橙の --emph と分かれるよう赤みを抑えた。白地 1.7:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。default と同じ値（どのテーマでも赤い玉は同じ赤）。名前か頭文字を添え、白・黒と地に近い色には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
 }
 @supports (color: color-mix(in oklch, red 10%, white)){
   :root{

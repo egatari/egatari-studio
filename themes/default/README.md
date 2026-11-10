@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=3d692c529201acca -->
+<!-- i18n: pair=README.ja.md sha256=98eb821a9024cb6c -->
 # Theme `default`
 
 [日本語](README.ja.md)
@@ -40,3 +40,26 @@ From the plain-theme proposal by @totasuko-lab (1.1.0 took its colours). The con
 
 - **`--lit` `#F5B800`.** A warm, slightly amber yellow, the colour people expect for sunlight and lamps. On white it is pale (1.79:1), so the outline carries the shape; the 3:1 of WCAG 1.4.11 is met by the outline, not the fill. Under all four simulated colour-vision types it stays apart from `--emph` by the same limits as `--emph` against `--term` (`node tools/test-themes.mjs`), so the sun and a conclusion are not confused.
 - Each bundled theme sets its own `--lit` (a warm yellow fitting its palette; `sumi` and `business` lean away from their orange `--emph`). Themes that extend `default` without setting it inherit `#F5B800`.
+
+## Object colours: `--obj-*` (1.4.0)
+
+`--obj-white` … `--obj-gray` are the eleven basic colour terms, for colours that are themselves the content: a red ball in a bag, blue litmus paper, a green traffic light (format spec §8.4). They are fills shown with the name or initial of the colour (「赤」, "R") on or beside the object, never colour alone, because red and green, for example, look alike to many viewers; white, black and any colour near the background also get an outline in `--fg` or `--muted`. Chart categories use `--series-*`, and meanings use the roles above.
+
+| Token | Value | OKLCH L / C / h | On white |
+|---|---|---|---|
+| `--obj-white` | `#FFFFFF` | 1.000 / 0.000 / – | 1.00:1 |
+| `--obj-black` | `#222222` | 0.252 / 0.000 / – | 15.91:1 |
+| `--obj-red` | `#E0242B` | 0.584 / 0.219 / 26.1 | 4.71:1 |
+| `--obj-green` | `#2E9E44` | 0.617 / 0.163 / 146.5 | 3.45:1 |
+| `--obj-yellow` | `#F5D90A` | 0.882 / 0.182 / 99.8 | 1.42:1 |
+| `--obj-blue` | `#1E6FD9` | 0.555 / 0.179 / 257.4 | 4.85:1 |
+| `--obj-brown` | `#8B5A2B` | 0.512 / 0.090 / 62.2 | 5.84:1 |
+| `--obj-purple` | `#8E44AD` | 0.526 / 0.170 / 314.7 | 5.87:1 |
+| `--obj-pink` | `#F27BB0` | 0.733 / 0.156 / 353.6 | 2.55:1 |
+| `--obj-orange` | `#F28C1A` | 0.734 / 0.165 / 60.4 | 2.46:1 |
+| `--obj-gray` | `#8C8C8C` | 0.640 / 0.000 / – | 3.36:1 |
+
+- **Recognisably the name.** Each hue lies in its family's window in OKLCH (red 15–45°, orange 50–80°, yellow 85–115°, green 125–165°, blue 235–275°, purple 285–335°, pink 340–15°; the windows hold the hue of the CSS colour of that name and do not overlap). Brown shares orange's hue and is told apart by being darker and less saturated (lightness 0.35–0.60, chroma 0.04–0.12). White, black and gray have chroma ≤ 0.02 (`node tools/test-themes.mjs`).
+- **Neighbours stay apart.** Adjacent names (red–orange, orange–yellow, yellow–green, green–blue, blue–purple, purple–pink, pink–red, brown–orange, brown–red, gray–white, gray–black) are at least ΔE00 20 apart for normal vision, the same limit as `--emph` against `--term`: a difference that can be named one swatch at a time on a projector, not only side by side. The closest pair here is brown–red (23.7). Colour-vision simulation is not required, because the name or initial always comes with the colour.
+- **Yellow is not `--lit`.** `--obj-yellow` is a lemon yellow (h 99.8), leaning away from the amber `--lit` (h 84.4; ΔE00 11.1). They are different roles: `--lit` is light and what it lights, `--obj-yellow` a yellow object, which carries its name anyway; no limit is set between them.
+- Contrast with the background is not required (these are fills with labels and outlines); on white it is 1.4–15.9:1. `sumi`, `kokugo`, `tokiwa`, `murasaki` and `business` use the same values, so a red ball is the same red in every theme; `kogecha` lowers the chroma a little to fit its subdued palette, and `asagi` is a little brighter for primary schools. Every bundled theme declares all eleven in its own `tokens.css`; a theme that extends `default` without them inherits these.
