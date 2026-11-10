@@ -4,6 +4,8 @@
 //   1 回押して 1 つだけ動く（枠の中で押したキーを Viewer がもう一度送らない）。ボタンの上の Space はボタンを押す（送らない）。
 //   教材が自分に送った「キー」の知らせは効かない（play/lesson-shim.js は Viewer のページからの知らせだけを受ける）
 //   checkViewerKeys({ctx, p, f, ok, until, engine}) — p は再生中の Viewer のページ、f は教材の枠（DECK.ready）
+import { scaled } from './wait-scale.mjs';
+
 export async function checkViewerKeys({ ctx, p, f, ok, until, engine }) {
   const pos = () => f.evaluate(() => { const s = DECK.state(); return { i: s.slide - 1, k: s.step, n: DECK.slides.length }; });
   const go = (i, k) => f.evaluate(([i, k]) => DECK.go(i, k, false), [i, k]);
@@ -24,12 +26,12 @@ export async function checkViewerKeys({ ctx, p, f, ok, until, engine }) {
       if (k === ' ' && !space) continue;
       await go(0, 0);
       await p.keyboard.press(KEY[k] || k);
-      if (!(await until(async () => same(await pos(), expect[k]), 2000))) bad.push(`${KEY[k] || k} → ${JSON.stringify(await pos())}`);
+      if (!(await until(async () => same(await pos(), expect[k]), scaled(2000)))) bad.push(`${KEY[k] || k} → ${JSON.stringify(await pos())}`);
     }
     for (const [k, back] of [['ArrowLeft', expect.ArrowRight], ['PageUp', expect.PageDown], ['ArrowUp', expect.ArrowDown], ['Home', expect.End]]) {
       await go(back.i, back.k);
       await p.keyboard.press(k);
-      if (!(await until(async () => same(await pos(), { i: 0, k: 0 }), 2000))) bad.push(`${k} → ${JSON.stringify(await pos())}`);
+      if (!(await until(async () => same(await pos(), { i: 0, k: 0 }), scaled(2000)))) bad.push(`${k} → ${JSON.stringify(await pos())}`);
     }
     await go(0, 0);
     ok(bad.length === 0, `${engine} keys ${label}: → ←${space ? ' Space' : ''} PageDown PageUp ↓ ↑ End Home each move the lesson once${space ? '' : ' (Space aside: it presses the button)'} (${bad.join('; ') || 'all'})`);
@@ -44,7 +46,7 @@ export async function checkViewerKeys({ ctx, p, f, ok, until, engine }) {
   const lang = await p.evaluate(() => document.documentElement.lang);
   await p.focus('#b-lang');
   await p.keyboard.press('Space');
-  ok(await until(() => p.evaluate((l) => document.documentElement.lang !== l, lang), 2000) && same(await pos(), { i: 0, k: 0 }), `${engine} keys: Space on a Viewer button presses the button and does not move the lesson`);
+  ok(await until(() => p.evaluate((l) => document.documentElement.lang !== l, lang), scaled(2000)) && same(await pos(), { i: 0, k: 0 }), `${engine} keys: Space on a Viewer button presses the button and does not move the lesson`);
   await p.click('#b-lang');
   const box = await (await p.$('#lesson')).boundingBox();
   await p.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.25);
