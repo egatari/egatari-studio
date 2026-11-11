@@ -121,6 +121,20 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
         h.color = m.color; h.modified = now; changed();
         break;
       }
+      // a record made before the ruby rule (annotations.md, Highlight record, "Ruby."), widened to whole ruby segments after it was
+      // re-attached: keep the widened target (same id, colour and created). Only ever wider: the new quote holds the old one
+      case 'markup-widen': {
+        if (!keys(m, ['egaViewer', 'list']) || !Array.isArray(m.list) || m.list.length > MAX) break;
+        let n = 0;
+        for (const w of m.list) {
+          if (!w || typeof w !== 'object' || !keys(w, ['id', 'target']) || !isStr(w.id, 40)) continue;
+          const h = find(w.id), t = cleanTarget(w.target);
+          if (!h || !t || t.quote.exact === h.target.quote.exact || !t.quote.exact.includes(h.target.quote.exact)) continue;
+          h.target = t; h.modified = now; n++;
+        }
+        if (n) changed();
+        break;
+      }
       case 'markup-del': {
         if (!keys(m, ['egaViewer', 'id']) || !isStr(m.id, 40) || !find(m.id)) break;
         L.rec.highlights = H.filter((h) => h.id !== m.id); changed(); els.announce(W().mDeleted);

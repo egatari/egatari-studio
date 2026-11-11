@@ -11,6 +11,7 @@
 //   - 暗記: an opaque band of the colour over the text of the chosen colours; a tap reveals one highlight.
 // Messages (all {egaViewer: "markup-…"}; the page checks every one):
 //   to the page   hello {supported, article}  add {color, target}  set {id, color}  del {id}  status {missing:[id], sections:{id: title}}  esc
+//                 widen {list: [{id, target}]}  (records made before the ruby rule, widened to whole ruby segments once re-attached)
 //   from the page load {list, words, view}  view {view}  jump {id}
 //     view = {hidden: ["y"…], recall: bool, recallColors: ["y"…], bar: bool}
 (function markupFrame() {
@@ -56,6 +57,28 @@
   function sectionOf(node) { var e = node.nodeType === 1 ? node : node.parentElement, s = e && e.closest("section[data-section-id]"); return s && S.article.contains(s) ? s : null; }
   function sectionEl(id) { if (!id) return null; var all = S.article.querySelectorAll("section[data-section-id]"); for (var i = 0; i < all.length; i++) if (all[i].getAttribute("data-section-id") === id) return all[i]; return null; }
 
+  // ---------------------------------------------------------------- ruby: a segment (a run of base text and the rt after it) is one unit
+  // (annotations.md, Highlight record, "Ruby."): a quote never starts or ends inside a segment's base text. Group ruby (one reading
+  // over a word) is one segment; mono ruby (a reading per character, in one <ruby> or one each) is one segment per character
+  function rtAfter(rb, node) { var rts = rb.querySelectorAll("rt"); for (var i = 0; i < rts.length; i++) if (node.compareDocumentPosition(rts[i]) & Node.DOCUMENT_POSITION_FOLLOWING) return rts[i]; return null; }
+  function rubyOf(node) { var p = node.parentElement, rb = p && p.closest("ruby"); return rb && !p.closest("rt,rp") ? rb : null; }
+  function nodeAt(T, off) { var lo = 0, hi = T.nodes.length - 1; while (lo < hi) { var mid = (lo + hi + 1) >> 1; if (T.starts[mid] <= off) lo = mid; else hi = mid - 1; } return lo; }
+  // the segment of T.nodes[i], as offsets [a, b) in T; null outside ruby
+  function segAt(T, i) {
+    var n = T.nodes[i], rb = n && rubyOf(n);
+    if (!rb) return null;
+    var key = rtAfter(rb, n), same = function (j) { var m = T.nodes[j]; return m && rb.contains(m) && rubyOf(m) === rb && rtAfter(rb, m) === key; };
+    var j = i, k = i;
+    while (j > 0 && same(j - 1)) j--;
+    while (k < T.nodes.length - 1 && same(k + 1)) k++;
+    return { a: T.starts[j], b: T.starts[k] + T.nodes[k].data.length };
+  }
+  function widen(T, s, e) {
+    if (!T.nodes.length || e <= s) return [s, e];
+    var g = segAt(T, nodeAt(T, s)); if (g && g.a < s && s < g.b) s = g.a;
+    g = segAt(T, nodeAt(T, e - 1)); if (g && g.a < e && e < g.b) e = g.b;
+    return [s, e];
+  }
   // ---------------------------------------------------------------- a selection → a target
   function targetOf(range) {
     var a = S.article;
@@ -65,6 +88,7 @@
     var T = textOf(root), s = offsetOf(T, range.startContainer, range.startOffset), e = offsetOf(T, range.endContainer, range.endOffset);
     while (s < e && /\s/.test(T.text.charAt(s))) s++;
     while (e > s && /\s/.test(T.text.charAt(e - 1))) e--;
+    var w = widen(T, s, e); s = w[0]; e = w[1];
     if (e <= s || e - s > MAXQ) return null;
     return { section: id, quote: { exact: T.text.slice(s, e), prefix: T.text.slice(Math.max(0, s - CTX), s), suffix: T.text.slice(e, e + CTX) } };
   }
@@ -78,7 +102,9 @@
       if (sc > score) { score = sc; best = i; }
       i = T.text.indexOf(q.exact, i + 1);
     }
-    return best < 0 ? null : rangeAt(T, best, best + q.exact.length);
+    if (best < 0) return null;
+    var w = widen(T, best, best + q.exact.length);   // a record made before the ruby rule may end inside a segment
+    return rangeAt(T, w[0], w[1]);
   }
   function anchor(h) { return findIn(sectionEl(h.target.section), h.target.quote) || findIn(S.article, h.target.quote); }
 
@@ -143,9 +169,9 @@
     // each piece is tagged with its display equation (if any), so that a whole equation becomes one box below
     var push = function (n, a, b) {
       var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(), p = n.parentElement;
-      var g = p && (p.closest(".egatari-math") || p.closest(".katex-display")), rb = p && p.closest("ruby");
-      if (rb && !(p.closest("rt,rp")) && rubies.indexOf(rb) < 0) rubies.push(rb);
-      for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push({ q: rs[i], g: g });
+      var g = p && (p.closest(".egatari-math") || p.closest(".katex-display")), rb = rubyOf(n), rt = rb ? rtAfter(rb, n) : null;
+      if (rt && rubies.indexOf(rt) < 0) rubies.push(rt);
+      for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push({ q: rs[i], g: g, rt: rt });
     };
     if (root.nodeType === 3) push(root, r.startOffset, r.endOffset);
     else {
@@ -165,26 +191,27 @@
       }
     }
     // a highlighted ruby base takes its reading with it: 暗記 must hide the furigana too, or it gives the answer away
-    rubies.forEach(function (rb) { Array.prototype.forEach.call(rb.querySelectorAll("rt"), function (rt) { var rs = rt.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5) out.push({ q: rs[i], g: null }); }); });
+    rubies.forEach(function (rt) { var rs = rt.getClientRects(); for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5) out.push({ q: rs[i], g: null, rt: rt }); });
     return mergeRects(out);
   }
   // One box per display equation, and one per line elsewhere (pieces whose spans across the line overlap: text, inline math with
   // its sub- and superscripts, a ruby base with its reading), so neither the colour nor a 暗記 band is jagged
   function mergeRects(list) {
-    var v = vertical(), groups = [], lines = [];
+    var v = vertical(), groups = [], lines = [], rtsOf = [];   // rtsOf[k]: the ruby readings in line k (a base and its reading are one line)
     var U = function (a, q) { return a ? { left: Math.min(a.left, q.left), top: Math.min(a.top, q.top), right: Math.max(a.right, q.right), bottom: Math.max(a.bottom, q.bottom) } : { left: q.left, top: q.top, right: q.right, bottom: q.bottom }; };
     list.forEach(function (it) {
       if (it.g) { for (var i = 0; i < groups.length; i++) if (groups[i].g === it.g) { groups[i].b = U(groups[i].b, it.q); return; } groups.push({ g: it.g, b: U(null, it.q) }); return; }
       var q = it.q, a0 = v ? q.left : q.top, a1 = v ? q.right : q.bottom;
-      for (var k = 0; k < lines.length; k++) { var L0 = v ? lines[k].left : lines[k].top, L1 = v ? lines[k].right : lines[k].bottom; if (a0 < L1 - 1 && a1 > L0 + 1) { lines[k] = U(lines[k], q); return; } }
-      lines.push(U(null, q));
+      for (var k = 0; k < lines.length; k++) { var L0 = v ? lines[k].left : lines[k].top, L1 = v ? lines[k].right : lines[k].bottom; if ((a0 < L1 - 1 && a1 > L0 + 1) || (it.rt && rtsOf[k].indexOf(it.rt) >= 0)) { lines[k] = U(lines[k], q); if (it.rt && rtsOf[k].indexOf(it.rt) < 0) rtsOf[k].push(it.rt); return; } }
+      lines.push(U(null, q)); rtsOf.push(it.rt ? [it.rt] : []);
     });
     // a line can grow into the next one through a tall piece: merge again until nothing overlaps
     for (var again = true; again;) {
       again = false;
       for (var x = 0; x < lines.length && !again; x++) for (var y = x + 1; y < lines.length && !again; y++) {
         var A = lines[x], B = lines[y], o = v ? (A.left < B.right - 1 && A.right > B.left + 1) : (A.top < B.bottom - 1 && A.bottom > B.top + 1);
-        if (o) { lines[x] = U(A, B); lines.splice(y, 1); again = true; }
+        var joined = rtsOf[y].some(function (rt) { return rtsOf[x].indexOf(rt) >= 0; });
+        if (o || joined) { lines[x] = U(A, B); lines.splice(y, 1); rtsOf[x] = rtsOf[x].concat(rtsOf.splice(y, 1)[0]); again = true; }
       }
     }
     return lines.concat(groups.map(function (g) { return g.b; })).map(function (b) { return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, width: b.right - b.left, height: b.bottom - b.top }; });
@@ -290,12 +317,21 @@
   function placeAll() {
     S.placed = {};
     var missing = [];
-    if (S.article) S.list.forEach(function (h) { var r = anchor(h); if (r) S.placed[h.id] = r; else missing.push(h.id); });
+    var widened = [];
+    if (S.article) S.list.forEach(function (h) {
+      var r = anchor(h);
+      if (!r) { missing.push(h.id); return; }
+      S.placed[h.id] = r;
+      // widened over a ruby segment: give the page the widened target to keep (once: the new quote no longer ends inside a segment)
+      var q = h.target.quote, t = r.toString() !== q.exact ? targetOf(r) : null;
+      if (t && t.quote.exact !== q.exact && t.quote.exact.indexOf(q.exact) >= 0 && widened.length < 2000) widened.push({ id: h.id, target: t });
+    });
     ORDER = Object.keys(S.placed).sort(inOrder);
     paint();
     var sections = {};
     if (S.article) Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) { var hd = s.querySelector("h2,h3"); sections[s.getAttribute("data-section-id")] = hd ? textOf(hd).text.trim().slice(0, 200) : ""; });
     post({ egaViewer: "status", missing: missing.slice(0, 2000), sections: sections });
+    if (widened.length) post({ egaViewer: "widen", list: widened });
   }
   var stale = function () { for (var id in S.placed) { var r = S.placed[id]; if (!r.startContainer.isConnected || !r.endContainer.isConnected || r.collapsed) return true; } return false; };
 
