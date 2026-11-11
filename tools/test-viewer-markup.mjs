@@ -30,7 +30,7 @@ fs.rmSync(work, { recursive: true, force: true }); fs.mkdirSync(work, { recursiv
 let fails = 0;
 const ok = (c, m) => { console.log((c ? '  ok   ' : '  FAIL ') + m); if (!c) fails++; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const until = async (f, ms = 8000) => { ms = scaled(ms); const t = Date.now(); while (Date.now() - t < ms) { try { if (await f()) return true; } catch { /* retry */ } await sleep(scaled(60)); } try { return !!(await f()); } catch { return false; } };
+const until = async (f, ms = 8000) => { ms = scaled(ms); const t = Date.now(); while (Date.now() - t < ms) { try { if (await f()) return true; } catch { /* retry */ } await sleep(60); } try { return !!(await f()); } catch { return false; } };
 
 // ---------------------------------------------------------------- fixtures: the book, its play-only copy, and a revised copy
 const bookDir = path.join(work, 'book');
@@ -49,6 +49,12 @@ if (revised === src || !revised.includes('新しい文')) throw new Error('fixtu
 fs.writeFileSync(ch1, revised);
 put('book-rev.play.ega.html', (await buildPortable(deck, { playOnly: true })).html);
 fs.writeFileSync(ch1, src);
+// ruby: the same book (its own docId) with mono ruby, one <ruby> per character (平方根), at the end of the first chapter
+const rubyDir = path.join(work, 'ruby');
+fs.cpSync(path.join(ROOT, 'tools/fixtures/article-book'), rubyDir, { recursive: true });
+fs.appendFileSync(path.join(rubyDir, 'article', '01.md'), '\n\n{ruby}`平|へい`{ruby}`方|ほう`{ruby}`根|こん`を求める話もある。\n');
+await buildPortable(path.join(rubyDir, 'deck.html'), {});
+put('ruby.ega.html', (await buildPortable(path.join(rubyDir, 'deck.html'), {})).html);
 fs.cpSync(path.join(ROOT, 'examples', 'minimal'), path.join(work, 'minimal'), { recursive: true });
 put('nobook.play.ega.html', (await buildPortable(path.join(work, 'minimal', 'deck.html'), { playOnly: true })).html);
 
@@ -91,13 +97,14 @@ async function openBook(p, name) {
 }
 const mstate = (p) => p.evaluate(() => window.__play.state().markup);
 // select the text from the first `from` to the end of the first `to` after it, in the article's text (ruby readings and MathML left out)
-async function select(f, from, to) {
-  return f.evaluate(([from, to]) => {
+// (`ctx`, if given: a longer text holding `from`, to pick that occurrence of it)
+async function select(f, from, to, ctx = '') {
+  return f.evaluate(([from, to, ctx]) => {
     const a = document.getElementById('egatari-article');
     const w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('rt,rp,.katex-mathml') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
     const nodes = []; let s = '', n; const starts = [];
     while ((n = w.nextNode())) { nodes.push(n); starts.push(s.length); s += n.data; }
-    const i = s.indexOf(from), j = s.indexOf(to, i) + to.length;
+    const i = ctx ? (s.indexOf(ctx) < 0 ? -1 : s.indexOf(ctx) + ctx.indexOf(from)) : s.indexOf(from), j = s.indexOf(to, i) + to.length;
     if (i < 0 || j < to.length) return null;
     const at = (o, end) => { for (let k = 0; k < nodes.length; k++) { const e = starts[k] + nodes[k].data.length; if (end ? o <= e && o > starts[k] : o < e) return [nodes[k], o - starts[k]]; } return null; };
     const r = document.createRange(); const A = at(i, false), B = at(j, true); r.setStart(A[0], A[1]); r.setEnd(B[0], B[1]);
@@ -105,7 +112,7 @@ async function select(f, from, to) {
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
     const rs = r.getClientRects(), b = rs[0];
     return { top: b.top, bottom: rs[rs.length - 1].bottom, text: r.toString() };
-  }, [from, to]);
+  }, [from, to, ctx]);
 }
 const popup = (f) => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=markup]'); const w = h && h.shadowRoot.querySelector('.w'); if (!w || w.hidden) return null; const r = w.getBoundingClientRect(); return { top: r.top, bottom: r.bottom, label: w.getAttribute('aria-label'), buttons: [...w.querySelectorAll('button')].map((b) => b.getAttribute('data-a')).filter((a) => a !== 'close'), close: !!w.querySelector('button[data-a=close]') }; });
 const press = (f, a) => f.evaluate((a) => document.querySelector('[data-egatari-viewer=markup]').shadowRoot.querySelector(`button[data-a="${a}"]`).click(), a);
@@ -402,6 +409,67 @@ console.log('ruby and math');
   await c.close(); }
 
 // ---------------------------------------------------------------- 6b. split view (slides and book): 暗記 leaves the slide pane alone
+// ---------------------------------------------------------------- 6b. a ruby segment is one unit (annotations.md, Highlight record, "Ruby.")
+console.log('ruby segments');
+{ const { c, p } = await page(null);
+  const f = await openBook(p, 'ruby.ega.html');
+  // a reading written per character inside one <ruby> (HTML allows it; a lesson may have it): 立方 → 立<rt>りっ</rt>方<rt>ぽう</rt>
+  await f.evaluate(() => { const s = [...document.querySelectorAll('#egatari-article p')].find((x) => x.textContent.includes('を求める話もある')); const q = document.createElement('p'); q.id = 'rippo'; q.innerHTML = '<ruby>立<rt>りっ</rt>方<rt>ぽう</rt></ruby>体の話。'; s.after(q); });
+  const quotes = async () => (await mstate(p)).record.highlights.map((h) => h.target.quote.exact);
+  const add = async (from, to, ctx) => { const col = 'y'; const n = (await quotes()).length; await select(f, from, to, ctx); await until(async () => !!(await popup(f))); await press(f, col); await until(async () => (await quotes()).length === n + 1); await f.evaluate(() => getSelection().removeAllRanges()); return (await quotes())[n]; };
+  const cases = [['代表', '代表', '代表値', 'the start of a group-ruby word (代表 of 代表値)'], ['表値', '表値', '代表値', 'the end of it (表値)'], ['表', '表', '代表値', 'its middle (表)'],
+    ['値を', '1 つ', '代表値を 1 つ', 'a selection running out of it (値を 1 つ)'], ['方', '方', '方', 'one character of mono ruby (one <ruby> each: 方 of 平方根)'], ['平方', '平方', '平方', 'two of them (平方)'],
+    ['方体', '方体', '方体', 'mono ruby inside one <ruby> (方 of 立方体, with the text after it)']];
+  for (const [a, b, want, what] of cases) { const got = await add(a, b, a.startsWith('値') || /[代表]/.test(a) ? '代表値を 1 つ' : ''); ok(got === want, `ruby: a selection at ${what} is stored as 「${want}」 (${got})`); }
+  // painting: a highlighted segment takes its own reading only, as one box with its base (only highlights near the screen are drawn)
+  const segAt = (sel) => lookAt(f, sel).then(() => f.evaluate(() => { const L = document.querySelector('[data-egatari-viewer=layer]').shadowRoot;
+    const rts = [...document.querySelectorAll('#egatari-article ruby rt')], R = (t) => rts.find((x) => x.textContent === t).getBoundingClientRect();
+    const boxes = [...L.querySelectorAll('.h')].map((e) => e.getBoundingClientRect());
+    const covers = (b, r) => b.left <= r.left + 1 && b.right >= r.right - 1 && b.top <= r.top + 1 && b.bottom >= r.bottom - 1;
+    const base = (() => { const rb = rts.find((x) => x.textContent === 'だいひょうち').parentElement, r = document.createRange(); r.setStart(rb.firstChild, 0); r.setEnd(rb.firstChild, 3); return r.getBoundingClientRect(); })();
+    const both = boxes.filter((b) => covers(b, base) && covers(b, R('だいひょうち'))).length;
+    return { both, rippo: boxes.some((b) => covers(b, R('りっ'))), poo: boxes.some((b) => covers(b, R('ぽう'))) }; }));
+  const seg = { both: (await segAt('#egatari-article ruby')).both, ...(({ rippo, poo }) => ({ rippo, poo }))(await segAt('#rippo ruby')) };
+  ok(seg.both >= 1, `ruby: 代表値 and its reading だいひょうち are painted as one box (${seg.both})`);
+  ok(seg.poo && !seg.rippo, `ruby: 方 of 立方 takes its own reading ぽう, not りっ (${JSON.stringify(seg)})`);
+  // 暗記: one band over the word and its reading; a tap reveals it whole (the other highlights over 代表値 deleted first)
+  await f.evaluate(() => getSelection().removeAllRanges());
+  const H = (await mstate(p)).record.highlights, first = H[0].id;
+  await f.evaluate((ids) => ids.forEach((id) => parent.postMessage({ egaViewer: 'markup-del', id }, '*')), H.slice(1, 4).map((h) => h.id));
+  await until(async () => (await mstate(p)).record.highlights.length === H.length - 3);
+  await p.click('#b-markup'); await redrawn(f, () => p.click('#b-recall'));
+  await lookAt(f, '#egatari-article ruby');
+  const band = await f.evaluate((id) => { const L = document.querySelector('[data-egatari-viewer=layer]').shadowRoot, ms = [...L.querySelectorAll(`.g[data-id="${id}"] .m`)];
+    const rt = [...document.querySelectorAll('#egatari-article ruby rt')].find((x) => x.textContent === 'だいひょうち'), rb = rt.parentElement, r = document.createRange(); r.setStart(rb.firstChild, 0); r.setEnd(rb.firstChild, 3);
+    const b = ms[0] && ms[0].getBoundingClientRect(), t = rt.getBoundingClientRect(), w = r.getBoundingClientRect();
+    return { n: ms.length, covers: !!b && b.left <= Math.min(t.left, w.left) + 1 && b.right >= Math.max(t.right, w.right) - 1 && b.top <= t.top + 1 && b.bottom >= w.bottom - 1, x: b ? b.left + 4 : 0, y: b ? (b.top + b.bottom) / 2 : 0 }; }, first);
+  ok(band.n === 1 && band.covers, `暗記 over 代表値: one band over the word and its reading together (${band.n} band(s), covers ${band.covers})`);
+  await tapAt(p, band.x, band.y);
+  ok(await until(() => f.evaluate((id) => !document.querySelector('[data-egatari-viewer=layer]').shadowRoot.querySelector(`.g[data-id="${id}"]`), first)), 'a tap on it reveals the whole word and its reading');
+  await p.click('#b-recall'); await p.click('#b-markup');
+  // a record made before the rule, its quote ending inside 代表値 (「代表」): re-attached, painted as the whole word, and rewritten once
+  // to 「代表値」 with the same id, colour and created
+  await p.evaluate(() => window.__play.markupSaved());
+  const legacy = await p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const st = o.result.transaction('lessons', 'readwrite').objectStore('lessons'); const g = st.getAll(); g.onsuccess = () => {
+    const rec = g.result[0]; rec.highlights = rec.highlights.slice(0, 1); const h = rec.highlights[0]; h.target.quote.exact = '代表'; h.target.quote.suffix = '値を 1 つ選ぶ話は'; h.color = 'p'; h.created = h.modified = '2026-11-01T00:00:00Z';
+    st.put(rec).onsuccess = () => res(JSON.parse(JSON.stringify(h))); }; }; }));
+  await p.reload(); await p.waitForSelector('html[data-ready]');
+  const f2 = await openBook(p, 'ruby.ega.html');
+  await until(async () => (await mstate(p)).record.highlights[0]?.target.quote.exact === '代表値');
+  const h2 = (await mstate(p)).record.highlights[0];
+  ok(h2.target.quote.exact === '代表値' && h2.id === legacy.id && h2.color === 'p' && h2.created === legacy.created && (await mstate(p)).missing.length === 0,
+    `a record made before the rule (「代表」) re-attaches and is rewritten to 「代表値」, same id, colour and created (${h2.target.quote.exact}, ${h2.id === legacy.id}, ${h2.color}, ${h2.created})`);
+  await until(async () => (await sizes(f2)).p === 1);
+  ok((await sizes(f2)).p === 1, 'and it is painted');
+  await p.evaluate(() => window.__play.markupSaved());
+  const stored = await p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const g = o.result.transaction('lessons').objectStore('lessons').getAll(); g.onsuccess = () => res(g.result[0].highlights[0].target.quote.exact); }; }));
+  ok(stored === '代表値', `the rewritten quote is kept in this browser (${stored})`);
+  // the rewrite is only ever wider: a widen request that does not hold the old quote is refused
+  await f2.evaluate((id) => parent.postMessage({ egaViewer: 'markup-widen', list: [{ id, target: { section: '', quote: { exact: 'まったく別の文', prefix: '', suffix: '' } } }] }, '*'), legacy.id);
+  await sleep(scaled(300));
+  ok((await mstate(p)).record.highlights[0].target.quote.exact === '代表値', 'a widen request whose quote does not hold the old one is ignored');
+  await c.close(); }
+
 console.log('split');
 { const { c, p } = await page(null);
   const f = await openBook(p, 'book.ega.html');
