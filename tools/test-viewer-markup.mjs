@@ -154,11 +154,46 @@ const HL = [
   ['y', '3, 5, 10 の', '求めよ', 'across a term link'],
 ];
 
-// ---------------------------------------------------------------- 1. no book: no Markup button
+// ---------------------------------------------------------------- 1. the Markup button with the slides alone, and with no book
+// The button is there whenever a lesson plays; the bar says where highlights go (stage 1: the book only, not the script)
 console.log('button');
+const hintOf = (p) => p.evaluate(() => { const h = document.getElementById('markup-hint'); return h.hidden ? '' : h.textContent; });
 { const { c, p } = await page();
-  await p.setInputFiles('#file', FIX['nobook.play.ega.html']); await lesson(p); await sleep(scaled(600));
-  ok(!(await p.isVisible('#b-markup')), 'a lesson without a book shows no Markup button (stage 1 marks up the book only)');
+  await p.setInputFiles('#file', FIX['nobook.play.ega.html']); await lesson(p);
+  await until(() => p.isVisible('#b-markup'));
+  const box0 = await (await p.$('#lesson')).boundingBox();
+  await p.click('#b-markup');
+  await until(async () => (await hintOf(p)) !== '');
+  ok(/本がない/.test(await hintOf(p)) && !(await p.isVisible('#b-recall')) && !(await p.isVisible('#b-mlist')),
+    'a lesson without a book: Markup is there, and its bar says the lesson has no book (no 暗記, no list)');
+  const box1 = await (await p.$('#lesson')).boundingBox();
+  ok(box1.y === box0.y && box1.height === box0.height, `the hint does not move the lesson's frame (${box0.y}/${box0.height} → ${box1.y}/${box1.height})`);
+  await c.close(); }
+{ const { c, p } = await page();
+  await p.setInputFiles('#file', FIX['book.ega.html']); const f = await lesson(p);
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*'));
+  await until(() => p.isVisible('#b-markup'));
+  await p.click('#b-markup');
+  await until(async () => /台本にはまだ/.test(await hintOf(p)));
+  ok(/「表示」で「本」/.test(await hintOf(p)) && !(await p.isVisible('#b-recall')), 'with the slides alone: the bar says highlights go in the book (表示 → 本) and not yet in the script');
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'book' }, '*'));
+  await f.waitForSelector('#egatari-article');
+  await until(async () => (await hintOf(p)) === '');
+  ok(await p.isVisible('#b-recall') && await p.isVisible('#b-mlist'), 'the hint goes once the book is shown, and 暗記 and the list come back');
+  ok(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'no sideways scroll with the hint');
+  await c.close(); }
+{ const { c, p } = await page(await browser.newContext({ locale: 'ja-JP', viewport: { width: 375, height: 700 }, serviceWorkers: 'block' }));
+  await p.setInputFiles('#file', FIX['book.ega.html']); await lesson(p);
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*'));
+  await until(() => p.isVisible('#b-markup'));
+  const box0 = await (await p.$('#lesson')).boundingBox();
+  await p.click('#b-markup');
+  await until(async () => (await hintOf(p)) !== '');
+  const box1 = await (await p.$('#lesson')).boundingBox();
+  ok(await p.isVisible('#markup-hint') && box1.y === box0.y && !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)),
+    `on a phone the hint is shown, the frame stays (${box0.y} → ${box1.y}) and nothing scrolls sideways`);
+  ok(await p.evaluate(() => { const h = document.getElementById('markup-hint'); return h.scrollHeight <= h.clientHeight + 1; }), 'on a phone the whole hint fits (not cut)');
+  await p.screenshot({ path: path.join(os.tmpdir(), 'viewer-markup-hint-phone.png') });
   await c.close(); }
 
 // ---------------------------------------------------------------- 2. highlighting
