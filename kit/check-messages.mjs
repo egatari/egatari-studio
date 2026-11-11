@@ -1,7 +1,7 @@
 // 品質チェック（kit/check.mjs）の指摘の言葉（日本語・英語）。どの指摘も「何が違うか」と「どう直すか」を言い、規格があればその名前
-// （docs/authoring-with-llms.md の R-…）を添える。どこか（スライドの番号・id・見出し、段階）は check.mjs が前に付ける
+// （docs/authoring-with-llms.md の R-…）を添える。どこか（スライドの番号・id・見出し、ステップ）は check.mjs が前に付ける
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値。rule は規格の名前の文字列か、a から決める関数（ruleOf）
-//   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、段階 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
+//   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、ステップ 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 import { CLIP_ATTR } from './core/layout-scan.mjs';
 import { catalogueMessage } from './core/parts2.mjs';
 import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
@@ -44,7 +44,7 @@ const UNSAFE = {
     'active-content': 'the PDF has active content (XFA, RichMedia)', macro: 'the document contains macros (vbaProject)', activex: 'the document contains ActiveX controls', 'embedded-object': 'the document contains embedded objects (OLE, …)',
     'external-link': 'the document refers to external files or data (external links)', 'external-data': 'the document fetches external data (connections, web queries, functions such as WEBSERVICE)', dde: 'a formula uses DDE', 'field-code': 'a field code runs or fetches something (DDEAUTO, INCLUDETEXT, …)', 'remote-template': 'the document uses a remote template' },
 };
-const stepJa = (s) => (s === 'concl' ? '結論の段階' : `段階 ${s}`);
+const stepJa = (s) => (s === 'concl' ? '結論のステップ' : `ステップ ${s}`);
 const stepEn = (s) => (s === 'concl' ? 'conclusion step' : `step ${s}`);
 
 export function where(lang, { n, id, title, step }) {
@@ -118,21 +118,21 @@ export const MESSAGES = {
   linkEmpty: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）に行き先がない（# だけ）：href="#<スライドの id>" にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has no target (only #): use href="#<slide id>"` },
   linkUnknown: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の行き先のスライド「${a.slide}」がない：あるスライドの id（npm run ids で付けたもの）を書く`, en: (a) => `the link “${a.text}” (href="${a.href}") points to slide “${a.slide}”, which does not exist: use the id of an existing slide (from npm run ids)` },
   linkNumberRange: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）のスライド ${a.slide} がない（${a.count} 枚）：スライドの id で #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") points to slide ${a.slide}, but the deck has ${a.count}: link by slide id, #<id>` },
-  linkNoConcl: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライド「${a.slide}」に結論（.concl）の段階がない：:concl を外すか、段階の番号にする`, en: (a) => `the link “${a.text}” (href="${a.href}") asks for the conclusion step of “${a.slide}”, which has none: drop :concl or use a step number` },
-  linkStepRange: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライド「${a.slide}」に段階 ${a.step} がない（段階は 0〜${a.max}${a.concl ? '、結論は concl' : ''}）：ある段階にする`, en: (a) => `the link “${a.text}” (href="${a.href}") asks for step ${a.step} of “${a.slide}”, which has steps 0–${a.max}${a.concl ? ' and concl' : ''}: use an existing step` },
-  linkBadStep: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の段階の鍵「${a.step}」が読めない：0・1・… か concl にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has an unreadable step key “${a.step}”: use 0, 1, … or concl` },
+  linkNoConcl: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライド「${a.slide}」に結論（.concl）のステップがない：:concl を外すか、ステップの番号にする`, en: (a) => `the link “${a.text}” (href="${a.href}") asks for the conclusion step of “${a.slide}”, which has none: drop :concl or use a step number` },
+  linkStepRange: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライド「${a.slide}」にステップ ${a.step} がない（ステップは 0〜${a.max}${a.concl ? '、結論は concl' : ''}）：あるステップにする`, en: (a) => `the link “${a.text}” (href="${a.href}") asks for step ${a.step} of “${a.slide}”, which has steps 0–${a.max}${a.concl ? ' and concl' : ''}: use an existing step` },
+  linkBadStep: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）のステップの鍵「${a.step}」が読めない：0・1・… か concl にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has an unreadable step key “${a.step}”: use 0, 1, … or concl` },
   linkNumber: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）は番号なので、スライドを足すとずれる：スライドの id で #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") uses a slide number, which shifts when slides are added: link by slide id, #<id>` },
   linkNoId: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライドに id がなく、見出しを直すと切れる：npm run ids で id を付けて #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") targets a slide without an id, so it breaks when the heading changes: run npm run ids and link to #<id>` },
   linkCount: { ja: (a) => `スライドへのリンク：${a.ok} 本（ほかのファイルへ ${a.other} 本）`, en: (a) => `links to slides: ${a.ok} (to other files: ${a.other})` },
   // ---------------------------------------------------------------- 参照音声（AI 音声が声をまねる元の録音。format spec §5 の recipe。kit/core/ref-voice.mjs）
-  // where：slides（スライドが使う：エクスポートが断る）・audio（audio/manifest.json の段階の音声：入れない）・attachments（添付：入れない）・folder（作業フォルダのほかの所）
-  // 音声が古い段階（K。format spec §5.4）。v0.6.8 までは code が言葉そのもの（'audio: stale — …'）だった。言葉は変えない（日本語だけ）
+  // where：slides（スライドが使う：エクスポートが断る）・audio（audio/manifest.json のステップの音声：入れない）・attachments（添付：入れない）・folder（作業フォルダのほかの所）
+  // 音声が古いステップ（K。format spec §5.4）。v0.6.8 までは code が言葉そのもの（'audio: stale — …'）だった。言葉は変えない（日本語だけ）
   audioStale: {
-    ja: (a) => `audio: stale — 段階 ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
-    en: (a) => `audio: stale — 段階 ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
+    ja: (a) => `audio: stale — ステップ ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
+    en: (a) => `audio: stale — ステップ ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
   },
   refVoice: {
-    ja: (a) => `参照音声「${a.path}」（voice.json の声の元の録音）が${{ slides: 'スライドで使われている：教材には参照音声を入れないので、Egatari ファイル（.ega.html）へのエクスポートは断る。スライドから外す', audio: ' audio/manifest.json で段階の音声になっている：Egatari ファイル（.ega.html）には入れない（その段階は音声なし）。その声で作った音声に替える', attachments: '添付の場所（attachments/）にある：Egatari ファイル（.ega.html）には入れない', folder: '作業フォルダの中にある：Egatari ファイル（.ega.html）には入れないが、作業フォルダごと人に渡すと一緒に渡る' }[a.where]}。録音は作業フォルダの外に置き、voice.json にはその場所か名前を書く（教材には、その声で作った音声だけが入る）`,
+    ja: (a) => `参照音声「${a.path}」（voice.json の声の元の録音）が${{ slides: 'スライドで使われている：教材には参照音声を入れないので、Egatari ファイル（.ega.html）へのエクスポートは断る。スライドから外す', audio: ' audio/manifest.json でステップの音声になっている：Egatari ファイル（.ega.html）には入れない（そのステップは音声なし）。その声で作った音声に替える', attachments: '添付の場所（attachments/）にある：Egatari ファイル（.ega.html）には入れない', folder: '作業フォルダの中にある：Egatari ファイル（.ega.html）には入れないが、作業フォルダごと人に渡すと一緒に渡る' }[a.where]}。録音は作業フォルダの外に置き、voice.json にはその場所か名前を書く（教材には、その声で作った音声だけが入る）`,
     en: (a) => `the reference voice “${a.path}” (the recording a voice in voice.json imitates) ${{ slides: 'is used by the slides: a lesson does not carry reference voices, so export to an Egatari file (.ega.html) is refused. Remove it from the slides', audio: 'is a step\'s audio in audio/manifest.json: it is left out of the Egatari file (.ega.html) and that step has no audio. Replace it with audio made with the voice', attachments: 'is in the attachments folder (attachments/): it is left out of the Egatari file (.ega.html)', folder: 'is inside the working folder: it is left out of the Egatari file (.ega.html), but goes along if you share the whole working folder' }[a.where]}. Keep the recording outside the working folder and give its location or name in voice.json (a lesson carries only the audio made with the voice)`,
   },
   // ---------------------------------------------------------------- 添付（attachments/。format spec §3.8）
@@ -242,39 +242,39 @@ export const MESSAGES = {
     en: (a) => (a.tate
       ? `Content sits to the right (centre of mass ${Math.abs(Math.round(a.hOffset))}% right of the centre; ${Math.round(a.left - a.right)}% empty on the left)`
       : `Content sits high (centre of mass ${Math.abs(Math.round(a.vOffset))}% above the optical centre; ${Math.round(a.bottom - a.top)}% empty at the bottom)`) },
-  step0: { ja: (a) => `段階 0 の本文：「${a.t}」`, en: (a) => `body text at step 0: “${a.t}”` },
+  step0: { ja: (a) => `ステップ 0 の本文：「${a.t}」`, en: (a) => `body text at step 0: “${a.t}”` },
   punctMixed: { rule: 'R-style', ja: (a) => `句読点が混ざっている：${a.minor}が ${a.n} 個あり、デッキの多くは${a.major}：このスライドも${a.major}にそろえる`, en: (a) => `mixed punctuation: ${a.n} × ${a.minor} while most of the deck uses ${a.major}: use ${a.major} here too` },
   // ---------------------------------------------------------------- 口述原稿
   // 雛形のまま（kit/core/template-text.mjs）：仮の口述原稿の行・スライドに残った雛形の字
   narrPlaceholder: { ja: (a) => `口述原稿が雛形の仮の行のまま（narration.md ${a.line} 行目「${a.t}」）：話す言葉に書き換える（このままでは TTS が読み、字幕にも出る）`, en: (a) => `the narration is still the template placeholder (narration.md line ${a.line}, “${a.t}”): replace it with what you say (otherwise TTS reads it and it shows in the captions)` },
   templateText: { ja: (a) => `雛形の字が残っている：${a.list}。自分の内容に書き換える`, en: (a) => `template text left on the slide: ${a.listEn}. Replace it with your own content` },
   narrNote: { ja: (a) => `発表者への指示 ${a.t} の書式が正しくない（narration.md ${a.line} 行目）：{note:…} を } で閉じ、中に { や } を入れない`, en: (a) => `invalid stage direction ${a.t} (narration.md line ${a.line}): close {note:…} with } and do not put { or } inside` },
-  narrMissing: { rule: 'R-narr-steps', ja: (a) => `この段階の口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（その段階で現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
-  // 予想（m-predict）の答えが、数の棒と −1・＋1 の操作（パーツの段階 1）と同時かそれより前に開く（kit/core/predict-steps.mjs。answer-step が 1 以下）
+  narrMissing: { rule: 'R-narr-steps', ja: (a) => `このステップの口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（そのステップで現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
+  // 予想（m-predict）の答えが、数の棒と −1・＋1 の操作（パーツのステップ 1）と同時かそれより前に開く（kit/core/predict-steps.mjs。answer-step が 1 以下）
   predictAnswerWithCount: { rule: 'R-steps',
     ja: () => `予想（m-predict）の答えが、人数を数えるステップと同時に出ます。answer-step を ${PREDICT_COUNT_STEP + 1} 以上にして、数えてから答えを開いてください。`,
     en: () => `The prediction (m-predict) shows its answer at the same step as the vote count. Set answer-step to ${PREDICT_COUNT_STEP + 1} or more so the class counts first, then sees the answer.` },
-  // 予想（m-predict）の steps が答えの段階（answer-step）より小さい：プレーヤーはパーツの段階を steps で止めるので、答えが出ない（kit/core/predict-steps.mjs）
+  // 予想（m-predict）の steps が答えのステップ（answer-step）より小さい：プレーヤーはパーツのステップを steps で止めるので、答えが出ない（kit/core/predict-steps.mjs）
   predictAnswerNeverShown: { rule: 'R-steps',
     ja: () => '予想（m-predict）の答えが出ません。steps が answer-step より小さくなっています。steps を answer-step 以上にしてください。',
     en: () => 'The prediction (m-predict) never shows its answer: steps is smaller than answer-step. Set steps to answer-step or more.' },
   narrFormula: { rule: 'R-formula', ja: (a) => `口述原稿が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the narration reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
   narrLang: { ja: (a) => `口述原稿の言語（${a.lang}。${a.source === 'voice.json' ? 'voice.json の lang' : '発言の文字から'}）がスライドの言語（${a.deck}）と違う：式の読み上げと長い発言は、発言ごとにその言語の規則で見た`, en: (a) => `the narration language (${a.lang}, ${a.source === 'voice.json' ? 'from lang in voice.json' : 'from the text'}) differs from the slide language (${a.deck}): equations read aloud and long turns were checked with the rules of each turn's language` },
-  turnLong: { ja: (a) => `1 回の発言が長い（${a.n} ${a.unit}）：2 つの発言か 2 つの段階に分けるとよい`, en: (a) => `a long turn (${a.n} ${a.unit === '字' ? 'characters' : 'words'}): consider splitting it into two turns or two steps` },
-  // 部品のデータが合わないスライド：口述原稿と段階の数は、データを直してから確かめ直す（narrMissing・narrOrphan はそのスライドでは出さない）
-  narrRecheck: { ja: (a) => `このスライドの部品 ${(a.comps || []).map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、口述原稿と段階の数はデータを直してから確かめ直す（口述原稿は消さない）`,
+  turnLong: { ja: (a) => `1 回の発言が長い（${a.n} ${a.unit}）：2 つの発言か 2 つのステップに分けるとよい`, en: (a) => `a long turn (${a.n} ${a.unit === '字' ? 'characters' : 'words'}): consider splitting it into two turns or two steps` },
+  // 部品のデータが合わないスライド：口述原稿とステップの数は、データを直してから確かめ直す（narrMissing・narrOrphan はそのスライドでは出さない）
+  narrRecheck: { ja: (a) => `このスライドの部品 ${(a.comps || []).map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、口述原稿とステップの数はデータを直してから確かめ直す（口述原稿は消さない）`,
     en: (a) => `the component ${(a.comps || []).map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so the narration and the step count are checked again after its data is fixed (keep the narration)` },
   // a = {step, line, end, range, static, keys, n, concl, target, lines: [{n, text}], comps: [部品の名前…]}（keys 以下は narration-lint の orphanDetail）
   narrOrphan: { rule: 'R-narr-steps',
     ja: (a) => {
       const L = a.end > a.line ? `${a.line}〜${a.end}` : `${a.line}`;
-      if (!a.keys) return `口述原稿の [${a.step}] に当たる段階がスライドにない（narration.md ${L} 行目。このスライドの段階は ${a.range.ja}）：その行を前の段階に移すか、${a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外して段階を付ける' : `スライドに data-step="${a.step}" の要素を足す`}`;
-      const add = a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外して段階を付ける' : `スライドに data-step="${a.step}" の要素を足す`;
+      if (!a.keys) return `口述原稿の [${a.step}] に当たるステップがスライドにない（narration.md ${L} 行目。このスライドのステップは ${a.range.ja}）：その行を前のステップに移すか、${a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外してステップを付ける' : `スライドに data-step="${a.step}" の要素を足す`}`;
+      const add = a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外してステップを付ける' : `スライドに data-step="${a.step}" の要素を足す`;
       const lines = (a.lines || []).map((l) => `${l.n} 行目「${l.text.trim()}」`).join('、');
-      return `口述原稿の [${a.step}] に当たる段階がスライドにない${a.line ? `（narration.md ${L} 行目）` : ''}。このスライドの段階は${a.static ? 'static なので 0 だけ' : `番号が 0〜${a.n}${a.concl ? ' と結論' : ''}`}で、使える鍵は ${a.keys.map((k) => `[${k}]`).join(' ')}。`
-        + `直し方：(1) 行の頭の「[${a.step}]」を消し、その発言を前の段階 [${a.target}] の発言の後ろに続ける（前の段階に合わせる）か、(2) ${add}`
+      return `口述原稿の [${a.step}] に当たるステップがスライドにない${a.line ? `（narration.md ${L} 行目）` : ''}。このスライドのステップは${a.static ? 'static なので 0 だけ' : `番号が 0〜${a.n}${a.concl ? ' と結論' : ''}`}で、使える鍵は ${a.keys.map((k) => `[${k}]`).join(' ')}。`
+        + `直し方：(1) 行の頭の「[${a.step}]」を消し、その発言を前のステップ [${a.target}] の発言の後ろに続ける（前のステップに合わせる）か、(2) ${add}`
         + (lines ? `。直す行：${lines}` : '')
-        + (a.comps && a.comps.length ? `。このスライドの部品 ${a.comps.map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、その段階を数えていない：先に部品のデータを直す（R-components）` : '');
+        + (a.comps && a.comps.length ? `。このスライドの部品 ${a.comps.map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、そのステップを数えていない：先に部品のデータを直す（R-components）` : '');
     },
     en: (a) => {
       const L = a.end > a.line ? `lines ${a.line}–${a.end}` : `line ${a.line}`;
@@ -291,21 +291,21 @@ export const MESSAGES = {
   // ---------------------------------------------------------------- 色・部品・注目の演出・モーフ・読み上げ
   palette: { ja: (a) => `パレット：${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → コントラスト ${a.ratio}:1` : ''}`, en: (a) => `palette: ${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → contrast ${a.ratio}:1` : ''}` },
   contrastLow: { rule: 'R-colors', ja: (a) => `${a.v} と --bg のコントラストが低い（${a.ratio}:1 < ${a.min}:1）：テーマの色を直す（デッキの中で色を書いていれば消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between ${a.v} and --bg (${a.ratio}:1 < ${a.min}:1): fix the theme colors (remove any colors written in the deck; use only theme classes and variables)` },
-  compOrder: { ja: (a) => `部品の描画が呼び出し順に依存している（段階 ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないように部品を直す（docs/contract.md §3）`, en: (a) => `the component draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
-  compOrderNoise: { ja: (a) => `部品の描画の揺れを許した（段階 ${a.k}）：2 回の描画で部品の DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the component DOM was byte-identical in both renders and the ${a.n} differing pixel(s) all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint pixel(s) (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
-  compOrderDetail: { ja: (a) => `呼び出し順の検査の詳しい結果（段階 ${a.k}）：${a.note}`, en: (a) => `call-order check details (step ${a.k}): ${a.note}` },
+  compOrder: { ja: (a) => `部品の描画が呼び出し順に依存している（ステップ ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないように部品を直す（docs/contract.md §3）`, en: (a) => `the component draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
+  compOrderNoise: { ja: (a) => `部品の描画の揺れを許した（ステップ ${a.k}）：2 回の描画で部品の DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the component DOM was byte-identical in both renders and the ${a.n} differing pixel(s) all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint pixel(s) (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
+  compOrderDetail: { ja: (a) => `呼び出し順の検査の詳しい結果（ステップ ${a.k}）：${a.note}`, en: (a) => `call-order check details (step ${a.k}): ${a.note}` },
   markMissing: { rule: 'R-marks', ja: (a) => `注目の演出 {mark:${a.id}} の目印がこのスライドにない：目印の要素に id="${a.id}" か data-mark="${a.id}" を付ける（式の一部は \\htmlId{${a.id}}{…}）か、{mark:…} を消す`, en: (a) => `the mark {mark:${a.id}} has no target on this slide: put id="${a.id}" or data-mark="${a.id}" on the element (\\htmlId{${a.id}}{…} in math), or remove the {mark:…}` },
   marks: { ja: (a) => `注目の演出：${a.list}`, en: (a) => `attention marks: ${a.list}` },
   morphNoSrc: { ja: (a) => `モーフの元のスライド「${a.want}」が見つからない：data-morph="元のスライドの id" にするか、空にして前のスライドから`, en: (a) => `the morph source slide “${a.want}” was not found: set data-morph to the source slide’s id, or leave it empty for the previous slide` },
   morphNoIds: { ja: (a) => `モーフ：元のスライド「${a.src}」と同じ data-id の要素がない：動かす要素の両方に同じ data-id を付ける（式の一部は \\morph{ID}{…}）`, en: (a) => `morph: no element shares a data-id with the source slide “${a.src}”: give the moving elements the same data-id on both slides (\\morph{ID}{…} in math)` },
   morphPairs: { ja: (a) => `モーフ（「${a.src}」から）：${a.ids}`, en: (a) => `morph (from “${a.src}”): ${a.ids}` },
-  morphLater: { ja: (a) => `モーフ：段階 0 で見えないので動かさない：${a.ids}`, en: (a) => `morph: not moved because not visible at step 0: ${a.ids}` },
+  morphLater: { ja: (a) => `モーフ：ステップ 0 で見えないので動かさない：${a.ids}`, en: (a) => `morph: not moved because not visible at step 0: ${a.ids}` },
   morphDupSrc: { ja: (a) => `モーフ：元のスライドに data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: the source slide has data-id “${a.id}” more than once (only the first is used): keep one` },
   morphDupDst: { ja: (a) => `モーフ：data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: data-id “${a.id}” appears more than once (only the first is used): keep one` },
   imgAlt: { ja: (a) => `alt の無い画像が ${a.n} 枚（${a.list}）：内容を alt="…" に書く（飾りなら alt=""）`, en: (a) => `${a.n} image(s) without alt (${a.list}): describe them in alt="…" (alt="" if decorative)` },
   svgName: { ja: (a) => `名前の無い SVG の図が ${a.n} 個：aria-label="…" か <title>…</title> を付ける（飾りなら aria-hidden="true"）`, en: (a) => `${a.n} SVG figure(s) without a name: add aria-label="…" or <title>…</title> (aria-hidden="true" if decorative)` },
   compName: { ja: (a) => `名前の無い部品：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `components without a name: ${a.list} (an aria-label="…" helps screen readers)` },
-  timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} 段階）`, en: (a) => `timeline total: ${a.s} s (${a.n} steps)` },
+  timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} ステップ）`, en: (a) => `timeline total: ${a.s} s (${a.n} steps)` },
   slideLength: { ja: (a) => `この枚の長さ：${a.s} 秒`, en: (a) => `slide length: ${a.s} s` },
   compLayout: { rule: 'R-fit',
     ja: (a) => `${compName(a, true)}を置く場所が足りない：${a.msg}。部品を置く場所を広げるか、表示する内容を減らす`,
