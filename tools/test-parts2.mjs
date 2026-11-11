@@ -606,12 +606,13 @@ for (const [code, what] of [
   ok(/var\(--lit\s*,/.test(fs.readFileSync(c2(v251, 'orbit', 'index.js'), 'utf8')), '2.5.1: m-orbit 2.0.4 fills light with var(--lit, …) and a fallback');
   const js251 = Object.keys(v251.content).filter((n) => !bumped251.includes(n) && fs.existsSync(c2(v251, n, 'index.js')) && fs.readFileSync(c2(v251, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v250, n, 'index.js'), 'utf8'));
   ok(js251.length === 0, `2.5.1: no other part's index.js changes without a version bump (${js251.join(', ') || 'none'})`);
-  // 候補 2.6.0（components 側はまだタグ・リリースなし。c2-base fe397d2。前の候補 779311d・6e1b78c・af839aa を置き換え）：版が上がるのは m-curves 2.2.0（area）だけ。新しい束 data
+  // 2.6.0（リリース f803d63。候補 c2-base fe397d2 とバイトが同じ。前の候補 779311d・6e1b78c・af839aa を置き換え）：版が上がるのは m-curves 2.2.0（area）だけ。新しい束 data
   // （情報・データサイエンス / Data science and code）のパーツ m-mapping・m-sampling・m-ci・m-folds・m-balance・m-code 2.0.0 が入る。
-  // ほかのパーツは版も index.js も 2.5.1 のまま。manifest・tarball の sha256 は manifest.json のもの。既定はこちら
+  // ほかのパーツは版も index.js も 2.5.1 のまま。manifest・tarball の sha256 は manifest.json のもの
   const v260 = lock2.catalogues['2.6.0'];
-  ok(lock2.default === '2.6.0' && v260 && v260.tag === 'v2.6.0' && v260.tarballSha256 === '9d885544d1d5e1856a3a78172b67471000350b80d3bbcbf70d42709e3e951204' && v260.manifestSha256 === 'b30ebf1e7b488eb27418af16787c188844666cc956d921584f3287de640eb997',
-    'CANDIDATE 2.6.0: the default, pinned to the candidate tarball and manifest (v2.6.0)');
+  // リリース済みとして凍結（v2.6.0 は候補 fe397d2 とバイトが同じ。既定は 2.6.2 へ）
+  ok(v260 && v260.tag === 'v2.6.0' && v260.tarballSha256 === '9d885544d1d5e1856a3a78172b67471000350b80d3bbcbf70d42709e3e951204' && v260.manifestSha256 === 'b30ebf1e7b488eb27418af16787c188844666cc956d921584f3287de640eb997',
+    '2.6.0: pinned to the released tarball and manifest (v2.6.0)');
   const DATA260 = ['balance', 'ci', 'code', 'folds', 'mapping', 'sampling'];
   const added260 = Object.keys(v260.parts).filter((n) => !(n in v251.parts)).sort();
   const bumped260 = Object.keys(v251.parts).filter((n) => v260.parts[n] !== v251.parts[n]).sort();
@@ -623,6 +624,18 @@ for (const [code, what] of [
   ok(DATA260.every((n) => m260.components[n].tier === 'specialized' && m260.components[n].set === 'data'), 'CANDIDATE 2.6.0: the six new parts are specialized parts of the set data');
   const js260 = Object.keys(v260.content).filter((n) => !bumped260.includes(n) && !added260.includes(n) && fs.existsSync(c2(v260, n, 'index.js')) && fs.readFileSync(c2(v260, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v251, n, 'index.js'), 'utf8'));
   ok(js260.length === 0, `CANDIDATE 2.6.0: no other part's index.js changes without a version bump (${js260.join(', ') || 'none'})`);
+  // 2.6.2（リリース 526479f。2.6.1 は Studio に取り込まなかった：m-predict の英語の説明が日本語より長く、npm run gen が断った）：版が上がるのは
+  // m-flow 2.0.4（離れた箱の間の矢印は行き先の向かい合う辺の中点で終わる。shift で辺からはみ出すと [flow] の知らせ）と m-predict 2.0.5（answer-step の説明だけ）。
+  // ほかのパーツは版も index.js も 2.6.0 のまま。既定はこちら
+  const v262 = lock2.catalogues['2.6.2'];
+  ok(lock2.default === '2.6.2' && v262 && v262.tag === 'v2.6.2' && v262.tarballSha256 === '59d9eac1b576f6ffd8d91921a22820dd4d66cf87ef76b4c22d38e23ea42535b8' && v262.manifestSha256 === '672aebc3ef1cdbc296e752caaa2a607bfcffb4cace1d5833eb183e6ff40dc4c5',
+    '2.6.2: the default, pinned to the released tarball and manifest (v2.6.2)');
+  const bumped262 = Object.keys(v260.parts).filter((n) => v262.parts[n] !== v260.parts[n]).sort();
+  ok(bumped262.join() === 'flow,predict' && v262.parts.flow === '2.0.4' && v262.parts.predict === '2.0.5' && Object.keys(v262.parts).length === Object.keys(v260.parts).length,
+    `2.6.2: exactly m-flow 2.0.4 and m-predict 2.0.5 get new versions, no part added or removed (${bumped262.join(', ')})`);
+  ok(/leaves the side of its box/.test(fs.readFileSync(c2(v262, 'flow', 'index.js'), 'utf8')), '2.6.2: m-flow 2.0.4 reports an edge pushed off its side by shift');
+  const js262 = Object.keys(v262.content).filter((n) => !bumped262.includes(n) && fs.existsSync(c2(v262, n, 'index.js')) && fs.readFileSync(c2(v262, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v260, n, 'index.js'), 'utf8'));
+  ok(js262.length === 0, `2.6.2: no other part's index.js changes without a version bump (${js262.join(', ') || 'none'})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
