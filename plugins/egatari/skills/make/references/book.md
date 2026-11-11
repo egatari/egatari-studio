@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # 本を書く
 
-決まりの本文は Studio の [docs/article.ja.md](https://github.com/egatari/egatari-studio/blob/v0.6.9/docs/article.ja.md)（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
+決まりの本文は Studio の [docs/article.ja.md](https://github.com/egatari/egatari-studio/blob/v0.6.10-rc.1/docs/article.ja.md)（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
 
 ## 1. 先に決める：本の形
 
