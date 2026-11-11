@@ -105,7 +105,7 @@ ok(!/component not found|is not in components2/.test(log), 'no part is missing f
   }
   fs.writeFileSync(src, fs.readFileSync(src, 'utf8').replace('lang="ja"', 'lang="en"'));
   const enCheck = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), src], { encoding: 'utf8' });
-  ok(enCheck.status === 1 && enCheck.stdout.includes('[error] Whole deck: Part needs@0.1.0 requires base@9.9.9, which is not available. Update the parts.'), 'source check text follows the English deck language');
+  ok(enCheck.status === 1 && enCheck.stdout.includes('[error] Whole lesson: Part needs@0.1.0 requires base@9.9.9, which is not available. Update the parts.'), 'source check text follows the English deck language');
   fs.writeFileSync(src, fs.readFileSync(src, 'utf8').replaceAll('m-needs', 'm-uncatalogued'));
   const unknown = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '-o', dst], { encoding: 'utf8' });
   ok(unknown.status === 0 && /component not found: m-uncatalogued/.test(unknown.stderr) && fs.existsSync(dst), 'an unknown top-level part still warns and builds');

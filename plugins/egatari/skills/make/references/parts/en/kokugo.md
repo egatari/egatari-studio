@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # kokugo parts
 
-Instruction version: fce0c357
+Instruction version: 44294a8b
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-gendai>` | 現代文の読解の図：傍線・二重傍線を引き、指示語から指す内容へ矢印、段落を役割（主張・具体例・対比）の枠で囲んで線でつなぐ | 中身のある phases の数（既定 marks refs roles） | text inside the element (not JSON) |
 | `<m-kanbun>` | 白文に返り点・送り仮名を付け、訓読の順に字をたどり（返り点で上へ戻るところに弧）、書き下し文にする（縦書き） | phases の数（order は句の数だけ、order-by="all" なら 1。既定：訓点 1＋句の数＋書き下し文 1） | text inside the element (not JSON) |

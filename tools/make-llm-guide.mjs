@@ -424,7 +424,7 @@ function shapeExample(c, lang) {
   return `${where}: \`${ex.replace(/\n/g, '⏎')}\``;
 }
 const TIMING = /秒数|（秒）/;
-const TABLE_HEAD = { ja: '| 部品 | 内容 | steps | データの形 |\n|---|---|---|---|', en: '| component | what it shows | steps | data shape |\n|---|---|---|---|' };
+const TABLE_HEAD = { ja: '| パーツ | 内容 | steps | データの形 |\n|---|---|---|---|', en: '| part | what it shows | steps | data shape |\n|---|---|---|---|' };
 const rowOf = (c, lang) => applyRowEdits(c.fm.name, `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`, lang);
 // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
 const demote = (s) => s.replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
@@ -514,7 +514,7 @@ const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|contract|GENERATED|SE
 const PACK_VERSION = '{{PACK_VERSION}}';
 
 // スキルには貼り付け用の大きさの上限を掛けない。パーツの説明は同じ材料から束（セット）ごとに分ける：標準・束ごと（専門）と、特殊は README への道だけ
-const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
+const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者', '検査': '品質チェック' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
 
 const CLI_MINOR = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
@@ -759,8 +759,8 @@ export function generate(opts = {}) {
       common: full.slice(i, j).trim(), request: full.slice(j).trim(), sets: {}, components: {}, tableHead: TABLE_HEAD[lang],
       supNote: ja ? '（* はこの指示が補った説明）' : '(* = description added by this guide)',
       // 無料のプランで一覧の 1 行だけの部品（kit/core/llm-pack-assemble.mjs の briefParts）
-      briefNote: ja ? '下に説明の節がない部品は、表の「データの形」のとおりに子の JSON か属性を書き、ほかの属性は既定のままにする。' : 'For a component without a section below, write the child JSON or attributes as its “data shape” column says and leave the other attributes at their defaults.',
-      extHead: ja ? '### `<{name}>`：この束の拡張（部品の説明は §3）' : '### `<{name}>`: extension for this part set (the component is described in §3)',
+      briefNote: ja ? '下に説明の節がないパーツは、表の「データの形」のとおりに子の JSON か属性を書き、ほかの属性は既定のままにする。' : 'For a part without a section below, write the child JSON or attributes as its “data shape” column says and leave the other attributes at their defaults.',
+      extHead: ja ? '### `<{name}>`：この束の拡張（パーツの説明は §3）' : '### `<{name}>`: extension for this part set (the part is described in §3)',
     };
     if (!D.common.includes('{{CATALOG}}')) throw new Error(`template${ja ? '.ja' : ''}.md: no {{CATALOG}}`);
     const known = new Set(comps.map((c) => c.fm.name));

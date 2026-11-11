@@ -1,6 +1,6 @@
 // 「AI への修正依頼」の文章を作る（編集アプリの品質チェックの板。app/llm.js）。Node にもブラウザにも依存しない（純粋な ESM）
 // 規格の文章は、AI への指示の共通の本体（kit/core/llm-pack.mjs の commonBody。docs/authoring-with-llms.md と同じ）の「- **R-名前** …」の行から、
-// 部品の説明は、デッキで使っている部品のもの（componentNotes。指示に入っているものと同じ文章）を載せる。
+// パーツの説明は、教材で使っているパーツのもの（componentNotes。指示に入っているものと同じ文章）を載せる。
 // 依頼の形は指示の §5（修正依頼）に合わせる：指摘（規格の名前付き）、その規格の文章、今のファイル。返事は 2 つの囲み
 //
 //   guideRules(guide) → Map(R-名前 → 文章)
@@ -64,17 +64,17 @@ const L = {
   en: {
     head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
     ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
-    askPartial: (n) => `The deck is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
-    problems: 'Findings', rules: 'Standards', components: 'Components used in this deck (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
-    where: (p) => (p.i === null || p.i === undefined ? 'Whole deck' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
+    askPartial: (n) => `The lesson is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
+    problems: 'Findings', rules: 'Standards', components: 'Parts used in this lesson (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
+    where: (p) => (p.i === null || p.i === undefined ? 'Whole lesson' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
     sev: { error: 'error', warn: 'warning' },
   },
   ja: {
     head: 'Egatari の教材（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
     ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み ```deck.html と ```narration.md を書いてください（R-output）。',
-    askPartial: (n) => `デッキが長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
-    problems: '指摘', rules: '規格', components: 'この教材で使っている部品（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
-    where: (p) => (p.i === null || p.i === undefined ? 'デッキ全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? quoteJa(p.title) : ''}`),
+    askPartial: (n) => `教材が長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
+    problems: '指摘', rules: '規格', components: 'この教材で使っているパーツ（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
+    where: (p) => (p.i === null || p.i === undefined ? '教材全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? quoteJa(p.title) : ''}`),
     sev: { error: 'エラー', warn: '警告' },
   },
 };
@@ -91,8 +91,8 @@ export function amountOf(p, lang = 'en') {
     const line = d && typeof d === 'object' && Number.isFinite(+d.line) && +d.line > 0 ? +d.line : LINE;
     if (!Number.isFinite(px)) return '';
     const over = Math.ceil(px - lim), lines = Math.max(1, Math.ceil(over / line));
-    return ja ? `本文を ${over} px（${line} px の行でおよそ ${lines} 行）減らす（行を削るか、部品を ${over} px 低くするか、次のスライドに移す）`
-      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${line} px): drop lines, make the component ${over} px lower, or move content to a new slide`;
+    return ja ? `本文を ${over} px（${line} px の行でおよそ ${lines} 行）減らす（行を削るか、パーツを ${over} px 低くするか、次のスライドに移す）`
+      : `cut ${over} px from the body (about ${lines} line${lines > 1 ? 's' : ''} of ${line} px): drop lines, make the part ${over} px lower, or move content to a new slide`;
   }
   if (p.code === 'bodyRight' || p.code === 'overflowRight') {
     const px = pick('px', 0), lim = pick('lim', 1) || limitsOf(DM).right;
@@ -150,7 +150,7 @@ export function buildFixRequest({ problems, deck, narration = '', lang = 'en', l
   }
   const want = new Set(slideIds);
   const deckPart = partial ? secs.filter((s) => want.has(s.id)).map((s) => deck.slice(s.start, s.end)).join('\n\n') : '';
-  // 載せるデッキ（長ければ問題のスライドだけ）で使っている部品の説明
+  // 載せる教材（長ければ問題のスライドだけ）で使っているパーツの説明
   const comps = componentsIn(partial ? deckPart : deck);
   if (comps.length) out.push('', `## ${M.components}`, '', componentNotes(comps, lang === 'ja' ? 'ja' : 'en'));
   if (partial) {

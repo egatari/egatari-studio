@@ -44,7 +44,8 @@ const SINGLE_SET_EXPECTED = {
   // v0.6.7：英語の指示が部品庫の英語の説明（README.en.md、16 のパーツ）を読むようになり、外すパーツ 1 つで減る貼り付けの長さが小さくなった。
   // math は m-pie、maps は m-fishbone、kokugo は m-cycle、science は m-tree を 1 つ多く外す（stats は同じ）
   en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards', 'm-pie'],
-    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
+    // v0.6.10：英語の指示が component を part・narration を script と書くようになり短くなった。kokugo は m-cycle を外さずに収まる
+    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
     science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'] },
   ja: {},
@@ -409,7 +410,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
   assert.match(en, /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
   assert.match(buildPack({ sets: [], lang: 'en' }), /^\| spread \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/mi);
   assert.match(buildPack({ sets: ['stats'], lang: 'en' }), /^\| spread \| `m-boxplot`, `m-hist`, `m-seq` \| whole at once \|$/mi);
-  assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the narration discusses each item in turn/);
+  assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn/);
   // 束の見本は抜き出し（部品を使うスライドだけ。骨組みは共通の見本）
   const biz = setPart('business', 'en');
   assert.ok(biz.includes('```deck.html\n<section class="slide">') && !biz.includes('<!DOCTYPE html>') && biz.includes('<m-kpi') && !biz.includes('<m-bars orient'));

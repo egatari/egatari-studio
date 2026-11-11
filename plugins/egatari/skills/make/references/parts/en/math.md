@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # math parts
 
-Instruction version: fce0c357
+Instruction version: 44294a8b
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-hissan>` | 筆算（たし算・ひき算・かけ算・わり算、小数も）。式を書けば、パーツが教科書の手順で計算して書く | ＋−は位ごと、×は 1 段ごと（fine で 1 けたずつ）→たす、÷は商 1 けたごと（per="phase" で たてる・かける・ひく・おろす ごと） | attributes only (no JSON child): `digits="2"` |
 | `<m-numberline>` | 数直線。点・□・ジャンプ・不等式の範囲・0.1 の拡大。2 本で比例数直線 | build の順（既定 ticks,marks,links,jumps,ranges,magnify）に項目 1 つ = 1 ステップ。whole：全部で 1 ステップ | `{lines:{from:num\|str,to:num\|str,step?:num\|str,sub?:int,unit?:str,label?,labels?:str\|any[]}[],marks?:{at:num\|str,line?:int,label?,kind?:"dot"\|"open"\|"box",tone?,show?:int}[],jumps?:{from:num\|str,to:num\|str,line?:int,label?,tone?,show?:int}[],ranges?:[{from?:num\|str,to?:num\|str,incl?:[bool,bool],line?:int,label?,tone?,show?:int} (from or to),…],link?:(any[]\|object)[],magnify?:{from:num\|str,to:num\|str,step?:num\|str,labels?:str\|any[],show?:int}[]}` — lines [{from, to, step, sub, unit, label, labels}] (1 or 2); marks [{at, kind: dot\|open\|box, label}]; jumps [{from, to, label}]; ranges [{from, to, incl: [bool, bool]}]; link [[top value, bottom value]]; magnify [{from, to, step}]. Values are numbers or "1/3" |

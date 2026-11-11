@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: fce0c357
+Instruction version: 44294a8b
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-bars>` | Bars grow from 0 by step (vertical, horizontal, grouped, stacked); the axis max can widen by step | max group/scale step (default 1 group = 1 step) | `{groups:[{label?,value?:num,values?:num[],step?,at?,tone?} (value or values),…],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
 | `<m-cards>` | Icon cards in a row or 2 rows, by step; arrows for order | largest card step (default 1 card = 1 step) | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |

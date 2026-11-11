@@ -17,12 +17,12 @@ const moreJa = (a) => (a.n > 1 ? ` ほか ${a.n - 1} か所` : '');
 const moreEn = (a) => (a.n > 1 ? ` and ${a.n - 1} more` : '');
 // 表紙と章の扉に置ける子要素（kit/layouts.css の .cover・.sec。docs/reference.md「Sections and classes」）。textOffSlide・textOverlap が添える
 const PLACE_JA = {
-  cover: '。表紙に置けるのは .venue（会場）・h1（題名）・.au（著者・所属）で、ロゴはテーマが入れる。副題は h1 の 2 行目（<br> のあと）か .venue に書く。ほかの字を足すなら、デッキの <style> で position:absolute と top を決めて空いた場所に置く',
-  sec: '。章の扉に置けるのは h1（章の名前）と .lead（一言）。ほかの字を足すなら、デッキの <style> で position:absolute と top を決めて空いた場所に置く',
+  cover: '。表紙に置けるのは .venue（会場）・h1（題名）・.au（著者・所属）で、ロゴはテーマが入れる。副題は h1 の 2 行目（<br> のあと）か .venue に書く。ほかの字を足すなら、教材の <style> で position:absolute と top を決めて空いた場所に置く',
+  sec: '。章の扉に置けるのは h1（章の名前）と .lead（一言）。ほかの字を足すなら、教材の <style> で position:absolute と top を決めて空いた場所に置く',
 };
 const PLACE_EN = {
-  cover: '; a cover holds .venue (venue), h1 (title) and .au (authors, affiliation), and the theme adds the logos: put a subtitle on a second line of the h1 (after <br>) or in .venue, and place any other text in free space with position:absolute and top in the deck\'s <style>',
-  sec: '; a section divider holds h1 (chapter name) and .lead (one line): place any other text in free space with position:absolute and top in the deck\'s <style>',
+  cover: '; a cover holds .venue (venue), h1 (title) and .au (authors, affiliation), and the theme adds the logos: put a subtitle on a second line of the h1 (after <br>) or in .venue, and place any other text in free space with position:absolute and top in the lesson\'s <style>',
+  sec: '; a section divider holds h1 (chapter name) and .lead (one line): place any other text in free space with position:absolute and top in the lesson\'s <style>',
 };
 const WHERE_JA = { slides: 'スライド', narration: '台本', article: '本' }, WHERE_EN = { slides: 'slides', narration: 'script', article: 'book' };
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
@@ -33,12 +33,12 @@ const ROLE_ALLOWED = {
   en: { pdf: 'PDF', data: 'CSV, TSV, JSON, text, xlsx', code: 'program source, text, ipynb, environment definitions (requirements.txt, pyproject.toml, environment.yml, …)', source: 'TeX, Markdown, text (e.g. BibTeX), docx', supplement: 'PNG, JPEG, WebP, PDF, text' },
 };
 const FORBID = {
-  ja: { script: 'OS が実行する・スクリプトとして開く形式（.js・.bat・.ps1・.command など。JavaScript の原稿は .mjs・.cjs・.ts にする）', executable: '実行できるファイル', wasm: 'WebAssembly', 'office-legacy': '古い形式の Office（doc・xls・ppt）か RTF', 'office-macro': 'マクロを入れられる Office（docm・xlsm など）', html: 'HTML', svg: 'SVG', egatari: 'ほかの 1 ファイル（.ega.html）', archive: 'アーカイブ・入れ物（ZIP など）' },
-  en: { script: 'a file type that operating systems run or open as a script (.js, .bat, .ps1, .command, …; attach JavaScript source as .mjs, .cjs or .ts)', executable: 'an executable', wasm: 'WebAssembly', 'office-legacy': 'a legacy Office document (doc, xls, ppt) or RTF', 'office-macro': 'a macro-enabled Office document (docm, xlsm, …)', html: 'HTML', svg: 'SVG', egatari: 'another single file (.ega.html)', archive: 'an archive or container (ZIP, …)' },
+  ja: { script: 'OS が実行する・スクリプトとして開く形式（.js・.bat・.ps1・.command など。JavaScript の原稿は .mjs・.cjs・.ts にする）', executable: '実行できるファイル', wasm: 'WebAssembly', 'office-legacy': '古い形式の Office（doc・xls・ppt）か RTF', 'office-macro': 'マクロを入れられる Office（docm・xlsm など）', html: 'HTML', svg: 'SVG', egatari: 'ほかの Egatari ファイル（.ega.html）', archive: 'アーカイブ・入れ物（ZIP など）' },
+  en: { script: 'a file type that operating systems run or open as a script (.js, .bat, .ps1, .command, …; attach JavaScript source as .mjs, .cjs or .ts)', executable: 'an executable', wasm: 'WebAssembly', 'office-legacy': 'a legacy Office document (doc, xls, ppt) or RTF', 'office-macro': 'a macro-enabled Office document (docm, xlsm, …)', html: 'HTML', svg: 'SVG', egatari: 'another Egatari file (.ega.html)', archive: 'an archive or container (ZIP, …)' },
 };
 const UNSAFE = {
   ja: { javascript: 'PDF に JavaScript がある', 'auto-action': 'PDF に開いたときに動く、文書の中へ移る（GoTo）のほかの動作（OpenAction・AA）がある', action: 'PDF に、文書の中へ移る（GoTo）とリンクを開く（URI）のほかの動作がある', launch: 'PDF にほかのプログラムを起こす動作（Launch）がある', 'embedded-file': 'PDF にファイルが埋め込まれている',
-    'active-content': 'PDF に動く中身（XFA・RichMedia）がある', macro: 'マクロ（vbaProject）がある', activex: 'ActiveX の部品がある', 'embedded-object': '埋め込んだ object（OLE など）がある',
+    'active-content': 'PDF に動く中身（XFA・RichMedia）がある', macro: 'マクロ（vbaProject）がある', activex: 'ActiveX のコントロールがある', 'embedded-object': '埋め込んだ object（OLE など）がある',
     'external-link': '外のファイル・データへの参照（外部リンク）がある', 'external-data': '外のデータを取りにいく（接続・Web クエリ・WEBSERVICE などの関数）', dde: 'DDE を使う数式がある', 'field-code': '実行する・取りにいくフィールド（DDEAUTO・INCLUDETEXT など）がある', 'remote-template': '外のテンプレートを使う' },
   en: { javascript: 'the PDF contains JavaScript', 'auto-action': 'the PDF runs an action other than going to a place in the document (GoTo) when opened (OpenAction, AA)', action: 'the PDF has actions other than going to a place in the document (GoTo) and opening a link (URI)', launch: 'the PDF can launch programs (Launch)', 'embedded-file': 'the PDF carries embedded files',
     'active-content': 'the PDF has active content (XFA, RichMedia)', macro: 'the document contains macros (vbaProject)', activex: 'the document contains ActiveX controls', 'embedded-object': 'the document contains embedded objects (OLE, …)',
@@ -48,7 +48,7 @@ const stepJa = (s) => (s === 'concl' ? '結論のステップ' : `ステップ $
 const stepEn = (s) => (s === 'concl' ? 'conclusion step' : `step ${s}`);
 
 export function where(lang, { n, id, title, step }) {
-  if (n === null || n === undefined) return lang === 'en' ? 'Whole deck' : 'デッキ全体';
+  if (n === null || n === undefined) return lang === 'en' ? 'Whole lesson' : '教材全体';
   const st = step === null || step === undefined ? '' : (lang === 'en' ? ', ' + stepEn(step) : '、' + stepJa(step));
   return lang === 'en'
     ? `Slide ${n}${title ? ` “${title}”` : ''}${id ? ` (${id})` : ''}${st}`
@@ -62,7 +62,7 @@ function driftList(items, lang) {
     const m = Array.isArray(x.measured) ? (ja ? `本文の下端 ${x.measured[0]}〜${x.field === 'body.floor' ? `ページ番号の上端 ${x.measured[1]}` : x.measured[1]} の間のはず` : `should lie between the body bottom ${x.measured[0]} and ${x.field === 'body.floor' ? `the page number top ${x.measured[1]}` : x.measured[1]}`)
       : x.field === '--bar-h' ? (ja ? `${x.measured}px、720 − body.floor の ${x.declared}px まで` : `${x.measured}px, at most 720 − body.floor = ${x.declared}px`)
       : (ja ? `描いた箱は ${x.measured}` : `rendered ${x.measured}`);
-    const by = x.by === 'deck' ? (ja ? '、デッキの CSS' : ', deck CSS') : (ja ? '、テーマの CSS' : ', theme CSS');
+    const by = x.by === 'deck' ? (ja ? '、教材の CSS' : ', lesson CSS') : (ja ? '、テーマの CSS' : ', theme CSS');
     return x.field === '--bar-h' ? `--bar-h ${m}${by}` : `${x.field} ${x.declared}${ja ? '：' : ': '}${m}${by}`;
   }).join(ja ? '；' : '; ');
 }
@@ -70,8 +70,8 @@ function driftHow(a, lang) {
   const ja = lang === 'ja', theme = (a.items || []).some((x) => x.by !== 'deck'), deck = (a.items || []).some((x) => x.by === 'deck');
   const t = theme ? (ja ? `テーマの CSS に合う metrics を theme.json に書く（node tools/theme-metrics.mjs measure ${a.theme} が描いた箱の値を出す）か、CSS を宣言に合わせる`
     : `write metrics in theme.json that match the theme's CSS (node tools/theme-metrics.mjs measure ${a.theme} prints the rendered values), or make the CSS match the declaration`) : '';
-  const d = deck ? (ja ? 'デッキの <style> で体裁の箱（.body・.concl・見出し）を動かさない。動かすならテーマで動かし、テーマの metrics に宣言する（デッキの CSS では限りは変わらない）'
-    : 'do not move the layout boxes (.body, .concl, the heading) in the deck\'s <style>; move them in a theme and declare them in its metrics (deck CSS does not change the limits)') : '';
+  const d = deck ? (ja ? '教材の <style> で体裁の箱（.body・.concl・見出し）を動かさない。動かすならテーマで動かし、テーマの metrics に宣言する（教材の CSS では限りは変わらない）'
+    : 'do not move the layout boxes (.body, .concl, the heading) in the lesson\'s <style>; move them in a theme and declare them in its metrics (lesson CSS does not change the limits)') : '';
   return [t, d].filter(Boolean).join(ja ? '。' : '; ');
 }
 
@@ -112,12 +112,12 @@ export const MESSAGES = {
       : `colours are written directly (${a.n} place(s), first on line ${a.line}: ${a.list}); to follow the theme, use its classes (term, emph, muted) or variables var(--fg) var(--term) var(--emph) var(--muted) var(--accent2) var(--line) var(--lit)`) },
   legacyLectureMode: { ja: (a) => `<html data-mode="lecture"> は 1.0 の語彙にない（${a.line} 行目）：見せ方は再生の設定の「先のステップを薄く見せる」で選ぶ。原稿からは外す`,
     en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the participant chooses “Show later steps faintly” in the player; remove it from the source` },
-  narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し${quoteJa(a.heading)}がスライドの見出し${quoteJa(a.slide)}と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the narration heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
+  narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し${quoteJa(a.heading)}がスライドの見出し${quoteJa(a.slide)}と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the script heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
   // ---------------------------------------------------------------- リンク
-  linkFileMissing: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のファイル ${a.file} が作業フォルダから見つからない：ファイルを置くか、リンクを直す（1 ファイル（.ega.html）には入らない）`, en: (a) => `the link “${a.text}” (href="${a.href}") points to ${a.file}, which is not in the working folder: add the file or fix the link (it is not packed into the single file (.ega.html))` },
+  linkFileMissing: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のファイル ${a.file} が作業フォルダから見つからない：ファイルを置くか、リンクを直す（Egatari ファイル（.ega.html）には入らない）`, en: (a) => `the link “${a.text}” (href="${a.href}") points to ${a.file}, which is not in the working folder: add the file or fix the link (it is not packed into the Egatari file (.ega.html))` },
   linkEmpty: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）に行き先がない（# だけ）：href="#<スライドの id>" にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has no target (only #): use href="#<slide id>"` },
   linkUnknown: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の行き先のスライド「${a.slide}」がない：あるスライドの id（npm run ids で付けたもの）を書く`, en: (a) => `the link “${a.text}” (href="${a.href}") points to slide “${a.slide}”, which does not exist: use the id of an existing slide (from npm run ids)` },
-  linkNumberRange: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）のスライド ${a.slide} がない（${a.count} 枚）：スライドの id で #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") points to slide ${a.slide}, but the deck has ${a.count}: link by slide id, #<id>` },
+  linkNumberRange: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）のスライド ${a.slide} がない（${a.count} 枚）：スライドの id で #<id> と書く`, en: (a) => `the link “${a.text}” (href="${a.href}") points to slide ${a.slide}, but the lesson has ${a.count}: link by slide id, #<id>` },
   linkNoConcl: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライド「${a.slide}」に結論（.concl）のステップがない：:concl を外すか、ステップの番号にする`, en: (a) => `the link “${a.text}” (href="${a.href}") asks for the conclusion step of “${a.slide}”, which has none: drop :concl or use a step number` },
   linkStepRange: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）の先のスライド「${a.slide}」にステップ ${a.step} がない（ステップは 0〜${a.max}${a.concl ? '、結論は concl' : ''}）：あるステップにする`, en: (a) => `the link “${a.text}” (href="${a.href}") asks for step ${a.step} of “${a.slide}”, which has steps 0–${a.max}${a.concl ? ' and concl' : ''}: use an existing step` },
   linkBadStep: { ja: (a) => `リンク「${a.text}」（href="${a.href}"）のステップの鍵「${a.step}」が読めない：0・1・… か concl にする`, en: (a) => `the link “${a.text}” (href="${a.href}") has an unreadable step key “${a.step}”: use 0, 1, … or concl` },
@@ -126,66 +126,66 @@ export const MESSAGES = {
   linkCount: { ja: (a) => `スライドへのリンク：${a.ok} 本（ほかのファイルへ ${a.other} 本）`, en: (a) => `links to slides: ${a.ok} (to other files: ${a.other})` },
   // ---------------------------------------------------------------- 参照音声（AI 音声が声をまねる元の録音。format spec §5 の recipe。kit/core/ref-voice.mjs）
   // where：slides（スライドが使う：エクスポートが断る）・audio（audio/manifest.json のステップの音声：入れない）・attachments（添付：入れない）・folder（作業フォルダのほかの所）
-  // 音声が古いステップ（K。format spec §5.4）。v0.6.8 までは code が言葉そのもの（'audio: stale — …'）だった。言葉は変えない（日本語だけ）
+  // 音声が古いステップ（K。format spec §5.4）。v0.6.8 までは code が言葉そのもの（'audio: stale — …'）だった。頭の「audio: stale — 」は変えない
   audioStale: {
-    ja: (a) => `audio: stale — ステップ ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
-    en: (a) => `audio: stale — ステップ ${a.k} の音声は今の口述原稿から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
+    ja: (a) => `audio: stale — ステップ ${a.k} の音声は今の台本から作ったものではない（${a.kind === 'recorded' ? '録音' : a.kind === 'imported' ? '取り込み' : 'TTS'}。編集アプリの「音声」で録り直すか、tts/synth.py で作り直す）`,
+    en: (a) => `audio: stale — the audio of step ${a.k} was not made from the current script (${a.kind === 'recorded' ? 'recorded' : a.kind === 'imported' ? 'imported' : 'TTS'}; record it again in the editor's “Audio” panel, or make it again with tts/synth.py)`,
   },
   refVoice: {
     ja: (a) => `参照音声「${a.path}」（voice.json の声の元の録音）が${{ slides: 'スライドで使われている：教材には参照音声を入れないので、Egatari ファイル（.ega.html）へのエクスポートは断る。スライドから外す', audio: ' audio/manifest.json でステップの音声になっている：Egatari ファイル（.ega.html）には入れない（そのステップは音声なし）。その声で作った音声に替える', attachments: '添付の場所（attachments/）にある：Egatari ファイル（.ega.html）には入れない', folder: '作業フォルダの中にある：Egatari ファイル（.ega.html）には入れないが、作業フォルダごと人に渡すと一緒に渡る' }[a.where]}。録音は作業フォルダの外に置き、voice.json にはその場所か名前を書く（教材には、その声で作った音声だけが入る）`,
     en: (a) => `the reference voice “${a.path}” (the recording a voice in voice.json imitates) ${{ slides: 'is used by the slides: a lesson does not carry reference voices, so export to an Egatari file (.ega.html) is refused. Remove it from the slides', audio: 'is a step\'s audio in audio/manifest.json: it is left out of the Egatari file (.ega.html) and that step has no audio. Replace it with audio made with the voice', attachments: 'is in the attachments folder (attachments/): it is left out of the Egatari file (.ega.html)', folder: 'is inside the working folder: it is left out of the Egatari file (.ega.html), but goes along if you share the whole working folder' }[a.where]}. Keep the recording outside the working folder and give its location or name in voice.json (a lesson carries only the audio made with the voice)`,
   },
   // ---------------------------------------------------------------- 添付（attachments/。format spec §3.8）
-  extensionVersion: { ja: (a) => `拡張 ${a.name} の v${a.v} には未対応（対応は v${a.supported}）：拡張を使わず、そのまま保存する。使うには対応する版で開く`, en: (a) => `extension ${a.name} v${a.v} is not supported (implements v${a.supported}): ignore and preserve it; open in a supporting version to use it` },
+  extensionVersion: { ja: (a) => `拡張 ${a.name} の v${a.v} には未対応（対応は v${a.supported}）：拡張を使わず、そのまま残す。使うには対応する版で開く`, en: (a) => `extension ${a.name} v${a.v} is not supported (implements v${a.supported}): ignore and preserve it; open in a supporting version to use it` },
   attachBadConfig: { ja: (a) => `egatari.json の attachments が読めない（${a.why}）：[{"path": "attachments/…", "role": "pdf", "title": "…"}] の形にする`, en: (a) => `attachments in egatari.json cannot be read (${a.why}): use [{"path": "attachments/…", "role": "pdf", "title": "…"}]` },
   attachBadName: { ja: (a) => `添付「${a.path}」の名前は使えない（${a.why}）：attachments/ の下の、ふつうの名前（.. ・ \\ ・ : * ? " < > | ・制御文字・末尾の点や空白・CON などの予約名なし）にする`, en: (a) => `the attachment name “${a.path}” is not allowed (${a.why}): use a plain name under attachments/ (no .., \\, : * ? " < > |, control characters, trailing dot or space, or reserved names such as CON)` },
-  attachExcluded: { ja: (a) => `添付「${a.path}」は 1 ファイル（.ega.html）に入らない（${a.why}）：入れるなら名前を替える`, en: (a) => `the attachment “${a.path}” is left out of the single file (.ega.html) (${a.why}): rename it to include it` },
+  attachExcluded: { ja: (a) => `添付「${a.path}」は Egatari ファイル（.ega.html）に入らない（${a.why}）：入れるなら名前を替える`, en: (a) => `the attachment “${a.path}” is left out of the Egatari file (.ega.html) (${a.why}): rename it to include it` },
   attachDuplicate: { ja: (a) => `添付「${a.path}」が egatari.json に 2 度書いてある（「${a.other}」と同じ。大文字小文字は区別しない）：1 つにする`, en: (a) => `the attachment “${a.path}” is listed twice in egatari.json (same as “${a.other}”, ignoring case): keep one entry` },
   attachBadRole: { ja: (a) => `添付「${a.path}」の役割「${a.role}」は使えない：source・pdf・code・data・supplement のどれかにする（読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has the role “${a.role}”: use source, pdf, code, data or supplement (it is not listed for readers)` },
-  attachBadTitle: { ja: (a) => `添付「${a.path}」の題（title）が使えない${a.why ? `（${a.why}）` : ''}：${a.max} 字までの 1 行にする（1 ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the title of the attachment “${a.path}” cannot be used${a.why ? ` (${a.why})` : ''}: use one line of at most ${a.max} characters (it is packed but not listed for readers)` },
+  attachBadTitle: { ja: (a) => `添付「${a.path}」の題（title）が使えない${a.why ? `（${a.why}）` : ''}：${a.max} 字までの 1 行にする（Egatari ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the title of the attachment “${a.path}” cannot be used${a.why ? ` (${a.why})` : ''}: use one line of at most ${a.max} characters (it is packed into the Egatari file but not listed for readers)` },
   attachMissing: { ja: (a) => `egatari.json の添付「${a.path}」のファイルがない：attachments/ に置くか、項目を消す`, en: (a) => `the attachment “${a.path}” in egatari.json does not exist: put the file in attachments/ or remove the entry` },
-  attachNoRole: { ja: (a) => `添付「${a.path}」に役割がない：egatari.json の attachments に {"path": "${a.path}", "role": "pdf"}（source・pdf・code・data・supplement）を書く（1 ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no role: add {"path": "${a.path}", "role": "pdf"} (source, pdf, code, data or supplement) to attachments in egatari.json (it is packed but not listed for readers)` },
-  attachNoTitle: { ja: (a) => `添付「${a.path}」に題（title）がない：egatari.json の attachments の項目に "title": "…"（ダウンロードの一覧に出す短い名前）を書く（題は要る。1 ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no title: add "title": "…" (a short name for the download list) to its entry in egatari.json (a title is required; it is packed but not listed for readers)` },
-  attachMedia: { ja: (a) => `添付「${a.path}」は${a.kind === 'video' ? '動画' : '音声'}（${a.by === 'content' ? '中身' : '名前'}から）：音声と動画は添付にできない（1 ファイルに入らない）。教材で鳴らすなら原稿から参照する`, en: (a) => `the attachment “${a.path}” is ${a.kind === 'video' ? 'a video' : 'audio'} (by its ${a.by === 'content' ? 'content' : 'name'}): audio and video cannot be attached (it is not packed); reference it from the slides if the lesson plays it` },
-  attachType: { ja: (a) => a.role ? `添付「${a.path}」（.${a.ext}）は役割「${ROLE_JA[a.role] || a.role}」に入れられない（§3.8。この役割は ${ROLE_ALLOWED.ja[a.role] || '?'}）：役割を替えるか、許される形式にする（1 ファイルに入らない）` : `添付「${a.path}」（.${a.ext}）は添付にできない形式（§3.8 の役割ごとの形式のどれでもない）：PDF・CSV・テキスト・画像（PNG・JPEG・WebP）などにする（1 ファイルに入らない）`,
-    en: (a) => a.role ? `the attachment “${a.path}” (.${a.ext}) is not allowed for the role ${a.role} (§3.8; this role takes ${ROLE_ALLOWED.en[a.role] || '?'}): change the role or the format (it is not packed)` : `the attachment “${a.path}” (.${a.ext}) is not a format that may be attached (none of the formats of §3.8): use PDF, CSV, text, images (PNG, JPEG, WebP) and so on (it is not packed)` },
-  attachForbidden: { ja: (a) => `添付「${a.path}」は${FORBID.ja[a.kind] || a.kind}（${a.by === 'content' ? '中身' : '名前'}から）：§3.8 では添付にできない（開くと動くもの・入れ物は入れない。1 ファイルに入らない）`,
-    en: (a) => `the attachment “${a.path}” is ${FORBID.en[a.kind] || a.kind} (by its ${a.by === 'content' ? 'content' : 'name'}): §3.8 does not allow it (nothing that runs when opened, no containers; it is not packed)` },
-  attachMismatch: { ja: (a) => `添付「${a.path}」の中身が名前の形式（${a.kind}）と合わない${a.actual ? `（中身は ${a.actual}）` : ''}${a.why ? `（${a.why}）` : ''}：§3.8 では中身と形式が合うものだけを入れる。正しいファイルにする（1 ファイルに入らない）`,
-    en: (a) => `the content of the attachment “${a.path}” does not match its format (${a.kind})${a.actual ? ` (it looks like ${a.actual})` : ''}${a.why ? ` (${a.why})` : ''}: §3.8 takes only files whose content matches their type; use the right file (it is not packed)` },
-  attachPolyglot: { ja: (a) => `添付「${a.path}」はほかの形式（${a.also}）を重ねたファイル：§3.8 では添付にできない。元のファイルを書き出し直す（1 ファイルに入らない）`,
-    en: (a) => `the attachment “${a.path}” is also ${a.also} (a file of two types): §3.8 does not allow it; export the original again (it is not packed)` },
-  attachUnsafe: { ja: (a) => `添付「${a.path}」：${UNSAFE.ja[a.what] || a.what}${a.detail ? `（${a.detail}）` : ''}。§3.8 の条件に合わない：それを除いて保存し直す（PDF は印刷し直す・Office はマクロや外の参照を外す）（1 ファイルに入らない）`,
-    en: (a) => `the attachment “${a.path}”: ${UNSAFE.en[a.what] || a.what}${a.detail ? ` (${a.detail})` : ''}, which §3.8 does not allow: save it again without that (print the PDF again; remove macros or external references in Office) (it is not packed)` },
-  attachUnchecked: { ja: (a) => `添付「${a.path}」は中身を確かめられない（${a.why}）：§3.8 では確かめられないものは入れない。暗号化や特別な圧縮を外して保存し直す（1 ファイルに入らない）`,
-    en: (a) => `the attachment “${a.path}” cannot be checked (${a.why}): §3.8 attachments are checked before packing; save it again without encryption or unusual compression (it is not packed)` },
+  attachNoRole: { ja: (a) => `添付「${a.path}」に役割がない：egatari.json の attachments に {"path": "${a.path}", "role": "pdf"}（source・pdf・code・data・supplement）を書く（Egatari ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no role: add {"path": "${a.path}", "role": "pdf"} (source, pdf, code, data or supplement) to attachments in egatari.json (it is packed into the Egatari file but not listed for readers)` },
+  attachNoTitle: { ja: (a) => `添付「${a.path}」に題（title）がない：egatari.json の attachments の項目に "title": "…"（ダウンロードの一覧に出す短い名前）を書く（題は要る。Egatari ファイルには入るが、読み手の一覧に出ない）`, en: (a) => `the attachment “${a.path}” has no title: add "title": "…" (a short name for the download list) to its entry in egatari.json (a title is required; it is packed into the Egatari file but not listed for readers)` },
+  attachMedia: { ja: (a) => `添付「${a.path}」は${a.kind === 'video' ? '動画' : '音声'}（${a.by === 'content' ? '中身' : '名前'}から）：音声と動画は添付にできない（Egatari ファイルに入らない）。教材で鳴らすなら原稿から参照する`, en: (a) => `the attachment “${a.path}” is ${a.kind === 'video' ? 'a video' : 'audio'} (by its ${a.by === 'content' ? 'content' : 'name'}): audio and video cannot be attached (it is not packed into the Egatari file); reference it from the slides if the lesson plays it` },
+  attachType: { ja: (a) => a.role ? `添付「${a.path}」（.${a.ext}）は役割「${ROLE_JA[a.role] || a.role}」に入れられない（§3.8。この役割は ${ROLE_ALLOWED.ja[a.role] || '?'}）：役割を替えるか、許される形式にする（Egatari ファイルに入らない）` : `添付「${a.path}」（.${a.ext}）は添付にできない形式（§3.8 の役割ごとの形式のどれでもない）：PDF・CSV・テキスト・画像（PNG・JPEG・WebP）などにする（Egatari ファイルに入らない）`,
+    en: (a) => a.role ? `the attachment “${a.path}” (.${a.ext}) is not allowed for the role ${a.role} (§3.8; this role takes ${ROLE_ALLOWED.en[a.role] || '?'}): change the role or the format (it is not packed into the Egatari file)` : `the attachment “${a.path}” (.${a.ext}) is not a format that may be attached (none of the formats of §3.8): use PDF, CSV, text, images (PNG, JPEG, WebP) and so on (it is not packed into the Egatari file)` },
+  attachForbidden: { ja: (a) => `添付「${a.path}」は${FORBID.ja[a.kind] || a.kind}（${a.by === 'content' ? '中身' : '名前'}から）：§3.8 では添付にできない（開くと動くもの・入れ物は入れない。Egatari ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}” is ${FORBID.en[a.kind] || a.kind} (by its ${a.by === 'content' ? 'content' : 'name'}): §3.8 does not allow it (nothing that runs when opened, no containers; it is not packed into the Egatari file)` },
+  attachMismatch: { ja: (a) => `添付「${a.path}」の中身が名前の形式（${a.kind}）と合わない${a.actual ? `（中身は ${a.actual}）` : ''}${a.why ? `（${a.why}）` : ''}：§3.8 では中身と形式が合うものだけを入れる。正しいファイルにする（Egatari ファイルに入らない）`,
+    en: (a) => `the content of the attachment “${a.path}” does not match its format (${a.kind})${a.actual ? ` (it looks like ${a.actual})` : ''}${a.why ? ` (${a.why})` : ''}: §3.8 takes only files whose content matches their type; use the right file (it is not packed into the Egatari file)` },
+  attachPolyglot: { ja: (a) => `添付「${a.path}」はほかの形式（${a.also}）を重ねたファイル：§3.8 では添付にできない。元のファイルを書き出し直す（Egatari ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}” is also ${a.also} (a file of two types): §3.8 does not allow it; export the original again (it is not packed into the Egatari file)` },
+  attachUnsafe: { ja: (a) => `添付「${a.path}」：${UNSAFE.ja[a.what] || a.what}${a.detail ? `（${a.detail}）` : ''}。§3.8 の条件に合わない：それを除いて保存し直す（PDF は印刷し直す・Office はマクロや外の参照を外す）（Egatari ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}”: ${UNSAFE.en[a.what] || a.what}${a.detail ? ` (${a.detail})` : ''}, which §3.8 does not allow: save it again without that (print the PDF again; remove macros or external references in Office) (it is not packed into the Egatari file)` },
+  attachUnchecked: { ja: (a) => `添付「${a.path}」は中身を確かめられない（${a.why}）：§3.8 では確かめられないものは入れない。暗号化や特別な圧縮を外して保存し直す（Egatari ファイルに入らない）`,
+    en: (a) => `the attachment “${a.path}” cannot be checked (${a.why}): §3.8 attachments are checked before packing; save it again without encryption or unusual compression (it is not packed into the Egatari file)` },
   attachInjection: { ja: (a) => `添付「${a.path}」の ${a.n} 個の値が = + - @ やタブで始まり、表計算のソフトで数式として読まれうる${a.row ? `（最初は ${a.row} 行 ${a.col} 列）` : a.where ? `（${a.where}）` : ''}：意図したものか確かめる（入れる）`,
     en: (a) => `${a.n} value(s) in the attachment “${a.path}” start with = + - @ or a tab and may be read as formulas by a spreadsheet${a.row ? ` (first at row ${a.row}, column ${a.col})` : a.where ? ` (in ${a.where})` : ''}: check that this is intended (it is packed)` },
   attachPrivate: { ja: (a) => `添付「${a.path}」に${({ 'private key': '秘密鍵', 'access key': 'アクセスの鍵', 'password or token': 'パスワードかトークン', 'device-specific path': 'この端末のパス' })[a.what] || a.what}らしい文字がある：配る前に確かめて消す（入れる）`,
-    en: (a) => `the attachment “${a.path}” seems to contain a ${a.what}: check and remove it before sharing (it is packed)` },
+    en: (a) => `the attachment “${a.path}” seems to contain a ${({ 'device-specific path': 'path specific to this device' })[a.what] || a.what}: check and remove it before sharing (it is packed)` },
   attachBadDescription: { ja: (a) => `添付「${a.path}」の説明（description）が使えない（${a.why}）：${a.max} 字までの 1〜2 文（改行なし）にする（説明なしで一覧に出す）`,
     en: (a) => `the description of the attachment “${a.path}” cannot be used (${a.why}): write one or two sentences, at most ${a.max} characters, without line breaks (listed without it)` },
-  attachTooLarge: { ja: (a) => `添付「${a.path}」が大きすぎる（${mibOf(a.n)}。1 つ ${mibOf(a.max)} まで）：小さくするか、別の場所で配る（1 ファイルに入らない）`, en: (a) => `the attachment “${a.path}” is too large (${mibOf(a.n)}; at most ${mibOf(a.max)} each): make it smaller or share it elsewhere (it is not packed)` },
-  attachTotal: { ja: (a) => `添付を合わせると大きすぎる（「${a.path}」で ${mibOf(a.n)}。合わせて ${mibOf(a.max)} まで）：減らす（この添付から後は 1 ファイルに入らない）`, en: (a) => `the attachments are too large together (${mibOf(a.n)} with “${a.path}”; at most ${mibOf(a.max)}): remove some (this one and later ones are not packed)` },
-  attachCount: { ja: (a) => `添付が多すぎる（${a.max} 個まで）：「${a.path}」は 1 ファイルに入らない`, en: (a) => `too many attachments (at most ${a.max}): “${a.path}” is not packed` },
-  attachList: { ja: (a) => `添付：${a.n} 個（${a.size}。読み手の一覧に ${a.listed} 個）。1 ファイル（.ega.html）の再生ではダウンロードだけで、再生専用（--play-only）には入らない`, en: (a) => `attachments: ${a.n} (${a.size}; ${a.listed} listed for readers). In the single file (.ega.html) they are download-only; play-only files (--play-only) do not carry them` },
+  attachTooLarge: { ja: (a) => `添付「${a.path}」が大きすぎる（${mibOf(a.n)}。1 つ ${mibOf(a.max)} まで）：小さくするか、別の場所で配る（Egatari ファイルに入らない）`, en: (a) => `the attachment “${a.path}” is too large (${mibOf(a.n)}; at most ${mibOf(a.max)} each): make it smaller or share it elsewhere (it is not packed into the Egatari file)` },
+  attachTotal: { ja: (a) => `添付を合わせると大きすぎる（「${a.path}」で ${mibOf(a.n)}。合わせて ${mibOf(a.max)} まで）：減らす（この添付から後は Egatari ファイルに入らない）`, en: (a) => `the attachments are too large together (${mibOf(a.n)} with “${a.path}”; at most ${mibOf(a.max)}): remove some (this one and later ones are not packed into the Egatari file)` },
+  attachCount: { ja: (a) => `添付が多すぎる（${a.max} 個まで）：「${a.path}」は Egatari ファイルに入らない`, en: (a) => `too many attachments (at most ${a.max}): “${a.path}” is not packed into the Egatari file` },
+  attachList: { ja: (a) => `添付：${a.n} 個（${a.size}。読み手の一覧に ${a.listed} 個）。Egatari ファイル（.ega.html）の再生ではダウンロードだけで、再生専用（--play-only）には入らない`, en: (a) => `attachments: ${a.n} (${a.size}; ${a.listed} listed for readers). In the Egatari file (.ega.html) they are download-only; play-only files (--play-only) do not carry them` },
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
-  titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：${quoteJa(a.t)}を短くするか、言いたいことを結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
-  titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英語は 60 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },
+  titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：${quoteJa(a.t)}を短くするか、要点を結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
+  titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英文は 60 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },
   titleColon: { rule: 'R-title', ja: (a) => `見出し${quoteJa(a.t)}がコロンで終わっている：コロンを取り、見出しだけで言い切る`, en: (a) => `the heading “${a.t}” ends with a colon: remove it and let the heading stand on its own` },
   tateTitle: { rule: 'R-title', ja: (a) => `縦組みの見出しが列に収まらない（${a.h}px > ${a.max}px。14 字ほどまで）：見出しを短くする`, en: (a) => `the vertical heading does not fit its column (${a.h}px > ${a.max}px, about 14 characters): shorten it` },
   conclLong: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 字で長い（35 字まで）：「${a.t}」を 1 つの短い文にする`, en: (a) => `the conclusion line has ${a.n} units, over 35: make “${a.t}” one short sentence` },
-  conclLongEn: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 文字で長い（英語は 70 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the conclusion line has ${a.n} characters, over 70: shorten “${a.t}”` },
+  conclLongEn: { rule: 'R-concl', ja: (a) => `結論の行が ${a.n} 文字で長い（英文は 70 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the conclusion line has ${a.n} characters, over 70: shorten “${a.t}”` },
   conclOverflow: { rule: 'R-concl', ja: () => '結論の行が枠からはみ出す：結論の行を短くして 1 行に収める', en: () => 'the conclusion line overflows its box: shorten it to one line' },
   // 結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）はテーマの寸法（metrics）が既定と違うときだけ値にある（なければ既定の値）
   bodyBottom: { rule: 'R-fit',
-    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、部品を ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
-    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}): cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the component ${o} px lower, or split the slide in two (do not shrink text)`; } },
+    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、パーツを ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
+    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}): cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the part ${o} px lower, or split the slide in two (do not shrink text)`; } },
   bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > ${a.lim ?? DEF_RIGHT}px）：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > ${a.lim ?? DEF_RIGHT}px): break the long equation or table, or rebalance the .cols widths` },
   tateBodyHead: { rule: 'R-fit', ja: (a) => `本文が見出しの列に重なる（${a.px}px > ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the heading column (${a.px}px > ${a.lim}px): cut the vertical text or split the slide` },
   bodyConclCol: { rule: 'R-fit', ja: (a) => `本文が結論の列に重なる（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the conclusion column (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
   bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
-  // テーマの寸法の宣言（theme.json の metrics。docs/contract.md §12）。デッキに 1 回。テーマの知らせなので規格の名前はない
+  // テーマの寸法の宣言（theme.json の metrics。docs/contract.md §12）。教材に 1 回。テーマの知らせなので規格の名前はない
   themeMetricsDrift: {
     ja: (a) => `テーマ「${a.theme}」の${a.declared ? '寸法の宣言（theme.json の metrics）と描いた体裁の箱が違う' : '体裁の箱が既定の位置から動いているのに、寸法の宣言（theme.json の metrics）がない'}（${driftList(a.items, 'ja')}）。本文の場所の限りは${a.declared ? '宣言' : '既定'}の値で決めるので、はみ出しの指摘がずれる：${driftHow(a, 'ja')}`,
     en: (a) => `the theme “${a.theme}” ${a.declared ? 'renders its layout boxes differently from its declared geometry (metrics in theme.json)' : 'moves layout boxes from their default positions but declares no geometry (metrics in theme.json)'} (${driftList(a.items, 'en')}). The body limits come from the ${a.declared ? 'declared' : 'default'} values, so overflow findings may be off: ${driftHow(a, 'en')}` },
@@ -193,8 +193,8 @@ export const MESSAGES = {
     ja: (a) => `テーマ「${a.theme}」の寸法と描いた箱を比べなかった：同梱の字体（${(a.fonts || []).join('・')}）が読み込めず、代わりの字体では測らないため（themeMetricsDrift を確かめていない）：npm ci か node tools/get-fonts.mjs で字体をそろえて組み直すか、テーマの --font-sans に同梱の字体を入れる`,
     en: (a) => `the theme “${a.theme}” was not compared with its rendered boxes: the bundled fonts (${(a.fonts || []).join(', ')}) did not load, and a fallback font is never measured (themeMetricsDrift was not checked): restore the fonts (npm ci or node tools/get-fonts.mjs) and rebuild, or put a bundled font in the theme's --font-sans` },
   themeMetricsInvalid: {
-    ja: (a) => `テーマ「${a.theme}」の寸法の宣言（theme.json の metrics）に使えない値がある：${a.list.join('；')}。その値は親のテーマ（なければ既定）の値で検査した：theme.json の metrics を直す（docs/contract.md §12、node tools/theme-metrics.mjs measure <テーマ> で描いた箱の値を出せる）`,
-    en: (a) => `the theme “${a.theme}” declares geometry (metrics in theme.json) that cannot be used: ${a.list.join('; ')}. Those values were checked with the parent theme's (or the default) values: fix metrics in theme.json (docs/contract.md §12; node tools/theme-metrics.mjs measure <theme> prints the rendered values)` },
+    ja: (a) => `テーマ「${a.theme}」の寸法の宣言（theme.json の metrics）に使えない値がある：${a.list.join('；')}。その値の代わりに親のテーマ（なければ既定）の値で品質チェックした：theme.json の metrics を直す（docs/contract.md §12、node tools/theme-metrics.mjs measure <テーマ> で描いた箱の値を出せる）`,
+    en: (a) => `the theme “${a.theme}” declares geometry (metrics in theme.json) that cannot be used: ${a.list.join('; ')}. The quality check used the parent theme's (or the default) values instead: fix metrics in theme.json (docs/contract.md §12; node tools/theme-metrics.mjs measure <theme> prints the rendered values)` },
   fontsExtraMissing: {
     ja: (a) => `字体（${(a.fonts || []).join('・')}）は別の包み ${a.pkg} にあり、入っていないのでファイルに入らない（開く端末の字体で出る）：${a.install} で入れて組み直す（npx なら npx -p egatari -p ${a.pkg} egatari …）。または既定の字体のテーマにする`,
     en: (a) => `the fonts (${(a.fonts || []).join(', ')}) are in the separate package ${a.pkg}, which is not installed, so they are not embedded (each device shows its own font): install it with ${a.install} and build again (with npx: npx -p egatari -p ${a.pkg} egatari …), or use a theme with the default fonts` },
@@ -212,8 +212,8 @@ export const MESSAGES = {
   // 切れる字・外に出る字（kit/core/layout-scan.mjs。警告）。わざと切るところは要素に印（CLIP_ATTR）を付けると見ない
   textClipped: { rule: 'R-fit', ja: (a) => `字が箱で切れている（「${a.t}」${moreJa(a)}、${a.px}px）：箱（overflow が hidden など）を大きくするか、字を減らすか、スライドを分ける。わざと切って見せるなら、その要素に ${CLIP_ATTR} を付ける`, en: (a) => `text is cut off by its box (“${a.t}”${moreEn(a)}, ${a.px}px): make the box (overflow hidden or similar) larger, cut the text or split the slide; if the clipping is intended, add ${CLIP_ATTR} to that element` },
   svgTextOut: { rule: 'R-fit',
-    ja: (a) => (a.edge === 'viewBox' ? `図の字が SVG の枠（viewBox）で切れている（「${a.t}」${moreJa(a)}、${a.px}px）：viewBox を広げるか、字を枠の内に置く` : `図の字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：部品や図を小さくするか位置を直すか、ラベルを短くする`),
-    en: (a) => (a.edge === 'viewBox' ? `text in a figure is cut off by its SVG viewport (viewBox) (“${a.t}”${moreEn(a)}, ${a.px}px): widen the viewBox or move the text inside it` : `text in a figure goes off the slide (“${a.t}”${moreEn(a)}, ${a.px}px): make the component or figure smaller, move it, or shorten the label`) },
+    ja: (a) => (a.edge === 'viewBox' ? `図の字が SVG の枠（viewBox）で切れている（「${a.t}」${moreJa(a)}、${a.px}px）：viewBox を広げるか、字を枠の内に置く` : `図の字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：パーツや図を小さくするか位置を直すか、ラベルを短くする`),
+    en: (a) => (a.edge === 'viewBox' ? `text in a figure is cut off by its SVG viewport (viewBox) (“${a.t}”${moreEn(a)}, ${a.px}px): widen the viewBox or move the text inside it` : `text in a figure goes off the slide (“${a.t}”${moreEn(a)}, ${a.px}px): make the part or figure smaller, move it, or shorten the label`) },
   svgTextBox: { rule: 'R-fit', ja: (a) => `図の字が囲みの箱からはみ出す（「${a.t}」${moreJa(a)}、${a.px}px）：ラベルを短くするか改行するか、箱を広げる（m-flow なら w を大きくする）`, en: (a) => `text in a figure overflows the box drawn around it (“${a.t}”${moreEn(a)}, ${a.px}px): shorten the label, break it into lines, or widen the box (in m-flow, a larger w)` },
   outsideBody: { rule: 'R-fit',
     ja: (a) => `本文（.body）の外に置いた字が${{ slide: `スライドの外に出る（${a.px}px）`, title: '見出しに重なる', concl: '結論の行に重なる', pn: 'ページ番号に重なる' }[a.why] || 'はみ出す'}（「${a.t}」${moreJa(a)}）：本文の中に置くか、位置を直す`,
@@ -223,12 +223,12 @@ export const MESSAGES = {
     ja: (a) => `字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：字を短くするか、位置を直して 1280×720 の内に収める${PLACE_JA[a.kind] || ''}`,
     en: (a) => `text goes off the slide (“${a.t}”${moreEn(a)}, ${a.px}px): shorten it or move it inside the 1280×720 slide${PLACE_EN[a.kind] || ''}` },
   textOverlap: { rule: 'R-fit',
-    ja: (a) => `${a.with === 'band' ? `字がスライドの帯（飾り）に重なる（「${a.t}」${moreJa(a)}）` : `字の箱がほかの字に重なる（「${a.t}」と「${a.u}」${moreJa(a)}）`}：重ならない位置に置き直すか、字を減らす${a.svg ? (a.component === 'm-flow' ? '。m-flow の逆向きの辺には shift を付ける' : a.component === 'm-quad' ? '。m-quad の項目の x/y を変え、象限の名前と重ならない位置に動かす' : a.component ? `。部品 <${a.component}> のデータを変え、ラベルどうしが重ならないようにする` : '。字の x/y か text-anchor を変えるか、軸の名前を軸の端より外に置く') : ''}${PLACE_JA[a.kind] || ''}`,
-    en: (a) => `${a.with === 'band' ? `text overlaps the slide's decorative band (“${a.t}”${moreEn(a)})` : `a text box overlaps other text (“${a.t}” and “${a.u}”${moreEn(a)})`}: move it to free space or cut the text${a.svg ? (a.component === 'm-flow' ? '; add shift to the reverse edge in m-flow' : a.component === 'm-quad' ? '; change the item’s x/y in m-quad to move it away from the quadrant name' : a.component ? `; change the data in the component <${a.component}> so the labels do not meet` : '; change the text’s x/y or text-anchor, or put the axis name beyond the axis end') : ''}${PLACE_EN[a.kind] || ''}` },
+    ja: (a) => `${a.with === 'band' ? `字がスライドの帯（飾り）に重なる（「${a.t}」${moreJa(a)}）` : `字の箱がほかの字に重なる（「${a.t}」と「${a.u}」${moreJa(a)}）`}：重ならない位置に置き直すか、字を減らす${a.svg ? (a.component === 'm-flow' ? '。m-flow の逆向きの辺には shift を付ける' : a.component === 'm-quad' ? '。m-quad の項目の x/y を変え、象限の名前と重ならない位置に動かす' : a.component ? `。パーツ <${a.component}> のデータを変え、ラベルどうしが重ならないようにする` : '。字の x/y か text-anchor を変えるか、軸の名前を軸の端より外に置く') : ''}${PLACE_JA[a.kind] || ''}`,
+    en: (a) => `${a.with === 'band' ? `text overlaps the slide's decorative band (“${a.t}”${moreEn(a)})` : `a text box overlaps other text (“${a.t}” and “${a.u}”${moreEn(a)})`}: move it to free space or cut the text${a.svg ? (a.component === 'm-flow' ? '; add shift to the reverse edge in m-flow' : a.component === 'm-quad' ? '; change the item’s x/y in m-quad to move it away from the quadrant name' : a.component ? `; change the data in the part <${a.component}> so the labels do not meet` : '; change the text’s x/y or text-anchor, or put the axis name beyond the axis end') : ''}${PLACE_EN[a.kind] || ''}` },
   cellWordBreak: { rule: 'R-fit',
     ja: (a) => `表のセルの短い語が途中で折り返している（「${a.t}」が ${a.lines} 行：${a.split}${moreJa(a)}）：表の列を減らすか、語を短くするか、その列を広げる（ほかの列の字を減らす）`,
     en: (a) => `a short word in a table cell breaks across lines (“${a.t}” on ${a.lines} lines: ${a.split}${moreEn(a)}): use fewer columns, shorten the word, or widen that column (cut text in the other columns)` },
-  desuMasu: { rule: 'R-style', ja: (a) => `スライドの字に です・ます がある（「${a.t}」）：スライドは常体（だ・である、体言止め）で書く。です・ます は口述原稿だけ`, en: (a) => `the slide text uses です・ます (“${a.t}”): write slides in plain style (だ・である or a noun ending); keep です・ます for the narration` },
+  desuMasu: { rule: 'R-style', ja: (a) => `スライドの字に です・ます がある（「${a.t}」）：スライドは常体（だ・である、体言止め）で書く。です・ます は台本だけ`, en: (a) => `the slide text uses です・ます (“${a.t}”): write slides in plain style (だ・である or a noun ending); keep です・ます for the script` },
   rawMath: { rule: 'R-math', ja: (a) => `数式が KaTeX で組まれずに残っている（「${a.t}」）：\\( … \\) か \\[ … \\] で囲み、$ … $ は使わない`, en: (a) => `math was left unrendered (“${a.t}”): wrap it in \\( … \\) or \\[ … \\], not $ … $` },
   katexError: { rule: 'R-math', ja: (a) => `KaTeX が式を組めない（「${a.t}」）：式の書き方を直す（< は \\lt、使えるマクロは \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph）`, en: (a) => `KaTeX cannot render an equation (“${a.t}”): fix its syntax (write < as \\lt; allowed macros are \\hlE \\hlT \\hlM \\htmlId \\htmlData \\morph)` },
   // 同じ重さの短い要点だけの本文（kit/core/layout-scan.mjs、backlog #189。情報だけ：直すかは作成者が決める）
@@ -243,13 +243,13 @@ export const MESSAGES = {
       ? `Content sits to the right (centre of mass ${Math.abs(Math.round(a.hOffset))}% right of the centre; ${Math.round(a.left - a.right)}% empty on the left)`
       : `Content sits high (centre of mass ${Math.abs(Math.round(a.vOffset))}% above the optical centre; ${Math.round(a.bottom - a.top)}% empty at the bottom)`) },
   step0: { ja: (a) => `ステップ 0 の本文：「${a.t}」`, en: (a) => `body text at step 0: “${a.t}”` },
-  punctMixed: { rule: 'R-style', ja: (a) => `句読点が混ざっている：${a.minor}が ${a.n} 個あり、デッキの多くは${a.major}：このスライドも${a.major}にそろえる`, en: (a) => `mixed punctuation: ${a.n} × ${a.minor} while most of the deck uses ${a.major}: use ${a.major} here too` },
-  // ---------------------------------------------------------------- 口述原稿
-  // 雛形のまま（kit/core/template-text.mjs）：仮の口述原稿の行・スライドに残った雛形の字
-  narrPlaceholder: { ja: (a) => `口述原稿が雛形の仮の行のまま（narration.md ${a.line} 行目「${a.t}」）：話す言葉に書き換える（このままでは TTS が読み、字幕にも出る）`, en: (a) => `the narration is still the template placeholder (narration.md line ${a.line}, “${a.t}”): replace it with what you say (otherwise TTS reads it and it shows in the captions)` },
-  templateText: { ja: (a) => `雛形の字が残っている：${a.list}。自分の内容に書き換える`, en: (a) => `template text left on the slide: ${a.listEn}. Replace it with your own content` },
-  narrNote: { ja: (a) => `発表者への指示 ${a.t} の書式が正しくない（narration.md ${a.line} 行目）：{note:…} を } で閉じ、中に { や } を入れない`, en: (a) => `invalid stage direction ${a.t} (narration.md line ${a.line}): close {note:…} with } and do not put { or } inside` },
-  narrMissing: { rule: 'R-narr-steps', ja: (a) => `このステップの口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（そのステップで現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
+  punctMixed: { rule: 'R-style', ja: (a) => `句読点が混ざっている：${a.minor}が ${a.n} 個あり、教材の多くは${a.major}：このスライドも${a.major}にそろえる`, en: (a) => `mixed punctuation: ${a.n} × ${a.minor} while most of the lesson uses ${a.major}: use ${a.major} on this slide too` },
+  // ---------------------------------------------------------------- 台本
+  // テンプレートのまま（kit/core/template-text.mjs）：仮の台本の行・スライドに残ったテンプレートの字
+  narrPlaceholder: { ja: (a) => `台本がテンプレートの仮の行のまま（narration.md ${a.line} 行目「${a.t}」）：話す言葉に書き換える（このままでは TTS が読み、字幕にも出る）`, en: (a) => `the script is still the template placeholder (narration.md line ${a.line}, “${a.t}”): replace it with what you say (otherwise TTS reads it and it shows in the captions)` },
+  templateText: { ja: (a) => `テンプレートの字が残っている：${a.list}。自分の内容に書き換える`, en: (a) => `template text left on the slide: ${a.listEn}. Replace it with your own content` },
+  narrNote: { ja: (a) => `発表者への指示 ${a.t} の書式が正しくない（narration.md ${a.line} 行目）：{note:…} を } で閉じ、中に { や } を入れない`, en: (a) => `invalid presenter instruction (stage direction) ${a.t} (narration.md line ${a.line}): close {note:…} with } and do not put { or } inside` },
+  narrMissing: { rule: 'R-narr-steps', ja: (a) => `このステップの台本がない：narration.md のこのスライドの節に [${a.step}] の行を書く（そのステップで現れるものについて話す）`, en: (a) => `no script for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
   // 予想（m-predict）の答えが、数の棒と −1・＋1 の操作（パーツのステップ 1）と同時かそれより前に開く（kit/core/predict-steps.mjs。answer-step が 1 以下）
   predictAnswerWithCount: { rule: 'R-steps',
     ja: () => `予想（m-predict）の答えが、人数を数えるステップと同時に出ます。answer-step を ${PREDICT_COUNT_STEP + 1} 以上にして、数えてから答えを開いてください。`,
@@ -258,44 +258,44 @@ export const MESSAGES = {
   predictAnswerNeverShown: { rule: 'R-steps',
     ja: () => '予想（m-predict）の答えが出ません。steps が answer-step より小さくなっています。steps を answer-step 以上にしてください。',
     en: () => 'The prediction (m-predict) never shows its answer: steps is smaller than answer-step. Set steps to answer-step or more.' },
-  narrFormula: { rule: 'R-formula', ja: (a) => `口述原稿が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the narration reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
-  narrLang: { ja: (a) => `口述原稿の言語（${a.lang}。${a.source === 'voice.json' ? 'voice.json の lang' : '発言の文字から'}）がスライドの言語（${a.deck}）と違う：式の読み上げと長い発言は、発言ごとにその言語の規則で見た`, en: (a) => `the narration language (${a.lang}, ${a.source === 'voice.json' ? 'from lang in voice.json' : 'from the text'}) differs from the slide language (${a.deck}): equations read aloud and long turns were checked with the rules of each turn's language` },
+  narrFormula: { rule: 'R-formula', ja: (a) => `台本が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the script reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
+  narrLang: { ja: (a) => `台本の言語（${a.lang}。${a.source === 'voice.json' ? 'voice.json の lang' : '発言の文字から'}）がスライドの言語（${a.deck}）と違う：式の読み上げと長い発言は、発言ごとにその言語の規則で見た`, en: (a) => `the script language (${a.lang}, ${a.source === 'voice.json' ? 'from lang in voice.json' : 'from the text'}) differs from the slide language (${a.deck}): equations read aloud and long turns were checked with the rules of each turn's language` },
   turnLong: { ja: (a) => `1 回の発言が長い（${a.n} ${a.unit}）：2 つの発言か 2 つのステップに分けるとよい`, en: (a) => `a long turn (${a.n} ${a.unit === '字' ? 'characters' : 'words'}): consider splitting it into two turns or two steps` },
-  // 部品のデータが合わないスライド：口述原稿とステップの数は、データを直してから確かめ直す（narrMissing・narrOrphan はそのスライドでは出さない）
-  narrRecheck: { ja: (a) => `このスライドの部品 ${(a.comps || []).map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、口述原稿とステップの数はデータを直してから確かめ直す（口述原稿は消さない）`,
-    en: (a) => `the component ${(a.comps || []).map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so the narration and the step count are checked again after its data is fixed (keep the narration)` },
-  // a = {step, line, end, range, static, keys, n, concl, target, lines: [{n, text}], comps: [部品の名前…]}（keys 以下は narration-lint の orphanDetail）
+  // パーツのデータが合わないスライド：台本とステップの数は、データを直してから確かめ直す（narrMissing・narrOrphan はそのスライドでは出さない）
+  narrRecheck: { ja: (a) => `このスライドのパーツ ${(a.comps || []).map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、台本とステップの数はデータを直してから確かめ直す（台本は消さない）`,
+    en: (a) => `the part ${(a.comps || []).map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so the script and the step count are checked again after its data is fixed (keep the script)` },
+  // a = {step, line, end, range, static, keys, n, concl, target, lines: [{n, text}], comps: [パーツの名前…]}（keys 以下は narration-lint の orphanDetail）
   narrOrphan: { rule: 'R-narr-steps',
     ja: (a) => {
       const L = a.end > a.line ? `${a.line}〜${a.end}` : `${a.line}`;
-      if (!a.keys) return `口述原稿の [${a.step}] に当たるステップがスライドにない（narration.md ${L} 行目。このスライドのステップは ${a.range.ja}）：その行を前のステップに移すか、${a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外してステップを付ける' : `スライドに data-step="${a.step}" の要素を足す`}`;
+      if (!a.keys) return `台本の [${a.step}] に当たるステップがスライドにない（narration.md ${L} 行目。このスライドのステップは ${a.range.ja}）：その行を前のステップに移すか、${a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外してステップを付ける' : `スライドに data-step="${a.step}" の要素を足す`}`;
       const add = a.step === 'concl' ? 'スライドに結論の行 <div class="concl"><span>…</span></div> を足す（noconcl・static を外す）' : a.static ? 'static を外してステップを付ける' : `スライドに data-step="${a.step}" の要素を足す`;
       const lines = (a.lines || []).map((l) => `${l.n} 行目「${l.text.trim()}」`).join('、');
-      return `口述原稿の [${a.step}] に当たるステップがスライドにない${a.line ? `（narration.md ${L} 行目）` : ''}。このスライドのステップは${a.static ? 'static なので 0 だけ' : `番号が 0〜${a.n}${a.concl ? ' と結論' : ''}`}で、使える鍵は ${a.keys.map((k) => `[${k}]`).join(' ')}。`
+      return `台本の [${a.step}] に当たるステップがスライドにない${a.line ? `（narration.md ${L} 行目）` : ''}。このスライドのステップは${a.static ? 'static なので 0 だけ' : `番号が 0〜${a.n}${a.concl ? ' と結論' : ''}`}で、使える鍵は ${a.keys.map((k) => `[${k}]`).join(' ')}。`
         + `直し方：(1) 行の頭の「[${a.step}]」を消し、その発言を前のステップ [${a.target}] の発言の後ろに続ける（前のステップに合わせる）か、(2) ${add}`
         + (lines ? `。直す行：${lines}` : '')
-        + (a.comps && a.comps.length ? `。このスライドの部品 ${a.comps.map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、そのステップを数えていない：先に部品のデータを直す（R-components）` : '');
+        + (a.comps && a.comps.length ? `。このスライドのパーツ ${a.comps.map((t) => `<${t}>`).join('・')} はデータが合わず描けないので、そのステップを数えていない：先にパーツのデータを直す（R-components）` : '');
     },
     en: (a) => {
       const L = a.end > a.line ? `lines ${a.line}–${a.end}` : `line ${a.line}`;
-      if (!a.keys) return `narration [${a.step}] has no matching step on the slide (narration.md ${L}; the slide has ${a.range.en}): move the line into an existing step, or ${a.step === 'concl' ? 'add a conclusion line <div class="concl"><span>…</span></div> (remove noconcl / static)' : a.static ? 'remove static and add steps' : `add an element with data-step="${a.step}"`}`;
+      if (!a.keys) return `script [${a.step}] has no matching step on the slide (narration.md ${L}; the slide has ${a.range.en}): move the line into an existing step, or ${a.step === 'concl' ? 'add a conclusion line <div class="concl"><span>…</span></div> (remove noconcl / static)' : a.static ? 'remove static and add steps' : `add an element with data-step="${a.step}"`}`;
       const add = a.step === 'concl' ? 'add a conclusion line <div class="concl"><span>…</span></div> to the slide (remove noconcl / static)' : a.static ? 'remove static and add steps' : `add an element with data-step="${a.step}" to the slide`;
       const lines = (a.lines || []).map((l) => `line ${l.n}: “${l.text.trim()}”`).join('; ');
-      return `narration [${a.step}] has no matching step on the slide${a.line ? ` (narration.md ${L})` : ''}. The slide has ${a.static ? 'only step 0 (static)' : `steps 0–${a.n}${a.concl ? ' and concl' : ''}`}; the valid keys are ${a.keys.map((k) => `[${k}]`).join(' ')}. `
+      return `script [${a.step}] has no matching step on the slide${a.line ? ` (narration.md ${L})` : ''}. The slide has ${a.static ? 'only step 0 (static)' : `steps 0–${a.n}${a.concl ? ' and concl' : ''}`}; the valid keys are ${a.keys.map((k) => `[${k}]`).join(' ')}. `
         + `Fix: (1) delete “[${a.step}]” at the start of the line and append its turns to the previous step [${a.target}] (merge into that step), or (2) ${add}`
         + (lines ? `. Lines to change: ${lines}` : '')
-        + (a.comps && a.comps.length ? `. The component ${a.comps.map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so its steps are not counted: fix its data first (R-components)` : '');
+        + (a.comps && a.comps.length ? `. The part ${a.comps.map((t) => `<${t}>`).join(', ')} on this slide cannot draw its data, so its steps are not counted: fix its data first (R-components)` : '');
     } },
   readingExpr: { rule: 'R-reading', ja: (a) => `読みの指定 ${a.t} が式を読んでいる（narration.md ${a.line} 行目）：読みは 1 つの記号か用語だけに付け（{θ|シータ}）、式は意味を言葉で言う`, en: (a) => `the reading ${a.t} reads an expression (narration.md line ${a.line}): give readings to single symbols or terms only ({θ|theta}) and say the relation in words` },
   readingSeveral: { rule: 'R-reading', ja: (a) => `読みの指定 ${a.t} に記号が 2 つ以上ある（narration.md ${a.line} 行目）：記号ごとに分ける（{θ|シータ} と {η|イータ}）`, en: (a) => `the reading ${a.t} covers several symbols (narration.md line ${a.line}): give each symbol its own reading ({θ|theta} and {η|eta})` },
-  // ---------------------------------------------------------------- 色・部品・注目の演出・モーフ・読み上げ
+  // ---------------------------------------------------------------- 色・パーツ・強調・モーフ・読み上げ
   palette: { ja: (a) => `パレット：${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → コントラスト ${a.ratio}:1` : ''}`, en: (a) => `palette: ${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → contrast ${a.ratio}:1` : ''}` },
-  contrastLow: { rule: 'R-colors', ja: (a) => `${a.v} と --bg のコントラストが低い（${a.ratio}:1 < ${a.min}:1）：テーマの色を直す（デッキの中で色を書いていれば消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between ${a.v} and --bg (${a.ratio}:1 < ${a.min}:1): fix the theme colors (remove any colors written in the deck; use only theme classes and variables)` },
-  compOrder: { ja: (a) => `部品の描画が呼び出し順に依存している（ステップ ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないように部品を直す（docs/contract.md §3）`, en: (a) => `the component draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
-  compOrderNoise: { ja: (a) => `部品の描画の揺れを許した（ステップ ${a.k}）：2 回の描画で部品の DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the component DOM was byte-identical in both renders and the ${a.n} differing pixel(s) all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint pixel(s) (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
-  compOrderDetail: { ja: (a) => `呼び出し順の検査の詳しい結果（ステップ ${a.k}）：${a.note}`, en: (a) => `call-order check details (step ${a.k}): ${a.note}` },
-  markMissing: { rule: 'R-marks', ja: (a) => `注目の演出 {mark:${a.id}} の目印がこのスライドにない：目印の要素に id="${a.id}" か data-mark="${a.id}" を付ける（式の一部は \\htmlId{${a.id}}{…}）か、{mark:…} を消す`, en: (a) => `the mark {mark:${a.id}} has no target on this slide: put id="${a.id}" or data-mark="${a.id}" on the element (\\htmlId{${a.id}}{…} in math), or remove the {mark:…}` },
-  marks: { ja: (a) => `注目の演出：${a.list}`, en: (a) => `attention marks: ${a.list}` },
+  contrastLow: { rule: 'R-colors', ja: (a) => `${a.v} と --bg のコントラストが低い（${a.ratio}:1 < ${a.min}:1）：テーマの色を直す（教材の中で色を書いていれば消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between ${a.v} and --bg (${a.ratio}:1 < ${a.min}:1): fix the theme colors (remove any colors written in the lesson; use only theme classes and variables)` },
+  compOrder: { ja: (a) => `パーツの描画が呼び出し順に依存している（ステップ ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないようにパーツを直す（docs/contract.md §3）`, en: (a) => `the part draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
+  compOrderNoise: { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing pixel(s) all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint pixel(s) (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
+  compOrderDetail: { ja: (a) => `品質チェック（呼び出し順）の詳しい結果（ステップ ${a.k}）：${a.note}`, en: (a) => `quality check details (call order, step ${a.k}): ${a.note}` },
+  markMissing: { rule: 'R-marks', ja: (a) => `強調 {mark:${a.id}} の目印がこのスライドにない：目印の要素に id="${a.id}" か data-mark="${a.id}" を付ける（式の一部は \\htmlId{${a.id}}{…}）か、{mark:…} を消す`, en: (a) => `the emphasis {mark:${a.id}} has no target on this slide: put id="${a.id}" or data-mark="${a.id}" on the element (\\htmlId{${a.id}}{…} in math), or remove the {mark:…}` },
+  marks: { ja: (a) => `強調：${a.list}`, en: (a) => `emphasis: ${a.list}` },
   morphNoSrc: { ja: (a) => `モーフの元のスライド「${a.want}」が見つからない：data-morph="元のスライドの id" にするか、空にして前のスライドから`, en: (a) => `the morph source slide “${a.want}” was not found: set data-morph to the source slide’s id, or leave it empty for the previous slide` },
   morphNoIds: { ja: (a) => `モーフ：元のスライド「${a.src}」と同じ data-id の要素がない：動かす要素の両方に同じ data-id を付ける（式の一部は \\morph{ID}{…}）`, en: (a) => `morph: no element shares a data-id with the source slide “${a.src}”: give the moving elements the same data-id on both slides (\\morph{ID}{…} in math)` },
   morphPairs: { ja: (a) => `モーフ（「${a.src}」から）：${a.ids}`, en: (a) => `morph (from “${a.src}”): ${a.ids}` },
@@ -304,22 +304,22 @@ export const MESSAGES = {
   morphDupDst: { ja: (a) => `モーフ：data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: data-id “${a.id}” appears more than once (only the first is used): keep one` },
   imgAlt: { ja: (a) => `alt の無い画像が ${a.n} 枚（${a.list}）：内容を alt="…" に書く（飾りなら alt=""）`, en: (a) => `${a.n} image(s) without alt (${a.list}): describe them in alt="…" (alt="" if decorative)` },
   svgName: { ja: (a) => `名前の無い SVG の図が ${a.n} 個：aria-label="…" か <title>…</title> を付ける（飾りなら aria-hidden="true"）`, en: (a) => `${a.n} SVG figure(s) without a name: add aria-label="…" or <title>…</title> (aria-hidden="true" if decorative)` },
-  compName: { ja: (a) => `名前の無い部品：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `components without a name: ${a.list} (an aria-label="…" helps screen readers)` },
+  compName: { ja: (a) => `名前の無いパーツ：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `parts without a name: ${a.list} (an aria-label="…" helps screen readers)` },
   timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} ステップ）`, en: (a) => `timeline total: ${a.s} s (${a.n} steps)` },
   slideLength: { ja: (a) => `この枚の長さ：${a.s} 秒`, en: (a) => `slide length: ${a.s} s` },
   compLayout: { rule: 'R-fit',
-    ja: (a) => `${compName(a, true)}を置く場所が足りない：${a.msg}。部品を置く場所を広げるか、表示する内容を減らす`,
-    en: (a) => `${compName(a, false)} does not have enough room: ${a.msg}. Give it more space or show less content` },
+    ja: (a) => `${compName(a, true)}を置く場所が足りない：${a.msg}。パーツを置く場所を広げるか、表示する内容を減らす`,
+    en: (a) => `${compName(a, false)} does not have enough room: ${a.msg}. Give the part more space or show less content` },
   compReport: { rule: 'R-components',
     ja: (a) => `${compName(a, true)}からの知らせ：${a.msg}。表示する値や量、テーマの色を確かめる`,
     en: (a) => `${compName(a, false)} reports a problem: ${a.msg}. Check the values, the amount of content and the theme colours` },
   compData: { rule: 'R-components',
     ja: (a) => `${compName(a, true)}のデータが合わない：${compWhat(a, true)}${compHow(a, true) ? `。${compHow(a, true)}` : ''}`,
     en: (a) => `${compName(a, false)} has data it cannot draw: ${compWhat(a, false)}${compHow(a, false) ? `. Write it like this: ${compHow(a, false)}` : ''}` },
-  consoleError: { ja: (a) => `コンソールエラー：${a.e}（デッキの部品やスクリプトを直す）`, en: (a) => `console error: ${a.e} (fix the deck’s component or script)` },
+  consoleError: { ja: (a) => `コンソールエラー：${a.e}（教材のパーツやスクリプトを直す）`, en: (a) => `console error: ${a.e} (fix the lesson’s part or script)` },
 };
 
-// ---------------------------------------------------------------- 部品のデータ（kit/deck.js の DECK.componentErrors。形は kit/shape.js）
+// ---------------------------------------------------------------- パーツのデータ（kit/deck.js の DECK.componentErrors。形は kit/shape.js）
 // a = {tag, label, index, kind, path, why, expected, got, key, near, keys, attrKeys, arrayKey, inner, msg, attr, dataLike, shape, example}
 function compWhat(a, ja) {
   const p = (x) => (x ? x + (ja ? ' ' : '') : ja ? 'データ全体' : 'the data');
@@ -346,15 +346,15 @@ function compWhat(a, ja) {
     case 'json': return ja ? `データの JSON が読めない（${a.msg}）。JSON の書き方（" で囲んだ名前、最後の , なし）に直す` : `the data is not valid JSON (${a.msg}): fix the JSON syntax (quoted names, no trailing commas)`;
     case 'attrJson': return ja ? `属性 ${a.attr} の値が JSON として読めない（${a.msg}）` : `the attribute ${a.attr} is not valid JSON (${a.msg})`;
     case 'attr': return ja ? `属性 ${a.attr}${a.path ? ` の ${a.path}` : ''} は ${a.expected} のはずが ${a.got}` : `the attribute ${a.attr}${a.path ? ` at ${a.path}` : ''} must be ${a.expected} but is ${a.got}`;
-    case 'notText': return ja ? 'この部品は JSON ではなく、要素の中に字で書く' : 'this component is written as text inside the element, not as JSON';
+    case 'notText': return ja ? 'このパーツは JSON ではなく、要素の中に字で書く' : 'this part is written as text inside the element, not as JSON';
     case 'empty': return ja ? '要素の中に字がない' : 'there is no text inside the element';
-    case 'notLinks': return ja ? 'この部品は JSON ではなく、子のリンク <a href> で書く' : 'this component is written as child <a href> links, not as JSON';
+    case 'notLinks': return ja ? 'このパーツは JSON ではなく、子のリンク <a href> で書く' : 'this part is written as child <a href> links, not as JSON';
     case 'noLinks': return ja ? '子のリンク <a href> がない' : 'there are no child <a href> links';
-    // 部品が ctx.report で知らせた（format spec §8.4。code は data・attr・error など。msg は部品の言葉で [名前] から始まる）
-    case 'report': return ja ? `部品が知らせた（${a.code}）：${a.msg}` : `the component reported (${a.code}): ${a.msg}`;
+    // パーツが ctx.report で知らせた（format spec §8.4。code は data・attr・error など。msg はパーツの言葉で [名前] から始まる）
+    case 'report': return ja ? `パーツが知らせた（${a.code}）：${a.msg}` : `the part reported (${a.code}): ${a.msg}`;
     default: return a.dataLike
-      ? (ja ? `部品が描けずに止まった（${a.msg}）。データの形が部品の形と合っていないときに出る誤り` : `the component stopped while drawing (${a.msg}); this usually means the data does not have the component’s shape`)
-      : (ja ? `部品が描けずに止まった（${a.msg}）` : `the component stopped while drawing (${a.msg})`);
+      ? (ja ? `パーツが描けずに止まった（${a.msg}）。データの形がパーツの形と合っていないときに出る誤り` : `the part stopped while drawing (${a.msg}); this usually means the data does not have the part’s shape`)
+      : (ja ? `パーツが描けずに止まった（${a.msg}）` : `the part stopped while drawing (${a.msg})`);
   }
 }
 function compHow(a, ja) {
@@ -365,7 +365,7 @@ function compHow(a, ja) {
 }
 function compName(a, ja) {
   const n = a.index > 0 ? (ja ? `（${a.index + 1} 個目）` : ` (#${a.index + 1})`) : '';
-  return ja ? `部品 <${a.tag}>${n}${a.label ? `「${a.label}」` : ''}` : `the component <${a.tag}>${n}${a.label ? ` “${a.label}”` : ''}`;
+  return ja ? `パーツ <${a.tag}>${n}${a.label ? `「${a.label}」` : ''}` : `the part <${a.tag}>${n}${a.label ? ` “${a.label}”` : ''}`;
 }
 
 // 知らせの規格の名前（なければ null）。rule は文字列か、値 a から決める関数
@@ -384,7 +384,7 @@ export function message(lang, code, a = {}) {
   return rule && !t.includes(rule) ? t + (lang === 'en' ? ` (${rule})` : `（${rule}）`) : t;
 }
 
-// 部品の見た目の知らせ（§8.4）。データ・属性・例外は componentErrors が別に扱う。
+// パーツの見た目の知らせ（§8.4）。データ・属性・例外は componentErrors が別に扱う。
 export function partReportFinding(r) {
   if (!r || r.kind !== 'report' || ['data', 'attr', 'error'].includes(r.code)) return null;
   return { slide: r.slide, sev: 'warn', code: r.code === 'layout' ? 'compLayout' : 'compReport', a: r };

@@ -176,7 +176,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await waitPanel();
   const sum2 = await page.textContent('#panel-body .sum');
   const items = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent));
-  ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /narration \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
+  ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /script \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
     'llm: the quality check reports the long title, the orphan [4] and the expression reading: ' + sum2);
   { const bd = await page.evaluate(() => window.__APP_TEST.badge()); ok(bd.errs > 0 && bd.bad && !bd.hidden, `llm: with errors, the Quality check badge shows the counts (“${bd.text}”)`); }
   const note2 = await page.textContent('#panel-body .hint');
@@ -189,9 +189,9 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const req = await page.inputValue('#fix-text');
   ok(req.includes('R-title') && /\*\*R-title\*\* Heading: Japanese at most 26 units/.test(req) && req.includes('R-narr-steps') && req.includes('R-reading') && req.includes('````deck.html') && req.includes('{#s-'),
     'llm: the fix request names the errors, quotes their rules from the guide and includes the current files');
-  ok(req.includes('## Components used in this deck') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
+  ok(req.includes('## Parts used in this lesson') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
   ok((await clip()) === req, 'llm: the fix request is on the clipboard');
-  ok(/narration \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req), 'llm: the fix request quotes the orphan narration lines');
+  ok(/script \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req), 'llm: the fix request quotes the orphan narration lines');
   const leadRe = new RegExp(`^Copied \\(${packKb(req).replace('.', '\\.')} KB: \\d+ finding\\(s\\), their standards and the current slides and script\\)\\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\\.$`);
   ok(leadRe.test(await page.textContent('#fix-lead')) && (await page.getAttribute('#fix-lead', 'role')) === 'status', 'llm: the fix request dialog says the size and where the output goes: ' + await page.textContent('#fix-lead'));
   // ［Copy the fix request］：本文の横の主ボタン。クリップボードが上書きされても何度でも写し直せる

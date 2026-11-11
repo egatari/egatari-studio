@@ -63,7 +63,7 @@ import { uncoveredGlyphs } from './core/font-coverage.mjs';
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
 const ti = args.indexOf('--theme'), theme = ti >= 0 ? args[ti + 1] : undefined;
-const li = args.indexOf('--lang'), langArg = li >= 0 ? args[li + 1] : undefined;   // 知らせの言葉（ja | en。既定はデッキの言語）
+const li = args.indexOf('--lang'), langArg = li >= 0 ? args[li + 1] : undefined;   // 知らせの言葉（ja | en。既定は教材の言語）
 const arg0 = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1) && !(li >= 0 && i === li + 1));
 if (!arg0) {
   console.error('usage: node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]');
@@ -297,7 +297,7 @@ let browserPhase = false;
 const crashed = (e) => {
   if (!browserPhase) { console.error(e && e.stack ? e.stack : String(e)); process.exit(1); }   // ブラウザの前の例外は今までどおり（終了コード 1）
   try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* 消せなくてよい */ }
-  console.error((ML === 'en' ? 'check did not finish: the headless browser failed to launch or crashed (this is not "0 errors").\n' : '検査が終わっていない：ヘッドレスのブラウザが起動できないか、途中で落ちた（「エラー 0」ではない）。\n') + String(e && e.message ? e.message : e));
+  console.error((ML === 'en' ? 'the quality check did not finish: the headless browser failed to launch or crashed (this is not "0 errors").\n' : '品質チェックが終わっていない：ヘッドレスのブラウザが起動できないか、途中で落ちた（「エラー 0」ではない）。\n') + String(e && e.message ? e.message : e));
   if (asJson) console.log(JSON.stringify({ ok: false, status: 'crashed', lang: ML, counts: { error: 0, warn: 0, info: 0 }, results: [] }, null, 2));
   process.exit(2);
 };
@@ -516,7 +516,7 @@ for (const f of await scanBalance(page, meta)) {
 }
 
 // ================================================================ B. 口述原稿
-phase = 'B 口述原稿';
+phase = 'B 台本';
 const narrInfo = await page.evaluate((metaList) => {
   const out = [];
   // static のスライド（表紙など。段階は 0 だけ）も段階 0 の口述原稿を見る
@@ -687,7 +687,7 @@ await page.goto(url);
 await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
 
 // ================================================================ F. 注目の演出
-phase = 'F 注目の演出';
+phase = 'F 強調';
 const markInfo = await page.evaluate(() => {
   const out = [];
   DECK.slides.forEach((s, i) => {
@@ -811,7 +811,7 @@ if (asJson) {
   const stepOf = (s) => (s === null ? '' : EN ? (s === 'concl' ? 'conclusion: ' : `step ${s}: `) : (s === 'concl' ? '結論のステップ：' : `ステップ ${s}：`));
   for (const key of keys) {
     const id = key >= 0 && meta[key] && meta[key].id;
-    const label = key === -1 ? (EN ? '■ Whole deck' : '■ デッキ全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;
+    const label = key === -1 ? (EN ? '■ Whole lesson' : '■ 教材全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;
     console.log(label);
     const items = groups.get(key).sort((a, b) => SEV_RANK[a.sev] - SEV_RANK[b.sev]);
     for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${cliHints(r.what)}`);
