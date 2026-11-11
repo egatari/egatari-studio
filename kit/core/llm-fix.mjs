@@ -44,7 +44,7 @@ compData: ['R-components'], consoleError: ['R-components'],
 };
 const BY_TEXT = [
   [/スライドが見つからない|slide not found|no slide/i, ['R-headings']],
-  [/段階の番号|口述原稿の段階|step key/i, ['R-narr-steps']],
+  [/ステップの指定|段階の番号|口述原稿の段階|step key|step label/i, ['R-narr-steps']],
   [/^mark: |目印/, ['R-marks']],
   [/式は読まず|reads? an equation/i, ['R-formula']],
   [/読みの指定/, ['R-reading']],
@@ -71,8 +71,8 @@ const L = {
   },
   ja: {
     head: 'Egatari の教材（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
-    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み ```deck.html と ```narration.md を書いてください（R-output）。',
-    askPartial: (n) => `教材が長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つの囲みで、deck.html の囲みにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md の囲みにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
+    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つの灰色の枠（コードブロック） ```deck.html と ```narration.md を書いてください（R-output）。',
+    askPartial: (n) => `教材が長いので、問題のあるスライド ${n} 枚だけを下に載せています。返事は同じ 2 つのコードブロックで、deck.html のコードブロックにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md のコードブロックにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
     problems: '指摘', rules: '規格', components: 'この教材で使っているパーツ（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
     where: (p) => (p.i === null || p.i === undefined ? '教材全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? quoteJa(p.title) : ''}`),
     sev: { error: 'エラー', warn: '警告' },
@@ -111,16 +111,16 @@ export function amountOf(p, lang = 'en') {
 }
 
 // 返事が途中で切れて取り込めなかったとき（kit/core/llm-import.mjs の unclosed）の依頼
-// 囲みがなかったとき（no-blocks：ファイル・キャンバス・添付で返したなど）も、この関数で送り直しを頼む（err.code === 'no-blocks'）
+// コードブロックがなかったとき（no-blocks：ファイル・キャンバス・添付で返したなど）も、この関数で送り直しを頼む（err.code === 'no-blocks'）
 export function cutOffRequest(err, lang = 'en') {
   if (err && err.code === 'no-blocks') {
     return lang === 'ja'
-      ? '前の返事にはコードの囲みがありませんでした。ファイル・キャンバス・添付では出さず、チャットの返事の本文に、2 つのコードの囲み ```deck.html と ```narration.md を書いて送り直してください。どちらも最後まで書いて閉じてください（R-output）。\n'
+      ? '前の返事には灰色の枠（コードブロック）がありませんでした。ファイル・キャンバス・添付では出さず、チャットの返事の本文に、2 つのコードブロック ```deck.html と ```narration.md を書いて送り直してください。どちらも最後まで書いて閉じてください（R-output）。\n'
       : 'Your previous reply had no code blocks. Do not output files, a canvas or attachments: write both code blocks, ```deck.html and ```narration.md, in the body of your chat message, complete and closed (R-output).\n';
   }
   const file = err.kind === 'deck' ? 'deck.html' : err.kind === 'narration' ? 'narration.md' : null;
   return lang === 'ja'
-    ? `前の返事は途中で切れていました${file ? `（${file} の囲みが閉じていません）` : ''}。${file === 'narration.md' ? 'narration.md の囲みだけを、最初から最後まで書いて閉じた形で送り直してください（deck.html は受け取りました）。' : '同じ教材を、枚数を減らした短い形で、2 つの囲み ```deck.html と ```narration.md をどちらも閉じて送り直してください。'}囲みの途中で終わらないでください（R-output）。
+    ? `前の返事は途中で切れていました${file ? `（${file} の灰色の枠（コードブロック）が閉じていません）` : ''}。${file === 'narration.md' ? 'narration.md のコードブロックだけを、最初から最後まで書いて閉じた形で送り直してください（deck.html は受け取りました）。' : `同じ教材を、枚数を減らした短い形で、2 つの${file ? 'コードブロック' : '灰色の枠（コードブロック）'} \`\`\`deck.html と \`\`\`narration.md をどちらも閉じて送り直してください。`}コードブロックの途中で終わらないでください（R-output）。
 `
     : `Your previous reply was cut off${file ? ` (the ${file} block is not closed)` : ''}. ${file === 'narration.md' ? 'Send only the narration.md block again, complete and closed (the deck.html block arrived).' : 'Send the lesson again in a shorter form (fewer slides), as two closed blocks, ```deck.html and ```narration.md.'} Never stop in the middle of a block (R-output).
 `;

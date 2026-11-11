@@ -1,4 +1,4 @@
-<!-- i18n: pair=business.ja.md sha256=5ca7992eacc95b0a -->
+<!-- i18n: pair=business.ja.md sha256=8f3a2d0304b88dcd -->
 ## Part set: business
 
 For business and pitch decks: KPI cards, positioning maps, market sizes and money flows. Use the `sumi` theme. Put the fictional label of R-components in a `note` or on the cover, and keep the numbers consistent across slides (parts add up to the totals you state).

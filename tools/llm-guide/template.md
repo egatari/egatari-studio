@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=8cdacb21c1053e03 -->
+<!-- i18n: pair=template.ja.md sha256=4f036d48c67b6333 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -139,7 +139,7 @@ These standard parts may be used in any lesson; a part set, when it is included 
 ```
 
 - One section per slide, **in slide order, for every slide (cover included)**: `## <slide heading>` (R-headings), no `{#id}` (R-noids).
-- **R-narr-steps** Step markers `[0]`, `[1]`, … and `[concl]`. **Every step of every slide has script lines** (step 0 to max, and `[concl]` if the slide has a conclusion line), and there are **no markers for steps that do not exist** (a `static` cover has only `[0]`; a slide without a conclusion line has no `[concl]`; never `[01]`). Within a step, talk only about what appears at that step.
+- **R-narr-steps** Step labels `[0]`, `[1]`, … and `[concl]`. **Every step of every slide has script lines** (step 0 to max, and `[concl]` if the slide has a conclusion line), and there are **no labels for steps that do not exist** (a `static` cover has only `[0]`; a slide without a conclusion line has no `[concl]`; never `[01]`). Within a step, talk only about what appears at that step.
 - **R-dialogue** **One narrator by default**: write no speaker names. Write a dialogue only when asked (if asked for three or more speakers, keep two roles and say so first): lines start with `Expert:` or `Novice:` (continuation lines indented; a line without a speaker is Expert), shaped as a cognitive apprenticeship:
   - Novice is never a mere backchannel: Novice voices the question a learner is likely to have, or paraphrases (“So …, is that right?”)
   - Expert answers and adds one example or analogy, or confirms (or corrects) the paraphrase and takes one step further

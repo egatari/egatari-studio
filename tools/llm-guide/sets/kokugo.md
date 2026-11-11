@@ -1,4 +1,4 @@
-<!-- i18n: pair=kokugo.ja.md sha256=8719eb458f43291d -->
+<!-- i18n: pair=kokugo.ja.md sha256=fb2af8fd1a2ea1eb -->
 ## Part set: kokugo (Japanese language arts)
 
 For 国語 lessons: 漢文, 古文 and 現代文. Use the `kokugo` theme. In the script, give the reading of hard words and names with `{display|reading}` (R-reading).

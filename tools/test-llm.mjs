@@ -386,7 +386,7 @@ ok('直したスライドだけの返事：id で元の場所に戻す（ほか�
 });
 
 // ---------------------------------------------------------------- 4. 修正依頼
-ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今のファイル・2 つの囲みで返す頼み', () => {
+ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今のファイル・2 つのコードブロックで返す頼み', () => {
   const deck = worked('academic', 'deck.html'), narration = worked('academic', 'narration.md');
   const a = assignIds(deck, narration, { byOrder: true });
   const probs = [
@@ -413,7 +413,7 @@ ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今�
   } finally { console.warn = cw; }
   assert.ok(warned.length === 1 && /guide argument is no longer used/.test(warned[0]), warned.join('|'));
   const ja = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, lang: 'ja' });
-  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つのコードの囲み') && ja.text.includes('## この教材で使っているパーツ'));
+  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つの灰色の枠（コードブロック）') && ja.text.includes('## この教材で使っているパーツ'));
   assert.deepEqual(rulesFor({ code: 'readingExpr' }), ['R-reading', 'R-formula']);
 });
 ok('長いデッキの修正依頼：問題のあるスライドとその節だけ（id 付き）を載せ、そのスライドだけを返してもらう', () => {
@@ -507,8 +507,8 @@ ok('品質チェック：static の表紙の口述原稿がない → 警告。�
   const j = JSON.parse(c.stdout);
   const has = (sev, slide, re) => j.results.some((x) => x.sev === sev && x.slide === slide && re.test(x.msg));
   assert.ok(has('warn', 1, /^スライド 1「表紙」（s-cover1）、ステップ 0：このステップの台本がない：narration.md のこのスライドの節に \[0\] の行を書く/), 'static cover narration');
-  assert.ok(has('error', 2, /ステップ 3：台本の \[3\] に当たるステップがスライドにない.*番号が 0〜2 と結論.*使える鍵は \[0\] \[1\] \[2\] \[concl\].*前のステップ \[2\].*data-step="3".*直す行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
-  assert.ok(has('error', 3, /台本の \[concl\] に当たるステップがスライドにない.*使える鍵は \[0\]。.*前のステップ \[0\].*結論の行/), 'orphan [concl]');
+  assert.ok(has('error', 2, /ステップ 3：台本の \[3\] に当たるステップがスライドにない.*番号が 0〜2 と結論.*使えるステップの指定は \[0\] \[1\] \[2\] \[concl\].*前のステップ \[2\].*data-step="3".*直す行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
+  assert.ok(has('error', 3, /台本の \[concl\] に当たるステップがスライドにない.*使えるステップの指定は \[0\]。.*前のステップ \[0\].*結論の行/), 'orphan [concl]');
   assert.ok(has('warn', 2, /読みの指定 \{1-η\|いちマイナスイータ\} が式を読んでいる/), 'reading operator');
   assert.ok(has('warn', 2, /読みの指定 \{θとη\|シータとイータ\} に記号が 2 つ以上/), 'reading several');
   // JSON の形：slide・id・key・title（見出しの字）・step・code・rule・msg（docs/reference.md「品質チェック」）
@@ -545,7 +545,7 @@ ok('fix request: the ask forbids Canvas, slide-making and file features and want
   const en = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'en' });
   const ja = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'ja' });
   assert.match(en.text, /Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks/);
-  assert.match(ja.text, /Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つのコードの囲み/);
+  assert.match(ja.text, /Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つの灰色の枠（コードブロック）/);
 });
 
 console.log(`llm: ${n} ok (${work})`);

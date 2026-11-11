@@ -11,4 +11,4 @@
 
 {{WORKED business "見本：ビジネス（日本語・sumi テーマ・m-kpi）" m-kpi}}
 
-<!--part:m-kpi-->段階の数え方：札が 3 枚の `m-kpi` は段階 1〜3。<!--/part-->
+<!--part:m-kpi-->ステップの数え方：札が 3 枚の `m-kpi` はステップ 1〜3。<!--/part-->

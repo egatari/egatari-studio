@@ -176,7 +176,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await waitPanel();
   const sum2 = await page.textContent('#panel-body .sum');
   const items = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent));
-  ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /script \[4\] has no matching step.*valid keys are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
+  ok(/^[1-9]\d* errors/.test(sum2) && items.some((t) => /title is .*max 26/.test(t)) && items.some((t) => /script \[4\] has no matching step.*valid step labels are \[0\]/.test(t)) && items.some((t) => /reads an expression/.test(t)),
     'llm: the quality check reports the long title, the orphan [4] and the expression reading: ' + sum2);
   { const bd = await page.evaluate(() => window.__APP_TEST.badge()); ok(bd.errs > 0 && bd.bad && !bd.hidden, `llm: with errors, the Quality check badge shows the counts (“${bd.text}”)`); }
   const note2 = await page.textContent('#panel-body .hint');

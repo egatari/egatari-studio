@@ -114,7 +114,7 @@ ok('--dry-run は何も書かない', () => {
 
 for (const [name, extra, re] of [
   ['id がほかの id と重なる', '<p id="cover">x</p>', /「cover」がほかの id と重なる/],
-  ['鍵が重なる', '<section class="slide"><h2>更新の 式</h2></section>', /鍵「更新の式」/],
+  ['鍵が重なる', '<section class="slide"><h2>更新の 式</h2></section>', /スライドの id「更新の式」/],
   ['id の書式の誤り', '<section class="slide" id="1x"><h2>x</h2></section>', /「1x」が規則に合わない/],
 ]) {
   ok(`断る：${name}`, () => {

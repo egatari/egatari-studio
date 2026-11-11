@@ -17,8 +17,8 @@ const WHY_LABEL = {
 };
 const WHY_SOL = { ja: { missing: 'がない', 'not-exercise': 'は問（:::{exercise}）でない', twice: 'の解答が 2 つ目（1 つの問に 1 つまで）' }, en: { missing: 'does not exist', 'not-exercise': 'is not an exercise', twice: 'already has a solution (one per exercise)' } };
 const WHY_STEP = {
-  ja: (a) => (a.why === 'slide' ? 'のスライドがない' : a.why === 'not-id' ? 'のスライドの鍵がスライドの id でない（npm run ids で id を付ける）' : a.why === 'concl' ? 'のスライドに結論のステップがない' : `のステップがない${a.max !== undefined ? `（0〜${a.max}）` : ''}`),
-  en: (a) => (a.why === 'slide' ? ': no such slide' : a.why === 'not-id' ? ': the slide key is not a slide id (add ids with npm run ids)' : a.why === 'concl' ? ': the slide has no conclusion step' : `: no such step${a.max !== undefined ? ` (0–${a.max})` : ''}`),
+  ja: (a) => (a.why === 'slide' ? 'のスライドがない' : a.why === 'not-id' ? 'のスライドにスライドの id がない（npm run ids で id を付ける）' : a.why === 'concl' ? 'のスライドに結論のステップがない' : `のステップがない${a.max !== undefined ? `（0〜${a.max}）` : ''}`),
+  en: (a) => (a.why === 'slide' ? ': no such slide' : a.why === 'not-id' ? ': the slide has no slide id (add ids with npm run ids)' : a.why === 'concl' ? ': the slide has no conclusion step' : `: no such step${a.max !== undefined ? ` (0–${a.max})` : ''}`),
 };
 const ENC = { ja: { bom: '先頭に BOM がある（BOM なしの UTF-8 にする）', crlf: '改行が CRLF（LF にする）', nfc: 'Unicode の NFC になっていない（NFC で保存する）' }, en: { bom: 'starts with a BOM (save as UTF-8 without BOM)', crlf: 'has CRLF line endings (use LF)', nfc: 'is not in Unicode NFC (save it normalized to NFC)' } };
 

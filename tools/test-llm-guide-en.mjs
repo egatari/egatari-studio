@@ -128,7 +128,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     const json = execFileSync(process.execPath, ['--input-type=module', '-e', `import(${JSON.stringify(pathToFileURL(path.join(dir, 'data.mjs')).href)}).then((m) => process.stdout.write(JSON.stringify(m.PACK)))`], { encoding: 'utf8', maxBuffer: 64 << 20 });
     const oldData = JSON.parse(json);
     assert.match(oldData.partsSrc, /\/v2\.4\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.6\.0\//);
+    assert.match(PACK.partsSrc, /\/v2\.6\.2\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(PACK);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
@@ -140,6 +140,8 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     cur.ja.components['m-map-japan'] = oldData.ja.components['m-map-japan'];
     // 部品庫 2.6.0（候補）で m-curves 2.2.0 に area が加わった。その部品の日本語の指示も v0.6.6 のものに揃えて比べる
     cur.ja.components['m-curves'] = oldData.ja.components['m-curves'];
+    // 部品庫 2.6.2 で m-predict 2.0.5 の README（日本語）が変わった（answer-step は 2 以上）。同じく v0.6.6 のものに揃えて比べる
+    cur.ja.components['m-predict'] = oldData.ja.components['m-predict'];
     // 部品庫 2.6.0（候補）で新しい束 data（情報・データサイエンス）が加わった。その束とそのパーツを除いて比べる（ほかの束の組み合わせはそのまま）
     const DATA = cur.parts.filter((p) => p.set === 'data').map((p) => p.tag);
     assert.deepEqual(DATA, ['m-balance', 'm-ci', 'm-code', 'm-folds', 'm-mapping', 'm-sampling']);
@@ -147,9 +149,23 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     cur.parts = cur.parts.filter((p) => p.set !== 'data');
     for (const L of ['en', 'ja']) { delete cur[L].sets.data; for (const t of DATA) delete cur[L].components[t]; }
     // v0.6.10 で指示の材料の言葉を用語集にそろえた（部品→パーツ・口述原稿→台本・デッキ→教材・注目の演出→強調）。パーツ庫から来る説明は元の言葉のままなので、両方を同じ言葉に直してから比べる
-    const TERMS = [['部品', 'パーツ'], ['口述原稿', '台本'], ['デッキ', '教材'], ['注目の演出', '強調']];
+    const TERMS = [['部品', 'パーツ'], ['口述原稿', '台本'], ['デッキ', '教材'], ['注目の演出', '強調'], ['段階', 'ステップ']];
     const norm = (x) => TERMS.reduce((t, [from, to]) => t.replaceAll(from, to), x);
-    const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm);
+    // v0.6.10 の続き：コードの囲み → コードブロック（初出は灰色の枠（コードブロック））、段階の印 → ステップの指定。古い側の文を新しい文に直してから比べる
+    const FOLLOW = [
+      ['**2 つの囲みはどちらも最後まで書いて閉じる。**囲みの途中で終わらない', '**2 つの灰色の枠（コードブロック）はどちらも最後まで書いて閉じる。**コードブロックの途中で終わらない'],
+      ['**ちょうど 2 つのコードの囲み**にし', '**ちょうど 2 つのコードブロック**にし'],
+      ['1 つのファイルを囲みに分けない', '1 つのファイルを複数のコードブロックに分けない'],
+      ['囲みの途中で終わらない（長すぎるなら', 'コードブロックの途中で終わらない（長すぎるなら'],
+      ['`outline` という名前の囲み 1 つ', '`outline` という名前のコードブロック 1 つ'],
+      ['また 2 つの囲みで返す（R-output）', 'また 2 つのコードブロックで返す（R-output）'],
+      ['その節だけを 2 つの囲みで返す', 'その節だけを 2 つのコードブロックで返す'],
+      ['ステップの印は `[0]`', 'ステップの指定は `[0]`'],
+      ['**ないステップの印は書かない**', '**ないステップの指定は書かない**'],
+      ['1 枚のステップは 5 前後まで', '1 枚のステップの数は 5 前後まで'],
+    ];
+    const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);
+    const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);
     assert.ok(a.some((x) => x.includes('<version>')) && a.some((x) => x.includes('<partsSrc>')));

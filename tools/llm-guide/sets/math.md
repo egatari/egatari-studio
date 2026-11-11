@@ -1,4 +1,4 @@
-<!-- i18n: pair=math.ja.md sha256=62469cad3fbdf6cc -->
+<!-- i18n: pair=math.ja.md sha256=48fbfdd638c4cdb4 -->
 ## Part set: math (arithmetic and mathematics)
 
 For arithmetic and mathematics lessons: column arithmetic, number lines, tape diagrams, and a function that changes with a parameter. Use the `default` theme.

@@ -14,4 +14,4 @@
 
 {{WORKED academic "見本：算数・数学（英語・default テーマ・m-sweep）" m-sweep}}
 
-<!--part:m-sweep-->段階の数え方：値が 3 つの `m-sweep` は段階 1〜2。<!--/part-->
+<!--part:m-sweep-->ステップの数え方：値が 3 つの `m-sweep` はステップ 1〜2。<!--/part-->

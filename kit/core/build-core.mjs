@@ -111,7 +111,7 @@ export function annotate(src, dev, warn = []) {
   secs.forEach((s, i) => {
     if (keyOf[i]) return;
     let key = s.explicit;
-    if (key) { key = free(key); warn.push(`slide key: 「${s.explicit}」が重複している（data-key / id）。2 つ目以降を「${key}」にした`); }
+    if (key) { key = free(key); warn.push(`slide key: スライドの id「${s.explicit}」が重複している（data-key / id）。2 つ目以降を「${key}」にした`); }
     else {
       key = (s.h ? normalizeKey(inner(src, s.h)) : '') || `s${i + 1}`;
       if (taken.has(key)) key = free(key);
@@ -179,10 +179,10 @@ export function analyzeSlideIds(src) {
   for (const s of slides) {
     const where = `スライド ${s.index + 1}（${s.line} 行目）`;
     if (s.id !== null && !isSlideId(s.id)) problems.push({ sev: 'error', slide: s.index, msg: `slide id: ${where}の id「${s.id}」が規則に合わない（英字で始まり、英数字・_・- が続く 64 字まで）` });
-    if (s.id !== null && docIds.has(s.id)) problems.push({ sev: 'error', slide: s.index, msg: `slide id: ${where}の id「${s.id}」がほかの id と重なる：${docIds.get(s.id)}（スライドの id と注目の演出の目印は同じ名前空間）` });
+    if (s.id !== null && docIds.has(s.id)) problems.push({ sev: 'error', slide: s.index, msg: `slide id: ${where}の id「${s.id}」がほかの id と重なる：${docIds.get(s.id)}（スライドの id と強調の目印は同じ名前空間）` });
     if (byKey.has(s.key)) {
       const o = byKey.get(s.key);
-      problems.push({ sev: 'error', slide: s.index, msg: `slide key: ${where}の鍵「${s.key}」がスライド ${o.index + 1}（${o.line} 行目）と重なる（どちらかの <section> に id を付ける。npm run ids は重なりを直さない）` });
+      problems.push({ sev: 'error', slide: s.index, msg: `slide key: ${where}のスライドの id「${s.key}」がスライド ${o.index + 1}（${o.line} 行目）と重なる（どちらかの <section> に id を付ける。npm run ids は重なりを直さない）` });
     } else byKey.set(s.key, s);
   }
   return { slides, docIds, problems };
@@ -1013,7 +1013,7 @@ export function build(env0, srcPath, opts = {}) {
     }
     if (env.exists(local)) {
       if (env.within(local, deckDir)) file = local;
-      else { warn.push(`refused: 部品 ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
+      else { warn.push(`refused: パーツ ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
     } else if (lib && env.exists(lib)) {
       if (pick.note) warn.push(pick.note);
       const y = yankedInfo(lock, pick.version);
@@ -1021,10 +1021,10 @@ export function build(env0, srcPath, opts = {}) {
         // 置き換え先の版が手元にあるか・index.js の同一性の hash が変わるか（編集アプリが組み直しの知らせに使う）
         const lc = lock.components[name], ok = !!lc && lc.versions.includes(y.replacement);
         yankedUsed.push({ tag, name, version: pick.version, replacement: y.replacement, reason: y.reason, date: y.date, replacementAvailable: ok, sha256Changes: ok ? lc.sha256[pick.version] !== lc.sha256[y.replacement] : null });
-        warn.push(`yanked: ${tag} ${pick.version} was withdrawn by the component registry on ${y.date} (replacement ${y.replacement}; ${y.reason}). It is built as recorded, never replaced silently. To rebuild with ${y.replacement}, set "${name}": "${y.replacement}" under components in egatari.json (the editor has a button) / 部品庫が取り下げた版：記録のまま組む。黙って置き換えない`);
+        warn.push(`yanked: ${tag} ${pick.version} was withdrawn by the component registry on ${y.date} (replacement ${y.replacement}; ${y.reason}). It is built as recorded, never replaced silently. To rebuild with ${y.replacement}, set "${name}": "${y.replacement}" under components in egatari.json (the editor has a button) / パーツライブラリが取り下げた版：記録のまま組む。黙って置き換えない`);
       }
       if (env.within(lib, compRoot)) { file = lib; componentVersions[name] = pick.version; }
-      else { warn.push(`refused: 部品庫の部品 ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
+      else { warn.push(`refused: パーツライブラリのパーツ ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
     }
     if (!file) { warn.push(`component not found: ${tag}`); continue; }
     // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（端末ごとのパスを出力に書かない）
@@ -1046,7 +1046,7 @@ export function build(env0, srcPath, opts = {}) {
   for (const w of segs.warnings || []) warn.push(`narration: ${w}`);
   const keySet = new Set(slides.map((s) => s.key));
   // 鍵がどのスライドにも合わない節（## 見出し）。段階のない節も知らせる
-  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${innerJa(s.heading || s.key || s.slideKey)}」（鍵「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
+  for (const s of segs.sections || segs) if (!keySet.has(s.key ?? s.slideKey)) warn.push(`narration: スライドが見つからない「## ${innerJa(s.heading || s.key || s.slideKey)}」（スライドの id「${s.key ?? s.slideKey}」、narration.md ${s.line} 行目）`);
   const narration = narrationMap(segs, !!opts.dev);
   const marks = marksMap(segs);
   checkMarks(html, segs, warn);
@@ -1265,7 +1265,7 @@ function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins
   for (const tag of used) {
     const lf = P.join(deckDir, 'components', tag.slice(2), 'index.js');
     if (!env.exists(lf)) continue;
-    if (!env.within(lf, deckDir)) { warn.push(`refused: 部品 ${tag} の components/${tag.slice(2)}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); refused.add(tag); continue; }
+    if (!env.within(lf, deckDir)) { warn.push(`refused: パーツ ${tag} の components/${tag.slice(2)}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); refused.add(tag); continue; }
     const code = env.readText(lf), rd = readDefineMeta(code), where = P.relative(deckDir, lf).split(P.sep).join('/');
     if (!rd) { legacy.push(tag); continue; }   // egatariParts.define がない：1.x の部品（DECK.define）
     // meta は字のまま読めなければ書かない（§6.1：組み立ては動かさずに name・version・requires・element を読み、索引に記録する）

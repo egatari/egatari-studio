@@ -4,8 +4,8 @@
 //   warnView(w, slides, T) → { text, i }   slides：[{key, heading}]（組み立ての順）。i はスライドの番号（0 から）か null
 import { quoteJa } from '../kit/core/quote-ja.mjs';
 const AT = /「## ([^」]+)」\[[^\]]*\]（narration\.md \d+ 行目）/;                    // mark: …「## 鍵」[段階]（narration.md N 行目）
-const NO_SLIDE = /「## ([^」]*)」（鍵「[^」]*」、narration\.md \d+ 行目）/;           // narration: スライドが見つからない「## 見出し」（鍵「…」、narration.md N 行目）
-const LINE = /^narration\.md \d+ 行目: /;                                          // narration: narration.md N 行目: …（口述原稿の読み取りの知らせ）
+const NO_SLIDE = /「## ([^」]*)」（スライドの id「[^」]*」、narration\.md \d+ 行目）/;   // narration: スライドが見つからない「## 見出し」（スライドの id「…」、narration.md N 行目）
+const LINE = /^narration\.md \d+ 行目: /;                                          // narration: narration.md N 行目: …（台本の読み取りの知らせ）
 export function warnView(w, slides, T) {
   let text = String(w), i = null;
   const m = AT.exec(text);
