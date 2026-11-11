@@ -54,7 +54,7 @@ function parseArgs(argv) {
   if (!Number.isInteger(o.fps) || o.fps < 1 || o.fps > 120) { console.error(`--fps は 1〜120 の整数 / --fps must be an integer in 1..120（${o.fps}）`); process.exit(1); }
   if (!Number.isFinite(o.scale) || o.scale < 0.25 || o.scale > 4) { console.error(`--scale は 0.25〜4 / --scale must be in 0.25..4（${o.scale}）`); process.exit(1); }
   if (o.music !== null && !(o.music && fs.existsSync(o.music) && fs.statSync(o.music).isFile())) { console.error(`--music のファイルがない / --music file not found（${o.music}）`); process.exit(1); }
-  if (o.only && !o.only.size) { console.error('--only に鍵がない / --only needs at least one slide key, id or step key'); process.exit(1); }
+  if (o.only && !o.only.size) { console.error('--only にスライドの id もステップもない / --only needs at least one slide id or slide id:step'); process.exit(1); }
   return o;
 }
 
@@ -210,7 +210,7 @@ async function main() {
       });
       return { ok, global: ok ? doc.documentElement.outerHTML : html, slideHtml: ok ? slideHtml : [], n: DECK.slides.length, per };
     }, htmlText);
-    if (!inputs.ok) console.warn('  ⚠ build 済みの HTML のスライドが数えられない。HTML 全体を全段階の入力にする（キャッシュが効きにくい）');
+    if (!inputs.ok) console.warn('  ⚠ build 済みの HTML のスライドが数えられない。HTML 全体を全ステップの入力にする（キャッシュが効きにくい）');
     if (o.only) {
       const r = resolveOnly([...o.only], tl, ids);
       if (r.unknown.length) throw Object.assign(new Error(unknownOnlyMessage(r.unknown, r.valid)), { clean: true });
@@ -219,7 +219,7 @@ async function main() {
     const globalHash = sha(String(RENDER_VERSION), inputs.global, String(inputs.n));
     const slideHash = inputs.slideHtml.map((h) => sha(h));
     const total = tl.reduce((a, s) => a + s.dur, 0);
-    console.log(`timeline: ${tl.length} 段階, ${total.toFixed(1)} s, ${Math.round(W * o.scale)}x${Math.round(H * o.scale)} @ ${o.fps} fps`);
+    console.log(`timeline: ${tl.length} ステップ, ${total.toFixed(1)} s, ${Math.round(W * o.scale)}x${Math.round(H * o.scale)} @ ${o.fps} fps`);
 
     const shot = async (i, k, t, file) => {
       await page.evaluate(([i, k, t]) => {
@@ -369,7 +369,7 @@ async function main() {
         groups.forEach((g, j) => {
           const name = `chapter_${String(j + 1).padStart(2, '0')}.mp4`;
           joinClips(g.clips.map((file, j) => ({ file, frames: g.frames[j] })), path.join(outDir, name), tmpRoot, track, layout.frameSample(g.f0), layout.frameSample(g.f1), o.fps);
-          console.log(`  ${name}: ${g.chapter || '（章の前）'} ${g.clips.length} 段階`);
+          console.log(`  ${name}: ${g.chapter || '（章の前）'} ${g.clips.length} ステップ`);
         });
         fs.writeFileSync(path.join(outDir, 'chapters.json'), JSON.stringify(groups.map((g, j) => ({ file: `chapter_${String(j + 1).padStart(2, '0')}.mp4`, chapter: g.chapter, clips: g.clips.map((c) => path.basename(c)) })), null, 1));
       }

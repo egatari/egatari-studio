@@ -30,7 +30,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | id | English | 日本語 | definition | avoid (ja / en) | internal | decided |
 |---|---|---|---|---|---|---|
 | slide | Slide | スライド | One screen of a lesson. |  | slide | 2026-10-24 (owner) |
-| slide-id | Slide id | スライドの id | The fixed name of a slide (id on its <section>), used by links, the script and the audio; the editor and npm run ids add it. | 鍵 ・ スライドの鍵 | id (s-xxxxxx) | 2026-11-11 (standards) |
+| slide-id | Slide id | スライドの id | The fixed name of a slide (id on its <section>), used by links, the script and the audio; the editor and npm run ids add it. | 鍵 ・ スライドの鍵 | id (s-xxxxxx); slide key (spec) | 2026-11-11 (standards) |
 | step | Step | ステップ | One click-forward within a slide; the order things appear in, matching what is said. | 段階 | step (spec) | 2026-10-22 (owner) |
 | step-label | Step label | ステップの指定 | The [0] … [concl] at the start of a script line, naming the step the line belongs to. | 鍵 ・ ステップの鍵 | step key (spec) | 2026-11-11 (standards) |
 | cue | Timing | タイミング | A point inside a step where an animation follows a word of the script. Shown only when a part uses it and in recording mode. | 合図 ・ キュー ・ 区切り（タイミングの意味で） | {cue} | 2026-10-24 (owner) |

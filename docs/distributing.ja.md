@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.md sha256=f31a19d39a0208b1 -->
+<!-- i18n: pair=distributing.md sha256=a91f7e62bccee16b -->
 # 参加者に教材を配る
 
 [English](distributing.md) | 日本語

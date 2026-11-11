@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=d0ab4d9d336f5626 -->
+<!-- i18n: pair=reference.ja.md sha256=4e4f2b8aec47064a -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -41,7 +41,7 @@ Normative: format spec §8.0 (slides, steps, kinds of slide, math, references) a
 | `class="… nostep"` | do not turn list items into steps automatically |
 | `class="… noconcl"` | no conclusion line: the body may extend to 680px instead of 565px (by default; a theme's `metrics` moves both) |
 | `class="… layout-tate"` | fully vertical slide: the heading in a vertical column at the right edge, the body in vertical writing to its left, the conclusion as a vertical column at the left edge ([Japanese language arts](#japanese-language-arts-kokugo)) |
-| `id="…"` on a section | the slide's id, which is its key (format §8.1). Every slide has one. See [Slide keys](#slide-keys) |
+| `id="…"` on a section | the slide id (format §8.1). Every slide has one. See [Slide id](#slide-id) |
 | `data-morph` / `data-morph="key"` | morph in from the previous slide / from the slide with that key ([contract §8](contract.md#8-morphs-data-morph)) |
 | `data-chapter="name"` | start a chapter here with this name (like a `sec` slide) |
 | `<div class="pn">` as a direct child | your own page number (otherwise one is added from slide 2 on: `i/N`) |
@@ -61,7 +61,7 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 |---|---|
 | `data-step="k"` | appears at step k (k ≥ 1). Step 0 = what is visible on entering |
 | (none on the slide) | if a slide has no `data-step` and no `data-from`, each `.body > ul > li` and `.body > ol > li` becomes steps 1, 2, … |
-| `.concl` | always the last step (`max + 1`), step key `concl` |
+| `.concl` | always the last step (`max + 1`), step label `[concl]` |
 | `data-at="s"` | within its step, start s seconds later (fade and `.draw`) |
 | `class="draw"` | SVG stroke drawn in (needs `pathLength="1"`). Step = closest `data-step` ancestor, its own `data-step`, or 0. 0.7 s. On a `static` slide, strokes are shown drawn (no animation). |
 | `class="draw drawslow"` | same, 1.4 s |
@@ -69,7 +69,7 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 | `steps="n"` (part) | override the part's step count |
 | `data-id="ID"` | morph pairing ([contract §8](contract.md#8-morphs-data-morph)) |
 | `id="ID"` / `data-mark="ID"` | target of `{mark:ID}` ([contract §7](contract.md#7-emphasis-mark)) |
-| `data-key`, `data-title` | added by build (slide key, plain heading); not written by authors (format §8.0) |
+| `data-key`, `data-title` | added by build (slide id, plain heading); not written by authors (format §8.0) |
 
 ### Math
 
@@ -107,9 +107,11 @@ Body classes (all colors come from the theme): `.sub` subheading · `.big` main 
 
 Relative paths are resolved from the working folder and must stay inside it. `data:`, `blob:`, `#fragment` and template values (`${…}`, `{{…}}`) are left as they are. Warnings: `missing: …` (file not found), `refused: …` (outside the working folder), `external: …` (an `http(s)` reference in an asset position, including `<iframe>`/`<object>`: left as it is, so the lesson is not fully offline). Ordinary links (`<a href>`) are not touched. Audio from `audio/manifest.json` is embedded only with `--embed-audio`.
 
-### Slide keys
+<a id="slide-keys"></a>
 
-A slide's key is its `id` (format §8.1: `^[A-Za-z][A-Za-z0-9_-]{0,63}$`, unique among every id in the lesson, including mark targets and `\htmlId{…}`). `npm run new` gives every slide an id; `npm run ids -- <deck>` adds them to a lesson that lacks them. So that such a lesson can still be opened and fixed, the build keys a slide without an id by its heading and the quality checker reports it (`legacyIndex`); duplicate keys are an error, and the build warns (`slide key: …`) and gives the later slides a suffix `#2`, `#3`, …. The final key is written to the section's `data-key` ([contract §4](contract.md#4-script-narrationmd)).
+### Slide id
+
+A slide is named by its `id`, the slide key (spec). By format §8.1 it matches `^[A-Za-z][A-Za-z0-9_-]{0,63}$` and is unique among every id in the lesson, including mark targets and `\htmlId{…}`. `npm run new` gives every slide an id; `npm run ids -- <deck>` adds them to a lesson that lacks them. So that such a lesson can still be opened and fixed, the build uses a name made from the heading in place of the id of a slide without one, and the quality checker reports it (`legacyIndex`); duplicates are an error, and the build warns (`slide key: …`) and gives the later slides a suffix `#2`, `#3`, …. The final name is written to the section's `data-key` ([contract §4](contract.md#4-script-narrationmd)).
 
 ## Script (narration.md)
 
@@ -137,7 +139,7 @@ Build warns about a `##` that matches no slide (the quality checker makes this a
 
 `dur = override.dur ?? max(anim, audio ? lead + audio + pad_after : max(hold, marksEnd + pad_after))` (normative: format spec §5.5 and §8.0; [contract §5](contract.md#5-timeline)).
 
-| Key in `"slideKey:step"` | Default | Meaning |
+| Field in `"slideKey:step"` | Default | Meaning |
 |---|---|---|
 | `dur` | — | fixed length (s); audio past `lead + dur` is cut |
 | `hold` | 1.2 | length of a step without audio |
@@ -238,7 +240,7 @@ Helpers on `DECK` for parts: `el(tag, attrs, parent)` (SVG; `var()` colors moved
 For 国語 lessons (kanbun, classical and modern Japanese). The example is [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) (theme `kokugo`).
 
 - **Vertical writing**: `<div class="tate">…</div>` inside `.body` sets the text in `writing-mode: vertical-rl`, filling the height of the body, columns from right to left (paragraphs are separated to the left; `p.indent` indents the first line). `.tcy` sets two-digit numbers upright
-- **Vertical slides**: `<section class="slide layout-tate">` sets the whole slide vertically. The `<h2>` is one vertical column at the right edge (1166–1232px, from 48px down, top-aligned); the theme's heading rule becomes a vertical rule on the left of that column, and the column does not wrap (about 14 full-width characters; the quality checker reports a longer one). The `.body` (148–1138px, 48–664px; from 48px with `noconcl`) is in `writing-mode: vertical-rl`: paragraphs and lists run in columns from right to left, and a `.tate` block fills it. Parts, figures and tables in it (direct children other than `p`, `ul`, `ol`, `.sub`, `.note`, `.arrow`, `.tate`, `.box`, `.thm`, `h3`, `blockquote`) stay horizontal at the full body width, since they measure their own box; use their vertical option (`m-kobun tate`, `m-gendai tate`; `m-kanbun` is always vertical). The `.concl` is a vertical column at the left edge (48–120px; about 19 characters). The page number stays at the bottom right, below the heading column. Only the CSS changes: slide keys, captions and the readable layer of an Egatari file take the heading text as before. Example: the 現代文 slide of [`examples/kokugo-kanbun`](../examples/kokugo-kanbun); tests: `tools/test-layout-tate.mjs`
+- **Vertical slides**: `<section class="slide layout-tate">` sets the whole slide vertically. The `<h2>` is one vertical column at the right edge (1166–1232px, from 48px down, top-aligned); the theme's heading rule becomes a vertical rule on the left of that column, and the column does not wrap (about 14 full-width characters; the quality checker reports a longer one). The `.body` (148–1138px, 48–664px; from 48px with `noconcl`) is in `writing-mode: vertical-rl`: paragraphs and lists run in columns from right to left, and a `.tate` block fills it. Parts, figures and tables in it (direct children other than `p`, `ul`, `ol`, `.sub`, `.note`, `.arrow`, `.tate`, `.box`, `.thm`, `h3`, `blockquote`) stay horizontal at the full body width, since they measure their own box; use their vertical option (`m-kobun tate`, `m-gendai tate`; `m-kanbun` is always vertical). The `.concl` is a vertical column at the left edge (48–120px; about 19 characters). The page number stays at the bottom right, below the heading column. Only the CSS changes: slide ids, captions and the readable layer of an Egatari file take the heading text as before. Example: the 現代文 slide of [`examples/kokugo-kanbun`](../examples/kokugo-kanbun); tests: `tools/test-layout-tate.mjs`
 - **Ruby**: `<ruby>漢<rt>かん</rt></ruby>`; `rt` is 0.5em and the quality checker does not count its size. In vertical text the reading is on the right
 - **Mincho**: `.mincho` or `<html data-font="mincho">`, or a theme that sets `--font-sans: var(--font-mincho)` (theme `kokugo`)
 - **`m-kanbun`**: kanbun in vertical writing. One line per column; after a character: `(送り仮名)`, `[返り点]` (`レ`, `一二三四五`, `上中下`, `甲乙丙丁`, `天地人`, `一レ`, `上レ`, …; a bare `レ` also works), `{振り仮名}`, `{=かな}` (written in hiragana in the 書き下し文, e.g. `不{=ず}`), `{-}` (置き字, not read), `(右|二度目)` (再読文字, e.g. `未(ダ|ず)`), `-` (竪点), `、` `。`. Steps: 白文 → `kunten` (返り点 lower left, 送り仮名 lower right) → `order` (characters highlighted in kundoku order, an arc where the eye jumps back; one step per line (句) since components v1.4.0, and a return to an earlier line by a 返り点 or a 再読文字 starts a step of its own; `order-by="all"` keeps the whole reading order as one step, with `cues(k)` at the start of each column from the second) → `kaki` (書き下し文 on the left). Rules and details: [m-kanbun README (1.6.0)](../vendor/components/sha256/0c02494c234498ef3a20d9e605f886425223639dbf94e20a27b97c82d9ada188/README.md)
@@ -316,7 +318,7 @@ A host page that puts a lesson in an `<iframe>` with `?embed=1` drives it with `
 
 | Command (host → player) | Effect and reply |
 |---|---|
-| `{egatari:"seek", id?, slide, step, t}` | go to that step at time `t`: `slide` is a slide key (`ready.timeline[].slideKey`) or an index from 0, `step` a step key (`"0"`, `"1"`, … or `"concl"`; a whole number is read as its key; left out = `"0"`), `t` seconds or `null` (left out = `null`). The playing state is kept: while playing, playback goes on from `t` (from the start of the step when `t` is `null`, as the toolbar's jump does). Replies `{egatari:"seeked", id?, slideKey, stepKey, t}` after the `position` it causes |
+| `{egatari:"seek", id?, slide, step, t}` | go to that step at time `t`: `slide` is a slide id (`ready.timeline[].slideKey`) or an index from 0, `step` a step label (`"0"`, `"1"`, … or `"concl"`; a whole number is read as that step; left out = `"0"`), `t` seconds or `null` (left out = `null`). The playing state is kept: while playing, playback goes on from `t` (from the start of the step when `t` is `null`, as the toolbar's jump does). Replies `{egatari:"seeked", id?, slideKey, stepKey, t}` after the `position` it causes |
 | `{egatari:"play", id?}` / `{egatari:"pause", id?}` | start / pause playback; `playBlocked` if the browser refuses to start audio |
 | `{egatari:"rate", id?, value}` | playback rate (0.75, 1, 1.25, 1.5 or 2) |
 | `{egatari:"mode", id?, mode}` | replies `{egatari:"mode", id?, mode}` with the current mode; another mode is an error (chosen when the lesson loads, `?mode=`) |
@@ -432,7 +434,7 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 |---|---|
 | `slide` | slide number, from 1; `null` for the whole lesson |
 | `id` | the slide's `id`, or `null` (a slide without id, or the whole lesson) |
-| `key` | the slide key (the id, or the legacy key from the heading) |
+| `key` | the slide id (without an id, the legacy name made from the heading) |
 | `title` | the heading text of the slide (`h2` / `h1`, without tags) |
 | `step` | the step the result is about: `"0"`, `"1"`, … or `"concl"`; `null` when it is about the whole slide |
 | `sev` | `error`, `warn` or `info` |
@@ -444,9 +446,9 @@ If `status` is `crashed` (exit code 2), the result is invalid: the check did not
 | Quality check | Severity |
 |---|---|
 | build warnings; a script `##` that matches no slide, a non-canonical step number (`[01]`), an invalid `{#id}` | warn; error |
-| slide id not matching `^[A-Za-z][A-Za-z0-9_-]{0,63}$` (`slide id: …`); two slides with the same key (`slide key: …`); a slide id equal to another id or `\htmlId{…}` in the lesson (`slide id: …`) | error |
+| slide id not matching `^[A-Za-z][A-Za-z0-9_-]{0,63}$` (`slide id: …`); two slides with the same slide id (`slide key: …`); a slide id equal to another id or `\htmlId{…}` in the lesson (`slide id: …`) | error |
 | the heading text of a `## heading {#id}` differs from that slide's heading (the id wins) | info |
-| a slide keyed by a legacy rule: a hand-written `data-key`, or `s<n>` (no id and no heading) — `slide key: legacy` | warn |
+| a slide named by a legacy rule: a hand-written `data-key`, or `s<n>` (no id and no heading) — `slide key: legacy` | warn |
 | source outside the 1.0 vocabulary (format spec §8.0): the colour classes `blue`, `red`, `gray` (use `term`, `emph`, `muted`), `data-steps` / `data-anim` (steps and motion come from `data-step`, `data-at`, `draw` and parts), `<html data-mode="lecture">` (the participant's “Show later steps faintly”) — `legacyColorClass`, `legacyStepAttr`, `legacyLectureMode` | warn |
 | a link to a slide (`#<id>`, `#<id>:<stepKey>`, `#N`) whose slide does not exist, whose step is out of range, or `:concl` on a slide without a conclusion; a link `#N` or to a slide without an id; a relative link to a file that does not exist ([contract §9](contract.md#9-links-to-slides)) | error; warn; warn |
 | a part's data does not match its declared shape (`static shape`), or the part throws while drawing (`compData`: which part, what differs (path, expected, got), its shape and an example; standard R-components). The step count of a slide also comes from its `data-step` elements and `.concl`, so a failing part does not turn the slide's script into orphans | error |
@@ -590,7 +592,7 @@ Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.j
 | `--out dir` | required |
 | `--fps n` | default 30 |
 | `--scale x` | default 1.5 (1920×1080) |
-| `--only key,…` | only these slides or steps; the rest stay as they are. Each item is a slide key or id (all of that slide's steps) or `slideKey:step` (one step). An item that matches nothing is an error that lists the valid slide keys |
+| `--only key,…` | only these slides or steps; the rest stay as they are. Each item is a slide id or a name made from the heading (all of that slide's steps) or `slideKey:step` (one step). An item that matches nothing is an error that lists the valid slide ids |
 | `--full` | also `full.mp4`, and with two or more chapters `chapter_NN.mp4` and `chapters.json` (needs all clips) |
 | `--force` | ignore `.render-cache.json` |
 | `--music file` | optional background music: one track under the whole video, quieter while the script is spoken, faded out at the end ([video.md](video.md#background-music)). Part of each clip's audio, so it is in the cache key |
@@ -613,7 +615,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sa
 | `node tools/test-kokugo-example.mjs` | the kanbun of `examples/kokugo-kanbun` reads without warnings with the library's `m-kanbun` (no browser; the parts' own tests are in egatari/components) |
 | `node tools/theme-metrics.mjs measure <theme> [--lang ja\|en]`, `node tools/theme-metrics.mjs check <theme>` | render a theme (a folder or a name, as for `--theme`) and print its `metrics` block measured from the rendered boxes, to paste into `theme.json` (whole pixels, each edge rounded outward to the more lenient limit by less than 1px; exits with 2 without measuring when the bundled fonts do not load); `check` compares the declaration (or the defaults) with the rendered boxes and exits with 1 when they differ |
 | `node tools/test-theme-metrics.mjs [workdir]` | theme `metrics`: validation and inheritance, the theme hash, every bundled theme renders as declared (strict), the limits and `themeMetricsDrift` in the checker and the editor's quick check |
-| `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide keys and readable layer unchanged |
+| `node tools/test-layout-tate.mjs [workdir]` | `layout-tate` slides in the `default` and `kokugo` themes: heading column, body, conclusion column and page number placed without overlap, seek determinism, quality-check standards, slide ids and readable layer unchanged |
 | `node tools/test-check-colors.mjs [workdir]` | colours outside the theme's vocabulary (`colorOutside`): the rule for each kind of value, where the source is read, and the check on `tools/fixtures/check-colors/` (`var(--lit)`, `var(--obj-red, red)` and the other object colours with a literal fallback, `color-mix()` of roles and a hue-keeping relative colour allowed; hue-changing `oklch` `rgb` `hsl` `lab` and a literal fallback reported, as info and not in a fix request) |
 | `node tools/test-check-cards-hint.mjs [workdir]` | the cards hint (`cardsHint`): fires on 3 or 4 short, equal points; stays quiet for 2 or 5 items, a long or unequal item, a nested list, `ol`, a part, `static`, vertical and cover slides; info only and absent from fix requests |
 | `node tools/test-check-predict.mjs [workdir]` | the prediction warnings (`predictAnswerWithCount`, `predictAnswerNeverShown`): how `answer-step` is read (as `m-predict` reads it), the first fires on `1`, `-1` and `1.4` and stays quiet with no attribute, `0`, `2`, `3`, `abc` and an empty value; the second fires when `steps` is below the answer step (and then replaces the first); the same findings from `npm run check` and the editor's path (`sourceFindings`); in the fix request with R-steps; the Japanese and English messages |

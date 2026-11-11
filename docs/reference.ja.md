@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=5ffd48f1f3789949 -->
+<!-- i18n: pair=reference.md sha256=c3c6a02ff5c60c54 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -106,6 +106,8 @@
 | `<link rel="icon">` などほかの `<link>` のファイル、`<script src="file.js">` | `data:` URI／中身を入れた `<script>` |
 
 相対パスは作業フォルダから解決し、フォルダの外は読まない。`data:`・`blob:`・`#断片`・テンプレートの値（`${…}`、`{{…}}`）はそのまま。警告：`missing: …`（ファイルがない）、`refused: …`（作業フォルダの外）、`external: …`（素材の位置にある `http(s)` の参照。`<iframe>`・`<object>` を含む。そのまま残すので、オフラインでは出ない）。ふつうのリンク（`<a href>`）は触らない。`audio/manifest.json` の音声は `--embed-audio` のときだけ埋め込む。
+
+<a id="スライドの鍵"></a>
 
 ### スライドの id
 
