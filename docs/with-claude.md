@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=14efa5be811284f0 -->
+<!-- i18n: pair=with-claude.ja.md sha256=3d27cf0400383222 -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -24,7 +24,7 @@ First delete the old `~/.claude/skills/motion-*` entries, including any in a pro
 /plugin install egatari-studio@egatari
 ```
 
-Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill makes worse lessons. When the skill finds that it is old, it tells you once (and keeps working).
+Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes. When the skill finds that it is old, it tells you once (and keeps working).
 
 The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or run `npx egatari@0.6.x skills update` (it also updates Codex) and restart the tool. Codex: see "Using it with Codex" in the README.
 

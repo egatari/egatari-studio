@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.md sha256=fbec90758cdc3443 -->
+<!-- i18n: pair=with-claude.md sha256=6ee9534d0531a41e -->
 # Claude Code や Cowork で Egatari の教材を作る
 
 [English](with-claude.md) | 日本語
@@ -24,7 +24,7 @@
 /plugin install egatari-studio@egatari
 ```
 
-入れたら、自動更新を有効にします：`/plugin` → Marketplaces → egatari → Enable auto-update。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れています。スキルの指示と品質チェックは Studio の版ごとに変わるので、古いスキルのままだと教材の出来が落ちます。スキルが古いとわかれば、スキル自身が 1 回だけ知らせます（作業は止めません）。
+入れたら、自動更新を有効にします：`/plugin` → Marketplaces → egatari → Enable auto-update。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れています。スキルの指示と品質チェックは Studio の版ごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われません。スキルが古いとわかれば、スキル自身が 1 回だけ知らせます（作業は止めません）。
 
 教材を書くだけなら最初の 2 行で十分です。studio を使うときに `npm ci` は要りません。studio スキルが初めに `npx egatari@0.6.x doctor` で Node.js・ブラウザ・uv・ffmpeg を確かめ、足りないものの入れ方を案内します。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`、または `npx egatari@0.6.x skills update`（Codex も更新します）を実行して道具を再起動します。Codex は README の「Codex で使う」を見てください。
 

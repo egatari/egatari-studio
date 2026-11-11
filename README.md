@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=7027d99248cac337 -->
+<!-- i18n: pair=README.ja.md sha256=8232c5f85e204459 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -103,7 +103,7 @@ First delete the old `~/.claude/skills/motion-*` entries (and any copies in a pr
 /plugin install egatari-studio@egatari
 ```
 
-Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill makes worse lessons. When the skill finds that it is old, it tells you once (and keeps working).
+Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes. When the skill finds that it is old, it tells you once (and keeps working).
 
 The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see [With npm (no clone)](#with-npm-no-clone)): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 
@@ -117,7 +117,7 @@ codex plugin add egatari@egatari
 codex plugin add egatari-studio@egatari
 ```
 
-Then, after each Studio release, run `npx egatari@0.6.x skills update` and restart Codex. The skill's instructions and quality checks change with each Studio release, so an old skill makes worse lessons.
+Then, after each Studio release, run `npx egatari@0.6.x skills update` and restart Codex. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes.
 
 Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a lesson. Codex's workspace-write sandbox blocks the network and the browser, so run `check` and `build` outside it, or with network and browser access allowed. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
 
