@@ -59,6 +59,11 @@ export function headersFile(csp) {
     `  Permissions-Policy: ${PERMISSIONS}`,
     '  Cross-Origin-Opener-Policy: same-origin',
     '  Cross-Origin-Resource-Policy: same-origin',
+    // the page itself: no-transform, so the CDN never rewrites it (Cloudflare's Web Analytics would otherwise inject its beacon
+    // script into the HTML; the policy blocks it, but the page must not even carry a third-party script). Only the HTML: no-transform
+    // also turns off the CDN's compression, which the scripts keep
+    '/',
+    '  Cache-Control: public, max-age=0, must-revalidate, no-transform',
     '/sw.js',
     '  Cache-Control: no-cache',
     '',

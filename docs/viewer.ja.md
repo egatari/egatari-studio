@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.md sha256=65b8d3e37ec58d6e -->
+<!-- i18n: pair=viewer.md sha256=4685c5a5ac237a49 -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語
@@ -115,7 +115,7 @@ node tools/build-play.mjs [--out _play] [--live-endpoint https://live.example.or
 ページは見出しつきの静的なファイルです。Pages ではなく **Cloudflare Workers の静的なファイル（static assets）**に置きます（`play/wrangler.toml`・`play/wrangler.production.toml`・`play/worker.js`）。
 
 - Cloudflare は新しい静的なサイトを Workers に寄せていて、ライブの部屋（egatari/live）もすでに Worker です。道具（wrangler）も、設定と公開のしかたも、開発用と本番用の設定の分け方も 1 つで済みます。
-- 静的なファイルは `_headers` を読みます。決まりと「枠の中を断る」見出しは、そこからすべてのファイルに付き、コードを動かさずに配ります。
+- 静的なファイルは `_headers` を読みます。決まりと「枠の中を断る」見出しは、そこからすべてのファイルに付き、コードを動かさずに配ります。ページそのもの（`/`）には `Cache-Control: public, max-age=0, must-revalidate, no-transform` も付けます。こうすると Cloudflare はページを書き換えないので、Web Analytics が解析のスクリプトを差し込めません（Cloudflare の文書にある動き。差し込まれても決まりが止めますが、ページにそもそも載せない）。HTML だけに付けます。`no-transform` は途中での圧縮も止めるので、スクリプトには付けません。
 - 小さな Worker は、どのファイルにも当たらない要求だけに答えます。service worker が入る前に届いた Android の共有（`POST /share`）です。ファイルは受け取れない（何もアップロードしない）ので、`/?share=nosw` への 303 を返し、ページが「一度アプリを開いてから、もう一度共有してください」と知らせます。
 - 独自ドメイン（`routes = [{ pattern = "viewer.egatari.org", custom_domain = true }]`）なら、`wrangler deploy` が DNS の記録と証明書を自分で作ります。
 

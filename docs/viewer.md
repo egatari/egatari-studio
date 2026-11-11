@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=cf52dae991e12f8e -->
+<!-- i18n: pair=viewer.ja.md sha256=6868aa03917ac4ad -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -115,7 +115,7 @@ To try it locally: `node tools/build-play.mjs && npx wrangler@4.124.0 dev -c pla
 The page is static files with response headers. It is hosted as **Cloudflare Workers static assets** (`play/wrangler.toml`, `play/wrangler.production.toml`, `play/worker.js`), not Pages:
 
 - Workers is where Cloudflare is putting new static sites, and the Live service (egatari/live) is already a Worker: one tool (wrangler), one way to configure and deploy, and the same split between a development config and a production config.
-- Static assets read `_headers`, which carries the policy and the frame refusal for every file, so the files are served without running code.
+- Static assets read `_headers`, which carries the policy and the frame refusal for every file, so the files are served without running code. The page itself (`/`) is also `Cache-Control: public, max-age=0, must-revalidate, no-transform`: Cloudflare then never rewrites it, so its Web Analytics cannot inject a beacon script (its documented behaviour; the policy would block the script anyway, but the page must not carry one). Only the HTML: `no-transform` also stops the edge's compression, which the scripts keep.
 - A small Worker answers only what matches no file: an Android share (`POST /share`) that arrives before the service worker is installed. It cannot receive the file (nothing is uploaded) and sends the page a 303 to `/?share=nosw`, which asks the viewer to open the app once and share again.
 - A custom domain (`routes = [{ pattern = "viewer.egatari.org", custom_domain = true }]`) makes `wrangler deploy` create the DNS record and certificate itself.
 

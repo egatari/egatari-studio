@@ -168,7 +168,10 @@ const site = await serve(OUT);
 const bare = await serve(OUT, { headers: false });   // a host that sends no headers (the JS check must refuse framing)
 const framer = await serve(work, { headers: false });
 { const h = await new Promise((r) => http.get(site.url, (res) => { res.resume(); r(res.headers); }));
-  ok(h['content-security-policy'] === built.csp && h['x-frame-options'] === 'DENY', 'served: the page carries exactly that policy and X-Frame-Options: DENY'); }
+  ok(h['content-security-policy'] === built.csp && h['x-frame-options'] === 'DENY', 'served: the page carries exactly that policy and X-Frame-Options: DENY');
+  ok(/(^|, *)no-transform(,|$)/.test(h['cache-control'] || ''), `served: the page is no-transform, so the CDN injects nothing into it (${h['cache-control']})`); }
+{ const h = await new Promise((r) => http.get(site.url + 'play.js', (res) => { res.resume(); r(res.headers); }));
+  ok(!/no-transform/.test(h['cache-control'] || ''), 'served: the scripts are not no-transform (the CDN may still compress them)'); }
 const browser = await launch();
 // check --json: higher versions are informational, even with an unfamiliar shape.
 { const dir = path.join(work, 'check-future');
