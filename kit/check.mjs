@@ -55,6 +55,7 @@ import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './core/color-vocab.mjs';
+import { predictStepProblems } from './core/predict-steps.mjs';
 import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
 import { uncoveredGlyphs } from './core/font-coverage.mjs';
 
@@ -173,6 +174,9 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   for (const x of colorsOutsideVocabulary(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) {
     report(null, 'info', 'colorOutside', { kind: x.kind, n: x.n, line: x.line, items: x.items, list: x.items.slice(0, 6).map((i) => i.what).join(', ') + (x.items.length > 6 ? ', …' : '') });
   }
+  // 予想（m-predict）の段階（R-steps）：答えが数の棒と同時（predictAnswerWithCount。数える前に答えが見える）、steps が答えの段階より小さい（predictAnswerNeverShown。答えが出ない）。
+  // 編集アプリも同じ関数（kit/core/check-source.mjs）
+  for (const { code, slide, ...x } of predictStepProblems(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(slide, 'warn', code, x);
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {
