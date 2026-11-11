@@ -11,6 +11,7 @@ import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import * as esbuild from 'esbuild';
+import { readRegular, readRegularText } from '../kit/bounded-read.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const rel = (...p) => path.join(ROOT, ...p);
@@ -24,11 +25,11 @@ export const PAGE_CSP = [
 ].join('; ');
 
 export async function buildSitePlayer({ out = rel('_site-player') } = {}) {
-  const pkg = JSON.parse(fs.readFileSync(rel('package.json'), 'utf8'));
+  const pkg = JSON.parse(readRegularText(rel('package.json'), { max: 1024 * 1024 }).text);
   let commit = '';
   try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim(); } catch { commit = ''; }
   try { if (commit && execFileSync('git', ['status', '--porcelain', '--', 'play', 'app', 'kit/core'], { cwd: ROOT, encoding: 'utf8' }).trim()) commit += '+dirty'; } catch { /* no git */ }
-  const shim = fs.readFileSync(rel('play', 'lesson-shim.js'), 'utf8');
+  const shim = readRegularText(rel('play', 'lesson-shim.js'), { max: 1024 * 1024 }).text;
   for (const bad of [/<\/script/i, /<!--/]) if (bad.test(shim)) throw new Error(`build-site-player: play/lesson-shim.js contains ${bad.source}`);
   const version = `${pkg.version}${commit ? '-' + commit.slice(0, 10) : ''}`;
   const r = await esbuild.build({
@@ -37,7 +38,7 @@ export async function buildSitePlayer({ out = rel('_site-player') } = {}) {
     define: { __LESSON_SHIM__: JSON.stringify(shim), __SITE_PLAYER_VERSION__: JSON.stringify(version) },
   });
   const banner = `/* Egatari site player ${version} (egatari/egatari-studio play/site-player.mjs; built by tools/build-site-player.mjs). MIT */\n`;
-  const files = { 'site-play.js': Buffer.from(banner + r.outputFiles[0].text), 'site-play.css': fs.readFileSync(rel('play', 'site-player.css')) };
+  const files = { 'site-play.js': Buffer.from(banner + r.outputFiles[0].text), 'site-play.css': readRegular(rel('play', 'site-player.css'), { max: 1024 * 1024 }) };
   fs.rmSync(out, { recursive: true, force: true });
   fs.mkdirSync(out, { recursive: true });
   const sums = {};

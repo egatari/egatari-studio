@@ -16,6 +16,7 @@
 import { WORDS } from './i18n.mjs';
 import { lessonDocument, makeFrame } from './frame.mjs';
 import { linkBox } from './links.mjs';
+import { fetchBounded } from '../app/bounded-read.js';
 
 /* global __LESSON_SHIM__, __SITE_PLAYER_VERSION__ */
 const ID_RE = /^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -101,14 +102,6 @@ window.addEventListener('message', (e) => {
   else if (m.egaViewer === 'fullscreen' && typeof m.on === 'boolean' && Object.keys(m).length === 2) fsRequest(m.on);
 });
 
-async function readCapped(res, max) {
-  if (!res.body || !res.body.getReader) { const b = new Uint8Array(await res.arrayBuffer()); if (b.length > max) throw new Error('over'); return b; }
-  const r = res.body.getReader(), parts = []; let n = 0;
-  for (;;) { const { done, value } = await r.read(); if (done) break; n += value.length; if (n > max) { try { r.cancel(); } catch { /* gone */ } throw new Error('over'); } parts.push(value); }
-  const out = new Uint8Array(n); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
-  return out;
-}
-
 async function start() {
   if (!root) return;
   root.textContent = '';
@@ -125,7 +118,8 @@ async function start() {
   say(T.loading);
   let lesson;
   try {
-    const lock = await (await fetch(lockUrl.href, { credentials: 'omit', cache: 'no-cache' })).json();
+    // the lock is read through the bounded reader too (app/bounded-read.js): at most 1 MiB
+    const lock = JSON.parse(new TextDecoder().decode(await fetchBounded(lockUrl.href, { max: 1024 * 1024, what: 'gallery lock' })));
     lesson = Array.isArray(lock && lock.lessons) ? lock.lessons.find((l) => l && l.id === id) : null;
   } catch { S.state = 'fetch'; say(T.fetch, 'error'); return; }
   if (!lesson || !HEX.test(lesson.sha256 || '') || !Number.isInteger(lesson.size) || lesson.size <= 0 || lesson.size > MAX_BYTES) { S.state = 'unknown'; say(T.unknown, 'error'); return; }
@@ -136,10 +130,9 @@ async function start() {
   document.title = S.lesson.title + ' – ' + document.title;
   let bytes;
   try {
-    const res = await fetch(new URL(id + '.ega.bin', files).href, { credentials: 'omit' });
-    if (!res.ok) throw new Error('http ' + res.status);
-    bytes = await readCapped(res, lesson.size);
-  } catch (e) { S.state = e && e.message === 'over' ? 'mismatch' : 'fetch'; say(S.state === 'mismatch' ? T.mismatch : T.fetch, 'error'); return; }
+    // never more than the lock's size: a longer file stops being read at once (and counts as not matching)
+    bytes = await fetchBounded(new URL(id + '.ega.bin', files).href, { max: lesson.size, what: 'lesson' });
+  } catch (e) { S.state = e && e.code === 'read-over' ? 'mismatch' : 'fetch'; say(S.state === 'mismatch' ? T.mismatch : T.fetch, 'error'); return; }
   if (bytes.length !== lesson.size || (await sha256Hex(bytes)) !== lesson.sha256) { S.state = 'mismatch'; say(T.mismatch, 'error'); return; }
   const text = new TextDecoder().decode(bytes);
   S.frame = makeFrame(lessonDocument(text, { shim: __LESSON_SHIM__ }), S.lesson.title || T.frame);
