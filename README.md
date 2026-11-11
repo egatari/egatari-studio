@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=57a9c47c38482fca -->
+<!-- i18n: pair=README.ja.md sha256=ef537ee8ba9f9571 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -12,11 +12,30 @@
 
 English | [日本語](README.ja.md)
 
+Egatari makes lessons and presentations, with narration, for classes, training and public guides.
+
+A lesson is one self-contained HTML file, with step-by-step reveals and parts that follow the order of your explanation. One set of slides and script (`deck.html` + `narration.md`) gives you a live talk (with later steps shown faintly if you like), a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
+
 *Egatari Studio (formerly motion-academic-slides). The npm package, the skills and the commands keep their names.*
 
-Academic slides as one self-contained HTML file, with step-by-step reveals and parts that follow the order of your explanation. One set of slides and script (`deck.html` + `narration.md`) gives you a live talk (with later steps shown faintly if you like), a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
-
 ![A slide from the TMLR 2026 example](docs/images/hero.png)
+
+## Get started
+
+Pick one.
+
+- **Editor app, nothing to install**: open <https://studio.egatari.org/> in Chrome or Edge and make or open a lesson there ([Editor app](#editor-app-no-install)).
+- **With a chat AI**: install the Egatari skill for Claude or Codex and ask for a lesson ([Claude Code](#using-it-with-claude-code), [Codex](#using-it-with-codex)).
+- **Command line**:
+
+```bash
+npx egatari new mytalk --lang en
+npx egatari dev mytalk/deck.html
+npx egatari check mytalk/deck.html
+npx egatari build mytalk/deck.html --portable
+```
+
+Needs Node.js ≥ 22.23.4 ([Requirements](#requirements)). More commands: [With npm (no clone)](#with-npm-no-clone); to work from a clone of the repository, see [Working from a clone](#working-from-a-clone).
 
 ## Features
 
@@ -44,114 +63,6 @@ Academic slides as one self-contained HTML file, with step-by-step reveals and p
 | Presenter view | Slide overview |
 |---|---|
 | ![presenter view](docs/images/presenter.png) | ![overview](docs/images/overview.png) |
-
-## Two ways to use it
-
-| | Tier 1: slides (core) | Tier 2: narrated video (optional) |
-|---|---|---|
-| You get | HTML slides, presenter view, the option to show later steps faintly, PDF | per-step MP4 clips, a full video, an Egatari file with audio |
-| Needs | Node ≥ 22; Google Chrome only for the quality checker, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
-| Optional | uv (font subsetting) | |
-
-**Slides are fully usable without TTS.** No tier-1 command imports anything from `tts/` or `render/`, and `build`, `check` and the dev server work when `audio/` and `voice.json` are absent. Without audio, autoplay (`a`) uses the default timing for each step, and the script still shows in the presenter view as speaker notes.
-
-## Requirements
-
-**Tier 1 (slides)**
-
-- [Node.js](https://nodejs.org/) 22 or newer, a release with the latest security fixes (see [SECURITY.md](SECURITY.md))
-- Google Chrome or Microsoft Edge for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`: Chrome first, then Edge). Building and presenting only need a browser to open the file. Without either, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
-- Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic (and BIZ UDPMincho) TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
-
-**Windows**
-
-A fresh Windows has neither Node.js nor Git. In PowerShell:
-
-```powershell
-winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
-winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
-```
-
-Edge is already there, so the quality checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the script audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon. On Windows, use another OpenAI-compatible TTS server, or make or record each step's audio in the editor app ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)).
-
-**Browsers**
-
-- Presenting the built HTML: Chrome/Edge 119+, Firefox 128+ or Safari 18+ (these support the CSS relative color syntax and `color-mix()` that themes use to derive tints from `--base`). Older browsers still show the slides, with fixed fallback colors taken from the default theme instead of colors derived from the theme's `--base`
-- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only; Edge uses the same engine
-
-**Tier 2 (video)**
-
-- ffmpeg and ffprobe on `PATH`
-- uv (runs the small Python project in `tts/`)
-- A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`). mlx-audio runs only on a Mac with Apple silicon; on Windows and Linux, see [other TTS servers](docs/video.md#tts-server-mac-windows-linux)
-- Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are in `tts/voices/` of the repository ([details](tts/voices/README.md)). The npm package does not carry them: the first `egatari tts` that needs one downloads it from this repository at a pinned tag, checks its sha256 against `tts/voices.json` and keeps it in your cache folder (`~/Library/Caches/egatari/voices/` on macOS, `~/.cache/egatari/voices/` on Linux, `%LOCALAPPDATA%\egatari\voices\` on Windows). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
-
-## Quick start (tier 1: slides)
-
-```bash
-git clone --depth 1 https://github.com/egatari/egatari-studio.git
-cd egatari-studio
-npm ci
-node tools/get-fonts.mjs                            # optional: smaller font embedding (uses uv at build time)
-
-node kit/build.mjs examples/minimal/deck.html       # -> examples/minimal/out/deck.html
-open examples/minimal/out/deck.html                 # macOS; elsewhere, open the file in a browser
-
-node kit/check.mjs examples/minimal/deck.html       # quality check; the last line should read "エラー 0" (0 errors)
-node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF, one page per slide
-npm run sheet -- examples/minimal                        # one PNG with every slide at its final step (look at it: the check cannot see everything)
-node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:8730/ (Ctrl+C to stop)
-```
-
-### Start your own lesson
-
-```bash
-npm run new -- talks/mytalk --lang en --theme default --title "My talk"
-npm run build -- talks/mytalk/deck.html    # -> talks/mytalk/out/deck.html
-npm run dev -- talks/mytalk/deck.html      # edit in the browser
-npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
-```
-
-`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. It also writes `egatari.json` with `"componentsCatalogue": "2"`: new lessons are built with parts library 2, the parts the chat AI's instructions describe (a folder without that setting, such as an older lesson, keeps parts library 1). Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
-
-Every slide of a new lesson has a stable id (`<section class="slide" id="s-k3f9q2">`), and its script heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking the script, audio or timing. For a lesson made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
-
-### With npm (no clone)
-
-The npm package `egatari` has the same tools as one command, `egatari`:
-
-```bash
-npx egatari new mytalk --lang en      # creates mytalk/deck.html, mytalk/narration.md and mytalk/egatari.json
-npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html (--portable, --play-only and the other build options work too)
-npx egatari dev mytalk/deck.html      # edit in the browser
-npx egatari check mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
-npx egatari doctor                    # Node, uv, ffmpeg, a browser and the parts: what is there and how to install what is missing
-```
-
-Also runs with Bun (`bunx egatari`).
-
-`npx egatari --help` lists the other commands (`ids`, `ids-of`, `sheet`, `comment-shots`, `portable`, `video`, `tts`). `npx egatari ids-of <file.ega.html> […]` prints, one line per file (tab-separated; `--json` for JSON), the `docId`, the `sourceSha256` recomputed from the file's source (the version of the source: it leaves out audio and built parts; a warning on stderr if it differs from the value written in the file) and the SHA-256 of the whole file (identifies the file itself, for checking at distribution or LMS upload). Who released it is a matter for signatures (format §10, not implemented yet). `npx egatari video <working folder | .ega.html>` builds and exports a lesson with its existing audio to video (needs ffmpeg). Relative paths are resolved from the current folder. The package carries the default fonts the build embeds (no `get-fonts`) and the fonts of the bundled themes (Zen Maru Gothic of `asagi`), so every bundled theme works from `npx egatari` alone. The other optional fonts, which only a lesson's own CSS or theme can name (such as Klee One), are in the separate package `@egatari/fonts-extra` (`npm i -D @egatari/fonts-extra`, or `npx -p egatari -p @egatari/fonts-extra egatari …`; `egatari build` and `check` say so when a lesson needs it). Of each vendored part, the package carries the `index.js` the build reads and its licence (not its README, demo or changelog; `egatari doctor` checks every `index.js` against `components.lock.json` and the manifests' per-file sha256). The default TTS voices are downloaded on the first `egatari tts` (see Requirements above). `egatari tts` runs `tts/synth.py` with uv and keeps its Python environment in your cache folder (set `UV_PROJECT_ENVIRONMENT` to put it elsewhere).
-
-## Editing in the browser (dev server)
-
-You rarely need to open `deck.html` by hand. Start the dev server and fix things on the slide itself:
-
-```bash
-node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:8730/  (Ctrl+C to stop)
-```
-
-The page shows the slides (arrow keys, `p`, `a`, … all work), with the editing tools around it: the slides run in a sandboxed frame and can only point at what to edit, and nothing is written until you press Save in the editing tools. It reloads by itself whenever a file of the slides changes, and stays on the same slide and step.
-
-1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
-2. **Fix the script: `n`.** A drawer shows the script of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
-3. **Leave a comment: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" and it edits the slides; the page updates as soon as it saves.
-4. **Undo:** the previous versions of `deck.html` and `narration.md` are kept in `.cache/edits/` (last 30).
-
-| `e` + double-click: edit the source | `n`: edit the script | Alt / ⌥ Option + click: comment |
-|---|---|---|
-| ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
-
-Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.ja.md)).
 
 ## Editor app (no install)
 
@@ -192,7 +103,7 @@ First delete the old `~/.claude/skills/motion-*` entries (and any copies in a pr
 /plugin install egatari-studio@egatari
 ```
 
-The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see "With npm (no clone)" above): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. For zero effort in Claude Code, open `/plugin` → Marketplaces → egatari → Enable auto-update. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
+The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see [With npm (no clone)](#with-npm-no-clone)): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. For zero effort in Claude Code, open `/plugin` → Marketplaces → egatari → Enable auto-update. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 
 ## Using it with Codex
 
@@ -222,6 +133,22 @@ Example prompts:
 
 The skill first shows you an outline and writes HTML only after you approve it.
 
+## With npm (no clone)
+
+The npm package `egatari` has the same tools as one command, `egatari`:
+
+```bash
+npx egatari new mytalk --lang en      # creates mytalk/deck.html, mytalk/narration.md and mytalk/egatari.json
+npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html (--portable, --play-only and the other build options work too)
+npx egatari dev mytalk/deck.html      # edit in the browser
+npx egatari check mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
+npx egatari doctor                    # Node, uv, ffmpeg, a browser and the parts: what is there and how to install what is missing
+```
+
+Also runs with Bun (`bunx egatari`).
+
+More commands and settings (`ids-of`, extra fonts, vendored parts, TTS environment variables): [docs/cli.md](docs/cli.md) ([日本語](docs/cli.ja.md)). `npx egatari --help` lists every command.
+
 ## Making a video (tier 2)
 
 ```bash
@@ -237,6 +164,18 @@ node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の
 - No Mac? `synth.py` works with any OpenAI-compatible TTS server that takes the same request ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)); the editor app can also make or record each step's audio
 - **Self-playing HTML with audio**: `node kit/build.mjs $D/deck.html --embed-audio` puts the script audio inside the HTML, so the HTML file plays with `a` (autoplay) anywhere. The audio is compressed to AAC (64 kbps, mono; about 4.5 MB for a 5-minute talk, instead of ~30 MB as WAV), which every current browser plays. Without `--embed-audio` the HTML refers to the WAV files in `audio/` and nothing is converted. If ffmpeg is missing, the WAV files are embedded as they are and the build warns
 - Details (caching, timing overrides in `timeline.json`, the reading dictionary): [docs/video.md](docs/video.md) ([日本語](docs/video.ja.md))
+
+What video needs (ffmpeg, uv, a TTS server, reference voices) is under Tier 2 in [Requirements](#requirements). The difference between tier 1 and tier 2 is in "Two ways to use it", next.
+
+## Two ways to use it
+
+| | Tier 1: slides (core) | Tier 2: narrated video (optional) |
+|---|---|---|
+| You get | HTML slides, presenter view, the option to show later steps faintly, PDF | per-step MP4 clips, a full video, an Egatari file with audio |
+| Needs | Node ≥ 22; Google Chrome only for the quality checker, PDF and tests | everything in tier 1, plus ffmpeg, uv, a TTS server and reference voices |
+| Optional | uv (font subsetting) | |
+
+**Slides are fully usable without TTS.** No tier-1 command imports anything from `tts/` or `render/`, and `build`, `check` and the dev server work when `audio/` and `voice.json` are absent. Without audio, autoplay (`a`) uses the default timing for each step, and the script still shows in the presenter view as speaker notes.
 
 ## Keys (presenting)
 
@@ -304,7 +243,93 @@ The `voice.json` of `examples/tmlr2026-calibration` uses the engine's default vo
 
 ![kokugo-kanbun example](docs/images/kokugo-kanbun.png)
 
-## Repository layout
+## Working from a clone
+
+The steps below run the tools from a clone of this repository (to work on Studio itself, or to use the `node` scripts directly). To use it without a clone, see [With npm (no clone)](#with-npm-no-clone).
+
+### Requirements
+
+**Tier 1 (slides)**
+
+- [Node.js](https://nodejs.org/) 22 or newer, a release with the latest security fixes (see [SECURITY.md](SECURITY.md))
+- Google Chrome or Microsoft Edge for `kit/check.mjs`, `tools/pdf.mjs`, screenshots and tests (through `playwright-core`: Chrome first, then Edge). Building and presenting only need a browser to open the file. Without either, run `npx playwright-core install chromium` (the tools then fall back to Playwright's Chromium) or set `CHROME_PATH=/path/to/chrome-or-chromium`
+- Optional: [uv](https://docs.astral.sh/uv/). After `node tools/get-fonts.mjs` downloads the BIZ UDPGothic (and BIZ UDPMincho) TTF files, the build uses uv to run `pyftsubset` and embeds only the glyphs you use. Without the TTF files (or without uv) it embeds the matching `@fontsource` WOFF2 subsets instead. Those files are larger but look the same
+
+**Windows**
+
+A fresh Windows has neither Node.js nor Git. In PowerShell:
+
+```powershell
+winget install OpenJS.NodeJS.LTS Git.Git     # then open a new terminal
+winget install astral-sh.uv Gyan.FFmpeg      # optional: uv (smaller fonts), ffmpeg (video)
+```
+
+Edge is already there, so the quality checker and PDF work without Chrome. Run the commands below in PowerShell or Git Bash; replace `open` with `start`. Without Git, download the ZIP from GitHub (Code → Download ZIP). Making the script audio (tier 2) needs a TTS server; mlx-audio, the one we test with, runs only on a Mac with Apple silicon. On Windows, use another OpenAI-compatible TTS server, or make or record each step's audio in the editor app ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)).
+
+**Browsers**
+
+- Presenting the built HTML: Chrome/Edge 119+, Firefox 128+ or Safari 18+ (these support the CSS relative color syntax and `color-mix()` that themes use to derive tints from `--base`). Older browsers still show the slides, with fixed fallback colors taken from the default theme instead of colors derived from the theme's `--base`
+- PDF (`tools/pdf.mjs`), video (`render/`), `kit/check.mjs` and the tests are produced and tested with Google Chrome (or Playwright's Chromium) only; Edge uses the same engine
+
+**Tier 2 (video)**
+
+- ffmpeg and ffprobe on `PATH`
+- uv (runs the small Python project in `tts/`)
+- A TTS server with an OpenAI-compatible speech API, e.g. [mlx-audio](https://github.com/Blaizzy/mlx-audio) serving `mlx-community/Irodori-TTS-v4.1-Small-fp16` (Japanese) or `mlx-community/VoxCPM2-8bit` (English and others). Set `IRODORI_URL` (default `http://localhost:8882`). mlx-audio runs only on a Mac with Apple silicon; on Windows and Linux, see [other TTS servers](docs/video.md#tts-server-mac-windows-linux)
+- Reference voices: the default voices `bob` and `alice` (synthetic, Japanese and English) are in `tts/voices/` of the repository ([details](tts/voices/README.md)). The npm package does not carry them: the first `egatari tts` that needs one downloads it from this repository at a pinned tag, checks its sha256 against `tts/voices.json` and keeps it in your cache folder (`~/Library/Caches/egatari/voices/` on macOS, `~/.cache/egatari/voices/` on Linux, `%LOCALAPPDATA%\egatari\voices\` on Windows). Add your own as `<name>.wav` there (gitignored) or in `IRODORI_REF_DIR`
+
+### Quick start (tier 1: slides)
+
+```bash
+git clone --depth 1 https://github.com/egatari/egatari-studio.git
+cd egatari-studio
+npm ci
+node tools/get-fonts.mjs                            # optional: smaller font embedding (uses uv at build time)
+
+node kit/build.mjs examples/minimal/deck.html       # -> examples/minimal/out/deck.html
+open examples/minimal/out/deck.html                 # macOS; elsewhere, open the file in a browser
+
+node kit/check.mjs examples/minimal/deck.html       # quality check; the last line should read "エラー 0" (0 errors)
+node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF, one page per slide
+npm run sheet -- examples/minimal                        # one PNG with every slide at its final step (look at it: the check cannot see everything)
+node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:8730/ (Ctrl+C to stop)
+```
+
+#### Start your own lesson
+
+```bash
+npm run new -- talks/mytalk --lang en --theme default --title "My talk"
+npm run build -- talks/mytalk/deck.html    # -> talks/mytalk/out/deck.html
+npm run dev -- talks/mytalk/deck.html      # edit in the browser
+npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
+```
+
+`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. It also writes `egatari.json` with `"componentsCatalogue": "2"`: new lessons are built with parts library 2, the parts the chat AI's instructions describe (a folder without that setting, such as an older lesson, keeps parts library 1). Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
+
+Every slide of a new lesson has a stable id (`<section class="slide" id="s-k3f9q2">`), and its script heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking the script, audio or timing. For a lesson made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
+
+### Editing in the browser (dev server)
+
+You rarely need to open `deck.html` by hand. Start the dev server and fix things on the slide itself:
+
+```bash
+node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:8730/  (Ctrl+C to stop)
+```
+
+The page shows the slides (arrow keys, `p`, `a`, … all work), with the editing tools around it: the slides run in a sandboxed frame and can only point at what to edit, and nothing is written until you press Save in the editing tools. It reloads by itself whenever a file of the slides changes, and stays on the same slide and step.
+
+1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
+2. **Fix the script: `n`.** A drawer shows the script of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
+3. **Leave a comment: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" and it edits the slides; the page updates as soon as it saves.
+4. **Undo:** the previous versions of `deck.html` and `narration.md` are kept in `.cache/edits/` (last 30).
+
+| `e` + double-click: edit the source | `n`: edit the script | Alt / ⌥ Option + click: comment |
+|---|---|---|
+| ![editor](docs/images/dev-editor.png) | ![narration](docs/images/dev-narration.png) | ![comment](docs/images/dev-comment.png) |
+
+Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.ja.md)).
+
+### Repository layout
 
 | Path | Contents |
 |---|---|
