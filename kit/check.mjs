@@ -698,7 +698,7 @@ const markInfo = await page.evaluate(() => {
   });
   return out;
 });
-const fmtT = (x) => (x === null || x === Infinity ? '段階の終わり' : `${(+x).toFixed(2)} s`);
+const fmtT = (x) => (x === null || x === Infinity ? 'ステップの終わり' : `${(+x).toFixed(2)} s`);
 for (const { i, key, marks } of markInfo) {
   const sk = key.slice(meta[i].key.length + 1);
   for (const m of marks) if (!m.found) report(i, 'warn', 'markMissing', { id: m.id }, sk);
@@ -808,7 +808,7 @@ if (asJson) {
   const keys = [...groups.keys()].sort((a, b) => a - b);
   const EN = ML === 'en';
   const MARK = EN ? { error: 'error', warn: 'warning', info: 'info' } : { error: 'エラー', warn: '警告', info: '情報' };
-  const stepOf = (s) => (s === null ? '' : EN ? (s === 'concl' ? 'conclusion: ' : `step ${s}: `) : (s === 'concl' ? '結論の段階：' : `段階 ${s}：`));
+  const stepOf = (s) => (s === null ? '' : EN ? (s === 'concl' ? 'conclusion: ' : `step ${s}: `) : (s === 'concl' ? '結論のステップ：' : `ステップ ${s}：`));
   for (const key of keys) {
     const id = key >= 0 && meta[key] && meta[key].id;
     const label = key === -1 ? (EN ? '■ Whole deck' : '■ デッキ全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;

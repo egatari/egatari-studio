@@ -2,7 +2,7 @@
 //   node tools/lint-terms.mjs [--root <dir>] [--json] [--counts]
 // 言葉の一覧はこのファイルに書かない：docs/terms.json（言葉）と docs/terms-allow.json（正当な使い方と、照らし方の設定）だけを読む。
 // 見る所（使う人の目に触れる文字列）：
-//   - 画面のコード（app/*.js・play/*.js・play/*.mjs（Viewer）・kit/tools.js・kit/presenter.js・kit/deck.js・kit/live.js・kit/core/live-results.mjs・kit/core/part-labels.mjs・
+//   - 画面のコード（app/*.js・play/*.js・play/*.mjs（Viewer）・kit/tools.js・kit/check-messages.mjs・kit/presenter.js・kit/deck.js・kit/live.js・kit/core/live-results.mjs・kit/core/part-labels.mjs・
 //     server/editor-ui.js・server/hints.js）の文字列リテラル（コメントは見ない）
 //   - README(.ja).md・docs/*.md・docs/*.ja.md（AI への指示の文書 authoring-with-llms* を除く）と skills/*/SKILL.md の地の文（フェンスのコード・`コード`・HTML のコメント・URL は見ない）
 // 見ない所：AI への指示（kit/core/llm-pack-data.mjs・tools/llm-guide/**・docs/authoring-with-llms*・docs/llm-parts/*）、コードの名前・CSS のクラス・CLI の引数、
@@ -34,7 +34,7 @@ const COUNTS = args.includes('--counts');
 
 
 // ---- 見る所 ----
-export const UI_CODE = ['app/*.js', 'play/*.js', 'play/*.mjs', 'kit/tools.js', 'kit/panes.js', 'kit/track.js', 'kit/presenter.js', 'kit/deck.js', 'kit/live.js', 'kit/core/live-results.mjs', 'kit/core/part-labels.mjs', 'server/editor-ui.js', 'server/hints.js'];
+export const UI_CODE = ['app/*.js', 'play/*.js', 'play/*.mjs', 'kit/tools.js', 'kit/check-messages.mjs', 'kit/panes.js', 'kit/track.js', 'kit/presenter.js', 'kit/deck.js', 'kit/live.js', 'kit/core/live-results.mjs', 'kit/core/part-labels.mjs', 'server/editor-ui.js', 'server/hints.js'];
 const PROSE = ['docs/*.md', 'README.md', 'README.ja.md', 'skills/*/SKILL.md', 'plugins/egatari/skills/*/SKILL.md'];
 const PROSE_EXCLUDE = ['docs/authoring-with-llms*', 'docs/terms.md'];
 // AI への指示の文書は仕様の言葉で書くので、ふつうは照らさない。人の呼び方のように、そこでも使わない言葉だけ（terms-allow.json の aiDocsToo）を照らす

@@ -295,7 +295,7 @@ f.src = 'deck.html' + location.search + location.hash;
   const errsJ = r.j.results.filter((x) => x.sev === 'error' && /リンク/.test(x.msg)).map((x) => x.msg);
   const warnsJ = r.j.results.filter((x) => x.sev === 'warn' && /リンク/.test(x.msg)).map((x) => x.msg);
   ok(r.code === 1, '品質チェック：行き先のないリンクで終了コード 1');
-  for (const [h, re] of [['#s-nope', /スライド「s-nope」がない/], ['#s-three:7', /段階 7 がない/], ['#s-two:concl', /結論.*の段階がない/], ['#s-three:3', /段階 3 がない.*concl/], ['#9', /スライド 9 がない/]]) {
+  for (const [h, re] of [['#s-nope', /スライド「s-nope」がない/], ['#s-three:7', /ステップ 7 がない/], ['#s-two:concl', /結論.*のステップがない/], ['#s-three:3', /ステップ 3 がない.*concl/], ['#9', /スライド 9 がない/]]) {
     ok(errsJ.some((m) => m.includes(`href="${h}"`) && re.test(m)), `品質チェックのエラー：${h}`);
   }
   ok(warnsJ.some((m) => m.includes('href="#2"') && /番号/.test(m)), '品質チェックの警告：番号のリンク #2');

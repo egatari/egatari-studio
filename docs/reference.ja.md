@@ -423,7 +423,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 {"ok": false, "lang": "ja", "counts": {"error": 1, "warn": 0, "info": 12},
  "results": [{"slide": 2, "id": "s-k3f9q2", "key": "s-k3f9q2", "title": "減衰の式", "step": "3",
               "sev": "error", "code": "narrOrphan", "rule": "R-narr-steps", "data": {…},
-              "msg": "スライド 2「減衰の式」（s-k3f9q2）、段階 3：口述原稿の [3] に当たる段階がスライドにない……（R-narr-steps）"}]}
+              "msg": "スライド 2「減衰の式」（s-k3f9q2）、ステップ 3：口述原稿の [3] に当たるステップがスライドにない……（R-narr-steps）"}]}
 ```
 
 `status` が `crashed`（終了コード 2）の結果は無効：検査が終わっていないので、`results` が空でも合格ではない。ふつうの結果に `status` の欄はない。スクリプトは終了コード 2 と `status: "crashed"` を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。
