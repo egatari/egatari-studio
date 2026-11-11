@@ -95,7 +95,7 @@ await t('修正依頼（kit/core/llm-fix.mjs の buildFixRequest）：警告と�
   assert.ok(fr.rules.includes('R-steps') && /^- \*\*R-steps\*\* /m.test(fr.text));
   const cl = cli.results.filter((x) => CODES.includes(x.code)).map((x) => ({ sev: x.sev, i: x.slide - 1, title: '', code: x.code, rule: x.rule, data: x.data, msg: x.msg, text: x.msg }));
   const fr2 = buildFixRequest({ problems: cl, deck, narration, lang: 'ja' });
-  assert.equal((fr2.text.match(/予想（m-predict）の答えが、人数を数える段階と同時に出ます/g) || []).length, 3);
+  assert.equal((fr2.text.match(/予想（m-predict）の答えが、人数を数えるステップと同時に出ます/g) || []).length, 3);
   assert.equal((fr2.text.match(/予想（m-predict）の答えが出ません/g) || []).length, 3);
   assert.ok(fr2.rules.includes('R-steps'));
 });
@@ -104,7 +104,7 @@ await t('言葉：日本語と英語。answer-step を 2 以上に・steps を a
   assert.equal(ruleOf('predictAnswerNeverShown'), 'R-steps');
   assert.equal(message('ja', 'predictAnswerNeverShown', {}), '予想（m-predict）の答えが出ません。steps が answer-step より小さくなっています。steps を answer-step 以上にしてください。（R-steps）');
   assert.equal(message('en', 'predictAnswerNeverShown', {}), 'The prediction (m-predict) never shows its answer: steps is smaller than answer-step. Set steps to answer-step or more. (R-steps)');
-  assert.equal(message('ja', 'predictAnswerWithCount', {}), '予想（m-predict）の答えが、人数を数える段階と同時に出ます。answer-step を 2 以上にして、数えてから答えを開いてください。（R-steps）');
+  assert.equal(message('ja', 'predictAnswerWithCount', {}), '予想（m-predict）の答えが、人数を数えるステップと同時に出ます。answer-step を 2 以上にして、数えてから答えを開いてください。（R-steps）');
   assert.equal(message('en', 'predictAnswerWithCount', {}), 'The prediction (m-predict) shows its answer at the same step as the vote count. Set answer-step to 2 or more so the class counts first, then sees the answer. (R-steps)');
 });
 

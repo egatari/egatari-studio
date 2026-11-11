@@ -252,7 +252,7 @@ export const MESSAGES = {
   narrMissing: { rule: 'R-narr-steps', ja: (a) => `この段階の口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（その段階で現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
   // 予想（m-predict）の答えが、数の棒と −1・＋1 の操作（パーツの段階 1）と同時かそれより前に開く（kit/core/predict-steps.mjs。answer-step が 1 以下）
   predictAnswerWithCount: { rule: 'R-steps',
-    ja: () => `予想（m-predict）の答えが、人数を数える段階と同時に出ます。answer-step を ${PREDICT_COUNT_STEP + 1} 以上にして、数えてから答えを開いてください。`,
+    ja: () => `予想（m-predict）の答えが、人数を数えるステップと同時に出ます。answer-step を ${PREDICT_COUNT_STEP + 1} 以上にして、数えてから答えを開いてください。`,
     en: () => `The prediction (m-predict) shows its answer at the same step as the vote count. Set answer-step to ${PREDICT_COUNT_STEP + 1} or more so the class counts first, then sees the answer.` },
   // 予想（m-predict）の steps が答えの段階（answer-step）より小さい：プレーヤーはパーツの段階を steps で止めるので、答えが出ない（kit/core/predict-steps.mjs）
   predictAnswerNeverShown: { rule: 'R-steps',
