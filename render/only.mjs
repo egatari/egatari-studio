@@ -15,7 +15,7 @@ export function resolveOnly(tokens, tl, ids = []) {
 
 export function unknownOnlyMessage(unknown, valid, max = 8) {
   const shown = valid.slice(0, max).join(', ') + (valid.length > max ? `, …（ほか ${valid.length - max} 枚 / ${valid.length - max} more）` : '');
-  return `--only に当たるスライド・段階がない / --only matches no slide or step: ${unknown.join(', ')}\n`
-    + `  使えるのはスライドの鍵か id（そのスライドの全段階）、または スライドの鍵:段階 / valid: a slide key or id (all its steps), or slideKey:step\n`
+  return `--only に当たるスライド・ステップがない / --only matches no slide or step: ${unknown.join(', ')}\n`
+    + `  使えるのはスライドの id か見出しから決めた名前（そのスライドの全ステップ）、または スライドの id:ステップ / valid: a slide id or the name made from its heading (all its steps), or slide id:step\n`
     + `  スライド / slides: ${shown}`;
 }

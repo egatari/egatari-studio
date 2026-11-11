@@ -189,7 +189,7 @@ ok('template text: TTS (narration-json) and --portable / --play-only warn first 
     assert.equal(nj.status, 0);
     const w = JSON.parse(nj.stdout).warnings.filter((x) => /✎/.test(x));
     assert.equal(w.length, 10, nj.stderr);
-    assert.match(nj.stderr, /雛形の仮の行（✎）のまま/);
+    assert.match(nj.stderr, /テンプレートの仮の行（✎）のまま/);
     for (const flag of ['--portable', '--play-only']) {
       const out = path.join(dir, 'x' + flag.slice(2) + '.html');
       const b = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html'), flag, '-o', out], { encoding: 'utf8' });

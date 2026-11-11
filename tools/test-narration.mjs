@@ -92,10 +92,10 @@ ok('検査：id の書式・鍵の重なり・id とほかの id の衝突', () 
     '<p><span id="eta">η</span></p></body></html>';
   const msgs = analyzeSlideIds(deck).problems.map((p) => p.msg);
   assert.ok(msgs.some((m) => /「9x」が規則に合わない/.test(m)), 'bad id');
-  assert.ok(msgs.some((m) => /鍵「B」がスライド 2/.test(m)), 'dup heading key');
+  assert.ok(msgs.some((m) => /スライドの id「B」がスライド 2/.test(m)), 'dup heading key');
   assert.ok(msgs.some((m) => /「eta」がほかの id と重なる/.test(m)), 'id collision');
   assert.ok(msgs.some((m) => /「grad」がほかの id と重なる.*htmlId/.test(m)), 'htmlId collision');
-  assert.ok(msgs.some((m) => /鍵「s-dup222」/.test(m)), 'dup id');
+  assert.ok(msgs.some((m) => /スライドの id「s-dup222」/.test(m)), 'dup id');
 });
 ok('鍵：__proto__ や constructor でも壊れない', () => {
   const segs = parseNarration('## __proto__\n[0] a\n## constructor\n[0] b\n## toString {#hasOwnProperty}\n[1] {mark:x}c\n');
@@ -110,10 +110,10 @@ ok('鍵：__proto__ や constructor でも壊れない', () => {
   assert.ok(marksMap(segs)['hasOwnProperty:1']);
   assert.equal(narrationMap(parseNarration('## A\n[0] a\n')).constructor, undefined);
 });
-ok('段階の番号：[01] と [1000] は使わない', () => {
+ok('ステップの指定：[01] と [1000] は使わない', () => {
   const segs = parseNarration('## A\n[0] a\n[01] bad\ncontinued\n[1000] bad\n[999] ok\n[1] one\n');
   assert.deepEqual(segs.map((s) => [s.stepKey, s.turns.map((t) => t.display).join('|')]), [['0', 'a'], ['999', 'ok'], ['1', 'one']]);
-  assert.equal(segs.warnings.filter((w) => /段階の番号/.test(w)).length, 2);
+  assert.equal(segs.warnings.filter((w) => /ステップの指定「/.test(w)).length, 2);
   assert.throws(() => rewriteNarration('## A\n', 'A', '01', [{ role: 'expert', text: 'x' }]));
   // [01] の行は前の段階の続きにならず、書き換えでも消えない
   const out = rewriteNarration('## A\n[0] a\n[01] keep\n', 'A', '0', [{ role: 'expert', text: 'b' }]);

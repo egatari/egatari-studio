@@ -25,7 +25,7 @@ const L = {
     here: '← この後ろに足す',
     near: '## 足す場所の前のスライド（参考。返さない）',
     reply: '## 返し方',
-    replyText: '足すスライドだけを返してください。```deck.html の囲みに <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md の囲みに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。ほかのスライドは返しません。',
+    replyText: '足すスライドだけを返してください。```deck.html の灰色の枠（コードブロック）に <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md のコードブロックに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。ほかのスライドは返しません。',
   },
   en: {
     head: '# Please add slides',

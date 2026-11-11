@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 44294a8b**
+**Instruction version: dec25cea**
 **Skill version: 0.6.9**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -67,9 +67,9 @@ Ask the user to add audio in Studio's audio panel (make AI voice on this compute
 
 ## When you finish
 
-If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the fenced blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (`.ega.html`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
+If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the code blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (`.ega.html`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
 
-If you cannot write files, return the two fenced blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's New… → “Paste the AI’s output”.
+If you cannot write files, return the two code blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's New… → “Paste the AI’s output”.
 
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
 
@@ -77,7 +77,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `44294a8b`
+Pack version: `dec25cea`
 
 You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and script in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -184,7 +184,7 @@ Read only the parts you need from the set references above.
 ```
 
 - One section per slide, **in slide order, for every slide (cover included)**: `## <slide heading>` (R-headings), no `{#id}` (R-noids).
-- **R-narr-steps** Step markers `[0]`, `[1]`, … and `[concl]`. **Every step of every slide has script lines** (step 0 to max, and `[concl]` if the slide has a conclusion line), and there are **no markers for steps that do not exist** (a `static` cover has only `[0]`; a slide without a conclusion line has no `[concl]`; never `[01]`). Within a step, talk only about what appears at that step.
+- **R-narr-steps** Step labels `[0]`, `[1]`, … and `[concl]`. **Every step of every slide has script lines** (step 0 to max, and `[concl]` if the slide has a conclusion line), and there are **no labels for steps that do not exist** (a `static` cover has only `[0]`; a slide without a conclusion line has no `[concl]`; never `[01]`). Within a step, talk only about what appears at that step.
 - **R-dialogue** **One narrator by default**: write no speaker names. Write a dialogue only when asked (if asked for three or more speakers, keep two roles and say so first): lines start with `Expert:` or `Novice:` (continuation lines indented; a line without a speaker is Expert), shaped as a cognitive apprenticeship:
   - Novice is never a mere backchannel: Novice voices the question a learner is likely to have, or paraphrases (“So …, is that right?”)
   - Expert answers and adds one example or analogy, or confirms (or corrects) the paraphrase and takes one step further

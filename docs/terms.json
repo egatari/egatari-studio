@@ -314,6 +314,24 @@
    "note": ""
   },
   {
+   "id": "slide-id",
+   "group": "Structure and playback",
+   "en": "Slide id",
+   "ja": "スライドの id",
+   "definition": "The fixed name of a slide (id on its <section>), used by links, the script and the audio; the editor and npm run ids add it.",
+   "avoid": {
+    "ja": [
+     "鍵",
+     "スライドの鍵"
+    ],
+    "en": []
+   },
+   "internal": "id (s-xxxxxx); slide key (spec)",
+   "decided": "2026-11-11",
+   "by": "standards",
+   "note": ""
+  },
+  {
    "id": "step",
    "group": "Structure and playback",
    "en": "Step",
@@ -328,6 +346,24 @@
    "internal": "step (spec)",
    "decided": "2026-10-22",
    "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "step-label",
+   "group": "Structure and playback",
+   "en": "Step label",
+   "ja": "ステップの指定",
+   "definition": "The [0] … [concl] at the start of a script line, naming the step the line belongs to.",
+   "avoid": {
+    "ja": [
+     "鍵",
+     "ステップの鍵"
+    ],
+    "en": []
+   },
+   "internal": "step key (spec)",
+   "decided": "2026-11-11",
+   "by": "standards",
    "note": ""
   },
   {

@@ -111,7 +111,7 @@
 
 ### 見本：算数・数学（英語・default テーマ・m-sweep）
 
-（その部品を使うスライドだけ。`deck.html` の骨組みは §6 の見本と同じ）
+（そのパーツを使うスライドだけ。`deck.html` の骨組みは §6 の見本と同じ）
 
 ```deck.html
 <section class="slide">
@@ -138,4 +138,4 @@
 [concl] A larger decay constant means a shorter half-life.
 ```
 
-段階の数え方：値が 3 つの `m-sweep` は段階 1〜2。
+ステップの数え方：値が 3 つの `m-sweep` はステップ 1〜2。

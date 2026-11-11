@@ -150,7 +150,7 @@ npx egatari new mytalk --lang ja      # mytalk/deck.html・mytalk/narration.md�
 npx egatari build mytalk/deck.html    # -> mytalk/out/deck.html（--portable・--play-only などの組み立ての選択肢もそのまま使える）
 npx egatari dev mytalk/deck.html      # ブラウザで直す
 npx egatari check mytalk/deck.html    # 最後の行が「エラー 0」になればよい
-npx egatari doctor                    # Node・uv・ffmpeg・ブラウザ・部品の写しがあるか、ないものの入れ方
+npx egatari doctor                    # Node・uv・ffmpeg・ブラウザ・パーツの写しがあるか、ないものの入れ方
 ```
 
 Bun（`bunx egatari`）でも動きます。
@@ -301,7 +301,7 @@ open examples/minimal/out/deck.html                 # macOS。ほかの OS で�
 
 node kit/check.mjs examples/minimal/deck.html       # 品質チェック。最後の行が「エラー 0」になる
 node tools/pdf.mjs examples/minimal/out/deck.html examples/minimal/out/deck.pdf   # PDF（1 スライド 1 ページ）
-npm run sheet -- examples/minimal                        # 全スライドの最終段階を 1 枚の PNG に（品質チェックで見えないものを目で見る）
+npm run sheet -- examples/minimal                        # 全スライドの最後のステップを 1 枚の PNG に（品質チェックで見えないものを目で見る）
 node server/dev.mjs examples/minimal/deck.html      # 開発サーバー http://127.0.0.1:8730/（Ctrl+C で止める）
 ```
 

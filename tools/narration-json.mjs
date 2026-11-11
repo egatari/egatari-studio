@@ -25,6 +25,6 @@ const out = segs.map((s) => ({ key: `${s.slideKey}:${s.stepKey}`, slideKey: s.sl
   inputHash: crypto.createHash('sha256').update(inputCanonical(s)).digest('hex'), bounds: s.bounds, turns: s.turns, ext: s.ext || [] }));
 // 雛形の仮の行（「✎ 」で始まる。kit/core/template-text.mjs）が残っている段階：TTS はそのまま読むので、合成の前に知らせる（止めない）
 const warnings = [...(segs.warnings || [])];
-for (const s of segs) if (s.turns.some((t) => isPlaceholder(t.raw))) warnings.push(`narration.md ${s.line} 行目: 段階「${s.slideKey}:${s.stepKey}」の口述原稿が雛形の仮の行（✎）のまま。TTS はこのまま読む / still the template placeholder (✎); TTS reads it as is`);
+for (const s of segs) if (s.turns.some((t) => isPlaceholder(t.raw))) warnings.push(`narration.md ${s.line} 行目: ステップ「${s.slideKey}:${s.stepKey}」の台本がテンプレートの仮の行（✎）のまま。AI 音声はこのまま読む / still the template placeholder (✎); the AI voice reads it as is`);
 for (const w of warnings) console.error(`⚠ ${w}`);
 process.stdout.write(JSON.stringify({ warnings, segments: out }));

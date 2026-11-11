@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=5ffd48f1f3789949 -->
+<!-- i18n: pair=reference.md sha256=c3c6a02ff5c60c54 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -41,7 +41,7 @@
 | `class="… nostep"` | 箇条書きを自動でステップにしない |
 | `class="… noconcl"` | 結論の行なし：本文は 565px でなく 680px まで使える（既定の値。テーマの `metrics` で両方とも動く） |
 | `class="… layout-tate"` | 縦組みのスライド：見出しは右端の縦の列、本文はその左に縦書き、結論の行は左端の縦の列（[国語](#国語kokugo)） |
-| section の `id="…"` | スライドの id で、それが鍵（形式 §8.1）。どのスライドにも付ける。[スライドの鍵](#スライドの鍵) |
+| section の `id="…"` | スライドの id（形式 §8.1）。どのスライドにも付ける。[スライドの id](#スライドの-id) |
 | `data-morph` / `data-morph="鍵"` | 前のスライド / その鍵のスライドからモーフで入る（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `data-chapter="名前"` | ここから章を始める（`sec` と同じ扱い。章の名前を指定） |
 | 直下の子に `<div class="pn">` | ページ番号を自分で書く（なければ 2 枚目から `i/N` が入る） |
@@ -61,7 +61,7 @@
 |---|---|
 | `data-step="k"` | ステップ k（k ≥ 1）で現れる。ステップ 0 は入った直後に見えているもの |
 | （スライドに何も書かない） | `data-step` も `data-from` もないスライドは、`.body > ul > li` と `.body > ol > li` が順にステップ 1, 2, … になる |
-| `.concl` | 常に最後のステップ（`max + 1`）。ステップの鍵は `concl` |
+| `.concl` | 常に最後のステップ（`max + 1`）。ステップの指定は `[concl]` |
 | `data-at="秒"` | そのステップの中で、秒だけ遅れて始まる（フェードと `.draw`） |
 | `class="draw"` | SVG の線を描いていく（`pathLength="1"` が要る）。ステップはいちばん近い `data-step` の祖先、自分の `data-step`、なければ 0。0.7 秒。static のスライドでは、線は描き終わった形で出る（動かない） |
 | `class="draw drawslow"` | 同じく 1.4 秒 |
@@ -69,7 +69,7 @@
 | `steps="n"`（パーツ） | パーツのステップの数を上書きする |
 | `data-id="ID"` | モーフの対応（[contract §8](contract.ja.md#8-モーフdata-morph)） |
 | `id="ID"` / `data-mark="ID"` | `{mark:ID}` の目印（[contract §7](contract.ja.md#7-強調mark)） |
-| `data-key`、`data-title` | build が付ける（スライドの鍵、タグなしの見出し）。書き手は書かない（形式 §8.0） |
+| `data-key`、`data-title` | build が付ける（スライドの id、タグなしの見出し）。書き手は書かない（形式 §8.0） |
 
 ### 数式
 
@@ -107,9 +107,11 @@
 
 相対パスは作業フォルダから解決し、フォルダの外は読まない。`data:`・`blob:`・`#断片`・テンプレートの値（`${…}`、`{{…}}`）はそのまま。警告：`missing: …`（ファイルがない）、`refused: …`（作業フォルダの外）、`external: …`（素材の位置にある `http(s)` の参照。`<iframe>`・`<object>` を含む。そのまま残すので、オフラインでは出ない）。ふつうのリンク（`<a href>`）は触らない。`audio/manifest.json` の音声は `--embed-audio` のときだけ埋め込む。
 
-### スライドの鍵
+<a id="スライドの鍵"></a>
 
-スライドの鍵はその `id`（形式 §8.1：`^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合い、教材のほかのどの id（目印・`\htmlId{…}` も）とも重ねない）。`npm run new` はどのスライドにも id を付ける。id のない教材には `npm run ids -- <教材>`。そのような教材も開いて直せるように、build は id のないスライドを見出しで鍵にし、品質チェックが知らせる（`legacyIndex`）。鍵の重なりはエラーで、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった鍵は section の `data-key` に書く（[約束事 §4](contract.ja.md#4-台本narrationmd)）。
+### スライドの id
+
+スライドは `id` で決まる（形式 §8.1：`^[A-Za-z][A-Za-z0-9_-]{0,63}$` に合い、教材のほかのどの id（目印・`\htmlId{…}` も）とも重ねない）。`npm run new` はどのスライドにも id を付ける。id のない教材には `npm run ids -- <教材>`。そのような教材も開いて直せるように、build は id のないスライドに見出しから決めた名前を id の代わりに使い、品質チェックが知らせる（`legacyIndex`）。重なりはエラーで、build は警告（`slide key: …`）し、後のスライドに `#2`、`#3`、… を付ける。決まった名前は section の `data-key` に書く（[約束事 §4](contract.ja.md#4-台本narrationmd)）。
 
 ## 台本（narration.md）
 
@@ -137,7 +139,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 
 `dur = override.dur ?? max(anim, 音声 ? lead + 音声 + pad_after : max(hold, 強調の終わり + pad_after))`（規範は形式の仕様 §5.5 と §8.0。[contract §5](contract.ja.md#5-タイムライン)）。
 
-| `"スライドの鍵:ステップ"` の中の鍵 | 既定 | 意味 |
+| `"スライドの id:ステップ"` の中の欄 | 既定 | 意味 |
 |---|---|---|
 | `dur` | — | 長さを固定（秒）。`lead + dur` を超えた音声は切る |
 | `hold` | 1.2 | 音声のないステップの長さ |
@@ -238,7 +240,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 国語（漢文・古文・現代文）の授業のためのもの。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun)（テーマ `kokugo`）。
 
 - **縦書き**：`.body` の中の `<div class="tate">…</div>` は `writing-mode: vertical-rl` で、本文の高さいっぱいに右から左へ列を並べる（段落の間は左に空ける。`p.indent` で字下げ）。`.tcy` は 2 桁の数字などを縦中横にする
-- **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中のパーツ・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きはパーツの指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの鍵・字幕・Egatari ファイルの読める層は、これまでどおり見出しの字から作る。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
+- **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中のパーツ・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きはパーツの指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの id・字幕・Egatari ファイルの読める層は、これまでどおり見出しの字から作る。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
 - **ルビ**：`<ruby>漢<rt>かん</rt></ruby>`。`rt` は 0.5em で、品質チェックは字の大きさを数えない。縦書きでは右に付く
 - **明朝**：`.mincho`、`<html data-font="mincho">`、または `--font-sans: var(--font-mincho)` にするテーマ（`kokugo`）
 - **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。ステップ：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。パーツライブラリ v1.4.0 から句（列）ごとに 1 ステップで、返り点や再読文字で前の列へ戻ると、そこから別のステップ。`order-by="all"` なら読む順の全体を 1 ステップにし、`cues(k)` は 2 列目からの各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [m-kanbun README (1.6.0)](../vendor/components/sha256/0c02494c234498ef3a20d9e605f886425223639dbf94e20a27b97c82d9ada188/README.md)
@@ -316,7 +318,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 | 命令（親 → プレーヤー） | 働きと答え |
 |---|---|
-| `{egatari:"seek", id?, slide, step, t}` | そのステップの時刻 `t` へ。`slide` はスライドの鍵（`ready.timeline[].slideKey`）か 0 からの番号、`step` はステップの鍵（`"0"`・`"1"`・… か `"concl"`。整数はその鍵と読む。なければ `"0"`）、`t` は秒か `null`（なければ `null`）。再生の状態は保つ：再生中なら `t` から続ける（`t` が `null` ならステップの初めから。ツールバーで跳ぶときと同じ）。この seek による `position` の後に `{egatari:"seeked", id?, slideKey, stepKey, t}` を答える |
+| `{egatari:"seek", id?, slide, step, t}` | そのステップの時刻 `t` へ。`slide` はスライドの id（`ready.timeline[].slideKey`）か 0 からの番号、`step` はステップの指定（`"0"`・`"1"`・… か `"concl"`。整数はそのステップと読む。なければ `"0"`）、`t` は秒か `null`（なければ `null`）。再生の状態は保つ：再生中なら `t` から続ける（`t` が `null` ならステップの初めから。ツールバーで跳ぶときと同じ）。この seek による `position` の後に `{egatari:"seeked", id?, slideKey, stepKey, t}` を答える |
 | `{egatari:"play", id?}` / `{egatari:"pause", id?}` | 再生 / 一時停止。ブラウザが音声を始めさせなければ `playBlocked` |
 | `{egatari:"rate", id?, value}` | 再生速度（0.75・1・1.25・1.5・2） |
 | `{egatari:"mode", id?, mode}` | 今のモードを `{egatari:"mode", id?, mode}` で答える。ほかのモードは error（モードは開くときに `?mode=` で決まる） |
@@ -432,7 +434,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 |---|---|
 | `slide` | スライドの番号（1 から）。教材全体なら `null` |
 | `id` | スライドの `id`。なければ `null`（id のないスライド・教材全体） |
-| `key` | スライドの鍵（id、なければ見出しから決めた旧来の鍵） |
+| `key` | スライドの id（id がなければ、見出しから決めた旧来の名前） |
 | `title` | スライドの見出しの字（`h2` / `h1`、タグなし） |
 | `step` | その結果のステップ：`"0"`・`"1"`・… か `"concl"`。スライド全体のことなら `null` |
 | `sev` | `error`・`warn`・`info` |
@@ -567,7 +569,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`。npm の包みでは、ない既定の声を初めて使うときにキャッシュへ取り寄せる。`tts/voices.json`） |
 | `--engine irodori\|voxcpm2` | `voice.json` の `engine` と教材の言語より優先 |
 | `--yomi FILE` | 読み辞書（`MOTION_YOMI` より優先。既定 `tts/yomi.yaml`）。日本語だけ |
-| `--only 鍵,…` | このステップ（`スライドの鍵:ステップ`）だけ |
+| `--only 鍵,…` | このステップ（`スライドの id:ステップ`）だけ |
 | `--dry-run` | TTS を呼ばず、推定の長さの無音（日本語 7.5 字/秒、英語 2.5 語/秒）。キャッシュは別 |
 | `--force` | 音声のキャッシュを無視する |
 | `--replace-recorded` | 録音と取り込みの音声（manifest の `kind` が `recorded`・`imported`。編集アプリの音声の板が書く）も TTS で作り直す。付けなければ残す |
@@ -589,7 +591,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `--out フォルダ` | 必須 |
 | `--fps n` | 既定 30 |
 | `--scale x` | 既定 1.5（1920×1080） |
-| `--only 鍵,…` | このスライドかステップだけ。ほかはそのまま。スライドの鍵か id（そのスライドの全ステップ）、または `スライドの鍵:ステップ`（1 ステップ）。どれにも当たらないものはエラーで、使えるスライドの鍵を示す |
+| `--only 鍵,…` | このスライドかステップだけ。ほかはそのまま。スライドの id か見出しから決めた名前（そのスライドの全ステップ）、または `スライドの id:ステップ`（1 ステップ）。どれにも当たらないものはエラーで、使えるスライドの id を示す |
 | `--full` | `full.mp4` も。章が 2 つ以上なら `chapter_NN.mp4` と `chapters.json` も（全部のクリップが要る） |
 | `--music ファイル` | 背景の音楽（省略可）：動画の全体の下に 1 本流す。台本の声の間は小さくし、終わりで消す（[video.ja.md](video.ja.md#背景の音楽)）。クリップの音声に入るので、キャッシュの鍵にも入る |
 | `--force` | `.render-cache.json` を無視する |
@@ -612,7 +614,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `node tools/test-kokugo-example.mjs` | `examples/kokugo-kanbun` の漢文がパーツライブラリの `m-kanbun` で知らせなしに読めるか（ブラウザなし。パーツそのものの試験は egatari/components） |
 | `node tools/theme-metrics.mjs measure <テーマ> [--lang ja\|en]`、`node tools/theme-metrics.mjs check <テーマ>` | テーマ（フォルダか名前。`--theme` と同じ）を描き、描いた箱から測った `metrics` の塊を出す（`theme.json` に貼る。整数の px で、どの端も限りが緩くなる側へ 1px 未満で外向きに丸める。同梱の字体が読み込めなければ測らずに終了コード 2）。`check` は宣言（なければ既定）と描いた箱を比べ、違えば終了コード 1 |
 | `node tools/test-theme-metrics.mjs [作業フォルダ]` | テーマの `metrics`：検証と継承、テーマの hash、同梱のテーマがどれも宣言どおりに描かれる（厳しく）、品質チェックと編集アプリの品質チェックの限りと `themeMetricsDrift` |
-| `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
+| `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの id と読める層が変わらない |
 | `node tools/test-check-colors.mjs [作業フォルダ]` | テーマの色の語彙の外の色（`colorOutside`）：値の種類ごとの決まり、原稿のどこを見るか、`tools/fixtures/check-colors/` の品質チェック（`var(--lit)`・じかに書いた予備を持つ `var(--obj-red, red)` などの物の色・役割の `color-mix()`・色相を保った相対色は出ない。色相を変えた `oklch` `rgb` `hsl` `lab` と、じかに書いた予備の値は情報として出て、修正依頼には入らない） |
 | `node tools/test-check-cards-hint.mjs [作業フォルダ]` | カードの提案（`cardsHint`）：3 つか 4 つの短い同じ重さの要点で出る。項目が 2 つ・5 つ、長い項目、長さの違う項目、入れ子の箇条書き、`ol`、パーツ、`static`、縦組み、表紙では出ない。情報だけで修正依頼に入らない |
 | `node tools/test-check-predict.mjs [作業フォルダ]` | 予想の警告（`predictAnswerWithCount`・`predictAnswerNeverShown`）：`answer-step` の読み方（`m-predict` と同じ）、前者は `1`・`-1`・`1.4` で出て、属性なし・`0`・`2`・`3`・`abc`・空では出ない。後者は `steps` が答えのステップより小さいときに出る（そのときは前者の代わり）。`npm run check` と編集アプリの道筋（`sourceFindings`）が同じ指摘を出す。修正依頼に R-steps と一緒に入る。日本語と英語の言葉 |

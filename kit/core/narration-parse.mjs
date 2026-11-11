@@ -152,7 +152,7 @@ export function parseNarration(text) {
     if (/^#\s/.test(ln)) return;
     const m = ln.match(/^\s*\[(\d+|concl)\]\s*(.*)$/);
     if (m && slideKey !== null && !isStepKey(m[1])) {
-      warnings.push(`narration.md ${idx + 1} 行目: 段階の番号「[${m[1]}]」は使えない（0〜999、先頭の 0 なし）。この段階は読まない`);
+      warnings.push(`narration.md ${idx + 1} 行目: ステップの指定「[${m[1]}]」は使えない（使えるステップの指定は [0]・[1]…・[concl]。番号は 0〜999 で、先頭に 0 を付けない）。このステップは読まない`);
       cur = null; turn = null; return;
     }
     if (m && slideKey !== null) {
@@ -165,7 +165,7 @@ export function parseNarration(text) {
     const x = parseExtLine(ln);
     if (x) {
       if (cur) { cur.ext.push({ ...x, line: idx + 1 }); cur.end = idx + 1; }
-      else if (slideKey !== null) warnings.push(`narration.md ${idx + 1} 行目: 拡張の行が段階（[k]）の外にある（使わない）`);
+      else if (slideKey !== null) warnings.push(`narration.md ${idx + 1} 行目: 拡張の行がステップ（[k]）の外にある（使わない）`);
       return;
     }
     if (cur && ln.trim()) { addLine(ln.trim()); cur.end = idx + 1; }  // 空行は飛ばす（同じ段階の続き）
@@ -184,7 +184,7 @@ export function parseNarration(text) {
   const last = new Map();
   out.forEach((seg, j) => {
     const key = `${seg.slideKey}:${seg.stepKey}`;
-    if (last.has(key)) warnings.push(`narration.md ${seg.line} 行目: 段階「${key}」が重複（${out[last.get(key)].line} 行目を上書き）`);
+    if (last.has(key)) warnings.push(`narration.md ${seg.line} 行目: ステップ「${key}」が重複（${out[last.get(key)].line} 行目を上書き）`);
     last.set(key, j);
   });
   const uniq = out.filter((seg, j) => last.get(`${seg.slideKey}:${seg.stepKey}`) === j);

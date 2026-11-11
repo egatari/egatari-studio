@@ -161,7 +161,7 @@ ${T.s4.li.map((l, i) => `      <li data-step="${i + 1}">${l}</li>`).join('\n')}
 `;
 
 const turns = (n, c) => n.map((t, i) => `[${i}] ${t}`).join('\n') + (c ? `\n[concl] ${c}` : '');
-const narration = `# ${EN ? 'Narration' : '口述原稿'}: ${title}
+const narration = `# ${EN ? 'Script' : '台本'}: ${title}
 
 ${headingLine({ key: ID[0], id: ID[0], heading: title })}
 [0] ${T.cover}

@@ -29,7 +29,7 @@ const check = (deck, extra = [], env = {}) => spawnSync(process.execPath, [path.
 // ---- 1. 規格の名前
 t('ruleOf：R-headings になる知らせと、ならない知らせ', () => {
   assert.equal(ruleOf('narrHeadingDiffers', {}), 'R-headings');
-  assert.equal(ruleOf('slideId', { msg: 'slide key: スライド 2 の鍵「a」がスライド 1 と重なる' }), 'R-headings');
+  assert.equal(ruleOf('slideId', { msg: 'slide key: スライド 2 のスライドの id「a」がスライド 1 と重なる' }), 'R-headings');
   assert.equal(ruleOf('slideId', { msg: 'slide id: スライド 2 の id「1」が規則に合わない' }), null);
   assert.equal(ruleOf('build', { w: 'narration: スライドが見つからない「## x」' }), 'R-headings');
   assert.equal(ruleOf('build', { w: 'missing: 「a.png」が作業フォルダにない' }), null);

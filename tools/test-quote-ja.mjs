@@ -46,7 +46,7 @@ t('check/build：本とスライドのつながりの古さ・節の知らせ', 
 });
 
 t('build：narration の「## 見出し」と、編集アプリでの見せ方', () => {
-  const w = `narration: スライドが見つからない「## ${innerJa(H)}」（鍵「s-x」、narration.md 5 行目）`;
+  const w = `narration: スライドが見つからない「## ${innerJa(H)}」（スライドの id「s-x」、narration.md 5 行目）`;
   const v = warnView(w, [], { bwScript: '台本：' });
   assert.equal(v.text, `台本：スライドが見つからない${WANT}`);
 });

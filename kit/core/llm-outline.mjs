@@ -36,7 +36,7 @@ const L = {
   ja: {
     outlineHead: '# まず構成案だけを返してください',
     outlineText: (n) => `この教材は ${n} 枚あるので、2 回に分けて作ります。今回は deck.html と narration.md はまだ書かず、構成案だけを返してください（R-outline）。` +
-      '```outline の囲み 1 つに、Markdown の表を書きます。列は「番号」「見出し」「要点（1 行）」で、スライドごとに 1 行、全スライドを順に並べます。囲みの外には 1 行の添え書きだけ。',
+      '```outline の灰色の枠（コードブロック） 1 つに、Markdown の表を書きます。列は「番号」「見出し」「要点（1 行）」で、スライドごとに 1 行、全スライドを順に並べます。コードブロックの外には 1 行の添え書きだけ。',
     tableHead: '| 番号 | 見出し | 要点 |',
     batchHead: (a, b) => `# 構成案の ${a}〜${b} 枚目を作ってください`,
     batchFirst: (a, b, n) => `構成案（全 ${n} 枚）の ${a}〜${b} 枚目を、ちょうど ${b - a + 1} 枚作ってください。規格（R-…）と出力の形（R-output）は AI への指示のとおりで、deck.html は <!DOCTYPE html> からの全体を書きます。残りのスライドは後で頼みます。`,
@@ -45,8 +45,8 @@ const L = {
     outlineList: '## 構成案（全体。返さない）', range: (a, b) => `← 今回は ${a}〜${b} 枚目`,
     near: '## 足す場所の前のスライド（参考。返さない）',
     reply: '## 返し方',
-    replyFirst: '```deck.html の囲みに deck.html の全体（今回のスライドだけ）を、```narration.md の囲みにその台本を書きます。',
-    replyNext: '足すスライドだけを返してください。```deck.html の囲みに <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md の囲みに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。',
+    replyFirst: '```deck.html の灰色の枠（コードブロック）に deck.html の全体（今回のスライドだけ）を、```narration.md のコードブロックにその台本を書きます。',
+    replyNext: '足すスライドだけを返してください。```deck.html の灰色の枠（コードブロック）に <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md のコードブロックに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。',
   },
   en: {
     outlineHead: '# First, send only the outline',

@@ -61,7 +61,7 @@ if (src === null) fail(`not found: ${SRC}`);
 const plan = planIds(src);
 const { slides, problems, rename, newIds } = plan;
 if (problems.length) {
-  console.error('ids: このデッキには id を付けられない（先に直すこと）');
+  console.error('ids: この教材には id を付けられない（先に直すこと）');
   for (const p of problems) console.error('  ' + p.msg);
   process.exit(1);
 }
@@ -159,11 +159,11 @@ if (has(FILES.manifest)) {
     if (j && typeof j === 'object' && j.segments && typeof j.segments === 'object') { const x = renameObjectKeys(j.segments); return { value: { ...j, segments: x.out }, n: x.n }; }
     const x = renameObjectKeys(j || {}); return { value: x.out, n: x.n };
   });
-  if (r.n) { writes.push([FILES.manifest, r.out]); summary.push(`audio/manifest.json: 鍵 ${r.n} 個を付け替えた（音声は作り直さない）`); }
+  if (r.n) { writes.push([FILES.manifest, r.out]); summary.push(`audio/manifest.json: スライドの id ${r.n} 個を付け替えた（音声は作り直さない）`); }
 }
 if (has(FILES.timeline)) {
   const r = rewriteJson(FILES.timeline, (j) => { const x = renameObjectKeys(j || {}); return { value: x.out, n: x.n }; });
-  if (r.n) { writes.push([FILES.timeline, r.out]); summary.push(`timeline.json: 鍵 ${r.n} 個を付け替えた`); }
+  if (r.n) { writes.push([FILES.timeline, r.out]); summary.push(`timeline.json: スライドの id ${r.n} 個を付け替えた`); }
 }
 if (has(FILES.comments)) {
   const r = rewriteJson(FILES.comments, (j) => {
@@ -177,13 +177,13 @@ if (has(FILES.comments)) {
     });
     return { value, n };
   });
-  if (r.n) { writes.push([FILES.comments, r.out]); summary.push(`comments.json: 鍵 ${r.n} 個を付け替えた`); }
+  if (r.n) { writes.push([FILES.comments, r.out]); summary.push(`comments.json: スライドの id ${r.n} 個を付け替えた`); }
 }
 
 // 念のため：新しい原稿が検査を通り、新しい id がそのまま鍵になるか
 {
   const after = analyzeSlideIds(deck.out);
-  if (after.problems.length || after.slides.some((s) => !isSlideId(s.id || ''))) fail('書き換えた原稿の検査に失敗した（何も書いていない）: ' + after.problems.map((p) => p.msg).join(' / '));
+  if (after.problems.length || after.slides.some((s) => !isSlideId(s.id || ''))) fail('書き換えた deck.html を確かめられなかった（何も書いていない）: ' + after.problems.map((p) => p.msg).join(' / '));
 }
 
 // ---------------------------------------------------------------- 5A. スライドと節のつながりの記録（§9C.7）：書き換えた後の原稿で求める
@@ -203,7 +203,7 @@ if (has(FILES.comments)) {
       if (i >= 0) writes[i][1] = text; else writes.push([cfgFile, text]);
       if (rec.added.length) summary.push(`${FORMAT.CONFIG_FILE}: スライドと節のつながり ${rec.added.length} 組を${confirmLinks ? '確かめた印として記録し直した' : '記録した'} / ${confirmLinks ? 'confirmed' : 'recorded'} ${rec.added.length} slide–section link(s): ${rec.added.map((x) => `${x.slide}↔${x.section}`).join(', ')}`);
       if (rec.removed.length) summary.push(`${FORMAT.CONFIG_FILE}: もうつながっていない組の記録 ${rec.removed.length} 個を外した / dropped ${rec.removed.length} record(s) of pairs no longer linked`);
-    } else if (confirmLinks) summary.push(`${FORMAT.CONFIG_FILE}: つながりの記録はどれも今の原稿と同じ / every link record already matches`);
+    } else if (confirmLinks) summary.push(`${FORMAT.CONFIG_FILE}: つながりの記録はどれも今のスライドと同じ / every link record already matches`);
   } else if (confirmLinks) summary.push('本文がない / no article: --confirm-links has nothing to confirm');
 }
 if (!writes.length) { console.log(`ids: ${shown(SRC)}: どのスライドにも id がある。変えるものはない / every slide already has an id; nothing to do${summary.length ? '\n' + summary.filter((x) => !/変えるものはない/.test(x)).join('\n') : ''}`.trimEnd()); process.exit(0); }
@@ -220,4 +220,4 @@ if (!dry) {
   pruneBackups(DIR, EDITS_REL, KEEP_EDITS);
 }
 console.log((dry ? '[dry-run] ' : '') + summary.join('\n'));
-if (!dry) console.log(`控え / backups: ${shown(EDITS)}${rename.size ? '\n動画（render/）の書き出しは鍵が変わったので作り直しになる / re-render videos: their keys changed' : ''}`);
+if (!dry) console.log(`控え / backups: ${shown(EDITS)}${rename.size ? '\nスライドの id が変わったので、動画（render/）は作り直しになる / re-render videos: their slide ids changed' : ''}`);

@@ -13,4 +13,4 @@
 
 {{WORKED kokugo "見本：国語（kokugo テーマ・m-kanbun）" m-kanbun}}
 
-<!--part:m-kanbun-->段階の数え方：`m-kanbun` は訓点（段階 1）、読む順は句ごとに 1 段階、最後に書き下し文。`[n]` は句ごとに書く。<!--/part-->
+<!--part:m-kanbun-->ステップの数え方：`m-kanbun` は訓点（ステップ 1）、読む順は句ごとに 1 ステップ、最後に書き下し文。`[n]` は句ごとに書く。<!--/part-->

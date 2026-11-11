@@ -15,15 +15,15 @@ const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 
 // 名前 → [スクリプト, 説明（日本語 / English）, 引数の形]
 const SCRIPTS = {
-  new: ['tools/new.mjs', '新しい作業フォルダを雛形から作る / create a working folder from the template', '<folder> [--lang en|ja] [--theme name] [--title "…"]'],
-  build: ['kit/build.mjs', '原稿を 1 つの HTML に組む / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--scorm] [--embed-audio] [--theme name] …'],
+  new: ['tools/new.mjs', '新しい作業フォルダをテンプレートから作る / create a working folder from the template', '<folder> [--lang en|ja] [--theme name] [--title "…"]'],
+  build: ['kit/build.mjs', 'スライド（deck.html）を 1 つの HTML に組む / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--scorm] [--embed-audio] [--theme name] …'],
   check: ['kit/check.mjs', '品質チェック（ブラウザが要る）/ quality check (needs a browser)', '<deck.html> [--json]'],
   dev: ['server/dev.mjs', '開発サーバー（ブラウザで編集）/ dev server (edit in the browser)', '<deck.html> [--port 8730] [--theme name]'],
-  sheet: ['tools/sheet.mjs', '全スライドの最終段階を 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
+  sheet: ['tools/sheet.mjs', '全スライドの最後のステップを 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
   'comment-shots': ['tools/comment-shots.mjs', '開発サーバーのコメントの画面を撮る / screenshots of open dev-server comments', '<folder | deck.html> [id …] [--all]'],
   ids: ['tools/ids.mjs', 'スライドに安定した id を付ける / give slides stable ids', '<folder | deck.html> [--dry-run]'],
   'ids-of': ['tools/ids-of.mjs', 'Egatari ファイルの docId・sourceSha256・ファイル全体の SHA-256 を 1 行ずつ出す / print docId, sourceSha256 and the whole-file SHA-256 of Egatari files', '<file.ega.html> [<file> …] [--json]'],
-  portable: ['tools/portable.mjs', '1 ファイル（.ega.html）と作業フォルダの行き来 / single file (.ega.html) <-> working folder', 'unpack|pack|attach|compare …'],
+  portable: ['tools/portable.mjs', 'Egatari ファイル（.ega.html）と作業フォルダの行き来 / Egatari file (.ega.html) <-> working folder', 'unpack|pack|attach|compare …'],
   video: ['render/render.mjs', '音声の入った教材を動画に（ffmpeg が要る。音声は作らない）/ export a lesson with its audio to video (needs ffmpeg; makes no audio)', '<folder | .ega.html>  または / or  <out/deck.html> --out <dir> [--full] [--only key,…]'],
 };
 
@@ -35,8 +35,8 @@ function help() {
 使い方 / usage: egatari <command> [args…]
 
 ${Object.entries(SCRIPTS).map(([k, [, d, u]]) => line(k, d, u)).join('\n')}
-${line('tts', '口述原稿を AI 音声にする（uv が要る）/ synthesize the script with TTS (needs uv)', '<folder> [--dry-run] [--voices expert=bob,novice=alice] …')}
-${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか、部品の写しが正しいか、入れたスキルが古くないか調べる / check Node, uv, ffmpeg, a browser, the parts and the installed skills', '')}
+${line('tts', '台本を AI 音声にする（uv が要る）/ make AI voice audio from the script (needs uv)', '<folder> [--dry-run] [--voices expert=bob,novice=alice] …')}
+${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか、パーツの写しが正しいか、入れたスキルが古くないか調べる / check Node, uv, ffmpeg, a browser, the parts and the installed skills', '')}
 ${line('skills', 'Claude Code・Codex に入れたスキルを更新する / update the skills installed in Claude Code and Codex', 'update')}
 
   --version  版を出す / print the version
@@ -232,7 +232,7 @@ async function doctor() {
   }
   // 部品の写し：組み立てが読む index.js を、固定（components.lock.json）と manifest のファイルごとの sha256 で（kit/vendor-verify.mjs）
   const vv = verifyVendorIndex(ROOT);
-  show(!vv.problems.length, 'parts', vv.problems.length ? `部品の写しが固定と合わない / the vendored parts do not match their pins: ${vv.problems.slice(0, 3).join('; ')}${vv.problems.length > 3 ? ` (+${vv.problems.length - 3})` : ''}`
+  show(!vv.problems.length, 'parts', vv.problems.length ? `パーツの写しが固定と合わない / the vendored parts do not match their pins: ${vv.problems.slice(0, 3).join('; ')}${vv.problems.length > 3 ? ` (+${vv.problems.length - 3})` : ''}`
     : `index.js ${vv.versions} 版、固定と manifest の sha256 に合う / ${vv.versions} versions match the lock and the manifests`, '包みを入れ直す / reinstall the package (`npm install egatari`)', true);
   try {
     const dv = defaultVoices();
