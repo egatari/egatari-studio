@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=79fc634e59885d3c -->
+<!-- i18n: pair=RELEASING.ja.md sha256=8d2f5661c82a1c34 -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -42,7 +42,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
    git commit -am "vX.Y.Z：CHANGELOG を版にまとめ、版を X.Y.Z にする"
    ```
 
-   Only these change between the candidate and this commit: `CHANGELOG.md`, `changes/`, the versions (`package.json`, `package-lock.json`, `.claude-plugin/plugin.json`, `plugins/egatari/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) and what `make-llm-guide.mjs` regenerates from the version: the skills' pinned docs links (`plugins/egatari/skills/make/references/book.md`, `references/en/book.md`, `skills/studio/SKILL.md`) and the CLI minor version in the update command (`plugins/egatari/skills/make/SKILL.md`, `SKILL.en.md`).
+   Only these change between the candidate and this commit: `CHANGELOG.md`, `changes/`, the versions (`package.json`, `package-lock.json`, `.claude-plugin/plugin.json`, `plugins/egatari/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `.agents/plugins/marketplace.json`) and what `make-llm-guide.mjs` regenerates from the version: the skills' pinned docs links (`plugins/egatari/skills/make/references/book.md`, `references/en/book.md`, `skills/studio/SKILL.md`) and the CLI minor version in the update command (`plugins/egatari/skills/make/SKILL.md`, `SKILL.en.md`) and the skill version line (those two and `skills/studio/SKILL.md`).
 5. **No session links.** Before every push (commits and tags):
 
    ```bash

@@ -241,6 +241,9 @@ async function doctor() {
   } catch (e) { show(false, 'voices', `tts/voices.json: ${e.message}`, '', false); }
   const old = oldSkillLinks();
   show(!old.length, 'skills', old.length ? `古いスキルの置き場が残っている / old skill entries left: ${old.map((o) => `${o.path} (${o.why})`).join(', ')}` : '古いスキルの置き場なし / no old skill entries', MIGRATE_STEPS, false);
+  // この包みが持つスキルの指示の版と Studio の版（npx egatari@X.Y.x なら、その系の最新）。スキルは自分の版とこの行を比べ、古ければ 1 回知らせる（v0.6.10）
+  const kit = kitInstruction();
+  if (kit) show(true, 'skills', `指示の版 ${kit}（Studio ${PKG.version}）/ skill instructions ${kit} (Studio ${PKG.version})`, '', false);
   skillsCheck();
   console.log(bad ? `足りないもの ${bad} / ${bad} required missing` : 'ok');
   process.exit(bad ? 1 : 0);

@@ -95,7 +95,12 @@ const lines = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim().split
   assert.match(old.stdout, /make 00000000/);
   assert.match(old.stdout, new RegExp(`npx egatari@${PKG_VERSION.split('.').slice(0, 2).join('\\.')}\\.x skills update`));
   fs.writeFileSync(path.join(dir, 'SKILL.md'), skill(kit));
-  assert.doesNotMatch(run(['doctor'], bin).stdout, /differ/);
+  const same = run(['doctor'], bin).stdout;
+  assert.doesNotMatch(same, /differ/);
+  // スキルが自分の版と比べる 1 行：この包みの指示の版と Studio の版（v0.6.10）。入れたスキルがあってもなくても出る
+  const line = `ok   skills   指示の版 ${kit}（Studio ${PKG_VERSION}）/ skill instructions ${kit} (Studio ${PKG_VERSION})`;
+  assert.ok(same.split('\n').includes(line), same);
+  assert.ok(old.stdout.split('\n').includes(line), old.stdout);
 }
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log('ok skills update (stub claude/codex) and doctor skill-version check');

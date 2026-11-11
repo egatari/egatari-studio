@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=e90fcce79f495488 -->
+<!-- i18n: pair=RELEASING.md sha256=a27311e353283640 -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -42,7 +42,7 @@
    git commit -am "vX.Y.Z：CHANGELOG を版にまとめ、版を X.Y.Z にする"
    ```
 
-   候補とこのコミットの違いは、`CHANGELOG.md`・`changes/`・版（`package.json`・`package-lock.json`・`.claude-plugin/plugin.json`・`plugins/egatari/.claude-plugin/plugin.json`・`.claude-plugin/marketplace.json`・`.agents/plugins/marketplace.json`）と、`make-llm-guide.mjs` が版から作り直すもの（スキルの docs へのリンク：`plugins/egatari/skills/make/references/book.md`・`references/en/book.md`・`skills/studio/SKILL.md`。更新のコマンドの CLI の小版：`plugins/egatari/skills/make/SKILL.md`・`SKILL.en.md`）だけにする
+   候補とこのコミットの違いは、`CHANGELOG.md`・`changes/`・版（`package.json`・`package-lock.json`・`.claude-plugin/plugin.json`・`plugins/egatari/.claude-plugin/plugin.json`・`.claude-plugin/marketplace.json`・`.agents/plugins/marketplace.json`）と、`make-llm-guide.mjs` が版から作り直すもの（スキルの docs へのリンク：`plugins/egatari/skills/make/references/book.md`・`references/en/book.md`・`skills/studio/SKILL.md`。更新のコマンドの CLI の小版：`plugins/egatari/skills/make/SKILL.md`・`SKILL.en.md`。スキルの版の行：その 2 つと `skills/studio/SKILL.md`）だけにする
 5. **セッションのリンクを入れない。** push の前に毎回（コミットもタグも）：
 
    ```bash

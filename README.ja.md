@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=1860063511d30595 -->
+<!-- i18n: pair=README.md sha256=c7a979ed3fc40edf -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -25,7 +25,7 @@ Egatari は、授業・研修・公共の案内などの教材を、読み上げ
 次のどれか 1 つで始められる。
 
 - **編集アプリ（インストール不要）**：Chrome か Edge で <https://studio.egatari.org/> を開き、その場で教材を作る・開く（[編集アプリ](#editor-app)）。
-- **チャットの AI と**：Claude・Codex 用のスキルを入れ、教材づくりを頼む（[Claude Code で使う](#claude-code)、[Codex で使う](#codex)）。
+- **チャットの AI と**：Claude・Codex 用のスキルを入れ、自動で更新されるようにして（Claude Code は `/plugin` → Marketplaces → egatari → Enable auto-update、Codex は Studio のリリースのたびに `npx egatari@0.6.x skills update`）、教材づくりを頼む（[Claude Code で使う](#claude-code)、[Codex で使う](#codex)）。
 - **コマンドライン**：
 
 ```bash
@@ -105,7 +105,9 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、[npm で使う（clone しない）](#npm)）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れている道具（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、道具を再起動する。手間をかけたくなければ、Claude Code で `/plugin` → Marketplaces → egatari → Enable auto-update（自動更新）を入れておく。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+入れたら、自動更新を有効にする：`/plugin` → Marketplaces → egatari → Enable auto-update。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れている。スキルの指示と品質チェックは Studio の版ごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。スキルが古いとわかれば、スキル自身が 1 回だけ知らせる（作業は止めない）。
+
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、[npm で使う（clone しない）](#npm)）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れている道具（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、道具を再起動する。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
 
 <a id="codex"></a>
 ## Codex で使う
@@ -118,9 +120,11 @@ codex plugin add egatari@egatari
 codex plugin add egatari-studio@egatari
 ```
 
+入れたら、Studio のリリースのたびに `npx egatari@0.6.x skills update` を実行して Codex を再起動する。スキルの指示と品質チェックは Studio の版ごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。
+
 教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。Codex の workspace-write サンドボックスはネットとブラウザを塞ぐので、`check` と `build` はサンドボックスの外で、またはネットとブラウザを許して動かす。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
 
-チャットの AI には `egatari-make-skill.zip` をアップロードする。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
+チャットの AI には `egatari-make-skill.zip` をアップロードする。Studio が新しくなったら、Studio の『AI のスキルをダウンロード』で入れ直す。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 
 | スキル | 使いどころ |
 |---|---|

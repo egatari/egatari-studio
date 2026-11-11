@@ -528,11 +528,15 @@ export function studioDocs(text) {
   return text.replace(/(<!-- generated: doc ([\w.-]+)(?:#(\S+?))? -->)[^<]*(<!-- \/generated: doc -->)/g, (_, o, n, a, c) => o + docUrl(n, a) + c);
 }
 
-// Studio is hand-written. Only this marked version line belongs to the generator.
-export function studioVersion(text, version) {
-  const marker = /(?<=<!-- generated: instruction-version -->\n)\*\*指示の版：[a-f0-9]{8}\*\*(?=\n<!-- \/generated: instruction-version -->)/g;
+// スキルの版：プラグインの版（package.json の version。plugin.json と同じ）。スキルが起動時に、doctor の行や開いたファイルの Studio の版と比べ、
+// 新しい Studio があれば「スキルが古い版です」と 1 回だけ知らせる（v0.6.10）。指示の版（data.version）には入れない
+export const skillVersion = () => JSON.parse(read('package.json')).version;
+
+// Studio is hand-written. Only this marked block (instruction version and skill version) belongs to the generator.
+export function studioVersion(text, version, skill = skillVersion()) {
+  const marker = /(?<=<!-- generated: instruction-version -->\n)\*\*指示の版：[a-f0-9]{8}\*\*(?:\n\*\*スキルの版：[^*\n]+\*\*)?(?=\n<!-- \/generated: instruction-version -->)/g;
   if ([...text.matchAll(marker)].length !== 1) throw new Error('studio needs exactly one marked instruction-version line');
-  return text.replace(marker, `**指示の版：${version}**`);
+  return text.replace(marker, `**指示の版：${version}**\n**スキルの版：${skill}**`);
 }
 
 export function skillFiles(data, lang = 'ja') {
@@ -570,10 +574,21 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
 **指示の版：${data.version}**
+**スキルの版：${skillVersion()}**
 
 Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egatari@${CLI_MINOR}.x skills update\`。更新の道がない道具では案内を省き、\`egatari --version\` の版を利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
+
+入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio の版ごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
+
+**古い版の知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio の版が書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダでは組み立ての出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。その版が上のスキルの版より新しいときだけ（版は数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<版> はスキルの版。
+
+- Claude Code：「Egatari のスキルが古い版（<版>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
+- Codex：「Egatari のスキルが古い版（<版>）です。\`npx egatari@${CLI_MINOR}.x skills update\` で更新できます。」
+- チャット：「Egatari のスキルが古い版（<版>）です。Studio の『AI のスキルをダウンロード』で入れ直せます。」
+
+ファイルの版がスキルの版と同じか古いとき、版が読めないときは何も言わない。Studio でコピーした指示書は指示の版しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
 
 ## 進め方
 
@@ -619,10 +634,21 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
 **Instruction version: ${data.version}**
+**Skill version: ${skillVersion()}**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use \`/plugin update egatari@egatari\`. In Codex, use \`npx egatari@${CLI_MINOR}.x skills update\`. If a tool has no update path, leave out the instruction and tell the user the version from \`egatari --version\`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
+
+After installing, have the user turn on automatic updates: the skill's instructions and quality checks change with each Studio release. In Claude Code: \`/plugin\` → Marketplaces → egatari → Enable auto-update (marketplaces other than the official one start with auto-update off). In Codex: run \`npx egatari@${CLI_MINOR}.x skills update\` after each Studio release. In a chat AI: when Studio is updated, add the skill again with "Download the AI skill".
+
+**Old-version notice**: a file the user opens records the version of the Studio that made it. In a single file (\`.ega.html\`) it is \`"generator":{"name":"egatari-studio","version":"…"}\` in \`<script id="deck-meta">\`; in a working folder it is \`"version"\` in \`deck-meta\` of the build output \`out/deck.html\`. Only when that version is newer than the skill version above (compare as numbers: 0.6.10 is newer than 0.6.9), say the line below and keep working (do not stop). Say it once per conversation (once in total with the studio skill). <version> is the skill version.
+
+- Claude Code: “The Egatari skill is an old version (<version>). You can update it with /plugin (Marketplaces → egatari → Enable auto-update keeps it updated automatically).”
+- Codex: “The Egatari skill is an old version (<version>). You can update it with \`npx egatari@${CLI_MINOR}.x skills update\`.”
+- Chat AI: “The Egatari skill is an old version (<version>). You can add it again with “Download the AI skill” in Studio.”
+
+Say nothing when the file's version is the same as the skill version or older, or cannot be read. Instructions copied in Studio carry only the instruction version, which does not tell which is newer, so do not use them for this notice (only for “new parts are available” above).
 
 ## Workflow
 

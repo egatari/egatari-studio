@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=aeceb50f42bd0476 -->
+<!-- i18n: pair=README.ja.md sha256=8232c5f85e204459 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -25,7 +25,7 @@ A lesson is one self-contained HTML file, with step-by-step reveals and parts th
 Pick one.
 
 - **Editor app, nothing to install**: open <https://studio.egatari.org/> in Chrome or Edge and make or open a lesson there ([Editor app](#editor-app-no-install)).
-- **With a chat AI**: install the Egatari skill for Claude or Codex and ask for a lesson ([Claude Code](#using-it-with-claude-code), [Codex](#using-it-with-codex)).
+- **With a chat AI**: install the Egatari skill for Claude or Codex, turn on its updates (Claude Code: `/plugin` → Marketplaces → egatari → Enable auto-update; Codex: `npx egatari@0.6.x skills update` after each Studio release) and ask for a lesson ([Claude Code](#using-it-with-claude-code), [Codex](#using-it-with-codex)).
 - **Command line**:
 
 ```bash
@@ -103,7 +103,9 @@ First delete the old `~/.claude/skills/motion-*` entries (and any copies in a pr
 /plugin install egatari-studio@egatari
 ```
 
-The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see [With npm (no clone)](#with-npm-no-clone)): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. For zero effort in Claude Code, open `/plugin` → Marketplaces → egatari → Enable auto-update. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
+Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes. When the skill finds that it is old, it tells you once (and keeps working).
+
+The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see [With npm (no clone)](#with-npm-no-clone)): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 
 ## Using it with Codex
 
@@ -115,9 +117,11 @@ codex plugin add egatari@egatari
 codex plugin add egatari-studio@egatari
 ```
 
+Then, after each Studio release, run `npx egatari@0.6.x skills update` and restart Codex. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes.
+
 Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a lesson. Codex's workspace-write sandbox blocks the network and the browser, so run `check` and `build` outside it, or with network and browser access allowed. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
 
-For a chat AI, upload `egatari-make-skill.zip`. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
+For a chat AI, upload `egatari-make-skill.zip`. When Studio is updated, add it again with “Download the AI skill” in Studio. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 
 | Skill | Use it for |
 |---|---|
