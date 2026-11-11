@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.md sha256=9e9eee970236b461 -->
+<!-- i18n: pair=viewer.md sha256=65b8d3e37ec58d6e -->
 # Egatari Viewer
 
 [English](viewer.md) | 日本語
@@ -140,6 +140,15 @@ node tools/build-play.mjs [--out _play] [--live-endpoint https://live.example.or
 - **専用の origin**。どの編集アプリとも別の origin にしてください（live §2A.4）。一緒に Egatari Studio を置くなら、その origin とは分け、ここで再生した教材が編集アプリの保存先に届かないようにします。
 - **`POST /share`** には `/?share=nosw` への `303 See Other` を返す（`play/worker.js` と同じ）。そうしないと、共有はアプリを一度開いた後でしか働きません。
 - **ライブの部屋**：ページがつないでよい部屋のサービスごとに `--live-endpoint <部屋のサービス>` を付けて組んでください。ほかの endpoint の教材には参加のリンクだけを出します。
+
+## サイトのプレーヤー
+
+見出しを送れない静的なサイト（GitHub Pages の egatari.org）は、サンプルの教材を Viewer ではなくサイトのプレーヤーで再生する。`node tools/build-site-player.mjs [--out フォルダ]` が `site-play.js`（`play/site-player.mjs` から組む 1 つの ES モジュール。Viewer の枠・信頼する先頭部分・教材の仲立ち・リンクの箱）、`site-play.css`、`BUILD.json`（Studio の版とコミット、各ファイルの SHA-256、ページの決まり）を書く。サイトはこれを Studio のコミットに固定して写す。
+
+- ページは `<div id="egatari-player" data-lock="<lock の URL>" data-files="<フォルダの URL>">` と `<script type="module" src="site-play.js">` で、`?id=<id>` で開く。`data-player-title` のある要素には教材の題が入る。最初の `<meta http-equiv="Content-Security-Policy">` は `BUILD.json` の `pageCsp`：Viewer の決まりからライブを除き（`connect-src 'self'` は lock とファイルのため）、meta では書けない `frame-ancestors` を除いたもの。代わりに、ほかのページの枠の中では何も再生しない。
+- lock は JSON の `{lessons: [{id, sha256, size, title, lang}]}`（ほかのキーはサイトのもの。egatari.org はサンプルのリリースとその SHA256SUMS から書く）。ファイルは `<data-files><id>.ega.bin` で、同じ origin から `application/octet-stream` として配るので、直接開くとダウンロードになり、サイトの origin では描かれない（仕様 §10.1）。読む前に大きさと SHA-256 が lock と合うことを確かめ、合わなければ何も再生せず、理由を出す。この照合が見つけるのは古いファイルや壊れたファイルで、置き場所そのものが乗っ取られた場合ではない（lock とファイルは同じ origin から来る）。
+- 教材は Viewer と同じく再生する：`srcdoc` ＝信頼する先頭部分（プレビューの決まり、その後に教材の仲立ち）＋ファイルのバイトそのまま、`sandbox="allow-scripts"`（opaque な origin）。`srcdoc` の文書はページの meta の決まりも受け継ぐ。枠から受けるのは openLink（リンクの箱で。§11）と全画面の頼みだけ。ライブ・マークアップ・最近のファイル・保存・service worker はない。
+- `tools/test-site-player.mjs`（Chromium。`--webkit` で WebKit）は、そのような置き場所と同じく見出しなしでページを配り、次を確かめる：教材は opaque な origin で動き、保存場所・ページ・ネットワークに届かない。1 バイト違う・lock より長い・知らない id・id なしでは何も再生しない。リンクの頼みはリンクの箱を通り、`javascript:` は開かない。枠以外からの頼みは無視する。ほかのサイトの枠の中では何も再生しない。
 
 ## v1 にないもの
 
