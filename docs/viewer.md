@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=88fc50391da23d4d -->
+<!-- i18n: pair=viewer.ja.md sha256=e430e4dd8d25f1f5 -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -140,6 +140,15 @@ You may serve the same files from your own origin. Requirements:
 - **Its own origin**, separate from any editor (live §2A.4): not the origin of an Egatari Studio you also host, so that lessons played there can never reach the editor's storage.
 - **`POST /share`** answered with `303 See Other` to `/?share=nosw` (what `play/worker.js` does), or the share target only works after the app has been opened once.
 - **Live rooms**: build with `--live-endpoint <your room service>` for each room service the page may connect to; lessons with other endpoints get the join link only.
+
+## Site player
+
+A static site that cannot send headers (egatari.org on GitHub Pages) plays its sample lessons with the site player, not the Viewer: `node tools/build-site-player.mjs [--out dir]` writes `site-play.js` (one ES module built from `play/site-player.mjs`: the Viewer's frame, trusted prefix, lesson shim and link box), `site-play.css` and `BUILD.json` (Studio version and commit, the SHA-256 of each file, and the page policy). The site vendors these files pinned to a Studio commit.
+
+- The page is `<div id="egatari-player" data-lock="<lock URL>" data-files="<folder URL>">` and `<script type="module" src="site-play.js">`, opened as `?id=<id>`; an element with `data-player-title` gets the lesson's title. Its first `<meta http-equiv="Content-Security-Policy">` is `BUILD.json`'s `pageCsp`: the Viewer's policy without Live (`connect-src 'self'` for the lock and the file) and without `frame-ancestors`, which a meta cannot carry. The player refuses to run inside another page's frame instead (it plays nothing there).
+- The lock is JSON `{lessons: [{id, sha256, size, title, lang}]}` (other keys are the site's own; egatari.org writes it from a samples release and its SHA256SUMS). The file is `<data-files><id>.ega.bin`, served from the same origin as `application/octet-stream`, so opening it directly downloads it and never renders it on the site's origin (spec §10.1). The bytes must match the lock's size and SHA-256 before anything is parsed; otherwise nothing plays and the page says why. The hash catches a stale or damaged file, not a compromised host (lock and file come from the same origin).
+- The lesson plays as in the Viewer: `srcdoc` = the trusted prefix (the preview policy, then the lesson shim) + the bytes unchanged, `sandbox="allow-scripts"` (an opaque origin). The `srcdoc` document inherits the page's meta policy too. The page takes only openLink (through the link box, §11) and fullscreen requests from the frame. No Live, no markup, no recent files, nothing stored, no service worker.
+- `tools/test-site-player.mjs` (Chromium; `--webkit`) serves the page with no headers, as such a host does, and checks: the lesson plays in an opaque origin with no storage, page or network access; a changed byte, a longer file, an unknown id or no id plays nothing; link requests go through the link box and a `javascript:` link is refused; requests not from the frame are ignored; inside another site's frame nothing plays.
 
 ## Not in v1
 

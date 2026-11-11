@@ -1,0 +1,24 @@
+/* Site player (play/site-player.mjs): the lesson's frame, the status line and the link box. The site's own stylesheet places
+   #egatari-player; these rules only size what is inside it. Colours fall back to the Viewer's when the site defines none. */
+#egatari-player { --sp-bg: var(--bg, #ffffff); --sp-fg: var(--fg, #1d1d24); --sp-muted: var(--muted, #5b5d6b); --sp-line: var(--line, #d6d7e0);
+  --sp-accent: var(--accent, #4A488E); --sp-accent-fg: var(--accent-fg, #ffffff); --sp-err: var(--err, #b3261e);
+  display: flex; flex-direction: column; min-height: 0; }
+#egatari-player .sp-status { margin: 16px; color: var(--sp-muted); }
+#egatari-player .sp-status[data-kind=error] { color: var(--sp-err); font-weight: 700; }
+#egatari-player .sp-status[hidden] { display: none; }
+#egatari-player .sp-stage { flex: 1; min-height: 0; background: #111111; }
+#egatari-player .sp-stage:empty { display: none; }
+#egatari-player iframe { display: block; width: 100%; height: 100%; border: 0; }
+#link-box.sp-link { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line, #d6d7e0); border-radius: 12px; background: var(--bg, #ffffff);
+  color: var(--fg, #1d1d24); padding: 16px 20px; }
+#link-box.sp-link::backdrop { background: rgba(0, 0, 0, 0.5); }
+#link-box.sp-link h2 { font-size: 1.125rem; margin: 0 0 8px; }
+#link-box.sp-link .host { font-size: 1.25rem; font-weight: 700; margin: 0 0 4px; word-break: break-all; }
+#link-box.sp-link .url { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.875rem; word-break: break-all; color: var(--muted, #5b5d6b); margin: 0 0 8px; }
+#link-box.sp-link [hidden] { display: none !important; }
+#link-box.sp-link ul { padding-left: 1.2em; margin: 0 0 8px; }
+#link-box.sp-link ul:empty { display: none; }
+#link-box.sp-link .row { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+#link-box.sp-link button, #link-box.sp-link a.pri { font: inherit; min-height: 44px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line, #d6d7e0);
+  background: transparent; color: inherit; text-decoration: none; display: inline-flex; align-items: center; }
+#link-box.sp-link a.pri { background: var(--accent, #4A488E); color: var(--accent-fg, #ffffff); border-color: transparent; }
