@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: b2ad9e7c
+Instruction version: fce0c357
 
 | component | what it shows | steps | data shape |
 |---|---|---|---|
@@ -277,7 +277,7 @@ Data example (child `<script type="application/json">`): `{"question":"Which fal
 
 | prop | type | default | meaning |
 |---|---|---|---|
-| `answer-step` | number | `2` | answer step |
+| `answer-step` | number | `2` | 2 or more (default 2); after the step-1 count |
 | `unit` | string | `""` | count unit |
 | `poll` | string | `""` | poll id (no live counts yet) |
 | `ticks` | bool | `true` | grid |

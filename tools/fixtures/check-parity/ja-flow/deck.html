@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>品質チェックの見本</title>
+<!--
+  tools/test-check-parity.mjs の見本：部品庫 2 系（egatari.json の componentsCatalogue）の m-flow で、矢印の shift が箱の辺より大きい（m-flow 2.0.4 が [flow] の知らせを出す。compLayout）。
+-->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl" id="s-flow-shift">
+  <h2>ずらしすぎた矢印</h2>
+  <div class="body">
+    <m-flow style="height:300px"><script type="application/json">{
+      "nodes": [
+        {"id": "a", "label": "出発", "x": 0, "y": 100, "w": 200, "h": 52},
+        {"id": "b", "label": "到着", "x": 600, "y": 100, "w": 200, "h": 52}
+      ],
+      "edges": [
+        {"from": "a", "to": "b", "shift": 80}
+      ]
+    }</script></m-flow>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
