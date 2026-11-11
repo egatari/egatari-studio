@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=71a1afeed4fea20d -->
+<!-- i18n: pair=README.md sha256=1860063511d30595 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -41,14 +41,14 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 
 - **ステップ表示**：`data-step="k"` で話す順に出す。結論の行（`.concl`）は自動で最後
 - **数式**：KaTeX でビルド時に組む。`\hlE{…}` `\hlT{…}` `\hlM{…}` で式の一部にテーマの色を付ける
-- **パーツ**：[egatari/components](https://github.com/egatari/components) の Web Components のパーツ（写しは `vendor/components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。画面は (スライド, ステップ, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
+- **パーツ**：[egatari/components](https://github.com/egatari/components) の Web Components のパーツ（写しは `vendor/components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。パーツは教科ごとの束にまとまっている：統計（stats）・情報とデータサイエンス（data。`m-code`・`m-sampling`・`m-ci` など）・数学・地図・国語・英語・音楽・ビジネス・道具（tools）・理科（[パーツの束](docs/llm-parts/)）。画面は (スライド, ステップ, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
 - **スライドへのリンク**：ふつうの `<a href="#<スライドの id>">`（か `#<スライドの id>:<ステップ>`）でそのスライドかステップへ飛び、**戻る**（ボタン・Backspace・Alt+←・ブラウザの戻る）で戻れる。`m-menu` はそのリンクを札の格子に並べる（目次・選ぶ 1 枚）。スクリプトのないふつうのリンクなので、Egatari ファイル（`.ega.html`）は Core のまま。[contract §9](docs/contract.ja.md#9-スライドへのリンク)
 - **国語**：縦書き（`.tate`）・ルビ・明朝（BIZ UDP明朝）・テーマ `kokugo`。`m-kanbun`（白文 → 返り点と送り仮名 → 読む順を 1 字ずつたどる → 書き下し文）、`m-kobun`（1 文ずつの品詞分解・押すと出る助動詞の活用表・現代語訳）、`m-gendai`（傍線・指示語から指す内容への矢印・段落の役割）。[参照](docs/reference.ja.md#国語kokugo)
 - **強調**：台本に `{mark:ID|circle}` と書くと、その言葉のところでスライドに手描きの下線・囲み・枠・スポット・レーザーポインターの点が出る
 - **モーフ**：`data-morph` のスライドでは、前のスライドの式や要素が今の位置へ滑ってくる（Keynote のマジックムーブ）
 - **1 組のスライドと台本で 2 つのモード**：スライドショー（`?mode=talk`）と動画（`?mode=video`）。先のステップを薄く見せるのはスライドショーの選び（`l`。`?mode=lecture` はこの選びを入れて開く）
 - **発表の道具**：発表者ビュー（台本がカンペになる・タイマー）、スライド一覧、レーザーポインター、ペン、消えるペン、ツールバー
-- **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。パーツはテーマの変数だけを使う。同梱は 7 つ：藍（`default`）・墨（`sumi`）・国語・常盤・江戸紫・焦茶・浅葱（[リファレンス](docs/reference.ja.md#テーマ)）
+- **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。パーツはテーマの変数だけを使う。同梱は 8 つで、新しい教材は 7 つから選ぶ：藍（`default`）・墨（`sumi`）・国語・常盤・江戸紫・焦茶・浅葱。`business` は、それを使った教材を組めるように同梱のまま残す（[リファレンス](docs/reference.ja.md#テーマ)）
 - **品質管理**：規格（R-fit・R-steps など）が教材の満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・ステップ・台本の抜け・配色のコントラスト・パーツの再現性・強調・モーフを調べる
 - **開発サーバー**：ブラウザの上で文言と台本を直し、AI のコーディング道具へのメモを残せる
 - **Egatari ファイル（`.ega.html`）**：`--portable` で（教材のフォルダの最上位に、題名から作った名前で。書いた場所は表示される）、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は編集できるスライドと台本を入れない写し。Egatari ファイルの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)
