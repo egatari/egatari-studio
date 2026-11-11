@@ -1,0 +1,3 @@
+### Changed
+
+- Components 2.0 lessons use egatari/components **v2.6.2** by default. `m-flow` 2.0.4: an edge between two boxes that are apart along one axis now ends at the middle of the target's facing side and leaves from the nearest point of the source's facing side; a fan-out from one box to a column of boxes no longer ends in the gaps between them. An edge whose `shift` pushes it off its side is reported (`[flow] … leaves the side of its box`, a layout warning in the quality check). `m-predict` 2.0.5: the `answer-step` description now says it must be 2 or more (after the count at step 1); the part itself is unchanged. No other part changes version
