@@ -11,7 +11,7 @@ import zlib from 'node:zlib';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { packSite, readTar, unpackSite, recordedSha, verifyAsset, shaLine, sha256, assemble, injectNotice, assetName, safeRel,
-  HOSTED_FROM, SITE_WARN, archivedAssetName, stubHtml, parseReleases, fetchReleases, floorCandidates } from './site-versions.mjs';
+  HOSTED_FROM, KEEP_PREVIOUS, hostedFloor, SITE_WARN, archivedAssetName, stubHtml, parseReleases, fetchReleases, floorCandidates } from './site-versions.mjs';
 import { partsIndexHtml, STATIC_PAGE_CSP } from './parts-gallery.mjs';
 import { siteVersionOf, cmpVersion, MARK } from '../app/version-ui.js';
 
@@ -242,6 +242,31 @@ ok(HOSTED_FROM === '0.6.0', 'HOSTED_FROM is 0.6.0');
   ok(SITE_WARN === 800 * M && fc.next, 'SITE_WARN unchanged');
 }
 
+// ---------------------------------------------------------------- 置く前のリリースは 1 つ（KEEP_PREVIOUS。作者の決定 2026-11-11）
+{
+  ok(KEEP_PREVIOUS === 1, 'KEEP_PREVIOUS is 1');
+  const rel = ['0.4.8', '0.6.0', '0.6.5', '0.6.6', '0.6.7', '0.6.8'];
+  ok(hostedFloor(rel, '0.6.9') === '0.6.8', 'hostedFloor: releasing 0.6.9 keeps only v0.6.8');
+  ok(hostedFloor([...rel, '0.6.9'], '0.6.9') === '0.6.8', 'hostedFloor: the current version itself is not counted as a previous release');
+  ok(hostedFloor(rel, '0.6.9-rc.1') === '0.6.8', 'hostedFloor: a release candidate keeps the latest release before X.Y.Z');
+  ok(hostedFloor([...rel, '0.6.9'], '0.6.10-rc.1') === '0.6.9', 'hostedFloor: the next candidate moves the window (v0.6.8 drops out)');
+  ok(hostedFloor(rel, '0.6.9', { keep: 2 }) === '0.6.7', 'hostedFloor: keep 2');
+  ok(hostedFloor(['0.4.8'], '0.6.0') === HOSTED_FROM, 'hostedFloor: no previous release at or above HOSTED_FROM gives HOSTED_FROM');
+  // fetchReleases + assemble with the rolling floor: only v0.6.8 is downloaded and unpacked; v0.6.7 and older get the stub
+  const site = fs.mkdtempSync(path.join(os.tmpdir(), 'site-keep-'));
+  fs.writeFileSync(path.join(site, 'index.html'), '<!doctype html><title>now</title>');
+  const mk = (v) => { const d = fs.mkdtempSync(path.join(os.tmpdir(), 'site-keep-src-')); fs.writeFileSync(path.join(d, 'index.html'), `<!doctype html><head>${csp}<title>v${v}</title></head>`); const b = packSite(d); fs.rmSync(d, { recursive: true, force: true }); return b; };
+  const bufs = { '0.6.7': mk('0.6.7'), '0.6.8': mk('0.6.8') };
+  const list = () => ['0.6.7', '0.6.8'].map((v) => ({ version: v, tag: 'v' + v, body: shaLine(v, sha256(bufs[v])), asset: { name: assetName(v), digest: null }, archived: null }));
+  const fetched = [];
+  const floor = hostedFloor(['0.6.7', '0.6.8'], '0.6.9');
+  const rs = fetchReleases('o/r', { skip: '0.6.9', floor, list, log: () => {}, get: (_repo, r) => { fetched.push(r.version); return bufs[r.version]; } });
+  ok(fetched.join() === '0.6.8', 'rolling floor: only v0.6.8 is downloaded: ' + fetched.join());
+  const res = assemble({ site, current: '0.6.9', releases: rs, hostedFrom: floor, repo: 'o/r', log: () => {} });
+  ok(res.versions.join() === '0.6.9,0.6.8' && res.stubs.join() === '0.6.7', 'rolling floor: hosted v0.6.9 and v0.6.8, v0.6.7 is a stub: ' + JSON.stringify({ v: res.versions, s: res.stubs }));
+  ok(fs.readFileSync(path.join(site, 'v0.6.7', 'index.html'), 'utf8') === stubHtml({ version: '0.6.7', repo: 'o/r' }), 'rolling floor: /v0.6.7/ is the stub page');
+  fs.rmSync(site, { recursive: true, force: true });
+}
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);

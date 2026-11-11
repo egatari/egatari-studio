@@ -24,6 +24,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- Editor site (studio.egatari.org): it now hosts the current version and only the one release before it (`/vX.Y.Z/`), instead of every release since v0.6.0; each release moves the window. Older versions show the short “no longer hosted” page linking to their GitHub release, where the whole site can still be downloaded
 - Components 2.0 lessons use egatari/components **v2.6.0** (candidate) by default. `m-curves` 2.2.0 adds `area` / `areaLabel`: shade between a line and the x-axis over one or several spans (rejection regions, p-values, probabilities), with a label above each span. The new part set `data` (see Added) comes with this release. No other part changes version
 - `egatari check --json`: the stale-audio finding's code is now `audioStale` (was `audio: stale`); the message is unchanged.
 - Egatari Player 1.5.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. Hosts can now drive an embedded lesson with every required Player P8 command and follow playback through `stepEnded` and `ended`. The presenter view's top-right pane is now **Next slide** (「次のスライド」): it shows the next slide in its final state, with all its steps, even while the current slide still has steps to go (with animation, the old pane showed only the next step). On the last slide it shows a plain “End” (「終わり」). The script pane still shows the next step's script under “Next step”

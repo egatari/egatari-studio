@@ -37,6 +37,17 @@ export const archivedAssetName = (version) => `editor-site-v${version}.archived.
 // これより前のリリースは /vX.Y.Z/ に広げず、「もう置いていない」のページだけを置く（一式はそのリリースから取れる）。
 // 上げるときは、この値を次に置く最も古い版にする（SITE_WARN の知らせが候補を挙げる）。tar.gz の名前を戻しても、下限より前の版はまた置かれない
 export const HOSTED_FROM = '0.6.0';
+// 置く前のリリースの数（作者の決定、2026-11-11：「1 つ前の版だけ持っていればよい。順次入れ替える」）：サイトは根の今の版（と /v<今の版>/）と、
+//   今の版より前のリリースのうち新しい KEEP_PREVIOUS 個だけを置く。それより前は HOSTED_FROM より前と同じ「もう置いていない」のページ。
+//   候補（X.Y.Z-rc.N）では X.Y.Z より前の新しい KEEP_PREVIOUS 個。HOSTED_FROM は下限として残す（これより前は数に関わらず置かない）
+export const KEEP_PREVIOUS = 1;
+// releases：公開したリリースの版（"0.6.8" など）。current："0.6.9" か "0.6.9-rc.1" → 置く最も古い版（なければ HOSTED_FROM）
+export function hostedFloor(releases, current, { keep = KEEP_PREVIOUS, min = HOSTED_FROM } = {}) {
+  const m = CURRENT_VERSION.exec(current);
+  if (!m) throw new Error(`bad current version ${current}`);
+  const prev = releases.filter((v) => cmpVersion(v, m[1]) > 0 && !belowFloor(v, min)).sort(cmpVersion);   // 今の版より前・新しい順
+  return prev.length >= keep && keep > 0 ? prev[keep - 1] : min;
+}
 export const belowFloor = (version, floor = HOSTED_FROM) => cmpVersion(version, floor) > 0;   // cmpVersion は新しい順
 export const DEFAULT_REPO = 'egatari/egatari-studio';
 export const shaLine = (version, hex) => `${assetName(version)} sha256: ${hex}`;
@@ -388,7 +399,9 @@ function cmdAssemble(args) {
   if (!CURRENT_VERSION.test(pkg)) throw new Error(`package.json version ${pkg} is not X.Y.Z or X.Y.Z-rc.N`);
   if (current !== pkg) throw new Error(`--current v${current} but package.json is ${pkg} (tag the release commit)`);
   const repo = repoOf(args);
-  assemble({ site, current, repo, releases: fetchReleases(repo, { skip: current }) });
+  const all = listReleases(repo);
+  const floor = hostedFloor(all.map((r) => r.version), current);
+  assemble({ site, current, repo, hostedFrom: floor, releases: fetchReleases(repo, { skip: current, floor, list: () => all }) });
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
