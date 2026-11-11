@@ -1,4 +1,4 @@
-<!-- i18n: pair=with-claude.ja.md sha256=a41c79b6ff595d62 -->
+<!-- i18n: pair=with-claude.ja.md sha256=14efa5be811284f0 -->
 # Making Egatari lessons with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
@@ -24,13 +24,15 @@ First delete the old `~/.claude/skills/motion-*` entries, including any in a pro
 /plugin install egatari-studio@egatari
 ```
 
-The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or run `npx egatari@0.6.x skills update` (it also updates Codex) and restart the tool. For automatic updates: `/plugin` → Marketplaces → egatari → Enable auto-update. Codex: see "Using it with Codex" in the README.
+Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill makes worse lessons. When the skill finds that it is old, it tells you once (and keeps working).
+
+The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or run `npx egatari@0.6.x skills update` (it also updates Codex) and restart the tool. Codex: see "Using it with Codex" in the README.
 
 ### Chat Claude and Cowork
 
 In Studio, choose **Download the AI skill** beside **Copy the instructions** in **New…**, or in **Help (?)**. Upload the downloaded `egatari-make-<version>-ja.zip` or `egatari-make-<version>-en.zip` to install only make. Studio offers the ZIP for its current UI language and running version, served from its own site. The single file offline editor carries both languages too. Developers can also create a ZIP with `node tools/make-llm-guide.mjs --zip out/release --lang ja` (or `--lang en`). Its `make/SKILL.md` and references come from the same generator as `plugins/egatari/skills/make/`.
 
-No commands are needed: paste the two output blocks into Studio. If Studio's pack version differs from the skill's version, add it again with **Download the AI skill** in Studio.
+No commands are needed: paste the two output blocks into Studio. If Studio's pack version differs from the skill's version, add it again with **Download the AI skill** in Studio. A chat skill does not update by itself, so add it again whenever Studio is updated: the skill's instructions and quality checks change with each Studio release.
 
 When authoring is done, use the studio skill for checks and builds if egatari-studio is installed. Otherwise, open the working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 

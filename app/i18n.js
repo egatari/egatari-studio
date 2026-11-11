@@ -354,7 +354,7 @@ const ja = {
 
   helpTitle: '使い方',
   downloadAiSkill: 'AI のスキルをダウンロード',
-  downloadAiSkillHint: 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます',
+  downloadAiSkillHint: 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます。Studio が新しくなったら入れ直してください（スキルの指示と品質チェックは版ごとに変わります）',
   helpFormat: (snap) => (snap ? `形式：Egatari 1.0 WD ${snap.replace(/^wd-/, '')}` : '形式：Egatari 1.0（日付の付いた版ではない）'),
   help: [
     ['スライドを直す', ['<kbd>e</kbd> か「編集 (e)」で編集モード。文字の上をダブルクリックすると、エディタの欄にその部分の HTML（deck.html）が出ます。⌘/Ctrl+Enter か「保存」で保存',
@@ -805,7 +805,7 @@ const en = {
 
   helpTitle: 'Help',
   downloadAiSkill: 'Download the AI skill',
-  downloadAiSkillHint: 'Add it to a chat AI such as Claude to make lessons without pasting the instructions',
+  downloadAiSkillHint: 'Add it to a chat AI such as Claude to make lessons without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each release)',
   helpFormat: (snap) => (snap ? `Format: Egatari 1.0 Working Draft ${snap.replace(/^wd-/, '')}` : 'Format: Egatari 1.0 (no dated snapshot)'),
   help: [
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit (e)” for edit mode. Double-click text to open that part of the HTML (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',

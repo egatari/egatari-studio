@@ -47,13 +47,15 @@ const sorted = (xs) => [...xs].sort().join();
 // New と Help は同じ ZIP を渡す。キーでも押せて、同じサイトの現在のパス（凍結版を含む）から取る。
 export async function checkSkillDownload(p, { lang, selector, ok, base }) {
   const label = lang === 'ja' ? 'AI のスキルをダウンロード' : 'Download the AI skill';
-  const hint = lang === 'ja' ? 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます' : 'Add it to a chat AI such as Claude to make lessons without pasting the instructions';
+  const hint = lang === 'ja' ? 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます。Studio が新しくなったら入れ直してください（スキルの指示と品質チェックは版ごとに変わります）' : 'Add it to a chat AI such as Claude to make lessons without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each release)';
   const b = p.locator(selector);
   ok(await b.isVisible() && await b.textContent() === label && await p.getByRole('button', { name: label, exact: true }).count() === 1, `skill (${lang}, ${selector}): accessible button with the exact label`);
   if (selector === '#paste-download-skill') {
     ok(await b.getAttribute('aria-describedby') === 'paste-download-skill-hint' && await p.textContent('#paste-download-skill-hint') === hint
       && await b.evaluate((b) => b.previousElementSibling.id === 'paste-copy-guide'), `skill (${lang}): hint describes the button beside Copy the instructions`);
   }
+  // Help も同じ添え書き（入れ直しの案内を含む。v0.6.10）
+  if (selector === '#help-download-skill') ok(await b.getAttribute('aria-describedby') === 'help-download-skill-hint' && await p.textContent('#help-download-skill-hint') === hint, `skill (${lang}): Help has the same hint, with adding it again after an update`);
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
   const name = `egatari-make-${version}-${lang}.zip`;
   // Enter が届かないことがある（macOS の CI で、30 秒待っても download がなかった）：10 秒たって来なければ押し直す（3 回まで）

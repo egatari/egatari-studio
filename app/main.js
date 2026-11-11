@@ -1323,7 +1323,8 @@ function showHelp() {
   const kinds = el('table', { id: 'help-kinds', cls: 'kinds' }, [['kindFolder', 'kindFolderText'], ['kindFile', 'kindFileText'], ['kindPlay', 'kindPlayText'], ['kindBuilt', 'kindBuiltText']]
     .map(([k, t]) => el('tr', {}, [el('th', { scope: 'row', text: T[k] }), el('td', { text: T[t] })])));
   openPanel(T.helpTitle, [
-    el('button', { type: 'button', id: 'help-download-skill', text: T.downloadAiSkill, onclick: downloadAiSkill }),
+    el('button', { type: 'button', id: 'help-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'help-download-skill-hint', onclick: downloadAiSkill }),
+    el('p', { id: 'help-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint }),   // 新規作成… と同じ添え書き（Studio が新しくなったら入れ直す）
     el('h3', { text: T.kindsTitle }), kinds,
     ...h.map(([title, lines]) => [el('h3', { text: title }), el('ul', {}, lines.map((l) => { const li = el('li'); li.innerHTML = l; return li; }))]).flat(),
     el('p', { id: 'help-format', cls: 'muted', text: T.helpFormat(RES.specSnapshot) }),   // 従う仕様の版（vendor/egatari-spec/SOURCE.json の snapshot。ビルド時に読む）

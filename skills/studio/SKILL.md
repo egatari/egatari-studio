@@ -11,6 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 <!-- generated: instruction-version -->
 **指示の版：b2ad9e7c**
+**スキルの版：0.6.9**
 <!-- /generated: instruction-version -->
 
 make の版の行と違えば、両方のプラグインを更新するよう利用者に伝える。
@@ -24,6 +25,8 @@ make の版の行と違えば、両方のプラグインを更新するよう利
 ```
 
 Codex の入れ方（Codex のターミナルで）：`codex plugin marketplace add egatari/egatari-studio`、`codex plugin add egatari@egatari`、`codex plugin add egatari-studio@egatari`。
+
+入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio の版ごとに変わる。Claude Code では `/plugin` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに `npx egatari@0.6.x skills update`。
 
 更新は、Claude Code では `/plugin update egatari-studio@egatari` と `/plugin update egatari@egatari`。Codex では `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari-studio@egatari` と `codex plugin add egatari@egatari` をもう一度。どちらの道具でも、ターミナルで `npx egatari@0.6.x skills update` を実行すると、入っている道具すべてを更新する。更新したら道具を再起動する。
 
@@ -47,6 +50,9 @@ CLI では R-output の囲みの代わりに作業フォルダへ書き、画像
 - `NG browser`：check・sheet・comment-shots・video に要る。表示の手順（Chrome か Edge を入れる、`npx playwright-core install chromium`、または `CHROME_PATH`）を案内する
 - `-- uv`：音声（`tts`）にだけ要る。`-- ffmpeg`：動画（`video`）にだけ要る。その作業をするときに、表示の入れ方を案内する
 - 包みを取れない（ネットにつながらないなど）ときは、出た表示をそのまま利用者に見せる
+- `ok   skills   指示の版 …（Studio X.Y.Z）`：この行の Studio の版と、上のスキルの版を比べる（版は数で比べる。0.6.10 は 0.6.9 より新しい）。Studio の版のほうが新しいときだけ、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（make スキルと合わせて 1 回）。<版> はスキルの版。同じ版か、スキルのほうが新しいときは何も言わない
+  - Claude Code：「Egatari のスキルが古い版（<版>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
+  - Codex：「Egatari のスキルが古い版（<版>）です。`npx egatari@0.6.x skills update` で更新できます。」
 
 同梱のファイル（パーツの一覧・パーツの README・約束事）は、プラグインの根 `<root>`（この SKILL.md のあるフォルダから 2 つ上）にあり、読むだけ。`<root>` でコマンドを動かさない。作業フォルダ `<deck>` は `<root>` の外に置く。
 

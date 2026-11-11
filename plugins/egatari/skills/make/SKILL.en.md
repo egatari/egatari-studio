@@ -12,10 +12,21 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
 **Instruction version: b2ad9e7c**
+**Skill version: 0.6.9**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
 In a chat AI, add it again with "Download the AI skill" in Studio.
+
+After installing, have the user turn on automatic updates: the skill's instructions and quality checks change with each Studio release. In Claude Code: `/plugin` → Marketplaces → egatari → Enable auto-update (marketplaces other than the official one start with auto-update off). In Codex: run `npx egatari@0.6.x skills update` after each Studio release. In a chat AI: when Studio is updated, add the skill again with "Download the AI skill".
+
+**Old-version notice**: a file the user opens records the version of the Studio that made it. In a single file (`.ega.html`) it is `"generator":{"name":"egatari-studio","version":"…"}` in `<script id="deck-meta">`; in a working folder it is `"version"` in `deck-meta` of the build output `out/deck.html`. Only when that version is newer than the skill version above (compare as numbers: 0.6.10 is newer than 0.6.9), say the line below and keep working (do not stop). Say it once per conversation (once in total with the studio skill). <version> is the skill version.
+
+- Claude Code: “The Egatari skill is an old version (<version>). You can update it with /plugin (Marketplaces → egatari → Enable auto-update keeps it updated automatically).”
+- Codex: “The Egatari skill is an old version (<version>). You can update it with `npx egatari@0.6.x skills update`.”
+- Chat AI: “The Egatari skill is an old version (<version>). You can add it again with “Download the AI skill” in Studio.”
+
+Say nothing when the file's version is the same as the skill version or older, or cannot be read. Instructions copied in Studio carry only the instruction version, which does not tell which is newer, so do not use them for this notice (only for “new parts are available” above).
 
 ## Workflow
 
