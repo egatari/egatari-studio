@@ -84,7 +84,7 @@ export function draftLeftovers(deck, narration) {
 // コマンド（kit/build.mjs の --portable / --play-only）が出す行（英語と日本語の両方）。編集アプリは app/i18n.js の言葉で出す
 export function leftoverLines(left) {
   const out = [];
-  for (const s of left.slides) out.push(`slide ${s.index + 1} (${s.key}): template text left / 雛形の字のまま: ${s.texts.map((x) => `“${x}”`).join(', ')}`);
-  for (const p of left.steps) out.push(`narration.md line ${p.line} (${p.slideKey}:${p.stepKey}): template placeholder (✎) left / 仮の口述原稿のまま: “${p.text}”`);
+  for (const s of left.slides) out.push(`slide ${s.index + 1} (${s.key}): template text left / テンプレートの字のまま: ${s.texts.map((x) => `“${x}”`).join(', ')}`);
+  for (const p of left.steps) out.push(`narration.md line ${p.line} (${p.slideKey}:${p.stepKey}): template placeholder (✎) left / 仮の台本のまま: “${p.text}”`);
   return out;
 }

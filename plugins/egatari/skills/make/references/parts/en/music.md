@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # music parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-keyboard>` | ピアノの鍵盤。音階・和音・半音と全音を光らせる | steps の 1 つ = 1 ステップ（鍵盤は t でずらして順に光る） | `{range:str,names?:"solfa"\|"abc"\|"iroha"\|"none",cumulative?:bool,dur?:num,steps:{keys:str[],label?,t?:num[],tone?,dur?:num}[]}` — range "C4-C6" (include every key you use, at least one octave (e.g. C4-C5); white keys at both ends, up to 3 octaves); steps [{keys: ["C4", "E4"], label, t: [seconds per key], tone, dur}] |
 | `<m-score>` | 楽譜（五線譜）を 1 音・和音ずつ、または 1 小節ずつ出して音も鳴らす。ABC 記譜法で書く | 音符・和音・休符 1 つ＝1 ステップ。by="measure" なら 1 小節＝1 ステップ（per-step="N" なら N 小節。弱起の小節は次のステップに入る） | `{abc:str}` — write abc only; the build adds abcSvg, abcMap and renderers |

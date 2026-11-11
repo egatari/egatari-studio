@@ -175,8 +175,8 @@ try {
     }
     if (name === 'en-stale') {
       const c = CLI[name].filter((x) => x.code === 'audioStale'), e = results.filter((x) => x.code === 'audioStale');
-      ok(c.length === 1 && c[0].sev === 'warn' && c[0].slide === 2 && c[0].data.k === 's-attn:0' && c[0].msg.endsWith(message('en', 'audioStale', { k: 's-attn:0', kind: 'tts' })) && /^Slide 2 .*: audio: stale — ステップ s-attn:0 の音声は/.test(c[0].msg),
-        `cli en-stale: the stale audio is code audioStale (warn, slide 2) with the old message text: ${c[0] && c[0].msg}`);
+      ok(c.length === 1 && c[0].sev === 'warn' && c[0].slide === 2 && c[0].data.k === 's-attn:0' && c[0].msg.endsWith(message('en', 'audioStale', { k: 's-attn:0', kind: 'tts' })) && /^Slide 2 .*: audio: stale — the audio of step s-attn:0 was not made from the current script/.test(c[0].msg),
+        `cli en-stale: the stale audio is code audioStale (warn, slide 2), its English message after the fixed head “audio: stale —”: ${c[0] && c[0].msg}`);
       ok(e.length === 1 && e[0].sev === 'warn' && e[0].i === 1, 'editor en-stale: the same step is reported as audioStale');
     }
     if (name === 'en-rawmath') {

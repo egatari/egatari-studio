@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # stats のパーツ
 
-指示の版：b2ad9e7c
+指示の版：d3b861c4
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

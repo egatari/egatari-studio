@@ -1,7 +1,7 @@
 // 長いデッキを 2 回に分けてチャットの AI に頼む（編集アプリの「新規作成…」。app/llm.js）。Node にもブラウザにも依存しない（純粋な ESM）
 //   1 回目（構成案）：枚数が OUTLINE_OVER を超えたら、頼む文の最後に「構成案だけを返す」を付ける。返事は ```outline の囲み 1 つ
 //     （Markdown の表：番号・見出し・要点（1 行））。parseOutline で読む
-//   2 回目から（バッチ）：構成案の BATCH 枚ずつ（「構成案の 7〜12 枚目」）。頼む文は構成案の全体と、足す場所の前のスライド（とその口述原稿）を添える。
+//   2 回目から（バッチ）：構成案の BATCH 枚ずつ（「構成案の 7〜12 枚目」）。頼む文は構成案の全体と、足す場所の前のスライド（とその台本）を添える。
 //     最初のバッチは deck.html の全体（<!DOCTYPE html> から）、次からはスライドの挿入（kit/core/llm-insert.mjs）と同じく足すスライドだけ
 //   構成案は設定のファイル（egatari.json）の studio.outline に置く（{v: 1, next, rows}）。設定のファイルは作業フォルダにも 1 ファイルの原稿にも
 //   必ず入るので、どちらの形でも教材と一緒に動く（別のファイル（outline.md など）は組み立てが読まないので 1 ファイルに入らない）。
@@ -45,8 +45,8 @@ const L = {
     outlineList: '## 構成案（全体。返さない）', range: (a, b) => `← 今回は ${a}〜${b} 枚目`,
     near: '## 足す場所の前のスライド（参考。返さない）',
     reply: '## 返し方',
-    replyFirst: '```deck.html の囲みに deck.html の全体（今回のスライドだけ）を、```narration.md の囲みにその口述原稿を書きます。',
-    replyNext: '足すスライドだけを返してください。```deck.html の囲みに <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md の囲みに、そのスライドの口述原稿の節（## 見出し と [0] からの行）を同じ順で書きます。',
+    replyFirst: '```deck.html の囲みに deck.html の全体（今回のスライドだけ）を、```narration.md の囲みにその台本を書きます。',
+    replyNext: '足すスライドだけを返してください。```deck.html の囲みに <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md の囲みに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。',
   },
   en: {
     outlineHead: '# First, send only the outline',
@@ -60,8 +60,8 @@ const L = {
     outlineList: '## The outline (all of it; do not send it back)', range: (a, b) => `← this time: ${a}–${b}`,
     near: '## The slide before the new ones (for reference; do not send it back)',
     reply: '## How to reply',
-    replyFirst: 'In a ```deck.html block write the whole deck.html (with only these slides), and in a ```narration.md block their narration.',
-    replyNext: 'Send only the new slides: in a ```deck.html block, only the <section class="slide"> elements (no <!DOCTYPE>, <html> or <head>; no ids), and in a ```narration.md block their narration sections (## heading and the lines from [0]) in the same order.',
+    replyFirst: 'In a ```deck.html block write the whole deck.html (with only these slides), and in a ```narration.md block their script.',
+    replyNext: 'Send only the new slides: in a ```deck.html block, only the <section class="slide"> elements (no <!DOCTYPE>, <html> or <head>; no ids), and in a ```narration.md block their script sections (## heading and the lines from [0]) in the same order.',
   },
 };
 const M = (lang) => L[lang === 'ja' ? 'ja' : 'en'];

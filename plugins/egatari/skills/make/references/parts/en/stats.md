@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # stats parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-boxplot>` | 箱ひげ図。値を並べ、中央値・四分位数を求める手順のとおりに組み立てる。群を並べて比べる | steps（既定）：点 → 中央値 → 第1・第3四分位数 → 箱 → ひげ。whole：群 1 つ = 1 ステップ | `{groups:[{label?,tone?,values?:num[],five?:num[]} (values or five),…]}` — groups [{label, tone, values}] or [{label, five: [min, q1, median, q3, max]}]; axes go in attributes (xr="[0,20]" xl="…") |
 | `<m-heatmap>` | ヒートマップ。値で塗ったセルの格子（混同行列・相関行列・注意の重み） | rows：行を 1 つずつ（normalize="row" の既定）。whole：全体を 1 ステップ。cells：全体、それから強調を 1 つずつ（highlight があるときの既定） | `{rows:str[],cols:str[],values:num[][],unit?:str,digits?:num,highlight?:num[][]}` — values[row][col], one row per label in rows and one number per label in cols; highlight [[row, col] or [row, col, step]] (0-based) |

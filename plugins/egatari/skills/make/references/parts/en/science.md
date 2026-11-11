@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # science parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-orbit>` | 月の満ち欠け（金星の満ち欠け）。北極の上から見た図と地球から見た形を並べ、月を位置から位置へ動かす。形は位置から計算する | 動く先の数（既定は 8 つの位置を新月から 1 周 = 8 ステップ。visit で決める） | `{positions?:int,start?:int,visit?:int[],labels?:(str\|null)[],notes?:(str\|null)[],eclipse?:bool}` |
 | `<m-particles>` | 状態変化の粒子の並び方と間隔、化学変化で保存される原子の数を見せる | state は states の数 − 1（既定 2）。reaction は反応前→原子に分かれる→反応後の 3 ステップ | `{states?:("solid"\|"liquid"\|"gas")[],substance?:str,labels?:(str\|null)[]\|{before?:str,apart?:str,after?:str,atoms?:str},reactants?:{formula:str,n:int,shape?:"linear"\|"bent"\|"trigonal"\|"tetrahedral"\|"chain"}[],products?:{formula:str,n:int,shape?:"linear"\|"bent"\|"trigonal"\|"tetrahedral"\|"chain"}[]}` |

@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # data parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-balance>` | Balance at expectation | Weights → pivot → sum (3) | `{values:num[],probs:num[],name?:str}` |
 | `<m-ci>` | Repeated z intervals | Axis → intervals → coverage (3) | `{mu:num,sigma:num,n:num,reps?:num,level?:num,seed?:num}` |

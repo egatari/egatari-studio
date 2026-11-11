@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # business parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-market>` | 市場規模の入れ子の円（TAM / SAM / SOM）。外の円から 1 つずつ、前の円の大きさから縮んで現れる | rings の数 | `{rings:{key?:str,value:num,basis?:str,tone?}[]}` |
 

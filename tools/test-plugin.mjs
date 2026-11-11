@@ -20,7 +20,8 @@ export function environmentHits(text) {
   return text.split('\n').flatMap((line, i) => {
     const hits = forbidden.filter((s) => line.includes(s));
     // ポートの数字を許すのは、同じ行で IRODORI_URL の既定と明記したときだけ。
-    if (/8882/.test(line) && !(/IRODORI_URL/.test(line) && /既定|default/i.test(line) && /localhost:8882/.test(line))) hits.push('undocumented default port');
+    // i18n の印の行（<!-- i18n: pair=… sha256=… -->）の hash は数字がたまたま並ぶことがあるので、ポートとして見ない
+    if (/8882/.test(line.replace(/^<!-- i18n: .*sha256=[0-9a-f]+ -->$/, '')) && !(/IRODORI_URL/.test(line) && /既定|default/i.test(line) && /localhost:8882/.test(line))) hits.push('undocumented default port');
     return hits.map((s) => `${i + 1}: ${s}`);
   });
 }
@@ -28,6 +29,7 @@ for (const s of forbidden) assert.ok(environmentHits(s).length, s);
 assert.ok(environmentHits('8882').length);
 assert.ok(environmentHits('IRODORI_URL http://localhost:8882').length);
 assert.deepEqual(environmentHits('IRODORI_URL default http://localhost:8882'), []);
+assert.deepEqual(environmentHits('<!-- i18n: pair=english.md sha256=beeae91c240a8882 -->'), []);
 const files = [...walk('.claude-plugin'), ...walk('.agents'), ...walk('skills'), ...walk('plugins/egatari'), 'README.md', 'README.ja.md', ...walk('docs')].filter((f) => /\.(md|json)$/.test(f));
 const hits = files.flatMap((f) => environmentHits(read(f)).map((h) => `${f}:${h}`));
 assert.deepEqual(hits, [], 'personal environment references');

@@ -486,186 +486,81 @@
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "デッキ|deck",
-      "term": "lesson",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "古い形式",
+      "pattern": "古い形式の Office",
       "term": "earlier-draft-file",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "reason": "古い形式 here is a legacy Office format (doc, xls, ppt) that may not be attached, not a file from an earlier Egatari version."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "1 ファイル",
-      "term": "egatari-file",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "部品|components?",
-      "term": "part",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "口述原稿|narration",
-      "term": "script",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "鍵|key",
+      "pattern": "鍵「|鍵が位置|slide key|the key is",
       "term": "join-code",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "reason": "鍵 / key here is the slide key (a slide's data-key or position, now replaced by its id), not the join code of Live."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "注目の演出|attention marks",
-      "term": "emphasis",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "pattern": "ステップの鍵|使える鍵|step key",
+      "term": "join-code",
+      "reason": "鍵 / key here is the step key ([0], [1], …, [concl]) of a link or a script line, not the join code of Live."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "雛形",
-      "term": "template",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "pattern": "秘密鍵|アクセスの鍵|private key|access key",
+      "term": "join-code",
+      "reason": "鍵 / key here is a credential (private key, access key) found in an attachment, not the join code of Live."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "原稿",
-      "term": "slides",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "検査",
-      "term": "quality-check",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "囲み",
-      "term": "code-block",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "TTS",
-      "term": "ai-voice",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "stale",
-      "term": "book-may-not-match",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "lecture",
+      "pattern": "data-mode=\"lecture\"",
       "term": "preview-later",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "reason": "lecture here is the legacy attribute value data-mode=\"lecture\" that the finding asks to remove, not a UI name for Show later steps faintly."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "書き出し",
+      "pattern": "原稿からは外す|原稿から参照する",
+      "term": "slides",
+      "reason": "原稿 here is the editable source (deck.html) that the fix is made in, the sense the glossary keeps for technical text; the en says source / slides."
+    },
+    {
+      "file": "kit/check-messages.mjs",
+      "pattern": "audio: stale —",
+      "term": "book-may-not-match",
+      "reason": "audio: stale — is the fixed head of the stale-audio finding (its code before v0.6.9, format spec §5.4), about audio, not the book notice."
+    },
+    {
+      "file": "kit/check-messages.mjs",
+      "pattern": "書き出し直す",
       "term": "export",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "reason": "書き出し直す here means exporting the attachment again from the app that made it, not the Export menu action of Egatari."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "言いたいこと",
-      "term": "heading-and-point",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "pattern": "囲みの箱",
+      "term": "code-block",
+      "reason": "囲み here is the box drawn around a label in a figure (m-flow and the like), not a code block."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "rules",
+      "pattern": "で囲み",
+      "term": "code-block",
+      "reason": "囲み here is the verb (wrap the math in \\( … \\)), not a code block."
+    },
+    {
+      "file": "kit/check-messages.mjs",
+      "pattern": "TTS が読み|TTS reads",
+      "term": "ai-voice",
+      "reason": "TTS here names the speech synthesis that would read the placeholder line aloud (the act of synthesis), kept until the AI 音声 wording of the check messages is decided."
+    },
+    {
+      "file": "kit/check-messages.mjs",
+      "pattern": "rules of each turn's language",
       "term": "standards",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "reason": "rules here are the language rules for reading equations and long turns, not the standards (R-…)."
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "room",
+      "pattern": "enough room",
       "term": "live",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "audio: stale —",
-      "term": "step",
-      "reason": "en の知らせも日本語のまま（音声が古い段階の知らせは言葉を変えない。format spec §5.4）",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "extensionVersion:",
-      "term": "save",
-      "reason": "en に Save を使わない言い方（leave it as is）",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "attachPrivate:",
-      "term": "device",
-      "reason": "ja の「端末」は鍵の種類の説明で、en は別の言い方",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "titleLongEn:",
-      "term": "subject-english",
-      "reason": "「英語は 60 文字まで」は言語の名前で、教科の英語ではない",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "conclLongEn:",
-      "term": "subject-english",
-      "reason": "「英語は 70 文字まで」は言語の名前で、教科の英語ではない",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "punctMixed:",
-      "term": "slides",
-      "reason": "ja の「デッキの多く」の言い回しに en は別の言い方",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "punctMixed:",
-      "term": "slide",
-      "reason": "同上",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "punctMixed:",
-      "term": "stage",
-      "reason": "同上",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "line": "narrNote:",
-      "term": "instructions",
-      "reason": "ja の「発表者への指示」に en は note の言い方",
-      "pairs": true
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "デッキ|deck",
-      "term": "slides",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
-    },
-    {
-      "file": "kit/check-messages.mjs",
-      "pattern": "言いたいこと",
-      "term": "what-to-convey",
-      "reason": "品質チェックの知らせ（kit/check-messages.mjs）は、仕様・AI への指示（docs/authoring-with-llms）・ファイルやタグの名前（deck.html・narration.md・部品のタグ）と対にして書く言葉をそのまま引いている。用語集の言葉への揃え方は別に決める（先生の判断待ち）。ステップだけは 2026-10-22 の決定どおり直した"
+      "reason": "room here is space on the slide for a part, not Live."
     }
   ]
 }

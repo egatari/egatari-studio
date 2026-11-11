@@ -403,7 +403,7 @@ ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今�
   assert.ok(/exactly two fenced code blocks/.test(r.text) && r.partial === false);
   // 使っている部品の説明（指示と同じ文章）
   assert.deepEqual(r.components, ['m-sweep']);
-  assert.ok(r.text.includes('## Components used in this deck') && r.text.includes(setPart('math', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
+  assert.ok(r.text.includes('## Parts used in this lesson') && r.text.includes(setPart('math', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
   // 前の guide の引数：知らせて無視する（規格は指示の共通の本体から）
   const warned = [], cw = console.warn;
   console.warn = (...x) => warned.push(x.join(' '));
@@ -413,7 +413,7 @@ ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今�
   } finally { console.warn = cw; }
   assert.ok(warned.length === 1 && /guide argument is no longer used/.test(warned[0]), warned.join('|'));
   const ja = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, lang: 'ja' });
-  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つのコードの囲み') && ja.text.includes('## この教材で使っている部品'));
+  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つのコードの囲み') && ja.text.includes('## この教材で使っているパーツ'));
   assert.deepEqual(rulesFor({ code: 'readingExpr' }), ['R-reading', 'R-formula']);
 });
 ok('長いデッキの修正依頼：問題のあるスライドとその節だけ（id 付き）を載せ、そのスライドだけを返してもらう', () => {
@@ -506,9 +506,9 @@ ok('品質チェック：static の表紙の口述原稿がない → 警告。�
   const c = node('kit/check.mjs', path.join(d, 'deck.html'), '--json');
   const j = JSON.parse(c.stdout);
   const has = (sev, slide, re) => j.results.some((x) => x.sev === sev && x.slide === slide && re.test(x.msg));
-  assert.ok(has('warn', 1, /^スライド 1「表紙」（s-cover1）、ステップ 0：このステップの口述原稿がない：narration.md のこのスライドの節に \[0\] の行を書く/), 'static cover narration');
-  assert.ok(has('error', 2, /ステップ 3：口述原稿の \[3\] に当たるステップがスライドにない.*番号が 0〜2 と結論.*使える鍵は \[0\] \[1\] \[2\] \[concl\].*前のステップ \[2\].*data-step="3".*直す行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
-  assert.ok(has('error', 3, /口述原稿の \[concl\] に当たるステップがスライドにない.*使える鍵は \[0\]。.*前のステップ \[0\].*結論の行/), 'orphan [concl]');
+  assert.ok(has('warn', 1, /^スライド 1「表紙」（s-cover1）、ステップ 0：このステップの台本がない：narration.md のこのスライドの節に \[0\] の行を書く/), 'static cover narration');
+  assert.ok(has('error', 2, /ステップ 3：台本の \[3\] に当たるステップがスライドにない.*番号が 0〜2 と結論.*使える鍵は \[0\] \[1\] \[2\] \[concl\].*前のステップ \[2\].*data-step="3".*直す行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
+  assert.ok(has('error', 3, /台本の \[concl\] に当たるステップがスライドにない.*使える鍵は \[0\]。.*前のステップ \[0\].*結論の行/), 'orphan [concl]');
   assert.ok(has('warn', 2, /読みの指定 \{1-η\|いちマイナスイータ\} が式を読んでいる/), 'reading operator');
   assert.ok(has('warn', 2, /読みの指定 \{θとη\|シータとイータ\} に記号が 2 つ以上/), 'reading several');
   // JSON の形：slide・id・key・title（見出しの字）・step・code・rule・msg（docs/reference.md「品質チェック」）
@@ -520,7 +520,7 @@ ok('品質チェック：static の表紙の口述原稿がない → 警告。�
   // 英語の言葉（--lang en）
   const ce = node('kit/check.mjs', path.join(d, 'deck.html'), '--json', '--lang', 'en');
   const je = JSON.parse(ce.stdout);
-  assert.ok(je.lang === 'en' && je.results.some((x) => x.code === 'narrOrphan' && /^Slide 2 “段階のスライド” \(s-steps1\), step 3: narration \[3\] has no matching step/.test(x.msg)));
+  assert.ok(je.lang === 'en' && je.results.some((x) => x.code === 'narrOrphan' && /^Slide 2 “段階のスライド” \(s-steps1\), step 3: script \[3\] has no matching step/.test(x.msg)));
   assert.ok(je.results.some((x) => x.code === 'narrMissing' && /add a \[0\] line/.test(x.msg)));
   assert.equal(c.status, 1);
 });

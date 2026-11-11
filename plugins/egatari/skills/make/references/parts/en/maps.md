@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # maps parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-map-japan>` | 日本の 47 都道府県の地図。地域の強調、統計の塗り分け、点、矢印、経度・緯度の重ね描きをステップごとに出す | 項目の step の最大（既定 1）。地図そのものはステップ 0 から出ている | `{regions?:[{id?:str\|int,group?:str,label?,tone?,step?,at?} (id or group),…],values?:object,classes?:num[],valuesStep?:int,points?:[{lon?:num,lat?:num,code?:str\|int,label?,tone?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",step?,at?} (lon + lat or code),…],flows?:{from:str\|int\|any[],to:str\|int\|any[],label?,tone?,value?:num,bend?:num,via?:any[][],labelAt?:any[],step?,at?}[],shapes?:[{polygon?:any[][],line?:any[][],label?,labelAt?:any[],tone?,dash?:bool,step?,at?} (polygon or line),…]}` — prefectures by JIS code "01"–"47" (or "JP-13", "東京都") in regions[].id; the 8 regions (hokkaido, tohoku, kanto, chubu, kinki, chugoku, shikoku, kyushu) in regions[].group; values is an object {code: number}; classes are the lower bounds of the classes (default 4, at most 5); points, shapes and flows[].via use lon/lat in degrees |
 | `<m-map-world>` | 世界の国・地域の地図（太平洋が中央）。国や州の強調、区分と値の塗り分け、点、矢印をステップごとに出す | 項目の step の最大（既定 1）。地図そのものはステップ 0 から出ている | `{regions?:[{id?:str,group?:str,label?,tone?,step?,at?} (id or group),…],categories?:{label,ids:str[],tone?,step?,at?}[],values?:object,classes?:num[],valuesStep?:int,points?:[{lon?:num,lat?:num,code?:str,label?,tone?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",step?,at?} (lon + lat or code),…],flows?:{from:str\|any[],to:str\|any[],label?,tone?,value?:num,bend?:num,via?:any[][],labelAt?:any[],step?,at?}[],shapes?:[{polygon?:any[][],line?:any[][],label?,labelAt?:any[],tone?,dash?:bool,step?,at?} (polygon or line),…]}` — countries by ISO alpha-3 or Natural Earth code ("JPN", "USA") or Japanese name; the six regions (asia, europe, africa, north-america, south-america, oceania) in regions[].group and categories[].ids; values is an object {code: number}; classes are the lower bounds (default 4, at most 5); points, shapes and [lon, lat] in flows use degrees |

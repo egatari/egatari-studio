@@ -1,9 +1,9 @@
 <!-- generated; do not edit by hand -->
 # english parts
 
-Instruction version: b2ad9e7c
+Instruction version: d3b861c4
 
-| component | what it shows | steps | data shape |
+| part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-syntax>` | 英文の構造：S V O C M の記号、句と節の括弧、修飾の矢印、品詞、それから和訳 | 出てくる要素（S V O C M）を 1 つずつ＋括弧・矢印・和訳（あるものだけ）。build="whole" で 1 | text inside the element (not JSON) |
 

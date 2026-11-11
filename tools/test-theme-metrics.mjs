@@ -279,9 +279,9 @@ await t('check: a deck <style> that moves the body is drift by the deck (the lim
   const d = drift(J);
   assert.equal(d.length, 1);
   assert.deepEqual(d[0].data.items, [{ field: 'body.left', declared: 48, measured: 20, by: 'deck' }]);
-  assert.match(d[0].msg, /デッキの <style> で体裁の箱/);
+  assert.match(d[0].msg, /教材の <style> で体裁の箱/);
   const E = check(deckWith('deckcss', 'default', {}, { body: BODY, style: '.body{left:20px}' }), '--lang', 'en');
-  assert.match(drift(E)[0].msg, /deck's <style>/);
+  assert.match(drift(E)[0].msg, /lesson's <style>/);
 });
 await t('check: unusable metrics are one themeMetricsInvalid warning for the deck (not one build warning each)', () => {
   const J = check(deckWith('invalid', 'inv', { inv: { json: { extends: 'default', metrics: { v: 1, body: { left: 'x', top: 9999 }, nope: 1 } } } }, { body: BODY }));

@@ -146,7 +146,10 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     cur.sets = cur.sets.filter((x) => x !== 'data');
     cur.parts = cur.parts.filter((p) => p.set !== 'data');
     for (const L of ['en', 'ja']) { delete cur[L].sets.data; for (const t of DATA) delete cur[L].components[t]; }
-    const a = jaDump(cur), b = jaDump(oldData);
+    // v0.6.10 で指示の材料の言葉を用語集にそろえた（部品→パーツ・口述原稿→台本・デッキ→教材・注目の演出→強調）。パーツ庫から来る説明は元の言葉のままなので、両方を同じ言葉に直してから比べる
+    const TERMS = [['部品', 'パーツ'], ['口述原稿', '台本'], ['デッキ', '教材'], ['注目の演出', '強調']];
+    const norm = (x) => TERMS.reduce((t, [from, to]) => t.replaceAll(from, to), x);
+    const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);
     assert.ok(a.some((x) => x.includes('<version>')) && a.some((x) => x.includes('<partsSrc>')));

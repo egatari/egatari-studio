@@ -3,11 +3,11 @@
 //
 //   insertRequest({deck, narration, after, n, wish, lang}) → 文字列
 //     「スライド X の後ろに続きの n 枚」（n が 1 なら「ここに 1 枚」）を頼む短い文。頼む文を短く保つよう、今のデッキの全体は
-//     付けず、スライドの見出しの一覧と、足す場所の前のスライド（とその口述原稿の節）だけを添える。after：0 から。-1 なら先頭（前のスライドなし）
+//     付けず、スライドの見出しの一覧と、足す場所の前のスライド（とその台本の節）だけを添える。after：0 から。-1 なら先頭（前のスライドなし）
 //   insertSlides({deck, narration, patchDeck, patchNarration, after, lang, rand}) → {deck, narration, ids: [新しい id…], at（最初の新しいスライドの番号）}
 //     返事のスライド（<section class="slide">。id は付けない約束だが、付いていても新しく付け直す）を after 番目の後ろに順に入れ、
-//     スライドの一覧の「足す」（kit/core/slide-ops.mjs）と同じに id を付け（newIdFor）、口述原稿の節を同じ順で入れる（見出しの行は
-//     「## 見出し {#id}」）。口述原稿の節は、見出しが同じものを先に、なければ順に対応させる。節のないスライドには仮の行（✎）を入れる
+//     スライドの一覧の「足す」（kit/core/slide-ops.mjs）と同じに id を付け（newIdFor）、台本の節を同じ順で入れる（見出しの行は
+//     「## 見出し {#id}」）。台本の節は、見出しが同じものを先に、なければ順に対応させる。節のないスライドには仮の行（✎）を入れる
 import { slideChunks, insertSlide, insertSection, newIdFor } from './slide-ops.mjs';
 import { headingLine, parseHeading } from './narration-core.mjs';
 import { sectionsOf, narrSections } from './llm-import.mjs';
@@ -25,7 +25,7 @@ const L = {
     here: '← この後ろに足す',
     near: '## 足す場所の前のスライド（参考。返さない）',
     reply: '## 返し方',
-    replyText: '足すスライドだけを返してください。```deck.html の囲みに <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md の囲みに、そのスライドの口述原稿の節（## 見出し と [0] からの行）を同じ順で書きます。ほかのスライドは返しません。',
+    replyText: '足すスライドだけを返してください。```deck.html の囲みに <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md の囲みに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。ほかのスライドは返しません。',
   },
   en: {
     head: '# Please add slides',
@@ -38,7 +38,7 @@ const L = {
     here: '← add after this one',
     near: '## The slide before the new ones (for reference; do not send it back)',
     reply: '## How to reply',
-    replyText: 'Send only the new slides: in a ```deck.html block, only the <section class="slide"> elements (no <!DOCTYPE>, <html> or <head>; no ids), and in a ```narration.md block their narration sections (## heading and the lines from [0]) in the same order. Do not send the other slides back.',
+    replyText: 'Send only the new slides: in a ```deck.html block, only the <section class="slide"> elements (no <!DOCTYPE>, <html> or <head>; no ids), and in a ```narration.md block their script sections (## heading and the lines from [0]) in the same order. Do not send the other slides back.',
   },
 };
 const fence = (name, body) => '````' + name + '\n' + String(body).replace(/\s+$/, '') + '\n````';
@@ -72,7 +72,7 @@ export function insertSlides({ deck, narration = '', patchDeck, patchNarration =
   if (!secs.length) return { deck, narration, ids: [], at: -1 };
   const n0 = slideChunks(deck).slides.length;
   const at0 = Math.max(-1, Math.min(n0 - 1, after ?? n0 - 1));
-  // 口述原稿の節（見出しと行）
+  // 台本の節（見出しと行）
   const N = patchNarration ? narrSections(String(patchNarration).replace(/\r\n?/g, '\n')) : { lines: [], out: [] };
   const pool = N.out.map((s) => ({ heading: parseHeading(N.lines[s.start].replace(/^##\s+/, '')).heading.trim(), lines: N.lines.slice(s.start + 1, s.end), used: false }));
   let out = deck, narr = narration ?? '';
@@ -87,7 +87,7 @@ export function insertSlides({ deck, narration = '', patchDeck, patchNarration =
     const sec = pool.find((p) => !p.used && h && p.heading === h) || pool.find((p) => !p.used);
     let body;
     if (sec) { sec.used = true; body = sec.lines.slice(); while (body.length && !body[body.length - 1].trim()) body.pop(); }
-    if (!body || !body.some((l) => /^\s*\[(\d+|concl)\]/.test(l))) body = [`[0] ${placeholderLine(lang === 'ja' ? 'このスライドの口述原稿' : 'narration for this slide')}`];
+    if (!body || !body.some((l) => /^\s*\[(\d+|concl)\]/.test(l))) body = [`[0] ${placeholderLine(lang === 'ja' ? 'このスライドの台本' : 'script for this slide')}`];
     const keys = slideChunks(out).slides.map((x) => x.key);
     narr = insertSection(narr, keys, id, [headingLine({ key: id, id, heading: h }), ...body]);
   });
