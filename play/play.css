@@ -198,6 +198,9 @@ body.headless #bar { display: none; }
 .csw[aria-pressed=true]::after { content: "✓"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #1a1a1a; }
 .m-y { background: var(--m-y); } .m-p { background: var(--m-p); } .m-b { background: var(--m-b); }
 #markup-note, #m-filtered { white-space: nowrap; }
+/* the hint wraps to at most three lines inside the header's height: the header (and the lesson's frame under it) never moves */
+#markup-hint { flex: 1 1 14em; min-width: 0; white-space: normal; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+#markup-hint[hidden] { display: none; }
 /* one row on a phone (the header's height never changes, so the lesson's frame does not move): no logo, no counts, smaller swatches */
 @media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n, .rc-l { display: none !important; }
   #markup-bar { gap: 4px; } #markup-bar > button, #b-markup { padding: 4px 8px; } .csw { width: 32px; } #recall-colours { gap: 3px; } }

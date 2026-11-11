@@ -67,7 +67,7 @@ export async function sha256Hex(bytes) {
 
 export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }) {
   let W = words;
-  const L = { frame: null, docId: '', sourceSha256: '', fileSha: Promise.resolve(''), shared: false, rec: null, available: false, bar: false,
+  const L = { frame: null, docId: '', sourceSha256: '', fileSha: Promise.resolve(''), shared: false, rec: null, available: false, supported: false, shown: true, bar: false,
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
   const view = () => ({ hidden: L.hidden.slice(), recall: L.recall, recallColors: L.recallColors.slice(), bar: L.bar });
   const send = (m) => { const f = L.frame; if (f && f.contentWindow) f.contentWindow.postMessage(m, '*'); };
@@ -101,10 +101,14 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     const find = (id) => H.find((h) => h.id === id);
     switch (m.egaViewer) {
       case 'markup-hello':
-        if (!keys(m, ['egaViewer', 'supported', 'article']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean') break;
-        L.available = m.supported && m.article;
-        els.button.hidden = !L.available;
-        if (!L.available && L.bar) toggle(false);
+        if (!keys(m, ['egaViewer', 'supported', 'article', 'shown']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean') break;
+        // the button is there whenever the browser can do markup, so a learner finds it with the slides alone too; the bar then says
+        // where highlights go (the book) and that the script cannot take them yet, or that this lesson has no book
+        L.supported = m.supported; L.available = m.supported && m.article; L.shown = m.shown;
+        els.button.hidden = !L.supported;
+        if (!L.supported && L.bar) toggle(false);
+        else if (!L.available && L.recall) { L.recall = false; pushView(); }
+        renderBar();
         if (L.available && L.loaded) pushAll();
         break;
       case 'markup-add': {
@@ -172,7 +176,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   function close() {
     if (els.list.open) els.list.close();
     if (els.confirm.open) els.confirm.close();
-    L.bar = false; L.recall = false; L.hidden = []; L.recallColors = COLORS.slice(); L.available = false; L.frame = null; L.rec = null; L.loaded = false;
+    L.bar = false; L.recall = false; L.hidden = []; L.recallColors = COLORS.slice(); L.available = false; L.supported = false; L.shown = true; L.frame = null; L.rec = null; L.loaded = false;
     els.button.hidden = true; els.button.setAttribute('aria-pressed', 'false');
     els.header.classList.remove('markup'); els.header.style.minHeight = ''; els.bar.hidden = true;
   }
@@ -180,7 +184,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   // ---------------------------------------------------------------- the markup bar (in the header: never over the lesson's frame)
   // Closing the bar ends 暗記 and shows every colour again: nothing changes the book while the bar that says so is closed.
   function toggle(on = !L.bar) {
-    if (!L.frame || (on && !L.available)) return;
+    if (!L.frame || (on && !L.supported)) return;
     L.bar = on;
     if (!on) { L.recall = false; L.hidden = []; }
     // the header keeps its height (a phone's header can be two rows tall), so the lesson's frame never moves under the viewer's finger
@@ -202,7 +206,11 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     const n = L.rec ? L.rec.highlights.length : 0;
     els.listButton.textContent = W().mList;
     if (n) { const c = document.createElement('span'); c.className = 'n'; c.textContent = W().mListCount(n); els.listButton.appendChild(c); }
-    els.note.hidden = !L.shared;
+    els.note.hidden = !L.shared || !L.available;
+    const hint = !L.available ? W().mNoBook : !L.shown ? W().mOpenBook : '';
+    els.hint.textContent = hint; els.hint.hidden = !hint;
+    // with no book on screen the hint takes the bar (a phone has no room for both); 暗記 and the list come back with the book
+    els.recall.hidden = !!hint; els.listButton.hidden = !!hint; if (hint) els.recallColours.hidden = true;
     els.filtered.hidden = L.hidden.length === 0;
   }
   function setRecall(on) { L.recall = on; renderBar(); pushView(); els.announce(on ? W().mRecallOn : W().mRecallOff); }

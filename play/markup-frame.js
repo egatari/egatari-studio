@@ -10,7 +10,7 @@
 //     below a selection on a touch screen (iPad's own callout is above it).
 //   - 暗記: an opaque band of the colour over the text of the chosen colours; a tap reveals one highlight.
 // Messages (all {egaViewer: "markup-…"}; the page checks every one):
-//   to the page   hello {supported, article}  add {color, target}  set {id, color}  del {id}  status {missing:[id], sections:{id: title}}  esc
+//   to the page   hello {supported, article, shown}  add {color, target}  set {id, color}  del {id}  status {missing:[id], sections:{id: title}}  esc
 //                 widen {list: [{id, target}]}  (records made before the ruby rule, widened to whole ruby segments once re-attached)
 //   from the page load {list, words, view}  view {view}  jump {id}
 //     view = {hidden: ["y"…], recall: bool, recallColors: ["y"…], bar: bool}
@@ -488,8 +488,12 @@
       if (a) placeAll(); else if (L.host) L.host.remove();
     }
     else if (a && stale()) placeAll();
-    var now = supported + ":" + !!a;
-    if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: !!a }); }
+    // article: the lesson has a book (an article with text; kit/panes.js shows 台本で読む instead when it is empty).
+    // shown: the book is on screen (the player's 表示 is 本 or スライドと本); a player without layouts counts as shown
+    var lay = document.documentElement.getAttribute("data-deck-layout");
+    var has = !!a && !!(a.textContent || "").trim(), shown = !lay || lay === "book" || lay === "split";
+    var now = supported + ":" + has + ":" + shown;
+    if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: has, shown: shown }); }
   }
   function start() {
     look();
@@ -499,7 +503,7 @@
       for (var i = 0; i < recs.length && mine; i++) if (recs[i].target !== L.host && !(recs[i].addedNodes.length === 1 && recs[i].addedNodes[0] === L.host)) mine = false;
       if (mine) return;
       clearTimeout(moTimer); moTimer = setTimeout(look, 150); queuePaint();
-    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "data-dx-bg", "hidden"] });
+    }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "data-dx-bg", "hidden", "data-deck-layout"] });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
 

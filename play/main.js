@@ -314,7 +314,7 @@ window.addEventListener('message', (e) => {
 const M = framed ? null : markup({
   words: W,
   els: { header: $('bar'), button: $('b-markup'), bar: $('markup-bar'), recall: $('b-recall'), recallColours: $('recall-colours'), listButton: $('b-mlist'),
-    note: $('markup-note'), filtered: $('m-filtered'), filteredShow: $('b-mshow'), list: $('m-list'), listBody: $('m-list-body'), listClose: $('b-mlist-close'),
+    note: $('markup-note'), hint: $('markup-hint'), filtered: $('m-filtered'), filteredShow: $('b-mshow'), list: $('m-list'), listBody: $('m-list-body'), listClose: $('b-mlist-close'),
     confirm: $('m-confirm'), confirmText: $('m-confirm-t'), confirmNo: $('b-mconfirm-no'), confirmYes: $('b-mconfirm-yes'), announce: (t) => announce(t) },
   onPersist: () => maybeRequestPersist(),
 });
