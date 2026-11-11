@@ -6,6 +6,7 @@ import { CLIP_ATTR } from './core/layout-scan.mjs';
 import { catalogueMessage } from './core/parts2.mjs';
 import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
 import { quoteJa } from './core/quote-ja.mjs';
+import { PREDICT_COUNT_STEP } from './core/predict-steps.mjs';
 import { ARTICLE_MESSAGES, articleMessage } from './core/article-messages.mjs';
 
 // 値にないときの既定（テーマの寸法の既定。kit/core/theme-metrics.mjs）：結論の行の上端・1 行の高さ・横の右の限り
@@ -249,6 +250,14 @@ export const MESSAGES = {
   templateText: { ja: (a) => `雛形の字が残っている：${a.list}。自分の内容に書き換える`, en: (a) => `template text left on the slide: ${a.listEn}. Replace it with your own content` },
   narrNote: { ja: (a) => `発表者への指示 ${a.t} の書式が正しくない（narration.md ${a.line} 行目）：{note:…} を } で閉じ、中に { や } を入れない`, en: (a) => `invalid stage direction ${a.t} (narration.md line ${a.line}): close {note:…} with } and do not put { or } inside` },
   narrMissing: { rule: 'R-narr-steps', ja: (a) => `この段階の口述原稿がない：narration.md のこのスライドの節に [${a.step}] の行を書く（その段階で現れるものについて話す）`, en: (a) => `no narration for this step: add a [${a.step}] line to this slide’s section of narration.md (about what appears at that step)` },
+  // 予想（m-predict）の答えが、数の棒と −1・＋1 の操作（パーツの段階 1）と同時かそれより前に開く（kit/core/predict-steps.mjs。answer-step が 1 以下）
+  predictAnswerWithCount: { rule: 'R-steps',
+    ja: () => `予想（m-predict）の答えが、人数を数える段階と同時に出ます。answer-step を ${PREDICT_COUNT_STEP + 1} 以上にして、数えてから答えを開いてください。`,
+    en: () => `The prediction (m-predict) shows its answer at the same step as the vote count. Set answer-step to ${PREDICT_COUNT_STEP + 1} or more so the class counts first, then sees the answer.` },
+  // 予想（m-predict）の steps が答えの段階（answer-step）より小さい：プレーヤーはパーツの段階を steps で止めるので、答えが出ない（kit/core/predict-steps.mjs）
+  predictAnswerNeverShown: { rule: 'R-steps',
+    ja: () => '予想（m-predict）の答えが出ません。steps が answer-step より小さくなっています。steps を answer-step 以上にしてください。',
+    en: () => 'The prediction (m-predict) never shows its answer: steps is smaller than answer-step. Set steps to answer-step or more.' },
   narrFormula: { rule: 'R-formula', ja: (a) => `口述原稿が式を読み上げている（「${a.t}」）：記号や演算子を書かず、式の意味を言葉で言う`, en: (a) => `the narration reads an equation aloud (“${a.t}”): say what it means in words, without symbols and operators` },
   narrLang: { ja: (a) => `口述原稿の言語（${a.lang}。${a.source === 'voice.json' ? 'voice.json の lang' : '発言の文字から'}）がスライドの言語（${a.deck}）と違う：式の読み上げと長い発言は、発言ごとにその言語の規則で見た`, en: (a) => `the narration language (${a.lang}, ${a.source === 'voice.json' ? 'from lang in voice.json' : 'from the text'}) differs from the slide language (${a.deck}): equations read aloud and long turns were checked with the rules of each turn's language` },
   turnLong: { ja: (a) => `1 回の発言が長い（${a.n} ${a.unit}）：2 つの発言か 2 つの段階に分けるとよい`, en: (a) => `a long turn (${a.n} ${a.unit === '字' ? 'characters' : 'words'}): consider splitting it into two turns or two steps` },

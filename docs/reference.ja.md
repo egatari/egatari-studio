@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=f592df9c454978c0 -->
+<!-- i18n: pair=reference.md sha256=5ffd48f1f3789949 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -450,6 +450,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 1.0 の語彙にない書き方（形式の仕様 §8.0）：色のクラス `blue`・`red`・`gray`（`term`・`emph`・`muted` にする）、`data-steps`・`data-anim`（ステップと動きは `data-step`・`data-at`・`draw`・パーツから決まる）、`<html data-mode="lecture">`（参加者が選ぶ「先のステップを薄く見せる」）—`legacyColorClass`・`legacyStepAttr`・`legacyLectureMode` | 警告 |
 | スライドへのリンク（`#<id>`・`#<id>:<ステップの鍵>`・`#N`）で、行き先のスライドがない・ステップが範囲の外・結論のないスライドへの `:concl`。`#N` のリンクと id のないスライドへのリンク。ない相手のファイルへの相対リンク（[contract §9](contract.ja.md#9-スライドへのリンク)） | エラー。警告。警告 |
 | パーツのデータが宣言した形（`static shape`）と合わない、またはパーツが描くときに例外を出した（`compData`：どのパーツの、どこが（場所・期待・実際）違うか、形と例。規格 R-components）。スライドのステップは `data-step` の要素と `.concl` からも数えるので、パーツが描けなくても台本が「スライドにないステップ」にならない | エラー |
+| 予想（`m-predict`）の答えが、人数を数えるステップと同時に開く（`predictAnswerWithCount`、規格 R-steps）：パーツは数の棒と −1・＋1 の操作をパーツのステップ 1 で出し、答え（✓・枠・note）を `answer-step` で開くので、`answer-step` が 1 以下だと数える前に答えが見える。値はパーツと同じ読み方（`Math.max(1, Math.round(+値) || 2)`）：属性なし・`0`・空・数でない字は既定の 2 で知らせない。`1`・`1.4`・負の数は 1。「answer-step を 2 以上に」と知らせる。原稿から読み（`kit/core/predict-steps.mjs`）、編集アプリの品質チェックも同じ関数。パーツ 1 つに 1 つ。修正依頼に入る | 警告 |
+| 予想（`m-predict`）の答えが出ない（`predictAnswerNeverShown`、規格 R-steps）：`steps` の属性（`+値` で読む）が上の答えのステップより小さい。プレーヤーはパーツを `steps` で止める。`steps` がなければ答えのステップと同じ。数でない `steps` はパーツのエラー（`compData`）に任せる。両方に当たるときはこちらだけを出す。「steps を answer-step 以上に」と知らせる。同じ関数で、編集アプリと修正依頼も上と同じ | 警告 |
 | コンソールのエラー（言葉だけ。スタックの行とファイルの場所・一時フォルダ・手元のサーバーの URL は除く） | エラー |
 | ステップ 0 で見えている本文 | 情報 |
 | タイトルが 26 字（全角）を超える（日本語）/ 60 文字を超える（英語） | エラー / 警告 |
@@ -613,6 +615,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 | `node tools/test-layout-tate.mjs [作業フォルダ]` | `default` と `kokugo` のテーマでの `layout-tate` のスライド：見出しの列・本文・結論の列・ページ番号が重ならずに置かれる、seek の決定性、品質チェックの規格、スライドの鍵と読める層が変わらない |
 | `node tools/test-check-colors.mjs [作業フォルダ]` | テーマの色の語彙の外の色（`colorOutside`）：値の種類ごとの決まり、原稿のどこを見るか、`tools/fixtures/check-colors/` の品質チェック（`var(--lit)`・じかに書いた予備を持つ `var(--obj-red, red)` などの物の色・役割の `color-mix()`・色相を保った相対色は出ない。色相を変えた `oklch` `rgb` `hsl` `lab` と、じかに書いた予備の値は情報として出て、修正依頼には入らない） |
 | `node tools/test-check-cards-hint.mjs [作業フォルダ]` | カードの提案（`cardsHint`）：3 つか 4 つの短い同じ重さの要点で出る。項目が 2 つ・5 つ、長い項目、長さの違う項目、入れ子の箇条書き、`ol`、パーツ、`static`、縦組み、表紙では出ない。情報だけで修正依頼に入らない |
+| `node tools/test-check-predict.mjs [作業フォルダ]` | 予想の警告（`predictAnswerWithCount`・`predictAnswerNeverShown`）：`answer-step` の読み方（`m-predict` と同じ）、前者は `1`・`-1`・`1.4` で出て、属性なし・`0`・`2`・`3`・`abc`・空では出ない。後者は `steps` が答えのステップより小さいときに出る（そのときは前者の代わり）。`npm run check` と編集アプリの道筋（`sourceFindings`）が同じ指摘を出す。修正依頼に R-steps と一緒に入る。日本語と英語の言葉 |
 | `node tools/test-themes.mjs [作業フォルダ] [--shots <フォルダ>]` | 同梱のどのテーマでも、サンプルの教材が組めて品質チェックを通る。役割の色のコントラスト・色覚の模擬・ペンの色（[テーマ](#テーマ)）。`tokens.css` の `look` の形が `kit/core/theme-shapes.mjs` と同じ。数字の表を出し、`--shots` ならテーマごとの 1 枚の画像も |
 | `node tools/test-fonts.mjs [作業フォルダ]` | 字体：選んだ字体だけが入る（`theme.json` の `fonts` か CSS の名指し）、英語の教材と日本語の教材の `<em>`・`<i>` の中のラテン文字の Source Sans 3 の斜体、ファイルに入っていない字体の `fontNotEmbedded` |
 | `node tools/pdf.mjs <組んだ.html> <出力.pdf>` | PDF。1 枚 1 ページ |

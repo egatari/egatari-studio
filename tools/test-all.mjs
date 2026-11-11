@@ -262,6 +262,8 @@ steps.push(
   ['test-check-fill', ['tools/test-check-fill.mjs', path.join(tmp, 'check-fill')]],
   // 同じ重さの短い要点だけの本文の提案（backlog #189、cardsHint。情報だけで、修正依頼に入らない）
   ['test-check-cards-hint', ['tools/test-check-cards-hint.mjs', path.join(tmp, 'check-cards-hint')]],
+  // 予想（m-predict）の答えが数の棒と同時に開く（predictAnswerWithCount）・steps が小さく答えが出ない（predictAnswerNeverShown）。R-steps の警告。コマンド版と編集アプリで同じ関数、修正依頼に入る
+  ['test-check-predict', ['tools/test-check-predict.mjs', path.join(tmp, 'check-predict')]],
   // 同じ状態を 2 回描いた画面の比べ方（kit/render-compare.mjs）：部品の DOM が同じなら縁の少しの揺れは許し、DOM の違い・大きな違いは失敗。品質チェックの D も
   ['test-render-compare', ['tools/test-render-compare.mjs', path.join(tmp, 'render-compare')]],
   // 動画の音声（render.mjs）：5 段階のチャープを --full で書き出し、継ぎ目の誤差 1 標本以内・跳びなし・積み上げた時間と 1 ms 以内・章とクリップの区間・背景の音楽。ffmpeg がなければ書き出しの部分を飛ばす（CI では tier2 が必ず走らせる）

@@ -1,7 +1,7 @@
 // 品質チェックのコマンド版（kit/check.mjs）と編集アプリの品質チェックが同じ指摘を出すこと（v0.6.9）
 //   node tools/test-check-parity.mjs [作業用のフォルダ]
 // 見本（tools/fixtures/check-parity）：en-rawmath（英語の教材に $…$ の数式が 4 枚残る。持ち主の報告：コマンド版は rawMath のエラーと R-formula の警告を出すのに、
-// 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない）。
+// 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない・答えが数と同時に開く m-predict・答えが出ない m-predict）。
 // 0. 静的な棚卸し：MESSAGES のどの code も IN_EDITOR・CLI_ONLY（CLI_ONLY_PREFIX）・EDITOR_ALIAS と BUILD_WARN の行き先のちょうど 1 つに入る。
 //    一覧が MESSAGES にない code を名指さない。IN_EDITOR の code は編集アプリの道筋のファイルに文字列として現れる（見本が出さない code も見る）
 // 1. コマンド版を --json で走らせ、見本が狙った code を出すこと
@@ -44,7 +44,7 @@ const dirOf = (f) => f.dir || path.join(FIX, f.name);
 const WANT = {
   'en-rawmath': ['rawMath', 'narrFormula', 'narrNote', 'narrOrphan', 'narrMissing', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'linkCount', 'legacyColorClass', 'colorOutside'],
   'en-stale': ['audioStale', 'rawMath'],
-  'ja-mix': ['desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing'],
+  'ja-mix': ['desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing', 'predictAnswerWithCount', 'predictAnswerNeverShown'],
 };
 
 // ---------------------------------------------------------------- 0. 許す一覧そのもの
@@ -151,7 +151,7 @@ try {
     const missing = cliCodes.filter((c) => !have.has(c) && !cliOnly(c));
     ok(!missing.length, `parity ${name}: every code the command line reports is in the editor's check, or listed in CLI_ONLY (${cliCodes.length} codes)` + (missing.length ? ': missing ' + missing.join(', ') : ''));
     // 同じ code はスライドも同じ（スライドごとの指摘：rawMath・desuMasu など、本文と台本と原稿から見るもの）
-    for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex']) {
+    for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex', 'predictAnswerWithCount', 'predictAnswerNeverShown']) {
       const a = CLI[name].filter((x) => x.code === code).map((x) => `${x.slide}:${x.sev}`).sort().join(' ');
       const b = results.filter((x) => x.code === code).map((x) => `${x.i === null ? null : x.i + 1}:${x.sev}`).sort().join(' ');
       if (a || b) ok(a === b, `parity ${name}: ${code} on the same slides with the same severity (cli “${a}”, editor “${b}”)`);

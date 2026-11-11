@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>品質チェックの見本</title>
 <!--
-  tools/test-check-parity.mjs の見本：日本語のデッキで、です・ます、句読点の混在、モーフの相手がない、旧来の鍵、data-steps など。
+  tools/test-check-parity.mjs の見本：日本語のデッキで、です・ます、句読点の混在、モーフの相手がない、旧来の鍵、data-steps、答えが数と同時に開く予想（m-predict の answer-step="1"）・答えが出ない予想（steps="1"）など。
 -->
 </head>
 <body>
@@ -42,6 +42,20 @@
 <section class="slide noconcl">
   <div class="body">
     <p>見出しのないスライド</p>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-predict">
+  <h2>予想してから答える</h2>
+  <div class="body">
+    <m-predict unit="人" answer-step="1" style="height:400px"><script type="application/json">{"question": "重い球と軽い球、どちらが先に落ちる？", "choices": [{"label": "重い球"}, {"label": "軽い球"}, {"label": "同時"}], "answer": 2, "counts": [14, 3, 9]}</script></m-predict>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-predict-steps">
+  <h2>答えが出ない予想</h2>
+  <div class="body">
+    <m-predict unit="人" steps="1" style="height:400px"><script type="application/json">{"question": "水と油、どちらが上に浮く？", "choices": [{"label": "水"}, {"label": "油"}], "answer": 1, "counts": [4, 11]}</script></m-predict>
   </div>
 </section>
 
