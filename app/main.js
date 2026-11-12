@@ -1288,9 +1288,9 @@ async function quickCheck() {
   const rules = S.lastRules = await checkRules(results);
   openPanel(T.checkTitle, [
     el('div', { id: 'check-panel', cls: 'sum', text: T.checkSummary(errs, warns) }),
-    el('p', { id: 'check-rules', cls: 'hint', text: T.checkRules(rules.summary) }),
     buildWarnBox(),
     el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, fixable) }),
+    el('p', { id: 'check-rules', cls: 'hint', text: T.checkRules(rules.summary) }),
     // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
     el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(fixable ? [llm.fixButton(results)] : [])]),
     ...items,

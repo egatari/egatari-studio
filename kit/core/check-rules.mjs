@@ -45,9 +45,10 @@ export const RULES = Object.freeze([
   { id: 'R-purpose', kind: 'authoring', phase: 'A 体裁', codes: ['cardsHint'] },
   { id: 'R-colors', kind: 'authoring', phase: 'C パレット', codes: ['colorOutside', 'textContrast', 'contrastLow'] },
   { id: 'R-balance', kind: 'authoring', phase: 'N 釣り合い', codes: ['balance'] },
-  { id: 'R-narr-steps', kind: 'authoring', phase: 'B 台本', codes: ['narrMissing', 'narrOrphan', 'narrNote'], applies: needs('narration', 'noNarration') },
+  // 台本がない教材にも、ステップごとに narrMissing が出る（台本を書くこと自体がこの決まり）。だから外さない。言語と確かめ直しの知らせも台本なしで出る
+  { id: 'R-narr-steps', kind: 'authoring', phase: 'B 台本', codes: ['narrMissing', 'narrOrphan', 'narrNote', 'narrLang', 'narrRecheck'] },
   { id: 'R-formula', kind: 'authoring', phase: 'B 台本', codes: ['narrFormula'], applies: needs('narration', 'noNarration') },
-  { id: 'R-reading', kind: 'authoring', phase: 'B 台本', codes: ['readingExpr', 'readingSeveral', 'narrLang', 'narrRecheck'], applies: needs('narration', 'noNarration') },
+  { id: 'R-reading', kind: 'authoring', phase: 'B 台本', codes: ['readingExpr', 'readingSeveral'], applies: needs('narration', 'noNarration') },
   { id: 'R-dialogue', kind: 'authoring', phase: 'B 台本', codes: ['turnLong'], applies: needs('narration', 'noNarration') },
   { id: 'R-marks', kind: 'authoring', phase: 'F 強調', codes: ['markMissing'], applies: needs('marks', 'noMarks') },
   { id: 'R-steps', kind: 'authoring', phase: 'E タイムライン', codes: ['predictAnswerWithCount', 'predictAnswerNeverShown'], applies: (f) => ((f.parts || []).includes('m-predict') ? null : 'noParts') },
@@ -108,7 +109,7 @@ export function account({ results, visited = null, facts = {}, inEditor = false 
       state = reason ? 'excused' : counts.error ? 'failed' : 'checked';
     }
     if ((state === 'excused' || state === 'skipped') && codes.length) problems.push(`${r.id}: ${state} (${reason}) but reported ${codes.join(', ')}`);
-    return { ...base, state, ...(reason ? { reason } : {}), counts, codes };
+    return { ...base, state, reason: reason || null, counts, codes };
   });
   const unset = rules.filter((r) => r.state === null).map((r) => r.id);
   const summary = { checked: 0, excused: 0, skipped: 0, failed: 0, total: rules.length };

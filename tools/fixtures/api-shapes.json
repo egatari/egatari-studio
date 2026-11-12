@@ -20,7 +20,32 @@
         "step": "null|string",
         "title": "null|string"
       }
-    ]
+    ],
+    "ruleSet": "string",
+    "rules": [
+      {
+        "codes": [
+          "string"
+        ],
+        "counts": {
+          "error": "number",
+          "info": "number",
+          "warning": "number"
+        },
+        "id": "string",
+        "kind": "string",
+        "reason": "null|string",
+        "state": "string"
+      }
+    ],
+    "status": "string",
+    "summary": {
+      "checked": "number",
+      "excused": "number",
+      "failed": "number",
+      "skipped": "number",
+      "total": "number"
+    }
   },
   "buildFixRequest": {
     "params": "{ problems, deck, narration = '', lang = 'en', limit = 40000, ...rest }",

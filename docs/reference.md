@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=d7630cafeca96e90 -->
+<!-- i18n: pair=reference.ja.md sha256=c72adb6f11c79b64 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -439,12 +439,12 @@ The result also accounts for every rule of the checker (`kit/core/check-rules.mj
 
 ```json
 {"ok": true, "status": "ok", "ruleSet": "c754293364b5",
- "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
+ "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "reason": null, "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
            {"id": "C-audio", "kind": "checker", "state": "excused", "reason": "noAudio", "counts": {"error": 0, "warning": 0, "info": 0}, "codes": []}],
  "summary": {"checked": 24, "excused": 5, "skipped": 0, "failed": 0, "total": 29}}
 ```
 
-`codes` lists the codes seen in this run. `ruleSet` changes only when the list of rules or their codes changes. If a rule ends in none of the states, or a code turns up in an excused or skipped rule, the check is `"status": "incomplete"` (exit code 3, with `unset` and `problems`): it did not look at everything, so it is not a pass either. Scripts should treat exit codes 2 and 3 and these two statuses as a failure; `kit/core/check-result.mjs` (`parseCheck`) does this. The text output ends with one line: `quality check items: 24 done, 5 not applicable, 0 not run, 0 failed (of 29)`.
+`reason` is `null` for `checked` and `failed`. `codes` lists the codes seen in this run. `ruleSet` changes only when the list of rules or their codes changes. If a rule ends in none of the states, or a code turns up in an excused or skipped rule, the check is `"status": "incomplete"` (exit code 3, with `unset` and `problems`): it did not look at everything, so it is not a pass either. Scripts should treat exit codes 2 and 3 and these two statuses as a failure; `kit/core/check-result.mjs` (`parseCheck`) does this. The text output ends with one line: `quality check items: 24 done, 5 not applicable, 0 not run, 0 failed (of 29)`.
 
 | Field | Meaning |
 |---|---|

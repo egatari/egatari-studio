@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=8788da38b4b0f274 -->
+<!-- i18n: pair=reference.md sha256=47edd700c3fa9fe8 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -439,12 +439,12 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 ```json
 {"ok": true, "status": "ok", "ruleSet": "c754293364b5",
- "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
+ "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "reason": null, "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
            {"id": "C-audio", "kind": "checker", "state": "excused", "reason": "noAudio", "counts": {"error": 0, "warning": 0, "info": 0}, "codes": []}],
  "summary": {"checked": 24, "excused": 5, "skipped": 0, "failed": 0, "total": 29}}
 ```
 
-`codes` はその回に出た code。`ruleSet` は決まりの一覧かその code が変わったときだけ変わる。どの状態にもならない決まりが残るか、`excused`・`skipped` の決まりに code が出たときは `"status": "incomplete"`（終了コード 3。`unset` と `problems` が付く）：全部を見ていないので、これも合格ではない。スクリプトは終了コード 2・3 とこの 2 つの status を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。文字の出力の最後に 1 行：`品質チェックの項目：見た 24　当てはまらない 5　見られなかった 0　落ちた 0（29 のうち）`。
+`reason` は `checked`・`failed` では `null`。`codes` はその回に出た code。`ruleSet` は決まりの一覧かその code が変わったときだけ変わる。どの状態にもならない決まりが残るか、`excused`・`skipped` の決まりに code が出たときは `"status": "incomplete"`（終了コード 3。`unset` と `problems` が付く）：全部を見ていないので、これも合格ではない。スクリプトは終了コード 2・3 とこの 2 つの status を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。文字の出力の最後に 1 行：`品質チェックの項目：見た 24　当てはまらない 5　見られなかった 0　落ちた 0（29 のうち）`。
 
 | 欄 | 意味 |
 |---|---|

@@ -32,7 +32,7 @@
     "C-listing": ["step0", "palette", "timelineTotal", "slideLength"]
   },
   "alsoAllowed": {
-    "R-reading": ["narrRecheck"],
+    "R-narr-steps": ["narrRecheck"],
     "C-links": ["linkCount"],
     "C-attach": ["attachList"],
     "C-book": ["articleSummary"],
