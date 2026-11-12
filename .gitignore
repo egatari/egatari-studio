@@ -15,6 +15,8 @@ tts/voices/*
 !tts/voices/bob_en.wav
 **/__pycache__/
 **/audio/
+# 品質チェックの決まりの試験の教材：古くなった音声の一覧（C-audio の audioStale を仕込む。音声のファイルはない）
+!tools/fixtures/seeded-defects/ja/audio/
 **/video/
 **/bundle/
 # dev-server notes, local settings and secrets

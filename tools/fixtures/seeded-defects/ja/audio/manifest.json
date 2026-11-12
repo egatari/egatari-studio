@@ -1,0 +1,5 @@
+{
+  "segments": {
+    "古い音声:0": { "kind": "tts", "file": "seg_stale.wav", "inputHash": null }
+  }
+}
