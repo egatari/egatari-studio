@@ -191,12 +191,12 @@ export const MESSAGES = {
   conclOverflow: { rule: 'R-concl', ja: () => '結論の行が枠からはみ出す：結論の行を短くして 1 行に収める', en: () => 'the conclusion line overflows its box: shorten it to one line' },
   // 結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）はテーマの寸法（metrics）が既定と違うときだけ値にある（なければ既定の値）
   bodyBottom: { rule: 'R-fit',
-    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、パーツを ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
-    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}): cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the part ${o} px lower, or split the slide in two (do not shrink text)`; } },
-  bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > ${a.lim ?? DEF_RIGHT}px）：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > ${a.lim ?? DEF_RIGHT}px): break the long equation or table, or rebalance the .cols widths` },
-  tateBodyHead: { rule: 'R-fit', ja: (a) => `本文が見出しの列に重なる（${a.px}px > ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the heading column (${a.px}px > ${a.lim}px): cut the vertical text or split the slide` },
-  bodyConclCol: { rule: 'R-fit', ja: (a) => `本文が結論の列に重なる（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the conclusion column (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
-  bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
+    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）${partNote(a, true)}：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、パーツを ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
+    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''})${partNote(a, false)}: cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the part ${o} px lower, or split the slide in two (do not shrink text)`; } },
+  bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > ${a.lim ?? DEF_RIGHT}px）${partNote(a, true)}：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > ${a.lim ?? DEF_RIGHT}px)${partNote(a, false)}: break the long equation or table, or rebalance the .cols widths` },
+  tateBodyHead: { rule: 'R-fit', ja: (a) => `本文が見出しの列に重なる（${a.px}px > ${a.lim}px）${partNote(a, true)}：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the heading column (${a.px}px > ${a.lim}px)${partNote(a, false)}: cut the vertical text or split the slide` },
+  bodyConclCol: { rule: 'R-fit', ja: (a) => `本文が結論の列に重なる（${a.px}px < ${a.lim}px）${partNote(a, true)}：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the conclusion column (${a.px}px < ${a.lim}px)${partNote(a, false)}: cut the vertical text or split the slide` },
+  bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）${partNote(a, true)}：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px)${partNote(a, false)}: cut the vertical text or split the slide` },
   // テーマの寸法の宣言（theme.json の metrics。docs/contract.md §12）。教材に 1 回。テーマの知らせなので規格の名前はない
   themeMetricsDrift: {
     ja: (a) => `テーマ「${a.theme}」の${a.declared ? '寸法の宣言（theme.json の metrics）と描いた体裁の箱が違う' : '体裁の箱が既定の位置から動いているのに、寸法の宣言（theme.json の metrics）がない'}（${driftList(a.items, 'ja')}）。本文の場所の限りは${a.declared ? '宣言' : '既定'}の値で決めるので、はみ出しの指摘がずれる：${driftHow(a, 'ja')}`,
@@ -396,6 +396,11 @@ function compHow(a, ja) {
   if (a.kind === 'attr' || a.kind === 'attrJson') return ex ? (ja ? `例：${a.attr}='${a.example}'` : `example: ${a.attr}='${a.example}'`) : '';
   if (a.shape) return ja ? `データの形は ${a.shape}${ex ? `。${ex}` : ''}` : `the data is ${a.shape}${ex ? `; ${ex}` : ''}`;
   return ex;
+}
+// 本文のはみ出しの原因がパーツのとき（a.part。kit/core/layout-scan.mjs）、そのパーツを言う（backlog #196）
+function partNote(a, ja) {
+  if (!a.part) return '';
+  return ja ? `。はみ出しているのは${compName(a.part, true)}` : `; ${compName(a.part, false)} sticks out`;
 }
 function compName(a, ja) {
   const n = a.index > 0 ? (ja ? `（${a.index + 1} 個目）` : ` (#${a.index + 1})`) : '';
