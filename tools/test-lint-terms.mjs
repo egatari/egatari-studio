@@ -57,6 +57,14 @@ ok('avoidPatterns: a pattern is an avoid rule of its term, in docs too with docs
   const r = runProse(root, other);
   assert.deepEqual(r.hits.map((h) => h.file), ['src/pages/index.astro']);
   assert.deepEqual(runProse(root, other, ['README*.md']).files, ['README.md']);
+  // --exclude と --allow（そのリポジトリの許し。file は --prose のフォルダからの道。使われない許しは知らせる）
+  fs.writeFileSync(path.join(other, 'src', 'pages', 'b.astro'), '<p>この版</p>\n');
+  assert.deepEqual(runProse(root, other, [], { exclude: ['src/pages/index.astro'] }).hits.map((h) => h.file), ['src/pages/b.astro']);
+  const allowFile = path.join(other, 'allow.json');
+  fs.writeFileSync(allowFile, JSON.stringify({ allow: [{ file: 'src/pages/b.astro', line: 'この版', term: 'software-version', reason: 'test' }, { file: 'nowhere.md', line: 'x', term: 'software-version', reason: 'unused' }] }));
+  const ra = runProse(root, other, [], { allowFile });
+  assert.deepEqual(ra.hits.map((h) => h.file), ['src/pages/index.astro']);
+  assert.deepEqual(ra.unused.map((a) => a.file), ['nowhere.md']);
   fs.rmSync(other, { recursive: true, force: true });
 });
 fs.rmSync(root, { recursive: true, force: true });

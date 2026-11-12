@@ -1,6 +1,6 @@
 // 画面の言葉の検査（npm run lint:terms）：用語集（docs/terms.json）の avoid の言葉が、使う人の目に触れる文字列に残っていないかを見る
 //   node tools/lint-terms.mjs [--root <dir>] [--json] [--counts]
-//   node tools/lint-terms.mjs --prose <ほかのリポジトリのフォルダ> [--glob <パターン>]…（下の --prose）
+//   node tools/lint-terms.mjs --prose <ほかのリポジトリのフォルダ> [--glob <パターン>]… [--exclude <パターン>]… [--allow <許しの JSON>]（下の --prose）
 // 言葉の一覧はこのファイルに書かない：docs/terms.json（言葉）と docs/terms-allow.json（正当な使い方と、照らし方の設定）だけを読む。
 // 見る所（使う人の目に触れる文字列）：
 //   - 画面のコード（app/*.js・play/*.js・play/*.mjs（Viewer）・kit/tools.js・kit/check-messages.mjs・kit/presenter.js・kit/deck.js・kit/live.js・kit/core/live-results.mjs・kit/core/part-labels.mjs・
@@ -37,6 +37,11 @@ const JSON_OUT = args.includes('--json');
 const pi = args.indexOf('--prose');
 const PROSE_DIR = pi >= 0 ? path.resolve(args[pi + 1]) : null;
 const PROSE_GLOBS = args.flatMap((a, k) => (a === '--glob' ? [args[k + 1]] : []));
+// --exclude <パターン>（何度でも）：--prose で見ない所（写した圧縮済みのスクリプトなど）。--allow <ファイル>：そのリポジトリの許し（terms-allow.json と同じ形の allow・uiOnly・docsToo。
+//   file のパターンは --prose のフォルダからの道）。このリポジトリの許しに足して使う
+const PROSE_EXCLUDES = args.flatMap((a, k) => (a === '--exclude' ? [args[k + 1]] : []));
+const ai = args.indexOf('--allow');
+const EXTRA_ALLOW = ai >= 0 ? path.resolve(args[ai + 1]) : null;
 const COUNTS = args.includes('--counts');
 
 
@@ -212,10 +217,16 @@ function wordRe(word) {
   return new RegExp(`(?<![A-Za-z0-9_\\-./#{])${head}${esc(word.slice(1))}(?:s|es)?(?![A-Za-z0-9_\\-/=(])(?!\\.[a-z])`, 'g');
 }
 
-export function loadRules(root) {
+export function loadRules(root, extraAllow = null) {
   const terms = JSON.parse(fs.readFileSync(path.join(root, 'docs/terms.json'), 'utf8')).terms;
   const allowFile = path.join(root, 'docs/terms-allow.json');
   const cfg = fs.existsSync(allowFile) ? JSON.parse(fs.readFileSync(allowFile, 'utf8')) : {};
+  if (extraAllow) {   // --allow：ほかのリポジトリの許しを足す（allow は後ろに並べる。uiOnly・docsToo は合わせる）
+    const x = JSON.parse(fs.readFileSync(extraAllow, 'utf8'));
+    cfg.allow = [...(cfg.allow || []), ...(x.allow || [])];
+    cfg.uiOnly = [...(cfg.uiOnly || []), ...(x.uiOnly || [])];
+    cfg.docsToo = [...(cfg.docsToo || []), ...(x.docsToo || [])];
+  }
   const uiOnly = new Set(cfg.uiOnly || []), docsToo = new Set(cfg.docsToo || []);
   const canon = [];
   for (const t of terms) for (const s of [...surfaces(t.ja), ...surfaces(t.en)]) canon.push({ s, re: wordRe(s), id: t.id });
@@ -455,12 +466,15 @@ export function checkPairs(root, file, rules) {
 
 // ほかのディレクトリの文書：--prose（上）。地の文の照らし方は README・docs と同じ。コードの文字列は画面の文字列として照らす
 export const OTHER_GLOBS = ['**/*.md', '**/*.mdx', '**/*.astro', '**/*.html', '**/*.js', '**/*.mjs', '**/*.ts'];
-export function runProse(root, dir, globs = []) {
-  const rules = loadRules(root);
-  const files = listFiles(dir, globs.length ? globs : OTHER_GLOBS);
+export function runProse(root, dir, globs = [], { exclude = [], allowFile = null } = {}) {
+  const rules = loadRules(root, allowFile);
+  const files = listFiles(dir, globs.length ? globs : OTHER_GLOBS, exclude);
   const hits = [];
   for (const f of files) hits.push(...lintFile(dir, f, rules));
-  return { rules, files, hits, pairWarnings: [], unused: [] };
+  // 使われなかった許しは、足したファイルのものだけ知らせる（このリポジトリの許しは、このリポジトリの照らし方で確かめる）
+  const own = allowFile ? (JSON.parse(fs.readFileSync(allowFile, 'utf8')).allow || []).length : 0;
+  const unused = rules.allow.slice(rules.allow.length - own).filter((a) => !a.used && !a.keep);
+  return { rules, files, hits, pairWarnings: [], unused };
 }
 
 export function run(root) {
@@ -477,7 +491,7 @@ export function run(root) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { rules, files, hits, pairWarnings, unused } = PROSE_DIR ? runProse(ROOT, PROSE_DIR, PROSE_GLOBS) : run(ROOT);
+  const { rules, files, hits, pairWarnings, unused } = PROSE_DIR ? runProse(ROOT, PROSE_DIR, PROSE_GLOBS, { exclude: PROSE_EXCLUDES, allowFile: EXTRA_ALLOW }) : run(ROOT);
   if (JSON_OUT) {
     console.log(JSON.stringify({ hits: hits.map(({ a, ...h }) => h), pairWarnings, unusedAllow: unused.map(({ fre, pre, used, ...a }) => a) }, null, 1));
   } else if (COUNTS) {
@@ -487,7 +501,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   } else {
     for (const h of hits) console.log(`${h.file}:${h.line}:${h.col + 1}  「${h.found}」  ${h.id} → ${h.to}`);
     for (const w of pairWarnings) console.log(`${w.file}:${w.line}  ${w.msg}`);
-    for (const a of unused) console.log(`warning: docs/terms-allow.json: allow entry #${a.k} (${a.file}, ${a.term}) matched nothing; remove it if it is no longer needed`);
+    for (const a of unused) console.log(`warning: ${PROSE_DIR && EXTRA_ALLOW ? path.relative(process.cwd(), EXTRA_ALLOW) : 'docs/terms-allow.json'}: allow entry (${a.file}, ${a.term}) matched nothing; remove it if it is no longer needed`);
   }
   const missing = pairWarnings.filter((w) => w.kind === 'missing');
   const termW = pairWarnings.filter((w) => w.kind === 'term');
