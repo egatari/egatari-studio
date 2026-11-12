@@ -57,6 +57,8 @@ if (!Number.isInteger(jobs) || jobs < 1) { console.error('test-all: --jobs must 
 const tmp = process.env.MOTION_TEST_ARTIFACTS
   ? (fs.mkdirSync(process.env.MOTION_TEST_ARTIFACTS, { recursive: true }), path.resolve(process.env.MOTION_TEST_ARTIFACTS))
   : fs.mkdtempSync(path.join(os.tmpdir(), 'motion-test-'));
+// 組んだサンプルの置き場を、この回の段で分け合う（tools/examples-portable.mjs の buildExamples。鍵は入力の中身。1 つの試験だけを回すときは変数がなく、いつも組む）
+if (!process.env.EGATARI_EXAMPLES_CACHE) process.env.EGATARI_EXAMPLES_CACHE = path.join(tmp, 'examples-cache');
 const rel = (...p) => path.join(ROOT, ...p);
 const MIN = rel('examples/minimal/out/deck.html');
 const TMLR = rel('examples/tmlr2026-calibration/out/deck.html');
@@ -264,6 +266,7 @@ steps.push(
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 品質チェックの決まりの台帳（#202）：どの code もちょうど 1 つの決まりに入る・checked／excused／skipped／failed・incomplete（ブラウザなし）
   ['test-check-rules', ['tools/test-check-rules.mjs']],
+  ['test-examples-cache', ['tools/test-examples-cache.mjs']],
   // 種をまいた教材（#202）：決まりの 1 つずつに入れた誤りを、品質チェックが本当に見つけるか（ヘッドレス Chrome）
   ['test-seeded-defects', ['tools/test-seeded-defects.mjs']],
   // 本文の釣り合い（R-balance の段 1、balance。情報だけで、修正依頼に入らない）

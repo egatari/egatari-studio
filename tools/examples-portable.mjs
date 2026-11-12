@@ -79,9 +79,64 @@ function copyCover(name, outDir) {
   return file;
 }
 
+// 1 回の試験の間だけ使う組んだサンプルの置き場（tools/test-all.mjs が EGATARI_EXAMPLES_CACHE に一時のフォルダを渡す。d5 11/12）。
+// サンプルを組むと 17 本で 70 秒前後かかり、編集アプリの試験の多くが build-app を自分で呼ぶので、同じ入力なら 1 回だけ組んで写す。
+// 鍵は入力の中身の sha256（examples/ の原稿・組み立てが使う kit/・vendor/・themes/・package-lock.json と、名前・covers）：
+// どれか 1 バイトでも変われば鍵が変わり、組み直す（古いサンプルで試験が通ることはない）。変数がなければ置き場を使わず、いつも組む
+export const EXAMPLE_INPUTS = ['examples', 'kit', 'vendor', 'themes', 'package-lock.json'];
+export function examplesKey({ root = ROOT, names = EXAMPLES, covers = false, inputs = EXAMPLE_INPUTS } = {}) {
+  const h = crypto.createHash('sha256').update(JSON.stringify({ names, covers }));
+  const walk = (rel) => {
+    const abs = path.join(root, rel);
+    let st;
+    try { st = fs.lstatSync(abs); } catch { h.update(`missing ${rel}\n`); return; }
+    if (st.isDirectory()) {
+      for (const n of fs.readdirSync(abs).sort()) { if (n === 'out' || n.startsWith('.')) continue; walk(path.join(rel, n)); }
+    } else if (st.isFile()) { h.update(`${rel.split(path.sep).join('/')}\n`); h.update(fs.readFileSync(abs)); }
+  };
+  for (const r of inputs) walk(r);
+  return h.digest('hex').slice(0, 32);
+}
+
 // covers：サムネイルを横に置く（編集アプリの dist/examples/。リリースの添付（tools/release-assets.mjs）には置かない）
 export async function buildExamples(outDir, { names = EXAMPLES, log = () => {}, covers = false } = {}) {
   fs.mkdirSync(outDir, { recursive: true });
+  const cacheRoot = process.env.EGATARI_EXAMPLES_CACHE;
+  const cached = cacheRoot ? path.join(cacheRoot, examplesKey({ names, covers })) : null;
+  const done = () => cached && fs.existsSync(path.join(cached, 'list.json'));
+  const copy = () => {
+    fs.cpSync(cached, outDir, { recursive: true, filter: (f) => path.relative(cached, f) !== 'list.json' });
+    log(`  examples: copied from the shared build ${path.basename(cached)}`);
+    return JSON.parse(fs.readFileSync(path.join(cached, 'list.json'), 'utf8'));
+  };
+  if (done()) return copy();
+  // 同時に始まった試験は、先に組み始めたもの（印のフォルダ .lock を作れたもの）を待つ。印が消えても置き場にない（組めなかった）なら自分で組む。
+  // 待つのは 20 分まで（TEST_TIMEOUT_SCALE 倍）。過ぎたら自分で組む
+  let mine = false;
+  if (cached) {
+    fs.mkdirSync(cacheRoot, { recursive: true });
+    try { fs.mkdirSync(cached + '.lock'); mine = true; } catch {
+      const until = Date.now() + 20 * 60000 * (Number(process.env.TEST_TIMEOUT_SCALE) > 0 ? Number(process.env.TEST_TIMEOUT_SCALE) : 1);
+      while (!done() && fs.existsSync(cached + '.lock') && Date.now() < until) await new Promise((r) => setTimeout(r, 500));
+      if (done()) return copy();
+    }
+  }
+  let list;
+  try { list = await buildExamplesNow(outDir, { names, log, covers }); } catch (e) { if (mine) fs.rmSync(cached + '.lock', { recursive: true, force: true }); throw e; }
+  if (cached) {
+    // 同時に組んだほかの試験と競っても壊れないように、別の名前に写してから名前を変える（先に置かれていればこちらを捨てる）
+    const part = `${cached}.part-${process.pid}-${Date.now()}`;
+    try {
+      fs.cpSync(outDir, part, { recursive: true });
+      fs.writeFileSync(path.join(part, 'list.json'), JSON.stringify(list));
+      fs.renameSync(part, cached);
+    } catch { fs.rmSync(part, { recursive: true, force: true }); }
+    if (mine) fs.rmSync(cached + '.lock', { recursive: true, force: true });
+  }
+  return list;
+}
+
+async function buildExamplesNow(outDir, { names, log, covers }) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-examples-'));
   const list = [];
   try {

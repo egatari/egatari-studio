@@ -30,6 +30,8 @@ const SKIP = [
 const ALLOW = [
   ['tools/examples-portable.mjs', "JSON.parse(fs.readFileSync(file, 'utf8'))", 'サンプルの組み立て：リポジトリの examples/<名前>/sample.json を読む（backlog #130）'],
   ['tools/examples-portable.mjs', 'readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url)))', 'サンプルの組み立て：リポジトリの components2.lock.json と、写した manifest（パーツの札と段）を読む'],
+  ['tools/examples-portable.mjs', 'h.update(fs.readFileSync(abs))', '組んだサンプルの置き場の鍵：リポジトリの examples/・kit/・vendor/・themes/・package-lock.json の中身の sha256（試験の間だけ）'],
+  ['tools/examples-portable.mjs', "JSON.parse(fs.readFileSync(path.join(cached, 'list.json'), 'utf8'))", '組んだサンプルの置き場（EGATARI_EXAMPLES_CACHE。この回の試験が自分で書いた一時のフォルダ）の一覧を読む'],
   ['tools/examples-portable.mjs', "fs.readFileSync(path.join(copy, 'deck.html'), 'utf8')", 'サンプルの組み立て：自分で作った一時の写しの deck.html から、縦書きと投票の id（ラベル）を読む'],
   ['tools/examples-sync.mjs', 'readFileSync', 'サンプルの写し：リポジトリの examples/ の index.json・SOURCE.json・写したファイル、egatari.org の lessons.json と covers（管理者が指す、手元の決まったコミットの写し）を読む'],
   ['tools/example-covers.mjs', 'readFileSync', 'サンプルのサムネイル：リポジトリの examples/ のファイルと _covers、管理者が指すサイトと選んだ絵のフォルダの webp を読む（ハッシュと写し）'],
