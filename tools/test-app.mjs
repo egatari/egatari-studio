@@ -2119,6 +2119,39 @@ try {
       await pq.waitForFunction(() => /入っていません/.test(document.getElementById('model-cache-info').textContent));
       ok(JSON.stringify(await pq.evaluate(() => caches.keys())) === '["other-cache"]' && await pq.isDisabled('#b-model-delete'), 'model cache: Delete models removes the model caches only');
       await pq.evaluate(() => caches.delete('other-cache'));
+      // 再読み込みで作業フォルダに戻る（backlog #204）：最近の項目はいま開いたフォルダ deck。許可の状態は sessionStorage の perm204 でまねる（読み込み直しても残る）
+      await pq.addInitScript(() => {
+        const H = window.FileSystemHandle && window.FileSystemHandle.prototype;
+        try { if (!H || !sessionStorage.getItem('perm204')) return; } catch { return; }   // sandbox の枠（プレビュー）では sessionStorage が読めない
+        H.queryPermission = async () => sessionStorage.getItem('perm204');
+        H.requestPermission = async () => {
+          sessionStorage.setItem('asked204', String(Number(sessionStorage.getItem('asked204') || 0) + 1));
+          const a = sessionStorage.getItem('answer204') || 'granted';
+          if (a === 'granted') sessionStorage.setItem('perm204', 'granted');
+          return a;
+        };
+      });
+      const asked204 = () => pq.evaluate(() => Number(sessionStorage.getItem('asked204') || 0));
+      const opened204 = () => pq.waitForFunction(() => window.__APP_TEST && window.__APP_TEST.state().loads > 0 && document.getElementById('welcome').hidden, null, { timeout: scaled(20000) });
+      // (1) 許可がもうある（Chrome の「常に許可」）：再読み込みで、許可を求めずにそのフォルダを開き直す
+      await pq.evaluate(() => { sessionStorage.setItem('perm204', 'granted'); sessionStorage.removeItem('asked204'); });
+      await pq.reload();
+      await opened204();
+      ok((await asked204()) === 0, 'reload: a working folder whose permission is still granted reopens by itself, without asking');
+      // (2) 許可が切れている（prompt）：開き直さず、最初の画面の上に「続きを開く：deck」。押すまで許可を求めない。断れば最初の画面のまま、許せば開く
+      await pq.evaluate(() => { sessionStorage.setItem('perm204', 'prompt'); sessionStorage.setItem('answer204', 'denied'); });
+      await pq.reload();
+      await pq.waitForSelector('#b-continue');
+      ok(await pq.isVisible('#welcome') && (await pq.textContent('#b-continue')) === '続きを開く：deck' && (await asked204()) === 0, 'reload without permission: the first screen offers 「続きを開く：deck」 and does not ask by itself');
+      await shot(pq, 'welcome-continue.png');
+      await pq.click('#b-continue');
+      await pq.waitForFunction(() => /許可/.test(document.getElementById('toast').textContent || ''), null, { timeout: scaled(10000) });
+      ok((await asked204()) === 1 && await pq.isVisible('#welcome'), 'continue: when the permission is refused, the first screen stays and a toast says so');
+      await pq.evaluate(() => sessionStorage.setItem('answer204', 'granted'));
+      await pq.click('#b-continue');
+      await opened204();
+      ok((await asked204()) === 2, 'continue: when the permission is given, the folder opens');
+      await pq.evaluate(() => { for (const k of ['perm204', 'answer204', 'asked204']) sessionStorage.removeItem(k); });
       await pq.close();
       // Safari・iPad の形（フォルダとファイルを選ぶ画面がない）：新しく作る道（貼り付け）と、保存がダウンロードになる注意
       const ps = await browser.newPage({ locale: 'ja-JP' });

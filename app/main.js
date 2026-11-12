@@ -158,6 +158,18 @@ async function showWelcome() {
   showExamples();
   showDrafts();
   const list = await recentList();
+  // 続きを開く（backlog #204）：最近の項目がフォルダなら、最初の画面の上に 1 つのボタン。押した中で許可を求める（押さずには求めない）。断られたらこの画面のまま
+  const cont = $('w-continue');
+  if (cont) {
+    const last = list[0];
+    cont.innerHTML = '';
+    cont.hidden = !(SUPPORTED && last && last.handle && last.handle.kind === 'directory');
+    if (!cont.hidden) cont.append(el('button', { type: 'button', id: 'b-continue', text: T.continueFolder(last.name), onclick: async () => {
+      try { if (!(await hasPermission(last.handle)) && !(await askPermission(last.handle))) { toast(T.noPermission, true); return; } }
+      catch { toast(T.cannotOpen, true); return; }
+      openFolder(last.handle);
+    } }));
+  }
   // 最近のファイル：なくても見出しは出す（「まだありません」）
   $('recent').hidden = false; $('recent-none').hidden = list.length > 0;
   // ファイルを選ぶ画面がない（Safari・iPad など）：保存はダウンロードになり、保存のたびに新しいファイルができる
@@ -2538,6 +2550,8 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
   await initThemeFolder().catch(() => {});
   let reopen = false;
   try { reopen = sessionStorage.getItem('motion-editor-reopen') === '1'; sessionStorage.removeItem('motion-editor-reopen'); } catch { /* 使えない環境 */ }
+  // 再読み込み（Cmd+R など）でも、許可がもうある（Chrome の「常に許可」）ときだけ開き直す（backlog #204）。許可を求めるのは「続きを開く」を押したときだけ
+  try { reopen = reopen || performance.getEntriesByType('navigation')[0]?.type === 'reload'; } catch { /* 使えない環境 */ }
   if (reopen) {
     const r = (await recentList())[0];
     if (r && r.handle.kind === 'directory' && (await hasPermission(r.handle).catch(() => false))) { openFolder(r.handle); return; }

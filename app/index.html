@@ -113,6 +113,8 @@
       <p data-t="welcomeLead"></p>
     </div>
     <div id="unsupported" class="note bad" hidden data-t="unsupported"></div>
+    <!-- 続きを開く（backlog #204）：最近の項目がフォルダなら、押して許可を求めて開く（再読み込みや時間を置いて戻ったとき） -->
+    <div id="w-continue" hidden></div>
     <!-- 新規作成（チャットの AI の道 1 本）を主に。アイコンは「…」の試案（返事を書いている点。最初の点は緋色） -->
     <div id="new-block" class="card new-block">
       <button type="button" id="w-new" class="pri big"><svg class="ai-icon" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M7 4H4v9M17 20h3v-9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="7.7" cy="12" r="2.0" class="sun"/><circle cx="12" cy="12" r="2.0" fill="currentColor"/><circle cx="16.3" cy="12" r="2.0" fill="currentColor"/></svg><span data-t="newCmd"></span></button>
