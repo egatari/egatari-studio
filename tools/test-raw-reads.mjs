@@ -74,6 +74,7 @@ const ALLOW = [
   ['server/shell.js', 'r.json()', '開発サーバー自身の API の答え（同じ origin・合言葉つき）'],
   ['app/main.js', 'await r.arrayBuffer()', 'アプリに同梱した字の分割ファイルを、アプリ自身の配信元から fetch する'],
   ['tools/lint-terms.mjs', "fs.readFileSync(path.join(root, 'docs/terms.json'), 'utf8')", '画面の言葉の検査：リポジトリの用語集（docs/terms.json）を読む（開発者の道具）'],
+  ['tools/lint-terms.mjs', "fs.readFileSync(extraAllow, 'utf8')", '画面の言葉の検査：--allow で渡したほかのリポジトリの許しの JSON を読む（開発者の道具。サイトの CI が渡す）'],
   ['tools/lint-terms.mjs', "fs.readFileSync(allowFile, 'utf8')", '画面の言葉の検査：リポジトリの docs/terms-allow.json を読む（開発者の道具）'],
   ['tools/lint-terms.mjs', "fs.readFileSync(path.join(root, file), 'utf8')", '画面の言葉の検査：リポジトリの画面のコード・docs・skills を読む（開発者の道具。原稿のフォルダは読まない）'],
   ['tools/i18n-pairs.mjs', "fs.readFileSync(path.join(root, f), 'utf8')", 'リポジトリの文書の組（X.md と X.ja.md。node_modules・vendor・out・dist の外）を読む（開発者の道具。原稿のフォルダは読まない）'],
