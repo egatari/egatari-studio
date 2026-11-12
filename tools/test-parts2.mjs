@@ -628,14 +628,31 @@ for (const [code, what] of [
   // m-flow 2.0.4（離れた箱の間の矢印は行き先の向かい合う辺の中点で終わる。shift で辺からはみ出すと [flow] の知らせ）と m-predict 2.0.5（answer-step の説明だけ）。
   // ほかのパーツは版も index.js も 2.6.0 のまま。既定はこちら
   const v262 = lock2.catalogues['2.6.2'];
-  ok(lock2.default === '2.6.2' && v262 && v262.tag === 'v2.6.2' && v262.tarballSha256 === '59d9eac1b576f6ffd8d91921a22820dd4d66cf87ef76b4c22d38e23ea42535b8' && v262.manifestSha256 === '672aebc3ef1cdbc296e752caaa2a607bfcffb4cace1d5833eb183e6ff40dc4c5',
-    '2.6.2: the default, pinned to the released tarball and manifest (v2.6.2)');
+  // リリース済みとして凍結（v0.6.10 の既定。v0.6.11 から既定は 2.7.0 へ）
+  ok(v262 && v262.tag === 'v2.6.2' && v262.tarballSha256 === '59d9eac1b576f6ffd8d91921a22820dd4d66cf87ef76b4c22d38e23ea42535b8' && v262.manifestSha256 === '672aebc3ef1cdbc296e752caaa2a607bfcffb4cace1d5833eb183e6ff40dc4c5',
+    '2.6.2: pinned to the released tarball and manifest (v2.6.2)');
   const bumped262 = Object.keys(v260.parts).filter((n) => v262.parts[n] !== v260.parts[n]).sort();
   ok(bumped262.join() === 'flow,predict' && v262.parts.flow === '2.0.4' && v262.parts.predict === '2.0.5' && Object.keys(v262.parts).length === Object.keys(v260.parts).length,
     `2.6.2: exactly m-flow 2.0.4 and m-predict 2.0.5 get new versions, no part added or removed (${bumped262.join(', ')})`);
   ok(/leaves the side of its box/.test(fs.readFileSync(c2(v262, 'flow', 'index.js'), 'utf8')), '2.6.2: m-flow 2.0.4 reports an edge pushed off its side by shift');
   const js262 = Object.keys(v262.content).filter((n) => !bumped262.includes(n) && fs.existsSync(c2(v262, n, 'index.js')) && fs.readFileSync(c2(v262, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v260, n, 'index.js'), 'utf8'));
   ok(js262.length === 0, `2.6.2: no other part's index.js changes without a version bump (${js262.join(', ') || 'none'})`);
+  // 2.7.0（リリース b22df061）：説明の言葉を用語集にそろえた版（README の 部品→パーツ・口述原稿→台本・段階→ステップ など）。
+  // 小さい版が上がるのは base 1.2.0（ramp・rampStops、mtext の *）、m-heatmap・m-map-japan・m-map-world 2.1.0（ramp）、m-code 2.1.0、m-predict 2.1.0（labels.correct、画面の言葉が ctx.lang に従う）。
+  // ほかのパーツは patch（base 1.2.0 が要る）。中を持つ部品だけの 8 つ（heatmap-core・icons・shape など）は README だけが変わり、版も index.js も 2.6.2 のまま。パーツの増減はない。既定はこちら
+  const v270 = lock2.catalogues['2.7.0'];
+  ok(lock2.default === '2.7.0' && v270 && v270.tag === 'v2.7.0' && v270.tarballSha256 === '1c2f95aa502bec039737bf1d184942fb5627de0a74e97ca9822f31571c8e6c44' && v270.manifestSha256 === '7c485e1807912b7f8f9e9557db7eef5bcb7b0f0d99954aa98a1878de3df25179',
+    '2.7.0: the default, pinned to the released tarball and manifest (v2.7.0)');
+  const names270 = Object.keys(v270.parts).sort(), names262 = Object.keys(v262.parts).sort();
+  ok(names270.join() === names262.join(), `2.7.0: no part added or removed (${names270.length})`);
+  const minor270 = names270.filter((n) => v262.parts[n].split('.')[1] !== v270.parts[n].split('.')[1]);
+  ok(minor270.join() === 'base,code,heatmap,map-japan,map-world,predict' && v270.parts.base === '1.2.0' && ['code', 'heatmap', 'map-japan', 'map-world', 'predict'].every((n) => v270.parts[n] === '2.1.0'),
+    `2.7.0: the minor bumps are exactly base 1.2.0 and m-code, m-heatmap, m-map-japan, m-map-world, m-predict 2.1.0 (${minor270.join(', ')})`);
+  const same270 = names270.filter((n) => v262.parts[n] === v270.parts[n]);
+  ok(same270.join() === 'boxplot-core,codetree-core,expr,heatmap-core,hist-core,icons,kanbun-core,shape', `2.7.0: only the eight libraries keep their version (${same270.join(', ')})`);
+  const js270 = same270.filter((n) => fs.existsSync(c2(v270, n, 'index.js')) && fs.readFileSync(c2(v270, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v262, n, 'index.js'), 'utf8'));
+  ok(js270.length === 0, `2.7.0: the libraries that keep their version keep their index.js (${js270.join(', ') || 'none'})`);
+  ok(/labels\.correct/.test(fs.readFileSync(c2(v270, 'predict', 'README.md'), 'utf8')), '2.7.0: m-predict 2.1.0 documents labels.correct');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

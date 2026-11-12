@@ -58,9 +58,9 @@ export const largestPair = (pairs) => Object.entries(pairs).reduce((m, x) => (!m
 
 // ---------------------------------------------------------------- 既定のカタログ（パーツライブラリ 2.0）
 // → {version, tag, source, manifest, parts: {名前: 版}}
-export function catalogue() {
+export function catalogue(version) {
   const lock2 = JSON.parse(read('components2.lock.json'));
-  const v = lock2.default, cat = lock2.catalogues[v];
+  const v = version || lock2.default, cat = lock2.catalogues[v];
   if (!cat) throw new Error(`components2.lock.json: default ${v} is not a catalogue`);
   return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts, lock2 };
 }
@@ -694,7 +694,7 @@ ${common}
 //   opts.readmeEn：部品庫の README.en.md を差し替える（試験用。false はどれも読まない。{タグ: 字 | null}）。戻り値の enParts は英語の説明を使った部品
 export function generate(opts = {}) {
   const warnings = [];
-  const cat = catalogue();
+  const cat = catalogue(opts.catalogue);  // opts.catalogue：既定でない版の部品庫で作る（試験が前の版の材料と比べるため）
   const SETS = setsOf(cat.manifest);
   for (const s of SETS) if (!fs.existsSync(rel('tools', 'llm-guide', 'sets', s + '.md'))) throw new Error(`tools/llm-guide/sets/${s}.md is missing (the part set ${s} is in manifest-${cat.version}.json)`);
   const all = components(cat, SETS, opts.readmeEn);

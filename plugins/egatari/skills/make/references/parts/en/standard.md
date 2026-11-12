@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: dec25cea
+Instruction version: 303b7661
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Instruction version: dec25cea
 | `<m-kpi>` | KPI cards by step; count-up, change arrow, note | largest card step (default 1 card = 1 step) | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
 | `<m-menu>` | Grid of slide-link cards (contents); plain <a href="#<slide id>">; visited mark | ceil(cards / per-step) (per-step="0": 0) | child `<a href>` links (not JSON) |
 | `<m-pie>` | Pie/donut; labels inside big slices, leader lines for small | 1 (all at once); per-step n slices; or slice step | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — the slices go in "slices" (not "data" or "groups"); value is a number, not a percentage string; the slices are drawn clockwise from 12 o'clock in the written order |
-| `<m-predict>` | Predict, reveal; votes as bars, answer framed | 0 question, 1 bars, answer-step (2) | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?}` — choices are objects {"label": …} (not strings); answer is the 0-based index of the right choice; counts (optional) has one whole number ≥ 0 per choice |
+| `<m-predict>` | Predict, reveal; votes as bars, answer framed | 0 question, 1 bars, answer-step (2) | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices are objects {"label": …} (not strings); answer is the 0-based index of the right choice; counts (optional) has one whole number ≥ 0 per choice |
 | `<m-quad>` | 2-axis positioning map (4 quadrants); points one per step | largest step / to.step (1 point = 1 step) | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | Scatter plot; point series by step, then a trend line (least squares or 2 points) | series + trend (default 1 series = 1 step, lines 1 step) | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — points are [x, y] or {"x", "y", "label"}; axes go in attributes (xr="[0,10]" xl="…"); trend is "linear" or {"fit": "linear", "label": "…"} or {"pts": [[x0, y0], [x1, y1]]} |
 | `<m-timeline>` | Timeline; events one by one; periods as bands, overlaps stacked; end exclusive ("1912" = start of 1912) | event count (default 1 per step in time order; per-step n each; `node` step wins) | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
@@ -337,7 +337,7 @@ Relation of two quantities (heat vs sales). Points, then trend.
   - Clipped to the plot; lines outside reported. Vertical `pts`: `{a}` `{b}` empty; `{r}` only for fits
 - Axes: `xr` `yr` range, `xt` `yt` ticks, `xf` `yf` decimals, `xl` `yl` titles; range/ticks auto if omitted
 - `variant`: `fade` (default), `sweep` (left to right), `grow` (points grow, line from the middle)
-- Lecture view (`ctx.preview`): later points and lines faint
+- Show later steps faintly (`ctx.preview`): later points and lines faint
 
 ### `<m-timeline>`
 
@@ -376,7 +376,7 @@ Layout:
 - With periods: round ticks; event boxes all above the axis
 - Steps: time order, periods and events together; the axis comes with the first
 - `variant`: `fade` (default), `draw` (lines first, bands drawn), `grow` (boxes grow, bands stretch); same steps and end
-- Lecture view (`ctx.preview`): later items faint
+- Show later steps faintly (`ctx.preview`): later items faint
 - `cues(k)`: start times of 2nd+ items in a step (for `{cue}`)
 
 ### `<m-tree>`
@@ -402,7 +402,7 @@ Parent–child structures (org charts, taxonomies, outlines). No coordinates; la
 - Lines `--muted`, 3 px; `tone: emph` box: `--emph-tint` fill
 - Fit (~440 px high): ~8 four-character boxes per level (`down`), ~7 (`right`); ~5 levels. More leaves: 2 staggered rows (~16 / ~11), then 2-line names. Text ≥ 24 px; overflow spills, reported. Too many: split
 - `variant`: `fade` (default), `draw` (lines first), `grow`
-- Lecture view (`ctx.preview`): later parts faint
+- Show later steps faintly (`ctx.preview`): later parts faint
 
 ### `<m-venn>`
 

@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示の版：dec25cea
+指示の版：303b7661
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -9,13 +9,13 @@
 | `<m-cards>` | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、ステップごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |
 | `<m-compare>` | 2 つ（3 つまで）を横に並べて比べる表。一方の列、もう一方の列、それから行ごとの違い | 列の数 + 1（違いのステップ。diff も better もなければ列の数だけ） | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
 | `<m-curves>` | 同じ座標軸に線を 1 本ずつ引く（線の名前は凡例でなく線の端に直接書く） | step の最大（既定は系列の数） | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],area?:any[],areaLabel?:str\|any[],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — データは配列そのもの（{"series": […]} ではない）。軸は属性に書く（xr="[0,10]" xl="…"）。式の欄は f で、変数は x（fn・u ではない） |
-| `<m-cycle>` | 循環の図。ステップの箱を円の上に 12 時から時計回りに並べ、円に沿った矢印でつなぐ（最後から最初へ戻る矢印も） | ステップの数（既定は 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
+| `<m-cycle>` | 循環の図。項目の箱を円の上に 12 時から時計回りに並べ、円に沿った矢印でつなぐ（最後から最初へ戻る矢印も） | ステップの数（既定は 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | 大きな数字の札（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | 札の step の最大（既定は札 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
 | `<m-menu>` | スライドへのリンクの札を格子に並べる（目次・単元の選び方）。札はふつうの <a href="#<スライドの id>">、行ったスライドの札に「見た」の印 | ceil(札の数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
-| `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
+| `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
 | `<m-quad>` | 2 軸の位置づけ（ポジショニングマップ・SWOT 風の 4 象限）に、点をステップごとに 1 つずつ置く | 点の step と to.step の最大（既定は点 1 つ = 1 ステップ） | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | 散布図。点の組（系列）をステップごとに出し、そのあと傾向の線（最小二乗の直線か、書いた 2 点）を引く | 系列の数 ＋ 傾向の線（既定は系列 1 つ = 1 ステップ、そのあと線をまとめて 1 ステップ。系列・線の step で直接） | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — 点は [x, y] か {"x", "y", "label"}。軸は属性に書く（xr="[0,10]" xl="…"）。trend は "linear" か {"fit": "linear", "label": "…"} か {"pts": [[x0, y0], [x1, y1]]} |
 | `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は帯にして、重なる期間は段を分けて積む。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
@@ -154,20 +154,20 @@
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
-| `per-step` | number | `1` | 1 ステップに出すステップ（箱）の数（0 = 全部をステップ 1 で） |
+| `per-step` | number | `1` | 1 ステップに出す箱の数（0 = 全部をステップ 1 で） |
 | `size` | number | `26` | 箱の字の大きさ（px。入らなければ 24 まで縮める） |
 
-PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で回り続けるステップを見せるときに使う。
-座標は書かない。ステップの中身を配列の順に書けば、パーツが並べる（共通の決まり §2）。
+PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で回り続ける流れを見せるときに使う。
+座標は書かない。項目の中身を配列の順に書けば、パーツが並べる（共通の決まり §2）。
 
 子の JSON の並び：`center` と `edges` は省ける。
 
-- `nodes`：ステップ（3〜8 個を想定）。配列の順に回る。12 時の位置から時計回りに置き、となりのステップへ円に沿った矢印を引く。最後から最初へ戻る矢印は自動で引く
+- `nodes`：項目（3〜8 個を想定）。配列の順に回る。12 時の位置から時計回りに置き、となりの項目へ円に沿った矢印を引く。最後から最初へ戻る矢印は自動で引く
   - `label`（`\n` で改行）か `tex`（KaTeX）、`note`（箱の中の 2 行目に小さく、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`、`id`
-- `center`：真ん中の名前（`{"label": "PDCA", "note": "…"}`）。最初のステップと一緒に出る（`center.step` で変えられる）。`center` はオブジェクト。`m-pie` の `center` は字（文字列）なので取り違えない
+- `center`：真ん中の名前（`{"label": "PDCA", "note": "…"}`）。最初の項目と一緒に出る（`center.step` で変えられる）。`center` はオブジェクト。`m-pie` の `center` は字（文字列）なので取り違えない
   - `label`（`\n` で改行）か `tex`（KaTeX）、`note`（箱の**中**の最後の行に小さく、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`
   - `tone: emph` の箱は、地が `--emph-tint`、枠と字が `--emph`
-- `edges`：ほかのつながり（`from` `to` はステップの `id`、`label` `tone` `dash` `step`）。箱の縁から縁への破線の矢印
+- `edges`：ほかのつながり（`from` `to` は項目の `id`、`label` `tone` `dash` `step`）。箱の縁から縁への破線の矢印
 - 矢印の色は `--muted`、3 px（`edges` も `tone` がなければ `--muted`）
 
 並べ方：
@@ -176,7 +176,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - ステップ：既定は 1 ステップに 1 つ。入ってくる矢印はそのステップの箱と一緒に出る。最後から最初へ戻る矢印は、最後のステップの箱が出たあとに引く
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱が動くのは 12 px まで（箱の中心で測る。大きさは 0.92 倍から、`fade` と同じ）、時間も `fade` の長さの中（共通の決まり §1.2）
-- 授業の表示（`ctx.preview`）：後のステップの箱と矢印をテーマの薄さで見せる
+- 先のステップを薄く見せる表示（`ctx.preview`）：後のステップの箱と矢印をテーマの薄さで見せる
 - `cues(k)`：同じステップに 2 つ以上の箱があれば、2 つ目からの開始時刻を返す
 
 ### `<m-fishbone>`
@@ -205,7 +205,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱と字が動くのは 12 px まで（箱の中心で測る）、時間も `fade` の長さの中（共通の決まり §1.2）
 - 入る大きさの目安（1280×720 の本文、高さ 440 px ほど）：大骨 1 本あたりの行（原因と細かい原因の数）は 3 つまで（短ければ 4 つ）、大骨は 4〜6 本、原因は 10 字ほどまで。字は 24 px より小さくならず、入らない分は要素の箱から上下・左右にはみ出す（足りない px を `ctx.report` で知らせ、Studio の品質チェックに出る）。多いときは図を分けるか、原因を短く言い換える
-- 授業の表示（`ctx.preview`）では、後のステップの骨と字をテーマの薄さで出しておく
+- 先のステップを薄く見せる表示（`ctx.preview`）では、後のステップの骨と字をテーマの薄さで出しておく
 
 ### `<m-flow>`
 
@@ -297,7 +297,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - ステップ：既定は全部をステップ 1 で出す。`per-step="1"` で 1 切れずつ（台本が 1 切れずつ話すときだけにする。そのときは全体の輪郭を初めから薄く見せる）。切れの `step` を書けばそれが勝つ
 - 字の置き場所：切れの中に収まれば中に（濃い切れでは背景の色の字）、収まらなければ外の左右の列に引き出し線で書く。外の字が縦に重ならないように並べ直し、字が片側だけなら字と円をまとめて真ん中に寄せる
 - 見せ方（`variant`）：`fade`・`sweep`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
-- 授業の表示（`ctx.preview`）では、先のステップの切れをテーマの薄さで見せる
+- 先のステップを薄く見せる表示（`ctx.preview`）では、先のステップの切れをテーマの薄さで見せる
 
 ### `<m-predict>`
 
@@ -315,6 +315,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - 選択肢は 2〜6。動画・印刷・最初の表示は `counts`（無ければ 0）。同じスライドにいるあいだは数が残る（答えのステップでも、戻っても）
 - 台本は `counts` の数で書き、数える所は `{note:ここで手を挙げてもらう}` と書く（丸かっこは読み上げられる）
 - `poll="p1"`：v0.6.3 は結果公開の送信元がなく、`ctx.live.poll(id)` は null。見る人・作者の数を使う
+- `labels.correct`（省略可）：正解の印の文字を変える（既定「✓ 正解」）
 
 ### `<m-quad>`
 
@@ -370,7 +371,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
   - `pts` の縦の線では `{a}` `{b}`（傾き・切片）は空になる。`{r}` は当てはめた直線だけ
 - 軸の属性：`xr` `yr`（範囲）、`xt` `yt`（目盛り）、`xf` `yf`（目盛りの小数桁）、`xl` `yl`（軸の名前）。`xr` `yr` を書かなければデータから切りのよい範囲を、`xt` `yt` を書かなければ目盛りを決める
 - 見せ方（`variant`）：`fade`・`sweep`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
-- 授業の表示（`ctx.preview`）では、先のステップの点と線をテーマの薄さで見せる
+- 先のステップを薄く見せる表示（`ctx.preview`）では、先のステップの点と線をテーマの薄さで見せる
 
 ### `<m-timeline>`
 
@@ -413,7 +414,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - 線：軸は `--muted` の 5 px（図の中心の線として 1 本だけ太い）。軸の目盛りと目盛りの字（図の字の大きさ）も `--muted`。段のまとまりの間の区切りの線だけ `--line`。箱から軸への線と `edges` は `--muted` の 3 px
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱が動くのは 12 px まで（箱の中心で測る）、時間も `fade` の長さの中（共通の決まり §1.2）
-- 授業の表示（`ctx.preview`）：後のステップの出来事・期間をテーマの薄さで見せる
+- 先のステップを薄く見せる表示（`ctx.preview`）：後のステップの出来事・期間をテーマの薄さで見せる
 - `cues(k)`：同じステップに 2 つ以上あれば、2 つ目からの開始時刻を返す（台本の `{cue}` に合わせられる）
 
 ### `<m-tree>`
@@ -445,7 +446,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
   さらに入らなければ名前を 2 行に折る。字は 24 px より小さくならず、入らない分は要素の箱からはみ出す（足りない px を `ctx.report` で知らせ、Studio の品質チェックに出る）。多いときは木を分ける
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱が動くのは 12 px まで（箱の中心で測る）、時間も `fade` の長さの中（共通の決まり §1.2）
-- 授業の表示（`ctx.preview`）では、後のステップの箱と線をテーマの薄さで出しておく
+- 先のステップを薄く見せる表示（`ctx.preview`）では、後のステップの箱と線をテーマの薄さで出しておく
 
 ### `<m-venn>`
 

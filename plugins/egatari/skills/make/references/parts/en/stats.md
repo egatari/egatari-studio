@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # stats parts
 
-Instruction version: dec25cea
+Instruction version: 303b7661
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
@@ -49,7 +49,7 @@ Data example (child `<script type="application/json">`): `{"rows":["ねこ","い
 | `scale` | string | `"sequential"` | sequential か diverging（center を地の色に 2 色） |
 | `center` | number | `0` | diverging の真ん中の値 |
 | `range` | json | `null` | 色の範囲 [最小, 最大] |
-| `tone` | string | `"term"` | 濃い側の色：term・emph・accent2 |
+| `tone` | string | `"term"` | 濃い側の色：term・emph・accent2。書かなければテーマの色の階調（なければ term） |
 | `lowtone` | string | `"emph"` | diverging の center より下の色 |
 | `normalize` | string | `"none"` | row：行ごとの割合（混同行列） |
 | `show` | string | `"percent"` | normalize=row の数字：percent・count・both |
