@@ -1,0 +1,42 @@
+{
+  "_comment": "種をまいた教材（backlog #202）の期待：決まりごとに、必ず出る code。alsoAllowed は種に付いて出てよい code（一覧の情報など）。ほかの code が出たら落ちる。tools/test-seeded-defects.mjs が読む",
+  "rules": {
+    "R-fit": ["bodyBottom"],
+    "R-title": ["titleLong"],
+    "R-concl": ["conclLong"],
+    "R-headings": ["secHeading"],
+    "R-style": ["desuMasu"],
+    "R-math": ["rawMath"],
+    "R-purpose": ["cardsHint"],
+    "R-colors": ["colorOutside"],
+    "R-balance": ["balance"],
+    "R-narr-steps": ["narrMissing"],
+    "R-formula": ["narrFormula"],
+    "R-reading": ["readingExpr"],
+    "R-dialogue": ["turnLong"],
+    "R-marks": ["markMissing"],
+    "R-steps": ["predictAnswerWithCount"],
+    "R-components": ["compData"],
+    "C-build": ["extensionVersion"],
+    "C-ids": ["legacyDataKey"],
+    "C-vocab": ["legacyColorClass"],
+    "C-template": ["narrPlaceholder"],
+    "C-font": ["fontNotCovered"],
+    "C-links": ["linkUnknown"],
+    "C-audio": ["audioStale"],
+    "C-attach": ["attachNoRole"],
+    "C-book": ["articleFootnoteMissing"],
+    "C-a11y": ["imgAlt"],
+    "C-morph": ["morphNoSrc"],
+    "C-repro": ["compOrder"],
+    "C-listing": ["step0", "palette", "timelineTotal", "slideLength"]
+  },
+  "alsoAllowed": {
+    "R-reading": ["narrRecheck"],
+    "C-links": ["linkCount"],
+    "C-attach": ["attachList"],
+    "C-book": ["articleSummary"],
+    "C-repro": ["compOrderDetail"],
+    "C-listing": ["marks"]
+  }
+}

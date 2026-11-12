@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>種をまいた教材</title>
+<!--
+  品質チェックの種まきの教材（backlog #202、tools/test-seeded-defects.mjs）。決まり（kit/core/check-rules.mjs の RULES）の 1 つずつに、
+  わかっている誤りを 1 つずつ入れる。誤りが互いを隠さないよう、できるだけ 1 枚のスライドに 1 つ。どの誤りがどの決まりに当たるかは expected.json
+-->
+<style>
+/* R-colors：テーマの語彙の外の色（colorOutside） */
+.seed-border { border-bottom: 2px solid #123456; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static">
+  <div class="venue">品質チェックの試験</div>
+  <h1>種をまいた教材</h1>
+  <div class="au">試験の教材</div>
+</section>
+
+<!-- R-fit：本文が下にはみ出す（bodyBottom） -->
+<section class="slide noconcl">
+  <h2>はみ出す本文</h2>
+  <div class="body">
+    <p>1 行目の文</p><p>2 行目の文</p><p>3 行目の文</p><p>4 行目の文</p><p>5 行目の文</p><p>6 行目の文</p>
+    <p>7 行目の文</p><p>8 行目の文</p><p>9 行目の文</p><p>10 行目の文</p><p>11 行目の文</p><p>12 行目の文</p>
+    <p>13 行目の文</p><p>14 行目の文</p><p>15 行目の文</p><p>16 行目の文</p>
+  </div>
+</section>
+
+<!-- R-title：見出しが長すぎる（titleLong） -->
+<section class="slide noconcl">
+  <h2>この見出しはとても長くて二十六字の限りを大きく超えてしまっている</h2>
+  <div class="body"><p>見出しだけが長い</p></div>
+</section>
+
+<!-- R-concl：結論の行が長すぎる（conclLong） -->
+<section class="slide">
+  <h2>長い結論の行</h2>
+  <div class="body"><p>結論の行だけが長い</p></div>
+  <div class="concl"><span>⇒ この結論の行はとても長くて、三十五字という結論の行の限りを少し超えている</span></div>
+</section>
+
+<!-- R-headings：章の扉の題を h2 で書いた（secHeading） -->
+<section class="slide sec noconcl static">
+  <h2>章の扉の題</h2>
+</section>
+
+<!-- R-style：スライドに です・ます（desuMasu） -->
+<section class="slide noconcl">
+  <h2>文体のそろわないスライド</h2>
+  <div class="body"><p>この行は丁寧な文体です。</p></div>
+</section>
+
+<!-- R-math：式の区切りのない式（rawMath） -->
+<section class="slide noconcl">
+  <h2>区切りのない式</h2>
+  <div class="body"><p>面積は $x^2 + y^2$ で求める</p></div>
+</section>
+
+<!-- R-purpose：短くそろった 3 項目だけのリスト（cardsHint） -->
+<section class="slide noconcl">
+  <h2>カードに向くリスト</h2>
+  <div class="body">
+    <ul><li>計算が速い</li><li>実装が簡単</li><li>説明しやすい</li></ul>
+  </div>
+</section>
+
+<!-- R-colors：テーマの語彙の外の色は <style> の .seed-border。このスライドはそれを使うだけ -->
+<section class="slide noconcl">
+  <h2>じかに書いた色</h2>
+  <div class="body"><p class="seed-border">下線の色をじかに書いた</p></div>
+</section>
+
+<!-- R-balance：図が上に寄り、下が大きく空く（balance） -->
+<section class="slide noconcl">
+  <h2>上に寄った図</h2>
+  <div class="body">
+    <svg width="1100" height="120" viewBox="0 0 1100 120" aria-label="横長の帯"><rect x="0" y="0" width="1100" height="120" style="fill:var(--term)"/></svg>
+  </div>
+</section>
+
+<!-- R-narr-steps：段階 1 の台本がない（narrMissing） -->
+<section class="slide noconcl">
+  <h2>台本の抜けた段階</h2>
+  <div class="body"><p>最初の文</p><p data-step="1">段階 1 の文</p></div>
+</section>
+
+<!-- R-formula：台本で式を読む（narrFormula。誤りは narration.md） -->
+<section class="slide noconcl">
+  <h2>式を読む台本</h2>
+  <div class="body"><p>和の関係</p></div>
+</section>
+
+<!-- R-reading：読みの指定に式を書く（readingExpr。誤りは narration.md） -->
+<section class="slide noconcl">
+  <h2>式に付けた読み</h2>
+  <div class="body"><p>学習率の補数</p></div>
+</section>
+
+<!-- R-dialogue：1 つの発言が長すぎる（turnLong。誤りは narration.md） -->
+<section class="slide noconcl">
+  <h2>長すぎる発言</h2>
+  <div class="body"><p>長く話す</p></div>
+</section>
+
+<!-- R-marks：台本の {mark:…} の目印がない（markMissing） -->
+<section class="slide noconcl">
+  <h2>目印のない強調</h2>
+  <div class="body"><p data-mark="here">目印はここにある</p></div>
+</section>
+
+<!-- R-steps：予想の答えが数の棒と同時に出る（predictAnswerWithCount） -->
+<section class="slide noconcl">
+  <h2>早すぎる答え</h2>
+  <div class="body">
+    <m-predict style="height:330px" unit="人" answer-step="1" aria-label="予想の投票。正解は B（人数は架空）">
+      <script type="application/json">{"question": "どれが正しい？", "choices": [{"label": "A"}, {"label": "B"}], "answer": 1, "counts": [3, 7], "note": "B が正しい（人数は架空）"}</script>
+    </m-predict>
+  </div>
+</section>
+
+<!-- R-components：パーツのデータが壊れている（compData） -->
+<section class="slide noconcl">
+  <h2>壊れたデータ</h2>
+  <div class="body">
+    <m-bars style="height:330px" aria-label="壊れたデータの棒グラフ"><script type="application/json">{"groups": 7}</script></m-bars>
+  </div>
+</section>
+
+<!-- C-ids：手書きの data-key で決まる鍵（legacyDataKey） -->
+<section class="slide noconcl" data-key="oldkey">
+  <h2>古い鍵のスライド</h2>
+  <div class="body"><p>id の代わりに data-key</p></div>
+</section>
+
+<!-- C-vocab：色の名前のクラス（legacyColorClass） -->
+<section class="slide noconcl">
+  <h2>古い色のクラス</h2>
+  <div class="body"><p>ここは <span class="red">赤い語</span> を使う</p></div>
+</section>
+
+<!-- C-template：台本に仮の行が残る（narrPlaceholder。誤りは narration.md） -->
+<section class="slide noconcl">
+  <h2>仮の台本</h2>
+  <div class="body"><p>台本を書き忘れた</p></div>
+</section>
+
+<!-- C-font：字体にない字（fontNotCovered） -->
+<section class="slide noconcl">
+  <h2>字体にない字</h2>
+  <div class="body"><p>象形文字 𓀀 を置く</p></div>
+</section>
+
+<!-- C-links：行き先のないリンク（linkUnknown） -->
+<section class="slide noconcl">
+  <h2>行き先のないリンク</h2>
+  <div class="body"><p><a href="#s-nowhere">ないスライドへ</a></p></div>
+</section>
+
+<!-- C-audio：古い音声（audioStale。誤りは audio/manifest.json） -->
+<section class="slide noconcl">
+  <h2>古い音声</h2>
+  <div class="body"><p>音声が古い</p></div>
+</section>
+
+<!-- C-a11y：alt のない画像（imgAlt） -->
+<section class="slide noconcl">
+  <h2>名前のない画像</h2>
+  <div class="body"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'/%3E" width="40" height="40"></div>
+</section>
+
+<!-- C-morph：モーフの元のスライドがない（morphNoSrc） -->
+<section class="slide noconcl" data-morph="s-nosuch">
+  <h2>元のないモーフ</h2>
+  <div class="body"><p data-id="m1">滑ってこない</p></div>
+</section>
+
+<!-- C-repro：呼び出し順で絵が変わるパーツ（compOrder。components/tally） -->
+<section class="slide noconcl">
+  <h2>順に頼るパーツ</h2>
+  <div class="body">
+    <m-tally aria-label="描いた回数" style="height:80px"></m-tally>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

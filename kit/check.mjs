@@ -48,6 +48,8 @@ import { normalizeKey, noteProblems } from './narration.mjs';
 import { readingProblems, orphanSteps, orphanDetail, formulaLike, formulaText, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { partReportFinding, message, where, ruleOf } from './check-messages.mjs';
+import { account, ruleSetText, factsFromSource } from './core/check-rules.mjs';
+import { createHash } from 'node:crypto';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { scanBalance } from './fill-scan.mjs';
@@ -121,7 +123,10 @@ catch (e) {
       sev: 'error', code: e.code, rule: ruleOf(e.code, data), data,
       msg: where(ml, { n: null }) + (ml === 'en' ? ': ' : '：') + message(ml, e.code, data),
     }));
-    if (asJson) console.log(JSON.stringify({ ok: false, lang: ml, counts: { error: findings.length, warn: 0, info: 0 }, results: findings }, null, 2));
+    // 組めないので、ほかの決まりは見ていない（incomplete。終了コードは教材の誤りの 1 のまま）
+    const acc0 = account({ results: findings.map((f) => ({ sev: f.sev, code: f.code })), visited: new Set(['読み込み']) });
+    if (asJson) console.log(JSON.stringify({ ok: false, status: acc0.status, lang: ml, counts: { error: findings.length, warn: 0, info: 0 }, results: findings,
+      ruleSet: createHash('sha256').update(ruleSetText()).digest('hex').slice(0, 12), rules: acc0.rules, summary: acc0.summary, unset: acc0.unset, problems: acc0.problems }, null, 2));
     else for (const f of findings) console.log(`[${ml === 'en' ? 'error' : 'エラー'}] ${cliHints(f.msg)}`);
     await new Promise((resolve) => process.stdout.write('', resolve));
     process.exit(1);
@@ -308,7 +313,10 @@ const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 // コンソールのエラーとページの例外は、読み込み直後だけでなく検査の全体（後の seek・再現性の確認・開き直し）を通して集め、最後にまとめて報告する
 const consoleErrors = [];
+// 通った検査の段（kit/core/check-rules.mjs の決まりの phase。通らなかった段の決まりは incomplete）
+const visited = new Set();
 let phase = '読み込み';
+visited.add(phase);
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(`[${phase}] ${m.text()}`); });
 page.on('pageerror', (e) => consoleErrors.push(`[${phase}] ${e.message}`));
 await page.goto(url);
@@ -361,7 +369,7 @@ for (const r of compErrors) {
 }
 
 // ================================================================ J. スライドへのリンク
-phase = 'J リンク';
+phase = 'J リンク'; visited.add(phase);
 {
   const links = await page.evaluate(() => DECK.slides.flatMap((s, i) => [...s.querySelectorAll('a[href]')].map((a) => {
     const href = a.getAttribute('href'), f = DECK.linkFragment(a);
@@ -395,7 +403,7 @@ phase = 'J リンク';
 
 // ================================================================ M. 本文（article.md・article/<名前>.md、format spec §9C.8）
 // 部分集合の外の書き方・名前・章の決まり・相互参照・解答・用語・引用の鍵・画像・data-article。ステップへのリンクの行き先は再生器（DECK.resolveFragment）で確かめる
-phase = 'M 本文';
+phase = 'M 本文'; visited.add(phase);
 if (hasArticle(src)) {
   const { loadArticle, stepLinksOf, articleLinkReport } = await import('./core/article-page.mjs');
   const { validateArticle, stepResolver, STEP_PROBE } = await import('./core/article.mjs');
@@ -423,7 +431,7 @@ if (hasArticle(src)) {
 }
 
 // ================================================================ A. 体裁の検査
-phase = 'A 体裁';
+phase = 'A 体裁'; visited.add(phase);
 // 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
 await page.evaluate(`window.__layoutScan = ${layoutScan}`);
 await page.evaluate(`window.__findRawMath = ${findRawMath}`);
@@ -509,14 +517,14 @@ await collectPartReports();
 // 本文に図（部品・svg・img・table・.katex-display）があり、上に強く寄り、図の下に大きな空きが片寄るとき知らせる（縦組みは右に寄り図の左が空くとき）。
 // 字だけのスライドは知らせない（上にそろえて始めるのが決まり）。表紙・章の扉・static は測らない。
 // 結論の行（.concl）は本文の外なので撮らない。知らせは情報だけ（エラー・警告の数、終了コード、修正依頼には入らない）
-phase = 'N 釣り合い';
+phase = 'N 釣り合い'; visited.add(phase);
 for (const f of await scanBalance(page, meta)) {
   if (f.skip || !f.flagged) continue;
   report(f.i, 'info', 'balance', { vOffset: f.vOffset, hOffset: f.hOffset, band: f.band, side: f.side, top: f.top, bottom: f.bottom, left: f.left, right: f.right, tate: !!f.tate, bbox: f.bbox, visual: f.visual });
 }
 
 // ================================================================ B. 口述原稿
-phase = 'B 台本';
+phase = 'B 台本'; visited.add(phase);
 const narrInfo = await page.evaluate((metaList) => {
   const out = [];
   // static のスライド（表紙など。段階は 0 だけ）も段階 0 の口述原稿を見る
@@ -590,7 +598,7 @@ for (const seg of built.segs) {
 }
 
 // ================================================================ C. パレットのコントラスト
-phase = 'C パレット';
+phase = 'C パレット'; visited.add(phase);
 // oklch() や color-mix() は getComputedStyle だけでは rgb に落ちないことがあるので、
 // 一度 1x1 の canvas に塗って画素として読み、実際に表示される sRGB 値を得る。rgb()・rgba() はそのまま数を読む（canvas を通しても同じ値）：
 // 込み合った macOS の CI で、どの組も 1.00:1 の contrastLow になったことがある（canvas の読み戻しがどの色も 0,0,0 を返せばそうなる）
@@ -634,7 +642,7 @@ for (const v of ['--fg', '--term', '--emph', '--title', '--accent2']) {
 }
 
 // ================================================================ D. 部品の再現性（呼び出し順に依存していないか）
-phase = 'D 再現性';
+phase = 'D 再現性'; visited.add(phase);
 const CLIP = { x: 0, y: 0, width: 1280, height: 720 };
 // 撮る前に字と描画が落ち着くのを待つ（docs/contract.md §1：seek の後に requestAnimationFrame を 2 回）
 // 埋め込みの字はスライドが見えたときに初めて読まれるので、先に全部読んでおく
@@ -687,7 +695,7 @@ await page.goto(url);
 await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 15000 });
 
 // ================================================================ F. 注目の演出
-phase = 'F 強調';
+phase = 'F 強調'; visited.add(phase);
 const markInfo = await page.evaluate(() => {
   const out = [];
   DECK.slides.forEach((s, i) => {
@@ -706,7 +714,7 @@ for (const { i, key, marks } of markInfo) {
 }
 
 // ================================================================ G. モーフ（data-morph）
-phase = 'G モーフ';
+phase = 'G モーフ'; visited.add(phase);
 const morphInfo = await page.evaluate(() => DECK.slides.map((s, i) => ({ i, m: DECK.morph(i) })).filter((x) => x.m));
 for (const { i, m } of morphInfo) {
   if (!m.src) { report(i, 'warn', 'morphNoSrc', { want: m.want }); continue; }
@@ -718,7 +726,7 @@ for (const { i, m } of morphInfo) {
 }
 
 // ================================================================ H. 読み上げ（画像と図の名前）
-phase = 'H 読み上げ';
+phase = 'H 読み上げ'; visited.add(phase);
 const a11y = await page.evaluate(() => {
   const named = (e, root) => {
     for (let a = e; a && a !== root; a = a.parentElement) {
@@ -748,7 +756,7 @@ for (const { i, imgs, comps, svgs } of a11y) {
 }
 
 // ================================================================ E. タイムライン
-phase = 'E タイムライン';
+phase = 'E タイムライン'; visited.add(phase);
 const tl = await page.evaluate(() => DECK.timeline());
 const total = tl.length ? tl[tl.length - 1].start + tl[tl.length - 1].dur : 0;
 report(null, 'info', 'timelineTotal', { s: total.toFixed(2), n: tl.length });
@@ -775,6 +783,15 @@ for (const e of [...new Set(consoleErrors.map(cleanErrorText))]) {
 // ================================================================ 出力
 const counts = { error: 0, warn: 0, info: 0 };
 for (const r of results) counts[r.sev]++;
+// 決まりの数え上げ（backlog #202、kit/core/check-rules.mjs）：決まりごとに checked・excused・skipped・failed。どれにもならない決まりがあれば incomplete（終了コード 3）
+const deckFolder = path.dirname(path.resolve(src));
+const has = (...p) => fs.existsSync(path.join(deckFolder, ...p));
+let srcText = '';
+try { srcText = readRegular(src, { max: READ_LIMITS.source }).toString('utf8'); } catch { /* 組めたので読めるはず */ }
+// 教材の性質は原稿と台本の文字列から（編集アプリと同じ factsFromSource）
+const facts = factsFromSource({ deck: srcText, narration: narrText || '', audio: has('audio', 'manifest.json') || has('voice.json'), attachments: has(FORMAT.ATTACH_DIR), book: hasArticle(src) });
+const acc = account({ results, visited, facts });
+const ruleSet = createHash('sha256').update(ruleSetText()).digest('hex').slice(0, 12);
 const ok = counts.error === 0;
 
 // 言葉を作る：どこか（スライドの番号・見出し・id、段階）＋何が違うか＋どう直すか（kit/check-messages.mjs）
@@ -796,7 +813,7 @@ if (asJson) {
     data: r.a,
     msg: cliHints(r.msg),
   }));
-  console.log(JSON.stringify({ ok, lang: ML, counts, results: out }, null, 2));
+  console.log(JSON.stringify({ ok, status: acc.status, lang: ML, counts, results: out, ruleSet, rules: acc.rules, summary: acc.summary, ...(acc.status === 'incomplete' ? { unset: acc.unset, problems: acc.problems } : {}) }, null, 2));
 } else {
   // スライド番号順（null＝デッキ全体は先頭）にグループ化し、各グループ内は error → warn → info。見出しの行にスライドがあるので、行には段階と言葉だけ
   const groups = new Map();
@@ -818,6 +835,9 @@ if (asJson) {
   }
   console.log('');
   console.log(EN ? `${counts.error} errors, ${counts.warn} warnings, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
+  const S = acc.summary;
+  console.log(EN ? `quality check items: ${S.checked} done, ${S.excused} not applicable, ${S.skipped} not run, ${S.failed} failed (of ${S.total})` : `品質チェックの項目：見た ${S.checked}　当てはまらない ${S.excused}　見られなかった ${S.skipped}　落ちた ${S.failed}（${S.total} のうち）`);
+  if (acc.status === 'incomplete') console.log((EN ? 'the check did not finish: ' : '点検が終わっていない：') + [...acc.unset.map((id) => id + (EN ? ' (not looked at)' : '（見ていない）')), ...acc.problems].join('; '));
 }
 // 出力を書き終えてから終える（stdout がパイプのとき、process.exit は書きかけの出力（64 KiB を超える分）を捨てる。--json の大きな結果が途中で切れていた）
-process.stdout.write('', () => process.exit(ok ? 0 : 1));
+process.stdout.write('', () => process.exit(acc.status === 'incomplete' ? 3 : ok ? 0 : 1));

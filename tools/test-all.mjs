@@ -260,6 +260,10 @@ steps.push(
   // 字の絞り込み（wasm、#178 (4)）：同じ字なら同じバイト・縦書きの機能・unicode-range は使う字だけ・RFN の字体は絞らない・字の範囲の点検
   ['test-font-subset', ['tools/test-font-subset.mjs', path.join(tmp, 'font-subset')]],
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
+  // 品質チェックの決まりの台帳（#202）：どの code もちょうど 1 つの決まりに入る・checked／excused／skipped／failed・incomplete（ブラウザなし）
+  ['test-check-rules', ['tools/test-check-rules.mjs']],
+  // 種をまいた教材（#202）：決まりの 1 つずつに入れた誤りを、品質チェックが本当に見つけるか（ヘッドレス Chrome）
+  ['test-seeded-defects', ['tools/test-seeded-defects.mjs']],
   // 本文の釣り合い（R-balance の段 1、balance。情報だけで、修正依頼に入らない）
   ['test-check-fill', ['tools/test-check-fill.mjs', path.join(tmp, 'check-fill')]],
   // 同じ重さの短い要点だけの本文の提案（backlog #189、cardsHint。情報だけで、修正依頼に入らない）

@@ -84,6 +84,7 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
 
 // ---------------------------------------------------------------- 1. コマンド版
 const CLI = {};
+const CLIJ = {};   // コマンド版の --json の全体（決まりの数え上げ rules を比べる）
 for (const f of FIXTURES) {
   const { name, lang } = f;
   const r = spawnSync(process.execPath, ['kit/check.mjs', dirOf(f), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
@@ -91,6 +92,7 @@ for (const f of FIXTURES) {
   try { j = JSON.parse(r.stdout); } catch { j = null; }
   ok(j && Array.isArray(j.results) && j.lang === lang, `cli ${name}: check --json ran (exit ${r.status}, lang ${j && j.lang})` + (j ? '' : '\n       ' + String(r.stderr).slice(0, 400)));
   CLI[name] = j ? j.results : [];
+  CLIJ[name] = j;
   const codes = new Set(CLI[name].map((x) => x.code));
   const lack = WANT[name].filter((c) => !codes.has(c));
   ok(!lack.length, `cli ${name}: the fixture triggers the codes it is meant to (${WANT[name].length})` + (lack.length ? ': missing ' + lack.join(', ') : ''));
@@ -156,6 +158,17 @@ try {
       const a = CLI[name].filter((x) => x.code === code).map((x) => `${x.slide}:${x.sev}`).sort().join(' ');
       const b = results.filter((x) => x.code === code).map((x) => `${x.i === null ? null : x.i + 1}:${x.sev}`).sort().join(' ');
       if (a || b) ok(a === b, `parity ${name}: ${code} on the same slides with the same severity (cli “${a}”, editor “${b}”)`);
+    }
+    // 3b. 決まりの数え上げ（#202、kit/core/check-rules.mjs）：編集アプリも同じ決まりの一覧（同じ ruleSet）を返し、コマンド版だけの決まりは skipped/notInEditor。
+    // 当てはまらない決まり（excused）とその理由は、教材の性質を同じ文字列から決めるので両方で同じ
+    if (CLIJ[name] && CLIJ[name].rules) {
+      const er = await page.evaluate(() => window.__APP_TEST.checkRules());
+      const cr = CLIJ[name].rules;
+      ok(er && er.rules.map((x) => x.id).join() === cr.map((x) => x.id).join() && er.status === 'ok', `rules ${name}: the editor accounts for the same ${cr.length} rules (status ${er && er.status})`);
+      const ex = (rs) => rs.filter((x) => x.state === 'excused').map((x) => x.id + '/' + x.reason).join(' ');
+      const notSkipped = new Set(er ? er.rules.filter((x) => x.state !== 'skipped').map((x) => x.id) : []);
+      ok(er && ex(er.rules) === ex(cr.filter((x) => notSkipped.has(x.id))) && er.rules.filter((x) => x.state === 'skipped').every((x) => x.reason === 'notInEditor'),
+        `rules ${name}: the same rules are not applicable for the same reasons (${ex(cr) || 'none'}); the rest the editor does not run are notInEditor`);
     }
     // 4. 言葉：コマンド版の言葉（どこか＋何が違うか）の「何が違うか」と、編集アプリの板の言葉が同じ
     const shown = await (async () => {

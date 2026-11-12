@@ -56,6 +56,8 @@ import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { partsIndexHref } from './parts-gallery.js';
 import { createExamplesGallery } from './examples-gallery.js';
+import { account as accountRules, factsFromSource } from '../kit/core/check-rules.mjs';
+import { EDITOR_ALIAS, BUILD_WARN } from '../kit/core/check-parity.mjs';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from './theme-zip.js';
 import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, deleteMyTheme } from './my-themes.js';
@@ -1251,6 +1253,21 @@ async function checkResults(rec) {
   }
   return results;
 }
+// 決まりの数え上げ（backlog #202、kit/core/check-rules.mjs）：品質チェックの結果を、コマンド版と同じ決まりの一覧に。コマンド版だけの決まりは skipped/notInEditor。
+// 教材の性質（excused の理由）はコマンド版と同じく原稿と台本の文字列から（factsFromSource）
+async function checkRules(results) {
+  let deck = '', narr = '', files = null;
+  if (S.ws) {
+    try { deck = (await S.ws.readText(S.deckFile, { max: READ_LIMITS.source })) || ''; } catch { deck = ''; }
+    try { narr = (await S.ws.readText('narration.md', { max: READ_LIMITS.narration })) || ''; } catch { narr = ''; }
+    try { files = (await S.ws.list({ audio: true })).files; } catch { files = null; }
+  }
+  const has = (p) => !!files && [...files.keys ? files.keys() : files].some((f) => f === p || f.startsWith(p + '/'));
+  const facts = factsFromSource({ deck, narration: narr, audio: has('audio/manifest.json') || has('voice.json'), attachments: has('attachments'), book: has('article.md') || has('article') });
+  const mapped = results.map((r) => ({ sev: r.sev, code: EDITOR_ALIAS[r.code] || r.code }));
+  for (const w of S.warn || []) { const code = Object.keys(BUILD_WARN).find((c) => c !== 'build' && BUILD_WARN[c].test(w)) || 'build'; mapped.push({ sev: 'warn', code }); }
+  return accountRules({ results: mapped, facts, inEditor: true });
+}
 async function quickCheck() {
   if (!$('preview').contentWindow || !S.base) return;
   if (S.earlier && S.earlier.kind === 'file') { toast(T.earlierNoCheck, true); return; }
@@ -1268,8 +1285,10 @@ async function quickCheck() {
     el('span', { text: T.checkMsg(r.code, r.arg) }),
     el('div', { cls: 'where', text: r.i === null ? T.wholeDeck : T.slideN(r.i + 1, r.title) }),
   ]));
+  const rules = S.lastRules = await checkRules(results);
   openPanel(T.checkTitle, [
     el('div', { id: 'check-panel', cls: 'sum', text: T.checkSummary(errs, warns) }),
+    el('p', { id: 'check-rules', cls: 'hint', text: T.checkRules(rules.summary) }),
     buildWarnBox(),
     el('p', { cls: 'hint', text: T.checkNote(llm.texts.fix, fixable) }),
     // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
@@ -2536,3 +2555,4 @@ window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };
 // 試験（tools/test-check-parity.mjs）：品質チェックの結果（板と修正依頼が使うもの。プレビューの答え＋原稿の文字列からの指摘）
 window.__APP_TEST.checkResults = () => checkResults();
+window.__APP_TEST.checkRules = async () => { const r = await checkResults(); return r ? checkRules(r) : null; };

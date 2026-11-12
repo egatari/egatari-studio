@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=c3c6a02ff5c60c54 -->
+<!-- i18n: pair=reference.md sha256=8788da38b4b0f274 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -417,7 +417,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 
 Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-llms.ja.md)の `R-fit`・`R-steps` など）、それに照らして**指摘**を出す**品質チェック**、指摘を AI に渡す**修正依頼**からなる。品質チェックにはコマンド版（`npm run check`。下。すべての項目）とブラウザ版（[編集アプリ](editor.ja.md)。下の「**編集アプリでは**」に挙げたわずかなものを除くすべての項目）がある。
 
-`node kit/check.mjs <deck.html | 作業フォルダ> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーがなければ終了コード 0、エラーが 1 つでもあれば 1、ヘッドレスのブラウザが起動できないか途中で落ちて検査が終わらなかったときは 2（理由は stderr だけ。`--json` では `{"ok": false, "status": "crashed", "counts": {…すべて 0}, "results": []}` で、「エラー 0」とは見分けがつき、指摘にもならない）。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告の指摘は、どこか（スライドの番号・見出し・id・ステップ）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の規格があればその名前（`（R-title）` など）を添える。そのまま修正依頼に貼れる。`--lang` は指摘の言語（既定は教材の `<html lang>`。`ja` かなければ日本語、ほかは英語）。
+`node kit/check.mjs <deck.html | 作業フォルダ> [--theme 名前] [--lang ja|en] [--json]`。メモリ上で build し、ヘッドレス Chrome で開いて、スライドごとに結果を出す。エラーがなければ終了コード 0、エラーが 1 つでもあれば 1、数え上げのできない決まりが残ったときは 3（下）、ヘッドレスのブラウザが起動できないか途中で落ちて検査が終わらなかったときは 2（理由は stderr だけ。`--json` では `{"ok": false, "status": "crashed", "counts": {…すべて 0}, "results": []}` で、「エラー 0」とは見分けがつき、指摘にもならない）。`--theme` で別のテーマで確かめられる（なければ `<html data-theme>`）。エラーと警告の指摘は、どこか（スライドの番号・見出し・id・ステップ）、何が違うか、どう直すかを言い、[書き方の指示](authoring-with-llms.ja.md)の規格があればその名前（`（R-title）` など）を添える。そのまま修正依頼に貼れる。`--lang` は指摘の言語（既定は教材の `<html lang>`。`ja` かなければ日本語、ほかは英語）。
 
 `--json` の形：
 
@@ -428,7 +428,23 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
               "msg": "スライド 2「減衰の式」（s-k3f9q2）、ステップ 3：口述原稿の [3] に当たるステップがスライドにない……（R-narr-steps）"}]}
 ```
 
-`status` が `crashed`（終了コード 2）の結果は無効：検査が終わっていないので、`results` が空でも合格ではない。ふつうの結果に `status` の欄はない。スクリプトは終了コード 2 と `status: "crashed"` を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。
+`status` が `crashed`（終了コード 2）の結果は無効：検査が終わっていないので、`results` が空でも合格ではない。終わった検査は `"status": "ok"`。
+
+結果は、検査器の決まり（`kit/core/check-rules.mjs`）を 1 つずつ数え上げる：[書き方の指示](authoring-with-llms.ja.md)の作者への決まり `R-*` と、検査器の族 `C-*`（組み立て・スライドの id・リンク・音声・添付・本・読み上げ・モーフ・再現性・字体・一覧）。指摘の `code` は、どれもちょうど 1 つの決まりに入る。決まりはそれぞれ次のどれかで終わる。
+
+- `checked`：見て、エラーがない（警告や情報はあってよい）
+- `failed`：エラーが 1 つ以上ある
+- `excused`：この教材には当てはまらない。`reason` は決まった語：`noNarration`・`noAudio`・`noAttachments`・`noParts`・`noMarks`・`noMorphs`・`noLinks`・`noBook`・`tate`・`lang`
+- `skipped`：この回には見られなかった：`noBrowser`、または編集アプリの品質チェックでの `notInEditor`（編集アプリも同じ決まりの一覧を返す）
+
+```json
+{"ok": true, "status": "ok", "ruleSet": "c754293364b5",
+ "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
+           {"id": "C-audio", "kind": "checker", "state": "excused", "reason": "noAudio", "counts": {"error": 0, "warning": 0, "info": 0}, "codes": []}],
+ "summary": {"checked": 24, "excused": 5, "skipped": 0, "failed": 0, "total": 29}}
+```
+
+`codes` はその回に出た code。`ruleSet` は決まりの一覧かその code が変わったときだけ変わる。どの状態にもならない決まりが残るか、`excused`・`skipped` の決まりに code が出たときは `"status": "incomplete"`（終了コード 3。`unset` と `problems` が付く）：全部を見ていないので、これも合格ではない。スクリプトは終了コード 2・3 とこの 2 つの status を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。文字の出力の最後に 1 行：`品質チェックの項目：見た 24　当てはまらない 5　見られなかった 0　落ちた 0（29 のうち）`。
 
 | 欄 | 意味 |
 |---|---|

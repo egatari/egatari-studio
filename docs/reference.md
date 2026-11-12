@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=4e4f2b8aec47064a -->
+<!-- i18n: pair=reference.ja.md sha256=d7630cafeca96e90 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -417,7 +417,7 @@ Printing (`tools/pdf.mjs`, or the browser) shows each slide in its final state, 
 
 Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps`, … in the [authoring guide](authoring-with-llms.md)), the **quality check** that reports **findings** against them, and the **fix request** that hands the findings to an AI. The quality checker comes as a command (`npm run check`, below, with every check) and in the browser ([editor app](editor.md): every check except the few listed under **In the editor** below).
 
-`node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the lesson's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
+`node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]` builds in memory, opens headless Chrome, and prints results per slide. Exit code 0 when there is no error, 1 if there is any error, 3 when a rule was left unaccounted (below), and 2 when the check did not finish because the headless browser failed to launch or crashed (the reason goes to stderr; with `--json` the output is `{"ok": false, "status": "crashed", "counts": {…all 0}, "results": []}`, so it is never mistaken for "0 errors" and never becomes a finding). `--theme` checks with another theme (otherwise `<html data-theme>`). Each finding (error or warning) says where (slide number, heading, id, step), what is wrong and how to fix it, with the id of the standard in the [authoring guide](authoring-with-llms.md) where one applies (for example `(R-title)`), so the findings can be pasted into a fix request as they are. `--lang` chooses the language of the findings (default: the lesson's `<html lang>`, Japanese when it is `ja` or missing, otherwise English).
 
 `--json` prints:
 
@@ -428,7 +428,23 @@ Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps
               "msg": "Slide 2 “The decay law” (s-k3f9q2), step 3: narration [3] has no matching step … (R-narr-steps)"}]}
 ```
 
-If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A normal result has no `status` field. Scripts should treat exit code 2 and `status: "crashed"` as a failure; `kit/core/check-result.mjs` (`parseCheck`) does this.
+If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A finished check says `"status": "ok"`.
+
+The result also accounts for every rule of the checker (`kit/core/check-rules.mjs`): the authoring rules `R-*` of the [authoring guide](authoring-with-llms.md) and the checker's own families `C-*` (build, slide ids, links, audio, attachments, book, accessibility, morphs, reproducibility, fonts, listings). Every finding's `code` belongs to exactly one rule. Each rule ends in one state:
+
+- `checked`: it was looked at and has no error (it may have warnings or info);
+- `failed`: it has at least one error;
+- `excused`: it does not apply to this lesson, with a `reason` from a fixed list: `noNarration`, `noAudio`, `noAttachments`, `noParts`, `noMarks`, `noMorphs`, `noLinks`, `noBook`, `tate`, `lang`;
+- `skipped`: this run could not look at it: `noBrowser`, or `notInEditor` in the editor's quality check, which reports the same rules.
+
+```json
+{"ok": true, "status": "ok", "ruleSet": "c754293364b5",
+ "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
+           {"id": "C-audio", "kind": "checker", "state": "excused", "reason": "noAudio", "counts": {"error": 0, "warning": 0, "info": 0}, "codes": []}],
+ "summary": {"checked": 24, "excused": 5, "skipped": 0, "failed": 0, "total": 29}}
+```
+
+`codes` lists the codes seen in this run. `ruleSet` changes only when the list of rules or their codes changes. If a rule ends in none of the states, or a code turns up in an excused or skipped rule, the check is `"status": "incomplete"` (exit code 3, with `unset` and `problems`): it did not look at everything, so it is not a pass either. Scripts should treat exit codes 2 and 3 and these two statuses as a failure; `kit/core/check-result.mjs` (`parseCheck`) does this. The text output ends with one line: `quality check items: 24 done, 5 not applicable, 0 not run, 0 failed (of 29)`.
 
 | Field | Meaning |
 |---|---|

@@ -70,8 +70,11 @@ t('rulesFor：規格の名前のない JSON でも narrHeadingDiffers は R-head
     assert.equal(x.length, 1, JSON.stringify(j.results.map((e) => e.code)));
     assert.equal(x[0].rule, 'R-headings');
   });
-  t('JSON：status は付かない（終わった検査）で、終了コードは 1（エラーあり）', () => {
-    assert.ok(!('status' in j));
+  t('JSON：終わった検査は status: "ok"（決まりの数え上げ：ruleSet・rules・summary）で、終了コードは 1（エラーあり）', () => {
+    assert.equal(j.status, 'ok');
+    assert.match(j.ruleSet, /^[0-9a-f]{12}$/);
+    assert.ok(Array.isArray(j.rules) && j.rules.every((x) => ['checked', 'excused', 'skipped', 'failed'].includes(x.state)));
+    assert.equal(j.summary.checked + j.summary.excused + j.summary.skipped + j.summary.failed, j.summary.total);
     assert.equal(r.status, 1);
   });
 }
