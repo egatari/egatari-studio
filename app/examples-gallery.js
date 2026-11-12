@@ -52,7 +52,7 @@ export function createExamplesGallery({ root, list, sections, grouping = {}, T, 
       parts.length ? el('span', { cls: 'ex-tags ex-parts', 'aria-label': T.exampleParts }, [
         ...parts.map((t) => el('button', { type: 'button', cls: 'ex-tag ex-part', 'data-part': t, 'aria-pressed': t === active ? 'true' : 'false', text: partLabel(t, L), title: T.examplePartTitle(partLabel(t, L)),
           onclick: () => (t === active ? back() : go({ kind: 'part', tag: t })) })),
-        more > 0 ? el('span', { cls: 'ex-more', text: T.exampleMore(more) }) : null]) : null,
+        more > 0 ? el('span', { cls: 'ex-more', text: T.exampleMore(more), 'aria-label': T.exampleMoreLabel(more), role: 'note' }) : null]) : null,
       viewBtn(x),
     ]);
   }

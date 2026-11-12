@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=64c263845e7f4c7e -->
+<!-- i18n: pair=editor.ja.md sha256=8b80265b859fd191 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)

@@ -26,9 +26,10 @@ tools/fixtures/subset-names/** -text
 vendor/citeproc/** -text
 # パーツのサンプルのページを組む道具の写し（egatari/components の決まったコミット。tools/parts-gallery.mjs）：バイトのまま（SOURCE.json の sha256）
 vendor/components-gallery/** -text
-# 本のあるサンプル（egatari/examples の books/<名前> の写し）：バイトのまま（本文は LF でないと §9C.2 の誤り。SOURCE.json の sha256）
-examples/heikin-chuouchi/** -text
-examples/rashomon/** -text
+# サンプル（egatari/examples の写し。tools/examples-sync.mjs）：バイトのまま（本文は LF でないと §9C.2 の誤り。SOURCE.json の sha256）
+examples/** -text
 
 # 本文の道具の束：--check は作り直したものとバイトで比べるので、Windows でも LF を保つ。
 kit/vendor/book-tools.mjs text eol=lf
+# 品質チェックの決まりの試験の教材：Windows でも LF（本文が CRLF だと仕込んでいない §9C.2 の誤りが出る）
+tools/fixtures/seeded-defects/** text eol=lf
