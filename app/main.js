@@ -219,8 +219,15 @@ function showExamples() {
   const root = $('examples-gallery'); root.innerHTML = '';
   if (!on) return;
   // 入口のカードと札（app/examples-gallery.js）。区分は組み立てが入れた RES.exampleSections（examples/index.json）
-  createExamplesGallery({ root, list, sections: Array.isArray(RES.exampleSections) ? RES.exampleSections : [], T, lang: EN ? 'en' : 'ja',
+  const g = createExamplesGallery({ root, list, sections: Array.isArray(RES.exampleSections) ? RES.exampleSections : [], grouping: RES.exampleGrouping || {}, T, lang: EN ? 'en' : 'ja',
     coverHref: (f) => new URL('examples/' + encodeURIComponent(f), document.baseURI).href, partsHref: partsIndexHref(location), onView: (x) => playExample(x) });
+  // パーツの一覧（/parts/）の「このパーツを使ったサンプル」：?samples-part=<タグ> で、そのパーツの絞り込みを開く（アドレスからは外す。from-sample と同じ）
+  let part = null;
+  try { part = new URLSearchParams(location.search).get('samples-part'); } catch { part = null; }
+  if (part !== null) {
+    try { const u = new URL(location.href); u.searchParams.delete('samples-part'); history.replaceState(history.state, '', u.href); } catch { /* 残っても開き直すだけ */ }
+    if (/^m-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(part)) { g.showPart(part); $('examples').scrollIntoView({ block: 'start' }); }
+  }
 }
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 // サンプルのファイルのバイト。大きさは読む前（Content-Length）と読みながら、開ける上限（LIMITS.fileBytes）と比べる（app/bounded-read.js）。

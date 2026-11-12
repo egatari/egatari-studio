@@ -13,10 +13,14 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { sectionLayout as layout } from '../kit/core/sample-layout.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const EX = path.join(ROOT, 'examples');
 const NOTE = 'Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs).';
+
+// 区分の中の並び（kit/core/sample-layout.mjs）
+export const sectionLayout = (idx, sectionId) => layout(idx, sectionId);
 
 export function readIndex(root = ROOT) {
   const idx = JSON.parse(fs.readFileSync(path.join(root, 'examples', 'index.json'), 'utf8'));
@@ -28,6 +32,13 @@ export function readIndex(root = ROOT) {
     seen.add(e.name);
     if (!ids.has(e.section)) throw new Error(`examples/index.json: ${e.name}: section ${JSON.stringify(e.section)} is not one of ${[...ids].join(', ')}`);
     if (e.fromSample !== undefined && typeof e.fromSample !== 'boolean') throw new Error(`examples/index.json: ${e.name}: fromSample must be true or false`);
+    // 小見出し（groups）のある区分のサンプルは group を持ち、授業（class）は教科（subjects のどれか）を持つ
+    const sec = idx.sections.find((x) => x.id === e.section);
+    if (sec.groups) {
+      if (!sec.groups.some((g) => g.id === e.group)) throw new Error(`examples/index.json: ${e.name}: group ${JSON.stringify(e.group)} is not one of ${sec.groups.map((g) => g.id).join(', ')}`);
+      if (e.subject !== undefined && !(idx.subjectLabels || {})[e.subject]) throw new Error(`examples/index.json: ${e.name}: subject ${e.subject} has no label in subjectLabels`);
+      if (e.group === 'class' && !(idx.subjects || []).includes(e.subject)) throw new Error(`examples/index.json: ${e.name}: a class sample needs a subject from ${(idx.subjects || []).join('・')}`);
+    } else if (e.group !== undefined) throw new Error(`examples/index.json: ${e.name}: section ${e.section} has no groups`);
   }
   return idx;
 }
@@ -95,6 +106,19 @@ export function check({ root = ROOT, lessons = null } = {}) {
       const siteCover = path.join(coversDir, e.name + '.webp'), mine = path.join(root, 'examples', '_covers', e.name + '.webp');
       if (!bySite.has(e.name) || !fs.existsSync(siteCover)) continue;
       if (!fs.existsSync(mine) || sha(fs.readFileSync(mine)) !== sha(fs.readFileSync(siteCover))) errs.push(`${e.name}: the cover differs from egatari.org's covers/${e.name}.webp (node tools/example-covers.mjs --site <site>/src/gallery ${e.name})`);
+    }
+    // 小見出し・教科：写したサンプル（サイトの一覧にあるもの）は group と subject がサイトと同じ。小見出しの id と名前、教科の順、最低件数もサイトと同じ
+    const siteLesson = new Map((site.lessons || []).map((l) => [l.id, l]));
+    for (const e of idx.examples) {
+      const l = siteLesson.get(e.name);
+      if (l && ((l.group || null) !== (e.group || null) || (l.subject || null) !== (e.subject || null))) errs.push(`${e.name}: group/subject ${e.group || '-'}/${e.subject || '-'}, but egatari.org's lessons.json says ${l.group || '-'}/${l.subject || '-'}`);
+    }
+    if (JSON.stringify(site.subjects || []) !== JSON.stringify(idx.subjects || [])) errs.push(`subjects ${(idx.subjects || []).join('・')} differ from egatari.org's ${(site.subjects || []).join('・')}`);
+    if (((site.grouping || {}).minLessons) !== ((idx.grouping || {}).minLessons)) errs.push(`grouping.minLessons ${(idx.grouping || {}).minLessons} differs from egatari.org's ${(site.grouping || {}).minLessons}`);
+    for (const s of idx.sections) {
+      const t = (site.sections || []).find((x) => x.id === s.id);
+      const a = (s.groups || []).map((g) => g.id + ':' + g.title.ja).join(), b = ((t && t.groups) || []).map((g) => g.id + ':' + g.title).join();
+      if (t && a !== b) errs.push(`section ${s.id}: groups ${a || '(none)'} differ from egatari.org's ${b || '(none)'}`);
     }
     const siteSections = new Map((site.sections || []).map((s) => [s.id, s]));
     for (const s of idx.sections) {

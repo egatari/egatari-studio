@@ -21,7 +21,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { parseYomiTerms } from '../kit/core/yomi.mjs';
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES, FONT_LIST } from '../kit/core/build-core.mjs';
 import { PLAYER_JSON, PLAYER_LOCK, PLAYER_FILES } from '../kit/core/player.mjs';
-import { buildExamples, SECTIONS as EXAMPLE_SECTIONS } from './examples-portable.mjs';
+import { buildExamples, SECTIONS as EXAMPLE_SECTIONS, GROUPING as EXAMPLE_GROUPING } from './examples-portable.mjs';
 import { buildFontSubsetJs } from './font-subset-bundle.mjs';
 import { vendorComponents, appComponentFiles, componentLicenseFiles } from './vendor-components.mjs';
 import { excludedFromThemeHash } from '../kit/core/themes-lock.mjs';
@@ -118,7 +118,7 @@ const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FOR
 // アプリを組んだ commit を渡す（中身が出した版と違えば "+dev.<commit>"。git がなければ "+dev"）
 for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] = fs.readFileSync(rel(...f.split('/')), 'utf8');
 const commit = (() => { const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }); return r.status === 0 && /^[0-9a-f]{4,40}$/.test(r.stdout.trim()) ? r.stdout.trim() : ''; })();
-const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples, exampleSections: examples.length ? EXAMPLE_SECTIONS : [] };
+const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples, exampleSections: examples.length ? EXAMPLE_SECTIONS : [], exampleGrouping: EXAMPLE_GROUPING };
 const hostedOnly = (v) => v.startsWith('/repo/fonts/') && !SINGLE_FONTS.some((p) => v.startsWith(`/repo/fonts/${p}/`));
 const resourcesSingle = { ...resources, lazyJs: null, makeSkillZips: Object.fromEntries(Object.entries(makeSkillZips).map(([lang, bytes]) => [lang, bytes.toString('base64')])), text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
 

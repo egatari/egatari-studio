@@ -1,35 +1,251 @@
 {
-  "note": "Studio's samples: their order, their section (the same ids as egatari.org's src/gallery/lessons.json, the single source; tools/examples-sync.mjs --check --lessons compares them) and, for the ones copied from egatari/examples, where they come from (tools/examples-sync.mjs writes each folder and its SOURCE.json). fromSample: false keeps a sample out of 「このサンプルを参考に作る」 and ?from-sample= (play only).",
+  "note": "Studio's samples: their order, their section (the same ids as egatari.org's src/gallery/lessons.json, the single source; tools/examples-sync.mjs --check --lessons compares them) and, for the ones copied from egatari/examples, where they come from (tools/examples-sync.mjs writes each folder and its SOURCE.json). groups, subjects and grouping.minLessons are the site's too: an entrance with at least minLessons samples shows its groups as headings, and inside a group the samples go by subject order, then by this order. fromSample: false keeps a sample out of 「このサンプルを参考に作る」 and ?from-sample= (play only).",
   "repository": "https://github.com/egatari/examples",
   "sections": [
-    { "id": "intro", "title": { "ja": "まず見る", "en": "Start here" }, "subtitle": { "ja": "", "en": "" } },
-    { "id": "teaching", "title": { "ja": "教育", "en": "Education" }, "subtitle": { "ja": "授業・講義・校内研修", "en": "Classes, lectures, school in-service training" } },
-    { "id": "business", "title": { "ja": "ビジネス", "en": "Business" }, "subtitle": { "ja": "報告・提案・社内研修", "en": "Reports, proposals, company training" } },
-    { "id": "life", "title": { "ja": "生活", "en": "Everyday life" }, "subtitle": { "ja": "自治体・医療・防災の案内", "en": "Guides from cities, health care and disaster prevention" } }
+    {
+      "id": "intro",
+      "title": {
+        "ja": "まず見る",
+        "en": "Start here"
+      },
+      "subtitle": {
+        "ja": "",
+        "en": ""
+      }
+    },
+    {
+      "id": "teaching",
+      "title": {
+        "ja": "教育",
+        "en": "Education"
+      },
+      "subtitle": {
+        "ja": "授業・講義・校内研修",
+        "en": "Classes, lectures, school in-service training"
+      },
+      "groups": [
+        {
+          "id": "class",
+          "title": {
+            "ja": "授業",
+            "en": "Classes"
+          }
+        },
+        {
+          "id": "lecture",
+          "title": {
+            "ja": "大学の講義・学会発表",
+            "en": "University lectures and conference talks"
+          }
+        },
+        {
+          "id": "training",
+          "title": {
+            "ja": "校内研修",
+            "en": "School in-service training"
+          }
+        }
+      ]
+    },
+    {
+      "id": "business",
+      "title": {
+        "ja": "ビジネス",
+        "en": "Business"
+      },
+      "subtitle": {
+        "ja": "報告・提案・社内研修",
+        "en": "Reports, proposals, company training"
+      }
+    },
+    {
+      "id": "life",
+      "title": {
+        "ja": "生活",
+        "en": "Everyday life"
+      },
+      "subtitle": {
+        "ja": "お知らせ・手引き・啓発",
+        "en": "Notices, guides and awareness"
+      }
+    }
   ],
   "examples": [
-    { "name": "egatari-intro", "section": "intro", "path": "lessons/egatari-intro" },
-    { "name": "egatari-intro-en", "section": "intro", "path": "lessons/egatari-intro-en" },
-    { "name": "parts-showcase", "section": "intro", "path": "lessons/parts-showcase", "fromSample": false },
-    { "name": "moon-phases", "section": "teaching", "path": "lessons/moon-phases" },
-    { "name": "chords", "section": "teaching", "path": "lessons/chords" },
-    { "name": "sentence-structure", "section": "teaching", "path": "lessons/sentence-structure" },
-    { "name": "huffman", "section": "teaching", "path": "lessons/huffman" },
-    { "name": "bayes", "section": "teaching", "path": "lessons/bayes" },
-    { "name": "population", "section": "teaching", "path": "lessons/population" },
-    { "name": "live-birthday", "section": "teaching", "path": "lessons/live-birthday" },
-    { "name": "genai-guideline", "section": "teaching", "path": "lessons/genai-guideline" },
-    { "name": "kokugo-kanbun", "section": "teaching" },
-    { "name": "heikin-chuouchi", "section": "teaching", "path": "books/heikin-chuouchi" },
-    { "name": "rashomon", "section": "teaching", "path": "books/rashomon" },
-    { "name": "tmlr2026-calibration", "section": "teaching" },
-    { "name": "minimal", "section": "teaching" },
-    { "name": "quarterly-report", "section": "business", "path": "lessons/quarterly-report" },
-    { "name": "security-training", "section": "business", "path": "lessons/security-training" },
-    { "name": "pitch-fictional", "section": "business" },
-    { "name": "city-budget-ja", "section": "life", "path": "lessons/city-budget/ja" },
-    { "name": "city-budget-en", "section": "life", "path": "lessons/city-budget/en" },
-    { "name": "hand-hygiene", "section": "life", "path": "lessons/hand-hygiene" },
-    { "name": "hazard-map", "section": "life", "path": "lessons/hazard-map" }
-  ]
+    {
+      "name": "egatari-intro",
+      "section": "intro",
+      "path": "lessons/egatari-intro"
+    },
+    {
+      "name": "egatari-intro-en",
+      "section": "intro",
+      "path": "lessons/egatari-intro-en"
+    },
+    {
+      "name": "parts-showcase",
+      "section": "intro",
+      "path": "lessons/parts-showcase",
+      "fromSample": false
+    },
+    {
+      "name": "moon-phases",
+      "section": "teaching",
+      "path": "lessons/moon-phases",
+      "group": "class",
+      "subject": "理科"
+    },
+    {
+      "name": "chords",
+      "section": "teaching",
+      "path": "lessons/chords",
+      "group": "class",
+      "subject": "音楽"
+    },
+    {
+      "name": "sentence-structure",
+      "section": "teaching",
+      "path": "lessons/sentence-structure",
+      "group": "class",
+      "subject": "英語"
+    },
+    {
+      "name": "huffman",
+      "section": "teaching",
+      "path": "lessons/huffman",
+      "group": "class",
+      "subject": "情報"
+    },
+    {
+      "name": "bayes",
+      "section": "teaching",
+      "path": "lessons/bayes",
+      "group": "lecture"
+    },
+    {
+      "name": "population",
+      "section": "teaching",
+      "path": "lessons/population",
+      "group": "class",
+      "subject": "社会"
+    },
+    {
+      "name": "live-birthday",
+      "section": "teaching",
+      "path": "lessons/live-birthday",
+      "group": "class",
+      "subject": "数学"
+    },
+    {
+      "name": "genai-guideline",
+      "section": "teaching",
+      "path": "lessons/genai-guideline",
+      "group": "training"
+    },
+    {
+      "name": "kokugo-kanbun",
+      "section": "teaching",
+      "group": "class",
+      "subject": "国語"
+    },
+    {
+      "name": "heikin-chuouchi",
+      "section": "teaching",
+      "path": "books/heikin-chuouchi",
+      "group": "class",
+      "subject": "数学"
+    },
+    {
+      "name": "rashomon",
+      "section": "teaching",
+      "path": "books/rashomon",
+      "group": "class",
+      "subject": "国語"
+    },
+    {
+      "name": "tmlr2026-calibration",
+      "section": "teaching",
+      "group": "lecture"
+    },
+    {
+      "name": "minimal",
+      "section": "teaching",
+      "group": "lecture"
+    },
+    {
+      "name": "quarterly-report",
+      "section": "business",
+      "path": "lessons/quarterly-report"
+    },
+    {
+      "name": "security-training",
+      "section": "business",
+      "path": "lessons/security-training"
+    },
+    {
+      "name": "pitch-fictional",
+      "section": "business"
+    },
+    {
+      "name": "city-budget-ja",
+      "section": "life",
+      "path": "lessons/city-budget/ja"
+    },
+    {
+      "name": "city-budget-en",
+      "section": "life",
+      "path": "lessons/city-budget/en"
+    },
+    {
+      "name": "hand-hygiene",
+      "section": "life",
+      "path": "lessons/hand-hygiene"
+    },
+    {
+      "name": "hazard-map",
+      "section": "life",
+      "path": "lessons/hazard-map"
+    }
+  ],
+  "subjects": [
+    "国語",
+    "社会",
+    "数学",
+    "理科",
+    "英語",
+    "音楽",
+    "情報"
+  ],
+  "grouping": {
+    "minLessons": 7
+  },
+  "subjectLabels": {
+    "国語": {
+      "ja": "国語",
+      "en": "Japanese language arts"
+    },
+    "社会": {
+      "ja": "社会",
+      "en": "Social studies"
+    },
+    "数学": {
+      "ja": "数学",
+      "en": "Mathematics"
+    },
+    "理科": {
+      "ja": "理科",
+      "en": "Science"
+    },
+    "英語": {
+      "ja": "英語",
+      "en": "English (foreign language)"
+    },
+    "音楽": {
+      "ja": "音楽",
+      "en": "Music"
+    },
+    "情報": {
+      "ja": "情報",
+      "en": "Information studies"
+    }
+  }
 }

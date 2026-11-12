@@ -34,7 +34,8 @@ import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
 import { testNewDeckFlow, checkSkillDownload } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
-import { EXAMPLES, exampleRand, SECTIONS, sectionOf } from './examples-portable.mjs';
+import { EXAMPLES, exampleRand, SECTIONS, sectionOf, INDEX } from './examples-portable.mjs';
+import { sectionLayout } from './examples-sync.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import zlib from 'node:zlib';
 import { writeZip } from '../kit/core/zip-read.mjs';
@@ -1675,7 +1676,11 @@ try {
         await po.click(`#examples-gallery .ex-door[data-section="${d[0]}"]`);
         await po.waitForSelector('#examples-gallery .ex-bar');
         const names = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
-        ok(names.join() === bySec(d[0]).join() && (await po.evaluate(() => document.activeElement && document.activeElement.id)) === 'ex-h-now', `examples: ${d[0]} lists its samples and the focus moves to its heading (${names.join(', ')})`);
+        const groups = await po.$$eval('#examples-list .ex-group', (g) => g.map((x) => [x.dataset.group, x.querySelector('.ex-g').textContent, x.querySelectorAll('li').length]));
+        // 小見出しのある入口（サンプルが grouping.minLessons 以上）：小見出しの順、その中は教科の順（kit/core/sample-layout.mjs）
+        const lay = sectionLayout(INDEX, d[0]);
+        ok(names.join() === lay.flatMap((x) => x.names).join() && JSON.stringify(groups) === JSON.stringify(lay.filter((x) => x.group).map((x) => [x.group.id, x.group.title.ja, x.names.length]))
+          && (await po.evaluate(() => document.activeElement && document.activeElement.id)) === 'ex-h-now', `examples: ${d[0]} lists its samples ${groups.length ? 'under its group headings ' + JSON.stringify(groups) : ''}and the focus moves to its heading (${names.join(', ')})`);
         seen.push(...names); exBooks.push(...await books());
         await po.click('#examples-gallery .ex-back');
         await po.waitForSelector('#examples-gallery .ex-door');
@@ -1690,7 +1695,19 @@ try {
       await po.click('#examples-list li[data-example="huffman"] .ex-part[data-part="m-codetree"]');
       await po.waitForSelector('#examples-gallery .ex-bar');
       const byPart = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
-      ok(byPart.includes('huffman') && !byPart.includes('parts-showcase') && (await po.textContent('#ex-h-now')).endsWith('を使うサンプル'), `examples: a part tag filters to the samples that use it (m-codetree: ${byPart.join(', ')})`);
+      const pressed = await po.$$eval('#examples-list .ex-part[aria-pressed="true"]', (b) => b.map((x) => x.dataset.part));
+      ok(byPart.includes('huffman') && !byPart.includes('parts-showcase') && (await po.textContent('#ex-h-now')) === `ハフマン木を使ったサンプル（${byPart.length} 件）`
+        && (await po.evaluate(() => document.activeElement && document.activeElement.id)) === 'ex-h-now' && pressed.length === byPart.length && pressed.every((t) => t === 'm-codetree'),
+        `examples: a part button filters to the samples that use it, says so in the heading with the count, and shows itself pressed (m-codetree: ${byPart.join(', ')})`);
+      await po.click('#examples-gallery .ex-clear');
+      await po.waitForSelector('#examples-gallery .ex-hint');
+      ok((await po.textContent('#ex-h-now')) === '教育' && (await po.textContent('#examples-gallery .ex-hint')) === 'パーツの名前を押すと、そのパーツを使ったサンプルだけを並べます。',
+        'examples: 「絞り込みを外す」 returns to the entrance it came from, whose hint line says the part names filter');
+      // パーツの一覧（/parts/）から：?samples-part=<タグ> で絞り込みが開き、アドレスから外れる
+      await po.goto(BASE + '?samples-part=m-flow');
+      await po.waitForSelector('#examples-gallery .ex-clear');
+      ok((await po.textContent('#ex-h-now')).startsWith('流れ図を使ったサンプル（') && !(await po.evaluate(() => location.search.includes('samples-part'))),
+        `examples: ?samples-part=m-flow opens the filter (${await po.textContent('#ex-h-now')}) and leaves the address`);
       if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'examples-list.png') });
       for (const name of EXAMPLES) {
         const file = path.join(DIST, 'examples', name + FORMAT.FILE_EXT);

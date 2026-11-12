@@ -16,21 +16,14 @@ import { buildPortable, writeOutput } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { sampleProblems } from '../kit/core/new-deck-pack.mjs';
 import { readIndex } from './examples-sync.mjs';
-import { purposesFrom } from '../kit/core/purposes.mjs';
 import { CATEGORIES } from '../kit/core/new-deck.mjs';
 
-// カードに出す「伝えたいこと」：部品庫の既定のカタログの manifest の purposes（新規作成の ④ の札と同じ材料）。部品 → 札の id → 札の名前 {ja, en}
+// パーツの札：既定のカタログの manifest のパーツ（教材が自分で定義したものは札にしない）と、その段（特殊・専門を先に並べる）
 const LOCK2 = JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'components2.lock.json'), 'utf8'));
-const PURPOSES = purposesFrom(JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'vendor', 'components-2', `manifest-${LOCK2.default}.json`), 'utf8')));
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'vendor', 'components-2', `manifest-${LOCK2.default}.json`), 'utf8'));
 const LIBRARY_TAGS = new Set(Object.entries(MANIFEST.components).filter(([, c]) => c.kind === 'element').map(([n, c]) => c.tag || 'm-' + n));
 const TIER_OF = new Map(Object.entries(MANIFEST.components).filter(([, c]) => c.kind === 'element').map(([n, c]) => [c.tag || 'm-' + n, c.tier]));
 const TIER_RANK = (t) => ({ extra: 0, specialized: 1 })[TIER_OF.get(t)] ?? 2;
-const purposeLabels = (tags) => {
-  const ids = [];
-  for (const t of tags) { const id = (PURPOSES.components[t] || [])[0]; if (id && !ids.includes(id)) ids.push(id); }   // 部品の主な札（先頭）だけ
-  return PURPOSES.list.filter((x) => ids.includes(x.id)).map((x) => ({ id: x.id, label: x.label }));
-};
 // 場面の 1 行：sample.json の分類と小分類（新規作成 ① の言葉）
 const sceneOf = (s) => {
   const c = s && CATEGORIES.find((x) => x.id === s.category);
@@ -43,6 +36,8 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const INDEX = readIndex();
 export const EXAMPLES = INDEX.examples.map((e) => e.name);
 export const SECTIONS = INDEX.sections;
+// 区分の中の小見出しの決まり（教科の順と最低件数。kit/core/sample-layout.mjs）
+export const GROUPING = { subjects: INDEX.subjects || [], subjectLabels: INDEX.subjectLabels || {}, grouping: INDEX.grouping || {} };
 // 「このサンプルを参考に作る」と ?from-sample= に使えるもの（fromSample: false のパーツ図鑑は再生だけ）
 export const FROM_SAMPLE = INDEX.examples.filter((e) => e.fromSample !== false).map((e) => e.name);
 export const sectionOf = (name) => (INDEX.examples.find((e) => e.name === name) || {}).section;
@@ -117,7 +112,7 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       const live = /\bpoll="[^"]+"/.test(deckSrc);
       list.push({ name, file, title: String(m.title || name), lang: String(m.lang || ''), slides: r.stats.slides, bytes: Buffer.byteLength(r.html), profile: r.index.profile,
         sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample, book: !!r.index.article,
-        section: entry.section, scene: sceneOf(sample), parts, purposes: purposeLabels(parts),
+        section: entry.section, ...(entry.group ? { group: entry.group } : {}), ...(entry.subject ? { subject: entry.subject } : {}), scene: sceneOf(sample), parts,
         voice: (r.stats.audio || 0) > 0, live, tate, cover: copyCover(name, outDir) });
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }

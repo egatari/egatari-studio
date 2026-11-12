@@ -3,8 +3,9 @@
 //   いちばん上の列「まず見る」：intro の区分（Egatari の紹介を画面の言語のものから、もう一方の言語には言語の印）と「パーツ図鑑」の札（再生だけ。パーツの一覧へも）
 //   その下：教育・ビジネス・生活の入口のカード。押すと、その区分のサンプルの札を並べる（「戻る」で入口へ）
 //   札：表紙の静止画・題名・場面・印（本・声・ライブ・縦書き・言語）・伝えたいこと・使っているパーツ（押すと、そのパーツを使うサンプルに絞る）・「見る」
-// 一覧の項目（tools/examples-portable.mjs の buildExamples）：{name, file, title, lang, sample, book, section, scene, parts, purposes, voice, live, tate, cover}
+// 一覧の項目（tools/examples-portable.mjs の buildExamples）：{name, file, title, lang, sample, book, section, group?, subject?, scene, parts, voice, live, tate, cover}
 import { partLabel } from '../kit/core/part-labels.mjs';
+import { sectionLayout } from '../kit/core/sample-layout.mjs';
 
 const el = (tag, attrs = {}, kids = []) => {
   const e = document.createElement(tag);
@@ -17,9 +18,9 @@ const el = (tag, attrs = {}, kids = []) => {
 };
 const shortScene = (s) => s.replace(/\s*[（(][^）)]*[）)]\s*$/, '');   // 「案内（ごみの出し方…）」→「案内」
 const PARTS_SAMPLE = 'parts-showcase';
-const PURPOSES_MAX = 3, PARTS_MAX = 3;
+const PARTS_MAX = 3;
 
-export function createExamplesGallery({ root, list, sections, T, lang, coverHref, partsHref, onView }) {
+export function createExamplesGallery({ root, list, sections, grouping = {}, T, lang, coverHref, partsHref, onView }) {
   const L = lang === 'en' ? 'en' : 'ja';
   const S = { view: { kind: 'top' }, back: [] };
   const ofSection = (id) => list.filter((x) => x.section === id);
@@ -33,20 +34,24 @@ export function createExamplesGallery({ root, list, sections, T, lang, coverHref
   const cover = (x) => (x.cover ? el('img', { cls: 'ex-cover', src: coverHref(x.cover), alt: '', loading: 'lazy', width: 192, height: 108 }) : el('span', { cls: 'ex-cover ex-cover-none', 'aria-hidden': 'true' }));
   const viewBtn = (x) => el('button', { type: 'button', cls: 'ex-view', text: T.exampleView, 'aria-label': `${T.exampleView}: ${x.title}`, onclick: () => onView(x) });
 
-  function tile(x) {
-    const scene = x.scene && x.scene[L] ? shortScene(x.scene[L]) : '';
-    const purposes = (x.purposes || []).slice(0, PURPOSES_MAX);
-    const parts = (x.parts || []).slice(0, PARTS_MAX);
+  // active：絞り込みの中のパーツ（その札を先頭に出し、aria-pressed）
+  function tile(x, active = null) {
+    // 場面の 1 行。教科のある授業は「授業・理科」（en「School lesson · Science」）：小見出しの下でも、パーツで絞った一覧でも教科がわかる
+    const sub = x.subject && grouping.subjectLabels && grouping.subjectLabels[x.subject] ? grouping.subjectLabels[x.subject][L] : '';
+    const scene0 = x.scene && x.scene[L] ? shortScene(x.scene[L]) : '';
+    const scene = scene0 && sub ? scene0 + (L === 'ja' ? '・' : ' · ') + sub : scene0;
+    const all = active && (x.parts || []).includes(active) ? [active, ...x.parts.filter((t) => t !== active)] : (x.parts || []);
+    const parts = all.slice(0, PARTS_MAX);
     const more = (x.parts || []).length - parts.length;
     return el('li', { cls: 'ex-tile', 'data-example': x.name }, [
       cover(x),
       el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
       scene ? el('span', { cls: 'ex-scene', text: scene }) : null,
       el('span', { cls: 'ex-badges' }, badges(x)),
-      // 伝えたいことは 1 行の文（3 つまで）。押せる札はパーツだけ（そのパーツのサンプルに絞る）
-      purposes.length ? el('span', { cls: 'ex-purposes', text: T.examplePurposesLine(purposes.map((p) => p.label[L])) }) : null,
+      // パーツの札（3 つまで）：押すと、そのパーツを使ったサンプルだけに絞る（伝えたいことは新規作成の ④ にだけ出す。作者 11/12）
       parts.length ? el('span', { cls: 'ex-tags ex-parts', 'aria-label': T.exampleParts }, [
-        ...parts.map((t) => el('button', { type: 'button', cls: 'ex-tag ex-part', 'data-part': t, text: partLabel(t, L), title: T.examplePartTitle(partLabel(t, L)), onclick: () => go({ kind: 'part', tag: t }) })),
+        ...parts.map((t) => el('button', { type: 'button', cls: 'ex-tag ex-part', 'data-part': t, 'aria-pressed': t === active ? 'true' : 'false', text: partLabel(t, L), title: T.examplePartTitle(partLabel(t, L)),
+          onclick: () => (t === active ? back() : go({ kind: 'part', tag: t })) })),
         more > 0 ? el('span', { cls: 'ex-more', text: T.exampleMore(more) }) : null]) : null,
       viewBtn(x),
     ]);
@@ -72,7 +77,7 @@ export function createExamplesGallery({ root, list, sections, T, lang, coverHref
         const xs = ofSection('intro').filter((x) => x.name !== PARTS_SAMPLE).sort((a, b) => (a.lang.slice(0, 2) === L ? 0 : 1) - (b.lang.slice(0, 2) === L ? 0 : 1));
         const ps = list.find((x) => x.name === PARTS_SAMPLE);
         root.append(el('section', { cls: 'ex-row', 'aria-labelledby': 'ex-h-intro' }, [heading(intro.title[L], 'ex-h-intro'),
-          el('ul', { cls: 'ex-tiles', id: 'examples-list' }, [...xs.map(tile), ps ? partsCard(ps) : null])]));
+          el('div', { id: 'examples-list' }, [el('ul', { cls: 'ex-tiles' }, [...xs.map(tile), ps ? partsCard(ps) : null])])]));
       }
       const doors = sections.filter((s) => s.id !== 'intro' && ofSection(s.id).length);
       root.append(el('ul', { cls: 'ex-doors', 'aria-label': T.exampleDoors }, doors.map((s) => el('li', {}, [
@@ -84,11 +89,19 @@ export function createExamplesGallery({ root, list, sections, T, lang, coverHref
       const s = sections.find((x) => x.id === v.id);
       root.append(el('div', { cls: 'ex-bar' }, [backBtn(), heading(s.title[L], 'ex-h-now')]),
         s.subtitle[L] ? el('p', { cls: 'hint ex-sub', text: s.subtitle[L] }) : '',
-        el('ul', { cls: 'ex-tiles', id: 'examples-list' }, ofSection(v.id).map(tile)));
+        el('p', { cls: 'hint ex-hint', text: T.examplePartHint }),
+        // 小見出し（サンプルが多い入口）：小見出しの順、その中は教科の順（kit/core/sample-layout.mjs）
+        el('div', { id: 'examples-list' }, sectionLayout({ sections, subjects: grouping.subjects || [], grouping: grouping.grouping || {}, examples: list }, v.id).map((part, i) => {
+          const byName = new Map(list.map((x) => [x.name, x]));
+          const ul = el('ul', { cls: 'ex-tiles', ...(part.group ? { 'aria-labelledby': `ex-g-${i}` } : {}) }, part.names.map((n) => tile(byName.get(n))));
+          return part.group ? el('section', { cls: 'ex-group', 'data-group': part.group.id }, [el('h4', { cls: 'ex-g', id: `ex-g-${i}`, text: part.group.title[L] }), ul]) : ul;
+        })));
     } else if (v.kind === 'part') {
+      // 絞り込み：見出しに何が起きたか（「流れ図を使ったサンプル（5 件）」）と「絞り込みを外す」（前の画面へ）
       const xs = list.filter((x) => x.name !== PARTS_SAMPLE && (x.parts || []).includes(v.tag));
-      root.append(el('div', { cls: 'ex-bar' }, [backBtn(), heading(T.examplePartHeading(partLabel(v.tag, L)), 'ex-h-now')]),
-        el('ul', { cls: 'ex-tiles', id: 'examples-list' }, xs.map(tile)));
+      root.append(el('div', { cls: 'ex-bar' }, [heading(T.examplePartHeading(partLabel(v.tag, L), xs.length), 'ex-h-now'),
+        el('button', { type: 'button', cls: 'small ex-clear', text: T.exampleClearFilter, onclick: () => back() })]),
+        xs.length ? el('div', { id: 'examples-list' }, [el('ul', { cls: 'ex-tiles' }, xs.map((x) => tile(x, v.tag)))]) : el('p', { cls: 'hint', id: 'examples-list', text: T.examplePartNone }));
     }
     if (focus) { const h = root.querySelector(focus); if (h) h.focus(); }
   }
@@ -99,5 +112,7 @@ export function createExamplesGallery({ root, list, sections, T, lang, coverHref
     render(S.view.kind === 'top' ? (prev.kind === 'section' ? `.ex-door[data-section="${prev.id}"]` : '.ex-door') : '#ex-h-now');
   }
   render();
-  return { render, go, back, get view() { return S.view; } };
+  // パーツの一覧（/parts/）や ?samples-part= から、そのパーツの絞り込みを開く（戻ると最初の画面）
+  function showPart(tag) { S.back = [{ kind: 'top' }]; S.view = { kind: 'part', tag }; render('#ex-h-now'); }
+  return { render, go, back, showPart, get view() { return S.view; } };
 }
