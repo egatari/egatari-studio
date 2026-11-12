@@ -114,12 +114,12 @@ assert.throws(() => studioVersion('no marker', data.version), /exactly one/);
 const skillLine = (text) => text.match(/^\*\*(?:スキルの版|Skill version)：?:? ?([^*\n]+)\*\*$/m)?.[1];
 for (const [f, t] of [['make', make], ['make en', read(`${MAKE_SKILL_DIR}/SKILL.en.md`)], ['studio', studio]]) assert.equal(skillLine(t), pkgVersion, `${f}: skill version line`);
 assert.equal(studioVersion('<!-- generated: instruction-version -->\n**指示の版：00000000**\n<!-- /generated: instruction-version -->', '1234abcd', '9.8.7'), '<!-- generated: instruction-version -->\n**指示の版：1234abcd**\n**スキルの版：9.8.7**\n<!-- /generated: instruction-version -->');
-// 自動更新を入れる手順と、古い版の知らせ（v0.6.10）：スキルの指示と品質チェックは版ごとに変わるので、入れる手順のすぐ後に置く
+// 自動更新を入れる手順と、古いバージョンの知らせ（v0.6.10）：スキルの指示と品質チェックはバージョンごとに変わるので、入れる手順のすぐ後に置く
 const AUTO = '`/plugin` → Marketplaces → egatari → Enable auto-update';
 const codexUpdate = `npx egatari@${pkgVersion.split('.').slice(0, 2).join('.')}.x skills update`;
-const notice = (hint) => `「Egatari のスキルが古い版（<版>）です。${hint}」`;
+const notice = (hint) => `「Egatari のスキルが古いバージョン（<バージョン>）です。${hint}」`;
 for (const [f, t] of [['make', make], ['studio', studio]]) {
-  assert.ok(t.includes(AUTO) && t.includes(`Codex では Studio のリリースのたびに \`${codexUpdate}\``) && t.includes('スキルの指示と品質チェックは Studio の版ごとに変わる'), `${f}: auto-update step`);
+  assert.ok(t.includes(AUTO) && t.includes(`Codex では Studio のリリースのたびに \`${codexUpdate}\``) && t.includes('スキルの指示と品質チェックは Studio のバージョンごとに変わる'), `${f}: auto-update step`);
   assert.ok(t.includes(notice('/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。')), `${f}: notice (Claude Code)`);
   assert.ok(t.includes(notice(`\`${codexUpdate}\` で更新できます。`)), `${f}: notice (Codex)`);
   assert.ok(/1 回の会話で 1 回だけ/.test(t) && /作業は止めずに続ける/.test(t), `${f}: once, never blocks`);
@@ -133,7 +133,7 @@ for (const f of ['README.md', 'README.ja.md', 'docs/with-claude.md', 'docs/with-
   const t = read(f);
   const at = t.indexOf('/plugin install egatari-studio@egatari\n```\n\n');
   assert.ok(at > 0 && t.slice(at, at + 400).includes(AUTO), `${f}: auto-update right after the install commands`);
-  assert.ok(/instructions and quality checks change with each Studio release|スキルの指示と品質チェックは Studio の版ごとに変わる/.test(t), `${f}: why`);
+  assert.ok(/instructions and quality checks change with each Studio release|スキルの指示と品質チェックは Studio のバージョンごとに変わる/.test(t), `${f}: why`);
 }
 for (const f of ['README.md', 'README.ja.md']) {
   const t = read(f);

@@ -91,8 +91,8 @@ const builder = createBuildClient(RES, loadLazy, { steps: (links) => askSteps(li
 const buildTimeout = () => (window.__APP_TEST && window.__APP_TEST.buildTimeout) || BUILD_TIMEOUT_MS;
 // ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
 //   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, tierAOnly（段 A の編集だけ：理由か null）, rightsOk, extended,
-//    original（開いた・前に保存した文書の文字列。段 A の編集の元）, narr0（その narration.md）, saved, lastTier（'A' | 'B'）, sourceMatches, earlier（前の版のファイル）}
-// earlier：前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）：{kind: 'file' | 'folder', made, noId, version, studioUrl, guideUrl} か null。
+//    original（開いた・前に保存した文書の文字列。段 A の編集の元）, narr0（その narration.md）, saved, lastTier（'A' | 'B'）, sourceMatches, earlier（旧形式のファイル）}
+// earlier：旧形式のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）：{kind: 'file' | 'folder', made, noId, version, studioUrl, guideUrl} か null。
 //   知らせに前の版の Studio と移し替えの手引きを出す。ファイルは組み直さず、ファイルそのもの（自分のプレーヤー）をプレビューで再生し、編集・保存を断る。
 //   作業フォルダは知らせるだけ（この版でも組めて、編集できる。id を付ければ知らせが消える）
 const S = {
@@ -100,7 +100,7 @@ const S = {
   sig: '', building: null, again: false, poll: 0, builds: 0, loads: 0, pos: null,
   presWin: null, checks: new Map(), lastBuildMs: 0, ranges: new Set(), codeOk: null, earlier: null,
 };
-// 前の版のファイルなら、編集を断るわけ（なければ null）。前の版の作業フォルダは知らせるだけで、編集は断らない
+// 旧形式のファイルなら、編集を断るわけ（なければ null）。旧形式の作業フォルダは知らせるだけで、編集は断らない
 const earlierWhy = () => (S.earlier && S.earlier.kind === 'file' ? T.earlierNoEdit : null);
 // 保存していない変更をブラウザの中に残す（app/drafts.js、backlog #55）：1 ファイルを開いている間だけ、その文書の見張り（keeper）を持つ。
 // S.draftKept：今の変更をこのブラウザに残せているか（状態の帯のヒントの文を選ぶ。残せていないときに「復元できます」と言わない）
@@ -560,7 +560,7 @@ const enc = (o) => JSON.stringify(o).replace(/</g, '\\u003c');
 function withShim(html, cfg, extra = '') { return previewDocument(html, `${SHIM}(${enc(cfg)});${extra}`); }
 // theme：組み立てが返したテーマの名前と寸法の宣言（品質チェックの本文の場所の限りと themeMetricsDrift。kit/core/theme-metrics.mjs）
 function previewHtml(base) {
-  // 前の版のファイル：ファイルそのもの（自分のプレーヤー）を再生するだけ。この版の仲立ちの頼み（品質チェック・位置）は受けない
+  // 旧形式のファイル：ファイルそのもの（自分のプレーヤー）を再生するだけ。この版の仲立ちの頼み（品質チェック・位置）は受けない
   // モードはいつも ?mode= で渡す（教材の deck-meta.offer.open より強い。Player P1：プレビューはメニューで選んだモードで見せる）
   const query = '?mode=' + (S.previewMode || 'talk');
   if (S.earlier && S.earlier.kind === 'file') return withShim(base, { load: S.loads, query });
@@ -573,7 +573,7 @@ function previewHtml(base) {
 const reasonsPrefix = () => trustedPrefix(`${SHIM}(${enc({ dev: true, load: 0 })});\n${RES.hints}`);
 // 組み直す（同時に 1 つだけ。途中で頼まれたら終わってからもう一度）。戻り値：失敗したら true
 async function rebuild(reason) {
-  if (S.earlier && S.earlier.kind === 'file') return false;   // 前の版のファイルは組み直さない（ファイルそのものを再生する）
+  if (S.earlier && S.earlier.kind === 'file') return false;   // 旧形式のファイルは組み直さない（ファイルそのものを再生する）
   if (S.building) { S.again = true; return S.building; }
   S.building = (async () => {
     let failed = false;
@@ -622,7 +622,7 @@ async function rebuild(reason) {
         // 構成案（egatari.json の studio.outline。長い教材を 6 枚ずつ作る途中）：残りがあれば知らせに「次の 6 枚を頼む」
         try { S.outline = outlineOf(await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })); } catch { S.outline = null; }
         if (S.ws !== ws0 || S.gen !== g0) continue;
-        // 前の版の作業フォルダ：移し替え（npm run ids）が済めば、知らせを消して編集できるようにする
+        // 旧形式の作業フォルダ：移し替え（npm run ids）が済めば、知らせを消して編集できるようにする
         if (S.earlier && S.earlier.kind === 'folder') {
           const e = await folderEarlier(S.ws);
           if (S.ws !== ws0 || S.gen !== g0) continue;
@@ -1596,7 +1596,7 @@ async function openPortableNow(input) {
     }
     return false;
   }
-  // 前の版のファイル（索引に player がない。§7.1）：組み直さずに、ファイルそのものを再生する（編集・保存は断る）
+  // 旧形式のファイル（索引に player がない。§7.1）：組み直さずに、ファイルそのものを再生する（編集・保存は断る）
   const early = earlierFile(r);
   if (early) return openEarlierFile(name, bytes, r, early, handle);
   // 独自のコード：申告（index.profile）を信じず、取り出した原稿の中身から決める（§6）。中のコードが動く前に知らせる。
@@ -1731,7 +1731,7 @@ async function applyDraft(d, P, ws) {
 }
 
 
-// ---------------------------------------------------------------- 前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）
+// ---------------------------------------------------------------- 旧形式のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1）
 // ファイル：組み直さない（この版の組み立てで作り直すと、別のプレーヤーの別の教材になる）。ファイルそのもの（自分のプレーヤー）を
 // プレビューで再生し、編集・保存は断る（P.readOnly）。教材独自のコード（取り出した原稿の中身から。§6）があれば、再生の前に聞く。
 // ファイルのプレーヤーそのものは、ほかの教材のコードと同じく sandbox の枠の中で、この版の決まり（CSP）の下で動く
@@ -1768,7 +1768,7 @@ async function openEarlierFile(name, bytes, r, early, handle) {
   loadFrame();
   return true;
 }
-// 作業フォルダ：設定のファイル（egatari.json）があり、どのスライドにも id がなければ前の版の作業フォルダ（app/earlier-draft.js の earlierFolder。
+// 作業フォルダ：設定のファイル（egatari.json）があり、どのスライドにも id がなければ旧形式の作業フォルダ（app/earlier-draft.js の earlierFolder。
 // 手で足した id のないスライドだけでは前の版にしない。読めなければ前の版にしない）。知らせるだけで、編集は断らない
 async function folderEarlier(ws) {
   try {

@@ -73,7 +73,7 @@ const STR = {
   ja: {
     mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックでコメント · e で終了',
     save: '保存', cancel: 'キャンセル', editSrc: 'HTML を編集', closeEsc: '閉じる（Esc）', editHint: '⌘/Ctrl+Enter で保存 · Esc でキャンセル · 数式は \\( … \\) のまま書けます',
-    loading: '読み込み中…', loadFail: '読み込めませんでした', stale: 'HTML が変わっています。再読み込みしてください（この画面は古い版から作られています）',
+    loading: '読み込み中…', loadFail: '読み込めませんでした', stale: 'HTML が変わっています。再読み込みしてください（この画面は古いバージョンから作られています）',
     saving: '保存中…', saved: '保存しました', conflict: 'HTML が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
     reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'コメント', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
     cFail: '残せませんでした', cDone: 'コメントを残しました（comments.json）', cList: 'コメント（未対応）', cVolatile: 'Egatari ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
@@ -95,7 +95,7 @@ const STR = {
     inkMark: 'マーカーの線', inkMarks: (n) => 'マーカーの線 ' + n + ' 本', inkT: '描いた線（comments.json の strokes）', inkMore: 'スライドに続けて描くと、このコメントに線を足せます（20 本まで）', inkFull: '1 つのコメントの線は 20 本まで', ink: 'マーカー（m）', inkTip: '丸や矢印で場所を示して、コメントを付ける（スライドに描いてから書きます。1 つのコメントに何本でも。スライドのツールバーのペンのボタンでも開く。d でも開く）',
     nUnsaved: '台本が保存されていません。保存するか元に戻すと、プレビューを操作できます', nRevert: '元に戻す',
     dateLocale: 'ja-JP',
-    modeEdit: '編集中', modeInk: '編集中：マーカー', modeView: '表示', modeTool: (t) => '発表の道具：' + t, tools: { laser: 'レーザーポインター', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
+    modeEdit: '編集中', modeInk: '編集中：マーカー', modeView: '表示', modeTool: (t) => '発表のツール：' + t, tools: { laser: 'レーザーポインター', pen: 'ペン', vpen: '消えるペン' }, modeLabel: '今のモード',
   },
 };
 

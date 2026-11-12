@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=3e6e1d84f7385c7d -->
+<!-- i18n: pair=template.md sha256=e748409097c629f0 -->
 {{GENERATED}}
 # チャットの AI で Egatari の教材を書く
 

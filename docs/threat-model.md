@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.ja.md sha256=d07d6017ea6740f1 -->
+<!-- i18n: pair=threat-model.ja.md sha256=f9322f6abf39df1d -->
 # Threat model
 
 English | [日本語](threat-model.ja.md)

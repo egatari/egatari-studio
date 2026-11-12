@@ -21,10 +21,10 @@ export function modelCacheSection({ el, EN, ask, toast }) {
   } : {
     title: 'この PC で作る AI 音声のモデル', none: 'このブラウザには AI 音声のモデルが入っていません。',
     usage: (u, q) => `このサイトはブラウザの保存領域を ${size(u)} 使っています（上限 ${size(q)}）。`, noUsage: 'このブラウザは保存領域の使用量を知らせません。',
-    model: (n, b) => (n.startsWith(IRODORI_PREFIX) ? `Irodori-TTS（日本語、版 ${n.slice(IRODORI_PREFIX.length)}）` : 'Kokoro-82M（英語）') + (b ? `：${size(b)}` : ''),
+    model: (n, b) => (n.startsWith(IRODORI_PREFIX) ? `Irodori-TTS（日本語、バージョン ${n.slice(IRODORI_PREFIX.length)}）` : 'Kokoro-82M（英語）') + (b ? `：${size(b)}` : ''),
     kept: 'モデルは消されずに残ります（ブラウザが保存を約束しています）。',
     mayEvict: 'ディスクの空きが足りなくなると、ブラウザがモデルを消すことがあります。Safari は、このサイトを 1 週間ほど開かないと消します。消えたら、次に使うときに取得し直します。',
-    old: '古い版のモデルは、新しい版を取得するときに自動で消します。',
+    old: '古いバージョンのモデルは、新しいバージョンを取得するときに自動で消します。',
     del: 'モデルを消す', askTitle: 'AI 音声のモデルを消しますか？', askBody: (b) => `このブラウザから ${b ? size(b) : 'モデル'} を消します。作った音声は消えません。次に AI 音声をこの PC で作るときに、モデルを取得し直します（日本語は約 1.26 GB）。`,
     cancel: 'キャンセル', done: (n) => `モデルのキャッシュを ${n} 個消しました`, failed: 'モデルを消せませんでした',
   };

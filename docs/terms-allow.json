@@ -1,5 +1,5 @@
 {
-  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}. noPairs: term ids skipped by the ja↔en pair check (their ja word is too generic for substring pairing, e.g. 本 in 2 本 and 日本語). aiDocsToo: avoid words also matched in the AI-instruction docs (docs/authoring-with-llms*), which otherwise use the spec's words and are not checked.",
+  "about": "Legitimate uses of avoid words for tools/lint-terms.mjs (npm run lint:terms). uiOnly: words matched only in UI strings although longer than two characters. docsToo: short words matched in docs prose too. allow: {file (glob), pattern (regex: the hit must lie inside its match) or line (substring of the line), term, reason, keep? (keep even when nothing matches now)}. noPairs: term ids skipped by the ja↔en pair check (their ja word is too generic for substring pairing, e.g. 本 in 2 本 and 日本語). aiDocsToo: avoid words also matched in the AI-instruction docs (docs/authoring-with-llms*), which otherwise use the spec's words and are not checked. avoidPatterns: {term, lang, label, pattern (regex), docsToo?}: avoid words that need a pattern, such as 版 alone for a version (compounds like 正式版 are excluded by the pattern).",
   "uiOnly": [
     "決まり"
   ],
@@ -16,6 +16,16 @@
     "段階",
     "部品",
     "口述原稿"
+  ],
+  "avoidPatterns": [
+    {
+      "term": "software-version",
+      "lang": "ja",
+      "label": "版（単独）",
+      "pattern": "(?<!正式|配信|最新|日本語|英語|ブラウザ|オフライン|コマンド|ベータ|再生専用|試用|出|初|再|改|訂)版(?![権画元面木])",
+      "docsToo": true,
+      "reason": "Owner 2026-11-13: 版 alone is unclear; use バージョン. Compounds stay. 試用版 is in avoid as a word."
+    }
   ],
   "noPairs": [
     "book",
@@ -501,12 +511,6 @@
     },
     {
       "file": "kit/check-messages.mjs",
-      "pattern": "古い形式の Office",
-      "term": "earlier-draft-file",
-      "reason": "古い形式 here is a legacy Office format (doc, xls, ppt) that may not be attached, not a file from an earlier Egatari version."
-    },
-    {
-      "file": "kit/check-messages.mjs",
       "pattern": "秘密鍵|private key|access key",
       "term": "join-code",
       "reason": "秘密鍵 / private key / access key here are credentials found in an attachment (attachPrivate), not the join code of Live."
@@ -577,6 +581,19 @@
       "pattern": "教育：授業|「授業・理科」|授業は教科",
       "term": "preview-later",
       "reason": "授業 here is the group of class samples and the setting 授業 (a school lesson), not the old name of showing later steps faintly."
+    },
+    {
+      "file": "**/SKILL.md",
+      "pattern": "「?(指示|スキル)の版」?[：:]?",
+      "term": "software-version",
+      "reason": "「指示の版」「スキルの版」 are machine-read marker lines (egatari doctor, tools/make-llm-guide.mjs, skills installed from earlier versions). Renaming them needs readers that accept both; kept in v0.6.11.",
+      "keep": true
+    },
+    {
+      "file": "app/part-thumbs.js",
+      "pattern": "報告書づくりの道具",
+      "term": "tools",
+      "reason": "Sample content of a part thumbnail (a made-up report), not the Tools group."
     }
   ]
 }

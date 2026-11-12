@@ -1,4 +1,4 @@
-// 前の版のファイル（docs/terms.json の earlier-draft-file。format spec §7.1「Drafts before 1.0」）
+// 旧形式のファイル（docs/terms.json の earlier-draft-file。format spec §7.1「Drafts before 1.0」）
 // 1.0 の形より前の草案で書いたファイルは、索引に player を持たない。そのまま自分のプレーヤーで再生できるが、この Studio では編集しない
 // （§7.1：MAY refuse to edit、SHOULD say so and point to an editor of that draft or to migration instructions）。
 // 編集アプリ（main.js）は、プレビューでファイルそのものを再生し（組み直さない）、編集と保存を断り、知らせに 2 つの道を出す：
@@ -30,7 +30,7 @@ export function older(a, b) {
 }
 const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
-// 開いたファイルの読み取りの結果（kit/core/portable.mjs の readPortable。Worker を通しても同じ形）→ 前の版のファイルなら {made: 作った Studio の版か null}、
+// 開いたファイルの読み取りの結果（kit/core/portable.mjs の readPortable。Worker を通しても同じ形）→ 旧形式のファイルなら {made: 作った Studio の版か null}、
 // そうでなければ null。前の版かどうかは readPortable の preDraft（索引に player がない）だけで決める（2 つ目の判定を持たない）。
 // この Studio は書くファイルに必ず player を書く（format spec §4.1）ので、この Studio が書いたファイルは前の版にならない
 export function earlierFile(read) {

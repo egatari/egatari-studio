@@ -35,7 +35,7 @@ const TEXT = {
     isLatest: 'これが最新のリリースでもあります。',
     close: 'この案内を隠す',
     root: (v) => `Egatari Studio v${v}`,
-    older: 'ほかの版：', pick: '版を選ぶ',
+    older: 'ほかのバージョン：', pick: 'バージョンを選ぶ',
   },
 };
 function langOf(lang) {

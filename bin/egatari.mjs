@@ -145,7 +145,7 @@ function skillsUpdate() {
     if (ok) done++; else failed++;
   }
   if (!done && !failed) console.log('claude も codex も見つからない。どちらかを入れてから / neither claude nor codex was found; install one first.');
-  else if (done) console.log('更新したら道具を再起動すると反映される / restart the tool to apply the update.');
+  else if (done) console.log('更新したらツールを再起動すると反映される / restart the tool to apply the update.');
   process.exit(failed ? 1 : 0);
 }
 

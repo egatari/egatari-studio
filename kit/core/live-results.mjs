@@ -81,7 +81,7 @@ export function skippedNotice(s, lang) {
   const list = shown.join(lang === 'en' ? ', ' : '・') + (more > 0 ? (lang === 'en' ? `, and ${more} more` : `・ほか ${more} 件`) : '');
   return lang === 'en'
     ? `Items this Studio version doesn't know (${list}) were not imported. The file itself is kept as it is.`
-    : `この版の Studio が知らない項目（${list}）は取り込みませんでした。ファイルそのものはそのまま残します`;
+    : `このバージョンの Studio が知らない項目（${list}）は取り込みませんでした。ファイルそのものはそのまま残します`;
 }
 
 function checkActivity(a, at, e) {

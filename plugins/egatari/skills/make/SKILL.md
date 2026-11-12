@@ -14,19 +14,19 @@ Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/
 **指示の版：67a95271**
 **スキルの版：0.6.10-rc.1**
 
-Studio でコピーした指示書の版と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
-Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がない道具では案内を省き、`egatari --version` の版を利用者に伝える。
+Studio でコピーした指示書の「指示の版」と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
+Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がないツールでは案内を省き、`egatari --version` のバージョンを利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
-入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio の版ごとに変わる。Claude Code では `/plugin` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに `npx egatari@0.6.x skills update`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
+入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では `/plugin` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに `npx egatari@0.6.x skills update`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
 
-**古い版の知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio の版が書いてある。Egatari ファイル（`.ega.html`）では `<script id="deck-meta">` の `"generator":{"name":"egatari-studio","version":"…"}`、作業フォルダでは組み立ての出力 `out/deck.html` の `deck-meta` の `"version"`。その版が上のスキルの版より新しいときだけ（版は数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<版> はスキルの版。
+**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（`.ega.html`）では `<script id="deck-meta">` の `"generator":{"name":"egatari-studio","version":"…"}`、作業フォルダでは組み立ての出力 `out/deck.html` の `deck-meta` の `"version"`。そのバージョンが上の「スキルの版」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルの版」の行のバージョン。
 
-- Claude Code：「Egatari のスキルが古い版（<版>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
-- Codex：「Egatari のスキルが古い版（<版>）です。`npx egatari@0.6.x skills update` で更新できます。」
-- チャット：「Egatari のスキルが古い版（<版>）です。Studio の『AI のスキルをダウンロード』で入れ直せます。」
+- Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
+- Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。`npx egatari@0.6.x skills update` で更新できます。」
+- チャット：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で入れ直せます。」
 
-ファイルの版がスキルの版と同じか古いとき、版が読めないときは何も言わない。Studio でコピーした指示書は指示の版しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
+ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示の版」の行しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
 
 ## 進め方
 

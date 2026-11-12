@@ -101,7 +101,7 @@ console.log('shape');
   ok(Lr.ok && sorted(Lr.skipped.members) === 'futureThing,tz' && JSON.stringify(Lr.skipped.kinds) === '{"rating":3}', `tolerant: made-up members and kinds are accepted and reported (${JSON.stringify(Lr.skipped)})`);
   ok(Lr.ok && !('futureThing' in Lr.results) && !('futureThing' in Lr.results.responses[0]) && 'reply' in Lr.results.responses[1] && Lr.results.responses.length === R0.responses.length && !Lr.results.responses.some((x) => x.kind === 'rating') && Lr.results.activities['*'].length === R0.activities['*'].length, 'tolerant: unknown members and kinds are dropped from the parsed result, the known ones are kept');
   ok(summarizeResults(Lr.results).responses === R0.responses.length && isLiveResults(enc.encode(JSON.stringify(L))), 'tolerant: the summary counts only known responses; isLiveResults accepts it');
-  ok(/futureThing/.test(skippedNotice(Lr.skipped, 'en')) && /rating ×3/.test(skippedNotice(Lr.skipped, 'en')) && /この版の Studio が知らない項目（.*futureThing.*rating/.test(skippedNotice(Lr.skipped, 'ja')), 'tolerant: the notice lists member and kind names (ja and en)');
+  ok(/futureThing/.test(skippedNotice(Lr.skipped, 'en')) && /rating ×3/.test(skippedNotice(Lr.skipped, 'en')) && /このバージョンの Studio が知らない項目（.*futureThing.*rating/.test(skippedNotice(Lr.skipped, 'ja')), 'tolerant: the notice lists member and kind names (ja and en)');
   const PI = R0.responses.findIndex((x) => x.kind === 'poll');
   const bad = (f) => { const x = clone(L); f(x); return parseResults(enc.encode(JSON.stringify(x))); };
   const rejected = [

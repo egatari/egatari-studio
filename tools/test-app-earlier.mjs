@@ -1,4 +1,4 @@
-// 前の版のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1「Drafts before 1.0」、docs/terms.json の earlier-draft-file）
+// 旧形式のファイル・作業フォルダ（app/earlier-draft.js。format spec §7.1「Drafts before 1.0」、docs/terms.json の earlier-draft-file）
 //   node tools/test-app-earlier.mjs [作業用のフォルダ]
 // 1. 決まり（Node）：前の版かどうかは readPortable の preDraft（索引に player がない）だけで決める。player のない索引は、作ったのがこの Studio の同じ版でも前の版・
 //    この Studio が書き出した 1.0 のファイル（player がある）は前の版にしない・
@@ -140,15 +140,15 @@ try {
   ok(await openFile(page, 'draft') === true, 'file: a pre-1.0 file opens (not refused)');
   let n = await notice(page);
   ok(n && n.kind === 'file' && n.visible && !n.readonly, 'file: the earlier-version notice is shown (instead of the generic read-only line)');
-  ok(n && n.lead === '前の版のファイルです（Egatari Studio v0.3.1 で作成）。 このまま再生できますが、この版の Studio では編集も保存もできません。前の版の Studio で開けば、これまでどおり編集できます。この版で編集するには、移し替えの手引きに沿って移してください。', 'file: notice names the situation and what to do ' + JSON.stringify(n && n.lead));
-  ok(n && n.studio.text === '前の版の Studio で開く' && n.studio.href === HOST + 'site/v0.4.8/' && n.studio.target === '_blank' && /noopener/.test(n.studio.rel), 'file: 「前の版の Studio で開く」 → newest pre-1.0 version in versions.json (0.3.1 is not listed) ' + JSON.stringify(n && n.studio));
+  ok(n && n.lead === '旧形式のファイルです（Egatari Studio v0.3.1 で作成）。 このまま再生できますが、このバージョンの Studio では編集も保存もできません。以前のバージョンの Studio で開けば、これまでどおり編集できます。このバージョンで編集するには、移し替えの手引きに沿って移してください。', 'file: notice names the situation and what to do ' + JSON.stringify(n && n.lead));
+  ok(n && n.studio.text === '以前のバージョンの Studio で開く' && n.studio.href === HOST + 'site/v0.4.8/' && n.studio.target === '_blank' && /noopener/.test(n.studio.rel), 'file: 「以前のバージョンの Studio で開く」 → newest pre-1.0 version in versions.json (0.3.1 is not listed) ' + JSON.stringify(n && n.studio));
   ok(n && n.guide.text === '移し替えの手引きを開く' && n.guide.href === guideUrl('ja'), 'file: 「移し替えの手引きを開く」 → docs/migrating-0.x.ja.md on GitHub');
-  ok(n && n.hint === '前の版の Studio（v0.4.8）は新しいタブで開きます。そこで、このファイルをもう一度開いてください。' && n.cli.includes('v0.4.8 のタグで npm run portable -- unpack <ファイル> <フォルダ>'), 'file: hint (new tab) and the CLI line (unpack at the earlier tag)');
+  ok(n && n.hint === '以前のバージョンの Studio（v0.4.8）は新しいタブで開きます。そこで、このファイルをもう一度開いてください。' && n.cli.includes('v0.4.8 のタグで npm run portable -- unpack <ファイル> <フォルダ>'), 'file: hint (new tab) and the CLI line (unpack at the earlier tag)');
   ok(await previewSlides(page) > 0, 'file: the file plays in the preview with its own player (no rebuild)');
   let st = await state(page);
   ok(st.earlier && st.earlier.version === '0.4.8' && st.portable && st.portable.readOnly && st.builds === 0, 'file: read-only, nothing rebuilt ' + JSON.stringify({ earlier: st.earlier, builds: st.builds }));
-  ok((await toastAfter(page, () => page.click('#b-edit'))).startsWith('前の版のファイルなので、この版では編集できません'), 'file: editing is refused with the reason');
-  ok((await toastAfter(page, () => page.evaluate(() => window.__APP_TEST.save('save')))).startsWith('前の版のファイルなので、この版では保存できません') && await page.evaluate(() => window.__APP_TEST.saved()) === null, 'file: saving is refused');
+  ok((await toastAfter(page, () => page.click('#b-edit'))).startsWith('旧形式のファイルなので、このバージョンの Studio では編集できません'), 'file: editing is refused with the reason');
+  ok((await toastAfter(page, () => page.evaluate(() => window.__APP_TEST.save('save')))).startsWith('旧形式のファイルなので、このバージョンの Studio では保存できません') && await page.evaluate(() => window.__APP_TEST.saved()) === null, 'file: saving is refused');
 
   ok(await openFile(page, 'v047') === true && (n = await notice(page)) && n.studio.href === HOST + 'site/v0.4.7/' && n.lead.includes('v0.4.7 で作成'), 'file: made with 0.4.7 (listed) → v0.4.7/ ' + JSON.stringify(n && n.studio));
 
@@ -174,9 +174,9 @@ try {
   await writeFolder('old', { 'deck.html': deck, 'narration.md': narr, [FORMAT.CONFIG_FILE]: JSON.stringify({ docId: '3f2c9a8e-1b2d-4c5e-9f00-112233445566' }, null, 2) + '\n' });
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dir)) === true, 'folder: opens');
   n = await notice(page);
-  ok(n && n.kind === 'folder' && n.lead.startsWith(`前の版の作業フォルダです（id のないスライドが ${nslides} 枚あります）。`) && n.studio.href === HOST + 'site/v0.4.8/' && n.guide.href === guideUrl('ja'), 'folder: notice with both actions ' + JSON.stringify(n));
+  ok(n && n.kind === 'folder' && n.lead.startsWith(`旧形式の作業フォルダです（id のないスライドが ${nslides} 枚あります）。`) && n.studio.href === HOST + 'site/v0.4.8/' && n.guide.href === guideUrl('ja'), 'folder: notice with both actions ' + JSON.stringify(n));
   ok(n && n.cli.includes('npm run ids -- <このフォルダ>') && n.hint.includes('このフォルダをもう一度開いて'), 'folder: CLI line is npm run ids (step 2 of the guide)');
-  ok(await page.evaluate(() => window.__APP_TEST.ui().edit === undefined || true) && !(await toastAfter(page, () => page.click('#b-edit'))).includes('前の版'), 'folder: editing is not refused (notice only)');
+  ok(await page.evaluate(() => window.__APP_TEST.ui().edit === undefined || true) && !(await toastAfter(page, () => page.click('#b-edit'))).includes('旧形式'), 'folder: editing is not refused (notice only)');
   await page.keyboard.press('Escape');
   // 移し替えの手順 2（npm run ids）の後：組み直すと知らせが消える
   const ids = analyzeSlideIds(deck).slides;
@@ -198,8 +198,8 @@ try {
 
   // 2b. versions.json のないところ・英語
   const pe = await newPage('nosite', 'en');
-  ok(await openFile(pe, 'draft') === true && (n = await notice(pe)) && n.studio.href === STUDIO_SITE + 'v' + LAST_DRAFT_STUDIO + '/' && n.studio.text === 'Open in the earlier Studio'
-    && n.guide.href === guideUrl('en') && n.guide.text === 'Open the migration guide' && n.lead.startsWith('File from an earlier version (made with Egatari Studio v0.3.1).'), 'en, no versions.json: studio.egatari.org/v0.4.8/ and the English guide ' + JSON.stringify(n));
+  ok(await openFile(pe, 'draft') === true && (n = await notice(pe)) && n.studio.href === STUDIO_SITE + 'v' + LAST_DRAFT_STUDIO + '/' && n.studio.text === 'Open in an earlier version of Studio'
+    && n.guide.href === guideUrl('en') && n.guide.text === 'Open the migration guide' && n.lead.startsWith('File in an older format (made with Egatari Studio v0.3.1).'), 'en, no versions.json: studio.egatari.org/v0.4.8/ and the English guide ' + JSON.stringify(n));
   ok(await openFile(pe, 'v047') === true && (n = await notice(pe)) && n.studio.href === STUDIO_SITE + 'v0.4.7/', 'en, no versions.json: made with 0.4.7 → studio.egatari.org/v0.4.7/');
   await pe.context().close();
 } catch (e) {

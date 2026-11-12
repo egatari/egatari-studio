@@ -1,5 +1,6 @@
 // 画面の言葉の検査（npm run lint:terms）：用語集（docs/terms.json）の avoid の言葉が、使う人の目に触れる文字列に残っていないかを見る
 //   node tools/lint-terms.mjs [--root <dir>] [--json] [--counts]
+//   node tools/lint-terms.mjs --prose <ほかのリポジトリのフォルダ> [--glob <パターン>]…（下の --prose）
 // 言葉の一覧はこのファイルに書かない：docs/terms.json（言葉）と docs/terms-allow.json（正当な使い方と、照らし方の設定）だけを読む。
 // 見る所（使う人の目に触れる文字列）：
 //   - 画面のコード（app/*.js・play/*.js・play/*.mjs（Viewer）・kit/tools.js・kit/check-messages.mjs・kit/presenter.js・kit/deck.js・kit/live.js・kit/core/live-results.mjs・kit/core/part-labels.mjs・
@@ -30,6 +31,12 @@ const args = process.argv.slice(2);
 const ri = args.indexOf('--root');
 const ROOT = ri >= 0 ? path.resolve(args[ri + 1]) : path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const JSON_OUT = args.includes('--json');
+// --prose <dir>：ほかのリポジトリ（サイト site/src・パーツの README*・CATALOG・サンプルの README など）の文書と画面の文字列を、このリポジトリの用語集で照らす。
+//   見る所は <dir> の下の *.md・*.mdx・*.astro・*.html・*.js・*.mjs・*.ts（node_modules・dist などは見ない）。--glob で絞れる（何度でも。例 --glob 'README*.md' --glob CATALOG.md）。
+//   用語集と許しは --root（既定はこのリポジトリ）の docs/terms.json・docs/terms-allow.json を使う。ja↔en の組の検査はしない
+const pi = args.indexOf('--prose');
+const PROSE_DIR = pi >= 0 ? path.resolve(args[pi + 1]) : null;
+const PROSE_GLOBS = args.flatMap((a, k) => (a === '--glob' ? [args[k + 1]] : []));
 const COUNTS = args.includes('--counts');
 
 
@@ -56,12 +63,14 @@ function listFiles(root, globs, exclude = []) {
   const all = [];
   const walk = (dir) => {
     for (const e of fs.readdirSync(path.join(root, dir), { withFileTypes: true })) {
-      if (['node_modules', '.git', 'vendor', 'out', 'dist'].includes(e.name)) continue;
+      if (['node_modules', '.git', 'vendor', 'out', 'dist', '.astro'].includes(e.name)) continue;
       const rel = dir ? dir + '/' + e.name : e.name;
       if (e.isDirectory()) walk(rel); else all.push(rel);
     }
   };
-  for (const top of new Set(globs.map((g) => g.split('/')[0]))) {
+  const tops = new Set(globs.map((g) => g.split('/')[0]));
+  if ([...tops].some((t) => /[*?]/.test(t))) { walk(''); tops.clear(); }   // **/*.md・README*.md：フォルダの全体から
+  for (const top of tops) {
     const p = path.join(root, top);
     if (!fs.existsSync(p)) continue;
     if (fs.statSync(p).isDirectory()) walk(top); else all.push(top);
@@ -223,6 +232,12 @@ export function loadRules(root) {
       }
     }
   }
+  // avoidPatterns：言葉でなく正規表現で照らすもの（版の単独＝バージョンの意味。正式版・最新版などの複合は正規表現の側で外す。terms-allow.json）
+  for (const ap of cfg.avoidPatterns || []) {
+    const t = terms.find((x) => x.id === ap.term);
+    if (!t) throw new Error(`docs/terms-allow.json: avoidPatterns: unknown term ${ap.term}`);
+    avoid.push({ id: t.id, word: ap.label, raw: ap.label, lang: ap.lang || 'ja', uiOnly: !ap.docsToo, re: new RegExp(ap.pattern, 'g'), to: (ap.lang || 'ja') === 'ja' ? t.ja : t.en });
+  }
   const allow = (cfg.allow || []).map((a, k) => ({ ...a, k, used: 0, fre: globRe(a.file), pre: a.pattern ? new RegExp(a.pattern, 'g') : null }));
   // noPairs：ja↔en の組の検査をしない用語（ja の言葉が短く一般的で、部分一致が数え方や別の語に当たる：本 → 2 本・日本語、形式）
   const noPairs = new Set(cfg.noPairs || []);
@@ -286,7 +301,7 @@ export function lintFile(root, file, rules) {
     if (allowed(rules, file, lines[ln], hit)) return;
     found.push(hit);
   };
-  if (/\.(m?js)$/.test(file)) {
+  if (/\.(m?js|ts)$/.test(file)) {
     for (const s of tokenize(text).strings) {
       if (!isUiText(s.text)) continue;
       for (const h of hitsIn(s.text, rules, { ui: true })) push(s.start + h.start, h);
@@ -438,6 +453,16 @@ export function checkPairs(root, file, rules) {
   return warnings;
 }
 
+// ほかのディレクトリの文書：--prose（上）。地の文の照らし方は README・docs と同じ。コードの文字列は画面の文字列として照らす
+export const OTHER_GLOBS = ['**/*.md', '**/*.mdx', '**/*.astro', '**/*.html', '**/*.js', '**/*.mjs', '**/*.ts'];
+export function runProse(root, dir, globs = []) {
+  const rules = loadRules(root);
+  const files = listFiles(dir, globs.length ? globs : OTHER_GLOBS);
+  const hits = [];
+  for (const f of files) hits.push(...lintFile(dir, f, rules));
+  return { rules, files, hits, pairWarnings: [], unused: [] };
+}
+
 export function run(root) {
   const rules = loadRules(root);
   const aiFiles = listFiles(root, AI_PROSE);
@@ -452,7 +477,7 @@ export function run(root) {
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const { rules, files, hits, pairWarnings, unused } = run(ROOT);
+  const { rules, files, hits, pairWarnings, unused } = PROSE_DIR ? runProse(ROOT, PROSE_DIR, PROSE_GLOBS) : run(ROOT);
   if (JSON_OUT) {
     console.log(JSON.stringify({ hits: hits.map(({ a, ...h }) => h), pairWarnings, unusedAllow: unused.map(({ fre, pre, used, ...a }) => a) }, null, 1));
   } else if (COUNTS) {

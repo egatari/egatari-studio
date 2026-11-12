@@ -311,9 +311,9 @@ try {
 
   // 道具を選んでいる間の表示（aria-live）
   await deckKey('d');
-  ok(await until(async () => (await UI()).modeText === '発表の道具：ペン'), 'mode indicator: 発表の道具：ペン while the pen is on');
+  ok(await until(async () => (await UI()).modeText === '発表のツール：ペン'), 'mode indicator: 発表のツール：ペン while the pen is on');
   await deckKey('x');
-  ok(await until(async () => (await UI()).modeText === '発表の道具：レーザーポインター'), 'mode indicator: 発表の道具：レーザーポインター');
+  ok(await until(async () => (await UI()).modeText === '発表のツール：レーザーポインター'), 'mode indicator: 発表のツール：レーザーポインター');
   await deckKey('Escape');
   ok(await until(async () => (await UI()).modeText === '表示'), 'mode indicator: back to 表示 after Esc');
 } catch (e) {

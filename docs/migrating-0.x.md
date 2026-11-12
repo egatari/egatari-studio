@@ -1,4 +1,4 @@
-<!-- i18n: pair=migrating-0.x.ja.md sha256=c93cb522d9e82d7c -->
+<!-- i18n: pair=migrating-0.x.ja.md sha256=9ef6a7ab651d7e50 -->
 # Moving a lesson from an earlier version to Egatari 1.0
 
 English | [日本語](migrating-0.x.ja.md)

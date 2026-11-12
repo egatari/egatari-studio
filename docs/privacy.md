@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.ja.md sha256=dd595e5f8aa60217 -->
+<!-- i18n: pair=privacy.ja.md sha256=591df158165e2107 -->
 # Privacy
 
 English | [日本語](privacy.ja.md)

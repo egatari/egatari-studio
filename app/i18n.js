@@ -55,7 +55,7 @@ const ja = {
     saveErrTitle: '本にエラーがあるので保存できません', saveErrLead: '本の次のところを直してから、もう一度保存してください：',
     tierAOnly: (m) => `本を組み直せないので、台本・音声・秒数の変更だけを保存できます（${m}）`,
   },
-  // 道具の列（ui-redesign 段階 1）。言葉の対は glossary-quality.md（画面の言葉）に移す
+  // ツールの列（ui-redesign 段階 1）。言葉の対は glossary-quality.md（画面の言葉）に移す
   fileMenu: 'ファイル ▾', slideMenu: 'スライド ▾', previewMenu: 'プレビュー ▾', panelsGroup: '板（編集・台本・コメント・音声）', modesGroup: '表示のモード',
   fileOpen: '開く…', infoCmd: 'ファイルの情報…', insertCmd: 'スライドの挿入…', dupCmd: '複製', delCmd: '削除', organizeCmd: '整理…',
   fullCmd: 'スライドショーで確かめる (f)', lectureCmd: '先のステップを薄く見せる (l)', presenterCmd: '発表者ビューで確かめる (p)', videoCmd: '動画で確かめる', previewNote: `発表するときは、保存した ${FX} をブラウザで開きます`,
@@ -86,7 +86,7 @@ const ja = {
   infoTitle: 'ファイルの情報', infoLead: '題・ライセンス・作成者は、教材の設定のファイル（egatari.json の metadata）に書かれたものです', infoNone: 'まだ書かれていません',
   infoEditFolder: '今は、ここでは書き換えられません。作業フォルダの egatari.json の metadata を直すと反映されます', infoEditFile: '今は、ここでは書き換えられません', infoAttach: '添付',
   outlineNotice: (left, n) => `構成案：残り ${left} 枚（全 ${n} 枚）。`, outlineNextBtn: (k) => `次の ${k} 枚を頼む`,
-  // 形式（ファイルの version と仕様の写しの版）と、作った Studio
+  // 形式（ファイルの version と仕様の写しのバージョン）と、作った Studio
   infoFormat: (name, v, snap) => `形式：${name} ${v}${snap ? `（${snap}）` : ''}`,
   infoMadeWith: (v) => `作った Studio：${v}`, infoMadeUnknown: '作った Studio：記録なし', infoThisStudio: (v) => `この Studio：${v}`,
   infoPlayer: '再生は、ファイルに入ったプレーヤーで動きます。編集はいつも最新の Studio で行ってください',
@@ -101,7 +101,7 @@ const ja = {
   newFormTitle: { blank: '新規作成：白紙から', template: '新規作成：テンプレートから' },
   openFolderHint: 'スライド・台本・音声のファイルを入れたフォルダを開いて直します（Chrome・Edge）', themesHint: '読み込んだテーマを見たり、消したりします',
   kindsTitle: '作業フォルダと Egatari ファイル',
-  kindFolder: '作業フォルダ', kindFolderText: 'deck.html・narration.md・audio/ … の入ったフォルダ。コマンド・AI のコーディング道具（Claude Code・Codex など）・ほかのエディタが読み書きする',
+  kindFolder: '作業フォルダ', kindFolderText: 'deck.html・narration.md・audio/ … の入ったフォルダ。コマンド・AI のコーディングツール（Claude Code・Codex など）・ほかのエディタが読み書きする',
   kindFile: `Egatari ファイル（${FX}）`, kindFileText: 'スライド・台本・音声を中に持つ 1 つの HTML。ブラウザで開けば再生、ここで開けば直せる',
   kindPlay: '再生専用（--play-only）', kindPlayText: '編集できるスライドと台本を持たない Egatari ファイル。再生だけ（参加者に配る形。「ファイル ▾」の「エクスポート ▸ 参加者用（再生専用）…」で作れる）',
   kindBuilt: '組み立てた HTML（out/deck.html）', kindBuiltText: '発表用の出力。直すには作業フォルダを開く',
@@ -112,7 +112,7 @@ const ja = {
   saveNote: '注意：このブラウザでは、Egatari ファイルの「保存」はダウンロードになり、保存するたびに、ダウンロードのフォルダに新しいファイルができます（名前に番号が付くことがあります）。次に開くときは、いちばん新しいものを選んでください',
   privacy: `ファイルは、開いたファイルと選んだフォルダだけを読み書きし、どこにもアップロードしません。「${AI_VOICE_LABELS.ja.local}」では、初めに音声のプログラムとモデルをダウンロードします。「${AI_VOICE_LABELS.ja.cloud}」では、台本を自分で Colab にアップロードします。`,
   buildFailed: 'スライドを組み立てられませんでした', useCatalogue2: 'パーツライブラリ 2 を使う', useCatalogue2Failed: (e) => `egatari.json に書けませんでした（${e}）`,
-  buildFailedHint: 'スライドを直して保存すると、自動で組み直します（AI のコーディング道具やほかのエディタで直してもかまいません）', building: '組み立て中…',
+  buildFailedHint: 'スライドを直して保存すると、自動で組み直します（AI のコーディングツールやほかのエディタで直してもかまいません）', building: '組み立て中…',
   noPermission: 'フォルダを読み書きする許可がありません', cannotOpen: 'このフォルダは開けません（移動・削除された？）', dropFolder: 'ファイルではなくフォルダを選んでください',
   noDeck: 'このフォルダにスライドの HTML（deck.html）がありません', popupBlocked: '新しい窓を開けませんでした（ポップアップを許可してください）', noFullscreen: '全画面にできませんでした',
   slidesN: (n) => `${n} 枚`, rebuilt: (t, why) => `${t} ${why === 'poll' ? '外での変更を読み込みました' : why === 'save' ? '保存して組み直しました' : '組み立てました'}`,
@@ -151,7 +151,7 @@ const ja = {
       case 'key': return '参加コードが正しくありません（ホストのページでコピーした設定を貼ってください）';
       case 'keyStored': return '参加コードは教材に保存できません（エクスポートするファイルにだけ入ります）';
       case 'endpoint': return '接続先が正しくありません（https:// で始まるアドレスにしてください。例：https://live.egatari.org）';
-      case 'version': return 'ライブの設定の版が違います（v は 1 です）';
+      case 'version': return 'ライブの設定のバージョンが違います（v は 1 です）';
       case 'windowMissing': return 'ライブの開始と終了を入れてください';
       case 'windowFrom': return 'ライブの開始を入れてください';
       case 'windowTo': return 'ライブの終了を入れてください';
@@ -169,7 +169,7 @@ const ja = {
       case 'pollChoice': return `${poll}選択肢 ${p.c + 1} を入れてください（${p.n} 字まで）`;
       case 'activityKind': return `${poll}質問・投票の種類が正しくありません（qa・confused・poll のどれか）`;
       case 'confusedMembers': return '「わからない」には設問も選択肢も付けられません';
-      case 'sourceSha256': return '教材の版（sourceSha256）の形が正しくありません';
+      case 'sourceSha256': return '教材のバージョン（sourceSha256）の形が正しくありません';
       case 'activityLabel': return `${poll}表示名は ${p.n} 字までです`;
       case 'unknownMember': return `ライブの設定に知らない項目があります（${p.path}）`;
       case 'tooManyActivities': return `質問・投票は ${p.n} 個までです`;
@@ -210,11 +210,11 @@ const ja = {
     discardAll: 'すべて捨てる', discardAllTitle: '保存していない変更をすべて捨てますか？', discardAllBody: (n) => `このブラウザに残した ${n} 件の変更を消します。元に戻せません（ほかのタブで開いているものは消しません）。`,
     discardedAll: (n) => `保存していない変更を ${n} 件捨てました`,
   },
-  yankedNotice: (list, rep) => `この教材は、パーツライブラリが取り下げた版のパーツを使っています（${list}）。取り下げは安全性の修正などのためで、版は残っていて、教材は今のまま再生できます。ただし、このエディタの中では取り下げた版の式（f="…"）を動かさないので、組み直すまで、この図は代わりの表示です。${rep} で組み直すことを勧めます。黙って置き換えることはしません。組み直すと、パーツの同一性の hash や図の見え方が変わることがあるためです`,
+  yankedNotice: (list, rep) => `この教材は、パーツライブラリが取り下げたバージョンのパーツを使っています（${list}）。取り下げは安全性の修正などのためで、バージョンは残っていて、教材は今のまま再生できます。ただし、このエディタの中では取り下げたバージョンの式（f="…"）を動かさないので、組み直すまで、この図は代わりの表示です。${rep} で組み直すことを勧めます。黙って置き換えることはしません。組み直すと、パーツの同一性の hash や図の見え方が変わることがあるためです`,
   yankedRebuild: (v) => `${v} で組み直す`,
-  yankedDone: (v, changed, same) => `${v} で組み直しました。パーツの同一性の hash が変わったもの：${changed.length ? changed.join('・') : 'なし'}${same.length ? `（コードが同じで hash が変わらないもの：${same.join('・')}）` : ''}。保存すると、この版と新しい hash が教材に記録されます`,
+  yankedDone: (v, changed, same) => `${v} で組み直しました。パーツの同一性の hash が変わったもの：${changed.length ? changed.join('・') : 'なし'}${same.length ? `（コードが同じで hash が変わらないもの：${same.join('・')}）` : ''}。保存すると、このバージョンと新しい hash が教材に記録されます`,
   yankedFailed: (m) => `組み直せませんでした：${m}`,
-  themePinnedNotice: (name, from, to) => `この教材は、テーマ「${name}」の前の版 ${from} で組んでいます（記録した版のまま。黙って新しい色にはしません）。今の版 ${to} にすると、次の色が変わります。`,
+  themePinnedNotice: (name, from, to) => `この教材は、テーマ「${name}」の前のバージョン ${from} で組んでいます（記録したバージョンのまま。黙って新しい色にはしません）。今のバージョン ${to} にすると、次の色が変わります。`,
   themeNoColorChange: '色は変わりません。',
   themeUpdate: 'テーマを更新',
   themeUpdateDone: (list) => `テーマを更新しました（${list}）。保存すると新しい色になります。`,
@@ -228,19 +228,19 @@ const ja = {
   codeSandbox: 'コードはプレビューの枠（sandbox）の中だけで動き、ネットワークにもこのエディタにも触れず、ファイルを書き換えることもできません。書き込みはエディタのボタンを押したときだけです',
   readOnlyNotice: (why) => `このファイルは読むだけで開いています（編集・保存はできません。「作業フォルダにエクスポート…」はできます）：${why}`,
   readOnlyNoEdit: 'このファイルは読むだけで開いています（編集できません）', readOnlyNoSave: 'このファイルは読むだけで開いているので保存できません（「作業フォルダにエクスポート…」はできます）',
-  // 前の版のファイル・作業フォルダ（app/earlier-draft.js。docs/terms.json の earlier-draft-file）：何が起きているか → 2 つのボタン → できること
-  earlierTitle: (v) => (v ? `前の版のファイルです（Egatari Studio v${v} で作成）。` : '前の版のファイルです。'),
-  earlierBody: 'このまま再生できますが、この版の Studio では編集も保存もできません。前の版の Studio で開けば、これまでどおり編集できます。この版で編集するには、移し替えの手引きに沿って移してください。',
-  earlierFolderTitle: (n) => `前の版の作業フォルダです（id のないスライドが ${n} 枚あります）。`,
-  earlierFolderBody: 'この版でも編集できますが、Egatari 1.0 のファイルにするには、手引きに沿ってスライドに id を付けて移します。前の版の Studio で開くこともできます。',
-  earlierOpenStudio: '前の版の Studio で開く', earlierGuide: '移し替えの手引きを開く',
-  earlierStudioHint: (v, folder) => `前の版の Studio（v${v}）は新しいタブで開きます。そこで、この${folder ? 'フォルダ' : 'ファイル'}をもう一度開いてください。`,
+  // 旧形式のファイル・作業フォルダ（app/earlier-draft.js。docs/terms.json の earlier-draft-file）：何が起きているか → 2 つのボタン → できること
+  earlierTitle: (v) => (v ? `旧形式のファイルです（Egatari Studio v${v} で作成）。` : '旧形式のファイルです。'),
+  earlierBody: 'このまま再生できますが、このバージョンの Studio では編集も保存もできません。以前のバージョンの Studio で開けば、これまでどおり編集できます。このバージョンで編集するには、移し替えの手引きに沿って移してください。',
+  earlierFolderTitle: (n) => `旧形式の作業フォルダです（id のないスライドが ${n} 枚あります）。`,
+  earlierFolderBody: 'このバージョンでも編集できますが、Egatari 1.0 のファイルにするには、手引きに沿ってスライドに id を付けて移します。以前のバージョンの Studio で開くこともできます。',
+  earlierOpenStudio: '以前のバージョンの Studio で開く', earlierGuide: '移し替えの手引きを開く',
+  earlierStudioHint: (v, folder) => `以前のバージョンの Studio（v${v}）は新しいタブで開きます。そこで、この${folder ? 'フォルダ' : 'ファイル'}をもう一度開いてください。`,
   earlierCliFile: (v) => [`コマンドで移すとき：Egatari Studio の v${v} のタグで `, 'npm run portable -- unpack <ファイル> <フォルダ>', ' を実行し、手引きの手順 2 から進めます。'],
   earlierCliFolder: ['コマンドで移すとき：今の Egatari Studio で ', 'npm run ids -- <このフォルダ>', ' を実行します（手引きの手順 2）。id を付けると、この知らせは消えます。'],
-  earlierNoEdit: '前の版のファイルなので、この版では編集できません（上の知らせから、前の版の Studio で開けます）',
-  earlierNoSave: '前の版のファイルなので、この版では保存できません（上の知らせから、前の版の Studio で開けます）',
-  earlierNoCheck: '前の版のファイルなので、この版では品質チェックをかけません',
-  roRuntime: (a, b) => `実行系の約束の版 ${a} がこのエディタ（${b}）と違います`, roRegistry: (p) => `パーツライブラリのパーツがこのエディタのものと違います（${p}）`, roBuild: (e) => `このエディタで組み立てられません（${e}）`,
+  earlierNoEdit: '旧形式のファイルなので、このバージョンの Studio では編集できません（上の知らせから、以前のバージョンの Studio で開けます）',
+  earlierNoSave: '旧形式のファイルなので、このバージョンの Studio では保存できません（上の知らせから、以前のバージョンの Studio で開けます）',
+  earlierNoCheck: '旧形式のファイルなので、このバージョンの Studio では品質チェックをかけません',
+  roRuntime: (a, b) => `実行系の約束のバージョン ${a} がこのエディタ（${b}）と違います`, roRegistry: (p) => `パーツライブラリのパーツがこのエディタのものと違います（${p}）`, roBuild: (e) => `このエディタで組み立てられません（${e}）`,
   roRequiresMissing: (p) => p.map((x) => `パーツ ${x.part} が必要とする ${x.requires} がありません。組み直すにはパーツを更新してください`).join('。'),
   ttsTitle: 'AI 音声をこの PC で作る：モデルを取得します', ttsGo: '取得して作る',
   ttsPrivacy: '合成は別の窓（このサイトの AI 音声のページ）で行い、モデルとライブラリだけを Hugging Face と jsDelivr から取ります。窓に渡すのは読む文（読み辞書の後）と声の名前だけで、ほかのスライド・台本・音声・作業フォルダは渡しません。このエディタのページは外へ繋がりません',
@@ -255,9 +255,9 @@ const ja = {
     'no-source': `このファイルは Egatari ファイル（${FX}）ではないので、ここでは開けません。作業フォルダか ${FX} のファイルを開いてください`,
     'play-only': `このファイルは再生専用の Egatari ファイル（${FX}）で、編集できるスライドと台本を含んでいません。再生はブラウザで開くだけでできます。編集するには、元の ${FX} のファイルか作業フォルダを開いてください`,
     'built-output': `このファイルは組み立てた発表用の HTML（out/deck.html など）で、編集できるスライドと台本を含んでいません。編集するには、作業フォルダ（deck.html と narration.md のあるフォルダ）か、Egatari ファイル（${FX}）を開いてください`,
-    'unsupported-version': 'このファイルは新しい版の形式で作られていて、このエディタでは編集できません。スライドと台本を作業フォルダに取り出すことはできます',
+    'unsupported-version': 'このファイルは新しいバージョンの形式で作られていて、このエディタでは編集できません。スライドと台本を作業フォルダに取り出すことはできます',
     'unknown-feature': 'このファイルは、このエディタが知らない機能を必要としています。編集もエクスポート（作り直し）もできません。再生はでき、スライドと台本を作業フォルダに取り出すことはできます',
-    'unsupported-contract': 'このファイルのスライドの書き方は、このエディタより新しい版です',
+    'unsupported-contract': 'このファイルのスライドの書き方は、このエディタより新しいバージョンです',
     'bad-path': 'このファイルには許されない場所（パス）が書かれています。安全のため開きません',
     'duplicate-member': 'このファイルの索引が壊れています（同じ名前の項目が 2 つ）。安全のため開きません',
     'duplicate-id': 'このファイルには同じ id の要素が 2 つあります。安全のため開きません',
@@ -306,7 +306,7 @@ const ja = {
     'config-changed': `ファイルの情報（${FORMAT.CONFIG_FILE}）が変わったので、組み直さない保存はできません。` }[c] || `組み直さない保存ができませんでした（${c}）。`),
   playerChangeTitle: 'プレーヤーが変わります', playerChangeGo: '保存',
   playerChangeBody: (from, to) => `このファイルは ${from} で再生します。保存すると、${to} で再生するファイルになります。元のプレーヤーのままにするには、キャンセルしてください。`,
-  tierBGap: '編集の前と後のスライドを並べて比べる機能はまだありません（後の版で入れます）。保存した後にプレビューで確かめてください。',
+  tierBGap: '編集の前と後のスライドを並べて比べる機能はまだありません（今後のバージョンで入れます）。保存した後にプレビューで確かめてください。',
   tierAOnlyTitle: '組み直さない保存ができません', tierAOnlySave: (w) => `このファイルは組み直せないので（${w}）、台本・音声・秒数の変更だけを保存できます。今の変更はそれに収まりません。`,
   tierAOnlyNotice: (w) => `このファイルは組み直せないので、台本・音声・秒数だけを編集できます（スライドは編集できません）：${w}`,
   tierAOnlyNoSlides: 'このファイルではスライドを編集できません（台本・音声・秒数だけ）',
@@ -361,8 +361,8 @@ const ja = {
 
   helpTitle: '使い方',
   downloadAiSkill: 'AI のスキルをダウンロード',
-  downloadAiSkillHint: 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます。Studio が新しくなったら入れ直してください（スキルの指示と品質チェックは版ごとに変わります）',
-  helpFormat: (snap) => (snap ? `形式：Egatari 1.0 WD ${snap.replace(/^wd-/, '')}` : '形式：Egatari 1.0（日付の付いた版ではない）'),
+  downloadAiSkillHint: 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます。Studio が新しくなったら入れ直してください（スキルの指示と品質チェックはバージョンごとに変わります）',
+  helpFormat: (snap) => (snap ? `形式：Egatari 1.0 WD ${snap.replace(/^wd-/, '')}` : '形式：Egatari 1.0（日付の付いた作業草案ではない）'),
   help: [
     ['スライドを直す', ['<kbd>e</kbd> か「編集 (e)」で編集モード。文字の上をダブルクリックすると、エディタの欄にその部分の HTML（deck.html）が出ます。⌘/Ctrl+Enter か「保存」で保存',
       'プレビュー（スライド）は「どこを直したいか」を知らせるだけで、書き込みはエディタの欄のボタンを押したときだけです',
@@ -372,11 +372,11 @@ const ja = {
       '直後なら「元に戻す」で戻せます（次のスライドの操作か、Egatari ファイルの保存まで）。操作の後は組み直して品質チェックを出します。Egatari ファイルは次の「保存」で組み直します']],
     ['台本', ['<kbd>n</kbd> か「台本」で、表示中のステップの台本（narration.md）を開きます。話者・順番も変えられます']],
     ['コメント', [`スライドの上で <kbd>${MOD}</kbd>+クリックすると、直してほしいことのコメントを comments.json に残します。<kbd>c</kbd> で一覧`,
-      'AI のコーディング道具（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントに対応して」と頼むと直してくれます。外でファイルが変わると、ここで自動で組み直します']],
+      'AI のコーディングツール（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントに対応して」と頼むと直してくれます。外でファイルが変わると、ここで自動で組み直します']],
     ['発表', ['→ / Space で次、← で前、<kbd>a</kbd> 自動再生、先のステップを薄く見せる（l）、<kbd>?</kbd> でキーの一覧',
       '「プレビュー ▾」の「発表者ビューで確かめる」（または <kbd>p</kbd>）で、台本と次の画面の出る窓を開きます。「スライドショーで確かめる」（<kbd>f</kbd>）で投影の見え方、「動画で確かめる」で動画の見え方を確かめます。「先のステップを薄く見せる（l）」は、スライドショーで先のステップを薄く見せる入／切です',
       `発表するときは、保存した ${FX} をブラウザで開きます（ここはプレビューです）`]],
-    ['作業フォルダと Egatari ファイル', [`作業フォルダ：deck.html・narration.md・audio/ などの入ったフォルダ（コマンド・AI のコーディング道具・ほかのエディタが読み書きする）。Egatari ファイル（${FX}）：スライド・台本・音声を中に持つ 1 つの HTML（ブラウザで開けば再生、ここで開けば直せる）`,
+    ['作業フォルダと Egatari ファイル', [`作業フォルダ：deck.html・narration.md・audio/ などの入ったフォルダ（コマンド・AI のコーディングツール・ほかのエディタが読み書きする）。Egatari ファイル（${FX}）：スライド・台本・音声を中に持つ 1 つの HTML（ブラウザで開けば再生、ここで開けば直せる）`,
       '再生専用（--play-only）の Egatari ファイルと、組み立てた HTML（out/deck.html）は編集できるスライドと台本を持たないので、ここでは直せません（元の Egatari ファイルか作業フォルダを開く）']],
     ['Egatari ファイルを開く・保存する', [`「ファイル ▾」の「開く…」かドラッグ＆ドロップで、Egatari ファイル（${FX}）をフォルダなしで開けます。ファイルは実行せずに中のスライドと台本を取り出し、メモリの上で編集します`,
       'スライドの HTML（deck.html）を開くと、作業フォルダを開くか、deck.html だけを（台本と音声なしで）開くかを選べます。組んだ発表の HTML（out/deck.html）は編集できません。最初の画面の「サンプル」からも開けます',
@@ -419,13 +419,13 @@ const ja = {
     done: (k) => `${k} ステップに AI 音声を付けました`,
     partial: (k, m) => `${k} ステップに AI 音声を付けました。${m} ステップは、書き出した後に台本が変わっているので使っていません`,
     skipWhy: { 'no-step': '今の台本にないステップ', 'no-audio': '音声が ZIP ファイルにない', cues: '台本が変わっています' },
-    skipped: (k, w) => `使っていません：${k}（${w}）`, warnDict: '音声を作ったときの読み辞書が、今のものと違います（読みが少し違うかもしれません）', warnProc: '音声の後処理の版が、このエディタのものと違います',
+    skipped: (k, w) => `使っていません：${k}（${w}）`, warnDict: '音声を作ったときの読み辞書が、今のものと違います（読みが少し違うかもしれません）', warnProc: '音声の後処理のバージョンが、このエディタのものと違います',
     applyFail: (k, m) => `${k}：使えませんでした（${m}）`,
   },
   api: {
     cancelled: '別の教材（作業場所）を開いたので、この保存を取り消しました。何も書いていません', busySave: '保存しています。終わってからもう一度押してください',
     notFound: 'スライドの HTML が見つかりません', badRange: '範囲または本文が正しくありません', conflict: 'スライドの HTML が変わっています。再読み込みしてください',
-    savedButFailed: '保存しましたが、組み立てに失敗しました', badNarr: 'slideKey / stepKey / turns が正しくありません', noRev: 'rev（読み込んだときの版）がありません',
+    savedButFailed: '保存しましたが、組み立てに失敗しました', badNarr: 'slideKey / stepKey / turns が正しくありません', noRev: 'rev（読み込んだときのバージョン）がありません',
     narrConflict: '台本が変わっています。再読み込みしてください', narrHead: '# 台本\n', emptyComment: 'コメントが空です', noComment: 'コメントが見つかりません',
   },
   // 録音モード（app/rec-mode.js）
@@ -691,18 +691,18 @@ const en = {
   codeSandbox: 'The code runs only inside the preview frame (a sandbox): it cannot reach the network or the editor, and it cannot change any file. Writes happen only when you press a button of the editor.',
   readOnlyNotice: (why) => `This file is open read-only (no editing or saving; “Export working folder…” works): ${why}`,
   readOnlyNoEdit: 'This file is open read-only (editing is off)', readOnlyNoSave: 'This file is open read-only and cannot be saved (“Export working folder…” works)',
-  earlierTitle: (v) => (v ? `File from an earlier version (made with Egatari Studio v${v}).` : 'File from an earlier version.'),
-  earlierBody: 'It plays as it is, but this version of Studio cannot edit or save it. Open it in the earlier Studio to keep editing it as before, or move it to this version by following the migration guide.',
-  earlierFolderTitle: (n) => `Working folder from an earlier version (${n} slide${n === 1 ? '' : 's'} without an id).`,
-  earlierFolderBody: 'You can edit it in this version, but to make an Egatari 1.0 file, give the slides ids by following the migration guide. You can also open it in the earlier Studio.',
-  earlierOpenStudio: 'Open in the earlier Studio', earlierGuide: 'Open the migration guide',
-  earlierStudioHint: (v, folder) => `The earlier Studio (v${v}) opens in a new tab. Open this ${folder ? 'folder' : 'file'} there again.`,
+  earlierTitle: (v) => (v ? `File in an older format (made with Egatari Studio v${v}).` : 'File in an older format.'),
+  earlierBody: 'It plays as it is, but this version of Studio cannot edit or save it. Open it in an earlier version of Studio to keep editing it as before, or move it to this version by following the migration guide.',
+  earlierFolderTitle: (n) => `Working folder in an older format (${n} slide${n === 1 ? '' : 's'} without an id).`,
+  earlierFolderBody: 'You can edit it in this version, but to make an Egatari 1.0 file, give the slides ids by following the migration guide. You can also open it in an earlier version of Studio.',
+  earlierOpenStudio: 'Open in an earlier version of Studio', earlierGuide: 'Open the migration guide',
+  earlierStudioHint: (v, folder) => `The earlier version of Studio (v${v}) opens in a new tab. Open this ${folder ? 'folder' : 'file'} there again.`,
   earlierCliFile: (v) => [`From the command line: at the v${v} tag of Egatari Studio, run `, 'npm run portable -- unpack <file> <folder>', ', then continue from step 2 of the guide.'],
   earlierCliFolder: ['From the command line: in the current Egatari Studio, run ', 'npm run ids -- <this folder>', ' (step 2 of the guide). Once the slides have ids, this notice goes away.'],
-  earlierNoEdit: 'File from an earlier version: this version of Studio cannot edit it (the notice above opens the earlier Studio)',
-  earlierNoSave: 'File from an earlier version: this version of Studio cannot save it (the notice above opens the earlier Studio)',
-  earlierNoCheck: 'File from an earlier version: this version of Studio does not run the quality check on it',
-  roRuntime: (a, b) => `its player contract ${a} differs from this editor's (${b})`, roRegistry: (p) => `Parts library parts differ from this editor's (${p})`, roBuild: (e) => `this editor cannot build it (${e})`,
+  earlierNoEdit: 'File in an older format: this version of Studio cannot edit it (the notice above opens an earlier version of Studio)',
+  earlierNoSave: 'File in an older format: this version of Studio cannot save it (the notice above opens an earlier version of Studio)',
+  earlierNoCheck: 'File in an older format: this version of Studio does not run the quality check on it',
+  roRuntime: (a, b) => `its player contract version ${a} differs from this editor's (${b})`, roRegistry: (p) => `Parts library parts differ from this editor's (${p})`, roBuild: (e) => `this editor cannot build it (${e})`,
   roRequiresMissing: (p) => p.map((x) => `Part ${x.part} requires ${x.requires}, which is not available. Update the parts to rebuild.`).join(' '),
   ttsTitle: 'Make AI voice on this computer: download the model', ttsGo: 'Download and generate',
   ttsPrivacy: 'Synthesis runs in a separate window (the AI voice page of this site), which fetches only the model and libraries from Hugging Face and jsDelivr. The window receives only the text to read (after the reading dictionary) and the voice name, never the slides, other script text, audio or the working folder. This editor page itself does not connect anywhere',
@@ -818,7 +818,7 @@ const en = {
 
   helpTitle: 'Help',
   downloadAiSkill: 'Download the AI skill',
-  downloadAiSkillHint: 'Add it to a chat AI such as Claude to make lessons without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each release)',
+  downloadAiSkillHint: 'Add it to a chat AI such as Claude to make lessons without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each version)',
   helpFormat: (snap) => (snap ? `Format: Egatari 1.0 Working Draft ${snap.replace(/^wd-/, '')}` : 'Format: Egatari 1.0 (no dated snapshot)'),
   help: [
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit (e)” for edit mode. Double-click text to open that part of the HTML (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',

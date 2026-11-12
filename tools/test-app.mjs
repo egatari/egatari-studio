@@ -328,8 +328,8 @@ try {
     // 発表の道具（ペン）を選んでから編集モードに入る（#69）：道具は切れ、ダブルクリックは編集になり、線は描かれない。画面の端に今のモード
     await f.evaluate(() => window.focus());   // プレビューの文書にフォーカスを（別のプロセスの iframe なので、本体を押すだけでは届かないことがある）
     await f.locator('body').press('d');
-    await page.waitForFunction(() => document.getElementById('dev-mode') && document.getElementById('dev-mode').textContent === '発表の道具：ペン');
-    ok(await f.evaluate(() => DECK.tools.mode()) === 'pen' && await page.evaluate(() => !!document.querySelector('#status #st-mode #dev-mode[aria-live=polite]')), 'tools vs edit: the pen is on and the footer shows 発表の道具：ペン (aria-live)');
+    await page.waitForFunction(() => document.getElementById('dev-mode') && document.getElementById('dev-mode').textContent === '発表のツール：ペン');
+    ok(await f.evaluate(() => DECK.tools.mode()) === 'pen' && await page.evaluate(() => !!document.querySelector('#status #st-mode #dev-mode[aria-live=polite]')), 'tools vs edit: the pen is on and the footer shows 発表のツール：ペン (aria-live)');
     await page.click('#b-edit');
     await f.waitForFunction(() => document.documentElement.classList.contains('dev-edit'));
     ok(true, 'edit: toolbar button turns on edit mode');

@@ -294,7 +294,7 @@ export function createAttachPanel(o) {
     const live = conf && conf.extensions && typeof conf.extensions === 'object' ? conf.extensions.live : null;
     const m = roomMatch(r.results, live);
     const s = summarizeResults(r.results);
-    const skipNote = skippedNotice(r.skipped, o.lang);   // この版が知らない項目（取り込まない。元のファイルはそのまま添付する）
+    const skipNote = skippedNotice(r.skipped, o.lang);   // このバージョンが知らない項目（取り込まない。元のファイルはそのまま添付する）
     const showNotice = !noticeSeen();
     if (showNotice || m !== 'match') {
       const v = await o.ask({ title: X.liveTitle, kind: m === 'match' ? '' : 'warn', body: [

@@ -101,7 +101,7 @@ export const SET_LABELS = [
   { set: 'english', label: { ja: '英語', en: 'English (foreign language)' }, inside: { ja: '英文の構造（S V O C M・句と節）', en: 'Sentence structure (S V O C M, phrases, clauses)' } },
   { set: 'music', label: { ja: '音楽', en: 'Music' }, inside: { ja: '鍵盤・楽譜（音階・和音）', en: 'Keyboard and score (scales, chords)' } },
   { set: 'business', label: { ja: 'ビジネス', en: 'Business' }, inside: { ja: '市場規模の円・お金の流れ', en: 'Market size circles, money flows' } },
-  { set: 'tools', label: { ja: '道具', en: 'Classroom tools' }, inside: { ja: 'タイマー', en: 'Timer' } },
+  { set: 'tools', label: { ja: 'ツール', en: 'Classroom tools' }, inside: { ja: 'タイマー', en: 'Timer' } },
   { set: 'science', label: { ja: '理科', en: 'Science' }, inside: { ja: '月の満ち欠け', en: 'Phases of the Moon' } },
 ];
 

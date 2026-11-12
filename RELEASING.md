@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=8d2f5661c82a1c34 -->
+<!-- i18n: pair=RELEASING.ja.md sha256=1e212204f029b06c -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)

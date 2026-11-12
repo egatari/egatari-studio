@@ -1,4 +1,4 @@
-<!-- i18n: pair=cli.ja.md sha256=a3c88f5a06d1a381 -->
+<!-- i18n: pair=cli.ja.md sha256=94808f64839df4b7 -->
 # More commands and settings
 
 English | [日本語](cli.ja.md)

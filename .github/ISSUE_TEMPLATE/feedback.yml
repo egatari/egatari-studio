@@ -42,7 +42,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: "版（デッキの ? の一覧から送ると自動で入ります。または package.json の version / git の commit）"
+      description: "バージョン（デッキの ? の一覧から送ると自動で入ります。または package.json の version / git の commit）"
       placeholder: "0.3.1"
   - type: input
     id: browser

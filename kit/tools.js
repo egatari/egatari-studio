@@ -1042,10 +1042,10 @@ function helpHtml(){
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
       row(K("b"), j ? "黒い画面" : "Black screen")].concat(canFull() ? [row(K("f"), j ? "全画面" : "Fullscreen")] : []).concat([row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
       row(K("?"), j ? "このキーの一覧" : "This help")]))),
-    sec(j ? "道具" : "Tools", [
+    sec(j ? "ツール" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
       row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
-      row(K("Esc"), j ? "道具を解除" : "Exit tool")])
+      row(K("Esc"), j ? "ツールを解除" : "Exit tool")])
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
     row(K("e"), j ? "編集モード" : "Edit mode"), row(K("n"), j ? "台本" : "Script"), row(K("c"), j ? "コメントの一覧" : "Comments"),

@@ -47,7 +47,7 @@ const sorted = (xs) => [...xs].sort().join();
 // New と Help は同じ ZIP を渡す。キーでも押せて、同じサイトの現在のパス（凍結版を含む）から取る。
 export async function checkSkillDownload(p, { lang, selector, ok, base }) {
   const label = lang === 'ja' ? 'AI のスキルをダウンロード' : 'Download the AI skill';
-  const hint = lang === 'ja' ? 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます。Studio が新しくなったら入れ直してください（スキルの指示と品質チェックは版ごとに変わります）' : 'Add it to a chat AI such as Claude to make lessons without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each release)';
+  const hint = lang === 'ja' ? 'Claude などのチャットの AI に入れると、指示書を貼らずに作れます。Studio が新しくなったら入れ直してください（スキルの指示と品質チェックはバージョンごとに変わります）' : 'Add it to a chat AI such as Claude to make lessons without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each version)';
   const b = p.locator(selector);
   ok(await b.isVisible() && await b.textContent() === label && await p.getByRole('button', { name: label, exact: true }).count() === 1, `skill (${lang}, ${selector}): accessible button with the exact label`);
   if (selector === '#paste-download-skill') {

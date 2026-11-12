@@ -12,7 +12,7 @@
 
 [English](README.md) | 日本語
 
-Egatari は、授業・研修・公共の案内などの教材を、読み上げ付きで作る道具。
+Egatari は、授業・研修・公共の案内などの教材を、読み上げ付きで作るツール。
 
 教材は自己完結した 1 つの HTML で、ステップ表示とパーツで説明の順を見せる。1 組のスライドと台本（`deck.html` と `narration.md`）から、発表・授業・PDF、そして必要なら TTS の動画まで作る。[Claude Code](https://claude.com/claude-code) のスキル（`skills/`）で動かす前提で作ってあるが、どの手順も Node のコマンドなので、Claude Code なしでも使える。
 
@@ -41,16 +41,16 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 
 - **ステップ表示**：`data-step="k"` で話す順に出す。結論の行（`.concl`）は自動で最後
 - **数式**：KaTeX でビルド時に組む。`\hlE{…}` `\hlT{…}` `\hlM{…}` で式の一部にテーマの色を付ける
-- **パーツ**：[egatari/components](https://github.com/egatari/components) の Web Components のパーツ（写しは `vendor/components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。パーツは教科ごとの束にまとまっている：統計（stats）・情報とデータサイエンス（data。`m-code`・`m-sampling`・`m-ci` など）・数学・地図・国語・英語・音楽・ビジネス・道具（tools）・理科（[パーツの束](docs/llm-parts/)）。画面は (スライド, ステップ, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
+- **パーツ**：[egatari/components](https://github.com/egatari/components) の Web Components のパーツ（写しは `vendor/components/`：`m-sweep` `m-curves` `m-flow` `m-collect` `m-seq`、ビジネス・ピッチ向けの `m-bars` `m-quad` `m-market` `m-kpi`、符号化の授業向けの `m-codetree`（符号の木で系列を復号する）。`m-flow` はお金とサービスの流れも描く）。パーツは教科ごとの束にまとまっている：統計（stats）・情報とデータサイエンス（data。`m-code`・`m-sampling`・`m-ci` など）・数学・地図・国語・英語・音楽・ビジネス・ツール（tools）・理科（[パーツの束](docs/llm-parts/)）。画面は (スライド, ステップ, 時刻) だけで決まるので、そのままコマ単位で動画に書き出せる
 - **スライドへのリンク**：ふつうの `<a href="#<スライドの id>">`（か `#<スライドの id>:<ステップ>`）でそのスライドかステップへ飛び、**戻る**（ボタン・Backspace・Alt+←・ブラウザの戻る）で戻れる。`m-menu` はそのリンクを札の格子に並べる（目次・選ぶ 1 枚）。スクリプトのないふつうのリンクなので、Egatari ファイル（`.ega.html`）は Core のまま。[contract §9](docs/contract.ja.md#9-スライドへのリンク)
 - **国語**：縦書き（`.tate`）・ルビ・明朝（BIZ UDP明朝）・テーマ `kokugo`。`m-kanbun`（白文 → 返り点と送り仮名 → 読む順を 1 字ずつたどる → 書き下し文）、`m-kobun`（1 文ずつの品詞分解・押すと出る助動詞の活用表・現代語訳）、`m-gendai`（傍線・指示語から指す内容への矢印・段落の役割）。[参照](docs/reference.ja.md#国語kokugo)
 - **強調**：台本に `{mark:ID|circle}` と書くと、その言葉のところでスライドに手描きの下線・囲み・枠・スポット・レーザーポインターの点が出る
 - **モーフ**：`data-morph` のスライドでは、前のスライドの式や要素が今の位置へ滑ってくる（Keynote のマジックムーブ）
 - **1 組のスライドと台本で 2 つのモード**：スライドショー（`?mode=talk`）と動画（`?mode=video`）。先のステップを薄く見せるのはスライドショーの選び（`l`。`?mode=lecture` はこの選びを入れて開く）
-- **発表の道具**：発表者ビュー（台本がカンペになる・タイマー）、スライド一覧、レーザーポインター、ペン、消えるペン、ツールバー
+- **発表のツール**：発表者ビュー（台本がカンペになる・タイマー）、スライド一覧、レーザーポインター、ペン、消えるペン、ツールバー
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。パーツはテーマの変数だけを使う。同梱は 8 つで、新しい教材は 7 つから選ぶ：藍（`default`）・墨（`sumi`）・国語・常盤・江戸紫・焦茶・浅葱。`business` は、それを使った教材を組めるように同梱のまま残す（[リファレンス](docs/reference.ja.md#テーマ)）
 - **品質管理**：規格（R-fit・R-steps など）が教材の満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・ステップ・台本の抜け・配色のコントラスト・パーツの再現性・強調・モーフを調べる
-- **開発サーバー**：ブラウザの上で文言と台本を直し、AI のコーディング道具へのメモを残せる
+- **開発サーバー**：ブラウザの上で文言と台本を直し、AI のコーディングツールへのメモを残せる
 - **Egatari ファイル（`.ega.html`）**：`--portable` で（教材のフォルダの最上位に、題名から作った名前で。書いた場所は表示される）、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は編集できるスライドと台本を入れない写し。Egatari ファイルの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)
 - **出力**：単一の HTML（字・数式と、原稿が参照するローカルの画像・動画・CSS を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
 
@@ -71,7 +71,7 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 
 | 形 | 中身 | ここで |
 |---|---|---|
-| 作業フォルダ | `deck.html`・`narration.md`・`audio/` … の入ったフォルダ。コマンド・AI のコーディング道具（Claude Code・Codex・Gemini CLI など）・ほかのエディタが読み書きする | 「フォルダで作業する…」（Chrome / Edge）で直す |
+| 作業フォルダ | `deck.html`・`narration.md`・`audio/` … の入ったフォルダ。コマンド・AI のコーディングツール（Claude Code・Codex・Gemini CLI など）・ほかのエディタが読み書きする | 「フォルダで作業する…」（Chrome / Edge）で直す |
 | Egatari ファイル（`.ega.html`） | 原稿と音声を中に持つ 1 つの HTML（`--portable`）。ブラウザで開けば再生 | 「開く…」で直す（どのブラウザでも） |
 | 再生専用（`--play-only`） | 原稿を持たない Egatari ファイル | 直せない（元の Egatari ファイルか作業フォルダを開く） |
 | 組み立てた HTML（`out/deck.html`） | `node kit/build.mjs` の発表用の出力 | 直せない（作業フォルダを開く） |
@@ -80,13 +80,13 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 - **Egatari ファイルを開く（フォルダなしで）：** 最初の画面の「ファイルを開く（.ega.html）…」（またはファイルをドラッグ＆ドロップ）で[Egatari ファイル（`.ega.html`）](docs/reference.ja.md#1-ファイル--portable)を開き、メモリの上で直す。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「名前を付けて保存…」で別のファイルに（「新しいファイルとして保存する」にチェックを入れれば、元の教材を記録した新しい識別子の教材に）、「作業フォルダにエクスポート…」で空のフォルダに原稿と音声を出す。教材の識別子と権利の表示は残し、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。台本・音声・秒数の編集は組み直さずに保存し、ファイルのその所だけが変わる。スライドを直したら、編集していないスライドの見え方が変わりうると知らせてから組み直す。フォルダを開いているときは「名前を付けて保存…」で Egatari ファイルに。今のどのブラウザでも使える（ファイルを選ぶ画面がなければ保存はダウンロード）
 - **直す：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で台本、Alt / ⌥ option＋クリックで コメント（`comments.json`）、`c` で一覧。控えはフォルダの `.cache/edits/` に残る
 - **作業フォルダを開く：** 作業フォルダ（`deck.html` の入ったもの）を画面にドラッグ＆ドロップするか「フォルダで作業する…」を押し、そのフォルダの編集を許可する。「新規作成…」はチャットの AI に新しい教材を書いてもらう（新しい作業フォルダはコマンドの `npm run new`）。最近開いた作業フォルダは最初の画面に並ぶ
-- **チャットの AI で下書き（コーディング道具なし）：** 「新規作成…」で 4 つの問い（使う場面・何について・見た目・AI に渡す指示が軽量か詳細か）に答えると、claude.ai・Gemini・ChatGPT に送る [AI への指示](docs/authoring-with-llms.ja.md) をコピーでき、AI の出力をスライドと台本の 2 つの欄に貼り付ける（出力の全体をどちらかに貼れば 2 つに分ける）。エディタがスライドに id を付け、新しい Egatari ファイルとして作り（出力にスクリプトがあれば、開いたファイルと同じく動かす前に聞く）、品質チェックをかける。品質チェックの板の「AI への修正依頼をコピー」は、指摘・破った規格・今のファイルを同じチャット向けにコピーし、その出力で「修正…」が今の教材のスライドを置き換える（識別子と音声は残す）。「スライドの挿入…」では、選んだスライドの後ろに AI にスライドを足してもらえる
+- **チャットの AI で下書き（コーディングツールなし）：** 「新規作成…」で 4 つの問い（使う場面・何について・見た目・AI に渡す指示が軽量か詳細か）に答えると、claude.ai・Gemini・ChatGPT に送る [AI への指示](docs/authoring-with-llms.ja.md) をコピーでき、AI の出力をスライドと台本の 2 つの欄に貼り付ける（出力の全体をどちらかに貼れば 2 つに分ける）。エディタがスライドに id を付け、新しい Egatari ファイルとして作り（出力にスクリプトがあれば、開いたファイルと同じく動かす前に聞く）、品質チェックをかける。品質チェックの板の「AI への修正依頼をコピー」は、指摘・破った規格・今のファイルを同じチャット向けにコピーし、その出力で「修正…」が今の教材のスライドを置き換える（識別子と音声は残す）。「スライドの挿入…」では、選んだスライドの後ろに AI にスライドを足してもらえる
 - **台本の音声を 1 ステップずつ：** 「音声」でステップの音声を聞き、作った後に台本が変わっていれば「古い」と示す。マイクから録る（入力の大きさの表示つき）、ファイルから取り込む、AI 音声をこの PC で作る（日本語は読み辞書つきの Irodori-TTS、英語は Kokoro。WebGPU が要り、モデルは初回だけ取得）で作り直すのどれかをして、「この音声を使う」。取り直しは `tts/core.py` と同じく整え（無音を削り −20 LUFS）、出どころと一緒に MP3 で残す（[詳しく](docs/editor.ja.md#台本の音声音声の板)）。Egatari ファイルでは組み直さずに保存する
-- **AI のコーディング道具と一緒に：** ほかのもの（Claude Code・Codex・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・ステップのまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す
+- **AI のコーディングツールと一緒に：** ほかのもの（Claude Code・Codex・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて組み直し、同じスライド・ステップのまま表示する。組み立てに失敗したら、直るまでプレビューの上にエラーを出す
 - **言語：** ふだんはブラウザの言語に合わせる。右上の **English / 日本語** のボタン（または `?lang=en`・`?lang=ja`）で切り替える
-- **道具の列：** ファイル ▾（新規作成…・開く…・保存・名前を付けて保存…・エクスポート ▸ 参加者用（再生専用）…／スライドを印刷／本を印刷（本のない教材は台本を印刷）・ファイルの情報…・フォルダで作業する…）、スライド ▾（スライドの挿入…・複製・削除・修正…）、品質チェック（警告の数）、プレビュー ▾（スライドショー・授業・動画で確かめる、発表者ビュー（台本と次のステップが出る窓）で確かめる）
+- **ツールの列：** ファイル ▾（新規作成…・開く…・保存・名前を付けて保存…・エクスポート ▸ 参加者用（再生専用）…／スライドを印刷／本を印刷（本のない教材は台本を印刷）・ファイルの情報…・フォルダで作業する…）、スライド ▾（スライドの挿入…・複製・削除・修正…）、品質チェック（警告の数）、プレビュー ▾（スライドショー・授業・動画で確かめる、発表者ビュー（台本と次のステップが出る窓）で確かめる）
 
-できないこと：自分の参照音声での TTS（`tts/synth.py`）・動画・`npm run check`（品質チェックのコマンド版）・`tools/pdf.mjs` はコマンドで行い、プレビューはフォルダの音声を鳴らさない（鳴らすのは音声の板）。ブラウザ版の品質チェックは一部の項目（はみ出し・文字の大きさ・字数・台本の抜け・コントラスト）だけで、目安にとどまる（全部は `npm run check`）。書き出すファイルは、コマンドで組んだものと同じく字を切り出す（切り出しの道具、約 2 MB は初めてのエクスポートで読み込む）。リポジトリのパーツとテーマはアプリを組んだときのもの。作業フォルダの中のパーツ・テーマはフォルダから読む。
+できないこと：自分の参照音声での TTS（`tts/synth.py`）・動画・`npm run check`（品質チェックのコマンド版）・`tools/pdf.mjs` はコマンドで行い、プレビューはフォルダの音声を鳴らさない（鳴らすのは音声の板）。ブラウザ版の品質チェックは一部の項目（はみ出し・文字の大きさ・字数・台本の抜け・コントラスト）だけで、目安にとどまる（全部は `npm run check`）。書き出すファイルは、コマンドで組んだものと同じく字を切り出す（切り出しのツール、約 2 MB は初めてのエクスポートで読み込む）。リポジトリのパーツとテーマはアプリを組んだときのもの。作業フォルダの中のパーツ・テーマはフォルダから読む。
 
 ![編集アプリ](docs/images/editor-app.png)
 
@@ -105,9 +105,9 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-入れたら、自動更新を有効にする：`/plugin` → Marketplaces → egatari → Enable auto-update。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れている。スキルの指示と品質チェックは Studio の版ごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。スキルが古いとわかれば、スキル自身が 1 回だけ知らせる（作業は止めない）。
+入れたら、自動更新を有効にする：`/plugin` → Marketplaces → egatari → Enable auto-update。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れている。スキルの指示と品質チェックは Studio のバージョンごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。スキルが古いとわかれば、スキル自身が 1 回だけ知らせる（作業は止めない）。
 
-studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、[npm で使う（clone しない）](#npm)）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れている道具（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、道具を再起動する。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
+studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、[npm で使う（clone しない）](#npm)）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れているツール（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、ツールを再起動する。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
 
 <a id="codex"></a>
 ## Codex で使う
@@ -120,7 +120,7 @@ codex plugin add egatari@egatari
 codex plugin add egatari-studio@egatari
 ```
 
-入れたら、Studio のリリースのたびに `npx egatari@0.6.x skills update` を実行して Codex を再起動する。スキルの指示と品質チェックは Studio の版ごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。
+入れたら、Studio のリリースのたびに `npx egatari@0.6.x skills update` を実行して Codex を再起動する。スキルの指示と品質チェックは Studio のバージョンごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。
 
 教材を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・組み立て・パーツ作成・動画には `egatari-studio` も入れる。Codex を再起動して教材を頼む。Codex の workspace-write サンドボックスはネットとブラウザを塞ぐので、`check` と `build` はサンドボックスの外で、またはネットとブラウザを許して動かす。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。入れたスキルが包みより古いときは `npx egatari@0.6.x doctor` が知らせる。
 
@@ -143,7 +143,7 @@ codex plugin add egatari-studio@egatari
 <a id="npm"></a>
 ## npm で使う（clone しない）
 
-npm の包み `egatari` は、同じ道具を 1 つのコマンド `egatari` にまとめたもの：
+npm の包み `egatari` は、同じツールを 1 つのコマンド `egatari` にまとめたもの：
 
 ```bash
 npx egatari new mytalk --lang ja      # mytalk/deck.html・mytalk/narration.md・mytalk/egatari.json を作る
@@ -201,7 +201,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # 1 段階だけなら 
 | o | スライド一覧（矢印で選んで Enter） |
 | x / d / v | レーザーポインター / ペン / 消えるペン。Shift+d（またはツールバーの色のボタン）でペンの色 |
 | Backspace（Shift+Backspace） | ペンを使っている間：このスライドの書き込みを消す（全部消す） |
-| Esc | 道具を解除 |
+| Esc | ツールを解除 |
 | ? | キーの一覧 |
 
 すべてのキー（Home/End、PageUp/PageDown、発表者ビューのキー）と URL の引数は [docs/reference.ja.md#発表](docs/reference.ja.md#発表)。
@@ -254,14 +254,14 @@ node kit/build.mjs examples/minimal/deck.html --theme mylab
 <a id="clone"></a>
 ## クローンして使う
 
-ここから先は、このリポジトリを clone して道具を動かすときの手順（Studio 自体を直すときや、`node` のスクリプトを直接使うとき）。clone しない使い方は [npm で使う（clone しない）](#npm)。
+ここから先は、このリポジトリを clone してツールを動かすときの手順（Studio 自体を直すときや、`node` のスクリプトを直接使うとき）。clone しない使い方は [npm で使う（clone しない）](#npm)。
 
 <a id="requirements"></a>
 ### 要るもの
 
 **段 1（スライド）**
 
-- [Node.js](https://nodejs.org/) 22 以上で、最新のセキュリティ修正を含む版（[SECURITY.md](SECURITY.md) 参照）
+- [Node.js](https://nodejs.org/) 22 以上で、最新のセキュリティ修正を含むバージョン（[SECURITY.md](SECURITY.md) 参照）
 - Google Chrome か Microsoft Edge：`kit/check.mjs`・`tools/pdf.mjs`・スクリーンショット・テストで使う（`playwright-core` で Chrome、なければ Edge を探す）。組むことと発表には、ファイルを開くブラウザがあればよい。どちらもなければ `npx playwright-core install chromium` を実行する（Playwright の Chromium を代わりに使う）か、`CHROME_PATH=/path/to/chrome-or-chromium` を指定する
 - あると良い：[uv](https://docs.astral.sh/uv/)。`node tools/get-fonts.mjs` で BIZ UDPゴシック（と BIZ UDP明朝）の TTF を取ってくると、build が uv で `pyftsubset` を動かし、使っている字だけを埋め込む。TTF（または uv）がなければ `@fontsource` の分割ファイル（WOFF2）のうち使う字を含むものを埋め込む。ファイルは大きくなるが見た目は同じ
 
@@ -326,11 +326,11 @@ npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」に
 node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開く（Ctrl+C で止める）
 ```
 
-画面はいつもの発表画面（矢印・`p`・`a` などはそのまま使える）で、編集の道具はその外側に出る。スライドは sandbox の枠の中で動き、「どこを直したいか」を知らせることしかできず、編集の道具で「保存」を押すまで何も書き込まれない。スライドのファイルが変わると自動で読み込み直し、スライドとステップはそのまま残る。
+画面はいつもの発表画面（矢印・`p`・`a` などはそのまま使える）で、編集のツールはその外側に出る。スライドは sandbox の枠の中で動き、「どこを直したいか」を知らせることしかできず、編集のツールで「保存」を押すまで何も書き込まれない。スライドのファイルが変わると自動で読み込み直し、スライドとステップはそのまま残る。
 
 1. **文字を直す：`e` → ダブルクリック。** 直せる要素に点線の枠が出る。ダブルクリックでその部分の原稿（HTML と `\( … \)` の式）が開くので、直して ⌘/Ctrl+Enter。`deck.html` のその要素だけが書き換わる
 2. **台本を直す：`n`。** 右に今のステップの台本が出る。直して保存（発言の追加・削除・話者の変更もできる）。`narration.md` のそのステップだけが書き換わる
-3. **コメントを残す：Alt+クリック（Mac は ⌥ option キーを押したままクリック）。** 直してほしいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。メモは `comments.json` に貯まり、`c` で一覧。AI のコーディング道具（Claude Code・Codex・Gemini CLI など）に「comments.json のメモを反映して」と頼むと直し、保存した時点で画面に出る
+3. **コメントを残す：Alt+クリック（Mac は ⌥ option キーを押したままクリック）。** 直してほしいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。メモは `comments.json` に貯まり、`c` で一覧。AI のコーディングツール（Claude Code・Codex・Gemini CLI など）に「comments.json のメモを反映して」と頼むと直し、保存した時点で画面に出る
 4. **元に戻す：** 書き換える前の `deck.html`・`narration.md` は `.cache/edits/` に残る（新しい 30 個）
 
 | `e`＋ダブルクリック：原稿を直す | `n`：台本を直す | Alt / ⌥ option+クリック：コメント |
@@ -348,7 +348,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 | `docs/authoring-with-llms.ja.md` | チャットの AI（claude.ai・Gemini・ChatGPT）に初めの下書きを書かせる指示。共通の本体（標準パーツ）。束の指示（stats・data・math・maps・kokugo・english・music・business・tools・science）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` が組み立てる（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、台本、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | 実行系（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、台本の解析、品質チェック、ブラウザの起動。`kit/core/` は Node と編集アプリが共有する組み立ての本体、`kit/templates/` は新しい教材のテンプレート |
-| `vendor/components/` | [egatari/components](https://github.com/egatari/components) のリリース（パーツ）の写し。取り込んだ版をすべて残し、既定の版は `components.lock.json` で固定。一覧は `vendor/components/CATALOG.md`。取り込みは `npm run components:update -- vX.Y.Z` |
+| `vendor/components/` | [egatari/components](https://github.com/egatari/components) のリリース（パーツ）の写し。取り込んだバージョンをすべて残し、既定のバージョンは `components.lock.json` で固定。一覧は `vendor/components/CATALOG.md`。取り込みは `npm run components:update -- vX.Y.Z` |
 | `themes/` | テーマ |
 | `server/` | 開発サーバーとブラウザ上の編集 |
 | `app/` | 編集アプリ（インストール不要）の元。`npm run build:app` で `dist/` に配信版（`dist/index.html`）と オフライン版のエディタ `dist/editor.html` を作る |
@@ -356,7 +356,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 | `skills/studio/` | ローカル用の Claude Code studio スキル |
 | `plugins/egatari/` | make だけを含む、生成した軽量プラグイン |
 | `tools/` | 新しい教材のテンプレート（`new.mjs`）、テストと補助（`smoke` `test-*` `shot` `pdf` `get-fonts.mjs`） |
-| `CHANGELOG.md` | 版ごとの変更（英語） |
+| `CHANGELOG.md` | バージョンごとの変更（英語） |
 
 テスト（Chrome が要る）：
 
@@ -373,11 +373,11 @@ node tools/test-app.mjs                                            # 編集ア�
 
 ## フィードバックと貢献
 
-- 教材で `?` を押し、「**フィードバックを送る**」を押す（発表者ビューにもある）。版・ブラウザ・OS・言語・モードだけを入れた [フィードバックの form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) が開く。スライドの中身は送らない。`<html data-feedback="off">` で消せる
+- 教材で `?` を押し、「**フィードバックを送る**」を押す（発表者ビューにもある）。バージョン・ブラウザ・OS・言語・モードだけを入れた [フィードバックの form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) が開く。スライドの中身は送らない。`<html data-feedback="off">` で消せる
 - Claude Code では「感想を送って」と言う。スキルが作業中に困ったことを issue の下書きにまとめ、確認を取ってから作る
 - 新しい図が欲しいときは、まず教材の中で書く（インライン SVG か、教材専用のパーツ）。パーツライブラリに入れたいときは [egatari/components に提案](https://github.com/egatari/components/issues/new?template=proposal.yml)
 - 質問は [Discussions](https://github.com/egatari/egatari-studio/discussions) へ。貢献の仕方は [CONTRIBUTING.ja.md](CONTRIBUTING.ja.md)
-- 版ごとの変更は [CHANGELOG.md](CHANGELOG.md)（英語）
+- バージョンごとの変更は [CHANGELOG.md](CHANGELOG.md)（英語）
 
 ## セキュリティ
 

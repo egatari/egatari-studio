@@ -585,7 +585,7 @@ ok('文書の試験用ファイル：期待どおり読める・断る。取り�
 //   conforming: true / false   readPortable の warnings に「not conforming: 」で始まるものがない / ある
 //   report: "no-policy"            → warnings の「not conforming: no Content-Security-Policy <meta> …」（Studio に符号はない）
 //   report: "policy-extra-source"  → warnings の「not conforming: file policy differs …: <directive>: extra source <source>」
-//   edit: "may-refuse"         app/earlier-draft.js の earlierFile（編集アプリは前の版のファイルとして読むだけにする）
+//   edit: "may-refuse"         app/earlier-draft.js の earlierFile（編集アプリは旧形式のファイルとして読むだけにする）
 //   tierA.keeps                段 A の保存（kit/core/tier-a.mjs）で、索引と deck-meta のその項目がバイトのまま
 //   rebuild.warns: "player-change" → exportPortable（buildPortable）の playerChange と「will carry … instead of its player」の warnings
 //   play: true                 ヘッドレス Chrome で file:// から開き、DECK.ready・ページのエラーなし

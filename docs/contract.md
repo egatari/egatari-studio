@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=85c691856cb00f30 -->
+<!-- i18n: pair=contract.ja.md sha256=2ac6320250c1c281 -->
 # Contract (Studio notes on the authoring source)
 
 English | [日本語](contract.ja.md)

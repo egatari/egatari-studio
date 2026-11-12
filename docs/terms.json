@@ -1,5 +1,5 @@
 {
- "version": "2026-11-03",
+ "version": "2026-11-13",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -937,9 +937,9 @@
     "en": []
    },
    "internal": "",
-   "decided": "",
+   "decided": "2026-10-25",
    "by": "owner",
-   "note": ""
+   "note": "Date from the commit that first recorded it (5194262d); no earlier record."
   },
   {
    "id": "marker",
@@ -1123,22 +1123,46 @@
   {
    "id": "earlier-draft-file",
    "group": "Structure and playback",
-   "en": "File from an earlier version",
-   "ja": "前の版のファイル",
-   "definition": "A file made before the Egatari 1.0 file shape. It plays; to edit it, open it in the earlier Studio or follow the migration guide.",
+   "en": "File in an older format",
+   "ja": "旧形式のファイル",
+   "definition": "A file made before the Egatari 1.0 file shape. It plays; to edit it, open it in an earlier version of Studio or follow the migration guide. (2026-11-13 owner: 前の版のファイル was unclear; 旧形式 as in office software.)",
    "avoid": {
     "ja": [
-     "古い形式",
+     "前の版のファイル",
      "非対応のファイル"
     ],
     "en": [
+     "File from an earlier version",
      "legacy file",
      "unsupported file"
     ]
    },
    "internal": "pre-1.0 draft (spec §7.1)",
-   "decided": "2026-10-25",
-   "by": "standards",
+   "decided": "2026-11-13",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "software-version",
+   "group": "Structure and playback",
+   "en": "Version",
+   "ja": "バージョン",
+   "definition": "The version of Studio, Player or Viewer, e.g. “version 0.6.10” (v0.6.10). A release candidate is リリース候補（RC）; to publish a version is リリースする. 版 alone is not used for a version (lint:terms flags it; docs/terms-allow.json avoidPatterns). Compounds stay: 正式版・最新版・日本語版・英語版・ブラウザ版・オフライン版・コマンド版・ベータ版・再生専用版.",
+   "avoid": {
+    "ja": [
+     "今の版",
+     "この版",
+     "前の版",
+     "新しい版",
+     "後の版",
+     "版を出す",
+     "試用版"
+    ],
+    "en": []
+   },
+   "internal": "version (package.json)",
+   "decided": "2026-11-13",
+   "by": "owner",
    "note": ""
   },
   {
@@ -1171,9 +1195,9 @@
     "en": []
    },
    "internal": "kind: recorded",
-   "decided": "",
+   "decided": "2026-10-25",
    "by": "owner",
-   "note": ""
+   "note": "Date from the commit that first recorded it (5194262d); no earlier record."
   },
   {
    "id": "recording-mode",
@@ -1186,9 +1210,9 @@
     "en": []
    },
    "internal": "",
-   "decided": "",
+   "decided": "2026-10-25",
    "by": "owner",
-   "note": ""
+   "note": "Date from the commit that first recorded it (5194262d); no earlier record."
   },
   {
    "id": "read-aloud",
@@ -1335,9 +1359,9 @@
     "en": []
    },
    "internal": "",
-   "decided": "",
+   "decided": "2026-10-25",
    "by": "owner",
-   "note": ""
+   "note": "Date from the commit that first recorded it (5194262d); no earlier record."
   },
   {
    "id": "instructions",
@@ -1590,16 +1614,18 @@
    "id": "tools",
    "group": "New lesson, insert, revise (chat AI)",
    "en": "Tools",
-   "ja": "道具",
+   "ja": "ツール",
    "definition": "Parts the AI uses only when ticked (e.g. Timer); in New… they are listed under Time-boxing.",
    "avoid": {
-    "ja": [],
+    "ja": [
+     "道具"
+    ],
     "en": []
    },
    "internal": "group: tool",
-   "decided": "2026-10-25",
+   "decided": "2026-11-13",
    "by": "owner",
-   "note": ""
+   "note": "2026-11-13 owner: 道具 → ツール, also for presenter tools (発表のツール) and AI coding tools (AI のコーディングツール), matching the toolbar."
   },
   {
    "id": "standard-parts",
