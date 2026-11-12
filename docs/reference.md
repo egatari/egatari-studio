@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=636e00b7a1306594 -->
+<!-- i18n: pair=reference.ja.md sha256=5076570353ab7cac -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -22,7 +22,7 @@ Normative: format spec §8.0 (slides, steps, kinds of slide, math, references) a
 | `audio/manifest.json` | build | written by `tts/synth.py` and the editor app's Audio panel (each step: `file`, `dur`, `cues`, `sync`, `kind`, `inputHash`, for TTS `recipe`; optional `processing` and `startOffset`, the encoder delay at which playback starts) |
 | `voice.json` | TTS | voices, language, engine |
 | `figs/*.svg`, `data/*.json` | build | for `{{FIG:…}}` / `{{JSON:…}}` |
-| `components/<name>/index.js` | build | lesson-local parts (found before the library's) |
+| `components/<name>/index.js` | build | lesson-local parts (found before the library's). The name is the tag without `m-` (`components/foo/` for `<m-foo>`); the whole tag (`components/m-foo/`) also works, but the build stops if one tag has both |
 | `egatari.json` | build, Egatari file | `docId`, metadata, attachments; `components` pins library part versions (`{"bars": "1.0.0"}`, format spec §3.3; an Egatari file's copy carries the versions its export used, and unpacking writes them, so a rebuild does not switch versions; without a pin the build uses the default in `components.lock.json`) |
 | `themes/<name>/` | build | lesson-local themes |
 | `comments.json`, `.cache/edits/` | dev server | written by the dev server |

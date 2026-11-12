@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=b481c78b6f4d7d22 -->
+<!-- i18n: pair=reference.md sha256=b7a0a412c1d7a55e -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -22,7 +22,7 @@
 | `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（ステップごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`。任意で `processing` と、鳴らし始める符号化の遅れ `startOffset`） |
 | `voice.json` | TTS | 声・言語・エンジン |
 | `figs/*.svg`、`data/*.json` | build | `{{FIG:…}}` / `{{JSON:…}}` の元 |
-| `components/<名前>/index.js` | build | 教材専用のパーツ（パーツライブラリより先に探す） |
+| `components/<名前>/index.js` | build | 教材専用のパーツ（パーツライブラリより先に探す）。名前はタグから `m-` を除いたもの（`<m-foo>` なら `components/foo/`）。タグのまま（`components/m-foo/`）でもよいが、同じタグで両方あると組み立てを止める |
 | `egatari.json` | build・Egatari ファイル | `docId`・metadata・添付の一覧。`components` はパーツライブラリのパーツのバージョンの固定（`{"bars": "1.0.0"}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使ったバージョンが入り、展開でそれが書かれるので、組み直しでバージョンが変わらない。固定がなければ `components.lock.json` の既定のバージョン） |
 | `themes/<名前>/` | build | 教材専用のテーマ |
 | `comments.json`、`.cache/edits/` | 開発サーバー | 開発サーバーが書く |
