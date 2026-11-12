@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示の版：990b335f
+指示の版：45d85521
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
