@@ -1,0 +1,44 @@
+{
+  "v": 1,
+  "request": "高校の英語で、英文の構造（S・V・O・C・M）を読むスライドを作ってください。例文は自作し、まず動詞を見つけ、S と O と C を分け、関係代名詞の節が前の名詞を飾るところは括弧と矢印で示し、和訳も添えてください。説明は日本語で。",
+  "category": "teaching",
+  "subcategory": "class",
+  "theme": "kogecha",
+  "parts": [
+    "m-cards",
+    "m-flow",
+    "m-syntax"
+  ],
+  "structure": [
+    {
+      "heading": "英文の構造",
+      "point": "表紙"
+    },
+    {
+      "heading": "文を組み立てる 5 つの記号",
+      "point": "S・V・O・C・M の 5 つの記号"
+    },
+    {
+      "heading": "まず動詞を見つける",
+      "point": "例文で動詞を見つけ、前を S、後ろを O、残りを M に"
+    },
+    {
+      "heading": "C は、O がどんなかを言う",
+      "point": "SVOC の例文。O と C の間に「O は C だ」"
+    },
+    {
+      "heading": "節が、前の名詞を飾る",
+      "point": "関係代名詞の節を括弧でくくり、前の名詞への矢印"
+    },
+    {
+      "heading": "読むときの順番",
+      "point": "読む順番：動詞を見つけてから、括弧で区切る"
+    }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

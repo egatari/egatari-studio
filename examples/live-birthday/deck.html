@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="tokiwa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>40 人のクラスに、同じ誕生日の 2 人はいる？</title>
+<style>
+.choices { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 18px; }
+.choices div { border: 3px solid var(--line); border-radius: 14px; padding: 18px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-f2jt7s">
+  <div class="venue">数学 A　確率（ライブで投票する授業のサンプル）</div>
+  <h1>40 人のクラスに、<br>同じ誕生日の 2 人はいる？</h1>
+  <div class="au">予想して、計算して、確かめる</div>
+</section>
+
+<section class="slide" id="s-guq66g">
+  <h2>まず予想する</h2>
+  <div class="body">
+    <p>40 人のクラスで、同じ誕生日の 2 人がいる確率は？</p>
+    <div class="choices" data-step="1">
+      <div>A　約 1 割</div><div>B　約 3 割</div><div>C　約 5 割</div><div>D　約 9 割</div>
+    </div>
+    <p class="note" data-step="2">ライブでは、ここで参加者が投票する（ホストのページに集計が出る）</p>
+  </div>
+  <div class="concl"><span>1 年は 365 日、どの日も同じ確からしさとする</span></div>
+</section>
+
+<section class="slide" id="s-jojert">
+  <h2>まず 2 人で考える</h2>
+  <div class="body">
+    <p>1 人目の誕生日を決めると、2 人目が違う日になるのは 364 日のどれか。</p>
+    <div class="big" data-step="1">\[ P(\text{違う}) = \frac{364}{365} \]</div>
+    <div class="big" data-step="2">\[ P(\text{同じ}) = 1 - \frac{364}{365} = \frac{1}{365} \approx 0.3\,\% \]</div>
+  </div>
+  <div class="concl"><span>2 人なら、同じ誕生日はめったにない</span></div>
+</section>
+
+<section class="slide" id="s-mswekp">
+  <h2>40 人が全員ばらばらになる確率</h2>
+  <div class="body">
+    <p>1 人ずつ足すと、前の人と重ならない日が 1 日ずつ減る。</p>
+    <div class="big" data-step="1">\[ \frac{365}{365} \times \frac{364}{365} \times \cdots \times \frac{326}{365} \approx 0.109 \]</div>
+    <div class="big" data-step="2">\[ 1 - 0.109 = 0.891 \]</div>
+  </div>
+  <div class="concl"><span>全員ばらばらの残りが、同じ誕生日のいる確率</span></div>
+</section>
+
+<section class="slide" id="s-grjeo5">
+  <h2>人数を増やすと</h2>
+  <div class="body">
+    <m-curves style="height:380px" xr="[0,60]" yr="[0,100]" xt="[0,10,20,30,40,50,60]" yt="[0,50,100]" xl="クラスの人数" yl="確率（%）" size="28" aria-label="人数と、同じ誕生日の 2 人がいる確率の曲線。23 人で 50.7 %、40 人で 89.1 %">
+      <script type="application/json">{{JSON:curves.json}}</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>23 人で半分を超え、40 人で約 9 割</span></div>
+</section>
+
+<section class="slide" id="s-ibopvm">
+  <h2>答えを確かめる</h2>
+  <div class="body">
+    <m-predict style="height:360px" unit="人" poll="p1" aria-label="予想の投票。A 約 1 割 9 人、B 約 3 割 14 人、C 約 5 割 10 人、D 約 9 割 7 人。正解は D（架空の教室の例）">
+      <script type="application/json">{{JSON:predict.json}}</script>
+    </m-predict>
+  </div>
+  <div class="concl"><span>多くの人の予想より、ずっと高い</span></div>
+</section>
+
+<section class="slide" id="s-yc6t4m">
+  <h2>なぜ直感とずれるのか</h2>
+  <div class="body">
+    <p>比べるのは「人」ではなく「2 人の組」。</p>
+    <m-bars style="height:330px" per-step="0" count="true" unit="組" aria-label="2 人の組の数。10 人で 45 組、23 人で 253 組、40 人で 780 組">
+      <script type="application/json">{{JSON:pairs.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>40 人なら 780 組。どれか 1 組が重なればよい</span></div>
+</section>
+
+<section class="slide" id="s-7tq3pw">
+  <h2>今日のまとめ</h2>
+  <div class="body">
+    <ul>
+      <li>予想 → 計算 → 確かめる、の順に考えた</li>
+      <li>「全員ばらばら」を求めて 1 から引くと計算しやすい</li>
+      <li>前提は 365 日・どの日も同じ確からしさ。実際の誕生日は少し偏る</li>
+    </ul>
+  </div>
+  <div class="concl"><span>直感がずれたら、数えるものを見直す</span></div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/sentence-structure",
+  "files": {
+    "deck.html": "171569d2ceca63e0ea98d55ab238a46bee61a956d15fc8d2e2c020fac18dbbf5",
+    "egatari.json": "1983f6aa4b847d6dae2b54bf707a6cdc642257797685c261c7d697ca6cf2b438",
+    "narration.md": "3d504c6534505b75b4afb228fc23c24d04df19bfa8ab4db86710698c210a0f79",
+    "sample.json": "913c82bf4c9510c213963ab9d5f727e0440f510040b75484ff0bd7f2007359cb"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

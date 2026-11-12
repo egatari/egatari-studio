@@ -1,0 +1,49 @@
+{
+  "v": 1,
+  "request": "市民向けに、架空の A 市の 2027 年度の予算を説明するスライドを作ってください。1 年に使うお金と市民 1 人あたりの額、何に使うか、1 万円に置きかえた内訳、前の年からの変化、お金がどこから来るか、意見を届ける方法を順に。数字は架空と明記してください。",
+  "category": "guides",
+  "subcategory": "info",
+  "theme": "murasaki",
+  "parts": [
+    "m-bars",
+    "m-cards",
+    "m-kpi",
+    "m-pie"
+  ],
+  "structure": [
+    {
+      "heading": "A 市の予算 2027 年度",
+      "point": "表紙（架空の市）"
+    },
+    {
+      "heading": "1 年間に使うお金",
+      "point": "1 年間に使うお金と、市民 1 人あたりの額"
+    },
+    {
+      "heading": "何に使うか",
+      "point": "何に使うかの円グラフ"
+    },
+    {
+      "heading": "1 万円に置きかえると",
+      "point": "1 万円に置きかえた内訳"
+    },
+    {
+      "heading": "前の年から、どう変わったか",
+      "point": "前の年からの増減"
+    },
+    {
+      "heading": "お金はどこから来るか",
+      "point": "お金の出どころ"
+    },
+    {
+      "heading": "意見を届けるには",
+      "point": "意見を届ける方法"
+    }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

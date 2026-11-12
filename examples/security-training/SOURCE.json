@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/security-training",
+  "files": {
+    "deck.html": "d0657023cbef9c87db3c7ae5115cf9accb5ab7240ab69dc26a46913f7cc1e13c",
+    "egatari.json": "beeea5d152c713249e1db0c72c881d739ffbb5168a67e0b585111a87d13a39ab",
+    "narration.md": "c01251d44f6653d9bdb353dd8d9bcb26932dd7e45759b218c764512e655bdf64",
+    "sample.json": "a46123446fdc160119ad5d943a9cc563650e34a8329c63b48f2aa7a026a30da0"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

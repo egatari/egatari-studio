@@ -1,0 +1,21 @@
+{
+  "note": "Screenshots used by this sample. Retake when the UI changes; dev's release step reads this file.",
+  "shots": [
+    {
+      "file": "gallery/host-page-example.png",
+      "source": "scripts/live_host_shot.mjs (local wrangler dev on 127.0.0.1:8799, fictional Live, then crop 1280x930 at y=1765)",
+      "app": "Egatari Live host page",
+      "version": "live cb66c3e",
+      "used_in": "gallery card (outside the lesson), 架空の授業の例",
+      "taken": "2026-11-07",
+      "sha256": "a6eb4dd452d10b5dcbf5aee27090c524645835dce269e0699beb7f38a37f5bea",
+      "viewport": "1280x900",
+      "fullPage": true,
+      "locale": "ja-JP",
+      "lang": "?lang=ja",
+      "colorScheme": "light",
+      "reducedMotion": "reduce",
+      "browser": "Chrome (playwright-core, channel chrome)"
+    }
+  ]
+}

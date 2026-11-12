@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Egatari の紹介</title>
+<style>
+.mini { border: 2px solid var(--line); border-radius: 10px; height: 250px; padding: 16px 20px; }
+.mini .bar { height: 26px; border-radius: 4px; background: var(--term); margin: 14px 0; }
+.page { border-left: 4px solid var(--term); padding: 4px 0 4px 20px; }
+.chat { display: grid; grid-template-columns: 220px 1fr; gap: 14px 20px; align-items: center; margin-top: 8px; }
+.chat .who { text-align: right; }
+.chat .say { border: 2px solid var(--line); border-radius: 16px; padding: 6px 18px; }
+.chat .say.check { border-color: var(--emph); }
+.chat .say.ok { border-color: var(--term); }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-5njg6q" data-article="sec-ki3eby">
+  <div class="venue">Egatari（絵語り）</div>
+  <h1>絵が語り、人へ伝える</h1>
+  <div class="au">伝える人すべてのための、1 つのファイル。<br>話す順に動く図と、読める本。<br>AI が書き、直すところは自動で見つかる。</div>
+</section>
+
+<section class="slide" id="s-n37lrw" data-article="sec-xtzfxg">
+  <h2>話す順に、図が組み上がる</h2>
+  <div class="body">
+    <m-kpi style="height:200px" per-step="3" aria-label="架空の会社の四半期の数字。売上 2.38 億円、会員数 13,450 人、解約率 2.6 %">
+      <script type="application/json">{"cards": [
+        {"label": "売上（Q4）", "value": 2.38, "digits": 2, "unit": "億円", "delta": {"dir": "up", "text": "前期比 +13.3 %", "good": true}},
+        {"label": "会員数", "value": 13450, "unit": "人", "delta": {"dir": "up", "text": "前期比 +14.0 %", "good": true}},
+        {"label": "解約率（月）", "value": 2.6, "digits": 1, "unit": "%", "delta": {"dir": "down", "text": "前期比 −0.8 pt", "good": true}}
+      ]}</script>
+    </m-kpi>
+    <m-bars style="height:180px" data-from="2" per-step="0" ticks="false" unit="億円" digits="2" aria-label="架空の四半期の売上。Q1 1.82、Q2 1.95、Q3 2.10、Q4 2.38 億円">
+      <script type="application/json">{"series": [{"label": "売上"}], "groups": [
+        {"label": "Q1", "value": 1.82}, {"label": "Q2", "value": 1.95},
+        {"label": "Q3", "value": 2.10}, {"label": "Q4", "value": 2.38, "tone": "emph"}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>クリックするたびに、話の順に図が出る（数字は架空）</span></div>
+</section>
+
+<section class="slide" id="s-lnttv2" data-article="sec-v7wk4u">
+  <h2>スライドと本が、1 つに</h2>
+  <div class="body">
+    <div class="cols">
+      <div data-step="1">
+        <p class="sub">スライド：見せる</p>
+        <div class="mini">
+          <div class="bar" style="width:45%"></div>
+          <div class="bar" style="width:62%"></div>
+          <div class="bar" style="width:80%"></div>
+        </div>
+      </div>
+      <div data-step="2">
+        <p class="sub">本：読む</p>
+        <div class="page">
+          <p>同じ話を、文章で詳しく読める。発表を聞けなかった人も、あとから自分の速さで読める。</p>
+        </div>
+      </div>
+    </div>
+    <p data-step="3" class="note">r を押すと、この紹介の本が開く</p>
+  </div>
+  <div class="concl"><span>見せる面と読む面が、同じファイルに入っている</span></div>
+</section>
+
+<section class="slide" id="s-6a7bsf" data-article="sec-4we2lf">
+  <h2>AI が一度で仕上げなくても大丈夫</h2>
+  <div class="body">
+    <div class="chat">
+      <div class="who" data-step="1">あなた</div><div class="say" data-step="1">避難訓練の手順を、6 枚で作って</div>
+      <div class="who" data-step="2">AI</div><div class="say" data-step="2">6 枚を書いた</div>
+      <div class="who emph" data-step="3"><span class="emph">品質チェック</span></div><div class="say check" data-step="3">2 枚目の本文が 1 行ぶんはみ出している。1 行減らす</div>
+      <div class="who" data-step="4">あなた → AI</div><div class="say" data-step="4">（この指摘をコピーして、AI に貼るだけ）</div>
+      <div class="who" data-step="5">AI</div><div class="say ok" data-step="5">1 行を削った　→　<span class="term">✓ 品質チェックを通った</span></div>
+    </div>
+  </div>
+  <div class="concl"><span>どこをどう直すかは、品質チェックが書いてくれる</span></div>
+</section>
+
+<section class="slide" id="s-2yzir5" data-article="sec-mqefc5">
+  <h2>ブラウザがあれば、どこでも</h2>
+  <div class="body">
+    <m-cards style="height:330px" layout="grid" aria-label="1 つの HTML ファイルでできること">
+      <script type="application/json">{"cards": [
+        {"icon": "device-laptop", "title": "どの端末でも", "text": "パソコン・タブレット・スマホ"},
+        {"icon": "world-www", "title": "オフラインでも", "text": "アプリを入れずに開ける"},
+        {"icon": "mail", "title": "送るだけ", "text": "メールや学習の場に 1 つ置く"},
+        {"icon": "presentation", "title": "動画にも", "text": "台本の声に合わせて書き出す"},
+        {"icon": "users", "title": "ライブで", "text": "参加者が質問・投票する"},
+        {"icon": "pencil", "title": "開いて直せる", "text": "受け取った人も編集できる"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>1 つの HTML ファイルを渡すだけで届く</span></div>
+</section>
+
+<section class="slide" id="s-w5shrc" data-article="sec-xhzzby">
+  <h2>この紹介も、Egatari で作った</h2>
+  <div class="body">
+    <p>題材を伝えて AI が書き、品質チェックを通した。次は、あなたの番。</p>
+    <m-cards style="height:300px" per-step="0" aria-label="次にできること：サンプルを見る、Studio で作る、仕様を読む">
+      <script type="application/json">{"cards": [
+        {"icon": "presentation", "title": "サンプルを見る", "text": "いろいろなサンプルを再生できる　egatari.org"},
+        {"icon": "pencil", "title": "Studio で作る", "text": "インストール不要、ブラウザで　studio.egatari.org"},
+        {"icon": "book", "title": "仕様を読む", "text": "だれでも使えるオープンな形式"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>あなたの伝えたいことも、1 つのファイルに</span></div>
+</section>
+
+</div>
+</body>
+</html>

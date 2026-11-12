@@ -1,0 +1,26 @@
+<section class="slide">
+  <h2>場所・地図：文具メーカーの海外拠点</h2>
+  <div class="body">
+    <m-map-world style="height:330px" aria-label="架空の文具メーカーの海外拠点。東京の本社から、2000 年代に上海とシンガポール、2010 年代にロサンゼルスとロンドン、2020 年代にシドニーへ広がった">
+      <script type="application/json">{
+        "points": [
+          {"lon": 139.69, "lat": 35.69, "label": "東京（本社）", "anchor": "right", "tone": "emph", "step": 1},
+          {"lon": 121.47, "lat": 31.23, "label": "上海 2006", "anchor": "left", "step": 2},
+          {"lon": 103.82, "lat": 1.35, "label": "シンガポール 2009", "anchor": "left", "step": 2},
+          {"lon": -118.24, "lat": 34.05, "label": "ロサンゼルス 2014", "anchor": "below", "step": 3},
+          {"lon": -0.13, "lat": 51.51, "label": "ロンドン 2017", "anchor": "above", "step": 3},
+          {"lon": 151.21, "lat": -33.87, "label": "シドニー 2022", "anchor": "right", "step": 4}
+        ],
+        "flows": [
+          {"from": [139.69, 35.69], "to": [121.47, 31.23], "step": 2},
+          {"from": [139.69, 35.69], "to": [103.82, 1.35], "step": 2},
+          {"from": [139.69, 35.69], "to": [-118.24, 34.05], "tone": "term", "step": 3},
+          {"from": [139.69, 35.69], "to": [-0.13, 51.51], "tone": "term", "step": 3},
+          {"from": [139.69, 35.69], "to": [151.21, -33.87], "tone": "accent2", "step": 4}
+        ]
+      }</script>
+    </m-map-world>
+    <p class="note">パーツ：世界地図（m-map-world）・会社と開設年は架空</p>
+  </div>
+  <div class="concl"><span>拠点の場所と広がった順を地図で見せるときに</span></div>
+</section>

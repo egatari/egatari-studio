@@ -15,10 +15,35 @@ import { fileURLToPath } from 'node:url';
 import { buildPortable, writeOutput } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { sampleProblems } from '../kit/core/new-deck-pack.mjs';
+import { readIndex } from './examples-sync.mjs';
+import { purposesFrom } from '../kit/core/purposes.mjs';
+import { CATEGORIES } from '../kit/core/new-deck.mjs';
+
+// カードに出す「伝えたいこと」：部品庫の既定のカタログの manifest の purposes（新規作成の ④ の札と同じ材料）。部品 → 札の id → 札の名前 {ja, en}
+const LOCK2 = JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'components2.lock.json'), 'utf8'));
+const PURPOSES = purposesFrom(JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'vendor', 'components-2', `manifest-${LOCK2.default}.json`), 'utf8')));
+const MANIFEST = JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'vendor', 'components-2', `manifest-${LOCK2.default}.json`), 'utf8'));
+const LIBRARY_TAGS = new Set(Object.entries(MANIFEST.components).filter(([, c]) => c.kind === 'element').map(([n, c]) => c.tag || 'm-' + n));
+const purposeLabels = (tags) => {
+  const ids = [];
+  for (const t of tags) { const id = (PURPOSES.components[t] || [])[0]; if (id && !ids.includes(id)) ids.push(id); }   // 部品の主な札（先頭）だけ
+  return PURPOSES.list.filter((x) => ids.includes(x.id)).map((x) => ({ id: x.id, label: x.label }));
+};
+// 場面の 1 行：sample.json の分類と小分類（新規作成 ① の言葉）
+const sceneOf = (s) => {
+  const c = s && CATEGORIES.find((x) => x.id === s.category);
+  const sub = c && c.subs.find((x) => x.id === s.subcategory);
+  return sub ? sub.label : c ? c.label : null;
+};
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-// 並べる順（はじめの画面の一覧もこの順）。本のある 2 つは後ろに
-export const EXAMPLES = ['minimal', 'pitch-fictional', 'kokugo-kanbun', 'tmlr2026-calibration', 'heikin-chuouchi', 'rashomon'];
+// 並べる順と区分（はじめの画面の一覧もこの順）：examples/index.json（tools/examples-sync.mjs が写しと区分を確かめる）
+export const INDEX = readIndex();
+export const EXAMPLES = INDEX.examples.map((e) => e.name);
+export const SECTIONS = INDEX.sections;
+// 「このサンプルを参考に作る」と ?from-sample= に使えるもの（fromSample: false のパーツ図鑑は再生だけ）
+export const FROM_SAMPLE = INDEX.examples.filter((e) => e.fromSample !== false).map((e) => e.name);
+export const sectionOf = (name) => (INDEX.examples.find((e) => e.name === name) || {}).section;
 
 // 名前から決めた docId（小文字の UUID の形。版 4・変種 RFC 4122 の桁にそろえる）
 export function exampleDocId(name) {
@@ -48,6 +73,15 @@ export function readSample(name) {
   return obj;
 }
 
+// カードの表紙の絵（tools/example-covers.mjs が作る examples/_covers/<名前>.webp）を <名前>.cover.webp として横に置く。なければ null（カードは題名だけ）
+function copyCover(name, outDir) {
+  const from = path.join(ROOT, 'examples', '_covers', name + '.webp');
+  if (!fs.existsSync(from)) return null;
+  const file = name + '.cover.webp';
+  fs.copyFileSync(from, path.join(outDir, file));
+  return file;
+}
+
 export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} } = {}) {
   fs.mkdirSync(outDir, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-examples-'));
@@ -56,7 +90,9 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
     for (const name of names) {
       const dir = path.join(ROOT, 'examples', name);
       if (!fs.existsSync(path.join(dir, 'deck.html'))) throw new Error(`example ${name}: ${path.join(dir, 'deck.html')} not found`);
-      const sample = readSample(name);
+      const entry = INDEX.examples.find((e) => e.name === name) || { name, section: '' };
+      // fromSample: false（パーツ図鑑）は再生だけ：sample.json を読まない（「このサンプルを参考に作る」も ?from-sample= も出ない）
+      const sample = entry.fromSample === false ? null : readSample(name);
       const copy = path.join(tmp, name);
       fs.cpSync(dir, copy, { recursive: true, filter: (f) => { const r = path.relative(dir, f); return !r.split(path.sep).some((s) => s === 'out' || s.startsWith('.')); } });
       const cfg = path.join(copy, FORMAT.CONFIG_FILE);
@@ -69,8 +105,14 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       writeOutput(src, out, r.html);
       for (const w of r.warnings) log(`  ⚠ example ${name}: ${w}`);
       const m = r.index.metadata || {};
+      // カードの印：本（本を持つ）・声（AI 音声か録音を持つ。サンプルは音声をリポジトリに入れないので、いまは付かない）・
+      // ライブ（教室の答えを集めるパーツ：stats.viewerInputs）・縦書き（layout-tate のスライド）。言語の印は画面の言語と違うときに画面が付ける
+      const parts = (r.stats.components || []).filter((t) => LIBRARY_TAGS.has(t));   // パーツライブラリのパーツだけ（教材が自分で定義したものは札にしない）
+      const tate = /\blayout-tate\b/.test(fs.readFileSync(path.join(copy, 'deck.html'), 'utf8'));
       list.push({ name, file, title: String(m.title || name), lang: String(m.lang || ''), slides: r.stats.slides, bytes: Buffer.byteLength(r.html), profile: r.index.profile,
-        sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample, book: !!r.index.article });
+        sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample, book: !!r.index.article,
+        section: entry.section, scene: sceneOf(sample), parts, purposes: purposeLabels(parts),
+        voice: (r.stats.audio || 0) > 0, live: Object.keys(r.stats.viewerInputs || {}).length > 0, tate, cover: copyCover(name, outDir) });
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   return list;

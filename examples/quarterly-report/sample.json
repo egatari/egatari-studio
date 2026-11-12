@@ -1,0 +1,54 @@
+{
+  "v": 1,
+  "request": "架空の食品会社の第 3 四半期の業績報告を、経営会議向けに 8 枚で作ってください。今期の 3 つの数字、8 四半期の売上の推移、増減の内訳、売上の使い道、原材料が上がったときの利益の試算、来期の打ち手と予定、最後に決めてほしいこと（価格改定 3 %）の順で。数字は架空と明記してください。",
+  "category": "business",
+  "subcategory": "report",
+  "theme": "kogecha",
+  "parts": [
+    "m-bars",
+    "m-kpi",
+    "m-pie",
+    "m-sweep",
+    "m-timeline"
+  ],
+  "structure": [
+    {
+      "heading": "2026 年 第 3 四半期 業績報告",
+      "point": "表紙（架空の会社）"
+    },
+    {
+      "heading": "今期の 3 つの数字",
+      "point": "今期の 3 つの数字の札"
+    },
+    {
+      "heading": "売上の移り変わり",
+      "point": "8 四半期の売上の棒グラフ"
+    },
+    {
+      "heading": "何が増え、何が減ったか",
+      "point": "事業ごとの増減の内訳"
+    },
+    {
+      "heading": "売上の使い道と利益",
+      "point": "売上の使い道と利益の円グラフ"
+    },
+    {
+      "heading": "原材料が上がると、利益は",
+      "point": "原材料と価格改定を動かして利益を試算"
+    },
+    {
+      "heading": "来期の打ち手と予定",
+      "point": "来期の打ち手と予定の年表"
+    },
+    {
+      "heading": "今日、決めていただきたいこと",
+      "point": "決めていただきたいこと：価格改定 3 %"
+    }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

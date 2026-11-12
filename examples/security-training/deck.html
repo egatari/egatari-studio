@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="sumi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>情報セキュリティ研修</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-ua556z">
+  <div class="venue">全社員向け研修（架空の会社・B 商事）</div>
+  <h1>情報セキュリティ研修<br>2027 年度（10 分）</h1>
+  <div class="au">情報システム部<br><span class="muted">会社名・メールの例は架空</span></div>
+</section>
+
+<section class="slide" id="s-mvkpfy">
+  <h2>被害の入り口は、いつもの仕事</h2>
+  <div class="body">
+    <p>1 人の不注意が、会社全体の被害につながる。</p>
+    <m-cards style="height:300px" layout="grid" per-step="0" aria-label="被害の入り口 4 つ：メール、パスワード、持ち出し、SNS">
+      <script type="application/json">{"cards": [
+        {"icon": "mail", "title": "メール", "text": "添付やリンクから感染する"},
+        {"icon": "key", "title": "パスワード", "text": "漏れると、なりすまされる"},
+        {"icon": "device-laptop", "title": "持ち出し", "text": "USB や端末の紛失"},
+        {"icon": "share", "title": "SNS", "text": "書き込みから情報が漏れる"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>どれも、ふだんの仕事の中で起きる</span></div>
+</section>
+
+<section class="slide" id="s-uiw2ny">
+  <h2>このメール、どうする？</h2>
+  <div class="body">
+    <p>フリーメールから「【重要】請求書の再送」。添付を開くよう書いてある。</p>
+    <m-predict style="height:380px" unit="人" aria-label="架空のメール「【重要】請求書の再送について」を受け取ったときの行動を選ぶ。正解は、開かずに情報システム部へ報告">
+      <script type="application/json">{"question": "このメール、どうする？", "choices": [{"label": "添付を開いて確かめる"}, {"label": "メールに返信して聞く"}, {"label": "開かず、情報システム部に報告"}, {"label": "削除して忘れる"}], "answer": 2, "counts": [6, 5, 14, 5], "note": "疑わしいメールは、開かずにすぐ報告・相談する（人数は架空）"}</script>
+    </m-predict>
+  </div>
+  <div class="concl"><span>開かない。そして、すぐ報告する</span></div>
+</section>
+
+<section class="slide" id="s-46tdu3">
+  <h2>怪しいメールの手がかり</h2>
+  <div class="body">
+    <m-compare style="height:400px" aria-label="ふだんのメールと怪しいメールの比較：差出人、件名と文面、やりとりの流れ、添付とリンク">
+      <script type="application/json">{"sides": [{"label": "ふだんのメール", "tone": "muted"}, {"label": "怪しいメール"}], "rows": [
+        {"label": "差出人", "values": ["いつもの会社のアドレス", "フリーメール・似せたアドレス"], "diff": "差出人を確かめる"},
+        {"label": "件名と文面", "values": ["ふつうの用件", "「緊急」「重要」で急かす"], "diff": "急かされたら疑う"},
+        {"label": "流れ", "values": ["最近のやりとりの続き", "突然・脈絡がない"], "diff": "心当たりを考える"}
+      ]}</script>
+    </m-compare>
+  </div>
+  <div class="concl"><span>一見ふつうでも、流れに合わなければ疑う</span></div>
+</section>
+
+<section class="slide" id="s-jtzl2c">
+  <h2>パスワードと多要素認証</h2>
+  <div class="body">
+    <m-flow style="height:300px" aria-label="ID とパスワードの後に、スマートフォンへの確認か指紋・顔を組み合わせてログインする流れ">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "ID と\nパスワード", "x": 0, "y": 80, "w": 300, "h": 130, "step": 1},
+        {"id": "b", "label": "スマホに届く\n確認コード", "x": 440, "y": 0, "w": 300, "h": 120, "step": 2, "tone": "term"},
+        {"id": "c", "label": "指紋・顔", "x": 440, "y": 170, "w": 300, "h": 120, "step": 2, "tone": "term"},
+        {"id": "d", "label": "ログイン", "x": 884, "y": 80, "w": 300, "h": 130, "step": 3, "tone": "emph"}
+      ], "edges": [
+        {"from": "a", "to": "b", "step": 2}, {"from": "a", "to": "c", "step": 2, "dash": true},
+        {"from": "b", "to": "d", "step": 3}, {"from": "c", "to": "d", "step": 3, "dash": true}
+      ]}</script>
+    </m-flow>
+    <p class="note" data-step="4">パスワードは使い回さない。定期的に変える必要はなく、漏れたと分かったらすぐ変える</p>
+  </div>
+  <div class="concl"><span>パスワードが漏れても、もう 1 つの鍵が守る</span></div>
+</section>
+
+<section class="slide" id="s-tsm6nv">
+  <h2>持ち出しと置き忘れ</h2>
+  <div class="body">
+    <m-cards style="height:330px" layout="grid" aria-label="持ち出すときの 4 つの決まり">
+      <script type="application/json">{"cards": [
+        {"icon": "file", "title": "要らない情報は入れない", "text": "持ち運ぶ必要のない機密・個人情報"},
+        {"icon": "lock", "title": "暗号化する", "text": "落としても読めないように"},
+        {"icon": "shield-check", "title": "USB は原則使わない", "text": "受け渡しは会社が認めた方法で"},
+        {"icon": "alert-triangle", "title": "置き忘れに注意", "text": "カバンや端末から目を離さない"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>持ち出す前に、社内の決まりを確かめる</span></div>
+</section>
+
+<section class="slide" id="s-wgecky">
+  <h2>「おかしい」と思ったら</h2>
+  <div class="body">
+    <m-flow style="height:280px" aria-label="おかしいと思ったら、すぐ情報システム部に報告し、指示に従ってネットワークから切り離す。報告が早いほど被害は小さい">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "おかしい", "x": 0, "y": 60, "w": 260, "h": 130, "step": 1},
+        {"id": "b", "label": "すぐ報告\n（情報システム部）", "x": 308, "y": 60, "w": 260, "h": 130, "step": 2, "tone": "emph"},
+        {"id": "c", "label": "指示に従う\n（ネットから外す）", "x": 616, "y": 60, "w": 260, "h": 130, "step": 3},
+        {"id": "d", "label": "被害を\n小さくできる", "x": 924, "y": 60, "w": 260, "h": 130, "step": 4, "tone": "term"}
+      ], "edges": [
+        {"from": "a", "to": "b", "step": 2}, {"from": "b", "to": "c", "step": 3}, {"from": "c", "to": "d", "step": 4}
+      ]}</script>
+    </m-flow>
+    <p class="note" data-step="4">開いてしまっても、隠さずに報告する。報告が遅れるほど被害が広がる</p>
+  </div>
+  <div class="concl"><span>迷ったら、まず報告</span></div>
+</section>
+
+<section class="slide" id="s-b5ghkk">
+  <h2>確認テスト</h2>
+  <div class="body">
+    <m-predict style="height:380px" unit="人" aria-label="パスワードはいつ変えるかを選ぶ。正解は、漏れたときにすぐ変える">
+      <script type="application/json">{"question": "会社のパスワードは、いつ変える？", "choices": [{"label": "3 か月ごとに必ず変える"}, {"label": "漏れたと分かったら、すぐ変える"}, {"label": "一度決めたら変えない"}], "answer": 1, "counts": [17, 9, 4], "note": "サービスからの知らせ・ブラウザの警告・偽サイトに入力した、で分かる（人数は架空）"}</script>
+    </m-predict>
+  </div>
+  <div class="concl"><span>定期的な変更より、使い回さないことが大事</span></div>
+</section>
+
+<section class="slide" id="s-znc4cu">
+  <h2>今日の 3 つの約束</h2>
+  <div class="body">
+    <m-cards style="height:300px" nums="true" per-step="1" aria-label="3 つの約束：開く前に疑う、使い回さず多要素認証、おかしいと思ったらすぐ報告">
+      <script type="application/json">{"cards": [
+        {"icon": "mail", "title": "開く前に疑う", "text": "差出人と流れを確かめる"},
+        {"icon": "key", "title": "使い回さない", "text": "多要素認証を使う"},
+        {"icon": "message", "title": "すぐ報告", "text": "迷ったら情報システム部へ"}
+      ]}</script>
+    </m-cards>
+    <p class="note">出典：総務省「国民のためのサイバーセキュリティサイト」事前対策（システムを利用する人向けの対策）、NIST SP 800-63B をもとに加工して作成</p>
+  </div>
+  <div class="concl"><span>1 人ひとりの注意が、会社を守る</span></div>
+</section>
+
+</div>
+</body>
+</html>

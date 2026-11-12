@@ -1,0 +1,33 @@
+{
+ "prev": {
+  "orders": 1180,
+  "price": 4.6,
+  "csat": 4.3
+ },
+ "curr": {
+  "orders": 1352,
+  "price": 4.2,
+  "csat": 4.5
+ },
+ "cards": [
+  {
+   "label": "受注件数",
+   "value": 1352,
+   "unit": "件",
+   "diff": 172,
+   "pct": 14.6
+  },
+  {
+   "label": "平均単価",
+   "value": 4.2,
+   "unit": "万円",
+   "diff": -0.4
+  },
+  {
+   "label": "顧客満足度",
+   "value": 4.5,
+   "unit": "/ 5",
+   "diff": 0.2
+  }
+ ]
+}

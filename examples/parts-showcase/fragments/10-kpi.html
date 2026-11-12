@@ -1,0 +1,14 @@
+<section class="slide">
+  <h2>数字を見せる：四半期の 3 つの数字</h2>
+  <div class="body">
+    <m-kpi style="height:330px" aria-label="四半期の 3 つの数字の札。受注件数 1352 件で前の期から 172 件増、平均単価 4.2 万円で 0.4 万円減、顧客満足度 4.5 で 0.2 上がった">
+      <script type="application/json">{"cards":[
+        {"label":"受注件数","value":1352,"unit":"件","delta":{"dir":"up","text":"前の期から 172 件"}},
+        {"label":"平均単価","value":4.2,"digits":1,"unit":"万円","tone":"emph","delta":{"dir":"down","text":"前の期から 0.4 万円","good":false}},
+        {"label":"顧客満足度","value":4.5,"digits":1,"unit":"/ 5","delta":{"dir":"up","text":"前の期から 0.2"}}
+      ]}</script>
+    </m-kpi>
+    <p class="note">パーツ：数字の札（m-kpi）・数字は架空</p>
+  </div>
+  <div class="concl"><span>少数の数字を大きく、増減と一緒に見せるときに</span></div>
+</section>

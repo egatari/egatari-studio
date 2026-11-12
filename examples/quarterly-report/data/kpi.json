@@ -1,0 +1,1 @@
+{"cards": [{"label": "売上", "value": 49.0, "digits": 1, "unit": "億円", "delta": {"dir": "up", "text": "前期比 +3.6 %", "good": true}}, {"label": "営業利益", "value": 3.1, "digits": 1, "unit": "億円", "delta": {"dir": "down", "text": "利益率 6.3 %", "good": false}, "tone": "emph"}, {"label": "新規顧客", "value": 1240, "unit": "社", "delta": {"dir": "up", "text": "前期比 +135 社", "good": true}}]}

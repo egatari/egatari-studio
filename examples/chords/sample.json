@@ -1,0 +1,43 @@
+{
+  "v": 1,
+  "request": "中学の音楽で、和音のしくみを鍵盤と楽譜で見せるスライドを作ってください。ド・ミ・ソを 1 つずつ鳴らしてから重ね、間の数を半音で数えます。同じ形でずらしたファ・ラ・ドやソ・シ・レ、形を変えた短三和音も鳴らし、最後に楽譜で同じ形が並ぶことを見せてください。",
+  "category": "teaching",
+  "subcategory": "class",
+  "theme": "murasaki",
+  "parts": [
+    "m-keyboard",
+    "m-score"
+  ],
+  "structure": [
+    {
+      "heading": "和音のしくみ",
+      "point": "表紙"
+    },
+    {
+      "heading": "ド・ミ・ソを重ねる",
+      "point": "ド・ミ・ソを 1 つずつ鳴らしてから、重ねて鳴らす"
+    },
+    {
+      "heading": "間の数を、半音で数える",
+      "point": "鍵盤で半音を数える：4 つと 3 つ"
+    },
+    {
+      "heading": "同じ形のまま、ずらす",
+      "point": "同じ形でずらす：ファ・ラ・ド、ソ・シ・レ"
+    },
+    {
+      "heading": "形を変えると、響きが変わる",
+      "point": "3・4 の形にすると暗い響き（短三和音）"
+    },
+    {
+      "heading": "楽譜で見る：同じ形が並ぶ",
+      "point": "五線では、3 つとも線の上か、3 つとも間に並ぶ"
+    }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/city-budget/en",
+  "files": {
+    "data/delta.json": "d4f21dfc2fa911f238197a3a0ef48c93e831fee8cd7d3f7e6bf230b0c33a95c9",
+    "data/income.json": "77ad18ae7221699800567f45c36079ccd29095a3fd34293c6fa55bd28377c23d",
+    "data/kpi.json": "dfb14c61120326ac231d26be85c463aab7889693c57c4067fe80c1bcc44ecb73",
+    "data/per10k.json": "20ef1b5f246848847920f0e8b53499ac89ed3c595e435393eb3468344a92fad6",
+    "data/pie.json": "05560d45d2db182ae82557118f33c5068401681b932ac7c58214750ee7fe1261",
+    "deck.html": "4e098ec71385f56bd34518e11b8f803564fed3610b0bba1bb630e843937bbf10",
+    "egatari.json": "4cf2e905e3e670921a73a49f8299e31ea6ac547d07963e3ac166b4833a717321",
+    "narration.md": "1c73b552666e6a2adba8957dc899358d0be9651d26ca24726771c7664c12ae8a",
+    "sample.json": "3bdd068eeef0af073edb21977cd791b1d3bd7be87fe72bbc335b712b84c1b666"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

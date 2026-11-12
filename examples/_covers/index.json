@@ -1,0 +1,94 @@
+{
+  "egatari-intro": {
+    "src": "91426fae48b878df",
+    "title": "Egatari の紹介"
+  },
+  "egatari-intro-en": {
+    "src": "7009898d61ea9b9f",
+    "title": "Introducing Egatari"
+  },
+  "parts-showcase": {
+    "src": "ee7f22ac019f3524",
+    "title": "パーツ図鑑"
+  },
+  "moon-phases": {
+    "src": "0e82f2d959dd6cf7",
+    "title": "月の満ち欠け"
+  },
+  "chords": {
+    "src": "c44745643dad279e",
+    "title": "和音のしくみ"
+  },
+  "sentence-structure": {
+    "src": "e94810fccfc79a62",
+    "title": "英文の構造"
+  },
+  "huffman": {
+    "src": "bf22108285ea8742",
+    "title": "ハフマン符号"
+  },
+  "bayes": {
+    "src": "2f020443af7d59a1",
+    "title": "Bayes' theorem"
+  },
+  "population": {
+    "src": "d7c892902d3adaea",
+    "title": "日本の人口の移り変わり"
+  },
+  "live-birthday": {
+    "src": "1bcb6157a477dfd1",
+    "title": "40 人のクラスに、同じ誕生日の 2 人はいる？"
+  },
+  "genai-guideline": {
+    "src": "a6f6d7ad70d705b8",
+    "title": "生成AIの利活用ガイドラインを読む"
+  },
+  "kokugo-kanbun": {
+    "src": "dde1ee192f2e8745",
+    "title": "漢文を読む――返り点から書き下し文へ"
+  },
+  "heikin-chuouchi": {
+    "src": "96b1835f02e26da7",
+    "title": "平均と中央値は「ズレの測り方」で決まる"
+  },
+  "rashomon": {
+    "src": "9394b61c7c6e6c02",
+    "title": "芥川龍之介「羅生門」を読む"
+  },
+  "tmlr2026-calibration": {
+    "src": "c194b91ba74cd21b",
+    "title": "Bayes-Optimal Calibration under the Logit-Noise Model"
+  },
+  "minimal": {
+    "src": "d53476eed54f8b28",
+    "title": "勾配降下法の基本"
+  },
+  "quarterly-report": {
+    "src": "9e5e1dab562a87d0",
+    "title": "第 3 四半期 業績報告"
+  },
+  "security-training": {
+    "src": "2f8a59ff1b01138e",
+    "title": "情報セキュリティ研修"
+  },
+  "pitch-fictional": {
+    "src": "b5850814d993c4f1",
+    "title": "株式会社レポミル（架空）事業紹介"
+  },
+  "city-budget-ja": {
+    "src": "e45834e7e79772a3",
+    "title": "A 市の予算 2027 年度"
+  },
+  "city-budget-en": {
+    "src": "84807752b1b6604e",
+    "title": "City A budget 2027"
+  },
+  "hand-hygiene": {
+    "src": "c3831781842f49e4",
+    "title": "手指衛生の 5 つのタイミング"
+  },
+  "hazard-map": {
+    "src": "b08b06e8fc7ef6d6",
+    "title": "大雨のとき、どこへ逃げる？"
+  }
+}

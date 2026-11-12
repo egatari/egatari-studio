@@ -1,0 +1,10 @@
+{
+  "componentsCatalogue": "2",
+  "metadata": {
+    "license": "CC-BY-4.0",
+    "copyright": "© 2026 雲居玄道",
+    "creators": ["雲居玄道"],
+    "attribution": "MH 符号の表は ITU-T 勧告 T.4 による。数は scripts/make_codes.py で計算した。"
+  },
+  "docId": "da5ef6e8-2c57-4e93-8a02-a4963b716e41"
+}

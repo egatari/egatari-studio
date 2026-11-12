@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="murasaki">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A 市の予算 2027 年度</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-vaxk7b">
+  <div class="venue">市民のみなさんへ（架空の A 市）</div>
+  <h1>A 市の予算<br>2027 年度</h1>
+  <div class="au">あなたの税金が、何に使われるか<br><span class="muted">市と数字はすべて架空</span></div>
+</section>
+
+<section class="slide" id="s-w73fim">
+  <h2>1 年間に使うお金</h2>
+  <div class="body">
+    <m-kpi style="height:300px" per-step="1" aria-label="予算の総額 620 億円（前年度比 +2.1 %）、市民 1 人あたり 41.3 万円、人口 15 万人">
+      <script type="application/json">{{JSON:kpi.json}}</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>市民 1 人あたり、約 41 万円</span></div>
+</section>
+
+<section class="slide" id="s-izcrw3">
+  <h2>何に使うか</h2>
+  <div class="body">
+    <m-pie style="height:390px" donut="0.55" aria-label="予算 620 億円の使い道。福祉 229.4、教育 74.4、道路・まちづくり 68.2、健康・ごみ 55.8、借金の返済 62.0、市の運営 74.4、その他 55.8 億円">
+      <script type="application/json">{{JSON:pie.json}}</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>いちばん多いのは福祉で、3 分の 1 以上</span></div>
+</section>
+
+<section class="slide" id="s-p24uhw">
+  <h2>1 万円に置きかえると</h2>
+  <div class="body">
+    <m-bars style="height:390px" orient="h" per-step="1" unit="円" ticks="false" aria-label="予算を 1 万円に置きかえた使い道。福祉 3700 円、教育 1200 円、市の運営 1200 円、道路・まちづくり 1100 円、借金の返済 1000 円、健康・ごみ 900 円、その他 900 円">
+      <script type="application/json">{{JSON:per10k.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>1 万円のうち 3700 円が福祉に使われる</span></div>
+</section>
+
+<section class="slide" id="s-wts3pf">
+  <h2>前の年から、どう変わったか</h2>
+  <div class="body">
+    <m-bars style="height:390px" orient="h" per-step="0" unit="億" digits="1" aria-label="前年度からの増減。福祉 +9.3、教育 +4.2、道路・まちづくり −3.3、健康・ごみ +0.9、借金の返済 −1.8、市の運営 +0.8、その他 +2.7 億円">
+      <script type="application/json">{{JSON:delta.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>福祉と教育が増え、道路と借金の返済が減った</span></div>
+</section>
+
+<section class="slide" id="s-z5n3lk">
+  <h2>お金はどこから来るか</h2>
+  <div class="body">
+    <m-pie style="height:390px" donut="0.55" aria-label="収入 620 億円の内訳。市税 217.0、国・県からのお金 155.0、地方交付税 93.0、借り入れ（市債）55.8、その他 99.2 億円">
+      <script type="application/json">{{JSON:income.json}}</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>市税は 3 分の 1 ほど。残りは国・県や借り入れ</span></div>
+</section>
+
+<section class="slide" id="s-bjf3bg">
+  <h2>意見を届けるには</h2>
+  <div class="body">
+    <m-cards style="height:300px" layout="row" per-step="0" aria-label="意見を届ける方法：予算の説明会、市のウェブの意見の窓口、市議会の傍聴">
+      <script type="application/json">{"cards": [
+        {"icon": "users", "title": "説明会に出る", "text": "予算の説明会で質問する"},
+        {"icon": "message", "title": "意見を送る", "text": "市の意見の窓口から"},
+        {"icon": "building-bank", "title": "議会を傍聴する", "text": "予算は市議会で決まる"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>予算は、市民の声を聞いて市議会で決まる</span></div>
+</section>
+
+</div>
+</body>
+</html>

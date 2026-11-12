@@ -1,0 +1,121 @@
+{
+  "componentsCatalogue": "2",
+  "metadata": {
+    "license": "CC-BY-4.0",
+    "copyright": "© 2026 雲居玄道（スライド・台本・編者注）。本文は文部科学省のガイドラインを加工したもの",
+    "creators": [
+      "雲居玄道"
+    ],
+    "attribution": "出典：文部科学省「初等中等教育段階における生成AIの利活用に関するガイドライン（Ver.2.0）」（令和6年12月26日）https://www.mext.go.jp/a_menu/other/mext_02412.html を加工して作成。原文の写真と図 2（JST CRDS 報告書を基に作成されたもの）は入れていない。脚注 4 は総務省・経済産業省「AI事業者ガイドライン（第1.01版）」の引用（原文のとおり）。"
+  },
+  "article": {
+    "chapters": [
+      "article/00-hajimeni.md",
+      "article/01.md",
+      "article/02.md",
+      "article/03.md",
+      "article/90-sankou.md"
+    ]
+  },
+  "articleLinks": {
+    "s-bbud5j": {
+      "sec-xq5ea5": {
+        "article": "feea9b6f807bc56fb7d36372215e405e8f6463bf80dbb8b590dfc94db9098879",
+        "slide": "ba35469301932e6f0ad94f981c28c6f4e8df59af198846bbd0485fab0bb3bd2c"
+      },
+      "sec-tbrcmd": {
+        "article": "5b3aea41665c433364bde4e1795e1e4ac0045750ab284a342c37808528a1f2a1",
+        "slide": "ba35469301932e6f0ad94f981c28c6f4e8df59af198846bbd0485fab0bb3bd2c"
+      },
+      "sec-wnrmoh": {
+        "article": "9b646402305cbde94421dc921f75f9ec4bdc7c907210bead29dd7d04445cb47a",
+        "slide": "ba35469301932e6f0ad94f981c28c6f4e8df59af198846bbd0485fab0bb3bd2c"
+      }
+    },
+    "s-xhcspo": {
+      "sec-s5jibu": {
+        "article": "3b00f408f92cf455cf9513870da6fb5391a256ae85ef083f60d3fefc8ad92027",
+        "slide": "05c137bab534bde99ebab1b4d9eebc626f8b6ff97e5272a4c97dd72c5f6ffd30"
+      },
+      "sec-mn3sct": {
+        "article": "f5be7fe18024e5e41165215ff5300cfd063bc39f4d675f422759f99b797d7b51",
+        "slide": "05c137bab534bde99ebab1b4d9eebc626f8b6ff97e5272a4c97dd72c5f6ffd30"
+      }
+    },
+    "s-knhlab": {
+      "sec-xqkb3l": {
+        "article": "f47a56012c94d04917242be8ab2deff39f736bfc9169bf65fa444be36ab95e91",
+        "slide": "22b2df70db074b87698e4ab4b99e234a91fae56348c68dc5874b338792f67f6d"
+      },
+      "sec-zx7akl": {
+        "article": "cfc27c47f1353323b77ece89bd4d017fcdb8e078911ea1f604ee55f60d75a673",
+        "slide": "22b2df70db074b87698e4ab4b99e234a91fae56348c68dc5874b338792f67f6d"
+      },
+      "sec-czal5y": {
+        "article": "60953f298c17a4a21e0fb3b7cbd7ecda6db33ebeb4841e5802a8bcb4aae2b011",
+        "slide": "22b2df70db074b87698e4ab4b99e234a91fae56348c68dc5874b338792f67f6d"
+      },
+      "sec-ae7gpr": {
+        "article": "f75f08e3dff37612c21aacc5f8751ccfb12ef7c477edbc133d8c93cf01f116e2",
+        "slide": "22b2df70db074b87698e4ab4b99e234a91fae56348c68dc5874b338792f67f6d"
+      },
+      "sec-gzdg6u": {
+        "article": "e27740258a6854b8c3779d4de6250a81e832b565192338c71720eadc9318cfa8",
+        "slide": "22b2df70db074b87698e4ab4b99e234a91fae56348c68dc5874b338792f67f6d"
+      }
+    },
+    "s-vuaphb": {
+      "sec-neps3f": {
+        "article": "1d79d0d8821927b352acf37d5d5711276c9e452e1dd59d544d1a42a07a055b18",
+        "slide": "af59d8deb0d81ec86339ccb81ad69577e6ada618011b3a6b437b4a81935138ad"
+      }
+    },
+    "s-h2mbul": {
+      "sec-5ibmcx": {
+        "article": "e08fad794d8e3a8f8921515ed5ee2c41f508e60871dd2b59e8835408b9ffbaa6",
+        "slide": "469ada2b52e15bff03b3e42506e978f7ae61ce17287c47b5083a0fd666de2685"
+      },
+      "sec-a4lrin": {
+        "article": "025dd704ea3cbe75d7382db6b619360d3bccb4b40e448ed0b719511a85dabaee",
+        "slide": "469ada2b52e15bff03b3e42506e978f7ae61ce17287c47b5083a0fd666de2685"
+      }
+    },
+    "s-sbmqla": {
+      "sec-qsc7mp": {
+        "article": "d140330448ca41539250e11da86ac3a03cb469bf1ab29652a64c8c49e4d6b7ae",
+        "slide": "4f75157147bd1ddde00cde8200cb7f9dabaf278095abaf663f8bb53193bf5ca2"
+      }
+    },
+    "s-gjzdsw": {
+      "sec-neps3f": {
+        "article": "1d79d0d8821927b352acf37d5d5711276c9e452e1dd59d544d1a42a07a055b18",
+        "slide": "df5ef3325f8ca671c69ea17bc2c159061a1dd917a6257603821c6fc88a5a5805"
+      },
+      "sec-izgbmo": {
+        "article": "ebac30930b0c9486bd696b64fe5ad11ece92172643229cd27f88353e2410dd12",
+        "slide": "df5ef3325f8ca671c69ea17bc2c159061a1dd917a6257603821c6fc88a5a5805"
+      }
+    },
+    "s-s2j4fz": {
+      "sec-5ibmcx": {
+        "article": "e08fad794d8e3a8f8921515ed5ee2c41f508e60871dd2b59e8835408b9ffbaa6",
+        "slide": "d2406c4e7c3a00880b919f4da9e9bb9d881f25359bbdfa270e0abd1f9266e15d"
+      }
+    },
+    "s-bjeaew": {
+      "sec-czal5y": {
+        "article": "60953f298c17a4a21e0fb3b7cbd7ecda6db33ebeb4841e5802a8bcb4aae2b011",
+        "slide": "876907a3ddd151efe609834c43cb92b989cc7a5654064c65327f4b1ee31e2e35"
+      },
+      "sec-neps3f": {
+        "article": "1d79d0d8821927b352acf37d5d5711276c9e452e1dd59d544d1a42a07a055b18",
+        "slide": "876907a3ddd151efe609834c43cb92b989cc7a5654064c65327f4b1ee31e2e35"
+      },
+      "sec-5ibmcx": {
+        "article": "e08fad794d8e3a8f8921515ed5ee2c41f508e60871dd2b59e8835408b9ffbaa6",
+        "slide": "876907a3ddd151efe609834c43cb92b989cc7a5654064c65327f4b1ee31e2e35"
+      }
+    }
+  },
+  "docId": "a0b2337c-73e8-4fef-9257-e3509a5e8c7f"
+}

@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/hazard-map",
+  "files": {
+    "deck.html": "da5b1925d99ec3f3576a1a3b9feb5995042f295cd2c4aa71d8c6e7d541214f6f",
+    "egatari.json": "2e459fa33c317de2487c72073408430f62120f7db25e3094c541a0985f68f06a",
+    "narration.md": "f145827cb46e60fe60d778a05fe0f3048e6f8d633eeba4ad1f04c4b7f805b41c",
+    "sample.json": "28c27af9a672601a8f24389259e352fe1ed71254c3041d88331554fb36546b9f"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

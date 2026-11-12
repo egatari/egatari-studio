@@ -1,0 +1,19 @@
+<section class="slide">
+  <h2>手順：正しい手洗いの順番</h2>
+  <div class="body">
+    <m-flow style="height:330px" aria-label="手洗いの 6 つの手順。水でぬらし石けんを泡立てる、手のひらと甲、指の間と親指、つめと指先、手首、すすいで清潔なタオルでふく">
+      <script type="application/json">{"nodes":[
+        {"id":"a","label":"水でぬらし\n石けんを泡立てる","x":40,"y":15,"w":320,"h":120,"step":1},
+        {"id":"b","label":"手のひらと甲\n（5 回ずつ）","x":432,"y":15,"w":320,"h":120,"step":2},
+        {"id":"c","label":"指の間と親指\n（5 回ずつ）","x":824,"y":15,"w":320,"h":120,"step":3},
+        {"id":"d","label":"つめと指先\n（5 回ずつ）","x":824,"y":195,"w":320,"h":120,"step":4,"tone":"term"},
+        {"id":"e","label":"手首\n（5 回）","x":432,"y":195,"w":320,"h":120,"step":5},
+        {"id":"f","label":"水ですすぎ\n清潔なタオルでふく","x":40,"y":195,"w":320,"h":120,"step":6,"tone":"emph"}
+      ],"edges":[
+        {"from":"a","to":"b"},{"from":"b","to":"c"},{"from":"c","to":"d"},{"from":"d","to":"e"},{"from":"e","to":"f"}
+      ]}</script>
+    </m-flow>
+    <p class="note">パーツ：流れ図（m-flow）・出典：厚生労働省「正しい手洗いの方法」（加工して作成）</p>
+  </div>
+  <div class="concl"><span>決まった順番を 1 つずつたどって見せるときに</span></div>
+</section>

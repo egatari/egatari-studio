@@ -1,0 +1,61 @@
+{
+ "note": "FICTIONAL company; years and staff are fictional",
+ "hq": {
+  "name": "東京",
+  "lon": 139.69,
+  "lat": 35.69
+ },
+ "offices": [
+  {
+   "name": "上海",
+   "lon": 121.47,
+   "lat": 31.23,
+   "opened": 2006,
+   "staff": 120,
+   "decade": 2000,
+   "step": 2
+  },
+  {
+   "name": "シンガポール",
+   "lon": 103.82,
+   "lat": 1.35,
+   "opened": 2009,
+   "staff": 80,
+   "decade": 2000,
+   "step": 2
+  },
+  {
+   "name": "ロサンゼルス",
+   "lon": -118.24,
+   "lat": 34.05,
+   "opened": 2014,
+   "staff": 60,
+   "decade": 2010,
+   "step": 3
+  },
+  {
+   "name": "ロンドン",
+   "lon": -0.13,
+   "lat": 51.51,
+   "opened": 2017,
+   "staff": 40,
+   "decade": 2010,
+   "step": 3
+  },
+  {
+   "name": "シドニー",
+   "lon": 151.21,
+   "lat": -33.87,
+   "opened": 2022,
+   "staff": 25,
+   "decade": 2020,
+   "step": 4
+  }
+ ],
+ "decades": [
+  2000,
+  2010,
+  2020
+ ],
+ "totalStaff": 325
+}

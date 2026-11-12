@@ -1,0 +1,49 @@
+{
+  "v": 1,
+  "request": "Make slides for residents that explain the 2027 budget of a fictional City A: what it spends in a year and per resident, what the money is for, the budget as if it were ¥10,000, what changed from last year, where the money comes from, and how residents can have their say. Mark all numbers as fictional.",
+  "category": "guides",
+  "subcategory": "info",
+  "theme": "murasaki",
+  "parts": [
+    "m-bars",
+    "m-cards",
+    "m-kpi",
+    "m-pie"
+  ],
+  "structure": [
+    {
+      "heading": "City A budget for 2027",
+      "point": "Cover (a fictional city)"
+    },
+    {
+      "heading": "What the city spends in a year",
+      "point": "Spending in a year, and per resident"
+    },
+    {
+      "heading": "What the money is for",
+      "point": "What the money is for, as a pie"
+    },
+    {
+      "heading": "If the budget were ¥10,000",
+      "point": "The budget as ¥10,000"
+    },
+    {
+      "heading": "What changed from last year",
+      "point": "What went up and down from last year"
+    },
+    {
+      "heading": "Where the money comes from",
+      "point": "Where the money comes from"
+    },
+    {
+      "heading": "How to have your say",
+      "point": "How residents can have their say"
+    }
+  ],
+  "book": false,
+  "lang": "en",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

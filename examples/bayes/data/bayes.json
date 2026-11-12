@@ -1,0 +1,35 @@
+{
+ "note": "fictional numbers",
+ "mails": 1000,
+ "spam": 200,
+ "notSpam": 800,
+ "free": {
+  "spam": 80,
+  "notSpam": 80,
+  "pFreeGivenSpam": 0.4,
+  "pFreeGivenNotSpam": 0.1,
+  "pFree": 0.16,
+  "pSpamGivenFree": 0.5
+ },
+ "chain": [
+  {
+   "after": null,
+   "pSpam": 0.2
+  },
+  {
+   "after": "free",
+   "pSpam": 0.5,
+   "likelihoodRatio": 4.0
+  },
+  {
+   "after": "winner",
+   "pSpam": 0.9523809523809523,
+   "likelihoodRatio": 20.0
+  }
+ ],
+ "chainPercent": [
+  20,
+  50,
+  95
+ ]
+}

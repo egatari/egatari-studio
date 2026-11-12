@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="kogecha">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>英文の構造</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-h3i6g7">
+  <div class="venue">英語（高校 1 年）・文の組み立て</div>
+  <h1>英文の構造</h1>
+  <div class="au">動詞を見つけて、記号で区切る</div>
+</section>
+
+<section class="slide" id="s-xbcuvw">
+  <h2>文を組み立てる 5 つの記号</h2>
+  <div class="body">
+    <m-cards style="height:400px" layout="grid" per-step="1" aria-label="S 主語、V 動詞、O 目的語、C 補語、M 修飾語">
+      <script type="application/json">{"cards": [
+        {"icon": "user", "title": "S 主語", "text": "「〜は・〜が」"},
+        {"icon": "run", "title": "V 動詞", "text": "「〜する・〜だ」"},
+        {"icon": "target", "title": "O 目的語", "text": "「〜を・〜に」"},
+        {"icon": "equal", "title": "C 補語", "text": "S や O が何か・どんなか"},
+        {"icon": "sparkles", "title": "M 修飾語", "text": "飾り。なくても文になる"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>文の骨組みは S・V・O・C、M は飾り</span></div>
+</section>
+
+<section class="slide" id="s-dlq7ha">
+  <h2>まず動詞を見つける</h2>
+  <div class="body">
+    <m-syntax style="height:300px" size="56" aria-label="My brother plays tennis every Sunday. を S、V、O、M に分ける。和訳は、兄は毎週日曜日にテニスをする">
+[S My brother] [V plays] [O tennis] [M every Sunday].
+= 兄は毎週日曜日に、テニスをする。
+    </m-syntax>
+    <p data-step="5">M を外しても文になる：<span class="term">My brother plays tennis.</span></p>
+  </div>
+  <div class="concl"><span>動詞の前が S、後ろが O、残りは M</span></div>
+</section>
+
+<section class="slide" id="s-jv7qkg">
+  <h2>C は、O がどんなかを言う</h2>
+  <div class="body">
+    <m-syntax style="height:300px" size="64" aria-label="The news made her happy. を S、V、O、C に分ける。her が happy の状態になる。和訳は、その知らせは彼女を幸せにした">
+[S The news] [V made] [O her] [C happy].
+= その知らせは、彼女を幸せにした。
+    </m-syntax>
+    <p data-step="6">O と C だけ取り出すと：<span class="term">She is happy.</span>（彼女は幸せだ）</p>
+  </div>
+  <div class="concl"><span>O と C の間には「O は C だ」が成り立つ</span></div>
+</section>
+
+<section class="slide" id="s-3mw52z">
+  <h2>節が、前の名詞を飾る</h2>
+  <div class="body">
+    <m-syntax style="height:330px" size="56" aria-label="The cake that she made is good. を分ける。that she made は前の cake を飾る形容詞の節。和訳は、彼女が作ったケーキはおいしい">
+[S The cake {形^ [O that] [S she] [V made]}] [V is] [C good].
+= 彼女が作ったケーキは、おいしい。
+    </m-syntax>
+    <p data-step="7">括弧を外すと：<span class="term">The cake is good.</span></p>
+  </div>
+  <div class="concl"><span>括弧でくくると、文の本当の動詞が見える</span></div>
+</section>
+
+<section class="slide" id="s-2kkk7t">
+  <h2>読むときの順番</h2>
+  <div class="body">
+    <m-flow style="height:380px" size="34" aria-label="英文を読む順番。動詞を見つける、その前が S、後ろが O か C、残りは M">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "動詞 V を\n見つける", "x": 10, "y": 50, "w": 250, "h": 240, "step": 1, "tone": "emph"},
+        {"id": "b", "label": "その前が\nS", "x": 315, "y": 50, "w": 250, "h": 240, "step": 2},
+        {"id": "c", "label": "後ろが\nO か C", "x": 620, "y": 50, "w": 250, "h": 240, "step": 3},
+        {"id": "d", "label": "残りは\nM（飾り）", "x": 925, "y": 50, "w": 250, "h": 240, "step": 4}
+      ], "edges": [{"from": "a", "to": "b"}, {"from": "b", "to": "c"}, {"from": "c", "to": "d"}]}</script>
+    </m-flow>
+  </div>
+  <div class="concl"><span>長い文も、動詞から区切れば骨組みが見える</span></div>
+</section>
+
+</div>
+</body>
+</html>

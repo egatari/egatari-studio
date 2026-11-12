@@ -1,0 +1,14 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/bayes",
+  "files": {
+    "data/bayes.json": "e90f03d529c9f630c2b360be1061a7b889b8363b765c89f466209c8852d6211a",
+    "deck.html": "26b3dad31402516d2ce9272fb5d35737449fef1663f40fd040acb243fb3c8ed4",
+    "egatari.json": "06c053d00bcf64d4b8fee17050feca15c207963bfc7dfe9d93934e416a4e5202",
+    "narration.md": "dbf54c2fc61d8440b2ee9b38633cea4350f5a70bf82fe5e57a5d833fdc61cb4a",
+    "sample.json": "c1fedeeb5df28b29f28d858814d2ad02dbdc964bf25eb150295e266832395456",
+    "scripts/make_data.py": "9a4a791de853d20f24b64da8bff4e26848c3f902e7c53137777e8bba8e5cbfe3"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

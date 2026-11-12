@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/population",
+  "files": {
+    "SOURCE.md": "d5a0ae9ab0e624f585b9f303fa3f0a714cad83c5050a31cc3abe940035aa0182",
+    "data/map.json": "ba9a52e41371cc10fcee93d103f61d8ea57b64e296b4c9030e63b2aa5129e2e1",
+    "data/national.json": "00e800bcea38e2bed152856fd2d39eb3e33a4e92c0d5a1f68cc0c0807561398f",
+    "data/population.json": "085a286bf7f2a473c4dadcc21c62d138d3ff255e796fe0c80f7a08d083e42f7f",
+    "data/ratio.json": "bfcc1fc97b4d3a482335903b7a6d5a0e1b71d5aeb84be42f85c5dd21f6a21368",
+    "deck.html": "84f4d3f6deeae3726ee8152ef4b5bc1024cd8c55c065da59ceb75ce29f0b3160",
+    "egatari.json": "a56fd34420752852a752cc8b7697b1379e0f8967e325b5cdb67677797efe62c7",
+    "narration.md": "427cdd96e350bd6706ad46ddc6fa9810bdb6464900af5bd16810bfd2d4eb8082",
+    "raw/census2020_t1-1.xlsx": "91ba30c83013cf2f6efb9fcec8c3496be99b77ab0b800f97441648e9108215ab",
+    "raw/pop_1920_2015.csv": "3f29c42b40620adfecb1bdf7f5b2411b94b7ae6c59352c2fa46d41e88bae1750",
+    "sample.json": "78687b7a174da1f2696bb55c9769864425c91c7d772f2043261877545c919b0a",
+    "scripts/make_data.py": "5a09d89402883c4dbfdf616d03c1bed61e3f694066cec0ec13e3a423d7da3df7"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

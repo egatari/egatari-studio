@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="kokugo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>日本の人口の移り変わり</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-rmes2x">
+  <div class="venue">社会（地理）・国勢調査のデータで考える</div>
+  <h1>日本の人口の<br>移り変わり</h1>
+  <div class="au">100 年分の国勢調査を読む<br><span class="muted">出典：総務省統計局「国勢調査」（e-Stat）を加工して作成</span></div>
+</section>
+
+<section class="slide" id="s-sjrd5n">
+  <h2>100 年で、人口は 2 倍あまりに</h2>
+  <div class="body">
+    <m-curves style="height:370px" xr="[1920,2020]" yr="[0,140]" xt="[1920,1940,1960,1980,2000,2020]" yt="[0,50,100]" xl="年" yl="人口（百万人）" aria-label="全国の人口の移り変わり。1920 年 5596 万人から増え、2010 年の 1 億 2806 万人が最多、2020 年は 1 億 2615 万人">
+      <script type="application/json">{{JSON:national.json}}</script>
+    </m-curves>
+    <p class="note">1945 年は沖縄県を含まない（調査されなかったため）</p>
+  </div>
+  <div class="concl"><span>100 年で 2 倍あまり。2010 年を境に減り始めた</span></div>
+</section>
+
+<section class="slide noconcl" id="s-i67kxf">
+  <h2>5 年で人口が増えたのは、8 都県だけ</h2>
+  <div class="body">
+    <m-map-japan style="height:470px" legend="2015〜2020 年の人口の増減" unit="%" labels="none" aria-label="2015 年から 2020 年の都道府県別の人口の増減率。増えたのは埼玉、千葉、東京、神奈川、愛知、滋賀、福岡、沖縄の 8 都県。最も増えたのは東京 +3.94 %、最も減ったのは秋田 −6.22 %">
+      <script type="application/json">{{JSON:map.json}}</script>
+    </m-map-japan>
+    <p class="note">出典：総務省統計局「国勢調査」（e-Stat）を加工して作成</p>
+  </div>
+</section>
+
+<section class="slide" id="s-v27nvi">
+  <h2>予想：1920 年より少ない県は？</h2>
+  <div class="body">
+    <m-predict style="height:380px" unit="人" aria-label="2020 年の人口が 1920 年より少ない県はいくつあるかを予想する。正解は 1 県（島根県）">
+      <script type="application/json">{"question": "2020 年の人口が、100 年前より少ない県はいくつ？", "choices": [{"label": "1 つもない"}, {"label": "1 県"}, {"label": "5 県くらい"}, {"label": "10 県以上"}], "answer": 1, "counts": [6, 4, 13, 7], "note": "島根県だけ（1920 年の 0.94 倍）。人数は架空"}</script>
+    </m-predict>
+  </div>
+  <div class="concl"><span>減った県は多いが、100 年前を下回るのは島根県だけ</span></div>
+</section>
+
+<section class="slide" id="s-mrd63x">
+  <h2>100 年で何倍になったか</h2>
+  <div class="body">
+    <m-bars style="height:400px" orient="h" per-step="0" unit="倍" digits="2" ticks="false" aria-label="2020 年の人口が 1920 年の何倍か。多い順に神奈川 6.98、埼玉 5.57、千葉 4.70、東京 3.80、愛知 3.61。少ない順に島根 0.94、高知 1.03、徳島 1.07">
+      <script type="application/json">{{JSON:ratio.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>大都市のまわりの県が大きく伸びた</span></div>
+</section>
+
+<section class="slide" id="s-optz6m">
+  <h2>考えてみよう</h2>
+  <div class="body">
+    <m-cards style="height:330px" layout="row" per-step="1" aria-label="考える問い 3 つ">
+      <script type="application/json">{"cards": [
+        {"icon": "building", "title": "なぜ大都市のまわりに？", "text": "仕事・住まい・交通から考える"},
+        {"icon": "trending-down", "title": "減ると何が困る？", "text": "学校・病院・バス・お店"},
+        {"icon": "map-pin", "title": "自分の県は？", "text": "e-Stat で数字を確かめる"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>数字の変化から、まちの変化を考える</span></div>
+</section>
+
+</div>
+</body>
+</html>

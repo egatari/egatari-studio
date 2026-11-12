@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/quarterly-report",
+  "files": {
+    "data/delta.json": "ec7e2999f4b807d83dea58680a112d1b078ba529ac7fa72195f1eef113a6597e",
+    "data/kpi.json": "2badf40cd8b17d33c25f46305a66e84dd34a50fec2b56c4c79fd7997369ecac6",
+    "data/pie.json": "f0b7ba15ba36cd3b7e71221ad872555b4119abc76de282dd1d76cbcc2cced883",
+    "data/report.json": "bdf8fe58e1de4a7aaad12c4be1e1e37ee8676566d2c951a27eaba44e1c453f0c",
+    "data/sales.json": "85e3b8f4b2d499ec3204f305f0bfb6498b976aa80f7e1525e477b3dbd4f68cb9",
+    "data/sweep_f.txt": "004d3422b7d546b098da24cb8fb7abcec0b04de2209c22b2c47d4cd8f35a75dc",
+    "data/timeline.json": "fc03712794218cc538455dc7ae10290cb1ae95c48538955593321c293384293b",
+    "deck.html": "3a8c8978722b2f431a3313f4a702909e3036dcf819c72882d3bb5c96670ee04f",
+    "egatari.json": "2d7d20b42be4a01ba3ddda563cfed2d6b814a8034f642dfd8c2dd8c499c93ee9",
+    "narration.md": "f04aac502aa3b05ab1af7b0eae98869b1f1568f4a02759e585d8e5663883601a",
+    "sample.json": "bf07d74d5207241ead3bc59f65e34894afbb163161b4525e6e922ad54e21e18e",
+    "scripts/make_data.py": "27b704fa9c2dd78dd233d7c0dc5394c62338d39c37d575465b77fb41abc85404"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

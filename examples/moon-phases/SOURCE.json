@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/moon-phases",
+  "files": {
+    "deck.html": "f0a699baf038a47549d8b6169869e3c97eba76b53e82d294b1727b09739c827c",
+    "egatari.json": "ad53811607fc201c608922a59fa2833ebaf5940dd5f53791afb8f30ffe9ddf50",
+    "narration.md": "36bdcb083b1dc4289e3aba288291167b1a6fe5589a508bf552ac30edb518c123",
+    "sample.json": "ce17dbc0a7afc757a13f87be64fa08b59c5db62f428516764b17738d7094e105"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

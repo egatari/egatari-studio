@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/genai-guideline",
+  "files": {
+    "article/00-hajimeni.md": "4e0d747cc401041eb501bbddb0922bfa34f6d011ba9d138a3233f064ec644f1a",
+    "article/01.md": "45f79c67f30c85c69bb6f651bf5582f18a4f76cea73e3eef4244f66733f94c93",
+    "article/02.md": "99b863e520527cd0e38823694adc6992800f6aa4c816faac2ab34cddb9791fff",
+    "article/03.md": "77d206e24e0a9780105a3dfa4eb0d5a482970213e605a03a9507bec39066fe85",
+    "article/90-sankou.md": "99d0fcfc94115b0f5875a3d07e2569f19e7b73a23ad95d700e005fddbe7c5359",
+    "deck.html": "7e64235d028e0dfbe0b6e2f6692d5b1058e1d34d23282c4b33cef2b719ad6990",
+    "egatari.json": "d353fdf7c0f428b51423741ec94fcdf8c077e3f4d382dbfa4c5088c52a191ca6",
+    "narration.md": "4e6bb484c30bdada2da3849fb312d08adf330627c8812ad0e0b3242b6ec638d0",
+    "sample.json": "d518bfdb3e1e8a8f3098c2c6ebad7fd129b9af6626dca7c2f5c0c69fcfb07c3b"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

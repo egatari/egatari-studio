@@ -1,0 +1,35 @@
+{
+  "note": "Studio's samples: their order, their section (the same ids as egatari.org's src/gallery/lessons.json, the single source; tools/examples-sync.mjs --check --lessons compares them) and, for the ones copied from egatari/examples, where they come from (tools/examples-sync.mjs writes each folder and its SOURCE.json). fromSample: false keeps a sample out of 「このサンプルを参考に作る」 and ?from-sample= (play only).",
+  "repository": "https://github.com/egatari/examples",
+  "sections": [
+    { "id": "intro", "title": { "ja": "まず見る", "en": "Start here" }, "subtitle": { "ja": "", "en": "" } },
+    { "id": "teaching", "title": { "ja": "教育", "en": "Education" }, "subtitle": { "ja": "授業・講義・校内研修", "en": "Classes, lectures, school in-service training" } },
+    { "id": "business", "title": { "ja": "ビジネス", "en": "Business" }, "subtitle": { "ja": "報告・提案・社内研修", "en": "Reports, proposals, company training" } },
+    { "id": "life", "title": { "ja": "生活", "en": "Everyday life" }, "subtitle": { "ja": "自治体・医療・防災の案内", "en": "Guides from cities, health care and disaster prevention" } }
+  ],
+  "examples": [
+    { "name": "egatari-intro", "section": "intro", "path": "lessons/egatari-intro" },
+    { "name": "egatari-intro-en", "section": "intro", "path": "lessons/egatari-intro-en" },
+    { "name": "parts-showcase", "section": "intro", "path": "lessons/parts-showcase", "fromSample": false },
+    { "name": "moon-phases", "section": "teaching", "path": "lessons/moon-phases" },
+    { "name": "chords", "section": "teaching", "path": "lessons/chords" },
+    { "name": "sentence-structure", "section": "teaching", "path": "lessons/sentence-structure" },
+    { "name": "huffman", "section": "teaching", "path": "lessons/huffman" },
+    { "name": "bayes", "section": "teaching", "path": "lessons/bayes" },
+    { "name": "population", "section": "teaching", "path": "lessons/population" },
+    { "name": "live-birthday", "section": "teaching", "path": "lessons/live-birthday" },
+    { "name": "genai-guideline", "section": "teaching", "path": "lessons/genai-guideline" },
+    { "name": "kokugo-kanbun", "section": "teaching" },
+    { "name": "heikin-chuouchi", "section": "teaching", "path": "books/heikin-chuouchi" },
+    { "name": "rashomon", "section": "teaching", "path": "books/rashomon" },
+    { "name": "tmlr2026-calibration", "section": "teaching" },
+    { "name": "minimal", "section": "teaching" },
+    { "name": "quarterly-report", "section": "business", "path": "lessons/quarterly-report" },
+    { "name": "security-training", "section": "business", "path": "lessons/security-training" },
+    { "name": "pitch-fictional", "section": "business" },
+    { "name": "city-budget-ja", "section": "life", "path": "lessons/city-budget/ja" },
+    { "name": "city-budget-en", "section": "life", "path": "lessons/city-budget/en" },
+    { "name": "hand-hygiene", "section": "life", "path": "lessons/hand-hygiene" },
+    { "name": "hazard-map", "section": "life", "path": "lessons/hazard-map" }
+  ]
+}

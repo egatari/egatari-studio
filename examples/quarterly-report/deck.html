@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="kogecha">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>第 3 四半期 業績報告</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-2ecbcx">
+  <div class="venue">経営会議（架空の会社・A 食品）</div>
+  <h1>2026 年 第 3 四半期<br>業績報告</h1>
+  <div class="au">経営企画部<br><span class="muted">会社名・数字はすべて架空</span></div>
+</section>
+
+<section class="slide" id="s-eefyp2">
+  <h2>今期の 3 つの数字</h2>
+  <div class="body">
+    <m-kpi style="height:300px" per-step="1" aria-label="売上 49.0 億円（前期比 +3.6 %）、営業利益 3.1 億円（利益率 6.3 %）、新規顧客 1240 社（前期比 +135 社）">
+      <script type="application/json">{{JSON:kpi.json}}</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>売上と顧客は伸びたが、利益率は低い</span></div>
+</section>
+
+<section class="slide" id="s-ozje54">
+  <h2>売上の移り変わり</h2>
+  <div class="body">
+    <m-bars style="height:380px" per-step="0" unit="億" digits="1" aria-label="8 四半期の売上。41.2 億円から 49.0 億円へ">
+      <script type="application/json">{{JSON:sales.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>8 四半期で 41.2 億円から 49.0 億円へ</span></div>
+</section>
+
+<section class="slide" id="s-2euo57">
+  <h2>何が増え、何が減ったか</h2>
+  <div class="body">
+    <m-bars style="height:360px" orient="h" per-step="1" unit="億" digits="1" aria-label="前期からの増減。冷凍食品 +1.2、菓子 +0.6、飲料 −0.3、業務用 +0.2 億円">
+      <script type="application/json">{{JSON:delta.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>伸びの半分以上は冷凍食品。飲料だけ減った</span></div>
+</section>
+
+<section class="slide" id="s-ydc3qo">
+  <h2>売上の使い道と利益</h2>
+  <div class="body">
+    <m-pie style="height:380px" donut="0.55" unit="億円" digits="1" aria-label="売上 49.0 億円の内訳。原材料 25.5、人件費 10.3、物流 5.9、その他 4.2、営業利益 3.1 億円">
+      <script type="application/json">{{JSON:pie.json}}</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>売上の半分以上が原材料に使われている</span></div>
+</section>
+
+<section class="slide" id="s-wuu6m3">
+  <h2>原材料が上がると、利益は</h2>
+  <div class="body">
+    <m-sweep f="49.0*(1+c/100) - 25.5*(1+u/100) - 20.4" values="[0,3]" param="価格改定（%）" digits="0" xr="[0,10]" yr="[0,4]" xt="[0,5,10]" yt="[0,1,2,3,4]" xl="原材料の値上がり（%）" yl="営業利益（億円）" at="[1.5]" point='{"u": 5, "label": "利益 {y} 億円", "digits": 2}' size="32" style="height:400px" aria-label="原材料の値上がり率と営業利益の直線。原材料が 5 % 上がると利益は 1.82 億円、価格を 3 % 改定すると 3.29 億円（数量は変わらないと置いた架空の試算）"></m-sweep>
+  </div>
+  <div class="concl"><span>原材料 5 % 高でも、価格改定 3 % で利益を保てる</span></div>
+</section>
+
+<section class="slide" id="s-3sb7tm">
+  <h2>来期の打ち手と予定</h2>
+  <div class="body">
+    <m-timeline style="height:330px" unit="month" aria-label="来期の施策。物流拠点の統合（2026 年 11 月から 2027 年 4 月）、価格改定 3 %（2027 年 1 月）、冷凍の新商品（2027 年 2 月から 6 月）">
+      <script type="application/json">{{JSON:timeline.json}}</script>
+    </m-timeline>
+  </div>
+  <div class="concl"><span>コストを下げる手と、売上を伸ばす手を並べて進める</span></div>
+</section>
+
+<section class="slide" id="s-wxeozy">
+  <h2>今日、決めていただきたいこと</h2>
+  <div class="body">
+    <p class="sub">2027 年 1 月からの価格改定 3 %</p>
+    <ul>
+      <li>原材料が 5 % 上がっても、利益を今期並みに保てる</li>
+      <li>数量が変わらないと置いた試算。値上げで数量が減る分は次回に示す</li>
+    </ul>
+  </div>
+  <div class="concl"><span>価格改定 3 % の承認をお願いしたい</span></div>
+</section>
+
+</div>
+</body>
+</html>

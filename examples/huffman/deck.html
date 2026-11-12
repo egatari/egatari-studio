@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="kokugo">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ハフマン符号</title>
+<!--
+  見本 ⑤（情報 I）。数はすべて scripts/make_codes.py の出力（data/huffman.json・data/mh.json）。
+  MH 符号の表（data/mh_table.json と 7 枚目）は ITU-T 勧告 T.4 の表 2・表 3。libtiff の t4.h と全 182 語を照合した（SOURCE.md）。
+-->
+<style>
+  .hf-svg { display: block; margin: 0 auto; }
+  .hf-svg text { font-size: 28px; text-anchor: middle; dominant-baseline: central; }
+  .hf-cols { display: flex; align-items: center; justify-content: space-between; gap: 40px; }
+  .hf-codes { width: 420px; }
+  .hf-codes td, .hf-codes th { text-align: center; }
+  .hf-bits { font-family: ui-monospace, Menlo, monospace; letter-spacing: 0.04em; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-pqj6d6">
+  <div class="venue">情報 I（高校）・情報のデジタル化</div>
+  <h1>ハフマン符号</h1>
+  <div class="au">よく出る字ほど、短い符号にする</div>
+</section>
+
+<section class="slide" id="s-3nvj7g">
+  <h2>「すもももももももものうち」の字を数える</h2>
+  <div class="body">
+    <p>12 字の文に、字は 5 種類。0 と 1 で表すなら、1 字に 3 ビットずつ要る（2 ビットでは 4 種類まで）</p>
+    <m-bars style="height:330px" per-step="0" unit="回" ticks="false" aria-label="「すもももももももものうち」に出る回数。も 8 回、す・の・う・ち 各 1 回">
+      <script type="application/json">{"series": [{"label": "出る回数"}], "groups": [
+        {"label": "も", "value": 8},
+        {"label": "す", "value": 1},
+        {"label": "の", "value": 1},
+        {"label": "う", "value": 1},
+        {"label": "ち", "value": 1}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>12 字のうち 8 字が「も」。3 ビットずつでは 36 ビット</span></div>
+</section>
+
+<section class="slide" id="s-huvmp7">
+  <h2>少ない 2 つから順にまとめる</h2>
+  <div class="body">
+    <svg class="hf-svg" viewBox="0 0 1180 430" width="1180" height="430" role="img" aria-label="回数の少ない 2 つを 1 つにまとめることをくり返す。す 1 と の 1 で 2、う 1 と ち 1 で 2、2 と 2 で 4、4 と も 8 で 12。最後に 1 本の木になる">
+      <g style="stroke:var(--line);stroke-width:3;fill:none">
+        <rect x="90" y="330" width="140" height="80" rx="14"/>
+        <rect x="390" y="330" width="140" height="80" rx="14"/>
+        <rect x="570" y="330" width="140" height="80" rx="14"/>
+        <rect x="750" y="330" width="140" height="80" rx="14"/>
+        <rect x="930" y="330" width="140" height="80" rx="14"/>
+      </g>
+      <g style="fill:var(--fg)">
+        <text x="160" y="370">も 8</text>
+        <text x="460" y="370">す 1</text>
+        <text x="640" y="370">の 1</text>
+        <text x="820" y="370">う 1</text>
+        <text x="1000" y="370">ち 1</text>
+      </g>
+      <g data-step="1">
+        <path d="M460 330 L550 250 M640 330 L550 250" style="stroke:var(--muted);stroke-width:3;fill:none"/>
+        <circle cx="550" cy="220" r="34" style="stroke:var(--term);stroke-width:3;fill:var(--bg)"/>
+        <text x="550" y="220" style="fill:var(--term)">2</text>
+      </g>
+      <g data-step="2">
+        <path d="M820 330 L910 250 M1000 330 L910 250" style="stroke:var(--muted);stroke-width:3;fill:none"/>
+        <circle cx="910" cy="220" r="34" style="stroke:var(--term);stroke-width:3;fill:var(--bg)"/>
+        <text x="910" y="220" style="fill:var(--term)">2</text>
+      </g>
+      <g data-step="3">
+        <path d="M550 186 L730 130 M910 186 L730 130" style="stroke:var(--muted);stroke-width:3;fill:none"/>
+        <circle cx="730" cy="100" r="34" style="stroke:var(--term);stroke-width:3;fill:var(--bg)"/>
+        <text x="730" y="100" style="fill:var(--term)">4</text>
+      </g>
+      <g data-step="4">
+        <path d="M160 330 L400 74 M696 92 L434 52" style="stroke:var(--muted);stroke-width:3;fill:none"/>
+        <circle cx="400" cy="42" r="34" style="stroke:var(--term);stroke-width:3;fill:var(--bg)"/>
+        <text x="400" y="42" style="fill:var(--term)">12</text>
+      </g>
+    </svg>
+  </div>
+  <div class="concl"><span>まとめるたびに数を足す。最後は 12 の 1 本の木</span></div>
+</section>
+
+<section class="slide" id="s-ojg52c">
+  <h2>木から符号を読む（左が 0、右が 1）</h2>
+  <div class="body">
+    <div class="hf-cols">
+      <m-tree style="height:420px;width:700px" link="straight" aria-label="ハフマンの木。根から左へ行くと 0、右へ行くと 1。も は 0、す は 100、の は 101、う は 110、ち は 111。う までの道 1、1、0 を強調する">
+        <script type="application/json">{"nodes": [
+          {"id": "r", "label": "12"},
+          {"id": "mo", "label": "も 8", "parent": "r", "branch": "0"},
+          {"id": "n4", "label": "4", "parent": "r", "branch": "1"},
+          {"id": "n2a", "label": "2", "parent": "n4", "branch": "0"},
+          {"id": "n2b", "label": "2", "parent": "n4", "branch": "1"},
+          {"id": "su", "label": "す 1", "parent": "n2a", "branch": "0"},
+          {"id": "no", "label": "の 1", "parent": "n2a", "branch": "1"},
+          {"id": "u", "label": "う 1", "parent": "n2b", "branch": "0"},
+          {"id": "chi", "label": "ち 1", "parent": "n2b", "branch": "1"}
+        ], "path": ["r", "n4", "n2b", "u"], "pathStep": 5}</script>
+      </m-tree>
+      <table class="hf-codes" data-step="4">
+        <tr><th>字</th><th>回数</th><th>符号</th></tr>
+        <tr><td>も</td><td>8</td><td class="hf-bits b">0</td></tr>
+        <tr><td>す</td><td>1</td><td class="hf-bits">100</td></tr>
+        <tr><td>の</td><td>1</td><td class="hf-bits">101</td></tr>
+        <tr id="hf-u"><td>う</td><td>1</td><td class="hf-bits">110</td></tr>
+        <tr><td>ち</td><td>1</td><td class="hf-bits">111</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="concl"><span>よく出る「も」は 1 ビット、ほかは 3 ビット</span></div>
+</section>
+
+<section class="slide" id="s-lzebed">
+  <h2>長さを比べる</h2>
+  <div class="body">
+    <p data-step="1">ハフマン符号の列：<span class="hf-bits">100 0 0 0 0 0 0 0 0 101 110 111</span></p>
+    <m-bars style="height:380px" orient="h" unit=" ビット" data-from="2" aria-label="12 字を表すのに要るビット数。3 ビットずつの固定長では 36 ビット、ハフマン符号では 20 ビット">
+      <script type="application/json">{"series": [{"label": "ビット数"}], "groups": [
+        {"label": "3 ビットずつ", "value": 36, "tone": "muted"},
+        {"label": "ハフマン符号", "value": 20}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>よく出る字を短くして、36 ビットが 20 ビットに</span></div>
+</section>
+
+<section class="slide" id="s-cb6aoa">
+  <h2>ファクスも同じ考えで送る</h2>
+  <div class="body">
+    <m-flow style="height:380px" size="30" aria-label="ファクスの送り方。1 行を白と黒の点にする。同じ色が続く長さ（ラン）を数える。よく出る長さほど短い符号で送る（MH 符号）">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "1 行を\n白と黒の点にする", "x": 0, "y": 10, "w": 340, "h": 330, "step": 1},
+        {"id": "b", "label": "同じ色が続く長さ\n（ラン）を数える", "x": 422, "y": 10, "w": 340, "h": 330, "step": 2},
+        {"id": "c", "label": "よく出る長さを\n短い符号にする", "x": 844, "y": 10, "w": 340, "h": 330, "step": 3, "tone": "term"}
+      ], "edges": [{"from": "a", "to": "b", "step": 2}, {"from": "b", "to": "c", "step": 3}]}</script>
+    </m-flow>
+    <p class="note" data-step="4">A4 の幅は 1 行 1728 点。符号の表は ITU-T 勧告 T.4 にある（MH 符号）</p>
+  </div>
+  <div class="concl"><span>白と黒の長さに、ハフマンの考えで符号を付ける</span></div>
+</section>
+
+<section class="slide noconcl" id="s-qmnuhr">
+  <h2>11 ビットを木で読むと 68 点の行になる</h2>
+  <div class="body">
+    <m-codetree style="height:540px" aria-label="MH 符号の木で 11011011111 を復号する。11011 は白 64、0111 は白 2、11 は黒 2。白 66 点と黒 2 点の、68 点の並びになる">
+      <script type="application/json">{
+        "bits": "11011011111",
+        "table": [
+          {"run": 0, "white": "00110101", "black": "0000110111"},
+          {"run": 1, "white": "000111", "black": "010"},
+          {"run": 2, "white": "0111", "black": "11"},
+          {"run": 3, "white": "1000", "black": "10"},
+          {"run": 4, "white": "1011", "black": "011"},
+          {"run": 5, "white": "1100", "black": "0011"},
+          {"run": 6, "white": "1110", "black": "0010"},
+          {"run": 7, "white": "1111", "black": "00011"},
+          {"run": 8, "white": "10011", "black": "000101"},
+          {"run": 9, "white": "10100", "black": "000100"},
+          {"run": 10, "white": "00111", "black": "0000100"},
+          {"run": 11, "white": "01000", "black": "0000101"},
+          {"run": 12, "white": "001000", "black": "0000111"},
+          {"run": 13, "white": "000011", "black": "00000100"},
+          {"run": 14, "white": "110100", "black": "00000111"},
+          {"run": 15, "white": "110101", "black": "000011000"},
+          {"run": 16, "white": "101010", "black": "0000010111"},
+          {"run": 17, "white": "101011", "black": "0000011000"},
+          {"run": 18, "white": "0100111", "black": "0000001000"},
+          {"run": 19, "white": "0001100", "black": "00001100111"},
+          {"run": 20, "white": "0001000", "black": "00001101000"},
+          {"run": 21, "white": "0010111", "black": "00001101100"},
+          {"run": 22, "white": "0000011", "black": "00000110111"},
+          {"run": 23, "white": "0000100", "black": "00000101000"},
+          {"run": 24, "white": "0101000", "black": "00000010111"},
+          {"run": 25, "white": "0101011", "black": "00000011000"},
+          {"run": 26, "white": "0010011", "black": "000011001010"},
+          {"run": 27, "white": "0100100", "black": "000011001011"},
+          {"run": 28, "white": "0011000", "black": "000011001100"},
+          {"run": 29, "white": "00000010", "black": "000011001101"},
+          {"run": 30, "white": "00000011", "black": "000001101000"},
+          {"run": 31, "white": "00011010", "black": "000001101001"},
+          {"run": 32, "white": "00011011", "black": "000001101010"},
+          {"run": 33, "white": "00010010", "black": "000001101011"},
+          {"run": 34, "white": "00010011", "black": "000011010010"},
+          {"run": 35, "white": "00010100", "black": "000011010011"},
+          {"run": 36, "white": "00010101", "black": "000011010100"},
+          {"run": 37, "white": "00010110", "black": "000011010101"},
+          {"run": 38, "white": "00010111", "black": "000011010110"},
+          {"run": 39, "white": "00101000", "black": "000011010111"},
+          {"run": 40, "white": "00101001", "black": "000001101100"},
+          {"run": 41, "white": "00101010", "black": "000001101101"},
+          {"run": 42, "white": "00101011", "black": "000011011010"},
+          {"run": 43, "white": "00101100", "black": "000011011011"},
+          {"run": 44, "white": "00101101", "black": "000001010100"},
+          {"run": 45, "white": "00000100", "black": "000001010101"},
+          {"run": 46, "white": "00000101", "black": "000001010110"},
+          {"run": 47, "white": "00001010", "black": "000001010111"},
+          {"run": 48, "white": "00001011", "black": "000001100100"},
+          {"run": 49, "white": "01010010", "black": "000001100101"},
+          {"run": 50, "white": "01010011", "black": "000001010010"},
+          {"run": 51, "white": "01010100", "black": "000001010011"},
+          {"run": 52, "white": "01010101", "black": "000000100100"},
+          {"run": 53, "white": "00100100", "black": "000000110111"},
+          {"run": 54, "white": "00100101", "black": "000000111000"},
+          {"run": 55, "white": "01011000", "black": "000000100111"},
+          {"run": 56, "white": "01011001", "black": "000000101000"},
+          {"run": 57, "white": "01011010", "black": "000001011000"},
+          {"run": 58, "white": "01011011", "black": "000001011001"},
+          {"run": 59, "white": "01001010", "black": "000000101011"},
+          {"run": 60, "white": "01001011", "black": "000000101100"},
+          {"run": 61, "white": "00110010", "black": "000001011010"},
+          {"run": 62, "white": "00110011", "black": "000001100110"},
+          {"run": 63, "white": "00110100", "black": "000001100111"},
+          {"run": 64, "white": "11011", "black": "0000001111"},
+          {"run": 128, "white": "10010", "black": "000011001000"},
+          {"run": 192, "white": "010111", "black": "000011001001"},
+          {"run": 256, "white": "0110111", "black": "000001011011"},
+          {"run": 320, "white": "00110110", "black": "000000110011"},
+          {"run": 384, "white": "00110111", "black": "000000110100"},
+          {"run": 448, "white": "01100100", "black": "000000110101"},
+          {"run": 512, "white": "01100101", "black": "0000001101100"},
+          {"run": 576, "white": "01101000", "black": "0000001101101"},
+          {"run": 640, "white": "01100111", "black": "0000001001010"},
+          {"run": 704, "white": "011001100", "black": "0000001001011"},
+          {"run": 768, "white": "011001101", "black": "0000001001100"},
+          {"run": 832, "white": "011010010", "black": "0000001001101"},
+          {"run": 896, "white": "011010011", "black": "0000001110010"},
+          {"run": 960, "white": "011010100", "black": "0000001110011"},
+          {"run": 1024, "white": "011010101", "black": "0000001110100"},
+          {"run": 1088, "white": "011010110", "black": "0000001110101"},
+          {"run": 1152, "white": "011010111", "black": "0000001110110"},
+          {"run": 1216, "white": "011011000", "black": "0000001110111"},
+          {"run": 1280, "white": "011011001", "black": "0000001010010"},
+          {"run": 1344, "white": "011011010", "black": "0000001010011"},
+          {"run": 1408, "white": "011011011", "black": "0000001010100"},
+          {"run": 1472, "white": "010011000", "black": "0000001010101"},
+          {"run": 1536, "white": "010011001", "black": "0000001011010"},
+          {"run": 1600, "white": "010011010", "black": "0000001011011"},
+          {"run": 1664, "white": "011000", "black": "0000001100100"},
+          {"run": 1728, "white": "010011011", "black": "0000001100101"},
+          {"run": "EOL", "white": "000000000001", "black": "000000000001"}
+        ]
+      }</script>
+    </m-codetree>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,37 @@
+{
+ "bits": "11011011111",
+ "words": [
+  {
+   "bits": "11011",
+   "color": "white",
+   "run": 64,
+   "kind": "makeup"
+  },
+  {
+   "bits": "0111",
+   "color": "white",
+   "run": 2,
+   "kind": "term"
+  },
+  {
+   "bits": "11",
+   "color": "black",
+   "run": 2,
+   "kind": "term"
+  }
+ ],
+ "runs": [
+  {
+   "color": "white",
+   "run": 66
+  },
+  {
+   "color": "black",
+   "run": 2
+  }
+ ],
+ "pixels": 68,
+ "bitCount": 11,
+ "lineWidthA4": 1728,
+ "table": "data/mh_table.json"
+}

@@ -1,0 +1,31 @@
+{
+  "note": "架空の数字（Egatari の紹介のため）",
+  "sales_by_quarter": {
+    "Q1": 1.82,
+    "Q2": 1.95,
+    "Q3": 2.1,
+    "Q4": 2.38
+  },
+  "kpi": [
+    {
+      "label": "売上（Q4）",
+      "value": 2.38,
+      "digits": 2,
+      "unit": "億円",
+      "delta_pct": 13.3
+    },
+    {
+      "label": "会員数",
+      "value": 13450,
+      "unit": "人",
+      "delta_pct": 14.0
+    },
+    {
+      "label": "解約率（月）",
+      "value": 2.6,
+      "digits": 1,
+      "unit": "%",
+      "delta_pt": -0.8
+    }
+  ]
+}

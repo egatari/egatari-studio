@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/live-birthday",
+  "files": {
+    "data/birthday.json": "191cb38032c39e0ce23b73bfd6e3da1dc6a18c6a788965c8212eebc5bd7d54d4",
+    "data/curves.json": "a5c0ca9037aff735fd9329b07f16ea4e69ac34d87894fd7c1bae193bf0705072",
+    "data/pairs.json": "efdc672c3984563976df41182b79eed5bd9108f6aedff0d6dce7c1d4d7cb6ae4",
+    "data/predict.json": "39510ab38b2b9cefe127b6ae9e683676bdd8cf5f87ae35ba8ec5d4af5fed530e",
+    "deck.html": "a771d573765c0489d2d1067a3a162ad40b07d26d25811bd11db0bdc7eb963427",
+    "egatari.json": "4b2c35ebba2804ab7d99b71ebad4a4930a95e5974007814db5d0d19427c70172",
+    "gallery/README.md": "49fcf07d4c8d43551a2a9f6ed33a576e58b25bec58473cd3b747c1cdefa8070d",
+    "gallery/host-page-example.png": "a6eb4dd452d10b5dcbf5aee27090c524645835dce269e0699beb7f38a37f5bea",
+    "narration.md": "ddbe4a88716218ac947c408097e0e7d8eab6f22cd7969eb687a8bf8689bdb5b3",
+    "sample.json": "3bd5f214edb0dbeaaf4c047363314b9025a4b688fede4499f88b2109c1834e2e",
+    "scripts/live_host_shot.mjs": "3fcd57ff5100278bf85ab1629eab68ae1d29697c59c844fbb34e5347b59d422d",
+    "scripts/make_data.py": "11de5e373e8a2e42bf24e65d02b7a214cf3499c606b83aaecdb495ba5da36898",
+    "shots.json": "4f757d1b660995d84772f71c7d4dfbe0248e88935e136ad85049df6844dfaeb7"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

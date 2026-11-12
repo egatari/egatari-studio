@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="tokiwa">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手指衛生の 5 つのタイミング</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-4kmf5e">
+  <div class="venue">介護施設の職員研修（新しい職員向け）</div>
+  <h1>手指衛生の<br>5 つのタイミング</h1>
+  <div class="au">いつ、手をきれいにするか<br><span class="muted">WHO の「手指衛生の 5 つのタイミング」を介護施設向けに</span></div>
+</section>
+
+<section class="slide" id="s-2jmbv3">
+  <h2>5 つのタイミング</h2>
+  <div class="body">
+    <m-cards style="height:420px" layout="grid" nums="true" per-step="1" aria-label="手指衛生の 5 つのタイミング：入所者に触る前、ケアを行う前、体液に触れた後、入所者に触れた後、部屋の環境に触れた後">
+      <script type="application/json">{"cards": [
+        {"icon": "hand-click", "title": "入所者に触る前", "text": "あいさつで肩に触れる前も"},
+        {"icon": "first-aid-kit", "title": "ケアを行う前", "text": "食事・口腔ケア・おむつ交換の前"},
+        {"icon": "droplet", "title": "体液に触れた後", "text": "唾液・尿・便・血液など"},
+        {"icon": "users", "title": "入所者に触れた後", "text": "体位を変えた後など"},
+        {"icon": "home", "title": "部屋の環境に触れた後", "text": "ベッドの柵・テーブル・リモコン"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>手袋をしていても、この 5 つは同じ</span></div>
+</section>
+
+<section class="slide" id="s-av45kf">
+  <h2>前の 2 つと、後の 3 つ</h2>
+  <div class="body">
+    <m-compare style="height:360px" aria-label="前の 2 つはきれいな手で入所者を触るため、後の 3 つは汚れたらきれいにするため">
+      <script type="application/json">{"sides": [{"label": "前の 2 つ", "tone": "term"}, {"label": "後の 3 つ", "tone": "accent2"}], "rows": [
+        {"label": "いつ", "values": ["触る前・ケアの前", "体液・入所者・部屋の後"]},
+        {"label": "何のため", "values": ["触る手を清潔にしておく", "触った手を清潔に戻す"]},
+        {"label": "守るもの", "values": ["入所者", "自分とほかの入所者"]}
+      ]}</script>
+    </m-compare>
+  </div>
+  <div class="concl"><span>前は入所者を守るため、後は広げないため</span></div>
+</section>
+
+<section class="slide" id="s-gvexww">
+  <h2>この場面は、どのタイミング？</h2>
+  <div class="body">
+    <p>入所者の口元をティッシュでふいて、捨てた。次は食事の介助。</p>
+    <m-predict style="height:360px" unit="人" aria-label="口元をふいたティッシュを捨てた直後はどのタイミングかを選ぶ。正解は体液に触れた後">
+      <script type="application/json">{"question": "ティッシュを捨てた今は？", "choices": [{"label": "入所者に触る前"}, {"label": "体液に触れた後"}, {"label": "部屋の環境に触れた後"}], "answer": 1, "counts": [8, 15, 7], "note": "このあと食事の介助なので、ケアの前でもある（人数は架空）"}</script>
+    </m-predict>
+  </div>
+  <div class="concl"><span>1 つの場面に、タイミングが重なることがある</span></div>
+</section>
+
+<section class="slide" id="s-yftn7l">
+  <h2>ポケットの中に注意</h2>
+  <div class="body">
+    <m-flow style="height:380px" size="36" aria-label="ポケットの鍵や電話に触った手で、そのままケアをしない。触った後は、ケアの前に手指消毒をする">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "ポケットの\n鍵・電話", "x": 0, "y": 60, "w": 330, "h": 220, "step": 1, "tone": "emph"},
+        {"id": "b", "label": "手指消毒", "x": 427, "y": 60, "w": 330, "h": 220, "step": 2, "tone": "term"},
+        {"id": "c", "label": "入所者の\nケア", "x": 854, "y": 60, "w": 330, "h": 220, "step": 3}
+      ], "edges": [{"from": "a", "to": "b", "step": 2}, {"from": "b", "to": "c", "step": 3}]}</script>
+    </m-flow>
+    <p class="note" data-step="3">ポケットは汚れやすい。要らない物は入れない</p>
+  </div>
+  <div class="concl"><span>ポケットに触ったら、ケアの前に消毒する</span></div>
+</section>
+
+<section class="slide" id="s-kwvwsz">
+  <h2>手のふき方と、消毒薬の置き場所</h2>
+  <div class="body">
+    <m-cards style="height:430px" layout="grid" aria-label="手のふき方と消毒薬の扱い 4 つ">
+      <script type="application/json">{"cards": [
+        {"icon": "x", "title": "布のタオルを共有しない", "text": "ふいた手がまた汚れる"},
+        {"icon": "check", "title": "使い捨てのペーパータオル", "text": "1 回ずつ新しいもので"},
+        {"icon": "map-pin", "title": "消毒薬は要る場所に", "text": "部屋の入り口・汚物室など"},
+        {"icon": "calendar", "title": "使用期限を書く", "text": "使い始めた日を容器に"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>きれいにした手を、汚さない仕組みも大事</span></div>
+</section>
+
+<section class="slide" id="s-7ahjwl">
+  <h2>今日から、5 つを意識する</h2>
+  <div class="body">
+    <ul>
+      <li>触る前・ケアの前は、きれいな手で</li>
+      <li>体液・入所者・部屋に触れた後は、きれいにする</li>
+      <li>ポケットに触ったら、ケアの前に消毒</li>
+    </ul>
+    <p class="note">WHO「手指衛生の 5 つのタイミング」（WHO Guidelines on Hand Hygiene in Health Care, 2009）の考え方をもとに、介護施設向けに作成</p>
+  </div>
+  <div class="concl"><span>手は、感染を運ばない道具にできる</span></div>
+</section>
+
+</div>
+</body>
+</html>

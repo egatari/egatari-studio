@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>パーツ図鑑</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-mbteyz">
+  <div class="venue">Egatari のサンプル</div>
+  <h1>パーツ図鑑</h1>
+  <div class="au">38 のパーツが、それぞれの題材で動く<br><span class="muted">題材と数字は架空（出典のあるものを除く）</span></div>
+</section>
+
+<section class="slide noconcl" id="s-iaknwq">
+  <h2>目次：伝えたいことから選ぶ</h2>
+  <div class="body">
+    <m-menu cols="2" size="30" aria-label="伝えたいことの目次" style="height:100%;align-content:center;--mm-h:96px;--mm-gap:12px">
+      <a href="#s-qxu6ql" data-icon="1" data-sub="比べる・変化・内訳・数字">比べる・数字</a>
+      <a href="#s-yr2ine" data-icon="2" data-sub="手順・年表・予定">手順・予定</a>
+      <a href="#s-pzrox3" data-icon="3" data-sub="原因・循環・階層・位置づけ・重なり">しくみ・つながり</a>
+      <a href="#s-3avvfk" data-icon="4" data-sub="量の関係・ばらつき・パラメータ">データ</a>
+      <a href="#s-wm5imv" data-icon="5" data-sub="日本・世界">場所・地図</a>
+      <a href="#s-2eagqz" data-icon="6" data-sub="予想・まとめる・時間を区切る">参加と進行</a>
+      <a href="#s-yqgm6f" data-icon="7" data-sub="漢文・古文・現代文・英文">文章の構造</a>
+      <a href="#s-dqetbu" data-icon="8" data-sub="鍵盤・楽譜">音楽</a>
+    </m-menu>
+  </div>
+</section>
+
+<section class="slide" id="s-qxu6ql">
+  <h2>比べる：支店別の月間売上</h2>
+  <div class="body">
+    <m-bars style="height:330px" unit="万円" al="10 月の売上" per-step="0" aria-label="10 月の支店別売上の縦棒グラフ。本店 787 万円、駅前店 1211 万円、北店 580 万円、南店 706 万円、空港店 521 万円。駅前店がいちばん多い">
+      <script type="application/json">{"groups":[
+        {"label":"本店","value":787},
+        {"label":"駅前店","value":1211,"tone":"emph"},
+        {"label":"北店","value":580},
+        {"label":"南店","value":706},
+        {"label":"空港店","value":521}
+      ]}</script>
+    </m-bars>
+    <p class="note">パーツ：棒グラフ（m-bars）・数字は架空</p>
+  </div>
+  <div class="concl"><span>量を棒の長さで並べて比べるときに</span></div>
+</section>
+
+<section class="slide" id="s-ua2ils">
+  <h2>比べる：紙の申請とオンライン申請</h2>
+  <div class="body">
+    <m-compare style="height:330px" aria-label="市役所の紙の申請とオンライン申請を、受付時間・待ち時間・必要なものの 3 つの観点で比べる表">
+      <script type="application/json">{"sides":[{"label":"紙の申請","tone":"muted"},{"label":"オンライン申請"}],"rows":[
+        {"label":"受付時間","values":["平日 9〜17 時","24 時間"],"diff":"受付が 4.2 倍","better":1},
+        {"label":"待ち時間","values":["平均 35 分","なし"],"diff":"35 分の短縮","better":1},
+        {"label":"必要なもの","values":["申請書・印鑑\n本人確認書類","マイナンバー\nカード"],"diff":"カード 1 枚で済む","better":1}
+      ]}</script>
+    </m-compare>
+    <p class="note">パーツ：比べる表（m-compare）・数字は架空</p>
+  </div>
+  <div class="concl"><span>2 つのやり方を同じ観点で並べて比べるときに</span></div>
+</section>
+
+<section class="slide" id="s-s4fcwo">
+  <h2>比べる：曜日と時間帯ごとの窓口の混み具合</h2>
+  <div class="body">
+    <m-heatmap style="height:330px" build="cells" aria-label="市役所の窓口に 1 時間に来る人数を、時間帯と曜日の格子で塗ったヒートマップ。月曜 11 時の 42 人がいちばん多い">
+      <script type="application/json">{"rows":["9時","11時","13時","15時"],"cols":["月","火","水","木","金"],"values":[
+        [25,18,16,18,22],
+        [42,30,27,30,36],
+        [31,22,20,22,26],
+        [22,16,14,16,19]
+      ],"highlight":[[1,0]]}</script>
+    </m-heatmap>
+    <p class="note">パーツ：ヒートマップ（m-heatmap）・1 時間あたりの人数・数字は架空</p>
+  </div>
+  <div class="concl"><span>2 つの区分の組ごとに量の濃淡を見るときに</span></div>
+</section>
+
+<section class="slide" id="s-3axfmx">
+  <h2>比べる：3/4 と 0.7 はどちらが大きいか</h2>
+  <div class="body">
+    <m-numberline style="height:330px" aria-label="0 から 1 の数直線に 0.7 と 3/4 を取り、0.7 から 0.8 を 0.01 きざみに広げると 3/4 は 0.75 の位置にある">
+      <script type="application/json">{"lines":[{"from":0,"to":1,"step":0.1}],"marks":[{"at":0.7,"label":"0.7","kind":"dot"},{"at":"3/4","label":"3/4","kind":"dot","tone":"emph"},{"at":0.75,"line":1,"tone":"emph","show":5}],"magnify":[{"from":0.7,"to":0.8,"step":0.01}]}</script>
+    </m-numberline>
+    <p class="note">パーツ：数直線（m-numberline）</p>
+  </div>
+  <div class="concl"><span>分数と小数を同じものさしの上で比べるときに</span></div>
+</section>
+
+<section class="slide" id="s-2c7ayp">
+  <h2>比べる：兄の貯金は弟の 2 倍</h2>
+  <div class="body">
+    <m-tape style="height:330px" aria-label="テープ図。弟の貯金は □ 円、兄はその 2 倍、2 人の合計は 1800 円で、弟の分の 3 つ分にあたる">
+      <script type="application/json">{"rows":[{"label":"弟","show":1,"segs":[{"v":600,"unknown":"□","label":" 円"}]},{"label":"兄","show":2,"segs":[{"v":600},{"v":600}]},{"label":"合計","show":4,"segs":[{"v":600},{"v":600},{"v":600}]}],"times":[{"from":0,"to":1,"label":"2 倍","show":3}],"brace":[{"row":2,"from":0,"to":2,"label":"1800 円","side":"below","show":5}]}</script>
+    </m-tape>
+    <p class="note">パーツ：テープ図（m-tape）・数字は架空</p>
+  </div>
+  <div class="concl"><span>何倍の関係と合計から、わからない量を求めるときに</span></div>
+</section>
+
+<section class="slide" id="s-dd5o3f">
+  <h2>変化：3 店舗の来客数の移り変わり</h2>
+  <div class="body">
+    <m-curves style="height:330px" xr="[1,13.6]" yr="[20,50]" xt="[1,3,6,9,12]" yt="[20,30,40,50]" xl="月" yl="来客数（百人）" aria-label="3 店舗の月ごとの来客数の折れ線。駅前店は 42 百人前後で横ばい、郊外店は 30 から 46.6 百人へ増え、商店街店は 38 から 26.6 百人へ減る">
+      <script type="application/json">[
+        {"label":"駅前店","anchor":"right","ly":41,"pts":[[1,42.0],[2,44.2],[3,45.9],[4,46.6],[5,46.3],[6,45.0],[7,43.2],[8,41.4],[9,40.1],[10,39.8],[11,40.5],[12,42.2]]},
+        {"label":"郊外店","pts":[[1,30.0],[2,32.6],[3,34.9],[4,36.8],[5,38.1],[6,39.0],[7,39.6],[8,40.2],[9,41.1],[10,42.4],[11,44.3],[12,46.6]],"tone":"emph","anchor":"right"},
+        {"label":"商店街店","pts":[[1,38.0],[2,38.6],[3,38.8],[4,38.3],[5,37.0],[6,35.0],[7,32.6],[8,30.2],[9,28.2],[10,26.9],[11,26.4],[12,26.6]],"tone":"muted","anchor":"right"}
+      ]</script>
+    </m-curves>
+    <p class="note">パーツ：折れ線と曲線（m-curves）・数字は架空</p>
+  </div>
+  <div class="concl"><span>いくつかの移り変わりを 1 本ずつ重ねて比べるときに</span></div>
+</section>
+
+<section class="slide" id="s-k4n6hy">
+  <h2>内訳：市の予算の使い道</h2>
+  <div class="body">
+    <m-pie style="height:330px" donut="0.6" unit="億円" aria-label="ある市の予算 480 億円の内訳のドーナツグラフ。福祉 182 億円、教育 96 億円、道路・まちづくり 74 億円、ごみ・環境 38 億円、消防・防災 30 億円、その他 60 億円">
+      <script type="application/json">{"center":"予算\n{total}","slices":[
+        {"label":"福祉","value":182},
+        {"label":"教育","value":96},
+        {"label":"道路・まちづくり","value":74},
+        {"label":"ごみ・環境","value":38},
+        {"label":"消防・防災","value":30},
+        {"label":"その他","value":60,"tone":"muted"}
+      ]}</script>
+    </m-pie>
+    <p class="note">パーツ：円グラフ（m-pie）・数字は架空</p>
+  </div>
+  <div class="concl"><span>全体を 100% として内訳の割合を見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-ixlryk">
+  <h2>内訳：新サービスの市場規模</h2>
+  <div class="body">
+    <m-market style="height:330px" unit="億円" aria-label="美容室向け予約サービスの市場規模を入れ子の円で示す図。TAM 300 億円、SAM 180 億円、SOM 9 億円">
+      <script type="application/json">{"rings":[
+        {"key":"TAM","value":300,"basis":"全国の美容室 25 万店 × 年 12 万円"},
+        {"key":"SAM","value":180,"basis":"スタッフ 3 人以下の店（60%）"},
+        {"key":"SOM","value":9.0,"basis":"3 年で取る 5%"}
+      ]}</script>
+    </m-market>
+    <p class="note">パーツ：市場規模（m-market）・美容室向けの予約サービス・数字は架空</p>
+  </div>
+  <div class="concl"><span>市場を全体から手の届く所へ絞って見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-fmx3wc">
+  <h2>数字を見せる：四半期の 3 つの数字</h2>
+  <div class="body">
+    <m-kpi style="height:330px" aria-label="四半期の 3 つの数字の札。受注件数 1352 件で前の期から 172 件増、平均単価 4.2 万円で 0.4 万円減、顧客満足度 4.5 で 0.2 上がった">
+      <script type="application/json">{"cards":[
+        {"label":"受注件数","value":1352,"unit":"件","delta":{"dir":"up","text":"前の期から 172 件"}},
+        {"label":"平均単価","value":4.2,"digits":1,"unit":"万円","tone":"emph","delta":{"dir":"down","text":"前の期から 0.4 万円","good":false}},
+        {"label":"顧客満足度","value":4.5,"digits":1,"unit":"/ 5","delta":{"dir":"up","text":"前の期から 0.2"}}
+      ]}</script>
+    </m-kpi>
+    <p class="note">パーツ：数字の札（m-kpi）・数字は架空</p>
+  </div>
+  <div class="concl"><span>少数の数字を大きく、増減と一緒に見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-yr2ine">
+  <h2>手順：正しい手洗いの順番</h2>
+  <div class="body">
+    <m-flow style="height:330px" aria-label="手洗いの 6 つの手順。水でぬらし石けんを泡立てる、手のひらと甲、指の間と親指、つめと指先、手首、すすいで清潔なタオルでふく">
+      <script type="application/json">{"nodes":[
+        {"id":"a","label":"水でぬらし\n石けんを泡立てる","x":40,"y":15,"w":320,"h":120,"step":1},
+        {"id":"b","label":"手のひらと甲\n（5 回ずつ）","x":432,"y":15,"w":320,"h":120,"step":2},
+        {"id":"c","label":"指の間と親指\n（5 回ずつ）","x":824,"y":15,"w":320,"h":120,"step":3},
+        {"id":"d","label":"つめと指先\n（5 回ずつ）","x":824,"y":195,"w":320,"h":120,"step":4,"tone":"term"},
+        {"id":"e","label":"手首\n（5 回）","x":432,"y":195,"w":320,"h":120,"step":5},
+        {"id":"f","label":"水ですすぎ\n清潔なタオルでふく","x":40,"y":195,"w":320,"h":120,"step":6,"tone":"emph"}
+      ],"edges":[
+        {"from":"a","to":"b"},{"from":"b","to":"c"},{"from":"c","to":"d"},{"from":"d","to":"e"},{"from":"e","to":"f"}
+      ]}</script>
+    </m-flow>
+    <p class="note">パーツ：流れ図（m-flow）・出典：厚生労働省「正しい手洗いの方法」（加工して作成）</p>
+  </div>
+  <div class="concl"><span>決まった順番を 1 つずつたどって見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-5jirvl">
+  <h2>手順：新人研修の 4 つの約束</h2>
+  <div class="body">
+    <m-cards style="height:330px" nums="true" aria-label="新人研修の 4 つの約束のカード。5 分前に集まる、その場でメモ、迷ったら聞く、1 日をふり返る">
+      <script type="application/json">{"cards":[
+        {"icon":"clock","title":"5 分前に集まる","text":"始まる前に席に着く"},
+        {"icon":"notebook","title":"その場でメモ","text":"聞いたことは書いて残す"},
+        {"icon":"message","title":"迷ったら聞く","text":"15 分悩んだら先輩に"},
+        {"icon":"checklist","title":"1 日をふり返る","text":"日報に学びを 3 行"}
+      ]}</script>
+    </m-cards>
+    <p class="note">パーツ：カード（m-cards）・架空の会社の研修</p>
+  </div>
+  <div class="concl"><span>要点や手順をアイコン付きの札で 1 つずつ見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-ssdx56">
+  <h2>手順：わり算の筆算 84÷3</h2>
+  <div class="body">
+    <div class="cols">
+      <m-hissan style="height:418px" expr="84÷3" aria-label="84 割る 3 の筆算。商を十の位から 1 けたずつ立てて 28 になる"></m-hissan>
+      <p class="note">パーツ：筆算（m-hissan）</p>
+    </div>
+  </div>
+  <div class="concl"><span>計算の手順を 1 けたずつ追って見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-wawzpk">
+  <h2>手順：ひらがな「あめ」の書き順</h2>
+  <div class="body">
+    <m-kakijun text="あめ" style="height:330px" aria-label="ひらがな「あ」と「め」の書き順。あは 3 画、めは 2 画"></m-kakijun>
+    <p class="note">パーツ：書き順（m-kakijun）・字の形：strokesvg（Klee One、SIL OFL 1.1）を加工</p>
+  </div>
+  <div class="concl"><span>字を書く順と向きを 1 画ずつ見せるときに</span></div>
+</section>
+
+<section class="slide noconcl" id="s-3wlmk5">
+  <h2>手順：ハフマン符号を木でたどって復号する</h2>
+  <div class="body">
+    <m-codetree style="height:460px" aria-label="MH 符号の木で 13 ビットの系列を復号する図。白 5、黒 2、白 3、黒 4 の画素の並びになる">
+      <script type="application/json">{"table":[{"run":2,"white":"0111","black":"11"},{"run":3,"white":"1000","black":"10"},{"run":4,"white":"1011","black":"011"},{"run":5,"white":"1100","black":"0011"},{"run":6,"white":"1110","black":"0010"},{"run":7,"white":"1111","black":"00011"}],"bits":"1100111000011"}</script>
+    </m-codetree>
+    <p class="note">パーツ：ハフマン木（m-codetree）・符号表は ITU-T T.4 の MH 符号の一部・画素の並びは架空</p>
+  </div>
+</section>
+
+<section class="slide" id="s-5fmppq">
+  <h2>年表・予定：新システム導入の予定</h2>
+  <div class="body">
+    <m-timeline style="height:330px" unit="month" aria-label="新システム導入の予定。要件の整理 4〜5 月、開発 6〜9 月、試験運用 9〜11 月、職員の研修 10〜12 月、翌年 1 月に本番開始">
+      <script type="application/json">{"nodes":[{"id":"p1","label":"要件の整理","lane":"システム","when":"2027-04","end":"2027-06","tone":"term"},{"id":"p2","label":"開発","lane":"システム","when":"2027-06","end":"2027-10","tone":"term"},{"id":"p3","label":"試験運用","lane":"システム","when":"2027-09","end":"2027-12","tone":"accent2"},{"id":"p4","label":"職員の研修","lane":"職員","when":"2027-10","end":"2028-01","tone":"accent2"},{"id":"go","label":"本番開始","when":"2028-01","tone":"emph"}]}</script>
+    </m-timeline>
+    <p class="note">パーツ：年表（m-timeline）・日程は架空</p>
+  </div>
+  <div class="concl"><span>期間の重なりと節目を時間の軸で見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-pzrox3">
+  <h2>原因と結果：窓口の待ち時間が長い</h2>
+  <div class="body">
+    <m-fishbone style="height:330px" aria-label="窓口の待ち時間が長い原因の特性要因図。人、方法、設備、書類の 4 つに分けて原因を 2 つずつ挙げる">
+      <script type="application/json">{"effect":{"label":"窓口の\n待ち時間が長い"},"nodes":[
+        {"id":"p","label":"人"},
+        {"id":"p1","label":"昼に担当が減る","parent":"p"},
+        {"id":"p2","label":"慣れない職員","parent":"p"},
+        {"id":"m","label":"方法"},
+        {"id":"m1","label":"予約ができない","parent":"m"},
+        {"id":"m2","label":"受付が 1 列だけ","parent":"m"},
+        {"id":"e","label":"設備"},
+        {"id":"e1","label":"発券機が 1 台","parent":"e"},
+        {"id":"e2","label":"記入台が狭い","parent":"e"},
+        {"id":"d","label":"書類"},
+        {"id":"d1","label":"記入欄が多い","parent":"d"},
+        {"id":"d2","label":"添付書類の不足","parent":"d"}
+      ]}</script>
+    </m-fishbone>
+    <p class="note">パーツ：特性要因図（m-fishbone）・原因は架空</p>
+  </div>
+  <div class="concl"><span>1 つの結果に効く原因を分けて洗い出すときに</span></div>
+</section>
+
+<section class="slide" id="s-bifcjc">
+  <h2>循環：回覧の手間を減らす PDCA</h2>
+  <div class="body">
+    <m-cycle style="height:330px" aria-label="PDCA の循環図。計画、実行、評価、改善を回す。例は紙の回覧を電子化する事務の改善">
+      <script type="application/json">{"center":{"label":"PDCA","note":"回覧の改善"},"nodes":[
+        {"label":"計画（Plan）","note":"回覧を電子化する"},
+        {"label":"実行（Do）","note":"1 つの課で試す"},
+        {"label":"評価（Check）","note":"届く日数を比べる"},
+        {"label":"改善（Act）","note":"手順を直し全課へ","tone":"emph"}
+      ]}</script>
+    </m-cycle>
+    <p class="note">パーツ：循環（m-cycle）・事例は架空</p>
+  </div>
+  <div class="concl"><span>同じ順で回り続ける段取りを見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-p4btzv">
+  <h2>循環：月の満ち欠け</h2>
+  <div class="body">
+    <m-orbit style="height:380px" aria-label="北極の上から見た地球と月の位置と、地球から見た月の形。満月から下弦の月、新月、上弦の月を経て満月に戻る">
+      <script type="application/json">{"positions":8,"start":4,"visit":[6,0,2,4]}</script>
+    </m-orbit>
+    <p class="note">パーツ：月の満ち欠け（m-orbit）・大きさと距離は実際の比ではない</p>
+  </div>
+  <div class="concl"><span>位置の変化と見え方の変化を並べて示すときに</span></div>
+</section>
+
+<section class="slide" id="s-ydbboz">
+  <h2>階層・分類：A 市役所の組織</h2>
+  <div class="body">
+    <m-tree style="height:330px" aria-label="A 市役所の組織図。市長の下に総務部、市民部、福祉部があり、それぞれに課が 2 つある">
+      <script type="application/json">{"nodes":[
+        {"id":"r","label":"市長","tone":"emph"},
+        {"id":"a","label":"総務部","parent":"r"},
+        {"id":"b","label":"市民部","parent":"r"},
+        {"id":"c","label":"福祉部","parent":"r"},
+        {"id":"a1","label":"総務課","parent":"a","tone":"accent2"},
+        {"id":"a2","label":"財政課","parent":"a","tone":"accent2"},
+        {"id":"b1","label":"市民課","parent":"b","tone":"accent2"},
+        {"id":"b2","label":"税務課","parent":"b","tone":"accent2"},
+        {"id":"c1","label":"福祉課","parent":"c","tone":"accent2"},
+        {"id":"c2","label":"子育て課","parent":"c","tone":"accent2"}
+      ]}</script>
+    </m-tree>
+    <p class="note">パーツ：階層の木（m-tree）・市と組織は架空</p>
+  </div>
+  <div class="concl"><span>親子の関係を上から 1 段ずつ見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-goetic">
+  <h2>位置づけ：研修テーマの重要度と緊急度</h2>
+  <div class="body">
+    <m-quad style="height:330px" aria-label="研修テーマを緊急度と重要度の 2 軸に置いた図。個人情報の扱いと新システムの操作は右上のすぐ行う、電話の応対と文書の書き方は左上の計画して行う、年末の事務は右下、表計算の小技は左下">
+      <script type="application/json">{"x":{"lo":"急がない","hi":"急ぐ"},"y":{"lo":"重要度が低い","hi":"重要度が高い"},"quads":{"tr":"すぐ行う","tl":"計画して行う","br":"短く済ませる","bl":"見送る","fill":"tr"},"items":[{"label":"個人情報の扱い","x":0.8,"y":0.9,"anchor":"left","tone":"term"},{"label":"新システムの操作","x":0.9,"y":0.6,"anchor":"left","tone":"term"},{"label":"電話の応対","x":0.3,"y":0.8,"anchor":"right","tone":"term"},{"label":"文書の書き方","x":0.2,"y":0.6,"anchor":"right","tone":"term"},{"label":"年末の事務","x":0.7,"y":0.3,"anchor":"left","tone":"term"},{"label":"表計算の小技","x":0.3,"y":0.2,"anchor":"right","tone":"term"}]}</script>
+    </m-quad>
+    <p class="note">パーツ：2 軸の位置づけ（m-quad）・配置は架空</p>
+  </div>
+  <div class="concl"><span>項目を 2 つの軸に置いて優先を決めるときに</span></div>
+</section>
+
+<section class="slide" id="s-j4muze">
+  <h2>重なり：災害への備えの自助・共助・公助</h2>
+  <div class="body">
+    <m-venn style="height:330px" spread="1.1" aria-label="自助、共助、公助の 3 つの円のベン図。自助は水や食料の備蓄、共助は近所の安否確認、公助は避難所の開設、3 つの重なりは地域の防災訓練">
+      <script type="application/json">{"sets":[{"label":"自助（自分・家族）"},{"label":"共助（地域）"},{"label":"公助（行政）"}],"regions":{
+        "A":["備蓄"],
+        "B":["安否確認"],
+        "C":["避難所の開設"],
+        "ABC":["訓練"]
+      }}</script>
+    </m-venn>
+    <p class="note">パーツ：ベン図（m-venn）・出典：平成 26 年版 防災白書（加工して作成）</p>
+  </div>
+  <div class="concl"><span>2〜3 つのものの共通点と違いを重ねて見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-3avvfk">
+  <h2>2 つの量の関係：練習時間と跳躍の記録</h2>
+  <div class="body">
+    <m-scatter style="height:330px" xr="[0,12]" yr="[3.5,5.75]" xt="[0,2,4,6,8,10,12]" yt="[3.5,4,4.5,5,5.5]" yf="1" xl="1 週間の練習時間（時間）" yl="記録（m）" aria-label="架空の陸上部の部員 15 人の、1 週間の練習時間と走り幅跳びの記録の散布図。右上がりで、相関係数は 0.81">
+      <script type="application/json">{"series":[{"label":"部員 15 人","points":[[2.0,4.2],[2.5,3.69],[3.0,3.82],[3.5,4.2],[4.0,3.95],[5.5,4.64],[6.0,4.58],[6.5,4.51],[7.0,4.49],[7.5,4.46],[8.0,4.37],[8.0,4.45],[10.0,4.59],[11.0,5.53],[11.5,4.82]]}],"trend":{"fit":"linear","label":"傾向（r = {r}）","digits":2}}</script>
+    </m-scatter>
+    <p class="note">パーツ：散布図（m-scatter）・架空の陸上部・数字は架空</p>
+  </div>
+  <div class="concl"><span>2 つの量がいっしょに動くかを点の広がりで見るときに</span></div>
+</section>
+
+<section class="slide" id="s-oabb6c">
+  <h2>ばらつき：社員の通勤時間の分布</h2>
+  <div class="body">
+    <m-hist style="height:330px" marks="mean,median" unit="分" digits="1" xl="片道の通勤時間（分）" yl="人数" aria-label="架空の会社の社員 60 人の片道の通勤時間のヒストグラム。20 分台がいちばん多く、右に長く裾を引く。平均値 32.0 分、中央値 29.5 分">
+      <script type="application/json">{"values":[85,12,10,62,19,38,39,38,22,29,6,55,41,14,19,26,44,15,15,33,41,23,21,30,42,24,26,23,71,29,24,19,21,31,17,36,90,20,38,37,13,51,42,26,32,36,20,27,45,34,35,34,42,20,15,20,47,45,22,30],"bins":{"start":0,"width":10}}</script>
+    </m-hist>
+    <p class="note">パーツ：ヒストグラム（m-hist）・数字は架空</p>
+  </div>
+  <div class="concl"><span>分布の形と代表値のずれを一緒に見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-f2jnbt">
+  <h2>ばらつき：3 つの店の待ち時間</h2>
+  <div class="body">
+    <m-boxplot style="height:330px" build="whole" xr="[0,20]" xt="[0,5,10,15,20]" xl="待ち時間（分）" unit="分" aria-label="架空の 3 店で客 15 人ずつの待ち時間の箱ひげ図。中央値は駅前店 11 分、本町店 6 分、郊外店 12 分">
+      <script type="application/json">{"groups":[{"label":"駅前店","values":[4,14,10,7,12,6,16,11,9,12,5,11,12,12,11]},{"label":"本町店","values":[4,7,4,6,5,5,7,9,8,6,5,5,5,6,7]},{"label":"郊外店","values":[10,12,6,10,19,19,15,13,13,9,6,15,7,14,6]}]}</script>
+    </m-boxplot>
+    <p class="note">パーツ：箱ひげ図（m-boxplot）・数字は架空</p>
+  </div>
+  <div class="concl"><span>いくつかの群の中心とばらつきを並べて比べるときに</span></div>
+</section>
+
+<section class="slide" id="s-k3y5vu">
+  <h2>ばらつき：くじの当たり率の見積もりの更新</h2>
+  <div class="body">
+    <m-seq style="height:330px" per-step="2" xr="[0,1]" yr="[0,3.2]" xt="[0,0.2,0.4,0.6,0.8,1]" xf="1" yt="[0,1,2,3]" xl="当たり率 *θ*" yl="密度" aria-label="くじを 1 回引くごとに当たり率の分布を更新する図。平らな分布から始め、10 回で当たり 3 回、平均 0.33">
+      <script type="application/json">{"xs":[0.0,0.02,0.04,0.06,0.08,0.1,0.12,0.14,0.16,0.18,0.2,0.22,0.24,0.26,0.28,0.3,0.32,0.34,0.36,0.38,0.4,0.42,0.44,0.46,0.48,0.5,0.52,0.54,0.56,0.58,0.6,0.62,0.64,0.66,0.68,0.7,0.72,0.74,0.76,0.78,0.8,0.82,0.84,0.86,0.88,0.9,0.92,0.94,0.96,0.98,1.0],"steps":[{"dens":[1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0],"readout":{"回数":0,"当たり":0,"平均":0.5}},{"dens":[2.0,1.96,1.92,1.88,1.84,1.8,1.76,1.72,1.68,1.64,1.6,1.56,1.52,1.48,1.44,1.4,1.36,1.32,1.28,1.24,1.2,1.16,1.12,1.08,1.04,1.0,0.96,0.92,0.88,0.84,0.8,0.76,0.72,0.68,0.64,0.6,0.56,0.52,0.48,0.44,0.4,0.36,0.32,0.28,0.24,0.2,0.16,0.12,0.08,0.04,0.0],"readout":{"回数":1,"当たり":0,"平均":0.33}},{"dens":[0.0,0.1176,0.2304,0.3384,0.4416,0.54,0.6336,0.7224,0.8064,0.8856,0.96,1.0296,1.0944,1.1544,1.2096,1.26,1.3056,1.3464,1.3824,1.4136,1.44,1.4616,1.4784,1.4904,1.4976,1.5,1.4976,1.4904,1.4784,1.4616,1.44,1.4136,1.3824,1.3464,1.3056,1.26,1.2096,1.1544,1.0944,1.0296,0.96,0.8856,0.8064,0.7224,0.6336,0.54,0.4416,0.3384,0.2304,0.1176,0.0],"readout":{"回数":2,"当たり":1,"平均":0.5}},{"dens":[0.0,0.2305,0.4424,0.6362,0.8125,0.972,1.1151,1.2425,1.3548,1.4524,1.536,1.6062,1.6635,1.7085,1.7418,1.764,1.7756,1.7772,1.7695,1.7529,1.728,1.6955,1.6558,1.6096,1.5575,1.5,1.4377,1.3712,1.301,1.2277,1.152,1.0743,0.9953,0.9156,0.8356,0.756,0.6774,0.6003,0.5253,0.453,0.384,0.3188,0.258,0.2023,0.1521,0.108,0.0707,0.0406,0.0184,0.0047,0.0],"readout":{"回数":3,"当たり":1,"平均":0.4}},{"dens":[0.0,0.3765,0.7078,0.9967,1.2459,1.458,1.6355,1.781,1.8967,1.9849,2.048,2.088,2.1071,2.1072,2.0902,2.058,2.0124,1.955,1.8874,1.8113,1.728,1.6389,1.5454,1.4487,1.3498,1.25,1.1502,1.0512,0.9541,0.8594,0.768,0.6804,0.5972,0.5188,0.4456,0.378,0.3161,0.2601,0.2101,0.1661,0.128,0.0956,0.0688,0.0472,0.0304,0.018,0.0094,0.0041,0.0012,0.0002,0.0],"readout":{"回数":4,"当たり":1,"平均":0.33}},{"dens":[0.0,0.5534,1.0192,1.4053,1.7193,1.9683,2.1589,2.2974,2.3898,2.4415,2.4576,2.443,2.4021,2.339,2.2574,2.1609,2.0526,1.9354,1.8119,1.6845,1.5552,1.4259,1.2982,1.1734,1.0529,0.9375,0.8281,0.7253,0.6297,0.5414,0.4608,0.3878,0.3225,0.2646,0.2139,0.1701,0.1328,0.1014,0.0756,0.0548,0.0384,0.0258,0.0165,0.0099,0.0055,0.0027,0.0011,0.0004,0.0001,0.0,0.0],"readout":{"回数":5,"当たり":1,"平均":0.29}},{"dens":[0.0,0.0387,0.1427,0.2951,0.4814,0.6889,0.9067,1.1257,1.3383,1.5381,1.7203,1.8811,2.0177,2.1284,2.2123,2.2689,2.2989,2.3032,2.283,2.2404,2.1773,2.096,1.9992,1.8892,1.7688,1.6406,1.5072,1.3709,1.2342,1.0991,0.9677,0.8416,0.7224,0.6112,0.5091,0.4167,0.3346,0.2628,0.2012,0.1496,0.1075,0.0741,0.0486,0.0298,0.0169,0.0085,0.0036,0.0012,0.0002,0.0,0.0],"readout":{"回数":6,"当たり":2,"平均":0.38}},{"dens":[0.0,0.0607,0.2192,0.4439,0.7086,0.992,1.2767,1.549,1.7986,2.018,2.202,2.3476,2.4536,2.5201,2.5485,2.5412,2.5012,2.4321,2.3378,2.2225,2.0902,1.9451,1.7912,1.6323,1.4717,1.3125,1.1575,1.009,0.8689,0.7386,0.6193,0.5117,0.4161,0.3325,0.2607,0.2,0.1499,0.1093,0.0773,0.0527,0.0344,0.0213,0.0124,0.0067,0.0032,0.0014,0.0005,0.0001,0.0,0.0,0.0],"readout":{"回数":7,"当たり":2,"平均":0.33}},{"dens":[0.0,0.0893,0.3156,0.6258,0.9779,1.3392,1.6852,1.9982,2.2663,2.4822,2.6424,2.7467,2.7971,2.7973,2.7524,2.6683,2.5513,2.4078,2.2443,2.0669,1.8812,1.6923,1.5046,1.3221,1.1479,0.9844,0.8334,0.6962,0.5734,0.4653,0.3716,0.2917,0.2247,0.1696,0.1251,0.09,0.063,0.0426,0.0278,0.0174,0.0103,0.0058,0.003,0.0014,0.0006,0.0002,0.0001,0.0,0.0,0.0,0.0],"readout":{"回数":8,"当たり":2,"平均":0.3}},{"dens":[0.0,0.006,0.0421,0.1252,0.2608,0.4464,0.6741,0.9325,1.2087,1.4893,1.7616,2.0143,2.2377,2.4243,2.5689,2.6683,2.7213,2.7288,2.6932,2.6181,2.5082,2.3692,2.2068,2.0273,1.8366,1.6406,1.4446,1.2532,1.0704,0.8996,0.7432,0.6028,0.4793,0.3731,0.2836,0.21,0.1511,0.1052,0.0705,0.0452,0.0275,0.0158,0.0084,0.004,0.0017,0.0006,0.0002,0.0,0.0,0.0,0.0],"readout":{"回数":9,"当たり":3,"平均":0.36}},{"dens":[0.0,0.0092,0.0635,0.1849,0.377,0.6314,0.9322,1.2602,1.5955,1.9191,2.2146,2.4689,2.6724,2.8191,2.9065,2.9351,2.9079,2.8302,2.7086,2.5507,2.3649,2.1593,1.942,1.7203,1.5008,1.2891,1.0896,0.9059,0.7401,0.5937,0.4671,0.3599,0.2712,0.1993,0.1426,0.099,0.0665,0.043,0.0266,0.0156,0.0087,0.0045,0.0021,0.0009,0.0003,0.0001,0.0,0.0,0.0,0.0,0.0],"readout":{"回数":10,"当たり":3,"平均":0.33}}],"digits":{"回数":0,"当たり":0,"平均":2}}</script>
+    </m-seq>
+    <p class="note">パーツ：逐次更新（m-seq）・ベータ分布で更新・くじの結果は架空</p>
+  </div>
+  <div class="concl"><span>観測が増えるほど推定が絞られていく様子を見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-sfdfxn">
+  <h2>パラメータを動かす：放物線 y = ax² の開き方</h2>
+  <div class="body">
+    <m-sweep style="height:380px" f="c*u**2" values="[0.5, 1, 2, 4]" param="a" digits="1" xr="[-2,2]" yr="[0,8]" xt="[-2,-1,0,1,2]" yt="[0,4,8]" xl="*x*" yl="*y*" aria-label="y = a x の 2 乗のグラフ。a を 0.5、1、2、4 と大きくすると、放物線の開きが狭くなる">
+    </m-sweep>
+    <p class="note">パーツ：パラメータの変化（m-sweep）</p>
+  </div>
+  <div class="concl"><span>パラメータで形がどう変わるかを重ねて見せるときに</span></div>
+</section>
+
+<section class="slide noconcl" id="s-wm5imv">
+  <h2>場所・地図：会員の多い地域</h2>
+  <div class="body">
+    <m-map-japan style="height:470px" legend="人口 1 万人あたりの会員数" unit="人" labels="none" aria-label="架空の会員サービスの、都道府県別の人口 1 万人あたりの会員数の塗り分け。東へ行くほど多く、最多は岩手の 60 人、最少は沖縄の 20 人">
+      <script type="application/json">{
+        "classes": [0, 30, 40, 50],
+        "valuesStep": 1,
+        "values": {"01": 59, "02": 57, "03": 60, "04": 55, "05": 52, "06": 57, "07": 54, "08": 54, "09": 56, "10": 49,
+          "11": 55, "12": 54, "13": 51, "14": 55, "15": 52, "16": 44, "17": 47, "18": 45, "19": 51, "20": 50,
+          "21": 48, "22": 47, "23": 48, "24": 45, "25": 41, "26": 43, "27": 40, "28": 41, "29": 44, "30": 41,
+          "31": 35, "32": 34, "33": 36, "34": 34, "35": 33, "36": 40, "37": 37, "38": 32, "39": 37, "40": 26,
+          "41": 30, "42": 24, "43": 31, "44": 28, "45": 32, "46": 27, "47": 20},
+        "points": [
+          {"code": "03", "label": "岩手 60 人", "anchor": "right", "tone": "emph", "step": 2},
+          {"code": "47", "label": "沖縄 20 人", "anchor": "right", "tone": "term", "step": 2}
+        ]
+      }</script>
+    </m-map-japan>
+    <p class="note">パーツ：日本地図（m-map-japan）・架空の会員サービス、数字は架空</p>
+  </div>
+</section>
+
+<section class="slide" id="s-mutx7w">
+  <h2>場所・地図：文具メーカーの海外拠点</h2>
+  <div class="body">
+    <m-map-world style="height:330px" aria-label="架空の文具メーカーの海外拠点。東京の本社から、2000 年代に上海とシンガポール、2010 年代にロサンゼルスとロンドン、2020 年代にシドニーへ広がった">
+      <script type="application/json">{
+        "points": [
+          {"lon": 139.69, "lat": 35.69, "label": "東京（本社）", "anchor": "right", "tone": "emph", "step": 1},
+          {"lon": 121.47, "lat": 31.23, "label": "上海 2006", "anchor": "left", "step": 2},
+          {"lon": 103.82, "lat": 1.35, "label": "シンガポール 2009", "anchor": "left", "step": 2},
+          {"lon": -118.24, "lat": 34.05, "label": "ロサンゼルス 2014", "anchor": "below", "step": 3},
+          {"lon": -0.13, "lat": 51.51, "label": "ロンドン 2017", "anchor": "above", "step": 3},
+          {"lon": 151.21, "lat": -33.87, "label": "シドニー 2022", "anchor": "right", "step": 4}
+        ],
+        "flows": [
+          {"from": [139.69, 35.69], "to": [121.47, 31.23], "step": 2},
+          {"from": [139.69, 35.69], "to": [103.82, 1.35], "step": 2},
+          {"from": [139.69, 35.69], "to": [-118.24, 34.05], "tone": "term", "step": 3},
+          {"from": [139.69, 35.69], "to": [-0.13, 51.51], "tone": "term", "step": 3},
+          {"from": [139.69, 35.69], "to": [151.21, -33.87], "tone": "accent2", "step": 4}
+        ]
+      }</script>
+    </m-map-world>
+    <p class="note">パーツ：世界地図（m-map-world）・会社と開設年は架空</p>
+  </div>
+  <div class="concl"><span>拠点の場所と広がった順を地図で見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-2eagqz">
+  <h2>予想して確かめる：揺れたら、まず何をする</h2>
+  <div class="body">
+    <m-predict style="height:330px" unit="人" aria-label="地震で強く揺れたとき、まず何をするかを選ぶ問い。答えは、頭を守り丈夫な机の下に隠れる">
+      <script type="application/json">{"question":"家で強い揺れを感じた。まず何をする？","choices":[{"label":"すぐに外へ飛び出す"},{"label":"頭を守り、丈夫な机の下に隠れる"},{"label":"離れた台所へ火を消しに行く"}],"answer":1,"counts":[9,15,6],"note":"頭を守って身の安全を確保する。外に飛び出さない"}</script>
+    </m-predict>
+    <p class="note">パーツ：予想して確かめる（m-predict）・人数は架空・出典：首相官邸「防災の手引き」（加工して作成）</p>
+  </div>
+  <div class="concl"><span>予想を集めてから答えを開いて確かめるときに</span></div>
+</section>
+
+<section class="slide" id="s-b47jny">
+  <h2>まとめる・分ける：公園アンケートの自由回答</h2>
+  <div class="body">
+    <m-collect style="height:330px" chip-w="300" box-w="300" aria-label="公園についての 9 つの自由回答が、遊具、設備、安全の 3 つの箱にまとまる。遊具 3 件、設備 3 件、安全 3 件">
+      <script type="application/json">{"cols":3,"chips":[{"label":"すべり台がほしい","to":0},{"label":"トイレが汚い","to":1},{"label":"夜は暗くて怖い","to":2},{"label":"ベンチが少ない","to":1},{"label":"砂場を広げてほしい","to":0},{"label":"自転車が速くて危ない","to":2},{"label":"水飲み場がない","to":1},{"label":"遊具が古い","to":0},{"label":"見通しが悪い","to":2}],"targets":[{"label":"遊具","value":"3 件"},{"label":"設備","value":"3 件"},{"label":"安全","value":"3 件"}]}</script>
+    </m-collect>
+    <p class="note">パーツ：まとめる（m-collect）・回答は架空</p>
+  </div>
+  <div class="concl"><span>ばらばらの意見を少数のまとまりに分けるときに</span></div>
+</section>
+
+<section class="slide" id="s-2zlzd3">
+  <h2>時間を区切る：グループワークの進行</h2>
+  <div class="body">
+    <m-timer style="height:360px" aria-label="グループワークの進行タイマー。個人で考える 3 分、話し合う 5 分、発表 2 分">
+      <script type="application/json">{"ready":{"title":"始める前に","text":"付箋とペンを配る"},"phases":[
+        {"title":"① 個人で考える","short":"個人で考える","text":"付箋に 1 つずつ書く","sec":180},
+        {"title":"② 話し合う","short":"話し合う","text":"付箋を並べて 1 つに絞る","sec":300},
+        {"title":"③ 発表","short":"発表","text":"1 班 2 分で伝える","sec":120,"bells":[{"left":30,"count":1},{"left":0,"count":2}]}
+      ]}</script>
+    </m-timer>
+    <p class="note">パーツ：進行タイマー（m-timer）・研修の例</p>
+  </div>
+  <div class="concl"><span>作業の時間を区切って全員で進めるときに</span></div>
+</section>
+
+<section class="slide" id="s-yqgm6f">
+  <h2>文章の構造：漢詩「春暁」の訓読</h2>
+  <div class="body">
+    <m-kanbun kaki="28" style="height:330px" aria-label="孟浩然「春暁」の白文に返り点と送り仮名を付け、読む順にたどって書き下し文にする">
+      春眠不{=ず}レ覚(エ)レ暁(ヲ)
+      処処聞(ク)[二]啼鳥(ヲ)[一]
+      夜来風雨(ノ)声
+      花落(ツルコト)知(ル)多少
+    </m-kanbun>
+    <p class="note">パーツ：漢文の訓読（m-kanbun）・孟浩然「春暁」</p>
+  </div>
+  <div class="concl"><span>返り点で戻って読む順をたどって見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-h6cuyb">
+  <h2>文章の構造：『枕草子』冒頭を語に切る</h2>
+  <div class="body">
+    <m-kobun size="28" style="height:330px" aria-label="『枕草子』冒頭の 3 文を語に切り、品詞で色を分け、最後に現代語訳と並べる">
+      春[名]/は[係助]/あけぼの[名]。
+      = 春は明け方（がよい）。
+      やうやう[副]/白く[形・ク・連用]/なりゆく[動・カ四・連体]/山ぎは[名]、/少し[副]/明かり[動・ラ四・連用]/て[接助]、
+      = だんだん白くなっていく山ぎわ（の空）が、少し明るくなって、
+      紫だち[動・タ四・連用]/たる[助動・たり・存続・連体]/雲[名]/の[格助]/細く[形・ク・連用]/たなびき[動・カ四・連用]/たる[助動・たり・存続・連体]。
+      = 紫がかった雲が細くたなびいている（のがよい）。
+    </m-kobun>
+    <p class="note">パーツ：古文の品詞分解（m-kobun）・清少納言『枕草子』</p>
+  </div>
+  <div class="concl"><span>古文を語に切り品詞と訳を示すときに</span></div>
+</section>
+
+<section class="slide" id="s-yxs7kz">
+  <h2>文章の構造：評論文の主張と具体例</h2>
+  <div class="body">
+    <m-gendai size="24" style="height:330px" aria-label="3 段落の文章。主張の段落に傍線、指示語「それ」から指す先へ矢印、段落を主張・具体例・対比の枠で囲む">
+      @主張#p1
+      メモは、__覚える仕事を紙に預ける道具__である。
+
+      @具体例#p2>p1
+      {買う物を書いた紙|#memo}を持てば、店では{それ|>memo}を見るだけで済み、旬の野菜に目が向く。
+
+      @対比#p3~p2
+      紙がないと、思い出すことに頭を使い、棚を眺める余裕はない。
+    </m-gendai>
+    <p class="note">パーツ：現代文の読解（m-gendai）・文章はサンプルとして書いたもの</p>
+  </div>
+  <div class="concl"><span>段落の役割と指示語の指す先を示すときに</span></div>
+</section>
+
+<section class="slide" id="s-o7ysfw">
+  <h2>文章の構造：英文の S V O C M</h2>
+  <div class="body">
+    <m-syntax size="32" style="height:250px" aria-label="英文 The boy who lives here keeps his room clean every day. の文の要素、関係代名詞の節、修飾の矢印と和訳">
+      [S The boy {形^ [S who] [V lives] [M here]}] [V keeps] [O his room] [C clean] [M {副^keeps every day}].
+      = ここに住んでいる男の子は、毎日自分の部屋をきれいにしている。
+    </m-syntax>
+    <p class="note">パーツ：英文の構造（m-syntax）・英文はサンプルとして書いたもの</p>
+  </div>
+  <div class="concl"><span>英文の骨組みと修飾の関係を示すときに</span></div>
+</section>
+
+<section class="slide" id="s-dqetbu">
+  <h2>音楽：ドミソの和音を鍵盤で</h2>
+  <div class="body">
+    <m-keyboard style="height:330px" aria-label="ハ長調の和音を鍵盤で順に押さえる：ドミソ、ファラド、ソシレ、ドミソ">
+      <script type="application/json">{"range": "C4-C6", "names": "solfa", "steps": [
+        {"keys": ["C4", "E4", "G4"], "label": "ドミソ（Ⅰ）"},
+        {"keys": ["F4", "A4", "C5"], "label": "ファラド（Ⅳ）", "tone": "accent2"},
+        {"keys": ["G4", "B4", "D5"], "label": "ソシレ（Ⅴ）", "tone": "term"},
+        {"keys": ["C4", "E4", "G4"], "label": "ドミソ（Ⅰ）に戻る"}]}</script>
+    </m-keyboard>
+    <p class="note">パーツ：鍵盤（m-keyboard）</p>
+  </div>
+  <div class="concl"><span>和音や音階をどの鍵盤で押さえるか見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-kni2t5">
+  <h2>音楽：同じ和音を楽譜で</h2>
+  <div class="body">
+    <m-score names="solfa" style="height:330px" aria-label="ドミソ、ファラド、ソシレ、ドミソの和音を全音符で 1 小節ずつ書いた楽譜">
+      <script type="application/json">{"abc": "X:1\nM:4/4\nL:1/4\nQ:1/4=80\nK:C\n[CEG]4 | [FAc]4 | [GBd]4 | [CEG]4 |]"}</script>
+    </m-score>
+    <p class="note">パーツ：楽譜（m-score）</p>
+  </div>
+  <div class="concl"><span>和音や旋律を五線の上で示して鳴らすときに</span></div>
+</section>
+
+<section class="slide" id="s-wjwog4">
+  <h2>もっと詳しく知るには</h2>
+  <div class="body">
+    <ul>
+      <li>パーツごとの値と細かい使い方：<span class="term">studio.egatari.org/parts/</span>（Studio の「パーツの一覧」）</li>
+      <li>パーツを使ったサンプル：<span class="term">egatari.org</span></li>
+      <li>テーマを替えて見比べられる（7 つのテーマで同じ教材を組んである）</li>
+    </ul>
+  </div>
+  <div class="concl"><span>伝えたいことに合うパーツを選ぶ</span></div>
+</section>
+
+</div>
+</body>
+</html>

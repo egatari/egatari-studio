@@ -1,0 +1,12 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/chords",
+  "files": {
+    "deck.html": "e861e35727e9858feedb16990856586e01bc299095cb6f202b4caaac3e6769ed",
+    "egatari.json": "1b34d602f9153e4f43734a88c558b33a7d6e7be573dada54533cb438ef7518d2",
+    "narration.md": "0a45d517d02cd763bc33812712774a50e321c18162da939a27c0e4d80934c41d",
+    "sample.json": "48e04b99cc9f4b1873e54bda53d9f0b33e810e7d27c174e3129f672b10de1d55"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

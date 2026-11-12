@@ -1,0 +1,66 @@
+{
+ "rows": [
+  {
+   "label": "弟",
+   "show": 1,
+   "segs": [
+    {
+     "v": 600,
+     "unknown": "□",
+     "label": " 円"
+    }
+   ]
+  },
+  {
+   "label": "兄",
+   "show": 2,
+   "segs": [
+    {
+     "v": 600
+    },
+    {
+     "v": 600
+    }
+   ]
+  },
+  {
+   "label": "合計",
+   "show": 4,
+   "segs": [
+    {
+     "v": 600
+    },
+    {
+     "v": 600
+    },
+    {
+     "v": 600
+    }
+   ]
+  }
+ ],
+ "times": [
+  {
+   "from": 0,
+   "to": 1,
+   "label": "2 倍",
+   "show": 3
+  }
+ ],
+ "brace": [
+  {
+   "row": 2,
+   "from": 0,
+   "to": 2,
+   "label": "1800 円",
+   "side": "below",
+   "show": 5
+  }
+ ],
+ "_check": {
+  "total": 1800,
+  "parts": 3,
+  "young": 600,
+  "elder": 1200
+ }
+}

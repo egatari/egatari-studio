@@ -1,0 +1,48 @@
+{
+  "v": 1,
+  "request": "For an introductory statistics lecture, make slides on Bayes' theorem with a spam filter as the example (fictional numbers). Ask the class to guess first, then count 1,000 mails: how many are spam and how many contain the word \"free\". Then write the same count as the formula with each part named, and show how the probability changes one word at a time.",
+  "category": "teaching",
+  "subcategory": "lecture",
+  "theme": "sumi",
+  "parts": [
+    "m-bars",
+    "m-flow",
+    "m-predict"
+  ],
+  "structure": [
+    {
+      "heading": "Bayes' theorem",
+      "point": "Cover"
+    },
+    {
+      "heading": "A mail says \"free\". Is it spam?",
+      "point": "Guess first: how likely is a mail with \"free\" spam? Class votes"
+    },
+    {
+      "heading": "Before reading: 1 in 5 mails is spam",
+      "point": "The prior: 200 of 1,000 mails are spam"
+    },
+    {
+      "heading": "Count the mails that contain \"free\"",
+      "point": "Count mails with \"free\" in spam and in other mail: 1 in 2"
+    },
+    {
+      "heading": "The same count, written as a formula",
+      "point": "The formula, each part named, giving 0.5 again"
+    },
+    {
+      "heading": "One word at a time",
+      "point": "Word by word: 20% → 50% → 95%"
+    },
+    {
+      "heading": "Prior, evidence, posterior",
+      "point": "Prior, evidence, posterior; the naive Bayes note"
+    }
+  ],
+  "book": false,
+  "lang": "en",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

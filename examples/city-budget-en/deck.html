@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="murasaki">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>City A budget 2027</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-erx4ug">
+  <div class="venue">For residents (City A, a fictional city)</div>
+  <h1>City A budget<br>for 2027</h1>
+  <div class="au">Where your taxes go<br><span class="muted">The city and all figures are fictional</span></div>
+</section>
+
+<section class="slide" id="s-cor2aj">
+  <h2>What the city spends in a year</h2>
+  <div class="body">
+    <m-kpi style="height:300px" per-step="1" aria-label="Total budget 62.0 billion yen (+2.1 % on last year), 413 thousand yen per resident, 150 thousand residents">
+      <script type="application/json">{{JSON:kpi.json}}</script>
+    </m-kpi>
+  </div>
+  <div class="concl"><span>About ¥413,000 for each resident</span></div>
+</section>
+
+<section class="slide" id="s-snmnh4">
+  <h2>What the money is for</h2>
+  <div class="body">
+    <m-pie style="height:390px" donut="0.55" aria-label="Spending of 62.0 billion yen: welfare 37 %, education 12 %, administration 12 %, roads and town 11 %, debt repayment 10 %, health and waste 9 %, other 9 %">
+      <script type="application/json">{{JSON:pie.json}}</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>Welfare is the largest share, over a third</span></div>
+</section>
+
+<section class="slide" id="s-w2caut">
+  <h2>If the budget were ¥10,000</h2>
+  <div class="body">
+    <m-bars style="height:390px" orient="h" per-step="1" unit=" yen" ticks="false" aria-label="The budget scaled to 10,000 yen: welfare 3,700, education 1,200, administration 1,200, roads and town 1,100, debt repayment 1,000, health and waste 900, other 900">
+      <script type="application/json">{{JSON:per10k.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>¥3,700 of every ¥10,000 goes to welfare</span></div>
+</section>
+
+<section class="slide" id="s-nnpx5j">
+  <h2>What changed from last year</h2>
+  <div class="body">
+    <m-bars style="height:390px" orient="h" per-step="0" unit="bn" digits="2" aria-label="Change from last year in billion yen: welfare +0.93, education +0.42, roads and town −0.33, health and waste +0.09, debt repayment −0.18, administration +0.08, other +0.27">
+      <script type="application/json">{{JSON:delta.json}}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>More for welfare and schools, less for roads and debt</span></div>
+</section>
+
+<section class="slide" id="s-g63pih">
+  <h2>Where the money comes from</h2>
+  <div class="body">
+    <m-pie style="height:390px" donut="0.55" aria-label="Income of 62.0 billion yen: city taxes 35 %, national and prefectural grants 25 %, tax allocation 15 %, borrowing 9 %, other 16 %">
+      <script type="application/json">{{JSON:income.json}}</script>
+    </m-pie>
+  </div>
+  <div class="concl"><span>City taxes pay about a third; grants and loans the rest</span></div>
+</section>
+
+<section class="slide" id="s-77gyo7">
+  <h2>How to have your say</h2>
+  <div class="body">
+    <m-cards style="height:300px" layout="row" per-step="0" aria-label="Ways to have your say: budget briefings, the city's feedback form, watching the city council">
+      <script type="application/json">{"cards": [
+        {"icon": "users", "title": "Come to a briefing", "text": "Ask questions about the budget"},
+        {"icon": "message", "title": "Send your views", "text": "Through the city's feedback form"},
+        {"icon": "building-bank", "title": "Watch the council", "text": "The council decides the budget"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>The council decides the budget, after hearing residents</span></div>
+</section>
+
+</div>
+</body>
+</html>

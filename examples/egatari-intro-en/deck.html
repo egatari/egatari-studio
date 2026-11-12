@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Introducing Egatari</title>
+<style>
+.mini { border: 2px solid var(--line); border-radius: 10px; height: 250px; padding: 16px 20px; }
+.mini .bar { height: 26px; border-radius: 4px; background: var(--term); margin: 14px 0; }
+.page { border-left: 4px solid var(--term); padding: 4px 0 4px 20px; }
+.chat { display: grid; grid-template-columns: 220px 1fr; gap: 14px 20px; align-items: center; margin-top: 8px; }
+.chat .who { text-align: right; }
+.chat .say { border: 2px solid var(--line); border-radius: 16px; padding: 6px 18px; }
+.chat .say.check { border-color: var(--emph); }
+.chat .say.ok { border-color: var(--term); }
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-gyslzb" data-article="sec-khynq6">
+  <div class="venue">Egatari</div>
+  <h1>Visuals narrate. You pass it on.</h1>
+  <div class="au">One file for everyone with something to tell.<br>Figures that build as you speak, and a book to read.<br>An AI writes; what needs fixing is found for you.</div>
+</section>
+
+<section class="slide" id="s-fu7qxa" data-article="sec-5bkyrg">
+  <h2>Figures build in the order you speak</h2>
+  <div class="body">
+    <m-kpi style="height:200px" per-step="3" aria-label="Quarterly figures of a fictional company: sales 238 million yen, 13,450 members, churn 2.6 percent">
+      <script type="application/json">{"cards": [
+        {"label": "Sales (Q4)", "value": 238, "prefix": "¥", "unit": "M", "delta": {"dir": "up", "text": "+13.3 % vs Q3", "good": true}},
+        {"label": "Members", "value": 13450, "delta": {"dir": "up", "text": "+14.0 % vs Q3", "good": true}},
+        {"label": "Monthly churn", "value": 2.6, "digits": 1, "unit": "%", "delta": {"dir": "down", "text": "−0.8 pt vs Q3", "good": true}}
+      ]}</script>
+    </m-kpi>
+    <m-bars style="height:180px" data-from="2" per-step="0" ticks="false" unit="M" aria-label="Fictional quarterly sales: Q1 182, Q2 195, Q3 210, Q4 238 million yen">
+      <script type="application/json">{"series": [{"label": "Sales (¥)"}], "groups": [
+        {"label": "Q1", "value": 182}, {"label": "Q2", "value": 195},
+        {"label": "Q3", "value": 210}, {"label": "Q4", "value": 238, "tone": "emph"}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>Each click shows the next part of the story (figures are fictional)</span></div>
+</section>
+
+<section class="slide" id="s-xscp5m" data-article="sec-hqg6hw">
+  <h2>Slides and a book, in one file</h2>
+  <div class="body">
+    <div class="cols">
+      <div data-step="1">
+        <p class="sub">Slides: to show</p>
+        <div class="mini">
+          <div class="bar" style="width:45%"></div>
+          <div class="bar" style="width:62%"></div>
+          <div class="bar" style="width:80%"></div>
+        </div>
+      </div>
+      <div data-step="2">
+        <p class="sub">Book: to read</p>
+        <div class="page">
+          <p>The same story in full text. People who missed the talk can read it later, at their own pace.</p>
+        </div>
+      </div>
+    </div>
+    <p data-step="3" class="note">Press r to open the book of this introduction</p>
+  </div>
+  <div class="concl"><span>What you show and what people read live in the same file</span></div>
+</section>
+
+<section class="slide" id="s-csvids" data-article="sec-jd4hte">
+  <h2>The AI need not get it right the first time</h2>
+  <div class="body">
+    <div class="chat">
+      <div class="who" data-step="1">You</div><div class="say" data-step="1">Make 6 slides on our fire drill steps</div>
+      <div class="who" data-step="2">AI</div><div class="say" data-step="2">Wrote 6 slides</div>
+      <div class="who" data-step="3"><span class="emph">Quality check</span></div><div class="say check" data-step="3">Slide 2: the body overflows by one line. Cut one line</div>
+      <div class="who" data-step="4">You → AI</div><div class="say" data-step="4">(copy this finding and paste it to the AI)</div>
+      <div class="who" data-step="5">AI</div><div class="say ok" data-step="5">Cut one line → <span class="term">✓ passed the quality check</span></div>
+    </div>
+  </div>
+  <div class="concl"><span>The quality check says what to fix and how</span></div>
+</section>
+
+<section class="slide" id="s-ganagi" data-article="sec-anspnd">
+  <h2>Anywhere there is a browser</h2>
+  <div class="body">
+    <m-cards style="height:330px" layout="grid" aria-label="What one HTML file can do">
+      <script type="application/json">{"cards": [
+        {"icon": "device-laptop", "title": "Any device", "text": "Computer, tablet or phone"},
+        {"icon": "world-www", "title": "Offline too", "text": "Opens with no app to install"},
+        {"icon": "mail", "title": "Just send it", "text": "By email, or on a course site"},
+        {"icon": "presentation", "title": "As a video", "text": "Exported in time with the voice"},
+        {"icon": "users", "title": "Live", "text": "Participants ask and vote"},
+        {"icon": "pencil", "title": "Open and edit", "text": "Whoever receives it can edit it"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>Hand over one HTML file, and it plays</span></div>
+</section>
+
+<section class="slide" id="s-wz3jqf" data-article="sec-2zgwi4">
+  <h2>This introduction was made with Egatari</h2>
+  <div class="body">
+    <p>An AI wrote it from a short brief, and it passed the quality check. Your turn.</p>
+    <m-cards style="height:300px" per-step="0" aria-label="Next: see the samples, make one in Studio, read the specification">
+      <script type="application/json">{"cards": [
+        {"icon": "presentation", "title": "See the samples", "text": "Play them in your browser at egatari.org"},
+        {"icon": "pencil", "title": "Make one in Studio", "text": "Nothing to install: studio.egatari.org"},
+        {"icon": "book", "title": "Read the spec", "text": "An open format anyone can use"}
+      ]}</script>
+    </m-cards>
+  </div>
+  <div class="concl"><span>Put what you have to tell into one file</span></div>
+</section>
+
+</div>
+</body>
+</html>

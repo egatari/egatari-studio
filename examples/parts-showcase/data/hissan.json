@@ -1,0 +1,19 @@
+{
+ "expr": "84÷3",
+ "quotient": 28,
+ "remainder": 0,
+ "rounds": [
+  {
+   "bring": 8,
+   "q_digit": 2,
+   "product": 6,
+   "rest": 2
+  },
+  {
+   "bring": 24,
+   "q_digit": 8,
+   "product": 24,
+   "rest": 0
+  }
+ ]
+}

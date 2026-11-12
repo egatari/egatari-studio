@@ -1,0 +1,21 @@
+<section class="slide">
+  <h2>階層・分類：A 市役所の組織</h2>
+  <div class="body">
+    <m-tree style="height:330px" aria-label="A 市役所の組織図。市長の下に総務部、市民部、福祉部があり、それぞれに課が 2 つある">
+      <script type="application/json">{"nodes":[
+        {"id":"r","label":"市長","tone":"emph"},
+        {"id":"a","label":"総務部","parent":"r"},
+        {"id":"b","label":"市民部","parent":"r"},
+        {"id":"c","label":"福祉部","parent":"r"},
+        {"id":"a1","label":"総務課","parent":"a","tone":"accent2"},
+        {"id":"a2","label":"財政課","parent":"a","tone":"accent2"},
+        {"id":"b1","label":"市民課","parent":"b","tone":"accent2"},
+        {"id":"b2","label":"税務課","parent":"b","tone":"accent2"},
+        {"id":"c1","label":"福祉課","parent":"c","tone":"accent2"},
+        {"id":"c2","label":"子育て課","parent":"c","tone":"accent2"}
+      ]}</script>
+    </m-tree>
+    <p class="note">パーツ：階層の木（m-tree）・市と組織は架空</p>
+  </div>
+  <div class="concl"><span>親子の関係を上から 1 段ずつ見せるときに</span></div>
+</section>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sumi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bayes' theorem</title>
+<!--
+  Sample ⑤ (statistics, in English). All mail counts and rates are fictional.
+  Every number comes from scripts/make_data.py (data/bayes.json).
+-->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-6na6br">
+  <div class="venue">Introductory statistics · a spam filter example (fictional numbers)</div>
+  <h1>Bayes' theorem</h1>
+  <div class="au">Updating a belief, one piece of evidence at a time</div>
+</section>
+
+<section class="slide" id="s-flkppm">
+  <h2>A mail says "free". Is it spam?</h2>
+  <div class="body">
+    <m-predict style="height:380px" unit=" votes" aria-label="Guess first: a new mail contains the word free; how likely is it spam? Sample class votes (fictional): 16 for about 90 percent, 5 for about 50 percent, 3 for about 10 percent. The answer is about 50 percent">
+      <script type="application/json">{"question": "A new mail contains \"free\". How likely is it spam?",
+        "choices": [{"label": "About 90%"}, {"label": "About 50%"}, {"label": "About 10%"}],
+        "answer": 1, "counts": [16, 5, 3], "note": "About 50%: a coin toss"}</script>
+    </m-predict>
+  </div>
+  <div class="concl"><span>To answer, we need two things: how common spam is, and the word</span></div>
+</section>
+
+<section class="slide" id="s-d4puqk">
+  <h2>Before reading: 1 in 5 mails is spam</h2>
+  <div class="body">
+    <p>Out of 1,000 mails in this (fictional) inbox</p>
+    <m-bars style="height:380px" orient="h" unit=" mails" aria-label="Out of 1,000 mails, 200 are spam and 800 are not spam">
+      <script type="application/json">{"series": [{"label": "Mails"}], "groups": [
+        {"label": "Spam", "value": 200, "tone": "emph"},
+        {"label": "Not spam", "value": 800, "tone": "muted"}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>The prior: P(spam) = 0.2, before we look at any word</span></div>
+</section>
+
+<section class="slide" id="s-lau64p">
+  <h2>Count the mails that contain "free"</h2>
+  <div class="body">
+    <p>"Free" is in 40% of spam, but also in 10% of other mails</p>
+    <m-bars style="height:380px" orient="h" stack="true" unit="" aria-label="Of 200 spam mails, 80 contain free. Of 800 other mails, 80 contain free. So 160 mails contain free, and 80 of them are spam">
+      <script type="application/json">{"series": [{"label": "with \"free\"", "tone": "emph"}, {"label": "without", "tone": "line"}], "groups": [
+        {"label": "Spam", "values": [80, 120]},
+        {"label": "Not spam", "values": [80, 720]}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>160 mails say "free", and 80 of them are spam: 1 in 2</span></div>
+</section>
+
+<section class="slide" id="s-acgvdz">
+  <h2>The same count, written as a formula</h2>
+  <div class="body">
+    <div data-step="1">
+      <div class="big">\[ P(\text{spam}\mid\text{free}) = \frac{\htmlId{lik}{P(\text{free}\mid\text{spam})}\;\htmlId{pri}{P(\text{spam})}}{\htmlId{evi}{P(\text{free})}} \]</div>
+    </div>
+    <table data-step="2">
+      <tr><th>Part</th><th>Name</th><th>Value here</th></tr>
+      <tr><td>\(P(\text{free}\mid\text{spam})\)</td><td class="term">likelihood</td><td>0.4</td></tr>
+      <tr><td>\(P(\text{spam})\)</td><td class="term">prior</td><td>0.2</td></tr>
+      <tr><td>\(P(\text{free})\)</td><td class="term">evidence</td><td>\(0.4 \times 0.2 + 0.1 \times 0.8 = 0.16\)</td></tr>
+    </table>
+    <p data-step="3">So \(P(\text{spam}\mid\text{free}) = 0.4 \times 0.2 \div 0.16 = \hlE{0.5}\)</p>
+  </div>
+  <div class="concl"><span>Posterior = likelihood × prior ÷ evidence</span></div>
+</section>
+
+<section class="slide" id="s-cudl2c">
+  <h2>One word at a time</h2>
+  <div class="body">
+    <p>Each posterior becomes the prior for the next word</p>
+    <m-bars style="height:380px" unit="%" max="100" aria-label="Probability that the mail is spam. 20 percent before reading, 50 percent after the word free, 95 percent after the word winner">
+      <script type="application/json">{"series": [{"label": "P(spam)"}], "groups": [
+        {"label": "Before reading", "value": 20, "tone": "muted"},
+        {"label": "+ \"free\"\n(4× more common in spam)", "value": 50},
+        {"label": "+ \"winner\"\n(20× more common in spam)", "value": 95, "tone": "emph"}
+      ]}</script>
+    </m-bars>
+  </div>
+  <div class="concl"><span>Evidence moves the belief step by step: 20% → 50% → 95%</span></div>
+</section>
+
+<section class="slide" id="s-in5zgm">
+  <h2>Prior, evidence, posterior</h2>
+  <div class="body">
+    <m-flow style="height:380px" size="30" aria-label="Start from the prior, weigh it by how much more common the evidence is in spam, and get the posterior. The posterior becomes the prior for the next piece of evidence">
+      <script type="application/json">{"nodes": [
+        {"id": "a", "label": "Prior\nhow common spam is", "x": 0, "y": 10, "w": 340, "h": 330, "step": 1},
+        {"id": "b", "label": "Evidence\nhow much more common\nthe word is in spam", "x": 422, "y": 10, "w": 340, "h": 330, "step": 2, "tone": "term"},
+        {"id": "c", "label": "Posterior\nthe updated belief", "x": 844, "y": 10, "w": 340, "h": 330, "step": 3, "tone": "emph"}
+      ], "edges": [{"from": "a", "to": "b", "step": 2}, {"from": "b", "to": "c", "step": 3}]}</script>
+    </m-flow>
+    <p class="note" data-step="4">Word by word, as here, assumes the words appear independently (the "naive Bayes" filter)</p>
+  </div>
+  <div class="concl"><span>Never judge the evidence alone: start from the prior</span></div>
+</section>
+
+</div>
+</body>
+</html>

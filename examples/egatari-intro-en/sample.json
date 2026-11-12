@@ -1,0 +1,44 @@
+{
+  "v": 1,
+  "request": "Make a one-minute introduction to Egatari for people who have never heard of it, in 6 slides: figures build in the order you speak, slides and a book in one file, the quality check fixes what the AI wrote, and it opens in any browser. One point per slide. Mark example numbers as fictional, and add a short book.",
+  "category": "business",
+  "subcategory": "intro",
+  "theme": "default",
+  "parts": [
+    "m-bars",
+    "m-cards",
+    "m-kpi"
+  ],
+  "structure": [
+    {
+      "heading": "Visuals narrate. You pass it on.",
+      "point": "Cover: the name and a one-line description"
+    },
+    {
+      "heading": "Figures build in the order you speak",
+      "point": "A report as the example: number cards, then bars, step by step (fictional numbers)"
+    },
+    {
+      "heading": "Slides and a book, in one file",
+      "point": "Two cards: the side you show and the side you read"
+    },
+    {
+      "heading": "The AI need not get it right the first time",
+      "point": "A quality-check finding, fixed in one round"
+    },
+    {
+      "heading": "Anywhere there is a browser",
+      "point": "One file that opens in a browser; ways to use it"
+    },
+    {
+      "heading": "This introduction was made with Egatari",
+      "point": "This introduction was made with Egatari; where to start"
+    }
+  ],
+  "book": true,
+  "lang": "en",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

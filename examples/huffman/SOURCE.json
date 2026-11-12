@@ -1,0 +1,17 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "path": "lessons/huffman",
+  "files": {
+    "SOURCE.md": "e986dfd512aebf9bb13605e96ec67b14b91dc10c5b11fbaacbcbf36aba2e4c4e",
+    "data/huffman.json": "cb016a20795eabda5c1c3010c08da3838b440a098fbca74d8f623f1076ebcd9a",
+    "data/mh.json": "5e365776f82784d7ff8a36c049c72727e55b6ec36eba8730fdf45df1aad79d51",
+    "data/mh_table.json": "92a924de09a3e8473f87bb9b84ee034a13265646b16705fc8a537bf840a400e4",
+    "deck.html": "21551d27720adf107086f9d9e0e7a55b8bd944c47b115c4e083fbd150d113614",
+    "egatari.json": "ebb998fc1664f230e39312bc22017e163e932d3a5074edb13a7085670dcd494f",
+    "narration.md": "11b437d9279f452e4c96746f3b46dd963aee6013932bbcd0ba0285afd0f3a364",
+    "sample.json": "52f3cce9c016b4dc008fa7473c9e8a37e05bfc0dda8f771dc37b38fc4e54e229",
+    "scripts/make_codes.py": "2c787ad0041f82c88055782e66cb9aa52b78e7a77702cade57daffcf040684e7"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

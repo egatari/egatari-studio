@@ -1,0 +1,61 @@
+{
+ "x": {
+  "lo": "急がない",
+  "hi": "急ぐ"
+ },
+ "y": {
+  "lo": "重要度が低い",
+  "hi": "重要度が高い"
+ },
+ "quads": {
+  "tr": "すぐ行う",
+  "tl": "計画して行う",
+  "br": "短く済ませる",
+  "bl": "見送る",
+  "fill": "tr"
+ },
+ "items": [
+  {
+   "label": "個人情報の扱い",
+   "x": 0.8,
+   "y": 0.9,
+   "anchor": "left",
+   "tone": "term"
+  },
+  {
+   "label": "新システムの操作",
+   "x": 0.9,
+   "y": 0.6,
+   "anchor": "left",
+   "tone": "term"
+  },
+  {
+   "label": "電話の応対",
+   "x": 0.3,
+   "y": 0.8,
+   "anchor": "right",
+   "tone": "term"
+  },
+  {
+   "label": "文書の書き方",
+   "x": 0.2,
+   "y": 0.6,
+   "anchor": "right",
+   "tone": "term"
+  },
+  {
+   "label": "年末の事務",
+   "x": 0.7,
+   "y": 0.3,
+   "anchor": "left",
+   "tone": "term"
+  },
+  {
+   "label": "表計算の小技",
+   "x": 0.3,
+   "y": 0.2,
+   "anchor": "right",
+   "tone": "term"
+  }
+ ]
+}

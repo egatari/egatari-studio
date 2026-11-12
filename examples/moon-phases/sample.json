@@ -1,0 +1,39 @@
+{
+  "v": 1,
+  "request": "中学 3 年の理科で、月の満ち欠けの授業のスライドを作ってください。まず「夕方の西の空の細い月は、どちらが光るか」を予想させ、北極の上から見た図で、光る半分と見える半分の重なりで形が決まることを確かめ、最後に答え合わせをします。",
+  "category": "teaching",
+  "subcategory": "class",
+  "theme": "asagi",
+  "parts": [
+    "m-orbit",
+    "m-predict"
+  ],
+  "structure": [
+    {
+      "heading": "月の満ち欠け",
+      "point": "表紙"
+    },
+    {
+      "heading": "予想：夕方の西の空の月は？",
+      "point": "夕方の西の空の月はどちら側が光るか、予想の投票"
+    },
+    {
+      "heading": "見える形は、2 つの半分の重なり",
+      "point": "光っている半分と、地球から見える半分の重なり"
+    },
+    {
+      "heading": "1 周すると、重なりが変わる",
+      "point": "月が 1 周すると重なりが変わり、形が変わる"
+    },
+    {
+      "heading": "答え：右側が光る細い月",
+      "point": "答え合わせ：右側が光る細い月。形は並びで決まる"
+    }
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

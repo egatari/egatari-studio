@@ -1,0 +1,44 @@
+{
+  "v": 1,
+  "request": "Egatari を初めて知る人向けに、1 分で分かる紹介のスライドを 6 枚で作ってください。話す順に図が出ること、スライドと本が 1 つのファイルに入っていること、AI の下書きを品質チェックが直すこと、ブラウザだけで開けることを、1 枚に 1 つずつ。数字の例は架空と明記し、短い本も付けてください。",
+  "category": "business",
+  "subcategory": "intro",
+  "theme": "default",
+  "parts": [
+    "m-bars",
+    "m-cards",
+    "m-kpi"
+  ],
+  "structure": [
+    {
+      "heading": "絵が語り、人へ伝える",
+      "point": "表紙。名前の由来と一言の説明"
+    },
+    {
+      "heading": "話す順に、図が組み上がる",
+      "point": "報告を例に、数字の札から棒グラフへステップで出す（架空の数字）"
+    },
+    {
+      "heading": "スライドと本が、1 つに",
+      "point": "見せる面と読む面の 2 枚の札"
+    },
+    {
+      "heading": "AI が一度で仕上げなくても大丈夫",
+      "point": "品質チェックの指摘と、1 回のやり取りで通った例"
+    },
+    {
+      "heading": "ブラウザがあれば、どこでも",
+      "point": "ブラウザだけで開ける 1 ファイル。使い方の札"
+    },
+    {
+      "heading": "この紹介も、Egatari で作った",
+      "point": "この紹介も Egatari で作った。始め方への案内"
+    }
+  ],
+  "book": true,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

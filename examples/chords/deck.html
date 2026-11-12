@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="murasaki">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>和音のしくみ</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-pef6ft">
+  <div class="venue">音楽（中学 1 年）・音のしくみ</div>
+  <h1>和音のしくみ</h1>
+  <div class="au">鍵盤で数えて、耳で確かめる</div>
+</section>
+
+<section class="slide" id="s-xb6dox">
+  <h2>ド・ミ・ソを重ねる</h2>
+  <div class="body">
+    <m-keyboard style="height:440px" aria-label="鍵盤でド、ミ、ソを 1 つずつ鳴らし、最後に 3 つを同時に鳴らす">
+      <script type="application/json">{"range": "C4-C5", "names": "solfa", "steps": [
+        {"keys": ["C4"], "label": "ド"},
+        {"keys": ["E4"], "label": "ミ"},
+        {"keys": ["G4"], "label": "ソ"},
+        {"keys": ["C4", "E4", "G4"], "label": "3 つを同時に：和音"}
+      ]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>高さの違う音を同時に鳴らしたものが和音</span></div>
+</section>
+
+<section class="slide" id="s-krguku">
+  <h2>間の数を、半音で数える</h2>
+  <div class="body">
+    <m-keyboard style="height:440px" aria-label="ドからミまでは半音 4 つ、ミからソまでは半音 3 つ。黒い鍵盤も数える">
+      <script type="application/json">{"range": "C4-C5", "names": "solfa", "steps": [
+        {"keys": ["C4", "C#4", "D4", "D#4", "E4"], "t": [0, 0.4, 0.8, 1.2, 1.6], "label": "ド→ミ：半音 4 つ"},
+        {"keys": ["E4", "F4", "F#4", "G4"], "t": [0, 0.4, 0.8, 1.2], "label": "ミ→ソ：半音 3 つ"}
+      ]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>ド・ミ・ソは、下から「4 つ・3 つ」の形</span></div>
+</section>
+
+<section class="slide" id="s-bh5oi4">
+  <h2>同じ形のまま、ずらす</h2>
+  <div class="body">
+    <m-keyboard style="height:440px" aria-label="4 つ・3 つの形のまま、ドミソからファラド、ソシレへずらす">
+      <script type="application/json">{"range": "C4-E5", "names": "solfa", "steps": [
+        {"keys": ["C4", "E4", "G4"], "label": "ド・ミ・ソ（4・3）"},
+        {"keys": ["F4", "A4", "C5"], "label": "ファ・ラ・ド（4・3）"},
+        {"keys": ["G4", "B4", "D5"], "label": "ソ・シ・レ（4・3）"}
+      ]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>形が同じなら、どこから始めても同じ明るい響き</span></div>
+</section>
+
+<section class="slide" id="s-glwnct">
+  <h2>形を変えると、響きが変わる</h2>
+  <div class="body">
+    <m-keyboard style="height:440px" aria-label="ド・ミ・ソは 4 つ・3 つで明るい響き。レ・ファ・ラは 3 つ・4 つで暗い響き">
+      <script type="application/json">{"range": "C4-C5", "names": "solfa", "steps": [
+        {"keys": ["C4", "E4", "G4"], "label": "ド・ミ・ソ（4・3）：明るい"},
+        {"keys": ["D4", "F4", "A4"], "label": "レ・ファ・ラ（3・4）：暗い"}
+      ]}</script>
+    </m-keyboard>
+  </div>
+  <div class="concl"><span>4・3 は長三和音、3・4 は短三和音</span></div>
+</section>
+
+<section class="slide" id="s-ejrhwl">
+  <h2>楽譜で見る：同じ形が並ぶ</h2>
+  <div class="body">
+    <m-score style="height:420px" names="solfa" aria-label="ド・ミ・ソ、ファ・ラ・ド、ソ・シ・レ、ド・ミ・ソの和音を 1 つずつ鳴らす楽譜。どれも音符が団子のように 3 つ重なる">
+      <script type="application/json">{"abc": "X:1\nM:4/4\nL:1/2\nQ:1/4=80\nK:C\n[CEG] [FAc] | [GBd] [CEG] |]"}</script>
+    </m-score>
+  </div>
+  <div class="concl"><span>どの和音も、3 つとも線の上か、3 つとも間に並ぶ</span></div>
+</section>
+
+</div>
+</body>
+</html>

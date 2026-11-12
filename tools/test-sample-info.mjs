@@ -23,7 +23,7 @@ import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText,
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
-import { EXAMPLES, readSample, buildExamples } from './examples-portable.mjs';
+import { FROM_SAMPLE as EXAMPLES, readSample, buildExamples } from './examples-portable.mjs';   // 「このサンプルを参考に作る」に使えるもの（パーツ図鑑は再生だけ）
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -37,7 +37,8 @@ console.log(`free plan limit: ${PACK_CAP_KB.free} KB`);
 const builtTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-sample-built-'));
 let BUILT;
 try { BUILT = new Map((await buildExamples(builtTmp)).map((x) => [x.name, x])); } finally { fs.rmSync(builtTmp, { recursive: true, force: true }); }
-const BOOKS = ['heikin-chuouchi', 'rashomon'];
+// 本のあるサンプル：フォルダに article/ か article.md がある（sample.json の book: true と照らす）
+const BOOKS = EXAMPLES.filter((n) => fs.existsSync(path.join(ROOT, 'examples', n, 'article')) || fs.existsSync(path.join(ROOT, 'examples', n, 'article.md')));
 for (const name of EXAMPLES) {
   const dir = path.join(ROOT, 'examples', name);
   let s = null;
@@ -197,7 +198,7 @@ ok(f.dropped.join() === 'x-a' && !f.shortened.length && f.step1Shortened.length 
 // 本のある 2 つ（heikin-chuouchi・rashomon）は sample.json が book: true で、本のない指示（book: false にしたもの）と比べる。
 // ほかのサンプルは、フォルダの写しに article/ を足し、sample.json を book: true にして比べる
 ok(BOOKS.every((n) => readSample(n).book === true) && EXAMPLES.filter((n) => !BOOKS.includes(n)).every((n) => readSample(n).book === false),
-  `the samples with a book are ${BOOKS.join(' and ')} (sample.json book: true); the others have none`);
+  `the samples with a book (${BOOKS.join(', ')}) have sample.json book: true; the others have book: false`);
 const bookTmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-sample-book-'));
 try {
   for (const name of EXAMPLES) {
