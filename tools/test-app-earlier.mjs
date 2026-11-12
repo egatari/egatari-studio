@@ -77,7 +77,7 @@ const FILES = {
   mine: await editIx((x) => { x.generator = { name: GENERATOR, version: VERSION }; }),
   packed: packedHtml,
 };
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'inherit' });
 const VERSIONS = JSON.stringify({ root: '0.6.0', versions: ['0.6.0', '0.4.8', '0.4.7', '0.4.1'] });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json' };
 // /site/：versions.json のあるサイトの根（studio.egatari.org の形）。/nosite/：versions.json のないところ（開発のサーバー・ほかの置き場所の形）

@@ -126,7 +126,8 @@ const pother = await (async () => {
 const fixture = (name) => fixtures.find((f) => f.name === name);
 
 // ---------------------------------------------------------------- 1. 組んで配る
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'inherit' });
+// サンプル（dist/examples）を使うのは 2/2 だけ（12 のサンプルの一覧）。1/2 は組まない（17 本で 70 秒前後、macOS の CI ではその 2〜3 倍）
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, ...(PART === 1 ? ['--no-examples'] : [])], { stdio: 'inherit' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain', '.md': 'text/plain', '.wav': 'audio/wav', '.m4a': 'audio/mp4' };
 let fontFetches = 0;
 // dist/ をサイトの根（https://studio.egatari.org/ の形）と下のパス /egatari-studio/（https://egatari.github.io/egatari-studio/ の形）の両方で配る

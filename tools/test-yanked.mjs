@@ -76,7 +76,7 @@ const pold = await buildPortable(deckDir('portable-old', pinAll(OLD)), { out: pa
 const recorded = JSON.parse(pold.index ? JSON.stringify(pold.index) : '{}').components || [];
 ok(recorded.length === used.length && recorded.every((c) => c.version === OLD), 'single file: records the yanked version (as the build used it) ' + JSON.stringify(recorded.map((c) => c.name + '@' + c.version)));
 const DIST = path.join(work, 'dist');
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'ignore' });
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'ignore' });
 const cspOf = (html) => (/<meta http-equiv="Content-Security-Policy" content="([^"]+)"/.exec(html) || [])[1] || '';
 for (const f of ['index.html', 'editor.html']) {
   const csp = cspOf(fs.readFileSync(path.join(DIST, f), 'utf8'));

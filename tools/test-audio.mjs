@@ -91,7 +91,7 @@ const pmin = await buildPortable(path.join(PDIR, 'deck.html'), { out: path.join(
 }
 
 // ---------------------------------------------------------------- 組んで配る
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single'], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single', '--no-examples'], { stdio: 'inherit' });
 // MP3 のエンコーダ（LGPL の LAME）は app.js に入れず、npm のファイルを手を加えずに vendor/lame-wasm/ に置く（LICENSE も）
 {
   const v = path.join(DIST, 'vendor', 'lame-wasm'), src = path.join(ROOT, 'node_modules', 'lame-wasm');

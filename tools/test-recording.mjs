@@ -78,7 +78,7 @@ const iCue = keys.indexOf(CUE2);
 ok(MIXI > iCue && segs[MIXI].bounds.length === 2 && segs[MIXI].bounds[0].type === 'mark' && segs[MIXI].bounds[1].type === 'cue', 'fixture: a step with a mark and a cue');
 ok(iCue > 1 && NONE0 >= 0 && keys.indexOf(MARK1) >= 0, `fixture: ${keys.length} steps; cue step ${CUE2} (#${iCue}), mark step ${MARK1}`);
 
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single'], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single', '--no-examples'], { stdio: 'inherit' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.wav': 'audio/wav' };
 const srv = http.createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);

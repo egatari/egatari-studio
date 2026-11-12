@@ -47,7 +47,7 @@ giveIds(DECK_DIR);
 const NARR = fs.readFileSync(path.join(DECK_DIR, 'narration.md'), 'utf8').replaceAll('{θ|シータ}', 'θ')
   .replace('[1] 倍率を 0.1 から 0.5 に上げると、損失は速く下がります。', '[1] In SQL, the rate θ is a column.');
 const DIST = path.join(work, 'dist');
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single'], { stdio: 'ignore' });
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-single', '--no-examples'], { stdio: 'ignore' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json' };
 const srv = http.createServer((req, res) => {
   const q = decodeURIComponent(new URL(req.url, 'http://x').pathname);

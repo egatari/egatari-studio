@@ -37,7 +37,7 @@ fs.writeFileSync(path.join(src, FORMAT.CONFIG_FILE), JSON.stringify({ docId: DOC
 const ega = (await buildPortable(path.join(src, 'deck.html'), { out: path.join(work, 'lesson' + FORMAT.FILE_EXT) })).html;
 const title = ega.match(/<title>([^<]*)<\/title>/)[1];
 
-execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST], { stdio: 'inherit' });
+execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'inherit' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json' };
 const srv = http.createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
