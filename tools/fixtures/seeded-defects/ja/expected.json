@@ -13,7 +13,7 @@
     "R-balance": ["balance"],
     "R-narr-steps": ["narrMissing"],
     "R-formula": ["narrFormula"],
-    "R-reading": ["readingExpr"],
+    "R-reading": ["readingExpr", "readingGap"],
     "R-dialogue": ["turnLong"],
     "R-marks": ["markMissing"],
     "R-steps": ["predictAnswerWithCount"],

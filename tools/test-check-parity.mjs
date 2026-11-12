@@ -48,7 +48,7 @@ const WANT = {
   'en-stale': ['audioStale', 'rawMath'],
   'ja-flow': ['compLayout'],
   'ja-geometry': GEO,
-  'ja-mix': ['desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing', 'predictAnswerWithCount', 'predictAnswerNeverShown'],
+  'ja-mix': ['readingGap', 'desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing', 'predictAnswerWithCount', 'predictAnswerNeverShown'],
 };
 
 // ---------------------------------------------------------------- 0. 許す一覧そのもの

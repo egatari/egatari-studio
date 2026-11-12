@@ -6,6 +6,10 @@
 //     （{Q*|キュースター}、{x′|エックスプライム}、{x_0|…}、{x^2|…}、{θ̂|シータハット}、{\hat{\theta}|…}、{\theta|シータ}）。
 //     x に演算子（= + − × / < > ^ _ \ など、数字や記号の隣の -）があれば 'operator'（式を読み上げている）、
 //     記号が 2 つ以上（θとη、a, b、x y）なら 'several'。f(x) の形（記号の後ろに括弧で 1 つ）は 1 つとみなす
+//   readingGaps(segs)             台本の全体で、読みを付けた語が読みなしで出てくる所（backlog #203）→ [{slideKey, stepKey, line, t, reading, first}]
+//     読みは出てくる所ごとに当たる（プレーヤーは yomi.yaml を使わない）。1 か所に {下人|げにん} と付けても、ほかの「下人」は TTS が「したひと」と読みうる。
+//     1 つの語に読みが 1 つだけのときに限る（読みが 2 つ以上なら文脈で変わる語）。漢字・かなの 1 字は文脈で読みが変わるので見ない。
+//     英字・数字・ギリシャ文字で始まるか終わる語は、語の途中の一致を数えない（x と max）。式（演算子のある語）と $…$ の中は見ない。段階ごとに 1 語 1 回
 //   stepKeysOf({max, cstep, static}) 段階の鍵の集まり（kit/deck.js の stepKey と同じ：cstep の段階は concl）
 //   orphanSteps(segs, slides)     narration.md の段階のうち、スライドにないもの → [{slideKey, stepKey, line, valid}]
 //     slides：[{key, max, cstep, static}]（組んだデッキの DECK.slides の _key・_max・_cstep）。どのスライドにも合わない節は build が知らせる
@@ -53,6 +57,39 @@ export function readingProblems(raw) {
       if (runs.length >= 2 || (runs.length === 1 && /[\s,、，・]/.test(x.trim()))) why = 'several';
     }
     if (why) out.push({ display, reading, why, text: m[0] });
+  }
+  return out;
+}
+
+export function readingGaps(segs) {
+  const read = new Map();   // 語 → {readings, first（最初に読みを付けた段階の行）}
+  for (const seg of segs) for (const t of seg.turns) for (const m of stripNotes(t.raw).matchAll(READING)) {
+    const d = m[1].trim(), r = m[2].trim();
+    if (/^(mark:|cue$)/.test(d)) continue;
+    if (!read.has(d)) read.set(d, { readings: new Set(), first: seg.line });
+    read.get(d).readings.add(r);
+  }
+  const EDGE = /[A-Za-z0-9\u0370-\u03FF]/;
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const terms = [...read].filter(([d, v]) => v.readings.size === 1 && !OPS.test(bare(d)) && !([...d].length < 2 && !EDGE.test(d)))
+    .sort((a, b) => b[0].length - a[0].length)   // 長い語から（「下人」を見た後の「人」の二重を避ける）
+    .map(([d, v]) => ({ d, reading: [...v.readings][0], first: v.first,
+      re: new RegExp(`${EDGE.test(d[0]) ? '(?<![A-Za-z0-9_\\u0370-\\u03FF])' : ''}${esc(d)}${EDGE.test(d[d.length - 1]) ? '(?![A-Za-z0-9_\\u0370-\\u03FF])' : ''}`, 'g') }));
+  const out = [];
+  if (!terms.length) return out;
+  for (const seg of segs) {
+    const seen = new Set();
+    for (const t of seg.turns) {
+      let text = stripNotes(String(t.raw)).replace(/\$[^$]*\$/g, ' ').replace(READING, ' ').replace(/\{cue\}/g, ' ');
+      for (const x of terms) {
+        x.re.lastIndex = 0;
+        if (!x.re.test(text)) continue;
+        text = text.replace(x.re, ' ');
+        if (seen.has(x.d)) continue;
+        seen.add(x.d);
+        out.push({ slideKey: seg.slideKey, stepKey: seg.stepKey, line: seg.line, t: x.d, reading: x.reading, first: x.first });
+      }
+    }
   }
   return out;
 }

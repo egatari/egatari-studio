@@ -13,7 +13,7 @@ export const IN_EDITOR = Object.freeze([
   'slideId', 'legacyDataKey', 'legacyIndex', 'legacyColorClass', 'legacyStepAttr', 'legacyLectureMode', 'colorOutside', 'narrHeadingDiffers',
   'narrNote', 'narrFormula', 'turnLong', 'narrLang', 'predictAnswerWithCount', 'predictAnswerNeverShown',
   // app/main.js・app/llm.js（作業場所の原稿と台本から）
-  'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral',
+  'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral', 'readingGap',
   // 体裁の検査（kit/core/layout-scan.mjs。bodyBottom・bodyRight は EDITOR_ALIAS）
   'titleLong', 'titleLongEn', 'titleColon', 'tateTitle', 'conclLong', 'conclLongEn', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft',
   'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak',

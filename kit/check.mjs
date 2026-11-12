@@ -46,7 +46,7 @@ import { excludedReason } from './core/portable.mjs';
 import { FORMAT } from './core/format.mjs';
 import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attachments.mjs';
 import { normalizeKey, noteProblems } from './narration.mjs';
-import { readingProblems, orphanSteps, orphanDetail, formulaLike, formulaText, narrationLang, textLang } from './core/narration-lint.mjs';
+import { readingProblems, readingGaps, orphanSteps, orphanDetail, formulaLike, formulaText, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
 import { partReportFinding, message, where, ruleOf } from './check-messages.mjs';
 import { account, ruleSetText, factsFromSource } from './core/check-rules.mjs';
@@ -604,6 +604,11 @@ for (const seg of built.segs) {
   for (const t of seg.turns) for (const p of readingProblems(t.raw)) {
     report(i, 'warn', p.why === 'operator' ? 'readingExpr' : 'readingSeveral', { t: p.text, line: seg.line }, seg.stepKey);
   }
+}
+// 読みを付けた語が、ほかの所に読みなしで出てくる（backlog #203。読みは出てくる所ごとに当たる）
+for (const g of readingGaps(built.segs)) {
+  const i = meta.findIndex((m) => m.key === g.slideKey);
+  if (i >= 0) report(i, 'warn', 'readingGap', { t: g.t, reading: g.reading, line: g.line, first: g.first }, g.stepKey);
 }
 
 // ================================================================ C. パレットのコントラスト

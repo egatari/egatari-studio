@@ -56,7 +56,7 @@ export const RULES = Object.freeze([
   // 台本がない教材にも、ステップごとに narrMissing が出る（台本を書くこと自体がこの決まり）。だから外さない。言語と確かめ直しの知らせも台本なしで出る
   { id: 'R-narr-steps', kind: 'authoring', phase: 'B 台本', codes: ['narrMissing', 'narrOrphan', 'narrNote', 'narrLang', 'narrRecheck'] },
   { id: 'R-formula', kind: 'authoring', phase: 'B 台本', codes: ['narrFormula'], applies: needs('narration', 'noNarration') },
-  { id: 'R-reading', kind: 'authoring', phase: 'B 台本', codes: ['readingExpr', 'readingSeveral'], applies: needs('narration', 'noNarration') },
+  { id: 'R-reading', kind: 'authoring', phase: 'B 台本', codes: ['readingExpr', 'readingSeveral', 'readingGap'], applies: needs('narration', 'noNarration') },
   { id: 'R-dialogue', kind: 'authoring', phase: 'B 台本', codes: ['turnLong'], applies: needs('narration', 'noNarration') },
   { id: 'R-marks', kind: 'authoring', phase: 'F 強調', codes: ['markMissing'], applies: needs('marks', 'noMarks') },
   { id: 'R-steps', kind: 'authoring', phase: 'E タイムライン', codes: ['predictAnswerWithCount', 'predictAnswerNeverShown'], applies: (f) => ((f.parts || []).includes('m-predict') ? null : 'noParts') },

@@ -166,6 +166,8 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
       ['ステップの印は `[0]`', 'ステップの指定は `[0]`'],
       ['**ないステップの印は書かない**', '**ないステップの指定は書かない**'],
       ['1 枚のステップは 5 前後まで', '1 枚のステップの数は 5 前後まで'],
+      // v0.6.11：読みは書いた所にだけ当たる（backlog #203）
+      ['記号ごとに読みを付け、関係は言葉で言う）', '記号ごとに読みを付け、関係は言葉で言う）。読みは書いた所にだけ当たる：同じ語がまた出てくるなら、出てくる所ごとに付ける（`{下人|げにん}` を言う行すべてに）'],
     ];
     const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);
     const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow);

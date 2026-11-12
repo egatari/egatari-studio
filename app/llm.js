@@ -29,7 +29,7 @@ import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, BATCH } from '../kit/core/llm-outline.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { buildFixRequest, cutOffRequest, rulesFor } from '../kit/core/llm-fix.mjs';
-import { readingProblems, orphanDetail } from '../kit/core/narration-lint.mjs';
+import { readingProblems, readingGaps, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { message, MESSAGES, ruleOf } from '../kit/check-messages.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { cleanErrorText } from '../kit/core/error-text.mjs';
@@ -1508,7 +1508,14 @@ export function setupLlm(app) {
     if (!text) return [];
     const idx = new Map((S.slides || []).map((s, i) => [s.key, i]));
     const out = [];
-    for (const seg of parseNarration(text)) {
+    const segs = parseNarration(text);
+    // 読みを付けた語が、ほかの所に読みなしで出てくる（kit/core/narration-lint.mjs の readingGaps。コマンド版と同じ）
+    for (const g of readingGaps(segs)) {
+      if (!idx.has(g.slideKey)) continue;
+      const i = idx.get(g.slideKey);
+      out.push({ i, title: String((S.slides[i] && (S.slides[i].heading || S.slides[i].key)) || ''), sev: 'warn', code: 'readingGap', arg: { t: g.t, reading: g.reading, line: g.line, first: g.first } });
+    }
+    for (const seg of segs) {
       const i = idx.has(seg.slideKey) ? idx.get(seg.slideKey) : null;
       for (const t of seg.turns) for (const p of readingProblems(t.raw)) {
         out.push({ i, title: i === null ? '' : String((S.slides[i] && (S.slides[i].heading || S.slides[i].key)) || ''), sev: 'warn', code: p.why === 'operator' ? 'readingExpr' : 'readingSeveral', arg: p.text });

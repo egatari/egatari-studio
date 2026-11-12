@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { message } from '../kit/check-messages.mjs';
 import { cleanErrorText, componentError } from '../kit/core/error-text.mjs';
-import { readingProblems, orphanSteps, orphanDetail } from '../kit/core/narration-lint.mjs';
+import { readingProblems, readingGaps, orphanSteps, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { extractBlocks } from '../kit/core/llm-import.mjs';
 import { buildFixRequest, cutOffRequest } from '../kit/core/llm-fix.mjs';
@@ -75,6 +75,13 @@ const SH = ctx.DECK.shape;
     const p = readingProblems(s);
     ok(p.length === 1 && p[0].why === why, `reading: ${s} → ${why}`);
   }
+}
+{
+  // 読みを付けた語が、ほかの所に読みなしで出てくる（backlog #203。rashomon の「下人」：最初だけ {下人|げにん}、ほかを TTS が「したひと」と読んだ）
+  const segs = parseNarration('## a {#s-a}\n[0] {下人|げにん}が雨やみを待つ。\n[1] 下人は考えた。また下人は。\n[2] maxとxと{x|エックス}。\n[3] $x$ と書く。{生|なま}と{生|せい}、生きる。人がいる。\n');
+  const g = readingGaps(segs).map((x) => `${x.stepKey}:${x.t}:${x.reading}:${x.first}`);
+  ok(JSON.stringify(g) === JSON.stringify(['1:下人:げにん:2', '2:x:エックス:4']), 'reading gaps: a bare 下人 in a later step (once per step) and a bare x, not x inside max, not $x$, not a term with two readings, not one kanji: ' + JSON.stringify(g));
+  ok(readingGaps(parseNarration('## a {#s-a}\n[0] {下人|げにん}と{下人|げにん}。\n')).length === 0, 'reading gaps: none when every occurrence has its reading');
 }
 {
   const text = '## a {#s-a}\n[0] 一つ目。\n[1] Expert: 二つ目。\n    Novice: はい。\n[3] Expert: 段階の外。\n    Novice: そうですね。\n\n[concl] 結論。\n';
