@@ -26,6 +26,7 @@
 //
 // 組む本体は kit/core/build-core.mjs（ブラウザの編集アプリと共有）。ここは Node の読み書き・字の絞り込み（fonttools）・音声の圧縮（ffmpeg）・CLI
 import { cliHints } from './cli-hint.mjs';
+import { plural } from './core/plural.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -372,7 +373,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const rd = (p, max) => { try { return readRegularText(p, { max }).text; } catch { return null; } };
       const left = draftLeftovers(rd(src, READ_LIMITS.source), rd(path.join(path.dirname(src), 'narration.md'), READ_LIMITS.narration));
       const lines = leftoverLines(left);
-      if (lines.length) { console.error(`portable: warning: ${lines.length} template leftover(s); the file is written anyway / 雛形のままのところ（書き出しはする）:`); for (const l of lines) console.error('  ' + l); }
+      if (lines.length) { console.error(`portable: warning: ${lines.length} template ${plural(lines.length, 'leftover')}; the file is written anyway / 雛形のままのところ（書き出しはする）:`); for (const l of lines) console.error('  ' + l); }
     }
     let r;
     try { r = await buildPortable(src, { ...opts }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }
@@ -389,7 +390,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (pkg) {
       const c = completionRule(pkg.completion);
       const rule = c.kind === 'end' ? 'the last step is reached' : c.kind === 'fraction' ? `${c.percent}% of the steps are reached` : 'every step is reached';
-      console.log(`scorm: SCORM 1.2 package (imsmanifest.xml + index.html), ${pkg.steps} steps, ${(pkg.zip.length / 1024).toFixed(0)} KB; completed when ${rule}${c.played ? ' (played on the slides; reading in the book does not count)' : ''}`);
+      console.log(`scorm: SCORM 1.2 package (imsmanifest.xml + index.html), ${pkg.steps} ${plural(pkg.steps, 'step')}, ${(pkg.zip.length / 1024).toFixed(0)} KB; completed when ${rule}${c.played ? ' (played on the slides; reading in the book does not count)' : ''}`);
     }
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     if (r.stats.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）

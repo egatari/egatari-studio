@@ -11,6 +11,7 @@
 //   attachmentName(path)                ダウンロードの名前（パスの最後。危ない字を _ に）
 // problems：{code, path?, …}。code は kit/check-messages.mjs の attach…（品質チェックと書き出しの知らせが同じ言葉を使う）
 import { FORMAT } from './format.mjs';
+import { plural } from './plural.mjs';
 import { pathProblem, excludedReason, foldPath } from './portable.mjs';
 import { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS, TITLE_CHARS, DESCRIPTION_CHARS, titleProblem, descriptionProblem, clipChars } from './attach-content.mjs';
 export { inspectAttachment, nameProblem, roleProblem, blocking, kindOfName, roleAllows, attachmentMime, ROLE_KINDS, titleProblem, descriptionProblem, clipChars };
@@ -246,7 +247,7 @@ export function problemText(x) {
     case 'attachPolyglot': return `attachment ${p} is also ${x.also} (a file of two types); not included`;
     case 'attachUnsafe': return `attachment ${p}: ${UNSAFE_TEXT[x.what] || x.what}${x.detail ? ` (${x.detail})` : ''}, not allowed for attachments (§3.8); not included`;
     case 'attachUnchecked': return `attachment ${p} cannot be checked (${x.why}); not included`;
-    case 'attachInjection': return `attachment ${p}: ${x.n} value(s) start with = + - @ or a tab and may be read as formulas by a spreadsheet${x.row ? ` (first at row ${x.row}, column ${x.col})` : x.where ? ` (in ${x.where})` : ''}; check before sharing`;
+    case 'attachInjection': return `attachment ${p}: ${x.n} ${plural(x.n, 'value')} ${x.n === 1 ? 'starts' : 'start'} with = + - @ or a tab and may be read as formulas by a spreadsheet${x.row ? ` (first at row ${x.row}, column ${x.col})` : x.where ? ` (in ${x.where})` : ''}; check before sharing`;
     case 'attachPrivate': return `attachment ${p} seems to contain a ${x.what}; check before sharing`;
     case 'attachBadDescription': return `attachment ${p}: the description ${x.why}; it is left out`;
     case 'attachNoRole': return `attachment ${p} has no role in ${FORMAT.CONFIG_FILE} (${ATTACH_ROLES.join(', ')}); it is included but not listed for readers`;

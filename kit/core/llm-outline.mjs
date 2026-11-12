@@ -16,6 +16,7 @@
 //   nextBatch({rows, next}) → {from, to, size} | null（1 から数える。終わっていれば null）。remaining({rows, next}) → 残りの枚数
 //   batchRequest({rows, from, to, deck, narration, first, lang}) → 文字列
 import { slideChunks } from './slide-ops.mjs';
+import { plural } from './plural.mjs';
 import { narrSections } from './llm-import.mjs';
 import { parseHeading } from './narration-core.mjs';
 import { updateConfig, merge } from './config-file.mjs';
@@ -54,8 +55,8 @@ const L = {
       'In one ```outline block, write a Markdown table with the columns “#”, “Heading” and “Point (one line)”, one row per slide, every slide in order. Outside the block, at most a one-line note.',
     tableHead: '| # | Heading | Point |',
     batchHead: (a, b) => `# Please make slides ${a}–${b} of the outline`,
-    batchFirst: (a, b, n) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} slides. The standards (R-…) and the output format (R-output) are those of the instructions for the AI; write the whole deck.html from <!DOCTYPE html>. The other slides are requested later.`,
-    batchNext: (a, b, n, x) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} slides. They go ${x} of the current lesson. The standards and the output format are those of the instructions for the AI used to make it.`,
+    batchFirst: (a, b, n) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} ${plural(b - a + 1, 'slide')}. The standards (R-…) and the output format (R-output) are those of the instructions for the AI; write the whole deck.html from <!DOCTYPE html>. The other slides are requested later.`,
+    batchNext: (a, b, n, x) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} ${plural(b - a + 1, 'slide')}. They go ${x} of the current lesson. The standards and the output format are those of the instructions for the AI used to make it.`,
     where: (x) => `after slide ${x.n}, “${x.h}”,`,
     outlineList: '## The outline (all of it; do not send it back)', range: (a, b) => `← this time: ${a}–${b}`,
     near: '## The slide before the new ones (for reference; do not send it back)',

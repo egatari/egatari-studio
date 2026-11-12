@@ -329,7 +329,7 @@ const OUT = path.join(work, 'a' + FORMAT.FILE_EXT);
   const inFiles = (n) => 'attachments/' + n in r.files;
   ok(!inFiles('js.pdf') && !inFiles('table.csv') && !inFiles('macro.xlsx') && !inFiles('tool.exe') && inFiles('inject.csv') && r.index[KEY].some((e) => e.path === 'attachments/inject.csv') &&
     r.warnings.some((w) => /js\.pdf": the PDF contains JavaScript, not allowed for attachments \(§3\.8\); not included/.test(w)) && r.warnings.some((w) => /table\.csv": a \.csv file is not allowed for the role pdf/.test(w)) &&
-    r.warnings.some((w) => /macro\.xlsx": the document contains macros/.test(w)) && r.warnings.some((w) => /tool\.exe" is an executable \(by its name\)/.test(w)) && r.warnings.some((w) => /inject\.csv": 1 value\(s\) start with/.test(w)),
+    r.warnings.some((w) => /macro\.xlsx": the document contains macros/.test(w)) && r.warnings.some((w) => /tool\.exe" is an executable \(by its name\)/.test(w)) && r.warnings.some((w) => /inject\.csv": 1 value starts with/.test(w)),
     'cli: a PDF with JavaScript, a CSV in the pdf role, an xlsx with macros and an .exe are skipped with a warning naming the rule; a CSV with formula injection is packed with a warning');
   const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), dk, '--json', '--lang', 'en'], { encoding: 'utf8' });
   const jc = JSON.parse(rc.stdout);

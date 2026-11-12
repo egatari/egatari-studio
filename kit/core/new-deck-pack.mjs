@@ -21,6 +21,7 @@ import { partsPackOpts, fitPack, fitSample, packSize, fitSize } from './llm-pack
 import { sampleStructureRequest, validateSample } from './sample-info.mjs';
 import { outlineRequest, slideCountOf, OUTLINE_OVER } from './llm-outline.mjs';
 import { CHOOSABLE } from './themes-list.mjs';
+import { plural } from './plural.mjs';
 
 export const REQUEST_WORDS = Object.freeze({
   ja: {
@@ -33,7 +34,7 @@ export const REQUEST_WORDS = Object.freeze({
     sampleBook: '- 本：サンプルには本（読むための本文）もありますが、本は Claude Code で作ります。ここではスライドと台本だけを作ってください',
   },
   en: {
-    lengthReq: (n, u) => (u === 'min' ? `${n} minutes` : `${n} slides`),
+    lengthReq: (n, u) => (u === 'min' ? `${n} ${plural(n, 'minute')}` : `${n} ${plural(n, 'slide')}`),
     langReq: { ja: 'Japanese', en: 'English' },
     speakersReq: { 1: 'one narrator', 2: 'two (an Expert and Novice dialogue)' },
     themeLine: (t) => `- Theme: ${t} (<html data-theme="${t}">)`,

@@ -33,6 +33,7 @@
 // 段 A でできない変更（スライドの原稿が変わった・組んだ教材と原稿が食い違う・場所が見つからない）は ok: false と理由を返す（呼び手は段 B へ）
 import { parse as parseHtml } from 'parse5';
 import { FORMAT } from './format.mjs';
+import { plural } from './plural.mjs';
 import {
   readPortable, sha256Hex, sourceSha256, cmpCodePoint, mimeOf, htmlSafeJson, toBase64, parseJsonStrict, manifestFromAudio, inputHash,
   readableStep, readableStepOrder, extensionsFrom, excludedReason, LIMITS, RE, KNOWN, copyUnknown, validateDeckMeta, isOffset,
@@ -596,7 +597,7 @@ async function run(original, filesIn, opts) {
     // 字の元がない（字体のファイルを持たない編集アプリ）か、元のどの分割ファイルにもない字：断らずに保存し、端末の字体で出る字を名指して知らせる（handoff/font-subset-design-2026-11-05.md の決めごと 3）
     if (missing.length) {
       uncovered = String.fromCodePoint(...missing.sort((a, b) => a - b));
-      warnings.push(`${FONT_FALLBACK_WARN}${missing.length} new character(s) got no font supplement (no font source has them), so they use the fonts of the device that opens the file: ${uncovered}`);
+      warnings.push(`${FONT_FALLBACK_WARN}${missing.length} new ${plural(missing.length, 'character')} got no font supplement (no font source has them), so they use the fonts of the device that opens the file: ${uncovered}`);
     }
     if (add.length) {
       // 分割ファイルの並び（組み立てと同じ：字の種類 → 太さ → 分割の順）。同じファイルを別の太さ・style に使うときはその順

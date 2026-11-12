@@ -192,7 +192,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   ok(req.includes('## Parts used in this lesson') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
   ok((await clip()) === req, 'llm: the fix request is on the clipboard');
   ok(/script \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req), 'llm: the fix request quotes the orphan narration lines');
-  const leadRe = new RegExp(`^Copied \\(${packKb(req).replace('.', '\\.')} KB: \\d+ finding\\(s\\), their standards and the current slides and script\\)\\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\\.$`);
+  const leadRe = new RegExp(`^Copied \\(${packKb(req).replace('.', '\\.')} KB: (?:1 finding|\\d+ findings), their standards and the current slides and script\\)\\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\\.$`);
   ok(leadRe.test(await page.textContent('#fix-lead')) && (await page.getAttribute('#fix-lead', 'role')) === 'status', 'llm: the fix request dialog says the size and where the output goes: ' + await page.textContent('#fix-lead'));
   // ［Copy the fix request］：本文の横の主ボタン。クリップボードが上書きされても何度でも写し直せる
   ok(await page.isVisible('#dlg[open] #fix-copy') && (await page.textContent('#fix-copy')) === 'Copy the fix request' && await page.$eval('#fix-copy', (b) => b.classList.contains('pri')), 'llm: the fix request dialog has a primary “Copy the fix request” button');
@@ -464,7 +464,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent), null, { timeout: scaled(20000) });
     const rev = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
-    ok(rev.includes('## What I want changed\n\nMake the second slide shorter') && rev.includes('## Open notes (comments)') && rev.includes('“3 か月”: Use a bar chart here') && !rev.includes('Already done') && rev.includes('````deck.html') && /1 comment\(s\)/.test(await p.textContent('#paste-copied')),
+    ok(rev.includes('## What I want changed\n\nMake the second slide shorter') && rev.includes('## Open notes (comments)') && rev.includes('“3 か月”: Use a bar chart here') && !rev.includes('Already done') && rev.includes('````deck.html') && /\b1 comment\b(?!s)/.test(await p.textContent('#paste-copied')),
       'llm revise: the fix request has what to change, the open notes (not resolved ones) and the current files');
     await copyAgain(rev, 'Copy the fix request', 'revise');
     await refusedCopy(p, ok, { want: rev, change: '#paste-change2', stepBtn: '#paste-step2-btn', what: 'llm revise step 2', shot: shotDir && path.join(shotDir, 'copy-refused-revise.png') });

@@ -3,6 +3,7 @@
 //   MESSAGES[code] = {rule?, ja(a), en(a)}    a はその知らせの値。rule は規格の名前の文字列か、a から決める関数（ruleOf）
 //   where(lang, {n, id, title, step})         「スライド 3「見出し」（s-k3f9q2）、ステップ 2」 / "Slide 3 “Heading” (s-k3f9q2), step 2"
 import { CLIP_ATTR } from './core/layout-scan.mjs';
+import { plural } from './core/plural.mjs';
 import { catalogueMessage } from './core/parts2.mjs';
 import { DEFAULT_METRICS, limitsOf } from './core/theme-metrics.mjs';
 import { quoteJa } from './core/quote-ja.mjs';
@@ -111,16 +112,16 @@ export const MESSAGES = {
   legacyIndex: { ja: (a) => `見出しも id もないので、スライドの id が位置の「${a.key}」になり、スライドを足すと変わる（${a.line} 行目）：<section> に id を付ける（npm run ids）`, en: (a) => `no heading and no id, so the slide id is the position “${a.key}” and changes when slides are added (line ${a.line}): give the <section> an id (npm run ids)` },
   // 1.0 の語彙にない書き方（format spec §8.0。kit/core/legacy-vocab.mjs）。警告だけ
   legacyColorClass: { ja: (a) => `クラス「${a.what}」は色の名前で、1.0 の語彙にない（${a.n} か所、最初は ${a.line} 行目）：意味のクラス「${a.to}」にする（term は用語・問い、emph は結論・問題、muted は既知のこと）`,
-    en: (a) => `the class “${a.what}” names a colour and is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): use the meaning class “${a.to}” (term for terms and questions, emph for conclusions and problems, muted for known results)` },
+    en: (a) => `the class “${a.what}” names a colour and is not in the 1.0 vocabulary (${a.n} ${plural(a.n, 'place')}, first on line ${a.line}): use the meaning class “${a.to}” (term for terms and questions, emph for conclusions and problems, muted for known results)` },
   legacyStepAttr: { ja: (a) => `${a.what} は 1.0 の語彙にない（${a.n} か所、最初は ${a.line} 行目）：ステップの数と動きは要素の data-step と data-at、線の class="draw"、パーツの steps から決まる（format spec §8.0）。${a.what} を外す`,
-    en: (a) => `${a.what} is not in the 1.0 vocabulary (${a.n} place(s), first on line ${a.line}): the number of steps and the motion come from data-step and data-at on elements, class="draw" on strokes and the steps of parts (format spec §8.0); remove ${a.what}` },
+    en: (a) => `${a.what} is not in the 1.0 vocabulary (${a.n} ${plural(a.n, 'place')}, first on line ${a.line}): the number of steps and the motion come from data-step and data-at on elements, class="draw" on strokes and the steps of parts (format spec §8.0); remove ${a.what}` },
   // テーマの色の語彙の外の色（format spec §8.4。kit/core/color-vocab.mjs）：じかに書いた色（literal）と、相対色で色相を変えた色（hue）。情報だけ（教材は組める。修正依頼には入らない）
   colorOutside: { rule: 'R-colors', ja: (a) => (a.kind === 'hue'
     ? `相対色の構文で色相を変えた色は、役割のない新しい色になる（${a.n} か所、最初は ${a.line} 行目：${a.list}）。テーマの色に揃えるなら、役割の色 var(--emph) などをそのまま使う（淡くするなら color-mix() で役割と --bg を混ぜ、明るさ・不透明度だけを変えるなら色相は h のまま）`
     : `色をじかに書いている（${a.n} か所、最初は ${a.line} 行目：${a.list}）。テーマの色に揃えるなら、テーマの class（term・emph・muted）か変数 var(--fg) var(--term) var(--emph) var(--muted) var(--accent2) var(--line) var(--lit) を使う`),
     en: (a) => (a.kind === 'hue'
-      ? `a colour derived by changing the hue (relative colour syntax) is a new colour without a role (${a.n} place(s), first on line ${a.line}: ${a.list}); to follow the theme, use the role colour as it is (var(--emph) …); to make it lighter, mix the role with --bg in color-mix(), and when only lightness or opacity changes keep the hue h`
-      : `colours are written directly (${a.n} place(s), first on line ${a.line}: ${a.list}); to follow the theme, use its classes (term, emph, muted) or variables var(--fg) var(--term) var(--emph) var(--muted) var(--accent2) var(--line) var(--lit)`) },
+      ? `a colour derived by changing the hue (relative colour syntax) is a new colour without a role (${a.n} ${plural(a.n, 'place')}, first on line ${a.line}: ${a.list}); to follow the theme, use the role colour as it is (var(--emph) …); to make it lighter, mix the role with --bg in color-mix(), and when only lightness or opacity changes keep the hue h`
+      : `colours are written directly (${a.n} ${plural(a.n, 'place')}, first on line ${a.line}: ${a.list}); to follow the theme, use its classes (term, emph, muted) or variables var(--fg) var(--term) var(--emph) var(--muted) var(--accent2) var(--line) var(--lit)`) },
   legacyLectureMode: { ja: (a) => `<html data-mode="lecture"> は 1.0 の語彙にない（${a.line} 行目）：見せ方は再生の設定の「先のステップを薄く見せる」で選ぶ。スライド（deck.html）からは外す`,
     en: (a) => `<html data-mode="lecture"> is not in the 1.0 vocabulary (line ${a.line}): the participant chooses “Show later steps faintly” in the player; remove it from the slides (deck.html)` },
   narrHeadingDiffers: { rule: 'R-headings', ja: (a) => `narration.md ${a.line} 行目の見出し${quoteJa(a.heading)}がスライドの見出し${quoteJa(a.slide)}と違う（{#${a.id}} で対応しているので動きは変わらない）`, en: (a) => `the script heading “${a.heading}” (narration.md line ${a.line}) differs from the slide heading “${a.slide}” (matched by {#${a.id}}, so nothing breaks)` },
@@ -171,7 +172,7 @@ export const MESSAGES = {
   attachUnchecked: { ja: (a) => `添付「${a.path}」は中身を確かめられない（${a.why}）：§3.8 では確かめられないものは入れない。暗号化や特別な圧縮を外して保存し直す（Egatari ファイルに入らない）`,
     en: (a) => `the attachment “${a.path}” cannot be checked (${a.why}): §3.8 attachments are checked before packing; save it again without encryption or unusual compression (it is not packed into the Egatari file)` },
   attachInjection: { ja: (a) => `添付「${a.path}」の ${a.n} 個の値が = + - @ やタブで始まり、表計算のソフトで数式として読まれうる${a.row ? `（最初は ${a.row} 行 ${a.col} 列）` : a.where ? `（${a.where}）` : ''}：意図したものか確かめる（入れる）`,
-    en: (a) => `${a.n} value(s) in the attachment “${a.path}” start with = + - @ or a tab and may be read as formulas by a spreadsheet${a.row ? ` (first at row ${a.row}, column ${a.col})` : a.where ? ` (in ${a.where})` : ''}: check that this is intended (it is packed)` },
+    en: (a) => `${a.n} ${plural(a.n, 'value')} in the attachment “${a.path}” ${a.n === 1 ? 'starts' : 'start'} with = + - @ or a tab and may be read as formulas by a spreadsheet${a.row ? ` (first at row ${a.row}, column ${a.col})` : a.where ? ` (in ${a.where})` : ''}: check that this is intended (it is packed)` },
   attachPrivate: { ja: (a) => `添付「${a.path}」に${({ 'private key': '秘密鍵', 'access key': 'アクセスキー', 'password or token': 'パスワードかトークン', 'device-specific path': 'この端末のパス' })[a.what] || a.what}らしい文字がある：配る前に確かめて消す（入れる）`,
     en: (a) => `the attachment “${a.path}” seems to contain a ${({ 'device-specific path': 'path specific to this device' })[a.what] || a.what}: check and remove it before sharing (it is packed)` },
   attachBadDescription: { ja: (a) => `添付「${a.path}」の説明（description）が使えない（${a.why}）：${a.max} 字までの 1〜2 文（改行なし）にする（説明なしで一覧に出す）`,
@@ -325,7 +326,7 @@ export const MESSAGES = {
   palette: { ja: (a) => `パレット：${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → コントラスト ${a.ratio}:1` : ''}`, en: (a) => `palette: ${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → contrast ${a.ratio}:1` : ''}` },
   contrastLow: { rule: 'R-colors', ja: (a) => `${a.v} と --bg のコントラストが低い（${a.ratio}:1 < ${a.min}:1）：テーマの色を直す（教材の中で色を書いていれば消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between ${a.v} and --bg (${a.ratio}:1 < ${a.min}:1): fix the theme colors (remove any colors written in the lesson; use only theme classes and variables)` },
   compOrder: { ja: (a) => `パーツの描画が呼び出し順に依存している（ステップ ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないようにパーツを直す（docs/contract.md §3）`, en: (a) => `the part draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
-  compOrderNoise: { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing pixel(s) all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint pixel(s) (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
+  compOrderNoise: { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing ${plural(a.n, 'pixel')} all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint ${plural(a.faint, 'pixel')} (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
   compOrderDetail: { ja: (a) => `品質チェック（呼び出し順）の詳しい結果（ステップ ${a.k}）：${a.note}`, en: (a) => `quality check details (call order, step ${a.k}): ${a.note}` },
   markMissing: { rule: 'R-marks', ja: (a) => `強調 {mark:${a.id}} の目印がこのスライドにない：目印の要素に id="${a.id}" か data-mark="${a.id}" を付ける（式の一部は \\htmlId{${a.id}}{…}）か、{mark:…} を消す`, en: (a) => `the emphasis {mark:${a.id}} has no target on this slide: put id="${a.id}" or data-mark="${a.id}" on the element (\\htmlId{${a.id}}{…} in math), or remove the {mark:…}` },
   marks: { ja: (a) => `強調：${a.list}`, en: (a) => `emphasis: ${a.list}` },
@@ -335,10 +336,10 @@ export const MESSAGES = {
   morphLater: { ja: (a) => `モーフ：ステップ 0 で見えないので動かさない：${a.ids}`, en: (a) => `morph: not moved because not visible at step 0: ${a.ids}` },
   morphDupSrc: { ja: (a) => `モーフ：元のスライドに data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: the source slide has data-id “${a.id}” more than once (only the first is used): keep one` },
   morphDupDst: { ja: (a) => `モーフ：data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: data-id “${a.id}” appears more than once (only the first is used): keep one` },
-  imgAlt: { ja: (a) => `alt の無い画像が ${a.n} 枚（${a.list}）：内容を alt="…" に書く（飾りなら alt=""）`, en: (a) => `${a.n} image(s) without alt (${a.list}): describe them in alt="…" (alt="" if decorative)` },
-  svgName: { ja: (a) => `名前の無い SVG の図が ${a.n} 個：aria-label="…" か <title>…</title> を付ける（飾りなら aria-hidden="true"）`, en: (a) => `${a.n} SVG figure(s) without a name: add aria-label="…" or <title>…</title> (aria-hidden="true" if decorative)` },
+  imgAlt: { ja: (a) => `alt の無い画像が ${a.n} 枚（${a.list}）：内容を alt="…" に書く（飾りなら alt=""）`, en: (a) => `${a.n} ${plural(a.n, 'image')} without alt (${a.list}): describe ${a.n === 1 ? 'it' : 'them'} in alt="…" (alt="" if decorative)` },
+  svgName: { ja: (a) => `名前の無い SVG の図が ${a.n} 個：aria-label="…" か <title>…</title> を付ける（飾りなら aria-hidden="true"）`, en: (a) => `${a.n} SVG ${plural(a.n, 'figure')} without a name: add aria-label="…" or <title>…</title> (aria-hidden="true" if decorative)` },
   compName: { ja: (a) => `名前の無いパーツ：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `parts without a name: ${a.list} (an aria-label="…" helps screen readers)` },
-  timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} ステップ）`, en: (a) => `timeline total: ${a.s} s (${a.n} steps)` },
+  timelineTotal: { ja: (a) => `タイムライン合計：${a.s} 秒（${a.n} ステップ）`, en: (a) => `timeline total: ${a.s} s (${a.n} ${plural(a.n, 'step')})` },
   slideLength: { ja: (a) => `この枚の長さ：${a.s} 秒`, en: (a) => `slide length: ${a.s} s` },
   compLayout: { rule: 'R-fit',
     ja: (a) => `${compName(a, true)}を置く場所が足りない：${a.msg}。パーツを置く場所を広げるか、表示する内容を減らす`,
@@ -364,8 +365,8 @@ function compWhat(a, ja) {
       if (a.why === 'required') return ja ? `${p(a.path.replace(/\.?[^.[\]]+$/, ''))}に欄 ${a.key} がない（${a.expected}）` : `${p(a.path.replace(/\.?[^.[\]]+$/, ''))} has no field ${a.key} (${a.expected})`;
       if (a.why === 'unknown') return ja ? `欄「${a.path}」はない${a.near ? `（${a.near} のこと？）` : ''}。使える欄：${a.expected}` : `there is no field “${a.path}”${a.near ? ` (did you mean ${a.near}?)` : ''}; the fields are: ${a.expected}`;
       if (a.why === 'anyOf') return ja ? `${p(a.path)}に ${a.expected} のどちらかが要る（今は ${a.got}）` : `${p(a.path)} needs ${a.expected} (it is ${a.got})`;
-      if (a.why === 'minItems') return ja ? `${p(a.path)}は ${a.n} 個以上要る（今は ${a.got}）` : `${p(a.path)} needs at least ${a.n} items (it is ${a.got})`;
-      if (a.why === 'maxItems') return ja ? `${p(a.path)}は ${a.n} 個まで（今は ${a.got}）` : `${p(a.path)} takes at most ${a.n} items (it is ${a.got})`;
+      if (a.why === 'minItems') return ja ? `${p(a.path)}は ${a.n} 個以上要る（今は ${a.got}）` : `${p(a.path)} needs at least ${a.n} ${plural(a.n, 'item')} (it is ${a.got})`;
+      if (a.why === 'maxItems') return ja ? `${p(a.path)}は ${a.n} 個まで（今は ${a.got}）` : `${p(a.path)} takes at most ${a.n} ${plural(a.n, 'item')} (it is ${a.got})`;
       if (a.keys && a.keys.length) {
         // 配列のはずが object：{"series": [...], "xr": [...]} のような形
         const extra = [];

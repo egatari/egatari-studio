@@ -11,6 +11,7 @@
 //
 // 鍵で引く表はすべて原型のない object か Map（__proto__ などの鍵で取り違えない）
 import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
+import { plural } from './plural.mjs';
 import { codeReasons } from './code-scan.mjs';
 import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS, normalizeOffer, OFFER_MODES, OFFER_FACES } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
@@ -769,7 +770,7 @@ function exportIdsFor(env, deckDir, srcPath, inDeck, opts) {
     if (isObj(c) && isObj(c.articleLinks)) { const a = remap(c.articleLinks); if (a) patch.articleLinks = a; }
     if (Object.keys(patch).length) writes[CFG] = updateConfig(cfgText, patch);
   }
-  if (x.added.length) warnings.push(`${LOG}: gave ${x.added.length} slide(s) an id (§8.1) and wrote them back to the working folder: ${x.added.map((a) => `${a.key} → ${a.id}`).join(', ')}`);
+  if (x.added.length) warnings.push(`${LOG}: gave ${x.added.length} ${plural(x.added.length, 'slide')} an id (§8.1) and wrote them back to the working folder: ${x.added.map((a) => `${a.key} → ${a.id}`).join(', ')}`);
   for (const o of x.orphans) warnings.push(`${LOG}: narration section "## ${o.key}" matches no slide; it was given the id ${o.id}`);
   // 確かめ：付けた後の原稿はどのスライドも id で、口述原稿のどの見出しも {#id}
   const deck = x.changed.deck ?? files.deck, narr = x.changed.narration ?? files.narration;
@@ -827,7 +828,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     const ov = { ...env0, readText: (p, max) => { const o = overlay.get(P.resolve(p)); return o !== undefined ? o : env0.readText(p, max); } };
     const sw = AT.sectionIdWrites(ov, srcPath, opts.idRand ? { rand: opts.idRand } : {});
     for (const [rp, text] of Object.entries(sw.writes)) { overlay.set(P.resolve(deckDir, ...rp.split('/')), text); writes[rp] = text; }
-    if (sw.added.length) warnings.push(`${LOG}: gave ${sw.added.length} article section(s) an id (§9C.3) and wrote them back to the working folder: ${sw.added.map((a) => `${a.file}:${a.line} ${a.id}`).join(', ')}`);
+    if (sw.added.length) warnings.push(`${LOG}: gave ${sw.added.length} article ${plural(sw.added.length, 'section')} an id (§9C.3) and wrote them back to the working folder: ${sw.added.map((a) => `${a.file}:${a.line} ${a.id}`).join(', ')}`);
   }
   // 組み立てが読んだファイルを記録する
   const reads = new Set();
@@ -906,12 +907,12 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     if (art && art.L.index) {
       const ml = /^ja\b/i.test(lang0) ? 'ja' : 'en';
       const errs = art.problems.filter((x) => x.sev === 'error');
-      if (errs.length) fail('article-invalid', `the article has ${errs.length} error(s) (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs);
+      if (errs.length) fail('article-invalid', `the article has ${errs.length} ${plural(errs.length, 'error')} (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs);
       for (const x of art.problems) if (x.sev === 'warn') warnings.push(`${LOG}: article: ${AT.articleMessage(ml, x)}`);
       for (const w of art.warnings) warnings.push(`${LOG}: article: ${w}`);
       art.links = await AT.articleLinkReport(art.L);
       for (const x of art.links.problems) warnings.push(`${LOG}: article: ${AT.articleMessage(ml, x)}`);
-      if (art.links.removed.length) warnings.push(`${LOG}: article: dropped ${art.links.removed.length} link record(s) of pairs no longer linked (§9C.7): ${art.links.removed.map((x) => `${x.slide}↔${x.section}`).join(', ')}`);
+      if (art.links.removed.length) warnings.push(`${LOG}: article: dropped ${art.links.removed.length} link ${plural(art.links.removed.length, 'record')} of pairs no longer linked (§9C.7): ${art.links.removed.map((x) => `${x.slide}↔${x.section}`).join(', ')}`);
     } else art = null;
   }
 
@@ -1419,7 +1420,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
       if (typeof env0.articleSteps !== 'function') fail('article-unsupported', 'the article has step links, and this producer cannot check them in the player (§9C.8): export it with the CLI (npm run portable -- pack)');
       const res = await env0.articleSteps(html, links);
       const errs = AT.validateArticle(art.L.article, { ...art.L.ctx, resolveStep: AT.stepResolver(res) }).problems.filter((x) => x.code === 'articleStep');
-      if (errs.length) { const ml = /^ja\b/i.test(lang) ? 'ja' : 'en'; fail('article-invalid', `the article has ${errs.length} error(s) (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs); }
+      if (errs.length) { const ml = /^ja\b/i.test(lang) ? 'ja' : 'en'; fail('article-invalid', `the article has ${errs.length} ${plural(errs.length, 'error')} (§9C.8); fix them first (npm run check): ` + errs.slice(0, 8).map((x) => AT.articleMessage(ml, x)).join(' / '), errs); }
     }
   }
   const size = utf8Length(html);

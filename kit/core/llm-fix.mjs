@@ -14,6 +14,7 @@
 import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
 import { quoteJa } from './quote-ja.mjs';
+import { plural } from './plural.mjs';
 import { commonBody, componentsIn, componentNotes } from './llm-pack.mjs';
 import { DEFAULT_METRICS, limitsOf } from './theme-metrics.mjs';
 
@@ -64,7 +65,7 @@ const L = {
   en: {
     head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
     ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
-    askPartial: (n) => `The lesson is long, so only the ${n} slide(s) with problems are included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
+    askPartial: (n) => `The lesson is long, so only the ${n} ${plural(n, 'slide')} with problems ${n === 1 ? 'is' : 'are'} included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
     problems: 'Findings', rules: 'Standards', components: 'Parts used in this lesson (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
     where: (p) => (p.i === null || p.i === undefined ? 'Whole lesson' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
     sev: { error: 'error', warn: 'warning' },

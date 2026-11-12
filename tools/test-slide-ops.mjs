@@ -194,7 +194,7 @@ ok('template text: TTS (narration-json) and --portable / --play-only warn first 
       const out = path.join(dir, 'x' + flag.slice(2) + '.html');
       const b = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html'), flag, '-o', out], { encoding: 'utf8' });
       assert.equal(b.status, 0, b.stderr);
-      assert.match(b.stderr, /15 template leftover\(s\)/, flag);
+      assert.match(b.stderr, /15 template leftovers/, flag);
       assert.match(b.stderr, /template placeholder \(✎\) left/);
       assert.ok(fs.existsSync(out));
       // stderr の知らせは書き出しの前（書き出しの行は stdout）

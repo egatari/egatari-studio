@@ -20,6 +20,7 @@
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
 import { short } from './sha1.mjs';
+import { plural } from './plural.mjs';
 import { innerJa } from './quote-ja.mjs';
 import { applyMetrics, DEFAULT_METRICS } from './theme-metrics.mjs';
 import { RUNTIME_FORMAT, FORMAT } from './format.mjs';
@@ -725,7 +726,7 @@ export function buildBudget(limits = {}, start = 0) {
 export { NotRegularFileError, ReadOverError };
 // 大きさを読んだ後に、ファイルが大きくなった（読む前の大きさより多く読めた）
 export class FileChangedError extends Error {
-  constructor(p, was, now) { super(`build: ${p} changed while reading (${was} bytes before, ${now} read); refusing to build`); this.name = 'FileChangedError'; this.code = 'build-too-large'; this.what = 'changed file'; }
+  constructor(p, was, now) { super(`build: ${p} changed while reading (${was} ${plural(was, 'byte')} before, ${now} read); refusing to build`); this.name = 'FileChangedError'; this.code = 'build-too-large'; this.what = 'changed file'; }
 }
 // env の読み取り（readText・readBase64・readBytes）のたびに bud.read で数える。env.size(p) があれば読む前に（大きすぎるものは読まずに断る）、
 // 読んだ後にも実際の大きさで数え直す（数えるのは max(読む前の大きさ, 実際の大きさ)。env.size は見積もりで、嘘をつくことも、読むまでに

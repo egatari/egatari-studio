@@ -34,6 +34,7 @@
 //       式らしさは \ ^ _ と演算子の密度だけ、長いターンは 60 語で見る
 //       口述原稿の言語はスライドと別に決め（voice.json の "lang" ＞ 発言の文字 ＞ <html lang>）、式らしさと長いターンは発言ごとにその言語の規則で見る
 import { findRawMath } from './core/raw-math.mjs';
+import { plural } from './core/plural.mjs';
 import { cliHints } from './cli-hint.mjs';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -848,7 +849,7 @@ if (asJson) {
     for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${cliHints(r.what)}`);
   }
   console.log('');
-  console.log(EN ? `${counts.error} errors, ${counts.warn} warnings, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
+  console.log(EN ? `${counts.error} ${plural(counts.error, 'error')}, ${counts.warn} ${plural(counts.warn, 'warning')}, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
   const S = acc.summary;
   console.log(EN ? `quality check items: ${S.checked} done, ${S.excused} not applicable, ${S.skipped} not run, ${S.failed} failed (of ${S.total})` : `品質チェックの項目：見た ${S.checked}　当てはまらない ${S.excused}　見られなかった ${S.skipped}　落ちた ${S.failed}（${S.total} のうち）`);
   if (acc.status === 'incomplete') console.log((EN ? 'the check did not finish: ' : '点検が終わっていない：') + [...acc.unset.map((id) => id + (EN ? ' (not looked at)' : '（見ていない）')), ...acc.problems].join('; '));

@@ -219,6 +219,15 @@ try {
   await browser.close();
   srv.close();
 }
+// 数え方の言葉（backlog の「1 errors」の不具合報告）：1 件の見出し長エラー・1 件の台本なし警告だけを出す見本（tools/fixtures/count-wording）で、
+// コマンド版の英語の集計行が単数を使うこと（"1 error, 1 warning, …"。"1 errors"・"1 warnings" ではない）
+{
+  const COUNT_FIX = path.join(ROOT, 'tools', 'fixtures', 'count-wording', 'deck.html');
+  const rc = spawnSync(process.execPath, [path.join(ROOT, 'kit', 'check.mjs'), COUNT_FIX, '--lang', 'en'], { encoding: 'utf8' });
+  const line = (rc.stdout.match(/^\d+ errors?, \d+ warnings?, \d+ info$/m) || [])[0] || '';
+  ok(rc.status === 1 && /^1 error, 1 warning, \d+ info$/.test(line) && !/\b1 errors\b|\b1 warnings\b/.test(rc.stdout),
+    `count wording: the cli summary uses the singular for 1 error and 1 warning (${line || rc.stdout.slice(0, 200)})`);
+}
 ok(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);

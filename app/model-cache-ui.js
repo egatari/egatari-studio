@@ -3,6 +3,7 @@
 // このページは外へ繋がらない。キャッシュは同じサイトのものなので、ここから見て消せる
 //   modelCacheSection({el, EN, ask, toast}) → 節の要素（中身は後から埋まる）
 import { modelCacheSizes, deleteModelCaches, storageUsage, IRODORI_PREFIX } from '../lab/model-cache.mjs';
+import { plural } from '../kit/core/plural.mjs';
 
 const MB = (n) => (n / 1e6).toFixed(0), GB = (n) => (n / 1e9).toFixed(2);
 const size = (n) => (n >= 1e9 ? GB(n) + ' GB' : MB(n) + ' MB');
@@ -16,7 +17,7 @@ export function modelCacheSection({ el, EN, ask, toast }) {
     mayEvict: 'The browser may delete the models when the disk is nearly full, and Safari deletes them when you have not opened this site for about a week. They are then downloaded again.',
     old: 'Models of older versions are deleted automatically when a new version is downloaded.',
     del: 'Delete models', askTitle: 'Delete the AI voice models?', askBody: (b) => `This deletes ${b ? size(b) : 'the models'} from this browser. Audio you made stays. Making AI voice on this computer next time downloads the model again (Japanese about 1.26 GB).`,
-    cancel: 'Cancel', done: (n) => `Deleted ${n} model cache(s)`, failed: 'Could not delete the models',
+    cancel: 'Cancel', done: (n) => `Deleted ${n} model ${plural(n, 'cache')}`, failed: 'Could not delete the models',
   } : {
     title: 'この PC で作る AI 音声のモデル', none: 'このブラウザには AI 音声のモデルが入っていません。',
     usage: (u, q) => `このサイトはブラウザの保存領域を ${size(u)} 使っています（上限 ${size(q)}）。`, noUsage: 'このブラウザは保存領域の使用量を知らせません。',

@@ -19,6 +19,7 @@ import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { message } from '../kit/check-messages.mjs';
 import { parseResults, skippedNotice, summarizeResults, summaryLines, roomMatch, resultsRecord, RESULTS_MAX_BYTES } from '../kit/core/live-results.mjs';
+import { plural } from '../kit/core/plural.mjs';
 
 // はじめての取り込みの知らせを見せたか（この端末のこのブラウザ。使えなければ毎回見せる）
 const NOTICE_KEY = 'egatari-studio-live-results-notice';
@@ -70,7 +71,7 @@ const STR = {
     liveMismatch: (a, b) => `These results are for Live ${a}, but this lesson's Live settings name Live ${b}. Unless you recreated the Live, they may be from another lesson`,
     liveNoRoom: 'This lesson has no Live settings. The results may be from another lesson',
     liveAdded: (p) => `Added the Live results as an attachment (role: data): ${p}`, liveDup: (p) => `The same results are already attached: ${p}`,
-    liveWhat: (n, q) => `${n} responses (${q} questions)`,
+    liveWhat: (n, q) => `${n} ${plural(n, 'response')} (${q} ${plural(q, 'question')})`,
   },
 };
 // 足したファイルの役割の案（名前の型から、その型を受ける役割。書くのは選んだ役割）。どの役割にもない型は null（足せない）

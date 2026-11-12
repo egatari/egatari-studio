@@ -73,7 +73,7 @@ await t('judgeRenders: byte-identical DOM + a few edge pixels inside the part �
   const s = diffStats(A, img((set) => { for (let y = 20; y < 40; y++) set(19, y, 128); }), W, H, OPT);
   const r = judged(s);
   assert.deepEqual([r.same, r.kind, r.cap], [true, 'noise', 200]);
-  assert.match(describeRender(r), /20 pixel\(s\) clearly differ .*all within 1 px of an edge, inside the component; component DOM byte-identical; cap 200 .*accepted as renderer anti-aliasing noise/);
+  assert.match(describeRender(r), /20 pixels clearly differ .*all within 1 px of an edge, inside the component; component DOM byte-identical; cap 200 .*accepted as renderer anti-aliasing noise/);
 });
 await t('judgeRenders: byte-identical DOM, differences near an edge but too many → fail', () => {
   // 四角の縁の 4 辺を 1 周ずつ灰色にする（どれも縁にあるが 80 + 76 px）。小さな部品（面積 50 000 px → 上限 50）では多すぎる
@@ -123,7 +123,7 @@ await t('faint off-edge: 2 isolated non-edge pixels with a small difference (20/
   assert.deepEqual([s.n, s.off, s.out], [2, 2, 0]);
   const r = judged(s, sq, sq);
   assert.deepEqual([r.same, r.kind, r.faint], [true, 'noise', 2]);
-  assert.match(describeRender(r), /2 isolated faint pixel\(s\) away from edges \(each channel <= 24\/255, at most 4\).*accepted/);
+  assert.match(describeRender(r), /2 isolated faint pixels away from edges \(each channel <= 24\/255, at most 4\).*accepted/);
 });
 await t('outside the component box: accepted only on an edge, inside the slide, when the whole slide DOM is identical too (only attribute order, empty class and style spacing or order are normalised: canonAttrs)', () => {
   // 部品の箱は四角の中だけ（[25, 25, 34, 34]）、スライドは画面全体。四角の縁（x = 19）の画素は部品の箱の外

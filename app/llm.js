@@ -32,6 +32,7 @@ import { buildFixRequest, cutOffRequest, rulesFor } from '../kit/core/llm-fix.mj
 import { readingProblems, readingGaps, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { message, MESSAGES, ruleOf } from '../kit/check-messages.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
+import { plural } from '../kit/core/plural.mjs';
 import { cleanErrorText } from '../kit/core/error-text.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
@@ -295,10 +296,10 @@ const TX = {
     suggested: 'Suggested',
     fromSample: 'From the sample',
     fromSampleLead: (t) => `Starting from the sample “${t}”. The setting, look and parts are the same as the sample’s, and you can change them. Fill in step 2 for your own lesson.`,
-    useStructure: (t, n) => `Add the structure of the sample “${t}” (the heading and point of each of its ${n} slides) to the instructions`,
+    useStructure: (t, n) => `Add the structure of the sample “${t}” (the heading and point of each of its ${n} ${plural(n, 'slide')}) to the instructions`,
     thumbAlt: (name) => `Example: ${name}`,
     partsCount: (n, all) => `Parts chosen: ${n} of ${all}`,
-    partsShort: (n) => `${n} parts`,
+    partsShort: (n) => `${n} ${plural(n, 'part')}`,
     packMeter: (kb, cap) => `Instructions: ${kb} KB (suggested limit ${cap} KB)`,
     overCap: (kb, names) => `${kb} KB over the suggested limit, so your chat AI may not read it to the end. ${names ? `Parts you could untick: ${names}` : 'Untick some parts.'}`,
     trim: 'Untick these',
@@ -343,7 +344,7 @@ const TX = {
     batchCopied: (kb) => `Copied (${kb} KB). Paste it into the same chat and send. When the AI has finished, paste its output below.`,
     outlineErr: { 'no-outline': 'No outline code block found.', unclosed: (e) => `The outline code block from line ${e.line} is not closed. Ask the AI to continue.`, 'no-table': 'No outline table rows found (| # | Heading | Point |).', 'empty-heading': (e) => `Line ${e.line} has a row without a heading.`, 'too-many': (e) => `The outline has ${e.n} slides (at most 60).`, 'too-few': 'The outline has fewer than 2 slides; set a shorter length in step 2 and ask in one go.' },
     batchTitle: 'The rest of the outline', batchWhere: (a, b, n, left) => `Slides ${a}–${b} of the outline (${n} in all; ${left} left) go after the last slide`,
-    batchDone: (left) => (left ? `Outline: ${left} slides left` : 'All slides of the outline are made'),
+    batchDone: (left) => (left ? `Outline: ${left} ${plural(left, 'slide')} left` : 'All slides of the outline are made'),
     insertWhere: (n, h) => `Insert after slide ${n}, “${h}”`, insertWhereLast: (n, h) => `Insert after the last slide (${n}, “${h}”)`,
     insertCount: 'Number of slides', insertWish: 'What to add (optional)', insertWishPh: 'e.g. one exercise',
     insertHint: 'The instructions include only the list of slide headings and the slide before the insert position, so they stay short.',
@@ -354,7 +355,7 @@ const TX = {
     wish: 'What to change (optional)', wishPh: 'e.g. use a more familiar example on slide 2',
     reviseHint: 'The fix request includes the quality check findings, what you wrote in step 1, open comments and the current slides and script (for a long lesson, only the slides with findings).',
     copyRevise: 'Copy the fix request', reviseNothing: 'Nothing to fix was found. Write what to change in step 1.',
-    revised: (kb, n, c) => `Copied (${kb} KB; ${n} finding(s)${c ? `, ${c} comment(s)` : ''}). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
+    revised: (kb, n, c) => `Copied (${kb} KB; ${n} ${plural(n, 'finding')}${c ? `, ${c} ${plural(c, 'comment')}` : ''}). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
     wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`,
     err: {
       'no-blocks': 'No slides or script found. Copy the code blocks of the AI’s output with the copy button at the top right of each box, and paste them.',
@@ -369,20 +370,20 @@ const TX = {
     },
     warn: {
       several: (w) => `There were ${w.n} ${w.kind === 'deck' ? 'deck.html' : 'narration.md'} code blocks; the last one was used.`,
-      ignored: (w) => `${w.n} code block(s) that are neither slides nor script were not used.`,
+      ignored: (w) => `${w.n} ${plural(w.n, 'code block')} that ${w.n === 1 ? 'is' : 'are'} neither slides nor script ${w.n === 1 ? 'was' : 'were'} not used.`,
       unfenced: 'No code block lines: took <!DOCTYPE html> … </html> as the slides and the rest as the script.',
       autoclosed: (w) => `The code block from line ${w.line} was not closed; it was closed before the next one.`,
       unclosedAccepted: () => 'The script code block has no closing ```, but the script looks complete, so it was accepted.',
       repeatedSteps: (w) => `The script repeated the same step marker (${w.steps.map((k) => '[' + k + ']').join(', ')}) on consecutive lines, so those turns were kept together under one step (${w.n} place${w.n > 1 ? 's' : ''}).`,
     },
     building: { new: 'Creating…', insert: 'Inserting…', replace: 'Replacing…' }, buildFailed: 'Could not build the slides',
-    imported: (n) => `Created ${n} slides`,
-    replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} slide(s)`, replacedNarr: (n) => `Replaced the script (${n} section(s))`,
-    inserted: (n, at) => `Inserted ${n} slide(s) at position ${at}`, undoInsert: (n) => `inserting ${n} slide(s)`,
+    imported: (n) => `Created ${n} ${plural(n, 'slide')}`,
+    replaced: (n) => `Replaced (${n})`, replacedSlides: (ids) => `Replaced ${ids.length} ${plural(ids.length, 'slide')}`, replacedNarr: (n) => `Replaced the script (${n} ${plural(n, 'section')})`,
+    inserted: (n, at) => `Inserted ${n} ${plural(n, 'slide')} at position ${at}`, undoInsert: (n) => `inserting ${n} ${plural(n, 'slide')}`,
     idProblems: 'Some slides could not get an id (see the quality check results).',
     unsavedNote: 'Nothing is written to a file until you save.',
     fix: 'Copy a fix request for your AI', fixTitle: 'Fix request for your AI',
-    fixLead: (kb, n, partial) => `Copied (${kb} KB: ${n} finding(s), their standards and ${partial ? 'the slides with problems' : 'the current slides and script'}). Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
+    fixLead: (kb, n, partial) => `Copied (${kb} KB: ${n} ${plural(n, 'finding')}, their standards and ${partial ? 'the slides with problems' : 'the current slides and script'}). Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”.`,
     fixCopyFailed: 'Could not copy automatically. Select the text below and copy it.',
     copyCutOff: 'Copy instructions to resend', cutOffCopied: 'Copied. Paste it into the chat and send, then paste the AI’s output here.',
     fixNone: 'No problems to fix.', pasteReply: 'Paste the AI’s output…', close: 'Close',

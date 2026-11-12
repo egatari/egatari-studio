@@ -7,7 +7,8 @@ import * as configFile from '../kit/core/config-file.mjs';
 import * as format from '../kit/core/format.mjs';
 import * as narrationParse from '../kit/core/narration-parse.mjs';
 import * as quoteJa from '../kit/core/quote-ja.mjs';
+import * as plural from '../kit/core/plural.mjs';
 
 export function setArticleHost() {
-  if (!globalThis.__egatariArticleHost) globalThis.__egatariArticleHost = { katex, 'build-core': buildCore, 'config-file': configFile, format, 'narration-parse': narrationParse, 'quote-ja': quoteJa };
+  if (!globalThis.__egatariArticleHost) globalThis.__egatariArticleHost = { katex, 'build-core': buildCore, 'config-file': configFile, format, 'narration-parse': narrationParse, 'quote-ja': quoteJa, plural };
 }

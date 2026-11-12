@@ -7,6 +7,7 @@
 //      （m-cycle の隠れた矢じりの transform、m-codetree の style の書き方 "fill:x;" と "fill: x;"。画素は同じ）があり、今までどおり通す
 // 理由：Linux の Chrome（SwiftShader）は同じ SVG を何度も描き直すと途中で描き方を切り替え、曲線の縁のアンチエイリアスが 45〜72 px ずれる
 // （CI の実行 40245997855：tree・venn・numberline。部品の DOM はバイトまで同じ）。画素の数だけの基準（40）ではこれを拾ってしまう
+import { plural } from './core/plural.mjs';
 
 // 描き方の揺れとして許す範囲。どれか 1 つでも外れたら失敗（本当の描き違いを隠さないための枠）：
 //   strong  ：はっきり違う画素・色の段差のしきい値（RGB の差の和。今までの基準と同じ 48）
@@ -97,13 +98,13 @@ export function faintOff(stats, b = NOISE_BOUNDS) {
 export function describeRender(r) {
   if (r.kind === 'exact') return 'pixel-identical';
   const box = r.box ? ` in ${JSON.stringify(r.box)}` : '';
-  if (r.kind === 'legacy') return `${r.n} pixel(s) clearly differ${box}; no component DOM to compare (canvas etc.)${r.same ? ` (within ${r.cap}, ok)` : ` (more than ${r.cap})`}`;
-  if (r.kind === 'dom') return `${r.n} pixel(s) clearly differ${box}; component DOM differs, so no renderer-noise allowance${r.same ? ` (within ${r.cap}, ok)` : ` (more than ${r.cap})`}`;
+  if (r.kind === 'legacy') return `${r.n} ${plural(r.n, 'pixel')} clearly differ${box}; no component DOM to compare (canvas etc.)${r.same ? ` (within ${r.cap}, ok)` : ` (more than ${r.cap})`}`;
+  if (r.kind === 'dom') return `${r.n} ${plural(r.n, 'pixel')} clearly differ${box}; component DOM differs, so no renderer-noise allowance${r.same ? ` (within ${r.cap}, ok)` : ` (more than ${r.cap})`}`;
   const why = [r.off && !r.same ? `${r.off} away from any edge (first [x, y, max channel diff]: ${JSON.stringify((r.offPts || []).slice(0, 4))})` : '', r.out && !r.same ? `${r.out} outside the component${r.far ? ` (${r.far} outside the slide)` : ''}${r.slideSame === false ? ', slide DOM differs' : ''}` : ''].filter(Boolean).join(', ');
-  const faint = r.same && r.off ? `; ${r.off} isolated faint pixel(s) away from edges (each channel <= ${NOISE_BOUNDS.offMaxCh}/255, at most ${NOISE_BOUNDS.offMax})` : '';
+  const faint = r.same && r.off ? `; ${r.off} isolated faint ${plural(r.off, 'pixel')} away from edges (each channel <= ${NOISE_BOUNDS.offMaxCh}/255, at most ${NOISE_BOUNDS.offMax})` : '';
   const outside = r.same && r.out ? ` (${r.out} outside the component box but inside the slide, whose DOM is identical too)` : '';
   const where = why || `all within ${NOISE_BOUNDS.edgePx} px of an edge${faint}, inside the component${outside}`;
-  return `${r.n} pixel(s) clearly differ${box}, ${where}; component DOM byte-identical; cap ${r.cap} (${(NOISE_BOUNDS.capFrac * 100).toFixed(1)} % of the component area ${r.compArea} px, at most ${NOISE_BOUNDS.capPx})${r.same ? ' -> accepted as renderer anti-aliasing noise' : ''}`;
+  return `${r.n} ${plural(r.n, 'pixel')} clearly differ${box}, ${where}; component DOM byte-identical; cap ${r.cap} (${(NOISE_BOUNDS.capFrac * 100).toFixed(1)} % of the component area ${r.compArea} px, at most ${NOISE_BOUNDS.capPx})${r.same ? ' -> accepted as renderer anti-aliasing noise' : ''}`;
 }
 
 // ブラウザの中で 2 枚の PNG（base64）を読み、diffStats をかける

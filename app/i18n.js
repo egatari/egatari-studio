@@ -2,6 +2,7 @@
 import { FORMAT } from '../kit/core/format.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
 import { COLAB_VERIFIED, COLAB_STEPS, COLAB_TIME } from '../kit/core/colab-core.mjs';
+import { plural } from '../kit/core/plural.mjs';
 // SPDX のライセンスの名前を、ふつうに書く形に（CC-BY-4.0 → CC BY 4.0）。ほかの名前はそのまま
 const ccName = (lic) => (/^CC-/i.test(lic) ? lic.replace(/-/g, ' ') : lic);
 import { PARTS_GALLERY, PARTS_CATALOGUE } from './parts-gallery.js';
@@ -549,7 +550,7 @@ const en = {
   },
   infoTitle: 'File info', infoLead: 'The title, license and creators are what the lesson’s settings file says (metadata in egatari.json)', infoNone: 'Not given yet',
   infoEditFolder: 'They cannot be changed here yet. Edit metadata in egatari.json in the working folder and it shows here', infoEditFile: 'They cannot be changed here yet', infoAttach: 'Attachments',
-  outlineNotice: (left, n) => `Outline: ${left} slides left (of ${n}).`, outlineNextBtn: (k) => `Ask for the next ${k}`,
+  outlineNotice: (left, n) => `Outline: ${left} ${plural(left, 'slide')} left (of ${n}).`, outlineNextBtn: (k) => `Ask for the next ${k}`,
   infoFormat: (name, v, snap) => `Format: ${name} ${v}${snap ? ` (${snap.replace(/^WD\b/, 'Working Draft').replace(/^CR\b/, 'Candidate Recommendation')})` : ''}`,
   infoMadeWith: (v) => `Made with Studio ${v}`, infoMadeUnknown: 'Made with Studio: not recorded', infoThisStudio: (v) => `This Studio: ${v}`,
   infoPlayer: 'Playback uses the player inside the file. Edit with the latest Studio.',
@@ -578,10 +579,10 @@ const en = {
   buildFailedHint: 'Fix the slides and save; it rebuilds automatically (fixing it in an AI coding tool or another editor works too).', building: 'Building…',
   noPermission: 'No permission to read and write this folder', cannotOpen: 'This folder cannot be opened (moved or deleted?)', dropFolder: 'Please choose a folder, not a file',
   noDeck: 'No slides HTML (deck.html) in this folder', popupBlocked: 'Could not open a new window (allow pop-ups)', noFullscreen: 'Could not go fullscreen',
-  slidesN: (n) => `${n} slides`, rebuilt: (t, why) => `${t} ${why === 'poll' ? 'reloaded outside changes' : why === 'save' ? 'saved and rebuilt' : 'built'}`,
+  slidesN: (n) => `${n} ${plural(n, 'slide')}`, rebuilt: (t, why) => `${t} ${why === 'poll' ? 'reloaded outside changes' : why === 'save' ? 'saved and rebuilt' : 'built'}`,
   buildFailedAt: (t) => `${t} build failed`, warnings: (n) => `${n} warning${n === 1 ? '' : 's'}`, warnTitle: 'Build warnings',
   checkTitle: 'Quality check', checking: 'Checking…', checkFailed: 'Could not run the quality check (the preview did not answer)',
-  checkSummary: (e, w) => `${e} errors · ${w} warnings`, checkRules: (x) => `Quality check items: ${x.checked} done · ${x.excused} not applicable · ${x.skipped} not run here · ${x.failed} failed (of ${x.total})`, checkNote: (fix, any) => `The browser quality checker (size, length, math, script, links, color contrast and more). ${any ? `If there are errors, press “${fix}” below to have your AI fix them.` : `If there are errors, a “${fix}” button appears here, so your AI can fix them.`}`,
+  checkSummary: (e, w) => `${e} ${plural(e, 'error')} · ${w} ${plural(w, 'warning')}`, checkRules: (x) => `Quality check items: ${x.checked} done · ${x.excused} not applicable · ${x.skipped} not run here · ${x.failed} failed (of ${x.total})`, checkNote: (fix, any) => `The browser quality checker (size, length, math, script, links, color contrast and more). ${any ? `If there are errors, press “${fix}” below to have your AI fix them.` : `If there are errors, a “${fix}” button appears here, so your AI can fix them.`}`,
   sevError: 'error', sevWarn: 'warning', sevInfo: 'info', wholeDeck: 'whole lesson', slideN: (n, t) => `slide ${n}${t ? ': ' + t : ''}`,
   checkMsg: (c, a) => ({
     titleLong: `title is ${a} units (max 26)`, titleLongEn: `title is ${a} characters (max 60)`, conclLong: `conclusion is ${a} units (max 35)`, conclLongEn: `conclusion is ${a} characters (max 70)`,
@@ -618,7 +619,7 @@ const en = {
       case 'windowFrom': return 'Enter when the Live starts';
       case 'windowTo': return 'Enter when the Live ends';
       case 'windowOrder': return 'The Live must end after it starts';
-      case 'windowTooLong': return p.hours ? `The live time is at most ${p.hours} hours (change the start and end)` : `The live time is at most ${p.days} days (change the start and end)`;
+      case 'windowTooLong': return p.hours ? `The live time is at most ${p.hours} ${plural(p.hours, 'hour')} (change the start and end)` : `The live time is at most ${p.days} ${plural(p.days, 'day')} (change the start and end)`;
       case 'activitiesMissing': return 'There are no question or poll settings';
       case 'step': return `${poll}the step to show the poll at is not valid (choose it again with Use the step in the preview)`;
       case 'stepNotList': case 'activityNotObject': return `The question and poll settings are malformed (${p.path})`;
@@ -750,7 +751,7 @@ const en = {
   exampleUnknown: (n) => `Sample “${n}” not found. New… is open.`,
   exampleBook: 'Book', exampleBookTitle: 'Has a book (a text to read)',
   exampleFailed: 'Could not load the sample',
-  exampleMeta: (n, mb, code) => `${n} slides · ${mb} MB${code ? ' · contains its own code (asks before opening it to edit)' : ''}`,
+  exampleMeta: (n, mb, code) => `${n} ${plural(n, 'slide')} · ${mb} MB${code ? ' · contains its own code (asks before opening it to edit)' : ''}`,
   unsavedTitle: 'Unsaved changes', unsavedLead: 'The open file has unsaved changes. Discard them and continue?',
   unsavedLang: 'Unsaved changes will be lost. Switch the language?',
   saving: 'Saving…', saveFailed: 'Could not save',
@@ -781,7 +782,7 @@ const en = {
   fontFallback: (chars) => `The new characters (${chars}) could not be added to the file's fonts, so they show in the font of the device that opens the file. To make them look the same everywhere, use other characters or save again in Studio at studio.egatari.org`,
   fontFallbackToast: (chars) => `. ${chars} will show in the device's font`,
   noFolderPicker: 'This browser cannot export to a folder (use Chrome or Edge)',
-  unpackedAt: (t, n, d) => `${t} exported ${n} files to ${d}`, unpackedToast: (n, d) => `Exported ${n} files to “${d}”. You can open it as a working folder.`,
+  unpackedAt: (t, n, d) => `${t} exported ${n} ${plural(n, 'file')} to ${d}`, unpackedToast: (n, d) => `Exported ${n} ${plural(n, 'file')} to “${d}”. You can open it as a working folder.`,
   notEmpty: (d) => `“${d}” is not empty. Please choose an empty folder.`,
   liveResultsTitle: 'This file contains Live results', liveResultsWarn: 'This file contains Live results. Remove them before giving it to others (participants\' questions and answers, and names if they gave one). The attachment stays in the working folder.',
   liveResultsWith: 'Export with them', liveResultsWithout: 'Export without the results',
@@ -906,7 +907,7 @@ const en = {
     fail: 'Failed: ', busy: 'The Audio panel is making or writing audio. Open this when it is done',
     noSeg: 'This step has no script', noSegs: 'There is no script. Write the script first',
     chipLabel: (n, N, b) => `timing ${n} / ${N}${b && b.type === 'mark' ? ' (emphasis: ' + b.id + ')' : b && b.type === 'clear' ? ' (clear emphasis)' : ''}`,
-    opened: (N) => `Recording mode. ${N} steps. Space starts and stops recording, Enter uses the take and goes to the next step, Backspace retakes, the left and right arrows move between steps, C places timing, Escape closes`,
+    opened: (N) => `Recording mode. ${N} ${plural(N, 'step')}. Space starts and stops recording, Enter uses the take and goes to the next step, Backspace retakes, the left and right arrows move between steps, C places timing, Escape closes`,
     announceStep: (n, N, h, k, has, stale, b) => `Step ${n} of ${N}: ${h}${k ? ', step ' + k : ''}. ${has ? (stale ? 'The audio needs updating' : 'It has audio') : 'No audio yet'}${b ? `. ${b} timing${b === 1 ? '' : 's'}` : ''}. Space to record`,
     announceRec: (b) => b ? `Recording. ${b} timing${b === 1 ? '' : 's'}; press C at each` : 'Recording', announceCue: (n, N) => `Timing ${n} of ${N}`, announceCueNone: 'This step has no timing',
     processing: 'Processing', announceTaken: (d, manual, mm, clip) => `Recorded, ${d.toFixed(1)} seconds${manual ? '. Timing placed' : ''}${mm ? '. The number of timings did not match, so none was placed' : ''}${clip ? '. It may be distorted' : ''}. Enter for the next step, Backspace to retake`,

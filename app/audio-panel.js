@@ -41,6 +41,7 @@ import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { readFileBounded } from './bounded-read.js';
 import { applyYomi } from '../kit/core/yomi.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
+import { plural } from '../kit/core/plural.mjs';
 import { readAloud, stopReadAloud, readingAloud, readAloudSupported } from './read-aloud.js';
 import { TEXT_NORMALIZE, normalizeTtsText } from '../kit/core/tts-normalize.mjs';
 import { buildJob, planImport, decodeStepAudio, readColabZip, colabUrl, expectedCues, COLAB_LIMITS } from '../kit/core/colab-core.mjs';
@@ -98,7 +99,7 @@ const STR = {
     deck: {
       none: (n) => `No audio yet (${n} step${n === 1 ? '' : 's'})`, some: (n, k) => `${k} of ${n} steps have audio`,
       stale: (k) => `${k} step${k === 1 ? '' : 's'}: audio needs updating (the script changed)`, voice: (k) => `You changed the voice; ${k} step${k === 1 ? ' still has' : 's still have'} AI voice in the old voice`,
-      all: (n) => `All ${n} steps have audio`, unsaved: 'Not in the file until you save',
+      all: (n) => `All ${n} ${plural(n, 'step')} ${n === 1 ? 'has' : 'have'} audio`, unsaved: 'Not in the file until you save',
       makeRest: (k) => `Make the rest (${k} step${k === 1 ? '' : 's'})`, update: (k) => `Update audio (${k} step${k === 1 ? '' : 's'})`, save: 'Save',
       noSegs: 'No script yet (write it in the Script panel)',
     },
@@ -120,7 +121,7 @@ const STR = {
     revertGone: (f) => 'Cannot revert: the previous audio file (audio/' + f + ') is missing',
     script: 'Script', scriptT: 'Read only (edit it in the Script panel). Drag the bottom-right corner to resize', cues: (n) => `${n} point${n === 1 ? '' : 's'} where the animation follows the voice (in recording, press C to place them)`,
     noSeg: 'This step has no script (write it in the Script panel first)',
-    processing: 'Processing…', making: (i, n) => `Making AI voice (${i} / ${n} steps)…`, madeAll: (k) => `Added AI voice to ${k} step${k === 1 ? '' : 's'}`, ttsNo: 'AI voice cannot be made on this computer: ',
+    processing: 'Processing…', making: (i, n) => `Making AI voice (${i} / ${n} ${plural(n, 'step')})…`, madeAll: (k) => `Added AI voice to ${k} step${k === 1 ? '' : 's'}`, ttsNo: 'AI voice cannot be made on this computer: ',
     takes: 'Audio not used yet', use: 'Use this take', del: 'Discard', notUsed: 'It could not be written, so this step does not use it yet. Use it with “Use this take” below',
     using: 'Writing…', used: (f) => 'This step now uses it (audio/' + f + '). “Revert” brings back the previous audio', usedPortable: 'This step now uses it. Press Save to keep it in the file (“Revert” brings back the previous audio)',
     durOverride: (d) => 'timeline.json fixes this step to ' + d + ' s (dur): longer audio is cut',
