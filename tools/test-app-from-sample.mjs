@@ -24,7 +24,7 @@ import { initialParts } from '../kit/core/new-deck.mjs';
 import { PACK_CAP_KB } from '../kit/core/llm-pack.mjs';
 import { replyOf } from './test-app-llm.mjs';
 import { clickDlg, clickMenuOpen } from './click-retry.mjs';
-import { EXAMPLES } from './examples-portable.mjs';
+import { EXAMPLES, FROM_SAMPLE, sectionOf } from './examples-portable.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -79,17 +79,28 @@ const copy = async (p) => {
   return p.evaluate(() => window.__APP_TEST.lastCopy.replace(/\r\n/g, '\n'));
 };
 const files = (p) => p.evaluate(() => { const f = window.__APP_TEST.files(); if (!f) return null; const d = (b) => new TextDecoder().decode(Uint8Array.from(atob(b), (c) => c.charCodeAt(0))); return Object.fromEntries(Object.entries(f).map(([k, v]) => [k, d(v)])); });
+// はじめの画面のサンプルの札を出す（app/examples-gallery.js：intro は最初の画面、ほかは入口のカードを押して）
+async function revealExample(page, name) {
+  await page.waitForSelector('#examples-gallery .ex-door, #examples-gallery .ex-bar');
+  while (await page.$('#examples-gallery .ex-back')) await page.click('#examples-gallery .ex-back');
+  const sec = sectionOf(name);
+  if (sec !== 'intro') await page.click(`#examples-gallery .ex-door[data-section="${sec}"]`);
+  await page.waitForSelector(`#examples-list li[data-example="${name}"] .ex-view`);
+}
 const play = async (p, name) => {
-  await p.click(`#examples-list li[data-example="${name}"] button`);
+  await revealExample(p, name);
+  await p.click(`#examples-list li[data-example="${name}"] .ex-view`);
   await p.waitForSelector('#dlg.sample[open] #sample-frame');
 };
 
 try {
   // ================================================================ F1 高校の国語の先生：漢文のサンプルを見て、論語の教材を同じ作り方で
   const p1 = await open('ja', 'f1');
-  const rows = await p1.$$eval('#examples-list li', (li) => li.map((x) => [x.dataset.example, x.querySelector('button').textContent, x.querySelector('button').getAttribute('aria-label')]));
-  ok(rows.map((r) => r[0]).join() === EXAMPLES.join() && rows.every((r) => r[1] === '再生' && r[2].startsWith('再生: ')) && (await text(p1, '#examples .hint')) === 'Egatari で作ったサンプルの教材です。再生して、同じ作り方で自分の教材を作れます。',
-    'F1: every sample on the first screen has one button, 「再生」 (accessible name with the title): ' + JSON.stringify(rows.map((r) => r[1])));
+  await p1.waitForSelector('#examples-gallery .ex-door');
+  await revealExample(p1, 'kokugo-kanbun');
+  const rows = await p1.$$eval('#examples-list li', (li) => li.map((x) => [x.dataset.example, x.querySelector('.ex-view').textContent, x.querySelector('.ex-view').getAttribute('aria-label')]));
+  ok(rows.length > 0 && rows.every((r) => r[1] === '再生' && r[2].startsWith('再生: ')) && (await text(p1, '#examples .hint')) === 'Egatari で作ったサンプルの教材です。再生して、同じ作り方で自分の教材を作れます。',
+    'F1: every sample tile has 「再生」 (accessible name with the title): ' + JSON.stringify(rows.map((r) => r[1])));
   const KS = sample('kokugo-kanbun');
   await play(p1, 'kokugo-kanbun');
   const box = await p1.$eval('#sample-frame', (f) => { const r = f.getBoundingClientRect(); return { w: Math.round(r.width), h: Math.round(r.height), sandbox: f.getAttribute('sandbox'), src: f.hasAttribute('src') }; });
@@ -200,6 +211,14 @@ try {
       `F3 (${lang}): an unknown sample name opens New… as usual (at ①) with one line: ${JSON.stringify(await text(p3b, '#ai-sample-missing'))}`);
     await p3b.context().close();
   }
+  // 再生だけのサンプル（パーツ図鑑。examples/index.json の fromSample: false）：知らない名前と同じく、ふつうの新規作成と 1 行の知らせ
+  {
+    const p3p = await open('ja', 'f3p', '&from-sample=parts-showcase');
+    await p3p.waitForSelector('#dlg[open] #ai-sample-missing');
+    ok((await text(p3p, '#ai-sample-missing')) === 'サンプル「parts-showcase」が見つかりません。新規作成を開きました' && !(await p3p.$('#ai-from-sample')),
+      'F3: the play-only sample (parts-showcase) is not a from-sample name: New… opens as usual with the not-found line');
+    await p3p.context().close();
+  }
   // 凍結した写し（/v9.9.9/）の中：その写しの組み立てに入っているサンプルで、根と同じに開く（何も読みに行かない）
   const p3c = await open('ja', 'f3c', '&from-sample=kokugo-kanbun', 'v9.9.9/');
   await p3c.waitForSelector('#dlg[open] #paste-step-content.current');
@@ -229,8 +248,8 @@ try {
     rows: [...document.querySelectorAll('#paste-samples-list li')].map((li) => [li.dataset.example, li.querySelector('button').textContent, li.querySelector('button').getAttribute('aria-label')]),
     hidden: ['ai-howto', 'paste-direct-offer', 'paste-step-kind', 'paste-step-send', 'paste-step-paste', 'dlg-import'].filter((id) => { const e = document.getElementById(id); return e && e.getClientRects().length; }),
     focus: document.activeElement && document.activeElement.closest('li') && document.activeElement.closest('li').dataset.example }));
-  ok(picker.h === '参考にするサンプルを選んでください' && picker.rows.map((r) => r[0]).join() === EXAMPLES.join() && picker.rows.every((r) => r[1] === '選ぶ' && r[2].startsWith('選ぶ: ')) && !picker.hidden.length && picker.focus === EXAMPLES[0],
-    'F7: it opens the sample picker (the same list as the first screen, each with 「選ぶ」), hides the questions and 「作成」, and the focus is on the first sample: ' + JSON.stringify(picker));
+  ok(picker.h === '参考にするサンプルを選んでください' && picker.rows.map((r) => r[0]).join() === FROM_SAMPLE.join() && picker.rows.every((r) => r[1] === '選ぶ' && r[2].startsWith('選ぶ: ')) && !picker.hidden.length && picker.focus === FROM_SAMPLE[0],
+    'F7: it opens the sample picker (the samples that can be used with 「このサンプルを参考に作る」, each with 「選ぶ」), hides the questions and 「作成」, and the focus is on the first sample: ' + JSON.stringify(picker));
   await shot(p7, 'from-sample-picker.png');
   await p7.click('#paste-samples-back');
   await p7.waitForFunction(() => document.activeElement && document.activeElement.id === 'paste-from-sample', null, { timeout: 5000 }).catch(() => {});
@@ -267,7 +286,8 @@ try {
   await p4.context().close();
   const p5 = await open('ja', 'f5');
   await p5.route('**/examples/pitch-fictional.ega.html', async (route) => { const r = await route.fetch(); const b = await r.body(); await route.fulfill({ response: r, body: Buffer.concat([b, Buffer.from('<!-- x -->')]) }); });
-  await p5.click('#examples-list li[data-example="pitch-fictional"] button');
+  await revealExample(p5, 'pitch-fictional');
+  await p5.click('#examples-list li[data-example="pitch-fictional"] .ex-view');
   await p5.waitForSelector('#toast.show');
   ok((await text(p5, '#toast')).startsWith('サンプルを読み込めませんでした: ファイルがサンプルの一覧と合いません') && !(await p5.$('#dlg[open]')), 'F5: a file that does not match the list’s sha256 is not played');
   await p5.context().close();
@@ -281,7 +301,7 @@ try {
   const reqFile = path.join(work, 'request-ja.txt');
   fs.writeFileSync(reqFile, '論語を読む\n「学而」の章を、書き下し文と現代語訳で\n');
   const cases = [];
-  for (const lang of ['ja', 'en']) for (const name of EXAMPLES) for (const plan of ['free', 'paid']) cases.push({ lang, name, plan, title: lang === 'ja' ? '論語を読む' : 'Reading the Analects' });
+  for (const lang of ['ja', 'en']) for (const name of FROM_SAMPLE) for (const plan of ['free', 'paid']) cases.push({ lang, name, plan, title: lang === 'ja' ? '論語を読む' : 'Reading the Analects' });
   cases.push({ lang: 'ja', name: 'kokugo-kanbun', plan: 'free', title: '論語を読む', content: '「学而」の章を、書き下し文と現代語訳で', file: reqFile });
   for (const lang of ['ja', 'en']) {
     const p6 = await open(lang, 'f6-' + lang);

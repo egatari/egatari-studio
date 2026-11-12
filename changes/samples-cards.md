@@ -1,0 +1,7 @@
+### Added
+
+- 17 more samples on the first screen, copied unmodified from egatari/examples (the gallery lessons of egatari.org except the commercial): Egatari の紹介 (ja and en), パーツ図鑑, the moon's phases, chords, sentence structure, Huffman codes, Bayes' theorem, Japan's population, the shared-birthday class vote, the generative AI guideline, a quarterly report, security training, a city budget (ja and en), hand hygiene and the hazard map. 16 of them work with 「このサンプルを参考に作る」 and `?from-sample=<name>`; パーツ図鑑 only plays (its name opens New… with the not-found line). `tools/examples-sync.mjs` copies them from a fixed commit with every file's SHA-256 in `SOURCE.json`, and `--check` (in `npm run gen:check`) refuses an edited copy
+
+### Changed
+
+- The samples on the first screen are cards instead of one long list. The top row 「まず見る」 has Egatari の紹介 (the screen's language first; the other one carries a language badge) and パーツ図鑑 (play it, or open the parts list). Below it are three entrance cards, 教育 (授業・講義・校内研修), ビジネス (報告・提案・社内研修) and 生活 (自治体・医療・防災の案内), with the same sections and wording as egatari.org's gallery (`examples/index.json`; `tools/examples-sync.mjs --check --lessons` compares them). Each sample is a tile with a cover (the first slide, made by `npm run covers`), its title, its setting, badges (本, 声, ライブ, 縦書き, and the lesson's language when it differs from the screen's), what it conveys and the parts it uses. Pressing a part shows only the samples that use it; 「戻る」 goes back. The button on each tile is still 「再生」

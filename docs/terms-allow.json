@@ -557,7 +557,14 @@
       "file": "docs/authoring-with-llms.ja.md",
       "pattern": "(?<=1 つの)段階ずつ",
       "term": "step",
-      "reason": "vendored components manifest purposes text (m-cycle tile, 「1 つの段階ずつ」), fixed in components 2.8.0"
+      "reason": "vendored components manifest purposes text (m-cycle tile, 「1 つの段階ずつ」), fixed in components 2.8.0 (「順を追って 1 つずつ」); remove this entry when vendoring 2.8.0"
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "exampleLang:",
+      "term": "subject-english",
+      "reason": "The language badge on a sample tile (the lesson's language when it differs from the screen's): 英語 is the lesson language, not the subject tile; en shows Japanese for Japanese lessons and never needs an English badge.",
+      "pairs": true
     }
   ]
 }

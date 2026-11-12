@@ -34,7 +34,7 @@ import { testAppSlides } from './test-app-slides.mjs';
 import { testAppOutline } from './test-app-outline.mjs';
 import { testNewDeckFlow, checkSkillDownload } from './test-app-newdeck.mjs';
 import { clickUntil, clickDlg, clickMenuOpen, clickMenuItem, clickCommand } from './click-retry.mjs';
-import { EXAMPLES, exampleRand } from './examples-portable.mjs';
+import { EXAMPLES, exampleRand, SECTIONS, sectionOf } from './examples-portable.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import zlib from 'node:zlib';
 import { writeZip } from '../kit/core/zip-read.mjs';
@@ -65,8 +65,17 @@ const firstDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i
 const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.join(SHOTS, name) }); };
 
 // サンプルを編集で開く：一覧の「再生」→ 大きく再生する窓の「コピーを開いて編集」（app/main.js の playExample。backlog #130）
+// はじめの画面のサンプルの札を出す（app/examples-gallery.js：intro は最初の画面、ほかは入口のカードを押して）
+async function revealExample(page, name) {
+  await page.waitForSelector('#examples-gallery .ex-door, #examples-gallery .ex-bar');
+  while (await page.$('#examples-gallery .ex-back')) await page.click('#examples-gallery .ex-back');
+  const sec = sectionOf(name);
+  if (sec !== 'intro') await page.click(`#examples-gallery .ex-door[data-section="${sec}"]`);
+  await page.waitForSelector(`#examples-list li[data-example="${name}"] .ex-view`);
+}
 async function openExampleCopy(page, name) {
-  await page.click(`#examples-list li[data-example="${name}"] button`);
+  await revealExample(page, name);
+  await page.click(`#examples-list li[data-example="${name}"] .ex-view`);
   await page.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: scaled(30000) });
   await clickDlg(page, '#dlg-copy');
 }
@@ -1651,19 +1660,42 @@ try {
         return { n: Number((t.match(/エラー (\d+)/) || [])[1]), t };
       };
 
-      // 見本の一覧：配信版の dist/examples/ と同じもの（tools/examples-portable.mjs の順）
-      const exNames = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
-      ok(await po.isVisible('#examples') && exNames.join(',') === EXAMPLES.join(','), `examples: the first screen lists the examples (${exNames.join(', ')})`);
-      // 本のあるサンプル（examples.json の book）だけに「本」の印
-      const exBooks = await po.$$eval('#examples-list li', (li) => li.filter((x) => x.querySelector('.ex-book')).map((x) => x.getAttribute('data-example')));
-      ok(exBooks.join(',') === 'heikin-chuouchi,rashomon' && (await po.textContent('#examples-list li[data-example="rashomon"] .ex-book')) === '本',
-        `examples: only the samples with a book have the 本 badge (${exBooks.join(', ')})`);
+      // サンプル：最初の画面は「まず見る」の列（intro）と入口のカード。入口ごとに、その区分のサンプル（examples/index.json の順）。合わせて dist/examples/ と同じもの
+      await po.waitForSelector('#examples-gallery .ex-door');
+      const exTop = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
+      const doors = await po.$$eval('#examples-gallery .ex-door', (b) => b.map((x) => [x.dataset.section, x.querySelector('.ex-door-t').textContent, x.querySelector('.ex-door-s').textContent, x.querySelector('.ex-door-n').textContent]));
+      const bySec = (id) => EXAMPLES.filter((n) => sectionOf(n) === id);
+      ok(await po.isVisible('#examples') && exTop.join() === 'egatari-intro,egatari-intro-en,parts-showcase'
+        && doors.map((d) => d[0]).join() === 'teaching,business,life' && doors.every((d) => { const s = SECTIONS.find((x) => x.id === d[0]); return d[1] === s.title.ja && d[2] === s.subtitle.ja && d[3] === `${bySec(d[0]).length} 件`; }),
+        `examples: the first screen shows 「まず見る」 (${exTop.join(', ')}) and the entrance cards ${JSON.stringify(doors)}`);
+      const seen = [...exTop], exBooks = [];
+      const books = async () => po.$$eval('#examples-list li', (li) => li.filter((x) => [...x.querySelectorAll('.ex-badge')].some((b) => b.textContent === '本')).map((x) => x.getAttribute('data-example')));
+      exBooks.push(...await books());
+      for (const d of doors) {
+        await po.click(`#examples-gallery .ex-door[data-section="${d[0]}"]`);
+        await po.waitForSelector('#examples-gallery .ex-bar');
+        const names = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
+        ok(names.join() === bySec(d[0]).join() && (await po.evaluate(() => document.activeElement && document.activeElement.id)) === 'ex-h-now', `examples: ${d[0]} lists its samples and the focus moves to its heading (${names.join(', ')})`);
+        seen.push(...names); exBooks.push(...await books());
+        await po.click('#examples-gallery .ex-back');
+        await po.waitForSelector('#examples-gallery .ex-door');
+        ok((await po.evaluate(() => document.activeElement && document.activeElement.dataset.section)) === d[0], `examples: 「戻る」 returns to the entrance cards with the focus on ${d[0]}`);
+      }
+      ok([...seen].sort().join() === [...EXAMPLES].sort().join(), `examples: every sample appears once (${seen.length} of ${EXAMPLES.length})`);
+      // 本のあるサンプルだけに「本」の印
+      const wantBooks = EXAMPLES.filter((n) => fs.existsSync(path.join(ROOT, 'examples', n, 'article')) || fs.existsSync(path.join(ROOT, 'examples', n, 'article.md')));
+      ok([...exBooks].sort().join() === [...wantBooks].sort().join(), `examples: only the samples with a book have the 本 badge (${exBooks.join(', ')})`);
+      // パーツの札：押すと、そのパーツを使うサンプルだけに絞る（パーツ図鑑は除く）
+      await revealExample(po, 'huffman');
+      await po.click('#examples-list li[data-example="huffman"] .ex-part[data-part="m-codetree"]');
+      await po.waitForSelector('#examples-gallery .ex-bar');
+      const byPart = await po.$$eval('#examples-list li', (li) => li.map((x) => x.getAttribute('data-example')));
+      ok(byPart.includes('huffman') && !byPart.includes('parts-showcase') && (await po.textContent('#ex-h-now')).endsWith('を使うサンプル'), `examples: a part tag filters to the samples that use it (m-codetree: ${byPart.join(', ')})`);
       if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'examples-list.png') });
       for (const name of EXAMPLES) {
         const file = path.join(DIST, 'examples', name + FORMAT.FILE_EXT);
         const want = await readPortable(new Uint8Array(fs.readFileSync(file)));
         await po.goto(BASE);
-        await po.waitForSelector(`#examples-list li[data-example="${name}"] button`);
         await openExampleCopy(po, name);
         // 開いた後の状態を待つ（独自のコードの確かめは「始める」）
         const asked = await Promise.race([po.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n; }, name + FORMAT.FILE_EXT, { timeout: scaled(30000) }).then(() => false), po.waitForSelector('#dlg[open] #dlg-run', { timeout: scaled(30000) }).then(() => true)]);
@@ -2216,7 +2248,8 @@ try {
       if (tag === 'root') {
         // 約 1 秒を超える待ち（見本を開く）：はじめの画面の上にロゴを描く。すぐ終わるときは出さない
         await ps.route('**/examples/minimal' + FORMAT.FILE_EXT, async (route) => { await new Promise((r) => setTimeout(r, 1800)); await route.continue(); });
-        await ps.click('#examples-list li[data-example="minimal"] button');
+        await revealExample(ps, 'minimal');
+        await ps.click('#examples-list li[data-example="minimal"] .ex-view');
         ok(await ps.waitForSelector('#wait:not([hidden]) img.wait-logo', { timeout: scaled(4000) }).then(() => true).catch(() => false), 'wait: a slow open draws the logo after about 1 s');
         await ps.waitForSelector('#dlg.sample[open] #dlg-copy', { timeout: scaled(30000) });
         await clickDlg(ps, '#dlg-copy');
@@ -2233,7 +2266,6 @@ try {
         ok(!ex.includes('M84 40H40V152') && !ex.includes('egatari-draw'), 'logo: the .ega.html player does not contain the logo');
       }
       await ps.goto(base);
-      await ps.waitForSelector('#examples-list li[data-example="minimal"] button');
       await openExampleCopy(ps, 'minimal');
       await ps.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.portable && s.portable.name === n && s.loads > 0 && !s.error; }, 'minimal' + FORMAT.FILE_EXT, { timeout: scaled(30000) }).catch(() => {});
       ok(await ps.evaluate((n) => { const s = window.__APP_TEST.state(); return !!(s.portable && s.portable.name === n && !s.error); }, 'minimal' + FORMAT.FILE_EXT), `site (${tag}): the minimal example opens from the first screen`);

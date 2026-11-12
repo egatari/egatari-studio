@@ -55,6 +55,7 @@ import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { partsIndexHref } from './parts-gallery.js';
+import { createExamplesGallery } from './examples-gallery.js';
 import { themeFolderWorkspace, themeNames, permissionOf, requestRead, loadThemeFolder, loadThemeFolderAt, saveThemeFolder, forgetThemeFolder } from './theme-folder.js';
 import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from './theme-zip.js';
 import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, deleteMyTheme } from './my-themes.js';
@@ -215,19 +216,11 @@ function showExamples() {
   const list = Array.isArray(RES.examples) ? RES.examples : [];
   const on = list.length > 0 && /^https?:$/.test(location.protocol);
   $('examples').hidden = !on;
-  const ul = $('examples-list'); ul.innerHTML = '';
+  const root = $('examples-gallery'); root.innerHTML = '';
   if (!on) return;
-  for (const x of list) {
-    ul.append(el('li', { 'data-example': x.name }, [
-      el('span', { cls: 'ex-text' }, [
-        el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
-        el('span', { cls: 'meta' }, [`${x.file} · ` + T.exampleMeta(x.slides, (x.bytes / 1048576).toFixed(1), x.profile === 'extended'),
-          // 本のあるサンプル（一覧の book。tools/examples-portable.mjs）に「本」の印
-          ...(x.book === true ? [el('span', { cls: 'attach-badge ex-book', text: T.exampleBook, title: T.exampleBookTitle })] : [])]),
-      ]),
-      el('button', { type: 'button', text: T.examplePlay, 'aria-label': `${T.examplePlay}: ${x.title}`, onclick: () => playExample(x) }),
-    ]));
-  }
+  // 入口のカードと札（app/examples-gallery.js）。区分は組み立てが入れた RES.exampleSections（examples/index.json）
+  createExamplesGallery({ root, list, sections: Array.isArray(RES.exampleSections) ? RES.exampleSections : [], T, lang: EN ? 'en' : 'ja',
+    coverHref: (f) => new URL('examples/' + encodeURIComponent(f), document.baseURI).href, partsHref: partsIndexHref(location), onView: (x) => playExample(x) });
 }
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 // サンプルのファイルのバイト。大きさは読む前（Content-Length）と読みながら、開ける上限（LIMITS.fileBytes）と比べる（app/bounded-read.js）。
