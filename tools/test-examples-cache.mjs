@@ -1,5 +1,5 @@
 // 組んだサンプルの置き場（tools/examples-portable.mjs の examplesKey・buildExamples、EGATARI_EXAMPLES_CACHE。d5 11/12）の試験。ブラウザなし・サンプルは組まない
-//   - 鍵は入力の中身で決まる：サンプルの 1 バイト・組み立てのコード（kit/）・名前の並び・covers のどれが変わっても鍵が変わる。同じ中身なら同じ鍵
+//   - 鍵は入力の中身で決まる：サンプルの 1 バイト・組み立てのコード（kit/）・名前の並び・covers・組み立てを変える環境変数（EGATARI_FONT_SUBSET など）のどれが変わっても鍵が変わる。同じ中身なら同じ鍵
 //   - 置き場に今の鍵のものがあれば写す（組まない）。古い鍵のものは使わない（入力が変われば別の鍵を探すので、古いサンプルで通ることはない）
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -44,6 +44,11 @@ try {
   ok('the names and covers are part of the key', () => {
     assert.notEqual(key({ names: ['a', 'b'] }), k0);
     assert.notEqual(key({ covers: true }), k0);
+  });
+  ok('a build setting in the environment (EGATARI_FONT_SUBSET=0) changes the key; the cache variable itself does not', () => {
+    assert.notEqual(key({ env: { EGATARI_FONT_SUBSET: '0' } }), key({ env: {} }));
+    assert.equal(key({ env: { EGATARI_EXAMPLES_CACHE: '/x' } }), key({ env: {} }));
+    assert.equal(key({ env: { PATH: '/x' } }), key({ env: {} }));
   });
   ok('the real inputs give a key (examples/, kit/, vendor/, themes/, package-lock.json)', () => assert.match(examplesKey(), /^[0-9a-f]{32}$/));
 

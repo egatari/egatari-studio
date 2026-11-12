@@ -82,10 +82,12 @@ function copyCover(name, outDir) {
 // 1 回の試験の間だけ使う組んだサンプルの置き場（tools/test-all.mjs が EGATARI_EXAMPLES_CACHE に一時のフォルダを渡す。d5 11/12）。
 // サンプルを組むと 17 本で 70 秒前後かかり、編集アプリの試験の多くが build-app を自分で呼ぶので、同じ入力なら 1 回だけ組んで写す。
 // 鍵は入力の中身の sha256（examples/ の原稿・組み立てが使う kit/・vendor/・themes/・package-lock.json と、名前・covers）：
-// どれか 1 バイトでも変われば鍵が変わり、組み直す（古いサンプルで試験が通ることはない）。変数がなければ置き場を使わず、いつも組む
+// どれか 1 バイトでも変われば鍵が変わり、組み直す（古いサンプルで試験が通ることはない）。変数がなければ置き場を使わず、いつも組む。
+// 組み立てを変える環境変数（EGATARI_ で始まるもの。置き場の変数そのものは除く。例：EGATARI_FONT_SUBSET=0 で字を切り出さない）も鍵に入れる
 export const EXAMPLE_INPUTS = ['examples', 'kit', 'vendor', 'themes', 'package-lock.json'];
-export function examplesKey({ root = ROOT, names = EXAMPLES, covers = false, inputs = EXAMPLE_INPUTS } = {}) {
-  const h = crypto.createHash('sha256').update(JSON.stringify({ names, covers }));
+const buildEnv = (env) => Object.keys(env).filter((k) => k.startsWith('EGATARI_') && k !== 'EGATARI_EXAMPLES_CACHE').sort().map((k) => [k, env[k]]);
+export function examplesKey({ root = ROOT, names = EXAMPLES, covers = false, inputs = EXAMPLE_INPUTS, env = process.env } = {}) {
+  const h = crypto.createHash('sha256').update(JSON.stringify({ names, covers, env: buildEnv(env) }));
   const walk = (rel) => {
     const abs = path.join(root, rel);
     let st;

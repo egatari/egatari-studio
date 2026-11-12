@@ -926,11 +926,11 @@ try {
   ok(await page.isChecked('#rec-keep-recording') && /Keep recording/.test(await page.textContent('label[for="rec-keep-recording"]')), 'keep recording: on is remembered after reload, with an English label');
   await page.uncheck('#rec-keep-recording'); await page.focus('#rec-mode');
   await page.keyboard.press('Escape');
-  await page.reload(); await page.waitForSelector('#drop');
-  await page.evaluate(async () => {
-    window.__testDir = await (await navigator.storage.getDirectory()).getDirectoryHandle('rec-deck');
-    await window.__APP_TEST_OPEN(window.__testDir); document.body.focus();
-  });
+  // 読み込み直すと、許可がまだある作業フォルダ（ここでは OPFS。許可はいつも granted）は自分で開き直る（backlog #204）。
+  // 最初の画面（#drop）を待ってから開くと、開き直しと競って #drop が隠れたままになる（CI で 30 秒の待ちを越えた）。開き直しを待つ
+  await page.reload();
+  await page.waitForFunction(() => !document.getElementById('deck').hidden && document.getElementById('deckname').textContent.includes('rec-deck'));
+  await page.evaluate(() => document.body.focus());
   await frameReady(); await page.keyboard.press('r');
   await page.waitForFunction(() => { const s = window.__APP_TEST.rec(); return s.open && s.ready && s.phase === 'idle'; });
   ok(!(await page.isChecked('#rec-keep-recording')), 'keep recording: off is remembered after a full page reload');
