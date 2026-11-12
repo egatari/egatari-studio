@@ -1,94 +1,94 @@
 {
   "egatari-intro": {
     "site": true,
-    "sha256": "da055fe8e5219dbdb0b4ee15d8b25fac18db011f1560928758f2a103298e067f"
+    "sha256": "152e1aff83dbf54b77d77800ec787d2ae717ecd5e7f12b1ffd146e9991e7fde6"
   },
   "egatari-intro-en": {
     "site": true,
-    "sha256": "65cf073e71feab63a776e665dd34691530553def0701af8d1391e0c0b4365bfa"
+    "sha256": "129bd35e8459839fb61b6460240562afdb9d853554d9715386fb0260df26f026"
   },
   "parts-showcase": {
     "site": true,
-    "sha256": "a76bc26fc1969487b87bb1f449999c00e57ebb83ddfe5fe645054390a24467b1"
+    "sha256": "dcb7e3ecd87d1235023ad3ab5b065af56ab8539726413ecb68b5a7207cf0141d"
   },
   "moon-phases": {
     "site": true,
-    "sha256": "47703747355226ab11e3e1f83900fd07c68a306ed879193a36325f739cf29551"
+    "sha256": "93e1d19f15426bfc3b170edca93ea412bed7f9ef365eb58b986138b7001b7997"
   },
   "chords": {
     "site": true,
-    "sha256": "8d05bbc22722064d011d209c2bf8aac521471a813d6335610682ebc804e80827"
+    "sha256": "cd5b0baf3bee31726fd379729a017623857ebe134ba1286ad3d65c3564060a8b"
   },
   "sentence-structure": {
     "site": true,
-    "sha256": "04f1511cf649884e471edca7d642dd33e502c1946942d2d19526f587d81c06ab"
+    "sha256": "53e1fd7db7e81ff5d6c01efab5656a28f2bab0abb46d2fdb2840aa9aef9c5301"
   },
   "huffman": {
     "site": true,
-    "sha256": "e8de440dd2128d1b47f4b64053c5d67252c1df58a7b9510499f82fa75393923b"
+    "sha256": "ff62e26684a3734df1399ba3b61314c4bddd179f9660b5b71a51fabe596205aa"
   },
   "bayes": {
     "site": true,
-    "sha256": "59442745e7e7a55af33372c7582fdbd2983b2865c7bd35dad14ff272d91412b3"
+    "sha256": "d86a0a081dee7d76749978b26f50f4aa6a0ab17cfeaeadb8718f8762fda03702"
   },
   "population": {
     "site": true,
-    "sha256": "9525383c5b56162396a9690d385f6ed6838b7c5098473c9a71dd2913eb609e8f"
+    "sha256": "3fd6b653f92f0eefd918505752977e8dff5a6ef410cca8f70a3c8087b6777de1"
   },
   "live-birthday": {
     "site": true,
-    "sha256": "b66922a475be6c2622a1af6395d58f4c548e56eaf8d6a18124ce09fc6ab197d0"
+    "sha256": "7fbfc33eca10a23f291b5c405f43a5010f5dad191f0e93e3c1fa4927f2fc7065"
   },
   "genai-guideline": {
     "site": true,
-    "sha256": "62399e83292d42b1cb2bb6aacf1e037fa0575e984e2a73c0a16aeee36d07c092"
+    "sha256": "c882f5a5494403097982459a446f4c69ab072450808e12c9478204e11e151212"
   },
   "kokugo-kanbun": {
-    "src": "dde1ee192f2e8745",
-    "title": "漢文を読む――返り点から書き下し文へ"
+    "picked": true,
+    "sha256": "485cb5e39d494af0f36e201338209c3f6546d82ce26cee4372f7086eb8d354f8"
   },
   "heikin-chuouchi": {
-    "src": "96b1835f02e26da7",
-    "title": "平均と中央値は「ズレの測り方」で決まる"
+    "picked": true,
+    "sha256": "101e0282aa756cf7396f48075c59c6c3c4dc37aa0708a8beae598504f19f7d28"
   },
   "rashomon": {
-    "src": "9394b61c7c6e6c02",
-    "title": "芥川龍之介「羅生門」を読む"
+    "picked": true,
+    "sha256": "5bd9652cfa67413d0f16800680e215ce795108c074ddf5a1e7e59fb5f19c0ae8"
   },
   "tmlr2026-calibration": {
-    "src": "c194b91ba74cd21b",
-    "title": "Bayes-Optimal Calibration under the Logit-Noise Model"
+    "picked": true,
+    "sha256": "67e2b43ce3b52c0bdb45504b657ccfe8338bff35d29414623293c4ddc6ecd66d"
   },
   "minimal": {
-    "src": "d53476eed54f8b28",
-    "title": "勾配降下法の基本"
+    "picked": true,
+    "sha256": "45dc5d60d6a0ab126461a4136599972a659b35d9818362d0d2c917e8a04a3ccf"
   },
   "quarterly-report": {
     "site": true,
-    "sha256": "d8af058d5bd89702a894b6d64cf8a9f78cf868a8bf3c0e7c309bbb70f84cb271"
+    "sha256": "3546e9fc0702bb336c07e5f753dc3db3c96a78d66a950d4061f921ccee8a1f94"
   },
   "security-training": {
     "site": true,
-    "sha256": "a608777e46feca988a1bb7c277ae45602001c6aa6034288035ccb2b8cc421548"
+    "sha256": "2cba1383c4ee0d25da79ac9a1ff5eeccb098a2704e45d29a58033d9c7fb43aef"
   },
   "pitch-fictional": {
-    "src": "b5850814d993c4f1",
-    "title": "株式会社レポミル（架空）事業紹介"
+    "picked": true,
+    "sha256": "ef95cf643e9c215d9f478204ab9b015b8e8ec5b76498e44a38b2d8396d2d190f"
   },
   "city-budget-ja": {
     "site": true,
-    "sha256": "1ff7ae0d3a1ed38d6bf4a66d0996a629393815d48e2fad7274c028d2e03d3723"
+    "sha256": "8791c2e20835f74c44d9ecc3cdd859cb035068e970ceb6d8c1d6bf0ac793905a"
   },
   "city-budget-en": {
     "site": true,
-    "sha256": "f01a9e0ed8f2fbbafb8fefb179eb959405ab657965aea32252dfa3f85f201bd9"
+    "sha256": "c71ab60a70671ff3d26f9402a1ede653d0b1dde2acff2dc33cfc0ea5e6f4a743"
   },
   "hand-hygiene": {
     "site": true,
-    "sha256": "a7dea624b5ebb94bb53663332c7660f8aa0d9d4b890b48fa6a18a2f34baf3736"
+    "sha256": "ece71c8551157086a98a94ccb800c5ff647058713a5cec3fa489fdf0e31c8258"
   },
   "hazard-map": {
     "site": true,
-    "sha256": "ac293f5391887f9d86e339ad627dbee9369f85a800bf070018fa06fac20d6d56"
+    "sha256": "b03437a87dbcb31f009abc38b515ec26fc3a570325d03a86339b9ab3dd89c10d"
   }
 }

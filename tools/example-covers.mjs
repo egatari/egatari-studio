@@ -7,7 +7,7 @@
 //     sha256 が index.json のとおりか（ブラウザなし。npm run gen:check。サイトの絵と同じかは tools/examples-sync.mjs --check --lessons が照らす）
 // 作り方：tools/examples-portable.mjs と同じく 1 ファイルに組み、1 枚目のスライドを最後のステップまで進めて、スライド全体（16:9）を撮る。
 // 絵は 384×216（カードでは 192×108 で、高い密度の画面にも足りる）の WebP。tools/build-app.mjs が dist/examples/<名前>.cover.webp に写す。
-// examples/_covers/index.json に {名前: {src, title}}（作った絵：src はフォルダの hash の先頭）か {名前: {site: true, sha256, title}}（サイトから写した絵）
+// examples/_covers/index.json に {名前: {src, title}}（作った絵：src はフォルダの hash の先頭）か {名前: {site: true, sha256}}（サイトから写した絵）か {名前: {picked: true, sha256}}（選んだ絵）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -39,7 +39,7 @@ if (process.argv.includes('--check')) {
   for (const name of EXAMPLES) {
     if (!have[name]) bad.push(`${name}: no cover`);
     else if (!fs.existsSync(path.join(DIR, name + '.webp'))) bad.push(`${name}: examples/_covers/${name}.webp is missing`);
-    else if (have[name].site) { if (createHash('sha256').update(fs.readFileSync(path.join(DIR, name + '.webp'))).digest('hex') !== have[name].sha256) bad.push(`${name}: the cover differs from the one copied from egatari.org`); }
+    else if (have[name].site || have[name].picked) { if (createHash('sha256').update(fs.readFileSync(path.join(DIR, name + '.webp'))).digest('hex') !== have[name].sha256) bad.push(`${name}: the cover differs from the one copied (${have[name].site ? 'egatari.org' : 'picked'})`); }
     else if (have[name].src !== folderHash(name)) bad.push(`${name}: the cover is from an older copy of the sample`);
   }
   for (const name of Object.keys(have)) if (!EXAMPLES.includes(name)) bad.push(`${name}: a cover for a sample that is not in examples/index.json`);
@@ -51,6 +51,9 @@ if (process.argv.includes('--check')) {
 const argv = process.argv.slice(2);
 const siteAt = argv.indexOf('--site');
 const SITE = siteAt >= 0 ? path.resolve(argv.splice(siteAt, 2)[1]) : null;
+// --picked <フォルダ>：Studio だけのサンプルの、見本の担当が選んだステップの絵（<フォルダ>/studio-<名前>.webp、640×360。選んだステップは同じフォルダの covers.md）
+const pickedAt = argv.indexOf('--picked');
+const PICKED = pickedAt >= 0 ? path.resolve(argv.splice(pickedAt, 2)[1]) : null;
 const only = argv.filter((a) => !a.startsWith('-'));
 const covers = readCovers();
 fs.mkdirSync(DIR, { recursive: true });
@@ -65,8 +68,18 @@ if (SITE) {
     console.log(`${name}: from egatari.org (${(buf.length / 1024).toFixed(0)} KB)`);
   }
 }
-// サイトから写した絵は作り直さない
-names = names.filter((n) => !(covers[n] && covers[n].site));
+if (PICKED) {
+  for (const name of names) {
+    const from = path.join(PICKED, `studio-${name}.webp`);
+    if (!fs.existsSync(from) || (covers[name] && covers[name].site)) continue;
+    const buf = fs.readFileSync(from);
+    fs.writeFileSync(path.join(DIR, name + '.webp'), buf);
+    covers[name] = { picked: true, sha256: createHash('sha256').update(buf).digest('hex') };
+    console.log(`${name}: picked (${(buf.length / 1024).toFixed(0)} KB)`);
+  }
+}
+// 写した絵（サイト・選んだ絵）は作り直さない
+names = names.filter((n) => !(covers[n] && (covers[n].site || covers[n].picked)));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'example-covers-'));
 const built = names.length ? await buildExamples(tmp, { names }) : [];
 const { launch, fileUrl, prepareForCapture, releaseCapture } = await import('../kit/browser.mjs');
