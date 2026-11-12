@@ -13,7 +13,10 @@
 //                                     a part goes under the tile of its first purpose that has one (tile own, or {into}); else under
 //                                     its set, or そのほか. With --previous, parts not in it are marked new, parts with another version changed,
 //                                     and parts with the same version but another demo.html or README.md サンプルが変わった. The page is public, so its
-//                                     words are Studio's (docs/terms.json: パーツ, サンプル, ステップ, パーツライブラリ)
+//                                     words are Studio's (docs/terms.json: パーツ, サンプル, ステップ, パーツライブラリ).
+//                                     --samples-href '<link with {tag}>' --samples-tags m-flow,m-bars,…  (both or neither): under the
+//                                     summary of each listed part, a line linking to Studio's samples that use it ({tag} is replaced
+//                                     by the part's tag, URL-encoded). Without them the page is as before.
 import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
@@ -24,6 +27,8 @@ import { readTarGz } from './tar.mjs';
 import { identityBytes } from './identity.mjs';
 import { frontmatter, list, purposeIds, SERIES_LABEL, SET_LABEL, flags } from './lint.mjs';
 
+// The words of the link to Studio's samples that use a part (--samples-href); a proposal until the glossary review settles them
+const SAMPLES_LINK_TEXT = 'このパーツを使ったサンプル / Samples that use this part';
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 // a demo slide: class "slide" with or without more classes (noconcl), any attribute order
 const SLIDE_RE = /<section\b[^>]*\bclass="slide(?:\s[^"]*)?"[\s\S]*?<\/section>/g;
@@ -40,12 +45,12 @@ function demoParts(demo, name){
   };
 }
 // The slide that introduces a part (interactive parts: a badge and a dashed --accent2 frame; text and dash, not colour alone)
-function introSlide({ name, summary, purposes, variants, group, n, ia, mark, next, sample = '見本' }){
+function introSlide({ name, summary, purposes, variants, group, n, ia, mark, next, sample = '見本', samplesHref }){
   return `<section class="slide">
   <h2>${esc(name)}${mark ? `（${mark}${next ? `、${next}` : ''}）` : ''}</h2>
   <div class="body">
 ${ia ? '    <p style="margin:0 0 10px;line-height:1.3"><span style="display:inline-block;font-size:27px;font-weight:700;color:var(--fg);border:2px dashed var(--accent2);border-radius:8px;padding:0 12px">操作できる / Interactive</span></p>\n' : ''}    <p${ia ? ' style="border:3px dashed var(--accent2);border-radius:10px;padding:10px 16px"' : ''}>${esc(summary)}${ia ? '（見る人が押して操作できる）' : ''}</p>
-    <ul>
+${samplesHref ? `    <p style="margin:6px 0 0"><a href="${esc(samplesHref).replace(/"/g, '&quot;')}">${esc(SAMPLES_LINK_TEXT)}</a></p>\n` : ''}    <ul>
       <li>伝えたいこと：${esc(purposes)}</li>
       <li>見せ方：${variants.length ? esc(variants.join('・')) : '1 種類'}</li>
       <li>${group}　${sample}のスライド：${n} 枚</li>
@@ -189,6 +194,12 @@ function packGallery(){
   const fail = (m) => { console.error('gallery --pack: ' + m); process.exit(1); };
   const readJson = (p) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { fail(`${p}: ${e.message}`); } };
   const man = readJson(opt('--manifest')), prev = opt('--previous') ? readJson(opt('--previous')) : null;
+  // links to Studio's samples that use a part: both options or neither
+  const sHref = opt('--samples-href'), sTagsArg = opt('--samples-tags');
+  if ((sHref === undefined) !== (sTagsArg === undefined)) fail('--samples-href and --samples-tags go together');
+  if (sHref !== undefined && (!sHref.includes('{tag}') || /^\s*(javascript|data|vbscript):/i.test(sHref))) fail(`--samples-href ${JSON.stringify(sHref)}: a link with {tag} in it`);
+  const sTags = new Set((sTagsArg || '').split(',').map((t) => t.trim()).filter(Boolean));
+  const samplesHrefOf = (tag) => (sHref !== undefined && sTags.has(tag) ? sHref.split('{tag}').join(encodeURIComponent(tag)) : undefined);
   if (!man.version || !man.components || !man.files) fail(`${opt('--manifest')}: not a components manifest (version, components, files)`);
   const sha = (b) => createHash('sha256').update(b).digest('hex');
   // the pack's files: a tarball (checked against manifest.tarball) or the folder it was unpacked into
@@ -252,7 +263,7 @@ function packGallery(){
       const tier = x.c.tier === 'specialized' && x.c.set ? `専門のパーツ（${SET_LABEL[x.c.set] || x.c.set}）` : x.c.tier === 'extra' ? '特殊なパーツ' : '標準パーツ';
       slides.push(introSlide({ name: tags[i], summary: x.f.summary, purposes: (x.c.purposes || []).map(label).join('・'), variants: x.c.variants || [],
         group: `${esc(tier)}　版：${esc(x.c.version)}`, n: d.secs.length, ia: flags(text(`${x.name}/index.js`)).interactive,
-        mark: x.mark, next: x.mark ? next : '', sample: 'サンプル' }), ...d.secs);
+        mark: x.mark, next: x.mark ? next : '', sample: 'サンプル', samplesHref: samplesHrefOf(tags[i]) }), ...d.secs);
       total += 1 + d.secs.length;
     });
   }
@@ -263,6 +274,9 @@ function packGallery(){
     <p>${toc.join('　')}</p>
   </div>
 </section>` });
+  const known = new Set(Object.values(man.components).filter((c) => c.kind === 'element').map((c) => c.tag));
+  const unknown = [...sTags].filter((t) => !known.has(t));
+  if (unknown.length) console.error(`gallery --pack: --samples-tags not in ${next}, no link: ${unknown.join(', ')}`);
   fs.mkdirSync(out, { recursive: true });
   fs.writeFileSync(path.join(out, 'deck.html'), html);
   fs.writeFileSync(path.join(out, 'egatari.json'), JSON.stringify({ componentsCatalogue: man.version }) + '\n');

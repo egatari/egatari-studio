@@ -31,7 +31,7 @@ export function createExamplesGallery({ root, list, sections, grouping = {}, T, 
     x.tate ? [T.exampleTate, T.exampleTateTitle] : null,
     x.lang && x.lang.slice(0, 2) !== L ? [T.exampleLang(x.lang.slice(0, 2)), T.exampleLangTitle(x.lang.slice(0, 2))] : null,
   ].filter(Boolean).map(([t, title]) => el('span', { cls: 'attach-badge ex-badge', text: t, title }));
-  const cover = (x) => (x.cover ? el('img', { cls: 'ex-cover', src: coverHref(x.cover), alt: '', loading: 'lazy', width: 192, height: 108 }) : el('span', { cls: 'ex-cover ex-cover-none', 'aria-hidden': 'true' }));
+  const cover = (x) => (x.cover ? el('img', { cls: 'ex-cover', src: coverHref(x.cover), alt: T.exampleThumbAlt(x.title), loading: 'lazy', width: 192, height: 108 }) : el('span', { cls: 'ex-cover ex-cover-none', 'aria-hidden': 'true' }));
   const viewBtn = (x) => el('button', { type: 'button', cls: 'ex-view', text: T.exampleView, 'aria-label': `${T.exampleView}: ${x.title}`, onclick: () => onView(x) });
 
   // active：絞り込みの中のパーツ（その札を先頭に出し、aria-pressed）

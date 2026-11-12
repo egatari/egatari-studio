@@ -79,7 +79,8 @@ function copyCover(name, outDir) {
   return file;
 }
 
-export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} } = {}) {
+// covers：サムネイルを横に置く（編集アプリの dist/examples/。リリースの添付（tools/release-assets.mjs）には置かない）
+export async function buildExamples(outDir, { names = EXAMPLES, log = () => {}, covers = false } = {}) {
   fs.mkdirSync(outDir, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-examples-'));
   const list = [];
@@ -113,7 +114,7 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       list.push({ name, file, title: String(m.title || name), lang: String(m.lang || ''), slides: r.stats.slides, bytes: Buffer.byteLength(r.html), profile: r.index.profile,
         sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample, book: !!r.index.article,
         section: entry.section, ...(entry.group ? { group: entry.group } : {}), ...(entry.subject ? { subject: entry.subject } : {}), scene: sceneOf(sample), parts,
-        voice: (r.stats.audio || 0) > 0, live, tate, cover: copyCover(name, outDir) });
+        voice: (r.stats.audio || 0) > 0, live, tate, cover: covers ? copyCover(name, outDir) : null });
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   return list;

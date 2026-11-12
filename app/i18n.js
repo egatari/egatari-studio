@@ -279,7 +279,7 @@ const ja = {
   allParts: 'パーツの一覧',
   // はじめの画面のサンプル（サイトに置いた 1 ファイル。tools/build-app.mjs）。「再生」で大きく再生する窓（app/main.js の playExample。backlog #130）
   examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。再生して、同じ作り方で自分の教材を作れます。', exampleView: '再生',
-  exampleBack: '戻る', exampleDoors: '使う場面', exampleCount: (n) => `${n} 件`, examplePartHint: 'パーツの名前を押すと、そのパーツを使ったサンプルだけを並べます。', exampleClearFilter: '絞り込みを外す', examplePartNone: 'このパーツを使ったサンプルは、まだありません。', exampleParts: '使っているパーツ',
+  exampleBack: '戻る', exampleDoors: 'サンプルの種類', exampleThumbAlt: (t) => `${t}のサムネイル`, exampleCount: (n) => `${n} 件`, examplePartHint: 'タグを押すと、そのパーツを使ったサンプルだけを並べます。', exampleClearFilter: '絞り込みを外す', examplePartNone: 'このパーツを使ったサンプルは、まだありません。', exampleParts: 'タグ（使っているパーツ）',
   examplePartTitle: (p) => `${p}を使ったサンプルだけを並べる`, examplePartHeading: (p, n) => `${p}を使ったサンプル（${n} 件）`, exampleMore: (n) => `ほか ${n}`,
   examplePartsCardLead: 'すべてのパーツの動きを、1 つの教材にまとめています',
   exampleVoice: '声', exampleVoiceTitle: 'AI 音声か録音があります', exampleLive: 'ライブ', exampleLiveTitle: '学習者の答えをライブで集めるパーツがあります',
@@ -738,7 +738,7 @@ const en = {
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
   allParts: 'All parts',
   examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Play one, then make your own lesson the same way.', exampleView: 'Play',
-  exampleBack: 'Back', exampleDoors: 'Setting', exampleCount: (n) => `${n} sample${n === 1 ? '' : 's'}`, examplePartHint: 'Click a part to see only the samples that use it.', exampleClearFilter: 'Clear filter', examplePartNone: 'No samples use this part yet.', exampleParts: 'Parts used',
+  exampleBack: 'Back', exampleDoors: 'Kind of sample', exampleThumbAlt: (t) => `Thumbnail of ${t}`, exampleCount: (n) => `${n} sample${n === 1 ? '' : 's'}`, examplePartHint: 'Click a tag to see only the samples that use that part.', exampleClearFilter: 'Clear filter', examplePartNone: 'No samples use this part yet.', exampleParts: 'Tags (parts used)',
   examplePartTitle: (p) => `Show only the samples that use ${p}`, examplePartHeading: (p, n) => `Samples that use ${p} (${n})`, exampleMore: (n) => `+${n} more`,
   examplePartsCardLead: 'Every part in motion, gathered in one lesson',
   exampleVoice: 'Voice', exampleVoiceTitle: 'Has AI voice or a recording', exampleLive: 'Live', exampleLiveTitle: 'Has parts that collect learners’ answers live',

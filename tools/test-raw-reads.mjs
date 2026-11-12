@@ -29,6 +29,11 @@ const SKIP = [
 // 許し：[ファイル, その行に含まれる文字列, 理由]
 const ALLOW = [
   ['tools/examples-portable.mjs', "JSON.parse(fs.readFileSync(file, 'utf8'))", 'サンプルの組み立て：リポジトリの examples/<名前>/sample.json を読む（backlog #130）'],
+  ['tools/examples-portable.mjs', 'readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url)))', 'サンプルの組み立て：リポジトリの components2.lock.json と、写した manifest（パーツの札と段）を読む'],
+  ['tools/examples-portable.mjs', "fs.readFileSync(path.join(copy, 'deck.html'), 'utf8')", 'サンプルの組み立て：自分で作った一時の写しの deck.html から、縦書きと投票の id（ラベル）を読む'],
+  ['tools/examples-sync.mjs', 'readFileSync', 'サンプルの写し：リポジトリの examples/ の index.json・SOURCE.json・写したファイル、egatari.org の lessons.json と covers（管理者が指す、手元の決まったコミットの写し）を読む'],
+  ['tools/example-covers.mjs', 'readFileSync', 'サンプルのサムネイル：リポジトリの examples/ のファイルと _covers、管理者が指すサイトと選んだ絵のフォルダの webp を読む（ハッシュと写し）'],
+  ['tools/clean-env.mjs', "JSON.parse(fs.readFileSync(path.join(src, 'egatari.json'), 'utf8')).componentsCatalogue", 'まっさらな環境の試験：リポジトリのサンプルの egatari.json から、パーツライブラリの選択だけを読む'],
   ['tools/build-book-tools.mjs', 'fs.readFileSync(OUT)', '本文の道具の生成物：リポジトリの kit/vendor/book-tools.mjs を作り直したバイトと比べる'],
   ['tools/play-tap-measure.mjs', "JSON.parse(fs.readFileSync(cfg, 'utf8'))", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの設定のファイルを読む'],
   ['tools/play-tap-measure.mjs', "matchAll(/<section class=", 'Egatari Viewer の押しの計測：自分で作った一時の作業フォルダの deck.html から、スライドの id（鍵）を読む'],

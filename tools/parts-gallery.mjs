@@ -89,7 +89,9 @@ export function packFolder(manifestFile, dir) {
 }
 
 // gallery の教材（作業フォルダ：deck.html と egatari.json）を work に書く → {catalogue, previous, parts, groups, slides, work}
-export function galleryDeck({ work, catalogue, previous, tool } = {}) {
+// samplesTags：サンプルのあるパーツ（その説明の下に「このパーツを使ったサンプル」。行き先は Studio の最初の画面の絞り込み ?samples-part=）。なければ今のページのまま
+export const SAMPLES_HREF = '../../?samples-part={tag}';
+export function galleryDeck({ work, catalogue, previous, tool, samplesTags = null } = {}) {
   const lock2 = readJson(path.join(ROOT, LOCK2_FILE));
   const version = catalogue || lock2.default;
   const manifest = catalogueOf(lock2, version);
@@ -102,7 +104,7 @@ export function galleryDeck({ work, catalogue, previous, tool } = {}) {
     const pack = path.join(tmp, 'pack');
     packFolder(manifest, pack);
     fs.rmSync(work, { recursive: true, force: true });
-    const said = execFileSync(process.execPath, [script, '--pack', pack, '--manifest', manifest, ...(prevManifest ? ['--previous', prevManifest] : []), '-o', work],
+    const said = execFileSync(process.execPath, [script, '--pack', pack, '--manifest', manifest, ...(prevManifest ? ['--previous', prevManifest] : []), ...(samplesTags && samplesTags.length ? ['--samples-href', SAMPLES_HREF, '--samples-tags', samplesTags.join(',')] : []), '-o', work],
       { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] });
     const m = /(\d+) parts in (\d+) groups, (\d+) slides/.exec(said);
     if (!m || !fs.existsSync(path.join(work, 'deck.html'))) throw new Error(`gallery.mjs --pack did not write a deck: ${said.trim()}`);
@@ -115,10 +117,10 @@ export function galleryDeck({ work, catalogue, previous, tool } = {}) {
 }
 
 // 組む：out/index.html（kit/build.mjs で組んだ 1 つの HTML）→ {catalogue, previous, slides, parts, groups, file, bytes}
-export function buildPartsGallery({ out, catalogue, previous, tool, log = console.log } = {}) {
+export function buildPartsGallery({ out, catalogue, previous, tool, samplesTags = null, log = console.log } = {}) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-parts-gallery-'));
   try {
-    const g = galleryDeck({ work: path.join(tmp, 'work'), catalogue, previous, tool });
+    const g = galleryDeck({ work: path.join(tmp, 'work'), catalogue, previous, tool, samplesTags });
     fs.mkdirSync(out, { recursive: true });
     const file = path.join(out, 'index.html');
     execFileSync(process.execPath, [path.join(ROOT, 'kit', 'build.mjs'), path.join(g.work, 'deck.html'), '-o', file], { stdio: ['ignore', 'ignore', 'inherit'] });

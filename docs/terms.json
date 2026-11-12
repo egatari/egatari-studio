@@ -182,7 +182,7 @@
    "group": "Format and files",
    "en": "Play",
    "ja": "再生",
-   "definition": "Button of a sample on the first screen: plays the sample large in a window (backlog #130).",
+   "definition": "Button of a sample on the first screen and on egatari.org's gallery: plays the sample large in a window (backlog #130).",
    "avoid": {
     "ja": [
      "見る（このボタンで）"
@@ -212,6 +212,86 @@
    "decided": "2026-11-05",
    "by": "owner",
    "note": "Renamed from このサンプルのように作る / Make one like this sample (2026-11-05, owner): the lesson follows the sample, it does not copy it. The noun stays サンプル."
+  },
+  {
+   "id": "sample-tag",
+   "group": "Format and files",
+   "en": "Tag",
+   "ja": "タグ",
+   "definition": "A part's name on a sample tile; pressing it shows only the samples that use that part (pressed again or Clear filter: back).",
+   "avoid": {
+    "ja": [
+     "パーツの札",
+     "サンプルの札",
+     "タグの札"
+    ],
+    "en": [
+     "part chip",
+     "chip (on a sample tile)"
+    ]
+   },
+   "internal": "ex-part (app/examples-gallery.js)",
+   "decided": "2026-11-12",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "sample-kind",
+   "group": "Format and files",
+   "en": "Kind of sample",
+   "ja": "サンプルの種類",
+   "definition": "The entrance cards 教育・ビジネス・生活 (and まず見る) on the samples screen and egatari.org's gallery. Only the accessible name of the group; not shown as a label.",
+   "avoid": {
+    "ja": [
+     "入口のカード"
+    ],
+    "en": [
+     "Setting (samples)"
+    ]
+   },
+   "internal": "section (lessons.json, examples/index.json)",
+   "decided": "2026-11-12",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "thumbnail",
+   "group": "Format and files",
+   "en": "Thumbnail",
+   "ja": "サムネイル",
+   "definition": "The image on a sample tile: a step that shows what the lesson does, not its title slide. Its alt text is 「〈題名〉のサムネイル」.",
+   "avoid": {
+    "ja": [
+     "表紙の絵",
+     "表紙の画像",
+     "サンプルの表紙"
+    ],
+    "en": [
+     "cover image"
+    ]
+   },
+   "internal": "cover (examples/_covers, site covers/)",
+   "decided": "2026-11-12",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "sample-label",
+   "group": "Format and files",
+   "en": "Label",
+   "ja": "ラベル",
+   "definition": "The marks 本・英語・ライブ・縦書き on a sample tile (docs only; the screen shows the marks themselves).",
+   "avoid": {
+    "ja": [
+     "サンプルの印",
+     "札の印"
+    ],
+    "en": []
+   },
+   "internal": "ex-badge",
+   "decided": "2026-11-12",
+   "by": "owner",
+   "note": ""
   },
   {
    "id": "from-sample",
@@ -791,7 +871,7 @@
    "internal": "",
    "decided": "2026-11-06",
    "by": "owner",
-   "note": "Viewer v0.7 term (not in the UI yet)."
+   "note": "Viewer v0.7 term."
   },
   {
    "id": "presenter-view",
@@ -909,9 +989,13 @@
    "definition": "A small picture of a slide.",
    "avoid": {
     "ja": [
-     "縮図"
+     "表紙の絵",
+     "表紙の画像",
+     "サンプルの表紙"
     ],
-    "en": []
+    "en": [
+     "cover image"
+    ]
    },
    "internal": "",
    "decided": "2026-10-25",

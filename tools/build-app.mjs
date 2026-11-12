@@ -111,7 +111,7 @@ const yomiText = fs.readFileSync(rel('tts', 'yomi.yaml'), 'utf8');
 const yomi = { terms: parseYomiTerms(yomiText), sha256: crypto.createHash('sha256').update(fs.readFileSync(rel('tts', 'yomi.yaml'))).digest('hex') };
 // 見本の持ち運べる 1 ファイル（dist/examples/。前の組み立ての残りは消してから書く）
 fs.rmSync(path.join(OUT, 'examples'), { recursive: true, force: true });
-const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m) }) : [];
+const examples = EXAMPLES ? await buildExamples(path.join(OUT, 'examples'), { log: (m) => console.warn(m), covers: true }) : [];
 // 従う仕様の日付の版（vendor/egatari-spec/SOURCE.json の snapshot。日付の付いた版でなければ null）
 const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FORMAT.VENDOR_DIR.split('/'), 'SOURCE.json'), 'utf8')).snapshot || null; } catch { return null; } })();
 // 同梱の再生器（kit/core/player.mjs）：版の決め方に使うファイル（kit/player.json・kit/player.lock.json と中身の PLAYER_FILES）を字として入れ、
@@ -300,7 +300,9 @@ fs.writeFileSync(path.join(OUT, 'editor', 'index.html'), `<!DOCTYPE html>
 `);
 // パーツのサンプルのページ（--parts。backlog #158）：/parts/v<版>/。前の版のページは公開のときに tools/site-versions.mjs assemble が前のリリースから足す
 if (PARTS) {
-  const g = buildPartsGallery({ out: path.join(OUT, PARTS_DIR, 'v' + PARTS_CATALOGUE), catalogue: PARTS_CATALOGUE });
+  // サンプルのあるパーツには「このパーツを使ったサンプル」（パーツ図鑑は全部のパーツを使うので数えない）
+  const samplesTags = [...new Set(examples.filter((x) => x.name !== 'parts-showcase').flatMap((x) => x.parts || []))].sort();
+  const g = buildPartsGallery({ out: path.join(OUT, PARTS_DIR, 'v' + PARTS_CATALOGUE), catalogue: PARTS_CATALOGUE, samplesTags });
   writePartsIndex(OUT, g.catalogue);
 }
 const kb = (n) => (n / 1024).toFixed(0) + ' KB';

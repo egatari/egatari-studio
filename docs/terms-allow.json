@@ -565,6 +565,18 @@
       "term": "subject-english",
       "reason": "The language badge on a sample tile (the lesson's language when it differs from the screen's): 英語 is the lesson language, not the subject tile; en shows Japanese for Japanese lessons and never needs an English badge.",
       "pairs": true
+    },
+    {
+      "file": "docs/editor*.md",
+      "pattern": "まず見る",
+      "term": "play-sample",
+      "reason": "「まず見る」 is the name of the top row of samples (the intro section title, the same as egatari.org's gallery), not the play button."
+    },
+    {
+      "file": "docs/editor.ja.md",
+      "pattern": "教育：授業|「授業・理科」|授業は教科",
+      "term": "preview-later",
+      "reason": "授業 here is the group of class samples and the setting 授業 (a school lesson), not the old name of showing later steps faintly."
     }
   ]
 }

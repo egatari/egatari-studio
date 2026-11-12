@@ -45,6 +45,8 @@ for (const name of fs.readdirSync(path.join(ROOT, 'examples')).sort()) {
   if (!fs.existsSync(path.join(src, 'deck.html'))) continue;
   const d = path.join(tmp, 'examples', name);
   copyDeck(src, d);
+  // 設定のファイルは写さない（新しい docId を書き戻す流れを見る）が、パーツライブラリ 2.x を選んだサンプル（egatari.json の componentsCatalogue）はその選択だけ残す
+  try { const cc = JSON.parse(fs.readFileSync(path.join(src, 'egatari.json'), 'utf8')).componentsCatalogue; if (cc) fs.writeFileSync(path.join(d, 'egatari.json'), JSON.stringify({ componentsCatalogue: cc }, null, 2) + '\n'); } catch { /* 設定のファイルがない */ }
   const deck = path.join(d, 'deck.html');
   node(`${name}: build`, 'kit/build.mjs', [deck]);
   node(`${name}: check`, 'kit/check.mjs', [deck]);

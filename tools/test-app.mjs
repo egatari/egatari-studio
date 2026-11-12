@@ -1701,7 +1701,7 @@ try {
         `examples: a part button filters to the samples that use it, says so in the heading with the count, and shows itself pressed (m-codetree: ${byPart.join(', ')})`);
       await po.click('#examples-gallery .ex-clear');
       await po.waitForSelector('#examples-gallery .ex-hint');
-      ok((await po.textContent('#ex-h-now')) === '教育' && (await po.textContent('#examples-gallery .ex-hint')) === 'パーツの名前を押すと、そのパーツを使ったサンプルだけを並べます。',
+      ok((await po.textContent('#ex-h-now')) === '教育' && (await po.textContent('#examples-gallery .ex-hint')) === 'タグを押すと、そのパーツを使ったサンプルだけを並べます。',
         'examples: 「絞り込みを外す」 returns to the entrance it came from, whose hint line says the part names filter');
       // パーツの一覧（/parts/）から：?samples-part=<タグ> で絞り込みが開き、アドレスから外れる
       await po.goto(BASE + '?samples-part=m-flow');

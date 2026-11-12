@@ -54,6 +54,11 @@ for (const cv of Object.keys(lock2.catalogues).sort()) {
 }
 const g0 = galleryDeck({ work: path.join(tmp, 'work0'), catalogue: '2.1.2', previous: 'none' });
 ok(g0.slides === 175 && !fs.readFileSync(path.join(tmp, 'work0', 'deck.html'), 'utf8').includes('（変わった'), '--previous none: no marks');
+// サンプルのあるパーツ（samplesTags）：その説明の下に Studio の絞り込みへのリンク（?samples-part=）。ないパーツと、samplesTags なしのページは変わらない
+const gs = galleryDeck({ work: path.join(tmp, 'work-s'), catalogue: '2.1.2', samplesTags: ['m-flow', 'm-bars'] });
+const ds = fs.readFileSync(path.join(tmp, 'work-s', 'deck.html'), 'utf8');
+ok(gs.slides === 175 && ds.includes('href="../../?samples-part=m-flow"') && ds.includes('href="../../?samples-part=m-bars"') && (ds.match(/samples-part=/g) || []).length === 2 && !deck.includes('samples-part='),
+  'samplesTags: a link to the samples that use the part, only for those parts (../../?samples-part=<tag>); without it the page is unchanged');
 // 写しが manifest と違えば gallery.mjs が断る（取り込みの写しを手で直していないことの確かめ）
 const P = path.join(tmp, 'pack');
 packFolder(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.1.2.json'), P);
