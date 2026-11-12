@@ -23,6 +23,8 @@
 // だから外の名前を使わない（中だけで閉じる）。仲立ちはデッキの script の要素の中にそのまま入るので、閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
 
 import { findRawMath } from './raw-math.mjs';
+import { geometryScan, geometryTate } from './geometry-check.mjs';
+import { TEXT_BANDS, DEFAULT_BAND } from './text-band.mjs';
 
 // わざと切る印（CLIP_ATTR。docs/contract.md §10）：その要素の中（子孫も、SVG の字も）は、箱で切れる・スライドの外に出る・
 // 図の箱からはみ出す、の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）を見ない。縦横どちらにも効く。前からの検査（bodyBottom など）には効かない
@@ -278,7 +280,9 @@ export function layoutScan(s, o) {
       if (hit) { done.add(p); note('outsideBody', { t: p.t, why: hit === c ? 'concl' : hit.classList.contains('pn') ? 'pn' : 'title' }); continue; }
     }
     // 4. SVG の字が、それを囲む箱（同じ親の <rect> で、字の中心を含むもののうち一番小さいもの）からはみ出す
-    if (p.svg) {
+    //    パーツが箱の字の印（data-part="label" data-part-of="box"）を付けた字は、描いた図の形の点検（kit/core/geometry-check.mjs の geoLabelOutsideBox）が見る。
+    //    ただし図の形の点検が測らない縦書きのスライドでは、ここで見る（d5 11/12：形の点検が見ない所で欠陥を消さない）
+    if (p.svg && (tate || !p.el.closest('[data-part="label"][data-part-of="box"]'))) {
       const cx = (p.b.l + p.b.r) / 2, cy = (p.b.t + p.b.b) / 2;
       let best = null, area = Infinity;
       for (const r of p.el.parentElement.children) {
@@ -397,6 +401,8 @@ export function layoutScan(s, o) {
   for (let i = 0; i < G.length; i++) for (let j = i + 1; j < G.length; j++) {
     const A = G[i], B = G[j];
     if (!!A.svg !== !!B.svg) continue;
+    // パーツが字の印（data-part="label"）を付けた SVG の字どうしは、描いた図の形の点検（kit/core/geometry-check.mjs の geoLabelOverlap）が見る（縦書きのスライドは測らないので、ここで見る）
+    if (!tate && A.svg && A.el.closest('[data-part="label"]') && B.el.closest('[data-part="label"]')) continue;
     if (A.el.contains(B.el) || B.el.contains(A.el)) continue;
     if (bodyErr && A.inBody !== B.inBody) continue;
     if (!A.svg && A.comp && A.comp === B.comp) continue;
@@ -654,8 +660,9 @@ export async function metricsFonts(doc, timeoutMs) {
 
 // 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）・残った数式の検出（findRawMath）と印の名前を渡す形にする。
 // 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・findRawMath・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP という名前で使える）
+// 描いた図の形の点検（kit/core/geometry-check.mjs の geometryScan・geometryTate）と字の範囲の表（GEO_OPTS = {bands: TEXT_BANDS, dflt: DEFAULT_BAND}）も同じ名前で渡す
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
   // findRawMath（kit/core/raw-math.mjs）：組まれずに残った数式（rawMath）。コマンド版（kit/check.mjs）と同じ関数を仲立ちにも渡す
-  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts, findRawMath){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts}, ${findRawMath})`;
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts, findRawMath, geometryScan, geometryTate, GEO_OPTS){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts}, ${findRawMath}, ${geometryScan}, ${geometryTate}, ${JSON.stringify({ bands: TEXT_BANDS, dflt: DEFAULT_BAND })})`;
 }

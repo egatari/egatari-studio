@@ -1,7 +1,8 @@
 // 品質チェックの決まりの台帳（backlog #202、handoff/v0.6.11-check-sketch-2026-11-12.md「#202 の具体案」と d5 との合意 11/12）。Node にもブラウザにも依存しない
 // 1 回の点検の終わりに、決まりの 1 つずつを checked・excused・skipped・failed のどれかにする。どれにもならない決まりが残れば、その回は incomplete。
 //   決まりは 2 種：作者への決まり R-*（AI への指示 docs/authoring-with-llms の名前）と、検査器の族 C-*（Studio の確かめ方。仕様には書かない）
-//   RULES        [{id, kind: 'authoring'|'checker', phase, codes: [code …], applies?(facts) → null | excused の理由}]
+//   RULES        [{id, kind: 'authoring'|'checker', phase, codes: [code …], applies?(facts) → null | excused の理由, skips?(facts) → null | skipped の理由}]
+//                applies が先（当てはまらなければ excused）。skips はその教材では「まだ測れない」もの（R-geometry の縦書き）
 //                phase は kit/check.mjs の検査の段（phase = '…' の名前）。その段を通らなかった決まりは incomplete
 //                kit/check-messages.mjs の MESSAGES のどの code も、ちょうど 1 つの決まりに入る（tools/test-check-rules.mjs）
 //   EXCUSES      excused の理由（その教材にないもの・その教材の性質）
@@ -10,7 +11,8 @@
 //   ruleSet()    → 台帳の版（決まりの id と code の並びの sha256 の先頭 12。where や phase が変わっても変わらない）は呼ぶ側が sha256 で作る：ruleSetText()
 //   account({results, visited, facts, inEditor}) → {status, rules, summary, problems}
 //       results：[{sev: 'error'|'warn'|'info', code}]。visited：通った段の名前の集合（編集アプリは null：その版の編集アプリが見る決まりはどれも通ったとみなす）
-//       facts：{narration, audio, attachments, parts: [タグ…], marks, morphs, links, book, tate, lang}
+//       facts：{narration, audio, attachments, parts: [タグ…], partMarks, marks, morphs, links, book, tate, allTate, lang}
+//         partMarks：図の形の印（data-part="box|edge|label|mark"）が原稿にある。allTate：中身のスライド（表紙・章の扉を除く）がみな縦書き
 //       inEditor：編集アプリの品質チェック（コマンド版だけの決まりは skipped/notInEditor）
 //   factsFromSource({deck, narration, audio, attachments, book}) → facts：原稿と台本の文字列から（コマンド版と編集アプリで同じ判定にする）。
 //       audio・attachments・book は呼ぶ側がファイルの有無から（audio/manifest.json か voice.json・attachments/・article.md か article/）
@@ -18,7 +20,9 @@
 import { cliOnly } from './check-parity.mjs';
 
 export const EXCUSES = Object.freeze(['noNarration', 'noAudio', 'noAttachments', 'noParts', 'noMarks', 'noMorphs', 'noLinks', 'noBook', 'tate', 'lang']);
-export const SKIPS = Object.freeze(['noBrowser', 'notInEditor']);
+// tate は EXCUSES にも SKIPS にもある（state で区別する）。SKIPS の tate は「まだ測っていない」：縦書きの字も重なりうるので、
+// excused（当てはまらない）にすると見た範囲を言い過ぎる。skipped なら毎晩の評価が数えて穴が見え続ける（R-geometry、d5 11/12）
+export const SKIPS = Object.freeze(['noBrowser', 'notInEditor', 'tate']);
 
 const needs = (fact, reason) => (f) => (f[fact] ? null : reason);
 const ARTICLE = ['articleEncoding', 'articleFrontMatter', 'articleFrontMatterMember', 'articleFrontMatterValue', 'articleKindChapter', 'articleDirective', 'articleBacktickDirective',
@@ -43,6 +47,10 @@ export const RULES = Object.freeze([
   { id: 'R-style', kind: 'authoring', phase: 'A 体裁', codes: ['desuMasu', 'punctMixed'], applies: (f) => (f.lang === 'ja' ? null : 'lang') },
   { id: 'R-math', kind: 'authoring', phase: 'A 体裁', codes: ['rawMath', 'katexError'] },
   { id: 'R-purpose', kind: 'authoring', phase: 'A 体裁', codes: ['cardsHint'] },
+  // 描いた図の形（kit/core/geometry-check.mjs、backlog #201）：パーツが付けた印（data-part）を測る。パーツも印もない教材は noParts。
+  // 中身のスライドがみな縦書きなら skipped/tate（まだ測らない）。縦横が混ざれば横書きのスライドだけを見て geoTateSlides（情報）
+  { id: 'R-geometry', kind: 'authoring', phase: 'A 体裁', codes: ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoTateSlides'],
+    applies: (f) => ((f.parts || []).length || f.partMarks ? null : 'noParts'), skips: (f) => (f.allTate ? 'tate' : null) },
   { id: 'R-colors', kind: 'authoring', phase: 'C パレット', codes: ['colorOutside', 'textContrast', 'contrastLow'] },
   { id: 'R-balance', kind: 'authoring', phase: 'N 釣り合い', codes: ['balance'] },
   // 台本がない教材にも、ステップごとに narrMissing が出る（台本を書くこと自体がこの決まり）。だから外さない。言語と確かめ直しの知らせも台本なしで出る
@@ -78,11 +86,15 @@ export const cliOnlyRule = (r) => r.codes.every((c) => cliOnly(c) !== null);
 
 export function factsFromSource({ deck = '', narration = '', audio = false, attachments = false, book = false } = {}) {
   const lang = (deck.match(/<html\b[^>]*\slang=["']([^"']*)["']/i) || [])[1] || '';
+  // 中身のスライド（class に slide があり、cover・sec でない <section>）。kit/core/geometry-check.mjs の geometryTate と同じ数え方
+  const content = [...deck.matchAll(/<section\b[^>]*\sclass=["']([^"']*)["']/gi)].map((m) => m[1].split(/\s+/))
+    .filter((c) => c.includes('slide') && !c.includes('cover') && !c.includes('sec'));
   return {
     narration: /\S/.test(narration), audio: !!audio, attachments: !!attachments, book: !!book,
     parts: [...new Set([...deck.matchAll(/<(m-[a-z][a-z0-9]*(?:-[a-z0-9]+)*)[\s>/]/g)].map((m) => m[1]))].sort(),
     marks: /\{mark:/.test(narration), morphs: /\bdata-morph\b/.test(deck), links: /<a\b[^>]*\shref=/i.test(deck),
-    tate: /\blayout-tate\b/.test(deck), lang: /^ja\b/i.test(lang) || !lang ? 'ja' : 'en',
+    partMarks: /\sdata-part=["']?(?:box|edge|label|mark)\b/.test(deck),
+    tate: /\blayout-tate\b/.test(deck), allTate: content.length > 0 && content.every((c) => c.includes('layout-tate')), lang: /^ja\b/i.test(lang) || !lang ? 'ja' : 'en',
   };
 }
 
@@ -106,7 +118,9 @@ export function account({ results, visited = null, facts = {}, inEditor = false 
     else if (!inEditor && visited && !visited.has(r.phase)) state = null;
     else {
       reason = r.applies ? r.applies(facts) : null;
-      state = reason ? 'excused' : counts.error ? 'failed' : 'checked';
+      if (reason) state = 'excused';
+      else if (r.skips && (reason = r.skips(facts))) state = 'skipped';
+      else state = counts.error ? 'failed' : 'checked';
     }
     if ((state === 'excused' || state === 'skipped') && codes.length) problems.push(`${r.id}: ${state} (${reason}) but reported ${codes.join(', ')}`);
     return { ...base, state, reason: reason || null, counts, codes };

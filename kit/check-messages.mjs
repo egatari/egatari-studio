@@ -24,6 +24,17 @@ const PLACE_EN = {
   cover: '; a cover holds .venue (venue), h1 (title) and .au (authors, affiliation), and the theme adds the logos: put a subtitle on a second line of the h1 (after <br>) or in .venue, and place any other text in free space with position:absolute and top in the lesson\'s <style>',
   sec: '; a section divider holds h1 (chapter name) and .lead (one line): place any other text in free space with position:absolute and top in the lesson\'s <style>',
 };
+// 図の形の知らせ（R-geometry）の座標：スライドの座標（px）
+const geoPt = (p) => (Array.isArray(p) ? `${p[0]}, ${p[1]}` : '');
+const geoSeg = (q) => (Array.isArray(q) ? `${q[0]}, ${q[1]} → ${q[2]}, ${q[3]}` : '');
+const geoRect = (q) => (Array.isArray(q) ? `${q[0]}, ${q[1]} – ${q[2]}, ${q[3]}` : '');
+// 原稿のデータにある id か（@ で始まる id はパーツの中の箱・端）
+const geoOwn = (id) => !!id && !String(id).startsWith('@');
+const geoSides = (px, lang) => {
+  const name = lang === 'en' ? { left: 'left', right: 'right', top: 'top', bottom: 'bottom' } : { left: '左', right: '右', top: '上', bottom: '下' };
+  const xs = Object.keys(name).filter((k) => px && px[k] > 0).map((k) => `${name[k]} ${px[k]}px`);
+  return xs.join(lang === 'en' ? ', ' : '・');
+};
 const WHERE_JA = { slides: 'スライド', narration: '台本', article: '本' }, WHERE_EN = { slides: 'slides', narration: 'script', article: 'book' };
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
 // 添付（§3.8）の型と条件の言葉
@@ -242,6 +253,27 @@ export const MESSAGES = {
     en: (a) => (a.tate
       ? `Content sits to the right (centre of mass ${Math.abs(Math.round(a.hOffset))}% right of the centre; ${Math.round(a.left - a.right)}% empty on the left)`
       : `Content sits high (centre of mass ${Math.abs(Math.round(a.vOffset))}% above the optical centre; ${Math.round(a.bottom - a.top)}% empty at the bottom)`) },
+  // 描いた図の形（kit/core/geometry-check.mjs、backlog #201、R-geometry。警告、縦書きの数は情報）。パーツが付けた印（data-part）の id と座標（スライドの 1280×720）を言い、
+  // AI が原稿のデータで直せる直し方を 1 つ添える（画素の位置を直させない）。@ で始まる id はパーツの中の箱・端（データにない）
+  geoEdgeThroughBox: { rule: 'R-geometry',
+    ja: (a) => `図の線 ${a.edge} が、つないでいない箱 ${a.box} の中を通る（${geoSeg(a.seg)}）：パーツのデータで${geoOwn(a.box) ? `箱 ${a.box} の位置を変えるか、` : ''}線 ${a.edge} の位置をずらして箱をよける（m-flow なら${geoOwn(a.box) ? `箱の x・y か、` : ''}線の shift）`,
+    en: (a) => `figure line ${a.edge} passes through box ${a.box}, which it does not connect (${geoSeg(a.seg)}): in the part's data, ${geoOwn(a.box) ? `move box ${a.box} or ` : ''}shift line ${a.edge} so it goes around the box (in m-flow, ${geoOwn(a.box) ? `the box's x and y, or ` : ''}the line's shift)` },
+  geoLineOverLabel: { rule: 'R-geometry',
+    ja: (a) => `図の線 ${a.edge} が字「${a.t}」（${a.label} の字）を横切る（${geoPt(a.at)}）：パーツのデータで ${geoOwn(a.label) ? `${a.label} か` : ''}線の端（${a.from}・${a.to}）の並びを変え、線が字をよけるようにする${a.halo ? '（字に縁取りがあるので読めるが、よけるほうが読みやすい）' : ''}`,
+    en: (a) => `figure line ${a.edge} crosses the text “${a.t}” (label of ${a.label}) (${geoPt(a.at)}): in the part's data, reorder ${geoOwn(a.label) ? `${a.label} or ` : ''}the ends of the line (${a.from}, ${a.to}) so the line goes around the text${a.halo ? ' (the text has a halo, so it stays readable, but it reads better clear of the line)' : ''}` },
+  geoLabelOverlap: { rule: 'R-geometry',
+    ja: (a) => (a.mark
+      ? `図の字「${a.t}」（${a.label} の字）が点 ${a.other} に重なる（${geoRect(a.rect)}）：パーツのデータで ${a.label} か ${a.other} の値を変えて離す`
+      : `図の字「${a.t}」（${a.label} の字）と「${a.u}」（${a.other} の字）が重なる（${geoRect(a.rect)}）：パーツのデータで ${a.label} か ${a.other} の位置を離すか、字を短くする`),
+    en: (a) => (a.mark
+      ? `figure text “${a.t}” (label of ${a.label}) overlaps point ${a.other} (${geoRect(a.rect)}): change the values of ${a.label} or ${a.other} in the part's data to move them apart`
+      : `figure texts “${a.t}” (label of ${a.label}) and “${a.u}” (label of ${a.other}) overlap (${geoRect(a.rect)}): move ${a.label} or ${a.other} apart in the part's data, or shorten the text`) },
+  geoLabelOutsideBox: { rule: 'R-geometry',
+    ja: (a) => `図の字「${a.t}」が箱 ${a.box} の縁を越える（${geoSides(a.px, 'ja')}）：字を短くするか改行するか、パーツのデータで箱 ${a.box} を大きくする（m-flow なら w・h）`,
+    en: (a) => `figure text “${a.t}” goes past the border of box ${a.box} (${geoSides(a.px, 'en')}): shorten the text, break it into lines, or make box ${a.box} larger in the part's data (in m-flow, w and h)` },
+  geoTateSlides: { rule: 'R-geometry',
+    ja: (a) => `縦書きのスライド ${a.n} 枚の図は、図の形の点検で測っていない：その図の線・箱・字の重なりは目で確かめる`,
+    en: (a) => `the figures on ${a.n} vertical (layout-tate) slide${a.n === 1 ? '' : 's'} were not measured by the figure geometry check: check their lines, boxes and text for overlaps by eye` },
   step0: { ja: (a) => `ステップ 0 の本文：「${a.t}」`, en: (a) => `body text at step 0: “${a.t}”` },
   punctMixed: { rule: 'R-style', ja: (a) => `句読点が混ざっている：${a.minor}が ${a.n} 個あり、教材の多くは${a.major}：このスライドも${a.major}にそろえる`, en: (a) => `mixed punctuation: ${a.n} × ${a.minor} while most of the lesson uses ${a.major}: use ${a.major} on this slide too` },
   // ---------------------------------------------------------------- 台本

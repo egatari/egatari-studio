@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>図の形の点検の見本</title>
+<!--
+  tools/test-check-parity.mjs の見本：描いた図の形の点検（kit/core/geometry-check.mjs、R-geometry）の 4 つの警告が 1 つずつ出る。
+  パーツの印（data-part）を付けた SVG を手で書いたもの（印を付けるパーツライブラリ 2.8.0 はまだ入っていない）。
+  geoEdgeThroughBox：線 a→c が箱 b の下の方を通る。geoLineOverLabel：線 b→d が a→c の字「確認」を横切る。
+  geoLabelOverlap：箱 d の外の字「保管の場所」が点 p1 に重なる。geoLabelOutsideBox：箱 c の字が箱の左右にはみ出す。
+-->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl" id="s-geo">
+  <h2>形の崩れた流れ図</h2>
+  <div class="body">
+    <svg width="1100" height="420" viewBox="0 0 1100 420" aria-label="箱と線の流れ図" style="font-size:28px">
+      <g style="fill:none;stroke:var(--fg);stroke-width:2">
+        <rect data-part="box" data-part-id="a" x="0" y="40" width="200" height="100"/>
+        <rect data-part="box" data-part-id="b" x="420" y="40" width="200" height="100"/>
+        <rect data-part="box" data-part-id="c" x="840" y="40" width="200" height="100"/>
+        <rect data-part="box" data-part-id="d" x="420" y="300" width="200" height="80"/>
+        <g data-part="edge" data-part-id="a→c" data-part-from="a" data-part-to="c"><line data-part-line x1="200" y1="125" x2="840" y2="125"/></g>
+        <g data-part="edge" data-part-id="b→d" data-part-from="b" data-part-to="d"><line data-part-line x1="520" y1="140" x2="520" y2="300"/></g>
+        <circle data-part="mark" data-part-id="p1" cx="800" cy="345" r="10"/>
+      </g>
+      <g style="fill:var(--fg)" text-anchor="middle">
+        <text data-part="label" data-part-id="a" data-part-of="box" x="100" y="100">入口</text>
+        <text data-part="label" data-part-id="b" data-part-of="box" x="520" y="80">中継</text>
+        <text data-part="label" data-part-id="c" data-part-of="box" x="940" y="100">出口でとても長い名前</text>
+        <text data-part="label" data-part-id="d" data-part-of="box" x="520" y="350">保管</text>
+        <text data-part="label" data-part-id="a→c" data-part-of="edge" x="520" y="215">確認</text>
+        <text data-part="label" data-part-id="d" data-part-of="box" data-part-at="outside" x="740" y="355">保管の場所</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

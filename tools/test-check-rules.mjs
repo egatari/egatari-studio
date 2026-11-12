@@ -3,12 +3,13 @@
 //   - 決まりの phase は kit/check.mjs の検査の段の名前（phase = '…'）
 //   - excused の理由は EXCUSES の語だけ。excused か skipped の決まりに code が出たら、その回は incomplete（台帳の誤り）
 //   - 通らなかった段の決まりは incomplete。編集アプリはコマンド版だけの決まりを skipped/notInEditor にし、決まりの一覧は同じ
+//   - 描いた図の形（R-geometry、#201）：パーツも印もなければ excused/noParts、中身のスライドがみな縦書きなら skipped/tate（まだ測らない）、縦横が混ざれば checked
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MESSAGES } from '../kit/check-messages.mjs';
-import { RULES, EXCUSES, SKIPS, account, ruleOfCode, ruleSetText, cliOnlyRule } from '../kit/core/check-rules.mjs';
+import { RULES, EXCUSES, SKIPS, account, ruleOfCode, ruleSetText, cliOnlyRule, factsFromSource } from '../kit/core/check-rules.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let failed = 0;
@@ -75,6 +76,36 @@ ok('the editor reports the same rules; the command-line-only ones are skipped (n
   assert.ok(skipped.length > 0 && skipped.every((r) => r.reason === 'notInEditor' && SKIPS.includes(r.reason)));
   assert.deepEqual(skipped.map((r) => r.id), RULES.filter(cliOnlyRule).map((r) => r.id));
   assert.equal(a.status, 'ok');
+});
+ok('R-geometry: noParts without parts or data-part marks; marks alone make it apply', () => {
+  const g = (f) => account({ results: [], visited: phasesAll, facts: f }).rules.find((r) => r.id === 'R-geometry');
+  assert.deepEqual([g(NONE).state, g(NONE).reason], ['excused', 'noParts']);
+  assert.equal(g({ ...NONE, partMarks: true }).state, 'checked');
+  assert.equal(g(FULL).state, 'checked');
+});
+ok('R-geometry: a lesson whose content slides are all vertical is skipped (tate), not excused; tate is in SKIPS and EXCUSES', () => {
+  assert.ok(SKIPS.includes('tate') && EXCUSES.includes('tate'));
+  const a = account({ results: [], visited: phasesAll, facts: { ...FULL, tate: true, allTate: true } });
+  const g = a.rules.find((r) => r.id === 'R-geometry');
+  assert.deepEqual([g.state, g.reason], ['skipped', 'tate']);
+  assert.equal(a.status, 'ok');
+  assert.equal(a.summary.skipped, 1);
+  const e = account({ results: [], facts: { ...FULL, tate: true, allTate: true }, inEditor: true }).rules.find((r) => r.id === 'R-geometry');
+  assert.deepEqual([e.state, e.reason], ['skipped', 'tate'], 'the editor skips it for the same reason');
+  const b = account({ results: [{ sev: 'info', code: 'geoTateSlides' }], visited: phasesAll, facts: { ...FULL, tate: true, allTate: true } });
+  assert.equal(b.status, 'incomplete');
+  assert.match(b.problems.join(), /R-geometry: skipped \(tate\) but reported geoTateSlides/);
+  const m = account({ results: [{ sev: 'info', code: 'geoTateSlides' }, { sev: 'warn', code: 'geoLabelOverlap' }], visited: phasesAll, facts: { ...FULL, tate: true, allTate: false } });
+  const mg = m.rules.find((r) => r.id === 'R-geometry');
+  assert.deepEqual([mg.state, mg.codes, m.status], ['checked', ['geoLabelOverlap', 'geoTateSlides'], 'ok']);
+});
+ok('factsFromSource: partMarks and allTate (content slides only: cover and sec are left out)', () => {
+  const deck = (secs) => `<html lang="ja"><body>${secs.map((c) => `<section class="${c}" id="x"></section>`).join('')}</body></html>`;
+  assert.equal(factsFromSource({ deck: deck(['slide cover', 'slide layout-tate', 'slide noconcl layout-tate', 'slide sec']) }).allTate, true);
+  assert.equal(factsFromSource({ deck: deck(['slide cover', 'slide layout-tate', 'slide']) }).allTate, false);
+  assert.equal(factsFromSource({ deck: deck(['slide cover']) }).allTate, false);
+  assert.equal(factsFromSource({ deck: '<svg><rect data-part="box" data-part-id="a"/></svg>' }).partMarks, true);
+  assert.equal(factsFromSource({ deck: '<div data-part-failure="define"></div>' }).partMarks, false);
 });
 ok('ruleSet text depends only on ids and codes', () => {
   const t = ruleSetText();

@@ -9,6 +9,7 @@
 //           なければ既定の寸法（今までと同じ限り）
 // layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数・測る前の字体の確かめと、わざと切る印・小さい注記の印・重ね字の印の名前（kit/core/layout-scan.mjs）。
 // findRawMath：組まれずに残った数式（rawMath。kit/core/raw-math.mjs。コマンド版と同じ関数）。
+// geometryScan・geometryTate・GEO_OPTS：描いた図の形の点検（kit/core/geometry-check.mjs、R-geometry。コマンド版と同じ関数）と字の範囲の表（kit/core/text-band.mjs）。
 // app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
@@ -231,6 +232,8 @@ function quickCheck(fonts){
       if (!code) return add(i, f.sev, f.code, a);
       add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
     });
+    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）：コマンド版と同じ関数・code・値
+    geometryScan(s, GEO_OPTS).forEach(function(f){ add(i, f.sev, f.code, f.a); });
     // 本文の字（kit/check.mjs の A と同じ：KaTeX の読み上げ用の MathML を除いた innerText）：です・ます（日本語のデッキ）・残った数式（$…$・\( \[）・句読点を数える
     var body = s.querySelector(".body");
     if (body) {
@@ -281,6 +284,9 @@ function quickCheck(fonts){
     var major = tot.jp >= tot.en ? "jp" : "en", minor = major === "jp" ? "en" : "jp", pname = {jp: "「、。」", en: "「，．」"};
     punct.forEach(function(p){ if (p[minor]) add(p.i, "warn", "punctMixed", {minor: pname[minor], major: pname[major], n: p[minor]}); });
   }
+  // 縦横が混ざる教材：形の点検から外した縦書きのスライド（印のあるもの）の数（コマンド版と同じ）
+  var geoTate = geometryTate(S);
+  if (geoTate) add(null, "info", "geoTateSlides", {n: geoTate});
   linkCheck(add);
   markCheck(add);
   morphCheck(add);

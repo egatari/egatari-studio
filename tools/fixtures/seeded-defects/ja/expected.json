@@ -8,6 +8,7 @@
     "R-style": ["desuMasu"],
     "R-math": ["rawMath"],
     "R-purpose": ["cardsHint"],
+    "R-geometry": ["geoEdgeThroughBox"],
     "R-colors": ["colorOutside"],
     "R-balance": ["balance"],
     "R-narr-steps": ["narrMissing"],

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=47edd700c3fa9fe8 -->
+<!-- i18n: pair=reference.md sha256=b481c78b6f4d7d22 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -435,13 +435,13 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 - `checked`：見て、エラーがない（警告や情報はあってよい）
 - `failed`：エラーが 1 つ以上ある
 - `excused`：この教材には当てはまらない。`reason` は決まった語：`noNarration`・`noAudio`・`noAttachments`・`noParts`・`noMarks`・`noMorphs`・`noLinks`・`noBook`・`tate`・`lang`
-- `skipped`：この回には見られなかった：`noBrowser`、または編集アプリの品質チェックでの `notInEditor`（編集アプリも同じ決まりの一覧を返す）
+- `skipped`：この回には見られなかった：`noBrowser`、または編集アプリの品質チェックでの `notInEditor`（編集アプリも同じ決まりの一覧を返す）、または `tate`（中身のスライドがみな縦書きの教材の R-geometry。まだ測らないので、合格には数えない）
 
 ```json
 {"ok": true, "status": "ok", "ruleSet": "c754293364b5",
  "rules": [{"id": "R-fit", "kind": "authoring", "state": "checked", "reason": null, "counts": {"error": 0, "warning": 2, "info": 0}, "codes": ["bodyBottom"]},
            {"id": "C-audio", "kind": "checker", "state": "excused", "reason": "noAudio", "counts": {"error": 0, "warning": 0, "info": 0}, "codes": []}],
- "summary": {"checked": 24, "excused": 5, "skipped": 0, "failed": 0, "total": 29}}
+ "summary": {"checked": 24, "excused": 6, "skipped": 0, "failed": 0, "total": 30}}
 ```
 
 `reason` は `checked`・`failed` では `null`。`codes` はその回に出た code。`ruleSet` は決まりの一覧かその code が変わったときだけ変わる。どの状態にもならない決まりが残るか、`excused`・`skipped` の決まりに code が出たときは `"status": "incomplete"`（終了コード 3。`unset` と `problems` が付く）：全部を見ていないので、これも合格ではない。スクリプトは終了コード 2・3 とこの 2 つの status を失敗として扱う（`kit/core/check-result.mjs` の `parseCheck` がそうする）。文字の出力の最後に 1 行：`品質チェックの項目：見た 24　当てはまらない 5　見られなかった 0　落ちた 0（29 のうち）`。
@@ -503,9 +503,10 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | `alt` の無い `<img>`、`aria-label`・`<title>` の無い SVG の図、名前の無いパーツ | 警告、警告、情報 |
 | 本文の釣り合い（`balance`、R-balance）：最後のステップの本文（`.body`）を画素にし、スライドの地の色と違う画素（どれかの色で 24/255 より大きい差）を中身とする。本文に図（パーツ `m-*`、パーツと KaTeX の外の `svg`、`img`、`table`、`.katex-display`）があり、片寄った空きがいちばん下の図のすぐ下から始まる（図の描いた下端から空きまでのほかの中身、たとえば図の下の短い説明が本文の高さの 20% まで）ときだけ知らせる：図を高くできる場合。字だけのスライドは知らせない（上にそろえて始めるのが決まり）。中身の条件は、中身の重心（画素はどれも同じ重さ）が本文の光学的な中心（上から 45%）より本文の高さの 10% を超えて上にあり、かつ中身の外接矩形の下の空きが上の空きより本文の高さの 25% を超えて大きいとき知らせる（中身の画素が 2 つ未満の行と列は外接矩形に数えない）。`layout-tate` では横に読み替え（これも図があるときだけ。空きはいちばん左の図の左）、重心が真ん中より 10% を超えて右にあり、左の空きが右の空きより 25% を超えて大きいとき。四方の余白がそろえば 0 に近い。値には図（数と描いた端）、横の釣り合い（2 段組み）と、片寄った空きとその側もある。言葉は数だけ。結論の行は本文の外なので測らない。表紙・章の扉・`static` のスライドは測らない。修正依頼には入らない。`kit/check.mjs` だけ（編集アプリの品質チェックは画面を撮らない）。閾値は `kit/core/fill-measure.mjs` の `BALANCE`。`node tools/fill-report.mjs <deck.html \| フォルダ …>` がスライドごとの数を出す | 情報 |
 | 短い同じ重さの要点だけの本文（`cardsHint`、R-purpose、backlog #189）：本文（`.body`）が箇条書き（`ul`）1 つ（`li` が 3 つか 4 つ）と、あっても短い導入の段落（`p`、60 字分まで）1 つだけで、ほかに何もない（`ol`・入れ子の箇条書き・パーツ `m-*`・`svg`・`img`・`canvas`・`video`・`table`・別行の数式がない）。項目はどれも 30 字まで（日本語の教材は品質チェックのほかの検査と同じ数え方、全角 1・半角 0.5。日本語でない教材は文字数）で、最長が最短の 2 倍以内。項目に行内の数式（組まれた `.katex`、または文中に残った `\( \)` `\[ \]` `$…$`）があるか、順を表す項目（先頭の記号を除いて まず・次に・そこで・最後に、first・next・then・finally（大文字小文字は問わない）で始まる、または → を含む）があれば出さない。1 つの教材で最大 2 つ（`CH` の `cap`）：それより多くのスライドが当てはまれば、項目の長さがいちばんそろっている（最長 ÷ 最短が小さい）ものを残し、同じなら前のスライド。そのとき「同じ重さの短い要点なら、カード（m-cards）にすると見やすいことがあります」と知らせる。1 スライドに 1 つ。表紙・章の扉・`static`・`layout-tate` は見ない。直すかは作成者が決めるので、情報だけで修正依頼には入らない（修正依頼を作る関数が外し、名前でも外す）。閾値は `kit/core/layout-scan.mjs` の `layoutScan` の中の `CH`。編集アプリの品質チェックにも出る（同じ関数） | 情報 |
+| 描いた図の形（R-geometry、backlog #201、`kit/core/geometry-check.mjs`）。パーツは描いた図の箱・線・字に `data-part` の印と `data-part-id`（原稿の id）を付ける：箱は形の要素そのもの（`<rect>`・`<path>`・`<ellipse>`・`<polygon>`）に `data-part="box"`、線は `<g data-part="edge" data-part-from data-part-to>` で、線そのもの（`<line>`・`<path>`。矢じりは除く）に `data-part-line`、字は `<text data-part="label" data-part-of="box\|edge\|mark">`（縁取りがあれば `data-part-halo`、箱の外に置く字は `data-part-at="outside"`。`foreignObject` の字は中身で測る）、点は `data-part="mark"`。`@` で始まる端は節でない。各スライドの最後のステップで、スライドの座標で測る：線が、つないでいない箱の中を通る（`geoEdgeThroughBox`）、線が字を横切る（自分の線の字は除く。`geoLineOverLabel`。字に縁取りがあれば情報）、2 つの字が重なるか、字が持ち主でない点に重なる（`geoLabelOverlap`）、箱の字が箱の縁を越える（`geoLabelOutsideBox`。上下左右のはみ出し）。字の範囲は、横が字の送り幅、縦が基線から上下の字体ごとの決まった幅（`kit/core/text-band.mjs`）なので、字体の行の高さに左右されない。線の太さの半分 ＋ 2px までは重なりとみなさない（線の端が箱の縁に触れるのは正しい図）。印の付いた字は、この検査だけが見る（`textOverlap`・`svgTextBox` には出ない）。縦書きのスライド（`layout-tate`）は測らない：中身のスライドがみな縦書きなら決まりは `skipped`（`tate`）、縦横が混ざる教材では印のある縦書きのスライドの数を出す（`geoTateSlides`）。印を付けないパーツは見ない。パーツも印もない教材では決まりは `excused`（`noParts`） | 警告。情報 |
 | タイムラインの合計と 1 枚ごとの長さ | 情報 |
 
-**編集アプリでは。** 編集アプリの品質チェックは、上の表のどの行も同じコード・重さ・言葉で出す（体裁の行は同じ `kit/core/layout-scan.mjs`、組まれずに残った数式は同じ `kit/core/raw-math.mjs`、原稿と台本の行は `kit/core/check-source.mjs` を通して同じ関数）。そのエラーと警告は修正依頼にも入る。`kit/check.mjs` だけのもの：画面を撮る、パーツの描き方が呼び出し順で変わる（`compOrder`）と本文の釣り合い（`balance`）、手元のファイルを見る、ないファイルへの相対リンク（`linkFileMissing`）と `fontsExtraMissing`、情報の一覧（ステップ 0 で見える字・パレット・ステップごとの強調・タイムライン・`fontNotCovered`・`extensionVersion`）。添付は編集アプリの「添付」の板とエクスポートで、本は本の板で、同じ決まりで確かめる。読み込めないパーツ（`component-requires-missing`・`component-not-in-catalogue`）はどちらでも組み立てが止まり、同じ言葉で知らせる。一覧とそれぞれのわけは `kit/core/check-parity.mjs` の `CLI_ONLY`。コマンド版が出し、編集アプリが出さず、この一覧にもないコードがあれば `tools/test-check-parity.mjs` が落ちる。
+**編集アプリでは。** 編集アプリの品質チェックは、上の表のどの行も同じコード・重さ・言葉で出す（体裁の行は同じ `kit/core/layout-scan.mjs`、描いた図の形は同じ `kit/core/geometry-check.mjs`、組まれずに残った数式は同じ `kit/core/raw-math.mjs`、原稿と台本の行は `kit/core/check-source.mjs` を通して同じ関数）。そのエラーと警告は修正依頼にも入る。`kit/check.mjs` だけのもの：画面を撮る、パーツの描き方が呼び出し順で変わる（`compOrder`）と本文の釣り合い（`balance`）、手元のファイルを見る、ないファイルへの相対リンク（`linkFileMissing`）と `fontsExtraMissing`、情報の一覧（ステップ 0 で見える字・パレット・ステップごとの強調・タイムライン・`fontNotCovered`・`extensionVersion`）。添付は編集アプリの「添付」の板とエクスポートで、本は本の板で、同じ決まりで確かめる。読み込めないパーツ（`component-requires-missing`・`component-not-in-catalogue`）はどちらでも組み立てが止まり、同じ言葉で知らせる。一覧とそれぞれのわけは `kit/core/check-parity.mjs` の `CLI_ONLY`。コマンド版が出し、編集アプリが出さず、この一覧にもないコードがあれば `tools/test-check-parity.mjs` が落ちる。
 
 スライドと台本の言語は違ってもよい（字幕だけ別の言語にする、日本語のスライドに英語の台本を付けるなど）。台本の言語は `voice.json` の `"lang"`（TTS と同じ）、なければ、ほとんどの発言が教材と別の字で書かれているときはその言語（日本語の教材で日本語の字がない、ほかの言語の教材でほとんどの発言に日本語の字がある）、それもなければ教材の `<html lang>`。台本の品質チェックは発言ごとにその言語で見る：日本語の字のある発言は日本語の規則、英語の文は英語の規則（式とみなすのは `\` `^` `_` と密な演算子だけ）。
 

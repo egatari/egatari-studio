@@ -102,7 +102,7 @@ const hints = fs.readFileSync(rel('server', 'hints.js'), 'utf8');
 const version = JSON.parse(fs.readFileSync(rel('package.json'), 'utf8')).version || '';
 // 配信版と単体のオフライン版で、同じ生成元・同じ版のスキルを渡す。
 const makeSkillZips = Object.fromEntries(['ja', 'en'].map((lang) => [lang, makeSkillZip(generate({ skillLang: lang }).files)]));
-for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')], ['kit/core/layout-scan.mjs', fs.readFileSync(rel('kit', 'core', 'layout-scan.mjs'), 'utf8')]]) {
+for (const [name, s] of [['server/hints.js', hints], ['app/frame-shim.js', fs.readFileSync(rel('app', 'frame-shim.js'), 'utf8')], ['kit/core/layout-scan.mjs', fs.readFileSync(rel('kit', 'core', 'layout-scan.mjs'), 'utf8')], ['kit/core/geometry-check.mjs', fs.readFileSync(rel('kit', 'core', 'geometry-check.mjs'), 'utf8')]]) {
   // デッキの <script> の中にそのまま入れるので、</script と <!-- を含んではいけない（layout-scan は仲立ちに包んで入れる）
   if (/<\/script|<!--/i.test(s)) throw new Error(`${name} contains </script or <!-- (cannot be inlined)`);
 }

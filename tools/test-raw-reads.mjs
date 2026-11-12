@@ -59,6 +59,7 @@ const ALLOW = [
   ['kit/font-subset.mjs', 'fs.readFileSync(HB_WASM)', '字の切り出し：node_modules の harfbuzzjs の wasm（決まったファイル）を読む'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, `${w}${sfx}.css`))", '字の写し：node_modules の @fontsource の CSS を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'files', m[1]))", '字の写し：その CSS が指す woff2 を読む（開発者の道具）'],
+  ['tools/measure-text-band.mjs', "fs.readFileSync(path.join(NM, dir, 'files', f))", '図の字の範囲の測定（backlog #201、手で回す道具）：node_modules の @fontsource の woff2 を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(src, 'LICENSE'))", '字の写し：@fontsource の LICENSE を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "JSON.parse(fs.readFileSync(path.join(src, 'package.json'), 'utf8'))", '字の写し：@fontsource の package.json（名前・版・ライセンス）を読む（開発者の道具）'],
   ['tools/fonts-vendor.mjs', "fs.readFileSync(path.join(OUT, rel)).equals(buf)", '字の写し：--check で fonts/@fontsource の写しと比べる（開発者の道具）'],

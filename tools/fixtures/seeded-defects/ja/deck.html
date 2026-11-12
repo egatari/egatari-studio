@@ -188,6 +188,26 @@
   </div>
 </section>
 
+<!-- R-geometry：線 a→c が、つないでいない箱 b の中を通る（geoEdgeThroughBox。パーツの印 data-part を手で付けた SVG） -->
+<section class="slide noconcl">
+  <h2>箱を通り抜ける線</h2>
+  <div class="body">
+    <svg width="1000" height="160" viewBox="0 0 1000 160" aria-label="箱を通り抜ける線の図" style="font-size:28px">
+      <g style="fill:none;stroke:var(--fg);stroke-width:2">
+        <rect data-part="box" data-part-id="a" x="0" y="20" width="200" height="100"/>
+        <rect data-part="box" data-part-id="b" x="400" y="20" width="200" height="100"/>
+        <rect data-part="box" data-part-id="c" x="800" y="20" width="200" height="100"/>
+        <g data-part="edge" data-part-id="a→c" data-part-from="a" data-part-to="c"><line data-part-line x1="200" y1="105" x2="800" y2="105"/></g>
+      </g>
+      <g style="fill:var(--fg)" text-anchor="middle">
+        <text data-part="label" data-part-id="a" data-part-of="box" x="100" y="65">始め</text>
+        <text data-part="label" data-part-id="b" data-part-of="box" x="500" y="65">途中</text>
+        <text data-part="label" data-part-id="c" data-part-of="box" x="900" y="65">終わり</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
 </div>
 </body>
 </html>

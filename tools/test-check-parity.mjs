@@ -1,7 +1,8 @@
 // 品質チェックのコマンド版（kit/check.mjs）と編集アプリの品質チェックが同じ指摘を出すこと（v0.6.9）
 //   node tools/test-check-parity.mjs [作業用のフォルダ]
 // 見本（tools/fixtures/check-parity）：en-rawmath（英語の教材に $…$ の数式が 4 枚残る。持ち主の報告：コマンド版は rawMath のエラーと R-formula の警告を出すのに、
-// 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない・答えが数と同時に開く m-predict・答えが出ない m-predict）。
+// 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない・答えが数と同時に開く m-predict・答えが出ない m-predict）と
+// ja-geometry（パーツの印 data-part を付けた手書きの SVG。描いた図の形の点検 R-geometry の 4 つの警告が 1 つずつ、同じ値で出る。kit/core/geometry-check.mjs）。
 // 0. 静的な棚卸し：MESSAGES のどの code も IN_EDITOR・CLI_ONLY（CLI_ONLY_PREFIX）・EDITOR_ALIAS と BUILD_WARN の行き先のちょうど 1 つに入る。
 //    一覧が MESSAGES にない code を名指さない。IN_EDITOR の code は編集アプリの道筋のファイルに文字列として現れる（見本が出さない code も見る）
 // 1. コマンド版を --json で走らせ、見本が狙った code を出すこと
@@ -38,13 +39,15 @@ fs.cpSync(path.join(FIX, 'en-rawmath'), STALE, { recursive: true });
 fs.mkdirSync(path.join(STALE, 'audio'), { recursive: true });
 fs.writeFileSync(path.join(STALE, 'audio', 'a.wav'), silentWav(1));
 fs.writeFileSync(path.join(STALE, 'audio', 'manifest.json'), JSON.stringify({ segments: { 's-attn:0': { file: 'a.wav', dur: 1, inputHash: null } } }));
-const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'ja-flow', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }];
+const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'ja-flow', lang: 'ja' }, { name: 'ja-geometry', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }];
+const GEO = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox'];
 const dirOf = (f) => f.dir || path.join(FIX, f.name);
 // 見本が出すはずの code（見本を直して減ったら気づくように）
 const WANT = {
   'en-rawmath': ['rawMath', 'narrFormula', 'narrNote', 'narrOrphan', 'narrMissing', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'linkCount', 'legacyColorClass', 'colorOutside'],
   'en-stale': ['audioStale', 'rawMath'],
   'ja-flow': ['compLayout'],
+  'ja-geometry': GEO,
   'ja-mix': ['desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing', 'predictAnswerWithCount', 'predictAnswerNeverShown'],
 };
 
@@ -76,7 +79,7 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
   for (const c of codes) for (const k of classes(c)) counts[k]++;
   console.log('  info inventory: ' + Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
   // 道筋：編集アプリが code を出すファイル（プレビューの中・原稿の文字列・作業場所の台本と音声）に、その code が文字列で現れる
-  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs']
+  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs']
     .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   const unreached = IN_EDITOR.filter((c) => !new RegExp(`["'\`]${c}["'\`]`).test(src));
   ok(!unreached.length, `inventory: every IN_EDITOR code (${IN_EDITOR.length}) appears as a string in the editor's check path` + (unreached.length ? ': not found ' + unreached.join(', ') : ''));
@@ -154,7 +157,7 @@ try {
     const missing = cliCodes.filter((c) => !have.has(c) && !cliOnly(c));
     ok(!missing.length, `parity ${name}: every code the command line reports is in the editor's check, or listed in CLI_ONLY (${cliCodes.length} codes)` + (missing.length ? ': missing ' + missing.join(', ') : ''));
     // 同じ code はスライドも同じ（スライドごとの指摘：rawMath・desuMasu など、本文と台本と原稿から見るもの）
-    for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex', 'predictAnswerWithCount', 'predictAnswerNeverShown', 'compLayout']) {
+    for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex', 'predictAnswerWithCount', 'predictAnswerNeverShown', 'compLayout', ...GEO, 'geoTateSlides']) {
       const a = CLI[name].filter((x) => x.code === code).map((x) => `${x.slide}:${x.sev}`).sort().join(' ');
       const b = results.filter((x) => x.code === code).map((x) => `${x.i === null ? null : x.i + 1}:${x.sev}`).sort().join(' ');
       if (a || b) ok(a === b, `parity ${name}: ${code} on the same slides with the same severity (cli “${a}”, editor “${b}”)`);
@@ -186,6 +189,15 @@ try {
     // 修正依頼：エラー・警告はすべて入る（情報は入らない）
     for (const r of results.filter((x) => x.sev !== 'info' && x.arg && typeof x.arg === 'object' && MESSAGES[x.code])) {
       ok(req.includes(message(lang, r.code, r.arg)), `fix request ${name}: includes the ${r.code} finding`);
+    }
+    if (name === 'ja-geometry') {
+      // 4 つの警告が 1 つずつ、コマンド版と編集アプリで同じ値（id と丸めた座標）
+      const c = CLI[name].filter((x) => x.code.startsWith('geo')), e = results.filter((x) => x.code.startsWith('geo'));
+      ok(GEO.every((code) => c.filter((x) => x.code === code && x.sev === 'warn').length === 1) && c.length === GEO.length, `cli ja-geometry: each of the 4 geometry warnings once (${c.map((x) => x.code).join(', ')})`);
+      ok(GEO.every((code) => e.filter((x) => x.code === code && x.sev === 'warn').length === 1) && e.length === GEO.length, `editor ja-geometry: each of the 4 geometry warnings once (${e.map((x) => x.code).join(', ')})`);
+      const same = GEO.every((code) => JSON.stringify((c.find((x) => x.code === code) || {}).data) === JSON.stringify((e.find((x) => x.code === code) || {}).arg));
+      ok(same, 'parity ja-geometry: the same ids and coordinates in the command line and the editor' + (same ? '' : `: cli ${JSON.stringify(c.map((x) => x.data))} editor ${JSON.stringify(e.map((x) => x.arg))}`));
+      ok(!CLI[name].some((x) => ['textOverlap', 'svgTextBox'].includes(x.code)), 'cli ja-geometry: marked labels are left to the geometry check (no textOverlap or svgTextBox for them)');
     }
     if (name === 'en-stale') {
       const c = CLI[name].filter((x) => x.code === 'audioStale'), e = results.filter((x) => x.code === 'audioStale');
