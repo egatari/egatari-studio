@@ -17,7 +17,7 @@ const el = (tag, attrs = {}, kids = []) => {
 };
 const shortScene = (s) => s.replace(/\s*[（(][^）)]*[）)]\s*$/, '');   // 「案内（ごみの出し方…）」→「案内」
 const PARTS_SAMPLE = 'parts-showcase';
-const TAGS_MAX = 5;
+const PURPOSES_MAX = 3, PARTS_MAX = 3;
 
 export function createExamplesGallery({ root, list, sections, T, lang, coverHref, partsHref, onView }) {
   const L = lang === 'en' ? 'en' : 'ja';
@@ -35,15 +35,16 @@ export function createExamplesGallery({ root, list, sections, T, lang, coverHref
 
   function tile(x) {
     const scene = x.scene && x.scene[L] ? shortScene(x.scene[L]) : '';
-    const purposes = (x.purposes || []).slice(0, TAGS_MAX);
-    const parts = (x.parts || []).slice(0, TAGS_MAX);
+    const purposes = (x.purposes || []).slice(0, PURPOSES_MAX);
+    const parts = (x.parts || []).slice(0, PARTS_MAX);
     const more = (x.parts || []).length - parts.length;
     return el('li', { cls: 'ex-tile', 'data-example': x.name }, [
       cover(x),
       el('span', { cls: 'nm', text: x.title, ...(x.lang ? { lang: x.lang } : {}) }),
       scene ? el('span', { cls: 'ex-scene', text: scene }) : null,
       el('span', { cls: 'ex-badges' }, badges(x)),
-      purposes.length ? el('span', { cls: 'ex-tags ex-purposes', 'aria-label': T.examplePurposes }, purposes.map((p) => el('span', { cls: 'ex-tag', text: p.label[L] }))) : null,
+      // 伝えたいことは 1 行の文（3 つまで）。押せる札はパーツだけ（そのパーツのサンプルに絞る）
+      purposes.length ? el('span', { cls: 'ex-purposes', text: T.examplePurposesLine(purposes.map((p) => p.label[L])) }) : null,
       parts.length ? el('span', { cls: 'ex-tags ex-parts', 'aria-label': T.exampleParts }, [
         ...parts.map((t) => el('button', { type: 'button', cls: 'ex-tag ex-part', 'data-part': t, text: partLabel(t, L), title: T.examplePartTitle(partLabel(t, L)), onclick: () => go({ kind: 'part', tag: t }) })),
         more > 0 ? el('span', { cls: 'ex-more', text: T.exampleMore(more) }) : null]) : null,

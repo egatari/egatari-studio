@@ -1,47 +1,47 @@
 {
   "egatari-intro": {
-    "src": "91426fae48b878df",
-    "title": "Egatari の紹介"
+    "site": true,
+    "sha256": "da055fe8e5219dbdb0b4ee15d8b25fac18db011f1560928758f2a103298e067f"
   },
   "egatari-intro-en": {
-    "src": "7009898d61ea9b9f",
-    "title": "Introducing Egatari"
+    "site": true,
+    "sha256": "65cf073e71feab63a776e665dd34691530553def0701af8d1391e0c0b4365bfa"
   },
   "parts-showcase": {
-    "src": "ee7f22ac019f3524",
-    "title": "パーツ図鑑"
+    "site": true,
+    "sha256": "a76bc26fc1969487b87bb1f449999c00e57ebb83ddfe5fe645054390a24467b1"
   },
   "moon-phases": {
-    "src": "0e82f2d959dd6cf7",
-    "title": "月の満ち欠け"
+    "site": true,
+    "sha256": "47703747355226ab11e3e1f83900fd07c68a306ed879193a36325f739cf29551"
   },
   "chords": {
-    "src": "c44745643dad279e",
-    "title": "和音のしくみ"
+    "site": true,
+    "sha256": "8d05bbc22722064d011d209c2bf8aac521471a813d6335610682ebc804e80827"
   },
   "sentence-structure": {
-    "src": "e94810fccfc79a62",
-    "title": "英文の構造"
+    "site": true,
+    "sha256": "04f1511cf649884e471edca7d642dd33e502c1946942d2d19526f587d81c06ab"
   },
   "huffman": {
-    "src": "bf22108285ea8742",
-    "title": "ハフマン符号"
+    "site": true,
+    "sha256": "e8de440dd2128d1b47f4b64053c5d67252c1df58a7b9510499f82fa75393923b"
   },
   "bayes": {
-    "src": "2f020443af7d59a1",
-    "title": "Bayes' theorem"
+    "site": true,
+    "sha256": "59442745e7e7a55af33372c7582fdbd2983b2865c7bd35dad14ff272d91412b3"
   },
   "population": {
-    "src": "d7c892902d3adaea",
-    "title": "日本の人口の移り変わり"
+    "site": true,
+    "sha256": "9525383c5b56162396a9690d385f6ed6838b7c5098473c9a71dd2913eb609e8f"
   },
   "live-birthday": {
-    "src": "1bcb6157a477dfd1",
-    "title": "40 人のクラスに、同じ誕生日の 2 人はいる？"
+    "site": true,
+    "sha256": "b66922a475be6c2622a1af6395d58f4c548e56eaf8d6a18124ce09fc6ab197d0"
   },
   "genai-guideline": {
-    "src": "a6f6d7ad70d705b8",
-    "title": "生成AIの利活用ガイドラインを読む"
+    "site": true,
+    "sha256": "62399e83292d42b1cb2bb6aacf1e037fa0575e984e2a73c0a16aeee36d07c092"
   },
   "kokugo-kanbun": {
     "src": "dde1ee192f2e8745",
@@ -64,31 +64,31 @@
     "title": "勾配降下法の基本"
   },
   "quarterly-report": {
-    "src": "9e5e1dab562a87d0",
-    "title": "第 3 四半期 業績報告"
+    "site": true,
+    "sha256": "d8af058d5bd89702a894b6d64cf8a9f78cf868a8bf3c0e7c309bbb70f84cb271"
   },
   "security-training": {
-    "src": "2f8a59ff1b01138e",
-    "title": "情報セキュリティ研修"
+    "site": true,
+    "sha256": "a608777e46feca988a1bb7c277ae45602001c6aa6034288035ccb2b8cc421548"
   },
   "pitch-fictional": {
     "src": "b5850814d993c4f1",
     "title": "株式会社レポミル（架空）事業紹介"
   },
   "city-budget-ja": {
-    "src": "e45834e7e79772a3",
-    "title": "A 市の予算 2027 年度"
+    "site": true,
+    "sha256": "1ff7ae0d3a1ed38d6bf4a66d0996a629393815d48e2fad7274c028d2e03d3723"
   },
   "city-budget-en": {
-    "src": "84807752b1b6604e",
-    "title": "City A budget 2027"
+    "site": true,
+    "sha256": "f01a9e0ed8f2fbbafb8fefb179eb959405ab657965aea32252dfa3f85f201bd9"
   },
   "hand-hygiene": {
-    "src": "c3831781842f49e4",
-    "title": "手指衛生の 5 つのタイミング"
+    "site": true,
+    "sha256": "a7dea624b5ebb94bb53663332c7660f8aa0d9d4b890b48fa6a18a2f34baf3736"
   },
   "hazard-map": {
-    "src": "b08b06e8fc7ef6d6",
-    "title": "大雨のとき、どこへ逃げる？"
+    "site": true,
+    "sha256": "ac293f5391887f9d86e339ad627dbee9369f85a800bf070018fa06fac20d6d56"
   }
 }

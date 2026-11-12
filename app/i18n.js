@@ -279,7 +279,7 @@ const ja = {
   allParts: 'パーツの一覧',
   // はじめの画面のサンプル（サイトに置いた 1 ファイル。tools/build-app.mjs）。「再生」で大きく再生する窓（app/main.js の playExample。backlog #130）
   examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルの教材です。再生して、同じ作り方で自分の教材を作れます。', exampleView: '再生',
-  exampleBack: '戻る', exampleDoors: '使う場面', exampleCount: (n) => `${n} 件`, examplePurposes: '伝えたいこと', exampleParts: '使っているパーツ',
+  exampleBack: '戻る', exampleDoors: '使う場面', exampleCount: (n) => `${n} 件`, examplePurposesLine: (xs) => `伝えたいこと：${xs.join('・')}`, exampleParts: '使っているパーツ',
   examplePartTitle: (p) => `${p}を使うサンプルに絞る`, examplePartHeading: (p) => `${p}を使うサンプル`, exampleMore: (n) => `ほか ${n}`,
   examplePartsCardLead: 'すべてのパーツの動きを、1 つの教材にまとめています',
   exampleVoice: '声', exampleVoiceTitle: 'AI 音声か録音があります', exampleLive: 'ライブ', exampleLiveTitle: '学習者の答えをライブで集めるパーツがあります',
@@ -738,7 +738,7 @@ const en = {
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
   allParts: 'All parts',
   examples: 'Samples', examplesLead: 'Sample lessons made with Egatari. Play one, then make your own lesson the same way.', exampleView: 'Play',
-  exampleBack: 'Back', exampleDoors: 'Setting', exampleCount: (n) => `${n} sample${n === 1 ? '' : 's'}`, examplePurposes: 'What to convey', exampleParts: 'Parts used',
+  exampleBack: 'Back', exampleDoors: 'Setting', exampleCount: (n) => `${n} sample${n === 1 ? '' : 's'}`, examplePurposesLine: (xs) => `What to convey: ${xs.join(', ')}`, exampleParts: 'Parts used',
   examplePartTitle: (p) => `Show only the samples that use ${p}`, examplePartHeading: (p) => `Samples that use ${p}`, exampleMore: (n) => `+${n} more`,
   examplePartsCardLead: 'Every part in motion, gathered in one lesson',
   exampleVoice: 'Voice', exampleVoiceTitle: 'Has AI voice or a recording', exampleLive: 'Live', exampleLiveTitle: 'Has parts that collect learners’ answers live',

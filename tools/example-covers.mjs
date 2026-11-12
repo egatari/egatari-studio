@@ -1,9 +1,13 @@
 // サンプルのカードの表紙の絵（examples/_covers/<名前>.webp）を、サンプルそのものから作る。手で描かない・手で直さない
-//   node tools/example-covers.mjs [名前…]   作り直す（ブラウザが要る。サンプルを写した後に。npm run covers）
-//   node tools/example-covers.mjs --check   どのサンプルも絵を持ち、絵の元（サンプルのフォルダの hash）が今のフォルダと同じか（ブラウザなし。npm run gen:check）
+//   node tools/example-covers.mjs --site <egatari.org の src/gallery> [名前…]
+//     egatari.org のギャラリーにあるサンプル（<site>/covers/<名前>.webp がある）は、その絵をそのまま写す（作者と見本の担当が選んだ、いちばん伝わるステップ。
+//     絵の元は 1 つ）。ないもの（Studio だけのサンプル）は下の作り方で作る（ブラウザが要る。npm run covers -- --site …）
+//   node tools/example-covers.mjs [名前…]   --site なし：サイトから写した絵はそのまま残し、ほかを作り直す
+//   node tools/example-covers.mjs --check   どのサンプルも絵を持ち、作った絵は絵の元（サンプルのフォルダの hash）が今のフォルダと同じか、サイトから写した絵は
+//     sha256 が index.json のとおりか（ブラウザなし。npm run gen:check。サイトの絵と同じかは tools/examples-sync.mjs --check --lessons が照らす）
 // 作り方：tools/examples-portable.mjs と同じく 1 ファイルに組み、1 枚目のスライドを最後のステップまで進めて、スライド全体（16:9）を撮る。
 // 絵は 384×216（カードでは 192×108 で、高い密度の画面にも足りる）の WebP。tools/build-app.mjs が dist/examples/<名前>.cover.webp に写す。
-// examples/_covers/index.json に {名前: {src, title}}（src はフォルダの hash の先頭、title はサンプルの題名）
+// examples/_covers/index.json に {名前: {src, title}}（作った絵：src はフォルダの hash の先頭）か {名前: {site: true, sha256, title}}（サイトから写した絵）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -35,6 +39,7 @@ if (process.argv.includes('--check')) {
   for (const name of EXAMPLES) {
     if (!have[name]) bad.push(`${name}: no cover`);
     else if (!fs.existsSync(path.join(DIR, name + '.webp'))) bad.push(`${name}: examples/_covers/${name}.webp is missing`);
+    else if (have[name].site) { if (createHash('sha256').update(fs.readFileSync(path.join(DIR, name + '.webp'))).digest('hex') !== have[name].sha256) bad.push(`${name}: the cover differs from the one copied from egatari.org`); }
     else if (have[name].src !== folderHash(name)) bad.push(`${name}: the cover is from an older copy of the sample`);
   }
   for (const name of Object.keys(have)) if (!EXAMPLES.includes(name)) bad.push(`${name}: a cover for a sample that is not in examples/index.json`);
@@ -43,16 +48,31 @@ if (process.argv.includes('--check')) {
   process.exit(0);
 }
 
-const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
-const names = only.length ? only : EXAMPLES;
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'example-covers-'));
-const built = await buildExamples(tmp, { names });
-const { launch, fileUrl, prepareForCapture, releaseCapture } = await import('../kit/browser.mjs');
-const browser = await launch();
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-page.on('pageerror', (e) => console.error('pageerror:', e.message));
+const argv = process.argv.slice(2);
+const siteAt = argv.indexOf('--site');
+const SITE = siteAt >= 0 ? path.resolve(argv.splice(siteAt, 2)[1]) : null;
+const only = argv.filter((a) => !a.startsWith('-'));
 const covers = readCovers();
 fs.mkdirSync(DIR, { recursive: true });
+let names = only.length ? only : EXAMPLES;
+if (SITE) {
+  for (const name of names) {
+    const from = path.join(SITE, 'covers', name + '.webp');
+    if (!fs.existsSync(from)) continue;
+    const buf = fs.readFileSync(from);
+    fs.writeFileSync(path.join(DIR, name + '.webp'), buf);
+    covers[name] = { site: true, sha256: createHash('sha256').update(buf).digest('hex') };
+    console.log(`${name}: from egatari.org (${(buf.length / 1024).toFixed(0)} KB)`);
+  }
+}
+// サイトから写した絵は作り直さない
+names = names.filter((n) => !(covers[n] && covers[n].site));
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'example-covers-'));
+const built = names.length ? await buildExamples(tmp, { names }) : [];
+const { launch, fileUrl, prepareForCapture, releaseCapture } = await import('../kit/browser.mjs');
+const browser = built.length ? await launch() : null;
+const page = browser && await browser.newPage({ viewport: { width: 1280, height: 720 } });
+if (page) page.on('pageerror', (e) => console.error('pageerror:', e.message));
 for (const x of built) {
   await page.goto(fileUrl(path.join(tmp, x.file)) + '?mode=talk');
   await page.waitForFunction(() => window.DECK && DECK.ready);
@@ -75,7 +95,7 @@ for (const x of built) {
   covers[x.name] = { src: folderHash(x.name), title };
   console.log(`${x.name}: ${(Buffer.from(b64, 'base64').length / 1024).toFixed(0)} KB (${title})`);
 }
-await browser.close();
+if (browser) await browser.close();
 fs.rmSync(tmp, { recursive: true, force: true });
 const sorted = Object.fromEntries(EXAMPLES.filter((n) => covers[n]).map((n) => [n, covers[n]]));
 fs.writeFileSync(INDEX, JSON.stringify(sorted, null, 2) + '\n');

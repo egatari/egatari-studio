@@ -5,7 +5,7 @@
 //   node tools/examples-sync.mjs --check [--lessons <egatari.org の src/gallery/lessons.json>]
 //     写したフォルダが SOURCE.json のとおりか（ファイルの過不足・sha256）、SOURCE.json の path が index.json と同じかを確かめる。
 //     フォルダに置いてよい、写しでないファイルは SOURCE.json と、元に sample.json がないときの sample.json だけ（本のサンプル：Studio が書く）。
-//     --lessons があれば、index.json の各サンプルの section が egatari.org の lessons.json の section と同じかも確かめる（その一覧にある名前だけ）。
+//     --lessons があれば、index.json の各サンプルの section が egatari.org の lessons.json の section と同じか、表紙の絵が同じかも確かめる（その一覧にある名前だけ）。
 //     egatari.org の札の id が Studio の名前と違うもの（なし）は、ここに表を足す
 // 写し直したあとは --check が「コミットだけが変わり、ファイルの sha256 は同じ」になることを確かめる（samples-from-sample を main に入れたあとの写し直し）
 import fs from 'node:fs';
@@ -89,6 +89,13 @@ export function check({ root = ROOT, lessons = null } = {}) {
     const site = JSON.parse(fs.readFileSync(lessons, 'utf8'));
     const bySite = new Map((site.lessons || []).map((l) => [l.id, l.section]));
     for (const e of idx.examples) if (bySite.has(e.name) && bySite.get(e.name) !== e.section) errs.push(`${e.name}: section ${e.section}, but egatari.org's lessons.json says ${bySite.get(e.name)}`);
+    // 表紙の絵：サイトにある絵（<lessons.json のフォルダ>/covers/<id>.webp）と Studio の examples/_covers/<名前>.webp が同じバイトか（tools/example-covers.mjs --site が写す）
+    const coversDir = path.join(path.dirname(lessons), 'covers');
+    for (const e of idx.examples) {
+      const siteCover = path.join(coversDir, e.name + '.webp'), mine = path.join(root, 'examples', '_covers', e.name + '.webp');
+      if (!bySite.has(e.name) || !fs.existsSync(siteCover)) continue;
+      if (!fs.existsSync(mine) || sha(fs.readFileSync(mine)) !== sha(fs.readFileSync(siteCover))) errs.push(`${e.name}: the cover differs from egatari.org's covers/${e.name}.webp (node tools/example-covers.mjs --site <site>/src/gallery ${e.name})`);
+    }
     const siteSections = new Map((site.sections || []).map((s) => [s.id, s]));
     for (const s of idx.sections) {
       const t = siteSections.get(s.id);
@@ -110,7 +117,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       for (const e of errs) console.error('examples-sync: ' + e);
       if (errs.length) process.exit(1);
       const n = readIndex().examples.filter((e) => e.path).length;
-      console.log(`examples-sync: ${n} copies match their SOURCE.json${lessons ? '; sections match egatari.org' : ''}`);
+      console.log(`examples-sync: ${n} copies match their SOURCE.json${lessons ? '; sections and covers match egatari.org' : ''}`);
     } else {
       const commit = opt('--commit');
       const all = a.includes('--all');

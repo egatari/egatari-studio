@@ -24,6 +24,8 @@ const LOCK2 = JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fil
 const PURPOSES = purposesFrom(JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'vendor', 'components-2', `manifest-${LOCK2.default}.json`), 'utf8')));
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url))), 'vendor', 'components-2', `manifest-${LOCK2.default}.json`), 'utf8'));
 const LIBRARY_TAGS = new Set(Object.entries(MANIFEST.components).filter(([, c]) => c.kind === 'element').map(([n, c]) => c.tag || 'm-' + n));
+const TIER_OF = new Map(Object.entries(MANIFEST.components).filter(([, c]) => c.kind === 'element').map(([n, c]) => [c.tag || 'm-' + n, c.tier]));
+const TIER_RANK = (t) => ({ extra: 0, specialized: 1 })[TIER_OF.get(t)] ?? 2;
 const purposeLabels = (tags) => {
   const ids = [];
   for (const t of tags) { const id = (PURPOSES.components[t] || [])[0]; if (id && !ids.includes(id)) ids.push(id); }   // 部品の主な札（先頭）だけ
@@ -106,13 +108,17 @@ export async function buildExamples(outDir, { names = EXAMPLES, log = () => {} }
       for (const w of r.warnings) log(`  ⚠ example ${name}: ${w}`);
       const m = r.index.metadata || {};
       // カードの印：本（本を持つ）・声（AI 音声か録音を持つ。サンプルは音声をリポジトリに入れないので、いまは付かない）・
-      // ライブ（教室の答えを集めるパーツ：stats.viewerInputs）・縦書き（layout-tate のスライド）。言語の印は画面の言語と違うときに画面が付ける
-      const parts = (r.stats.components || []).filter((t) => LIBRARY_TAGS.has(t));   // パーツライブラリのパーツだけ（教材が自分で定義したものは札にしない）
-      const tate = /\blayout-tate\b/.test(fs.readFileSync(path.join(copy, 'deck.html'), 'utf8'));
+      // ライブ（投票の id を持つパーツ）・縦書き（layout-tate のスライド）。言語の印は画面の言語と違うときに画面が付ける
+      // パーツライブラリのパーツだけ（教材が自分で定義したものは札にしない）。札は 3 つまでなので、その教材らしいもの（特殊・専門）を標準より先に
+      const parts = (r.stats.components || []).filter((t) => LIBRARY_TAGS.has(t)).map((t, i) => [t, i]).sort((a, b) => TIER_RANK(a[0]) - TIER_RANK(b[0]) || a[1] - b[1]).map(([t]) => t);
+      const deckSrc = fs.readFileSync(path.join(copy, 'deck.html'), 'utf8');
+      const tate = /\blayout-tate\b/.test(deckSrc);
+      // ライブ：ライブの授業のために作った教材（パーツに投票の id poll="…" がある）。m-predict だけならライブなしでも使えるので付けない
+      const live = /\bpoll="[^"]+"/.test(deckSrc);
       list.push({ name, file, title: String(m.title || name), lang: String(m.lang || ''), slides: r.stats.slides, bytes: Buffer.byteLength(r.html), profile: r.index.profile,
         sha256: crypto.createHash('sha256').update(r.html).digest('hex'), sample, book: !!r.index.article,
         section: entry.section, scene: sceneOf(sample), parts, purposes: purposeLabels(parts),
-        voice: (r.stats.audio || 0) > 0, live: Object.keys(r.stats.viewerInputs || {}).length > 0, tate, cover: copyCover(name, outDir) });
+        voice: (r.stats.audio || 0) > 0, live, tate, cover: copyCover(name, outDir) });
     }
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
   return list;
