@@ -146,7 +146,8 @@ jobs:
   # when their condition holds, so a passing run is not slower. Linux and Windows keep the factor 1
   macos:
     runs-on: macos-latest
-    timeout-minutes: ${{ (github.event_name == 'push' || inputs.full) && 90 || 40 }}
+    # 2026-11-12: 120 for push/full (was 90): v0.6.11 suite growth (test-app 2/2 301→771 s) cut two full runs at 90 min with 2 steps left; back to 90 once the duplication in test-app is fixed (before v0.6.11-rc.1)
+    timeout-minutes: ${{ (github.event_name == 'push' || inputs.full) && 120 || 40 }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
