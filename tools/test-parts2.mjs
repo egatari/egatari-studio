@@ -639,10 +639,10 @@ for (const [code, what] of [
   ok(js262.length === 0, `2.6.2: no other part's index.js changes without a version bump (${js262.join(', ') || 'none'})`);
   // 2.7.0（リリース b22df061）：説明の言葉を用語集にそろえた版（README の 部品→パーツ・口述原稿→台本・段階→ステップ など）。
   // 小さい版が上がるのは base 1.2.0（ramp・rampStops、mtext の *）、m-heatmap・m-map-japan・m-map-world 2.1.0（ramp）、m-code 2.1.0、m-predict 2.1.0（labels.correct、画面の言葉が ctx.lang に従う）。
-  // ほかのパーツは patch（base 1.2.0 が要る）。中を持つ部品だけの 8 つ（heatmap-core・icons・shape など）は README だけが変わり、版も index.js も 2.6.2 のまま。パーツの増減はない。既定はこちら
+  // ほかのパーツは patch（base 1.2.0 が要る）。中を持つ部品だけの 8 つ（heatmap-core・icons・shape など）は README だけが変わり、版も index.js も 2.6.2 のまま。パーツの増減はない。v0.6.11 の既定
   const v270 = lock2.catalogues['2.7.0'];
-  ok(lock2.default === '2.7.0' && v270 && v270.tag === 'v2.7.0' && v270.tarballSha256 === '1c2f95aa502bec039737bf1d184942fb5627de0a74e97ca9822f31571c8e6c44' && v270.manifestSha256 === '7c485e1807912b7f8f9e9557db7eef5bcb7b0f0d99954aa98a1878de3df25179',
-    '2.7.0: the default, pinned to the released tarball and manifest (v2.7.0)');
+  ok(v270 && v270.tag === 'v2.7.0' && v270.tarballSha256 === '1c2f95aa502bec039737bf1d184942fb5627de0a74e97ca9822f31571c8e6c44' && v270.manifestSha256 === '7c485e1807912b7f8f9e9557db7eef5bcb7b0f0d99954aa98a1878de3df25179',
+    '2.7.0: pinned to the released tarball and manifest (v2.7.0)');
   const names270 = Object.keys(v270.parts).sort(), names262 = Object.keys(v262.parts).sort();
   ok(names270.join() === names262.join(), `2.7.0: no part added or removed (${names270.length})`);
   const minor270 = names270.filter((n) => v262.parts[n].split('.')[1] !== v270.parts[n].split('.')[1]);
@@ -653,6 +653,19 @@ for (const [code, what] of [
   const js270 = same270.filter((n) => fs.existsSync(c2(v270, n, 'index.js')) && fs.readFileSync(c2(v270, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v262, n, 'index.js'), 'utf8'));
   ok(js270.length === 0, `2.7.0: the libraries that keep their version keep their index.js (${js270.join(', ') || 'none'})`);
   ok(/labels\.correct/.test(fs.readFileSync(c2(v270, 'predict', 'README.md'), 'utf8')), '2.7.0: m-predict 2.1.0 documents labels.correct');
+  // 2.8.0（リリース 22ad4bb）：m-flow・m-tree・m-fishbone・m-quad 2.1.0 が描いたものに印（data-part。形の検査 #201）を付け、m-particles 2.0.2 が
+  // 幅およそ 45 px 未満で固まらなくなった。ほかのパーツは README だけが変わり、版も index.js も 2.7.0 のまま。パーツの増減はない。既定はこちら（v0.6.12 から）
+  const v280 = lock2.catalogues['2.8.0'];
+  ok(lock2.default === '2.8.0' && v280 && v280.tag === 'v2.8.0' && v280.tarballSha256 === 'eef78dd1201d4fe1f08248554e11eec46bb8fd147881523f8263b08de41f2b1f' && v280.manifestSha256 === 'a05348a7c9a0452f7316c742a8e38cc003d63fd7fdb5a469c0a95e711e9deb9c',
+    '2.8.0: the default, pinned to the released tarball and manifest (v2.8.0)');
+  const names280 = Object.keys(v280.parts).sort();
+  ok(names280.join() === names270.join(), `2.8.0: no part added or removed (${names280.length})`);
+  const bumped280 = names280.filter((n) => v270.parts[n] !== v280.parts[n]);
+  ok(bumped280.join() === 'fishbone,flow,particles,quad,tree' && ['fishbone', 'flow', 'quad', 'tree'].every((n) => v280.parts[n] === '2.1.0') && v280.parts.particles === '2.0.2',
+    `2.8.0: exactly m-flow, m-tree, m-fishbone, m-quad 2.1.0 and m-particles 2.0.2 get new versions (${bumped280.map((n) => n + ' ' + v280.parts[n]).join(', ')})`);
+  const js280 = names280.filter((n) => !bumped280.includes(n) && fs.existsSync(c2(v280, n, 'index.js')) && fs.readFileSync(c2(v280, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v270, n, 'index.js'), 'utf8'));
+  ok(js280.length === 0, `2.8.0: no other part's index.js changes (${js280.join(', ') || 'none'})`);
+  ok(['flow', 'tree', 'fishbone', 'quad'].every((n) => /data-part/.test(fs.readFileSync(c2(v280, n, 'index.js'), 'utf8'))), '2.8.0: the four diagram parts write data-part marks');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
