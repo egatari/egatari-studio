@@ -37,6 +37,12 @@ import { NotRegularFileError, ReadOverError, utf8Length } from './bounded-read-c
 import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isSlideId, headingText } from './narration-core.mjs';
 
 // 設定のファイルの metadata から deck-meta に写す権利の項目（format spec §4 の deck-meta の表。schema/deck-meta.schema.json）。1 ファイル（portable.mjs）も作業フォルダの組み立ても同じものを写す
+
+// spec §8.0 Browser translation：ブラウザのページ翻訳で崩れるもの（組んだ数式・コード・パーツの描画）に translate="no" を付ける。
+// 見出し・本文・結論の行・字幕・本は訳せるまま。すでに translate を書いたものは作者の指定のまま
+export function noTranslateMath(h) { return h.replace(/^<span class="(katex(?:-display)?)"/, '<span translate="no" class="$1"'); }
+export function noTranslateTags(h) { return h.replace(/<(code|pre|m-[a-z0-9]+(?:-[a-z0-9]+)*)(?=[\s>\/])(?![^>]*\btranslate\s*=)/gi, '<$1 translate="no"'); }
+
 export const DECK_META_RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
 // metadata.offer（format spec §1.2：作者が見せるモードと見え方、開くときの {mode, face}）を書く形にする。deck-meta.offer と索引の metadata.offer に使う。
 // 前の版の learn は talk と読む（Player P1）。知らない値・重なりは捨て、空になった modes・faces は書かない。open は offer の中にあるものだけ。
@@ -914,12 +920,12 @@ export function build(env0, srcPath, opts = {}) {
   let count = 0;
   const render = (tex, display) => {
     if (++count > LIM.math) throw new BuildLimitError('formulas', count, LIM.math);
-    try { return env.katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'htmlAndMathml', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) }); }
-    catch (e) { warn.push(`KaTeX: ${e.message.split('\n')[0]}  in: ${tex.slice(0, 60)}`); return `<span class="katex-error" title="${escAttr(e.message)}">${escAttr(tex)}</span>`; }
+    try { return noTranslateMath(env.katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'htmlAndMathml', macros: { ...macros }, trust: (c) => TRUSTED.has(c.command) })); }
+    catch (e) { warn.push(`KaTeX: ${e.message.split('\n')[0]}  in: ${tex.slice(0, 60)}`); return `<span class="katex-error" translate="no" title="${escAttr(e.message)}">${escAttr(tex)}</span>`; }
   };
   const parts = html.split(/(<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<svg[\s\S]*?<\/svg>|<textarea[\s\S]*?<\/textarea>|<!--[\s\S]*?-->)/);
   for (let i = 0; i < parts.length; i += 2) {
-    parts[i] = parts[i].replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => render(t, true)).replace(/\\\(([\s\S]+?)\\\)/g, (_, t) => render(t, false));
+    parts[i] = parts[i].replace(/\\\[([\s\S]+?)\\\]/g, (_, t) => render(t, true)).replace(/\\\(([\s\S]+?)\\\)/g, (_, t) => render(t, false));    parts[i] = noTranslateTags(parts[i]);   // spec §8.0 Browser translation：コードとパーツはブラウザの翻訳にかけない
   }
   html = parts.join('');
   if (html.length > LIM.bundledChars) throw new BuildLimitError('document with formulas', html.length, LIM.bundledChars);
