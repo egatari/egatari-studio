@@ -45,7 +45,7 @@ export const JOB = Object.freeze({ tag: 'tts-job', recordsTag: 'tts-records', v:
 export const COLAB = Object.freeze({
   repo: 'egatari/egatari-studio', notebook: 'colab/egatari-tts.ipynb',
   videoNotebook: 'colab/egatari-video.ipynb',   // 動画（MP4）を作るノート（CPU のランタイム。#131）
-  ref: 'v0.6.10',   // バッジの URL は版のタグに固定する（リリースの手順で替える。RELEASING.md）
+  ref: 'v0.6.11',   // バッジの URL は版のタグに固定する（リリースの手順で替える。RELEASING.md）
   pause: 0.35,
   models: Object.freeze({ irodori: 'irodori-tts-500m-v3', kokoro: 'kokoro-82m-v1.0' }),
   // 後処理の版（records の recipe.processing は PROCESSING に '+colab<ノートブックの版>' を付けたもの）：ノートブック（colab/egatari_tts.py）の後処理は audio-core.mjs と同じ数。数を変えたら名前も変える
