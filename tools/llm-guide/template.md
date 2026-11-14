@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=77c958c2fc13e8d5 -->
+<!-- i18n: pair=template.ja.md sha256=10f1a22ea3b6e32c -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 

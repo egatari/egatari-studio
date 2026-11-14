@@ -8,7 +8,7 @@
 //   buildPack({sets, lang, plan, exclude, off}) → 文字列   sets：束の名前の配列（[] なら共通の本体だけ）か 'all'（全部。比べる・CI 用）か 'a,b'。
 //                                                plan：'free'（既定。中核の 4 つのほかの標準の部品は一覧の 1 行だけ）| 'paid'（どの部品も詳しく）
 //   SETS                                        束の名前（決まった順）
-//   PACK_VERSION                                指示の版（材料の SHA-256 の先頭 8 字。指示のはじめの行に出る）
+//   PACK_VERSION                                指示のバージョン（材料の SHA-256 の先頭 8 字。指示のはじめの行に出る）
 //   commonBody(lang, opts?)・setPart(name, lang, opts?)  共通の本体・1 つの束の部分（docs/authoring-with-llms*.md・docs/llm-parts/*.md と同じ中身は plan: 'paid'。
 //                                                opts：{exclude, sets, off, plan}）
 //   PURPOSES                                     言いたいこと（新規作成の札と指示の表の材料。kit/core/purposes.mjs）
@@ -51,7 +51,7 @@ export const fitPlan = (ticked, plan, opts) => fitPlanOf(PACK, ticked, plan, opt
 export const fitPack = (ticked, plan, opts) => fitPackOf(PACK, ticked, plan, opts);
 export const fitSample = (ticked, plan, opts) => fitSampleOf(PACK, ticked, plan, opts);
 
-export const PACK_VERSION = PACK.version;   // 指示の版（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
+export const PACK_VERSION = PACK.version;   // 指示のバージョン（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 
 export const buildPack = (opts) => assemble(PACK, opts);
 // sets：入っている束（表が指す部品。省くと [] = 標準だけ）。off：外した札。plan：'free'（既定）| 'paid'
