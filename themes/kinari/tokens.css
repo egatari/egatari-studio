@@ -60,7 +60,7 @@
   }
 }
 /* 見出しの字：ラテン文字は Fraunces、日本語は BIZ UDP明朝（字ごとに後ろの字体へ） */
-.slide h2,.cover h1,.sec h1,.sec h2{font-family:var(--font-display)}
+.slide h2,.cover h1,.sec h1,.sec h2{font-family:var(--font-display);font-variant-numeric:lining-nums}   /* Fraunces の既定の数字は高さのそろわない形：見出しの「3」が沈まないように */
 /* look concl: rule */
 .slide:not(.layout-tate) .concl{left:48px;border:0;border-top:2px solid var(--emph);border-radius:0;background:transparent;justify-content:flex-start;padding-left:0}
 /* /look */
