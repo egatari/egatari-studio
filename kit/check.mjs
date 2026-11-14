@@ -670,7 +670,7 @@ const settle = () => page.evaluate(() => Promise.all([...document.fonts].map((f)
 // 操作の帯（kit/tools.js の #dt-cb）は開いたときに一度出て SHOW_MS（2.5 秒）で消えるので、撮る時刻で写ったり写らなかったりする。
 // 遅い機械では A（開いてすぐ）にだけ写り、B（飛び回った後）では消えていて、部品と関係なく「呼び出し順に依存」になっていた。部品の絵だけを比べるため、
 // 舞台の上に重なる時刻依存の飾り（操作の帯・短い知らせ）は撮る前に消しておく
-const HIDE_CHROME = '#dt-cb,#deck-toast{display:none!important}';
+const HIDE_CHROME = '#dt-cb,#dt-hint,#deck-toast{display:none!important}';
 async function orderDiffers(m, k) {
   await collectPartReports();
   await page.goto(url);
