@@ -42,6 +42,14 @@ import { normalizeKey, parseNarration, narrationMap, marksMap, MARK_EFFECTS, isS
 // 見出し・本文・結論の行・字幕・本は訳せるまま。すでに translate を書いたものは作者の指定のまま
 export function noTranslateMath(h) { return h.replace(/^<span class="(katex(?:-display)?)"/, '<span translate="no" class="$1"'); }
 export function noTranslateTags(h) { return h.replace(/<(code|pre|m-[a-z0-9]+(?:-[a-z0-9]+)*)(?=[\s>\/])(?![^>]*\btranslate\s*=)/gi, '<$1 translate="no"'); }
+// 作業フォルダのパーツのファイル（backlog #197、d5 2026-11-10）：components/<タグから m- を除いた名前>/index.js と components/<タグ>/index.js の
+// どちらも受ける。同じタグで両方あれば、黙って片方を選ばずに組み立てを止める（2 つのパスを言う）。どちらもなければ、期待する形のパス（m- を除いた方）を返す
+export function localPartFile(env, P, deckDir, tag) {
+  const short = P.join(deckDir, 'components', tag.slice(2), 'index.js'), full = P.join(deckDir, 'components', tag, 'index.js');
+  const hs = env.exists(short), hf = env.exists(full);
+  if (hs && hf) throw Object.assign(new Error(`part ${tag}: both components/${tag.slice(2)}/index.js and components/${tag}/index.js exist in the work folder; keep one (パーツ ${tag} のフォルダが 2 つある：どちらか 1 つにする)`), { code: 'component-folder-twice', paths: [`components/${tag.slice(2)}/index.js`, `components/${tag}/index.js`] });
+  return hf ? full : short;
+}
 
 export const DECK_META_RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
 // metadata.offer（format spec §1.2：作者が見せるモードと見え方、開くときの {mode, face}）を書く形にする。deck-meta.offer と索引の metadata.offer に使う。
@@ -973,7 +981,7 @@ export function build(env0, srcPath, opts = {}) {
           if (deckUse.defined.has(t)) continue;   // 原稿の <script> が定義する
           const h = catalogueHint(readLock(env, ROOT), lock2, t, pc.catalogue);
           if (h.hint !== 'unknown' && deckUse.elements.has(t)) notInCatalogue.push(h);
-          else warn.push(`component not found: ${t} (not in the components ${pc.catalogue} catalogue)`);
+          else warn.push(`component not found: ${t} (not in the components ${pc.catalogue} catalogue; a lesson's own part goes in components/${t.slice(2)}/index.js or components/${t}/index.js in the work folder)`);
         }
         html = parts2.html;
         compJs = parts2.js;
@@ -1002,7 +1010,8 @@ export function build(env0, srcPath, opts = {}) {
     const name = tag.slice(2);
     // 読む前に、原稿のフォルダの部品は原稿のフォルダの中に、部品庫の部品は vendor/components/ の中にあること（実体のパスで。外を指すリンクは読まない。
     // 原稿のフォルダにあって外を指すものは、部品庫のものに替えずに使わない）
-    const local = P.join(deckDir, 'components', name, 'index.js');
+    const local = localPartFile(env, P, deckDir, tag);
+    const localRel = P.relative(deckDir, local).split(P.sep).join('/');
     const pick = pickVersion(lock, name, Object.prototype.hasOwnProperty.call(pins, name) ? pins[name] : undefined);
     const resolved = pick.version ? resolveComponent(P, ROOT, lock, name, pick.version) : null;
     const lib = resolved ? P.join(resolved, 'index.js') : null;
@@ -1021,7 +1030,7 @@ export function build(env0, srcPath, opts = {}) {
     }
     if (env.exists(local)) {
       if (env.within(local, deckDir)) file = local;
-      else { warn.push(`refused: パーツ ${tag} の components/${name}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
+      else { warn.push(`refused: パーツ ${tag} の ${localRel} が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); continue; }
     } else if (lib && env.exists(lib)) {
       if (pick.note) warn.push(pick.note);
       const y = yankedInfo(lock, pick.version);
@@ -1034,7 +1043,7 @@ export function build(env0, srcPath, opts = {}) {
       if (env.within(lib, compRoot)) { file = lib; componentVersions[name] = pick.version; }
       else { warn.push(`refused: パーツライブラリのパーツ ${tag} が vendor/components/ の外を指している（読まない）`); continue; }
     }
-    if (!file) { warn.push(`component not found: ${tag}`); continue; }
+    if (!file) { warn.push(`component not found: ${tag} (a lesson's own part goes in components/${name}/index.js or components/${tag}/index.js in the work folder)`); continue; }
     // 注釈の場所は、原稿のフォルダの部品ならそこから、部品庫ならリポジトリから（端末ごとのパスを出力に書かない）
     const where = env.within(file, deckDir) ? P.relative(deckDir, file)
       : componentVersions[name] ? `vendor/components/${name}/${componentVersions[name]}/index.js` : P.relative(ROOT, file);
@@ -1271,9 +1280,9 @@ export function defaultOut(P, srcPath) {
 function buildParts2(env, { P, ROOT, deckDir, html, used, lock2, catalogue, pins, warn, macros, lessonSources }) {
   const local = {}, legacy = [], localFiles = [], refused = new Set();
   for (const tag of used) {
-    const lf = P.join(deckDir, 'components', tag.slice(2), 'index.js');
+    const lf = localPartFile(env, P, deckDir, tag);
     if (!env.exists(lf)) continue;
-    if (!env.within(lf, deckDir)) { warn.push(`refused: パーツ ${tag} の components/${tag.slice(2)}/index.js が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); refused.add(tag); continue; }
+    if (!env.within(lf, deckDir)) { warn.push(`refused: パーツ ${tag} の ${P.relative(deckDir, lf).split(P.sep).join('/')} が作業フォルダの外を指している（シンボリックリンクなど。読まない）`); refused.add(tag); continue; }
     const code = env.readText(lf), rd = readDefineMeta(code), where = P.relative(deckDir, lf).split(P.sep).join('/');
     if (!rd) { legacy.push(tag); continue; }   // egatariParts.define がない：1.x の部品（DECK.define）
     // meta は字のまま読めなければ書かない（§6.1：組み立ては動かさずに name・version・requires・element を読み、索引に記録する）
