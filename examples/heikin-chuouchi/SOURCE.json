@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "2bf058ba6037b72b187b89accccc9d03256f900b",
+  "commit": "4741f6452460870986d8957b36c3dad2b734e407",
   "path": "books/heikin-chuouchi",
   "files": {
     "article/00-preface.md": "283e53f55f6ae24adb89a90f6251a3b17b5b3534d5493aa5087155f1d195f2b5",
@@ -18,8 +18,8 @@
     "data/exercises.json": "ba812edf4ff174fcd797d1716e3d9db03c412a071aa65a684d554da03fc2b666",
     "data/savings.json": "dac439e7e48c9560e3742edb9fcdc6bbd2e101a948335140ea8833f50d00500a",
     "data/sweep_values.json": "5281260cd9d828ee58fd969a112c1b22d11ac86c179fbe548ea329659f300583",
-    "deck.html": "cea18558c87952bcfdc15eb5bae646e1c44c331b4a109db3119b4f28894d0ad5",
-    "egatari.json": "2dd64f7391edb93bc6da186fb0dc16cf4b058d69a8f9eff6fd7454121257ef24",
+    "deck.html": "cfcbaf351683f771f45aa11dbe4568f36344460173ebd1e53d08144d8425cf7e",
+    "egatari.json": "b599ef3fea2170e664ef5fe4a41fa9b2bc7bfcc4b76152e87f516f13a9e8fa14",
     "images/abs-sum.svg": "6b9f221e146dd78a629adb2ff8f528d300cd30f79b44195c49dd3c5ad7ee02a2",
     "images/newsvendor.svg": "00ed8c5bd2c4b454bd418af306e527e1c5b0fd4b7622b4185eeb930910982fdc",
     "images/outlier-abs.svg": "a924d927eb670284f643bf5d93f2912a0fb8579e825b458e664099290c9cf498",
@@ -30,5 +30,5 @@
     "scripts/make_data.py": "bc9623a4cc4bc53a5c2f0ee5bf9a817644b70f8d94fed125f53fca8abe4f7a0a",
     "scripts/make_figs.py": "b606d5e25f511d5e8aa6ccdeb3943f1316423180aee55e6a9f255506f3563d05"
   },
-  "note": "Copied unmodified from that commit of egatari/examples (books/heikin-chuouchi, every tracked file except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again."
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
 }

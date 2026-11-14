@@ -11,7 +11,7 @@ sh scripts/build-themes.sh     # writes out-themes/parts-zukan-<theme>.ega.html
 
 Themes: default (藍), sumi (墨), kokugo (国語), tokiwa (常盤), murasaki (江戸紫), kogecha (焦茶), asagi (浅葱).
 
-**Thumbnails for New lesson ③ (「見本で見る」):**
+**Thumbnails for Studio's New lesson dialog:**
 
 | use | slide id | slide |
 |---|---|---|

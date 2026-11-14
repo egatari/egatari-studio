@@ -1,11 +1,11 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "commit": "4741f6452460870986d8957b36c3dad2b734e407",
   "path": "lessons/parts-showcase",
   "files": {
     "LICENSES/strokesvg-LICENSE.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
     "LICENSES/strokesvg-OFL.txt": "6c650b8a8493b1feccab4b57ee5db51fa1356890d100e68eddcdd53b471512cb",
-    "SOURCE.md": "651302a09036830fcf030b176b8eafab412fb50ff4879e7577eae56f06c3d2ac",
+    "SOURCE.md": "8ce14b6b8a05b33ebc3f7ac32477c744622549d94904bf2f03b86aa7fabcbd86",
     "data/bars.json": "32d0c9a29fba7f2fcd52445267de83b58dbdb0dcd50a7375778170340b934043",
     "data/boxplot.json": "7b73ad3543a244fce897b2fac70a5b91d9cdda07fc42f41d2e75e1ee1681b344",
     "data/cards.json": "e4d6a62e4121e9154eeaa6320e95616b4999c9cc724f3114d0bc157499f5275d",
