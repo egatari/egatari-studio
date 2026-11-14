@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # business のパーツ
 
-指示の版：67a95271
+指示のバージョン：1ed02ad4
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

@@ -69,8 +69,9 @@ function cacheDir() {
   return process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
 }
 
-// ---------------------------------------------------------------- スキルの版
-const INSTRUCTION_RE = /\*\*(?:指示の版|Instruction version)[：:]\s*([a-f0-9]{8})\*\*/;
+// ---------------------------------------------------------------- スキルのバージョン
+// 「指示のバージョン」（v0.6.12 から）と、前の名前「指示の版」のどちらも読む（前のバージョンのスキルが入っていることがある。backlog #205）
+const INSTRUCTION_RE = /\*\*(?:指示のバージョン|指示の版|Instruction version)[：:]\s*([a-f0-9]{8})\*\*/;
 const kitInstruction = () => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'kit', 'instruction-version.json'), 'utf8')).instruction || null; } catch { return null; } };
 // 入れたスキル（Claude Code・Codex のプラグインのキャッシュと個人のスキルのフォルダ）の SKILL.md から、指示の版の行を拾う
 function installedSkills() {
@@ -243,7 +244,7 @@ async function doctor() {
   show(!old.length, 'skills', old.length ? `古いスキルの置き場が残っている / old skill entries left: ${old.map((o) => `${o.path} (${o.why})`).join(', ')}` : '古いスキルの置き場なし / no old skill entries', MIGRATE_STEPS, false);
   // この包みが持つスキルの指示の版と Studio の版（npx egatari@X.Y.x なら、その系の最新）。スキルは自分の版とこの行を比べ、古ければ 1 回知らせる（v0.6.10）
   const kit = kitInstruction();
-  if (kit) show(true, 'skills', `指示の版 ${kit}（Studio ${PKG.version}）/ skill instructions ${kit} (Studio ${PKG.version})`, '', false);
+  if (kit) show(true, 'skills', `指示のバージョン ${kit}（Studio ${PKG.version}）/ skill instructions ${kit} (Studio ${PKG.version})`, '', false);
   skillsCheck();
   console.log(bad ? `足りないもの ${bad} / ${bad} required missing` : 'ok');
   process.exit(bad ? 1 : 0);
