@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=636e00b7a1306594 -->
+<!-- i18n: pair=reference.ja.md sha256=a2451609434e59f8 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -428,7 +428,7 @@ Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps
               "msg": "Slide 2 “The decay law” (s-k3f9q2), step 3: narration [3] has no matching step … (R-narr-steps)"}]}
 ```
 
-If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A finished check says `"status": "ok"`.
+If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A finished check says `"status": "ok"`. `renderNoise` lists the step comparisons that differed only by anti-aliasing noise on shape edges and were accepted (`{slide, id, step, data: {k, n, cap, faint}, msg}`); they are not findings and are not counted, because whether they appear changes from run to run. A real difference is the error `compOrder`.
 
 The result also accounts for every rule of the checker (`kit/core/check-rules.mjs`): the authoring rules `R-*` of the [authoring guide](authoring-with-llms.md) and the checker's own families `C-*` (build, slide ids, links, audio, attachments, book, accessibility, morphs, reproducibility, fonts, listings). Every finding's `code` belongs to exactly one rule. Each rule ends in one state:
 

@@ -30,7 +30,6 @@ export const CLI_ONLY = Object.freeze({
   balance: 'needs screenshots: it rasterizes the slide body to find the centre of mass (kit/fill-scan.mjs)',
   compOrder: 'needs screenshots: reopens the deck and compares renders of every component step in two orders (slow)',
   compOrderDetail: 'detail line of compOrder (screenshots)',
-  compOrderNoise: 'detail line of compOrder (screenshots)',
   step0: 'info listing of what each slide shows at step 0, for reviewers; not a problem to fix',
   palette: 'info listing of the colour roles; the contrast findings themselves run in the editor (contrast)',
   marks: 'info listing of the marks per step; markMissing runs in the editor',

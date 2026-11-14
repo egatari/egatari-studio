@@ -326,7 +326,6 @@ export const MESSAGES = {
   palette: { ja: (a) => `パレット：${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → コントラスト ${a.ratio}:1` : ''}`, en: (a) => `palette: ${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → contrast ${a.ratio}:1` : ''}` },
   contrastLow: { rule: 'R-colors', ja: (a) => `${a.v} と --bg のコントラストが低い（${a.ratio}:1 < ${a.min}:1）：テーマの色を直す（教材の中で色を書いていれば消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between ${a.v} and --bg (${a.ratio}:1 < ${a.min}:1): fix the theme colors (remove any colors written in the lesson; use only theme classes and variables)` },
   compOrder: { ja: (a) => `パーツの描画が呼び出し順に依存している（ステップ ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないようにパーツを直す（docs/contract.md §3）`, en: (a) => `the part draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
-  compOrderNoise: { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing ${plural(a.n, 'pixel')} all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint ${plural(a.faint, 'pixel')} (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
   compOrderDetail: { ja: (a) => `品質チェック（呼び出し順）の詳しい結果（ステップ ${a.k}）：${a.note}`, en: (a) => `quality check details (call order, step ${a.k}): ${a.note}` },
   markMissing: { rule: 'R-marks', ja: (a) => `強調 {mark:${a.id}} の目印がこのスライドにない：目印の要素に id="${a.id}" か data-mark="${a.id}" を付ける（式の一部は \\htmlId{${a.id}}{…}）か、{mark:…} を消す`, en: (a) => `the emphasis {mark:${a.id}} has no target on this slide: put id="${a.id}" or data-mark="${a.id}" on the element (\\htmlId{${a.id}}{…} in math), or remove the {mark:…}` },
   marks: { ja: (a) => `強調：${a.list}`, en: (a) => `emphasis: ${a.list}` },
@@ -408,6 +407,10 @@ export function ruleOf(code, a = {}) {
   const r = m && (typeof m.rule === 'function' ? m.rule(a) : m.rule);
   return r || null;
 }
+
+// 描き方の揺れとして通した描き比べの説明（指摘ではない。kit/check.mjs の --json の renderNoise。backlog #210）
+const RENDER_NOISE = { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing ${plural(a.n, 'pixel')} all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint ${plural(a.faint, 'pixel')} (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` };
+export const renderNoiseMessage = (lang, a = {}) => (lang === 'en' ? RENDER_NOISE.en : RENDER_NOISE.ja)(a);
 
 export function message(lang, code, a = {}) {
   const m = MESSAGES[code];

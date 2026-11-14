@@ -13,7 +13,7 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { plural } from '../kit/core/plural.mjs';
-import { message, MESSAGES } from '../kit/check-messages.mjs';
+import { message, MESSAGES, renderNoiseMessage } from '../kit/check-messages.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -40,10 +40,10 @@ ok(/\b1 place\b/.test(m1('colorOutside', { kind: 'hue', n: 1, line: 1, list: 're
   ok(/^2 values in the attachment/.test(t2) && / start with /.test(t2), 'attachInjection: n=2 reads "2 values … start with": ' + t2);
 }
 {
-  const t1 = m1('compOrderNoise', { k: 0, n: 1, cap: 5, compArea: 100 }), t2 = m2('compOrderNoise', { k: 0, n: 2, cap: 5, compArea: 100 });
+  const t1 = renderNoiseMessage('en', { k: 0, n: 1, cap: 5, compArea: 100 }), t2 = renderNoiseMessage('en', { k: 0, n: 2, cap: 5, compArea: 100 });
   ok(/\b1 differing pixel\b/.test(t1) && !/\b1 differing pixels\b/.test(t1), 'compOrderNoise: n=1 reads "1 differing pixel": ' + t1);
   ok(/\b2 differing pixels\b/.test(t2), 'compOrderNoise: n=2 reads "2 differing pixels": ' + t2);
-  const f1 = m1('compOrderNoise', { k: 0, n: 2, faint: 1, cap: 5, compArea: 100 });
+  const f1 = renderNoiseMessage('en', { k: 0, n: 2, faint: 1, cap: 5, compArea: 100 });
   ok(/\b1 isolated faint pixel\b/.test(f1) && !/\b1 isolated faint pixels\b/.test(f1), 'compOrderNoise: faint=1 reads "1 isolated faint pixel": ' + f1);
 }
 {
