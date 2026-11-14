@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-orbit の見本</title>
+<!-- 組み方：node kit/build.mjs components/orbit/demo.html -o components/orbit/out/demo.html -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>月の満ち欠け</h2>
+  <div class="body">
+    <m-orbit style="height:440px">
+      <script type="application/json">{}</script>
+    </m-orbit>
+  </div>
+  <div class="concl"><span>→ 月の光っている半分はいつも太陽の側。地球から見える部分が変わる</span></div>
+</section>
+
+<section class="slide">
+  <h2>日食と月食</h2>
+  <div class="body">
+    <m-orbit style="height:440px">
+      <script type="application/json">{"visit": [4, 0], "eclipse": true}</script>
+    </m-orbit>
+  </div>
+  <div class="concl"><span>→ 太陽・月・地球が一直線に並ぶと、影ができる</span></div>
+</section>
+
+<section class="slide">
+  <h2>金星の満ち欠け</h2>
+  <div class="body">
+    <m-orbit mode="venus" style="height:440px">
+      <script type="application/json">{"start": 2, "visit": [3, 5, 6]}</script>
+    </m-orbit>
+  </div>
+  <div class="concl"><span>→ 地球に近いほど大きく見え、細く欠ける</span></div>
+</section>
+
+</div>
+</body>
+</html>

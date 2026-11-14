@@ -63,6 +63,9 @@ const LOCAL = {
   'm-ci': { icon: 'boxplot', desc: { ja: '区間を重ね、母平均を含む割合で信頼水準を示す', en: 'Repeated intervals; the share that contains the mean shows the confidence level' } },
   'm-folds': { icon: 'matrix', desc: { ja: '検証用の区画を順に替え、誤差と平均を示す', en: 'Rotates the validation fold and shows each error and the mean' } },
   'm-balance': { icon: 'numberline', desc: { ja: '確率の重りを置き、期待値でつり合う様子を示す', en: 'Probabilities as weights that balance at the expected value' } },
+  'm-callout': { icon: 'callout', desc: { ja: '画面の画像に番号を置き、手順を 1 つずつ説明する', en: 'Numbered marks on a screenshot, explained one step at a time' } },
+  'm-checklist': { icon: 'checklist', desc: { ja: '確かめる項目に 1 つずつ ✓ を付ける', en: 'Items to check, ticked one at a time' } },
+  'm-diverge': { icon: 'waterfall', desc: { ja: '基準から増減を積み上げ、合計まで見せる', en: 'Increases and decreases stacked from a baseline to the total' } },
   'm-code': { icon: 'syntax', desc: { ja: '短いコードを行ごとに説明し、出力を見せる', en: 'Explains short code line by line, then shows the output' } },
 };
 // 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）

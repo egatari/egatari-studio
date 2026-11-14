@@ -123,7 +123,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 
 ## 3. Part catalog
 
-These standard parts may be used in any lesson; a part set, when it is included after §6, adds the parts of its kind of material. Generated from the part READMEs (their notes are in Japanese). “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
+Standard parts fit any lesson; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 {{CATALOG}}
 

@@ -1,11 +1,32 @@
 <!-- generated; do not edit by hand -->
 # business parts
 
-Instruction version: f086a47b
+Instruction version: 88c1f6ac
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
+| `<m-diverge>` | Waterfall: a baseline bar, then increases and decreases stacked from the previous bar's end, then a total bar | max item step (default 1 bar = 1 step) | `{items:{label,value?:num,total?:bool,tone?,step?,at?}[]}` |
 | `<m-market>` | 市場規模の入れ子の円（TAM / SAM / SOM）。外の円から 1 つずつ、前の円の大きさから縮んで現れる | rings の数 | `{rings:{key?:str,value:num,basis?:str,tone?}[]}` |
+
+### `<m-diverge>`
+
+Data example (child `<script type="application/json">`): `{"items":[{"label":"Last year","value":120,"total":true},{"label":"Sales","value":45},{"label":"Costs","value":-30},{"label":"This year","total":true}]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `unit` | string | `""` | value unit |
+| `digits` | number | `0` | decimals |
+| `per-step` | number | `1` | bars per step (0 = all) |
+| `min` | number | `0` | axis start (0 = from 0; > 0 cuts the axis, with a break mark) |
+| `ticks` | bool | `true` | ticks and grid |
+| `links` | bool | `true` | dotted links between bars |
+| `al` | string | `""` | axis title |
+
+For what was added and taken away between a baseline and a total: profit bridges, budget against actual, population change.
+
+- item: `label` (`\n` = 2 lines), `value`, `total` (true = a total bar from 0), `tone`, `step`, `at`
+- The first total's `value` is the baseline; change bars start at the running total; a later total's `value` is checked (data)
+- `min`: axis start for small changes on large values (break mark)
 
 ### `<m-market>`
 

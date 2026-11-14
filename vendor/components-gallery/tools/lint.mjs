@@ -36,7 +36,7 @@ export const SERIES = ['common', 'academic', 'business', 'kokugo', 'info', 'soci
 export const TIERS = ['standard', 'specialized', 'extra'];
 export const TIER_LABEL = { standard: '標準', specialized: '専門', extra: '特殊' };
 export const SETS = ['stats', 'data', 'math', 'science', 'maps', 'kokugo', 'english', 'music', 'business', 'tools'];
-export const SET_LABEL = { stats: '統計', data: '情報・データサイエンス', math: '数学', science: '理科', maps: '地図', kokugo: '国語', english: '英語', music: '音楽', business: 'ビジネス', tools: '道具' };
+export const SET_LABEL = { stats: '統計', data: '情報・データサイエンス', math: '数学', science: '理科', maps: '地図', kokugo: '国語', english: '英語', music: '音楽', business: 'ビジネス', tools: 'ツール' };
 export const DISPLAY_RE = /^[^/]+ \/ [^/]+$/;
 export const SERIES_LABEL = { common: '標準パーツ', academic: '数理・統計', business: 'ビジネス', kokugo: '国語', info: '情報', social: '地図（社会）', music: '音楽', english: '英語' };
 // Components released before demo.html was required (do not add to this list)

@@ -2,5 +2,6 @@
   "repository": "https://github.com/egatari/egatari-studio",
   "ref": "main",
   "commit": "03eaf0607598b993eb020f8e619caa53526bc771",
-  "note": "The tests build each demo with this commit of Egatari Studio (its build, runtime, checker and browser launcher). commit is a full sha and is what is fetched and checked; ref only says where it came from (a branch, or a tag in \"tag\")."
+  "note": "The tests build each demo with this commit of Egatari Studio (its build, runtime, checker and browser launcher). commit is a full sha and is what is fetched and checked; ref only says where it came from (a branch, or a tag in \"tag\"). termsCommit is the Studio commit whose tools/lint-terms.mjs and glossary tools/test-terms.mjs uses (STUDIO_TERMS_SHA overrides; the same pin as the site CI).",
+  "termsCommit": "6ec281553b4c93a992de306e410f7ed20cf66805"
 }

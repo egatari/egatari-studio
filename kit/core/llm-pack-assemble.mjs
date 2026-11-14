@@ -73,13 +73,14 @@ export const partSpans = (text, exclude = []) => text.replace(/<!--part:([a-z0-9
 
 // gone：組み立てに入らない部品（説明の中でその名前を出す所を除く。<!--part:…--> は make-llm-guide の markRefs が付ける）。
 // brief：一覧の 1 行だけの部品（説明の節を出さない）
-function catalog(D, names, gone = [], brief = []) {
+// free：無料のプラン。部品に無料のプランの説明（free。tools/make-llm-guide.mjs の FREE_EDITS）があればそれを使う
+function catalog(D, names, gone = [], brief = [], free = false) {
   if (!names.length) return '';
   const rows = names.map((n) => partSpans(D.components[n].row, gone)).join('\n');
   const full = names.filter((n) => !brief.includes(n));
   const sup = full.some((n) => D.components[n].sup);
   const short = names.length > full.length;
-  return D.tableHead + '\n' + rows + '\n\n' + (short ? D.briefNote + '\n\n' : '') + (sup ? D.supNote + '\n\n' : '') + full.map((n) => partSpans(D.components[n].entry, gone)).join('\n\n');
+  return D.tableHead + '\n' + rows + '\n\n' + (short ? D.briefNote + '\n\n' : '') + (sup ? D.supNote + '\n\n' : '') + full.map((n) => partSpans((free && D.components[n].free) || D.components[n].entry, gone)).join('\n\n');
 }
 function extensions(D, set, exclude = [], gone = exclude) {
   return Object.keys(D.components).sort().filter((n) => !exclude.includes(n) && D.components[n].ext && D.components[n].ext[set])
@@ -100,7 +101,7 @@ export function commonOf(data, lang, { exclude = [], sets = [], off = [], plan =
   const gone = goneParts(data, lang, exclude, ss);
   const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, sets: ss, off }) : '');
   return tidy(partSpans(D.common, exclude).replace('{{PURPOSES}}', table)
-    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, briefParts(data, plan, short, full))));
+    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, briefParts(data, plan, short, full), planName(plan) === 'free')));
 }
 // 1 つの束の指示。sets：一緒に入る束（説明の中の名前を残す部品を決める。既定はこの束だけ）
 export function partOf(data, name, lang, { exclude = [], sets = [name] } = {}) {

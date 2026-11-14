@@ -1,11 +1,48 @@
 <!-- generated; do not edit by hand -->
 # tools parts
 
-Instruction version: f086a47b
+Instruction version: 88c1f6ac
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
+| `<m-callout>` | Screen steps: numbered circles on a screenshot, joined by leader lines to labels beside it, one per step | max callout step (default 1 callout = 1 step) | `{callouts:{x:num,y:num,text:str,box?:[num,num,num,num],step?,at?}[]}` |
+| `<m-checklist>` | A checklist: items listed, one mark (✓ or ×) drawn per step. The marks are slide content; nothing a viewer does is stored | max item step (default 1 item = 1 step) | `{items:{label,note?,mark?:"check"\|"cross"\|"none",step?,at?}[]}` |
 | `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?:{title?:str,text?:str},phases:{title:str,short?:str,text?:str,sec:int,bells?:{left:int,count?:int}[]}[],bells?:{left:int,count?:int}[],done?:str,labels?:{ready?:str,total?:str,remaining?:str,done?:str,start?:str,next?:str,end?:str,min?:str,sec?:str,plus?:str,minus?:str}}` — phases is a list of {"title", "sec"} (sec: whole seconds, not "3分"); one phase per step |
+
+### `<m-callout>`
+
+Data example (child `<script type="application/json">`): `{"callouts":[{"x":0.12,"y":0.08,"text":"Open the menu"},{"x":0.7,"y":0.62,"text":"Press Send"}]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `side` | string | `"right"` | labels on right, left or both |
+| `label-width` | number | `0.32` | label column (share of width) |
+| `per-step` | number | `1` | callouts per step (0 = all) |
+| `size` | number | `28` | label px (≥ 24) |
+
+For training and how-to guides: where to click, in order.
+
+The screenshot is a child `<img src alt width height>` (the build inlines it).
+
+- **Never show real personal data on a screenshot** (names, ID numbers, resident or patient records). Use made-up data, or blur it.
+- `alt`, `width` and `height` (px) are required (else data); an image over 1 MiB is size.
+
+; callout: `x`, `y` (0–1 of the image), `text`, `box` (`[x, y, w, h]`, highlighted during its step), `step`, `at`.
+
+### `<m-checklist>`
+
+Data example (child `<script type="application/json">`): `{"items":[{"label":"Name badge on"},{"label":"Hands washed","note":"30 s"}]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `reveal` | bool | `false` | items appear with their step |
+| `per-step` | number | `1` | items per step (0 = all) |
+| `size` | number | `32` | label px (≥ 24) |
+
+For checks done one at a time: training steps, checks before work, what to bring.
+
+- item: `label` (`\n` = 2 lines), `note`, `mark` (`check`, `cross`, `none`), `step`, `at`
+- The marks are the author's; a viewer cannot tick them and nothing is stored.
 
 ### `<m-timer>`
 

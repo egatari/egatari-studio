@@ -156,8 +156,6 @@ export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, 
     const note = NOTES[`${id}:${t}`];
     return '`' + t + '`' + (note ? (L === 'ja' ? `（${note[L]}）` : ` (${note[L]})`) : '');
   };
-  const none = L === 'ja' ? 'まだない：近いパーツか、HTML・インラインの SVG' : 'none yet: the nearest part, or HTML or inline SVG';
-  const notHere = L === 'ja' ? 'この文にはない：近いパーツか、HTML・インラインの SVG' : 'not in this text: the nearest part, or HTML or inline SVG';
   const serves = (t, id) => (P.components[t] || []).includes(id);
   const order = (id) => (a, b) => P.components[a].indexOf(id) - P.components[b].indexOf(id) || a.localeCompare(b);
   const used = new Set();
@@ -165,19 +163,19 @@ export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, 
   for (const p of P.list) {
     if (offs.has(p.id)) continue;
     const ts = [...here].filter((t) => serves(t, p.id)).sort(order(p.id));
+    // この指示にパーツのない言いたいことは載せない（d5 2026-11-15：入っていない束・これからの札の名前を出さない。大きさも抑える）
+    if (!ts.length) continue;
     ts.forEach((t) => used.add(t));
-    const cellText = ts.length ? ts.map((t) => part(p.id, t)).join(L === 'ja' ? '、' : ', ') : elsewhere.some((c) => serves(c.tag, p.id)) ? notHere : none;
+    const cellText = ts.map((t) => part(p.id, t)).join(L === 'ja' ? '、' : ', ');
     rows.push(`| ${cell(p.name[L])} | ${cellText} | ${cell(p.steps[L])} |`);
   }
   const rest = [...here].filter((t) => !used.has(t)).sort();
   if (rest.length) rows.push(`| ${L === 'ja' ? 'その他のパーツ' : 'other parts'} | ${rest.map((t) => part('', t)).join(L === 'ja' ? '、' : ', ')} | ${L === 'ja' ? 'その説明のとおり' : 'as described'} |`);
   const head = L === 'ja' ? '| 言いたいこと | パーツ | ステップ |\n|---|---|---|' : '| purpose | parts | steps |\n|---|---|---|';
-  // 入っていない束：何に使えるかだけ（束の名前も部品の名前も出さない。説明のない部品の属性を AI に推させない。束の名前は画面に出ない）
-  const what = uniq(elsewhere.flatMap((c) => (P.components[c.tag] || []).filter((id) => !offs.has(id))))
-    .map((id) => P.list.find((p) => p.id === id)).filter(Boolean).map((p) => p.name[L]);
+  // 入っていない束：あることだけ（束・部品・言いたいことの名前を出さない。d5 2026-11-15。説明のない部品の属性を AI に推させない）
   const other = elsewhere.length ? '\n\n' + (L === 'ja'
-    ? `この指示に入っていないパーツもある${what.length ? `（${what.join('・')}など）` : ''}。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）`
-    : `Some parts are not included in these instructions${what.length ? ` (for ${what.join(', ')}, and more)` : ''}. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).`) : '';
+    ? `この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）`
+    : `Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).`) : '';
   const url = src ? '\n\n' + (L === 'ja' ? `各パーツの説明（版を固定）：${src}<名前>/README.md（名前は \`m-\` を除いたもの）` : `Each part's description (pinned version): ${src}<name>/README.md (the name without \`m-\`)`) : '';
   return head + '\n' + rows.join('\n') + other + url;
 }

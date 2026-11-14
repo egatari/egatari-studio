@@ -21,6 +21,8 @@ const ok = (name, fn) => {
 // 部品庫 2.4.3 で README.en.md のある標準のパーツ（16）
 // 部品庫 2.6.0（候補）の束 data の 6 つも README.en.md を持つ（専門のパーツ）
 const DATA6 = ['m-balance', 'm-ci', 'm-code', 'm-folds', 'm-mapping', 'm-sampling'];
+// 部品庫 2.9.0 の専門のパーツ（束 tools・business）も README.en.md を持つ
+const SPEC3 = ['m-callout', 'm-checklist', 'm-diverge'];
 const EN16 = ['m-bars', 'm-cards', 'm-compare', 'm-curves', 'm-cycle', 'm-fishbone', 'm-flow', 'm-kpi', 'm-menu', 'm-pie', 'm-predict', 'm-quad', 'm-scatter', 'm-timeline', 'm-tree', 'm-venn'];
 const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
 const content = lock2.catalogues[lock2.default].content;
@@ -38,8 +40,9 @@ ok('frontmatterEn: top-level keys, the indented props map, CRLF; no frontmatter 
   assert.equal(frontmatterEn('summary: no fence\n'), null);
 });
 
-ok('the 16 standard parts and the 6 data parts with README.en.md are the ones read for the en pack, and each has summary and steps', () => {
-  assert.deepEqual([...base.enParts].sort(), [...EN16, ...DATA6].sort());
+ok('the 16 standard parts, the 6 data parts and the 3 parts of 2.9.0 with README.en.md are the ones read for the en pack, and each has summary and steps', () => {
+  assert.deepEqual([...base.enParts].sort(), [...EN16, ...DATA6, ...SPEC3].sort());
+  for (const t of SPEC3) { const fm = frontmatterEn(readmeEn(t)); assert.ok(fm && fm.summary && fm.steps, `${t}: summary and steps`); }
   for (const t of DATA6) { const fm = frontmatterEn(readmeEn(t)); assert.ok(fm && fm.summary && fm.steps, `${t}: summary and steps`); assert.equal(PACK.en.components[t].set, 'data', `${t} is a data part`); }
   for (const t of EN16) {
     const fm = frontmatterEn(readmeEn(t));
@@ -131,7 +134,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     // 部品庫 2.7.0 から部品の説明の言葉が用語集にそろった（45 の部品）。この比べは指示を組む側の変化を見るので、部品庫は 2.6.2 のまま組んで比べる
     const P262 = generate({ catalogue: '2.6.2' }).data;
     assert.match(P262.partsSrc, /\/v2\.6\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.8\.0\//);
+    assert.match(PACK.partsSrc, /\/v2\.9\.0\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(P262);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];

@@ -249,6 +249,34 @@ const PACK_EDITS = {
     { find: '  <a href="lesson2.ega.html" data-sub="次の課">返り点の練習</a>\n', ja: '', en: '' },
   ],
 };
+// 無料のプランだけで外す行（d5 2026-11-15）：中核の 4 つの説明のうち、無料のプランの大きさ（貼り付けの長さ）に見合わない詳しい行。
+// データの形の欄（err?・sig? など）は残し、有料のプランは全部を書く。find は節の 1 行そのまま（なければ失敗）
+const FREE_EDITS = {
+  // m-bars 2.1.0（部品庫 2.9.0）：誤差棒と有意差の括弧の注記。統計の詳しさなので無料のプランでは書かない
+  'm-bars': {
+    version: '2.1.0',   // この版のための行。古い版（行がない）には掛けない。新しい版では警告して見直す
+    en: ['- err: ± number or `[low, high]`; per series for `values`',
+      '- sig: `[{"from": 0, "to": 2, "label": "**"}]` brackets groups 0 and 2 (`group`: series in a group); vertical, unstacked only'],
+    ja: ['- `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか脚注に書く',
+      '- `sig`：`[{"from": 0, "to": 2, "label": "**"}]` で組 0 と組 2 を括弧でつなぐ（`group` で組の中の系列どうし）。縦棒の、積み上げでない棒だけ'],
+  },
+};
+// src：節の元の言語（README.en.md を使う英語の節なら 'en'、README.md の字なら 'ja'。README.en.md のない生成でも英語の節は README.md の字）
+const verCmp = (a, b) => { const x = a.split('.').map(Number), y = b.split('.').map(Number); for (let i = 0; i < 3; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; };
+function freeEntryOf(name, src, entry, version, warnings) {
+  const lang = src;
+  const fe = FREE_EDITS[name];
+  const lines = fe && fe[src];
+  if (!lines) return null;
+  if (fe.version && verCmp(version, fe.version) < 0) return null;
+  if (fe.version && verCmp(version, fe.version) > 0) warnings.push(`${name}: FREE_EDITS were written for ${fe.version}, the part is ${version}; review them`);
+  let out = entry;
+  for (const l of lines) {
+    if (!out.split('\n').includes(l)) throw new Error(`FREE_EDITS ${name} (${lang}): ${JSON.stringify(l)} is not a line of the entry any more (review tools/make-llm-guide.mjs)`);
+    out = out.split('\n').filter((x) => x !== l).join('\n');
+  }
+  return out;
+}
 // README.en.md を使う部品の英語の節の言い換え。PACK_EDITS は README.md の日本語に向けたものなので、同じ直しを英語の字に向けて書く
 // （決まりは同じ：find が英語の節になければ失敗）。m-bars の言い換えは大きさだけのもので、英語の字はもう短いので要らない
 const EN_EDITS = {
@@ -771,7 +799,8 @@ export function generate(opts = {}) {
       if (c.enSource && PACK_EDITS[c.fm.name] && !EN_EDITS[c.fm.name]) warnings.push(`${c.fm.name}: README.en.md is used for the en pack; PACK_EDITS (${PACK_EDITS[c.fm.name].length}) are not applied to it and there are no EN_EDITS`);
       const e = entryOf(c, lang, shownInWorked);
       const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, markRefs(demote(stripRepoRefs(x)), c.fm.name, known)]));
-      D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
+      const freeEntry = freeEntryOf(c.fm.name, lang === 'en' && c.enSource ? 'en' : 'ja', e.entry, c.fm.version, warnings);
+      D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(freeEntry ? { free: markRefs(freeEntry, c.fm.name, known) } : {}), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
     }
     for (const s of SETS) {
       const f = `tools/llm-guide/sets/${s}${ja ? '.ja' : ''}.md`;

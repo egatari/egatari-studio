@@ -245,10 +245,10 @@ const lock2 = parseLock2(fs.readFileSync(path.join(ROOT, 'components2.lock.json'
   ok(r4.parts.some((p) => p.name === 'bars' && p.version === barsDefault) && r4.warn.some((w) => /bars: version "7\.0\.0" is not in/.test(w)), 'a pin that is not vendored falls back to the catalogue with a warning');
   // 要素の名前は 1 つ（§6.1 Order）：同じ要素の名前を定義するパーツが 2 つ要る → conflicts（組み立ては断る）
   const three = JSON.parse(JSON.stringify(lock2));
-  three.parts.bars['2.1.0'] = { ...three.parts.bars[barsDefault] };
-  const localB = { 'm-y': { meta: { name: 'y', version: '0.1.0', requires: { bars: '2.1.0' }, element: 'm-y' }, code: '', where: 'components/y/index.js' } };
+  three.parts.bars['9.1.0'] = { ...three.parts.bars[barsDefault] };   // 実在しないバージョン（2.9.0 で bars の既定が 2.1.0 になったので、実在の番号は使わない）
+  const localB = { 'm-y': { meta: { name: 'y', version: '0.1.0', requires: { bars: '9.1.0' }, element: 'm-y' }, code: '', where: 'components/y/index.js' } };
   const r5 = resolveParts(three, cat, ['m-bars', 'm-y'], { local: localB });
-  ok(r5.conflicts.length === 1 && new RegExp(`<m-bars> is defined by bars@${barsDefault.replace(/\./g, '\\.')} and bars@2\\.1\\.0`).test(r5.conflicts[0]), `two versions of one element part are a conflict (${r5.conflicts[0]})`);
+  ok(r5.conflicts.length === 1 && new RegExp(`<m-bars> is defined by bars@${barsDefault.replace(/\./g, '\\.')} and bars@9\\.1\\.0`).test(r5.conflicts[0]), `two versions of one element part are a conflict (${r5.conflicts[0]})`);
   const localC = { 'm-pie': { meta: { name: 'mypie', version: '0.1.0', requires: {}, element: 'm-pie' }, code: '', where: 'components/pie/index.js' },
     'm-z': { meta: { name: 'z', version: '0.1.0', requires: { pie: '2.0.0' }, element: 'm-z' }, code: '', where: 'components/z/index.js' } };
   const r6 = resolveParts(lock2, cat, ['m-pie', 'm-z'], { local: localC });
@@ -656,8 +656,8 @@ for (const [code, what] of [
   // 2.8.0（リリース 22ad4bb）：m-flow・m-tree・m-fishbone・m-quad 2.1.0 が描いたものに印（data-part。形の検査 #201）を付け、m-particles 2.0.2 が
   // 幅およそ 45 px 未満で固まらなくなった。ほかのパーツは README だけが変わり、版も index.js も 2.7.0 のまま。パーツの増減はない。既定はこちら（v0.6.12 から）
   const v280 = lock2.catalogues['2.8.0'];
-  ok(lock2.default === '2.8.0' && v280 && v280.tag === 'v2.8.0' && v280.tarballSha256 === 'eef78dd1201d4fe1f08248554e11eec46bb8fd147881523f8263b08de41f2b1f' && v280.manifestSha256 === 'a05348a7c9a0452f7316c742a8e38cc003d63fd7fdb5a469c0a95e711e9deb9c',
-    '2.8.0: the default, pinned to the released tarball and manifest (v2.8.0)');
+  ok(v280 && v280.tag === 'v2.8.0' && v280.tarballSha256 === 'eef78dd1201d4fe1f08248554e11eec46bb8fd147881523f8263b08de41f2b1f' && v280.manifestSha256 === 'a05348a7c9a0452f7316c742a8e38cc003d63fd7fdb5a469c0a95e711e9deb9c',
+    '2.8.0: pinned to the released tarball and manifest (v2.8.0)');
   const names280 = Object.keys(v280.parts).sort();
   ok(names280.join() === names270.join(), `2.8.0: no part added or removed (${names280.length})`);
   const bumped280 = names280.filter((n) => v270.parts[n] !== v280.parts[n]);
@@ -666,6 +666,16 @@ for (const [code, what] of [
   const js280 = names280.filter((n) => !bumped280.includes(n) && fs.existsSync(c2(v280, n, 'index.js')) && fs.readFileSync(c2(v280, n, 'index.js'), 'utf8') !== fs.readFileSync(c2(v270, n, 'index.js'), 'utf8'));
   ok(js280.length === 0, `2.8.0: no other part's index.js changes (${js280.join(', ') || 'none'})`);
   ok(['flow', 'tree', 'fishbone', 'quad'].every((n) => /data-part/.test(fs.readFileSync(c2(v280, n, 'index.js'), 'utf8'))), '2.8.0: the four diagram parts write data-part marks');
+  // 2.9.0（リリース d19428d）：m-callout・m-checklist・m-diverge が加わり、m-bars 2.1.0 は誤差棒（err）・有意差の括弧（sig）・点（mark="dot"）を描く。
+  // ほかに 16 のパーツが README・小さな直しで上がる。既定はこちら（v0.6.13 から）
+  const v290 = lock2.catalogues['2.9.0'];
+  ok(lock2.default === '2.9.0' && v290 && v290.tag === 'v2.9.0' && v290.tarballSha256 === '411ba84482d73ca9aca6ed655cdfb43aa1ad2731a82b423dff60c3402a55dcaf' && v290.manifestSha256 === '39ff5f9dad1f2a276e6f6f4c8bffc20a2759470346720eee396d4f9b154079e6',
+    '2.9.0: the default, pinned to the released tarball and manifest (v2.9.0)');
+  const names290 = Object.keys(v290.parts).sort();
+  const added290 = names290.filter((n) => !names280.includes(n));
+  ok(added290.join() === 'callout,checklist,diverge' && added290.every((n) => v290.parts[n] === '2.0.0') && names280.every((n) => names290.includes(n)),
+    `2.9.0: m-callout, m-checklist and m-diverge 2.0.0 are added, nothing removed (${added290.join(', ')})`);
+  ok(v290.parts.bars === '2.1.0' && /\berr\b/.test(fs.readFileSync(c2(v290, 'bars', 'index.js'), 'utf8')) && /\bsig\b/.test(fs.readFileSync(c2(v290, 'bars', 'index.js'), 'utf8')), '2.9.0: m-bars 2.1.0 reads err and sig');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
