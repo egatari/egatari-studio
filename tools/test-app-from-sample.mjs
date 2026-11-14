@@ -64,6 +64,19 @@ const open = async (lang, tag, query = '', dir = '') => {
   await p.waitForSelector('#drop');
   return p;
 };
+// 新規作成の窓が開くのを待つ。時間切れのときは、そのときのページの状態を書いてから落とす（backlog #206：Windows の CI で 1 回だけ、
+// 凍結した写しの ?from-sample= の窓が 30 秒開かなかった。手元では 0.3 秒。次に起きたときに、起動のどこで止まったかが分かるように）
+const dlgWait = (p, sel) => p.waitForSelector(sel).catch(async (e) => {
+  const st = await p.evaluate(() => ({
+    url: location.pathname + location.search, readyState: document.readyState, dlgOpen: !!document.getElementById('dlg')?.open,
+    dlgTitle: document.getElementById('dlg-title')?.textContent || '', current: [...document.querySelectorAll('#dlg .current')].map((x) => x.id),
+    welcome: !!document.getElementById('welcome') && !document.getElementById('welcome').hidden,
+    appJs: performance.getEntriesByType('resource').filter((r) => /app\.js$/.test(r.name)).map((r) => ({ start: Math.round(r.startTime), dur: Math.round(r.duration) })),
+    sinceLoad: Math.round(performance.now()),
+  })).catch((x) => String(x));
+  console.log(`  state when ${sel} did not appear: ${JSON.stringify(st)}`);
+  throw e;
+});
 const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.join(SHOTS, name) }); };
 const text = (p, sel) => p.textContent(sel);
 const answer = (p, k) => p.textContent(`#paste-step-${k}-answer .paste-answer-text`);
@@ -120,7 +133,7 @@ try {
   ok(!(await p1.evaluate(() => document.body.innerText.includes('見本'))), 'F1: the screen never says 見本 (the termbase word is サンプル)');
   await shot(p1, 'from-sample-play.png');
   await clickDlg(p1, '#dlg-like');
-  await p1.waitForSelector('#dlg[open] #paste-step-kind');
+  await dlgWait(p1, '#dlg[open] #paste-step-kind');
   ok(!(await p1.$('#sample-frame')) && !(await p1.$('#sample-like-note')) && !(await p1.$('iframe[title="漢文を読む――返り点から書き下し文へ"]')), 'F1: closing the window removes the sample’s frame (its player stops)');
   ok((await text(p1, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。',
     'F1: New… says it starts from the sample and what was filled in');
@@ -190,7 +203,7 @@ try {
   // ================================================================ F3 egatari.org のサンプルのページから（en）
   const PS = sample('pitch-fictional');
   const p3 = await open('en', 'f3', '&from-sample=pitch-fictional');
-  await p3.waitForSelector('#dlg[open] #paste-step-kind');
+  await dlgWait(p3, '#dlg[open] #paste-step-kind');
   ok((await text(p3, '#ai-from-sample')).startsWith('Starting from the sample “') && (await answer(p3, 'kind')) === 'Setting: Business / Pitch' && await badgeOn(p3, 'kind') && (await p3.inputValue('#paste-theme')) === PS.theme
     && !(await p3.evaluate(() => location.search.includes('from-sample'))) && (await p3.evaluate(() => location.search)) === '?lang=en',
     'F3: ?from-sample=pitch-fictional opens New… from the sample in English, and the parameter leaves the address');
@@ -205,7 +218,7 @@ try {
   // 知らない名前：ふつうの新規作成（① から。サンプルの知らせ・札はない）を開き、上に 1 行で知らせる（en と ja）
   for (const [lang, want] of [['en', 'Sample “no-such-sample” not found. New… is open.'], ['ja', 'サンプル「no-such-sample」が見つかりません。新規作成を開きました']]) {
     const p3b = await open(lang, 'f3b-' + lang, '&from-sample=no-such-sample');
-    await p3b.waitForSelector('#dlg[open] #paste-step-kind');
+    await dlgWait(p3b, '#dlg[open] #paste-step-kind');
     ok((await text(p3b, '#ai-sample-missing')) === want && (await p3b.getAttribute('#ai-sample-missing', 'role')) === 'status' && !(await p3b.$('#ai-from-sample')) && !(await badgeOn(p3b, 'kind'))
       && await p3b.getAttribute('#paste-step-kind-btn', 'aria-current') === 'step' && !(await p3b.evaluate(() => location.search.includes('from-sample'))) && !(await p3b.isVisible('#toast.show')),
       `F3 (${lang}): an unknown sample name opens New… as usual (at ①) with one line: ${JSON.stringify(await text(p3b, '#ai-sample-missing'))}`);
@@ -214,27 +227,27 @@ try {
   // 再生だけのサンプル（パーツ図鑑。examples/index.json の fromSample: false）：知らない名前と同じく、ふつうの新規作成と 1 行の知らせ
   {
     const p3p = await open('ja', 'f3p', '&from-sample=parts-showcase');
-    await p3p.waitForSelector('#dlg[open] #ai-sample-missing');
+    await dlgWait(p3p, '#dlg[open] #ai-sample-missing');
     ok((await text(p3p, '#ai-sample-missing')) === 'サンプル「parts-showcase」が見つかりません。新規作成を開きました' && !(await p3p.$('#ai-from-sample')),
       'F3: the play-only sample (parts-showcase) is not a from-sample name: New… opens as usual with the not-found line');
     await p3p.context().close();
   }
   // 凍結した写し（/v9.9.9/）の中：その写しの組み立てに入っているサンプルで、根と同じに開く（何も読みに行かない）
   const p3c = await open('ja', 'f3c', '&from-sample=kokugo-kanbun', 'v9.9.9/');
-  await p3c.waitForSelector('#dlg[open] #paste-step-content.current');
+  await dlgWait(p3c, '#dlg[open] #paste-step-content.current');
   ok((await text(p3c, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。'
     && (await p3c.inputValue('#paste-theme')) === 'kokugo' && await badgeOn(p3c, 'kind') && (await p3c.evaluate(() => location.pathname + location.search)) === '/v9.9.9/?lang=ja',
     'F3: inside a frozen copy (/v9.9.9/?lang=ja&from-sample=kokugo-kanbun) New… opens from the sample the same way, and the parameter leaves the address');
   await p3c.context().close();
   const p3d = await open('en', 'f3d', '&from-sample=no-such-sample', 'v9.9.9/');
-  await p3d.waitForSelector('#dlg[open] #ai-sample-missing');
+  await dlgWait(p3d, '#dlg[open] #ai-sample-missing');
   ok((await text(p3d, '#ai-sample-missing')) === 'Sample “no-such-sample” not found. New… is open.', 'F3: inside a frozen copy an unknown name gets the same notice');
   await p3d.context().close();
 
   // ================================================================ F7 新規作成のはじめの画面の「このサンプルを参考に作る」
   const p7 = await open('ja', 'f7');
   await p7.click('#w-new');
-  await p7.waitForSelector('#dlg[open] #paste-step-kind');
+  await dlgWait(p7, '#dlg[open] #paste-step-kind');
   const entry = await p7.evaluate(() => { const o = document.getElementById('paste-direct-offer'); return { kids: [...o.querySelectorAll('button')].map((b) => [b.id, b.textContent, b.getAttribute('aria-describedby')]),
     hint: (document.getElementById('paste-from-sample-hint') || {}).textContent, howto: document.getElementById('ai-howto').nextElementSibling.id }; });
   ok(JSON.stringify(entry.kids) === JSON.stringify([['paste-direct', 'AI の出力を貼り付ける', 'paste-direct-hint'], ['paste-from-sample', 'このサンプルを参考に作る', 'paste-from-sample-hint']])
@@ -257,7 +270,7 @@ try {
     'F7: 「問いに答えて作る」 goes back to the questions (focus on the entry)');
   await p7.click('#paste-from-sample');
   await p7.click('#paste-samples-list li[data-example="kokugo-kanbun"] button');
-  await p7.waitForSelector('#dlg[open] #ai-from-sample');
+  await dlgWait(p7, '#dlg[open] #ai-from-sample');
   await p7.waitForSelector('#paste-step-content.current');
   ok((await text(p7, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。'
     && (await answer(p7, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await badgeOn(p7, 'kind') && (await p7.inputValue('#paste-theme')) === 'kokugo' && (await p7.inputValue('#paste-title')) === ''
@@ -307,7 +320,7 @@ try {
     const p6 = await open(lang, 'f6-' + lang);
     for (const c of cases.filter((x) => x.lang === lang)) {
       await p6.goto(BASE + `?lang=${lang}&from-sample=${c.name}`);
-      await p6.waitForSelector('#dlg[open] #paste-step-content.current');
+      await dlgWait(p6, '#dlg[open] #paste-step-content.current');
       await p6.fill('#paste-title', c.title);
       if (c.content) { await p6.check('#paste-content-mode-write'); await p6.fill('#paste-content', c.content); }
       await p6.click('#paste-next-content');

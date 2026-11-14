@@ -99,7 +99,7 @@ const mstate = (p) => p.evaluate(() => window.__play.state().markup);
 // select the text from the first `from` to the end of the first `to` after it, in the article's text (ruby readings and MathML left out)
 // (`ctx`, if given: a longer text holding `from`, to pick that occurrence of it)
 async function select(f, from, to, ctx = '') {
-  return f.evaluate(([from, to, ctx]) => {
+  return f.evaluate(async ([from, to, ctx]) => {
     const a = document.getElementById('egatari-article');
     const w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('rt,rp,.katex-mathml') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
     const nodes = []; let s = '', n; const starts = [];
@@ -109,6 +109,12 @@ async function select(f, from, to, ctx = '') {
     const at = (o, end) => { for (let k = 0; k < nodes.length; k++) { const e = starts[k] + nodes[k].data.length; if (end ? o <= e && o > starts[k] : o < e) return [nodes[k], o - starts[k]]; } return null; };
     const r = document.createRange(); const A = at(i, false), B = at(j, true); r.setStart(A[0], A[1]); r.setEnd(B[0], B[1]);
     A[0].parentElement.scrollIntoView({ block: 'center' });
+    // select only once the scroll has settled (backlog #206): the markup window opens 220 ms after the selection changes and any scroll
+    // closes it, so a scroll event that the browser delivers late (seen on the macOS CI) closed the window for good. Wait two frames,
+    // then until no scroll event has come for 150 ms
+    await new Promise((res) => { let last = performance.now(); const on = () => { last = performance.now(); }; addEventListener('scroll', on, true);
+      const tick = () => { if (performance.now() - last > 150) { removeEventListener('scroll', on, true); res(); } else requestAnimationFrame(tick); };
+      requestAnimationFrame(() => requestAnimationFrame(tick)); });
     const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r);
     const rs = r.getClientRects(), b = rs[0];
     return { top: b.top, bottom: rs[rs.length - 1].bottom, text: r.toString() };
@@ -421,7 +427,12 @@ console.log('ruby and math');
 { const { c, p } = await page(null);
   const f = await openBook(p, 'book.ega.html');
   await select(f, '代表値を', '代表値'); await until(async () => !!(await popup(f))); await press(f, 'y');
-  await f.evaluate(() => { const m = document.querySelector('#egatari-article .egatari-math'); m.scrollIntoView({ block: 'center' }); const r = document.createRange(); r.selectNodeContents(m); getSelection().removeAllRanges(); getSelection().addRange(r); });
+  await f.evaluate(async () => { const m = document.querySelector('#egatari-article .egatari-math'); m.scrollIntoView({ block: 'center' });
+    // as in select(): let the scroll settle first, or a late scroll event closes the window (backlog #206)
+    await new Promise((res) => { let last = performance.now(); const on = () => { last = performance.now(); }; addEventListener('scroll', on, true);
+      const tick = () => { if (performance.now() - last > 150) { removeEventListener('scroll', on, true); res(); } else requestAnimationFrame(tick); };
+      requestAnimationFrame(() => requestAnimationFrame(tick)); });
+    const r = document.createRange(); r.selectNodeContents(m); getSelection().removeAllRanges(); getSelection().addRange(r); });
   await until(async () => !!(await popup(f))); await press(f, 'b');
   await until(async () => (await mstate(p)).record.highlights.length === 2);
   await p.click('#b-markup'); await redrawn(f, () => p.click('#b-recall'));
