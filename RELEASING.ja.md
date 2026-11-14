@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.md sha256=a27311e353283640 -->
+<!-- i18n: pair=RELEASING.md sha256=1c04d6b2e70b580f -->
 # リリースの仕方
 
 [English](RELEASING.md) | 日本語
@@ -80,7 +80,7 @@
 
 ## @egatari/fonts-extra
 
-包み `egatari` が持つのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と、同梱のテーマが使う字体（`asagi` の Zen Maru Gothic）で、同梱のテーマはどれも `npx egatari` だけで組める（同梱のテーマが `extra` の字体を名指すと `tools/test-fonts.mjs` が失敗する）。ほかの選べる 6 つの字体（`kit/core/build-core.mjs` の `FONT_LIST` の `extra`）は、`packages/fonts-extra/` の別の包み `@egatari/fonts-extra` で、バージョンも別に持つ。`egatari` はそれを任意の peer dependency（`^1.0.0`）に挙げる。写しは `tools/fonts-vendor.mjs`（その包みと `egatari` の `prepack`）が `@fontsource` の devDependencies から作り、`tools/test-npm-pack.mjs` がそれを pack して、選べる字体の教材を組む。新しいバージョンは、その字体が変わるときだけ出す（選べる字体の `@fontsource` の devDependencies を上げた、一覧か太さを変えた。同梱のテーマがそのどれかを使い始めたら、その字体は `extra` を外して `egatari` に戻す）。
+包み `egatari` が持つのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と、同梱のテーマが使う字体（`asagi` の Zen Maru Gothic、`kinari` の Fraunces）で、同梱のテーマはどれも `npx egatari` だけで組める（同梱のテーマが `extra` の字体を名指すと `tools/test-fonts.mjs` が失敗する）。ほかの選べる 6 つの字体（`kit/core/build-core.mjs` の `FONT_LIST` の `extra`）は、`packages/fonts-extra/` の別の包み `@egatari/fonts-extra` で、バージョンも別に持つ。`egatari` はそれを任意の peer dependency（`^1.0.0`）に挙げる。写しは `tools/fonts-vendor.mjs`（その包みと `egatari` の `prepack`）が `@fontsource` の devDependencies から作り、`tools/test-npm-pack.mjs` がそれを pack して、選べる字体の教材を組む。新しいバージョンは、その字体が変わるときだけ出す（選べる字体の `@fontsource` の devDependencies を上げた、一覧か太さを変えた。同梱のテーマがそのどれかを使い始めたら、その字体は `extra` を外して `egatari` に戻す）。
 
 **初めての公開（手で 1 回）。** スコープのある包みは、あってからでないと trusted publishing を設定できない。リリースのコミットのきれいな checkout で、`@egatari` のスコープの owner として npm にサインインして：
 

@@ -40,6 +40,12 @@
   --obj-pink:    #F27BB0;
   --obj-orange:  #F28C1A;
   --obj-gray:    #8C8C8C;
+  /* 量の色の段（format spec §8.4。#200）：低→高の 5 段（ヒートマップ・密度・速さ）。基調色の色相で、OKLCH の明るさが単調に下がり、--ramp-5 は地と 8.6:1（3:1 以上）。分類や意味には使わない。1.5.0 */
+  --ramp-1: #DAE9FF;
+  --ramp-2: #A1C3F3;
+  --ramp-3: #6A9ADC;
+  --ramp-4: #3A71BD;
+  --ramp-5: #0A4A97;
 
   /* 先のステップを薄く見せるときの濃さ（format spec §8.4 の --preview-opacity。プレーヤーも部品もこれを読む） */
   --preview-opacity: .45;

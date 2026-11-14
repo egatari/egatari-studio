@@ -54,6 +54,8 @@ export const SHAPES = Object.freeze({
     'left-rule': '',
     // 角丸の枠（浅葱）
     rounded: '.slide:not(.layout-tate) .concl{border:2.3px solid var(--emph);border-radius:36px;padding-left:24px}',
+    // 枠も地もなく、上に --emph の線だけ（生成。#195）。左寄せ、太字と線で示す（色だけに頼らない）
+    rule: '.slide:not(.layout-tate) .concl{left:48px;border:0;border-top:2px solid var(--emph);border-radius:0;background:transparent;justify-content:flex-start;padding-left:0}',
   }),
 });
 // 名前のない形（look を書かないテーマ）は既定の形

@@ -1,0 +1,13 @@
+{
+  "name": "kinari",
+  "extends": "default",
+  "version": "1.0.0",
+  "fonts": {
+    "heading": "Fraunces"
+  },
+  "look": {
+    "heading": "underline",
+    "cover": "top-band",
+    "concl": "rule"
+  }
+}
