@@ -4,6 +4,14 @@
    結論の行は上端 571px・高さ 72px。色はテーマの変数だけを使う */
 .slide h2{position:absolute;left:48px;right:48px;top:40px;margin:0;font-size:43px;line-height:1.25;font-weight:700;
   padding-bottom:10px;border-bottom:2px solid var(--rule);color:var(--title)}
+/* 肩見出し（kicker）：見出しの上の短い言葉。本文の位置は変えず、同じステップ 0 で見せる */
+.kicker{position:absolute;left:48px;right:48px;top:16px;margin:0 0 8px;font-size:var(--kicker-size,24px);line-height:1;
+  color:var(--kicker-color,var(--muted));font-weight:var(--kicker-weight,700)}
+:lang(en) .kicker{text-transform:uppercase;letter-spacing:.08em}
+/* 表紙・章の扉には置かない（kickerSlide）が、置かれても上端の帯（.cover::before、10px）に重ねない */
+.cover > .kicker,.sec > .kicker{top:24px}
+/* 肩見出しのあるスライドだけ、見出しを 8px 下げる（肩見出し 16〜40px、見出しは 48px から。本文の位置 122px は変えない）。位置はテーマでなくここで決める（d5 2026-11-14） */
+.slide > .kicker + h2{top:48px}
 .body{position:absolute;left:48px;right:48px;top:122px;bottom:160px;font-size:32px;line-height:1.45}
 .slide.noconcl .body{bottom:64px}
 .sub{font-size:32px;font-weight:700;color:var(--emph);margin:0 0 8px}

@@ -26,7 +26,7 @@ export const SHAPES = Object.freeze({
     // 淡い地の角丸、下線なし（浅葱）
     soft: `${H}{border-bottom:0;background:var(--base-wash);border-radius:16px;padding:8px 22px}`,
     // 基調色の帯に白抜き、下に --rule の線（墨）
-    band: `${H}{left:0;right:0;top:0;padding:26px 48px 18px;background:var(--base);color:var(--sec-fg,#fff);border-bottom:4px solid var(--rule)}`,
+    band: `${H}{left:0;right:0;top:0;padding:26px 48px 18px;background:var(--base);color:var(--sec-fg,#fff);border-bottom:4px solid var(--rule)}\n.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker{--kicker-color:var(--sec-fg,#fff);z-index:1}\n.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker + h2{padding-top:48px;padding-bottom:4px}`,
   }),
   cover: Object.freeze({
     // 中央・上に細い帯（既定。kit/layouts.css のまま）
@@ -54,6 +54,8 @@ export const SHAPES = Object.freeze({
     'left-rule': '',
     // 角丸の枠（浅葱）
     rounded: '.slide:not(.layout-tate) .concl{border:2.3px solid var(--emph);border-radius:36px;padding-left:24px}',
+    // 枠も地もなく、上に --emph の線だけ（生成。#195）。左寄せ、太字と線で示す（色だけに頼らない）
+    rule: '.slide:not(.layout-tate) .concl{left:48px;border:0;border-top:2px solid var(--emph);border-radius:0;background:transparent;justify-content:flex-start;padding-left:0}',
   }),
 });
 // 名前のない形（look を書かないテーマ）は既定の形

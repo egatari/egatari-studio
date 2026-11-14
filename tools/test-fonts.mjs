@@ -35,13 +35,13 @@ const deck = (name, lang, body, theme = 'default') => {
 };
 const check = (dir) => JSON.parse(spawnSync(process.execPath, ['kit/check.mjs', path.join(dir, 'deck.html'), '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 }).stdout);
 
-await t('一覧：日本語 5・英語 4・等幅 1 の 10 の名前（Klee One は 400 と 600）、どれも OFL の @fontsource が package.json の devDependencies にある', () => {
+await t('一覧：日本語 5・英語 5・等幅 1 の 11 の名前（Klee One は 400 と 600）、どれも OFL の @fontsource が package.json の devDependencies にある', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-  assert.deepEqual(FONT_LIST.map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Shippori Mincho', 'Zen Maru Gothic', 'Klee One', 'Source Sans 3', 'Source Serif 4', 'Andika', 'Atkinson Hyperlegible Next', 'Source Code Pro']);
+  assert.deepEqual(FONT_LIST.map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Shippori Mincho', 'Zen Maru Gothic', 'Klee One', 'Source Sans 3', 'Fraunces', 'Source Serif 4', 'Andika', 'Atkinson Hyperlegible Next', 'Source Code Pro']);
   for (const f of FONT_LIST) assert.ok(pkg.devDependencies[f.pkg] && !pkg.dependencies[f.pkg], f.pkg);
   assert.deepEqual(FONT_LIST.find((f) => f.family === 'Klee One').weights, [400, 600]);
-  // 既定の 3 つと同梱のテーマの字体は egatari の包みに、ほかの 6 つ（extra）は別の包み @egatari/fonts-extra に（#176。tools/fonts-vendor.mjs）
-  assert.deepEqual(FONT_LIST.filter((f) => !f.extra).map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Zen Maru Gothic', 'Source Sans 3']);
+  // 既定の 3 つと同梱のテーマの字体（asagi の Zen Maru Gothic、生成の見出しの Fraunces）は egatari の包みに、ほかの 6 つ（extra）は別の包み @egatari/fonts-extra に（#176。tools/fonts-vendor.mjs）
+  assert.deepEqual(FONT_LIST.filter((f) => !f.extra).map((f) => f.family), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Zen Maru Gothic', 'Source Sans 3', 'Fraunces']);
   const extra = JSON.parse(fs.readFileSync(path.join(ROOT, 'packages', 'fonts-extra', 'package.json'), 'utf8'));
   assert.equal(extra.name, '@egatari/fonts-extra');
   assert.ok(pkg.peerDependenciesMeta[extra.name].optional && pkg.peerDependencies[extra.name] === `^${extra.version.split('.')[0]}.0.0`);

@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=b481c78b6f4d7d22 -->
+<!-- i18n: pair=reference.md sha256=b45240e2057cc654 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -161,7 +161,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 | `name` | 説明用 |
 | `version` | テーマのバージョン（`themes.lock.json` に載せた同梱のテーマ。下の「テーマのバージョン」） |
 | `fonts` | テーマが選ぶ字体。Studio がファイルに入れられる一覧（下の「字体」）から：`{"body": "Zen Maru Gothic", "heading": "Zen Maru Gothic"}`。組み立てはその字体を埋め込む（教材が使う字を含む分割ファイルだけ）。CSS（`--font-sans`）はテーマの `tokens.css` が書く。テーマやスライドの CSS が一覧の字体を名指しても、その字体を埋め込む |
-| `look` | テーマが使う、見出し・表紙・結論の行の決まった形（`{"heading": "band", "cover": "left-bar", "concl": "left-rule"}`。`kit/core/theme-shapes.mjs`）。同梱のテーマは形ごとの CSS を `tokens.css` の `/* look <key>: <id> */` と `/* /look */` の間にそのまま写す（`tools/test-themes.mjs` が照らす）。組み立ては読まない |
+| `look` | テーマが使う、見出し・表紙・結論の行の決まった形（`{"heading": "band", "cover": "left-bar", "concl": "left-rule"}`。`kit/core/theme-shapes.mjs`。結論の行は `left-rule`・`rounded`・`rule`（枠も地もなく、上に `--emph` の線）のどれか）。同梱のテーマは形ごとの CSS を `tokens.css` の `/* look <key>: <id> */` と `/* /look */` の間にそのまま写す（`tools/test-themes.mjs` が照らす）。組み立ては読まない |
 | `metrics` | 品質チェックと書き手のツールのための、テーマの体裁の寸法（`"v": 1`。下の表）。`extends` の親から項目ごとに引き継ぎ、書かない項目は既定。描くのには使わない（[契約](contract.ja.md) §12） |
 
 `metrics` の項目（1280×720 の舞台の px。数で、小数も可）。既定は今の `kit/layouts.css` で、そこから導く限りは今までの検査の数（565・680・1236・1162・124・44）。余裕（6・4）は検査の方針で、テーマの値ではない。CSS でこれらの箱を動かすテーマは宣言するとよい（同梱と公式のテーマ庫のテーマは宣言しなければならない）。`node tools/theme-metrics.mjs measure <テーマ>` が貼る塊を出す。
@@ -178,7 +178,7 @@ build は、どのスライドにも合わない `##`（品質チェックでは
 
 数でない値・範囲の外（x は 0〜1280、y は 0〜720）・知らない項目・`v` が 1 でない・互いに合わない値（本文の上端が結論の行より下、本文の幅が 320px より狭い、など）は組み立ての警告（`theme-metrics: …`）で、親の（なければ既定の）値を使う。品質チェックは宣言とテーマが描く箱を比べる（下の `themeMetricsDrift`）。
 
-**同梱のテーマ。** 新しい教材は 7 つのテーマから選ぶ。画面では和色の名前で、何に向くかを小さく添える：藍（`default`。研究・講義）、墨（`sumi`。報告・提案）、国語（`kokugo`。国語・和の題材）、常盤（`tokiwa`。理科・自然・学校）、江戸紫（`murasaki`。研究・一般の講演）、焦茶（`kogecha`。人文・歴史・地域）、浅葱（`asagi`、字体は Zen Maru Gothic。小学校・広報・案内）。一覧と向きは `kit/core/themes-list.mjs`。`business` は新しい教材には選べない（編集アプリの一覧・`npm run new`）。同梱のままなので、それを書いた教材・そのバージョンを記録した教材は前のとおり組めて再生できる。代わりは `sumi`。7 つとも `default` の役割の色と箱（品質チェックの限り）は同じで、変えるのは色・線・帯・角・字体だけ。テーマの CSS は組み込みの規則と同じ以上の詳細度で書く（`.slide h2` は 0,1,1）。`:where()` で包まない（詳細度が 0 になり、一部の宣言だけが組み込みの規則に負ける。見出しの帯の上に見出しの濃い字が乗る、など）。`node tools/test-themes.mjs` が同梱のテーマごとにサンプルの教材を組んで確かめる：品質チェック（`textContrast`・`secHeading`・`fontNotEmbedded`・寸法の警告がない）、字と地のコントラスト 4.5:1（役割の色と `--bg`、結論の行と `--concl-bg`、章の扉、表紙の題、見出しとその地）、色覚の模擬（Machado ほか 2009、強さ 1.0）で `--emph` と `--term` の差が 3 色型・1 型・2 型で ΔE*ab 35 以上・4 つの型で ΔE00 20 以上、`--emph` と `--fg` が 1 型で ΔE00 20 以上、`--lit` と `--emph` の差が `--emph` と `--term` と同じ線（`--lit` は輪郭線と一緒に描くので、`--bg` とのコントラストは測って表に出すだけで求めない）、同梱のどのテーマも自分の `tokens.css` で `--lit` を宣言すること、パーツの絵の暗いバージョンの色（`tools/part-thumbs.mjs` の `DARK`。暗い地の役割の色はここだけで、同梱のテーマに暗いバージョンはない）の `--lit` が地と 3:1 以上・`--emph` と 4 つの型で ΔE*ab 35 以上、同梱のどのテーマも 11 の物の色 `--obj-*` を自分の `tokens.css` に 16 進で宣言し、どれも OKLCH で名前どおりの色であること（色相の窓は red 15–45°、orange 50–80°、yellow 85–115°、green 125–165°、blue 235–275°、purple 285–335°、pink 340–15°で、どれも鮮やかさ 0.10 以上。brown は色相 40–80°・明るさ 0.35–0.60・鮮やかさ 0.04–0.12。white は明るさ 0.95 以上、black は 0.32 以下、gray は 0.50–0.75 で、3 つとも鮮やかさ 0.02 以下）、隣り合う色の名前（red–orange、orange–yellow、yellow–green、green–blue、blue–purple、purple–pink、pink–red、brown–orange、brown–red、gray–white、gray–black）が 3 色型で ΔE00 20 以上（`--emph` と `--term` と同じ線。物の色にはいつも名前か頭文字を添えるので、色覚の模擬は求めない）、`--bg` とのコントラストは測って表に出すだけ、ペンの色（下）。
+**同梱のテーマ。** 新しい教材は 8 つのテーマから選ぶ。画面では和色の名前で、何に向くかを小さく添える：藍（`default`。研究・講義）、墨（`sumi`。報告・提案）、国語（`kokugo`。国語・和の題材）、常盤（`tokiwa`。理科・自然・学校）、江戸紫（`murasaki`。研究・一般の講演）、焦茶（`kogecha`。人文・歴史・地域）、浅葱（`asagi`、字体は Zen Maru Gothic。小学校・広報・案内）、弁柄（`bengara`。暖かい紙の地・深い墨・強調 1 色、見出しは Fraunces と BIZ UDP明朝、結論の行は線だけ。講演・読み物・式典）。一覧と向きは `kit/core/themes-list.mjs`。`business` は新しい教材には選べない（編集アプリの一覧・`npm run new`）。同梱のままなので、それを書いた教材・そのバージョンを記録した教材は前のとおり組めて再生できる。代わりは `sumi`。8 つとも `default` の役割の色と箱（品質チェックの限り）は同じで、変えるのは色・線・帯・角・字体だけ。テーマの CSS は組み込みの規則と同じ以上の詳細度で書く（`.slide h2` は 0,1,1）。`:where()` で包まない（詳細度が 0 になり、一部の宣言だけが組み込みの規則に負ける。見出しの帯の上に見出しの濃い字が乗る、など）。`node tools/test-themes.mjs` が同梱のテーマごとにサンプルの教材を組んで確かめる：品質チェック（`textContrast`・`secHeading`・`fontNotEmbedded`・寸法の警告がない）、字と地のコントラスト 4.5:1（役割の色と `--bg`、結論の行と `--concl-bg`、章の扉、表紙の題、見出しとその地）、色覚の模擬（Machado ほか 2009、強さ 1.0）で `--emph` と `--term` の差が 3 色型・1 型・2 型で ΔE*ab 35 以上・4 つの型で ΔE00 20 以上、`--emph` と `--fg` が 1 型で ΔE00 20 以上、`--lit` と `--emph` の差が `--emph` と `--term` と同じ線（`--lit` は輪郭線と一緒に描くので、`--bg` とのコントラストは測って表に出すだけで求めない）、同梱のどのテーマも自分の `tokens.css` で `--lit` を宣言すること、パーツの絵の暗いバージョンの色（`tools/part-thumbs.mjs` の `DARK`。暗い地の役割の色はここだけで、同梱のテーマに暗いバージョンはない）の `--lit` が地と 3:1 以上・`--emph` と 4 つの型で ΔE*ab 35 以上、同梱のどのテーマも 11 の物の色 `--obj-*` を自分の `tokens.css` に 16 進で宣言し、どれも OKLCH で名前どおりの色であること（色相の窓は red 15–45°、orange 50–80°、yellow 85–115°、green 125–165°、blue 235–275°、purple 285–335°、pink 340–15°で、どれも鮮やかさ 0.10 以上。brown は色相 40–80°・明るさ 0.35–0.60・鮮やかさ 0.04–0.12。white は明るさ 0.95 以上、black は 0.32 以下、gray は 0.50–0.75 で、3 つとも鮮やかさ 0.02 以下）、隣り合う色の名前（red–orange、orange–yellow、yellow–green、green–blue、blue–purple、purple–pink、pink–red、brown–orange、brown–red、gray–white、gray–black）が 3 色型で ΔE00 20 以上（`--emph` と `--term` と同じ線。物の色にはいつも名前か頭文字を添えるので、色覚の模擬は求めない）、`--bg` とのコントラストは測って表に出すだけ、ペンの色（下）。 量の色の段（#200）も確かめる：同梱のどのテーマも `--ramp-1` … `--ramp-5` を自分の `tokens.css` に 16 進で宣言し、OKLCH の明るさが段ごとに 0.05 以上下がり、`--ramp-5` が `--bg` と 3:1 以上であること。
 
 CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.css`・`kit/layouts.css`・テーマの `tokens.css`（親のテーマから順に）・`kit/latin.css`（`lang` が日本語でない教材だけ）の順に書く。テーマは体裁の CSS の後なので、同じ詳細度のテーマの規則は体裁の規則に勝つ（例：`.cover h1{top:260px}`、`.body{left:96px;right:96px}`）。`html` を前に付けなくてよい。そうしたテーマにも、色の変数の意味（[契約](contract.ja.md) §12）と品質チェックの色の検査はそのまま効く。組み立ての口（コマンド、`--dev` と開発サーバー、`--portable`、`--play-only`、編集アプリ）はどれも同じ。
 
@@ -191,8 +191,11 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--obj-white` `--obj-black` `--obj-red` `--obj-green` `--obj-yellow` `--obj-blue` `--obj-brown` `--obj-purple` `--obj-pink` `--obj-orange` `--obj-gray` | 物の色：色そのものが内容である色（袋の中の赤い玉、青のリトマス紙、青信号）。11 の基本色名（format spec §8.4）。色そのものを見せるところだけに使う：図の系列は `--series-1` … `--series-4`、意味は上の役割。色だけで伝えない：物の上か横に名前か頭文字（「赤」、"R"）を添え、`--obj-white`・`--obj-black` と地に近い色の形には `--fg` か `--muted` の輪郭線を付ける。使うパーツは予備の値を付ける。予備はその名前の色をじかに書いてよい（`var(--obj-red, #E0242B)`）。間の色は物の色どうしの `color-mix()` で作る。同梱のテーマはどれも 11 色を持つ（`default` は 1.4.0 から `#FFFFFF` `#222222` `#E0242B` `#2E9E44` `#F5D90A` `#1E6FD9` `#8B5A2B` `#8E44AD` `#F27BB0` `#F28C1A` `#8C8C8C`。`sumi`・`kokugo`・`tokiwa`・`murasaki`・`business` も同じ値。`kogecha` は少し鮮やかさを抑え、`asagi` は少し明るい） |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は今は本体では使わない。既存のテーマと教材が動くように残してある） |
 | `--series-1` … `--series-4` | 図の系列の色 |
+| `--ramp-1` … `--ramp-5` | 量の色の段（format spec §8.4、#200）：量（ヒートマップ・密度・速さ）の低→高の 5 段。基調色の色相で、OKLCH の明るさが段ごとに下がり、`--ramp-5` は `--bg` と 3:1 以上。分類や意味には使わない。同梱のテーマはどれも持つ（`default` 1.5.0 から） |
+| `--scrim`、`--scrim-strong` | 背景の画像の上の字の下に敷く、地の色の半透明の地（#141。`bengara` 1.0.0） |
 | `--preview-opacity` | 先のステップを薄く見せる：まだ来ていないステップの不透明度（0.45。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる。`--lecture-dim` は同じものの別名） |
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
+| `--kicker-size`、`--kicker-color`、`--kicker-weight` | 肩見出し（見出しの上の短い言葉）：字の大きさ（24px）、色（`--muted`）、太さ（700） |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
 | `--concl-bg` | 結論の行の背景（`default` は 1.2.0 から `#F5F5F5`。前は透明） |
@@ -215,10 +218,10 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | 用途 | 字体 |
 |---|---|
 | 日本語 | BIZ UDPゴシック（既定）、BIZ UDP明朝、しっぽり明朝（Shippori Mincho）、Zen Maru Gothic、Klee One（400 と 600） |
-| 英語 | Source Sans 3（既定）、Source Serif 4、Andika、Atkinson Hyperlegible Next（どれも斜体あり） |
+| 英語 | Source Sans 3（既定）、Source Serif 4、Andika、Atkinson Hyperlegible Next（どれも斜体あり）、Fraunces（400 と 700。`bengara` の見出し） |
 | 等幅 | Source Code Pro |
 
-npm の包み `egatari` についてくるのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と、同梱のテーマが使う字体（`asagi` の Zen Maru Gothic）で、同梱のテーマはどれも `npx egatari` だけで組める。教材の CSS か自分のテーマだけが名指せるほかの字体（しっぽり明朝・Klee One・Source Serif 4・Andika・Atkinson Hyperlegible Next・Source Code Pro）は別の包み `@egatari/fonts-extra` にあり、`egatari` と一緒に入れる（`npm i -D @egatari/fonts-extra`、または `npx -p egatari -p @egatari/fonts-extra egatari …`）。組み立ては `egatari` の包みと今いるフォルダからそれを探す。ないと、組み立ては `fonts-extra: …` と知らせ、品質チェックは入れ方つきのエラー `fontsExtraMissing` を出す。黙ってほかの字体にはしない。リポジトリの checkout にはどの字体もある（`npm ci`）。
+npm の包み `egatari` についてくるのは既定の字体（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と、同梱のテーマが使う字体（`asagi` の Zen Maru Gothic、`bengara` の Fraunces）で、同梱のテーマはどれも `npx egatari` だけで組める。教材の CSS か自分のテーマだけが名指せるほかの字体（しっぽり明朝・Klee One・Source Serif 4・Andika・Atkinson Hyperlegible Next・Source Code Pro）は別の包み `@egatari/fonts-extra` にあり、`egatari` と一緒に入れる（`npm i -D @egatari/fonts-extra`、または `npx -p egatari -p @egatari/fonts-extra egatari …`）。組み立ては `egatari` の包みと今いるフォルダからそれを探す。ないと、組み立ては `fonts-extra: …` と知らせ、品質チェックは入れ方つきのエラー `fontsExtraMissing` を出す。黙ってほかの字体にはしない。リポジトリの checkout にはどの字体もある（`npm ci`）。
 
 CSS はほかの字体（端末に入っている字体など）も書けるが、ファイルには入らない。開く端末ごとに、その字体か、並びの次の字体で出る。品質チェックは `fontNotEmbedded` で名前を挙げて知らせる（教材に 1 回。スライドの字の `font-family` の計算した値の最初の名前が、埋め込んだ字体でも総称でもないもの）。オフライン版のエディタ（`editor.html`）が持つのは BIZ UDPゴシックと Source Sans 3 だけで、ほかの字体を選んだ教材はその字体なしで組み、知らせる。
 
@@ -497,6 +500,9 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
 | スライド・台本・本の見える字に、埋め込んだどの字体にもない字がある（@fontsource にない `∎` など）。その字は開く端末の字体で出る — `fontNotCovered`（教材に 1 回、場所ごとに字を挙げる。`node tools/font-coverage.mjs <組んだ HTML>` でも見られる） | 情報 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
+| 肩見出し（`.kicker`）が 24 字分（全角 1・半角 0.5）、ラテン文字なら 40 文字を超える — `kickerLong` | 警告 |
+| スライドに肩見出しが 2 つ以上ある、または見出しの直前にない — `kickerPlace` | 警告 |
+| 表紙・章の扉（`sec`）・縦書きのスライド（`layout-tate`）に肩見出しがある — `kickerSlide` | 情報 |
 | パーツの描画が呼び出し順で変わる | エラー |
 | 強調の目印が無い。ステップごとの強調の一覧 | 警告。情報 |
 | モーフ：元のスライドが無い、同じ `data-id` が無い、ID の重複。対応の一覧 | 警告。情報 |
@@ -506,7 +512,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 描いた図の形（R-geometry、backlog #201、`kit/core/geometry-check.mjs`）。パーツは描いた図の箱・線・字に `data-part` の印と `data-part-id`（原稿の id）を付ける：箱は形の要素そのもの（`<rect>`・`<path>`・`<ellipse>`・`<polygon>`）に `data-part="box"`、線は `<g data-part="edge" data-part-from data-part-to>` で、線そのもの（`<line>`・`<path>`。矢じりは除く）に `data-part-line`、字は `<text data-part="label" data-part-of="box\|edge\|mark">`（縁取りがあれば `data-part-halo`、箱の外に置く字は `data-part-at="outside"`。`foreignObject` の字は中身で測る）、点は `data-part="mark"`。`@` で始まる端は節でない。各スライドの最後のステップで、スライドの座標で測る：線が、つないでいない箱の中を通る（`geoEdgeThroughBox`）、線が字を横切る（自分の線の字は除く。`geoLineOverLabel`。字に縁取りがあれば情報）、2 つの字が重なるか、字が持ち主でない点に重なる（`geoLabelOverlap`）、箱の字が箱の縁を越える（`geoLabelOutsideBox`。上下左右のはみ出し）。字の範囲は、横が字の送り幅、縦が基線から上下の字体ごとの決まった幅（`kit/core/text-band.mjs`）なので、字体の行の高さに左右されない。線の太さの半分 ＋ 2px までは重なりとみなさない（線の端が箱の縁に触れるのは正しい図）。印の付いた字は、この検査だけが見る（`textOverlap`・`svgTextBox` には出ない）。縦書きのスライド（`layout-tate`）は測らない：中身のスライドがみな縦書きなら決まりは `skipped`（`tate`）、縦横が混ざる教材では印のある縦書きのスライドの数を出す（`geoTateSlides`）。印を付けないパーツは見ない。パーツも印もない教材では決まりは `excused`（`noParts`） | 警告。情報 |
 | タイムラインの合計と 1 枚ごとの長さ | 情報 |
 
-**編集アプリでは。** 編集アプリの品質チェックは、上の表のどの行も同じコード・重さ・言葉で出す（体裁の行は同じ `kit/core/layout-scan.mjs`、描いた図の形は同じ `kit/core/geometry-check.mjs`、組まれずに残った数式は同じ `kit/core/raw-math.mjs`、原稿と台本の行は `kit/core/check-source.mjs` を通して同じ関数）。そのエラーと警告は修正依頼にも入る。`kit/check.mjs` だけのもの：画面を撮る、パーツの描き方が呼び出し順で変わる（`compOrder`）と本文の釣り合い（`balance`）、手元のファイルを見る、ないファイルへの相対リンク（`linkFileMissing`）と `fontsExtraMissing`、情報の一覧（ステップ 0 で見える字・パレット・ステップごとの強調・タイムライン・`fontNotCovered`・`extensionVersion`）。添付は編集アプリの「添付」の板とエクスポートで、本は本の板で、同じ決まりで確かめる。読み込めないパーツ（`component-requires-missing`・`component-not-in-catalogue`）はどちらでも組み立てが止まり、同じ言葉で知らせる。一覧とそれぞれのわけは `kit/core/check-parity.mjs` の `CLI_ONLY`。コマンド版が出し、編集アプリが出さず、この一覧にもないコードがあれば `tools/test-check-parity.mjs` が落ちる。
+**編集アプリでは。** 編集アプリの品質チェックは、上の表のどの行も同じコード・重さ・言葉で出す（体裁の行は同じ `kit/core/layout-scan.mjs`、描いた図の形は同じ `kit/core/geometry-check.mjs`、組まれずに残った数式は同じ `kit/core/raw-math.mjs`、原稿と台本の行は `kit/core/check-source.mjs` を通して同じ関数）。そのエラーと警告は修正依頼にも入る。`kit/check.mjs` だけのもの：画面を撮る、パーツの描き方が呼び出し順で変わる（`compOrder`）と本文の釣り合い（`balance`）、手元のファイルを見る、ないファイルへの相対リンク（`linkFileMissing`）と `fontsExtraMissing`、情報の一覧（ステップ 0 で見える字・パレット・ステップごとの強調・タイムライン・`fontNotCovered`・`extensionVersion`）。添付は編集アプリの「添付」の板とエクスポートで、本は本の板で、同じ決まりで確かめる。読み込めないパーツ（`component-requires-missing`・`component-not-in-catalogue`）はどちらでも組み立てが止まり、同じ言葉で知らせる。一覧とそれぞれのわけは `kit/core/check-parity.mjs` の `CLI_ONLY`。コマンド版が出し、編集アプリが出さず、この一覧にもないコードがあれば `tools/test-check-parity.mjs` が落ちる。 肩見出しの検査は、どちらも原稿を共通の `kit/core/kicker.mjs` で読む。
 
 スライドと台本の言語は違ってもよい（字幕だけ別の言語にする、日本語のスライドに英語の台本を付けるなど）。台本の言語は `voice.json` の `"lang"`（TTS と同じ）、なければ、ほとんどの発言が教材と別の字で書かれているときはその言語（日本語の教材で日本語の字がない、ほかの言語の教材でほとんどの発言に日本語の字がある）、それもなければ教材の `<html lang>`。台本の品質チェックは発言ごとにその言語で見る：日本語の字のある発言は日本語の規則、英語の文は英語の規則（式とみなすのは `\` `^` `_` と密な演算子だけ）。
 

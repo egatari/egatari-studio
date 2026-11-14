@@ -94,7 +94,7 @@ ok('pack: R-outline and an exact range for outline-driven batches (pack version 
     const p = buildPack({ series: [], lang });
     assert.match(p, /R-outline/);
     assert.ok(!/5–7 is plenty|5〜7 枚で足りる/.test(p), 'the old “make fewer slides (5–7)” line is gone');
-    assert.match(p, lang === 'en' ? /write exactly the slides of that range/ : /ちょうどその枚数だけ書く/);
+    assert.match(p, lang === 'en' ? /write exactly that range/ : /ちょうどその枚数だけ書く/);
   }
 });
 console.log(`llm-outline: ${n} ok`);

@@ -1,4 +1,4 @@
-<!-- i18n: pair=RELEASING.ja.md sha256=1e212204f029b06c -->
+<!-- i18n: pair=RELEASING.ja.md sha256=e04fa712a4f4f00e -->
 # Releasing
 
 English | [日本語](RELEASING.ja.md)
@@ -80,7 +80,7 @@ A release is a tag `vX.Y.Z` on `main`. Release candidates are tags `vX.Y.Z-rc.N`
 
 ## @egatari/fonts-extra
 
-The package `egatari` carries the default fonts (BIZ UDPGothic, BIZ UDPMincho, Source Sans 3) and every font a bundled theme uses (Zen Maru Gothic of `asagi`), so every bundled theme works from `npx egatari` alone; `tools/test-fonts.mjs` fails if a bundled theme names an `extra` font. The 6 other optional fonts (`extra` in `FONT_LIST`, `kit/core/build-core.mjs`) are the separate package `@egatari/fonts-extra` in `packages/fonts-extra/`, with its own version; `egatari` lists it as an optional peer dependency (`^1.0.0`). `tools/fonts-vendor.mjs` (its `prepack`, and `egatari`'s) builds its copy from the `@fontsource` devDependencies, and `tools/test-npm-pack.mjs` packs it and builds a lesson with an optional font from it. Publish a new version only when its fonts change (a bump of an optional `@fontsource` devDependency, or a change of the list or the weights; a bundled theme that starts using one of them moves that family back into `egatari`: remove its `extra`).
+The package `egatari` carries the default fonts (BIZ UDPGothic, BIZ UDPMincho, Source Sans 3) and every font a bundled theme uses (Zen Maru Gothic of `asagi`, Fraunces of `bengara`), so every bundled theme works from `npx egatari` alone; `tools/test-fonts.mjs` fails if a bundled theme names an `extra` font. The 6 other optional fonts (`extra` in `FONT_LIST`, `kit/core/build-core.mjs`) are the separate package `@egatari/fonts-extra` in `packages/fonts-extra/`, with its own version; `egatari` lists it as an optional peer dependency (`^1.0.0`). `tools/fonts-vendor.mjs` (its `prepack`, and `egatari`'s) builds its copy from the `@fontsource` devDependencies, and `tools/test-npm-pack.mjs` packs it and builds a lesson with an optional font from it. Publish a new version only when its fonts change (a bump of an optional `@fontsource` devDependency, or a change of the list or the weights; a bundled theme that starts using one of them moves that family back into `egatari`: remove its `extra`).
 
 **First publish (by hand, once).** A scoped package must exist before trusted publishing can be set up for it. From a clean checkout of the release commit, signed in to npm as an owner of the `@egatari` scope:
 

@@ -43,7 +43,7 @@ export const RULES = Object.freeze([
   { id: 'R-fit', kind: 'authoring', phase: 'A 体裁', codes: ['bodyBottom', 'bodyRight', 'tateBodyHead', 'bodyConclCol', 'bodyLeft', 'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak', 'compLayout'] },
   { id: 'R-title', kind: 'authoring', phase: 'A 体裁', codes: ['titleLong', 'titleLongEn', 'titleColon', 'tateTitle'] },
   { id: 'R-concl', kind: 'authoring', phase: 'A 体裁', codes: ['conclLong', 'conclLongEn', 'conclOverflow'] },
-  { id: 'R-headings', kind: 'authoring', phase: 'A 体裁', codes: ['secHeading', 'narrHeadingDiffers'] },
+  { id: 'R-headings', kind: 'authoring', phase: 'A 体裁', codes: ['secHeading', 'narrHeadingDiffers', 'kickerLong', 'kickerPlace', 'kickerSlide'] },
   { id: 'R-style', kind: 'authoring', phase: 'A 体裁', codes: ['desuMasu', 'punctMixed'], applies: (f) => (f.lang === 'ja' ? null : 'lang') },
   { id: 'R-math', kind: 'authoring', phase: 'A 体裁', codes: ['rawMath', 'katexError'] },
   { id: 'R-purpose', kind: 'authoring', phase: 'A 体裁', codes: ['cardsHint'] },

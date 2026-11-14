@@ -214,6 +214,24 @@
    "note": "Renamed from このサンプルのように作る / Make one like this sample (2026-11-05, owner): the lesson follows the sample, it does not copy it. The noun stays サンプル."
   },
   {
+   "id": "kicker",
+   "group": "Format and files",
+   "en": "Kicker",
+   "ja": "肩見出し",
+   "definition": "A short line above a slide's heading (<p class=\"kicker\"> just before the <h2>); first use in a document: 肩見出し（見出しの上の短い言葉） / kicker (a short line above the heading).",
+   "avoid": {
+    "ja": [
+     "見出しの上の札",
+     "キッカー"
+    ],
+    "en": []
+   },
+   "internal": ".kicker",
+   "decided": "2026-11-14",
+   "by": "d5",
+   "note": "The established editorial term; 小見出し would read as .sub, ラベル and タグ are sample-label and sample-tag (backlog #195)."
+  },
+  {
    "id": "sample-tag",
    "group": "Format and files",
    "en": "Tag",

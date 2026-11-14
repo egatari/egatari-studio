@@ -5,7 +5,7 @@
 //    部品の写しは index.js（と使用条件）だけで README.md・demo.html・CHANGELOG.md はない（vendor/.npmignore）。既定の声の wav もない（tts/voices.json と tts/refvoices.py が初めての tts で取り寄せる）
 // 2. 入れる：npm install <tarball>（--prefer-offline・--ignore-scripts）。@fontsource は入らない（devDependencies）
 // 3. npx egatari --version・doctor・new（相対パスは cwd から）・check・build・sheet・build --portable
-// 3a. 字体：egatari の包みは既定の 3 つ（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と同梱のテーマの字体（asagi の Zen Maru Gothic）。
+// 3a. 字体：egatari の包みは既定の 3 つ（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と同梱のテーマの字体（asagi の Zen Maru Gothic、bengara の見出しの Fraunces）。
 //     ほかの 6 つは別の包み @egatari/fonts-extra（packages/fonts-extra を npm pack したもの）。既定の教材と asagi の教材はネットワークなしで組め、
 //     CSS で選べる字体（Klee One）を名指した教材は、その包みがなければ組み立てと品質チェックが入れ方を言い（fontsExtraMissing）、その包みを入れれば組める
 // 3b. doctor：部品の写しの index.js が固定と manifest の sha256 に合う（parts）。部品庫 1.x・2.x の部品を使う教材が、入れた包みで組める
@@ -96,9 +96,9 @@ await t('npm pack：部品の写しは index.js と使用条件だけ（README.m
   assert.deepEqual(files.filter((f) => /\.wav$/.test(f)), []);
 });
 
-await t('npm pack：字体は既定の 3 つと同梱のテーマの Zen Maru Gothic だけ。ほかの 6 つ（FONT_LIST の extra）は入らない', () => {
+await t('npm pack：字体は既定の 3 つと同梱のテーマの Zen Maru Gothic・Fraunces だけ。ほかの 6 つ（FONT_LIST の extra）は入らない', () => {
   const files = packed.files.map((f) => f.path);
-  assert.deepEqual(DEFAULTS.map((f) => f.family).sort(), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Source Sans 3', 'Zen Maru Gothic']);
+  assert.deepEqual(DEFAULTS.map((f) => f.family).sort(), ['BIZ UDPGothic', 'BIZ UDPMincho', 'Fraunces', 'Source Sans 3', 'Zen Maru Gothic']);
   for (const f of DEFAULTS) for (const x of ['400.css', '700.css', 'LICENSE']) assert.ok(files.includes(`fonts/@fontsource/${fontName(f)}/${x}`), `missing ${fontName(f)}/${x}`);
   assert.equal(EXTRA.length, 6);
   for (const f of EXTRA) assert.deepEqual(files.filter((x) => x.includes(`/${fontName(f)}/`)), [], f.family);

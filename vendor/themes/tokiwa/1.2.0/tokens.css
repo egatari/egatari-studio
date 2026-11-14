@@ -1,0 +1,27 @@
+/* 常盤（tokiwa）：青みの深い緑。理科・自然・学校向け。見出しは太い下線と題の前の四角、表紙は上に太い帯、箇条書きの印も四角。
+   赤との差を保つため緑を少し青に寄せた（1 型の模擬で赤との差 ΔE 33 → 40）。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #0a5753;                 /* 常盤 */
+  --lit: #F5C000;                    /* 光と照らされる側。菜の花の黄（白地 1.7:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。default と同じ値（どのテーマでも赤い玉は同じ赤）。名前か頭文字を添え、白・黒と地に近い色には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
+}
+/* look heading: thick-square */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom-width:5px;padding-left:34px}
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2::before{content:"";position:absolute;left:0;top:14px;width:20px;height:20px;background:var(--base)}
+/* /look */
+/* look cover: top-band-wide */
+.slide.cover::before{height:22px}
+/* /look */
+/* 箇条書きの印は四角 */
+.slide .body > ul{list-style:square}

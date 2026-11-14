@@ -1,0 +1,66 @@
+/* 弁柄（bengara）：暖かい紙の地に深い墨の字、強調は弁柄の 1 色だけ。見出しは表示用のセリフ Fraunces（OFL。ラテン文字）と
+   BIZ UDP明朝（日本語）、本文は既定の BIZ UDPゴシック。飾りは細い線だけにして余白を広く見せる（箱の位置と大きさは既定のまま）。
+   結論の行は枠も地もなく、上に弁柄の線（look concl: rule）。のちの背景の画像（#141）の字の下に敷く半透明の地 --scrim を持つ。#195 */
+:root{
+  --base: #26364A;                 /* 墨の藍。用語・補足（紙の地 11.0:1） */
+  --emph: #A3361C;                 /* 弁柄。結論・問題（紙の地 6.1:1）。強調はこの 1 色だけ */
+  --accent2: #3F6468;              /* 2 つ目の系列。くすんだ青緑（紙の地 5.8:1） */
+  --fg: #24211D;                   /* 深い墨（紙の地 14.4:1） */
+  --bg: #F7F2E7;                   /* 暖かい紙 */
+  --muted: #5E574E;                /* 温かい灰（紙の地 6.4:1） */
+  --line: #D6CCBA;
+  --title: #24211D;
+  --rule: #3A352E;                 /* 見出しの下の線は墨（強調の色を飾りに使わない） */
+  --cover-bg: #F1EADB;
+  --sec-bg: #26364A;
+  --sec-fg: #F7F2E7;
+  --concl-bg: #F7F2E7;             /* 結論の行は地のまま（枠も地もない。上の線と太字で示す） */
+  --base-tint: #D9DCDD;
+  --base-wash: #EFEBE2;
+  --term-tint: #EFEBE2;
+  --emph-tint: #F2E2D8;
+  --comp-tint: #E6DCC9;
+  --series-1: var(--base);
+  --series-2: var(--emph);
+  --series-3: var(--accent2);
+  --series-4: #8C8478;
+  --kicker-color: var(--emph);
+  --font-display: "Fraunces", var(--font-mincho);
+  /* 背景の画像（#141）の上の字の下に敷く、紙の色の半透明の地（強いほうは小さな字や細い線の下に） */
+  --scrim: rgba(247, 242, 231, .86);
+  --scrim-strong: rgba(247, 242, 231, .94);
+  --lit: #F2B705;                    /* 光と照らされる側。山吹（紙の地 1.7:1。字の色ではなく、輪郭線と一緒に描く） */
+  /* 物の色（format spec §8.4）：内容そのものである色。default と同じ値（どのテーマでも赤い玉は同じ赤）。名前か頭文字を添え、白・黒と地に近い色には輪郭線 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
+  /* 量の色の段（format spec §8.4。#200）：低→高の 5 段（ヒートマップ・密度・速さ）。基調色の色相で、OKLCH の明るさが単調に下がり、--ramp-5 は地と 7.5:1（3:1 以上）。分類や意味には使わない。1.0.0 */
+  --ramp-1: #E2E9F2;
+  --ramp-2: #B6C2D2;
+  --ramp-3: #899AB0;
+  --ramp-4: #60738C;
+  --ramp-5: #3B4F67;
+}
+@supports (color: color-mix(in oklch, red 10%, white)){
+  :root{
+    --base-tint: color-mix(in oklch, var(--base) 16%, var(--bg));
+    --base-wash: color-mix(in oklch, var(--base) 5%, var(--bg));
+    --term-tint: color-mix(in oklch, var(--base) 5%, var(--bg));
+    --emph-tint: color-mix(in oklch, var(--emph) 10%, var(--bg));
+    --scrim: color-mix(in srgb, var(--bg) 86%, transparent);
+    --scrim-strong: color-mix(in srgb, var(--bg) 94%, transparent);
+  }
+}
+/* 見出しの字：ラテン文字は Fraunces、日本語は BIZ UDP明朝（字ごとに後ろの字体へ） */
+.slide h2,.cover h1,.sec h1,.sec h2{font-family:var(--font-display);font-variant-numeric:lining-nums}   /* Fraunces の既定の数字は高さのそろわない形：見出しの「3」が沈まないように */
+/* look concl: rule */
+.slide:not(.layout-tate) .concl{left:48px;border:0;border-top:2px solid var(--emph);border-radius:0;background:transparent;justify-content:flex-start;padding-left:0}
+/* /look */

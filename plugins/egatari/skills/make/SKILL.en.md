@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 67a95271**
+**Instruction version: 6e39f0ec**
 **Skill version: 0.6.11**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -77,21 +77,21 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `67a95271`
+Pack version: `6e39f0ec`
 
-You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and script in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
+You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
 **Before you start (the most common failures):**
 
-- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep the lesson short (5–8 slides). When the request gives an outline and a range of its slides, write exactly the slides of that range: the editor asks for at most 6 at a time, so they fit.
+- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep the lesson short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).
 - **Sizes on the 1280×720 slide** (the quality checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and parts, is at least 24 px.**
 - **Charts and figures:** parts draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the part, not the text. A part of 380 px leaves room for one short line; with two lines, use 330 px.
 - **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox="0 0 560 320" width="560" height="320">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a part when one fits.
 
 ## 1. Output format
 
-- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. Do not output files, a canvas or attachments: write both code blocks in the body of your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the lesson would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).
-- **R-outline** When the request asks for an **outline only** (a long lesson made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table with the columns `#`, heading and point (one line), one row per slide, every slide of the lesson in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
+- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. No files, canvas or attachments: write both blocks in your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the lesson would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).
+- **R-outline** When the request asks for an **outline only** (a long lesson made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
 - **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given a lesson that already has ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
 
 ## 2. deck.html
@@ -121,6 +121,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 ### 2.2 Slides
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
+- Optional kicker (a short line above the heading): one `<p class="kicker">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
 - Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
@@ -148,11 +149,11 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 
 ### 2.6 Parts
 
-- **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Function formulas are arithmetic expressions only (`Math.exp(x)`, `x**2`); they are never run as code. Use parts only where motion explains something; most slides need none.
+- **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Formulas are arithmetic only (`Math.exp(x)`, `x**2`), never run as code. Use parts only where motion explains something; most slides need none.
 
 ### 2.7 Choosing a representation
 
-- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table lists every part; use only those in the text you were given (§3, and the part sets included). If a part that is not included would fit better, say so in a one-line note.
+- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table names every part, but use only those described here (§3 and the included part sets). If a part that is not included would fit better, say so in a one-line note.
 
 Choose candidate parts from the set references.
 
@@ -162,7 +163,7 @@ Choose candidate parts from the set references.
 
 - **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.
 - **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.
-- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a part of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes. Text in figures is at least 24 px.
+- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a part of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes.
 - **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole lesson (`、。` or `，．`). English slides: short phrases, sentence case.
 
 ## 3. Part catalog

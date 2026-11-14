@@ -28,6 +28,12 @@
   --obj-pink:    #F27BB0;
   --obj-orange:  #F28C1A;
   --obj-gray:    #8C8C8C;
+  /* 量の色の段（format spec §8.4。#200）：低→高の 5 段（ヒートマップ・密度・速さ）。基調色の色相で、OKLCH の明るさが単調に下がり、--ramp-5 は地と 8.4:1（3:1 以上）。分類や意味には使わない。1.3.0 */
+  --ramp-1: #E2E9ED;
+  --ramp-2: #B7C3CA;
+  --ramp-3: #8A9BA5;
+  --ramp-4: #627580;
+  --ramp-5: #3D505B;
 }
 @supports (color: color-mix(in oklch, red 10%, white)){
   :root{
@@ -38,6 +44,8 @@
 }
 /* look heading: band */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{left:0;right:0;top:0;padding:26px 48px 18px;background:var(--base);color:var(--sec-fg,#fff);border-bottom:4px solid var(--rule)}
+.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker{--kicker-color:var(--sec-fg,#fff);z-index:1}
+.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker + h2{padding-top:48px;padding-bottom:4px}
 /* /look */
 /* look cover: left-bar */
 .slide.cover{text-align:left}

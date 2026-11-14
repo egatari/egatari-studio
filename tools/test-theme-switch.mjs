@@ -143,9 +143,9 @@ try {
     await clickCommand(page, '#b-theme-switch');
     await page.waitForSelector('#dlg[open] #theme-switch-list');
     const labels = await page.$$eval('#theme-switch-list .theme-opt', (a) => a.map((x) => x.textContent.trim()));
-    ok(JSON.stringify(labels) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け']), 'chooser: the seven bundled themes by colour name with what each suits (business is not offered), the current one marked ' + JSON.stringify(labels));
+    ok(JSON.stringify(labels) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け', '弁柄 講演・読み物・式典向け']), 'chooser: the eight bundled themes by colour name with what each suits (business is not offered), the current one marked ' + JSON.stringify(labels));
     const sw = await page.$$eval('#theme-switch-list .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
-    ok(sw.length === 14 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(186, 60, 5)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
+    ok(sw.length === 16 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(186, 60, 5)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
     ok((await page.textContent('#theme-switch-load')) === 'テーマを読み込む…' && !(await page.$('#theme-switch-mine')), 'chooser: 「テーマを読み込む…」 (the same entry as New ③); no 「自分のテーマ」 heading while there are none');
     const words = [await page.textContent('#dlg-title'), await page.textContent('#theme-switch-lead'), await page.textContent('#dlg-change'), await page.textContent('#dlg-cancel')];
     ok(JSON.stringify(words) === JSON.stringify(['テーマを変更', 'スライドの中身はそのままで、色・書体・ロゴが替わります。', '変更', 'キャンセル']), 'chooser: title, lead and buttons ' + JSON.stringify(words));
@@ -269,7 +269,7 @@ try {
     await page.waitForSelector('#dlg[open] #theme-opt-zipteal', { timeout: scaled(30000) });
     await waitLoads(page, n).catch(() => {});
     const rows = await page.$$eval('#theme-switch-list > *', (a) => a.map((x) => x.textContent.trim()));
-    ok(JSON.stringify(rows) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け', '自分のテーマ', 'ZIP の青緑']), 'zip: after loading, the list shows the theme under 「自分のテーマ」 by its title ' + JSON.stringify(rows));
+    ok(JSON.stringify(rows) === JSON.stringify(['藍 研究・講義向け （今のテーマ）', '墨 報告・提案向け', '国語 国語・和の題材向け', '常盤 理科・自然・学校向け', '江戸紫 研究・一般の講演向け', '焦茶 人文・歴史・地域向け', '浅葱 小学校・広報・案内向け', '弁柄 講演・読み物・式典向け', '自分のテーマ', 'ZIP の青緑']), 'zip: after loading, the list shows the theme under 「自分のテーマ」 by its title ' + JSON.stringify(rows));
     const sw = await page.$$eval('#theme-opt-zipteal ~ .swatch, label[for=theme-opt-zipteal] .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
     ok(sw.includes('rgb(10, 125, 110)'), 'zip: its emphasis swatch is read from the stored tokens.css ' + JSON.stringify(sw));
     const switchList = await page.$$eval('#theme-switch-list input', (a) => a.map((x) => [x.value, x.closest('label').querySelector('span:not(.swatch):not(.hint)').textContent]));
@@ -316,7 +316,7 @@ try {
         await clickCommand(page, '#b-theme-switch');
         await page.waitForSelector('#dlg[open] #theme-switch-list');
         const title = await page.textContent('#dlg-title'), labels = await page.$$eval('#theme-switch-list .theme-opt', (a) => a.map((x) => x.textContent.trim()));
-        ok(title === 'Change theme' && JSON.stringify(labels) === JSON.stringify(['Indigo For research and classes (current)', 'Ink For reports and proposals', 'Kokugo For Japanese language arts', 'Evergreen For science, nature and schools', 'Edo purple For research and public talks', 'Dark brown For humanities, history and local studies', 'Teal For primary schools, publicity and guides']) && (await page.textContent('#theme-switch-load')) === 'Load theme…' && (await page.textContent('#dlg-change')) === 'Change' && (await page.textContent('#dlg-cancel')) === 'Cancel', 'en: the chooser in English ' + JSON.stringify(labels));
+        ok(title === 'Change theme' && JSON.stringify(labels) === JSON.stringify(['Indigo For research and classes (current)', 'Ink For reports and proposals', 'Kokugo For Japanese language arts', 'Evergreen For science, nature and schools', 'Edo purple For research and public talks', 'Dark brown For humanities, history and local studies', 'Teal For primary schools, publicity and guides', 'Red ochre For talks, reading and ceremonies']) && (await page.textContent('#theme-switch-load')) === 'Load theme…' && (await page.textContent('#dlg-change')) === 'Change' && (await page.textContent('#dlg-cancel')) === 'Cancel', 'en: the chooser in English ' + JSON.stringify(labels));
         await clickDlg(page, '#dlg-cancel');
       }
     });

@@ -223,6 +223,7 @@ export const FONT_LIST = Object.freeze([
   { family: 'Zen Maru Gothic', pkg: '@fontsource/zen-maru-gothic', group: 'ja', weights: [400, 700] },
   { family: 'Klee One', pkg: '@fontsource/klee-one', group: 'ja', weights: [400, 600], extra: true },
   { family: 'Source Sans 3', pkg: '@fontsource/source-sans-3', group: 'en', weights: [400, 700], italic: true, default: true },
+  { family: 'Fraunces', pkg: '@fontsource/fraunces', group: 'en', weights: [400, 700] },
   { family: 'Source Serif 4', pkg: '@fontsource/source-serif-4', group: 'en', weights: [400, 700], italic: true, extra: true },
   { family: 'Andika', pkg: '@fontsource/andika', group: 'en', weights: [400, 700], italic: true, extra: true },
   { family: 'Atkinson Hyperlegible Next', pkg: '@fontsource/atkinson-hyperlegible-next', group: 'en', weights: [400, 700], italic: true, extra: true },
