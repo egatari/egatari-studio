@@ -514,7 +514,7 @@ for (const mode of ['talk', 'learn']) {
   let h = fs.readFileSync(hand, 'utf8');
   const at2 = h.indexOf('// ---- m-sweep');
   h = h.slice(0, at2) + '// ---- m-score (hand-made)\n' + fs.readFileSync(partFile('score', '2.0.0'), 'utf8').replace(/<\/script/gi, '<\\/script') + '\n' + h.slice(at2);
-  h = h.replace('<m-sweep aria-label="s">', '<m-score aria-label="a scale"></m-score><m-sweep aria-label="s">');
+  h = h.replace('<m-sweep translate="no" aria-label="s">', '<m-score aria-label="a scale"></m-score><m-sweep translate="no" aria-label="s">');   // 組み立てがパーツに translate="no" を付ける（#194）
   fs.writeFileSync(hand, h);
   const m = await open(fileUrl(hand));
   const x = await m.p.evaluate(() => ({ errs: DECK.componentErrors.map((e) => ({ tag: e.tag, phase: e.phase, reason: e.reason, msg: e.msg })), score: !!customElements.get('m-score'), sweep: !!customElements.get('m-sweep'),
