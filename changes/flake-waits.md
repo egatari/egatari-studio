@@ -1,0 +1,3 @@
+### Fixed
+
+- Tests only (backlog #206): two `test-app` checks waited a fixed time or for the wrong signal and failed now and then on busy CI runners. After sending a comment, the test now waits for the note box to close and the preview's `inert` to clear; the box closes only after the save round-trip (`POST /__dev/comment`), which a fixed 400 ms did not always cover. After a reload, the theme-folder test now waits until the remembered folder's name, its permission state and the first screen's label all agree; startup sets the folder handle first and asks for the permission state afterwards, so waiting for the name alone could read the state before it was set
