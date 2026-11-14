@@ -15,6 +15,12 @@
   --obj-pink:    #F27BB0;
   --obj-orange:  #F28C1A;
   --obj-gray:    #8C8C8C;
+  /* 量の色の段（format spec §8.4。#200）：低→高の 5 段（ヒートマップ・密度・速さ）。基調色の色相で、OKLCH の明るさが単調に下がり、--ramp-5 は地と 8.2:1（3:1 以上）。分類や意味には使わない。1.3.0 */
+  --ramp-1: #D7EDEB;
+  --ramp-2: #A2CAC7;
+  --ramp-3: #69A5A0;
+  --ramp-4: #34807B;
+  --ramp-5: #035955;
 }
 /* look heading: thick-square */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom-width:5px;padding-left:34px}

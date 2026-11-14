@@ -10,11 +10,11 @@ Always reply in the language the user writes in. Write slides and narration in t
 書き方の決まりは `egatari:make` に従う（先に読む）。make が入っていなければ、Claude Code は `/plugin install egatari@egatari`、Codex は `codex plugin add egatari@egatari` を案内する。
 
 <!-- generated: instruction-version -->
-**指示の版：67a95271**
-**スキルの版：0.6.11**
+**指示のバージョン：f086a47b**
+**スキルのバージョン：0.6.12**
 <!-- /generated: instruction-version -->
 
-make の「スキルの版」の行と違えば、両方のプラグインを更新するよう利用者に伝える。
+make の「スキルのバージョン」の行（前のバージョンでは「スキルの版」）と違えば、両方のプラグインを更新するよう利用者に伝える。
 
 インストール：
 
@@ -50,7 +50,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
 - `NG browser`：check・sheet・comment-shots・video に要る。表示の手順（Chrome か Edge を入れる、`npx playwright-core install chromium`、または `CHROME_PATH`）を案内する
 - `-- uv`：音声（`tts`）にだけ要る。`-- ffmpeg`：動画（`video`）にだけ要る。その作業をするときに、表示の入れ方を案内する
 - 包みを取れない（ネットにつながらないなど）ときは、出た表示をそのまま利用者に見せる
-- `ok   skills   指示の版 …（Studio X.Y.Z）`：この行の Studio のバージョンと、上の「スキルの版」の行のバージョンを比べる（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）。Studio のバージョンのほうが新しいときだけ、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（make スキルと合わせて 1 回）。<バージョン> はスキルのバージョン。同じバージョンか、スキルのほうが新しいときは何も言わない
+- `ok   skills   指示のバージョン …（Studio X.Y.Z）`（前のバージョンの egatari では `指示の版 …`）：この行の Studio のバージョンと、上の「スキルのバージョン」の行のバージョンを比べる（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）。Studio のバージョンのほうが新しいときだけ、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（make スキルと合わせて 1 回）。<バージョン> はスキルのバージョン。同じバージョンか、スキルのほうが新しいときは何も言わない
   - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
   - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。`npx egatari@0.6.x skills update` で更新できます。」
 
@@ -72,7 +72,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
 
 ## CLI：構成案から配布まで
 
-1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業）、テーマ（同梱で選べるのは `default`（藍）・`sumi`（墨）・`kokugo`（国語）・`tokiwa`（常盤）・`murasaki`（江戸紫）・`kogecha`（焦茶）・`asagi`（浅葱）。報告・提案・ピッチなら `sumi`、国語なら `kokugo`、ほかは `default`。`business` は新しい教材には使わない。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か教材のフォルダの `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。R-dialogue）
+1. **材料を読む**：TeX の原稿（と、あればレジュメ）。発表時間、出口（学会発表／授業）、テーマ（同梱で選べるのは `default`（藍）・`sumi`（墨）・`kokugo`（国語）・`tokiwa`（常盤）・`murasaki`（江戸紫）・`kogecha`（焦茶）・`asagi`（浅葱）・`bengara`（弁柄）。報告・提案・ピッチなら `sumi`、国語なら `kokugo`、ほかは `default`。`business` は新しい教材には使わない。機関のロゴ入りのテーマなど同梱でないものは、利用者のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）か教材のフォルダの `themes/<名前>/` に置いてあるものを名前で選ぶ。見つからなければ組み立てが `theme not found` と警告して `default` で組むので、その警告が出たら利用者に置き場所を確かめる）を確かめる。分からなければ聞く。話者は既定で 1 人（掛け合いは頼まれたときだけ。R-dialogue）
 2. **構成案を文字で書いてユーザーに見せる**（ここが一番大事。TeX しかないときは、レジュメの役割をここで果たす）
    - 書く前に、パーツの一覧 `<root>/vendor/components/CATALOG.md` を全部読む（下の「CLI：パーツ」）
    - 形：番号付きの並びで、1 枚に 1 項目。各項目に、この順で書く：見出し／**伝えたいこと**／**おすすめのパーツ**（理由）／結論の行／材料
@@ -140,7 +140,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
      logos/cover.png
      LICENSE      ロゴ・字体の使用の条件（Egatari ファイルに一緒に入る）
    ```
-   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.11/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
+   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.12/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
    - 字体を替えるなら `theme.json` の `fonts`（Studio が入れられる一覧から）。
    - 表紙の背景に画像を敷くには、画像をテーマのフォルダに置き、`tokens.css` で相対の `url()` を書く（例：`--cover-bg: url(cover.png) center/cover no-repeat;`）。組み立てが画像を埋め込み、テーマの hash と Egatari ファイルにも入る。テーマのフォルダの外のファイルは使えない（警告が出て拒まれる）。ないファイルは警告が出て `url()` のまま残る。ロゴは `theme.json` の `logos`。
 3. **確かめる**：サンプルの教材を `--theme <名前>` で組み、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
@@ -197,7 +197,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
    ### What you did
    ### What happened (and what you expected)
    ### Version
-   現在の版                ← npx egatari@0.6.x --version の出力（と、make・studio の指示の版）
+   現在の版                ← npx egatari@0.6.x --version の出力（と、make・studio の指示のバージョン）
    ### Browser
    ### OS
    ### Context

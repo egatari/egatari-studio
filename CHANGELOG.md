@@ -8,6 +8,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.12] - 2026-11-15
+
+### Added
+
+- `tools/test-particles-zero.mjs`: a lesson whose `m-particles` is sized 0 × 0, 0 wide or 30 px wide by CSS becomes ready, draws every step and logs no page error or negative size
+- 肩見出し / kicker: an optional short line above a slide's heading, `<p class="kicker">` just before the `<h2>` (backlog #195). It shows at step 0, is not part of the heading, and English is shown in capitals by the theme (type it normally). Placement and size come from `kit/layouts.css` and the theme tokens `--kicker-size` (24px), `--kicker-color` and `--kicker-weight`; on a cover or chapter divider it sits below the top band. Themes default 1.5.0 and sumi 1.3.0 add the tokens; sumi shows the kicker over its heading band. Earlier theme versions are kept
+- Quality check (command line and editor, through the shared `kit/core/kicker.mjs`, rule R-headings): `kickerLong` (over 24 full-width units, or 40 characters in Latin script), `kickerPlace` (more than one, or not just before the heading) and `kickerSlide` (info: on a cover, chapter divider or vertical slide). The AI instructions say how to add one in one line
+- Glossary: new term kicker (肩見出し), decided 2026-11-14
+- A new bundled theme, 弁柄 Red ochre (`bengara` 1.0.0, “For talks, reading and ceremonies”; name decided 2026-11-14): warm paper (`--bg` #F7F2E7), deep ink text, one accent (弁柄 `--emph` #A3361C). Headings use the display serif Fraunces (OFL) for Latin and BIZ UDPMincho for Japanese; body text stays BIZ UDPGothic. Decoration is thin rules only, the kicker is in the accent, and the conclusion line has no frame or ground, only a line above it (new look `concl: rule` in `kit/core/theme-shapes.mjs`). Text contrast on the paper: body 14.4:1, terms 11.0:1, emphasis 6.1:1, muted 6.4:1. It also has `--scrim` and `--scrim-strong`, a translucent ground in the paper colour for text on a background picture later (#141)
+- Fraunces 400 and 700 (`@fontsource/fraunces` 5.3.0, OFL) is in the font list and in the package `egatari`, since a bundled theme uses it (about 0.1 MB)
+- Colour ramps `--ramp-1` … `--ramp-5` (format spec §8.4, backlog #200) in every bundled theme: five stops from low to high in the base colour's hue, OKLCH lightness 0.93, 0.81, 0.68, 0.55, 0.42, and `--ramp-5` 7.5–9.1:1 on the background. Parts that draw magnitudes use them (`m-heatmap`, `m-map-japan`, `m-map-world` from components 2.7.0). New theme versions: `default` 1.5.0, `sumi` 1.3.0, and `asagi`, `business`, `kogecha`, `kokugo`, `murasaki`, `tokiwa` 1.3.0; the earlier versions are kept, so a lesson that recorded one builds as before. `tools/test-themes.mjs` checks the ramps in every theme
+
+### Changed (API)
+
+- `node kit/check.mjs --json`: the info `compOrderNoise` is no longer a finding. Step comparisons accepted as anti-aliasing noise are listed in a new top-level `renderNoise` array (`{slide, id, step, data, msg}`) and are not counted in `counts`, `rules` or `summary`. Whether such noise appears changes from run to run, so the same lesson gave different info counts (parts-showcase: 89–95). Comparisons with 0 differing pixels (only the PNG bytes differed) are not listed at all. The error `compOrder` is unchanged (backlog #210)
+
+### Changed
+
+- Parts library 2.8.0 is now the default (release 22ad4bb, tarball eef78dd1…). `m-flow`, `m-tree`, `m-fishbone` and `m-quad` 2.1.0 mark what they draw for the geometry check; drawing is unchanged. `m-particles` 2.0.2 no longer hangs the page when the element is narrower than about 45 px. The other parts' READMEs follow the glossary; their versions are unchanged. The parts gallery is re-synced to the same release
+- The m-cycle purposes text is 「順を追って 1 つずつ」 (was 「1 つの段階ずつ」); its terms-allow entry is removed
+- Japanese wording: the version lines at the top of the AI instructions and the skills are now 「指示のバージョン：…」 and 「スキルのバージョン：…」 (were 指示の版 and スキルの版), and `egatari doctor` prints 「指示のバージョン …（Studio X.Y.Z）」. `egatari doctor`, `tools/make-llm-guide.mjs` and the studio skill still read the old names, so a skill installed from an earlier version is compared as before (backlog #205). The terms-allow entry for 指示の版／スキルの版 stays until v0.6.14, two releases after this one, and is removed then
+- When the box that overflows the body (bodyBottom, bodyRight and the vertical-layout ones) is a part, the quality check names the part (its tag, its number on the slide and its aria-label), as it already did for compLayout (#196)
+- A lesson's own part may live in components/<tag without m->/ (as before) or in components/<tag>/. If one tag has both folders, the build stops and names the two paths. A part that is not found says where a lesson's own part goes (#197)
+- Egatari Player 1.6.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. The slide layout CSS places the new kicker (肩見出し, `<p class="kicker">` before the `<h2>`): 16px from the top, 24px on a cover or chapter divider, and the heading moves down 8px only on slides that have one. Slides without a kicker look the same; playback, steps and timing are unchanged
+- The skill version line of the make and studio skills (「スキルのバージョン」 / "Skill version") now reads 0.6.12, and the instruction version is f086a47b. An installed skill showing an older line (0.6.11, or the old name 「スキルの版」) should be updated; `egatari doctor` compares them
+- Browser translation leaves math, code and parts alone: the build marks rendered formulas, code, pre and every part element with translate="no" (spec §8.0 Browser translation), and the book does the same for its formulas and code. Headings, body text, conclusion lines and captions stay translatable. An author's own translate attribute is kept (#194)
+
+### Fixed
+
+- The quality check hides the bar's hint (#dt-hint) before taking its screenshots, as it already hid the bar and short notices (#198)
+
 ## [0.6.11] - 2026-11-14
 
 ### Added
@@ -1504,7 +1535,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.11...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.12...HEAD
+[0.6.12]: https://github.com/egatari/egatari-studio/compare/v0.6.11...v0.6.12
 [0.6.11]: https://github.com/egatari/egatari-studio/compare/v0.6.10...v0.6.11
 [0.6.10]: https://github.com/egatari/egatari-studio/compare/v0.6.9...v0.6.10
 [0.6.9]: https://github.com/egatari/egatari-studio/compare/v0.6.8...v0.6.9

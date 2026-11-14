@@ -36,6 +36,8 @@ NOT_FROM_TEXT = {
     "底本の編者による脚注は省略しました。": "Aozora colophon",
     "扭": "gaiji note", "眶": "gaiji note",
     "（大正四年九月）": "date line of the text (in parentheses in the source)",
+    "さいりよう": "a ruby reading of the source, named in the colophon note (ruby is removed from the plain text)",
+    "いしゆみ": "a ruby reading of the source, named in the colophon note (ruby is removed from the plain text)",
     "仕方がない": None,  # checked: in the text
 }
 

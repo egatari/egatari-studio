@@ -6,7 +6,7 @@
 // 1. diffStats・judgeRenders（作った RGBA の画面で）
 // 2. ブラウザ：domSnapshot（shadow DOM を含む・何もそろえない・canvas は null・部品の箱と面積）と、本物の画面に縁のアンチエイリアスの揺れ・大きな違いを足した compareRenders
 // 3. 品質チェックの D：DOM に出ない形で画素だけを変える試験用の部品（tools/fixtures/render-noise の m-noise）。縁の揺れだけのスライドは compOrder を出さず
-//    （compOrderNoise に記録する）、円が 40 px 動くスライドは出す
+//    （--json の renderNoise に記録する。指摘ではない）、円が 40 px 動くスライドは出す
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -280,13 +280,14 @@ await b.close();
 
 // ---- 3. 品質チェックの D（呼び出し順への依存）
 const fx = path.join(ROOT, 'tools/fixtures/render-noise/deck.html');
-await t('check D: renderer-like noise with an identical DOM is not flagged but logged (compOrderNoise); a real move is flagged (compOrder)', async () => {
+await t('check D: renderer-like noise with an identical DOM is not flagged but logged (renderNoise); a real move is flagged (compOrder)', async () => {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), fx, '--json'], { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 << 20 });
   const j = JSON.parse(r.stdout);
   const co = j.results.filter((x) => x.code === 'compOrder').map((x) => `${x.id}:${x.data.k}`);
   assert.deepEqual(co, ['s-big:1', 's-big:2'], r.stdout.slice(0, 2000));
-  const nz = j.results.filter((x) => x.code === 'compOrderNoise').map((x) => `${x.id}:${x.data.k}:${x.sev}`);
-  assert.deepEqual(nz, ['s-small:1:info', 's-small:2:info'], 'every acceptance is logged (info compOrderNoise)');
+  const nz = (j.renderNoise || []).map((x) => `${x.id}:${x.data.k}`);
+  assert.equal(j.results.filter((x) => x.code === 'compOrderNoise').length, 0, 'accepted noise is not a finding (backlog #210)');
+  assert.deepEqual(nz, ['s-small:1', 's-small:2'], 'every acceptance is logged in renderNoise, not in results');
 });
 await t('check D fixture: the small slide really differs in pixels (else the case above proves nothing)', async () => {
   const out = path.join(work, 'render-noise.html');

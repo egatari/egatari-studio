@@ -1,0 +1,30 @@
+/* 浅葱（asagi）：くすんだ浅葱に丸ゴシック（Zen Maru Gothic、OFL。組み立てが使う字だけを埋め込む：theme.json の fonts）、淡い地。
+   小学校・広報・案内向け。見出しは淡い地の角丸、結論の行も角丸、表紙の右上に大きな丸。形は kit/core/theme-shapes.mjs の断片（theme.json の look） */
+:root{
+  --base: #1d6a85;                 /* 浅葱（白地 5.8:1） */
+  --bg: #fbfaf6;
+  --cover-bg: #eaf3f5;
+  --font-sans: "Zen Maru Gothic", "BIZ UDPGothic", sans-serif;
+  --lit: #FFCE3A;                    /* 光と照らされる側。明るい黄（淡い地 1.4:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。小学校・広報向けに少し明るく。名前か頭文字を添え、白・黒と地に近い色には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #262626;
+  --obj-red:     #E8383D;
+  --obj-green:   #36A852;
+  --obj-yellow:  #FFDC1E;
+  --obj-blue:    #2B7BE0;
+  --obj-brown:   #915F33;
+  --obj-purple:  #9650B8;
+  --obj-pink:    #F58CBC;
+  --obj-orange:  #F59A23;
+  --obj-gray:    #949494;
+}
+/* look heading: soft */
+.slide:not(.cover):not(.sec):not(.layout-tate) > h2{border-bottom:0;background:var(--base-wash);border-radius:16px;padding:8px 22px}
+/* /look */
+/* look cover: circle */
+.slide.cover::before{left:auto;right:-80px;top:-80px;width:300px;height:300px;border-radius:50%;background:var(--base-tint)}
+/* /look */
+/* look concl: rounded */
+.slide:not(.layout-tate) .concl{border:2.3px solid var(--emph);border-radius:36px;padding-left:24px}
+/* /look */

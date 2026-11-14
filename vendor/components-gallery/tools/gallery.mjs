@@ -12,7 +12,7 @@
 //                                     tools/identity.mjs; a tarball byte-exact against manifest.tarball). The parts are grouped by purpose as in Studio's new-deck list (#124):
 //                                     a part goes under the tile of its first purpose that has one (tile own, or {into}); else under
 //                                     its set, or そのほか. With --previous, parts not in it are marked new, parts with another version changed,
-//                                     and parts with the same version but another demo.html or README.md サンプルが変わった. The page is public, so its
+//                                     and parts with the same version but another demo.html サンプルが変わった (a README.md change alone is no mark: the label is about the sample). The page is public, so its
 //                                     words are Studio's (docs/terms.json: パーツ, サンプル, ステップ, パーツライブラリ).
 //                                     --samples-href '<link with {tag}>' --samples-tags m-flow,m-bars,…  (both or neither): under the
 //                                     summary of each listed part, a line linking to Studio's samples that use it ({tag} is replaced
@@ -230,7 +230,7 @@ function packGallery(){
     const q = prev.components?.[name];
     if (!q) return '新しい';
     if (q.version !== c.version) return '変わった';
-    return ['demo.html', 'README.md'].some((f) => (q.files || {})[f] !== (c.files || {})[f]) ? 'サンプルが変わった' : '';
+    return (q.files || {})['demo.html'] !== (c.files || {})['demo.html'] ? 'サンプルが変わった' : '';
   };
   for (const [name, c] of Object.entries(man.components)) {
     if (c.kind !== 'element') continue;

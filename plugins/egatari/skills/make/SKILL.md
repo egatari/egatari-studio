@@ -11,22 +11,22 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：67a95271**
-**スキルの版：0.6.11**
+**指示のバージョン：f086a47b**
+**スキルのバージョン：0.6.12**
 
-Studio でコピーした指示書の「指示の版」と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
+Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がないツールでは案内を省き、`egatari --version` のバージョンを利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では `/plugin` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに `npx egatari@0.6.x skills update`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
 
-**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（`.ega.html`）では `<script id="deck-meta">` の `"generator":{"name":"egatari-studio","version":"…"}`、作業フォルダでは組み立ての出力 `out/deck.html` の `deck-meta` の `"version"`。そのバージョンが上の「スキルの版」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルの版」の行のバージョン。
+**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（`.ega.html`）では `<script id="deck-meta">` の `"generator":{"name":"egatari-studio","version":"…"}`、作業フォルダでは組み立ての出力 `out/deck.html` の `deck-meta` の `"version"`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルの版」の行のバージョン。
 
 - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
 - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。`npx egatari@0.6.x skills update` で更新できます。」
 - チャット：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で入れ直せます。」
 
-ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示の版」の行しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
+ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示のバージョン」の行しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
 
 ## 進め方
 
@@ -77,7 +77,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 # AI への指示
 
-指示の版：`67a95271`
+指示のバージョン：`f086a47b`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -121,6 +121,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 ### 2.2 スライド
 
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
+- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
 - `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の束があるときだけ）、属性 `data-morph`（§2.5）
@@ -162,7 +163,7 @@ Studio の音声の板で付けてもらう（この PC で AI 音声を作る�
 
 - **R-title** 見出し：日本語は 26 字まで（全角 1・半角 0.5）、英語は 60 文字まで。コロンで終えない
 - **R-concl** 結論の行：日本語は 35 字まで、英語は 70 文字まで。1 行
-- **R-fit** 本文は 565 px（`noconcl` なら 680 px）より上で終える：1 枚におよそ 8 行・100 字・英語 60 語、または `big` の式 1 つと短い箇条書き 3 つ、または高さ 380 px までのパーツと短い 1 行（2 行なら 330 px まで）。入らなければスライドを分ける。字を縮めず、字の大きさを書かない。図の中の字は 24 px 以上
+- **R-fit** 本文は 565 px（`noconcl` なら 680 px）より上で終える：1 枚におよそ 8 行・100 字・英語 60 語、または `big` の式 1 つと短い箇条書き 3 つ、または高さ 380 px までのパーツと短い 1 行（2 行なら 330 px まで）。入らなければスライドを分ける。字を縮めず、字の大きさを書かない
 - **R-style** 日本語のスライドは常体（だ・である、体言止め）で、です・ます を使わない。句読点は教材全体で 1 つの組（`、。` か `，．`）。英語のスライドは短い句で
 
 ## 3. パーツの一覧

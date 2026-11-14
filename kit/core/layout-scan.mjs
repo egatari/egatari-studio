@@ -149,7 +149,7 @@ export function layoutScan(s, o) {
     const noconcl = s.classList.contains('noconcl');
     const lim = tate ? M.tate.floor : noconcl ? M.body.floor : M.concl.top - 6;
     const limR = tate ? M.tate.rule - 4 : 1280 - M.body.right + 4, limL = tate ? (c ? M.tate.conclRight + 4 : M.tate.left - 4) : -Infinity;
-    let maxB = 0, maxR = 0, minL = Infinity;
+    let maxB = 0, maxR = 0, minL = Infinity, elB = null, elR = null, elL = null;
     body.querySelectorAll('*').forEach((el) => {
       if (el.closest('svg') && el.tagName !== 'svg') return;
       if (el.closest('.katex') && !el.classList.contains('katex')) return;
@@ -158,23 +158,35 @@ export function layoutScan(s, o) {
       // 祖先が切った後に見える部分だけ（読み上げ用の隠し方の中・切られて何も残らない箱は数えない。本文の箱より上の祖先は見ない）
       const { v } = seen(box(r), el, true, body);
       if (!v) return;
-      maxB = Math.max(maxB, v.b);
-      maxR = Math.max(maxR, v.r);
-      minL = Math.min(minL, v.l);
+      if (v.b > maxB) { maxB = v.b; elB = el; }
+      if (v.r > maxR) { maxR = v.r; elR = el; }
+      if (v.l < minL) { minL = v.l; elL = el; }
     });
     // はみ出しの大きさは整数の px に丸めてから比べる（知らせと同じ丸め）：丸めて 0 px（1 px に満たない）なら知らせない。知らせる px は限り ± 丸めた量なので、
     // 「0 px はみ出す」は出ない（結論の行の上の余裕と同じ考え。下・右・左・縦組みの見出しの列と結論の列で同じ決まり）
     const overB = Math.round(maxB - lim), overR = Math.round(maxR - limR), overL = Math.round(limL - minL);
+    // はみ出した箱がパーツ（m-*）かその中なら、知らせにパーツのタグと名前を入れる（compLayout と同じ形。backlog #196）
+    const partOf = (el) => {
+      for (let e = el; e && e !== body; e = e.parentElement) {
+        if (/^m-/.test(e.localName)) {
+          const same = [...s.querySelectorAll(e.localName)];
+          const label = (e.getAttribute('aria-label') || '').trim();
+          return { tag: e.localName, ...(same.length > 1 ? { index: same.indexOf(e) } : {}), ...(label ? { label: label.slice(0, 40) } : {}) };
+        }
+      }
+      return null;
+    };
+    const withPart = (a, el) => { const p = partOf(el); return p ? { ...a, part: p } : a; };
     // 知らせの値：結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）は、既定と違うときだけ添える（既定のテーマの結果は前と同じ）
     if (overB >= 1) {
       bodyOver = true;
       const a = { px: lim + overB, lim, concl: !tate && !noconcl };
       if (a.concl && M.concl.top !== DM.concl.top) a.conclTop = M.concl.top;
       if (M.body.line !== DM.body.line) a.line = M.body.line;
-      add('error', 'bodyBottom', a);
+      add('error', 'bodyBottom', withPart(a, elB));
     }
-    if (overR >= 1) add('error', tate ? 'tateBodyHead' : 'bodyRight', tate ? { px: limR + overR, lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: limR + overR, lim: limR } : { px: limR + overR });
-    if (overL >= 1) add('error', c ? 'bodyConclCol' : 'bodyLeft', { px: limL - overL, lim: limL });
+    if (overR >= 1) add('error', tate ? 'tateBodyHead' : 'bodyRight', withPart(tate ? { px: limR + overR, lim: limR } : limR !== 1280 - DM.body.right + 4 ? { px: limR + overR, lim: limR } : { px: limR + overR }, elR));
+    if (overL >= 1) add('error', c ? 'bodyConclCol' : 'bodyLeft', withPart({ px: limL - overL, lim: limL }, elL));
     // 文字の大きさ：本文 27px（20pt）以上，図・表 24px（18pt）以上。出典・ページ番号・図キャプションは除く
     if (!refRe.test(h2 ? h2.textContent : '')) {
       const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);

@@ -66,7 +66,7 @@ pumpChecks();
 
 const b = await launch();
 const noise = noiseLog();   // 描き方の揺れとして通した比べ（部品・スライド・段階）。終わりにまとめて出す
-let qcNoise = 0;            // 品質チェックが揺れとして通した数（compOrderNoise）
+let qcNoise = 0;            // 品質チェックが揺れとして通した数（--json の renderNoise）
 let fail = 0;
 const failed = [];   // [名前, 理由]
 for (const { name, version, dir } of comps) {
@@ -208,7 +208,7 @@ for (const { name, version, dir } of comps) {
   if (qc && qc.status === 'crashed') throw new Error(`${name}: kit/check.mjs did not finish (the browser crashed): not "0 errors"`);
   const qErrs = qc ? qc.results.filter((x) => x.sev === 'error') : null;
   const qBad = qErrs ? qErrs.filter((x) => !known(name, x)) : null;
-  for (const x of qc ? qc.results.filter((x) => x.code === 'compOrderNoise') : []) { qcNoise++; console.log(`   note [${process.platform}] ${name} quality check: ${x.msg}`); }
+  for (const x of qc ? (qc.renderNoise || []) : []) { qcNoise++; console.log(`   note [${process.platform}] ${name} quality check: ${x.msg}`); }
   const why = [];
   if (!qBad) why.push('quality check did not run');
   else if (qBad.length) why.push(`${qBad.length} quality check error(s): ${qBad.map((x) => x.msg).join(' / ')}`);
@@ -229,7 +229,7 @@ for (const { name, version, dir } of comps) {
 await b.close();
 console.log('');
 console.log(noise.summary('determinism: renderer-noise acceptances (DOM byte-identical, NOISE_BOUNDS of kit/render-compare.mjs)'));
-console.log(`quality check: renderer-noise acceptances (compOrderNoise) [${process.platform}]: ${qcNoise}`);
+console.log(`quality check: renderer-noise acceptances (renderNoise) [${process.platform}]: ${qcNoise}`);
 if (fail) {
   console.log(`FAIL: ${fail} of ${names.length} component(s)`);
   for (const [n, w] of failed) console.log(`  - ${n}: ${w}`);

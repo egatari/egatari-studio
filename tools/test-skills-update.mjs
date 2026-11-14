@@ -85,7 +85,7 @@ const lines = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim().split
 {
   const kit = JSON.parse(fs.readFileSync(path.join(ROOT, 'kit', 'instruction-version.json'), 'utf8')).instruction;
   assert.match(kit, /^[a-f0-9]{8}$/);
-  const skill = (v) => `---\nname: make\ndescription: x\n---\n\n**指示の版：${v}**\n`;
+  const skill = (v, label = '指示のバージョン') => `---\nname: make\ndescription: x\n---\n\n**${label}：${v}**\n`;
   const dir = path.join(tmp, 'home', '.codex', 'plugins', 'cache', 'egatari', 'egatari', '0.6.3', 'skills', 'make');
   fs.mkdirSync(dir, { recursive: true });
   const bin = mk('doctor', []);
@@ -97,8 +97,16 @@ const lines = (f) => (fs.existsSync(f) ? fs.readFileSync(f, 'utf8').trim().split
   fs.writeFileSync(path.join(dir, 'SKILL.md'), skill(kit));
   const same = run(['doctor'], bin).stdout;
   assert.doesNotMatch(same, /differ/);
+  // 前のバージョンのスキル（印の名前が「指示の版」。v0.6.11 まで）も読む（backlog #205）
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), skill('00000000', '指示の版'));
+  const oldName = run(['doctor'], bin).stdout;
+  assert.match(oldName, /skills .*differ/);
+  assert.match(oldName, /make 00000000/);
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), skill(kit, '指示の版'));
+  assert.doesNotMatch(run(['doctor'], bin).stdout, /differ/, 'an old-name skill with the same instructions is not reported');
+  fs.writeFileSync(path.join(dir, 'SKILL.md'), skill(kit));
   // スキルが自分の版と比べる 1 行：この包みの指示の版と Studio の版（v0.6.10）。入れたスキルがあってもなくても出る
-  const line = `ok   skills   指示の版 ${kit}（Studio ${PKG_VERSION}）/ skill instructions ${kit} (Studio ${PKG_VERSION})`;
+  const line = `ok   skills   指示のバージョン ${kit}（Studio ${PKG_VERSION}）/ skill instructions ${kit} (Studio ${PKG_VERSION})`;
   assert.ok(same.split('\n').includes(line), same);
   assert.ok(old.stdout.split('\n').includes(line), old.stdout);
 }

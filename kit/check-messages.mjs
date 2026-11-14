@@ -182,6 +182,9 @@ export const MESSAGES = {
   attachCount: { ja: (a) => `添付が多すぎる（${a.max} 個まで）：「${a.path}」は Egatari ファイルに入らない`, en: (a) => `too many attachments (at most ${a.max}): “${a.path}” is not packed into the Egatari file` },
   attachList: { ja: (a) => `添付：${a.n} 個（${a.size}。読み手の一覧に ${a.listed} 個）。Egatari ファイル（.ega.html）の再生ではダウンロードだけで、再生専用（--play-only）には入らない`, en: (a) => `attachments: ${a.n} (${a.size}; ${a.listed} listed for readers). In the Egatari file (.ega.html) they are download-only; play-only files (--play-only) do not carry them` },
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
+  kickerLong: { rule: 'R-headings', ja: (a) => `肩見出しが長い（${a.n} ${a.latin ? '文字' : '字分'}。${a.latin ? 'ラテン文字は 40 文字まで' : '24 字分まで。全角 1・半角 0.5'}）：${quoteJa(a.t)}を短くする`, en: (a) => `the kicker has ${a.n} ${a.latin ? 'characters' : 'units'}, over ${a.max} (${a.latin ? 'Latin script' : 'full-width 1, ASCII 0.5'}): shorten “${a.t}”` },
+  kickerPlace: { rule: 'R-headings', ja: () => '肩見出し（.kicker）はスライドに 1 つだけ、見出しの直前に置く', en: () => 'place just one kicker (.kicker) per slide, immediately before the heading' },
+  kickerSlide: { rule: 'R-headings', ja: () => '表紙・章の扉・縦書きのスライド（layout-tate）には肩見出し（.kicker）を置かない', en: () => 'do not use a kicker (.kicker) on a cover, chapter divider or vertical slide (layout-tate)' },
   titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：${quoteJa(a.t)}を短くするか、要点を結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
   titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英文は 60 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },
   titleColon: { rule: 'R-title', ja: (a) => `見出し${quoteJa(a.t)}がコロンで終わっている：コロンを取り、見出しだけで言い切る`, en: (a) => `the heading “${a.t}” ends with a colon: remove it and let the heading stand on its own` },
@@ -191,12 +194,12 @@ export const MESSAGES = {
   conclOverflow: { rule: 'R-concl', ja: () => '結論の行が枠からはみ出す：結論の行を短くして 1 行に収める', en: () => 'the conclusion line overflows its box: shorten it to one line' },
   // 結論の行の上端（conclTop）・1 行の高さ（line）・右の限り（bodyRight の lim）はテーマの寸法（metrics）が既定と違うときだけ値にある（なければ既定の値）
   bodyBottom: { rule: 'R-fit',
-    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、パーツを ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
-    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}): cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the part ${o} px lower, or split the slide in two (do not shrink text)`; } },
-  bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > ${a.lim ?? DEF_RIGHT}px）：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > ${a.lim ?? DEF_RIGHT}px): break the long equation or table, or rebalance the .cols widths` },
-  tateBodyHead: { rule: 'R-fit', ja: (a) => `本文が見出しの列に重なる（${a.px}px > ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the heading column (${a.px}px > ${a.lim}px): cut the vertical text or split the slide` },
-  bodyConclCol: { rule: 'R-fit', ja: (a) => `本文が結論の列に重なる（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the conclusion column (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
-  bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px): cut the vertical text or split the slide` },
+    ja: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `本文が下に ${o} px はみ出す（${a.px}px > ${a.lim}px${a.concl ? `、結論の行の上端は ${a.conclTop ?? DEF_CONCL_TOP}px` : ''}）${partNote(a, true)}：本文をおよそ ${n} 行（1 行 ${L} px）減らすか、パーツを ${o} px 低くするか、スライドを 2 枚に分ける（字は縮めない）`; },
+    en: (a) => { const L = a.line || DEF_LINE, o = Math.ceil(a.px - a.lim), n = Math.max(1, Math.ceil(o / L)); return `the body overflows at the bottom by ${o} px (${a.px}px > ${a.lim}px${a.concl ? `; the conclusion line starts at ${a.conclTop ?? DEF_CONCL_TOP}px` : ''})${partNote(a, false)}: cut about ${n} line${n > 1 ? 's' : ''} (${L} px each), make the part ${o} px lower, or split the slide in two (do not shrink text)`; } },
+  bodyRight: { rule: 'R-fit', ja: (a) => `本文が右にはみ出す（${a.px}px > ${a.lim ?? DEF_RIGHT}px）${partNote(a, true)}：長い式や表を分けるか、横並び（.cols）の幅を見直す`, en: (a) => `the body overflows to the right (${a.px}px > ${a.lim ?? DEF_RIGHT}px)${partNote(a, false)}: break the long equation or table, or rebalance the .cols widths` },
+  tateBodyHead: { rule: 'R-fit', ja: (a) => `本文が見出しの列に重なる（${a.px}px > ${a.lim}px）${partNote(a, true)}：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the heading column (${a.px}px > ${a.lim}px)${partNote(a, false)}: cut the vertical text or split the slide` },
+  bodyConclCol: { rule: 'R-fit', ja: (a) => `本文が結論の列に重なる（${a.px}px < ${a.lim}px）${partNote(a, true)}：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body runs into the conclusion column (${a.px}px < ${a.lim}px)${partNote(a, false)}: cut the vertical text or split the slide` },
+  bodyLeft: { rule: 'R-fit', ja: (a) => `本文が左にはみ出す（${a.px}px < ${a.lim}px）${partNote(a, true)}：縦書きの本文を減らすか、スライドを分ける`, en: (a) => `the body overflows to the left (${a.px}px < ${a.lim}px)${partNote(a, false)}: cut the vertical text or split the slide` },
   // テーマの寸法の宣言（theme.json の metrics。docs/contract.md §12）。教材に 1 回。テーマの知らせなので規格の名前はない
   themeMetricsDrift: {
     ja: (a) => `テーマ「${a.theme}」の${a.declared ? '寸法の宣言（theme.json の metrics）と描いた体裁の箱が違う' : '体裁の箱が既定の位置から動いているのに、寸法の宣言（theme.json の metrics）がない'}（${driftList(a.items, 'ja')}）。本文の場所の限りは${a.declared ? '宣言' : '既定'}の値で決めるので、はみ出しの指摘がずれる：${driftHow(a, 'ja')}`,
@@ -326,7 +329,6 @@ export const MESSAGES = {
   palette: { ja: (a) => `パレット：${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → コントラスト ${a.ratio}:1` : ''}`, en: (a) => `palette: ${a.v} ${a.css} = rgb(${a.rgb})${a.ratio ? ` vs --bg → contrast ${a.ratio}:1` : ''}` },
   contrastLow: { rule: 'R-colors', ja: (a) => `${a.v} と --bg のコントラストが低い（${a.ratio}:1 < ${a.min}:1）：テーマの色を直す（教材の中で色を書いていれば消し、テーマの class と変数だけを使う）`, en: (a) => `low contrast between ${a.v} and --bg (${a.ratio}:1 < ${a.min}:1): fix the theme colors (remove any colors written in the lesson; use only theme classes and variables)` },
   compOrder: { ja: (a) => `パーツの描画が呼び出し順に依存している（ステップ ${a.k}）：render(k, t) が前の呼び出しの状態に頼らないようにパーツを直す（docs/contract.md §3）`, en: (a) => `the part draws differently depending on call order (step ${a.k}): make render(k, t) independent of previous calls (docs/contract.md §3)` },
-  compOrderNoise: { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing ${plural(a.n, 'pixel')} all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint ${plural(a.faint, 'pixel')} (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` },
   compOrderDetail: { ja: (a) => `品質チェック（呼び出し順）の詳しい結果（ステップ ${a.k}）：${a.note}`, en: (a) => `quality check details (call order, step ${a.k}): ${a.note}` },
   markMissing: { rule: 'R-marks', ja: (a) => `強調 {mark:${a.id}} の目印がこのスライドにない：目印の要素に id="${a.id}" か data-mark="${a.id}" を付ける（式の一部は \\htmlId{${a.id}}{…}）か、{mark:…} を消す`, en: (a) => `the emphasis {mark:${a.id}} has no target on this slide: put id="${a.id}" or data-mark="${a.id}" on the element (\\htmlId{${a.id}}{…} in math), or remove the {mark:…}` },
   marks: { ja: (a) => `強調：${a.list}`, en: (a) => `emphasis: ${a.list}` },
@@ -397,6 +399,11 @@ function compHow(a, ja) {
   if (a.shape) return ja ? `データの形は ${a.shape}${ex ? `。${ex}` : ''}` : `the data is ${a.shape}${ex ? `; ${ex}` : ''}`;
   return ex;
 }
+// 本文のはみ出しの原因がパーツのとき（a.part。kit/core/layout-scan.mjs）、そのパーツを言う（backlog #196）
+function partNote(a, ja) {
+  if (!a.part) return '';
+  return ja ? `。はみ出しているのは${compName(a.part, true)}` : `; ${compName(a.part, false)} sticks out`;
+}
 function compName(a, ja) {
   const n = a.index > 0 ? (ja ? `（${a.index + 1} 個目）` : ` (#${a.index + 1})`) : '';
   return ja ? `パーツ <${a.tag}>${n}${a.label ? `「${a.label}」` : ''}` : `the part <${a.tag}>${n}${a.label ? ` “${a.label}”` : ''}`;
@@ -408,6 +415,10 @@ export function ruleOf(code, a = {}) {
   const r = m && (typeof m.rule === 'function' ? m.rule(a) : m.rule);
   return r || null;
 }
+
+// 描き方の揺れとして通した描き比べの説明（指摘ではない。kit/check.mjs の --json の renderNoise。backlog #210）
+const RENDER_NOISE = { ja: (a) => `パーツの描画の揺れを許した（ステップ ${a.k}）：2 回の描画でパーツの DOM はバイトまで同じで、違う画素 ${a.n} 個は${a.faint ? `、縁から遠いわずかな違いの ${a.faint} 個（ばらばらで、各チャンネル 24/255 以下）のほかは` : ''}どれも図形の縁にあり、上限 ${a.cap} 以下（描き方のアンチエイリアスの揺れで、呼び出し順への依存ではない。kit/render-compare.mjs）`, en: (a) => `renderer noise accepted (step ${a.k}): the part DOM was byte-identical in both renders and the ${a.n} differing ${plural(a.n, 'pixel')} all lie on shape edges${a.faint ? ` except ${a.faint} isolated faint ${plural(a.faint, 'pixel')} (each channel ≤ 24/255)` : ''}, within the cap of ${a.cap} (anti-aliasing noise, not call-order dependence; kit/render-compare.mjs)` };
+export const renderNoiseMessage = (lang, a = {}) => (lang === 'en' ? RENDER_NOISE.en : RENDER_NOISE.ja)(a);
 
 export function message(lang, code, a = {}) {
   const m = MESSAGES[code];

@@ -131,7 +131,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     // 部品庫 2.7.0 から部品の説明の言葉が用語集にそろった（45 の部品）。この比べは指示を組む側の変化を見るので、部品庫は 2.6.2 のまま組んで比べる
     const P262 = generate({ catalogue: '2.6.2' }).data;
     assert.match(P262.partsSrc, /\/v2\.6\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.7\.0\//);
+    assert.match(PACK.partsSrc, /\/v2\.8\.0\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(P262);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
@@ -167,7 +167,13 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
       ['**ないステップの印は書かない**', '**ないステップの指定は書かない**'],
       ['1 枚のステップは 5 前後まで', '1 枚のステップの数は 5 前後まで'],
       // v0.6.11：読みは書いた所にだけ当たる（backlog #203）
+      // v0.6.12：版の行の名前（backlog #205）
+      ['指示の版：', '指示のバージョン：'],
       ['記号ごとに読みを付け、関係は言葉で言う）', '記号ごとに読みを付け、関係は言葉で言う）。読みは読みなしで読み違える語にだけ付ける（かなの読みは抑揚を崩しやすい）。読みは書いた所にだけ当たるので、付けた語がまた出てくるなら、出てくる所ごとに付ける'],
+      // v0.6.12：R-fit の「図の中の字は 24 px 以上」は 1280×720 の大きさの行（すべての字は 24 px 以上）と重なるので除いた
+      ['字を縮めず、字の大きさを書かない。図の中の字は 24 px 以上', '字を縮めず、字の大きさを書かない'],
+      // v0.6.12：肩見出し（kicker、backlog #195）の 1 行
+      ['（結論の行。短い 1 文）\n', '（結論の行。短い 1 文）\n- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。\n'],
     ];
     const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);
     const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow);

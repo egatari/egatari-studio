@@ -63,6 +63,7 @@ const EXPECT = {
   's-srmarkup': [],
   's-subpx': [],
   's-twopx': ['bodyBottom'],
+  's-partover': ['bodyBottom'],
 };
 const codesBy = (list, idOf) => {
   const m = {};
@@ -114,6 +115,13 @@ await t('check: a visually hidden list (1×1 overflow box, clip-path inset(50%),
   // the reported bottom is the visible 400px box, not the hidden <li> far below it
   const r = J.results.find((x) => x.id === 's-srover' && x.code === 'bodyBottom');
   assert.ok(r.data.px > 565 && r.data.px <= 720, 'bodyBottom px ' + r.data.px);
+});
+await t('check: when the box that overflows is a part (m-*), bodyBottom names the part (tag and aria-label), as compLayout does (backlog #196)', () => {
+  const r = J.results.find((x) => x.id === 's-partover' && x.code === 'bodyBottom');
+  assert.deepEqual(r.data.part, { tag: 'm-kpi', label: '売上の札' });
+  assert.ok(r.msg.includes('はみ出しているのはパーツ <m-kpi>「売上の札」') || r.msg.includes('the part <m-kpi> “売上の札” sticks out'), r.msg);
+  assert.equal(J.results.find((x) => x.id === 's-bodyover' && x.code === 'bodyBottom').data.part, undefined);
+  assert.ok(message('en', 'bodyBottom', r.data).includes('; the part <m-kpi> “売上の札” sticks out:'));
 });
 await t('check: an overflow under 1 px is not reported (0.4 px), and a reported one is never “0 px” (2 px is “2 px”): the comparison and the message round the same way', () => {
   assert.deepEqual(J.results.filter((x) => x.id === 's-subpx' && x.sev === 'error').map((x) => x.code), []);

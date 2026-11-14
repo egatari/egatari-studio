@@ -49,7 +49,7 @@ import { planAttachments, inspectAttachment, ATTACH_LIMITS } from './core/attach
 import { normalizeKey, noteProblems } from './narration.mjs';
 import { readingProblems, readingGaps, orphanSteps, orphanDetail, formulaLike, formulaText, narrationLang, textLang } from './core/narration-lint.mjs';
 import { cleanErrorText, componentError } from './core/error-text.mjs';
-import { partReportFinding, message, where, ruleOf } from './check-messages.mjs';
+import { partReportFinding, message, where, ruleOf, renderNoiseMessage } from './check-messages.mjs';
 import { account, ruleSetText, factsFromSource } from './core/check-rules.mjs';
 import { createHash } from 'node:crypto';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
@@ -61,6 +61,7 @@ import { TEXT_BANDS, DEFAULT_BAND } from './core/text-band.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './core/color-vocab.mjs';
+import { kickerFindings } from './core/kicker.mjs';
 import { predictStepProblems } from './core/predict-steps.mjs';
 import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
 import { uncoveredGlyphs } from './core/font-coverage.mjs';
@@ -93,6 +94,7 @@ try { src = resolveDeckArg(arg0); } catch (e) { console.error(`check: ${e.messag
 const results = [];
 // code：kit/check-messages.mjs の知らせ。a：その値。step：段階の鍵（0・1・…・concl）か null。言葉は最後に作る（どこか＋何が違うか＋どう直すか）
 function report(slide, sev, code, a = {}, step = null) { results.push({ slide, sev, code, a, step }); }
+const renderNoise = [];   // 描き方の揺れとして通した比べ（指摘ではない。--json の renderNoise）
 const SEV_RANK = { error: 0, warn: 1, info: 2 };
 
 // ---------------------------------------------------------------- 字数（全角 1・半角 0.5）
@@ -186,6 +188,8 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   // 予想（m-predict）の段階（R-steps）：答えが数の棒と同時（predictAnswerWithCount。数える前に答えが見える）、steps が答えの段階より小さい（predictAnswerNeverShown。答えが出ない）。
   // 編集アプリも同じ関数（kit/core/check-source.mjs）
   for (const { code, slide, ...x } of predictStepProblems(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(slide, 'warn', code, x);
+  // 肩見出し：置き場所・字数・使えない種類のスライド（編集アプリも同じ関数）
+  for (const f of kickerFindings(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(f.i, f.sev, f.code, f.a);
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {
@@ -667,7 +671,7 @@ const settle = () => page.evaluate(() => Promise.all([...document.fonts].map((f)
 // 操作の帯（kit/tools.js の #dt-cb）は開いたときに一度出て SHOW_MS（2.5 秒）で消えるので、撮る時刻で写ったり写らなかったりする。
 // 遅い機械では A（開いてすぐ）にだけ写り、B（飛び回った後）では消えていて、部品と関係なく「呼び出し順に依存」になっていた。部品の絵だけを比べるため、
 // 舞台の上に重なる時刻依存の飾り（操作の帯・短い知らせ）は撮る前に消しておく
-const HIDE_CHROME = '#dt-cb,#deck-toast{display:none!important}';
+const HIDE_CHROME = '#dt-cb,#dt-hint,#deck-toast{display:none!important}';
 async function orderDiffers(m, k) {
   await collectPartReports();
   await page.goto(url);
@@ -689,7 +693,9 @@ async function orderDiffers(m, k) {
   // （kit/render-compare.mjs。tools/test-components.mjs の決定性と同じ基準）
   if (bufA.equals(bufB)) return false;
   const r = await compareRenders(page, bufA, bufB, domA, await domSnapshot(page, m.i));
-  if (r.same && r.kind === 'noise') report(m.i, 'info', 'compOrderNoise', { k, n: r.n, cap: r.cap, faint: r.faint || 0 }, String(k));   // 揺れとして通したものは必ず記録する
+  // 揺れとして通したものは renderNoise に記録する（指摘ではない：出るかどうかが実行ごとに変わり、同じ教材の指摘の数を揺らしていた。backlog #210）。
+  // 違う画素が 0 個（PNG のバイトだけが違い、画素は同じ）は揺れでもないので記録しない
+  if (r.same && r.kind === 'noise' && r.n > 0) renderNoise.push({ slide: m.i, step: String(k), a: { k, n: r.n, cap: r.cap, faint: r.faint || 0 } });
   lastOrderNote = r.note;
   return !r.same;
 }
@@ -828,7 +834,9 @@ if (asJson) {
     data: r.a,
     msg: cliHints(r.msg),
   }));
-  console.log(JSON.stringify({ ok, status: acc.status, lang: ML, counts, results: out, ruleSet, rules: acc.rules, summary: acc.summary, ...(acc.status === 'incomplete' ? { unset: acc.unset, problems: acc.problems } : {}) }, null, 2));
+  // renderNoise：呼び出し順の比べで、描き方の揺れ（アンチエイリアス）として通したもの。指摘ではなく、数えない（backlog #210）
+  const noiseOut = renderNoise.map((x) => ({ slide: x.slide + 1, id: (meta[x.slide] && meta[x.slide].id) || null, step: x.step, data: x.a, msg: where(ML, placeOf({ slide: x.slide, step: x.step })) + sep + renderNoiseMessage(ML, x.a) }));
+  console.log(JSON.stringify({ ok, status: acc.status, lang: ML, counts, results: out, renderNoise: noiseOut, ruleSet, rules: acc.rules, summary: acc.summary, ...(acc.status === 'incomplete' ? { unset: acc.unset, problems: acc.problems } : {}) }, null, 2));
 } else {
   // スライド番号順（null＝デッキ全体は先頭）にグループ化し、各グループ内は error → warn → info。見出しの行にスライドがあるので、行には段階と言葉だけ
   const groups = new Map();

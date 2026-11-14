@@ -16,13 +16,12 @@ import path from 'node:path';
 import http from 'node:http';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { shareBrowser, launch } from '../kit/browser.mjs';
+import { shareBrowser, launch, fileUrl } from '../kit/browser.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
 import { IN_EDITOR, CLI_ONLY, CLI_ONLY_PREFIX, EDITOR_ALIAS, BUILD_WARN, cliOnly } from '../kit/core/check-parity.mjs';
 import { scaled } from './wait-scale.mjs';
+import { buildPortable } from '../kit/build.mjs';
 import { silentWav } from './portable-fixtures.mjs';
-// ブラウザは 1 つだけ起動し、子のプロセス（kit/check.mjs）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser）
-await shareBrowser();
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-check-parity-')));
@@ -39,7 +38,7 @@ fs.cpSync(path.join(FIX, 'en-rawmath'), STALE, { recursive: true });
 fs.mkdirSync(path.join(STALE, 'audio'), { recursive: true });
 fs.writeFileSync(path.join(STALE, 'audio', 'a.wav'), silentWav(1));
 fs.writeFileSync(path.join(STALE, 'audio', 'manifest.json'), JSON.stringify({ segments: { 's-attn:0': { file: 'a.wav', dur: 1, inputHash: null } } }));
-const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'ja-flow', lang: 'ja' }, { name: 'ja-geometry', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }];
+const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'ja-flow', lang: 'ja' }, { name: 'ja-geometry', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }, { name: 'ja-kicker', lang: 'ja' }, { name: 'en-kicker', lang: 'en' }];
 const GEO = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox'];
 const dirOf = (f) => f.dir || path.join(FIX, f.name);
 // 見本が出すはずの code（見本を直して減ったら気づくように）
@@ -47,6 +46,8 @@ const WANT = {
   'en-rawmath': ['rawMath', 'narrFormula', 'narrNote', 'narrOrphan', 'narrMissing', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'linkCount', 'legacyColorClass', 'colorOutside'],
   'en-stale': ['audioStale', 'rawMath'],
   'ja-flow': ['compLayout'],
+  'ja-kicker': ['kickerLong', 'kickerPlace', 'kickerSlide'],
+  'en-kicker': ['kickerLong', 'kickerPlace', 'kickerSlide'],
   'ja-geometry': GEO,
   'ja-mix': ['readingGap', 'desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing', 'predictAnswerWithCount', 'predictAnswerNeverShown'],
 };
@@ -79,11 +80,14 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
   for (const c of codes) for (const k of classes(c)) counts[k]++;
   console.log('  info inventory: ' + Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
   // 道筋：編集アプリが code を出すファイル（プレビューの中・原稿の文字列・作業場所の台本と音声）に、その code が文字列で現れる
-  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs']
+  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs']
     .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   const unreached = IN_EDITOR.filter((c) => !new RegExp(`["'\`]${c}["'\`]`).test(src));
   ok(!unreached.length, `inventory: every IN_EDITOR code (${IN_EDITOR.length}) appears as a string in the editor's check path` + (unreached.length ? ': not found ' + unreached.join(', ') : ''));
 }
+
+// ブラウザは 1 つだけ起動し、子のプロセス（kit/check.mjs）の launch() はそこにつなぐ（kit/browser.mjs の shareBrowser）
+await shareBrowser();
 
 // ---------------------------------------------------------------- 1. コマンド版
 const CLI = {};
@@ -106,6 +110,20 @@ for (const f of FIXTURES) {
   ok(CLI['en-rawmath'].some((x) => x.code === 'narrFormula' && x.sev === 'warn' && x.rule === 'R-formula'), 'cli en-rawmath: the narration that reads a formula is an R-formula warning');
 }
 
+// 字数は札の文字種で決める。境目ちょうどは出さず、置き場所・使えないスライドは別に知らせる
+for (const name of ['ja-kicker', 'en-kicker']) {
+  for (const [code, sev, ids] of [
+    ['kickerLong', 'warn', ['s-wide25', 's-latin41', 's-mixed25']],
+    ['kickerPlace', 'warn', ['s-misplaced', 's-duplicate', 's-after']],
+    ['kickerSlide', 'info', ['s-cover', 's-sec', 's-tate']],
+  ]) {
+    const hits = CLI[name].filter((r) => r.code === code);
+    ok(hits.map((r) => r.id).join() === ids.join() && hits.every((r) => r.sev === sev && r.rule === 'R-headings'),
+      `cli ${name}: ${code} has exactly the intended slides, severity and rule`);
+  }
+  ok(!CLI[name].some((r) => r.code === 'narrHeadingDiffers'), `cli ${name}: kickers do not change narration heading comparisons`);
+}
+
 // ---------------------------------------------------------------- 2. 編集アプリ
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'ignore' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.txt': 'text/plain', '.svg': 'image/svg+xml', '.png': 'image/png' };
@@ -122,6 +140,43 @@ const browser = await launch();
 const errs = [];
 
 try {
+  for (const theme of ['default', 'sumi']) {
+    const dir = path.join(work, 'runtime-kicker-' + theme);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html><html lang="en" data-theme="${theme}"><head><meta charset="utf-8"><title>Kicker</title></head><body><div id="stage">
+  <section class="slide" id="s-kicker"><p class="kicker">Chapter two</p><!-- 間の注釈は置き場所を変えない -->
+  <h2>Heading alone</h2><div class="body"><ul><li>First point</li><li>Second point</li></ul></div><div class="concl"><span>The point</span></div></section>
+  <section class="slide noconcl" id="s-short"><p class="kicker">Another topic</p><h2 data-title="Short title">Full heading</h2><div class="body"><p>Body</p></div></section>
+  </div></body></html>`);
+    fs.writeFileSync(path.join(dir, 'narration.md'), '## Heading alone {#s-kicker}\n[0] Introduction.\n[1] First point.\n[2] Second point.\n[concl] The point.\n\n## Full heading {#s-short}\n[0] Body.\n');
+    const built = await buildPortable(path.join(dir, 'deck.html'));
+    ok(built.html.includes('<article data-slide-key="s-kicker"><h2>Heading alone</h2>') && built.html.includes('<article data-slide-key="s-short"><h2>Full heading</h2>'), 'portable: readable headings contain only the heading, without the kicker');
+    const out = path.join(dir, 'kicker.ega.html');
+    fs.writeFileSync(out, built.html);
+    const runtime = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    runtime.on('pageerror', (e) => errs.push(`runtime ${theme}: ${e.message}`));
+    await runtime.goto(fileUrl(out));
+    await runtime.waitForFunction(() => window.DECK && DECK.ready && DECK.panes);
+    await runtime.evaluate(() => document.fonts.ready);
+    const r = await runtime.evaluate(() => {
+      DECK.seek(0, 0, 0);
+      const s = document.getElementById('s-kicker'), e = s.querySelector('.kicker'), h = s.querySelector('h2');
+      const style = getComputedStyle(e), hs = getComputedStyle(h), er = e.getBoundingClientRect(), hr = h.getBoundingClientRect(), sr = s.getBoundingClientRect(), scale = sr.width / 1280;
+      const headingTop = (hr.top - sr.top) / scale + parseFloat(hs.paddingTop);
+      return { title: h.dataset.title, short: document.querySelector('#s-short h2').dataset.title, text: e.textContent,
+        step: e.getAttribute('data-step'), max: s._max, item: s._items.includes(e), opacity: style.opacity, visibility: style.visibility,
+        size: style.fontSize, transform: style.textTransform, gap: headingTop - (er.bottom - sr.top) / scale, headingTop, color: style.color, headingColor: hs.color, z: style.zIndex,
+        list: [...s.querySelectorAll('li')].map((e) => e.dataset.step) };
+    });
+    ok(r.title === 'Heading alone' && r.short === 'Short title', 'build: generated data-title excludes the kicker and preserves an explicit short title');
+    ok(r.step === null && !r.item && r.max === 3 && r.list.join() === '1,2' && r.opacity === '1' && r.visibility === 'visible', 'runtime: kicker is visible at step 0 without its own step; list and conclusion steps are unchanged');
+    ok(r.text === 'Chapter two' && r.transform === 'uppercase' && r.size === '24px' && r.gap >= 8 && r.headingTop === 48, `theme ${theme}: English is capitalised by CSS, with an 8 px gap above the heading text (heading text at 48 px)`);
+    if (theme === 'sumi') ok(r.z === '1' && r.color === r.headingColor, 'sumi: kicker is above the band in the band foreground colour');
+    await runtime.keyboard.press('r');
+    const titles = await runtime.locator('#deck-text .dx-stitle').allTextContents();
+    ok(titles.length === 2 && titles[0].includes('Heading alone') && titles[1].includes('Short title') && titles.every((t) => !t.includes('Chapter two') && !t.includes('Another topic')), 'book pane: slide headings exclude the kicker');
+    await runtime.close();
+  }
   for (const fx of FIXTURES) {
     const { name, lang } = fx;
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: lang === 'en' ? 'en-US' : 'ja-JP' });
@@ -157,7 +212,7 @@ try {
     const missing = cliCodes.filter((c) => !have.has(c) && !cliOnly(c));
     ok(!missing.length, `parity ${name}: every code the command line reports is in the editor's check, or listed in CLI_ONLY (${cliCodes.length} codes)` + (missing.length ? ': missing ' + missing.join(', ') : ''));
     // 同じ code はスライドも同じ（スライドごとの指摘：rawMath・desuMasu など、本文と台本と原稿から見るもの）
-    for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex', 'predictAnswerWithCount', 'predictAnswerNeverShown', 'compLayout', ...GEO, 'geoTateSlides']) {
+    for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex', 'predictAnswerWithCount', 'predictAnswerNeverShown', 'compLayout', ...GEO, 'geoTateSlides', 'kickerLong', 'kickerPlace', 'kickerSlide']) {
       const a = CLI[name].filter((x) => x.code === code).map((x) => `${x.slide}:${x.sev}`).sort().join(' ');
       const b = results.filter((x) => x.code === code).map((x) => `${x.i === null ? null : x.i + 1}:${x.sev}`).sort().join(' ');
       if (a || b) ok(a === b, `parity ${name}: ${code} on the same slides with the same severity (cli “${a}”, editor “${b}”)`);

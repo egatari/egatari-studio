@@ -1,0 +1,25 @@
+/* 国語（kokugo）：本文は明朝（BIZ UDP明朝）、基調色は藍、強調は朱（訓点を朱で書き入れる習いから）、地は生成り。
+   縦書き（.tate）と国語の部品（m-kanbun・m-kobun・m-gendai）に合わせる。機関に依存しない。
+   字幕（s）だけはゴシックにする（小さく速く読む字なので。編集アプリの段 A の字の補いもゴシックだけを補う） */
+:root{
+  --base: #264a7c;                 /* 藍 */
+  --emph-hue: 38;                  /* 朱（default は 27 の赤） */
+  --fg: #2a2522;                   /* 墨 */
+  --bg: #fffdf8;                   /* 生成り */
+  --cover-bg: #f6f1e6;
+  --font-sans: var(--font-mincho);
+  --font-cap: "BIZ UDPGothic", "Hiragino Sans", sans-serif;
+  --lit: #F8B500;                    /* 光と照らされる側。山吹色（生成り地 1.8:1。1.1.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色。default と同じ値（どのテーマでも赤い玉は同じ赤）。名前か頭文字を添え、白・黒と地に近い色には輪郭線。1.2.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
+}

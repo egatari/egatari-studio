@@ -2,6 +2,7 @@
 //   node tools/test-themes.mjs [作業フォルダ] [--shots <dir>]
 // 1. 品質チェック（kit/check.mjs --json）：エラー 0。字と地のコントラスト（textContrast。#128）・章の扉の題（secHeading）・
 //    ファイルに入っていない字体（fontNotEmbedded）・テーマの寸法（themeMetricsDrift・metricsFontLoad）の警告がない
+// 量の色の段（#200）：--ramp-1…5 を #rrggbb で宣言し、OKLCH の明るさが単調に下がり、--ramp-5 が地と 3:1 以上（ブラウザなし）
 // 2. 役割の色（組んだデッキで計算した値）：
 //    コントラスト（WCAG 2.x）：本文 --fg・用語 --term・強調 --emph・既知 --muted・題 --title と地 --bg 4.5:1、結論の行の字 --emph と --concl-bg 4.5:1、
 //      章の扉の字 --sec-fg と --sec-bg 4.5:1、表紙の題と --cover-bg 4.5:1、見出しの字とその地（帯の見出しは帯の上の白抜き）4.5:1
@@ -86,13 +87,14 @@ const objOf = (name) => {
   return Object.fromEntries(OBJ.map((k) => [k, ((css.match(new RegExp(`--obj-${k}\\s*:\\s*(#[0-9a-fA-F]{6})\\s*;`)) || [])[1] || '').toUpperCase()]));
 };
 
-await t('選べるテーマ：藍・墨・国語・常盤・江戸紫・焦茶・浅葱の 7 つ（この順）で、どれも同梱。business は選べないが同梱のまま（記録した教材を組む）', () => {
-  assert.deepEqual(CHOOSABLE.map((x) => x.name), ['default', 'sumi', 'kokugo', 'tokiwa', 'murasaki', 'kogecha', 'asagi']);
+await t('選べるテーマ：藍・墨・国語・常盤・江戸紫・焦茶・浅葱・生成の 8 つ（この順）で、どれも同梱。business は選べないが同梱のまま（記録した教材を組む）', () => {
+  assert.deepEqual(CHOOSABLE.map((x) => x.name), ['default', 'sumi', 'kokugo', 'tokiwa', 'murasaki', 'kogecha', 'asagi', 'bengara']);
   for (const x of CHOOSABLE) assert.ok(THEMES.includes(x.name), x.name);
   assert.deepEqual(RETIRED, ['business']);
   assert.ok(THEMES.includes('business'));
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'themes.lock.json'), 'utf8'));
-  for (const x of ['sumi', 'tokiwa', 'murasaki', 'kogecha', 'asagi']) assert.equal(lock.themes[x].current, '1.2.0', x);
+  for (const x of ['tokiwa', 'murasaki', 'kogecha', 'asagi', 'kokugo', 'business', 'sumi']) assert.equal(lock.themes[x].current, '1.3.0', x);
+  assert.equal(lock.themes.bengara.current, '1.0.0');
 });
 
 await t('形の断片：theme.json の look の形が tokens.css にそのまま写してあり、ほかの形の印はない。:where() で包まない', () => {
@@ -147,6 +149,24 @@ await t(`物の色 --obj-*：同梱のテーマはどれも 11 色を自分の t
   }
   assert.deepEqual(bad, []);
   for (const name of THEMES) console.log(`     ${name.padEnd(9)} closest adjacent pair ${OBJ_MIN[name].pair} ΔE00 ${fix(OBJ_MIN[name].d, 1)} | ${OBJ_ADJ.map(([a, b]) => fix(de2000(objOf(name)[a], objOf(name)[b]), 0)).join(' ')}`);
+});
+
+// 量の色の段 --ramp-1…5（format spec §8.4、backlog #200）：低→高の 5 段。地 --bg はテーマの tokens.css、なければ default の値
+const declared = (name, prop) => ((fs.readFileSync(path.join(ROOT, 'themes', name, 'tokens.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '').match(new RegExp(`${prop}\\s*:\\s*(#[0-9a-fA-F]{6})\\s*;`)) || [])[1] || '').toUpperCase();
+await t('量の色の段 --ramp-1…5：同梱のテーマはどれも 5 段を #rrggbb で自分の tokens.css に宣言し、OKLCH の明るさが 1→5 で単調に下がり（隣と 0.05 以上）、--ramp-5 は地 --bg と 3:1 以上', () => {
+  const bad = [], table = [];
+  for (const name of THEMES) {
+    const r = [1, 2, 3, 4, 5].map((k) => declared(name, `--ramp-${k}`));
+    const bg = declared(name, '--bg') || declared('default', '--bg');
+    if (r.some((x) => !x)) { bad.push(`${name}: tokens.css does not declare --ramp-1 … --ramp-5 as #rrggbb (${r.join(' ')})`); continue; }
+    const L = r.map((x) => oklch(x)[0]);
+    for (let k = 1; k < 5; k++) if (!(L[k - 1] - L[k] >= 0.05)) bad.push(`${name}: --ramp-${k} ${r[k - 1]} (L ${fix(L[k - 1], 3)}) → --ramp-${k + 1} ${r[k]} (L ${fix(L[k], 3)}): lightness must fall by 0.05 or more`);
+    const c5 = contrast(r[4], bg);
+    if (c5 < MIN.line) bad.push(`${name}: --ramp-5 ${r[4]} on --bg ${bg}: ${fix(c5)}:1 < 3:1`);
+    table.push(`     ${name.padEnd(9)} ${r.join(' ')} | L ${L.map((x) => fix(x, 2)).join(' ')} | --ramp-5 on ${bg} ${fix(c5)}:1`);
+  }
+  assert.deepEqual(bad, []);
+  console.log(table.join('\n'));
 });
 
 // Node の部分だけを走らせる環境でも、未検査を通過扱いにしないよう明示する。

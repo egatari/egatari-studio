@@ -1,0 +1,2199 @@
+{
+  "name": "egatari-components",
+  "version": "2.8.0",
+  "tag": "v2.8.0",
+  "repository": "https://github.com/egatari/components",
+  "license": "MIT",
+  "tarball": {
+    "file": "egatari-components-v2.8.0.tar.gz",
+    "sha256": "eef78dd1201d4fe1f08248554e11eec46bb8fd147881523f8263b08de41f2b1f",
+    "bytes": 1116655
+  },
+  "purposes": [
+    {
+      "id": "compare",
+      "ja": "比べる（量・特徴）",
+      "en": "Compare (amounts or features)",
+      "steps": {
+        "ja": "一方を出し、それから違い",
+        "en": "One side, then the difference"
+      },
+      "tile": "own",
+      "icon": "compare",
+      "label": {
+        "ja": "比べる（量・特徴）",
+        "en": "Compare (amounts, features)"
+      },
+      "examples": {
+        "ja": "棒・並べた棒・比べる図",
+        "en": "bars, sorted bars, comparison"
+      }
+    },
+    {
+      "id": "ranking",
+      "ja": "順位",
+      "en": "Ranking",
+      "steps": {
+        "ja": "並べ替えた棒を 1 本ずつ",
+        "en": "Sorted bars one at a time"
+      },
+      "tile": {
+        "into": "compare"
+      },
+      "icon": "bars"
+    },
+    {
+      "id": "change",
+      "ja": "時間での変化",
+      "en": "Change over time",
+      "steps": {
+        "ja": "線を 1 本ずつ",
+        "en": "One line at a time"
+      },
+      "tile": "own",
+      "icon": "line",
+      "label": {
+        "ja": "変化",
+        "en": "Change"
+      },
+      "examples": {
+        "ja": "折れ線・縦棒",
+        "en": "line, columns"
+      }
+    },
+    {
+      "id": "part-whole",
+      "ja": "全体と内訳",
+      "en": "Part of a whole",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "part",
+      "label": {
+        "ja": "内訳",
+        "en": "Part of a whole"
+      },
+      "examples": {
+        "ja": "積み上げ棒・円・入れ子の円",
+        "en": "stacked bars, pie, nested circles"
+      }
+    },
+    {
+      "id": "key-number",
+      "ja": "1 つの大事な数字",
+      "en": "One key number",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "kpi",
+      "label": {
+        "ja": "数字を見せる",
+        "en": "Key number"
+      },
+      "examples": {
+        "ja": "大きな数字",
+        "en": "big number"
+      }
+    },
+    {
+      "id": "process",
+      "ja": "手順・工程",
+      "en": "Steps of a process",
+      "steps": {
+        "ja": "1 つの手順ずつ",
+        "en": "One step at a time"
+      },
+      "tile": "own",
+      "icon": "flow",
+      "label": {
+        "ja": "手順",
+        "en": "Steps"
+      },
+      "examples": {
+        "ja": "流れ図",
+        "en": "flow chart"
+      }
+    },
+    {
+      "id": "timeline",
+      "ja": "年表・予定",
+      "en": "Timeline, schedule",
+      "steps": {
+        "ja": "1 つの出来事ずつ",
+        "en": "One event at a time"
+      },
+      "tile": "own",
+      "icon": "timeline",
+      "label": {
+        "ja": "年表・予定",
+        "en": "Timeline"
+      },
+      "examples": {
+        "ja": "年表",
+        "en": "timeline"
+      }
+    },
+    {
+      "id": "cause-effect",
+      "ja": "原因と結果",
+      "en": "Cause and effect",
+      "steps": {
+        "ja": "原因、それから結果",
+        "en": "Causes, then the effect"
+      },
+      "tile": "own",
+      "icon": "cause",
+      "label": {
+        "ja": "原因と結果",
+        "en": "Cause and effect"
+      },
+      "examples": {
+        "ja": "特性要因図",
+        "en": "fishbone"
+      }
+    },
+    {
+      "id": "cycle",
+      "ja": "循環",
+      "en": "Cycle",
+      "steps": {
+        "ja": "順を追って 1 つずつ",
+        "en": "One stage at a time"
+      },
+      "tile": "own",
+      "icon": "cycle",
+      "label": {
+        "ja": "循環",
+        "en": "Cycle"
+      },
+      "examples": {
+        "ja": "サイクル",
+        "en": "cycle"
+      }
+    },
+    {
+      "id": "hierarchy",
+      "ja": "階層・分類",
+      "en": "Hierarchy, classification",
+      "steps": {
+        "ja": "上から",
+        "en": "Top down"
+      },
+      "tile": "own",
+      "icon": "tree",
+      "label": {
+        "ja": "階層・分類",
+        "en": "Hierarchy"
+      },
+      "examples": {
+        "ja": "木",
+        "en": "tree"
+      }
+    },
+    {
+      "id": "position",
+      "ja": "位置づけ（2 軸）",
+      "en": "Position on 2 axes",
+      "steps": {
+        "ja": "軸、それから項目",
+        "en": "Axes, then items"
+      },
+      "tile": "own",
+      "icon": "matrix",
+      "label": {
+        "ja": "位置づけ",
+        "en": "Position"
+      },
+      "examples": {
+        "ja": "4 象限・2 軸の地図",
+        "en": "4 quadrants, 2-axis map"
+      }
+    },
+    {
+      "id": "overlap",
+      "ja": "重なり",
+      "en": "Overlap",
+      "steps": {
+        "ja": "集合、それから重なり",
+        "en": "Sets, then the overlap"
+      },
+      "tile": "own",
+      "icon": "venn",
+      "label": {
+        "ja": "重なり",
+        "en": "Overlap"
+      },
+      "examples": {
+        "ja": "ベン図",
+        "en": "Venn diagram"
+      }
+    },
+    {
+      "id": "correlation",
+      "ja": "2 つの量の関係",
+      "en": "Two quantities",
+      "steps": {
+        "ja": "点、それから傾向",
+        "en": "Points, then the trend"
+      },
+      "tile": "own",
+      "icon": "scatter",
+      "label": {
+        "ja": "2 つの量の関係",
+        "en": "Two quantities"
+      },
+      "examples": {
+        "ja": "散布図",
+        "en": "scatter plot"
+      }
+    },
+    {
+      "id": "spread",
+      "ja": "ばらつき",
+      "en": "Spread",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "dist",
+      "label": {
+        "ja": "ばらつき",
+        "en": "Spread"
+      },
+      "examples": {
+        "ja": "ヒストグラム・箱ひげ図・ドットプロット",
+        "en": "histogram, box plot, dot plot"
+      }
+    },
+    {
+      "id": "grouping",
+      "ja": "まとめる・分ける",
+      "en": "Grouping",
+      "steps": {
+        "ja": "まとまる動き",
+        "en": "The grouping motion"
+      },
+      "tile": "none",
+      "icon": "collect"
+    },
+    {
+      "id": "text-structure",
+      "ja": "文章の構造",
+      "en": "Structure of a text",
+      "steps": {
+        "ja": "読む順",
+        "en": "Reading order"
+      },
+      "tile": "none",
+      "icon": "gendai"
+    },
+    {
+      "id": "contents",
+      "ja": "目次",
+      "en": "Contents",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "menu",
+      "label": {
+        "ja": "目次",
+        "en": "Contents"
+      },
+      "examples": {
+        "ja": "札の格子",
+        "en": "grid of cards"
+      }
+    },
+    {
+      "id": "parameter",
+      "ja": "パラメータを動かす",
+      "en": "Varying a parameter",
+      "steps": {
+        "ja": "値を 1 つずつ",
+        "en": "One value at a time"
+      },
+      "tile": "none",
+      "icon": "sweep"
+    },
+    {
+      "id": "predict",
+      "ja": "予想してから確かめる",
+      "en": "Predict, then check",
+      "steps": {
+        "ja": "問いと選択肢、それから答え",
+        "en": "The question and choices, then the answer"
+      },
+      "tile": "own",
+      "icon": "predict",
+      "label": {
+        "ja": "予想して確かめる",
+        "en": "Predict, then check"
+      },
+      "examples": {
+        "ja": "手を挙げて数える・答えを開く",
+        "en": "show of hands, then the answer"
+      }
+    },
+    {
+      "id": "timebox",
+      "ja": "時間を区切る",
+      "en": "Time-boxing",
+      "steps": {
+        "ja": "区切りを 1 つずつ（残り時間）",
+        "en": "One phase at a time (time remaining)"
+      },
+      "tile": "none",
+      "icon": "timer"
+    },
+    {
+      "id": "spatial",
+      "ja": "場所・地図",
+      "en": "Place / map",
+      "steps": {
+        "ja": "地図、それから地域・点・矢印を 1 つずつ",
+        "en": "The map, then regions, points and arrows one at a time"
+      },
+      "tile": "own",
+      "icon": "map",
+      "label": {
+        "ja": "場所・地図",
+        "en": "Place / map"
+      },
+      "examples": {
+        "ja": "日本地図・塗り分け・地点と矢印",
+        "en": "map of Japan, choropleth, points and arrows"
+      }
+    },
+    {
+      "id": "music",
+      "ja": "音楽（音の高さ・和音・リズム）",
+      "en": "Music (pitch, chords, rhythm)",
+      "steps": {
+        "ja": "音・和音を 1 つずつ",
+        "en": "One note or chord at a time"
+      },
+      "tile": "none",
+      "icon": "music"
+    },
+    {
+      "id": "model",
+      "ja": "仕組みをモデルで見る",
+      "en": "How it works (a model)",
+      "steps": {
+        "ja": "全体、それから動きを 1 つずつ",
+        "en": "The whole, then the motion one stage at a time"
+      },
+      "tile": "none",
+      "icon": "cycle"
+    },
+    {
+      "id": "deviation",
+      "ja": "差・増減",
+      "en": "Deviation, increase and decrease",
+      "steps": {
+        "ja": "基準、それから差",
+        "en": "The baseline, then the differences"
+      },
+      "reserved": true
+    },
+    {
+      "id": "concept-links",
+      "ja": "概念のつながり",
+      "en": "Concept links",
+      "steps": {
+        "ja": "中心から外へ",
+        "en": "From the centre outwards"
+      },
+      "reserved": true
+    }
+  ],
+  "components": {
+    "balance": {
+      "kind": "element",
+      "tag": "m-balance",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "data",
+      "display": "期待値はつり合いの位置 / Expectation as a balance point",
+      "requires": {
+        "base": "1.2.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "db5ca4ba735f30c1e3473a98985defc056124a64264e019905bc31597999de96",
+      "files": {
+        "CHANGELOG.md": "48b80c4ede7887068e4167103811990dbb9cbe0e0b3b5c9317606659bf75e377",
+        "README.en.md": "b0aa8cc57b3a15a2a0adfca65d3ac87442f02364200a4e3b7d07ece33859ce00",
+        "README.md": "818ef2cfdfd68b463596f8c7a0ac2691e2cc3680386fe03a0c87015d474100e7",
+        "demo.html": "5a8f53b540ee781d765f1232e6a2674c4f850eb68a1cdc81e019f876de2b77c4",
+        "index.js": "db5ca4ba735f30c1e3473a98985defc056124a64264e019905bc31597999de96"
+      }
+    },
+    "bars": {
+      "kind": "element",
+      "tag": "m-bars",
+      "version": "2.0.3",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "compare",
+        "ranking",
+        "change",
+        "part-whole"
+      ],
+      "variants": [],
+      "sha256": "03b81df37c3af09772e244721fc082940c595d01b4e676f7e6116cd0ebdc917d",
+      "files": {
+        "CHANGELOG.md": "99d4d18e2031bb026c576a1dfcddd9a8434a58f434f835c38817eb73be7f3b00",
+        "README.en.md": "ae49088fda8492623fd3de6b00a296543420afae636fa00e57b512b5056c728a",
+        "README.md": "f8ad2be0d4aecfbd243b4023d6085d684ab26a55e0c290d2fad53a606a0b0f9d",
+        "demo.html": "656ce1db56973b661604cb5710e6235ed28b3454d360f34fe7126c8367d70264",
+        "index.js": "03b81df37c3af09772e244721fc082940c595d01b4e676f7e6116cd0ebdc917d"
+      }
+    },
+    "base": {
+      "kind": "library",
+      "version": "1.2.0",
+      "requires": {
+        "shape": "1.0.0"
+      },
+      "license": "MIT",
+      "sha256": "a6e8acf9da8b60413460925955a77b78b17fac7e983f6196cb9f530cee22b882",
+      "files": {
+        "README.md": "22b51c39d481984686f285e54044a4d6456eb6a6d4d712bfd8789ccc831ac002",
+        "index.js": "a6e8acf9da8b60413460925955a77b78b17fac7e983f6196cb9f530cee22b882"
+      }
+    },
+    "boxplot": {
+      "kind": "element",
+      "tag": "m-boxplot",
+      "version": "2.0.5",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.2.0",
+        "boxplot-core": "1.0.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "spread",
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "d57abfc7cd1510463d658fcb2e52c5597afde59c256da66ada5507d4408616c7",
+      "files": {
+        "CHANGELOG.md": "04873542d53a739edbdae3663e92d41a1d749c170852920855f3a0e3af067493",
+        "README.md": "0951db2885e7d0b610c8aa4f161271140d5207c82fbb922fc200efc2caee1c19",
+        "demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
+        "index.js": "d57abfc7cd1510463d658fcb2e52c5597afde59c256da66ada5507d4408616c7"
+      }
+    },
+    "boxplot-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "998759cbe88393082f20060d54265d87b86523f6800f7db5fa6a9670c9566b7a",
+      "files": {
+        "README.md": "0f90a3b4b3dbb1f3062df1684d9ffa0283258c7e25eec3dfda00404fe2b85a91",
+        "index.js": "998759cbe88393082f20060d54265d87b86523f6800f7db5fa6a9670c9566b7a"
+      }
+    },
+    "cards": {
+      "kind": "element",
+      "tag": "m-cards",
+      "version": "2.0.4",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0",
+        "icons": "1.0.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "grouping"
+      ],
+      "variants": [
+        "rise",
+        "fade",
+        "draw"
+      ],
+      "sha256": "3ccb9c9e92825439241b27d8c379001b5120ed431b34f46c8de8441dcbc08df0",
+      "files": {
+        "CHANGELOG.md": "95bd640041f4fc061d9689cf7092e2f4e6e487abc1222981955435d0c29a24ed",
+        "README.en.md": "b3f58185c3507fbf465093d6c8a2fe46cda0922a1711d972bf055d780b76a135",
+        "README.md": "7702c323a8ebc935d8363c88d5a6c82719be8a64113a97b904a95aec73e8d33b",
+        "demo.html": "0b4439c806dc96230314d5f4bfa50922d53a185aeefd21f81b20d681ed04a4a3",
+        "index.js": "3ccb9c9e92825439241b27d8c379001b5120ed431b34f46c8de8441dcbc08df0"
+      }
+    },
+    "ci": {
+      "kind": "element",
+      "tag": "m-ci",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "data",
+      "display": "信頼区間の意味 / Confidence intervals",
+      "requires": {
+        "base": "1.2.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "spread"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "83e2fcc837f679a2a9c5775f8182c30c19b69b1c40d886d25bcd0ecf82d80857",
+      "files": {
+        "CHANGELOG.md": "377d5610a46873993302d04045ce23e859748b146de735c19f3164c9510eac6d",
+        "README.en.md": "6e2ae8fbf7876698fa4b9b8c48633a5431223ca7eefa200c7313eec72ba2edf2",
+        "README.md": "fce8f2c139e3103efa485624ab9721492187be26d61ba2d1ca5aa086398e5236",
+        "demo.html": "fa5be1bdaf231de31b04b8a929f722722c88c56df04b01708bc8302dfc9b82fd",
+        "index.js": "83e2fcc837f679a2a9c5775f8182c30c19b69b1c40d886d25bcd0ecf82d80857"
+      }
+    },
+    "code": {
+      "kind": "element",
+      "tag": "m-code",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "data",
+      "display": "コードの解説 / Code walkthrough",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "model"
+      ],
+      "variants": [],
+      "sha256": "774108c61c628fbbd0f7eed2d57c0e22ad5082dcf24bf9f9671170195cb43023",
+      "files": {
+        "CHANGELOG.md": "b6ee38759b4fc8b86896a84381a4defdad9557d7dd86e4c96614103e01c96073",
+        "README.en.md": "d3341998a306f7447fc493a8e1823f72c87d832547cc512df83bbf062838697c",
+        "README.md": "d6a096dead117efc16a954026c9fd237b62b64bc355d12d0b818246bc4418b0d",
+        "demo.html": "fa390c1249a5d3f716c68eb86d450047e593896c987fdf3c8e221999d6b4a3d2",
+        "index.js": "774108c61c628fbbd0f7eed2d57c0e22ad5082dcf24bf9f9671170195cb43023"
+      }
+    },
+    "codetree": {
+      "kind": "element",
+      "tag": "m-codetree",
+      "version": "2.0.5",
+      "tier": "extra",
+      "display": "ハフマン木 / Huffman tree",
+      "requires": {
+        "base": "1.2.0",
+        "codetree-core": "1.0.0"
+      },
+      "series": "info",
+      "license": "MIT",
+      "purposes": [
+        "hierarchy",
+        "process"
+      ],
+      "variants": [],
+      "sha256": "3fcea60f2e00b900fa58fb99867734383ec68f1afa27089c41684ca96aee66c4",
+      "files": {
+        "CHANGELOG.md": "f8a037fa40cbeabdb5579e879e73ca0f8e0e9174c499f8f8096b6aca17263402",
+        "README.md": "9141ab9841c2c430beaae1ba14be681dbdfbe1b824d869590d6fc0952422d00d",
+        "demo.html": "094b81bdc9e088fb2ddffb552818e4c370bff138497a492767d0b71377ee8be6",
+        "index.js": "3fcea60f2e00b900fa58fb99867734383ec68f1afa27089c41684ca96aee66c4"
+      }
+    },
+    "codetree-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
+      "files": {
+        "README.md": "a544b8348d8f5d7284cb1a95564b33fd958a39d75a0acf1685d4bd61c670f0dd",
+        "index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d"
+      }
+    },
+    "collect": {
+      "kind": "element",
+      "tag": "m-collect",
+      "version": "2.0.3",
+      "tier": "extra",
+      "build": {
+        "fields": {
+          "targets[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "grouping"
+      ],
+      "variants": [],
+      "sha256": "76d86a2bdf8a77922fb019f6ccbcde4b81925c50006e79f39101b28966f94ad1",
+      "files": {
+        "CHANGELOG.md": "d2335796f62bcb898ae27e13d8442688b634562a5ea04f4da6850ec9af472c26",
+        "README.md": "45d61575deb8e7786c6aed8c8b844566ebde4ab5974631d84efd81ab620bd082",
+        "demo.html": "bc503695034d43678c2c30ded24e90f43056b0fdcb5eefc51b688ac504313685",
+        "index.js": "76d86a2bdf8a77922fb019f6ccbcde4b81925c50006e79f39101b28966f94ad1"
+      }
+    },
+    "compare": {
+      "kind": "element",
+      "tag": "m-compare",
+      "version": "2.0.3",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "slide",
+        "reveal"
+      ],
+      "sha256": "78993591166c380cc281666e81fb59b7bcdf8acc3d3dc49b30304663455d4da9",
+      "files": {
+        "CHANGELOG.md": "a3b508951af819626e37d61a7b3ab2d84b45d72004d1415446e2f0d9a8564e58",
+        "README.en.md": "a52a51dc480340e1ddcec3ff62b5793eb99c8d2cce7b014bbb3c3726ddcf49c2",
+        "README.md": "f73b074e6c7b0b21a31cc3e0d46622f5b600eb85010823e103381cae2c1a31a1",
+        "demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
+        "index.js": "78993591166c380cc281666e81fb59b7bcdf8acc3d3dc49b30304663455d4da9"
+      }
+    },
+    "curves": {
+      "kind": "element",
+      "tag": "m-curves",
+      "version": "2.2.1",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0",
+        "expr": "1.0.0",
+        "plot": "1.1.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "change"
+      ],
+      "variants": [],
+      "sha256": "b88fba722af1b54bb341e2371d12e3c83570d72ad38322391f0e59f916b4d5ed",
+      "files": {
+        "CHANGELOG.md": "fc97d53487b8518e7be17aac55a07642a1eb52ebe65f3a41f18649a71dc6a3b4",
+        "README.en.md": "8e3b3e56d1f50e910b37068004753636767f269c1c26bf26d0b0cc7524d6c432",
+        "README.md": "21f63c923b4953574d1c4cffd398445fb3368f85a4c5af1774433fe93b3cad32",
+        "demo.html": "d492067c080f928e4b5fc73f9767fb59786f1808484b7288aa60684399be383d",
+        "index.js": "b88fba722af1b54bb341e2371d12e3c83570d72ad38322391f0e59f916b4d5ed"
+      }
+    },
+    "cycle": {
+      "kind": "element",
+      "tag": "m-cycle",
+      "version": "2.0.4",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex",
+          "center.tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "cycle"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "2eb45713a40808b6e008b084c6138280018068e62d42670c11e6e83a31865214",
+      "files": {
+        "CHANGELOG.md": "576c1b81adebee86482ea3ebcf7c4f781aa8cc5632c1aa5b023957b0e7b834a9",
+        "README.en.md": "847b9a9c2b660a2fb11ffa7aee14c7401b38db2f47f54ed83288551739e4db81",
+        "README.md": "f184a2b4ec613f917f4f41dc24d61385b509843c274587634e7c6b11170424b4",
+        "demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
+        "index.js": "2eb45713a40808b6e008b084c6138280018068e62d42670c11e6e83a31865214"
+      }
+    },
+    "expr": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "93d6f8f2ea262ff6272fd04c9f894b22c03eac0e5905aee4e4ce7cab36ed7b90",
+      "files": {
+        "README.md": "666b06233c8e137a8c4b364ed6671a546158504b174a10be43439b14556285b7",
+        "index.js": "93d6f8f2ea262ff6272fd04c9f894b22c03eac0e5905aee4e4ce7cab36ed7b90"
+      }
+    },
+    "fishbone": {
+      "kind": "element",
+      "tag": "m-fishbone",
+      "version": "2.1.0",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "effect.tex": "katex",
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "cause-effect"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "219d7bac1b983f52efa1d501b8df9537b9c774303a119b671264b2acaa37a8fc",
+      "files": {
+        "CHANGELOG.md": "b0a0a884006a38015a4366edf50dbb65add662fb4514c9f6a32b383cbc55d70a",
+        "README.en.md": "c1b6e47307a6d85eef22fa59851d43a9f34f961c737a38a4920ebd88bf09e592",
+        "README.md": "a025bd2b1ee5cd89987dbc5afec1c6edf1581a19506a9944ae2357d74e8bcd8f",
+        "demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
+        "index.js": "219d7bac1b983f52efa1d501b8df9537b9c774303a119b671264b2acaa37a8fc"
+      }
+    },
+    "flow": {
+      "kind": "element",
+      "tag": "m-flow",
+      "version": "2.1.0",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process"
+      ],
+      "variants": [],
+      "sha256": "4100140fb1239cbd2924267f245fad5a08da18bb719c7face730aebacf3eae8e",
+      "files": {
+        "CHANGELOG.md": "8f40a80f9d94286159af652f1e892e4aafcfc23b8284251e145b5035ab88c3ce",
+        "README.en.md": "54c5e117eb4228b18a2b22abf2bf74e60d974a87db11e7a9ba1394f50904126f",
+        "README.md": "6447f956a0e9114c1bf14659ef023e04b6d3d546cbd2ec8ede06d042ab3e96fd",
+        "demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+        "index.js": "4100140fb1239cbd2924267f245fad5a08da18bb719c7face730aebacf3eae8e"
+      }
+    },
+    "folds": {
+      "kind": "element",
+      "tag": "m-folds",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "data",
+      "display": "交差検証 / Cross-validation",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "compare"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "58601c3d7b441495878463efad3549e21950751679392fec36accffeb776f071",
+      "files": {
+        "CHANGELOG.md": "b6cbce847582df338dde7add75bd601b4d52623b9d38f2c7459fb3f9598b7068",
+        "README.en.md": "e92970327f0651f2355e5b5671c830b0e0ce74aa5abd0b6201f803102a6b6d34",
+        "README.md": "39ba7a645750778167dc3dbbd5e4b846bcb0be4181388aa4942bf9f06d620af6",
+        "demo.html": "f92b84d0886e21ab94dbb5772c08d049101e7d4b34a8ad44fddbca8508246d77",
+        "index.js": "58601c3d7b441495878463efad3549e21950751679392fec36accffeb776f071"
+      }
+    },
+    "gendai": {
+      "kind": "element",
+      "tag": "m-gendai",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "kokugo",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "kokugo",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
+      "sha256": "333072ebed1072738d248267a6e480184ddbdcf371288db0809f05d02ad7663b",
+      "files": {
+        "CHANGELOG.md": "de22c4f0fcdbf3e9b2f22366a4351da9855ef94bbd6e9abc6437a47f20bdb6c8",
+        "README.md": "6b3a821b1729c44a8fd31f0437b0eff9fd7942de58789fe19c717763b44eb478",
+        "demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
+        "index.js": "333072ebed1072738d248267a6e480184ddbdcf371288db0809f05d02ad7663b"
+      }
+    },
+    "heatmap": {
+      "kind": "element",
+      "tag": "m-heatmap",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.2.0",
+        "heatmap-core": "1.0.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "compare",
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep"
+      ],
+      "sha256": "bec98bed6ba090a961916d76d67e72ed9b3b971089a4e6106c073cf3ff31f7b6",
+      "files": {
+        "CHANGELOG.md": "e8d54f4e95ae67c97cb413e67004c16cc70f16b69a948e9beac1d79d26b03843",
+        "README.md": "4ff1633b73cf00a0746b3a795bd3db01e3195611ce7403116318449e19f5710b",
+        "demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+        "index.js": "bec98bed6ba090a961916d76d67e72ed9b3b971089a4e6106c073cf3ff31f7b6"
+      }
+    },
+    "heatmap-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "fb2662b77e9c6e74443f8f4168400c72a9d0f55349e5cb5bd06bad487cd9311e",
+      "files": {
+        "README.md": "c04c8b0d009eb19011bf03f353144450dcd08b8defd4189e8d976ebfdc66444a",
+        "index.js": "fb2662b77e9c6e74443f8f4168400c72a9d0f55349e5cb5bd06bad487cd9311e"
+      }
+    },
+    "hissan": {
+      "kind": "element",
+      "tag": "m-hissan",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "process"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "preview": "none",
+      "sha256": "30de78cdadc16abf2eb2ecf4a1f7acbfa06c5c82b276bf6bdb1691994094340d",
+      "files": {
+        "CHANGELOG.md": "1399bd107b58bb8b22cef197af760232cc65698281550530d475c4ed4c62ac2b",
+        "README.md": "44aa3f06043722b915f501088f976ab24b943b7d1d9291783ea1fbeaad4dd598",
+        "demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
+        "index.js": "30de78cdadc16abf2eb2ecf4a1f7acbfa06c5c82b276bf6bdb1691994094340d"
+      }
+    },
+    "hist": {
+      "kind": "element",
+      "tag": "m-hist",
+      "version": "2.0.5",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.2.0",
+        "hist-core": "1.0.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "spread"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "8c36e75620a647e405c4ff9915b346a016b4646ae7b2cfde211fb4c89280aaaa",
+      "files": {
+        "CHANGELOG.md": "d1ff32835ae48a3588abd79b41d28a0ef05ce4710184ec32260b526f25991b14",
+        "README.md": "f7f0907b31b5d6c69a2c66bebfaefd53f051c83ed1452783965c2d2fc8a6531c",
+        "demo.html": "7c404351983e5fac261f34f348b72af9a64ad81e59c90eda6adb2099b57fdd05",
+        "index.js": "8c36e75620a647e405c4ff9915b346a016b4646ae7b2cfde211fb4c89280aaaa"
+      }
+    },
+    "hist-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "a7ab089d563b6f3e8c632aff2aaa6b709984ffd045656aa6d463d3fc62be4315",
+      "files": {
+        "README.md": "525526765fd853760d2012b2bdec5be66432c97c08967f026b19e5fc2640f940",
+        "index.js": "a7ab089d563b6f3e8c632aff2aaa6b709984ffd045656aa6d463d3fc62be4315"
+      }
+    },
+    "icons": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "build": {
+        "subset": [
+          {
+            "data": "block:icons",
+            "key": "name",
+            "match": "name"
+          }
+        ]
+      },
+      "license": "MIT",
+      "sha256": "af56a1b77a4ff995906e56b7f6ec91dd9e7b3fb2ef792050f388b300c14fcc72",
+      "files": {
+        "LICENSE-tabler.txt": "b740a1d46122672da62833e97f7e7c8a13fa85cbc7445b584b297cc00dde93db",
+        "README.md": "b59090d65725f1fad81676a2ecd7da1785d1b46d0256fc11ae026384e786304b",
+        "en.json": "14b6877493192776ce4f6718e9d15901255017a8f745de95a6d4157ab4389429",
+        "index.js": "af56a1b77a4ff995906e56b7f6ec91dd9e7b3fb2ef792050f388b300c14fcc72",
+        "ja.json": "44be10142490e108fff7c9002708b745fe0eca1e4535594fd0d5b6a5ae41c641",
+        "names.txt": "9b2833c8fcf085f4b77c7c8e2dd81f388746ed49d20c2b85bf5f044c1ec2fb7c"
+      }
+    },
+    "kakijun": {
+      "kind": "element",
+      "tag": "m-kakijun",
+      "version": "2.0.2",
+      "tier": "extra",
+      "build": {
+        "subset": [
+          {
+            "data": "block:strokes",
+            "key": "char"
+          },
+          {
+            "data": "block:stroke-meta",
+            "key": "char"
+          }
+        ]
+      },
+      "glyphs": "0123456789とめはねらい",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "kokugo",
+      "license": "MIT AND OFL-1.1",
+      "purposes": [
+        "process"
+      ],
+      "variants": [
+        "draw",
+        "pen"
+      ],
+      "sha256": "cd2e7f9a6e5ce810af32ca481f60929b459a069f014dfe63888695577732c89c",
+      "files": {
+        "CHANGELOG.md": "fdb99a6e4c10324f2b635b63898812f6afe673bd3a6a07e6f4e97920feb4a44f",
+        "LICENSE-strokesvg.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
+        "OFL.txt": "f5f4f05e005b6495a0d1f5bd49d37f5ac3e369883e2b7e3e48cd5aefded912f4",
+        "README.md": "273656ca322bd2a526bbff831105eb37cda9114042773bbc15e8574b538b42a3",
+        "demo.html": "ba581e1293b5fcd6cb34a85cf594c3b393e2a18d7d4ef4f74b86568e163a76a0",
+        "index.js": "cd2e7f9a6e5ce810af32ca481f60929b459a069f014dfe63888695577732c89c",
+        "strokes-CHANGES.md": "cbe49676be0e2cf340153650e09951ec378b49ce110019ebd4c78a6ec122107c"
+      }
+    },
+    "kanbun": {
+      "kind": "element",
+      "tag": "m-kanbun",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "kokugo",
+      "requires": {
+        "base": "1.2.0",
+        "kanbun-core": "1.0.0"
+      },
+      "series": "kokugo",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
+      "sha256": "008de584fe550a26f9d42e8a1f239f646c4db7e7c472cf59d9ba46ac59d55e01",
+      "files": {
+        "CHANGELOG.md": "732db4ca69a6dfc5cdba76c0f7883258853c6614b907a0cd1773b44663d95578",
+        "README.md": "efa241bdba299b3509a04d12420a1bd9a1ca12c89484bd937386cce5acb60042",
+        "demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
+        "index.js": "008de584fe550a26f9d42e8a1f239f646c4db7e7c472cf59d9ba46ac59d55e01"
+      }
+    },
+    "kanbun-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "1bc1a2136b8c480d2d3ed2c685d3f1f7cee568d1bee5191a3a13682ce87f2a31",
+      "files": {
+        "README.md": "053fa4536d3b835ff319556af02e55add396b8ca6f433b2fdb6d568b18c6aabe",
+        "index.js": "1bc1a2136b8c480d2d3ed2c685d3f1f7cee568d1bee5191a3a13682ce87f2a31"
+      }
+    },
+    "keyboard": {
+      "kind": "element",
+      "tag": "m-keyboard",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "music",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "music",
+      "license": "MIT",
+      "purposes": [
+        "music"
+      ],
+      "variants": [
+        "light",
+        "press",
+        "rise"
+      ],
+      "sha256": "5bb72973b128f55b787f8a66b231e9cb770b441bfac2ef91ed105bc6e19ec4f9",
+      "files": {
+        "CHANGELOG.md": "946e34c1858587a8b90a3483b4cd6b0d77f1bf717799b337cd87f7ec9450f796",
+        "README.md": "809540868f0a62e436ec69ab281f0d1bf611807ac2cd1df1d3dec9d73cc91892",
+        "demo.html": "b6baa3e89ad4a3d2177d2b8ac3ae7cbae210e667ea2e2b3c04ca9f565c12ff6f",
+        "index.js": "5bb72973b128f55b787f8a66b231e9cb770b441bfac2ef91ed105bc6e19ec4f9"
+      }
+    },
+    "kobun": {
+      "kind": "element",
+      "tag": "m-kobun",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "kokugo",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "kokugo",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [],
+      "interactive": true,
+      "sha256": "3be30e7fd04358a0b860d07841a466c9bbb739cee513e0b4f93368e56f6f0966",
+      "files": {
+        "CHANGELOG.md": "d0fac6b2684b77983784497e6caabb623c0e31fc1123c5fb2f3f04ee6f36c163",
+        "README.md": "03d240f4fdc4ea7748bdf5ca5736d39d62e383a91a21f942c854de63500d1d08",
+        "demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+        "index.js": "3be30e7fd04358a0b860d07841a466c9bbb739cee513e0b4f93368e56f6f0966"
+      }
+    },
+    "kpi": {
+      "kind": "element",
+      "tag": "m-kpi",
+      "version": "2.0.3",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "key-number"
+      ],
+      "variants": [
+        "count",
+        "rise",
+        "flip",
+        "underline"
+      ],
+      "sha256": "b467fe9d7ec0b832011b160688dd45881aa5094fab4399448fa456a2648d694e",
+      "files": {
+        "CHANGELOG.md": "16afbf0e8d124e1d4f55bd8536bf72e5de333680dbe0a052de48be7c09955f39",
+        "README.en.md": "66cd2f5a60ed8345442ef208315266ecfe5e34acc9bf416aaf68db7ec0f7992e",
+        "README.md": "aaa0dc790de3e8b72e97d5e84ccbe51feb93bb1d49b5c382ed7b022639749274",
+        "demo.html": "9e06266e83cc9f04912f8330e03c87e0c1e510c3f2d7ad9fd82680bf822a0f34",
+        "index.js": "b467fe9d7ec0b832011b160688dd45881aa5094fab4399448fa456a2648d694e"
+      }
+    },
+    "map-japan": {
+      "kind": "element",
+      "tag": "m-map-japan",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "maps",
+      "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "social",
+      "license": "MIT",
+      "purposes": [
+        "spatial"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "a6f8f2744ae3c69cb7bd744953689118b93d2b5079e884e25730e8c84ae6ecae",
+      "files": {
+        "CHANGELOG.md": "3bb4e26c0045770ec0125de1b636f94c270a8e94324fc8cbffb6bfa0d79f516f",
+        "README.md": "f91fe0c3191f9eeb85aa112bd832c9454ec1dbafc1c13bfe27a1c459b9c2946c",
+        "demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
+        "index.js": "a6f8f2744ae3c69cb7bd744953689118b93d2b5079e884e25730e8c84ae6ecae"
+      }
+    },
+    "map-world": {
+      "kind": "element",
+      "tag": "m-map-world",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "maps",
+      "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,°×−、。〜あいかがきくけごしすただつてでとにのはばべまらりるれろをァアィイウェエォオカガキギクグケコゴサザシジスズセゼソタダチッツテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュユョヨラリルレロワン・ー上下世中丹主京人以位例値入六共凡出分列前動北千南単口台号合名和図国土地域基塗大太央字定小尖属島州帰度後択捉数文方既日書有朝未本東桁極樺歯民沖洋湾満界目礁秒竹符米級経線緯群舞色衆西見語諸赤足軍連道邦長閣限陸階離韓項領首鮮鳥（）：；",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "social",
+      "license": "MIT",
+      "purposes": [
+        "spatial"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "518154f0d5054ccb44d146815df881af0c3bce2ac8bd0d524722e7bd6d7f48ed",
+      "files": {
+        "CHANGELOG.md": "8c45f2c6c7867db58f21bf81b1a8406af8fca36996d85226f405eb30fcfac93b",
+        "README.md": "35d86614e389b0ff81345ac086071754b01b5c2d64b9f1aa02f368a85b891c42",
+        "demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+        "index.js": "518154f0d5054ccb44d146815df881af0c3bce2ac8bd0d524722e7bd6d7f48ed"
+      }
+    },
+    "mapping": {
+      "kind": "element",
+      "tag": "m-mapping",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "data",
+      "display": "確率変数の対応 / Random variable mapping",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "grouping"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "903c59cd75632d274e2cdebc4a0383d008146e44c3b123cbb665e7f34da4dbe8",
+      "files": {
+        "CHANGELOG.md": "4d74c527168b4cdccb61a64c30eacd4f3ce6d7863a5c4f2509f677d0472dbb66",
+        "README.en.md": "4b90bcd1573f4be63a7d6896833f462c0096a6013551e04ce7b28e657376fb05",
+        "README.md": "a5b9dda737bed7b1776003282ee1f6ba9f88fda98816d3cd41aa37853db609fc",
+        "demo.html": "8cdc0670d29959d7c9d3c200d7c65325f3d67b4fd262c106ee8888ba62e776f4",
+        "index.js": "903c59cd75632d274e2cdebc4a0383d008146e44c3b123cbb665e7f34da4dbe8"
+      }
+    },
+    "market": {
+      "kind": "element",
+      "tag": "m-market",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "business",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "business",
+      "license": "MIT",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [],
+      "sha256": "e1d6cb11c7f888d5999f702ee56e2d86a807bc4564d0b8e9c8b9bcd9eae93f24",
+      "files": {
+        "CHANGELOG.md": "9ea3bb7e71da28f507bd7888a1dc06d1663c54dd036a9c7ad3b29498cfd14aa4",
+        "README.md": "d9908ecdfcc005d999c35a9016e0ba94aec2da5ba399ac79a6c7ef19ae4394ee",
+        "demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
+        "index.js": "e1d6cb11c7f888d5999f702ee56e2d86a807bc4564d0b8e9c8b9bcd9eae93f24"
+      }
+    },
+    "markup-reader": {
+      "kind": "library",
+      "version": "1.0.2",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "license": "MIT",
+      "sha256": "282f0ad60c727fea12574dee4c24dc9daf031c9c67b036e3e4d38f9596568327",
+      "files": {
+        "README.md": "5765b6836b71c7ef20bcbce45a05c8b51d64c50d061fdb7f44da622646302583",
+        "index.js": "282f0ad60c727fea12574dee4c24dc9daf031c9c67b036e3e4d38f9596568327"
+      }
+    },
+    "menu": {
+      "kind": "element",
+      "tag": "m-menu",
+      "version": "2.0.3",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "contents"
+      ],
+      "variants": [],
+      "interactive": true,
+      "sha256": "4bccdd6248c457d012eb8ea7eb65dfbdcd0ea3377cdc0e3cad00f75e71f854ba",
+      "files": {
+        "CHANGELOG.md": "5d295315d401e47b425adbc2dc1ee13b270be2badfef9f2152303d6f8f4f4017",
+        "README.en.md": "052b2016e3ae7615bc71cdd92861d81cd53ff736d417ca263781e4b9cbdc2898",
+        "README.md": "7aa305dc46aba48b609e2f9d3656c654cb3175d88dcd4841272f7868ab3cc72e",
+        "demo.html": "247a4272a7b5da88e411484deb0c37447402694cfdb0fb733495dfc44908d81e",
+        "index.js": "4bccdd6248c457d012eb8ea7eb65dfbdcd0ea3377cdc0e3cad00f75e71f854ba"
+      }
+    },
+    "numberline": {
+      "kind": "element",
+      "tag": "m-numberline",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "56aeea15fa3e928d4846c8c91acaec02781cb83d82123eaf1b0bc4bb4465d3f8",
+      "files": {
+        "CHANGELOG.md": "6d12b1aea31cb813dc6e30848273386f421cd53eb120313b3a8f1d3b746f4e36",
+        "README.md": "2cbb528c0dd2c5b726a0c919d2bc5a0fc7e640e52202e826ef723b20d6607cbf",
+        "demo.html": "c816a713662f13e5f9bda5dfc10ee807290ce4c1030b999f0934812a6c1e5721",
+        "index.js": "56aeea15fa3e928d4846c8c91acaec02781cb83d82123eaf1b0bc4bb4465d3f8"
+      }
+    },
+    "orbit": {
+      "kind": "element",
+      "tag": "m-orbit",
+      "version": "2.0.5",
+      "tier": "specialized",
+      "set": "science",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "cycle"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "430e0950488aac7753d4a4aff811711cc8483591dd9ad1d4939872de4e57fdfb",
+      "files": {
+        "CHANGELOG.md": "11d0a7a5a7b5ee7b22c78bd156685821c1c4546770246c608d56653645fda033",
+        "README.md": "5d4f4f3d237c8aad0f866566f6ada916bbfed6a5df41b2bdab867e5e0029723d",
+        "demo.html": "3ea0c774a5eeb23cd91dd76ca54ba7849a08cf168278bb9c5e2c1007f95c71e8",
+        "index.js": "430e0950488aac7753d4a4aff811711cc8483591dd9ad1d4939872de4e57fdfb"
+      }
+    },
+    "particles": {
+      "kind": "element",
+      "tag": "m-particles",
+      "version": "2.0.2",
+      "tier": "specialized",
+      "set": "science",
+      "display": "粒子のモデル / Particle model",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "process",
+        "compare"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "35ec1224cffa8ba7a2c5a9dec23092cfa243c336b7c79945bfed6d67b4f3cb51",
+      "files": {
+        "CHANGELOG.md": "5fbd3c59cce8d100bc5108d5900a5c705404a7753df877b8ecb1cdd6707593f4",
+        "README.md": "d6a4132d2c59978c0d81f495b285ce3337677a1d3ea88dfff5f041cf8b4b973e",
+        "demo.html": "f79442e0b8cc5de16d131f4146079bc0c8095049459bb41800c46a27efe24cd7",
+        "index.js": "35ec1224cffa8ba7a2c5a9dec23092cfa243c336b7c79945bfed6d67b4f3cb51"
+      }
+    },
+    "pie": {
+      "kind": "element",
+      "tag": "m-pie",
+      "version": "2.0.3",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "832ed38ce9c9004a02dac94abbaec296d8b52ee3df4f0355ee7f3f787d1039eb",
+      "files": {
+        "CHANGELOG.md": "45f0d073c4582c1137eee953cde07239d79bc98fe84982209040f593d0b9a046",
+        "README.en.md": "0cb174043d57fee4ad87b3f2c05573e65869351f70633085d4860c906925211e",
+        "README.md": "f01c9fd42677e30abcd38593e40491c32278e42171554120c6c44732b62437d5",
+        "demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
+        "index.js": "832ed38ce9c9004a02dac94abbaec296d8b52ee3df4f0355ee7f3f787d1039eb"
+      }
+    },
+    "plot": {
+      "kind": "library",
+      "version": "1.1.2",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "license": "MIT",
+      "sha256": "5b4ecd9b456d223f760a6692df47acf9e543721c31b8afa4e5e8c4174b8cd62a",
+      "files": {
+        "README.md": "a7411dea7ced66b1831423988c17adf62576d4df7693e98c38b758af7bc42355",
+        "index.js": "5b4ecd9b456d223f760a6692df47acf9e543721c31b8afa4e5e8c4174b8cd62a"
+      }
+    },
+    "predict": {
+      "kind": "element",
+      "tag": "m-predict",
+      "version": "2.1.0",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "predict"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "preview": "none",
+      "sha256": "0b43b872a1075ee2e578f9fbeb31fa46016aaf0ffa9b878bb24a3ea8dc431b76",
+      "files": {
+        "CHANGELOG.md": "215c1e5ab50decb637e5ebbea289628c45e573d7bc8bbc3a78702c29ab18b7d8",
+        "README.en.md": "a26f4e90b44a9ed32401382ec11a5da198d76c4b141a6c19a7a4f47f077fd88e",
+        "README.md": "959a2eb274ea2987861d9412f5e676548b829b61eebc2cd06b65592a98128e50",
+        "demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
+        "index.js": "0b43b872a1075ee2e578f9fbeb31fa46016aaf0ffa9b878bb24a3ea8dc431b76"
+      }
+    },
+    "quad": {
+      "kind": "element",
+      "tag": "m-quad",
+      "version": "2.1.0",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "position"
+      ],
+      "variants": [],
+      "sha256": "60e7063c9e05734c7bbb662a10c7414782af633c036fd53adc5d7e63cdcc0469",
+      "files": {
+        "CHANGELOG.md": "0715ebe429c62dd960ccf05b12fd764692063020d793038603fd14a993b5378f",
+        "README.en.md": "fc710f99554c38b6fa32464fb2ffe80f6ebfd5c18200487cc470922c23ffaca7",
+        "README.md": "506b9237bbacb2bdda25d516761860bf4e7e8a2c6d81dba1fdd0a0a2d115dd57",
+        "demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
+        "index.js": "60e7063c9e05734c7bbb662a10c7414782af633c036fd53adc5d7e63cdcc0469"
+      }
+    },
+    "sampling": {
+      "kind": "element",
+      "tag": "m-sampling",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "data",
+      "display": "標本抽出 / Sampling",
+      "requires": {
+        "base": "1.2.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "spread"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "dbafe9b865159177340badb24cca4ec6225128a3114cc4c9246ab6795babc515",
+      "files": {
+        "CHANGELOG.md": "cdf681248b119cb8fb0fb6921346033a3cdee90dccd6b5e619ded66a8024c97c",
+        "README.en.md": "2a1b3771adacd538be05e7df000dd6e3523d65a1db02a32e5e641b6b20480de0",
+        "README.md": "4aae1f071ca1983031ab981f70420f42f45bf8e7676d9b39272e962608e21200",
+        "demo.html": "fc4e2d92ed4489ae17cfebdaba5a9a85ff03731f4f51cfc167de13e468a93d85",
+        "index.js": "dbafe9b865159177340badb24cca4ec6225128a3114cc4c9246ab6795babc515"
+      }
+    },
+    "scatter": {
+      "kind": "element",
+      "tag": "m-scatter",
+      "version": "2.0.5",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0",
+        "plot": "1.1.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "12b5d44228efd91cd4bf808b720a8260ec1bbb39a7138efbd92996a2c5791fa3",
+      "files": {
+        "CHANGELOG.md": "2605fe4c0297999e5b304dc1e872977a75209c5dd02841d943a20d49f501545c",
+        "README.en.md": "9f431243e1f8564bbca127864471eab8cceee2aea65cf163c090a8c46717b934",
+        "README.md": "385fa9d42b813e2b24299cb45540d0af56b5b2d2cab00cee7c74c17c3b80d47a",
+        "demo.html": "7c8be709a8134919cf8af631a1fa92a99884ff1f97b9cf5cc32fe6353d645944",
+        "index.js": "12b5d44228efd91cd4bf808b720a8260ec1bbb39a7138efbd92996a2c5791fa3"
+      }
+    },
+    "score": {
+      "kind": "element",
+      "tag": "m-score",
+      "version": "2.1.1",
+      "tier": "specialized",
+      "set": "music",
+      "build": {
+        "fields": {
+          "abc": "abcjs"
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "music",
+      "license": "MIT",
+      "purposes": [
+        "music"
+      ],
+      "variants": [
+        "light"
+      ],
+      "sha256": "cf4fa043c6fc046d4fa4c0bd707230801acc1a2df7bf53ba86bc2d1c2c93f90f",
+      "files": {
+        "CHANGELOG.md": "68c4dc08ecebfcd9de78230ddd2df232b7cebbe0c6ac11d61633c11d52a17b34",
+        "README.md": "a3f2e961d7cb414195ffd8d6bd9fd3e483eca78ca81c6f35b1f495dcd880a894",
+        "demo.html": "c37683a05d361a811b8d5de0e8a2f169fb3a296a801a59abf1d765f0d229371f",
+        "fixtures/ABCJS-ADAPTER.md": "fb34bf0c7dc1836151f7758c4c17566460a438262991a3bf03cd54795a3e62db",
+        "fixtures/LICENSE-abcjs.txt": "d7bdcd152b978adee22a2f9b92a4d72c4ec2c20a86512766c7c210b462b54702",
+        "fixtures/chords.json": "544fe9fb432ae5e4ec6f3443a83f2632e0fcad33f829f200933e389b58b69e6e",
+        "fixtures/doremi.json": "cfad521f15342198055a4512884af0eab046a69923feedbf1e405cb86fe1b528",
+        "fixtures/extras.json": "08dae18aa14cd5bea1550a03496cbc221a81e42c5363ef1d47effb929a9ce234",
+        "fixtures/kaeru.json": "05927268b954747701763448d22c0a7505a046077596ed1602e3db701df08dbd",
+        "fixtures/rhythm.json": "a7a4ec18ba80a180646a9186bae30633332a5e7c98fe1b375944b54f22fecef7",
+        "fixtures/ties.json": "20fdec4beef0c137ada57b98248db48f58aa20820e2c17a66b066e921de99f16",
+        "index.js": "cf4fa043c6fc046d4fa4c0bd707230801acc1a2df7bf53ba86bc2d1c2c93f90f"
+      }
+    },
+    "seq": {
+      "kind": "element",
+      "tag": "m-seq",
+      "version": "2.0.5",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.2.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "spread"
+      ],
+      "variants": [],
+      "sha256": "e00cb443dfa40a70ee7d2c2bdfe6724c71a8bed848db8eb7c65ba432c1995885",
+      "files": {
+        "CHANGELOG.md": "26415baea4f138a2ede4e5f8a17ba1d655bc5c48e8e28d498e3ff85b5d18c01d",
+        "README.md": "8512024129905d64d0aa6d87971ee706e1585684d76d06df720e6ab81a380796",
+        "demo.html": "7ac4d72c5277a9892277841b18ce4e8ee9a3c04b70eb4522f3ffcbdccdc508db",
+        "index.js": "e00cb443dfa40a70ee7d2c2bdfe6724c71a8bed848db8eb7c65ba432c1995885"
+      }
+    },
+    "shape": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911",
+      "files": {
+        "README.md": "58413ee7607bfe50d793432c3104429f2df8b9230fb9f33bbf310c3cec7130ca",
+        "index.js": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911"
+      }
+    },
+    "sweep": {
+      "kind": "element",
+      "tag": "m-sweep",
+      "version": "2.1.2",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.2.0",
+        "expr": "1.0.0",
+        "plot": "1.1.2"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "parameter"
+      ],
+      "variants": [],
+      "sha256": "3a99e8486d9c70f9d52cb6f88a11825b58ecc0bf0f62fec18c4a6cce8ef49c32",
+      "files": {
+        "CHANGELOG.md": "4f039321b65ab7b0b23c75770b59e2eb6baa2bf98d77d2f36dbc05d58592a49b",
+        "README.md": "707074d516e05a3c13c9f0641f2d7ba681c147a9b71f198957c95ab3dc14a9fe",
+        "demo.html": "19d6152d6a78b550b9e18b090fd57a6f0f8a3fd4bd05e4857181a85584ea130b",
+        "index.js": "3a99e8486d9c70f9d52cb6f88a11825b58ecc0bf0f62fec18c4a6cce8ef49c32"
+      }
+    },
+    "syntax": {
+      "kind": "element",
+      "tag": "m-syntax",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "english",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "english",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "8692da09447e2df3870f3dca0585b41a7bd1eea9d1185271d1e65228c6f17617",
+      "files": {
+        "CHANGELOG.md": "bf2c655aaf5dfd75400b1dcbcf666f12694a73527c7ec03a23b9c03501895dd1",
+        "README.md": "b84af44747c5797e425af357ede128fb00f7161d892f2ddb24026f27b96bde2a",
+        "demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+        "index.js": "8692da09447e2df3870f3dca0585b41a7bd1eea9d1185271d1e65228c6f17617"
+      }
+    },
+    "tape": {
+      "kind": "element",
+      "tag": "m-tape",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "part-whole",
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "751d3274821de79f3b13a232b0712a1ef4c267c7bd613d64fd931156491df2b9",
+      "files": {
+        "CHANGELOG.md": "42e7915ef5932dd008241f5db9dcd411acd8eb8625454c2eed1510c1e82f8392",
+        "README.md": "5ef6221ff6f13813563e0064f993a9a8d55060e1e646aa3b999cd810463cb5e6",
+        "demo.html": "3352a6c17b7020c1e79b4c163c39f22fb2a353a1d47e52b4e7d4f6c0a5385863",
+        "index.js": "751d3274821de79f3b13a232b0712a1ef4c267c7bd613d64fd931156491df2b9"
+      }
+    },
+    "timeline": {
+      "kind": "element",
+      "tag": "m-timeline",
+      "version": "2.0.3",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "timeline"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "5432e272f12a300c9459bd38dbf39d363a2a8a59f375b5e51bff14d0b5d6b08e",
+      "files": {
+        "CHANGELOG.md": "0c389da1c8f32827e4492e2a26b661ec41f58bfa0b64aa4a1ec6185bf2951584",
+        "README.en.md": "e7bf712a46a4c1469e77f435377a4bdaebc61b8da14422188ae92ddd3c57384e",
+        "README.md": "e744ff403de567691bc13f39d1d9355e4016f0409ae4e63f62cb650cdf6f9aa1",
+        "demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
+        "index.js": "5432e272f12a300c9459bd38dbf39d363a2a8a59f375b5e51bff14d0b5d6b08e"
+      }
+    },
+    "timer": {
+      "kind": "element",
+      "tag": "m-timer",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "tools",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "timebox"
+      ],
+      "variants": [
+        "fade"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "clock": true,
+      "group": "tool",
+      "preview": "none",
+      "tile": {
+        "label": {
+          "ja": "タイマー",
+          "en": "Timer"
+        },
+        "examples": {
+          "ja": "グループワークの時間・残り時間・ベル",
+          "en": "Group-work time, time left, bells"
+        },
+        "icon": "timer"
+      },
+      "sha256": "3cb7123bf1b1970c6af8b747ba8bd58d4e76dda600ac3090ef825fe62f82fa01",
+      "files": {
+        "CHANGELOG.md": "871478989e641503615d3c50a2df8188de73e5b37961dce461061c40ba6a6962",
+        "README.md": "a0052b05bb32245086ac72e71f3f43683f021528b0964300a9d28ba6ac3c778d",
+        "demo.html": "ffd147940c9f6a22566df70b4daf51a18f9fe24fdaf7af8117af1cca9892fb35",
+        "index.js": "3cb7123bf1b1970c6af8b747ba8bd58d4e76dda600ac3090ef825fe62f82fa01"
+      }
+    },
+    "tree": {
+      "kind": "element",
+      "tag": "m-tree",
+      "version": "2.1.0",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.2.0",
+        "markup-reader": "1.0.2"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "hierarchy"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "0c2d45384cdbf77382cf31582a81743c1ef37a5679a26e56adf0ab1706a9ed13",
+      "files": {
+        "CHANGELOG.md": "eb6ab2ec892c09627bcb497c45c0d84c981bfca5ba7c000c4457fc83a80c2c12",
+        "README.en.md": "d4f11586eb1dd20264de81a773f93f0f7af83f5d2e433ca4b2aa22b14becd9b4",
+        "README.md": "8657beccbbdb7ffdfd2571731d39bc35010fc84fa4427e0205680dbdda2d7503",
+        "demo.html": "0812d7eea579021a046044e58c71584001a5f8ec8409ee146072c0d02358e3eb",
+        "index.js": "0c2d45384cdbf77382cf31582a81743c1ef37a5679a26e56adf0ab1706a9ed13"
+      }
+    },
+    "venn": {
+      "kind": "element",
+      "tag": "m-venn",
+      "version": "2.0.3",
+      "tier": "standard",
+      "requires": {
+        "base": "1.2.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "overlap"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "a93b60f81f707ae8dee6a740ab9cdea6f16fbb57713476f119ef7be341bb82e2",
+      "files": {
+        "CHANGELOG.md": "8b5c0d5abf77cedce69dc605af2e666b26cba9f9d6dc8b50feca2a9faaf7275f",
+        "README.en.md": "ba10e6e0a67599bf2e12b8f827d9dac73795af98ad0bea1b20ad87f2edd687c5",
+        "README.md": "6700836fb2266038ce1bc111c40a56434d19768f9e9c10383d6244e8bb3ec30d",
+        "demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
+        "index.js": "a93b60f81f707ae8dee6a740ab9cdea6f16fbb57713476f119ef7be341bb82e2"
+      }
+    }
+  },
+  "yanked": {
+    "1.0.0": {
+      "replacement": "1.0.2",
+      "reason": "m-sweep and m-curves ran expressions from the lesson as JavaScript (new Function); see SECURITY.md",
+      "date": "2026-10-20"
+    },
+    "1.0.1": {
+      "replacement": "1.0.2",
+      "reason": "m-sweep and m-curves ran expressions from the lesson as JavaScript (new Function); see SECURITY.md",
+      "date": "2026-10-20"
+    }
+  },
+  "files": {
+    "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
+    "balance/CHANGELOG.md": "48b80c4ede7887068e4167103811990dbb9cbe0e0b3b5c9317606659bf75e377",
+    "balance/README.en.md": "b0aa8cc57b3a15a2a0adfca65d3ac87442f02364200a4e3b7d07ece33859ce00",
+    "balance/README.md": "818ef2cfdfd68b463596f8c7a0ac2691e2cc3680386fe03a0c87015d474100e7",
+    "balance/demo.html": "5a8f53b540ee781d765f1232e6a2674c4f850eb68a1cdc81e019f876de2b77c4",
+    "balance/index.js": "db5ca4ba735f30c1e3473a98985defc056124a64264e019905bc31597999de96",
+    "bars/CHANGELOG.md": "99d4d18e2031bb026c576a1dfcddd9a8434a58f434f835c38817eb73be7f3b00",
+    "bars/README.en.md": "ae49088fda8492623fd3de6b00a296543420afae636fa00e57b512b5056c728a",
+    "bars/README.md": "f8ad2be0d4aecfbd243b4023d6085d684ab26a55e0c290d2fad53a606a0b0f9d",
+    "bars/demo.html": "656ce1db56973b661604cb5710e6235ed28b3454d360f34fe7126c8367d70264",
+    "bars/index.js": "03b81df37c3af09772e244721fc082940c595d01b4e676f7e6116cd0ebdc917d",
+    "base/README.md": "22b51c39d481984686f285e54044a4d6456eb6a6d4d712bfd8789ccc831ac002",
+    "base/index.js": "a6e8acf9da8b60413460925955a77b78b17fac7e983f6196cb9f530cee22b882",
+    "boxplot-core/README.md": "0f90a3b4b3dbb1f3062df1684d9ffa0283258c7e25eec3dfda00404fe2b85a91",
+    "boxplot-core/index.js": "998759cbe88393082f20060d54265d87b86523f6800f7db5fa6a9670c9566b7a",
+    "boxplot/CHANGELOG.md": "04873542d53a739edbdae3663e92d41a1d749c170852920855f3a0e3af067493",
+    "boxplot/README.md": "0951db2885e7d0b610c8aa4f161271140d5207c82fbb922fc200efc2caee1c19",
+    "boxplot/demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
+    "boxplot/index.js": "d57abfc7cd1510463d658fcb2e52c5597afde59c256da66ada5507d4408616c7",
+    "cards/CHANGELOG.md": "95bd640041f4fc061d9689cf7092e2f4e6e487abc1222981955435d0c29a24ed",
+    "cards/README.en.md": "b3f58185c3507fbf465093d6c8a2fe46cda0922a1711d972bf055d780b76a135",
+    "cards/README.md": "7702c323a8ebc935d8363c88d5a6c82719be8a64113a97b904a95aec73e8d33b",
+    "cards/demo.html": "0b4439c806dc96230314d5f4bfa50922d53a185aeefd21f81b20d681ed04a4a3",
+    "cards/index.js": "3ccb9c9e92825439241b27d8c379001b5120ed431b34f46c8de8441dcbc08df0",
+    "ci/CHANGELOG.md": "377d5610a46873993302d04045ce23e859748b146de735c19f3164c9510eac6d",
+    "ci/README.en.md": "6e2ae8fbf7876698fa4b9b8c48633a5431223ca7eefa200c7313eec72ba2edf2",
+    "ci/README.md": "fce8f2c139e3103efa485624ab9721492187be26d61ba2d1ca5aa086398e5236",
+    "ci/demo.html": "fa5be1bdaf231de31b04b8a929f722722c88c56df04b01708bc8302dfc9b82fd",
+    "ci/index.js": "83e2fcc837f679a2a9c5775f8182c30c19b69b1c40d886d25bcd0ecf82d80857",
+    "code/CHANGELOG.md": "b6ee38759b4fc8b86896a84381a4defdad9557d7dd86e4c96614103e01c96073",
+    "code/README.en.md": "d3341998a306f7447fc493a8e1823f72c87d832547cc512df83bbf062838697c",
+    "code/README.md": "d6a096dead117efc16a954026c9fd237b62b64bc355d12d0b818246bc4418b0d",
+    "code/demo.html": "fa390c1249a5d3f716c68eb86d450047e593896c987fdf3c8e221999d6b4a3d2",
+    "code/index.js": "774108c61c628fbbd0f7eed2d57c0e22ad5082dcf24bf9f9671170195cb43023",
+    "codetree-core/README.md": "a544b8348d8f5d7284cb1a95564b33fd958a39d75a0acf1685d4bd61c670f0dd",
+    "codetree-core/index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
+    "codetree/CHANGELOG.md": "f8a037fa40cbeabdb5579e879e73ca0f8e0e9174c499f8f8096b6aca17263402",
+    "codetree/README.md": "9141ab9841c2c430beaae1ba14be681dbdfbe1b824d869590d6fc0952422d00d",
+    "codetree/demo.html": "094b81bdc9e088fb2ddffb552818e4c370bff138497a492767d0b71377ee8be6",
+    "codetree/index.js": "3fcea60f2e00b900fa58fb99867734383ec68f1afa27089c41684ca96aee66c4",
+    "collect/CHANGELOG.md": "d2335796f62bcb898ae27e13d8442688b634562a5ea04f4da6850ec9af472c26",
+    "collect/README.md": "45d61575deb8e7786c6aed8c8b844566ebde4ab5974631d84efd81ab620bd082",
+    "collect/demo.html": "bc503695034d43678c2c30ded24e90f43056b0fdcb5eefc51b688ac504313685",
+    "collect/index.js": "76d86a2bdf8a77922fb019f6ccbcde4b81925c50006e79f39101b28966f94ad1",
+    "compare/CHANGELOG.md": "a3b508951af819626e37d61a7b3ab2d84b45d72004d1415446e2f0d9a8564e58",
+    "compare/README.en.md": "a52a51dc480340e1ddcec3ff62b5793eb99c8d2cce7b014bbb3c3726ddcf49c2",
+    "compare/README.md": "f73b074e6c7b0b21a31cc3e0d46622f5b600eb85010823e103381cae2c1a31a1",
+    "compare/demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
+    "compare/index.js": "78993591166c380cc281666e81fb59b7bcdf8acc3d3dc49b30304663455d4da9",
+    "curves/CHANGELOG.md": "fc97d53487b8518e7be17aac55a07642a1eb52ebe65f3a41f18649a71dc6a3b4",
+    "curves/README.en.md": "8e3b3e56d1f50e910b37068004753636767f269c1c26bf26d0b0cc7524d6c432",
+    "curves/README.md": "21f63c923b4953574d1c4cffd398445fb3368f85a4c5af1774433fe93b3cad32",
+    "curves/demo.html": "d492067c080f928e4b5fc73f9767fb59786f1808484b7288aa60684399be383d",
+    "curves/index.js": "b88fba722af1b54bb341e2371d12e3c83570d72ad38322391f0e59f916b4d5ed",
+    "cycle/CHANGELOG.md": "576c1b81adebee86482ea3ebcf7c4f781aa8cc5632c1aa5b023957b0e7b834a9",
+    "cycle/README.en.md": "847b9a9c2b660a2fb11ffa7aee14c7401b38db2f47f54ed83288551739e4db81",
+    "cycle/README.md": "f184a2b4ec613f917f4f41dc24d61385b509843c274587634e7c6b11170424b4",
+    "cycle/demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
+    "cycle/index.js": "2eb45713a40808b6e008b084c6138280018068e62d42670c11e6e83a31865214",
+    "expr/README.md": "666b06233c8e137a8c4b364ed6671a546158504b174a10be43439b14556285b7",
+    "expr/index.js": "93d6f8f2ea262ff6272fd04c9f894b22c03eac0e5905aee4e4ce7cab36ed7b90",
+    "fishbone/CHANGELOG.md": "b0a0a884006a38015a4366edf50dbb65add662fb4514c9f6a32b383cbc55d70a",
+    "fishbone/README.en.md": "c1b6e47307a6d85eef22fa59851d43a9f34f961c737a38a4920ebd88bf09e592",
+    "fishbone/README.md": "a025bd2b1ee5cd89987dbc5afec1c6edf1581a19506a9944ae2357d74e8bcd8f",
+    "fishbone/demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
+    "fishbone/index.js": "219d7bac1b983f52efa1d501b8df9537b9c774303a119b671264b2acaa37a8fc",
+    "flow/CHANGELOG.md": "8f40a80f9d94286159af652f1e892e4aafcfc23b8284251e145b5035ab88c3ce",
+    "flow/README.en.md": "54c5e117eb4228b18a2b22abf2bf74e60d974a87db11e7a9ba1394f50904126f",
+    "flow/README.md": "6447f956a0e9114c1bf14659ef023e04b6d3d546cbd2ec8ede06d042ab3e96fd",
+    "flow/demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+    "flow/index.js": "4100140fb1239cbd2924267f245fad5a08da18bb719c7face730aebacf3eae8e",
+    "folds/CHANGELOG.md": "b6cbce847582df338dde7add75bd601b4d52623b9d38f2c7459fb3f9598b7068",
+    "folds/README.en.md": "e92970327f0651f2355e5b5671c830b0e0ce74aa5abd0b6201f803102a6b6d34",
+    "folds/README.md": "39ba7a645750778167dc3dbbd5e4b846bcb0be4181388aa4942bf9f06d620af6",
+    "folds/demo.html": "f92b84d0886e21ab94dbb5772c08d049101e7d4b34a8ad44fddbca8508246d77",
+    "folds/index.js": "58601c3d7b441495878463efad3549e21950751679392fec36accffeb776f071",
+    "gendai/CHANGELOG.md": "de22c4f0fcdbf3e9b2f22366a4351da9855ef94bbd6e9abc6437a47f20bdb6c8",
+    "gendai/README.md": "6b3a821b1729c44a8fd31f0437b0eff9fd7942de58789fe19c717763b44eb478",
+    "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
+    "gendai/index.js": "333072ebed1072738d248267a6e480184ddbdcf371288db0809f05d02ad7663b",
+    "heatmap-core/README.md": "c04c8b0d009eb19011bf03f353144450dcd08b8defd4189e8d976ebfdc66444a",
+    "heatmap-core/index.js": "fb2662b77e9c6e74443f8f4168400c72a9d0f55349e5cb5bd06bad487cd9311e",
+    "heatmap/CHANGELOG.md": "e8d54f4e95ae67c97cb413e67004c16cc70f16b69a948e9beac1d79d26b03843",
+    "heatmap/README.md": "4ff1633b73cf00a0746b3a795bd3db01e3195611ce7403116318449e19f5710b",
+    "heatmap/demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+    "heatmap/index.js": "bec98bed6ba090a961916d76d67e72ed9b3b971089a4e6106c073cf3ff31f7b6",
+    "hissan/CHANGELOG.md": "1399bd107b58bb8b22cef197af760232cc65698281550530d475c4ed4c62ac2b",
+    "hissan/README.md": "44aa3f06043722b915f501088f976ab24b943b7d1d9291783ea1fbeaad4dd598",
+    "hissan/demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
+    "hissan/index.js": "30de78cdadc16abf2eb2ecf4a1f7acbfa06c5c82b276bf6bdb1691994094340d",
+    "hist-core/README.md": "525526765fd853760d2012b2bdec5be66432c97c08967f026b19e5fc2640f940",
+    "hist-core/index.js": "a7ab089d563b6f3e8c632aff2aaa6b709984ffd045656aa6d463d3fc62be4315",
+    "hist/CHANGELOG.md": "d1ff32835ae48a3588abd79b41d28a0ef05ce4710184ec32260b526f25991b14",
+    "hist/README.md": "f7f0907b31b5d6c69a2c66bebfaefd53f051c83ed1452783965c2d2fc8a6531c",
+    "hist/demo.html": "7c404351983e5fac261f34f348b72af9a64ad81e59c90eda6adb2099b57fdd05",
+    "hist/index.js": "8c36e75620a647e405c4ff9915b346a016b4646ae7b2cfde211fb4c89280aaaa",
+    "icons/LICENSE-tabler.txt": "b740a1d46122672da62833e97f7e7c8a13fa85cbc7445b584b297cc00dde93db",
+    "icons/README.md": "b59090d65725f1fad81676a2ecd7da1785d1b46d0256fc11ae026384e786304b",
+    "icons/en.json": "14b6877493192776ce4f6718e9d15901255017a8f745de95a6d4157ab4389429",
+    "icons/index.js": "af56a1b77a4ff995906e56b7f6ec91dd9e7b3fb2ef792050f388b300c14fcc72",
+    "icons/ja.json": "44be10142490e108fff7c9002708b745fe0eca1e4535594fd0d5b6a5ae41c641",
+    "icons/names.txt": "9b2833c8fcf085f4b77c7c8e2dd81f388746ed49d20c2b85bf5f044c1ec2fb7c",
+    "kakijun/CHANGELOG.md": "fdb99a6e4c10324f2b635b63898812f6afe673bd3a6a07e6f4e97920feb4a44f",
+    "kakijun/LICENSE-strokesvg.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
+    "kakijun/OFL.txt": "f5f4f05e005b6495a0d1f5bd49d37f5ac3e369883e2b7e3e48cd5aefded912f4",
+    "kakijun/README.md": "273656ca322bd2a526bbff831105eb37cda9114042773bbc15e8574b538b42a3",
+    "kakijun/demo.html": "ba581e1293b5fcd6cb34a85cf594c3b393e2a18d7d4ef4f74b86568e163a76a0",
+    "kakijun/index.js": "cd2e7f9a6e5ce810af32ca481f60929b459a069f014dfe63888695577732c89c",
+    "kakijun/strokes-CHANGES.md": "cbe49676be0e2cf340153650e09951ec378b49ce110019ebd4c78a6ec122107c",
+    "kanbun-core/README.md": "053fa4536d3b835ff319556af02e55add396b8ca6f433b2fdb6d568b18c6aabe",
+    "kanbun-core/index.js": "1bc1a2136b8c480d2d3ed2c685d3f1f7cee568d1bee5191a3a13682ce87f2a31",
+    "kanbun/CHANGELOG.md": "732db4ca69a6dfc5cdba76c0f7883258853c6614b907a0cd1773b44663d95578",
+    "kanbun/README.md": "efa241bdba299b3509a04d12420a1bd9a1ca12c89484bd937386cce5acb60042",
+    "kanbun/demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
+    "kanbun/index.js": "008de584fe550a26f9d42e8a1f239f646c4db7e7c472cf59d9ba46ac59d55e01",
+    "keyboard/CHANGELOG.md": "946e34c1858587a8b90a3483b4cd6b0d77f1bf717799b337cd87f7ec9450f796",
+    "keyboard/README.md": "809540868f0a62e436ec69ab281f0d1bf611807ac2cd1df1d3dec9d73cc91892",
+    "keyboard/demo.html": "b6baa3e89ad4a3d2177d2b8ac3ae7cbae210e667ea2e2b3c04ca9f565c12ff6f",
+    "keyboard/index.js": "5bb72973b128f55b787f8a66b231e9cb770b441bfac2ef91ed105bc6e19ec4f9",
+    "kobun/CHANGELOG.md": "d0fac6b2684b77983784497e6caabb623c0e31fc1123c5fb2f3f04ee6f36c163",
+    "kobun/README.md": "03d240f4fdc4ea7748bdf5ca5736d39d62e383a91a21f942c854de63500d1d08",
+    "kobun/demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+    "kobun/index.js": "3be30e7fd04358a0b860d07841a466c9bbb739cee513e0b4f93368e56f6f0966",
+    "kpi/CHANGELOG.md": "16afbf0e8d124e1d4f55bd8536bf72e5de333680dbe0a052de48be7c09955f39",
+    "kpi/README.en.md": "66cd2f5a60ed8345442ef208315266ecfe5e34acc9bf416aaf68db7ec0f7992e",
+    "kpi/README.md": "aaa0dc790de3e8b72e97d5e84ccbe51feb93bb1d49b5c382ed7b022639749274",
+    "kpi/demo.html": "9e06266e83cc9f04912f8330e03c87e0c1e510c3f2d7ad9fd82680bf822a0f34",
+    "kpi/index.js": "b467fe9d7ec0b832011b160688dd45881aa5094fab4399448fa456a2648d694e",
+    "map-japan/CHANGELOG.md": "3bb4e26c0045770ec0125de1b636f94c270a8e94324fc8cbffb6bfa0d79f516f",
+    "map-japan/README.md": "f91fe0c3191f9eeb85aa112bd832c9454ec1dbafc1c13bfe27a1c459b9c2946c",
+    "map-japan/demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
+    "map-japan/index.js": "a6f8f2744ae3c69cb7bd744953689118b93d2b5079e884e25730e8c84ae6ecae",
+    "map-world/CHANGELOG.md": "8c45f2c6c7867db58f21bf81b1a8406af8fca36996d85226f405eb30fcfac93b",
+    "map-world/README.md": "35d86614e389b0ff81345ac086071754b01b5c2d64b9f1aa02f368a85b891c42",
+    "map-world/demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+    "map-world/index.js": "518154f0d5054ccb44d146815df881af0c3bce2ac8bd0d524722e7bd6d7f48ed",
+    "mapping/CHANGELOG.md": "4d74c527168b4cdccb61a64c30eacd4f3ce6d7863a5c4f2509f677d0472dbb66",
+    "mapping/README.en.md": "4b90bcd1573f4be63a7d6896833f462c0096a6013551e04ce7b28e657376fb05",
+    "mapping/README.md": "a5b9dda737bed7b1776003282ee1f6ba9f88fda98816d3cd41aa37853db609fc",
+    "mapping/demo.html": "8cdc0670d29959d7c9d3c200d7c65325f3d67b4fd262c106ee8888ba62e776f4",
+    "mapping/index.js": "903c59cd75632d274e2cdebc4a0383d008146e44c3b123cbb665e7f34da4dbe8",
+    "market/CHANGELOG.md": "9ea3bb7e71da28f507bd7888a1dc06d1663c54dd036a9c7ad3b29498cfd14aa4",
+    "market/README.md": "d9908ecdfcc005d999c35a9016e0ba94aec2da5ba399ac79a6c7ef19ae4394ee",
+    "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
+    "market/index.js": "e1d6cb11c7f888d5999f702ee56e2d86a807bc4564d0b8e9c8b9bcd9eae93f24",
+    "markup-reader/README.md": "5765b6836b71c7ef20bcbce45a05c8b51d64c50d061fdb7f44da622646302583",
+    "markup-reader/index.js": "282f0ad60c727fea12574dee4c24dc9daf031c9c67b036e3e4d38f9596568327",
+    "menu/CHANGELOG.md": "5d295315d401e47b425adbc2dc1ee13b270be2badfef9f2152303d6f8f4f4017",
+    "menu/README.en.md": "052b2016e3ae7615bc71cdd92861d81cd53ff736d417ca263781e4b9cbdc2898",
+    "menu/README.md": "7aa305dc46aba48b609e2f9d3656c654cb3175d88dcd4841272f7868ab3cc72e",
+    "menu/demo.html": "247a4272a7b5da88e411484deb0c37447402694cfdb0fb733495dfc44908d81e",
+    "menu/index.js": "4bccdd6248c457d012eb8ea7eb65dfbdcd0ea3377cdc0e3cad00f75e71f854ba",
+    "numberline/CHANGELOG.md": "6d12b1aea31cb813dc6e30848273386f421cd53eb120313b3a8f1d3b746f4e36",
+    "numberline/README.md": "2cbb528c0dd2c5b726a0c919d2bc5a0fc7e640e52202e826ef723b20d6607cbf",
+    "numberline/demo.html": "c816a713662f13e5f9bda5dfc10ee807290ce4c1030b999f0934812a6c1e5721",
+    "numberline/index.js": "56aeea15fa3e928d4846c8c91acaec02781cb83d82123eaf1b0bc4bb4465d3f8",
+    "orbit/CHANGELOG.md": "11d0a7a5a7b5ee7b22c78bd156685821c1c4546770246c608d56653645fda033",
+    "orbit/README.md": "5d4f4f3d237c8aad0f866566f6ada916bbfed6a5df41b2bdab867e5e0029723d",
+    "orbit/demo.html": "3ea0c774a5eeb23cd91dd76ca54ba7849a08cf168278bb9c5e2c1007f95c71e8",
+    "orbit/index.js": "430e0950488aac7753d4a4aff811711cc8483591dd9ad1d4939872de4e57fdfb",
+    "particles/CHANGELOG.md": "5fbd3c59cce8d100bc5108d5900a5c705404a7753df877b8ecb1cdd6707593f4",
+    "particles/README.md": "d6a4132d2c59978c0d81f495b285ce3337677a1d3ea88dfff5f041cf8b4b973e",
+    "particles/demo.html": "f79442e0b8cc5de16d131f4146079bc0c8095049459bb41800c46a27efe24cd7",
+    "particles/index.js": "35ec1224cffa8ba7a2c5a9dec23092cfa243c336b7c79945bfed6d67b4f3cb51",
+    "pie/CHANGELOG.md": "45f0d073c4582c1137eee953cde07239d79bc98fe84982209040f593d0b9a046",
+    "pie/README.en.md": "0cb174043d57fee4ad87b3f2c05573e65869351f70633085d4860c906925211e",
+    "pie/README.md": "f01c9fd42677e30abcd38593e40491c32278e42171554120c6c44732b62437d5",
+    "pie/demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
+    "pie/index.js": "832ed38ce9c9004a02dac94abbaec296d8b52ee3df4f0355ee7f3f787d1039eb",
+    "plot/README.md": "a7411dea7ced66b1831423988c17adf62576d4df7693e98c38b758af7bc42355",
+    "plot/index.js": "5b4ecd9b456d223f760a6692df47acf9e543721c31b8afa4e5e8c4174b8cd62a",
+    "predict/CHANGELOG.md": "215c1e5ab50decb637e5ebbea289628c45e573d7bc8bbc3a78702c29ab18b7d8",
+    "predict/README.en.md": "a26f4e90b44a9ed32401382ec11a5da198d76c4b141a6c19a7a4f47f077fd88e",
+    "predict/README.md": "959a2eb274ea2987861d9412f5e676548b829b61eebc2cd06b65592a98128e50",
+    "predict/demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
+    "predict/index.js": "0b43b872a1075ee2e578f9fbeb31fa46016aaf0ffa9b878bb24a3ea8dc431b76",
+    "quad/CHANGELOG.md": "0715ebe429c62dd960ccf05b12fd764692063020d793038603fd14a993b5378f",
+    "quad/README.en.md": "fc710f99554c38b6fa32464fb2ffe80f6ebfd5c18200487cc470922c23ffaca7",
+    "quad/README.md": "506b9237bbacb2bdda25d516761860bf4e7e8a2c6d81dba1fdd0a0a2d115dd57",
+    "quad/demo.html": "884d7b370b045942c5b096cb4c6d98d2d78b0df2876c7231895e163f5a1b80ec",
+    "quad/index.js": "60e7063c9e05734c7bbb662a10c7414782af633c036fd53adc5d7e63cdcc0469",
+    "sampling/CHANGELOG.md": "cdf681248b119cb8fb0fb6921346033a3cdee90dccd6b5e619ded66a8024c97c",
+    "sampling/README.en.md": "2a1b3771adacd538be05e7df000dd6e3523d65a1db02a32e5e641b6b20480de0",
+    "sampling/README.md": "4aae1f071ca1983031ab981f70420f42f45bf8e7676d9b39272e962608e21200",
+    "sampling/demo.html": "fc4e2d92ed4489ae17cfebdaba5a9a85ff03731f4f51cfc167de13e468a93d85",
+    "sampling/index.js": "dbafe9b865159177340badb24cca4ec6225128a3114cc4c9246ab6795babc515",
+    "scatter/CHANGELOG.md": "2605fe4c0297999e5b304dc1e872977a75209c5dd02841d943a20d49f501545c",
+    "scatter/README.en.md": "9f431243e1f8564bbca127864471eab8cceee2aea65cf163c090a8c46717b934",
+    "scatter/README.md": "385fa9d42b813e2b24299cb45540d0af56b5b2d2cab00cee7c74c17c3b80d47a",
+    "scatter/demo.html": "7c8be709a8134919cf8af631a1fa92a99884ff1f97b9cf5cc32fe6353d645944",
+    "scatter/index.js": "12b5d44228efd91cd4bf808b720a8260ec1bbb39a7138efbd92996a2c5791fa3",
+    "score/CHANGELOG.md": "68c4dc08ecebfcd9de78230ddd2df232b7cebbe0c6ac11d61633c11d52a17b34",
+    "score/README.md": "a3f2e961d7cb414195ffd8d6bd9fd3e483eca78ca81c6f35b1f495dcd880a894",
+    "score/demo.html": "c37683a05d361a811b8d5de0e8a2f169fb3a296a801a59abf1d765f0d229371f",
+    "score/fixtures/ABCJS-ADAPTER.md": "fb34bf0c7dc1836151f7758c4c17566460a438262991a3bf03cd54795a3e62db",
+    "score/fixtures/LICENSE-abcjs.txt": "d7bdcd152b978adee22a2f9b92a4d72c4ec2c20a86512766c7c210b462b54702",
+    "score/fixtures/chords.json": "544fe9fb432ae5e4ec6f3443a83f2632e0fcad33f829f200933e389b58b69e6e",
+    "score/fixtures/doremi.json": "cfad521f15342198055a4512884af0eab046a69923feedbf1e405cb86fe1b528",
+    "score/fixtures/extras.json": "08dae18aa14cd5bea1550a03496cbc221a81e42c5363ef1d47effb929a9ce234",
+    "score/fixtures/kaeru.json": "05927268b954747701763448d22c0a7505a046077596ed1602e3db701df08dbd",
+    "score/fixtures/rhythm.json": "a7a4ec18ba80a180646a9186bae30633332a5e7c98fe1b375944b54f22fecef7",
+    "score/fixtures/ties.json": "20fdec4beef0c137ada57b98248db48f58aa20820e2c17a66b066e921de99f16",
+    "score/index.js": "cf4fa043c6fc046d4fa4c0bd707230801acc1a2df7bf53ba86bc2d1c2c93f90f",
+    "seq/CHANGELOG.md": "26415baea4f138a2ede4e5f8a17ba1d655bc5c48e8e28d498e3ff85b5d18c01d",
+    "seq/README.md": "8512024129905d64d0aa6d87971ee706e1585684d76d06df720e6ab81a380796",
+    "seq/demo.html": "7ac4d72c5277a9892277841b18ce4e8ee9a3c04b70eb4522f3ffcbdccdc508db",
+    "seq/index.js": "e00cb443dfa40a70ee7d2c2bdfe6724c71a8bed848db8eb7c65ba432c1995885",
+    "shape/README.md": "58413ee7607bfe50d793432c3104429f2df8b9230fb9f33bbf310c3cec7130ca",
+    "shape/index.js": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911",
+    "sweep/CHANGELOG.md": "4f039321b65ab7b0b23c75770b59e2eb6baa2bf98d77d2f36dbc05d58592a49b",
+    "sweep/README.md": "707074d516e05a3c13c9f0641f2d7ba681c147a9b71f198957c95ab3dc14a9fe",
+    "sweep/demo.html": "19d6152d6a78b550b9e18b090fd57a6f0f8a3fd4bd05e4857181a85584ea130b",
+    "sweep/index.js": "3a99e8486d9c70f9d52cb6f88a11825b58ecc0bf0f62fec18c4a6cce8ef49c32",
+    "syntax/CHANGELOG.md": "bf2c655aaf5dfd75400b1dcbcf666f12694a73527c7ec03a23b9c03501895dd1",
+    "syntax/README.md": "b84af44747c5797e425af357ede128fb00f7161d892f2ddb24026f27b96bde2a",
+    "syntax/demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+    "syntax/index.js": "8692da09447e2df3870f3dca0585b41a7bd1eea9d1185271d1e65228c6f17617",
+    "tape/CHANGELOG.md": "42e7915ef5932dd008241f5db9dcd411acd8eb8625454c2eed1510c1e82f8392",
+    "tape/README.md": "5ef6221ff6f13813563e0064f993a9a8d55060e1e646aa3b999cd810463cb5e6",
+    "tape/demo.html": "3352a6c17b7020c1e79b4c163c39f22fb2a353a1d47e52b4e7d4f6c0a5385863",
+    "tape/index.js": "751d3274821de79f3b13a232b0712a1ef4c267c7bd613d64fd931156491df2b9",
+    "timeline/CHANGELOG.md": "0c389da1c8f32827e4492e2a26b661ec41f58bfa0b64aa4a1ec6185bf2951584",
+    "timeline/README.en.md": "e7bf712a46a4c1469e77f435377a4bdaebc61b8da14422188ae92ddd3c57384e",
+    "timeline/README.md": "e744ff403de567691bc13f39d1d9355e4016f0409ae4e63f62cb650cdf6f9aa1",
+    "timeline/demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
+    "timeline/index.js": "5432e272f12a300c9459bd38dbf39d363a2a8a59f375b5e51bff14d0b5d6b08e",
+    "timer/CHANGELOG.md": "871478989e641503615d3c50a2df8188de73e5b37961dce461061c40ba6a6962",
+    "timer/README.md": "a0052b05bb32245086ac72e71f3f43683f021528b0964300a9d28ba6ac3c778d",
+    "timer/demo.html": "ffd147940c9f6a22566df70b4daf51a18f9fe24fdaf7af8117af1cca9892fb35",
+    "timer/index.js": "3cb7123bf1b1970c6af8b747ba8bd58d4e76dda600ac3090ef825fe62f82fa01",
+    "tree/CHANGELOG.md": "eb6ab2ec892c09627bcb497c45c0d84c981bfca5ba7c000c4457fc83a80c2c12",
+    "tree/README.en.md": "d4f11586eb1dd20264de81a773f93f0f7af83f5d2e433ca4b2aa22b14becd9b4",
+    "tree/README.md": "8657beccbbdb7ffdfd2571731d39bc35010fc84fa4427e0205680dbdda2d7503",
+    "tree/demo.html": "0812d7eea579021a046044e58c71584001a5f8ec8409ee146072c0d02358e3eb",
+    "tree/index.js": "0c2d45384cdbf77382cf31582a81743c1ef37a5679a26e56adf0ab1706a9ed13",
+    "venn/CHANGELOG.md": "8b5c0d5abf77cedce69dc605af2e666b26cba9f9d6dc8b50feca2a9faaf7275f",
+    "venn/README.en.md": "ba10e6e0a67599bf2e12b8f827d9dac73795af98ad0bea1b20ad87f2edd687c5",
+    "venn/README.md": "6700836fb2266038ce1bc111c40a56434d19768f9e9c10383d6244e8bb3ec30d",
+    "venn/demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
+    "venn/index.js": "a93b60f81f707ae8dee6a740ab9cdea6f16fbb57713476f119ef7be341bb82e2"
+  },
+  "changedWithoutBump": {
+    "since": "2.7.0",
+    "parts": {
+      "balance": [
+        "README.md"
+      ],
+      "bars": [
+        "README.md"
+      ],
+      "cards": [
+        "README.md"
+      ],
+      "ci": [
+        "README.md"
+      ],
+      "code": [
+        "README.md"
+      ],
+      "codetree": [
+        "README.md"
+      ],
+      "collect": [
+        "README.md"
+      ],
+      "compare": [
+        "README.md"
+      ],
+      "curves": [
+        "README.md"
+      ],
+      "cycle": [
+        "README.md"
+      ],
+      "folds": [
+        "README.md"
+      ],
+      "gendai": [
+        "README.md"
+      ],
+      "icons": [
+        "README.md"
+      ],
+      "kanbun": [
+        "README.md"
+      ],
+      "kobun": [
+        "README.md"
+      ],
+      "kpi": [
+        "README.md"
+      ],
+      "map-japan": [
+        "README.md"
+      ],
+      "map-world": [
+        "README.md"
+      ],
+      "market": [
+        "README.md"
+      ],
+      "menu": [
+        "README.md"
+      ],
+      "orbit": [
+        "README.md"
+      ],
+      "pie": [
+        "README.md"
+      ],
+      "sampling": [
+        "README.md"
+      ],
+      "scatter": [
+        "README.md"
+      ],
+      "score": [
+        "README.md"
+      ],
+      "seq": [
+        "README.md"
+      ],
+      "sweep": [
+        "README.md"
+      ],
+      "syntax": [
+        "README.md"
+      ],
+      "timeline": [
+        "README.md"
+      ],
+      "venn": [
+        "README.md"
+      ]
+    }
+  }
+}

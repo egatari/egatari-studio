@@ -534,9 +534,10 @@ export const skillVersion = () => JSON.parse(read('package.json')).version;
 
 // Studio is hand-written. Only this marked block (instruction version and skill version) belongs to the generator.
 export function studioVersion(text, version, skill = skillVersion()) {
-  const marker = /(?<=<!-- generated: instruction-version -->\n)\*\*指示の版：[a-f0-9]{8}\*\*(?:\n\*\*スキルの版：[^*\n]+\*\*)?(?=\n<!-- \/generated: instruction-version -->)/g;
+  // 前の名前（指示の版・スキルの版）の印も読み、今の名前で書き直す（backlog #205）
+  const marker = /(?<=<!-- generated: instruction-version -->\n)\*\*指示の(?:版|バージョン)：[a-f0-9]{8}\*\*(?:\n\*\*スキルの(?:版|バージョン)：[^*\n]+\*\*)?(?=\n<!-- \/generated: instruction-version -->)/g;
   if ([...text.matchAll(marker)].length !== 1) throw new Error('studio needs exactly one marked instruction-version line');
-  return text.replace(marker, `**指示の版：${version}**\n**スキルの版：${skill}**`);
+  return text.replace(marker, `**指示のバージョン：${version}**\n**スキルのバージョン：${skill}**`);
 }
 
 export function skillFiles(data, lang = 'ja') {
@@ -553,7 +554,7 @@ export function skillFiles(data, lang = 'ja') {
       const entries = tags.sort().map((tag) => extra ? pointer(tag) : partSpans(D.components[tag].entry));
       const ext = extra ? [] : Object.values(D.components).filter((c) => c.ext?.[set]).map((c) => partSpans(c.ext[set]));
       const table = extra || !tags.length ? '' : D.tableHead + '\n' + tags.map((tag) => partSpans(D.components[tag].row)).join('\n') + '\n\n';
-      files[`${MAKE_SKILL_DIR}/${refDir}${set}.md`] = skillTerms(head + `# ${ja ? set + ' のパーツ' : set + ' parts'}\n\n${ja ? '指示の版：' : 'Instruction version: '}${data.version}\n\n` + table + [...entries, ...ext].join('\n\n') + '\n').replace(/\bnode /g, '`node` ');
+      files[`${MAKE_SKILL_DIR}/${refDir}${set}.md`] = skillTerms(head + `# ${ja ? set + ' のパーツ' : set + ' parts'}\n\n${ja ? '指示のバージョン：' : 'Instruction version: '}${data.version}\n\n` + table + [...entries, ...ext].join('\n\n') + '\n').replace(/\bnode /g, '`node` ');
     }
     const links = [...sets.keys()].map((set) => `- [${set}](${refDir}${set}.md)`).join('\n');
     const common = partSpans(D.common
@@ -573,22 +574,22 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示の版：${data.version}**
-**スキルの版：${skillVersion()}**
+**指示のバージョン：${data.version}**
+**スキルのバージョン：${skillVersion()}**
 
-Studio でコピーした指示書の「指示の版」と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
+Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egatari@${CLI_MINOR}.x skills update\`。更新の道がないツールでは案内を省き、\`egatari --version\` のバージョンを利用者に伝える。
 チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
 
 入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
 
-**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダでは組み立ての出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルの版」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルの版」の行のバージョン。
+**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダでは組み立ての出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルの版」の行のバージョン。
 
 - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
 - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。\`npx egatari@${CLI_MINOR}.x skills update\` で更新できます。」
 - チャット：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で入れ直せます。」
 
-ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示の版」の行しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
+ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示のバージョン」の行しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
 
 ## 進め方
 

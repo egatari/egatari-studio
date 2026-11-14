@@ -52,7 +52,7 @@ for (const p of codexMarket.plugins) {
   assert.ok(p.category);
 }
 for (const p of market.plugins) assert.equal(p.version, pkgVersion, `.claude-plugin marketplace: ${p.name} version`);
-assert.equal(JSON.parse(read('kit/instruction-version.json')).instruction, read('plugins/egatari/skills/make/SKILL.md').match(/^\*\*指示の版：([a-f0-9]{8})\*\*$/m)[1]);
+assert.equal(JSON.parse(read('kit/instruction-version.json')).instruction, read('plugins/egatari/skills/make/SKILL.md').match(/^\*\*指示のバージョン：([a-f0-9]{8})\*\*$/m)[1]);
 assert.equal(market.name, 'egatari');
 assert.ok(market.owner.name);
 assert.deepEqual(market.plugins.map((p) => [p.name, p.source]), [['egatari', './plugins/egatari'], ['egatari-studio', './']]);
@@ -102,18 +102,21 @@ for (const f of walk(MAKE_SKILL_DIR)) checkMake(read(f), f);
 for (const token of makeForbidden) assert.throws(() => checkMake(token, 'fixture'), /forbidden/);
 assert.doesNotMatch(make, /CLI：|コマンドを動かせるときだけ読む/);
 assert.ok(!fs.existsSync(path.join(ROOT, MAKE_SKILL_DIR, 'references/audio-local.md')));
-const versionLine = (text) => text.match(/^\*\*指示の版：[a-f0-9]{8}\*\*$/m)?.[0];
+const versionLine = (text) => text.match(/^\*\*指示のバージョン：[a-f0-9]{8}\*\*$/m)?.[0];
 assert.ok(versionLine(make));
 assert.equal(versionLine(studio), versionLine(make));
 assert.ok(studio.includes('egatari:make'));
 // Updating the generated version must preserve every byte of hand-written Studio text.
 const modifiedStudio = studio.replace('教材をローカルで確かめて組む', '手書きの見出しを保つ');
-assert.equal(studioVersion(modifiedStudio, '1234abcd'), modifiedStudio.replace(versionLine(studio), '**指示の版：1234abcd**'));
+assert.equal(studioVersion(modifiedStudio, '1234abcd'), modifiedStudio.replace(versionLine(studio), '**指示のバージョン：1234abcd**'));
 assert.throws(() => studioVersion('no marker', data.version), /exactly one/);
 // スキルの版（v0.6.10）：make（ja・en）と studio の版の行の下に、package.json の版。前の形（指示の版の行だけ）の印にも足す
-const skillLine = (text) => text.match(/^\*\*(?:スキルの版|Skill version)：?:? ?([^*\n]+)\*\*$/m)?.[1];
+const skillLine = (text) => text.match(/^\*\*(?:スキルのバージョン|Skill version)：?:? ?([^*\n]+)\*\*$/m)?.[1];
 for (const [f, t] of [['make', make], ['make en', read(`${MAKE_SKILL_DIR}/SKILL.en.md`)], ['studio', studio]]) assert.equal(skillLine(t), pkgVersion, `${f}: skill version line`);
-assert.equal(studioVersion('<!-- generated: instruction-version -->\n**指示の版：00000000**\n<!-- /generated: instruction-version -->', '1234abcd', '9.8.7'), '<!-- generated: instruction-version -->\n**指示の版：1234abcd**\n**スキルの版：9.8.7**\n<!-- /generated: instruction-version -->');
+assert.equal(studioVersion('<!-- generated: instruction-version -->\n**指示の版：00000000**\n<!-- /generated: instruction-version -->', '1234abcd', '9.8.7'), '<!-- generated: instruction-version -->\n**指示のバージョン：1234abcd**\n**スキルのバージョン：9.8.7**\n<!-- /generated: instruction-version -->');
+// 前の名前（指示の版・スキルの版）の印も読み、今の名前で書き直す（backlog #205）
+assert.equal(studioVersion('<!-- generated: instruction-version -->\n**指示の版：00000000**\n**スキルの版：0.6.11**\n<!-- /generated: instruction-version -->', '1234abcd', '9.8.7'), '<!-- generated: instruction-version -->\n**指示のバージョン：1234abcd**\n**スキルのバージョン：9.8.7**\n<!-- /generated: instruction-version -->');
+assert.equal(studioVersion('<!-- generated: instruction-version -->\n**指示のバージョン：00000000**\n**スキルのバージョン：0.6.12**\n<!-- /generated: instruction-version -->', '1234abcd', '9.8.7'), '<!-- generated: instruction-version -->\n**指示のバージョン：1234abcd**\n**スキルのバージョン：9.8.7**\n<!-- /generated: instruction-version -->');
 // 自動更新を入れる手順と、古いバージョンの知らせ（v0.6.10）：スキルの指示と品質チェックはバージョンごとに変わるので、入れる手順のすぐ後に置く
 const AUTO = '`/plugin` → Marketplaces → egatari → Enable auto-update';
 const codexUpdate = `npx egatari@${pkgVersion.split('.').slice(0, 2).join('.')}.x skills update`;
@@ -126,7 +129,7 @@ for (const [f, t] of [['make', make], ['studio', studio]]) {
 }
 assert.ok(make.includes(notice('Studio の『AI のスキルをダウンロード』で入れ直せます。')), 'make: notice (chat)');
 assert.ok(make.includes('"generator":{"name":"egatari-studio","version":"…"}') && make.includes('`out/deck.html` の `deck-meta` の `"version"`'), 'make: the file signals');
-assert.ok(studio.includes('`ok   skills   指示の版 …（Studio X.Y.Z）`'), 'studio: compares with the doctor line');
+assert.ok(studio.includes('`ok   skills   指示のバージョン …（Studio X.Y.Z）`') && studio.includes('`指示の版 …`'), 'studio: compares with the doctor line, new and old wording');
 const makeEn = read(`${MAKE_SKILL_DIR}/SKILL.en.md`);
 assert.ok(makeEn.includes('Marketplaces → egatari → Enable auto-update') && makeEn.includes('“The Egatari skill is an old version (<version>). You can update it with /plugin') && makeEn.includes('change with each Studio release'), 'make en: auto-update step and notice');
 for (const f of ['README.md', 'README.ja.md', 'docs/with-claude.md', 'docs/with-claude.ja.md']) {

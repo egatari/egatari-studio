@@ -1,5 +1,5 @@
 // npm の包みに入れる字の写しを node_modules の @fontsource から作る（#157・#176）
-//   egatari：fonts/@fontsource/<名前>/（既定の 3 つ：BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3 と、同梱のテーマが使う Zen Maru Gothic（asagi））
+//   egatari：fonts/@fontsource/<名前>/（既定の 3 つ：BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3 と、同梱のテーマが使う Zen Maru Gothic（asagi）・Fraunces（bengara の見出し））
 //   @egatari/fonts-extra：packages/fonts-extra/@fontsource/<名前>/（FONT_LIST の extra の 6 つ。packages/fonts-extra の prepack も呼ぶ）
 //   node tools/fonts-vendor.mjs          作り直す（npm pack の前に prepack が呼ぶ。同じなら書かない。違えば隣の一時のフォルダに書いて入れ替える）
 //   node tools/fonts-vendor.mjs --check  写しがあれば node_modules から作るものと同じか（なければ何もしない。gen:check）

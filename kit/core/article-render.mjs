@@ -149,9 +149,9 @@ export function renderArticle(article, opts = {}) {
     const block = (ns) => (ns || []).map(node).filter((x) => x !== '').join('\n');
     const num = (n) => info.nodes.get(n) || {};
     const math = (tex, display) => {
-      if (!opts.katex) return `<code class="egatari-tex">${esc(tex)}</code>`;
-      try { return opts.katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'htmlAndMathml', macros: { ...(opts.macros || {}) }, trust: false }); }
-      catch (e) { warnings.push(`${f.path}: KaTeX: ${String(e.message).split('\n')[0]} in: ${tex.slice(0, 60)}`); return `<span class="katex-error">${esc(tex)}</span>`; }
+      if (!opts.katex) return `<code class="egatari-tex" translate="no">${esc(tex)}</code>`;
+      try { return opts.katex.renderToString(tex, { displayMode: display, throwOnError: true, strict: 'ignore', output: 'htmlAndMathml', macros: { ...(opts.macros || {}) }, trust: false }).replace(/^<span class="(katex(?:-display)?)"/, '<span translate="no" class="$1"'); }   // spec §8.0 Browser translation
+      catch (e) { warnings.push(`${f.path}: KaTeX: ${String(e.message).split('\n')[0]} in: ${tex.slice(0, 60)}`); return `<span class="katex-error" translate="no">${esc(tex)}</span>`; }
     };
     const img = (n) => {
       const src = opts.image ? opts.image(String(n.url || '')) : null;
@@ -177,7 +177,7 @@ export function renderArticle(article, opts = {}) {
         case 'break': return '<br>';
         case 'emphasis': return `<em>${inline(n.children)}</em>`;
         case 'strong': return `<strong>${inline(n.children)}</strong>`;
-        case 'inlineCode': return `<code>${esc(n.value)}</code>`;
+        case 'inlineCode': return `<code translate="no">${esc(n.value)}</code>`;
         case 'subscript': return `<sub>${inline(n.children)}</sub>`;
         case 'superscript': return `<sup>${inline(n.children)}</sup>`;
         case 'paragraph': return `<p>${inline(n.children)}</p>`;
@@ -193,7 +193,7 @@ export function renderArticle(article, opts = {}) {
           const start = n.ordered && Number.isInteger(n.start) && n.start !== 1 ? ` start="${n.start}"` : '';
           return `<${tag}${start}>${(n.children || []).map((li) => `<li>${n.spread ? block(li.children) : (li.children || []).map((c) => (c.type === 'paragraph' ? inline(c.children) : node(c))).join('\n')}</li>`).join('')}</${tag}>`;
         }
-        case 'code': return `<pre><code${n.lang ? ` class="language-${esc(String(n.lang).replace(/[^\w+-]/g, ''))}"` : ''}>${esc(n.value)}</code></pre>`;
+        case 'code': return `<pre translate="no"><code${n.lang ? ` class="language-${esc(String(n.lang).replace(/[^\w+-]/g, ''))}"` : ''}>${esc(n.value)}</code></pre>`;
         case 'link': {
           const url = String(n.url || '');
           if (url.startsWith('#')) {

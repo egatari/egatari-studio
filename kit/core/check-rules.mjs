@@ -43,7 +43,7 @@ export const RULES = Object.freeze([
   { id: 'R-fit', kind: 'authoring', phase: 'A 体裁', codes: ['bodyBottom', 'bodyRight', 'tateBodyHead', 'bodyConclCol', 'bodyLeft', 'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak', 'compLayout'] },
   { id: 'R-title', kind: 'authoring', phase: 'A 体裁', codes: ['titleLong', 'titleLongEn', 'titleColon', 'tateTitle'] },
   { id: 'R-concl', kind: 'authoring', phase: 'A 体裁', codes: ['conclLong', 'conclLongEn', 'conclOverflow'] },
-  { id: 'R-headings', kind: 'authoring', phase: 'A 体裁', codes: ['secHeading', 'narrHeadingDiffers'] },
+  { id: 'R-headings', kind: 'authoring', phase: 'A 体裁', codes: ['secHeading', 'narrHeadingDiffers', 'kickerLong', 'kickerPlace', 'kickerSlide'] },
   { id: 'R-style', kind: 'authoring', phase: 'A 体裁', codes: ['desuMasu', 'punctMixed'], applies: (f) => (f.lang === 'ja' ? null : 'lang') },
   { id: 'R-math', kind: 'authoring', phase: 'A 体裁', codes: ['rawMath', 'katexError'] },
   { id: 'R-purpose', kind: 'authoring', phase: 'A 体裁', codes: ['cardsHint'] },
@@ -73,7 +73,7 @@ export const RULES = Object.freeze([
   { id: 'C-book', kind: 'checker', phase: 'M 本文', codes: ARTICLE, applies: needs('book', 'noBook') },
   { id: 'C-a11y', kind: 'checker', phase: 'H 読み上げ', codes: ['imgAlt', 'svgName', 'compName'] },
   { id: 'C-morph', kind: 'checker', phase: 'G モーフ', codes: ['morphNoSrc', 'morphNoIds', 'morphPairs', 'morphLater', 'morphDupSrc', 'morphDupDst'], applies: needs('morphs', 'noMorphs') },
-  { id: 'C-repro', kind: 'checker', phase: 'D 再現性', codes: ['compOrder', 'compOrderNoise', 'compOrderDetail'], applies: (f) => ((f.parts || []).length ? null : 'noParts') },
+  { id: 'C-repro', kind: 'checker', phase: 'D 再現性', codes: ['compOrder', 'compOrderDetail'], applies: (f) => ((f.parts || []).length ? null : 'noParts') },
   { id: 'C-listing', kind: 'checker', phase: 'E タイムライン', codes: ['step0', 'palette', 'marks', 'timelineTotal', 'slideLength'] },
 ].map((r) => Object.freeze({ ...r, codes: Object.freeze(r.codes) })));
 

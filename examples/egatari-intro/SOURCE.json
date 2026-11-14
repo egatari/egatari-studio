@@ -1,13 +1,13 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "68b744a4af46f88c0e4877573118602e31f39217",
+  "commit": "4741f6452460870986d8957b36c3dad2b734e407",
   "path": "lessons/egatari-intro",
   "files": {
-    "article/01.md": "4f25908b5d7e09683dce21e3a48d865df33066880a284720fe1b6119a6a9b862",
+    "article/01.md": "fade49ef845bc6facf8d1be4fffa897ce2ea5ecc95ec7561716c285e48109fb8",
     "data/kpi.json": "02cc484b5d7f44f629e26eca694ac39f31c3126513243ef4313b17dd4822852c",
     "deck.html": "226297624a48e7468d99208ac4560ad39fc549225ce13bed3888096f282ebc5e",
     "egatari.json": "6f166117f113a3e82f75cf13bd610492536ade394582e69d52f8a6ebbe4b6897",
-    "narration.md": "fc54a2115e87577c6b2462d7d151b13e7b7333d61ba4a020aea3312b087d9a52",
+    "narration.md": "887daac1c6900d85277c62d87bb261608aeee2d2ad566da00d2169d529d2a6cd",
     "sample.json": "0a97cd0f25cc1e1c272d45cde7a729dbbe7b98153f2dae15f84536056315b6d2",
     "scripts/make_data.py": "6d934820dd8e29deb028634f908514fb281d507e58493592c87f2fa0da9b0824"
   },
