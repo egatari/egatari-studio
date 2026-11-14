@@ -354,8 +354,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.click('#paste-next-theme');
     ok((await text(p3, '#paste-phase')) === '20 slides, so you ask in two rounds: first an outline (a list of headings), then 6 slides at a time.' && await p3.isVisible('#paste-phase'),
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
-    ok(await p3.isChecked('#paste-part-market') && (await badges(p3)) === 'm-market' && (await text(p3, '#paste-parts-why')) === 'Also chose Market size circles, because the setting in step 1 is “Report”.',
-      'S3 ④: Business / Report recommends the business set (Market size circles), with the reason and a Suggested badge');
+    // 部品庫 2.9.0 から束 business は m-market と m-diverge（ウォーターフォール）
+    ok(await p3.isChecked('#paste-part-market') && await p3.isChecked('#paste-part-diverge') && (await badges(p3)) === 'm-diverge,m-market' && (await text(p3, '#paste-parts-why')) === 'Also chose Market size circles, Waterfall, because the setting in step 1 is “Report”.',
+      'S3 ④: Business / Report recommends the business set (Market size circles, Waterfall), with the reason and a Suggested badge');
     // 英語の画面の 2 つの選択肢
     const opts3 = await planOpts(p3);
     ok(JSON.stringify(opts3) === JSON.stringify([
@@ -364,7 +365,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && (await text(p3, '#paste-plan legend')) === 'Choose the instructions for the AI' && !(await p3.evaluate(() => /free plan|paid plan|Egatari is free/i.test(document.getElementById('paste-step-send').innerText))),
       'S3 ④: both options show the new English wording (name, “If unsure” on Light, and the note under each); no plan question is left: ' + JSON.stringify(opts3));
     await p3.check('#paste-plan-paid');
-    ok((await ticks(p3)) === sorted([...STD, 'm-market']) && /^Instructions: [\d.]+ KB \(suggested limit 150 KB\)$/.test(await text(p3, '#paste-pack-size')) && await p3.isHidden('#paste-over'),
+    ok((await ticks(p3)) === sorted([...STD, 'm-market', 'm-diverge']) && /^Instructions: [\d.]+ KB \(suggested limit 150 KB\)$/.test(await text(p3, '#paste-pack-size')) && await p3.isHidden('#paste-over'),
       'S3 ④: the paid plan keeps the ticks and changes only the suggested limit (150 KB, not over): ' + await text(p3, '#paste-pack-size'));
     const c3 = await copy(p3);
     ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Part set: business') && c3.includes('### `<m-market>`') && !c3.includes('## Part set: kokugo') && c3.includes('### `<m-timeline>`') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
@@ -380,7 +381,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const file3 = await dl3.path();
     ok(!!file3 && fs.readFileSync(file3, 'utf8') === c3, 'S3 ④: the saved file has exactly the bytes “Copy the instructions” would put on the clipboard (UTF-8, no BOM)');
     ok(/^Saved \([\d.]+ KB\)\. Attach the downloaded file to your chat AI and send it\. When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')), 'S3 ④: saving a long lesson’s pack says “Saved (N KB)…” and still says to go to step 5 once the outline is out');
-    ok((await answer(p3, 'send')) === `Instructions: Detailed · ${STD.length + 1} parts · copied`, 'S3 ④: the answered line names the instructions (Detailed) and the number of parts: ' + await answer(p3, 'send'));
+    ok((await answer(p3, 'send')) === `Instructions: Detailed · ${STD.length + 2} parts · copied`, 'S3 ④: the answered line names the instructions (Detailed) and the number of parts: ' + await answer(p3, 'send'));
     ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')) && (await text(p3, '#paste-go-note')) === 'Paste the outline in step 5',
       'S3 ⑤: step 5 first asks for the outline; “Create” is disabled meanwhile and says “Paste the outline in step 5”');
     await p3.fill('#paste-outline-text', '```outline\n| 1 | A | x |\n');
@@ -399,7 +400,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.fill('#paste-deck', replyOf(b1.deck, b1.narr));
     const F3 = await create(p3);
     const o3 = (JSON.parse(F3['egatari.json']).studio || {}).outline;
-    ok(o3 && o3.next === 7 && o3.rows.length === 20 && JSON.stringify(newDeckOf(F3)) === JSON.stringify({ v: 1, plan: 'paid', category: 'business', subcategory: 'report', parts: [...STD, 'm-market'].sort() }),
+    ok(o3 && o3.next === 7 && o3.rows.length === 20 && JSON.stringify(newDeckOf(F3)) === JSON.stringify({ v: 1, plan: 'paid', category: 'business', subcategory: 'report', parts: [...STD, 'm-market', 'm-diverge'].sort() }),
       'S3: “Create” opens slides 1–6 with the outline (next: 7) and the paid plan in studio.newDeck');
 
     // ================================================================ S4 高校の国語の先生（ja・無料の Gemini）：漢文「臥薪嘗胆」
@@ -602,14 +603,15 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p10.fill('#paste-title', 'Using the new booking system');
     await p10.click('#paste-next-content');
     await p10.click('#paste-next-theme');
-    ok(await p10.isChecked('#paste-part-timer') && (await text(p10, '#paste-parts-why')) === 'Also chose Timer, because the setting in step 1 is “Training and how-to”.' && (await text(p10, '#paste-pgroup-timebox-h')) === 'Time-boxing',
+    // 部品庫 2.9.0 から束 tools は m-callout・m-checklist・m-timer
+    ok(await p10.isChecked('#paste-part-timer') && (await text(p10, '#paste-parts-why')) === 'Also chose Screen steps, Checklist, Timer, because the setting in step 1 is “Training and how-to”.' && (await text(p10, '#paste-pgroup-timebox-h')) === 'Time-boxing',
       'S10 ④: Training and how-to recommends the timer, under Time-boxing, and says why');
     const c10 = await copy(p10);
     ok(c10.includes('### `<m-timer>`'), 'S10 ④: the ticked timer is in the instructions');
     await p10.click('#paste-change-send');
     await p10.uncheck('#paste-part-timer');
     const c10b = await copy(p10);
-    ok(!c10b.includes('m-timer') && (await answer(p10, 'send')) === `Instructions: Light · ${STD.length} parts · copied`, 'S10 ④: unticked, the timer is not named anywhere in the instructions');
+    ok(!c10b.includes('m-timer') && (await answer(p10, 'send')) === `Instructions: Light · ${STD.length + 2} parts · copied`, 'S10 ④: unticked, the timer is not named anywhere in the instructions');
 
     // ================================================================ S11 スキル（チャットの AI の egatari:make）の出力を持っている先生（ja）：問いに答えずに貼る
     const cdeck11 = worked('common', 'deck.html'), cnarr11 = worked('common', 'narration.md');
