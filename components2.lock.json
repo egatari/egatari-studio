@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.7.0",
+  "default": "2.8.0",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -1864,6 +1864,127 @@
         "tree": "fb482cbe2ca1da07d08f41880e03fe75ff3f1d29842ff40946541e63030219b8",
         "venn": "5b02d8a81a41f4d1658f1972f3fc91de3cc431b2c71bb6b92601d58f734de9ec"
       }
+    },
+    "2.8.0": {
+      "tag": "v2.8.0",
+      "tarballSha256": "eef78dd1201d4fe1f08248554e11eec46bb8fd147881523f8263b08de41f2b1f",
+      "manifestSha256": "a05348a7c9a0452f7316c742a8e38cc003d63fd7fdb5a469c0a95e711e9deb9c",
+      "parts": {
+        "balance": "2.0.1",
+        "bars": "2.0.3",
+        "base": "1.2.0",
+        "boxplot": "2.0.5",
+        "boxplot-core": "1.0.0",
+        "cards": "2.0.4",
+        "ci": "2.0.1",
+        "code": "2.1.0",
+        "codetree": "2.0.5",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.3",
+        "compare": "2.0.3",
+        "curves": "2.2.1",
+        "cycle": "2.0.4",
+        "expr": "1.0.0",
+        "fishbone": "2.1.0",
+        "flow": "2.1.0",
+        "folds": "2.0.1",
+        "gendai": "2.0.3",
+        "heatmap": "2.1.0",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.3",
+        "hist": "2.0.5",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.2",
+        "kanbun": "2.0.3",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.4",
+        "kobun": "2.0.3",
+        "kpi": "2.0.3",
+        "map-japan": "2.1.0",
+        "map-world": "2.1.0",
+        "mapping": "2.0.1",
+        "market": "2.0.3",
+        "markup-reader": "1.0.2",
+        "menu": "2.0.3",
+        "numberline": "2.0.3",
+        "orbit": "2.0.5",
+        "particles": "2.0.2",
+        "pie": "2.0.3",
+        "plot": "1.1.2",
+        "predict": "2.1.0",
+        "quad": "2.1.0",
+        "sampling": "2.0.1",
+        "scatter": "2.0.5",
+        "score": "2.1.1",
+        "seq": "2.0.5",
+        "shape": "1.0.0",
+        "sweep": "2.1.2",
+        "syntax": "2.0.3",
+        "tape": "2.0.3",
+        "timeline": "2.0.3",
+        "timer": "2.0.4",
+        "tree": "2.1.0",
+        "venn": "2.0.3"
+      },
+      "content": {
+        "balance": "5458baef7a30298cf4b0029331f13233d162403e686f9c20085dd2104cad7141",
+        "bars": "1b33a252d51091e2d8cdea176f10268f128640bed3aa46da88d7de31ced59b44",
+        "base": "147987bd84722249dab609293d4fafa93f0a2aac25b8517fda1710840b575d00",
+        "boxplot": "e6d219f67d241fdf00a40d4cec261d9dd3c09ad3110d3418d4e843d0f2b8c196",
+        "boxplot-core": "fadd24868e2730ec14b8f3f1e9cb75b8577a48b8d71beaa12ef089f7a3ba0a7d",
+        "cards": "609e45a826d07a54cbbcbf4ce2ad6b5474dca1d0be394eb9fad895db4a73422f",
+        "ci": "f9cef6dd9580a4f19aa09d47f736ab2391f5f585b20b16a62bd781398cb6b8ac",
+        "code": "04626b77b3c683fd4c8e549339eca153615e021eb0e649c31291deb2dab30667",
+        "codetree": "4a9331635c2dd28e4b46108eaffe49c6d29cf626ecb900ac6e9029552be0cf49",
+        "codetree-core": "bb139fb1c2e4d010aa82a2c50db120f95f12a0a251cded3130a71dd57dec0274",
+        "collect": "8cb367c71c002c689defddc6f075be911d5485421715119b5515181e962a2401",
+        "compare": "5c032594230fe688f661b6ccf27070c84f8c0e38611186280fb9c56d89ac3319",
+        "curves": "4079077e03343995edc5e34b8bda0cf200dc6d854a52486fe0a6a4ceaf0d4b6f",
+        "cycle": "7cb8948c550b66bf4b34a62e7b61385aaa79896e09d82ccb1846c0ac499ad352",
+        "expr": "faf6a2f0b5df589639de624e75c5b20594f517e4426f6415d152809249b00b92",
+        "fishbone": "40aaaaf988e7c32460ffaf5f18b5690ee28fd1fe7e879d8434d58283992bc554",
+        "flow": "a426e6a3f8f4593403ba63ecc4a3f1f41064f4016fd9fb8d51e7876bf8c6f573",
+        "folds": "442be174439d106ef462c19d598c407e86d5de3fcd4700ed54ae4147c4b9969c",
+        "gendai": "97bfd6e79c7278c55153bf4c2330da0432cf0ee312baa11650e07cdd7912831d",
+        "heatmap": "8ef66bd1e800bcbedef436585469d308665aaa1ab6011aee699544302d0a8ad0",
+        "heatmap-core": "43740da51de85c1b7ec1eaf688f93fd9ea25b15977ab075e6abac196f08643a6",
+        "hissan": "a31f39625d7d1087d06a72b644cec417372f98add940288257ef07f812d8395a",
+        "hist": "ae06622a328da2a01260bc68b28bb632c391e8d62a4e8387638e5a944525a418",
+        "hist-core": "07013c263cc595382dbcfd4931ca8b016f9dfb673440adf28911c95bd465cf9d",
+        "icons": "7482c50bea5ef7d72dc5d4afaddb8c4e725b5a83fa0c6175f9a9c556f23a4e10",
+        "kakijun": "ff5eaa083a46db6aefc13d97b27c9487f9fc318805f5c89b05a12e63703b7a72",
+        "kanbun": "48a776e7683e1aba8cad5aa4067914c017681efaa74f175066e0ab081bf3d013",
+        "kanbun-core": "f268cf809438c8af63a42f9c9121110fc7263e4d705c40c6206ce46cf7ec167b",
+        "keyboard": "00d9072cb279a1a68166787f53395c747072388971d916c082a106844dbf888f",
+        "kobun": "ea17602aaecca64b672b3bc827965ff378cb460250177f7b66f73081a48d4e81",
+        "kpi": "72edfd6678b22be0bb3e32b0d8cb0dfee403767e1eacac354d278d7318d03826",
+        "map-japan": "0ef62e33d330f8e31ccb1f480b5e3b349769a142cc2737a9e6583d5eff9f56ca",
+        "map-world": "586063d3a4e24e2995923811b2b9466bde86dbaafb3bcf103546d3f28159205a",
+        "mapping": "6d648d0e5c96ec680c04a14b7c3d672010d3b9f101197689e9672ec00174383d",
+        "market": "0e2e45b024bb2f37e82c83a4d9cd9f9c16b5dc4924dde81735c268a3d49f9d7f",
+        "markup-reader": "a0c71874d83045baaef70285bd00d87a7c6c43219fa5630dfff60d5cb08509be",
+        "menu": "603de10f0ee50d07ec610e21b45b9db78d69376b4dfd2baba78595c1002e27ec",
+        "numberline": "1073e03374f0fe65d2691f160bfd8c092986c168d0bd6a6094ebd444d4b89c27",
+        "orbit": "c108119117042cacc65a35ec73fcab95a2a92b2a2797129f66e326783f8db178",
+        "particles": "0dc2a0945e7a4004278fcc9b8f02223bbb87f6269bffe3dd3ebeb3a78ce23d34",
+        "pie": "87cc60da38d209cda449dd7c24171e287ac8184c5036ca04548ef9e2015c2d9e",
+        "plot": "553e132d1f84caad648bb7175a206d4c5d18c005b5ca17989f5e8a5e3f5cdfa1",
+        "predict": "6cdf432d3e61be3ff15e80910369324ac7ea0e8b9f62c32ef37bf09a5bfe93b9",
+        "quad": "c59f1ac3132fdf6f56e8880c866570cd7443f09eb8802b6e7af32675ad358edf",
+        "sampling": "c3fad2047cec6a2bd8a5b907f752e2addeeea2f373fd8115914552dcee0b2f6f",
+        "scatter": "3ace61e46a4555eab46ca8053db2fb76a874d4d5409bc5891cc449f43ef7e0bd",
+        "score": "0c4eb83646ab8027d40697db161eb952425db78c42b36291626214d5064b9498",
+        "seq": "6364043cb31bbd86aacb7432af1a8affef8cae5c6efdbe13fbebd116fd51b91f",
+        "shape": "8a892d25d0bb6105ba31ea690b465876ce3af1fbaf18e2a9ce44ad2fee81260e",
+        "sweep": "5acc5f87e29f1170bc35dbee08087d0d03c1023969c6c1b1367a0f559d60e5ee",
+        "syntax": "d998b5db828427505e39cdae67676dc6480c791d6037152dec222ae81cdbba1f",
+        "tape": "4e4bf3b2968c36a334dc997e32e36f22ecbc4f5dfe1c76bb7a5beef002fe8899",
+        "timeline": "6f9f7283226d3534aa1cb4a47ba258204aa286ead01b25cdbde14119260bc702",
+        "timer": "d2df3d70fc7c6e07e3cad7332a7e5501e84abeb24653786e567f57046adebcba",
+        "tree": "d3a75f67160490db1831aaa8ac58ebc5f7ffb6a6fd21e2bdeaa6fe979bfaff7f",
+        "venn": "1b767b6cf1855156872f87981a7c99f0161013499d6c4b21785624435db92078"
+      }
     }
   },
   "parts": {
@@ -2612,6 +2733,27 @@
           }
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "219d7bac1b983f52efa1d501b8df9537b9c774303a119b671264b2acaa37a8fc",
+        "kind": "element",
+        "tag": "m-fishbone",
+        "requires": {
+          "base": "1.2.0",
+          "markup-reader": "1.0.2"
+        },
+        "build": {
+          "fields": {
+            "effect.tex": "katex",
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
       }
     },
     "flow": {
@@ -2717,6 +2859,26 @@
       },
       "2.0.5": {
         "sha256": "79bdf9fcf92579e664d5a2a94d802a5f3537ba5d61fb04fc94bc0f5ee8ade68e",
+        "kind": "element",
+        "tag": "m-flow",
+        "requires": {
+          "base": "1.2.0",
+          "markup-reader": "1.0.2"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "4100140fb1239cbd2924267f245fad5a08da18bb719c7face730aebacf3eae8e",
         "kind": "element",
         "tag": "m-flow",
         "requires": {
@@ -3558,6 +3720,15 @@
           "base": "1.2.0"
         },
         "license": "MIT"
+      },
+      "2.0.2": {
+        "sha256": "35ec1224cffa8ba7a2c5a9dec23092cfa243c336b7c79945bfed6d67b4f3cb51",
+        "kind": "element",
+        "tag": "m-particles",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "license": "MIT"
       }
     },
     "pie": {
@@ -3735,6 +3906,15 @@
       },
       "2.0.4": {
         "sha256": "a03770486fcd2443b243428f8f9e835d57b6bfa6ccdb92f7928d9fc5dd0f9b5b",
+        "kind": "element",
+        "tag": "m-quad",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "60e7063c9e05734c7bbb662a10c7414782af633c036fd53adc5d7e63cdcc0469",
         "kind": "element",
         "tag": "m-quad",
         "requires": {
@@ -4315,6 +4495,26 @@
       },
       "2.0.4": {
         "sha256": "464f5c60a28dbf871ee573c168d7e4cb1b2ef84f421ea2092f598d51796f51df",
+        "kind": "element",
+        "tag": "m-tree",
+        "requires": {
+          "base": "1.2.0",
+          "markup-reader": "1.0.2"
+        },
+        "build": {
+          "fields": {
+            "nodes[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "0c2d45384cdbf77382cf31582a81743c1ef37a5679a26e56adf0ab1706a9ed13",
         "kind": "element",
         "tag": "m-tree",
         "requires": {
