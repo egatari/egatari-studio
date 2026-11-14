@@ -1,0 +1,86 @@
+/* 既定のテーマ（default）
+   基調色 --base を 1 つ決めれば、ほかの色はそこから導く（academic-* テーマの「基調色＋補色＋淡色」と同じ考え方）。
+   部品とレイアウトは意味で名付けた変数（--term, --emph, --muted …）だけを参照する */
+:root{
+  --base: #1d4f91;                 /* 基調色。テーマごとにこれを替える */
+  /* --emph-hue（結論・問題の色相）：既定では宣言しない。テーマが宣言すると --emph は oklch(0.52 0.21 <色相>) から導く
+     （下の @supports。kokugo は 38）。宣言しなければ --emph は下の固定の値 */
+
+  /* 導かれる色。ここでは古いブラウザ向けの固定の値（既定の --base #1d4f91 から計算した値）を置き、
+     下の @supports で基調色から導く式に置き換える（カスタムプロパティは後の宣言が常に勝つので、
+     「前に予備の値を書く」だけでは効かない。対応しているかを @supports で分ける） */
+  --complement: #744400;
+  --accent2:    #744400;
+  --base-tint:  #cbd7e8;
+  --base-wash:  #eef2f8;
+  --comp-tint:  #e0d4c3;
+
+  /* 意味の色（部品はここだけを使う） */
+  --fg:      #222222;
+  --bg:      #ffffff;
+  --title:   var(--base);                       /* 古いブラウザでは基調色そのもの */
+  --term:    var(--base);                       /* 用語・問い・補足 */
+  --emph:    var(--emph-from-hue, #BE3012);     /* 結論・問題・目標。朱寄りの赤（白地 5.8:1。1 型色覚の模擬でも墨と分かれる。1.1.0） */
+  --muted:   #5C5853;                           /* 既知の結果・比較対象。温かい灰（白地 7.1:1。明るい教室の投影でも読める。1.1.0） */
+  --line:    #cccccc;
+  --rule:    var(--base);
+  --term-tint: var(--base-wash);
+  --emph-tint: #fbe7e3;
+  --concl-bg:  #F5F5F5;                         /* 結論の行の地。無彩のごく淡い灰（--emph の字 5.3:1・--fg 14.6:1。色覚の型と白黒でも見え方が同じ。1.2.0） */
+  --lit:     #F5B800;                         /* 光と、光が照らすもの（太陽・灯り・月の明るい側）。山吹寄りの黄（白地 1.8:1。字の色ではない：輪郭線と一緒に描く。色覚の模擬でも --emph と分かれる。1.3.0） */
+  /* 物の色（format spec §8.4）：内容そのものである色（袋の玉・リトマス紙・信号）。11 の基本色名。色だけで伝えない：名前か頭文字を添え、白・黒と地に近い色には輪郭線（--fg か --muted）。1.4.0 */
+  --obj-white:   #FFFFFF;
+  --obj-black:   #222222;
+  --obj-red:     #E0242B;
+  --obj-green:   #2E9E44;
+  --obj-yellow:  #F5D90A;
+  --obj-blue:    #1E6FD9;
+  --obj-brown:   #8B5A2B;
+  --obj-purple:  #8E44AD;
+  --obj-pink:    #F27BB0;
+  --obj-orange:  #F28C1A;
+  --obj-gray:    #8C8C8C;
+
+  /* 先のステップを薄く見せるときの濃さ（format spec §8.4 の --preview-opacity。プレーヤーも部品もこれを読む） */
+  --preview-opacity: .45;
+
+  /* 図の系列の色（順に使う） */
+  --series-1: var(--term);
+  --series-2: var(--emph);
+  --series-3: var(--accent2);
+  --series-4: var(--muted);
+
+  /* 字 */
+  --font-sans: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif;
+  --weight-body: 400;
+
+  /* 字幕（s）：字の大きさ・下端からの距離・左右の余白・1 まとまりの行数の上限。読む速さ（字/秒）は --cap-rate（既定 ja 7、en 15） */
+  --cap-size: 27px;
+  --cap-bottom: 18px;
+  --cap-side: 96px;
+  --cap-max-lines: 3;
+}
+/* 対応しているブラウザでは基調色から導く（Chrome/Edge 119+、Firefox 128+、Safari 18+）。
+   テーマの tokens.css はこの後に読まれるので、テーマが上書きした値はそのまま勝つ */
+/* --emph-hue を宣言したテーマだけ：--emph-hue がなければ --emph-from-hue は無効になり、--emph は固定の値 #BE3012 になる */
+@supports (color: oklch(0.5 0.1 30)){
+  :root{ --emph-from-hue: oklch(0.52 0.21 var(--emph-hue)); }
+}
+@supports (color: color-mix(in oklch, red 10%, white)){
+  :root{
+    --base-tint:  color-mix(in oklch, var(--base) 22%, white);
+    --base-wash:  color-mix(in oklch, var(--base) 7%, white);
+    --emph-tint:  color-mix(in oklch, var(--emph) 12%, white);
+  }
+}
+@supports (color: oklch(from red min(l, 0.5) c calc(h + 180))) and (color: color-mix(in oklch, red 10%, white)){
+  :root{
+    --complement: oklch(from var(--base) l c calc(h + 180));
+    --accent2:    oklch(from var(--complement) min(l, 0.55) c h);
+    --comp-tint:  color-mix(in oklch, var(--complement) 22%, white);
+    --title:      oklch(from var(--base) min(l, 0.32) c h);
+  }
+}
+/* 結論の行（1.2.0）：左の縦線＋決まった位置（571px・高さ 72px は kit/layouts.css のまま）＋太字＋淡い灰の地 --concl-bg。色だけに頼らない（WCAG 1.4.1）。
+   テーマの CSS は layouts.css の後に読まれるので、同じ詳細度（:where は 0）で勝つ。縦組み（layout-tate）の結論の列は今までの枠のまま */
+:where(.slide:not(.layout-tate)) .concl{left:30px;border:0;border-left:5px solid var(--emph);border-radius:0;justify-content:flex-start;padding-left:13px}

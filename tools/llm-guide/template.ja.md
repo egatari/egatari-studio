@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=e748409097c629f0 -->
+<!-- i18n: pair=template.md sha256=0571e3551894f10b -->
 {{GENERATED}}
 # チャットの AI で Egatari の教材を書く
 
@@ -76,6 +76,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 ### 2.2 スライド
 
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
+- 見出しの上に短い札を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
 - `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の束があるときだけ）、属性 `data-morph`（§2.5）

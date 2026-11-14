@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=b481c78b6f4d7d22 -->
+<!-- i18n: pair=reference.md sha256=5cc0a2fd8f7e137c -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -193,6 +193,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--series-1` … `--series-4` | 図の系列の色 |
 | `--preview-opacity` | 先のステップを薄く見せる：まだ来ていないステップの不透明度（0.45。プロジェクターで読めるよう、テーマで 0.45〜0.5 の範囲で変えられる。`--lecture-dim` は同じものの別名） |
 | `--font-sans`、`--weight-body` | 字の種類、本文の太さ |
+| `--kicker-size`、`--kicker-color`、`--kicker-weight` | 見出しの上の札：字の大きさ（24px）、色（`--muted`）、太さ（700） |
 | `--cover-bg`、`--logo-h` | 表紙の背景、ロゴの高さ（128px） |
 | `--sec-bg`、`--sec-fg` | 扉の背景（`--base`）と文字（白） |
 | `--concl-bg` | 結論の行の背景（`default` は 1.2.0 から `#F5F5F5`。前は透明） |
@@ -497,6 +498,9 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
 | スライド・台本・本の見える字に、埋め込んだどの字体にもない字がある（@fontsource にない `∎` など）。その字は開く端末の字体で出る — `fontNotCovered`（教材に 1 回、場所ごとに字を挙げる。`node tools/font-coverage.mjs <組んだ HTML>` でも見られる） | 情報 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
+| 見出しの上の札（`.kicker`）が 24 字分（全角 1・半角 0.5）、ラテン文字なら 40 文字を超える — `kickerLong` | 警告 |
+| スライドに見出しの上の札が 2 つ以上ある、または見出しの直前にない — `kickerPlace` | 警告 |
+| 表紙・章の扉（`sec`）・縦書きのスライド（`layout-tate`）に見出しの上の札がある — `kickerSlide` | 情報 |
 | パーツの描画が呼び出し順で変わる | エラー |
 | 強調の目印が無い。ステップごとの強調の一覧 | 警告。情報 |
 | モーフ：元のスライドが無い、同じ `data-id` が無い、ID の重複。対応の一覧 | 警告。情報 |
@@ -506,7 +510,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | 描いた図の形（R-geometry、backlog #201、`kit/core/geometry-check.mjs`）。パーツは描いた図の箱・線・字に `data-part` の印と `data-part-id`（原稿の id）を付ける：箱は形の要素そのもの（`<rect>`・`<path>`・`<ellipse>`・`<polygon>`）に `data-part="box"`、線は `<g data-part="edge" data-part-from data-part-to>` で、線そのもの（`<line>`・`<path>`。矢じりは除く）に `data-part-line`、字は `<text data-part="label" data-part-of="box\|edge\|mark">`（縁取りがあれば `data-part-halo`、箱の外に置く字は `data-part-at="outside"`。`foreignObject` の字は中身で測る）、点は `data-part="mark"`。`@` で始まる端は節でない。各スライドの最後のステップで、スライドの座標で測る：線が、つないでいない箱の中を通る（`geoEdgeThroughBox`）、線が字を横切る（自分の線の字は除く。`geoLineOverLabel`。字に縁取りがあれば情報）、2 つの字が重なるか、字が持ち主でない点に重なる（`geoLabelOverlap`）、箱の字が箱の縁を越える（`geoLabelOutsideBox`。上下左右のはみ出し）。字の範囲は、横が字の送り幅、縦が基線から上下の字体ごとの決まった幅（`kit/core/text-band.mjs`）なので、字体の行の高さに左右されない。線の太さの半分 ＋ 2px までは重なりとみなさない（線の端が箱の縁に触れるのは正しい図）。印の付いた字は、この検査だけが見る（`textOverlap`・`svgTextBox` には出ない）。縦書きのスライド（`layout-tate`）は測らない：中身のスライドがみな縦書きなら決まりは `skipped`（`tate`）、縦横が混ざる教材では印のある縦書きのスライドの数を出す（`geoTateSlides`）。印を付けないパーツは見ない。パーツも印もない教材では決まりは `excused`（`noParts`） | 警告。情報 |
 | タイムラインの合計と 1 枚ごとの長さ | 情報 |
 
-**編集アプリでは。** 編集アプリの品質チェックは、上の表のどの行も同じコード・重さ・言葉で出す（体裁の行は同じ `kit/core/layout-scan.mjs`、描いた図の形は同じ `kit/core/geometry-check.mjs`、組まれずに残った数式は同じ `kit/core/raw-math.mjs`、原稿と台本の行は `kit/core/check-source.mjs` を通して同じ関数）。そのエラーと警告は修正依頼にも入る。`kit/check.mjs` だけのもの：画面を撮る、パーツの描き方が呼び出し順で変わる（`compOrder`）と本文の釣り合い（`balance`）、手元のファイルを見る、ないファイルへの相対リンク（`linkFileMissing`）と `fontsExtraMissing`、情報の一覧（ステップ 0 で見える字・パレット・ステップごとの強調・タイムライン・`fontNotCovered`・`extensionVersion`）。添付は編集アプリの「添付」の板とエクスポートで、本は本の板で、同じ決まりで確かめる。読み込めないパーツ（`component-requires-missing`・`component-not-in-catalogue`）はどちらでも組み立てが止まり、同じ言葉で知らせる。一覧とそれぞれのわけは `kit/core/check-parity.mjs` の `CLI_ONLY`。コマンド版が出し、編集アプリが出さず、この一覧にもないコードがあれば `tools/test-check-parity.mjs` が落ちる。
+**編集アプリでは。** 編集アプリの品質チェックは、上の表のどの行も同じコード・重さ・言葉で出す（体裁の行は同じ `kit/core/layout-scan.mjs`、描いた図の形は同じ `kit/core/geometry-check.mjs`、組まれずに残った数式は同じ `kit/core/raw-math.mjs`、原稿と台本の行は `kit/core/check-source.mjs` を通して同じ関数）。そのエラーと警告は修正依頼にも入る。`kit/check.mjs` だけのもの：画面を撮る、パーツの描き方が呼び出し順で変わる（`compOrder`）と本文の釣り合い（`balance`）、手元のファイルを見る、ないファイルへの相対リンク（`linkFileMissing`）と `fontsExtraMissing`、情報の一覧（ステップ 0 で見える字・パレット・ステップごとの強調・タイムライン・`fontNotCovered`・`extensionVersion`）。添付は編集アプリの「添付」の板とエクスポートで、本は本の板で、同じ決まりで確かめる。読み込めないパーツ（`component-requires-missing`・`component-not-in-catalogue`）はどちらでも組み立てが止まり、同じ言葉で知らせる。一覧とそれぞれのわけは `kit/core/check-parity.mjs` の `CLI_ONLY`。コマンド版が出し、編集アプリが出さず、この一覧にもないコードがあれば `tools/test-check-parity.mjs` が落ちる。 見出しの上の札の検査は、どちらも原稿を共通の `kit/core/kicker.mjs` で読む。
 
 スライドと台本の言語は違ってもよい（字幕だけ別の言語にする、日本語のスライドに英語の台本を付けるなど）。台本の言語は `voice.json` の `"lang"`（TTS と同じ）、なければ、ほとんどの発言が教材と別の字で書かれているときはその言語（日本語の教材で日本語の字がない、ほかの言語の教材でほとんどの発言に日本語の字がある）、それもなければ教材の `<html lang>`。台本の品質チェックは発言ごとにその言語で見る：日本語の字のある発言は日本語の規則、英語の文は英語の規則（式とみなすのは `\` `^` `_` と密な演算子だけ）。
 

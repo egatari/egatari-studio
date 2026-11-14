@@ -39,20 +39,22 @@
       }
     },
     "default": {
-      "current": "1.4.0",
+      "current": "1.5.0",
       "versions": [
         "1.0.0",
         "1.1.0",
         "1.2.0",
         "1.3.0",
-        "1.4.0"
+        "1.4.0",
+        "1.5.0"
       ],
       "sha256": {
         "1.0.0": "d5486df8f7bc6df2f31e6d155f4d22583b5e12fca45ed434e74372788a953d0b",
         "1.1.0": "afdeb965d6f6ce7d221fbe302fdcdd6414df65fcb41554600a6947994162330c",
         "1.2.0": "4b607693e914552cbff5143df415d98aeb00b4be229a7b6446d874f5853b7c1a",
         "1.3.0": "97537e8e5e32ec2b74df74dd4ce247e476e742d1910e08847adedeebd337b953",
-        "1.4.0": "d7ec9923b2334d70e879048e21a75c6745ce443be93eac2e354a9bb986b4510e"
+        "1.4.0": "d7ec9923b2334d70e879048e21a75c6745ce443be93eac2e354a9bb986b4510e",
+        "1.5.0": "12a747102876e1ee1b1685a7c3d6254f9377da101c9b054b0dc8655ddc46ca4c"
       },
       "changes": {
         "1.1.0": {
@@ -91,6 +93,11 @@
           "date": "2026-11-10",
           "reason": "new roles --obj-white … --obj-gray (object colours: colours that are the content, such as balls, litmus paper and signals; the eleven basic colour terms), always shown with a name or initial and, for white, black and colours near the background, an outline; each hue lies in its family's window and adjacent families differ by ΔE00 ≥ 20. No existing colour changes",
           "tokens": []
+        },
+        "1.5.0": {
+          "date": "2026-11-13",
+          "reason": "new kicker size, colour and weight tokens for the optional label above the heading; existing slide styles unchanged",
+          "tokens": []
         }
       }
     },
@@ -120,16 +127,18 @@
       }
     },
     "sumi": {
-      "current": "1.2.0",
+      "current": "1.3.0",
       "versions": [
         "1.0.0",
         "1.1.0",
-        "1.2.0"
+        "1.2.0",
+        "1.3.0"
       ],
       "sha256": {
         "1.0.0": "a8ec5ae630ed5d399bca109c36cab9066329f312e5b0512b20498e5e6a0db0f4",
         "1.1.0": "b6ad19b0601da495219040dff46160abd623c380cd183a19055b4203878dadf8",
-        "1.2.0": "c0a61638ed6d461c1aeb64cf4071ac63793905278c049348581798d83c8653ae"
+        "1.2.0": "c0a61638ed6d461c1aeb64cf4071ac63793905278c049348581798d83c8653ae",
+        "1.3.0": "1ac2d4e1023a8e75225e7998a589aec2ee893de06f81d2ef1d58de0b53f6e498"
       },
       "changes": {
         "1.1.0": {
@@ -140,6 +149,11 @@
         "1.2.0": {
           "date": "2026-11-10",
           "reason": "new roles --obj-white … --obj-gray (object colours), the same values as default 1.4.0 so that a red ball is the same red in every theme. No existing colour changes",
+          "tokens": []
+        },
+        "1.3.0": {
+          "date": "2026-11-13",
+          "reason": "show the optional kicker over the heading band in its foreground colour; lower heading text only on slides with a kicker, keeping the band bottom and body position unchanged",
           "tokens": []
         }
       }

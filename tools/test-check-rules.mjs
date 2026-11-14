@@ -8,7 +8,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { MESSAGES } from '../kit/check-messages.mjs';
+import { sourceFindings } from '../kit/core/check-source.mjs';
+import { annotate, buildPortable } from '../kit/build.mjs';
+import { message, MESSAGES } from '../kit/check-messages.mjs';
 import { RULES, EXCUSES, SKIPS, account, ruleOfCode, ruleSetText, cliOnlyRule, factsFromSource } from '../kit/core/check-rules.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -112,6 +114,57 @@ ok('ruleSet text depends only on ids and codes', () => {
   assert.ok(RULES.every((r) => t.includes(r.id + ':' + r.codes.join(','))));
   assert.ok(!/A 体裁|notInEditor/.test(t));
 });
+
+ok('kickers: both source languages report only the expected length, position and slide-kind findings', () => {
+  for (const lang of ['ja', 'en']) {
+    const dir = path.join(ROOT, 'tools/fixtures/check-parity', lang + '-kicker');
+    const deck = fs.readFileSync(path.join(dir, 'deck.html'), 'utf8');
+    const narration = fs.readFileSync(path.join(dir, 'narration.md'), 'utf8');
+    const findings = sourceFindings({ deck, narration }), slides = annotate(deck, false).slides;
+    for (const [code, sev, ids] of [
+      ['kickerLong', 'warn', ['s-wide25', 's-latin41', 's-mixed25']],
+      ['kickerPlace', 'warn', ['s-misplaced', 's-duplicate', 's-after']],
+      ['kickerSlide', 'info', ['s-cover', 's-sec', 's-tate']],
+    ]) {
+      const hits = findings.filter((f) => f.code === code);
+      assert.deepEqual(hits.map((f) => slides[f.i].id), ids, lang + ' ' + code);
+      assert.ok(hits.every((f) => f.sev === sev && ruleOfCode(f.code) === 'R-headings'));
+      for (const f of hits) for (const l of ['ja', 'en']) assert.ok(message(l, f.code, f.a).includes('R-headings'));
+    }
+    assert.ok(!findings.some((f) => f.code === 'narrHeadingDiffers'));
+  }
+});
+ok('kickers: comments and whitespace are allowed before the heading; a missing heading is reported', () => {
+  const scan = (body) => sourceFindings({ deck: `<section class="slide" id="s-x">${body}</section>` }).filter((f) => f.code.startsWith('kicker'));
+  assert.deepEqual(scan('<p class="kicker">Chapter two</p> \n<!-- 注釈 -->\n<h2>Heading</h2>'), []);
+  assert.deepEqual(scan('<p class="kicker">Topic</p>').map((f) => f.code), ['kickerPlace']);
+  assert.deepEqual(scan('<h2>Heading</h2>'), []);
+  assert.deepEqual(scan('<p class="kicker"><span>' + 'A'.repeat(39) + '</span>&amp;</p><h2>Heading</h2>'), []);
+  assert.deepEqual(scan('<p class="kicker">Topic</p><div><h2>Heading</h2></div>').map((f) => f.code), ['kickerPlace']);
+});
+ok('build: title annotation and heading extraction exclude the kicker and preserve an explicit data-title', () => {
+  const { html, slides } = annotate('<section class="slide"><p class="kicker">Chapter two</p><h2>Heading alone</h2></section><section class="slide"><p class="kicker">Topic</p><h2 data-title="Short">Full heading</h2></section>', false);
+  assert.deepEqual(slides.map((s) => s.heading), ['Heading alone', 'Full heading']);
+  assert.deepEqual(slides.map((s) => s.title), ['Heading alone', 'Full heading']);
+  assert.match(html, /<h2 data-title="Heading alone">/);
+  assert.match(html, /<h2 data-title="Short">Full heading/);
+  assert.ok(!html.includes('data-title="Chapter'));
+});
+
+// 持ち運べるファイルの読める層も、札を見出しに混ぜない（ブラウザなしで組み立てまで確かめる）
+for (const theme of ['default', 'sumi']) {
+  const dir = path.join(ROOT, '.cache', 'test-check-kicker-build-' + theme);
+  fs.mkdirSync(dir, { recursive: true });
+  const deck = fs.readFileSync(path.join(ROOT, 'tools/fixtures/check-parity/en-kicker/deck.html'), 'utf8').replace('<html lang="en">', `<html lang="en" data-theme="${theme}">`);
+  fs.writeFileSync(path.join(dir, 'deck.html'), deck);
+  fs.copyFileSync(path.join(ROOT, 'tools/fixtures/check-parity/en-kicker/narration.md'), path.join(dir, 'narration.md'));
+  const built = await buildPortable(path.join(dir, 'deck.html'));
+  ok(`portable build (${theme}): readable headings keep the heading alone`, () => {
+    assert.ok(built.html.includes('<article data-slide-key="s-good"><h2>Short heading</h2>'));
+    const readable = built.html.match(/<section id="egatari-readable"[\s\S]*?<\/section>/)[0];
+    assert.ok(!readable.includes('Chapter two'));
+  });
+}
 
 if (failed) { console.log(`test-check-rules: ${failed} failed`); process.exit(1); }
 console.log('test-check-rules: ok');

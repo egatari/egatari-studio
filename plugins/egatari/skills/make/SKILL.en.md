@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 67a95271**
+**Instruction version: b67af499**
 **Skill version: 0.6.10-rc.1**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -77,7 +77,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `67a95271`
+Pack version: `b67af499`
 
 You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both files are built and quality-checked automatically; anything not described here is not available. Write the lesson in the language the user asks for (slides and script in the same language). Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -121,6 +121,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 ### 2.2 Slides
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
+- Optional short label: place one `<p class="kicker">` immediately before the `<h2>` (ordinary slides only, excluding `layout-tate`); it is visible at step 0 and is not part of the heading. Type it normally, not in capitals: English is displayed in capitals by the theme.
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
 - Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
