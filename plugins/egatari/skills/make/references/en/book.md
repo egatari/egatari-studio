@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # Writing a book
 
-The rules themselves are in Studio's [docs/article.md](https://github.com/egatari/egatari-studio/blob/v0.6.10-rc.1/docs/article.md) (Egatari Text 1, spec §9C). This page is the author's procedure and the places that are easy to trip on.
+The rules themselves are in Studio's [docs/article.md](https://github.com/egatari/egatari-studio/blob/v0.6.11/docs/article.md) (Egatari Text 1, spec §9C). This page is the author's procedure and the places that are easy to trip on.
 
 ## 1. Decide the book's shape first
 

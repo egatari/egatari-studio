@@ -12,7 +12,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
 **指示の版：b67af499**
-**スキルの版：0.6.10-rc.1**
+**スキルの版：0.6.11**
 
 Studio でコピーした指示書の「指示の版」と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
 Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がないツールでは案内を省き、`egatari --version` のバージョンを利用者に伝える。
