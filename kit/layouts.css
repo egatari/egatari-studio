@@ -8,6 +8,8 @@
 .kicker{position:absolute;left:48px;right:48px;top:8px;margin:0 0 8px;font-size:var(--kicker-size,24px);line-height:1;
   color:var(--kicker-color,var(--muted));font-weight:var(--kicker-weight,700)}
 :lang(en) .kicker{text-transform:uppercase;letter-spacing:.08em}
+/* 表紙・章の扉には置かない（kickerSlide）が、置かれても上端の帯（.cover::before、10px）に重ねない */
+.cover > .kicker,.sec > .kicker{top:24px}
 .body{position:absolute;left:48px;right:48px;top:122px;bottom:160px;font-size:32px;line-height:1.45}
 .slide.noconcl .body{bottom:64px}
 .sub{font-size:32px;font-weight:700;color:var(--emph);margin:0 0 8px}
