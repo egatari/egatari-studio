@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=bcc7c40106f2c2c5 -->
+<!-- i18n: pair=reference.ja.md sha256=16eb7a5236d8a639 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -193,7 +193,7 @@ CSS order: the build writes, in `<style id="deck-base">`, the fonts, KaTeX, `kit
 | `--series-1` … `--series-4` | figure series colors |
 | `--preview-opacity` | show later steps faintly: opacity of steps not yet reached (0.45; a theme may set it within 0.45–0.5 so that it stays readable on a projector; `--lecture-dim` is an alias) |
 | `--font-sans`, `--weight-body` | font family and body weight |
-| `--kicker-size`, `--kicker-color`, `--kicker-weight` | label above the heading: size (24px), colour (`--muted`), weight (700) |
+| `--kicker-size`, `--kicker-color`, `--kicker-weight` | kicker (a short line above the heading): size (24px), colour (`--muted`), weight (700) |
 | `--cover-bg`, `--logo-h` | cover background, logo height (128px) |
 | `--sec-bg`, `--sec-fg` | divider background (`--base`) and text (white) |
 | `--concl-bg` | conclusion line background (`default`: `#F5F5F5` from 1.2.0; transparent before) |

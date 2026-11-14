@@ -4,7 +4,7 @@
 //     I：id の書式・重なり（slideId）、旧来の鍵（legacyDataKey・legacyIndex）、1.0 の語彙にない書き方（legacyColorClass・legacyStepAttr・legacyLectureMode）、
 //        予想（m-predict）の答えが数の棒と同時（predictAnswerWithCount）・steps が小さく答えが出ない（predictAnswerNeverShown）、
 //        テーマの色の語彙の外の色（colorOutside、情報）、{#id} の見出しとスライドの見出しの違い（narrHeadingDiffers、情報）
-//        見出しの上の札の長さ・置き場所・スライドの種類（kickerLong・kickerPlace・kickerSlide）
+//        肩見出しの長さ・置き場所・スライドの種類（kickerLong・kickerPlace・kickerSlide）
 //     B：{note:} の書き損じ（narrNote）、式らしい台本（narrFormula）、長すぎる 1 ターン（turnLong、情報）、台本の言語がスライドと違う（narrLang、情報）
 //   コマンド版は台本の段階を実行系（DECK.NARRATION）から取る。ここは narration.md から取り、どのスライドにも合わない節は見ない（それは組み立ての知らせ）
 import { analyzeSlideIds, isJapanese } from './build-core.mjs';

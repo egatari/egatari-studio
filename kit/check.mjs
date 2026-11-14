@@ -187,7 +187,7 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   // 予想（m-predict）の段階（R-steps）：答えが数の棒と同時（predictAnswerWithCount。数える前に答えが見える）、steps が答えの段階より小さい（predictAnswerNeverShown。答えが出ない）。
   // 編集アプリも同じ関数（kit/core/check-source.mjs）
   for (const { code, slide, ...x } of predictStepProblems(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(slide, 'warn', code, x);
-  // 見出しの上の札：置き場所・字数・使えない種類のスライド（編集アプリも同じ関数）
+  // 肩見出し：置き場所・字数・使えない種類のスライド（編集アプリも同じ関数）
   for (const f of kickerFindings(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(f.i, f.sev, f.code, f.a);
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));

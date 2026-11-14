@@ -1,8 +1,8 @@
-// 見出しの上の札（format spec §8.0）の品質チェック。原稿の文字列だけで決まり、コマンド版と編集アプリが同じ関数を使う
+// 肩見出し（kicker、見出しの上の短い言葉。format spec §8.0）の品質チェック。原稿の文字列だけで決まり、コマンド版と編集アプリが同じ関数を使う
 import { parse } from 'parse5';
 
 const hasClass = (n, c) => (n.attrs || []).some((a) => a.name === 'class' && a.value.split(/\s+/).includes(c));
-// 字数は layout-scan.mjs と同じ全角 1・半角 0.5。ラテン文字の札は教材の言語によらず 40 文字まで
+// 字数は layout-scan.mjs と同じ全角 1・半角 0.5。ラテン文字の肩見出しは教材の言語によらず 40 文字まで
 const units = (t) => [...t].reduce((n, ch) => n + (/[\u0000-ÿ]/.test(ch) ? 0.5 : 1), 0);
 const textOf = (n) => n.nodeName === '#text' ? n.value : ['script', 'style', 'rt'].includes(n.tagName) ? '' : (n.childNodes || []).map(textOf).join('');
 

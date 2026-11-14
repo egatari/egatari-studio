@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=a6efc8694df01cbb -->
+<!-- i18n: pair=template.ja.md sha256=f6ad0cf85e7534f2 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -76,7 +76,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 ### 2.2 Slides
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
-- Optional short label: place one `<p class="kicker">` immediately before the `<h2>` (ordinary slides only, excluding `layout-tate`); it is visible at step 0 and is not part of the heading. Type it normally, not in capitals: English is displayed in capitals by the theme.
+- Optional kicker (a short line above the heading): place one `<p class="kicker">` immediately before the `<h2>` (ordinary slides only, excluding `layout-tate`); it is visible at step 0 and is not part of the heading. Type it normally, not in capitals: English is displayed in capitals by the theme.
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
 - Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
