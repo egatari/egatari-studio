@@ -88,13 +88,13 @@ const objOf = (name) => {
 };
 
 await t('選べるテーマ：藍・墨・国語・常盤・江戸紫・焦茶・浅葱・生成の 8 つ（この順）で、どれも同梱。business は選べないが同梱のまま（記録した教材を組む）', () => {
-  assert.deepEqual(CHOOSABLE.map((x) => x.name), ['default', 'sumi', 'kokugo', 'tokiwa', 'murasaki', 'kogecha', 'asagi', 'kinari']);
+  assert.deepEqual(CHOOSABLE.map((x) => x.name), ['default', 'sumi', 'kokugo', 'tokiwa', 'murasaki', 'kogecha', 'asagi', 'bengara']);
   for (const x of CHOOSABLE) assert.ok(THEMES.includes(x.name), x.name);
   assert.deepEqual(RETIRED, ['business']);
   assert.ok(THEMES.includes('business'));
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'themes.lock.json'), 'utf8'));
   for (const x of ['tokiwa', 'murasaki', 'kogecha', 'asagi', 'kokugo', 'business', 'sumi']) assert.equal(lock.themes[x].current, '1.3.0', x);
-  assert.equal(lock.themes.kinari.current, '1.0.0');
+  assert.equal(lock.themes.bengara.current, '1.0.0');
 });
 
 await t('形の断片：theme.json の look の形が tokens.css にそのまま写してあり、ほかの形の印はない。:where() で包まない', () => {

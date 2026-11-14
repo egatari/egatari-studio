@@ -152,7 +152,7 @@
         "1.0.0": "a8ec5ae630ed5d399bca109c36cab9066329f312e5b0512b20498e5e6a0db0f4",
         "1.1.0": "b6ad19b0601da495219040dff46160abd623c380cd183a19055b4203878dadf8",
         "1.2.0": "c0a61638ed6d461c1aeb64cf4071ac63793905278c049348581798d83c8653ae",
-        "1.3.0": "69dc77525811dde2df6261a2ff67186f130225a4666d49c60dc66476895ebc14"
+        "1.3.0": "40d164ca75f2c05d432e78402892ac853abd3ff59348d46d9a8209b26a5ac787"
       },
       "changes": {
         "1.1.0": {
@@ -300,13 +300,13 @@
         }
       }
     },
-    "kinari": {
+    "bengara": {
       "current": "1.0.0",
       "versions": [
         "1.0.0"
       ],
       "sha256": {
-        "1.0.0": "eaaecc8d2659702a1561b869fd543c476d2a5629f5bd55a6672f583c4deb2975"
+        "1.0.0": "a64bb9f6ad29b2a0f6eef01ef040d8fbc1de46ba4a225ff190381bafa1604e8d"
       },
       "changes": {}
     }

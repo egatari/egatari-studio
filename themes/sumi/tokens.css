@@ -45,7 +45,7 @@
 /* look heading: band */
 .slide:not(.cover):not(.sec):not(.layout-tate) > h2{left:0;right:0;top:0;padding:26px 48px 18px;background:var(--base);color:var(--sec-fg,#fff);border-bottom:4px solid var(--rule)}
 .slide:not(.cover):not(.sec):not(.layout-tate) > .kicker{--kicker-color:var(--sec-fg,#fff);z-index:1}
-.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker + h2{padding-top:40px;padding-bottom:4px}
+.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker + h2{padding-top:48px;padding-bottom:4px}
 /* /look */
 /* look cover: left-bar */
 .slide.cover{text-align:left}

@@ -9,8 +9,8 @@ export const CHOOSABLE = Object.freeze([
   { name: 'murasaki', label: { ja: '江戸紫', en: 'Edo purple' }, note: { ja: '研究・一般の講演向け', en: 'For research and public talks' } },
   { name: 'kogecha', label: { ja: '焦茶', en: 'Dark brown' }, note: { ja: '人文・歴史・地域向け', en: 'For humanities, history and local studies' } },
   { name: 'asagi', label: { ja: '浅葱', en: 'Teal' }, note: { ja: '小学校・広報・案内向け', en: 'For primary schools, publicity and guides' } },
-  // 生成（kinari）：名前は仮（#195。見せる名前と向きは d5 と作者が決める。決まったら themes/kinari・themes.lock.json・ここをいっしょに改める）
-  { name: 'kinari', label: { ja: '生成', en: 'Kinari' }, note: { ja: '講演・読み物向け', en: 'For talks and reading' } },
+  // 弁柄（bengara）：名前と向きは d5 が 2026-11-14 に決めた（同梱のテーマの名前は強調の色の名前。生成は「生成 AI」と読まれるので避けた）
+  { name: 'bengara', label: { ja: '弁柄', en: 'Red ochre' }, note: { ja: '講演・読み物・式典向け', en: 'For talks, reading and ceremonies' } },
 ].map((t) => Object.freeze(t)));
 export const RETIRED = Object.freeze(['business']);
 // 選べなくしたテーマの見せる名前（その教材を開いたときの「テーマを変更…」の今のテーマ）

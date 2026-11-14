@@ -170,7 +170,7 @@ try {
     });
     ok(r.title === 'Heading alone' && r.short === 'Short title', 'build: generated data-title excludes the kicker and preserves an explicit short title');
     ok(r.step === null && !r.item && r.max === 3 && r.list.join() === '1,2' && r.opacity === '1' && r.visibility === 'visible', 'runtime: kicker is visible at step 0 without its own step; list and conclusion steps are unchanged');
-    ok(r.text === 'Chapter two' && r.transform === 'uppercase' && r.size === '24px' && r.gap > 0 && r.headingTop === 40, `theme ${theme}: English is capitalised by CSS, with a gap above the heading text`);
+    ok(r.text === 'Chapter two' && r.transform === 'uppercase' && r.size === '24px' && r.gap >= 8 && r.headingTop === 48, `theme ${theme}: English is capitalised by CSS, with an 8 px gap above the heading text (heading text at 48 px)`);
     if (theme === 'sumi') ok(r.z === '1' && r.color === r.headingColor, 'sumi: kicker is above the band in the band foreground colour');
     await runtime.keyboard.press('r');
     const titles = await runtime.locator('#deck-text .dx-stitle').allTextContents();

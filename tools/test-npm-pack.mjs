@@ -5,7 +5,7 @@
 //    部品の写しは index.js（と使用条件）だけで README.md・demo.html・CHANGELOG.md はない（vendor/.npmignore）。既定の声の wav もない（tts/voices.json と tts/refvoices.py が初めての tts で取り寄せる）
 // 2. 入れる：npm install <tarball>（--prefer-offline・--ignore-scripts）。@fontsource は入らない（devDependencies）
 // 3. npx egatari --version・doctor・new（相対パスは cwd から）・check・build・sheet・build --portable
-// 3a. 字体：egatari の包みは既定の 3 つ（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と同梱のテーマの字体（asagi の Zen Maru Gothic、kinari の見出しの Fraunces）。
+// 3a. 字体：egatari の包みは既定の 3 つ（BIZ UDPゴシック・BIZ UDP明朝・Source Sans 3）と同梱のテーマの字体（asagi の Zen Maru Gothic、bengara の見出しの Fraunces）。
 //     ほかの 6 つは別の包み @egatari/fonts-extra（packages/fonts-extra を npm pack したもの）。既定の教材と asagi の教材はネットワークなしで組め、
 //     CSS で選べる字体（Klee One）を名指した教材は、その包みがなければ組み立てと品質チェックが入れ方を言い（fontsExtraMissing）、その包みを入れれば組める
 // 3b. doctor：部品の写しの index.js が固定と manifest の sha256 に合う（parts）。部品庫 1.x・2.x の部品を使う教材が、入れた包みで組める
