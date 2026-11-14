@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=f7292a19c561c190 -->
+<!-- i18n: pair=reference.ja.md sha256=acb868585c76125d -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -22,7 +22,7 @@ Normative: format spec §8.0 (slides, steps, kinds of slide, math, references) a
 | `audio/manifest.json` | build | written by `tts/synth.py` and the editor app's Audio panel (each step: `file`, `dur`, `cues`, `sync`, `kind`, `inputHash`, for TTS `recipe`; optional `processing` and `startOffset`, the encoder delay at which playback starts) |
 | `voice.json` | TTS | voices, language, engine |
 | `figs/*.svg`, `data/*.json` | build | for `{{FIG:…}}` / `{{JSON:…}}` |
-| `components/<name>/index.js` | build | lesson-local parts (found before the library's) |
+| `components/<name>/index.js` | build | lesson-local parts (found before the library's). The name is the tag without `m-` (`components/foo/` for `<m-foo>`); the whole tag (`components/m-foo/`) also works, but the build stops if one tag has both |
 | `egatari.json` | build, Egatari file | `docId`, metadata, attachments; `components` pins library part versions (`{"bars": "1.0.0"}`, format spec §3.3; an Egatari file's copy carries the versions its export used, and unpacking writes them, so a rebuild does not switch versions; without a pin the build uses the default in `components.lock.json`) |
 | `themes/<name>/` | build | lesson-local themes |
 | `comments.json`, `.cache/edits/` | dev server | written by the dev server |
@@ -431,7 +431,7 @@ Quality control in Egatari has three parts: the **standards** (`R-fit`, `R-steps
               "msg": "Slide 2 “The decay law” (s-k3f9q2), step 3: narration [3] has no matching step … (R-narr-steps)"}]}
 ```
 
-If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A finished check says `"status": "ok"`.
+If `status` is `crashed` (exit code 2), the result is invalid: the check did not finish, so it is not a pass even though `results` is empty. A finished check says `"status": "ok"`. `renderNoise` lists the step comparisons that differed only by anti-aliasing noise on shape edges and were accepted (`{slide, id, step, data: {k, n, cap, faint}, msg}`); they are not findings and are not counted, because whether they appear changes from run to run. A real difference is the error `compOrder`.
 
 The result also accounts for every rule of the checker (`kit/core/check-rules.mjs`): the authoring rules `R-*` of the [authoring guide](authoring-with-llms.md) and the checker's own families `C-*` (build, slide ids, links, audio, attachments, book, accessibility, morphs, reproducibility, fonts, listings). Every finding's `code` belongs to exactly one rule. Each rule ends in one state:
 

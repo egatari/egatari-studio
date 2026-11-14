@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=b45240e2057cc654 -->
+<!-- i18n: pair=reference.md sha256=6f5e54920cca5c65 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -22,7 +22,7 @@
 | `audio/manifest.json` | build | `tts/synth.py` と編集アプリの音声の板が書く（ステップごとに `file`・`dur`・`cues`・`sync`・`kind`・`inputHash`、TTS なら `recipe`。任意で `processing` と、鳴らし始める符号化の遅れ `startOffset`） |
 | `voice.json` | TTS | 声・言語・エンジン |
 | `figs/*.svg`、`data/*.json` | build | `{{FIG:…}}` / `{{JSON:…}}` の元 |
-| `components/<名前>/index.js` | build | 教材専用のパーツ（パーツライブラリより先に探す） |
+| `components/<名前>/index.js` | build | 教材専用のパーツ（パーツライブラリより先に探す）。名前はタグから `m-` を除いたもの（`<m-foo>` なら `components/foo/`）。タグのまま（`components/m-foo/`）でもよいが、同じタグで両方あると組み立てを止める |
 | `egatari.json` | build・Egatari ファイル | `docId`・metadata・添付の一覧。`components` はパーツライブラリのパーツのバージョンの固定（`{"bars": "1.0.0"}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使ったバージョンが入り、展開でそれが書かれるので、組み直しでバージョンが変わらない。固定がなければ `components.lock.json` の既定のバージョン） |
 | `themes/<名前>/` | build | 教材専用のテーマ |
 | `comments.json`、`.cache/edits/` | 開発サーバー | 開発サーバーが書く |
@@ -431,7 +431,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
               "msg": "スライド 2「減衰の式」（s-k3f9q2）、ステップ 3：口述原稿の [3] に当たるステップがスライドにない……（R-narr-steps）"}]}
 ```
 
-`status` が `crashed`（終了コード 2）の結果は無効：検査が終わっていないので、`results` が空でも合格ではない。終わった検査は `"status": "ok"`。
+`status` が `crashed`（終了コード 2）の結果は無効：検査が終わっていないので、`results` が空でも合格ではない。終わった検査は `"status": "ok"`。`renderNoise` は、ステップの描き比べで、図形の縁のアンチエイリアスの揺れだけが違い、通したもの（`{slide, id, step, data: {k, n, cap, faint}, msg}`）。出るかどうかが実行ごとに変わるので、指摘ではなく、数えない。本当の違いはエラーの `compOrder`。
 
 結果は、検査器の決まり（`kit/core/check-rules.mjs`）を 1 つずつ数え上げる：[書き方の指示](authoring-with-llms.ja.md)の作者への決まり `R-*` と、検査器の族 `C-*`（組み立て・スライドの id・リンク・音声・添付・本・読み上げ・モーフ・再現性・字体・一覧）。指摘の `code` は、どれもちょうど 1 つの決まりに入る。決まりはそれぞれ次のどれかで終わる。
 

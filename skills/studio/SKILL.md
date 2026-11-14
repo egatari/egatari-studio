@@ -14,7 +14,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 **スキルのバージョン：0.6.11**
 <!-- /generated: instruction-version -->
 
-make の「スキルの版」の行と違えば、両方のプラグインを更新するよう利用者に伝える。
+make の「スキルのバージョン」の行（前のバージョンでは「スキルの版」）と違えば、両方のプラグインを更新するよう利用者に伝える。
 
 インストール：
 
@@ -50,7 +50,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
 - `NG browser`：check・sheet・comment-shots・video に要る。表示の手順（Chrome か Edge を入れる、`npx playwright-core install chromium`、または `CHROME_PATH`）を案内する
 - `-- uv`：音声（`tts`）にだけ要る。`-- ffmpeg`：動画（`video`）にだけ要る。その作業をするときに、表示の入れ方を案内する
 - 包みを取れない（ネットにつながらないなど）ときは、出た表示をそのまま利用者に見せる
-- `ok   skills   指示の版 …（Studio X.Y.Z）`：この行の Studio のバージョンと、上の「スキルの版」の行のバージョンを比べる（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）。Studio のバージョンのほうが新しいときだけ、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（make スキルと合わせて 1 回）。<バージョン> はスキルのバージョン。同じバージョンか、スキルのほうが新しいときは何も言わない
+- `ok   skills   指示のバージョン …（Studio X.Y.Z）`（前のバージョンの egatari では `指示の版 …`）：この行の Studio のバージョンと、上の「スキルのバージョン」の行のバージョンを比べる（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）。Studio のバージョンのほうが新しいときだけ、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（make スキルと合わせて 1 回）。<バージョン> はスキルのバージョン。同じバージョンか、スキルのほうが新しいときは何も言わない
   - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
   - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。`npx egatari@0.6.x skills update` で更新できます。」
 
@@ -197,7 +197,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
    ### What you did
    ### What happened (and what you expected)
    ### Version
-   現在の版                ← npx egatari@0.6.x --version の出力（と、make・studio の指示の版）
+   現在の版                ← npx egatari@0.6.x --version の出力（と、make・studio の指示のバージョン）
    ### Browser
    ### OS
    ### Context
