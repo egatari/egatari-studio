@@ -31,6 +31,7 @@ const ARTICLE = ['articleEncoding', 'articleFrontMatter', 'articleFrontMatterMem
   'articleAsideTitle', 'articleAsideNested', 'articleNested', 'articleAsideClass', 'articleTableClass', 'articleProofKind', 'articleFootnoteContent', 'articleFootnoteMissing',
   'articleFootnoteUnused', 'articleFootnoteName', 'articleFootnoteDuplicate', 'articleRuby', 'articleStepSyntax', 'articleSubfigure', 'articleFigureAlt', 'articleGlossary', 'articleSolutionLabel',
   'articleConverted', 'articleIndex', 'articleConfig', 'articleUnlisted', 'articleRead', 'articleUnsafeParagraph', 'articleTooLarge', 'articleChapterNumber', 'articleChapterTitle',
+  'articleSectionKindValue', 'articleSectionKindMember', 'articleSectionKindPosition', 'articleSectionKindOrder', 'articleSectionKindContext',
   'articleChapterIncrease', 'articleChapterOrder', 'articleChapterDiffer', 'articleLang', 'articleBibliography', 'articleLabelDuplicate', 'articleLabelSlideId', 'articleXref', 'articleSolution',
   'articleTerm', 'articleStep', 'articleCite', 'articleReferences', 'articleImage', 'articleDataArticle', 'articleCitations', 'articleCiteStyle', 'articleCiteListChapter', 'articleCiteEngine',
   'articleUncited', 'articleLinksShape', 'articleLinkStale', 'articleLinkUnconfirmed', 'articleLinkUnlinked', 'articleSummary', 'articleSectionUnlinked'];

@@ -1,4 +1,4 @@
-<!-- i18n: pair=llm-book-ref.md sha256=b8f586bf108cefcc -->
+<!-- i18n: pair=llm-book-ref.md sha256=d5a897a76c71fd5b -->
 # 本を書く
 
 決まりの本文は Studio の [docs/article.ja.md]({{DOC article.ja.md}})（Egatari Text 1、仕様 §9C）。ここは書き手の手順と、つまずきやすい所。
@@ -11,6 +11,7 @@
 | `article/<名前>.md`（章ごと） | 章の番号のある教科書 | 章のファイルには必ず `chapter:`（正の整数）。前書き `kind: preface`、付録 `kind: appendix`（`chapter` は書かない）、後書き `kind: afterword` |
 
 - `article/` の `kind: chapter` は `chapter:` が要る。章の番号のない本に前書き・後書きのファイルを付ける形はまだない。章の番号のない本は `article.md` にして、底本・入力者などの記録は最後の `##` の節に書く。
+- 1 つのファイルの `article.md` では `##` の見出しの直前に `+++ {"kind": "afterword"}` と書ける（`preface`・`chapter`・`appendix` も使える。この行に id は付けない）。
 - 読む順は組み立てと id の道具が `egatari.json` の `article.chapters` に書く。手で書かない。
 - 縦書きは前付けに `writing-mode: vertical-rl`。表も既定で縦組みになる。図・別行の式・コードは横組みのまま。
 

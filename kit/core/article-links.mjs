@@ -8,7 +8,7 @@
 //     both・unconfirmed（記録がない）。編集アプリは「スライドと本が合っていないかもしれません」と出す。どちらの字も自動では直さない（§9C.7）
 //   組み立て（1 ファイルへの書き出し）は、もうつながっていない組の記録を外す。記録を足すのは npm run ids（つないだ組）と、確かめたとき
 // 編集アプリと共有する（node: の読み込み・fs を使わない。hash は crypto.subtle）。
-import { visit } from './article-text.mjs';
+import { articleContent, visit } from './article-text.mjs';
 import { parseStep } from './article.mjs';
 import { parseHeading } from './narration-parse.mjs';
 
@@ -22,10 +22,10 @@ const norm = (s) => String(s).normalize('NFC').replace(/\r\n?/g, '\n').trim();
 export function linkedPairs(article, dataArticle = []) {
   const sections = new Set(), out = [], seen = new Set();
   const add = (slide, section) => { const k = `${slide}\u0000${section}`; if (!seen.has(k)) { seen.add(k); out.push({ slide, section }); } };
-  for (const f of article.files) for (const top of f.tree.children || []) if (top.type === 'heading' && top.depth === 2 && top.label) sections.add(String(top.label));
+  for (const f of article.files) for (const { node: top } of articleContent(f.tree, f.kind)) if (top.type === 'heading' && top.depth === 2 && top.label) sections.add(String(top.label));
   for (const f of article.files) {
     let section = null;
-    for (const top of f.tree.children || []) {
+    for (const { node: top } of articleContent(f.tree, f.kind)) {
       if (top.type === 'heading' && top.depth === 2) section = top.label ? String(top.label) : null;
       if (!section) continue;
       visit(top, (n) => { if (n.type === 'mystRole' && n.name === 'step') { const s = parseStep(n.value); if (s) add(s.slideKey, section); } });
@@ -41,13 +41,14 @@ export function sectionSources(article) {
   for (const f of article.files) {
     const lines = String(f.source || '').replace(/^﻿/, '').split(/\r?\n/);
     const off = f.lineOffset || 0;
-    const heads = (f.tree.children || []).filter((n) => n.type === 'heading' && n.position);
+    const heads = articleContent(f.tree, f.kind).map(({ node }) => node).filter((n) => n.type === 'heading' && n.position);
     heads.forEach((h, j) => {
       if (h.depth !== 2 || !h.label) return;
       const start = h.position.start.line + off;   // 1 から
       const next = heads.slice(j + 1).find((x) => x.depth <= h.depth);
       let end = next ? next.position.start.line + off - 1 : lines.length;   // 含まない（1 から数えた行の番号のひとつ前まで）
       if (next && next.label && end > start && /^\s*\([^()\s]+\)=\s*$/.test(lines[end - 1])) end--;
+      if (next && /^\+\+\+\s/.test(lines[end - 1] || '')) end--;
       out[String(h.label)] = norm(lines.slice(start - 1, end).join('\n'));
     });
   }

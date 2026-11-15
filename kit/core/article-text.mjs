@@ -251,7 +251,7 @@ export function parseArticleText(src, opts = {}) {
     else if (t === 'mystRole') rawRole(node);
     else if (t === 'html' && !parents.some((p) => p.__htmlTable === node)) add('error', 'articleHtml', '§9C.2', node, { html: String(node.value).trim().slice(0, 60), hint: htmlHint(node.value) });
     else if (t === 'comment') add('error', 'articleComment', '§9C.2', node, { text: String(node.value).slice(0, 60) });
-    else if (t === 'block' || t === 'blockBreak') add('error', 'articleBlockBreak', '§9C.2', node);
+    else if (t === 'block' || t === 'blockBreak') rawSectionKind(node, parents);
     else if (t === 'heading' && (node.depth < 2 || node.depth > 4)) add('error', 'articleHeadingLevel', '§9C.2', node, { depth: node.depth });
     else if (t === 'listItem' && typeof node.checked === 'boolean') add('error', 'articleTaskList', '§9C.2', node);
     else if (t === 'text' && !parents.some((p) => p.type === 'link' || p.type === 'crossReference')) rawText(node);
@@ -263,6 +263,25 @@ export function parseArticleText(src, opts = {}) {
     }
     for (const c of node.children || []) rawWalk(c, [...parents, node]);
   };
+  function rawSectionKind(node, parents) {
+    let meta;
+    try { meta = JSON.parse(node.meta); } catch { /* not a section kind line */ }
+    if (!meta || typeof meta !== 'object' || Array.isArray(meta) || !Object.hasOwn(meta, 'kind')) {
+      add('error', 'articleBlockBreak', '§9C.2', node);
+      return;
+    }
+    if (Object.keys(meta).length !== 1) add('error', 'articleSectionKindMember', '§9C.1A', node);
+    if (!KINDS.includes(meta.kind)) add('error', 'articleSectionKindValue', '§9C.1A', node, { kind: String(meta.kind) });
+    if (opts.chapterFile || (front.fm.kind && front.fm.kind !== 'chapter')) add('error', 'articleSectionKindContext', '§9C.1A', node);
+    const [first, second] = node.children || [];
+    const target = first?.type === 'mystTarget';
+    const heading = target ? second : first;
+    const line = node.position?.start.line;
+    if (parents.length !== 1 || parents[0].type !== 'root' || heading?.type !== 'heading' || heading.depth !== 2
+      || first.position?.start.line !== line + 1 || (target && heading.position?.start.line !== line + 2)) {
+      add('error', 'articleSectionKindPosition', '§9C.1A', node);
+    }
+  }
   const srcLine = (node) => (node.position ? lines[node.position.start.line - 1] || '' : '');
   function rawDirective(node, parents) {
     const name = node.name;
@@ -408,6 +427,13 @@ export function parseArticleText(src, opts = {}) {
     return null;
   }
   rawWalk(tree, []);
+  let lastKind = -1;
+  for (const { node, kind } of articleContent(tree, front.fm.kind || 'chapter')) {
+    if (node.type !== 'heading' || node.depth !== 2) continue;
+    const order = KINDS.indexOf(kind);
+    if (order < lastKind) add('error', 'articleSectionKindOrder', '§9C.1A', node, { kind });
+    lastKind = Math.max(lastKind, order);
+  }
 
   // ---- 構造の変換（仕様の fixtures と同じ 6 つ、同じ順）
   liftMystDirectivesAndRolesTransform(tree);
@@ -499,6 +525,21 @@ export function parseArticleText(src, opts = {}) {
   visit(tree, (n) => { if (n.type === 'container' && n.kind === 'figure' && !n.subcontainer) for (const c of n.children || []) if (c.type === 'image' && !c.alt) add('warn', 'articleFigureAlt', '§9C.2', n, { label: n.label || null }); });
   for (const c of conversions) problems.push(P('warn', 'articleConverted', '§9C.2', c.line, { from: c.from, to: c.to }));
   return { fm: front.fm, tree, problems, conversions, lineOffset: off };
+}
+
+// The parser keeps kind spans as blocks. Consumers share this flat view without changing the fixture tree.
+export function articleContent(tree, fileKind = 'chapter') {
+  const out = [];
+  let kind = fileKind;
+  for (const node of tree.children || []) {
+    if (node.type === 'block') {
+      let meta;
+      try { meta = JSON.parse(node.meta); } catch { /* invalid blocks are reported by the parser */ }
+      if (meta && KINDS.includes(meta.kind)) kind = meta.kind;
+      for (const child of node.children || []) out.push({ node: child, kind });
+    } else out.push({ node, kind });
+  }
+  return out;
 }
 
 // 試験の比べ方（仕様の tools/test-fixtures.mjs と同じ）：position・key・html_id を外した木

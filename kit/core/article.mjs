@@ -2,7 +2,7 @@
 // ファイルをまたぐ決まり（章の番号・種類の順・lang・writing-mode・bibliography）と、文書全体の点検（§9C.8：名前の重なり・相互参照・
 // 解答の問・用語・ステップへのリンク・引用の鍵・画像・スライドの data-article）を行う。番号と HTML は kit/core/article-render.mjs。
 // 編集アプリと共有する（node: の読み込み・fs を使わない。読むのは渡された read・exists を通す）。
-import { parseArticleText, visit, plain, ARTICLE_LIMITS, CITE_KEY_RE } from './article-text.mjs';
+import { parseArticleText, articleContent, visit, plain, ARTICLE_LIMITS, CITE_KEY_RE } from './article-text.mjs';
 import { citationSettings } from './article-cite.mjs';
 
 export const ARTICLE_FILE = 'article.md';
@@ -57,7 +57,7 @@ export function readArticle(index, read, opts = {}) {
     let text;
     try { text = read(p); } catch (e) { problems.push(D('error', 'articleRead', '§9C.1', p, null, { why: String(e && e.message || e).slice(0, 120) })); continue; }
     if (text.length > ARTICLE_LIMITS.fileBytes) { problems.push(D('error', 'articleTooLarge', '§9C.1', p, null, { bytes: text.length, max: ARTICLE_LIMITS.fileBytes })); continue; }
-    const r = parseArticleText(text, { convert: !!opts.convert });
+    const r = parseArticleText(text, { convert: !!opts.convert, chapterFile: !!index.chapters });
     const kind = r.fm.kind || 'chapter';
     files.push({ path: p, source: text, lineOffset: r.lineOffset, fm: r.fm, tree: r.tree, kind, chapter: kind === 'chapter' ? r.fm.chapter ?? null : null, letter: null, conversions: r.conversions });
     for (const x of r.problems) problems.push({ ...x, file: p });
@@ -122,6 +122,7 @@ export function validateArticle(article, ctx = {}) {
   const others = new Set([...(ctx.slideIds || []), ...(ctx.otherIds || [])].map((x) => String(x).toLowerCase()));
   // 1 回目：名前・節・問・用語集
   for (const f of article.files) {
+    const sectionKinds = new Map(articleContent(f.tree, f.kind).map(({ node, kind }) => [node, kind]));
     visit(f.tree, (n) => {
       if (n.label && ['heading', 'math', 'container', 'aside', 'proof', 'exercise', 'solution'].includes(n.type) && !(n.type === 'exercise' && n.hidden)) {
         const k = String(n.label).toLowerCase();
@@ -129,7 +130,7 @@ export function validateArticle(article, ctx = {}) {
         if (labels.has(k)) { const o = labels.get(k); problems.push(D('error', 'articleLabelDuplicate', '§9C.3', f.path, at.line, { label: at.label, other: o.file, otherLine: o.line })); }
         else labels.set(k, at);
         if (others.has(k)) problems.push(D('error', 'articleLabelSlideId', '§9C.3', f.path, at.line, { label: at.label }));
-        if (n.type === 'heading' && n.depth === 2) sections.set(String(n.label), { file: f.path, line: at.line, heading: plain(n), kind: f.kind });
+        if (n.type === 'heading' && n.depth === 2) sections.set(String(n.label), { file: f.path, line: at.line, heading: plain(n), kind: sectionKinds.get(n) || f.kind });
         if (n.type === 'exercise') exercises.add(k);
       }
       if (n.type === 'glossary') {
@@ -144,7 +145,7 @@ export function validateArticle(article, ctx = {}) {
   const cited = new Set();
   for (const f of article.files) {
     let section = null;
-    for (const top of f.tree.children || []) {
+    for (const { node: top } of articleContent(f.tree, f.kind)) {
       if (top.type === 'heading' && top.depth === 2) section = top.label ? String(top.label) : null;
       visit(top, (n, parents) => {
         const line = lineOf(f, n);
@@ -192,7 +193,7 @@ export function validateArticle(article, ctx = {}) {
     else linkedSections.add(id);
   }
   // どのスライドにもつながらない節（§9C.8 の SHOULD。スライドがあるときだけ）
-  // kind: chapter のファイルの節だけ（前書き・付録・後書きはスライドを持たないのが普通。§9C.8）
+  // ファイルと節の kind が chapter の節だけ（前書き・付録・後書きはスライドを持たないのが普通。§9C.8）
   if (ctx.slideIds && ctx.slideIds.size) for (const [id, s] of sections) if (s.kind === 'chapter' && !linkedSections.has(id)) problems.push(D('warn', 'articleSectionUnlinked', '§9C.8', s.file, s.line, { section: id, heading: s.heading.slice(0, 40) }));
   return { problems, labels, sections };
 }
@@ -253,7 +254,7 @@ export function assignSectionIds(text, taken = new Set(), rand = (n) => globalTh
   visit(r.tree, (n) => { if (n.label) used.add(String(n.label).toLowerCase()); });
   const lines = text.split(/\r?\n/);
   const added = [];
-  for (const n of r.tree.children || []) {
+  for (const { node: n } of articleContent(r.tree)) {
     if (n.type !== 'heading' || n.depth !== 2 || n.label || !n.position) continue;
     let id;
     for (let k = 0; k < 1000 && (!id || used.has(id)); k++) id = 'sec-' + [...rand(6)].map((b) => B32[b & 31]).join('');

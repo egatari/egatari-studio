@@ -2,8 +2,8 @@
 // 原稿の HTML は通さない（表も木から書く）。script・イベントの属性・埋め込みの要素は書かない。リンクは http(s)・mailto と # だけ。
 // 引用（§9C.4）は opts.csl（citeproc と同梱の書式）があれば CSL で組み、文献の一覧を書く（kit/core/article-cite.mjs）。なければ鍵の字のまま。
 // 編集アプリと共有する（node: の読み込み・fs を使わない。KaTeX と画像は opts で渡す）。
-import { visit, plain } from './article-text.mjs';
-import { parseStep } from './article.mjs';
+import { visit, plain, articleContent } from './article-text.mjs';
+import { parseStep, letterOf } from './article.mjs';
 import { renderCitations } from './article-cite.mjs';
 import { quoteJa } from './quote-ja.mjs';
 
@@ -40,8 +40,10 @@ export function numberArticle(article, lang) {
     const prefix = f.kind === 'chapter' && f.chapter ? String(f.chapter) : f.kind === 'appendix' ? f.letter || '' : '';
     // 前書き・後書きは節の番号なし（§9C.1A）。numbering: false も節の番号だけを切る
     const numbered = f.fm.numbering !== false && f.kind !== 'preface' && f.kind !== 'afterword';
-    const pre = (n) => (prefix ? `${prefix}.${n}` : String(n));
-    const counters = new Map();
+    let activePrefix = prefix, sectionKind = f.kind, appendix = -1;
+    const pre = (n) => (activePrefix ? `${activePrefix}.${n}` : String(n));
+    const fileCounters = new Map();
+    let counters = fileCounters;
     const next = (k) => { const n = (counters.get(k) || 0) + 1; counters.set(k, n); return pre(n); };
     const sec = [0, 0, 0];
     // 章の印（§9C.6）：章の番号・付録の記号、前書き・後書きは preface<i>・afterword<i>（i はその種類の中で 1 から）。章ごとの id と属性はすべてこれを使う
@@ -50,43 +52,60 @@ export function numberArticle(article, lang) {
     const fileInfo = { prefix, numbered, kind: f.kind, chapterAttr: token, fnPrefix: book ? token : '', nodes: new Map() };
     files.push(fileInfo);
     const set = (n, info) => { fileInfo.nodes.set(n, info); if (n.label) targets.set(String(n.label).toLowerCase(), { ...info, file: f.path }); };
-    visit(f.tree, (n, parents) => {
-      if (n.type === 'heading' && n.depth >= 2 && n.depth <= 4) {
-        const d = n.depth - 2;
-        sec[d]++; for (let j = d + 1; j < 3; j++) sec[j] = 0;
-        const num = numbered ? (prefix ? [prefix, ...sec.slice(0, d + 1)] : sec.slice(0, d + 1)).join('.') : null;
-        set(n, { kind: 'section', num, text: num ? W.section(num) : plain(n), title: plain(n) });
-      } else if (n.type === 'container' && n.kind === 'figure' && !n.subcontainer) {
-        const num = next('figure');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
-        set(n, { kind: 'figure', num, text: num ? `${W.figure}${W.sp}${num}` : null });
-        let sub = 0;
-        for (const c of n.children || []) if (c.type === 'container' && c.subcontainer) {
-          const letter = `(${String.fromCharCode(97 + sub++)})`;
-          set(c, { kind: 'subfigure', num: letter, text: num ? `${W.figure}${W.sp}${num}${letter}` : letter });
+    for (const { node, kind } of articleContent(f.tree, f.kind)) {
+      sectionKind = kind;
+      if (node.type === 'heading' && node.depth === 2) {
+        if (kind === 'appendix' && f.kind === 'chapter') {
+          activePrefix = letterOf(++appendix);
+          counters = new Map();
+          sec.fill(0);
+        } else {
+          activePrefix = kind === 'preface' || kind === 'afterword' ? '' : prefix;
+          counters = fileCounters;
         }
-      } else if (n.type === 'container' && n.kind === 'table') {
-        const num = next('table');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
-        set(n, { kind: 'table', num, text: num ? `${W.table}${W.sp}${num}` : null });
-      } else if (n.type === 'aside') {
-        const num = next('aside');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
-        set(n, { kind: 'aside', num, text: num ? `${W.aside}${W.sp}${num}` : null, title: titleOf(n) });
-      } else if (n.type === 'exercise') {
-        const num = n.enumerated === false ? null : next('exercise');
-        set(n, { kind: 'exercise', num, text: num ? `${W.exercise}${W.sp}${num}` : W.exercise, title: titleOf(n) });
-      } else if (n.type === 'proof') {
-        const word = W.kinds[n.kind] || n.kind;
-        const num = n.kind === 'proof' ? null : next('proof:' + n.kind);
-        set(n, { kind: 'proof', proofKind: n.kind, num, text: num ? `${word}${W.sp}${num}` : word, title: titleOf(n) });
-      } else if (n.type === 'math' && n.label) {
-        const num = next('equation');
-        set(n, { kind: 'equation', num, text: W.eq(num) });
-      } else if (n.type === 'solution') {
-        set(n, { kind: 'solution', num: null, text: null });
-      } else if (n.type === 'glossary') {
-        visit(n, (d) => { if (d.type === 'definitionTerm') { const term = plain(d).trim(); if (!terms.has(term)) terms.set(term, `term-${++termN}`); } });
       }
-      void parents;
-    });
+      visit(node, (n, parents) => {
+        if (n.type === 'heading' && n.depth >= 2 && n.depth <= 4) {
+          const d = n.depth - 2;
+          const sectionNumbered = f.fm.numbering !== false && sectionKind !== 'preface' && sectionKind !== 'afterword';
+          const appendixSection = sectionKind === 'appendix' && f.kind === 'chapter';
+          if (sectionNumbered) { sec[d]++; for (let j = d + 1; j < 3; j++) sec[j] = 0; }
+          const parts = appendixSection ? [activePrefix, ...sec.slice(1, d + 1)] : (prefix ? [prefix, ...sec.slice(0, d + 1)] : sec.slice(0, d + 1));
+          const num = sectionNumbered ? parts.join('.') : null;
+          const headingNum = appendixSection && d === 0 && num ? W.appendix(num) : num;
+          set(n, { kind: 'section', sectionKind, num, headingNum, text: num ? (appendixSection && d === 0 ? W.appendix(num) : W.section(num)) : plain(n), title: plain(n) });
+        } else if (n.type === 'container' && n.kind === 'figure' && !n.subcontainer) {
+          const num = next('figure');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
+          set(n, { kind: 'figure', num, text: num ? `${W.figure}${W.sp}${num}` : null });
+          let sub = 0;
+          for (const c of n.children || []) if (c.type === 'container' && c.subcontainer) {
+            const letter = `(${String.fromCharCode(97 + sub++)})`;
+            set(c, { kind: 'subfigure', num: letter, text: num ? `${W.figure}${W.sp}${num}${letter}` : letter });
+          }
+        } else if (n.type === 'container' && n.kind === 'table') {
+          const num = next('table');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
+          set(n, { kind: 'table', num, text: num ? `${W.table}${W.sp}${num}` : null });
+        } else if (n.type === 'aside') {
+          const num = next('aside');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
+          set(n, { kind: 'aside', num, text: num ? `${W.aside}${W.sp}${num}` : null, title: titleOf(n) });
+        } else if (n.type === 'exercise') {
+          const num = n.enumerated === false ? null : next('exercise');
+          set(n, { kind: 'exercise', num, text: num ? `${W.exercise}${W.sp}${num}` : W.exercise, title: titleOf(n) });
+        } else if (n.type === 'proof') {
+          const word = W.kinds[n.kind] || n.kind;
+          const num = n.kind === 'proof' ? null : next('proof:' + n.kind);
+          set(n, { kind: 'proof', proofKind: n.kind, num, text: num ? `${word}${W.sp}${num}` : word, title: titleOf(n) });
+        } else if (n.type === 'math' && n.label) {
+          const num = next('equation');
+          set(n, { kind: 'equation', num, text: W.eq(num) });
+        } else if (n.type === 'solution') {
+          set(n, { kind: 'solution', num: null, text: null });
+        } else if (n.type === 'glossary') {
+          visit(n, (d) => { if (d.type === 'definitionTerm') { const term = plain(d).trim(); if (!terms.has(term)) terms.set(term, `term-${++termN}`); } });
+        }
+        void parents;
+      });
+    }
     // 章の見出し（§9C.6）
     const title = f.fm.title || (book ? '' : article.title || '');
     const head = f.kind === 'chapter' && f.chapter ? W.chapter(f.chapter) : f.kind === 'appendix' && f.letter ? W.appendix(f.letter) : '';
@@ -136,7 +155,7 @@ export function renderArticle(article, opts = {}) {
     const fnId = (n) => (info.fnPrefix ? `fn-${info.fnPrefix}-${n}` : `fn-${n}`);
     const fnSeen = new Set();
     let pendingNotes = [];
-    const children = f.tree.children || [];
+    const children = articleContent(f.tree, f.kind).map(({ node }) => node);
     const exerciseBefore = new Set();
     children.forEach((c, i) => { if (c.type === 'solution' && i > 0 && children[i - 1].type === 'exercise') exerciseBefore.add(c); });
 
@@ -184,7 +203,7 @@ export function renderArticle(article, opts = {}) {
         case 'heading': {
           const x = num(n);
           const id = n.label ? ` id="${esc(n.label)}"` : '';
-          return `<h${n.depth}${n.depth === 2 ? '' : id}>${x.num ? `<span class="egatari-num">${text(x.num)}</span> ` : ''}${inline(n.children)}</h${n.depth}>`;
+          return `<h${n.depth}${n.depth === 2 ? '' : id}>${x.num ? `<span class="egatari-num">${text(x.headingNum || x.num)}</span> ` : ''}${inline(n.children)}</h${n.depth}>`;
         }
         case 'blockquote': return `<blockquote>${block(n.children)}</blockquote>`;
         case 'thematicBreak': return '<hr>';
@@ -352,7 +371,7 @@ export function renderArticle(article, opts = {}) {
           if (notes) parts.push(notes);
           if (open) parts.push('</section>');
           const id = c.label ? esc(c.label) : '';
-          parts.push(`<section${id ? ` id="${id}" data-section-id="${id}"` : ''}>`);
+          parts.push(`<section${id ? ` id="${id}" data-section-id="${id}"` : ''} data-section-kind="${esc(num(c).sectionKind || f.kind)}">`);
           open = true;
         }
         const h = node(c);

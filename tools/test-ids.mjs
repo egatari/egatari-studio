@@ -127,4 +127,17 @@ for (const [name, extra, re] of [
     assert.ok(!fs.existsSync(path.join(d, '.cache')));
   });
 }
+for (const crlf of [false, true]) ok(`section kind lines stay directly above inserted ids (${crlf ? 'CRLF' : 'LF'})`, () => {
+  const d = makeDeck('kind-' + crlf, { crlf });
+  const src = '## Body\n\n+++ {"kind": "afterword"}\n## About\n\nMore\n\nNext\n----\n';
+  fs.writeFileSync(path.join(d, 'article.md'), crlf ? CRLF(src) : src);
+  const r = ids(d);
+  assert.equal(r.status, 0, r.stderr + r.stdout);
+  const first = read(d, 'article.md');
+  assert.match(first, /\+\+\+ {"kind": "afterword"}\r?\n\(sec-[a-z2-7]{6}\)=\r?\n## About/);
+  assert.equal([...first.matchAll(/\(sec-[a-z2-7]{6}\)=/g)].length, 3);
+  if (crlf) assert.ok(!/[^\r]\n/.test(first));
+  assert.equal(ids(d).status, 0);
+  assert.equal(read(d, 'article.md'), first);
+});
 console.log(`ids: ${n} ok (${work})`);
