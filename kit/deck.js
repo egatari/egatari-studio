@@ -2274,7 +2274,7 @@ function extLink(a){
   }
   if (window.DECK_DEV){   // 編集のプレビュー：授業の絵は作者のコードが描ける。外へは出ず、ここでは確かめもしない（書き出したデッキで確かめる）
     extDialog({title: L10N("プレビューでは外のページを開きません", "The preview does not open outside pages"), host: d.host, url: d.url,
-      notes: [L10N("組み立てた HTML・Egatari ファイルで開くと、行き先を確かめてから開きます", "In the built HTML or an Egatari file, it asks before opening")], open: null, from: from});
+      notes: [L10N("ビルドした HTML・Egatari ファイルで開くと、行き先を確かめてから開きます", "In the built HTML or an Egatari file, it asks before opening")], open: null, from: from});
     return;
   }
   if (d.verdict === "open"){ extOpen(d.url); return; }

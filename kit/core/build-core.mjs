@@ -447,8 +447,8 @@ function fontCss(env, text, subset, lang, mincho = false, warn = [], more = {}) 
   for (const f of more.chosen || []) {
     if (!hasFont(env, f)) {
       // 別の包みの字体（f.extra）で、その包みを入れていない（env.fontsExtraMissing。Node の組み立て）：入れ方を言う
-      if (f.extra && env.fontsExtraMissing) warn.push(`${FONTS_EXTRA_WARN}字体「${f.family}」は ${FONTS_EXTRA_PKG} にあり、入っていないので埋め込まない（開く端末の字体で出る）：${FONTS_EXTRA_INSTALL}（npx なら npx -p egatari -p ${FONTS_EXTRA_PKG} egatari …）/ the font "${f.family}" is in ${FONTS_EXTRA_PKG}, which is not installed, so it is not embedded: ${FONTS_EXTRA_INSTALL} (with npx: npx -p egatari -p ${FONTS_EXTRA_PKG} egatari …)`);
-      else warn.push(`字体「${f.family}」の字がないので埋め込まない（開く端末の字体で出る）。npm ci`);
+      if (f.extra && env.fontsExtraMissing) warn.push(`${FONTS_EXTRA_WARN}フォント「${f.family}」は ${FONTS_EXTRA_PKG} にあり、入っていないので埋め込まない（開く端末のフォントで出る）：${FONTS_EXTRA_INSTALL}（npx なら npx -p egatari -p ${FONTS_EXTRA_PKG} egatari …）/ the font "${f.family}" is in ${FONTS_EXTRA_PKG}, which is not installed, so it is not embedded: ${FONTS_EXTRA_INSTALL} (with npx: npx -p egatari -p ${FONTS_EXTRA_PKG} egatari …)`);
+      else warn.push(`フォント「${f.family}」の字がないので埋め込まない（開く端末のフォントで出る）。npm ci`);
       continue;
     }
     g = add(g, rangeCss(env, [f], text, false, subset));
@@ -512,7 +512,7 @@ function missingThemeWarning(env, name, used) {
   const ud = Array.isArray(env.themeDirs) && env.themeDirs.length > 0;
   const where = env.app ? (ud ? `選んだテーマのフォルダに ${name}/ を置くか、` : '編集アプリでは「テーマを読み込む…」で ZIP ファイルか自分のテーマのフォルダ（~/.egatari/themes など）から読み込むか、')
     : env.themeDirs ? 'EGATARI_THEMES・~/.egatari/themes に置くか、' : '編集アプリは利用者のテーマのフォルダ（EGATARI_THEMES・~/.egatari/themes）を読めないので、';
-  return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} で組む（探した場所：作業フォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}作業フォルダの themes/${name}/ に置く`;
+  return `theme not found: "${name}" — テーマ「${name}」が見つからないので ${used} でビルドする（探した場所：作業フォルダ、その themes/、利用者のテーマのフォルダ、同梱の themes/）。${where}作業フォルダの themes/${name}/ に置く`;
 }
 // 同梱のテーマの版の固定（themes.lock.json。kit/core/themes-lock.mjs）：教材が記録した前の版（作業フォルダの設定のファイルの themes、
 // 組み直す文書の索引から opts.themeVersions）なら、同梱の themes/<名前>/ の代わりにその版の写し vendor/themes/<名前>/<版>/ で組む。
@@ -859,7 +859,7 @@ export function build(env0, srcPath, opts = {}) {
     if (outside) { warn.push(`refused: 「${name}」は作業フォルダの外にある（読まない）`); return null; }
     // opts.missingFiles === 'warn'：ないファイルは知らせて空のまま組む（編集アプリのメモリの上の原稿：deck.html だけを開いたときなど。
     // 既定（コマンド・フォルダ）は今までどおり断る）
-    if (opts.missingFiles === 'warn') { if (!missingSeen.has(name)) { missingSeen.add(name); warn.push(`missing: 「${name}」が作業フォルダにない（空のまま組んだ）`); } return null; }
+    if (opts.missingFiles === 'warn') { if (!missingSeen.has(name)) { missingSeen.add(name); warn.push(`missing: 「${name}」が作業フォルダにない（空のままビルドした）`); } return null; }
     throw new Error('not found: ' + name);
   };
   // 取り込むたびに、回数と読んだ大きさ（読む前に。env を通して）と増える大きさ（置き換える前に）を数える（同じ小さなファイルを何万回も取り込ませない）
@@ -1042,7 +1042,7 @@ export function build(env0, srcPath, opts = {}) {
         // 置き換え先の版が手元にあるか・index.js の同一性の hash が変わるか（編集アプリが組み直しの知らせに使う）
         const lc = lock.components[name], ok = !!lc && lc.versions.includes(y.replacement);
         yankedUsed.push({ tag, name, version: pick.version, replacement: y.replacement, reason: y.reason, date: y.date, replacementAvailable: ok, sha256Changes: ok ? lc.sha256[pick.version] !== lc.sha256[y.replacement] : null });
-        warn.push(`yanked: ${tag} ${pick.version} was withdrawn by the component registry on ${y.date} (replacement ${y.replacement}; ${y.reason}). It is built as recorded, never replaced silently. To rebuild with ${y.replacement}, set "${name}": "${y.replacement}" under components in egatari.json (the editor has a button) / パーツライブラリが取り下げた版：記録のまま組む。黙って置き換えない`);
+        warn.push(`yanked: ${tag} ${pick.version} was withdrawn by the component registry on ${y.date} (replacement ${y.replacement}; ${y.reason}). It is built as recorded, never replaced silently. To rebuild with ${y.replacement}, set "${name}": "${y.replacement}" under components in egatari.json (the editor has a button) / パーツライブラリが取り下げたバージョン：記録のままビルドする。黙って置き換えない`);
       }
       if (env.within(lib, compRoot)) { file = lib; componentVersions[name] = pick.version; }
       else { warn.push(`refused: パーツライブラリのパーツ ${tag} が vendor/components/ の外を指している（読まない）`); continue; }

@@ -112,7 +112,7 @@ async function hostileBook(page, label, lang) {
   const text = await page.textContent('#book-problems');
   const [q, h] = HOSTILE.expect;
   const want = lang === 'ja'
-    ? [`${q.file} ${q.line} 行目：節「${q.heading}」の段落「"a "a`, `${h.file} ${h.line} 行目：節「${h.heading}」の段落「a <!-- a`, '引用符（" と \'）が', 'タグの書き出し（<! と <?）が']
+    ? [`${q.file} ${q.line} 行目：節「${q.heading}」の段落「"a "a`, `${h.file} ${h.line} 行目：節「${h.heading}」の段落「a <!-- a`, '引用符（" と \'）が', 'タグの始まり（<! と <?）が']
     : [`${q.file} line ${q.line}: the paragraph “"a "a`, `in the section “${q.heading}”`, `${h.file} line ${h.line}: the paragraph “a <!-- a`, 'quotation marks (" and \')'];
   ok(want.every((w) => text.includes(w)), `${label}: the book panel names the file, line and section of each (${text.replace(/\s+/g, ' ').slice(0, 240)})`);
   ok(await page.evaluate(() => 1 + 1) === 2 && !(await st(page)).error, `${label}: the page still answers; no editor error`);

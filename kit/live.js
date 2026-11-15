@@ -34,8 +34,8 @@ if (bad.length){ console.warn("live: ignored (" + bad.join("; ") + ")"); return;
 var JA = /^ja\b/i.test(document.documentElement.lang || "ja");
 var HOST = LP.hostOf(live.endpoint);
 var S = JA ? {
-  title: "ライブ（質問・投票）", again: "もう一度試す", notice: "この教材から、" + HOST + " のライブでホストに質問や投票を送れます", join: "参加する", leave: "退出する", fold: "たたむ", unfold: "ひらく", badge: "ライブ", pin: "開いたままにする", pollOpen: "このステップに投票があります。ライブの板を開きました",
-  off: "つないでいません", connecting: "つないでいます…", connected: "参加中", waiting: "待機室で待っています", retrying: function(s){ return s + " 秒後につなぎ直します"; },
+  title: "ライブ（質問・投票）", again: "もう一度試す", notice: "この教材から、" + HOST + " のライブでホストに質問や投票を送れます", join: "参加する", leave: "退出する", fold: "たたむ", unfold: "ひらく", badge: "ライブ", pin: "開いたままにする", pollOpen: "このステップに投票があります。ライブのパネルを開きました",
+  off: "接続していません", connecting: "接続しています…", connected: "参加中", waiting: "待機室で待っています", retrying: function(s){ return s + " 秒後に再接続します"; },
   before: function(t){ return "ライブは " + t + " に始まります"; }, after: "ライブの時間は終わりました", noNet: "この画面からは参加できません。教材のファイルをダウンロードして、ブラウザ（Chrome・Safari など）で直接開いてください。ライブ ID：",
   noNetLink: "この画面からは参加できません。ブラウザの新しいタブで参加できます。", openJoin: "ブラウザで参加する", joinTo: "参加先：", roomLabel: "ライブ ID：",
   name: "名前（任意）", nameNote: "名前はホストだけに見えます（入れなければ名前なしで送られます）", ask: "ホストへの質問", send: "送る", sent: "質問を送りました",
@@ -46,13 +46,13 @@ var S = JA ? {
   inkLabel: "囲むところ（スライドの上）",
   confused: "わからない", confusedTip: "このステップがわからないことを、ホストに伝えます（文は送りません）。もう一度押すと取り消します",
   confusedSent: "「わからない」をホストに伝えました", confusedOff: "「わからない」を取り消しました",
-  replies: "ホストからの返事", yourQ: "あなたの質問：", gotReply: "ホストから返事が届きました", replyPrefix: "ホストの返事：", newReply: "新しい返事があります", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
+  replies: "ホストからの回答", yourQ: "あなたの質問：", gotReply: "ホストから回答が届きました", replyPrefix: "ホストの回答：", newReply: "新しい回答があります", vote: "投票する", voted: "投票しました", revote: "選び直して投票できます",
   shown: "ホストが全員に表示した質問", leftMsg: "切断しました。もう一度参加できます", window: function(a, b){ return a + " – " + b; }, privacy: "送るのは、送ると決めた質問（そのときのステップと、囲んだところ）・投票・「わからない」（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません",
-  stop: {bad_key: "この教材の参加コードではライブに入れません（参加コードが違います）", room_not_found: "ライブが見つかりません", superseded: "ほかのタブや窓で参加したので、ここは切れました",
+  stop: {bad_key: "この教材の参加コードではライブに入れません（参加コードが違います）", room_not_found: "ライブが見つかりません", superseded: "ほかのタブやウィンドウで参加したので、ここは切れました",
     room_expired: "ライブの時間が終わりました", room_closed: "ホストがライブを終えました。再開したら、もう一度「参加する」を押してください", too_early: "まだライブの時間になっていません（この端末の時計も確かめてください）",
     room_full: "ライブが満員です。少し待ってから、もう一度参加してください", key_replaced: "ホストが参加コードを替えました。このファイルでは入れません。新しいファイルをもらってください",
-    not_approved: "ホストが参加を認めませんでした", bad_message: "通信の約束が合いません（教材かサーバーの不具合）", window_over: "ライブの時間は終わりました", unknown: "ライブから切断されました",
-    bad_endpoint: "つなぐ先が教材の宣言と違うので、つなぎません", network: "つなげませんでした"},
+    not_approved: "ホストが参加を認めませんでした", bad_message: "通信の規約が合いません（教材かサーバーの不具合）", window_over: "ライブの時間は終わりました", unknown: "ライブから切断されました",
+    bad_endpoint: "接続先が教材の宣言と違うので、接続しません", network: "接続できませんでした"},
   err: {unknown_activity: "この質問・投票はライブにありません", wrong_kind: "質問・投票の種類が違います", bad_choice: "選択肢がありません", text_too_long: "質問が長すぎます", empty_text: "質問が空です",
     rate_limited: "送るのが速すぎます。少し待ってください", quota_exceeded: "送れる数を超えました", room_limit: "ライブがいっぱいで受け付けられませんでした", not_admitted: "ホストの許可を待っています", bad_region: "囲んだところを送れませんでした。囲みを消して送ってください", other: "送れませんでした"}
 } : {

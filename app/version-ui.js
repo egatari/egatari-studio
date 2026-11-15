@@ -30,7 +30,7 @@ const TEXT = {
     older: 'Other versions:', pick: 'Choose a version',
   },
   ja: {
-    frozen: (v) => `Egatari Studio v${v}（そのリリースのまま凍結した写し）を使っています。`,
+    frozen: (v) => `Egatari Studio v${v}（そのリリースのまま凍結したコピー）を使っています。`,
     latest: (v) => (v ? `最新版（v${v}）を開く` : '最新版を開く'),
     isLatest: 'これが最新のリリースでもあります。',
     close: 'この案内を隠す',

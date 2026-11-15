@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { generate, frontmatterEn } from './make-llm-guide.mjs';
+import { generate, frontmatterEn, jaWords } from './make-llm-guide.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 
@@ -179,8 +179,20 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
       ['（結論の行。短い 1 文）\n', '（結論の行。短い 1 文）\n- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。\n'],
       // v0.6.13：注意・警告の枠（R-caution）の 1 行。.body の中の行のすぐ後
       ['`<ol>` `<table>`\n', '`<ol>` `<table>`\n- **R-caution** `.body` に注意は `<div class="caution">…</div>`、警告は `class="caution warn"`。ラベルは自動で付く。\n'],
+      // v0.6.14：作った言葉を王道の言葉に（#223）。指示の側の言葉（部品庫の字は下の jaWords）
+      ['データ（子の `<script type="application/json">`）の見本', 'データ（子の `<script type="application/json">`）の例'], ['書き方の見本', '書き方の例'],
+      ['§6 の見本と同じ', '§6 の例と同じ'], ['この束の拡張', 'このセットの拡張'], ['### 見本：', '### 例：'], ['## 6. 見本', '## 6. 例'], ['§4 の見本の', '§4 の例の'],
+      ['小さな教材の見本（架空。形を見るためで、中身は写さない）', '小さな教材の例（架空。形を見るためで、中身はコピーしない）'], ['最後にも見本がある', '最後にも例がある'],
+      ['**図やパーツの中も含め、字はすべて 24 px 以上**', '**図やパーツの中もテキストはすべて 24 px 以上**'], ['パーツは大きさによらず字を', 'パーツは大きさによらずテキストを'],
+      ['**R-output** 返事は', '**R-output** 出力は'], ['添付にせず、返事の本文に書く', '添付にせず、本文に書く'], ['**R-components** 動く図は', '**R-components** パーツは'],
+      ['数字の札・円グラフ', '数字のカード・円グラフ'], ['各パーツの説明（版を固定）', '各パーツの説明（バージョンを固定）'],
+      ['## パーツの束：', '## パーツのセット：'], ['この束のパーツ', 'このセットのパーツ'], ['kokugo の束があるとき', 'kokugo のセットがあるとき'], ['入っている束）', '入っているセット）'],
+      ['§6 の後に束の指示', '§6 の後にセットの指示'], ['いくつかの束の指示', 'いくつかのセットの指示'], ['ステップの数え方：札が 3 枚の', 'ステップの数え方：カードが 3 枚の'],
+      ['tools（道具）', 'tools（ツール）'], ['進めるための道具', '進めるためのツール'],
     ];
     const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);
+    // 部品庫から来る字の言い換え（make-llm-guide の JA_WORDS。#223）は、古い側にも掛けて比べる（新しい側に掛け直しても変わらない）
+    for (const D of [cur, oldData]) for (const [tag, c] of Object.entries(D.ja.components)) for (const k of ['row', 'entry', 'free']) if (typeof c[k] === 'string') c[k] = jaWords(tag, c[k]).replace('）の見本: ', '）の例: ').replace('書き方の見本: ', '書き方の例: ');
     const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow);
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);

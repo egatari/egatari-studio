@@ -243,7 +243,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await page.waitForFunction((b0) => { const s = window.__APP_TEST.state(); return s.builds > b0 && s.frameLoaded === s.loads; }, b0, { timeout: scaled(30000) });
         await page.click('#b-check');
         await page.waitForSelector('#panel-body .sum');
-        const left = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent).filter((t) => /雛形/.test(t)));
+        const left = await page.$$eval('#panel-body .res', (xs) => xs.map((x) => x.textContent).filter((t) => /テンプレート/.test(t)));
         ok(left.length === 0, `${tag}: rewriting the template text and the placeholder lines clears the warnings ${JSON.stringify(left)}`);
       }
 
@@ -335,7 +335,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await page.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('slides-saved.ega.html', { create: true }); });
         const save = page.evaluate(() => window.__APP_TEST.save('save'));
         await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
-        ok(/組み直/.test(await page.textContent('#dlg')), `${tag}: Save asks to rebuild (tier B: the slide structure changed)`);
+        ok(/再ビルド/.test(await page.textContent('#dlg')), `${tag}: Save asks to rebuild (tier B: the slide structure changed)`);
         await clickDlg(page, '#dlg-rebuild');
         await save;
         const st = await state();

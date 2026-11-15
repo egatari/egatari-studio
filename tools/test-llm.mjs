@@ -68,7 +68,7 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     // 軽量の指示・詳細の指示（v0.6.7。前は無料のプラン・有料のプラン。内部の名前は plan の free・paid のまま）
     assert.ok(file.includes(lang === 'en' ? 'For a free chat AI, choose the light instructions in the editor’s “New” and copy them; they are a lighter version.' : '無料のチャットの AI に送るときは、編集アプリの「新規作成」で軽量の指示を選んでコピーしてください。軽くした指示になります。'), lang + ': the light-instructions line at the top');
-    assert.ok(/\| (Light instructions: every standard part|軽量の指示：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Detailed instructions: every part set|詳細の指示：すべての束)[^|]*\| [\d.]+ KB \| 150 KB \|/.test(file),
+    assert.ok(/\| (Light instructions: every standard part|軽量の指示：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Detailed instructions: every part set|詳細の指示：すべてのセット)[^|]*\| [\d.]+ KB \| 150 KB \|/.test(file),
       lang + ': the size table lists the light standard pack and the detailed full pack');
     assert.ok(!/無料のプラン|有料のプラン|[Ff]ree plan|[Pp]aid plan/.test(file.slice(0, i)), lang + ': the preamble no longer speaks of the chat AI’s plan');
     const paidParts = SETS.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
@@ -545,7 +545,7 @@ ok('fix request: the ask forbids Canvas, slide-making and file features and want
   const en = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'en' });
   const ja = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'ja' });
   assert.match(en.text, /Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks/);
-  assert.match(ja.text, /Canvas・スライド作成・ファイルの機能は使わず、チャットの返事の本文に、ちょうど 2 つの灰色の枠（コードブロック）/);
+  assert.match(ja.text, /Canvas・スライド作成・ファイルの機能は使わず、チャットの本文に、ちょうど 2 つの灰色の枠（コードブロック）/);
 });
 
 console.log(`llm: ${n} ok (${work})`);

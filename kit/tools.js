@@ -1058,9 +1058,9 @@ function helpHtml(){
     (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
     (DECK.VERSION && !about ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
-    (j ? "下の帯のボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the bottom bar do the same · ? / Esc to close") + "</div>" +
+    (j ? "ツールバーのボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the toolbar do the same · ? / Esc to close") + "</div>" +
     // 発表者ビューから抜けられないとき（窓が前に出たまま・全画面のまま）の逃げ道
-    '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体の窓に戻って p（Windows は Alt+Tab）"
+    '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体のウィンドウに戻って p（Windows は Alt+Tab）"
       : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + rightsHtml() + aiHtml() + attHtml() + about + fbHtml + "</div>";
 }
 // ファイルの情報（format spec §7.3：題名・作成者・著作権・ライセンス・クレジットの表示）。deck-meta から出し、deck-meta にない項目は索引の metadata から

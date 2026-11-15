@@ -344,7 +344,7 @@ try {
   n = await loads();
   fs.writeFileSync(DECK, goodSrc.replace('<head>', '<hea>').replace('</head>', ''));
   await page.waitForFunction((n) => window.__DEV_LOADS > n, n); await page.waitForTimeout(300);
-  ok(/組み立てられませんでした/.test(await dk().content()), 'build error -> error page in the preview');
+  ok(/ビルドできませんでした/.test(await dk().content()), 'build error -> error page in the preview');
   n = await loads();
   fs.writeFileSync(DECK, goodSrc);
   await reloaded(n);

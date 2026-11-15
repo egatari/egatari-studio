@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示のバージョン：7aef902d
+指示のバージョン：22b7d41b
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -12,19 +12,19 @@
 | `<m-cycle>` | 循環の図。項目の箱を円の上に 12 時から時計回りに並べ、円に沿った矢印でつなぐ（最後から最初へ戻る矢印も） | ステップの数（既定は 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
-| `<m-kpi>` | 大きな数字の札（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | 札の step の最大（既定は札 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
-| `<m-menu>` | スライドへのリンクの札を格子に並べる（目次・単元の選び方）。札はふつうの <a href="#<スライドの id>">、行ったスライドの札に「見た」の印 | ceil(札の数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
+| `<m-kpi>` | 大きな数字のカード（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
+| `<m-menu>` | スライドへのリンクのカードを格子に並べる（目次・単元の選び方）。カードはふつうの <a href="#<スライドの id>">、行ったスライドのカードに「見た」の印 | ceil(カードの数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
 | `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
 | `<m-quad>` | 2 軸の位置づけ（ポジショニングマップ・SWOT 風の 4 象限）に、点をステップごとに 1 つずつ置く | 点の step と to.step の最大（既定は点 1 つ = 1 ステップ） | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | 散布図。点の組（系列）をステップごとに出し、そのあと傾向の線（最小二乗の直線か、書いた 2 点）を引く | 系列の数 ＋ 傾向の線（既定は系列 1 つ = 1 ステップ、そのあと線をまとめて 1 ステップ。系列・線の step で直接） | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — 点は [x, y] か {"x", "y", "label"}。軸は属性に書く（xr="[0,10]" xl="…"）。trend は "linear" か {"fit": "linear", "label": "…"} か {"pts": [[x0, y0], [x1, y1]]} |
-| `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は帯にして、重なる期間は段を分けて積む。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
+| `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は軸に沿ってその長さだけ伸ばして描き、重なる期間は段を分けて積む。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
 | `<m-tree>` | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置はパーツが決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — parent のない節（根）はちょうど 1 つ |
 | `<m-venn>` | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数。項目のある重なりがなければ重なりすべての数：2 集合で 1、3 集合で 4） | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
 
 ### `<m-bars>`
 
-データ（子の `<script type="application/json">`）の見本: `{"series":[{"label":"売上"}],"groups":[{"label":"1 年目","value":1.2},{"label":"2 年目","value":3.4}]}`
+データ（子の `<script type="application/json">`）の例: `{"series":[{"label":"売上"}],"groups":[{"label":"1 年目","value":1.2},{"label":"2 年目","value":3.4}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -43,7 +43,7 @@
 
 - group：`label`（`\n` で 2 行）、`value`（系列が 1 つ）か `values`（系列の数だけ）、`err`（誤差棒）、`step`（既定は per-step から）、`at`（ステップの中の開始秒。既定は同じステップの中で stagger ずつずらす）、`tone`（`emph` などテーマの変数の名前。その組の棒をすべてその色にし、値の数字も同じ色にする）
 - series：`label`（系列が 2 つ以上のとき、最初の組の棒に直接書く。縦棒は棒の上、横棒は値の数字の右（負の棒は下・左）。凡例は作らない）、`tone`（既定は `--series-1..4` の順。系列が 1 つなら `--term`）
-- scale：`[{"step": 3, "max": 27, "at": 0.4}]`。そのステップの at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い帯で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
+- scale：`[{"step": 3, "max": 27, "at": 0.4}]`。そのステップの at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い色で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
 - `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか脚注に書く
 - `mark="dot"`：棒の代わりに点（平均と誤差棒）
 - `sig`：`[{"from": 0, "to": 2, "label": "**"}]` で組 0 と組 2 を括弧でつなぐ（`group` で組の中の系列どうし）。縦棒の、積み上げでない棒だけ
@@ -57,7 +57,7 @@
 
 ### `<m-cards>`
 
-データ（子の `<script type="application/json">`）の見本: `{"cards":[{"icon":"user","title":"聞く","text":"相手の困りごとを聞く"},{"icon":"bulb","title":"考える","text":"案を 3 つ出す"},{"icon":"rocket","title":"試す","text":"小さく作って見せる"}]}`
+データ（子の `<script type="application/json">`）の例: `{"cards":[{"icon":"user","title":"聞く","text":"相手の困りごとを聞く"},{"icon":"bulb","title":"考える","text":"案を 3 つ出す"},{"icon":"rocket","title":"試す","text":"小さく作って見せる"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -89,14 +89,14 @@
 - 進め方：arrow-right arrows-right-left refresh repeat circle-check checklist list-numbers git-branch target flag rocket hand-click
 - 伝える：message messages mail phone bell speakerphone share world-www microphone presentation
 - 書類：file file-text files notebook book clipboard-list folder news certificate award
-- 道具：tool settings hammer bulb puzzle cpu device-laptop device-mobile robot code scale
+- ツール：tool settings hammer bulb puzzle cpu device-laptop device-mobile robot code scale
 - 自然：leaf tree plant sun moon cloud cloud-rain droplet flame snowflake
 - 安全：shield shield-check lock key alert-triangle first-aid-kit heart heart-rate-monitor eye
 - 学び：school pencil ruler math-function atom flask microscope palette music language
 
 ### `<m-compare>`
 
-データ（子の `<script type="application/json">`）の見本: `{"sides":[{"label":"紙の申請","tone":"muted"},{"label":"オンライン申請"}],"rows":[{"label":"受付時間","values":["平日 9〜17 時","24 時間"],"better":1,"diff":"いつでも出せる"}]}`
+データ（子の `<script type="application/json">`）の例: `{"sides":[{"label":"紙の申請","tone":"muted"},{"label":"オンライン申請"}],"rows":[{"label":"受付時間","values":["平日 9〜17 時","24 時間"],"better":1,"diff":"いつでも出せる"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -107,7 +107,7 @@
 量を棒の長さで比べるなら `m-bars`、数字を 1 つ大きく見せるなら `m-kpi`。
 
 - `sides`：比べるもの（2 つか 3 つ）。`label` は列の見出し。`tone` は列の色（`term`・`emph`・`muted`・`accent2`・`series-1..4`。既定は 1 つ目 `term`、2 つ目 `accent2`、3 つ目 `series-4`）。従来のものを `muted` にすると新しいものが目立つ
-- `rows`：比べる観点（行）。`label` は左端の観点の名前（なくてもよい）、`values` は列の順の値（字か数。`\n` で改行。長ければ列の幅で折り返す）。`values` の数は `sides` の数と同じにする（違えば図の代わりに誤りの札が出る）
+- `rows`：比べる観点（行）。`label` は左端の観点の名前（なくてもよい）、`values` は列の順の値（字か数。`\n` で改行。長ければ列の幅で折り返す）。`values` の数は `sides` の数と同じにする（違えば図の代わりにエラーが出る）
 - `diff`：その行の違いの一言。右端の「違い」の列に `--emph` で書く（列の見出しは `diff-label` で変えられる）
 - `better`：その行で良い方の列の番号（0 から。1 つ目の列が 0。列の数より小さい）。値を太字にし、違いのステップで `--emph` の枠で囲む
 - ステップ：既定は 1 つ目の列（観点の名前と一緒に）→ 2 つ目の列 →（3 つ目の列）→ 違い（`diff` の列と `better` の枠）。列の `step` でステップを変えられる（例：2 つの列を同じステップに）
@@ -116,7 +116,7 @@
 
 ### `<m-curves>`
 
-データ（子の `<script type="application/json">`）の見本: `[{"label":"需要 D","f":"10 - x"},{"label":"供給 S","f":"2 + x"},{"label":"均衡","pts":[[4,0],[4,6]],"dash":true}]`
+データ（子の `<script type="application/json">`）の例: `[{"label":"需要 D","f":"10 - x"},{"label":"供給 S","f":"2 + x"},{"label":"均衡","pts":[[4,0],[4,6]],"dash":true}]`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -145,16 +145,16 @@
 | `pts` | 点列 `[[x, y], …]`（縦線や実測の折れ線） |
 | `tone` | `term` `emph` `accent2` `muted` `fg` `series-1..4`（既定は `series-1..4` の順） |
 | `dash` | 破線 |
-| `area` / `areaLabel` | 塗る区間 `[a, b]`（複数可、null は端）と札 |
+| `area` / `areaLabel` | 塗る区間 `[a, b]`（複数可、null は端）とラベル |
 | `labelAt` / `anchor` / `dx` / `dy` / `ly` | 名前の位置：横軸の値 `labelAt` の点に置く（既定は線の端）。`anchor` は向き（`right` `left` `above` `below`）。`ly` は縦軸の値で高さを決める |
 
 `size="40"`：字の大きさ（24 以上）。
 
-`f` は算術の式で、コードとしては実行しない：数、`x`、`Math` の関数と定数（`sin(x)` とも `Math.sin(x)` とも書ける。`Math.random` は使えない）、`N(x, 平均, 標準偏差)`、`+ - * / % **`、比較（`< <= > >= == !=`）、`&& || !`、`? :`、括弧。べき乗は `**`（`^` は書けない）。書けない式は図の代わりに札が出る。
+`f` は算術の式で、コードとしては実行しない：数、`x`、`Math` の関数と定数（`sin(x)` とも `Math.sin(x)` とも書ける。`Math.random` は使えない）、`N(x, 平均, 標準偏差)`、`+ - * / % **`、比較（`< <= > >= == !=`）、`&& || !`、`? :`、括弧。べき乗は `**`（`^` は書けない）。書けない式は図の代わりにエラーが出る。
 
 ### `<m-cycle>`
 
-データ（子の `<script type="application/json">`）の見本: `{"center":{"label":"PDCA"},"nodes":[{"label":"計画"},{"label":"実行"},{"label":"評価"},{"label":"改善"}]}`
+データ（子の `<script type="application/json">`）の例: `{"center":{"label":"PDCA"},"nodes":[{"label":"計画"},{"label":"実行"},{"label":"評価"},{"label":"改善"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -185,7 +185,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-fishbone>`
 
-データ（子の `<script type="application/json">`）の見本: `{"effect":{"label":"配送の遅れ"},"nodes":[{"id":"p","label":"人"},{"id":"p1","label":"人手が足りない","parent":"p"},{"id":"m","label":"機械"},{"id":"m1","label":"車の故障","parent":"m"}]}`
+データ（子の `<script type="application/json">`）の例: `{"effect":{"label":"配送の遅れ"},"nodes":[{"id":"p","label":"人"},{"id":"p1","label":"人手が足りない","parent":"p"},{"id":"m","label":"機械"},{"id":"m1","label":"車の故障","parent":"m"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -213,7 +213,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-flow>`
 
-データ（子の `<script type="application/json">`）の見本: `{"nodes":[{"id":"a","label":"観測","x":20,"y":40,"w":200,"h":70,"step":1},{"id":"b","label":"更新","x":320,"y":40,"w":200,"h":70,"step":2}],"edges":[{"from":"a","to":"b","step":2}]}`
+データ（子の `<script type="application/json">`）の例: `{"nodes":[{"id":"a","label":"観測","x":20,"y":40,"w":200,"h":70,"step":1},{"id":"b","label":"更新","x":320,"y":40,"w":200,"h":70,"step":2}],"edges":[{"from":"a","to":"b","step":2}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -234,31 +234,31 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
-| `cols` | number | `0` | 1 行の札の数（0 = 札の数、4 まで） |
-| `digits` | number | `0` | 数字の小数桁（札の digits が優先） |
-| `per-step` | number | `1` | 1 ステップに出す札の数（0 = 全部をステップ 1 で） |
+| `cols` | number | `0` | 1 行のカードの数（0 = カードの数、4 まで） |
+| `digits` | number | `0` | 数字の小数桁（カードの digits が優先） |
+| `per-step` | number | `1` | 1 ステップに出すカードの数（0 = 全部をステップ 1 で） |
 | `count` | bool | `true` | 数字を数え上げる |
-| `size` | number | `0` | 数字の字の大きさ（px。0 = 札の高さから） |
+| `size` | number | `0` | 数字の字の大きさ（px。0 = カードの高さから） |
 
 表紙の直後の「掴みの数字」、試験導入の結果、市場規模の要約など、少数の数字を大きく見せるときに使う。
 
-- `label`：札の上の名前。`value`：数字（`digits` 桁、3 桁ごとにカンマ）。`unit`：数字の後ろの単位（小さめの字）。`prefix`：数字の前の記号（`+` `約` など）。負の `value` は自分で − が付くので、`prefix` に `−` を重ねない（`"prefix": "−"` と `-12` は「−−12」）。減った量を正の数で見せるときだけ `value` を正にして `prefix: "−"`
+- `label`：カードの上の名前。`value`：数字（`digits` 桁、3 桁ごとにカンマ）。`unit`：数字の後ろの単位（小さめの字）。`prefix`：数字の前の記号（`+` `約` など）。負の `value` は自分で − が付くので、`prefix` に `−` を重ねない（`"prefix": "−"` と `-12` は「−−12」）。減った量を正の数で見せるときだけ `value` を正にして `prefix: "−"`
 - `from`：数え上げを始める値（既定 0。「20 分 → 7.5 分」のように減らす数も見せられる）
-- `tone`：数字と札の上の帯の色（`term`（既定）・`emph`・`accent2`・`series-1..4`）
+- `tone`：数字とカードの上のバーの色（`term`（既定）・`emph`・`accent2`・`series-1..4`）
 - `delta`：`{"dir": "up" | "down", "text": "前の期から 4 社", "good": true}`。▲ / ▼ と一言を数字の下に出す。良い向き（`good`、既定は `up` なら良い）なら `--term`、悪い向きなら `--emph`
-- `note`：札の下端の一言（`--muted`）
+- `note`：カードの下端の一言（`--muted`）
 - 見せ方（`variant`）：`count`・`rise`・`flip`・`underline`。書かなければ資料のシード値で選ばれる（書かなくてよい）
-- 札の並び：`cols`（既定は札の数、4 まで）列で、行が足りなければ折り返す
-- `cues(k)`：同じステップに 2 枚以上の札があれば、2 枚目からの開始時刻を返す（台本の `{cue}` に合わせられる）
+- カードの並び：`cols`（既定はカードの数、4 まで）列で、行が足りなければ折り返す
+- `cues(k)`：同じステップに 2 枚以上のカードがあれば、2 枚目からの開始時刻を返す（台本の `{cue}` に合わせられる）
 
 ### `<m-menu>`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
-| `cols` | number | `0` | 列の数（0 なら札の数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列） |
-| `per-step` | number | `0` | 1 ステップに出す札の数（0 なら初めから全部出し、ステップを使わない） |
-| `size` | number | `34` | 札の題の字の大きさ（px）。副題はその 0.8 倍（本文の下限の 27px より小さくしない） |
-| `visited` | bool | `true` | このセッションで行き先のスライドを開いた札に「見た」の印を付ける |
+| `cols` | number | `0` | 列の数（0 ならカードの数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列） |
+| `per-step` | number | `0` | 1 ステップに出すカードの数（0 なら初めから全部出し、ステップを使わない） |
+| `size` | number | `34` | カードの題の字の大きさ（px）。副題はその 0.8 倍（本文の下限の 27px より小さくしない） |
+| `visited` | bool | `true` | このセッションで行き先のスライドを開いたカードに「見た」の印を付ける |
 
 目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。
 ```html
@@ -268,16 +268,16 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 </m-menu>
 ```
 
-- 子の `<a href>` 1 つが札 1 枚。`href` は `#<スライドの id>`（そのステップ 0）か `#<id>:<ステップの鍵>`（`0`・`1`・… か `concl`）。id は取り込みのときに付く。中身（文字・`<b>` など）が札の題になる
+- 子の `<a href>` 1 つがカード 1 枚。`href` は `#<スライドの id>`（そのステップ 0）か `#<id>:<ステップのキー>`（`0`・`1`・… か `concl`）。id は取り込みのときに付く。中身（文字・`<b>` など）がカードの題になる
 - `data-icon`：題の左の丸に入れる短い字（`一`・`1`・`A` など。色は `--term`）。`data-sub`：題の下の副題（`--muted`）
-- ステップ：`per-step="n"` なら札が n 枚ずつステップごとに出る（`data-from` から。同じステップの中は `stagger` 秒ずつずれる）。まだ出ていない札は押せず、Tab でも選べず、読み上げない。
+- ステップ：`per-step="n"` ならカードが n 枚ずつステップごとに出る（`data-from` から。同じステップの中は `stagger` 秒ずつずれる）。まだ出ていないカードは押せず、Tab でも選べず、読み上げない。
   `per-step="0"`（既定）なら初めから全部（ステップを使わない）。ステップは (k, t) だけで決まる
-- 並び：`cols`（既定は札の数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列）。札の高さの下限は CSS の `--mm-h`（既定 104px）、間は `--mm-gap`（18px）。
+- 並び：`cols`（既定はカードの数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列）。カードの高さの下限は CSS の `--mm-h`（既定 104px）、間は `--mm-gap`（18px）。
   本文いっぱいに置いて縦の真ん中にそろえるなら `style="height:100%;align-content:center;--mm-h:150px"`
 
 ### `<m-pie>`
 
-データ（子の `<script type="application/json">`）の見本: `{"slices":[{"label":"食費","value":7.2},{"label":"住まい","value":8.5},{"label":"その他","value":2.1,"tone":"muted"}]}`
+データ（子の `<script type="application/json">`）の例: `{"slices":[{"label":"食費","value":7.2},{"label":"住まい","value":8.5},{"label":"その他","value":2.1,"tone":"muted"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -305,7 +305,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-predict>`
 
-データ（子の `<script type="application/json">`）の見本: `{"question":"重い球と軽い球、どちらが先に落ちる？","choices":[{"label":"重い球"},{"label":"軽い球"},{"label":"同時"}],"answer":2,"counts":[14,3,9],"note":"空気の抵抗を除けば同時に落ちる"}`
+データ（子の `<script type="application/json">`）の例: `{"question":"重い球と軽い球、どちらが先に落ちる？","choices":[{"label":"重い球"},{"label":"軽い球"},{"label":"同時"}],"answer":2,"counts":[14,3,9],"note":"空気の抵抗を除けば同時に落ちる"}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -323,7 +323,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-quad>`
 
-データ（子の `<script type="application/json">`）の見本: `{"x":{"lo":"手作業","hi":"自動"},"y":{"lo":"高い","hi":"安い"},"items":[{"label":"A 社","x":0.25,"y":0.7},{"label":"自社","x":0.8,"y":0.82,"self":true}]}`
+データ（子の `<script type="application/json">`）の例: `{"x":{"lo":"手作業","hi":"自動"},"y":{"lo":"高い","hi":"安い"},"items":[{"label":"A 社","x":0.25,"y":0.7},{"label":"自社","x":0.8,"y":0.82,"self":true}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -347,7 +347,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-scatter>`
 
-データ（子の `<script type="application/json">`）の見本: `{"series":[{"label":"晴れ","points":[[24,210],[28,380],[31,560],{"x":34,"y":690,"label":"猛暑日"}]}],"trend":"linear"}`
+データ（子の `<script type="application/json">`）の例: `{"series":[{"label":"晴れ","points":[[24,210],[28,380],[31,560],{"x":34,"y":690,"label":"猛暑日"}]}],"trend":"linear"}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -379,7 +379,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-timeline>`
 
-データ（子の `<script type="application/json">`）の見本: `{"nodes":[{"id":"a","label":"明治維新","when":"1868","whenLabel":"明治元年"},{"id":"b","label":"憲法の発布","when":"1889","note":"2 月 11 日"},{"id":"c","label":"日清戦争","when":"1894","end":"1895","tone":"emph"}]}`
+データ（子の `<script type="application/json">`）の例: `{"nodes":[{"id":"a","label":"明治維新","when":"1868","whenLabel":"明治元年"},{"id":"b","label":"憲法の発布","when":"1889","note":"2 月 11 日"},{"id":"c","label":"日清戦争","when":"1894","end":"1895","tone":"emph"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -400,7 +400,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - `label`：名前（`\n` で改行）。または `tex`（KaTeX）
 - `note`：箱の**中**の最後の行に小さく（`--muted`）。期間と節目では名前の後ろに続けて。例：「2 月 11 日」「新橋〜横浜」
 - `tone`：`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`。`emph` の箱は地が `--emph-tint`、枠と字が `--emph`
-- `end`：あれば期間。軸の下の段に帯で描き、名前は帯の中（入らなければ帯の右か左）に書く。名前を `\n` で何行かにすると、帯がその分太くなる
+- `end`：あれば期間。軸の下の段に、軸に沿ってその長さだけ伸ばして描く。名前は期間の中（入らなければ右か左）に書く。名前を `\n` で何行かにすると、その分太く描く
 - `end` は含まない（終わりの時点）。`"1912"` は 1912 年の初め。明治 1868–1912 と大正 1912–1926 は同じ段に並ぶ。12 月まで含めるなら次の月（`"2027-01"`）を書く。
 - `lane`：期間を名前の付いた段のまとまりに分ける（「時代」「作家」「設計」など）。まとまりの名前を左に書き、まとまりの間に薄い線を引く。重なる期間は、まとまりの中で自動で別の段に積む。`end` のない `node` に `lane` を書くと、その段の中の節目（◆）になる
 - `step`・`at`：出るステップと、ステップの中の開始秒
@@ -423,7 +423,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-tree>`
 
-データ（子の `<script type="application/json">`）の見本: `{"nodes":[{"id":"r","label":"動物"},{"id":"a","label":"脊椎動物","parent":"r"},{"id":"b","label":"無脊椎動物","parent":"r"}]}`
+データ（子の `<script type="application/json">`）の例: `{"nodes":[{"id":"r","label":"動物"},{"id":"a","label":"脊椎動物","parent":"r"},{"id":"b","label":"無脊椎動物","parent":"r"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -454,7 +454,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-venn>`
 
-データ（子の `<script type="application/json">`）の見本: `{"sets":[{"label":"哺乳類"},{"label":"海の生き物"}],"regions":{"A":["ライオン"],"B":["マグロ"],"AB":["クジラ","イルカ"]}}`
+データ（子の `<script type="application/json">`）の例: `{"sets":[{"label":"哺乳類"},{"label":"海の生き物"}],"regions":{"A":["ライオン"],"B":["マグロ"],"AB":["クジラ","イルカ"]}}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -466,9 +466,9 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 観点ごとに値を並べて比べるなら `m-compare`。
 
 - `sets`：集合（2 つか 3 つ）。`label` は円の外に書く名前、`tone` は円の色（`term`・`emph`・`muted`・`accent2`・`series-1..4`。既定は `term`・`accent2`・`series-4` の順）。`--emph` は重なりを強めるのに使うので、集合には使わないほうがよい
-- `regions`：領域ごとの項目（1 つ 1 行の配列か、`\n` で改行した字）。鍵は集合の文字の組で、アルファベット順に書く。文字は `sets` の順（`sets` の 1 つ目が A・2 つ目 B・3 つ目 C）：
+- `regions`：領域ごとの項目（1 つ 1 行の配列か、`\n` で改行した字）。キーは集合の文字の組で、アルファベット順に書く。文字は `sets` の順（`sets` の 1 つ目が A・2 つ目 B・3 つ目 C）：
   - `A`：A だけ（ほかの集合には入らない）、`AB`：A と B の両方（3 つのときは、A と B に入り C には入らないところ）、`ABC`：3 つとも
-  - 2 つなら `A` `B` `AB`、3 つなら `A` `B` `C` `AB` `AC` `BC` `ABC`。どれも省いてよい。集合が 2 つのときに C を含む鍵（`C` `AC` `BC` `ABC`）を書くと、図の代わりに誤りの札が出る
+  - 2 つなら `A` `B` `AB`、3 つなら `A` `B` `C` `AB` `AC` `BC` `ABC`。どれも省いてよい。集合が 2 つのときに C を含むキー（`C` `AC` `BC` `ABC`）を書くと、図の代わりにエラーが出る
 - 円は左右対称の決まった配置で、面積は値に比例しない（2 つは左右、3 つは左上・右上・下）。`spread`（既定 1）は円の中心の間の距離 ÷ 半径で、小さいほど重なりが広い
 - 項目は、その領域の中で円の線から最も離れる位置に置く。字は `size`（既定 26 px）から 24 px まで縮める。重なりの項目は太字
 - ステップ：既定は 集合を 1 つずつ（その集合だけの項目と一緒に）→ 重なり（項目のある重なりを `--emph` で薄く塗って縁を囲み、項目を出す。項目のある重なりがなければ重なりすべて）。`overlaps="each"` なら重なりを 1 つずつ（`AB`・`AC`・`BC`・`ABC` の順）

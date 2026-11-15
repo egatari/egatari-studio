@@ -91,7 +91,7 @@ try {
       ok(first.done === true, `${name}: opens (${Date.now() - t0} ms)`);
       await page.waitForSelector('#notice-exported', { timeout: scaled(30000) }).catch(() => {});
       const t = (await page.textContent('#notice-exported').catch(() => '')) || '';
-      ok(t.includes('作業フォルダのファイルは変わりません') && t.includes('書き出したあと、このファイルで直した所があります。') === edited,
+      ok(t.includes('作業フォルダのファイルは変わりません') && t.includes('エクスポートしたあと、このファイルで直した所があります。') === edited,
         `${name}: the exported-copy notice ${edited ? 'says the copy was edited since export' : 'does not say it was edited'}`);
     } else {
       ok(!!first.refused, `${name}: the "cannot open" dialog comes up (${Date.now() - t0} ms)`);

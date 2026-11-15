@@ -37,8 +37,8 @@ Data example (child `<script type="application/json">`): `{"groups":[{"label":"1
 | `outliers` | string | `"off"` | on：1.5×四分位範囲の外を外れ値（点）にし、ひげはその内側まで |
 | `dots` | string | `"off"` | on：値の点を箱の下に並べる（build=\ |
 | `build` | string | `"steps"` | steps（求める手順のとおり）か whole（群 1 つ = 1 ステップ） |
-| `unit` | string | `""` | 書き出す値の後ろに付ける単位 |
-| `digits` | number |  | 書き出す値の小数桁（書かなければ値の桁＋1 まで） |
+| `unit` | string | `""` | 表示する値の後ろに付ける単位 |
+| `digits` | number |  | 表示する値の小数桁（書かなければ値の桁＋1 まで） |
 
 値の代わりに `"five": [最小値, 第1四分位数, 中央値, 第3四分位数, 最大値]` も書ける。
 

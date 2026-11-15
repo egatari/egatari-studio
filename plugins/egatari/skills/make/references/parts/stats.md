@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # stats のパーツ
 
-指示のバージョン：7aef902d
+指示のバージョン：22b7d41b
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -12,7 +12,7 @@
 
 ### `<m-boxplot>`
 
-データ（子の `<script type="application/json">`）の見本: `{"groups":[{"label":"1 組","values":[3,5,6,7,8,9,10,12,13,15,18]}]}`
+データ（子の `<script type="application/json">`）の例: `{"groups":[{"label":"1 組","values":[3,5,6,7,8,9,10,12,13,15,18]}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -29,8 +29,8 @@
 | `outliers` | string | `"off"` | on：1.5×四分位範囲の外を外れ値（点）にし、ひげはその内側まで |
 | `dots` | string | `"off"` | on：値の点を箱の下に並べる（build=\ |
 | `build` | string | `"steps"` | steps（求める手順のとおり）か whole（群 1 つ = 1 ステップ） |
-| `unit` | string | `""` | 書き出す値の後ろに付ける単位 |
-| `digits` | number |  | 書き出す値の小数桁（書かなければ値の桁＋1 まで） |
+| `unit` | string | `""` | 表示する値の後ろに付ける単位 |
+| `digits` | number |  | 表示する値の小数桁（書かなければ値の桁＋1 まで） |
 
 値の代わりに `"five": [最小値, 第1四分位数, 中央値, 第3四分位数, 最大値]` も書ける。
 
@@ -42,7 +42,7 @@
 
 ### `<m-heatmap>`
 
-データ（子の `<script type="application/json">`）の見本: `{"rows":["ねこ","いぬ"],"cols":["ねこ","いぬ"],"values":[[45,5],[6,44]]}`
+データ（子の `<script type="application/json">`）の例: `{"rows":["ねこ","いぬ"],"cols":["ねこ","いぬ"],"values":[[45,5],[6,44]]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -70,7 +70,7 @@
 
 ### `<m-hist>`
 
-データ（子の `<script type="application/json">`）の見本: `{"values":[23,31,27,18,25,29,33,22,26,28],"bins":{"start":15,"width":5}}`
+データ（子の `<script type="application/json">`）の例: `{"values":[23,31,27,18,25,29,33,22,26,28],"bins":{"start":15,"width":5}}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -101,7 +101,7 @@
 
 ### `<m-seq>`
 
-データ（子の `<script type="application/json">`）の見本: `{"xs":[-2,-1,0,1,2],"steps":[{"dens":[0.05,0.24,0.4,0.24,0.05],"readout":{"n":0}},{"dens":[0.02,0.2,0.5,0.2,0.02],"readout":{"n":1},"mark":0.3}]}`
+データ（子の `<script type="application/json">`）の例: `{"xs":[-2,-1,0,1,2],"steps":[{"dens":[0.05,0.24,0.4,0.24,0.05],"readout":{"n":0}},{"dens":[0.02,0.2,0.5,0.2,0.02],"readout":{"n":1},"mark":0.3}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|

@@ -74,7 +74,7 @@ const STR = {
     mark: '編集中 — アプリ', editMode: '編集モード', where: (n, t) => 'スライド ' + n + (t ? '：' + t : ''), locked: 'この欄を開いている間、スライドはクリックを受けません', warn: '警告 ', editTip: (alt) => 'ダブルクリックで編集 · ' + alt + '+クリックでコメント · e で終了',
     save: '保存', cancel: 'キャンセル', editSrc: 'HTML を編集', closeEsc: '閉じる（Esc）', editHint: '⌘/Ctrl+Enter で保存 · Esc でキャンセル · 数式は \\( … \\) のまま書けます',
     loading: '読み込み中…', loadFail: '読み込めませんでした', stale: 'HTML が変わっています。再読み込みしてください（この画面は古いバージョンから作られています）',
-    saving: '保存中…', saved: '保存しました', conflict: 'HTML が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに繋がりません',
+    saving: '保存中…', saved: '保存しました', conflict: 'HTML が変わっています。再読み込みしてください（入力した内容はコピーしておいてください）', saveFail: '保存できませんでした', offline: 'サーバーに接続できません',
     reload: '再読み込み', cPlace: '例：この行をもっと短く / 図の色を合わせて / 例を一つ足して', cSave: '残す', cTitle: 'コメント', cHint: '⌘/Ctrl+Enter で残す · comments.json に書きます',
     cFail: '残せませんでした', cDone: 'コメントを残しました（comments.json）', cList: 'コメント（未対応）', cVolatile: 'Egatari ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', closeC: '閉じる（c）', resolve: '解決', resolveT: '対応済みにする',
     toSlide: 'クリックでそのスライドへ', nStale: (k) => '表示中のステップ（' + k + '）とは別のステップを編集中です。保存かキャンセルのあとで切り替わります',

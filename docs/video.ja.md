@@ -3,7 +3,7 @@
 
 [English](video.md) | 日本語
 
-スライドと台本（`deck.html` + `narration.md`）から、ステップごとの動画と通しの動画を作る。約束事は [contract.ja.md](contract.ja.md) §4–5。
+スライドと台本（`deck.html` + `narration.md`）から、ステップごとの動画と通しの動画を作る。規約は [contract.ja.md](contract.ja.md) §4–5。
 TTS・動画のエクスポートの選択肢と環境変数の一覧は [reference.ja.md](reference.ja.md#tts)。
 
 ## 要るもの
@@ -26,8 +26,8 @@ TTS・動画のエクスポートの選択肢と環境変数の一覧は [refere
 
 `tts/synth.py` は、上の 2 つの要求に答えるサーバーならどれとでも動く。試しているのは [mlx-audio](https://github.com/Blaizzy/mlx-audio) で、これは Apple シリコンの Mac でだけ動く。ほかの道：
 
-- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のあるパソコン）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別のパソコンで動くなら、`ref_audio` はそのパソコンの上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` から声を写すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
-- **サーバーなし**：編集アプリの音声の板の「AI 音声をこの PC で作る」で、ステップごとにブラウザの中で音声を作る（WebGPU が要る）か、マイクで録音する（[editor.ja.md](editor.ja.md#台本の音声音声の板)）
+- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のあるパソコン）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別のパソコンで動くなら、`ref_audio` はそのパソコンの上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` の声をまねて話すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
+- **サーバーなし**：編集アプリの音声のパネルの「AI 音声をこの PC で作る」で、ステップごとにブラウザの中で音声を作る（WebGPU が要る）か、マイクで録音する（[editor.ja.md](editor.ja.md#台本の音声音声のパネル)）
 - **Google Colab**：「AI 音声をクラウドで作る（Google Colab）」のためのノートブックと、その結果を編集アプリに取り込む機能を用意している。それまでは上のどれかを使う
 
 ## 手順
@@ -40,23 +40,23 @@ node kit/build.mjs $D/deck.html
 
 # 2. TTS（Irodori-TTS）
 uv run --project tts python tts/synth.py $D --voices expert=bob,novice=alice
-#    オフラインで流れを試すなら --dry-run（無音・7.5 字/秒の推定長）。一部だけなら --only "更新の式:2,更新の式:concl"（スライドの鍵か id だけなら、そのスライドの全ステップ：--only 更新の式）
+#    オフラインで流れを試すなら --dry-run（無音・7.5 字/秒の推定長）。一部だけなら --only "更新の式:2,更新の式:concl"（スライドのキーか id だけなら、そのスライドの全ステップ：--only 更新の式）
 
 # 3. build し直す（audio/manifest.json を読み、音声の長さと cue をタイムラインに入れる）
 node kit/build.mjs $D/deck.html
 
-# 4. 書き出し（1280x720 × scale。1.5 で 1920x1080）
+# 4. 出力（1280x720 × scale。1.5 で 1920x1080）
 node render/render.mjs $D/out/deck.html --out $D/video [--fps 30] [--scale 1.5] [--full]
 
 # 5.（なくてよい）音声入りの 1 ファイル。配る・編集アプリで開き直すため
-node kit/build.mjs $D --portable      # 参加者に配る再生専用の写しは --play-only
+node kit/build.mjs $D --portable      # 参加者に配る再生専用のコピーは --play-only
 ```
 
 ## 何ができるか
 
 | 手順 | 出力 |
 |---|---|
-| tts/synth.py | `audio/seg_<digest>.wav`、`audio/seg_<digest>.json`（長さ・cue・TTS に渡した文字列）、`audio/manifest.json` `{segments:{"鍵:段階":{file,dur,cues,digest,engine}}}` |
+| tts/synth.py | `audio/seg_<digest>.wav`、`audio/seg_<digest>.json`（長さ・cue・TTS に渡した文字列）、`audio/manifest.json` `{segments:{"id:ステップ":{file,dur,cues,digest,engine}}}` |
 | render.mjs | `clip_NNNN.mp4`（H.264 yuv420p・固定フレームレート・faststart、AAC 48kHz ステレオ）、`clip_NNNN.png`（最終状態）、`timeline.out.json`。`--full` で `full.mp4`、章（`sec` スライド）が 2 つ以上なら `chapter_NN.mp4` |
 
 - NNNN はタイムラインの通し番号（0 始まり）。1 ステップ = 1 クリップ
@@ -65,7 +65,7 @@ node kit/build.mjs $D --portable      # 参加者に配る再生専用の写し�
 
 ## 声
 
-`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は手元にないことが多いので、自分の参照音声を voice.json で指定する。教材には参照音声を入れず、その声で作った音声だけが入る（[Egatari §5](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md) の `recipe`）：Egatari ファイル（.ega.html）へのエクスポートは、voice.json が指す参照音声を外し（ステップの音声や添付になっていても）、スライドが使っていれば断る。品質チェックは作業フォルダの中の参照音声を知らせる。参照音声は作業フォルダの外に置く。
+`--voices` > `<教材>/voice.json`（`{"expert": "bob", "novice": "alice"}`）> 既定（1 人モードは bob、掛け合いは Expert = bob・Novice = alice）。日本語以外の教材では、名前 `X` に `X_en.wav`（`lang="en"` のとき。一般には `X_<言語>.wav`）があればそれを、なければ `X.wav` を使う。日本語の参照音声で VoxCPM2 に英語を読ませると訛るので、声ごとに英語の参照音声を置いておく。作り方の一つ：日本語の参照音声で TTS に決まった英文（"Please call Stella" の段落など）を何度か読ませ、いちばん流暢なものを残す。名前は `<参照音声のフォルダ>/<名前>.wav`（`--ref-dir` > `IRODORI_REF_DIR` > `tts/voices/`）。voice.json にはパス（`"voices/me.wav"`、相対なら教材のフォルダから）も書ける。既定の bob・alice は入っていないことが多いので、自分の参照音声を voice.json で指定する。教材には参照音声を入れず、その声で作った音声だけが入る（[Egatari §5](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md) の `recipe`）：Egatari ファイル（.ega.html）へのエクスポートは、voice.json が指す参照音声を外し（ステップの音声や添付になっていても）、スライドが使っていれば断る。品質チェックは作業フォルダの中の参照音声を知らせる。参照音声は作業フォルダの外に置く。
 
 各行を合成したあと、前後の無音を削り（-45 dB、0.05 s 残す）、EBU R128 の loudnorm 2 パスで -20 LUFS / TP -1.5 dB / LRA 11 に揃え、行間 350 ms の無音を挟んで繋ぐ（`tts/core.py`）。
 
@@ -88,7 +88,7 @@ node kit/build.mjs $D --portable      # 参加者に配る再生専用の写し�
 ## キャッシュ
 
 - **音声**：`seg_<digest>.wav` があれば合成しない。digest は `segDigest`（kit/narration.mjs）に、話者・TTS 用の文字列・声・モデル・音量の目標・行間・無音除去の設定・読み辞書と適用規則（実際に使った辞書と `tts/yomi.py`）のハッシュを入れたもの。どれかが変われば作り直す（辞書を直すと全ステップが作り直しになる）。dry-run は別の digest なので本番の音声と混ざらない。`--force` で作り直し
-- **動画**：ステップごとに「最終状態の画素・動きの途中の 1 コマの画素・1 本の音声のうちそのクリップの区間（ステップの音声・パーツの音・背景の音楽）・dur・lead・anim・fps・scale」のハッシュを `<out>/.render-cache.json` に控え、同じなら作らない。画面を撮って比べるので、CSS・パーツ・テーマを直しても正しく作り直される（使う字が増えて字の埋め込みが変わると、見た目が同じでも作り直しになることがある）。`--force` で全部作り直し
+- **動画**：ステップごとに「最終状態の画素・動きの途中の 1 コマの画素・1 本の音声のうちそのクリップの区間（ステップの音声・パーツの音・背景の音楽）・dur・lead・anim・fps・scale」のハッシュを `<out>/.render-cache.json` にバックアップし、同じなら作らない。画面を撮って比べるので、CSS・パーツ・テーマを直しても正しく作り直される（使う字が増えて字の埋め込みが変わると、見た目が同じでも作り直しになることがある）。`--force` で全部作り直し
 - ステップが減ると、余った `clip_NNNN.*` は消す（連番がずれないように）
 
 ## 長さの調整（timeline.json）
@@ -109,4 +109,4 @@ node kit/build.mjs $D --portable      # 参加者に配る再生専用の写し�
 
 ## Google Colab で動画にする
 
-手元に ffmpeg がなければ、動画のノート（[colab/egatari-video.ipynb](../colab/egatari-video.ipynb)。エディタの「ファイル ▾」→「エクスポート ▸」→「動画（MP4）にする…」から開ける）を使う。CPU のランタイムで動く：CPU を選び、「すべてのセルを実行」、教材のファイル（`<名前>.ega.html`）と、付けるときは背景の音楽を上げる。ファイルに `tools/video.mjs` を掛け、`full.mp4` をダウンロードする（章が 2 つ以上あれば、章ごとの MP4 の ZIP も）。動画にはファイルに入っている音声が使われるので、先にエディタで保存する。教材を配るのに動画は要らない。Egatari のファイルのまま再生できる。
+ffmpeg が入っていなければ、動画のノート（[colab/egatari-video.ipynb](../colab/egatari-video.ipynb)。エディタの「ファイル ▾」→「エクスポート ▸」→「動画（MP4）にする…」から開ける）を使う。CPU のランタイムで動く：CPU を選び、「すべてのセルを実行」、教材のファイル（`<名前>.ega.html`）と、付けるときは背景の音楽を上げる。ファイルに `tools/video.mjs` を掛け、`full.mp4` をダウンロードする（章が 2 つ以上あれば、章ごとの MP4 の ZIP も）。動画にはファイルに入っている音声が使われるので、先にエディタで保存する。教材を配るのに動画は要らない。Egatari のファイルのまま再生できる。

@@ -8,14 +8,27 @@
     "部品",
     "雛形",
     "縮図",
-    "暗転"
+    "暗転",
+    "写し",
+    "写す",
+    "字体",
+    "控え",
+    "手元",
+    "試験"
   ],
   "aiDocsToo": [
     "学ぶ人",
     "再生器",
     "段階",
     "部品",
-    "口述原稿"
+    "口述原稿",
+    "パーツの束",
+    "見本",
+    "道具",
+    "AI の返事",
+    "手元",
+    "動く図",
+    "約束事"
   ],
   "avoidPatterns": [
     {
@@ -25,13 +38,43 @@
       "pattern": "(?<!正式|配信|最新|日本語|英語|ブラウザ|オフライン|コマンド|ベータ|再生専用|試用|出|初|再|改|訂)版(?![権画元面木])",
       "docsToo": true,
       "reason": "Owner 2026-11-13: 版 alone is unclear; use バージョン. Compounds stay. 試用版 is in avoid as a word."
+    },
+    {
+      "term": "card",
+      "lang": "ja",
+      "label": "札",
+      "pattern": "(?<![名入改落表])札(?!幌)",
+      "docsToo": true,
+      "reason": "Owner 2026-11-15: 札 is the main cause of unclear sentences; say card, tile, label or tooltip by meaning (#223)."
+    },
+    {
+      "term": "bar",
+      "lang": "ja",
+      "label": "帯",
+      "pattern": "(?<![時間地世携包熱声附連一温寒])帯(?!グラフ|域|び|びる)",
+      "docsToo": true,
+      "reason": "Owner 2026-11-15: 帯 → bar, status bar, 説明欄, or 期間 (timeline) by meaning (#223). 帯グラフ stays."
+    },
+    {
+      "term": "panel",
+      "lang": "ja",
+      "label": "板（パネル）",
+      "pattern": "(?<![黒掲看鉄合基甲背])板(?![書])",
+      "docsToo": true,
+      "reason": "Owner 2026-11-15: 板 → パネル (#223). 黒板・掲示板 stay."
     }
   ],
   "noPairs": [
     "book",
     "format-version",
     "no-results",
-    "note"
+    "note",
+    "build",
+    "copy",
+    "bar",
+    "card",
+    "export-script",
+    "backup"
   ],
   "allow": [
     {
@@ -77,12 +120,6 @@
       "pattern": "知らせ",
       "term": "finding",
       "reason": "知らせ meaning a notification (toast, banner, warning) is not a quality-check finding; findings are 指摘."
-    },
-    {
-      "file": "**",
-      "pattern": "台本を書き出(しました|す…?|し)?|書き出した(とき|後|あと|台本)|confirmGo: '書き出す'|[Ee]xport the script|書き出す（台本",
-      "term": "export",
-      "reason": "Export script (台本を書き出す) is the audio panel's own action and keeps 書き出す (termbase export note, export-script)."
     },
     {
       "file": "**",
@@ -357,36 +394,6 @@
       "reason": "Egatari Viewer is the app's name (manifest name and short_name), not a person who opens a lesson."
     },
     {
-      "file": "README*.md",
-      "pattern": "[Cc]opy",
-      "term": "exported-file",
-      "reason": "The clipboard Copy button, not an exported file."
-    },
-    {
-      "file": "docs/editor*.md",
-      "pattern": "写し|[Cc]opy",
-      "term": "exported-file",
-      "reason": "A frozen copy of a release (version notice), not an exported file."
-    },
-    {
-      "file": "app/**",
-      "pattern": "写し|[Cc]opy",
-      "term": "exported-file",
-      "reason": "Generic 写し / copy in UI strings: duplicating a slide, the clipboard copy button, a frozen copy of a release. The avoid words of exported-file are too generic to match alone; the real uses (the exported file) are checked by hand."
-    },
-    {
-      "file": "server/**",
-      "pattern": "写し|[Cc]opy",
-      "term": "exported-file",
-      "reason": "Generic 写し / copy in UI strings: duplicating a slide, the clipboard copy button, a frozen copy of a release. The avoid words of exported-file are too generic to match alone; the real uses (the exported file) are checked by hand."
-    },
-    {
-      "file": "**",
-      "pattern": "書き出した(ファイル|もの|あと)",
-      "term": "export",
-      "reason": "The glossary term itself (作業フォルダから書き出したファイル, exported-file) and the wording that follows it use 書き出した; export (エクスポート) is the command name."
-    },
-    {
       "file": "kit/live.js",
       "pattern": "送りません|\\bsent\\b",
       "term": "no-upload",
@@ -498,12 +505,6 @@
       "reason": "Live questions and votes are sent to the host; not the files privacy line."
     },
     {
-      "file": "play/i18n.mjs",
-      "pattern": "A copy of each file you open is kept on this device",
-      "term": "exported-file",
-      "reason": "The copy kept in Recent files on this device, not a file exported from a working folder."
-    },
-    {
       "file": "play/main.js",
       "pattern": "'English' : '日本語'",
       "term": "subject-english",
@@ -595,6 +596,26 @@
       "term": "caution-box",
       "pairs": true,
       "reason": "The existing save-download advisory uses 注意 generically, not as the label of a slide caution box."
+    },
+    {
+      "file": "docs/migrating-0.x.ja.md",
+      "line": "「書き出す ▾ →作業フォルダに書き出す…」",
+      "term": "export",
+      "reason": "Quotes the literal menu of v0.4.8, which the reader opens to export old files."
+    },
+    {
+      "file": "app/part-thumbs.js",
+      "pattern": "試験導入",
+      "term": "software-test",
+      "reason": "試験導入 is a pilot rollout in an m-kpi demo, not a software test.",
+      "keep": true
+    },
+    {
+      "file": "**",
+      "pattern": "控えめ",
+      "term": "backup",
+      "reason": "控えめ (subdued) is an ordinary word, not 控え for a backup.",
+      "keep": true
     }
   ]
 }

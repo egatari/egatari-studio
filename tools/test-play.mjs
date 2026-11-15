@@ -777,7 +777,7 @@ console.log('lesson bytes and the file\'s policy');
   await o.ctx.setOffline(true);
   await o.p.click('#b-start-join');
   ok(!!(await lessonFrame(o.p)), 'offline Join: the lesson plays');
-  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークにつながっていません。Wi-Fi などにつないでから、「もう一度試す」を押してください。参加しなくても教材は見られます$/.test(document.getElementById('live-msg').textContent))),
+  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークに接続していません。Wi-Fi などに接続してから、「もう一度試す」を押してください。参加しなくても教材は見られます$/.test(document.getElementById('live-msg').textContent))),
     'offline Join: the message says the device is offline and what to do');
   ok(await o.p.textContent('#b-join') === 'もう一度試す' && await o.p.isEnabled('#b-join') && fake.connections.length === 0, 'offline Join: 「もう一度試す」 is offered; nothing was attempted');
   await o.ctx.setOffline(false);
@@ -878,7 +878,7 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
   ok(await o.p.isHidden('#b-start-join') && await o.p.isVisible('#a-start-join') && href === 'http://localhost:9/join#room=r-7k2q6xw4&key=Q2xhc3Nyb29tS2V5MDAwMD' && await o.p.getAttribute('#a-start-join', 'rel') === 'noopener noreferrer',
     'live at an endpoint this page does not allow: only the join page link (the key after #, noopener noreferrer), no Join');
   ok(/localhost:9/.test(await o.p.textContent('#live-dest')), 'live: the join link shows its host');
-  ok(await o.p.textContent('#live-start-notice') === 'このライブ（localhost:9）には、ブラウザの新しいタブで参加します。Egatari Viewer が自分でつなぐのは、決まったライブのサービスだけだからです。',
+  ok(await o.p.textContent('#live-start-notice') === 'このライブ（localhost:9）には、ブラウザの新しいタブで参加します。Egatari Viewer が自分で接続するのは、決まったライブのサービスだけだからです。',
     'live at another endpoint: the start screen says it opens in a browser tab, and why');
   await o.p.click('#b-watch'); await lessonFrame(o.p);
   ok(fake.connections.length === 0, 'live: still no connection');

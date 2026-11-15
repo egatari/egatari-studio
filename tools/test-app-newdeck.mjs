@@ -138,7 +138,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     let st0 = await status(p1);
     ok(st0.go === '作成' && st0.goOff && st0.note === '① に答えてください' && st0.beside, 'S1: 「作成」 stays in place, disabled, with 「① に答えてください」 right beside it: ' + JSON.stringify(st0));
     ok((await p1.$$eval('#paste-cat input:checked', (xs) => xs.length)) === 0 && await p1.isDisabled('#paste-next-kind') && await p1.isHidden('#paste-sub')
-      && (await text(p1, '#paste-step-kind .hint')) === '使う場面に合った組み立て（授業なら導入・展開・まとめ）を AI に伝えます。あてはまるものがなければ「その他」を選びます' && !(await p1.$('#paste-step-kind button:has-text("飛ばす")')),
+      && (await text(p1, '#paste-step-kind .hint')) === '使う場面に合った構成（授業なら導入・展開・まとめ）を AI に伝えます。あてはまるものがなければ「その他」を選びます' && !(await p1.$('#paste-step-kind button:has-text("飛ばす")')),
       'S1 ①: nothing is pre-selected, 「次へ」 is disabled until there is an answer, the hint names 「その他」, no skip button');
     ok((await p1.$$eval('#paste-cat label', (xs) => xs.map((x) => x.textContent))).join('|') === '授業・研修|研究発表|ビジネス|手引き|その他', 'S1 ①: the settings keep 「その他」');
     // その他：小分類はなく、すぐ答えになる。授業・研修に替えると小分類も答える問い（印なし・最後は「この中にない」）
@@ -149,7 +149,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(subs1.join('|') === '授業（小・中・高）|大学の講義|研修・使い方の説明|この中にない' && (await p1.textContent('#paste-sub legend')) === 'もう少し詳しく言うと' && (await p1.$$eval('#paste-sub input:checked', (xs) => xs.length)) === 0 && await p1.isDisabled('#paste-next-kind'),
       'S1 ①: 「もう少し詳しく言うと」 lists the subcategories and ends with 「この中にない」; none is ticked and 「次へ」 waits for it: ' + subs1.join(' / '));
     await p1.check('#paste-sub-class');
-    ok((await text(p1, '#paste-structure')) === `組み立て：${sub('teaching', 'class').structure.ja}。見せ方：${sub('teaching', 'class').show.ja}` && !(await p1.isDisabled('#paste-next-kind')), 'S1 ①: the subcategory shows its structure; 「次へ」 is enabled');
+    ok((await text(p1, '#paste-structure')) === `構成：${sub('teaching', 'class').structure.ja}。見せ方：${sub('teaching', 'class').show.ja}` && !(await p1.isDisabled('#paste-next-kind')), 'S1 ①: the subcategory shows its structure; 「次へ」 is enabled');
     await shot(p1, 'flow-s1-kind.png', 'paste-step-kind');
     await p1.click('#paste-next-kind');
     ok((await answer(p1, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await p1.isHidden('#paste-step-kind .paste-q-body') && (await text(p1, '#paste-change-kind')) === '変更'

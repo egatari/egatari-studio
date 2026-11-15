@@ -41,7 +41,7 @@ export const TILES = [
   { id: 'overlap', ids: ['overlap'], label: T('重なり', 'Overlap'), sub: T('ベン図', 'Venn diagram'), name: T('重なり', 'overlap'), steps: T('集合、次に重なり', 'sets, then the overlap') },
   { id: 'correlation', ids: ['correlation'], label: T('2 つの量の関係', 'Two quantities'), sub: T('散布図', 'scatter plot'), name: T('2 つの量の関係', 'two quantities'), steps: T('点、次に傾向', 'points, then the trend') },
   { id: 'spread', ids: ['spread'], label: T('ばらつき', 'Spread'), sub: T('ヒストグラム', 'histogram'), name: T('ばらつき', 'spread'), steps: T('全体を一度に', 'whole at once') },
-  { id: 'contents', ids: ['contents'], label: T('目次', 'Contents'), sub: T('札の格子', 'grid of cards'), name: T('目次', 'contents'), steps: T('全体を一度に', 'whole at once') },
+  { id: 'contents', ids: ['contents'], label: T('目次', 'Contents'), sub: T('カードの格子', 'grid of cards'), name: T('目次', 'contents'), steps: T('全体を一度に', 'whole at once') },
   { id: 'spatial', ids: ['spatial'], label: T('場所・地図', 'Place / map'), sub: T('日本地図・塗り分け・地点と矢印', 'map of Japan, choropleth, points and arrows'), name: T('場所・地図', 'place, map'), steps: T('地図、それから地域・点・矢印を 1 つずつ', 'the map, then regions, points and arrows one at a time') },
 ];
 export const FALLBACK = TILES;
@@ -65,6 +65,9 @@ const NOTES = {
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const str2 = (v) => (isObj(v) && typeof v.en === 'string' && v.en.trim() && typeof v.ja === 'string' && v.ja.trim() ? { en: v.en, ja: v.ja } : null);
+// 部品庫の manifest の札の小さな字のうち、用語集で避ける語（#223、作者 11/15：札・帯は意味で言う）を、部品庫が直すまでここで置き換える（ja だけ）
+const MANIFEST_JA = [['札の格子', 'カードの格子']];
+const jaTile = (v) => (v ? { ...v, ja: MANIFEST_JA.reduce((x, [a, b]) => x.replaceAll(a, b), v.ja) } : v);
 const ID = /^[a-z][a-z0-9-]*$/;
 const strs = (a) => (Array.isArray(a) ? a.filter((x) => typeof x === 'string') : []);
 const uniq = (a) => [...new Set(a)];
@@ -95,7 +98,7 @@ export function purposesFrom(manifest, { vendored = null } = {}) {
     list = [];
     for (const r of rows) {
       if (r.tile !== 'own') continue;
-      const label = str2(r.label), sub = str2(r.examples);
+      const label = str2(r.label), sub = jaTile(str2(r.examples));
       if (!label || !sub) { warnings.push(`manifest.json: purpose "${r.id}" has tile "own" without label or examples (no tile)`); unmapped.push(r.id); continue; }
       list.push({ id: r.id, ids: [r.id], label, sub, name: { ja: r.ja, en: r.en }, steps: str2(r.steps) || (TILES.find((t) => t.id === r.id) || {}).steps || T('', ''), ...(typeof r.icon === 'string' && ID.test(r.icon) ? { icon: r.icon } : {}) });
       tileOf[r.id] = r.id;
@@ -176,6 +179,6 @@ export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, 
   const other = elsewhere.length ? '\n\n' + (L === 'ja'
     ? `この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）`
     : `Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).`) : '';
-  const url = src ? '\n\n' + (L === 'ja' ? `各パーツの説明（版を固定）：${src}<名前>/README.md（名前は \`m-\` を除いたもの）` : `Each part's description (pinned version): ${src}<name>/README.md (the name without \`m-\`)`) : '';
+  const url = src ? '\n\n' + (L === 'ja' ? `各パーツの説明（バージョンを固定）：${src}<名前>/README.md（名前は \`m-\` を除いたもの）` : `Each part's description (pinned version): ${src}<name>/README.md (the name without \`m-\`)`) : '';
   return head + '\n' + rows.join('\n') + other + url;
 }

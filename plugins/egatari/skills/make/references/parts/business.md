@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # business のパーツ
 
-指示のバージョン：7aef902d
+指示のバージョン：22b7d41b
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -10,7 +10,7 @@
 
 ### `<m-diverge>`
 
-データ（子の `<script type="application/json">`）の見本: `{"items":[{"label":"前年","value":120,"total":true},{"label":"増加","value":45},{"label":"減少","value":-30},{"label":"今年","total":true}]}`
+データ（子の `<script type="application/json">`）の例: `{"items":[{"label":"前年","value":120,"total":true},{"label":"増加","value":45},{"label":"減少","value":-30},{"label":"今年","total":true}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -38,7 +38,7 @@
 
 ### `<m-market>`
 
-データ（子の `<script type="application/json">`）の見本: `{"rings":[{"key":"TAM","value":3000,"basis":"国内の…"},{"key":"SAM","value":600,"basis":"…"},{"key":"SOM","value":30,"basis":"…"}]}`
+データ（子の `<script type="application/json">`）の例: `{"rings":[{"key":"TAM","value":3000,"basis":"国内の…"},{"key":"SAM","value":600,"basis":"…"},{"key":"SOM","value":30,"basis":"…"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|

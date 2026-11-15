@@ -285,10 +285,10 @@ ok('purposes: the tiles are the default catalogue manifest\'s own purposes (17),
   assert.deepEqual(PURPOSES.list.map((p) => p.id), own.map((p) => p.id));
   for (const p of own) {
     const t = PURPOSES.list.find((x) => x.id === p.id), f = TILES.find((x) => x.id === p.id);
-    assert.deepEqual([t.label, t.sub, t.icon], [p.label, p.examples, p.icon], p.id + ': label, examples and icon from the manifest');
+    assert.deepEqual([t.label, t.sub, t.icon], [p.label, { ...p.examples, ja: p.examples.ja.replaceAll('札の格子', 'カードの格子') }, p.icon], p.id + ': label, examples and icon from the manifest (札 said by meaning, #223)');
     if (p.id === 'predict' || p.id === 'deviation') { assert.ok(!f, p.id + ' is not in the fallback table'); continue; }
     if (p.id === 'spread') continue;   // 部品庫 v1.9.0 で札の小さな字が変わった（箱ひげ図・ドットプロット）。決めた表は v1.6.0 のまま
-    assert.deepEqual([{ ...f.label }, { ...f.sub }], [{ ...p.label }, { ...p.examples }], p.id + ': the fallback table reads the same');
+    assert.deepEqual([{ ...f.label }, { ...f.sub }], [{ ...t.label }, { ...t.sub }], p.id + ': the fallback table reads the same as the tile (the manifest, with 札 said by meaning, #223)');
   }
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'compare').ids, ['compare', 'ranking'], 'ranking folds into compare');
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'spatial').label, { ja: '場所・地図', en: 'Place / map' });

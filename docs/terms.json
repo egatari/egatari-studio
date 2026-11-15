@@ -107,17 +107,18 @@
    "id": "export-script",
    "group": "Format and files",
    "en": "Export script",
-   "ja": "台本を書き出す",
+   "ja": "台本をエクスポート",
    "definition": "Save the script of the steps that need audio as one file, for generating audio in the cloud.",
    "avoid": {
     "ja": [
      "声の依頼ファイル",
-     "tts-job.json（画面で）"
+     "tts-job.json（画面で）",
+     "台本を書き出す"
     ],
     "en": []
    },
    "internal": "tts-job.json",
-   "decided": "2026-10-24",
+   "decided": "2026-11-15",
    "by": "owner",
    "note": ""
   },
@@ -590,18 +591,20 @@
    "id": "stage",
    "group": "Structure and playback",
    "en": "Slide (pane)",
-   "ja": "スライド（窓）",
+   "ja": "スライド（表示領域）",
    "definition": "The 16:9 area that shows one slide at a time with its motion (spec: the stage pane, 1280×720 coordinates). In the UI it is called スライド; the spec word stage is not shown.",
    "avoid": {
     "ja": [
-     "ステージ"
+     "ステージ",
+     "スライド（窓）",
+     "舞台"
     ],
     "en": []
    },
    "internal": "stage (spec, Player P2)",
-   "decided": "2026-10-26",
-   "by": "standards",
-   "note": ""
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "2026-11-15 owner: 窓 → 表示領域 (rule 6b: qualify the established word, don't coin one)."
   },
   {
    "id": "book",
@@ -815,14 +818,14 @@
    "id": "presentation-bar",
    "group": "Structure and playback",
    "en": "presentation bar",
-   "ja": "発表の帯",
+   "ja": "発表バー",
    "definition": "Egatari Viewer v0.7: the bar of presentation controls in the Viewer (the player's bar today, unchanged). It has no visible label in the UI; the name is for docs, specs and code reviews only.",
    "avoid": {
     "ja": [],
     "en": []
    },
    "internal": "",
-   "decided": "2026-11-05",
+   "decided": "2026-11-15",
    "by": "owner",
    "note": "Viewer v0.7 term (not in the UI yet)."
   },
@@ -1905,7 +1908,7 @@
    "id": "exported-file",
    "group": "Parts and themes",
    "en": "File exported from a working folder",
-   "ja": "作業フォルダから書き出したファイル",
+   "ja": "作業フォルダからエクスポートしたファイル",
    "definition": "A .ega.html made from a working folder (index.exportedFrom). Say what it is and that edits here do not change the folder; most people who open it have no folder.",
    "avoid": {
     "ja": [
@@ -1917,8 +1920,8 @@
     ]
    },
    "internal": "exportedFrom (spec §3.1)",
-   "decided": "2026-10-29",
-   "by": "standards",
+   "decided": "2026-11-15",
+   "by": "owner",
    "note": ""
   },
   {
@@ -2296,14 +2299,17 @@
    "avoid": {
     "ja": [
      "書き出し（メニュー名で）",
-     "書き出しました（エクスポートの知らせで）"
+     "書き出しました（エクスポートの知らせで）",
+     "書き出す",
+     "書き出した",
+     "書き出し"
     ],
     "en": []
    },
    "internal": "",
-   "decided": "2026-10-24",
+   "decided": "2026-11-15",
    "by": "owner",
-   "note": "One word per action: the message repeats the word of the button or menu that triggered it. 書き出す is only the audio panel’s own 台本を書き出す (export-script)."
+   "note": "One word per action: the message repeats the word of the button or menu that triggered it. 2026-11-15 owner: 書き出す → エクスポート everywhere, the script export too (export-script)."
   },
   {
    "id": "device",
@@ -2627,6 +2633,285 @@
    "decided": "2026-11-15",
    "by": "owner",
    "note": ""
+  },
+  {
+   "id": "panel",
+   "group": "Structure and playback",
+   "en": "Panel",
+   "ja": "パネル",
+   "definition": "A pane of the editor (edit, script, comments, audio…); the menu that shows and hides them.",
+   "avoid": {
+    "ja": [
+     "板（パネルの意味で）",
+     "横の板"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "side-panel",
+   "group": "Structure and playback",
+   "en": "Side panel",
+   "ja": "サイドパネル",
+   "definition": "A panel docked at the side of the editor.",
+   "avoid": {
+    "ja": [
+     "横の板"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "status-bar",
+   "group": "Structure and playback",
+   "en": "Status bar",
+   "ja": "ステータスバー",
+   "definition": "The thin bar at the bottom of the editor with the save state and messages.",
+   "avoid": {
+    "ja": [
+     "下の帯"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "bar",
+   "group": "Buttons and common words",
+   "en": "Bar",
+   "ja": "バー",
+   "definition": "A horizontal strip of controls or information (toolbar, presentation bar). 帯 is not used for it.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "card",
+   "group": "Buttons and common words",
+   "en": "Card / tile / label",
+   "ja": "カード／タイル／ラベル",
+   "definition": "By meaning: a part that shows a number or item is a card (m-kpi); a choice on the New lesson screen is a tile; a short word marker is a label; a hint over a button is a tooltip. 札 is not used for any of them.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "copy",
+   "group": "Buttons and common words",
+   "en": "Copy",
+   "ja": "コピー",
+   "definition": "To copy, and the copy made.",
+   "avoid": {
+    "ja": [
+     "写し",
+     "写す",
+     "写した",
+     "写します"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "font",
+   "group": "Slides",
+   "en": "Font",
+   "ja": "フォント",
+   "definition": "A typeface; the subset of a font embedded in a file is フォントのサブセット.",
+   "avoid": {
+    "ja": [
+     "字体",
+     "字の切り出し"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "backup",
+   "group": "Format and files",
+   "en": "Backup",
+   "ja": "バックアップ",
+   "definition": "A saved copy kept to restore from.",
+   "avoid": {
+    "ja": [
+     "控え"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "runtime",
+   "group": "Format and files",
+   "en": "Runtime",
+   "ja": "ランタイム",
+   "definition": "The code inside a lesson file that plays it. On screen it is the player (プレーヤー).",
+   "avoid": {
+    "ja": [
+     "実行系"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "root",
+   "group": "Format and files",
+   "en": "Root",
+   "ja": "ルート",
+   "definition": "The top folder of a project or the top of a document tree. The root of a drawn tree (m-tree) stays 根.",
+   "avoid": {
+    "ja": [
+     "根（フォルダの意味で）"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "software-test",
+   "group": "Quality",
+   "en": "Test",
+   "ja": "テスト",
+   "definition": "A software test of Studio or a part. An exam in a lesson stays 試験.",
+   "avoid": {
+    "ja": [
+     "試験（ソフトの意味で）"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "reconnect",
+   "group": "Live",
+   "en": "Reconnect",
+   "ja": "再接続",
+   "definition": "Connecting again after the live connection dropped.",
+   "avoid": {
+    "ja": [
+     "つなぎ直す",
+     "つなぎ直します",
+     "つなげませんでした"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "build",
+   "group": "Format and files",
+   "en": "Build",
+   "ja": "ビルド",
+   "definition": "Making the playable file from the source (egatari build); rebuilding is 再ビルド. The structure of a lesson is 構成.",
+   "avoid": {
+    "ja": [
+     "組み立て",
+     "組み立てる",
+     "組み直す",
+     "組み直し"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "local",
+   "group": "Format and files",
+   "en": "Local",
+   "ja": "ローカル",
+   "definition": "On this computer, not in the cloud. 手元 is not used in any sense.",
+   "avoid": {
+    "ja": [
+     "手元"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "parts-set",
+   "group": "Parts and themes",
+   "en": "Parts set",
+   "ja": "パーツのセット",
+   "definition": "A group of parts for one subject that the instructions load together (math, data, maps…). English stays set.",
+   "avoid": {
+    "ja": [
+     "パーツの束",
+     "束の指示"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "contract",
+   "group": "Parts and themes",
+   "en": "Contract",
+   "ja": "規約",
+   "definition": "The rules a part follows to work in the player (contract.ja.md).",
+   "avoid": {
+    "ja": [
+     "約束事"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": "#223 (owner 2026-11-15, rule 6b)"
   }
  ]
 }

@@ -524,7 +524,7 @@ const paneShown = (p) => p.$eval('#live-pane', (e) => getComputedStyle(e).displa
   await o.p.evaluate(() => { document.getElementById('live-pane-status').textContent = ''; });
   await goStep(o.p, POLL_STEP);
   ok(await until(async () => { const x = await st(o.p); return x.open && x.auto && !x.pinned; }) && await paneShown(o.p) && !!(await o.p.$('#live-pane fieldset[data-poll="p1"]')), 'a poll step opens the pane by itself, with the poll');
-  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'このステップに投票があります。ライブの板を開きました'), 'auto-open is announced in the live region');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'このステップに投票があります。ライブのパネルを開きました'), 'auto-open is announced in the live region');
   ok((await markOf(o.p)).exp === 'true' && (await stageW(o.p)) < 1280 - 100, 'poll open: aria-expanded=true; the stage is fitted beside the pane');
   ok(await o.p.evaluate(() => !document.activeElement || !document.activeElement.closest('#live-pane')), 'auto-open does not take the focus (the keys still move the lesson)');
   if (SHOTS) { await sleep(500); await o.p.screenshot({ path: path.join(SHOTS, 'pane-poll-open.png') }); }
@@ -655,15 +655,15 @@ async function drawCircle(p, cx, cy, r) {
   // 返事：自分の質問への返事は板の「ホストからの返事」に、文字として。たたんでいれば印に新しい返事の点
   await o.p.click('#live-pane .lv-fold'); await sleep(200);
   fake.send({ v: 1, t: 'reply', item: 'q-abcdefghij', question: 'この矢印は何ですか？', step: before, text: '<b>勾配</b>の向きです', public: false, at: new Date().toISOString() });
-  ok(await until(async () => (await st(o.p)).replies === 1) && await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'ホストから返事が届きました'), 'a reply is announced');
-  ok(await o.p.$eval('#live-mark', (m) => m.classList.contains('lv-new') && /新しい返事があります/.test(m.textContent)), 'collapsed: the marker shows a new reply (dot and text for screen readers)');
+  ok(await until(async () => (await st(o.p)).replies === 1) && await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'ホストから回答が届きました'), 'a reply is announced');
+  ok(await o.p.$eval('#live-mark', (m) => m.classList.contains('lv-new') && /新しい回答があります/.test(m.textContent)), 'collapsed: the marker shows a new reply (dot and text for screen readers)');
   await o.p.click('#live-mark');
   const rep = await o.p.$$eval('#live-pane .lv-replies li', (l) => l.map((x) => x.textContent));
   ok(rep.length === 1 && rep[0] === 'あなたの質問：この矢印は何ですか？<b>勾配</b>の向きです' && !(await o.p.$('#live-pane .lv-replies b')), `the reply is shown with the learner's own question, as text (${rep[0]})`);
   ok(!(await o.p.$eval('#live-mark', (m) => m.classList.contains('lv-new'))), 'opening the pane clears the new-reply mark');
   // ホストが全員に見せた返事
   fake.send({ v: 1, t: 'shown', items: [{ id: 'q-abcdefghij', activity: 'qa', step: before, text: 'この矢印は何ですか？', reply: '勾配の向きです' }] });
-  ok(await until(async () => (await o.p.$$eval('#live-pane .lv-shown li', (l) => l.map((x) => x.textContent))).includes('この矢印は何ですか？ホストの返事：勾配の向きです')), 'a question the host answered for everyone shows its reply');
+  ok(await until(async () => (await o.p.$$eval('#live-pane .lv-shown li', (l) => l.map((x) => x.textContent))).includes('この矢印は何ですか？ホストの回答：勾配の向きです')), 'a question the host answered for everyone shows its reply');
   if (SHOTS) { await sleep(300); await o.p.screenshot({ path: path.join(SHOTS, 'pane-reply.png') }); }
   const all = fake.messages.slice();
   ok(all.every((m) => sv('learnerToServer')(m)) && all.every((m) => ['ask', 'vote', 'name', 'ping', 'confused'].includes(m.t)), `questions: every message is a vendored learnerToServer message (${[...new Set(all.map((m) => m.t))].join(',')})`);
