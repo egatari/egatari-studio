@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=a5b6e2bbb6c527e1 -->
+<!-- i18n: pair=viewer.ja.md sha256=a6b4bee493a92fb6 -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -97,6 +97,10 @@ The service worker (`play/sw.js`) caches only the page's own files, listed by th
 ## Touch
 
 The lesson's own player (`kit/tools.js`) takes touch itself, so the page adds nothing for it: a tap on the slide wakes the toolbar (前へ, 次へ, 字幕, 読み上げで聞く …), a tap that wakes it does not press a button under it (`REVEAL_GUARD`, 350 ms), the bar is shown for 5 seconds when the lesson opens, and a small handle brings it back when it is hidden. The lesson shim (`play/lesson-shim.js`) only sets the embedding mode and hands links out of the lesson to the page. `tools/test-viewer-webkit.mjs` checks the bar, captions and read-aloud in Playwright's WebKit with iPad sizes.
+
+## Accessibility
+
+The aim is WCAG 2.2 AA for the Viewer's own page (the header, the start page, the markup bar and list, the dialogs, the Live join screen and pane). `tools/test-viewer-a11y.mjs` (Chromium; `--webkit` for WebKit; `--report` lists each finding, `--json <file>` writes them) runs axe-core with the WCAG 2.0/2.1/2.2 A and AA rules on the page in these states: the start page (Japanese, English, dark), a lesson open as slides and as a book (light and dark), the markup bar, the markup list with a highlight, the confirmation for deleting a colour, the link box, and a lesson with a Live before joining and while watching. It fails on any violation in the page. The lesson's frame (the player inside the file, `kit/`) is checked in the same states and listed, but does not fail the test. axe finds only part of WCAG; the keyboard, screen-reader (VoiceOver, NVDA) and 400% zoom checks are done by hand.
 
 ## Building
 

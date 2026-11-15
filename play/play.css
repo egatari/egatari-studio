@@ -87,7 +87,9 @@ body.playing { height: 100dvh; min-height: 0; overflow: hidden; }
 #live { position: absolute; overflow: auto; background: var(--panel); z-index: 2; }
 #live:focus { outline: none; }
 body.headless #bar { display: none; }
-#live-start { position: absolute; inset: 0; overflow: auto; padding: 16px; max-width: 640px; margin: 0 auto; }
+/* the join screen covers the stage with the page's own background (it lay on the dark stage, unreadable in the light theme: axe color-contrast,
+   tools/test-viewer-a11y.mjs); its text column stays 640px wide in the middle */
+#live-start { position: absolute; inset: 0; z-index: 1; overflow: auto; background: var(--bg); padding: 16px max(16px, calc((100% - 640px) / 2)); }
 #live-start h2 { font-size: 1.25rem; margin: 8px 0 12px; }
 #live-poll-view { display: none; }
 #b-poll-back, #b-strip-close, #b-poll { display: none; }

@@ -182,6 +182,10 @@ const steps = [
   ['test-viewer-markup', ['tools/test-viewer-markup.mjs', path.join(tmp, 'viewer-markup')]],
   // サイトのプレーヤー（play/site-player.mjs、tools/build-site-player.mjs）：見出しなしの置き場所で、lock との照合・opaque な枠・リンクの箱・枠の中を断る
   ['test-site-player', ['tools/test-site-player.mjs', path.join(tmp, 'site-player')]],
+  // Viewer のページの WCAG 2.2 AA の自動の検査（axe-core）：最初の画面・教材・本・マークアップ・ダイアログ・ライブの参加の画面。教材の枠の中は一覧にするだけ
+  ['test-viewer-a11y', ['tools/test-viewer-a11y.mjs', path.join(tmp, 'viewer-a11y')]],
+  // 同じ検査を WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-a11y-webkit', ['tools/test-viewer-a11y.mjs', path.join(tmp, 'viewer-a11y-webkit'), '--webkit']],
   // 全画面（f・帯の「全画面」）：Viewer のページが枠そのものを全画面にし状態を教材に戻す・教材だけでは全画面にできない・要素の全画面がない所（iPhone）で
   // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
   ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
