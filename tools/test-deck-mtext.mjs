@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const src = fs.readFileSync(path.join(ROOT, 'kit/deck.js'), 'utf8');
+const src = fs.readFileSync(path.join(ROOT, 'kit/deck.js'), 'utf8').replace(/\r\n?/g, '\n');   // Windows の checkout は CRLF
 const from = src.indexOf('function el('), to = src.indexOf('\n}\n', src.indexOf('function mtext(')) + 3;
 assert.ok(from >= 0 && to > from, 'el and mtext found in kit/deck.js');
 class Node { constructor(tag) { this.tag = tag; this.attrs = {}; this.children = []; this._text = ''; }
