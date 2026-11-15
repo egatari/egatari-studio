@@ -258,6 +258,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     // コピーすると ⑤ が開く。④ は［変更］で開き直す
     ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer'), 'new copy: copying opens ⑤ and folds ④ to its answer');
     await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
+    if (!(await pk.$eval('#paste-parts-fold', (d) => d.open))) await pk.click('#paste-parts-summary');   // #211：畳んだ一覧を開く
     await pk.uncheck('#paste-part-flow');
     await pk.uncheck('#paste-part-menu');
     const offStyle = await pk.$eval('#paste-part-flow', (x) => +getComputedStyle(x.closest('label').querySelector('.pick-text')).opacity);

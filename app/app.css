@@ -453,6 +453,12 @@ main{flex:1;min-height:0;display:flex}
 #dlg .plan-name{font-weight:600}
 #dlg .plan-text small{color:var(--muted);font-size:12.5px;line-height:1.55}
 #dlg .plan-badge{display:inline-block;margin:0 8px;padding:0 6px;border-radius:999px;font-size:10.5px;line-height:1.5;font-weight:400;vertical-align:1px;background:var(--accent);color:var(--accent-fg)}
+/* パーツの一覧を畳む（backlog #211）：1 行の要約を押すと開く */
+#dlg .parts-fold{flex-basis:100%;margin:10px 0 4px;min-width:0}
+#dlg .parts-fold > summary{cursor:pointer;padding:4px 2px;font-weight:600}
+#dlg .parts-fold > summary .parts-fold-act{margin-inline-start:10px;font-weight:400;color:var(--accent);text-decoration:underline}
+#dlg .parts-fold[open] > summary .parts-fold-act{display:none}
+#dlg .parts-fold > .paste-parts{margin-top:6px}
 #dlg .paste-parts{flex-basis:100%;margin:10px 0 4px;padding:6px 10px 8px;border:1px solid var(--line);border-radius:6px;min-width:0}
 #dlg .paste-parts > legend{padding:0 4px;font-weight:600}
 #dlg .paste-parts > .hint{margin:0 0 6px}

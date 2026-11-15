@@ -198,6 +198,14 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null).flatMap((g) => g.parts).length} 種類）`
       && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the instructions question (light by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
+    // パーツの一覧は初めは畳む（backlog #211）：1 行「AI が使うパーツ：N 種類　選び直す」。開くと今の見出しと一覧。目盛りは畳む範囲の外で見えたまま
+    ok(!(await p1.$eval('#paste-parts-fold', (d) => d.open)) && (await text(p1, '#paste-parts-summary')) === `AI が使うパーツ：${STD.length} 種類選び直す` && await p1.isHidden('#paste-parts legend') && await p1.isVisible('#paste-pack-size')
+      && !(await p1.evaluate(() => /詳細/.test(document.getElementById('paste-parts-summary').textContent))),
+      'S1 ④ (#211): the parts list starts folded to one line with the count and 「選び直す」 (not 詳細); the meter stays visible');
+    await p1.click('#paste-parts-summary');
+    ok(await p1.$eval('#paste-parts-fold', (d) => d.open) && await p1.isVisible('#paste-parts legend') && await p1.isVisible('#paste-part-flow'), 'S1 ④ (#211): pressing the line opens the question and the list');
+    await p1.click('#paste-parts-summary');
+    ok(!(await p1.$eval('#paste-parts-fold', (d) => d.open)), 'S1 ④ (#211): pressing it again folds the list');
     // 標準のパーツを全部選んだ無料のプランの指示は目安の中から始まる（中核の 4 つのほかは一覧の 1 行だけ。backlog #125）
     const bytes1 = +(await p1.getAttribute('#paste-pack-size', 'data-bytes'));
     ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && await p1.isHidden('#paste-shortened') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
@@ -438,11 +446,13 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p4.click('#paste-next-content');
     ok((await answer(p4, 'content')) === 'タイトル：臥薪嘗胆（十八史略）', 'S4 ②: the answered line follows the change');
     // 自分で外した印は、推し直しで戻さない
+    if (!(await p4.$eval('#paste-parts-fold', (d) => d.open))) await p4.click('#paste-parts-summary');   // #211：畳んだ一覧を開く
     await p4.uncheck('#paste-part-kanbun');
     await p4.click('#paste-change-content');
     await p4.fill('#paste-title', '臥薪嘗胆（漢文）');
     await p4.click('#paste-next-content');
     ok(!(await p4.isChecked('#paste-part-kanbun')) && await p4.isChecked('#paste-part-kobun') && !(await text(p4, '#paste-parts-why')).includes('漢文・'), 'S4 ④: a part the author unticked is not ticked again by the guess, and the reason no longer names it');
+    if (!(await p4.$eval('#paste-parts-fold', (d) => d.open))) await p4.click('#paste-parts-summary');
     await p4.check('#paste-part-kanbun');
     const c4 = await copy(p4);
     const t4 = tailOf(c4, 'ja');
@@ -609,6 +619,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const c10 = await copy(p10);
     ok(c10.includes('### `<m-timer>`'), 'S10 ④: the ticked timer is in the instructions');
     await p10.click('#paste-change-send');
+    if (!(await p10.$eval('#paste-parts-fold', (d) => d.open))) await p10.click('#paste-parts-summary');   // #211：畳んだ一覧を開く
     await p10.uncheck('#paste-part-timer');
     const c10b = await copy(p10);
     ok(!c10b.includes('m-timer') && (await answer(p10, 'send')) === `Instructions: Light · ${STD.length + 2} parts · copied`, 'S10 ④: unticked, the timer is not named anywhere in the instructions');
