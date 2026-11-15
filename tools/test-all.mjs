@@ -268,6 +268,7 @@ steps.push(
   ['test-check-status', ['tools/test-check-status.mjs', path.join(tmp, 'check-status')]],
   // 品質チェックの決まりの台帳（#202）：どの code もちょうど 1 つの決まりに入る・checked／excused／skipped／failed・incomplete（ブラウザなし）
   ['test-check-rules', ['tools/test-check-rules.mjs']],
+  ['test-browser-errors', ['tools/test-browser-errors.mjs']],
   ['test-examples-cache', ['tools/test-examples-cache.mjs']],
   // 種をまいた教材（#202）：決まりの 1 つずつに入れた誤りを、品質チェックが本当に見つけるか（ヘッドレス Chrome）
   ['test-seeded-defects', ['tools/test-seeded-defects.mjs']],

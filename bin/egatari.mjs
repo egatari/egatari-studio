@@ -227,7 +227,9 @@ async function doctor() {
     await browser.close();
     show(true, 'browser', `${via} ${ver}`, '', true);
   } catch (e) {
-    show(false, 'browser', 'なし / not found（check・video・PDF に使う / used by check, video and PDF）',
+    // 入っているのに起動できない（サンドボックスなど）ときは入れ方を案内しない（backlog #215）
+    if (e && e.code === 'browser-blocked') show(false, 'browser', '起動できない / could not start（check・video・PDF に使う / used by check, video and PDF）', e.message.split('\n')[0], true);
+    else show(false, 'browser', 'なし / not found（check・video・PDF に使う / used by check, video and PDF）',
       'Google Chrome か Microsoft Edge を入れる、`npx playwright-core install chromium`、または CHROME_PATH=/path/to/chrome\n'
       + 'install Google Chrome or Microsoft Edge, run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome', true);
   }
