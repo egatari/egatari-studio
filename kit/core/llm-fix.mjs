@@ -111,6 +111,28 @@ export function amountOf(p, lang = 'en') {
   return '';
 }
 
+// 本文が下にはみ出し、はみ出した箱がパーツ（品質チェックの data.part = {tag, index?}、#196）で、そのパーツに style="height:…px" があるとき：
+// その属性を名指しし、はみ出した分を引いて 10 px に切り下げた値を添える（#224。1 px のはみ出しが直しの往復で残った：gemini-4-argon × m-tree、11/15）
+export function partHeightHint(p, deck, secs, lang = 'en') {
+  if (!p || (p.code !== 'bodyBottom' && p.code !== 'overflowBottom')) return '';
+  const d = p.data && typeof p.data === 'object' ? p.data : {};
+  const part = d.part || p.part;
+  if (!part || !/^m-[a-z0-9-]+$/.test(part.tag || '')) return '';
+  const nums = typeof p.data === 'object' ? [d.px, d.lim] : num(p.data);
+  const px = +nums[0], lim = +nums[1];
+  if (!Number.isFinite(px) || !Number.isFinite(lim)) return '';
+  const over = Math.ceil(px - lim);
+  const sec = (secs || []).find((x) => x.id && x.id === p.id);
+  const html = sec ? String(deck).slice(sec.start, sec.end) : '';
+  const tags = [...html.matchAll(new RegExp(`<${part.tag}(?=[\\s>/])[^>]*>`, 'g'))].map((m) => m[0]);
+  const tag = tags[Number.isInteger(part.index) ? part.index : 0];
+  const m = tag && tag.match(/\sstyle\s*=\s*(["'])([^"']*?)\bheight\s*:\s*(\d+(?:\.\d+)?)px/i);
+  if (!m) return '';
+  const h = +m[3], to = Math.floor((h - over - 4) / 10) * 10;
+  if (!(to > 0) || to >= h) return '';
+  return lang === 'ja' ? `${part.tag} の style の height:${m[3]}px を height:${to}px にする` : `in ${part.tag}, change style height:${m[3]}px to height:${to}px`;
+}
+
 // 返事が途中で切れて取り込めなかったとき（kit/core/llm-import.mjs の unclosed）の依頼
 // コードブロックがなかったとき（no-blocks：ファイル・キャンバス・添付で返したなど）も、この関数で送り直しを頼む（err.code === 'no-blocks'）
 export function cutOffRequest(err, lang = 'en') {
@@ -144,7 +166,7 @@ export function buildFixRequest({ problems, deck, narration = '', lang = 'en', l
   const slideIds = partial ? [...new Set(list.map((p) => p.id).filter(Boolean))] : [];
   if (partial) out.push(M.askPartial(slideIds.length), '');
   out.push(`## ${M.problems}`, '');
-  list.forEach((p, n) => { const a = amountOf(p, lang); out.push(`${n + 1}. [${M.sev[p.sev] || p.sev}] ${M.where(p)}: ${p.text}${a ? ' → ' + a : ''}${p.rules.length ? ' — ' + p.rules.join(', ') : ''}`); });
+  list.forEach((p, n) => { const a = [amountOf(p, lang), partHeightHint(p, deck, secs, lang)].filter(Boolean).join(lang === 'ja' ? '。' : '; '); out.push(`${n + 1}. [${M.sev[p.sev] || p.sev}] ${M.where(p)}: ${p.text}${a ? ' → ' + a : ''}${p.rules.length ? ' — ' + p.rules.join(', ') : ''}`); });
   if (used.length) {
     out.push('', `## ${M.rules}`, '');
     for (const r of used) out.push(`- **${r}** ${rules.get(r)}`);
