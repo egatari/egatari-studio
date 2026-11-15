@@ -669,13 +669,20 @@ for (const [code, what] of [
   // 2.9.0（リリース d19428d）：m-callout・m-checklist・m-diverge が加わり、m-bars 2.1.0 は誤差棒（err）・有意差の括弧（sig）・点（mark="dot"）を描く。
   // ほかに 16 のパーツが README・小さな直しで上がる。既定はこちら（v0.6.13 から）
   const v290 = lock2.catalogues['2.9.0'];
-  ok(lock2.default === '2.9.0' && v290 && v290.tag === 'v2.9.0' && v290.tarballSha256 === '411ba84482d73ca9aca6ed655cdfb43aa1ad2731a82b423dff60c3402a55dcaf' && v290.manifestSha256 === '39ff5f9dad1f2a276e6f6f4c8bffc20a2759470346720eee396d4f9b154079e6',
-    '2.9.0: the default, pinned to the released tarball and manifest (v2.9.0)');
+  ok(v290 && v290.tag === 'v2.9.0' && v290.tarballSha256 === '411ba84482d73ca9aca6ed655cdfb43aa1ad2731a82b423dff60c3402a55dcaf' && v290.manifestSha256 === '39ff5f9dad1f2a276e6f6f4c8bffc20a2759470346720eee396d4f9b154079e6',
+    '2.9.0: pinned to the released tarball and manifest (v2.9.0)');
   const names290 = Object.keys(v290.parts).sort();
   const added290 = names290.filter((n) => !names280.includes(n));
   ok(added290.join() === 'callout,checklist,diverge' && added290.every((n) => v290.parts[n] === '2.0.0') && names280.every((n) => names290.includes(n)),
     `2.9.0: m-callout, m-checklist and m-diverge 2.0.0 are added, nothing removed (${added290.join(', ')})`);
   ok(v290.parts.bars === '2.1.0' && /\berr\b/.test(fs.readFileSync(c2(v290, 'bars', 'index.js'), 'utf8')) && /\bsig\b/.test(fs.readFileSync(c2(v290, 'bars', 'index.js'), 'utf8')), '2.9.0: m-bars 2.1.0 reads err and sig');
+  // 2.9.1（リリース 4407bcb）：tarball は 2.9.0 と同じバイト。manifest の purposes だけが変わり、deviation（差・増減）が自分の札（絵 waterfall）を持つ。既定はこちら
+  const v291 = lock2.catalogues['2.9.1'];
+  ok(lock2.default === '2.9.1' && v291 && v291.tag === 'v2.9.1' && v291.tarballSha256 === v290.tarballSha256 && v291.manifestSha256 === '91ba1966ad5c7a8f2d7cffc9b4169a3dc81b200dae3b560854b0d57d3701a087'
+    && JSON.stringify(v291.parts) === JSON.stringify(v290.parts), '2.9.1: the default; the same tarball and parts as 2.9.0, a new manifest');
+  const m291 = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.9.1.json'), 'utf8'));
+  const dev291 = (m291.purposes || []).find((p) => p.id === 'deviation');
+  ok(dev291 && dev291.tile === 'own' && dev291.icon === 'waterfall', `2.9.1: deviation has its own tile with the waterfall icon (${JSON.stringify(dev291 && { tile: dev291.tile, icon: dev291.icon })})`);
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

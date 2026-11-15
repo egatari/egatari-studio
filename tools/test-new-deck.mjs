@@ -274,38 +274,42 @@ ok('request section: kind, structure and presentation of the subcategory, and th
 const FIX = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
 const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'spatial'];
 // 部品庫 v1.7.0 から：16 個目の札 predict「予想して確かめる」（決めた表 TILES は v1.6.0 の 15 個のまま。tile のない前の manifest に predict はない）
-const OWN_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'predict', 'spatial'];
-ok('purposes: the tiles are the default catalogue manifest\'s own purposes (16), with their label, examples and icon; the fallback table TILES (15) reads the same', () => {
+const OWN_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'predict', 'spatial', 'deviation'];   // 部品庫 2.9.1 で deviation（差・増減）が自分の札を持つ
+ok('purposes: the tiles are the default catalogue manifest\'s own purposes (17), with their label, examples and icon; the fallback table TILES (15) reads the same', () => {
   assert.equal(TILES.length, 15);
   const man = MANIFEST2();
   const own = man.purposes.filter((p) => p.tile === 'own' && !p.reserved);
-  assert.equal(own.length, 16);
+  assert.equal(own.length, 17);
   assert.equal(PURPOSES.tiles, 'manifest');
   assert.deepEqual(PURPOSES.list.map((p) => p.id), own.map((p) => p.id));
   for (const p of own) {
     const t = PURPOSES.list.find((x) => x.id === p.id), f = TILES.find((x) => x.id === p.id);
     assert.deepEqual([t.label, t.sub, t.icon], [p.label, p.examples, p.icon], p.id + ': label, examples and icon from the manifest');
-    if (p.id === 'predict') { assert.ok(!f, 'predict is not in the fallback table'); continue; }
+    if (p.id === 'predict' || p.id === 'deviation') { assert.ok(!f, p.id + ' is not in the fallback table'); continue; }
     if (p.id === 'spread') continue;   // 部品庫 v1.9.0 で札の小さな字が変わった（箱ひげ図・ドットプロット）。決めた表は v1.6.0 のまま
     assert.deepEqual([{ ...f.label }, { ...f.sub }], [{ ...p.label }, { ...p.examples }], p.id + ': the fallback table reads the same');
   }
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'compare').ids, ['compare', 'ranking'], 'ranking folds into compare');
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'spatial').label, { ja: '場所・地図', en: 'Place / map' });
-  assert.ok(!PURPOSES.list.some((p) => ['grouping', 'parameter', 'text-structure', 'deviation', 'concept-links'].some((id) => p.ids.includes(id))), 'tile "none" and reserved ids make no tile and join none');
+  assert.ok(!PURPOSES.list.some((p) => ['grouping', 'parameter', 'text-structure', 'concept-links'].some((id) => p.ids.includes(id))), 'tile "none" and reserved ids make no tile and join none');
   assert.deepEqual(PURPOSES.components['m-map-japan'], ['spatial']);
   assert.deepEqual(PURPOSES.list.map((p) => p.id), OWN_IDS);
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'predict').label, { ja: '予想して確かめる', en: 'Predict, then check' });
+  const dev = PURPOSES.list.find((p) => p.id === 'deviation');
+  assert.deepEqual([dev.label, dev.icon], [{ ja: '差・増減', en: 'Increase / decrease' }, 'waterfall'], 'deviation: its own tile with the waterfall icon (2.9.1)');
   assert.ok(!PURPOSES.list.some((p) => p.ids.includes('timebox')), 'timebox has no tile');
   assert.equal(PURPOSES.source, 'manifest');
   assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
   // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-folds（部品庫 2.6.0 の束 data）の札は compare だけ（model は札なし）
-  // m-diverge（部品庫 2.9.0、束 business）は「差・増減」（2.9.0 では札なし）と compare に使う：compare を外すと使わせない
-  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-diverge', 'm-folds', 'm-numberline']);
-  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-diverge', 'm-folds', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
+  // m-diverge（部品庫 2.9.0、束 business）は compare と deviation（2.9.1 から自分の札）に使う：compare を外しても deviation の札で残る
+  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-folds', 'm-numberline']);
+  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-folds', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
   // m-kakijun は 2.2.0 候補で extra に移り（backlog #170）、process の部品からは外れる（extra は purposes の計算に入らない）
   // m-callout・m-checklist（部品庫 2.9.0、束 tools）の札も process だけ
   assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan']);   // m-code（束 data）の札は process だけ
+  assert.deepEqual(componentsOff(['deviation'], PURPOSES), [], 'm-diverge also serves compare');
+  assert.deepEqual(componentsOff(['compare', 'deviation'], PURPOSES).filter((t) => t === 'm-diverge'), ['m-diverge'], 'm-diverge goes when both its tiles are off');
   assert.deepEqual(componentsOff([], PURPOSES), []);
   // 札のない言いたいことの部品（m-kanbun・m-sweep など）は外せない（束から入る）。特殊のパーツは指示にないので札も持たない
   assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect', 'm-codetree'].some((t) => PURPOSES.components[t]));
