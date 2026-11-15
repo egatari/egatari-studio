@@ -248,7 +248,7 @@ export function layoutScan(s, o) {
   }
   // 箱が字を切るか（縦・横）。HTML の箱は内側（padding の箱）、SVG はその表示の枠（viewBox を写した場所）
   const over = (p, q, x, y) => Math.max(x ? q.l - p.l : 0, x ? p.r - q.r : 0, y ? q.t - p.t : 0, y ? p.b - q.b : 0);
-  const found = { textClipped: null, svgTextOut: null, svgTextBox: null, outsideBody: null, textOffSlide: null, textOverlap: null, cellWordBreak: null };
+  const found = { textClipped: null, svgTextOut: null, svgTextBox: null, outsideBody: null, partSvgOut: null, textOffSlide: null, textOverlap: null, cellWordBreak: null };
   const note = (code, a) => { const f = found[code]; if (f) f.n++; else found[code] = Object.assign({ n: 1 }, a); };
   const done = new Set();   // 上の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）か、スライドの外（textOffSlide）で知らせた字。重なり（textOverlap）では見ない
   // 表紙・章の扉（.body のないスライド）の知らせには、置ける子要素を添える
@@ -484,7 +484,29 @@ export function layoutScan(s, o) {
     for (let i = 0; i < full.length; i++) { if (at[i] !== null && prev !== null && at[i] !== prev) split += '/'; if (at[i] !== null) prev = at[i]; split += full[i]; }
     note('cellWordBreak', { t: sample(tv), lines: line + 1, split: sample(split.replace(/\s+/g, ' ')) });
   });
-  for (const code of ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak']) if (found[code]) add('warn', code, found[code]);
+  // ---------------------------------------------------------------- パーツの箱から出る図（backlog #208。警告）
+  // パーツの要素（m-*）の直下の <svg>（パーツのいちばん外側の図）が、要素の箱から TOL より外に出る。width・height のない <svg> は
+  // 幅が親いっぱいになり、高さが viewBox の縦横比で決まるので、大きさを決めた要素からはみ出す（作業フォルダのパーツで起きた）。
+  // 箱のない inline の要素（display:inline・contents）、見えない要素、わざと切る印（CLIP）の中は見ない。知らせはスライドの最初の 1 つと数
+  s.querySelectorAll('*').forEach((e) => {
+    if (!/^m-/.test(e.localName) || skip(e) || !shown(e) || hiddenEl(e)) return;
+    const disp = getComputedStyle(e).display;
+    if (disp === 'inline' || disp === 'contents' || disp === 'none') return;
+    const er = e.getBoundingClientRect();
+    if (!er.width && !er.height) return;
+    const pb = box(er);
+    let px = 0;
+    for (const g of e.children) {
+      if (g.localName !== 'svg' || !shown(g)) continue;
+      const gr = g.getBoundingClientRect();
+      if (!gr.width && !gr.height) continue;
+      px = Math.max(px, over(box(gr), pb, true, true));
+    }
+    if (px <= TOL) return;
+    const same = [...s.querySelectorAll(e.localName)], label = (e.getAttribute('aria-label') || '').trim();
+    note('partSvgOut', { tag: e.localName, ...(same.length > 1 ? { index: same.indexOf(e) } : {}), ...(label ? { label: label.slice(0, 40) } : {}), px: Math.round(px) });
+  });
+  for (const code of ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'textOffSlide', 'textOverlap', 'cellWordBreak']) if (found[code]) add('warn', code, found[code]);
 
   // 章の扉（.sec）の題は h1。h2 だけで書いた扉を知らせる（#128。CSS は h2 も読めるようにしたが、書き方は h1 にそろえる）
   if (s.classList.contains('sec') && s.querySelector('h2') && !s.querySelector('h1')) add('warn', 'secHeading', { t: sample((s.querySelector('h2').textContent || '').replace(/\s+/g, ' ').trim()) });

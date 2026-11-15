@@ -20,7 +20,7 @@ export const IN_EDITOR = Object.freeze([
   'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral', 'readingGap',
   // 体裁の検査（kit/core/layout-scan.mjs。bodyBottom・bodyRight は EDITOR_ALIAS）
   'titleLong', 'titleLongEn', 'titleColon', 'tateTitle', 'conclLong', 'conclLongEn', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft',
-  'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak',
+  'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'textOffSlide', 'textOverlap', 'cellWordBreak',
   'secHeading', 'textContrast', 'cardsHint',
   // 描いた図の形（kit/core/geometry-check.mjs。R-geometry）
   'geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoTateSlides',

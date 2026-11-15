@@ -252,6 +252,8 @@ steps.push(
   ['test-check-svg-overlap', ['tools/test-check-svg-overlap.mjs', path.join(tmp, 'check-svg-overlap')]],
   // 描いた図の形の点検（backlog #201、R-geometry）：パーツの印（data-part）を測る 4 つの警告・余裕・縁取り・ひし形・2 本の線・@ の端・縦書き
   ['test-geometry-check', ['tools/test-geometry-check.mjs']],
+  // パーツの直下の <svg> が要素の箱から出る（partSvgOut、backlog #208）：作業フォルダのパーツの大きさのない <svg> は警告、大きさを付けた <svg> は出ない
+  ['test-part-svg-out', ['tools/test-part-svg-out.mjs']],
   // 品質チェックのコマンド版と編集アプリが同じ指摘を出すこと（v0.6.9：英語の教材に残った $…$ の rawMath が編集アプリに出なかった）。
   // コマンド版だけのものは kit/core/check-parity.mjs の CLI_ONLY（わけを 1 行）。編集アプリを組んで配り、修正依頼に rawMath が入ることも
   ['test-check-parity', ['tools/test-check-parity.mjs', path.join(tmp, 'check-parity')]],

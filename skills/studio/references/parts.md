@@ -57,6 +57,7 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 7. 図の中の式は、使うバージョンの README に従いビルド時に描く。簡単な記号は `base.mtext`（`*u*_0`）
 8. データの形を `static shape = {schema, example}` に書く（`<root>/kit/shape.js`：JSON Schema の小さな部分集合。テキストで書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。ランタイムが描く前に確かめ、違えばパーツの代わりにエラーの表示を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
 9. パーツのテキストは、どんなデータでも互いに重ならず、パーツの線にも重ならないように置く（品質チェックは SVG のテキストどうしの重なりを警告する）。意図して重ねるテキストだけは、その `<text>` か祖先の `<g>` に `data-overlap="ok"` を付ける（わざと切るテキストの `data-clip` と同じ付け方。パーツ全体には付けない）
+10. いちばん外側の `<svg>` には width と height を付ける（または style で `width:100%;height:100%`）。大きさのない `<svg>` はパーツの要素の枠からはみ出す（品質チェックが警告する）
 
 ## 3. 確かめる
 
