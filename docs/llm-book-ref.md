@@ -1,4 +1,4 @@
-<!-- i18n: pair=llm-book-ref.ja.md sha256=d62485f9422877f4 -->
+<!-- i18n: pair=llm-book-ref.ja.md sha256=3f6b620f3a75842a -->
 # Writing a book
 
 The rules themselves are in Studio's [docs/article.md]({{DOC article.md}}) (Egatari Text 1, spec §9C). This page is the author's procedure and the places that are easy to trip on.
@@ -11,6 +11,7 @@ The rules themselves are in Studio's [docs/article.md]({{DOC article.md}}) (Egat
 | `article/<name>.md` (one file per chapter) | A textbook with numbered chapters | Every chapter file needs `chapter:` (a positive integer). Preface: `kind: preface`; appendix: `kind: appendix` (no `chapter`); afterword: `kind: afterword` |
 
 - A `kind: chapter` file in `article/` needs `chapter:`. There is not yet a way to add preface or afterword files to a book without chapter numbers. Make such a book an `article.md`, and put records such as the source edition and the typist in the last `##` section.
+- In a one-file `article.md`, you may write `+++ {"kind": "afterword"}` directly before a `##` heading (also `preface`, `chapter` or `appendix`); the line carries no id.
 - The reading order is written to `article.chapters` in `egatari.json` by the build and ids tools. Do not write it by hand.
 - Vertical writing: `writing-mode: vertical-rl` in the front matter. Tables are vertical too, by default. Figures, display math and code stay horizontal.
 

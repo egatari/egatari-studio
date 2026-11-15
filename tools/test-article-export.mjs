@@ -17,6 +17,7 @@ import * as PF from '../kit/core/portable.mjs';
 import { tierA, scanLayout } from '../kit/core/tier-a.mjs';
 import { nodeEnv } from '../kit/build.mjs';
 import { unpack } from './portable.mjs';
+import { idsOf } from './ids-of.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { spawnSync } from 'node:child_process';
 import { CITEPROC_CREDIT } from '../kit/core/citeproc-credit.mjs';
@@ -212,6 +213,21 @@ t('slide text: the slide element to its matching </section> (nested sections), t
   assert.equal(narrationBlockText(NARR, 's-one'), '## One {#s-one}\n[0] Hello.\n[1] World.\n');
   assert.equal(narrationBlockText(NARR, 's-two'), '## Two {#s-two}\n[0] Bye.\n');
 });
+t('section kind spans keep step links, data-article and section source boundaries', () => {
+  const src = '(sec-aaaaaa)=\n## Body\n\n{step}`s-one:0`\n\n(sec-bbbbbb)=\n## Unlinked\n\nBody.\n\n+++ {"kind":"appendix"}\n(sec-cccccc)=\n## Notes\n\nNotes.\n\n+++ {"kind":"afterword"}\n(sec-dddddd)=\n## About\n\n{step}`s-two:0`\n\n(sec-eeeeee)=\n## Credits\n\nCredits.\n';
+  const a = readArticle({ path: 'article.md' }, () => src);
+  const dataArticle = [{ slide: 's-one', ids: ['sec-cccccc'] }];
+  assert.deepEqual(a.problems, []);
+  assert.deepEqual(validateArticle(a, { dataArticle, slideIds: new Set(['s-one', 's-two']) }).problems.map((p) => `${p.code}:${p.data.section}`), ['articleSectionUnlinked:sec-bbbbbb']);
+  assert.deepEqual(linkedPairs(a, dataArticle), [{ slide: 's-one', section: 'sec-aaaaaa' }, { slide: 's-two', section: 'sec-dddddd' }, { slide: 's-one', section: 'sec-cccccc' }]);
+  assert.deepEqual(sectionSources(a), {
+    'sec-aaaaaa': '## Body\n\n{step}`s-one:0`',
+    'sec-bbbbbb': '## Unlinked\n\nBody.',
+    'sec-cccccc': '## Notes\n\nNotes.',
+    'sec-dddddd': '## About\n\n{step}`s-two:0`',
+    'sec-eeeeee': '## Credits\n\nCredits.',
+  });
+});
 t('linked pairs from step links and data-article; states unconfirmed → ok → article / slide; other sections do not matter', async () => {
   const a = readArticle({ path: 'article.md' }, () => LSRC);
   const dataArticle = dataArticleOf([{ id: 's-one', key: 's-one', dataArticle: 'sec-bbbbbb sec-zzzzzz' }]);
@@ -321,6 +337,26 @@ t('pack: an article with errors (§9C.8) is not written; a ## heading without an
   assert.match(r.writes['article/01.md'], /\n\(sec-[a-z2-7]{6}\)=\n## 新しい節\n/);
   assert.equal(dec.decode(r.files['article/01.md']), r.writes['article/01.md']);
   assert.ok(r.warnings.some((w) => /gave 1 article section/.test(w)));
+});
+t('one-file section kinds: packing inserts targets below kind lines; ids-of and unpack preserve the source', async () => {
+  const d = path.join(work, 'section-kinds');
+  fs.mkdirSync(d);
+  for (const f of ['deck.html', 'narration.md']) fs.copyFileSync(path.join(ROOT, 'examples', 'minimal', f), path.join(d, f));
+  fs.writeFileSync(path.join(d, 'article.md'), '## Body\n\n+++ {"kind": "afterword"}\n## About\n\nCredits.\n');
+  const r = await PF.exportPortable(packEnv, path.join(d, 'deck.html'), { fromFolder: true });
+  const source = dec.decode(r.files['article.md']);
+  assert.match(source, /\+\+\+ {"kind": "afterword"}\n\(sec-[a-z2-7]{6}\)=\n## About/);
+  assert.equal(r.writes['article.md'], source);
+  assert.match(egatariArticle(r.html), /data-section-kind="afterword"/);
+  const file = path.join(work, 'section-kinds.ega.html');
+  fs.writeFileSync(file, r.html);
+  const identity = await idsOf(file);
+  assert.equal(identity.docId, r.index.docId);
+  assert.deepEqual(identity.warnings, []);
+  assert.equal(fs.readFileSync(file, 'utf8'), r.html);
+  const out = path.join(work, 'section-kinds-unpacked');
+  await unpack(file, out);
+  assert.equal(fs.readFileSync(path.join(out, 'article.md'), 'utf8'), source);
 });
 t('pack checks step links in the player on the written file, and refuses a link to a step the slide does not have (§9C.8 1)', async () => {
   const d = copyBook('steps');

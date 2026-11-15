@@ -35,6 +35,12 @@ t('a leading U+3000 of a paragraph is kept (CommonMark strips only spaces and ta
 // ---------------------------------------------------------------- 仕様の fixtures
 // 仕様の側の食い違い（仕様の持ち主に知らせ済み）：拒む例のうち、今の §9C.2 の本文では正しい書き方になっているもの
 const SPEC_CONFLICT = {};
+const SECTION_KIND_ERRORS = {
+  'section-kind-unknown': 'articleSectionKindValue',
+  'section-kind-extra-member': 'articleSectionKindMember',
+  'section-kind-not-before-section': 'articleSectionKindPosition',
+  'section-kind-order': 'articleSectionKindOrder',
+};
 const valid = fs.readdirSync(path.join(FX, 'valid')).sort();
 const invalid = fs.readdirSync(path.join(FX, 'invalid')).sort();
 let vOk = 0, iOk = 0;
@@ -57,9 +63,79 @@ for (const c of invalid) {
     if (SPEC_CONFLICT[c]) { assert.equal(errs.length, 0, 'spec conflict case now rejected: drop it from SPEC_CONFLICT'); console.log(`note invalid/${c}: not rejected (spec conflict: ${SPEC_CONFLICT[c]})`); iOk++; return; }
     assert.ok(errs.length > 0, `not rejected (${want.error})`);
     assert.ok(errs.some((p) => p.spec === want.spec), `rejected under ${errs.map((p) => p.spec).join(', ')}, expected ${want.spec}`);
+    if (SECTION_KIND_ERRORS[c]) assert.deepStrictEqual(errs.map((p) => p.code), [SECTION_KIND_ERRORS[c]]);
     iOk++;
   });
 }
+
+// ---------------------------------------------------------------- Section kinds (§9C.1A)
+t('section kinds: direct adjacency, values, placement and file context', () => {
+  for (const gap of ['\n', 'text\n', '### small\n']) {
+    assert.ok(subsetKindCodes('+++ {"kind":"afterword"}\n' + gap + '## S\n').includes('articleSectionKindPosition'));
+  }
+  assert.deepEqual(subsetKindCodes('+++ {"kind":"no"}\n## S\n'), ['articleSectionKindValue']);
+  assert.deepEqual(subsetKindCodes('+++ {"kind":"chapter","x":1}\n## S\n'), ['articleSectionKindMember']);
+  for (const meta of ['', 'bad', '{}', '[]', '{"other":1}']) assert.ok(subsetKindCodes('+++ ' + meta + '\n## S\n').includes('articleBlockBreak'));
+  assert.deepEqual(subsetKindCodes('+++ {"kind":"afterword"}\n(sec-aaaaaa)=\n\n## S\n'), ['articleSectionKindPosition']);
+  assert.deepEqual(subsetKindCodes('+++ {"kind":"afterword"}\nS\n---\n'), []);
+  assert.ok(subsetKindCodes('> +++ {"kind":"afterword"}\n> ## S\n').includes('articleSectionKindPosition'));
+  for (const kind of ['preface', 'appendix', 'afterword']) {
+    assert.ok(subsetKindCodes(`---\nkind: ${kind}\n---\n+++ {"kind":"afterword"}\n## S\n`).includes('articleSectionKindContext'));
+  }
+  const a = readArticle({ chapters: ['article/a.md'] }, () => '---\ntitle: A\nchapter: 1\n---\n+++ {"kind":"afterword"}\n(sec-aaaaaa)=\n## S\n');
+  assert.deepEqual(errorsOf(a.problems).map((p) => p.code), ['articleSectionKindContext']);
+});
+function subsetKindCodes(src) { return errorsOf(parseArticleText(src).problems).map((p) => p.code).filter((c) => c !== 'articleSectionId'); }
+t('section kinds: inheritance and ordering (including implicit chapter sections)', () => {
+  const a = whole('+++ {"kind":"afterword"}\n(sec-aaaaaa)=\n## A\n\n(sec-bbbbbb)=\n## B\n').a;
+  const v = validateArticle(a, { slideIds: new Set(['s-one']) });
+  assert.deepEqual([...v.sections.values()].map((s) => s.kind), ['afterword', 'afterword']);
+  assert.deepEqual(v.problems, []);
+  const badOrder = '+++ {"kind":"afterword"}\n(sec-aaaaaa)=\n## A\n\n+++ {"kind":"chapter"}\n(sec-bbbbbb)=\n## B\n';
+  const want = JSON.parse(fs.readFileSync(path.join(FX, 'invalid', 'section-kind-order', 'expect.json'), 'utf8'));
+  assert.deepEqual(errorsOf(whole(badOrder).problems).map((p) => [p.code, p.spec]), [[SECTION_KIND_ERRORS['section-kind-order'], want.spec]]);
+  for (const src of [badOrder, '## A\n\n+++ {"kind":"preface"}\n## B\n']) {
+    assert.deepEqual(subsetKindCodes(src), ['articleSectionKindOrder']);
+  }
+});
+t('section kinds: fixture numbers, localized appendix headings and section attributes', () => {
+  for (const name of ['section-kind', 'section-kind-all']) {
+    const a = whole(fs.readFileSync(path.join(FX, 'valid', name, 'input.md'), 'utf8')).a;
+    const kinds = name === 'section-kind' ? ['chapter', 'afterword'] : ['preface', 'chapter', 'chapter', 'appendix', 'afterword'];
+    for (const lang of ['ja', 'en']) {
+      const nums = [...numberArticle(a, lang).targets.values()].filter((n) => n.kind === 'section');
+      assert.deepEqual(nums.map((n) => n.num), name === 'section-kind' ? ['1', null] : [null, '1', '2', 'A', null]);
+      const h = renderArticle(a, { lang }).html;
+      assert.deepEqual([...h.matchAll(/data-section-kind="(.*?)"/g)].map((m) => m[1]), kinds);
+      if (name === 'section-kind-all') assert.ok(h.includes(lang === 'ja' ? '>付録 A</span>' : '>Appendix A</span>'));
+    }
+  }
+});
+t('section kinds: appendix letters replace h2 numbers, reset block counts; front/back matter keep file counts', () => {
+  const figure = (id) => `:::{figure} a.png\n:label: fig-${id}\n:alt: x\n\nCaption\n:::\n`;
+  const src = '---\nchapter: 4\n---\n+++ {"kind":"preface"}\n## P\n\n### Psub\n\n' + figure('p')
+    + '\n+++ {"kind":"chapter"}\n## C\n\n### Csub\n\n' + figure('c')
+    + '\n+++ {"kind":"appendix"}\n## A\n\n### Asub\n\n#### Adeep\n\n' + figure('a')
+    + '\n## B\n\n### Bsub\n\n' + figure('b')
+    + '\n+++ {"kind":"afterword"}\n## W\n\n### Wsub\n\n' + figure('w');
+  const a = whole(src).a, n = numberArticle(a, 'en');
+  const headings = [...n.files[0].nodes.values()].filter((x) => x.kind === 'section');
+  assert.deepEqual(headings.map((x) => x.num), [null, null, '4.1', '4.1.1', 'A', 'A.1', 'A.1.1', 'B', 'B.1', null, null]);
+  assert.deepEqual(['p', 'c', 'a', 'b', 'w'].map((id) => n.targets.get('fig-' + id).num), ['1', '4.2', 'A.1', 'B.1', '3']);
+  const noNumbers = whole(src.replace('chapter: 4', 'numbering: false')).a;
+  assert.ok([...numberArticle(noNumbers, 'en').files[0].nodes.values()].filter((x) => x.kind === 'section').every((x) => x.num === null));
+});
+
+t('section kinds: all numbered blocks use appendix prefixes and file counts in afterwords', () => {
+  const blocks = (id) => `:::{table} T\n:label: tbl-${id}\n\n|a|\n|-|\n|b|\n:::\n\n:::{aside} Box\n:label: box-${id}\n\nText.\n:::\n\n:::{prf:theorem} T\n:label: thm-${id}\n\nText.\n:::\n\n:::{exercise} E\n:label: exr-${id}\n\nText.\n:::\n\n$$x$$ (eq-${id})\n`;
+  const src = '## Body\n\n' + blocks('c') + '\n+++ {"kind":"appendix"}\n## Appendix\n\n' + blocks('a') + '\n## Appendix two\n\n' + blocks('b') + '\n+++ {"kind":"afterword"}\n## Afterword\n\n' + blocks('w');
+  const a = whole(src).a, n = numberArticle(a, 'en');
+  for (const type of ['tbl', 'box', 'thm', 'exr', 'eq']) assert.deepEqual(['c', 'a', 'b', 'w'].map((id) => n.targets.get(type + '-' + id).num), ['1', 'A.1', 'B.1', '2']);
+  const h = renderArticle(a, { lang: 'en' }).html;
+  for (const label of ['Table A.1', 'Box A.1', 'Theorem A.1', 'Exercise A.1', '(A.1)']) assert.ok(h.includes(label), label);
+  const many = whole('+++ {"kind":"appendix"}\n' + Array.from({ length: 27 }, (_, i) => `## Annex ${i}\n\n`).join('')).a;
+  assert.deepEqual([...numberArticle(many, 'en').files[0].nodes.values()].map((x) => x.num), Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)).concat('AA'));
+});
 
 // ---------------------------------------------------------------- 作業フォルダの本文（§9C.1・§9C.1A）
 t('layout: article.md', () => assert.deepStrictEqual(articleLayout(['deck.html', 'article.md', 'references.json']).index, { path: 'article.md', references: 'references.json' }));

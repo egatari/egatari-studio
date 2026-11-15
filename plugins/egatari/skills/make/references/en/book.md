@@ -11,6 +11,7 @@ The rules themselves are in Studio's [docs/article.md](https://github.com/egatar
 | `article/<name>.md` (one file per chapter) | A textbook with numbered chapters | Every chapter file needs `chapter:` (a positive integer). Preface: `kind: preface`; appendix: `kind: appendix` (no `chapter`); afterword: `kind: afterword` |
 
 - A `kind: chapter` file in `article/` needs `chapter:`. There is not yet a way to add preface or afterword files to a book without chapter numbers. Make such a book an `article.md`, and put records such as the source edition and the typist in the last `##` section.
+- In a one-file `article.md`, you may write `+++ {"kind": "afterword"}` directly before a `##` heading (also `preface`, `chapter` or `appendix`); the line carries no id.
 - The reading order is written to `article.chapters` in `egatari.json` by the build and ids tools. Do not write it by hand.
 - Vertical writing: `writing-mode: vertical-rl` in the front matter. Tables are vertical too, by default. Figures, display math and code stay horizontal.
 

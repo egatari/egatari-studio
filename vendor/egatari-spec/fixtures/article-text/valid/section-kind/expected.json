@@ -1,0 +1,53 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "一"
+        }
+      ],
+      "label": "sec-a2b3c4",
+      "identifier": "sec-a2b3c4"
+    },
+    {
+      "type": "paragraph",
+      "children": [
+        {
+          "type": "text",
+          "value": "雨の夕方、男は門の下で待っていた。"
+        }
+      ]
+    },
+    {
+      "type": "block",
+      "meta": "{\"kind\": \"afterword\"}",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "本文について"
+            }
+          ],
+          "label": "sec-d5e6f7",
+          "identifier": "sec-d5e6f7"
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "この物語は見本のために書いた架空の文章です。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

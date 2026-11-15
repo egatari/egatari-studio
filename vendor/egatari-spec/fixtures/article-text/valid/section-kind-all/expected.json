@@ -1,0 +1,134 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "block",
+      "meta": "{\"kind\": \"preface\"}",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "はじめに"
+            }
+          ],
+          "label": "sec-a2b3c4",
+          "identifier": "sec-a2b3c4"
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "架空のはじめに。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "block",
+      "meta": "{\"kind\": \"chapter\"}",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "一"
+            }
+          ],
+          "label": "sec-d5e6f7",
+          "identifier": "sec-d5e6f7"
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "本文。"
+            }
+          ]
+        },
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "二"
+            }
+          ],
+          "label": "sec-g2h3i4",
+          "identifier": "sec-g2h3i4"
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "本文の続き。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "block",
+      "meta": "{\"kind\": \"appendix\"}",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "語句の注"
+            }
+          ],
+          "label": "sec-j5k6l7",
+          "identifier": "sec-j5k6l7"
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "架空の語句の注。"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "block",
+      "meta": "{\"kind\": \"afterword\"}",
+      "children": [
+        {
+          "type": "heading",
+          "depth": 2,
+          "children": [
+            {
+              "type": "text",
+              "value": "本文について"
+            }
+          ],
+          "label": "sec-m2n3o4",
+          "identifier": "sec-m2n3o4"
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "この物語は見本のために書いた架空の文章です。"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
