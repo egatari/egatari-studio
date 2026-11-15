@@ -97,6 +97,9 @@
       "palette",
       "timelineTotal",
       "slideLength"
+    ],
+    "C-images": [
+      "imgTooLarge"
     ]
   },
   "alsoAllowed": {
@@ -117,6 +120,9 @@
     ],
     "C-listing": [
       "marks"
+    ],
+    "C-images": [
+      "imgTotal"
     ]
   }
 }
