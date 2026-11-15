@@ -101,7 +101,8 @@ export function factsFromSource({ deck = '', narration = '', audio = false, atta
   };
 }
 
-export function account({ results, visited = null, facts = {}, inEditor = false }) {
+// noBrowser（check --no-browser、#215 (c)）：通らなかった段の決まりは null（incomplete）でなく skipped（noBrowser）。原稿で見た分にエラーがあれば failed
+export function account({ results, visited = null, facts = {}, inEditor = false, noBrowser = false }) {
   const by = new Map(RULES.map((r) => [r.id, { error: 0, warning: 0, info: 0, codes: new Set() }]));
   const problems = [];
   for (const x of results) {
@@ -118,14 +119,14 @@ export function account({ results, visited = null, facts = {}, inEditor = false 
     const base = { id: r.id, kind: r.kind };
     let state, reason;
     if (inEditor && cliOnlyRule(r)) { state = 'skipped'; reason = 'notInEditor'; }
-    else if (!inEditor && visited && !visited.has(r.phase)) state = null;
+    else if (!inEditor && visited && !visited.has(r.phase)) { if (noBrowser) { state = counts.error ? 'failed' : 'skipped'; reason = 'noBrowser'; } else state = null; }
     else {
       reason = r.applies ? r.applies(facts) : null;
       if (reason) state = 'excused';
       else if (r.skips && (reason = r.skips(facts))) state = 'skipped';
       else state = counts.error ? 'failed' : 'checked';
     }
-    if ((state === 'excused' || state === 'skipped') && codes.length) problems.push(`${r.id}: ${state} (${reason}) but reported ${codes.join(', ')}`);
+    if ((state === 'excused' || state === 'skipped') && reason !== 'noBrowser' && codes.length) problems.push(`${r.id}: ${state} (${reason}) but reported ${codes.join(', ')}`);
     return { ...base, state, reason: reason || null, counts, codes };
   });
   const unset = rules.filter((r) => r.state === null).map((r) => r.id);
