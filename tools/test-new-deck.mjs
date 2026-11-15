@@ -104,6 +104,13 @@ ok('parts list (#124): grouped by what to convey, the subject forms last (first 
   for (const t of all) assert.ok(partDesc(t, 'ja') && partDesc(t, 'en'), t + ': a one-line description');
   assert.deepEqual(partsOfSet('stats').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
 });
+ok('words for the algo set (#214): search and graph-model words recommend algo; a bar graph does not', () => {
+  assert.deepEqual(recommend({ sub: null, text: 'ダイクストラ法で最短経路を探す', lang: 'ja' }).map((r) => r.set), ['algo']);
+  assert.deepEqual(recommend({ sub: null, text: '隠れマルコフモデルで品詞を推定する', lang: 'ja' }).map((r) => r.set).includes('algo'), true);
+  assert.deepEqual(recommend({ sub: null, text: 'A path diagram for the structural equation model', lang: 'en' }).map((r) => r.set), ['algo']);
+  assert.ok(!recommend({ sub: null, text: '棒グラフで売上を比べる', lang: 'ja' }).some((r) => r.set === 'algo'), 'a bar graph is not a graph algorithm');
+  assert.ok(!recommend({ sub: null, text: 'a bar graph of sales', lang: 'en' }).some((r) => r.set === 'algo'));
+});
 ok('initial ticks (#124 §2.2): every standard part; a specialized set from the subcategory table or the words of step 2 (with the reason); English words on the English screen', () => {
   const std = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard');
   assert.deepEqual(initialParts([]).sort(), std.sort());

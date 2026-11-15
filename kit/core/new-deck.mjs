@@ -131,7 +131,8 @@ export const WORDS = Object.freeze({
     business: ['市場', 'KPI', '売上', '事業', 'ピッチ'],
     tools: ['タイマー', 'ワークショップ', '演習時間', 'グループワーク'],
     // 束 algo（部品庫 2.10.0、d5 11/15）：「グラフ」単独は棒グラフ・円グラフに当たるので入れない。小分類からは推さない（SUB_SETS にない）
-    algo: ['探索', '最短経路', '巡回セールスマン', 'グラフ理論', 'グラフの探索', 'アルゴリズム', '幅優先', 'ダイクストラ'],
+    // 部品庫 2.12 の m-network 2.1.0（グラフィカルモデル・パス図・HMM のトレリス）も束 algo。統計・機械学習の授業でも言葉ですすめる（d5 11/15）
+    algo: ['探索', '最短経路', '巡回セールスマン', 'グラフ理論', 'グラフの探索', 'アルゴリズム', '幅優先', 'ダイクストラ', 'グラフィカルモデル', 'パス図', '構造方程式', 'ベイジアンネットワーク', '隠れマルコフ', 'HMM', 'マルコフ連鎖', '因果ダイアグラム'],
   },
   en: {
     stats: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian', 'estimation', 'hypothesis test', 'hypothesis testing'],
@@ -143,7 +144,7 @@ export const WORDS = Object.freeze({
     music: ['musical scale', 'major scale', 'minor scale', 'chord', 'chords', 'keyboard', 'piano', 'sheet music', 'musical score'],
     business: ['market', 'markets', 'KPI', 'KPIs', 'sales', 'revenue', 'business', 'pitch'],
     tools: ['timer', 'workshop', 'exercise time', 'group work'],
-    algo: ['graph search', 'graph theory', 'breadth-first search', 'BFS', 'shortest path', 'traveling salesman', 'TSP', 'algorithm', 'algorithms', 'Dijkstra'],
+    algo: ['graph search', 'graph theory', 'breadth-first search', 'BFS', 'shortest path', 'traveling salesman', 'TSP', 'algorithm', 'algorithms', 'Dijkstra', 'graphical model', 'path diagram', 'structural equation', 'Bayesian network', 'hidden Markov', 'HMM', 'Markov chain', 'causal diagram'],
   },
 });
 
