@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>パーツの箱から出る図の検査の試験（backlog #208）</title>
+</head>
+<body>
+<div id="stage">
+
+<!-- 大きさのない <svg> のパーツ：幅 300px・高さ 100px の要素に、300×300 の図が出る（partSvgOut） -->
+<section class="slide" id="s-out">
+  <h2>図がパーツの箱から出る</h2>
+  <div class="body">
+    <m-svgout aria-label="円の図" style="width:300px;height:100px"></m-svgout>
+  </div>
+</section>
+
+<!-- width:100%;height:100% の <svg> のパーツ：要素の箱に収まる（何も出さない） -->
+<section class="slide" id="s-fit">
+  <h2>図がパーツの箱に収まる</h2>
+  <div class="body">
+    <m-svgfit aria-label="円の図" style="width:300px;height:100px"></m-svgfit>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

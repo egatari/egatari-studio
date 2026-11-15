@@ -40,7 +40,7 @@ const node = (...a) => spawnSync(process.execPath, a, { cwd: ROOT, encoding: 'ut
 
 const DECK = path.join(ROOT, 'tools', 'fixtures', 'check-overflow', 'deck.html');
 // 見る知らせ：#52 の新しいもの（警告）と、#51 でブラウザ版にも出るようになったもの
-const NEW = ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'textOffSlide', 'textOverlap', 'cellWordBreak'];
+const NEW = ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'textOffSlide', 'textOverlap', 'cellWordBreak'];
 const WATCH = [...NEW, 'bodyBottom', 'smallText', 'smallSvgText', 'tateTitle', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft'];
 const EXPECT = {
   's-fix52a': ['svgTextBox'],

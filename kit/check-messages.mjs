@@ -235,6 +235,10 @@ export const MESSAGES = {
   outsideBody: { rule: 'R-fit',
     ja: (a) => `本文（.body）の外に置いた字が${{ slide: `スライドの外に出る（${a.px}px）`, title: '見出しに重なる', concl: '結論の行に重なる', pn: 'ページ番号に重なる' }[a.why] || 'はみ出す'}（「${a.t}」${moreJa(a)}）：本文の中に置くか、位置を直す`,
     en: (a) => `text placed outside the body (.body) ${{ slide: `goes off the slide (${a.px}px)`, title: 'overlaps the heading', concl: 'overlaps the conclusion line', pn: 'overlaps the page number' }[a.why] || 'overflows'} (“${a.t}”${moreEn(a)}): put it inside the body or fix its position` },
+  // パーツの直下の <svg> がパーツの要素の箱から出る（backlog #208）。a：tag・index・label（compName）・px・n
+  partSvgOut: { rule: 'R-fit',
+    ja: (a) => `${compName(a, true)}の図（いちばん外側の <svg>）がパーツの箱からはみ出す（${a.px}px${moreJa(a)}）：パーツのコードで、その <svg> に width と height を付ける（または style で width:100%;height:100%）`,
+    en: (a) => `the figure (outermost <svg>) of ${compName(a, false)} sticks out of the part's box (${a.px}px${moreEn(a)}): in the part's code, give that <svg> a width and height (or width:100%;height:100% in its style)` },
   // 字の箱がスライドの外に出る・重なる（どのスライドでも。#64）と、表の短いセルの語が割れる（#65）。警告。表紙と章の扉では置ける子要素を添える
   textOffSlide: { rule: 'R-fit',
     ja: (a) => `字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：字を短くするか、位置を直して 1280×720 の内に収める${PLACE_JA[a.kind] || ''}`,
