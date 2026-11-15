@@ -218,6 +218,8 @@ export const nodeEnv = {
   articleTools: async () => ({ ...(await import('./core/article-page.mjs')), ...(await import('./core/article-messages.mjs')), ...(await import('./core/article.mjs')) }),
   // 本文のステップへのリンクの行き先を再生器で確かめる（§9C.8 の 1。kit/article-steps.mjs。ブラウザを起動するので、リンクがあるときだけ）
   articleSteps: async (html, links) => (await import('./article-steps.mjs')).resolveStepLinks(html, links),
+  // パーツの読める中身（§2.1、#216。kit/readable-parts.mjs。ブラウザを起動するので、印のあるときだけ）
+  readableParts: async (html) => (await import('./readable-parts.mjs')).readParts(html),
   get commit() { return repoCommit(); },
   katexDir: path.dirname(require.resolve('katex')),
   fontDir,

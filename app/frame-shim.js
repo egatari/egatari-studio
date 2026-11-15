@@ -57,6 +57,8 @@ window.addEventListener("message", function(e){
   if (m.type === "app-print") { if (m.what === "script") printScript(); else window.print(); }
   // 本文のステップへのリンクの行き先（format spec §9C.8 の 1。kit/core/article.mjs の STEP_PROBE と同じ確かめ方）。答えは書き込まない
   else if (m.type === "app-steps") whenReady(function(){ parentWin.postMessage({type: "app-steps-result", id: m.id, load: cfg.load, results: resolveSteps(m.links)}, "*"); });
+  // パーツの読める中身（format spec §2.1、#216。kit/deck.js の DECK.readableParts）：前の版の再生器にはないので null（書き出しは写さずに知らせる）
+  else if (m.type === "app-readable") whenReady(function(){ var D = window.DECK; parentWin.postMessage({type: "app-readable-result", id: m.id, load: cfg.load, results: D && typeof D.readableParts === "function" ? D.readableParts() : null}, "*"); });
   else if (m.type === "app-go" && window.DECK) window.DECK.go(m.i, m.k, false);
   // 並べ方（app/book.js の view。再生器の本の窓 kit/panes.js）：slides・split・book
   else if (m.type === "app-layout") whenReady(function(){ if (window.DECK && DECK.panes && /^(slides|split|book)$/.test(String(m.layout))) DECK.panes.layout(m.layout); });

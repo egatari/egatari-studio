@@ -43,7 +43,8 @@ const dec = new TextDecoder();
 //   あれば書き出し（exportPortable）の env に articleTools・csl・articleSteps を入れる（本のある教材を作り直せる）
 // fontSubset() → Promise<(bytes, cps, file) => {b64, cps} | null>：字の切り出し（#178 (4)。app/font-subset-loader.js）。あれば持ち運べる 1 ファイルへの書き出し（exportPortable）で、
 //   コマンドの組み立てと同じく字を教材が使う字だけに切り出す（同じ字ならバイトまで同じ）。なければ（読み込めない・Worker）分割ファイルをそのまま入れる。プレビュー（build）は切り出さない（速さのため）
-export function createEngine(res, loadLazy, { renderAbc, article = null, fontSubset = null } = {}) {
+// readable：パーツの読める中身をプレビューの再生器に聞く（() => {スライドの鍵: [HTML の字…]}。format spec §2.1、#216。app/main.js の askReadable）
+export function createEngine(res, loadLazy, { renderAbc, article = null, fontSubset = null, readable = null } = {}) {
   // The core remains synchronous. Collect score work, resolve it via RPC, then retry,
   // just as for missing files. Keep successes and failures for this build only.
   const scores = new Map(), pendingScores = new Map();
@@ -341,6 +342,7 @@ export function createEngine(res, loadLazy, { renderAbc, article = null, fontSub
       const xenv = mkEnv(() => full, miss);
       if (sub) xenv.subsetFont = sub;
       withArticle(xenv);
+      if (readable) xenv.readableParts = () => readable();   // 書いた文書ではなく、同じ作業場所から組んだプレビューで読む（本文のステップと同じ）
       const { signal, ...o } = opts;
       if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);

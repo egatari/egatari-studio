@@ -160,6 +160,8 @@ const steps = [
   ['test-capture', ['tools/test-capture.mjs', path.join(tmp, 'capture')]],
   // 持ち運べる 1 ファイル（format spec）：Schema・往復・文書の試験用ファイル・file:// での再生
   ['test-portable', ['tools/test-portable.mjs', path.join(tmp, 'portable')]],
+  // パーツの読める中身（format spec §2.1、backlog #216）：印の pre・table が 1 ファイルの読める層に写る（作り直し・ないときの知らせ・印のない教材でブラウザを起動しない）
+  ['test-readable-parts', ['tools/test-readable-parts.mjs']],
   // 段 A の編集（組み直さずに決まった場所だけを書き換える）：場所を見分ける差分・再生・展開とまとめ直し・ほかの書き手の文書・知らない項目
   ['test-tier-a', ['tools/test-tier-a.mjs', path.join(tmp, 'tier-a')]],
   // 1.0 のファイルの形（書く側）：player と generator・版の決め方と player:check・段 A は player を残す・ファイルの決まり（CSP）・旧来の鍵を書かない・記事だけの教材・プレビュー

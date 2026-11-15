@@ -30,6 +30,7 @@ import { policyMeta, policyText, checkFilePolicy, extensionSources } from './fil
 import { exportIds } from './slide-ids.mjs';
 import { analyzeSlideIds } from './build-core.mjs';
 import { READ_LIMITS } from './bounded-read-core.mjs';
+import { READABLE_MARK, readablePartsOf } from './readable-parts.mjs';
 
 // 形式の名前から作る識別子（kit/core/format.mjs だけに名前を書く）
 const FID = FORMAT.FORMAT_ID, IX_ID = FORMAT.INDEX_ID, BP = FORMAT.BLOB_PREFIX, SCHEME = FORMAT.URI_SCHEME, CFG = FORMAT.CONFIG_FILE, RD_ID = FORMAT.READABLE_ID;
@@ -1409,6 +1410,25 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (html.split(prefixPh).length !== 2) fail('internal', 'archive placeholder not found exactly once');
   html = html.replace(prefixPh, () => layer);
   if (html.includes('\r')) html = html.replace(/\r\n?/g, '\n');
+  // パーツの読める中身（§2.1 Readable content of components、#216）：パーツの中に印（data-readable）がありそうなら、書いた文書を再生器で開き
+  // （env.readableParts。Node の組み立ては kit/readable-parts.mjs、編集アプリはプレビューの再生器）、スライドの最後の状態の中身を読める層に写す。
+  // 再生器の字は印の名前を分けて書くので、文書に印の名前があるのはパーツ（か原稿）が使うときだけ。開けなければ写さずに知らせる（文書は正しい）
+  if (opts.readableParts !== false && html.includes(READABLE_MARK)) {
+    let res = null;
+    if (typeof env0.readableParts !== 'function') warnings.push(`${LOG}: a part marks readable content (§2.1), and this producer cannot open the player to copy it into the readable layer`);
+    else {
+      try { res = await env0.readableParts(html); }
+      catch (e) { warnings.push(`${LOG}: could not open the player to copy the parts' readable content into the readable layer (§2.1): ${String(e && e.message || e).split('\n')[0]}`); }
+    }
+    const parts = readablePartsOf(res, new Set(r.slides.map((sl) => sl.key)), (m) => warnings.push(`${LOG}: ${m}`));
+    if (Object.keys(parts).length) {
+      if (html.split(readable).length !== 2) fail('internal', 'readable layer not found exactly once');
+      const rest = html.length - readable.length;
+      const readable2 = readableLayer(r.slides, segs, lang, [], LIM.bundledChars - rest - 1, art ? art.html : '', parts) + '\n';
+      html = html.replace(readable, () => readable2);
+      if (html.length > LIM.bundledChars) throw new BuildLimitError('portable document (readable layer)', html.length, LIM.bundledChars);
+    }
+  }
   // 書いたものが §4.2 の決まりに合うこと（置き場所と中身。合わなければ書かない）
   { const pp = checkFilePolicy(html);
     if (pp.length) fail('file-policy', 'the file policy (§4.2) is not in place: ' + pp.join('; '), pp); }
@@ -1527,7 +1547,8 @@ function recipeOf(sj, v) {
 // 記事の中の段階は番号の小さい順、concl は最後。どのスライドにも当たらない鍵の口述原稿は入れず、warnings に知らせる
 // cap：書き出してよい字数（組んだ文書の上限の残り）。実体参照に直した後の字数を、その文字列を作る前に数え、超えるなら作らずに断る
 // article：本文の <article id="egatari-article">（§9C.6：#egatari-readable の最後の子。なければ ''）
-function readableLayer(slides, segs, lang, warnings = [], cap = Infinity, article = '') {
+// parts：パーツの読める中身 {スライドの鍵: [HTML の字…]}（§2.1 Readable content of components、#216。作り直した後のもの）。ステップの div の後に写す
+function readableLayer(slides, segs, lang, warnings = [], cap = Infinity, article = '', parts = {}) {
   const bySlide = new Map();
   for (const s of segs) { if (!bySlide.has(s.slideKey)) bySlide.set(s.slideKey, []); bySlide.get(s.slideKey).push(s); }
   const keys = new Set(slides.map((sl) => sl.key));
@@ -1543,6 +1564,7 @@ function readableLayer(slides, segs, lang, warnings = [], cap = Infinity, articl
     take('<article data-slide-key=""><h2></h2>'.length + escAttrLength(sl.key) + escTextLength(title));
     push(`<article data-slide-key="${escAttr(sl.key)}"><h2>${escText(title)}</h2>`);
     for (const s of steps) { take(readableStepLength(s)); push(readableStep(s)); }
+    for (const h of (Object.hasOwn(parts, sl.key) ? parts[sl.key] : [])) { take(h.length); push(h); }
     take('</article>'.length); push('</article>');
   }
   if (article) { take(article.length); push(article); }

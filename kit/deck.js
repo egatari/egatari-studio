@@ -2132,6 +2132,42 @@ function stepIndexOf(s, sk){
   return k;
 }
 DECK.resolveFragment = resolveFragment;
+// 読める層に写すパーツの中身（format spec §2.1 Readable content of components、backlog #216）：スライドを最後の状態にして、パーツ（m-*）の中の
+// 印の付いた要素（いちばん外のものだけ、並びの順）を、使ってよい要素（RD_TAGS）と属性（colspan・rowspan・lang）だけの HTML の字にする。
+// ほかの要素はその字に置き換える。{スライドの鍵: [HTML の字…]}（印のないスライドは入れない）。見えている画面は変えない（DECK.aside）。
+// 1 ファイルへの書き出し（kit/core/portable.mjs）が、コマンド版はヘッドレスのブラウザ（kit/readable-parts.mjs）、編集アプリはプレビューで呼ぶ。
+// 印の名前は分けて書く：再生器の字に印の名前がそのまま入ると、書き出しが「印がありそう」と見てブラウザを起動してしまう
+var RD_ATTR = "data-" + "readable", RD_TAGS = {pre: 1, code: 1, table: 1, thead: 1, tbody: 1, tr: 1, th: 1, td: 1, caption: 1, ol: 1, ul: 1, li: 1, p: 1, span: 1};
+function rdEsc(t, attr){ t = String(t).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); return attr ? t.replace(/"/g, "&quot;") : t; }
+function rdHtml(n){
+  if (n.nodeType === 3) return rdEsc(n.nodeValue);
+  if (n.nodeType !== 1) return "";
+  var tag = n.localName;
+  if (!RD_TAGS[tag]) return rdEsc(n.textContent || "");
+  var a = "";
+  ["colspan", "rowspan", "lang"].forEach(function(k){ if (n.hasAttribute(k)) a += " " + k + '="' + rdEsc(n.getAttribute(k), true) + '"'; });
+  var inner = "";
+  for (var c = n.firstChild; c; c = c.nextSibling) inner += rdHtml(c);
+  return "<" + tag + a + ">" + inner + "</" + tag + ">";
+}
+DECK.readableParts = function(){
+  var out = {};
+  DECK.aside(function(){
+    slides.forEach(function(s, i){
+      seek(i, s._max, Infinity);
+      var got = [];
+      [].forEach.call(s.querySelectorAll("[" + RD_ATTR + "]"), function(e){
+        for (var p = e.parentElement, inPart = false; p && p !== s; p = p.parentElement){
+          if (p.hasAttribute(RD_ATTR)) return;   // 印の中の印は外のものに含まれる
+          if (/^m-/.test(p.localName)) inPart = true;
+        }
+        if (inPart) got.push(rdHtml(e));
+      });
+      if (got.length) out[s._key] = got;
+    });
+  });
+  return out;
+};
 // 位置の書き方（id があれば <id>[:<段階の鍵>]。id のない旧来のスライドは段階 0 なら <番号>、ほかは <鍵>:<段階の鍵>）
 function fragmentOf(i, k){
   var s = slides[i];
