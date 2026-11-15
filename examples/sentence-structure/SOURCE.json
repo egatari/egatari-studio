@@ -1,12 +1,12 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "4741f6452460870986d8957b36c3dad2b734e407",
+  "commit": "6c59e425989365a857fe766bb5c998a737c2dd1e",
   "path": "lessons/sentence-structure",
   "files": {
-    "deck.html": "171569d2ceca63e0ea98d55ab238a46bee61a956d15fc8d2e2c020fac18dbbf5",
+    "deck.html": "c3afc9752579f37aa0d0e1c2d4968d3f76efd5f8e3e066565b1da5d4cb2d4992",
     "egatari.json": "1983f6aa4b847d6dae2b54bf707a6cdc642257797685c261c7d697ca6cf2b438",
-    "narration.md": "3d504c6534505b75b4afb228fc23c24d04df19bfa8ab4db86710698c210a0f79",
-    "sample.json": "913c82bf4c9510c213963ab9d5f727e0440f510040b75484ff0bd7f2007359cb"
+    "narration.md": "801d156c9179191aa5f45bfd1fb3c9ae65ef6bb6fe72d19be96948f589fcffbd",
+    "sample.json": "0ea9119de152aacb0aa63a6f91b279257195d81bd5de8bb04757cae2f1347992"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
 }

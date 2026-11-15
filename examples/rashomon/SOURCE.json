@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "4741f6452460870986d8957b36c3dad2b734e407",
+  "commit": "6c59e425989365a857fe766bb5c998a737c2dd1e",
   "path": "books/rashomon",
   "files": {
-    "article.md": "d5ac318f6a7d1a28841f9909e7f6e0317c36bc886f7e8f4a642c7e7fb8c003e0",
+    "article.md": "9b0714c11c1380a93cdfaaf76229db1edb4eb9f914aea9220ec72d509f28cba2",
     "deck.html": "cbc7a5513b1b79e2d1f536746dbf6dfdee9f726637d3c972e03138fece8f7292",
     "egatari.json": "197f0ee40049fe885a16e18fd194f922726e15a7d23d34e2ea19d35a9a945b64",
     "narration.md": "48937f9c33a3cd4dda705c5a2f43bcfb41d4a3371b7ab33b5023966581c831cd",
