@@ -1,4 +1,5 @@
 // Egatari Viewer：WCAG 2.2 AA の自動の検査（axe-core。backlog #135 (2)）
+// test-all: platform（--platform でも走らせる：WebKit でも）
 //   node tools/test-viewer-a11y.mjs [作業フォルダ] [--webkit] [--json <ファイル>] [--report]
 // Viewer のページ（play/）を次の状態で開き、axe-core（wcag2a・wcag2aa・wcag21a・wcag21aa・wcag22aa の規則）を当てる：
 //   start（教材なし、ja・en・暗い背景）、about の節まで、教材を開いた（スライド）、本の表示、マークアップの帯、
