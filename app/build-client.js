@@ -24,7 +24,8 @@ const plain = (L) => ({ files: new Map([...L.files].map(([k, f]) => [k, { m: f.m
 // 作業場所の読み出しは、その Worker に出した組み立ての要求（req）に結び付け、その要求の作業場所だけを読む。同時に読むのは代ごとに READ_CONCURRENCY まで、
 // Worker を止めたら、まだ始めていない読み出しは始めない
 export const READ_CONCURRENCY = 8;
-export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker === 'function' ? Worker : null), steps = null } = {}) {
+// opts.readable()：パーツの読める中身を、親が読む（プレビューの再生器。format spec §2.1、#216。app/main.js）
+export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker === 'function' ? Worker : null), steps = null, readable = null } = {}) {
   let worker = null, gen = 0, seq = 0, wsSeq = 0, themeWs = null, extra = '', workerExtra = '';
   const extras = { article: '', fontSubset: '' };   // つなげる順（本の道具 → 字の切り出しの道具）
   const waiting = new Map();          // 要求の番号 → {resolve, reject, gen, ws}
@@ -64,6 +65,11 @@ export function createBuildClient(res, loadLazy, { WorkerClass = (typeof Worker 
       }
       if (m.op === 'lazy') return reply(true, await loadLazy(m.arg));
       // 本文のステップへのリンクの行き先（§9C.8 の 1）：この Worker にまだ終わっていない要求があるときだけ
+      // パーツの読める中身（§2.1、#216）：この Worker にまだ終わっていない要求があるときだけ
+      if (m.op === 'readable') {
+        if (!readable || ![...waiting.values()].some((w) => w.gen === g && w.ws)) throw new Error('no player to read the parts\' readable content');
+        return reply(true, await readable());
+      }
       if (m.op === 'steps') {
         if (!steps || ![...waiting.values()].some((w) => w.gen === g && w.ws)) throw Object.assign(new Error('no player to check step links'), { code: 'article-unsupported' });
         return reply(true, await steps(Array.isArray(m.arg) ? m.arg.map(String) : []));

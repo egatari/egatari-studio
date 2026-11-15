@@ -85,10 +85,10 @@ const articleLoader = createArticleLoader(RES);
 let book = null;
 // 字の切り出しの道具（書き出すときにだけ読み込む。app/font-subset-loader.js）
 const fontSubsetLoader = createFontSubsetLoader(RES);
-const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job), article: () => (book ? book.engineArticle() : null), fontSubset: () => fontSubsetLoader.subsetFont() });
+const engine = createEngine(RES, loadLazy, { renderAbc: async (job) => (await import('./abcjs-renderer.js')).renderAbc(job), article: () => (book ? book.engineArticle() : null), fontSubset: () => fontSubsetLoader.subsetFont(), readable: () => askReadable() });
 // 開いたデッキの組み立てと判定は Worker で（app/build-client.js。ページを固めず、期限を過ぎたら止める）。保存・書き出しの組み立ては
 // このページの engine で（確かめた後のデッキ。組み立ての上限は同じ）
-const builder = createBuildClient(RES, loadLazy, { steps: (links) => askSteps(links) });
+const builder = createBuildClient(RES, loadLazy, { steps: (links) => askSteps(links), readable: () => askReadable() });
 const buildTimeout = () => (window.__APP_TEST && window.__APP_TEST.buildTimeout) || BUILD_TIMEOUT_MS;
 // ws：作業場所（folderWorkspace / memoryWorkspace）。portable：持ち運べる 1 ファイルを開いているとき
 //   {index, deckMeta, name, handle, warnings, readOnly（理由の文字列か null）, tierAOnly（段 A の編集だけ：理由か null）, rightsOk, extended,
@@ -1123,11 +1123,12 @@ window.addEventListener('message', (e) => {
     // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
     if (m.type === 'app-layout-changed' && /^(slides|split|book)$/.test(String(m.layout))) { if (book.present() && m.layout !== (S.view || 'slides')) setView(m.layout, false); }
     else if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
-    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result') && S.checks.has(m.id)) {
+    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result' || m.type === 'app-readable-result') && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) {
         S.checks.delete(m.id);
         if (m.type === 'app-steps-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
+        else if (m.type === 'app-readable-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : null);
         else w.res(Array.isArray(m.results) ? m.results : []);
       }
     }
@@ -1205,6 +1206,12 @@ async function askSteps(links) {
   if (!links.length) return {};
   const r = await askFrame('app-steps', { links });
   if (!r) throw Object.assign(new Error(T.book.noPlayer), { code: 'article-unsupported' });
+  return r;
+}
+// パーツの読める中身（format spec §2.1、#216）：今のプレビューの再生器の DECK.readableParts()。答えがなければ断る（書き出しは写さずに知らせる）
+async function askReadable() {
+  const r = await askFrame('app-readable');
+  if (!r) throw new Error('the preview player did not give the parts\' readable content');
   return r;
 }
 // rec：頼みの記録（{sends（送った回数）, answered}）。品質チェックの板（quickCheck）は S.lastQuickCheck に残し、試験が「今の読み込みに 1 回送って
