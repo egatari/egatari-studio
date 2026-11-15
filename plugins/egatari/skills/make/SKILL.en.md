@@ -12,7 +12,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
 **Instruction version: 7aef902d**
-**Skill version: 0.6.12**
+**Skill version: 0.6.13-rc.1**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
