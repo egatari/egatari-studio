@@ -1,7 +1,9 @@
 // 組んだデッキをヘッドレス Chrome で検査する
 // 約束事は docs/contract.md、段階の規則は skills/motion-slides/SKILL.md §4
 //
-//   node kit/check.mjs <deck.html> [--json]
+//   node kit/check.mjs <deck.html> [--json] [--no-browser]
+//   --no-browser：ブラウザを起動せず、原稿だけで見られる検査（組み立て・id・語彙・音声・添付・参照音声など）をする。見た目と動きの検査（R-fit など）は
+//   飛ばし、その決まりの状態は skipped（noBrowser）。エラーのあった決まりは failed。ブラウザを使えない所（サンドボックス）向け（backlog #215 (c)）
 //
 // A. 体裁の検査（はみ出し・文字の大きさ・字数・表記・段階 0 の一覧）
 //    ただし段階の状態は DECK.seek(i, k, Infinity) で作る（beforeprint の代わり）
@@ -70,11 +72,12 @@ import { uncoveredGlyphs } from './core/font-coverage.mjs';
 // ---------------------------------------------------------------- 引数
 const args = process.argv.slice(2);
 const asJson = args.includes('--json');
+const noBrowser = args.includes('--no-browser');
 const ti = args.indexOf('--theme'), theme = ti >= 0 ? args[ti + 1] : undefined;
 const li = args.indexOf('--lang'), langArg = li >= 0 ? args[li + 1] : undefined;   // 知らせの言葉（ja | en。既定は教材の言語）
 const arg0 = args.find((a, i) => !a.startsWith('--') && !(ti >= 0 && i === ti + 1) && !(li >= 0 && i === li + 1));
 if (!arg0) {
-  console.error('usage: node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json]');
+  console.error('usage: node kit/check.mjs <deck.html | working folder> [--theme name] [--lang ja|en] [--json] [--no-browser]');
   process.exit(1);
 }
 // 組み立てた後の 1 ファイル（.ega.html）は原稿ではない：デッキとして読むと、はみ出し・台本なし・重なりを誤って出す。断る（終了コード 2：
@@ -299,7 +302,19 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   }
 }
 
+// 出力に使うもの（ブラウザの検査が埋める。--no-browser では組み立てのスライドの一覧から）
+let meta = [], compErrors = [], narrText = '';
+// コンソールのエラーとページの例外は、読み込み直後だけでなく検査の全体（後の seek・再現性の確認・開き直し）を通して集め、最後にまとめて報告する
+const consoleErrors = [];
+const titleOf = (i) => (meta[i] ? meta[i].title : '');
+// 通った検査の段（kit/core/check-rules.mjs の決まりの phase。通らなかった段の決まりは incomplete。--no-browser では skipped）
+const visited = new Set();
+let phase = '読み込み';
+visited.add(phase);
+if (noBrowser) meta = built.slides.map((x, i) => ({ i, key: x.key, id: x.id || null, title: x.heading || '' }));
+
 // ---------------------------------------------------------------- 2. 一時ファイルへ書き出し、ヘッドレス Chrome で開く
+if (!noBrowser) {
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'macs-check-'));
 const tmpFile = path.join(tmpDir, 'deck.html');
 fs.writeFileSync(tmpFile, built.html);
@@ -321,12 +336,6 @@ process.on('unhandledRejection', crashed);
 browserPhase = true;
 const browser = await launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-// コンソールのエラーとページの例外は、読み込み直後だけでなく検査の全体（後の seek・再現性の確認・開き直し）を通して集め、最後にまとめて報告する
-const consoleErrors = [];
-// 通った検査の段（kit/core/check-rules.mjs の決まりの phase。通らなかった段の決まりは incomplete）
-const visited = new Set();
-let phase = '読み込み';
-visited.add(phase);
 page.on('console', (m) => { if (m.type() === 'error') consoleErrors.push(`[${phase}] ${m.text()}`); });
 page.on('pageerror', (e) => consoleErrors.push(`[${phase}] ${e.message}`));
 await page.goto(url);
@@ -334,7 +343,7 @@ await page.waitForFunction(() => window.DECK && DECK.ready, null, { timeout: 150
 await page.evaluate(() => document.fonts.ready);
 
 // スライドの一覧（番号・鍵・タイトル・段階数・static か・部品の数）
-const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
+meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
   i,
   key: s._key,
   max: s._max,
@@ -348,7 +357,6 @@ const meta = await page.evaluate(() => DECK.slides.map((s, i) => ({
   // 見出しの字（隠れているスライドでは innerText が空になるので textContent。KaTeX の読み上げ用の MathML は除く）
   title: (() => { const h = s.querySelector('h2, h1'); if (!h) return ''; const c = h.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); c.querySelectorAll('br').forEach((x) => x.replaceWith(' ')); return c.textContent.replace(/\s+/g, ' ').trim(); })(),
 })));
-const titleOf = (i) => (meta[i] ? meta[i].title : '');
 // 口述原稿と合わせる段階：実行系の数（_max・_cstep）と DOM から数えたものの大きいほう（数えられないもの（NaN）は DOM のほう）
 for (const m of meta) {
   const hasC = !m.static && (m.cstep >= 0 || m.domConcl);
@@ -370,7 +378,7 @@ async function collectPartReports() {
 await collectPartReports();
 
 // 部品のデータの形（kit/deck.js の DECK.componentErrors）：スライドごとに、どの部品の何が違うか
-const compErrors = await page.evaluate(() => (DECK.componentErrors || []).map((r) => JSON.parse(JSON.stringify(r))));
+compErrors = await page.evaluate(() => (DECK.componentErrors || []).map((r) => JSON.parse(JSON.stringify(r))));
 const badComps = new Map();
 for (const r of compErrors) {
   report(r.slide, 'error', 'compData', { ...r, msg: r.msg === undefined ? undefined : cleanErrorText(r.msg) });
@@ -582,7 +590,6 @@ for (const { i, stepKey, turns } of narrInfo) {
 }
 
 // スライドにない段階の口述原稿（[k] が段階の数を超える・結論のないスライドの [concl]・結論の段階を番号で書いた）：読まれないのでエラー
-let narrText = '';
 try { narrText = readRegular(path.join(path.dirname(path.resolve(src)), 'narration.md'), { max: READ_LIMITS.narration }).toString('utf8'); } catch { /* なければ行は出さない */ }
 const stepMeta = meta.map((m) => ({ key: m.key, max: m.smax, cstep: m.scstep, static: m.static }));
 for (const o of orphanSteps(built.segs, stepMeta)) {
@@ -794,6 +801,7 @@ await page.waitForTimeout(100);
 await browser.close();
 browserPhase = false;   // ここから先は検査の結果を作るだけ（ブラウザは使わない）
 fs.rmSync(tmpDir, { recursive: true, force: true });
+}   // if (!noBrowser)
 // スタックの行とファイルの場所は除き、言葉だけにする。部品の例外（古い形の「M-CURVES TypeError: …」）は部品のデータの知らせにする
 const compTags = new Set(compErrors.map((r) => r.tag));
 for (const e of [...new Set(consoleErrors.map(cleanErrorText))]) {
@@ -813,7 +821,7 @@ let srcText = '';
 try { srcText = readRegular(src, { max: READ_LIMITS.source }).toString('utf8'); } catch { /* 組めたので読めるはず */ }
 // 教材の性質は原稿と台本の文字列から（編集アプリと同じ factsFromSource）
 const facts = factsFromSource({ deck: srcText, narration: narrText || '', audio: has('audio', 'manifest.json') || has('voice.json'), attachments: has(FORMAT.ATTACH_DIR), book: hasArticle(src) });
-const acc = account({ results, visited, facts });
+const acc = account({ results, visited, facts, noBrowser });
 const ruleSet = createHash('sha256').update(ruleSetText()).digest('hex').slice(0, 12);
 const ok = counts.error === 0;
 
@@ -838,7 +846,7 @@ if (asJson) {
   }));
   // renderNoise：呼び出し順の比べで、描き方の揺れ（アンチエイリアス）として通したもの。指摘ではなく、数えない（backlog #210）
   const noiseOut = renderNoise.map((x) => ({ slide: x.slide + 1, id: (meta[x.slide] && meta[x.slide].id) || null, step: x.step, data: x.a, msg: where(ML, placeOf({ slide: x.slide, step: x.step })) + sep + renderNoiseMessage(ML, x.a) }));
-  console.log(JSON.stringify({ ok, status: acc.status, lang: ML, counts, results: out, renderNoise: noiseOut, ruleSet, rules: acc.rules, summary: acc.summary, ...(acc.status === 'incomplete' ? { unset: acc.unset, problems: acc.problems } : {}) }, null, 2));
+  console.log(JSON.stringify({ ok, status: acc.status, lang: ML, counts, results: out, renderNoise: noiseOut, ruleSet, ...(noBrowser ? { noBrowser: true } : {}), rules: acc.rules, summary: acc.summary, ...(acc.status === 'incomplete' ? { unset: acc.unset, problems: acc.problems } : {}) }, null, 2));
 } else {
   // スライド番号順（null＝デッキ全体は先頭）にグループ化し、各グループ内は error → warn → info。見出しの行にスライドがあるので、行には段階と言葉だけ
   const groups = new Map();
@@ -862,6 +870,7 @@ if (asJson) {
   console.log(EN ? `${counts.error} ${plural(counts.error, 'error')}, ${counts.warn} ${plural(counts.warn, 'warning')}, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
   const S = acc.summary;
   console.log(EN ? `quality check items: ${S.checked} done, ${S.excused} not applicable, ${S.skipped} not run, ${S.failed} failed (of ${S.total})` : `品質チェックの項目：見た ${S.checked}　当てはまらない ${S.excused}　見られなかった ${S.skipped}　落ちた ${S.failed}（${S.total} のうち）`);
+  if (noBrowser) console.log(EN ? 'run without a browser (--no-browser): only the checks of the source were done; the checks of how slides look and move (R-fit, contrast, parts, narration steps and more) were skipped. Run the check with a browser before you share the lesson' : 'ブラウザなしで動かした（--no-browser）：原稿だけでできるチェックをした。スライドの見た目と動きのチェック（R-fit・コントラスト・パーツ・台本のステップなど）は飛ばした。教材を配る前に、ブラウザのある所で品質チェックをかけ直す');
   if (acc.status === 'incomplete') console.log((EN ? 'the check did not finish: ' : '点検が終わっていない：') + [...acc.unset.map((id) => id + (EN ? ' (not looked at)' : '（見ていない）')), ...acc.problems].join('; '));
 }
 // 出力を書き終えてから終える（stdout がパイプのとき、process.exit は書きかけの出力（64 KiB を超える分）を捨てる。--json の大きな結果が途中で切れていた）

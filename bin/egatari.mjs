@@ -17,7 +17,7 @@ const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const SCRIPTS = {
   new: ['tools/new.mjs', '新しい作業フォルダをテンプレートから作る / create a working folder from the template', '<folder> [--lang en|ja] [--theme name] [--title "…"]'],
   build: ['kit/build.mjs', 'スライド（deck.html）を 1 つの HTML にビルドする / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--scorm] [--embed-audio] [--theme name] …'],
-  check: ['kit/check.mjs', '品質チェック（ブラウザが要る）/ quality check (needs a browser)', '<deck.html> [--json]'],
+  check: ['kit/check.mjs', '品質チェック（ブラウザが要る。--no-browser は原稿だけを見る）/ quality check (needs a browser; --no-browser checks the source only)', '<deck.html> [--json] [--no-browser]'],
   dev: ['server/dev.mjs', '開発サーバー（ブラウザで編集）/ dev server (edit in the browser)', '<deck.html> [--port 8730] [--theme name]'],
   sheet: ['tools/sheet.mjs', '全スライドの最後のステップを 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
   'comment-shots': ['tools/comment-shots.mjs', '開発サーバーのコメントの画面を撮る / screenshots of open dev-server comments', '<folder | deck.html> [id …] [--all]'],
