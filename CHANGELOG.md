@@ -8,6 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.13] - 2026-11-15
+
+### Added
+
+- Caution and warning boxes in a slide's body: `<div class="caution">…</div>` (注意 / Caution: a thick bar at the start and a circled i) and `<div class="caution warn">…</div>` (警告 / Warning: a full frame and a triangle with !). The build adds the label as the first child (`<span class="caution-label">`, Japanese or English by the lesson's language) and `role="note"`; the icon is decoration. On a vertical slide the bar is on top. Colours come from the new theme tokens `--caution` (amber) and `--warn` (red-orange)
+- A new standard, R-caution: the one line in the AI instructions that says how to write the box. Its quality checks (command line and editor, `kit/core/caution.mjs`) are `cautionEmpty` (error: no text besides the label) and `cautionLabel` (warning: the author wrote the label too). The quality check now has 31 items; the lesson with one known defect per item (`tools/fixtures/seeded-defects/ja`) has an empty caution box for it
+- Every bundled theme adds the two tokens: default 1.6.0, bengara 1.1.0, the others 1.4.0. Earlier theme versions are kept
+- Parts library 2.9.1 is now the default (release 4407bcb: the parts and tarball 411ba844… of 2.9.0 (release d19428d); only its manifest changes, giving 差・増減 / Increase / decrease its own tile). New parts: `m-callout` (画面の手順 / Screen steps: numbered marks on a screenshot, joined to their explanations one step at a time) and `m-checklist` (確かめる一覧 / Checklist) in the tools set, and `m-diverge` (ウォーターフォール / Waterfall: from a baseline, increases and decreases stacked up to the total) in the business set. `m-bars` 2.1.0 draws error bars (`err`), significance brackets (`sig`) and dots (`mark="dot"`). Sixteen other parts get small fixes or README updates
+- New… shows the three new parts with a one-line description and an icon, and `m-diverge` under its own tile 差・増減 / Increase / decrease (icon: a waterfall)
+- One-file articles can mark sections as preface, chapter, appendix or afterword with `+++ {"kind": "afterword"}` before the section target or heading (spec §9C.1A). Kinds carry through to the next kind line, are checked for order and placement, and appear as `data-section-kind` in the rendered article. Prefaces and afterwords have no section numbers; appendices use letters. Only chapter sections warn when linked to no slide. The ids tool preserves the kind line above each inserted target, and the AI book reference describes the syntax.
+
+### Changed
+
+- README and docs/with-claude: the Claude Code auto-update step now says where the switch is (in /plugin's Marketplaces tab, select egatari and press Enter, then Enable auto-update; it is not in the list or the Installed tab) and gives the manual update after each release (`claude plugin marketplace update egatari`, then `claude plugin update egatari@egatari` and `egatari-studio@egatari`)
+- The AI instructions list a purpose only when the instructions include a part for it, and say only that other parts exist, without naming what they are for (so a standard-only pack does not name purposes whose parts are in a set that is not included)
+- On the free plan, the `m-bars` section leaves out the notes on error bars and significance brackets (the data shape still lists `err` and `sig`); the paid plan keeps them. With this, the English free standard instructions are 30,167 paste units (cap 31,000)
+- The English instructions no longer say the part notes are in Japanese (the standard parts' English sections have no Japanese)
+- New…: the list 「AI にどのパーツを使わせますか」 / "Which parts may the AI use?" starts folded to one line, 「AI が使うパーツ：N 種類　選び直す」 / "Parts the AI may use: N  Change", on both the Light and the Detailed instructions; pressing it opens the list as before. The reason line for suggested parts and the size meter stay visible. The list opens by itself when parts are suggested for removal, and stays open once a tick is changed (backlog #211)
+- Egatari Player 1.7.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. The slide layout CSS draws the new caution and warning boxes (`.caution`, `.caution.warn`: the bar or frame, the tint and the icon, coloured by the theme tokens `--caution` and `--warn`), and keeps them vertical on `layout-tate` slides. Slides without these boxes look the same; playback, steps and timing are unchanged
+- The skill version line of the make and studio skills (「スキルのバージョン」 / "Skill version") now reads 0.6.13, and the instruction version is 7aef902d. An installed skill showing an older line should be updated; `egatari doctor` compares them
+
+### Fixed
+
+- When a browser is installed but cannot start (in a sandbox such as Codex's workspace-write, or whenever `CODEX_SANDBOX` is set), `check`, `doctor` and the other commands that need a browser now say so in one line: 「ブラウザを起動できない：サンドボックスの外で動かす（Codex では、このコマンドをサンドボックスの外で動かすのを許可する）。ブラウザをダウンロードしない」 / "the browser could not start: run this outside the sandbox (in Codex, allow this command to run outside the sandbox); do not download a browser". The advice to install a browser (`npx playwright-core install chromium`) is given only when none is installed. Before, the "no browser found" message led Codex to download Chromium into the sandbox (backlog #215)
+- The studio skill tells Codex to ask the user to run the command outside the sandbox instead, never to download a browser or write its own substitute check, and to say plainly when the visual checks were not done
+- Tests only (backlog #206): two `test-app` checks waited a fixed time or for the wrong signal and failed now and then on busy CI runners. After sending a comment, the test now waits for the note box to close and the preview's `inert` to clear; the box closes only after the save round-trip (`POST /__dev/comment`), which a fixed 400 ms did not always cover. After a reload, the theme-folder test now waits until the remembered folder's name, its permission state and the first screen's label all agree; startup sets the folder handle first and asks for the permission state afterwards, so waiting for the name alone could read the state before it was set
+- Tests only (backlog #206, v0.6.13): `test-viewer-markup` selected text right after scrolling it into view. The markup window opens 220 ms after the selection changes and any scroll closes it, so a scroll event delivered late (seen on the macOS CI) closed the window for good and every later highlight check failed in a chain. The test now waits until the scroll has settled (two frames, then 150 ms with no scroll event) before selecting. `test-tools` now waits for the presenter view's Esc and pen strokes to reach the main window instead of a fixed 100 ms or 300 ms. `test-app-from-sample` prints the page's startup state (dialog, current step, app.js timing) when New… does not open in time, to explain a one-off 30 s timeout on Windows that does not reproduce locally (0.3 s)
+
 ## [0.6.12] - 2026-11-15
 
 ### Added
@@ -1535,7 +1563,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.12...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.13...HEAD
+[0.6.13]: https://github.com/egatari/egatari-studio/compare/v0.6.12...v0.6.13
 [0.6.12]: https://github.com/egatari/egatari-studio/compare/v0.6.11...v0.6.12
 [0.6.11]: https://github.com/egatari/egatari-studio/compare/v0.6.10...v0.6.11
 [0.6.10]: https://github.com/egatari/egatari-studio/compare/v0.6.9...v0.6.10
