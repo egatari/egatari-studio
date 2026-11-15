@@ -43,10 +43,11 @@ const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.comp
 const SINGLE_SET_EXPECTED = {
   // v0.6.7：英語の指示が部品庫の英語の説明（README.en.md、16 のパーツ）を読むようになり、外すパーツ 1 つで減る貼り付けの長さが小さくなった。
   // math は m-pie、maps は m-fishbone、kokugo は m-cycle、science は m-tree を 1 つ多く外す（stats は同じ）
-  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards', 'm-pie'],
+  // v0.6.13：注意の枠の 1 行（R-caution）で、stats は m-kpi、maps は m-quad も外す
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards', 'm-pie'],
     // v0.6.10：英語の指示が component を part・narration を script と書くようになり短くなった。kokugo は m-cycle を外さずに収まる
     // 部品庫 2.7.0 で英語の説明が少し長くなり（合わせて +1,641 バイト）、kokugo はまた m-cycle も外す
-    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
+    maps: ['m-fishbone', 'm-quad'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
     science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'] },
   ja: {},

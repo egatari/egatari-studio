@@ -101,7 +101,7 @@ function deckDir(name, themes, src = 'minimal') {
   const src = deckDir('cli-up', { default: OLD });
   const u = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), src, '--update-themes'], { encoding: 'utf8' });
   const conf = JSON.parse(fs.readFileSync(path.join(path.dirname(src), FORMAT.CONFIG_FILE), 'utf8'));
-  ok(u.status === 0 && /theme updated: default 1\.0\.0 → 1\.5\.0 \(--emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5\)/.test(u.stdout) && !/theme pinned/.test(u.stderr), 'CLI --update-themes: says what changes and builds without the warning');
+  ok(u.status === 0 && new RegExp('theme updated: default 1\\.0\\.0 → ' + NEW.replace(/\./g, '\\.') + ' \\(--emph #C50516 → #BE3012, --muted #6E6E6E → #5C5853, --concl-bg #FFFFFF → #F5F5F5\\)').test(u.stdout) && !/theme pinned/.test(u.stderr), 'CLI --update-themes: says what changes and builds without the warning');
   ok(conf.themes.default === NEW && conf.docId, `CLI --update-themes: ${FORMAT.CONFIG_FILE} now pins ${NEW} (other fields kept)`);
   const c = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), deckDir('clicheck', { default: OLD }), '--json'], { encoding: 'utf8' });
   let j = null; try { j = JSON.parse(c.stdout); } catch { /* */ }
