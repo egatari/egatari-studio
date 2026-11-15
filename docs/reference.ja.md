@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=6f5e54920cca5c65 -->
+<!-- i18n: pair=reference.md sha256=609af464c91b9002 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -53,7 +53,7 @@
 | `<html data-favicon="off">` | タブのアイコンを入れない。既定では、組んだ教材（ふつうの build・`--portable`・`--play-only`）の `<head>` の先頭に、Egatari のマークを `<link rel="icon">`（data: URI）として入れる（明るい画面と暗い画面の色は 1 つの SVG に入れる。外へのリクエストはない）。スライドが自分の `<link rel="icon">` を持つなら、それを使い、何も足さない |
 | `<html data-font="mincho">` | 本文を BIZ UDP明朝にする（`--font-sans: var(--font-mincho)`）。[国語](#国語kokugo) |
 
-本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`、`.emph`、`.muted`、`.b` 色（意味は形式 §8.0）と太字 · `.tate` 縦書き · `.mincho` 明朝 · `.tcy` 縦中横 · `<ruby>` 振り仮名（[国語](#国語kokugo)）。
+本文のクラス（色はすべてテーマから）：`.sub` 小見出し · `.big` 主要な式 · `.note` 補足（27px） · `.thm` 定理の枠 · `.caution` 注意の枠 · `.caution.warn` 警告の枠（ラベルと `role="note"` は自動） · `.box` 淡色の枠 · `.cols` 横並び · `.arrow` 中央の矢印の行 · `.fig` / `.figcap` 図とキャプション · `.cite` 出典（20px） · `.plot` `DECK.Plot` の箱 · `.readout .num` 桁をそろえた数 · `td.r` 右寄せのセル · `.term`、`.emph`、`.muted`、`.b` 色（意味は形式 §8.0）と太字 · `.tate` 縦書き · `.mincho` 明朝 · `.tcy` 縦中横 · `<ruby>` 振り仮名（[国語](#国語kokugo)）。
 
 ### ステップの属性
 
@@ -189,6 +189,7 @@ CSS の順：build は `<style id="deck-base">` に、字・KaTeX・`kit/base.cs
 | `--fg` `--bg` `--title` `--term` `--emph` `--muted` `--line` `--rule` | 文字・背景・見出し・用語・結論・既知・細い線・見出しの下線 |
 | `--lit` | 光と、光が照らすもの（太陽・灯り・月の明るい側）。塗りの色で、字の色には使わない。いつも `--fg` か `--muted` の輪郭線と一緒に描く（format spec §8.4）。同梱のテーマではどれも暖かい黄（`default` は `#F5B800`、1.3.0 から）。明るい地の上では 1.4〜1.8:1 ほどなので、形は輪郭線が見せる。使うパーツは、ほかの役割から作った予備の値を付ける（`var(--lit, …)`） |
 | `--obj-white` `--obj-black` `--obj-red` `--obj-green` `--obj-yellow` `--obj-blue` `--obj-brown` `--obj-purple` `--obj-pink` `--obj-orange` `--obj-gray` | 物の色：色そのものが内容である色（袋の中の赤い玉、青のリトマス紙、青信号）。11 の基本色名（format spec §8.4）。色そのものを見せるところだけに使う：図の系列は `--series-1` … `--series-4`、意味は上の役割。色だけで伝えない：物の上か横に名前か頭文字（「赤」、"R"）を添え、`--obj-white`・`--obj-black` と地に近い色の形には `--fg` か `--muted` の輪郭線を付ける。使うパーツは予備の値を付ける。予備はその名前の色をじかに書いてよい（`var(--obj-red, #E0242B)`）。間の色は物の色どうしの `color-mix()` で作る。同梱のテーマはどれも 11 色を持つ（`default` は 1.4.0 から `#FFFFFF` `#222222` `#E0242B` `#2E9E44` `#F5D90A` `#1E6FD9` `#8B5A2B` `#8E44AD` `#F27BB0` `#F28C1A` `#8C8C8C`。`sumi`・`kokugo`・`tokiwa`・`murasaki`・`business` も同じ値。`kogecha` は少し鮮やかさを抑え、`asagi` は少し明るい） |
+| `--caution` `--warn` | 注意（琥珀色）と警告（赤橙色）。ラベルとアイコンの色。`--bg` と OKLCH で混ぜて線（85%）と淡色の地（8%）を作る。地の上の字は 4.5:1 以上 |
 | `--complement` `--accent2` `--base-tint` `--base-wash` `--comp-tint` `--term-tint` `--emph-tint` | 導かれる色と淡色（`--term-tint` は `.thm`、`--base-wash` は `.box`、`--emph-tint` は今は本体では使わない。既存のテーマと教材が動くように残してある） |
 | `--series-1` … `--series-4` | 図の系列の色 |
 | `--ramp-1` … `--ramp-5` | 量の色の段（format spec §8.4、#200）：量（ヒートマップ・密度・速さ）の低→高の 5 段。基調色の色相で、OKLCH の明るさが段ごとに下がり、`--ramp-5` は `--bg` と 3:1 以上。分類や意味には使わない。同梱のテーマはどれも持つ（`default` 1.5.0 から） |
@@ -243,7 +244,7 @@ CSS はほかの字体（端末に入っている字体など）も書けるが�
 国語（漢文・古文・現代文）の授業のためのもの。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun)（テーマ `kokugo`）。
 
 - **縦書き**：`.body` の中の `<div class="tate">…</div>` は `writing-mode: vertical-rl` で、本文の高さいっぱいに右から左へ列を並べる（段落の間は左に空ける。`p.indent` で字下げ）。`.tcy` は 2 桁の数字などを縦中横にする
-- **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中のパーツ・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きはパーツの指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの id・字幕・Egatari ファイルの読める層は、これまでどおり見出しの字から作る。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
+- **縦組みのスライド**：`<section class="slide layout-tate">` はスライド全体を縦に組む。`<h2>` は右端の縦の 1 列（1166〜1232px、天 48px から天付き）で、テーマの見出しの下線は列の左の縦の罫になる。列は折り返さない（全角でおよそ 14 字。長いと品質チェックが指摘する）。`.body`（148〜1138px、48〜664px。`noconcl` なら左は 48px から）は `writing-mode: vertical-rl` で、段落と箇条書きは右から左へ列を進め、`.tate` の塊は本文いっぱいに組む。本文の中のパーツ・図・表（`p`・`ul`・`ol`・`.sub`・`.note`・`.arrow`・`.tate`・`.box`・`.thm`・`.caution`・`h3`・`blockquote` 以外の直下の要素）は、自分の箱を測って描くので横組みのまま本文の幅いっぱいに置く。縦書きはパーツの指定で（`m-kobun tate`・`m-gendai tate`。`m-kanbun` はいつも縦書き）。`.concl` は左端の縦の列（48〜120px。およそ 19 字）。ページ番号は右下のまま（見出しの列の下）。変わるのは CSS だけで、スライドの id・字幕・Egatari ファイルの読める層は、これまでどおり見出しの字から作る。サンプルは [`examples/kokugo-kanbun`](../examples/kokugo-kanbun) の現代文のスライド、試験は `tools/test-layout-tate.mjs`
 - **ルビ**：`<ruby>漢<rt>かん</rt></ruby>`。`rt` は 0.5em で、品質チェックは字の大きさを数えない。縦書きでは右に付く
 - **明朝**：`.mincho`、`<html data-font="mincho">`、または `--font-sans: var(--font-mincho)` にするテーマ（`kokugo`）
 - **`m-kanbun`**：縦書きの漢文。1 行が 1 列。字の後ろに `(送り仮名)`、`[返り点]`（`レ`・`一二三四五`・`上中下`・`甲乙丙丁`・`天地人`・`一レ`・`上レ` など。`レ` だけは括弧なしでもよい）、`{振り仮名}`、`{=かな}`（書き下し文で平仮名にする字。`不{=ず}`）、`{-}`（置き字。読まない）、`(右|二度目)`（再読文字。`未(ダ|ず)`）、`-`（竪点）、`、` `。`。ステップ：白文 → `kunten`（返り点は左下、送り仮名は右下）→ `order`（訓読の順に字を照らし、上へ戻るところに弧。パーツライブラリ v1.4.0 から句（列）ごとに 1 ステップで、返り点や再読文字で前の列へ戻ると、そこから別のステップ。`order-by="all"` なら読む順の全体を 1 ステップにし、`cues(k)` は 2 列目からの各列の読み始め）→ `kaki`（書き下し文を左に）。規則と詳しいことは [m-kanbun README (1.6.0)](../vendor/components/sha256/0c02494c234498ef3a20d9e605f886425223639dbf94e20a27b97c82d9ada188/README.md)
@@ -500,6 +501,8 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 | スライドの字が、ファイルに入っていない字体で出る（計算した `font-family` の最初の名前が、埋め込んだ字体でも総称でもない）。開く端末によって見え方が変わる — `fontNotEmbedded`（教材に 1 回、名前を挙げる） | 警告 |
 | スライド・台本・本の見える字に、埋め込んだどの字体にもない字がある（@fontsource にない `∎` など）。その字は開く端末の字体で出る — `fontNotCovered`（教材に 1 回、場所ごとに字を挙げる。`node tools/font-coverage.mjs <組んだ HTML>` でも見られる） | 情報 |
 | 章の扉（`class="slide sec"`）に `<h2>` があって `<h1>` がない（扉の題は `<h1>`。`<h2>` も同じに見せる） — `secHeading` | 警告 |
+| 注意・警告の枠にラベル以外の本文がない — `cautionEmpty` | エラー |
+| 注意・警告の枠の先頭にラベルが書いてある（組み立てが付けるので消す） — `cautionLabel` | 警告 |
 | 肩見出し（`.kicker`）が 24 字分（全角 1・半角 0.5）、ラテン文字なら 40 文字を超える — `kickerLong` | 警告 |
 | スライドに肩見出しが 2 つ以上ある、または見出しの直前にない — `kickerPlace` | 警告 |
 | 表紙・章の扉（`sec`）・縦書きのスライド（`layout-tate`）に肩見出しがある — `kickerSlide` | 情報 |

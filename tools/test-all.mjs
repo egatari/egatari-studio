@@ -237,6 +237,7 @@ steps.push(
   ['check kokugo', ['kit/check.mjs', 'examples/kokugo-kanbun/deck.html']],
   // 縦組みのスライド（layout-tate）：見出しの列・本文・結論の列・ページ番号の位置と重なり、決定性、品質チェック、鍵と読める層
   ['test-layout-tate', ['tools/test-layout-tate.mjs', path.join(tmp, 'layout-tate')]],
+  ['test-caution', ['tools/test-caution.mjs', path.join(tmp, 'caution')]],
   // テーマの CSS を体裁（layouts.css）の後に読む（backlog #75）：組み立ての口ごとの順と、html を付けないテーマの規則が体裁に勝つこと・--marker・--bar・--bar-h
   ['test-theme-order', ['tools/test-theme-order.mjs', path.join(tmp, 'theme-order')]],
   // テーマの寸法の宣言（theme.json の metrics、backlog #76）：検証と継承、同一性の hash、同梱のテーマの描いた箱が宣言どおり（厳しく）、

@@ -62,6 +62,7 @@ import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './core/color-vocab.mjs';
 import { kickerFindings } from './core/kicker.mjs';
+import { cautionFindings } from './core/caution.mjs';
 import { predictStepProblems } from './core/predict-steps.mjs';
 import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
 import { uncoveredGlyphs } from './core/font-coverage.mjs';
@@ -190,6 +191,7 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   for (const { code, slide, ...x } of predictStepProblems(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(slide, 'warn', code, x);
   // 肩見出し：置き場所・字数・使えない種類のスライド（編集アプリも同じ関数）
   for (const f of kickerFindings(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(f.i, f.sev, f.code, f.a);
+  for (const f of cautionFindings(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'))) report(f.i, f.sev, f.code, f.a);
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {

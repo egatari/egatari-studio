@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=10f1a22ea3b6e32c -->
+<!-- i18n: pair=template.ja.md sha256=c6d21ec71c08c381 -->
 {{GENERATED}}
 # Authoring an Egatari lesson with a chat AI
 
@@ -81,6 +81,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
 - Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
 - Inside `.body`: `<p class="sub">` sub-heading, `<div class="big">` main equation, `<p class="note">` note, `<div class="thm">` theorem box, `<div class="cols">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.
+- In `.body`: `<div class="caution">…</div>` for caution; add `warn` for warning. Labels are automatic.
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
 - **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the script section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).
 - **R-colors** Colors only through the theme: the classes above and the math macros `\hlE` `\hlT` `\hlM`; no hex, `rgb()`, named colors, `\color` or `\textcolor`. In a part or inline SVG: {{contract §3 "**Use only the theme's CSS variables"}}

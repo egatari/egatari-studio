@@ -1,5 +1,5 @@
 {
- "version": "2026-11-13",
+ "version": "2026-11-15",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -2596,6 +2596,36 @@
    "internal": "reading aids (Player P2)",
    "decided": "2026-11-03",
    "by": "standards",
+   "note": ""
+  },
+  {
+   "id": "caution-box",
+   "group": "Slides",
+   "en": "Caution",
+   "ja": "注意",
+   "definition": "A caution box in slide body text, marked with an amber bar and information icon.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": ".caution",
+   "decided": "2026-11-15",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "warning-box",
+   "group": "Slides",
+   "en": "Warning",
+   "ja": "警告",
+   "definition": "A warning box in slide body text, marked with a red-orange frame and warning icon.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": ".caution.warn",
+   "decided": "2026-11-15",
+   "by": "owner",
    "note": ""
   }
  ]

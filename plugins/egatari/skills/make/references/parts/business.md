@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # business のパーツ
 
-指示のバージョン：f086a47b
+指示のバージョン：9216503b
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
