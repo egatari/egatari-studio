@@ -1,11 +1,11 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示のバージョン：f086a47b
+指示のバージョン：509f4951
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
-| `<m-bars>` | 棒をステップごとに 0 から伸ばす（縦棒・横棒・組の棒・積み上げ棒）。値の軸の上限をステップで広げて「軸を突き抜ける伸び」も見せられる | 組の step と scale の step の最大（既定は組 1 つ = 1 ステップ。per-step で n 組ずつ） | `{groups:[{label?,value?:num,values?:num[],step?,at?,tone?} (value or values),…],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
+| `<m-bars>` | 棒をステップごとに 0 から伸ばす（縦棒・横棒・組の棒・積み上げ棒）。値の軸の上限をステップで広げて「軸を突き抜ける伸び」も見せられる | 組の step と scale の step の最大（既定は組 1 つ = 1 ステップ。per-step で n 組ずつ） | `{groups:[{label?,value?:num,values?:num[],err?:num\|any[],step?,at?,tone?} (value or values),…],sig?:{from:int,to:int,group?:int,label?,step?}[],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
 | `<m-cards>` | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、ステップごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |
 | `<m-compare>` | 2 つ（3 つまで）を横に並べて比べる表。一方の列、もう一方の列、それから行ごとの違い | 列の数 + 1（違いのステップ。diff も better もなければ列の数だけ） | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
 | `<m-curves>` | 同じ座標軸に線を 1 本ずつ引く（線の名前は凡例でなく線の端に直接書く） | step の最大（既定は系列の数） | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],area?:any[],areaLabel?:str\|any[],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — データは配列そのもの（{"series": […]} ではない）。軸は属性に書く（xr="[0,10]" xl="…"）。式の欄は f で、変数は x（fn・u ではない） |
@@ -37,12 +37,16 @@
 | `ticks` | bool | `true` | 値の軸の目盛りと格子 |
 | `al` | string | `""` | 値の軸の名前 |
 | `stack` | bool | `false` | 組の値を 1 本に積み上げる（積み上げ棒）。\ |
+| `mark` | string | `"bar"` | bar（棒）か dot（点。平均と誤差棒を、0 からの棒にせずに見せる） |
 
 年ごとの売上・費用、聞き取りの結果の順位、導入の前と後の比較など、量を 1 つずつ見せて比べるときに使う。
 
-- group：`label`（`\n` で 2 行）、`value`（系列が 1 つ）か `values`（系列の数だけ）、`step`（既定は per-step から）、`at`（ステップの中の開始秒。既定は同じステップの中で stagger ずつずらす）、`tone`（`emph` などテーマの変数の名前。その組の棒をすべてその色にし、値の数字も同じ色にする）
+- group：`label`（`\n` で 2 行）、`value`（系列が 1 つ）か `values`（系列の数だけ）、`err`（誤差棒）、`step`（既定は per-step から）、`at`（ステップの中の開始秒。既定は同じステップの中で stagger ずつずらす）、`tone`（`emph` などテーマの変数の名前。その組の棒をすべてその色にし、値の数字も同じ色にする）
 - series：`label`（系列が 2 つ以上のとき、最初の組の棒に直接書く。縦棒は棒の上、横棒は値の数字の右（負の棒は下・左）。凡例は作らない）、`tone`（既定は `--series-1..4` の順。系列が 1 つなら `--term`）
 - scale：`[{"step": 3, "max": 27, "at": 0.4}]`。そのステップの at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い帯で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
+- `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか脚注に書く
+- `mark="dot"`：棒の代わりに点（平均と誤差棒）
+- `sig`：`[{"from": 0, "to": 2, "label": "**"}]` で組 0 と組 2 を括弧でつなぐ（`group` で組の中の系列どうし）。縦棒の、積み上げでない棒だけ
 - 横棒（`orient="h"`）は組の名前を左に、値を棒の右に書く。順位を見せるなら `ticks="false"` で目盛りを消してよい
 - 積み上げ棒（`stack="true"`、`"percent"` なら各組 100 %）：組の `values` を横に並べず 1 本に積み上げる（全体と内訳を組ごとに見せるとき）。合計を棒の端に、それぞれの値を区切りの中に書く。軸の上限は合計から決まる。組の `tone` は合計の数字の色。値は 0 以上にする（負の値は 0 として描く）
 

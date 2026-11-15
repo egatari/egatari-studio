@@ -45,11 +45,11 @@ function demoParts(demo, name){
   };
 }
 // The slide that introduces a part (interactive parts: a badge and a dashed --accent2 frame; text and dash, not colour alone)
-function introSlide({ name, summary, purposes, variants, group, n, ia, mark, next, sample = '見本', samplesHref }){
+function introSlide({ name, summary, purposes, variants, group, n, ia, mark, next, sample = 'サンプル', samplesHref }){
   return `<section class="slide">
   <h2>${esc(name)}${mark ? `（${mark}${next ? `、${next}` : ''}）` : ''}</h2>
   <div class="body">
-${ia ? '    <p style="margin:0 0 10px;line-height:1.3"><span style="display:inline-block;font-size:27px;font-weight:700;color:var(--fg);border:2px dashed var(--accent2);border-radius:8px;padding:0 12px">操作できる / Interactive</span></p>\n' : ''}    <p${ia ? ' style="border:3px dashed var(--accent2);border-radius:10px;padding:10px 16px"' : ''}>${esc(summary)}${ia ? '（見る人が押して操作できる）' : ''}</p>
+${ia ? '    <p style="margin:0 0 10px;line-height:1.3"><span style="display:inline-block;font-size:27px;font-weight:700;color:var(--fg);border:2px dashed var(--accent2);border-radius:8px;padding:0 12px">操作できる / Interactive</span></p>\n' : ''}    <p${ia ? ' style="border:3px dashed var(--accent2);border-radius:10px;padding:10px 16px"' : ''}>${esc(summary)}${ia ? '（学習者が押して操作できる）' : ''}</p>
 ${samplesHref ? `    <p style="margin:6px 0 0"><a href="${esc(samplesHref).replace(/"/g, '&quot;')}">${esc(SAMPLES_LINK_TEXT)}</a></p>\n` : ''}    <ul>
       <li>伝えたいこと：${esc(purposes)}</li>
       <li>見せ方：${variants.length ? esc(variants.join('・')) : '1 種類'}</li>
@@ -65,7 +65,7 @@ function deckHtml({ title, styles, scripts, first, slides }){
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title}</title>
-<!-- tools/gallery.mjs が各部品の demo.html と README.md から作る。手で直さない。数値・会社はすべて架空か公の事実 -->
+<!-- tools/gallery.mjs が各パーツの demo.html と README.md から作る。手で直さない。数値・会社はすべて架空か公の事実 -->
 <style>
 ${styles.join('\n')}
 </style>
@@ -109,14 +109,14 @@ for (const { name, st: mark } of order) {
   const purposes = list(f.purposes).map((p) => (ids.get(p) || {}).ja || p).join('・');
   const ia = flags(fs.readFileSync(path.join(dir, 'index.js'), 'utf8')).interactive;
   index.push({ name: f.name, n: d.secs.length, mark });
-  slides.push(introSlide({ name: f.name, summary: f.summary, purposes, variants: list(f.variants), group: `系列：${esc(SERIES_LABEL[f.series] || f.series)}`,
+  slides.push(introSlide({ name: f.name, summary: f.summary, purposes, variants: list(f.variants), group: `内容の分野：${esc(SERIES_LABEL[f.series] || f.series)}`,
     n: d.secs.length, ia, mark, next }), ...d.secs);
 }
 const total = index.reduce((a, x) => a + x.n + 1, 0) + 1;
-const html = deckHtml({ title: '部品の一覧（見本）', styles, scripts, slides, first: `<section class="slide">
-  <h2>部品の一覧（${index.length} 個、${total} 枚）</h2>
+const html = deckHtml({ title: 'パーツの一覧（サンプル）', styles, scripts, slides, first: `<section class="slide">
+  <h2>パーツの一覧（${index.length} 個、${total} 枚）</h2>
   <div class="body">
-    <p>部品ごとに、説明の 1 枚と見本のスライドが続く。→ で段階を進める。</p>
+    <p>パーツごとに、説明の 1 枚とサンプルのスライドが続く。→ でステップを進める。</p>
     <p>${index.map((x) => esc(x.name) + (x.mark ? `（${x.mark}）` : '')).join('　')}</p>
   </div>
 </section>` });
@@ -155,7 +155,7 @@ if (args.includes('--build')) {
       await p.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
       const f = `s${String(s.i).padStart(3, '0')}_k${k}_${label}.png`;
       await p.screenshot({ path: path.join(out, 'shots', f) });
-      frames.push({ f, label: `段階 ${k}${label === 'end' ? '（最後）' : '（途中）'}` });
+      frames.push({ f, label: `ステップ ${k}${label === 'end' ? '（最後）' : '（途中）'}` });
     };
     if (s.comps) {
       // the middle of the busiest step, then the final state
@@ -168,7 +168,7 @@ if (args.includes('--build')) {
   await b.close();
   fs.rmSync(src);
   fs.writeFileSync(path.join(out, 'sheet.html'), `<!DOCTYPE html>
-<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>部品の一覧（画像）</title>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>パーツの一覧（画像）</title>
 <style>
 :root{--bg:#fff;--fg:#1d2433;--muted:#5b6475;--line:#d9dde5}
 @media (prefers-color-scheme:dark){:root{--bg:#14171d;--fg:#e8ebf1;--muted:#a3abba;--line:#323844}}
@@ -178,8 +178,8 @@ section{border-top:1px solid var(--line);padding:16px 0}h2{font-size:17px;margin
 .row{display:flex;gap:12px;flex-wrap:wrap}figure{margin:0;flex:1 1 420px;max-width:640px}
 img{width:100%;height:auto;border:1px solid var(--line);border-radius:6px;display:block}figcaption{font-size:13px;color:var(--muted);margin-top:4px}
 </style></head><body>
-<h1>部品の一覧（画像）</h1>
-<p>gallery.html の各スライドの、いちばん動く段階の途中と最後の状態。動きは gallery.html を開いて → で見る。${index.length} 個の部品、${plan.length} 枚。</p>
+<h1>パーツの一覧（画像）</h1>
+<p>gallery.html の各スライドの、いちばん動くステップの途中と最後の状態。動きは gallery.html を開いて → で再生する。${index.length} 個のパーツ、${plan.length} 枚。</p>
 ${rows.join('\n')}
 </body></html>
 `);
@@ -262,7 +262,7 @@ function packGallery(){
       scripts.push(...d.scripts);
       const tier = x.c.tier === 'specialized' && x.c.set ? `専門のパーツ（${SET_LABEL[x.c.set] || x.c.set}）` : x.c.tier === 'extra' ? '特殊なパーツ' : '標準パーツ';
       slides.push(introSlide({ name: tags[i], summary: x.f.summary, purposes: (x.c.purposes || []).map(label).join('・'), variants: x.c.variants || [],
-        group: `${esc(tier)}　版：${esc(x.c.version)}`, n: d.secs.length, ia: flags(text(`${x.name}/index.js`)).interactive,
+        group: `${esc(tier)}　バージョン：${esc(x.c.version)}`, n: d.secs.length, ia: flags(text(`${x.name}/index.js`)).interactive,
         mark: x.mark, next: x.mark ? next : '', sample: 'サンプル', samplesHref: samplesHrefOf(tags[i]) }), ...d.secs);
       total += 1 + d.secs.length;
     });

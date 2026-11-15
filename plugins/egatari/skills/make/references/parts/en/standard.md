@@ -1,11 +1,11 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: f086a47b
+Instruction version: 509f4951
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
-| `<m-bars>` | Bars grow from 0 by step (vertical, horizontal, grouped, stacked); the axis max can widen by step | max group/scale step (default 1 group = 1 step) | `{groups:[{label?,value?:num,values?:num[],step?,at?,tone?} (value or values),…],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
+| `<m-bars>` | Bars grow from 0 by step (vertical, horizontal, grouped, stacked); the axis max can widen by step | max group/scale step (default 1 group = 1 step) | `{groups:[{label?,value?:num,values?:num[],err?:num\|any[],step?,at?,tone?} (value or values),…],sig?:{from:int,to:int,group?:int,label?,step?}[],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
 | `<m-cards>` | Icon cards in a row or 2 rows, by step; arrows for order | largest card step (default 1 card = 1 step) | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |
 | `<m-compare>` | Table comparing 2–3 things: one column, the other, then row differences | columns + 1 (diff step; none if no diff/better) | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
 | `<m-curves>` | Lines drawn one at a time on shared axes, each named at its end (no legend) | largest step (default: number of series) | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],area?:any[],areaLabel?:str\|any[],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — the data is the array itself, not {"series": […]}; axes go in attributes (xr="[0,10]" xl="…"); the expression field is f in x (not fn, not u) |
@@ -37,10 +37,13 @@ Data example (child `<script type="application/json">`): `{"series":[{"label":"S
 | `ticks` | bool | `true` | ticks and grid |
 | `al` | string | `""` | axis title |
 | `stack` | bool | `false` | stack values; "percent" = 100 % |
+| `mark` | string | `"bar"` | bar or dot (a point with its error bar) |
 
 For quantities shown and compared one at a time: yearly sales, ranked answers, before/after.
 
 - group: `label` (`\n` = 2 lines), `value` or `values` (one per series), `step`, `at` (start s), `tone` (bar and value colour)
+- err: ± number or `[low, high]`; per series for `values`
+- sig: `[{"from": 0, "to": 2, "label": "**"}]` brackets groups 0 and 2 (`group`: series in a group); vertical, unstacked only
 - series: `label` (2+ series: on the first group's bars; no legend), `tone` (default `--series-1..4`)
 - scale: `[{"step": 3, "max": 27, "at": 0.4}]`: the max moves to `max` over `zoom` s; the old range stays as a faint band; taller bars stop at the top and grow as it widens
 - `orient="h"`: names left, values right; `ticks="false"` for ranks

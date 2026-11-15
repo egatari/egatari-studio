@@ -723,6 +723,12 @@ export function setupLlm(app) {
     mapworld: '<circle cx="16" cy="16" r="12"/><path d="M4 16h24M6 10h20M6 22h20"/><path d="M16 4c-5 4-5 20 0 24M16 4c5 4 5 20 0 24"/>',
     keyboard: '<rect x="3" y="7" width="26" height="18" rx="1.5"/><path d="M9.5 7v18M16 7v18M22.5 7v18"/><path d="M7.5 7h4v10h-4zM14 7h4v10h-4zM20.5 7h4v10h-4z" fill="currentColor"/>',
     kakijun: '<path d="M8 9c6-1 12-1 16 0"/><path d="M14 5c1 7 0 15-4 21"/><path d="M19 13c-3 7-7 11-10 12" opacity=".5"/><path d="M22 18l3 3-4 1z" fill="currentColor"/>',
+    // m-diverge と言いたいこと「差・増減」：基準の棒、上下に浮く増減の棒、合計の棒（ウォーターフォール）
+    waterfall: '<path d="M4 27h24"/><rect x="5" y="13" width="4" height="14"/><rect x="11" y="8" width="4" height="5"/><rect x="17" y="8" width="4" height="8" opacity=".55"/><rect x="23" y="16" width="4" height="11"/><path d="M9 13h2M15 8h2M21 16h2" stroke-dasharray="1 1"/>',
+    // m-checklist：印の付いた項目の並び
+    checklist: '<path d="M12 9h15M12 16h15M12 23h15"/><path d="M4 9l2 2 3-4M4 16l2 2 3-4"/><rect x="4" y="21" width="5" height="5" rx=".5"/>',
+    // m-callout：画面に番号の丸、引き出し線で横の説明へ
+    callout: '<rect x="3" y="6" width="16" height="20" rx="1.5"/><circle cx="8" cy="12" r="2.2"/><circle cx="13" cy="20" r="2.2"/><path d="M10.2 12H23M15.2 20H23M25 12h4M25 20h4"/>',
     other: '<rect x="6" y="6" width="20" height="20" rx="3"/>',
   };
   function icon(k) {

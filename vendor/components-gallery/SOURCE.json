@@ -1,16 +1,16 @@
 {
   "repository": "https://github.com/egatari/components",
-  "commit": "22ad4bb4829906c0b16e5183a2b48c9b8bbd754a",
+  "commit": "d19428d666d1ece4ad7dc0cd3bc92606205717b4",
   "files": {
     "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
-    "tools/gallery.mjs": "1b670fbd7ad55fd0a2d860129581491f5dc948eb318205d13b8bb8f5edc3633c",
+    "tools/gallery.mjs": "1ba6333c18dfafcc8da8cee0320c65598ce05b7e5278eee009f4bd8b79286744",
     "tools/studio.mjs": "b633e9026816d21b823bdc1fbb4d05a1018e0e44fd33b5da57b7aec4536fa66f",
-    "tools/studio.json": "28474ad8d334c491102d77ba5535421bd85e16b967106c8494e20bf2eb518fb1",
+    "tools/studio.json": "5fffa58e694c799da24dfdde51e629469a1852f7d4222cdedeedcbfd268f9b4e",
     "tools/baseline.mjs": "4ee43cf1210f660cd9b1e0ebea812bbc2b2d6913375ef5c54087216d61e6307d",
     "tools/parts.mjs": "7cf206b69d8eceee9ceca857215e96ce795e766decacf376a501ebcb08867b3c",
     "tools/tar.mjs": "963674c1e8f6d6ef9c80bfba21b84299723cb231475ef92891945089b45f2f18",
     "tools/identity.mjs": "1be7af70bd0f8399d0fefa0cdaa96c75ef5014d357eda21ad5535b2648480975",
-    "tools/lint.mjs": "068acfda51006e720a26ebd655db2fa3e7b5a38211db193a0d694f61e5d02b49",
+    "tools/lint.mjs": "f2e641bba949ddf6a61224b335895244306986ba6575222c7880319ebbb8068a",
     "tools/katex-produce.mjs": "5e55b15ed5b676c8bbbda74cfa4f60bd2cbbb3dca5c39a28686143c784f9be39",
     "tools/subset-produce.mjs": "301f9c4764ec8f1b6668d21394d3f2ca294154bb357adb0ba07ec2d8256115aa"
   },

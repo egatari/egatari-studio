@@ -43,12 +43,12 @@ const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.comp
 const SINGLE_SET_EXPECTED = {
   // v0.6.7：英語の指示が部品庫の英語の説明（README.en.md、16 のパーツ）を読むようになり、外すパーツ 1 つで減る貼り付けの長さが小さくなった。
   // math は m-pie、maps は m-fishbone、kokugo は m-cycle、science は m-tree を 1 つ多く外す（stats は同じ）
-  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards', 'm-pie'],
-    // v0.6.10：英語の指示が component を part・narration を script と書くようになり短くなった。kokugo は m-cycle を外さずに収まる
-    // 部品庫 2.7.0 で英語の説明が少し長くなり（合わせて +1,641 バイト）、kokugo はまた m-cycle も外す
-    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'],
+  // v0.6.13：言いたいことの表がこの指示にパーツのある行だけになり（d5 11/15）、短くなった。math は m-compare・m-cards・m-pie、kokugo は m-cycle、
+  // science は m-tree を外さずに収まる（部品庫 2.9.0 の m-bars の誤差棒・有意差の注記は無料のプランでは書かない）
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi'],
+    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
-    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'] },
+    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'] },
   ja: {},
 };
 for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
@@ -274,36 +274,42 @@ ok('request section: kind, structure and presentation of the subcategory, and th
 const FIX = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'fixtures', 'components-manifest-purposes.json'), 'utf8'));
 const TILE_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'spatial'];
 // 部品庫 v1.7.0 から：16 個目の札 predict「予想して確かめる」（決めた表 TILES は v1.6.0 の 15 個のまま。tile のない前の manifest に predict はない）
-const OWN_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'predict', 'spatial'];
-ok('purposes: the tiles are the default catalogue manifest\'s own purposes (16), with their label, examples and icon; the fallback table TILES (15) reads the same', () => {
+const OWN_IDS = ['compare', 'change', 'part-whole', 'key-number', 'process', 'timeline', 'cause-effect', 'cycle', 'hierarchy', 'position', 'overlap', 'correlation', 'spread', 'contents', 'predict', 'spatial', 'deviation'];   // 部品庫 2.9.1 で deviation（差・増減）が自分の札を持つ
+ok('purposes: the tiles are the default catalogue manifest\'s own purposes (17), with their label, examples and icon; the fallback table TILES (15) reads the same', () => {
   assert.equal(TILES.length, 15);
   const man = MANIFEST2();
   const own = man.purposes.filter((p) => p.tile === 'own' && !p.reserved);
-  assert.equal(own.length, 16);
+  assert.equal(own.length, 17);
   assert.equal(PURPOSES.tiles, 'manifest');
   assert.deepEqual(PURPOSES.list.map((p) => p.id), own.map((p) => p.id));
   for (const p of own) {
     const t = PURPOSES.list.find((x) => x.id === p.id), f = TILES.find((x) => x.id === p.id);
     assert.deepEqual([t.label, t.sub, t.icon], [p.label, p.examples, p.icon], p.id + ': label, examples and icon from the manifest');
-    if (p.id === 'predict') { assert.ok(!f, 'predict is not in the fallback table'); continue; }
+    if (p.id === 'predict' || p.id === 'deviation') { assert.ok(!f, p.id + ' is not in the fallback table'); continue; }
     if (p.id === 'spread') continue;   // 部品庫 v1.9.0 で札の小さな字が変わった（箱ひげ図・ドットプロット）。決めた表は v1.6.0 のまま
     assert.deepEqual([{ ...f.label }, { ...f.sub }], [{ ...p.label }, { ...p.examples }], p.id + ': the fallback table reads the same');
   }
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'compare').ids, ['compare', 'ranking'], 'ranking folds into compare');
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'spatial').label, { ja: '場所・地図', en: 'Place / map' });
-  assert.ok(!PURPOSES.list.some((p) => ['grouping', 'parameter', 'text-structure', 'deviation', 'concept-links'].some((id) => p.ids.includes(id))), 'tile "none" and reserved ids make no tile and join none');
+  assert.ok(!PURPOSES.list.some((p) => ['grouping', 'parameter', 'text-structure', 'concept-links'].some((id) => p.ids.includes(id))), 'tile "none" and reserved ids make no tile and join none');
   assert.deepEqual(PURPOSES.components['m-map-japan'], ['spatial']);
   assert.deepEqual(PURPOSES.list.map((p) => p.id), OWN_IDS);
   assert.deepEqual(PURPOSES.list.find((p) => p.id === 'predict').label, { ja: '予想して確かめる', en: 'Predict, then check' });
+  const dev = PURPOSES.list.find((p) => p.id === 'deviation');
+  assert.deepEqual([dev.label, dev.icon], [{ ja: '差・増減', en: 'Increase / decrease' }, 'waterfall'], 'deviation: its own tile with the waterfall icon (2.9.1)');
   assert.ok(!PURPOSES.list.some((p) => p.ids.includes('timebox')), 'timebox has no tile');
   assert.equal(PURPOSES.source, 'manifest');
   assert.equal(PURPOSES.list[0].label.ja, '比べる（量・特徴）'); assert.equal(PURPOSES.list[0].label.en, 'Compare (amounts, features)');
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
   // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-folds（部品庫 2.6.0 の束 data）の札は compare だけ（model は札なし）
+  // m-diverge（部品庫 2.9.0、束 business）は compare と deviation（2.9.1 から自分の札）に使う：compare を外しても deviation の札で残る
   assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-folds', 'm-numberline']);
   assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-folds', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
   // m-kakijun は 2.2.0 候補で extra に移り（backlog #170）、process の部品からは外れる（extra は purposes の計算に入らない）
-  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-cards', 'm-code', 'm-flow', 'm-hissan']);   // m-code（束 data）の札は process だけ
+  // m-callout・m-checklist（部品庫 2.9.0、束 tools）の札も process だけ
+  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan']);   // m-code（束 data）の札は process だけ
+  assert.deepEqual(componentsOff(['deviation'], PURPOSES), [], 'm-diverge also serves compare');
+  assert.deepEqual(componentsOff(['compare', 'deviation'], PURPOSES).filter((t) => t === 'm-diverge'), ['m-diverge'], 'm-diverge goes when both its tiles are off');
   assert.deepEqual(componentsOff([], PURPOSES), []);
   // 札のない言いたいことの部品（m-kanbun・m-sweep など）は外せない（束から入る）。特殊のパーツは指示にないので札も持たない
   assert.ok(!['m-kanbun', 'm-kobun', 'm-gendai', 'm-sweep', 'm-collect', 'm-codetree'].some((t) => PURPOSES.components[t]));
@@ -343,13 +349,16 @@ ok('purposes: a partly broken manifest drops only the bad entries (with a warnin
   assert.equal(purposesFrom({ purposes: 'x' }).source, 'fallback');
   assert.equal(purposesFrom(null).source, 'fallback');
 });
-ok('pack from the fixture manifest (generate): 15 table rows with manifest steps, no reserved or unmapped row, warnings printed', () => {
+ok('pack from the fixture manifest (generate): only the purposes with a part in the pack are rows (8 of the 15), with manifest steps, no reserved or unmapped row, warnings printed', () => {
   const g = generate({ manifest: FIX() });
   assert.deepEqual(g.data.purposes.list.map((p) => p.id), TILE_IDS);
   assert.ok(g.warnings.some((w) => w.includes('"mystery" has no tile')));
   const t = assemble(g.data, { sets: 'all', lang: 'en' });
   const table = t.slice(t.indexOf('| purpose |'), t.indexOf('Each part'));
-  assert.equal(table.trim().split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| purpose') && !l.startsWith('|---')).length, 16, '15 rows + other parts');
+  const rows = table.trim().split('\n').filter((l) => l.startsWith('| ') && !l.startsWith('| purpose') && !l.startsWith('|---'));
+  // d5 2026-11-15：この指示にパーツのない言いたいことは載せない（15 のうち、見本の manifest でパーツのあるのは 8）
+  assert.equal(rows.length, 9, '8 rows with a part + other parts');
+  assert.ok(rows.every((l) => /`m-[a-z-]+`/.test(l)), 'every row names a part');
   assert.match(table, /^\| Compare amounts \| `m-bars` \(sorted for ranking\) \| One side, then the difference \|$/m);
   assert.ok(!/Deviation|Concept links|Mystery|Ranking/.test(table));
 });
@@ -371,12 +380,12 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
       assert.ok(!off.includes('map-japan') && !off.includes('map-world'), `${lang} ${what}: spatial off → the maps are named nowhere`);
       assert.ok(!off.includes(PURPOSES.list.find((p) => p.id === 'spatial').name[lang] + ' |'), `${lang} ${what}: spatial off → no spatial row`);
     }
-    // maps が入っていない：場所・地図の行はパーツなし（AI が HTML で描く）、地図の名前は出さない
+    // maps が入っていない：場所・地図の行は出さない（d5 2026-11-15：パーツのない言いたいことは載せない）、地図の名前も出さない
     const name = PURPOSES.list.find((p) => p.id === 'spatial').name[lang];
     for (const opts of [{ sets: [] }, { sets: ['stats', 'kokugo'] }, { sets: [], plan: 'paid' }]) {
       const t = packWithRequest({ ...opts, lang });
       assert.ok(!t.includes('map-japan'), `${lang} ${opts.sets.join('+') || 'standard'}: m-map-japan is not named without maps`);
-      assert.ok(new RegExp('^\\| ' + name.replace(/[()/]/g, '\\$&') + ' \\| ' + (lang === 'ja' ? 'この文にはない' : 'not in this text')).test(t.split('\n').find((l) => l.startsWith('| ' + name + ' |')) || ''), `${lang}: the spatial row has no part without maps`);
+      assert.ok(!t.split('\n').some((l) => l.startsWith('| ' + name + ' |')), `${lang}: no spatial row without maps`);
     }
   }
 });
@@ -398,7 +407,9 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     // 束を選ばない：表が指すのは標準の部品だけ。入っていない束は何に使えるかだけ（束と部品の名前は出さない）
     const core = buildPack({ sets: [], lang });
     for (const t of ['m-market', 'm-seq', 'm-kanbun', 'm-hist']) assert.ok(!core.includes(t), `${lang}: no set chosen → ${t} is not named`);
-    assert.ok(lang === 'en' ? /Some parts are not included in these instructions \(for [^)]*Spread/.test(core) : /この指示に入っていないパーツもある（[^）]*ばらつき/.test(core), lang + ': the parts not included are named by use');
+    // 入っていないパーツは、あることだけ（言いたいことの名前も出さない。d5 2026-11-15）
+    assert.ok(lang === 'en' ? /Some parts are not included in these instructions\. Do not use them/.test(core) : /この指示に入っていないパーツもある。使わない/.test(core), lang + ': the parts not included are mentioned, not named');
+    assert.ok(!core.includes(PURPOSES.list.find((p) => p.id === 'spread').name[lang]), lang + ': no set chosen → the spread purpose is not named');
     for (const s of SETS) assert.ok(!core.slice(core.indexOf('### 2.7'), core.indexOf('### 2.8')).includes(s + ' ('), `${lang}: the set name ${s} is not in the table`);
     for (const s of SETS) for (const plan of AI_PLANS) {
       const p = buildPack({ sets: [s], lang, plan });
@@ -409,7 +420,7 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
   const en = buildPack({ sets: 'all', lang: 'en' });
   assert.match(en, /^\| change over time \| `m-curves`, `m-bars` \(few points\) \| one line at a time \|$/mi);
   assert.match(en, /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
-  assert.match(buildPack({ sets: [], lang: 'en' }), /^\| spread \| not in this text: the nearest part, or HTML or inline SVG \| whole at once \|$/mi);
+  assert.doesNotMatch(buildPack({ sets: [], lang: 'en' }), /^\| spread \|/mi);
   assert.match(buildPack({ sets: ['stats'], lang: 'en' }), /^\| spread \| `m-boxplot`, `m-hist`, `m-seq` \| whole at once \|$/mi);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn/);
   // 束の見本は抜き出し（部品を使うスライドだけ。骨組みは共通の見本）
@@ -583,9 +594,24 @@ ok('packs name no part outside their own catalog: no set, every single set and e
   assert.ok(k > 1000, k + ' packs');
   assert.deepEqual(notInCatalog('| `<m-bars>` | x |\nuse m-flow here; --mm-h'), ['m-flow'], 'the check finds a part named outside the catalog');
 });
+ok('purpose table (d5 2026-11-15): in every pack (each language, plan, no set, each set, every set), each listed purpose names a part that is in that pack', () => {
+  for (const lang of ['en', 'ja']) for (const plan of AI_PLANS) for (const sets of [[], ...SETS.map((x) => [x]), 'all']) {
+    const t = buildPack({ sets, lang, plan });
+    const table = t.slice(t.indexOf(lang === 'ja' ? '| 言いたいこと |' : '| purpose |'));
+    const lines = table.split('\n').slice(2);
+    const rows = lines.slice(0, lines.findIndex((l) => !l.startsWith('| ')));   // 表の終わり（空行）まで
+    const what = `${lang} ${plan} ${sets === 'all' ? 'all' : sets.join('+') || 'standard'}`;
+    assert.ok(rows.length > 0, what + ': a table');
+    for (const l of rows) {
+      const tags = [...l.matchAll(/`(m-[a-z]+(?:-[a-z]+)*)`/g)].map((m) => m[1]);
+      assert.ok(tags.length > 0, `${what}: the row names a part: ${l}`);
+      for (const tag of tags) assert.ok(t.includes('`<' + tag + '>`'), `${what}: ${tag} in the table is in the catalog`);
+    }
+  }
+});
 ok('pack: turning purposes off removes the parts used only for them from the catalog (standard and sets) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);
-  assert.deepEqual(off, ['m-cards', 'm-code', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu']);
+  assert.deepEqual(off, ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu']);
   const full = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', plan: 'paid' });
   const cut = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', exclude: off, off: ['key-number', 'process', 'contents'], plan: 'paid' });
   assert.ok(full.includes('### `<m-flow>`') && full.includes('### `<m-kpi>`') && full.includes('| `<m-menu>` |'));

@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: f086a47b**
+**Instruction version: 509f4951**
 **Skill version: 0.6.12**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -77,7 +77,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `f086a47b`
+Pack version: `509f4951`
 
 You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -168,7 +168,7 @@ Choose candidate parts from the set references.
 
 ## 3. Part catalog
 
-These standard parts may be used in any lesson; a part set, when it is included after §6, adds the parts of its kind of material. Generated from the part READMEs (their notes are in Japanese). “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations and delays in seconds) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
+Standard parts fit any lesson; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 Read only the parts you need from the set references above.
 
