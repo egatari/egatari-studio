@@ -96,7 +96,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ### 2.4 数式（KaTeX）
 
-- **R-math** 行内は `\( … \)`、別行は `\[ … \]`。式の中の `<` は `\lt`、`>` は `\gt`。標準のほかに使えるマクロ：`\hlE{…}`（emph）`\hlT{…}`（term）`\hlM{…}`（muted）、`\htmlId{ID}{…}`、`\htmlData{mark=ID}{…}`、`\htmlClass{…}{…}`、`\morph{ID}{…}`。`\newcommand` と `\color` は使わない。記号は最初に使う所で定義する（`\(\mu\)`：母平均）
+- **R-math** 行内は `\( … \)`、別行は `\[ … \]`。式の中の `<` は `\lt`、`>` は `\gt`。標準のほかに使えるマクロ：`\hlE{…}`（emph）`\hlT{…}`（term）`\hlM{…}`（muted）、`\htmlId{ID}{…}`、`\htmlData{mark=ID}{…}`、`\htmlClass{…}{…}`、`\morph{ID}{…}`。`\newcommand` と `\color` は使わない。項の説明は `\underbrace{…}_{\text{…}}`・`\overbrace{…}^{…}`。`$$` は使わない。記号は最初に使う所で定義する（`\(\mu\)`：母平均）
 
 ### 2.5 強調とモーフ
 

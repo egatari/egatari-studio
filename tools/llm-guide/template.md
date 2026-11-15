@@ -96,7 +96,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 
 ### 2.4 Math (KaTeX, rendered at build time)
 
-- **R-math** Inline `\( … \)`, display `\[ … \]`. Write `<` as `\lt` and `>` as `\gt` inside math. Allowed macros besides standard KaTeX: `\hlE{…}` (emph) `\hlT{…}` (term) `\hlM{…}` (muted), `\htmlId{ID}{…}`, `\htmlData{mark=ID}{…}`, `\htmlClass{…}{…}`, `\morph{ID}{…}`. No `\newcommand`, no `\color`. Define each symbol where it is first used (`\(\mu\)`: the mean).
+- **R-math** Inline `\( … \)`, display `\[ … \]`. Write `<` as `\lt` and `>` as `\gt` inside math. Allowed macros besides standard KaTeX: `\hlE{…}` (emph) `\hlT{…}` (term) `\hlM{…}` (muted), `\htmlId{ID}{…}`, `\htmlData{mark=ID}{…}`, `\htmlClass{…}{…}`, `\morph{ID}{…}`. No `\newcommand`, no `\color`. To label a term, use `\underbrace{…}_{\text{…}}` or `\overbrace{…}^{…}`. Never `$$`. Define each symbol where it is first used (`\(\mu\)`: the mean).
 
 ### 2.5 Attention marks and morphs
 

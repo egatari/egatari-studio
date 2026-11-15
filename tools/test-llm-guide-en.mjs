@@ -179,6 +179,8 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
       ['（結論の行。短い 1 文）\n', '（結論の行。短い 1 文）\n- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。\n'],
       // v0.6.13：注意・警告の枠（R-caution）の 1 行。.body の中の行のすぐ後
       ['`<ol>` `<table>`\n', '`<ol>` `<table>`\n- **R-caution** `.body` に注意は `<div class="caution">…</div>`、警告は `class="caution warn"`。ラベルは自動で付く。\n'],
+      // v0.6.14：数式の項の説明（\underbrace・\overbrace、backlog #225 (a)）の 1 行。R-math の記号の定義の前
+      ['。記号は最初に使う所で定義する（', '。項の説明は `\\underbrace{…}_{\\text{…}}`・`\\overbrace{…}^{…}`。`$$$$` は使わない。記号は最初に使う所で定義する（'],   // $$$$：replaceAll の置き換えの字で $$ を書く
     ];
     const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);
     const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow);
