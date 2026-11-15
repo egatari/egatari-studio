@@ -38,6 +38,7 @@ import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { sourceFindings } from '../kit/core/check-source.mjs';
+import { imageSizeFindings } from '../kit/core/image-size.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { colabVideoUrl } from '../kit/core/colab-core.mjs';
@@ -1242,7 +1243,8 @@ async function checkResults(rec) {
   // 原稿の文字列だけで決まる指摘（id と鍵・1.0 の語彙にない書き方・語彙の外の色・{note:}・式らしい台本など。kit/core/check-source.mjs。kit/check.mjs と同じ code と値）
   {
     const title = (i) => (i === null || !S.slides[i] ? '' : S.slides[i].heading || '');
-    for (const f of await sourceChecks()) results.push({ sev: f.sev, code: f.code, arg: f.a, step: f.step, i: f.i, title: title(f.i) });
+    // ローカルの画像も埋め込まれた後の文書で数える。パーツ自身の画像は外す
+    for (const f of [...await sourceChecks(), ...imageSizeFindings(S.base)]) results.push({ sev: f.sev, code: f.code, arg: f.a, step: f.step, i: f.i, title: title(f.i) });
   }
   // 音声が古い段階（§5.4）：この画面が作業場所から決めたもの（プレビューの答えではない）
   for (const k of S.stale || []) { const sk = k.slice(0, k.lastIndexOf(':')), i = (S.slides || []).findIndex((x) => x.key === sk); results.push({ sev: 'warn', code: 'audioStale', arg: k.slice(k.lastIndexOf(':') + 1), i: i < 0 ? null : i, title: i < 0 ? '' : S.slides[i].heading || '' }); }
