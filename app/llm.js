@@ -1557,7 +1557,7 @@ export function setupLlm(app) {
     };
     // 規格の名前：修正依頼の表（kit/core/llm-fix.mjs の BY_CODE）になければ、コマンド版の言葉の表（kit/check-messages.mjs の ruleOf）から（rawMath の R-math など）
     const ruleFor = (code, arg) => { if (rulesFor({ code }).length) return null; try { return ruleOf(code, arg && typeof arg === 'object' ? arg : {}); } catch { return null; } };
-    const probs = (results || []).filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift' && r.code !== 'metricsFontLoad').map((r) => { const arg = withLines(r), rule = ruleFor(r.code, arg); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, ...(rule ? { rule } : {}), text: T.checkMsg(r.code, arg) }; });
+    const probs = (results || []).filter((r) => (r.sev === 'error' || r.sev === 'warn') && r.code !== 'themeMetricsDrift' && r.code !== 'metricsFontLoad').map((r) => { const arg = withLines(r), rule = ruleFor(r.code, arg); return { sev: r.sev, i: r.i, title: r.title, code: r.code, data: arg, ...(r.part ? { part: r.part } : {}), ...(rule ? { rule } : {}), text: T.checkMsg(r.code, arg) }; });
     // 組み立ての知らせのうち、原稿の書き方に関わるもの（行き先のない口述原稿・目印・段階の番号など）
     // 目印が見つからない（mark: 目印…）は品質チェックの markMissing が部品の作った要素も含めて実際の画面で見るので、重ねて載せない（kit/check.mjs と同じ）
     for (const w of S.warn || []) if (/^(narration|mark|slide key):/.test(w) && !/^mark: 目印/.test(w)) probs.push({ sev: /^narration:/.test(w) ? 'error' : 'warn', i: null, title: '', msg: w, text: w });

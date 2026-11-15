@@ -220,7 +220,7 @@ function quickCheck(fonts){
   var JA = DECK.ja !== false, S = DECK.slides, out = [], punct = [];
   var TH = cfg.theme || null, METRICS = TH && TH.metrics || null;
   var st = DECK.state(), back = {i: st.slide - 1, k: st.step};
-  var add = function(i, sev, code, arg){ out.push({i: i, title: i === null ? "" : ((S[i].querySelector("h2, h1") || {}).textContent || S[i]._key).replace(/\s+/g, " ").trim(), sev: sev, code: code, arg: arg}); };
+  var add = function(i, sev, code, arg, part){ var r = {i: i, title: i === null ? "" : ((S[i].querySelector("h2, h1") || {}).textContent || S[i]._key).replace(/\s+/g, " ").trim(), sev: sev, code: code, arg: arg}; if (part) r.part = part; out.push(r); };
   // 縮図のための描画はスライドに入ったことにしない（format spec §8.4 entered。DECK.aside が終わると見ている位置に戻して描く）
   (DECK.aside || function(f){ return f(); })(function(){ S.forEach(function(s, i){
     DECK.seek(i, s._max, Infinity);
@@ -230,7 +230,7 @@ function quickCheck(fonts){
     layoutScan(s, {JA: JA, refRe: "文献|References", clip: LAYOUT_CLIP, annot: LAYOUT_ANNOT, overlap: LAYOUT_OVERLAP, metrics: METRICS}).forEach(function(f){
       var a = f.a, code = LEGACY[f.code];
       if (!code) return add(i, f.sev, f.code, a);
-      add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n);
+      add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n, a && a.part);   // はみ出したパーツ（#196）は修正依頼が高さの値を添えるのに使う（#224）
     });
     // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）：コマンド版と同じ関数・code・値
     geometryScan(s, GEO_OPTS).forEach(function(f){ add(i, f.sev, f.code, f.a); });
