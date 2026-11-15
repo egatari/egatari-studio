@@ -588,6 +588,13 @@
       "pattern": "報告書づくりの道具",
       "term": "tools",
       "reason": "Sample content of a part thumbnail (a made-up report), not the Tools group."
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "saveNote:",
+      "term": "caution-box",
+      "pairs": true,
+      "reason": "The existing save-download advisory uses 注意 generically, not as the label of a slide caution box."
     }
   ]
 }

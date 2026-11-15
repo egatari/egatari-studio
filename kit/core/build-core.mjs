@@ -19,6 +19,7 @@
 //   env.compressAudio(file)        任意。埋め込む音声を小さくしたファイル（できなければ元のまま）。env.audioFailed() で失敗を知る
 // 書式・記法は kit/build.mjs の頭の注釈、約束事は docs/contract.md
 import { parse } from 'parse5';
+import { insertCautionLabels } from './caution.mjs';
 import { short } from './sha1.mjs';
 import { plural } from './plural.mjs';
 import { innerJa } from './quote-ja.mjs';
@@ -917,6 +918,9 @@ export function build(env0, srcPath, opts = {}) {
         return a + body + imgs + c;
       });
   }
+
+  // Labels precede font subsetting so Japanese labels are included in the embedded fonts.
+  html = insertCautionLabels(html);
 
   // 数式
   // 式の一部に色を付けるマクロ（テーマの変数に従う）：\hlE{…} 結論・問題、\hlT{…} 用語、\hlM{…} 既知の結果

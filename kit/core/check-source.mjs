@@ -11,6 +11,7 @@ import { analyzeSlideIds, isJapanese } from './build-core.mjs';
 import { legacyVocabulary } from './legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './color-vocab.mjs';
 import { kickerFindings } from './kicker.mjs';
+import { cautionFindings } from './caution.mjs';
 import { predictStepProblems } from './predict-steps.mjs';
 import { parseNarration, normalizeKey, noteProblems } from './narration-parse.mjs';
 import { narrationLang, textLang, formulaLike, formulaText } from './narration-lint.mjs';
@@ -20,6 +21,7 @@ export function sourceFindings({ deck, narration = '', voiceLang } = {}) {
   const add = (i, sev, code, a, step = null) => out.push({ i, sev, code, a, step });
   if (typeof deck !== 'string' || !deck) return out;
   for (const f of kickerFindings(deck)) add(f.i, f.sev, f.code, f.a);
+  for (const f of cautionFindings(deck)) add(f.i, f.sev, f.code, f.a);
   const ids = analyzeSlideIds(deck);
   for (const p of ids.problems) add(p.slide, p.sev, 'slideId', { msg: p.msg });
   for (const s of ids.slides) {

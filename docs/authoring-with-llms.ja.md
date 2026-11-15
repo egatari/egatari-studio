@@ -95,6 +95,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
 - `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の束があるときだけ）、属性 `data-morph`（§2.5）
 - `.body` の中：`<p class="sub">` 小見出し、`<div class="big">` 主要な式、`<p class="note">` 補足、`<div class="thm">` 定理の枠、`<div class="cols">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`
+- **R-caution** `.body` に注意は `<div class="caution">…</div>`、警告は `class="caution warn"`。ラベルは自動で付く。
 - 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
 - **R-headings** スライドの見出し（表紙と扉は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を足す）。そのスライドの台本の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）
 - **R-colors** 色はテーマだけで：上の class と式のマクロ `\hlE` `\hlT` `\hlM`。16 進・`rgb()`・色の名前・`\color`・`\textcolor` は使わない。パーツや SVG の中では：**色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）

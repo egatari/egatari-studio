@@ -87,14 +87,22 @@ const objOf = (name) => {
   return Object.fromEntries(OBJ.map((k) => [k, ((css.match(new RegExp(`--obj-${k}\\s*:\\s*(#[0-9a-fA-F]{6})\\s*;`)) || [])[1] || '').toUpperCase()]));
 };
 
+await t('caution and warning: every bundled theme declares both semantic colours', () => {
+  for (const name of THEMES) {
+    const css = fs.readFileSync(path.join(ROOT, 'themes', name, 'tokens.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const token of ['caution', 'warn']) assert.match(css, new RegExp(`--${token}\\s*:\\s*#[0-9a-fA-F]{6}\\s*;`), `${name}: missing --${token}`);
+  }
+});
+
 await t('選べるテーマ：藍・墨・国語・常盤・江戸紫・焦茶・浅葱・生成の 8 つ（この順）で、どれも同梱。business は選べないが同梱のまま（記録した教材を組む）', () => {
   assert.deepEqual(CHOOSABLE.map((x) => x.name), ['default', 'sumi', 'kokugo', 'tokiwa', 'murasaki', 'kogecha', 'asagi', 'bengara']);
   for (const x of CHOOSABLE) assert.ok(THEMES.includes(x.name), x.name);
   assert.deepEqual(RETIRED, ['business']);
   assert.ok(THEMES.includes('business'));
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'themes.lock.json'), 'utf8'));
-  for (const x of ['tokiwa', 'murasaki', 'kogecha', 'asagi', 'kokugo', 'business', 'sumi']) assert.equal(lock.themes[x].current, '1.3.0', x);
-  assert.equal(lock.themes.bengara.current, '1.0.0');
+  for (const x of ['tokiwa', 'murasaki', 'kogecha', 'asagi', 'kokugo', 'business', 'sumi']) assert.equal(lock.themes[x].current, '1.4.0', x);
+  assert.equal(lock.themes.default.current, '1.6.0');
+  assert.equal(lock.themes.bengara.current, '1.1.0');
 });
 
 await t('形の断片：theme.json の look の形が tokens.css にそのまま写してあり、ほかの形の印はない。:where() で包まない', () => {
@@ -203,7 +211,12 @@ try {
           const rgb = (css) => { cx.clearRect(0, 0, 1, 1); cx.fillStyle = '#000'; cx.fillStyle = css; cx.fillRect(0, 0, 1, 1); return [...cx.getImageData(0, 0, 1, 1).data].slice(0, 3).map((x) => x / 255); };
           const tok = (n) => { const e = document.createElement('i'); e.style.color = `var(--${n})`; document.body.appendChild(e); const c = getComputedStyle(e).color; e.remove(); return rgb(c); };
           const out = {};
-          for (const k of ['fg', 'bg', 'title', 'term', 'emph', 'muted', 'base', 'concl-bg', 'cover-bg', 'sec-bg', 'lit']) out[k] = tok(k);
+          for (const k of ['fg', 'bg', 'title', 'term', 'emph', 'muted', 'base', 'concl-bg', 'cover-bg', 'sec-bg', 'lit', 'caution', 'warn']) out[k] = tok(k);
+          out.cautionBoxes = {};
+          for (const [key, sel] of [['caution', '.caution:not(.warn)'], ['warn', '.caution.warn']]) {
+            const box = document.querySelector('#t-caution ' + sel), label = box.querySelector('.caution-label');
+            out.cautionBoxes[key] = { body: rgb(getComputedStyle(box).color), label: rgb(getComputedStyle(label).color), tint: rgb(getComputedStyle(box).backgroundColor) };
+          }
           out.obj = {};
           for (const k of OBJ) out.obj[k] = tok('obj-' + k);
           // 章の扉の字（--sec-fg。既定は白）・表紙の題・ふつうのスライドの見出しの字とその地は、描いた要素から
@@ -219,6 +232,10 @@ try {
         fg: contrast(v.fg, v.bg), term: contrast(v.term, v.bg), emph: contrast(v.emph, v.bg), muted: contrast(v.muted, v.bg), title: contrast(v.title, v.bg),
         concl: contrast(v.emph, v['concl-bg']), sec: contrast(v.secFg, v.secBg), cover: contrast(v.coverTitle, v.coverBg), h2: contrast(v.h2, v.h2Bg),
       };
+      for (const [key, box] of Object.entries(v.cautionBoxes)) {
+        c[key + 'Label'] = contrast(box.label, box.tint);
+        c[key + 'Body'] = contrast(box.body, box.tint);
+      }
       const et76 = Object.fromEntries(VISION.map((k) => [k, deUnder(v.emph, v.term, k)]));
       const et00 = Object.fromEntries(VISION.map((k) => [k, deUnder(v.emph, v.term, k, 'de2000')]));
       const ef00 = deUnder(v.emph, v.fg, 'protan', 'de2000');
@@ -267,6 +284,8 @@ for (const r of rows) {
 }
 console.log('\ntheme      --lit    on --bg | lit–emph ΔE*ab N/P/D/T | ΔE00 N/P/D/T');
 for (const r of rows) if (r.lit) console.log(`${r.name.padEnd(10)} ${rgb2hex(r.v.lit)} ${fix(r.lit.bg).padStart(5)}:1 | ${VISION.map((k) => fix(r.lit.e76[k], 0).padStart(3)).join('/')}            | ${VISION.map((k) => fix(r.lit.e00[k], 1)).join('/')}`);
+console.log('\ntheme      --caution --warn   | caution label/body on tint | warn label/body on tint');
+for (const r of rows) console.log(`${r.name.padEnd(10)} ${rgb2hex(r.v.caution)} ${rgb2hex(r.v.warn)} | ${fix(r.c.cautionLabel)}/${fix(r.c.cautionBody)}:1 | ${fix(r.c.warnLabel)}/${fix(r.c.warnBody)}:1`);
 console.log('\ntheme      object colours --obj-*: hex  OKLCH L/C/h  contrast on --bg');
 for (const r of rows) {
   const bg = rgb2hex(r.v.bg);

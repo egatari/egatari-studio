@@ -12,6 +12,7 @@ export const IN_EDITOR = Object.freeze([
   // 原稿の文字列から（kit/core/check-source.mjs）
   'slideId', 'legacyDataKey', 'legacyIndex', 'legacyColorClass', 'legacyStepAttr', 'legacyLectureMode', 'colorOutside', 'narrHeadingDiffers',
   'kickerLong', 'kickerPlace', 'kickerSlide',
+  'cautionEmpty', 'cautionLabel',
   'narrNote', 'narrFormula', 'turnLong', 'narrLang', 'predictAnswerWithCount', 'predictAnswerNeverShown',
   // app/main.js・app/llm.js（作業場所の原稿と台本から）
   'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral', 'readingGap',

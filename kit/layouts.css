@@ -38,6 +38,13 @@
 .cols{display:flex;gap:32px;align-items:flex-start}
 .cols>*{flex:1;min-width:0}
 .thm{border:2px solid var(--term);border-radius:6px;padding:6px 16px;margin:4px 0 8px;background:var(--term-tint)}
+.caution{--caution-color:var(--caution);position:relative;border-inline-start:6px solid color-mix(in oklch,var(--caution-color) 85%,var(--bg));
+  padding:10px 16px;padding-inline-start:52px;margin:4px 0 8px;color:var(--fg);background:color-mix(in oklch,var(--caution-color) 8%,var(--bg))}
+.caution.warn{--caution-color:var(--warn);border:8px solid color-mix(in oklch,var(--caution-color) 85%,var(--bg))}
+.caution-label{display:block;font-weight:700;color:var(--caution-color)}
+.caution::before{content:"";position:absolute;inset-inline-start:14px;inset-block-start:12px;width:28px;height:28px;
+  color:var(--caution-color);background:currentColor;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='2'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath d='M12 10v7M12 6v2'/%3E%3C/g%3E%3C/svg%3E") center/contain no-repeat}
+.caution.warn::before{mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='2' stroke-linejoin='round'%3E%3Cpath d='M12 2 23 22H1ZM12 9v6M12 17v2'/%3E%3C/g%3E%3C/svg%3E")}
 .box{border-radius:8px;padding:10px 18px;margin:4px 0 8px;background:var(--base-wash)}
 /* 要素だけの規則はスライドの中だけ（:where(.slide) で詳細度は前と同じ 0,0,1。テーマが同じ詳細度で上書きできる）。本の窓（#egatari-article）に届かせない */
 :where(.slide) table{border-collapse:collapse;width:100%;font-size:28px;line-height:1.35}
@@ -107,6 +114,6 @@ html[data-font="mincho"]{--font-sans:var(--font-mincho)}
 .slide.layout-tate .body :is(ul,ol){margin:0 0 0 8px;padding:1.2em 0 0}
 .slide.layout-tate .body li{margin:0 0 0 4px}
 .slide.layout-tate .body .sub{margin:0 0 0 8px}
-.slide.layout-tate .body > :not(p,ul,ol,.sub,.note,.arrow,.tate,.box,.thm,h3,blockquote){writing-mode:horizontal-tb;width:100%}
+.slide.layout-tate .body > :not(p,ul,ol,.sub,.note,.arrow,.tate,.box,.thm,.caution,h3,blockquote){writing-mode:horizontal-tb;width:100%}
 .slide.layout-tate .body > .tate{height:100%;margin:0}
 .slide.layout-tate .concl{left:48px;right:auto;top:48px;bottom:56px;width:72px;height:auto;writing-mode:vertical-rl;text-orientation:mixed}

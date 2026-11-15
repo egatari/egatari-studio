@@ -159,10 +159,14 @@ try {
     && tail.includes('サンプル「漢文を読む――返り点から書き下し文へ」の構成と見せ方に倣って') && KS.structure.every((r, i) => tail.includes(`${i + 1}. ${r.heading} — ${r.point}`))
     && !c1.includes(KS.request), 'F1 ④: the copied instructions carry the sample’s structure (every heading and point), its theme and setting, and not the sample’s own text');
   await p1.evaluate(() => document.getElementById('paste-step-send').querySelector('.paste-step-h').click());
+  const shortWith = await p1.$eval('#paste-shortened', (x) => (x.hidden ? '' : x.textContent));
   await p1.uncheck('#paste-use-structure');
   const withoutBytes = await meterBytes(p1);
+  const shortWithout = await p1.$eval('#paste-shortened', (x) => (x.hidden ? '' : x.textContent));
   const c1b = await copy(p1);
-  ok(withoutBytes < withBytes && !c1b.includes('## 倣うサンプルの構成'), `F1 ④: unticking drops the structure and shrinks the instructions by ${((withBytes - withoutBytes) / 1024).toFixed(2)} KB`);
+  // 構成を外すと小さくなる。ただし目安のぎりぎりでは、構成があるときだけ短くしたパーツの説明が、外すと詳しく戻って大きくなることがある（それも正しい。短くした名前が変わる）
+  ok(!c1b.includes('## 倣うサンプルの構成') && (withoutBytes < withBytes || shortWith !== shortWithout),
+    `F1 ④: unticking drops the structure; the instructions shrink by ${((withBytes - withoutBytes) / 1024).toFixed(2)} KB, or fewer parts are shortened (${shortWith} → ${shortWithout})`);
   await p1.evaluate(() => document.getElementById('paste-step-send').querySelector('.paste-step-h').click());
   await p1.check('#paste-use-structure');
   // ① を変えると「サンプルから」の札は消える（戻すと付く）
