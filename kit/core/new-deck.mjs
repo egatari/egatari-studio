@@ -95,6 +95,7 @@ export const CATEGORIES = [
 export const SET_LABELS = [
   { set: 'stats', label: { ja: '統計の図', en: 'Statistics charts' }, inside: { ja: 'ヒストグラム・箱ひげ図・ヒートマップ', en: 'Histograms, box plots, heatmaps' } },
   { set: 'data', label: { ja: '情報・データサイエンス', en: 'Data science and code' }, inside: { ja: '標本抽出・信頼区間・交差検証・コードの解説', en: 'Sampling, confidence intervals, cross-validation, code walkthroughs' } },
+  { set: 'algo', label: { ja: 'アルゴリズム', en: 'Algorithms' }, inside: { ja: 'グラフの探索・最短経路・巡回セールスマン', en: 'Graph search, shortest paths, the traveling salesman' } },
   { set: 'math', label: { ja: '算数・数学', en: 'Arithmetic and mathematics' }, inside: { ja: '筆算・数直線・テープ図・関数', en: 'Column arithmetic, number lines, tape diagrams, functions' } },
   { set: 'maps', label: { ja: '地図', en: 'Maps' }, inside: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' } },
   { set: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' } },
