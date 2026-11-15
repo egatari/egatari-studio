@@ -89,6 +89,9 @@ export function tiersFrom(cat = catalogue()) {
   const parts = {};
   const els = Object.values(m.components).filter((c) => c.kind === 'element' && c.tag).sort((a, b) => (a.tag < b.tag ? -1 : 1));
   for (const c of els) {
+    // 段 local（ローカル（CLI）向け、backlog #213）：ローカルのツールの出力が要るパーツ（m-trace）。チャットの指示にも新規作成の一覧・言いたいことにも入れない
+    // （段と束の一覧から外す。CLI のスキルの参照 references/parts/local.md にだけ書く）。知らない段は今までどおり投げる（古い Studio が黙って指示に入れないように）
+    if (c.tier === 'local') continue;
     if (!['standard', 'specialized', 'extra'].includes(c.tier)) throw new Error(`manifest-${cat.version}.json: ${c.tag} has tier ${JSON.stringify(c.tier)}`);
     if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${cat.version}.json: ${c.tag} is specialized without a set`);
     const display = displayOf(c, cat.version);
@@ -397,7 +400,7 @@ function splitBlocks(body, file, sets) {
   if (cur !== null && cur !== 'omit') throw new Error(`${file}: <!-- llm: ${cur} --> is not closed (<!-- llm: end -->)`);
   return { own: own.join('\n'), ext: Object.fromEntries(Object.entries(ext).map(([k, v]) => [k, v.join('\n').trim()])) };
 }
-// 既定のカタログの要素のパーツ（特殊を含む）：[{fm, tier, set, body, ext, props, shape, rawProps}]。set は 'standard'・束の名前・'extra'
+// 既定のカタログの要素のパーツ（特殊・ローカルを含む）：[{fm, tier, set, body, ext, props, shape, rawProps}]。set は 'standard'・束の名前・'extra'・'local'
 // readmeEn（試験用。generate の opts.readmeEn）：false なら README.en.md を読まない。{タグ: 字}ならそのタグの README.en.md の代わりにその字（null は「ない」）
 function components(cat, sets, readmeEn = {}) {
   const lock = parseLock(read(LOCK_FILE));
@@ -412,7 +415,7 @@ function components(cat, sets, readmeEn = {}) {
     const [fm, body] = frontmatter(read(path.relative(ROOT, path.join(dir, 'README.md'))));
     const js = fs.existsSync(path.join(dir, 'index.js')) ? read(path.relative(ROOT, path.join(dir, 'index.js'))) : '';
     if (fm.name !== c.tag) throw new Error(`${file}: frontmatter name ${fm.name} is not ${c.tag}`);
-    const set = c.tier === 'extra' ? 'extra' : c.tier === 'standard' ? STANDARD : c.set;
+    const set = c.tier === 'extra' ? 'extra' : c.tier === 'local' ? 'local' : c.tier === 'standard' ? STANDARD : c.set;
     const blocks = splitBlocks(body, file, sets);
     if (Object.keys(blocks.ext).length && set !== STANDARD) throw new Error(`${file}: <!-- llm: … --> extension blocks are only for standard parts (this one is ${c.tier})`);
     const cls = js ? classOf(js, fm.name) : null;
@@ -599,7 +602,8 @@ export function studioVersion(text, version, skill = skillVersion()) {
   return text.replace(marker, `**指示のバージョン：${version}**\n**スキルのバージョン：${skill}**`);
 }
 
-export function skillFiles(data, lang = 'ja') {
+// local：ローカル（CLI）向けのパーツ [{tag, ja, en, src}]（#213）。references/parts/local.md に README の本文を書く（なければ書かない）
+export function skillFiles(data, lang = 'ja', local = []) {
   if (!['ja', 'en'].includes(lang)) throw new Error(`invalid skill language: ${lang}`);
   const files = {}, head = '<!-- generated; do not edit by hand -->\n';
   const sets = new Map([[STANDARD, membersOf(data.ja, STANDARD)], ...data.sets.map((s) => [s, membersOf(data.ja, s)]), ['extra', [...(data.extra || [])]]]);
@@ -615,7 +619,14 @@ export function skillFiles(data, lang = 'ja') {
       const table = extra || !tags.length ? '' : D.tableHead + '\n' + tags.map((tag) => partSpans(D.components[tag].row)).join('\n') + '\n\n';
       files[`${MAKE_SKILL_DIR}/${refDir}${set}.md`] = skillTerms(head + `# ${ja ? set + ' のパーツ' : set + ' parts'}\n\n${ja ? '指示のバージョン：' : 'Instruction version: '}${data.version}\n\n` + table + [...entries, ...ext].join('\n\n') + '\n').replace(/\bnode /g, '`node` ');
     }
-    const links = [...sets.keys()].map((set) => `- [${set}](${refDir}${set}.md)`).join('\n');
+    if (local.length) {
+      const intro = ja
+        ? 'ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI で、ローカルのツールの出力（例：トレーサーが書くコードの実行の記録）から作る。チャットの AI への指示には入らない。そのツールを動かせないときは使わない。'
+        : 'Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer\'s record of running code). They are not in the chat AI instructions. Do not use them when you cannot run the tool.';
+      const body = (x) => `### \`<${x.tag}>\`\n\n${String((ja ? x.ja : x.en || x.ja) || '').trim()}\n\n[README](${x.src}${x.tag.replace(/^m-/, '')}/README${ja ? '' : '.en'}.md)`;
+      files[`${MAKE_SKILL_DIR}/${refDir}local.md`] = skillTerms(head + `# ${ja ? 'local のパーツ' : 'local parts'}\n\n${intro}\n\n` + [...local].sort((a, b) => (a.tag < b.tag ? -1 : 1)).map(body).join('\n\n') + '\n');
+    }
+    const links = [...sets.keys(), ...(local.length ? ['local'] : [])].map((set) => `- [${set}](${refDir}${set}.md)`).join('\n');
     const common = partSpans(D.common
       .replace('{{CATALOG}}', ja ? 'パーツは上のセットごとの参照ファイルから、必要なものだけ読む。' : 'Read only the parts you need from the set references above.')
       .replace('{{PURPOSES}}', ja ? 'パーツの候補はセットごとの参照ファイルで選ぶ。' : 'Choose candidate parts from the set references.'));
@@ -757,8 +768,11 @@ export function generate(opts = {}) {
   const cat = catalogue(opts.catalogue);  // opts.catalogue：既定でない版の部品庫で作る（試験が前の版の材料と比べるため）
   const SETS = setsOf(cat.manifest);
   for (const s of SETS) if (!fs.existsSync(rel('tools', 'llm-guide', 'sets', s + '.md'))) throw new Error(`tools/llm-guide/sets/${s}.md is missing (the part set ${s} is in manifest-${cat.version}.json)`);
-  const all = components(cat, SETS, opts.readmeEn);
-  const comps = all.filter((c) => c.set !== 'extra');
+  // opts.addLocal（試験用）：ローカル（CLI）向けのパーツを足して作る [{fm: {name}, body, en?: {body}}]（指示が変わらないことを確かめる）
+  const all = [...components(cat, SETS, opts.readmeEn), ...(opts.addLocal || []).map((c) => ({ ...c, set: 'local' }))];
+  const comps = all.filter((c) => c.set !== 'extra' && c.set !== 'local');
+  // ローカル（CLI）向けのパーツ（#213）：data（指示の材料・指示のバージョン）に入れず、CLI のスキルの参照にだけ README の本文を書く
+  const localParts = all.filter((c) => c.set === 'local').map((c) => ({ tag: c.fm.name, ja: c.body, en: c.en ? c.en.body : null, src: `${cat.source}/blob/${cat.tag}/components/` }));
   // 言いたいこと：既定のカタログの manifest（あれば）か、決めた表（kit/core/purposes.mjs）。札に写らない id・形の合わない項目は知らせる
   const allParts = comps.map((c) => ({ tag: c.fm.name, set: c.set }));
   const manifest = opts.manifest !== undefined ? opts.manifest : cat.manifest;
@@ -911,7 +925,7 @@ export function generate(opts = {}) {
       files[partFile(s, lang)] = `<!-- generated by tools/make-llm-guide.mjs (part set ${s}, full pack; paste it after ${path.basename(commonFile(lang))}); do not edit by hand -->\n` + partOf(data, s, lang, { sets: SETS }) + '\n';
     }
   }
-  Object.assign(files, skillFiles(data, opts.skillLang));
+  Object.assign(files, skillFiles(data, opts.skillLang, localParts));
   files['kit/instruction-version.json'] = JSON.stringify({ instruction: data.version }, null, 2) + '\n';   // egatari doctor が、入れたスキルの指示の版と比べる
   files['skills/studio/SKILL.md'] = studioDocs(studioVersion(read('skills/studio/SKILL.md'), data.version));
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
