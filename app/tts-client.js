@@ -41,9 +41,9 @@ export function createTtsClient({ lang = 'ja', test = () => null, device = () =>
   const engineOf = (deckLang) => (/^ja\b/i.test(deckLang || '') ? 'irodori' : 'kokoro');
   const label = (engine) => engine === 'irodori'
     ? (EN ? `Irodori-TTS 500M-v3 (Japanese, with the reading dictionary, seed 0). First use downloads about ${GB(IRODORI_BYTES.fp16)} GB (fp32 GPUs: ${GB(IRODORI_BYTES.fp32)} GB), later from the browser cache. Runs on this computer's GPU in a separate window`
-      : `Irodori-TTS 500M-v3（日本語・読み辞書つき・シード 0）。初回に約 ${GB(IRODORI_BYTES.fp16)} GB を取得（fp16 の使えない GPU は ${GB(IRODORI_BYTES.fp32)} GB）、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`)
+      : `Irodori-TTS 500M-v3（日本語・読み辞書つき・シード 0）。初回に約 ${GB(IRODORI_BYTES.fp16)} GB を取得（fp16 の使えない GPU は ${GB(IRODORI_BYTES.fp32)} GB）、以後はブラウザのキャッシュから。この PC の GPU で、別のウィンドウで合成します`)
     : (EN ? `Kokoro-82M (English). First use downloads about ${(KOKORO_BYTES / 1e6).toFixed(0)} MB, later from the browser cache. Runs on this computer's GPU in a separate window`
-      : `Kokoro-82M（英語）。初回に約 ${(KOKORO_BYTES / 1e6).toFixed(0)} MB を取得、以後はブラウザのキャッシュから。この PC の GPU で、別の窓で合成します`);
+      : `Kokoro-82M（英語）。初回に約 ${(KOKORO_BYTES / 1e6).toFixed(0)} MB を取得、以後はブラウザのキャッシュから。この PC の GPU で、別のウィンドウで合成します`);
   // WebGPU がないとき：まず録音を勧める（コマンドの案内は出さない。端末で使う人向けの言葉だけ）
   const noGpu = EN ? 'Record your voice with “● Record” above: that works in any browser. To make AI voice on this computer, WebGPU is needed, which this browser does not have (use a recent Chrome or Edge on a computer)'
     : '上の「● 録音」で、自分の声で録音できます（どのブラウザでも使えます）。AI 音声をこの PC で作るには WebGPU が要り、このブラウザでは使えません（パソコンの新しい Chrome か Edge で開いてください）';
@@ -76,8 +76,8 @@ export function createTtsClient({ lang = 'ja', test = () => null, device = () =>
     ready = { promise: new Promise((a, b) => { res = a; rej = b; }), done: false };
     ready.resolve = () => { ready.done = true; res(); };
     win = window.open(url.href, 'studio-tts', 'popup,width=520,height=420');
-    if (!win) throw Object.assign(new Error(EN ? 'the AI voice window was blocked (allow pop-ups for this site)' : 'AI 音声の窓が開けませんでした（このサイトのポップアップを許可してください）'), { code: 'popup' });
-    const t = setTimeout(() => rej(new Error(EN ? 'the AI voice window did not start' : 'AI 音声の窓が始まりませんでした')), 30000);
+    if (!win) throw Object.assign(new Error(EN ? 'the AI voice window was blocked (allow pop-ups for this site)' : 'AI 音声のウィンドウが開けませんでした（このサイトのポップアップを許可してください）'), { code: 'popup' });
+    const t = setTimeout(() => rej(new Error(EN ? 'the AI voice window did not start' : 'AI 音声のウィンドウが始まりませんでした')), 30000);
     try { await ready.promise; } finally { clearTimeout(t); }
     return win;
   }
@@ -106,7 +106,7 @@ export function createTtsClient({ lang = 'ja', test = () => null, device = () =>
         waiting.set(id, { resolve, reject, onProgress });
         w.postMessage({ type: TYPE, kind: 'synth', id, engine, text: String(text), role, voice: (voices && voices[role]) || null }, location.origin);
         // 窓を閉じたら止める
-        const iv = setInterval(() => { if (!waiting.has(id)) clearInterval(iv); else if (w.closed) { clearInterval(iv); waiting.delete(id); reject(new Error(EN ? 'the AI voice window was closed' : 'AI 音声の窓が閉じられました')); } }, 500);
+        const iv = setInterval(() => { if (!waiting.has(id)) clearInterval(iv); else if (w.closed) { clearInterval(iv); waiting.delete(id); reject(new Error(EN ? 'the AI voice window was closed' : 'AI 音声のウィンドウが閉じられました')); } }, 500);
       });
     },
   };

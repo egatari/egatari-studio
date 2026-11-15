@@ -404,7 +404,7 @@ await t('fonts: a font that is not bundled, or a bundled face that fails to load
     assert.equal(f[0].slide, null);
     assert.deepEqual(f[0].data.fonts, [fam]);
     assert.deepEqual(drift(J), [], `${name}: the boxes moved, but nothing was measured`);
-    assert.match(f[0].msg, /代わりの字体では測らない/);
+    assert.match(f[0].msg, /代わりのフォントでは測らない/);
     assert.match(message('en', 'metricsFontLoad', f[0].data), /a fallback font is never measured/);
   }
 });

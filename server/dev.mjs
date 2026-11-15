@@ -94,11 +94,11 @@ async function rebuild() {
 }
 function errorPage(err) {
   const esc = err.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
-  return `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>組み立てに失敗しました</title>
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><title>ビルドに失敗しました</title>
 <style>body{margin:0;background:#2b1d1d;color:#fdd;font:15px/1.6 system-ui,sans-serif}
 .box{max-width:960px;margin:48px auto;padding:24px 28px;background:#3a2222;border:1px solid #a44;border-radius:10px}
 h1{font-size:20px;margin:0 0 12px;color:#fff}pre{white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,monospace;color:#fcc}
-p{color:#dbb}</style></head><body><div class="box"><h1>スライドを組み立てられませんでした</h1>
+p{color:#dbb}</style></head><body><div class="box"><h1>スライドをビルドできませんでした</h1>
 <p>スライドを直して保存すると、自動で読み込み直します。</p><pre>${esc}</pre></div>
 </body></html>`;
 }
@@ -403,7 +403,7 @@ const server = http.createServer(async (req, res) => {
       writeIn(SRC_IN, src.slice(0, r[0]) + b.text + src.slice(r[1]));
       console.log(`edit ${deckBase} ${b.range}`);
       await afterWrite();
-      return send(res, 200, { ok: true, error: page.error ? '保存しましたが、組み立てに失敗しました' : null });
+      return send(res, 200, { ok: true, error: page.error ? '保存しましたが、ビルドに失敗しました' : null });
     }
     if (req.method === 'GET' && p === '/__dev/narration') {
       const [sk, st] = splitKey(u.searchParams.get('key') || '');
@@ -412,7 +412,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && p === '/__dev/narration') {
       const b = await readBody(req);
       if (!b.slideKey || !isStepKey(b.stepKey) || !Array.isArray(b.turns)) return send(res, 400, { error: 'slideKey / stepKey / turns が正しくありません' });
-      if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときの版）がありません' });
+      if (typeof b.rev !== 'string') return send(res, 400, { error: 'rev（読み込んだときのバージョン）がありません' });
       const sk = String(b.slideKey), st = String(b.stepKey);
       if (!(page?.slides || []).some((x) => x.key === sk)) return send(res, 400, { error: 'そのスライドはデッキにありません' });
       const text = readIn(NARR) ?? '# 台本\n';

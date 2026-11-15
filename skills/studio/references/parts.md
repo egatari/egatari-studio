@@ -2,27 +2,27 @@ Always reply in the language the user writes in, not the language of this file. 
 
 # egatari-studio:studio：パーツを書く
 
-CLI 専用。書き方の決まりは先に `egatari:make` を読む。以下はパーツライブラリ 2.0 の手順。使う Studio が `egatariParts.define` と必要なライブラリに対応しているか、既存のパーツと実行系で確かめる。1.x の写ししかない環境に 2.0 のコードをそのまま入れない。
+CLI 専用。書き方の決まりは先に `egatari:make` を読む。以下はパーツライブラリ 2.0 の手順。使う Studio が `egatariParts.define` と必要なライブラリに対応しているか、既存のパーツとランタイムで確かめる。1.x のコピーしかない環境に 2.0 のコードをそのまま入れない。
 
-コマンドは studio スキルの「コマンド：egatari」のとおり `npx egatari@0.6.x` で動かす。同梱のファイルはプラグインの根 `<root>`（studio スキルの SKILL.md のあるフォルダから 2 つ上）にあり、読むだけ。約束事の正本は `<root>/docs/contract.ja.md §1〜3`。一覧は `<root>/vendor/components/CATALOG.md`。
+コマンドは studio スキルの「コマンド：egatari」のとおり `npx egatari@0.6.x` で動かす。同梱のファイルはプラグインのルート `<root>`（studio スキルの SKILL.md のあるフォルダから 2 つ上）にあり、読むだけ。規約の正本は `<root>/docs/contract.ja.md §1〜3`。一覧は `<root>/vendor/components/CATALOG.md`。
 
-**パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<root>/vendor/components/` はそのリリースの写しで、手で直さない（Studio の試験が写しの変更を見つける）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを Studio の管理者が取り込む（Studio の CONTRIBUTING の「部品」）。
+**パーツライブラリは別のリポジトリ [egatari/components](https://github.com/egatari/components)**。Studio の `<root>/vendor/components/` はそのリリースのコピーで、手で直さない（Studio のテストがコピーの変更を見つける）。パーツライブラリのパーツを直す・足すのは egatari/components で行い、Studio にはリリースを Studio の管理者が取り込む（Studio の CONTRIBUTING の「部品」）。
 
-Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`npx egatari@0.6.x build <deck> --portable`）では、パーツライブラリのパーツは名前・版・`index.js` の hash の付いたパーツライブラリのパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash の版で組み直せる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
+Egatari ファイル（オープンなファイル形式。拡張子 `.ega.html`。`npx egatari@0.6.x build <deck> --portable`）では、パーツライブラリのパーツは名前・バージョン・`index.js` の hash の付いたパーツライブラリのパーツとして入り、編集アプリ（Egatari Studio、<https://studio.egatari.org/>）は同じ hash のバージョンで再ビルドできる。作業フォルダの `components/` のパーツはその教材独自のコードとして扱われ、編集アプリはプレビューで動かす前に確かめる。
 
-## 1. まず既存のパーツと動きの素で足りないか確かめる
+## 1. まず既存のパーツと動きの基本機能で足りないか確かめる
 
 `<root>/vendor/components/CATALOG.md` と各 `demo.html`（置き場所は studio スキルの「CLI：パーツ」）を見る。属性を足せば済むなら、新しく作らずに既存のパーツを広げる（egatari/components への提案になる。§5）。
 
-多くの図はパーツにしなくてよい：インライン SVG と `data-step`・強調（`{mark}`）・モーフ（`data-morph`）（Studio の実行系の動きの素。形式の仕様 §8.5・§8.6、`docs/contract.ja.md §7・§8`）で動かせる。パーツにするのは、データから配置を計算する・要素が多い・操作がある・授業をまたいで使う、といったときだけ。
+多くの図はパーツにしなくてよい：インライン SVG と `data-step`・強調（`{mark}`）・モーフ（`data-morph`）（Studio のランタイムの動きの基本機能。形式の仕様 §8.5・§8.6、`docs/contract.ja.md §7・§8`）で動かせる。パーツにするのは、データから配置を計算する・要素が多い・操作がある・授業をまたいで使う、といったときだけ。
 
 ## 2. 書き方（その教材専用のパーツ）
 
-置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → パーツライブラリの写しの順に探す）。
+置き場所：`<deck>/components/<名前>/index.js`（build は作業フォルダ → パーツライブラリのコピーの順に探す）。
 
 ```js
 // m-example：何を見せるか 1 行
-// 版は使うライブラリの README と manifest で確かめ、完全な版番号で固定する。
+// バージョンは使うライブラリの README と manifest で確かめ、完全なバージョン番号で固定する。
 egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"}, element: "m-example"}, function(deps) {
   const base = deps.base;
   return class extends base.MotionElement {
@@ -37,7 +37,7 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 });
 ```
 
-`name` はフォルダ名、`element` はタグ名、`static partName` は `name` と同じ。`requires` に使うライブラリと完全な版番号を並べ、factory で `deps` から受け取る。軸を描くなら `plot` を依存に加え `deps.plot.Plot` を使う。プレーヤーのグローバルには依存しない。
+`name` はフォルダ名、`element` はタグ名、`static partName` は `name` と同じ。`requires` に使うライブラリと完全なバージョン番号を並べ、factory で `deps` から受け取る。軸を描くなら `plot` を依存に加え `deps.plot.Plot` を使う。プレーヤーのグローバルには依存しない。
 
 パーツの README とリリースの manifest の分類を合わせる：
 
@@ -46,7 +46,7 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 - `set`：専門パーツのセット。既存 manifest のセット名を使い、固定の分野一覧から推測しない
 - `display`：タグとは別の表示名が必要なときの日本語・英語名
 
-守ること（品質チェック `npx egatari@0.6.x check` と egatari/components の試験が確かめる）：
+守ること（品質チェック `npx egatari@0.6.x check` と egatari/components のテストが確かめる）：
 
 1. **(k, t) だけで画面を決める**。前回の render の状態に頼らない。`setTimeout`・`requestAnimationFrame`・`Date`・シードのない乱数は使わない
 2. t = Infinity はステップ k の最終状態、k = 0 は初期状態
@@ -54,16 +54,16 @@ egatariParts.define({name: "example", version: "1.0.0", requires: {base: "1.0.0"
 4. 図の文字は 24px 以上。凡例ではなく線の近くに直接書く
 5. 数値は検算済みのスクリプトの出力（子の `<script type="application/json">` → `this.data`）だけを使う
 6. 補間は `base.prog(t, 始め, 長さ)`（0〜1、イージング付き）と `base.lerp`
-7. 図の中の式は、使う版の README に従い組み立て時に描く。簡単な記号は `base.mtext`（`*u*_0`）
-8. データの形を `static shape = {schema, example}` に書く（`<root>/kit/shape.js`：JSON Schema の小さな部分集合。字で書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。実行系が描く前に確かめ、違えばパーツの代わりに札を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
-9. パーツの字は、どんなデータでも互いに重ならず、パーツの線にも重ならないように置く（品質チェックは SVG の字どうしの重なりを警告する）。意図して重ねる字だけは、その `<text>` か祖先の `<g>` に `data-overlap="ok"` を付ける（わざと切る字の `data-clip` と同じ付け方。パーツ全体には付けない）
+7. 図の中の式は、使うバージョンの README に従いビルド時に描く。簡単な記号は `base.mtext`（`*u*_0`）
+8. データの形を `static shape = {schema, example}` に書く（`<root>/kit/shape.js`：JSON Schema の小さな部分集合。テキストで書くパーツは `{text: true, example}`、子の `<a href>` なら `{links: true, example}`）。ランタイムが描く前に確かめ、違えばパーツの代わりにエラーの表示を出して、品質チェックが「どこが・何のはずが・どう書くか」を指摘する
+9. パーツのテキストは、どんなデータでも互いに重ならず、パーツの線にも重ならないように置く（品質チェックは SVG のテキストどうしの重なりを警告する）。意図して重ねるテキストだけは、その `<text>` か祖先の `<g>` に `data-overlap="ok"` を付ける（わざと切るテキストの `data-clip` と同じ付け方。パーツ全体には付けない）
 
 ## 3. 確かめる
 
-教材を組んで品質チェックにかけ、スクリーンショットを目で見る（動きの途中と最終状態）：
+教材をビルドして品質チェックにかけ、スクリーンショットを目で見る（動きの途中と最終状態）：
 
 ```bash
-npx egatari@0.6.x build <deck>/deck.html && npx egatari@0.6.x check <deck>/deck.html   # 終了コード 2（--json は status: "crashed"）は検査が終わっていない：エラー 0 ではない
+npx egatari@0.6.x build <deck>/deck.html && npx egatari@0.6.x check <deck>/deck.html   # 終了コード 2（--json は status: "crashed"）は品質チェックが終わっていない：エラー 0 ではない
 npx egatari@0.6.x sheet <deck> --steps   # 図とパーツのあるスライドの全ステップ → <deck>/out/steps.png（Read で開く）
 ```
 
@@ -82,10 +82,10 @@ npx egatari@0.6.x sheet <deck> --steps   # 図とパーツのあるスライド�
 
 1. 「このパーツをパーツライブラリ（egatari/components）に提案しますか」と聞く。断られたらそれで終わり
 2. 下書きを作って**全文をユーザーに見せる**。テンプレート `proposal.yml` の欄に合わせ、本文を次の見出しで書く：
-   `### Example / 例`（教材の中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / ステップと最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの素では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・本・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
+   `### Example / 例`（教材の中のインライン SVG の図か画像）・`### Lesson used in / 使った授業・発表`・`### Data shape (draft) / データの形（案）`・`### Steps and final state / ステップと最終状態`・`### Why inline SVG and the motion primitives are not enough / インライン SVG と動きの基本機能では足りない理由`・`### Rights / 権利`（文章・データ・画像・コードの出典とライセンス）・`### What must be readable when static / 静止したときに読めなければならないもの`（印刷・本・スクリーンリーダー）・`### Other fields and lessons / ほかの分野・授業での使い道`
    - その教材だけの文言・未公開のデータ・個人のパスを入れない（例の数値は作り物にする）
 3. ユーザーが「送って」と明示したときだけ送る：
    ```bash
    gh issue create -R egatari/components --title "[proposal] <何を見せる図か>" --label proposal --body-file <下書き>
    ```
-4. 作った issue の URL をユーザーに伝える。名前が決まった後のコード（`components/<名前>/` の index.js・README.md・demo.html）・試験（`npm test`）・プルリクエストは egatari/components の CONTRIBUTING に従う。リリースされたら Studio の管理者が取り込み、次の Studio のリリースで `egatari` の包みと egatari:make スキルの参照ファイルが新しくなる
+4. 作った issue の URL をユーザーに伝える。名前が決まった後のコード（`components/<名前>/` の index.js・README.md・demo.html）・テスト（`npm test`）・プルリクエストは egatari/components の CONTRIBUTING に従う。リリースされたら Studio の管理者が取り込み、次の Studio のリリースで `egatari` の包みと egatari:make スキルの参照ファイルが新しくなる

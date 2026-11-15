@@ -170,7 +170,7 @@ console.log('files and messages (iPad (gen 11))');
   await o.ctx.setOffline(true);
   await o.p.tap('#b-start-join');
   await lessonFrame(o.p);
-  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークにつながっていません。/.test(document.getElementById('live-msg').textContent))), 'offline Join: the offline message, with what to do');
+  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークに接続していません。/.test(document.getElementById('live-msg').textContent))), 'offline Join: the offline message, with what to do');
   await o.ctx.setOffline(false);
   await o.p.tap('#b-join');
   ok(await until(() => o.p.evaluate(() => window.__play.state().live.state === 'connected'), 15000), 'back online: 「もう一度試す」 joins the Live (WebKit)');

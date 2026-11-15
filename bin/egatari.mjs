@@ -16,7 +16,7 @@ const PKG = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 // 名前 → [スクリプト, 説明（日本語 / English）, 引数の形]
 const SCRIPTS = {
   new: ['tools/new.mjs', '新しい作業フォルダをテンプレートから作る / create a working folder from the template', '<folder> [--lang en|ja] [--theme name] [--title "…"]'],
-  build: ['kit/build.mjs', 'スライド（deck.html）を 1 つの HTML に組む / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--scorm] [--embed-audio] [--theme name] …'],
+  build: ['kit/build.mjs', 'スライド（deck.html）を 1 つの HTML にビルドする / build deck.html into one HTML file', '<deck.html> [-o out.html] [--portable] [--play-only] [--scorm] [--embed-audio] [--theme name] …'],
   check: ['kit/check.mjs', '品質チェック（ブラウザが要る）/ quality check (needs a browser)', '<deck.html> [--json]'],
   dev: ['server/dev.mjs', '開発サーバー（ブラウザで編集）/ dev server (edit in the browser)', '<deck.html> [--port 8730] [--theme name]'],
   sheet: ['tools/sheet.mjs', '全スライドの最後のステップを 1 枚の画像に / contact sheet of every slide\'s last step', '<folder | deck.html | .ega.html> [out.png] [--steps] [--tiles] [--cols 4]'],
@@ -36,7 +36,7 @@ function help() {
 
 ${Object.entries(SCRIPTS).map(([k, [, d, u]]) => line(k, d, u)).join('\n')}
 ${line('tts', '台本を AI 音声にする（uv が要る）/ make AI voice audio from the script (needs uv)', '<folder> [--dry-run] [--voices expert=bob,novice=alice] …')}
-${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか、パーツの写しが正しいか、入れたスキルが古くないか調べる / check Node, uv, ffmpeg, a browser, the parts and the installed skills', '')}
+${line('doctor', 'Node・uv・ffmpeg・ブラウザがあるか、パーツのコピーが正しいか、入れたスキルが古くないか調べる / check Node, uv, ffmpeg, a browser, the parts and the installed skills', '')}
 ${line('skills', 'Claude Code・Codex に入れたスキルを更新する / update the skills installed in Claude Code and Codex', 'update')}
 
   --version  版を出す / print the version
@@ -101,7 +101,7 @@ function skillsCheck() {
   const old = installedSkills().filter((s) => s.version !== kit);
   if (!old.length) return;
   const [major, minor] = PKG.version.split('.');
-  console.log(`!!  skills   入れたスキルの指示の版が、この egatari（${kit}）と違う / installed skill instructions differ from this egatari (${kit}):`);
+  console.log(`!!  skills   入れたスキルの指示のバージョンが、この egatari（${kit}）と違う / installed skill instructions differ from this egatari (${kit}):`);
   for (const s of old) console.log(`           ${s.name} ${s.version}  ${s.file}`);
   console.log(`           更新 / update: npx egatari@${major}.${minor}.x skills update`);
 }
@@ -235,8 +235,8 @@ async function doctor() {
   }
   // 部品の写し：組み立てが読む index.js を、固定（components.lock.json）と manifest のファイルごとの sha256 で（kit/vendor-verify.mjs）
   const vv = verifyVendorIndex(ROOT);
-  show(!vv.problems.length, 'parts', vv.problems.length ? `パーツの写しが固定と合わない / the vendored parts do not match their pins: ${vv.problems.slice(0, 3).join('; ')}${vv.problems.length > 3 ? ` (+${vv.problems.length - 3})` : ''}`
-    : `index.js ${vv.versions} 版、固定と manifest の sha256 に合う / ${vv.versions} versions match the lock and the manifests`, '包みを入れ直す / reinstall the package (`npm install egatari`)', true);
+  show(!vv.problems.length, 'parts', vv.problems.length ? `パーツのコピーが固定と合わない / the vendored parts do not match their pins: ${vv.problems.slice(0, 3).join('; ')}${vv.problems.length > 3 ? ` (+${vv.problems.length - 3})` : ''}`
+    : `index.js ${vv.versions} バージョン、固定と manifest の sha256 に合う / ${vv.versions} versions match the lock and the manifests`, 'パッケージを入れ直す / reinstall the package (`npm install egatari`)', true);
   try {
     const dv = defaultVoices();
     show(!dv.missing, 'voices', dv.missing ? `既定の声 ${dv.missing} 本は初めての egatari tts で取り寄せる / ${dv.missing} default voices are downloaded on the first egatari tts (to ${dv.dir})`

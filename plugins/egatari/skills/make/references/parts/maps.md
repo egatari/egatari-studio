@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # maps のパーツ
 
-指示のバージョン：7aef902d
+指示のバージョン：22b7d41b
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -10,7 +10,7 @@
 
 ### `<m-map-japan>`
 
-データ（子の `<script type="application/json">`）の見本: `{"regions":[{"id":"13","tone":"emph","step":1},{"group":"kinki","tone":"series-2","step":2}],"points":[{"lon":135.5,"lat":34.69,"label":"大阪","step":3}],"flows":[{"from":"13","to":"27","step":4}]}`
+データ（子の `<script type="application/json">`）の例: `{"regions":[{"id":"13","tone":"emph","step":1},{"group":"kinki","tone":"series-2","step":2}],"points":[{"lon":135.5,"lat":34.69,"label":"大阪","step":3}],"flows":[{"from":"13","to":"27","step":4}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -32,13 +32,13 @@
 
 `labels`：`focus`（既定）・`all`・`none`。`show="value"` で入る地域に値を書く（既定は書かない）。
 
-日本の範囲・東西南北の端・排他的経済水域を見せるときは layout="true"（小窓なし、本当の位置）
+日本の範囲・東西南北の端・排他的経済水域を見せるときは layout="true"（挿入図なし、本当の位置）
 
 地図データ：Natural Earth（パブリックドメイン）を加工。
 
 ### `<m-map-world>`
 
-データ（子の `<script type="application/json">`）の見本: `{"regions":[{"id":"JPN","tone":"emph","step":1},{"group":"africa","tone":"series-2","step":2}],"points":[{"lon":139.69,"lat":35.69,"label":"東京","step":3}],"flows":[{"from":[139.69,35.69],"to":"AUS","step":4}]}`
+データ（子の `<script type="application/json">`）の例: `{"regions":[{"id":"JPN","tone":"emph","step":1},{"group":"africa","tone":"series-2","step":2}],"points":[{"lon":139.69,"lat":35.69,"label":"東京","step":3}],"flows":[{"from":[139.69,35.69],"to":"AUS","step":4}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|

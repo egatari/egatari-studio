@@ -218,6 +218,37 @@ function cleanReadme(body) {
     .replace(/[（(]\s*[\w./-]+\.md\s*[）)]/g, '')
     .replace(/[（(]\s*[）)]/g, '');
 }
+// 部品庫の日本語の字の作った言葉（札・帯・区画・窓など）を、指示では王道の言葉に言い換える（#223。handoff/ux-wording-principles.md の 6b）。
+// 部品の節と一覧の行に、書いた順に replaceAll で掛ける（英語の字には当たらない）。見つからなくても失敗しない：部品庫の README が直れば、その行を消す
+const ERR_JA = '図の代わりにエラーが出る';
+const JA_WORDS = {
+  'm-bars': [['薄い帯で残し', '薄い色で残し']],
+  'm-callout': [['組み立てが教材に埋め込む', 'ビルドのときに教材に埋め込む']],
+  'm-cards': [['- 道具：', '- ツール：']],
+  'm-code': [['言語の札', '言語のラベル']],
+  'm-compare': [['図の代わりに誤りの札が出る', ERR_JA]],
+  'm-curves': [['図の代わりに札が出る', ERR_JA], ['札', 'ラベル']],
+  'm-folds': [['検証用の区画を', 'k 分割交差検証のフォールドを'], ['k 個の区画名', 'k 個のフォールドの名前']],
+  'm-gendai': [['札を付け', 'ラベルを付け']],
+  'm-heatmap': [['[行, 列, 段階]', '[行, 列, ステップ]']],
+  'm-hist': [['部品が数える', 'パーツが数える']],
+  'm-kobun': [['押したときの札', '押したときのポップアップ']],
+  'm-kpi': [['札の上の帯の色', 'カードの上のバーの色'], ['札', 'カード']],
+  'm-map-japan': [['小窓なし', '挿入図なし']],
+  'm-mapping': [['結果の札', '結果のカード']],
+  'm-menu': [['ステップの鍵', 'ステップのキー'], ['札', 'カード']],
+  'm-boxplot': [['書き出す値', '表示する値']],
+  'm-particles': [['比較のための写し', '比較のためのコピー']],
+  'm-score': [['組み立てが足す', 'ビルドのときに足す']],
+  'm-sweep': [['図の代わりに札が出る', ERR_JA]],
+  'm-timeline': [
+    ['期間は帯にして、重なる期間は段を分けて積む', '期間は軸に沿ってその長さだけ伸ばして描き、重なる期間は段を分けて積む'],
+    ['軸の下の段に帯で描き、名前は帯の中（入らなければ帯の右か左）に書く。名前を `\\n` で何行かにすると、帯がその分太くなる', '軸の下の段に、軸に沿ってその長さだけ伸ばして描く。名前は期間の中（入らなければ右か左）に書く。名前を `\\n` で何行かにすると、その分太く描く'],
+  ],
+  'm-timer': [['区切り 1 つが 1 段階', '区切り 1 つが 1 ステップ'], ['実行系が対応していれば', 'プレーヤーが対応していれば']],
+  'm-venn': [['図の代わりに誤りの札が出る', ERR_JA], ['鍵', 'キー']],
+};
+export const jaWords = (name, s) => (JA_WORDS[name] || []).reduce((x, [a, b]) => x.replaceAll(a, b), s);
 // 部品の README・props の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫は変えない）。
 // find が部品の節にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
 const PACK_EDITS = {
@@ -448,12 +479,12 @@ function shapeExample(c, lang) {
   if (!sh || sh.example === undefined) return '';
   const ja = lang === 'ja';
   const ex = typeof sh.example === 'string' ? sh.example : JSON.stringify(sh.example);
-  const where = sh.schema ? (ja ? 'データ（子の `<script type="application/json">`）の見本' : 'Data example (child `<script type="application/json">`)') : (ja ? '書き方の見本' : 'Example');
+  const where = sh.schema ? (ja ? 'データ（子の `<script type="application/json">`）の例' : 'Data example (child `<script type="application/json">`)') : (ja ? '書き方の例' : 'Example');
   return `${where}: \`${ex.replace(/\n/g, '⏎')}\``;
 }
 const TIMING = /秒数|（秒）/;
 const TABLE_HEAD = { ja: '| パーツ | 内容 | steps | データの形 |\n|---|---|---|---|', en: '| part | what it shows | steps | data shape |\n|---|---|---|---|' };
-const rowOf = (c, lang) => applyRowEdits(c.fm.name, `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`, lang);
+const rowOf = (c, lang) => jaWords(c.fm.name, applyRowEdits(c.fm.name, `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`, lang));
 // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
 const demote = (s) => s.replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
 function entryOf(c, lang, shown = new Set()) {
@@ -475,7 +506,7 @@ function entryOf(c, lang, shown = new Set()) {
     : c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join(''));
   const details = (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + body;
   const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + demote(stripRepoRefs(c.enSource ? applyEnEdits(c.fm.name, details) : applyPackEdits(c.fm.name, details, lang)));
-  return { entry: entry.trim(), sup };
+  return { entry: jaWords(c.fm.name, entry.trim()), sup };
 }
 
 // 部品の説明の中で、ほかの部品の名前を出す所（「比べるなら `m-compare`」など）を <!--part:m-x--> で囲む：その部品が組み立てに入らない
@@ -611,7 +642,7 @@ Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egata
 
 入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
 
-**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダでは組み立ての出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルの版」の行のバージョン。
+**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダではビルドの出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルのバージョン」の行のバージョン。
 
 - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
 - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。\`npx egatari@${CLI_MINOR}.x skills update\` で更新できます。」
@@ -623,13 +654,13 @@ Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egata
 
 まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
 
-構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の返事を受けてから（\`codex exec\` なら resume で）。
+構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の回答を受けてから（\`codex exec\` なら resume で）。
 
 下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
 
 ## パーツを選ぶ
 
-構成案のパーツは標準（standard）と専門（束ごと）から選ぶ。標準はいつも、専門は教材に合う束だけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（セットごと）から選ぶ。標準はいつも、専門は教材に合うセットだけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 ${links}
 
@@ -637,15 +668,15 @@ ${book}
 
 ## 音声を付ける
 
-Studio の音声の板で付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。egatari-studio が入っていれば、その studio スキルの手順で手元で付けられる。
+Studio の音声のパネルで付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。egatari-studio が入っていれば、その studio スキルの手順でローカルで付けられる。
 
 ## 書き終えたら
 
-ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` と、\`{"componentsCatalogue": "2"}\` だけの \`egatari.json\` を書く（新しい教材はパーツライブラリ 2 で組む。ここに出てくるパーツは 2 のもの。\`egatari.json\` がないと前の 1 のまま組まれ、2 だけのパーツが組み立てのエラーになる）。この場合は、下の R-output の灰色の枠（コードブロック）の代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・組み立てを行い、Egatari ファイル（\`.ega.html\`）で仕上げる。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」→「AI の出力を貼り付ける」（New… → “Paste the AI’s output”）に貼り付けてもらう。
+ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` と、\`{"componentsCatalogue": "2"}\` だけの \`egatari.json\` を書く（新しい教材はパーツライブラリ 2 でビルドする。ここに出てくるパーツは 2 のもの。\`egatari.json\` がないと前の 1 のままビルドされ、2 だけのパーツがビルドのエラーになる）。この場合は、下の R-output の灰色の枠（コードブロック）の代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・ビルドを行い、Egatari ファイル（\`.ega.html\`）で仕上げる。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」→「AI の出力を貼り付ける」（New… → “Paste the AI’s output”）に貼り付けてもらう。
 
 ファイルを書けなければ、Studio の「新規作成…」→「AI の出力を貼り付ける」に貼り付けられるように、下の R-output に従い、\`deck.html\` と \`narration.md\` の 2 つのコードブロックを返す。
 
-どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付ける道具が後で付ける。修正では今ある id を保つ。
+どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付けるツールが後で付ける。修正では今ある id を保つ。
 
 頼まれていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
 
@@ -752,7 +783,7 @@ export function generate(opts = {}) {
       const heads = secs.map((s) => (s.match(/<h2>([^<]*)<\/h2>/) || [])[1]);
       const nsecs = narr.split(/\n(?=## )/).filter((x) => heads.includes(x.match(/^## (.*)$/m)?.[1]?.trim()));
       if (nsecs.length !== secs.length) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section for each slide with <${tag}>`);
-      const note = ja ? '（そのパーツを使うスライドだけ。`deck.html` の骨組みは §6 の見本と同じ）' : '(only the slides with the part; the rest of `deck.html` is as in §6)';
+      const note = ja ? '（そのパーツを使うスライドだけ。`deck.html` の骨組みは §6 の例と同じ）' : '(only the slides with the part; the rest of `deck.html` is as in §6)';
       // 部品を外した組み立てでは、この見本ごと除く（<!--part:…-->）
       return `<!--part:${tag}-->### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\`<!--/part-->`;
     };
@@ -789,7 +820,7 @@ export function generate(opts = {}) {
       supNote: ja ? '（* はこの指示が補った説明）' : '(* = description added by this guide)',
       // 無料のプランで一覧の 1 行だけの部品（kit/core/llm-pack-assemble.mjs の briefParts）
       briefNote: ja ? '下に説明の節がないパーツは、表の「データの形」のとおりに子の JSON か属性を書き、ほかの属性は既定のままにする。' : 'For a part without a section below, write the child JSON or attributes as its “data shape” column says and leave the other attributes at their defaults.',
-      extHead: ja ? '### `<{name}>`：この束の拡張（パーツの説明は §3）' : '### `<{name}>`: extension for this part set (the part is described in §3)',
+      extHead: ja ? '### `<{name}>`：このセットの拡張（パーツの説明は §3）' : '### `<{name}>`: extension for this part set (the part is described in §3)',
     };
     if (!D.common.includes('{{CATALOG}}')) throw new Error(`template${ja ? '.ja' : ''}.md: no {{CATALOG}}`);
     const known = new Set(comps.map((c) => c.fm.name));
@@ -870,7 +901,7 @@ export function generate(opts = {}) {
     // 無料のプランの行は貼り付けの長さ（UTF-16 の単位の数＋改行の数）とその上限も。有料のプランはファイルで渡せるので —
     const n0 = (n) => n.toLocaleString('en-US');
     const rows = ja
-      ? [[`軽量の指示：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`軽量の指示：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['詳細の指示：標準のパーツすべて', z.paid, LIMITS.paid], [`詳細の指示：すべての束（このファイルとすべての束の指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
+      ? [[`軽量の指示：標準のパーツすべて（${core} のほかは一覧の 1 行だけ）`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`軽量の指示：標準＋${s}${z.freeShort.includes(s) ? '（中核の 4 つも一覧の 1 行だけ' + (z.freeFit[s].dropped.length ? `、${z.freeFit[s].dropped.join('・')} を外す` : '') + '）' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['詳細の指示：標準のパーツすべて', z.paid, LIMITS.paid], [`詳細の指示：すべてのセット（このファイルとすべてのセットの指示）${z.paidAll > LIMITS.paid ? '。上限を越えても知らせるだけ' : ''}`, z.paidAll, LIMITS.paid]]
       : [[`Light instructions: every standard part (only one catalogue line each, except ${core})`, z.free, LIMITS.free, z.freePaste], ...SETS.map((s) => [`Light instructions: standard + ${s}${z.freeShort.includes(s) ? ' (the core four shortened too' + (z.freeFit[s].dropped.length ? `; ${z.freeFit[s].dropped.join(', ')} left out` : '') + ')' : ''}`, z.freeSets[s], LIMITS.free, z.freeSetsPaste[s]]), ['Detailed instructions: every standard part', z.paid, LIMITS.paid], [`Detailed instructions: every part set (this file and every set pack)${z.paidAll > LIMITS.paid ? '; over the cap it is a warning only' : ''}`, z.paidAll, LIMITS.paid]];
     const table = (ja ? '| 指示 | 大きさ | 上限 | 貼り付けの長さ | 上限 |\n|---|---:|---:|---:|---:|\n' : '| Pack | Size | Cap | Paste length | Cap |\n|---|---:|---:|---:|---:|\n')
       + rows.map(([w, kb, cap, paste]) => `| ${w} | ${f1(kb)} | ${cap} KB | ${paste === undefined ? '—' : n0(paste)} | ${paste === undefined ? '—' : n0(LIMITS.paste)} |`).join('\n');

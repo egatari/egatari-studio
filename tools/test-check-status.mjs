@@ -127,14 +127,14 @@ t('.ega.html を渡すと断る：終了コード 2・JSON は status: "refused"
   assert.equal(j.status, 'refused');
   assert.equal(j.ok, false);
   assert.deepEqual(j.results, []);
-  assert.match(r.stderr, /組み立てた後のファイル/);
+  assert.match(r.stderr, /ビルドした後のファイル/);
   assert.match(r.stderr, /is a built file/);
   assert.throws(() => parseCheck(r.stdout, r.status));
   const en = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), ega, '--lang', 'en'], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(en.status, 2);
   assert.equal(en.stdout, '');
   assert.match(en.stderr, /is a built file/);
-  assert.doesNotMatch(en.stderr, /組み立てた/);
+  assert.doesNotMatch(en.stderr, /ビルドした/);
   const upper = spawnSync(process.execPath, [path.join(ROOT, 'kit/check.mjs'), path.join(work, 'Lesson.EGA.HTML')], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(upper.status, 2);
 });

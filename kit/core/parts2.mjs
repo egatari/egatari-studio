@@ -316,7 +316,7 @@ export function catalogueMessage(lang, a) {
       : (ja ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです。egatari.json に ${key} と書いてください`
         : `<${a.tag}> is not in ${cat}, which egatari.json selects. Set ${key} in egatari.json.`);
     case 'pin': return ja
-      ? `<${a.tag}> は egatari.json の components で ${a.pin}（パーツライブラリ 2.x の版）に固定されていますが、この教材は${cat}を使います。egatari.json に ${key} と書くか、"${a.part}" の固定を外してください`
+      ? `<${a.tag}> は egatari.json の components で ${a.pin}（パーツライブラリ 2.x のバージョン）に固定されていますが、この教材は${cat}を使います。egatari.json に ${key} と書くか、"${a.part}" の固定を外してください`
       : `<${a.tag}> is pinned to ${a.pin} (a parts library 2.x version) under components in egatari.json, but this lesson uses ${cat}. Set ${key} in egatari.json, or remove the "${a.part}" pin.`;
     case 'select1': return ja
       ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです（パーツライブラリ 1.x のパーツ）。1.x を使うには egatari.json から "componentsCatalogue" を外してください`

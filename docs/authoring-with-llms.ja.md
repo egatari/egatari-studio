@@ -6,37 +6,37 @@
 
 無料のチャットの AI に送るときは、編集アプリの「新規作成」で軽量の指示を選んでコピーしてください。軽くした指示になります。
 
-**使う人へ。**チャットの AI（claude.ai・Gemini・ChatGPT など）に、[Egatari](https://github.com/egatari/egatari-spec) の教材（Egatari はオープンなファイル形式、Egatari Studio はその編集アプリ）の初めの下書きを書かせるための指示のまとめです。ステップごとに出る HTML のスライドと、その台本ができます。インストールもコーディング道具も要りません。
+**使う人へ。**チャットの AI（claude.ai・Gemini・ChatGPT など）に、[Egatari](https://github.com/egatari/egatari-spec) の教材（Egatari はオープンなファイル形式、Egatari Studio はその編集アプリ）の初めの下書きを書かせるための指示のまとめです。ステップごとに出る HTML のスライドと、その台本ができます。インストールもコーディングのツールも要りません。
 
-1. 新しいチャットを開き、**「AI への指示」から最後までをすべて**貼り付け、続けて要る束の指示（下）を貼り付け、最後に **頼みたいこと** の記入欄（タイトル・対象・長さ・言語・話者・そのほかの希望。話者は既定で 1 人）を埋めて送ります。編集アプリは問いに答えるだけで指示を組み合わせ、最後に「頼みたいこと」を付けてコピーします（**新規作成… → 4 つの問いに答える → 指示をコピー**。書いたものが最後に入るので、長い貼り付けがチャットで添付の形になっても、そのまま送れます）
-2. AI の出力には、灰色の枠（コードブロック）が 2 つあります。それぞれ枠の右上のコピーのボタンで写し、Egatari Studio のその窓の ⑤ の 2 つの欄（スライド・台本）に貼り付けて **作成** を押します（出力をまとめて写したときは、どちらかの欄に貼れば 2 つに分けて入れます）。エディタがどのスライドにも変わらない id を付け、品質チェックをかけて開きます
-3. 品質チェックの指摘を直すか、品質チェックの板の **AI への修正依頼をコピー** を押して同じチャットに貼り付け、AI の出力を **修正…** の ③ に貼り付けて **置き換える** を押します。あとからスライドを足すには **スライドの挿入… → チャットの AI に書いてもらう**
+1. 新しいチャットを開き、**「AI への指示」から最後までをすべて**貼り付け、続けて要るセットの指示（下）を貼り付け、最後に **頼みたいこと** の記入欄（タイトル・対象・長さ・言語・話者・そのほかの希望。話者は既定で 1 人）を埋めて送ります。編集アプリは問いに答えるだけで指示を組み合わせ、最後に「頼みたいこと」を付けてコピーします（**新規作成… → 4 つの問いに答える → 指示をコピー**。書いたものが最後に入るので、長い貼り付けがチャットで添付の形になっても、そのまま送れます）
+2. AI の出力には、灰色の枠（コードブロック）が 2 つあります。それぞれ枠の右上のボタンでコピーし、Egatari Studio のそのウィンドウの ⑤ の 2 つの欄（スライド・台本）に貼り付けて **作成** を押します（出力をまとめてコピーしたときは、どちらかの欄に貼れば 2 つに分けて入れます）。エディタがどのスライドにも変わらない id を付け、品質チェックをかけて開きます
+3. 品質チェックの指摘を直すか、品質チェックのパネルの **AI への修正依頼をコピー** を押して同じチャットに貼り付け、AI の出力を **修正…** の ③ に貼り付けて **置き換える** を押します。あとからスライドを足すには **スライドの挿入… → チャットの AI に書いてもらう**
 
-**毎回貼るか、一度登録するか。**指示はチャットのはじめに毎回貼るのが既定です。どのチャットの AI でも使え、いつも今の指示になります。よく教材を書くなら、チャットの AI に指示を登録しておくこともできます（編集アプリでコピーするか、このファイルと要る束の指示をテキストのファイルに保存して使う）：
+**毎回貼るか、一度登録するか。**指示はチャットのはじめに毎回貼るのが既定です。どのチャットの AI でも使え、いつも今の指示になります。よく教材を書くなら、チャットの AI に指示を登録しておくこともできます（編集アプリでコピーするか、このファイルと要るセットの指示をテキストのファイルに保存して使う）：
 
 - **claude.ai**：プロジェクトを作り、指示をプロジェクトの指示に貼るか、プロジェクトのファイルとして加えます。そのプロジェクトのチャットはどれも指示を使います。スキルが使えるなら、スキルに指示を入れることもできます
 - **ChatGPT**：プロジェクト（指示かファイル）か、カスタム GPT。指示はカスタム GPT の指示の欄に収まらない長さなので、ナレッジのファイルとして加え、指示の欄には「添付の Egatari の指示にそのまま従う」と書きます
 - **Gemini**：Gem。指示を Gem の指示に貼るか、長すぎればファイルとして加えます
 
-登録した指示は自動では新しくなりません。指示のはじめに **指示のバージョン：…** の行があるので、編集アプリが新しくなったらコピーし直した指示のバージョンと比べ、違えば登録したものを差し替えます。make スキル（`plugins/egatari/skills/make/`）も同じ正本から作ります。2 つのファイルを書き、ローカルの品質チェック・組み立て・音声を付ける手順は別の studio スキル（`skills/studio/`）が案内します。
+登録した指示は自動では新しくなりません。指示のはじめに **指示のバージョン：…** の行があるので、編集アプリが新しくなったらコピーし直した指示のバージョンと比べ、違えば登録したものを差し替えます。make スキル（`plugins/egatari/skills/make/`）も同じ正本から作ります。2 つのファイルを書き、ローカルの品質チェック・ビルド・音声を付ける手順は別の studio スキル（`skills/studio/`）が案内します。
 
-このファイルと束の指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべてのパーツ（用途のとても限られる特殊のパーツは指示に入れない）。このファイルはいつも標準のパーツを説明します。**束の指示**はそれぞれ、ある種類の材料の専門のパーツを足す：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[data](llm-parts/data.ja.md)（`m-balance`・`m-ci`・`m-code`・`m-folds`・`m-mapping`・`m-sampling`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-diverge`・`m-market`）、[tools](llm-parts/tools.ja.md)（`m-callout`・`m-checklist`・`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`・`m-particles`）。編集アプリの新規作成は、標準のパーツと、パーツの一覧で印の付いたパーツの束をコピーします。軽量の指示では、中核の 4 つのほかの標準のパーツは一覧の 1 行だけにして、標準すべてが軽量の指示の上限に収まるようにします。軽量の指示の上限は 45 KB と、貼り付けの長さ（UTF-16 の単位の数＋改行の数。Gemini が貼り付けを切るあたり）の 31,000 の、先に届くほうです。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、その束を入れた軽量の指示を出す。`--plan paid` を付けるとどのパーツも詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024。貼り付けの長さは UTF-16 の単位の数＋改行の数で、CRLF で貼られることがあるため改行を 2 つに数える）：
+このファイルとセットの指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべてのパーツ（用途のとても限られる特殊のパーツは指示に入れない）。このファイルはいつも標準のパーツを説明します。**セットの指示**はそれぞれ、ある種類の材料の専門のパーツを足す：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[data](llm-parts/data.ja.md)（`m-balance`・`m-ci`・`m-code`・`m-folds`・`m-mapping`・`m-sampling`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-diverge`・`m-market`）、[tools](llm-parts/tools.ja.md)（`m-callout`・`m-checklist`・`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`・`m-particles`）。編集アプリの新規作成は、標準のパーツと、パーツの一覧で印の付いたパーツのセットをコピーします。軽量の指示では、中核の 4 つのほかの標準のパーツは一覧の 1 行だけにして、標準すべてが軽量の指示の上限に収まるようにします。軽量の指示の上限は 45 KB と、貼り付けの長さ（UTF-16 の単位の数＋改行の数。Gemini が貼り付けを切るあたり）の 31,000 の、先に届くほうです。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、そのセットを入れた軽量の指示を出す。`--plan paid` を付けるとどのパーツも詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024。貼り付けの長さは UTF-16 の単位の数＋改行の数で、CRLF で貼られることがあるため改行を 2 つに数える）：
 
 | 指示 | 大きさ | 上限 | 貼り付けの長さ | 上限 |
 |---|---:|---:|---:|---:|
-| 軽量の指示：標準のパーツすべて（`m-bars`・`m-flow`・`m-menu`・`m-predict` のほかは一覧の 1 行だけ） | 37.4 KB | 45 KB | 22,594 | 31,000 |
-| 軽量の指示：標準＋stats（中核の 4 つも一覧の 1 行だけ） | 38.8 KB | 45 KB | 24,408 | 31,000 |
-| 軽量の指示：標準＋data | 44.2 KB | 45 KB | 27,105 | 31,000 |
-| 軽量の指示：標準＋math（中核の 4 つも一覧の 1 行だけ） | 39.6 KB | 45 KB | 25,226 | 31,000 |
-| 軽量の指示：標準＋maps | 44.6 KB | 45 KB | 27,445 | 31,000 |
-| 軽量の指示：標準＋kokugo（中核の 4 つも一覧の 1 行だけ） | 38.7 KB | 45 KB | 22,862 | 31,000 |
-| 軽量の指示：標準＋english | 39.2 KB | 45 KB | 23,590 | 31,000 |
-| 軽量の指示：標準＋music | 40.8 KB | 45 KB | 24,626 | 31,000 |
-| 軽量の指示：標準＋business（中核の 4 つも一覧の 1 行だけ） | 37.3 KB | 45 KB | 22,599 | 31,000 |
-| 軽量の指示：標準＋tools | 44.1 KB | 45 KB | 26,412 | 31,000 |
-| 軽量の指示：標準＋science（中核の 4 つも一覧の 1 行だけ） | 41.1 KB | 45 KB | 24,004 | 31,000 |
-| 詳細の指示：標準のパーツすべて | 73.9 KB | 150 KB | — | — |
-| 詳細の指示：すべての束（このファイルとすべての束の指示） | 149.4 KB | 150 KB | — | — |
+| 軽量の指示：標準のパーツすべて（`m-bars`・`m-flow`・`m-menu`・`m-predict` のほかは一覧の 1 行だけ） | 37.6 KB | 45 KB | 22,651 | 31,000 |
+| 軽量の指示：標準＋stats（中核の 4 つも一覧の 1 行だけ） | 39.0 KB | 45 KB | 24,450 | 31,000 |
+| 軽量の指示：標準＋data | 44.4 KB | 45 KB | 27,178 | 31,000 |
+| 軽量の指示：標準＋math（中核の 4 つも一覧の 1 行だけ） | 39.7 KB | 45 KB | 25,266 | 31,000 |
+| 軽量の指示：標準＋maps | 44.8 KB | 45 KB | 27,505 | 31,000 |
+| 軽量の指示：標準＋kokugo（中核の 4 つも一覧の 1 行だけ） | 38.8 KB | 45 KB | 22,910 | 31,000 |
+| 軽量の指示：標準＋english | 39.3 KB | 45 KB | 23,651 | 31,000 |
+| 軽量の指示：標準＋music | 41.0 KB | 45 KB | 24,687 | 31,000 |
+| 軽量の指示：標準＋business（中核の 4 つも一覧の 1 行だけ） | 37.4 KB | 45 KB | 22,642 | 31,000 |
+| 軽量の指示：標準＋tools | 44.3 KB | 45 KB | 26,478 | 31,000 |
+| 軽量の指示：標準＋science（中核の 4 つも一覧の 1 行だけ） | 41.3 KB | 45 KB | 24,047 | 31,000 |
+| 詳細の指示：標準のパーツすべて | 74.2 KB | 150 KB | — | — |
+| 詳細の指示：すべてのセット（このファイルとすべてのセットの指示） | 149.8 KB | 150 KB | — | — |
 
 どれも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・パーツの README・`tools/llm-guide/` から作るので、手で直さない。
 
@@ -46,20 +46,20 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 # AI への指示
 
-指示のバージョン：`7aef902d`
+指示のバージョン：`22b7d41b`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
 **よくある失敗：**
 
 - **2 つの灰色の枠（コードブロック）はどちらも最後まで書いて閉じる。**コードブロックの途中で終わらない（R-output）。構成案がなければ、教材は短くする（5〜8 枚）。頼む文に構成案とその範囲があれば、その範囲のスライドをちょうどその枚数だけ書く（エディタは 1 回に 6 枚までしか頼まないので、収まる）
-- **1280×720 のスライドの大きさ**（品質チェックが測る。R-fit）：本文の場所は 1184 × 443 px（565 px まで。`noconcl` なら 1184 × 558）。字は 32 px・1 行 46 px で、入るのは**およそ 8 行**。はみ出す 46 px ごとに 1 行を削る。**図やパーツの中も含め、字はすべて 24 px 以上**
-- **グラフと図：**パーツは大きさによらず字を 24〜28 px で描くので、決めるのはパーツの大きさ（R-fit）
+- **1280×720 のスライドの大きさ**（品質チェックが測る。R-fit）：本文の場所は 1184 × 443 px（565 px まで。`noconcl` なら 1184 × 558）。字は 32 px・1 行 46 px で、入るのは**およそ 8 行**。はみ出す 46 px ごとに 1 行を削る。**図やパーツの中もテキストはすべて 24 px 以上**
+- **グラフと図：**パーツは大きさによらずテキストを 24〜28 px で描くので、決めるのはパーツの大きさ（R-fit）
 - **その場で書く `<svg>`：**字は「表示の幅 ÷ viewBox の幅」で縮むので、viewBox を表示の画素で書く（`<svg viewBox="0 0 560 320" width="560" height="320">`）。`font-size` は 24 以上。`width:100%` と別の幅の viewBox を組み合わせない。合うパーツがあればパーツを使う
 
 ## 1. 出力の形
 
-- **R-output** 返事は**ちょうど 2 つのコードブロック**にし、この順で、名前を `deck.html` と `narration.md` にする（始まりの行は ```` ```deck.html ```` と ```` ```narration.md ````）。間には何も書かない（前後に 1 行の添え書きはよい）。1 つのファイルを複数のコードブロックに分けない。ファイル・キャンバス・添付にせず、返事の本文に書く。ほかのファイルを参照しない（画像・`{{FIG:…}}`・`{{JSON:…}}`・外の URL・`<link>` は使わない）。コードブロックの途中で終わらない（長すぎるなら枚数を減らす。ただし構成案の範囲を頼まれたら、ちょうどその枚数）
+- **R-output** 出力は**ちょうど 2 つのコードブロック**にし、この順で、名前を `deck.html` と `narration.md` にする（始まりの行は ```` ```deck.html ```` と ```` ```narration.md ````）。間には何も書かない（前後に 1 行の添え書きはよい）。1 つのファイルを複数のコードブロックに分けない。ファイル・キャンバス・添付にせず、本文に書く。ほかのファイルを参照しない（画像・`{{FIG:…}}`・`{{JSON:…}}`・外の URL・`<link>` は使わない）。コードブロックの途中で終わらない（長すぎるなら枚数を減らす。ただし構成案の範囲を頼まれたら、ちょうどその枚数）
 - **R-outline** **構成案だけ**を頼まれたら（長い教材を 2 回に分けて作るとき）、`outline` という名前のコードブロック 1 つ（始まりの行は ```` ```outline ````）だけで返し、`deck.html` と `narration.md` は書かない：列が「番号」「見出し」「要点（1 行）」の Markdown の表で、スライドごとに 1 行、全スライドを順に。その後の頼む文は範囲を示す（「構成案の 7〜12 枚目」）ので、その見出しと要点のとおりに、ちょうどそのスライドを書く
 - **R-noids** スライドの id を**書かない**。`<section class="slide">` に `id` を付けず、台本の見出しにも `{#…}` を付けない。id は取り込みでエディタが付ける。id のある教材を渡されたとき（修正依頼）は、今ある `id="…"` と `{#…}` をそのまま残す
 
@@ -93,7 +93,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 - 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
-- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo の束があるときだけ）、属性 `data-morph`（§2.5）
+- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo のセットがあるときだけ）、属性 `data-morph`（§2.5）
 - `.body` の中：`<p class="sub">` 小見出し、`<div class="big">` 主要な式、`<p class="note">` 補足、`<div class="thm">` 定理の枠、`<div class="cols">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`
 - **R-caution** `.body` に注意は `<div class="caution">…</div>`、警告は `class="caution warn"`。ラベルは自動で付く。
 - 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
@@ -119,11 +119,11 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ### 2.6 パーツ
 
-- **R-components** 動く図は一覧（§3）の Web Components `<m-…>` で、`.body` の中に置く。どれにも高さ（`style="height:380px"`）と `aria-label` を付ける。データは子の `<script type="application/json">…</script>` **1 つ**にその場で書く。**図の数字は正しく**（計算する。見た目のために値を作らない。架空の数字は架空と書く）。関数の式は算術の式だけで、コードとしては実行されない（`Math.exp(x)`・`x**2`）。動きが説明になる所だけに使う（たいていのスライドには要らない）
+- **R-components** パーツは一覧（§3）の Web Components `<m-…>` で、`.body` の中に置く。どれにも高さ（`style="height:380px"`）と `aria-label` を付ける。データは子の `<script type="application/json">…</script>` **1 つ**にその場で書く。**図の数字は正しく**（計算する。見た目のために値を作らない。架空の数字は架空と書く）。関数の式は算術の式だけで、コードとしては実行されない（`Math.exp(x)`・`x**2`）。動きが説明になる所だけに使う（たいていのスライドには要らない）
 
 ### 2.7 表し方を選ぶ
 
-- **R-purpose** 表し方は習慣でなく、そのスライドで言いたいことから選ぶ。作者がグラフの種類を言っていればそれに従う。表は全パーツの一覧を兼ねる。使うのは渡された文章にあるパーツだけ（§3 と、入っている束）。入っていないパーツの方が合うときは、1 行のメモでそう伝える
+- **R-purpose** 表し方は習慣でなく、そのスライドで言いたいことから選ぶ。作者がグラフの種類を言っていればそれに従う。表は全パーツの一覧を兼ねる。使うのは渡された文章にあるパーツだけ（§3 と、入っているセット）。入っていないパーツの方が合うときは、1 行のメモでそう伝える
 
 | 言いたいこと | パーツ | ステップ |
 |---|---|---|
@@ -144,9 +144,9 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）
 
-各パーツの説明（版を固定）：https://github.com/egatari/components/blob/v2.9.1/components/<名前>/README.md（名前は `m-` を除いたもの）
+各パーツの説明（バージョンを固定）：https://github.com/egatari/components/blob/v2.9.1/components/<名前>/README.md（名前は `m-` を除いたもの）
 
-- **R-whole** 箇条書き・数字の札・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）
+- **R-whole** 箇条書き・数字のカード・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）
 
 ### 2.8 スライドに収める（品質チェックのエラー）
 
@@ -157,7 +157,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ## 3. パーツの一覧
 
-どの教材でも使える標準のパーツ。§6 の後に束の指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。名前やラベルの `*…*` は斜体、`_` `^` は次の 1 字だけ下付き・上付き。記号のまま出すなら全角の ＿ ＾ ＊。
+どの教材でも使える標準のパーツ。§6 の後にセットの指示があれば、その種類の材料のパーツが加わる。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values="[0.1,0.5]"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。名前やラベルの `*…*` は斜体、`_` `^` は次の 1 字だけ下付き・上付き。記号のまま出すなら全角の ＿ ＾ ＊。
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -168,13 +168,13 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 | `<m-cycle>` | 循環の図。項目の箱を円の上に 12 時から時計回りに並べ、円に沿った矢印でつなぐ（最後から最初へ戻る矢印も） | ステップの数（既定は 1 つ = 1 ステップ。per-step で n 個ずつ、node の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
-| `<m-kpi>` | 大きな数字の札（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | 札の step の最大（既定は札 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
-| `<m-menu>` | スライドへのリンクの札を格子に並べる（目次・単元の選び方）。札はふつうの <a href="#<スライドの id>">、行ったスライドの札に「見た」の印 | ceil(札の数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
+| `<m-kpi>` | 大きな数字のカード（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
+| `<m-menu>` | スライドへのリンクのカードを格子に並べる（目次・単元の選び方）。カードはふつうの <a href="#<スライドの id>">、行ったスライドのカードに「見た」の印 | ceil(カードの数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
 | `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
 | `<m-quad>` | 2 軸の位置づけ（ポジショニングマップ・SWOT 風の 4 象限）に、点をステップごとに 1 つずつ置く | 点の step と to.step の最大（既定は点 1 つ = 1 ステップ） | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | 散布図。点の組（系列）をステップごとに出し、そのあと傾向の線（最小二乗の直線か、書いた 2 点）を引く | 系列の数 ＋ 傾向の線（既定は系列 1 つ = 1 ステップ、そのあと線をまとめて 1 ステップ。系列・線の step で直接） | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — 点は [x, y] か {"x", "y", "label"}。軸は属性に書く（xr="[0,10]" xl="…"）。trend は "linear" か {"fit": "linear", "label": "…"} か {"pts": [[x0, y0], [x1, y1]]} |
-| `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は帯にして、重なる期間は段を分けて積む。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 ステップ。per-step で n 個ずつ、node の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A node with end is a period (a band); lane groups bands into named lanes |
+| `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は軸に沿ってその長さだけ伸ばして描き、重なる期間は段を分けて積む。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 ステップ。per-step で n 個ずつ、node の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A node with end is a period (a band); lane groups bands into named lanes |
 | `<m-tree>` | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置はパーツが決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — parent のない節（根）はちょうど 1 つ |
 | `<m-venn>` | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数。項目のある重なりがなければ重なりすべての数：2 集合で 1、3 集合で 4） | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
 
@@ -182,7 +182,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ### `<m-bars>`
 
-データ（子の `<script type="application/json">`）の見本: `{"series":[{"label":"売上"}],"groups":[{"label":"1 年目","value":1.2},{"label":"2 年目","value":3.4}]}`
+データ（子の `<script type="application/json">`）の例: `{"series":[{"label":"売上"}],"groups":[{"label":"1 年目","value":1.2},{"label":"2 年目","value":3.4}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -201,7 +201,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 - group：`label`（`\n` で 2 行）、`value`（系列が 1 つ）か `values`（系列の数だけ）、`err`（誤差棒）、`step`（既定は per-step から）、`at`（ステップの中の開始秒。既定は同じステップの中で stagger ずつずらす）、`tone`（`emph` などテーマの変数の名前。その組の棒をすべてその色にし、値の数字も同じ色にする）
 - series：`label`（系列が 2 つ以上のとき、最初の組の棒に直接書く。縦棒は棒の上、横棒は値の数字の右（負の棒は下・左）。凡例は作らない）、`tone`（既定は `--series-1..4` の順。系列が 1 つなら `--term`）
-- scale：`[{"step": 3, "max": 27, "at": 0.4}]`。そのステップの at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い帯で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
+- scale：`[{"step": 3, "max": 27, "at": 0.4}]`。そのステップの at 秒から zoom 秒かけて、値の軸の上限を max へ動かす（対数で補間）。動く間は前の上限までの範囲を薄い色で残し、目盛りは前の組と次の組を入れ替える。上限を超える棒は軸の上端で止まり、上限が広がるにつれて伸びる
 - `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか脚注に書く
 - `mark="dot"`：棒の代わりに点（平均と誤差棒）
 - `sig`：`[{"from": 0, "to": 2, "label": "**"}]` で組 0 と組 2 を括弧でつなぐ（`group` で組の中の系列どうし）。縦棒の、積み上げでない棒だけ
@@ -215,7 +215,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ### `<m-cards>`
 
-データ（子の `<script type="application/json">`）の見本: `{"cards":[{"icon":"user","title":"聞く","text":"相手の困りごとを聞く"},{"icon":"bulb","title":"考える","text":"案を 3 つ出す"},{"icon":"rocket","title":"試す","text":"小さく作って見せる"}]}`
+データ（子の `<script type="application/json">`）の例: `{"cards":[{"icon":"user","title":"聞く","text":"相手の困りごとを聞く"},{"icon":"bulb","title":"考える","text":"案を 3 つ出す"},{"icon":"rocket","title":"試す","text":"小さく作って見せる"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -247,14 +247,14 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 - 進め方：arrow-right arrows-right-left refresh repeat circle-check checklist list-numbers git-branch target flag rocket hand-click
 - 伝える：message messages mail phone bell speakerphone share world-www microphone presentation
 - 書類：file file-text files notebook book clipboard-list folder news certificate award
-- 道具：tool settings hammer bulb puzzle cpu device-laptop device-mobile robot code scale
+- ツール：tool settings hammer bulb puzzle cpu device-laptop device-mobile robot code scale
 - 自然：leaf tree plant sun moon cloud cloud-rain droplet flame snowflake
 - 安全：shield shield-check lock key alert-triangle first-aid-kit heart heart-rate-monitor eye
 - 学び：school pencil ruler math-function atom flask microscope palette music language
 
 ### `<m-compare>`
 
-データ（子の `<script type="application/json">`）の見本: `{"sides":[{"label":"紙の申請","tone":"muted"},{"label":"オンライン申請"}],"rows":[{"label":"受付時間","values":["平日 9〜17 時","24 時間"],"better":1,"diff":"いつでも出せる"}]}`
+データ（子の `<script type="application/json">`）の例: `{"sides":[{"label":"紙の申請","tone":"muted"},{"label":"オンライン申請"}],"rows":[{"label":"受付時間","values":["平日 9〜17 時","24 時間"],"better":1,"diff":"いつでも出せる"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -265,7 +265,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 量を棒の長さで比べるなら `m-bars`、数字を 1 つ大きく見せるなら `m-kpi`。
 
 - `sides`：比べるもの（2 つか 3 つ）。`label` は列の見出し。`tone` は列の色（`term`・`emph`・`muted`・`accent2`・`series-1..4`。既定は 1 つ目 `term`、2 つ目 `accent2`、3 つ目 `series-4`）。従来のものを `muted` にすると新しいものが目立つ
-- `rows`：比べる観点（行）。`label` は左端の観点の名前（なくてもよい）、`values` は列の順の値（字か数。`\n` で改行。長ければ列の幅で折り返す）。`values` の数は `sides` の数と同じにする（違えば図の代わりに誤りの札が出る）
+- `rows`：比べる観点（行）。`label` は左端の観点の名前（なくてもよい）、`values` は列の順の値（字か数。`\n` で改行。長ければ列の幅で折り返す）。`values` の数は `sides` の数と同じにする（違えば図の代わりにエラーが出る）
 - `diff`：その行の違いの一言。右端の「違い」の列に `--emph` で書く（列の見出しは `diff-label` で変えられる）
 - `better`：その行で良い方の列の番号（0 から。1 つ目の列が 0。列の数より小さい）。値を太字にし、違いのステップで `--emph` の枠で囲む
 - ステップ：既定は 1 つ目の列（観点の名前と一緒に）→ 2 つ目の列 →（3 つ目の列）→ 違い（`diff` の列と `better` の枠）。列の `step` でステップを変えられる（例：2 つの列を同じステップに）
@@ -274,7 +274,7 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 
 ### `<m-curves>`
 
-データ（子の `<script type="application/json">`）の見本: `[{"label":"需要 D","f":"10 - x"},{"label":"供給 S","f":"2 + x"},{"label":"均衡","pts":[[4,0],[4,6]],"dash":true}]`
+データ（子の `<script type="application/json">`）の例: `[{"label":"需要 D","f":"10 - x"},{"label":"供給 S","f":"2 + x"},{"label":"均衡","pts":[[4,0],[4,6]],"dash":true}]`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -303,16 +303,16 @@ R-dialogue の Expert と Novice の掛け合い（頼まれたときだけ書�
 | `pts` | 点列 `[[x, y], …]`（縦線や実測の折れ線） |
 | `tone` | `term` `emph` `accent2` `muted` `fg` `series-1..4`（既定は `series-1..4` の順） |
 | `dash` | 破線 |
-| `area` / `areaLabel` | 塗る区間 `[a, b]`（複数可、null は端）と札 |
+| `area` / `areaLabel` | 塗る区間 `[a, b]`（複数可、null は端）とラベル |
 | `labelAt` / `anchor` / `dx` / `dy` / `ly` | 名前の位置：横軸の値 `labelAt` の点に置く（既定は線の端）。`anchor` は向き（`right` `left` `above` `below`）。`ly` は縦軸の値で高さを決める |
 
 `size="40"`：字の大きさ（24 以上）。
 
-`f` は算術の式で、コードとしては実行しない：数、`x`、`Math` の関数と定数（`sin(x)` とも `Math.sin(x)` とも書ける。`Math.random` は使えない）、`N(x, 平均, 標準偏差)`、`+ - * / % **`、比較（`< <= > >= == !=`）、`&& || !`、`? :`、括弧。べき乗は `**`（`^` は書けない）。書けない式は図の代わりに札が出る。
+`f` は算術の式で、コードとしては実行しない：数、`x`、`Math` の関数と定数（`sin(x)` とも `Math.sin(x)` とも書ける。`Math.random` は使えない）、`N(x, 平均, 標準偏差)`、`+ - * / % **`、比較（`< <= > >= == !=`）、`&& || !`、`? :`、括弧。べき乗は `**`（`^` は書けない）。書けない式は図の代わりにエラーが出る。
 
 ### `<m-cycle>`
 
-データ（子の `<script type="application/json">`）の見本: `{"center":{"label":"PDCA"},"nodes":[{"label":"計画"},{"label":"実行"},{"label":"評価"},{"label":"改善"}]}`
+データ（子の `<script type="application/json">`）の例: `{"center":{"label":"PDCA"},"nodes":[{"label":"計画"},{"label":"実行"},{"label":"評価"},{"label":"改善"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -343,7 +343,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-fishbone>`
 
-データ（子の `<script type="application/json">`）の見本: `{"effect":{"label":"配送の遅れ"},"nodes":[{"id":"p","label":"人"},{"id":"p1","label":"人手が足りない","parent":"p"},{"id":"m","label":"機械"},{"id":"m1","label":"車の故障","parent":"m"}]}`
+データ（子の `<script type="application/json">`）の例: `{"effect":{"label":"配送の遅れ"},"nodes":[{"id":"p","label":"人"},{"id":"p1","label":"人手が足りない","parent":"p"},{"id":"m","label":"機械"},{"id":"m1","label":"車の故障","parent":"m"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -371,7 +371,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-flow>`
 
-データ（子の `<script type="application/json">`）の見本: `{"nodes":[{"id":"a","label":"観測","x":20,"y":40,"w":200,"h":70,"step":1},{"id":"b","label":"更新","x":320,"y":40,"w":200,"h":70,"step":2}],"edges":[{"from":"a","to":"b","step":2}]}`
+データ（子の `<script type="application/json">`）の例: `{"nodes":[{"id":"a","label":"観測","x":20,"y":40,"w":200,"h":70,"step":1},{"id":"b","label":"更新","x":320,"y":40,"w":200,"h":70,"step":2}],"edges":[{"from":"a","to":"b","step":2}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -392,31 +392,31 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
-| `cols` | number | `0` | 1 行の札の数（0 = 札の数、4 まで） |
-| `digits` | number | `0` | 数字の小数桁（札の digits が優先） |
-| `per-step` | number | `1` | 1 ステップに出す札の数（0 = 全部をステップ 1 で） |
+| `cols` | number | `0` | 1 行のカードの数（0 = カードの数、4 まで） |
+| `digits` | number | `0` | 数字の小数桁（カードの digits が優先） |
+| `per-step` | number | `1` | 1 ステップに出すカードの数（0 = 全部をステップ 1 で） |
 | `count` | bool | `true` | 数字を数え上げる |
-| `size` | number | `0` | 数字の字の大きさ（px。0 = 札の高さから） |
+| `size` | number | `0` | 数字の字の大きさ（px。0 = カードの高さから） |
 
 表紙の直後の「掴みの数字」、試験導入の結果、市場規模の要約など、少数の数字を大きく見せるときに使う。
 
-- `label`：札の上の名前。`value`：数字（`digits` 桁、3 桁ごとにカンマ）。`unit`：数字の後ろの単位（小さめの字）。`prefix`：数字の前の記号（`+` `約` など）。負の `value` は自分で − が付くので、`prefix` に `−` を重ねない（`"prefix": "−"` と `-12` は「−−12」）。減った量を正の数で見せるときだけ `value` を正にして `prefix: "−"`
+- `label`：カードの上の名前。`value`：数字（`digits` 桁、3 桁ごとにカンマ）。`unit`：数字の後ろの単位（小さめの字）。`prefix`：数字の前の記号（`+` `約` など）。負の `value` は自分で − が付くので、`prefix` に `−` を重ねない（`"prefix": "−"` と `-12` は「−−12」）。減った量を正の数で見せるときだけ `value` を正にして `prefix: "−"`
 - `from`：数え上げを始める値（既定 0。「20 分 → 7.5 分」のように減らす数も見せられる）
-- `tone`：数字と札の上の帯の色（`term`（既定）・`emph`・`accent2`・`series-1..4`）
+- `tone`：数字とカードの上のバーの色（`term`（既定）・`emph`・`accent2`・`series-1..4`）
 - `delta`：`{"dir": "up" | "down", "text": "前の期から 4 社", "good": true}`。▲ / ▼ と一言を数字の下に出す。良い向き（`good`、既定は `up` なら良い）なら `--term`、悪い向きなら `--emph`
-- `note`：札の下端の一言（`--muted`）
+- `note`：カードの下端の一言（`--muted`）
 - 見せ方（`variant`）：`count`・`rise`・`flip`・`underline`。書かなければ資料のシード値で選ばれる（書かなくてよい）
-- 札の並び：`cols`（既定は札の数、4 まで）列で、行が足りなければ折り返す
-- `cues(k)`：同じステップに 2 枚以上の札があれば、2 枚目からの開始時刻を返す（台本の `{cue}` に合わせられる）
+- カードの並び：`cols`（既定はカードの数、4 まで）列で、行が足りなければ折り返す
+- `cues(k)`：同じステップに 2 枚以上のカードがあれば、2 枚目からの開始時刻を返す（台本の `{cue}` に合わせられる）
 
 ### `<m-menu>`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
-| `cols` | number | `0` | 列の数（0 なら札の数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列） |
-| `per-step` | number | `0` | 1 ステップに出す札の数（0 なら初めから全部出し、ステップを使わない） |
-| `size` | number | `34` | 札の題の字の大きさ（px）。副題はその 0.8 倍（本文の下限の 27px より小さくしない） |
-| `visited` | bool | `true` | このセッションで行き先のスライドを開いた札に「見た」の印を付ける |
+| `cols` | number | `0` | 列の数（0 ならカードの数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列） |
+| `per-step` | number | `0` | 1 ステップに出すカードの数（0 なら初めから全部出し、ステップを使わない） |
+| `size` | number | `34` | カードの題の字の大きさ（px）。副題はその 0.8 倍（本文の下限の 27px より小さくしない） |
+| `visited` | bool | `true` | このセッションで行き先のスライドを開いたカードに「見た」の印を付ける |
 
 目次、授業の単元の選び方、「どこから見るか」を選ばせる 1 枚に使う。目次は取り込んだ後に足す。初稿では普通の箇条書き。
 ```html
@@ -426,16 +426,16 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 </m-menu>
 ```
 
-- 子の `<a href>` 1 つが札 1 枚。`href` は `#<スライドの id>`（そのステップ 0）か `#<id>:<ステップの鍵>`（`0`・`1`・… か `concl`）。id は取り込みのときに付く。中身（文字・`<b>` など）が札の題になる
+- 子の `<a href>` 1 つがカード 1 枚。`href` は `#<スライドの id>`（そのステップ 0）か `#<id>:<ステップのキー>`（`0`・`1`・… か `concl`）。id は取り込みのときに付く。中身（文字・`<b>` など）がカードの題になる
 - `data-icon`：題の左の丸に入れる短い字（`一`・`1`・`A` など。色は `--term`）。`data-sub`：題の下の副題（`--muted`）
-- ステップ：`per-step="n"` なら札が n 枚ずつステップごとに出る（`data-from` から。同じステップの中は `stagger` 秒ずつずれる）。まだ出ていない札は押せず、Tab でも選べず、読み上げない。
+- ステップ：`per-step="n"` ならカードが n 枚ずつステップごとに出る（`data-from` から。同じステップの中は `stagger` 秒ずつずれる）。まだ出ていないカードは押せず、Tab でも選べず、読み上げない。
   `per-step="0"`（既定）なら初めから全部（ステップを使わない）。ステップは (k, t) だけで決まる
-- 並び：`cols`（既定は札の数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列）。札の高さの下限は CSS の `--mm-h`（既定 104px）、間は `--mm-gap`（18px）。
+- 並び：`cols`（既定はカードの数から：3 枚までは 1 行、4 枚は 2 列、それより多ければ 3 列）。カードの高さの下限は CSS の `--mm-h`（既定 104px）、間は `--mm-gap`（18px）。
   本文いっぱいに置いて縦の真ん中にそろえるなら `style="height:100%;align-content:center;--mm-h:150px"`
 
 ### `<m-pie>`
 
-データ（子の `<script type="application/json">`）の見本: `{"slices":[{"label":"食費","value":7.2},{"label":"住まい","value":8.5},{"label":"その他","value":2.1,"tone":"muted"}]}`
+データ（子の `<script type="application/json">`）の例: `{"slices":[{"label":"食費","value":7.2},{"label":"住まい","value":8.5},{"label":"その他","value":2.1,"tone":"muted"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -463,7 +463,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-predict>`
 
-データ（子の `<script type="application/json">`）の見本: `{"question":"重い球と軽い球、どちらが先に落ちる？","choices":[{"label":"重い球"},{"label":"軽い球"},{"label":"同時"}],"answer":2,"counts":[14,3,9],"note":"空気の抵抗を除けば同時に落ちる"}`
+データ（子の `<script type="application/json">`）の例: `{"question":"重い球と軽い球、どちらが先に落ちる？","choices":[{"label":"重い球"},{"label":"軽い球"},{"label":"同時"}],"answer":2,"counts":[14,3,9],"note":"空気の抵抗を除けば同時に落ちる"}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -481,7 +481,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-quad>`
 
-データ（子の `<script type="application/json">`）の見本: `{"x":{"lo":"手作業","hi":"自動"},"y":{"lo":"高い","hi":"安い"},"items":[{"label":"A 社","x":0.25,"y":0.7},{"label":"自社","x":0.8,"y":0.82,"self":true}]}`
+データ（子の `<script type="application/json">`）の例: `{"x":{"lo":"手作業","hi":"自動"},"y":{"lo":"高い","hi":"安い"},"items":[{"label":"A 社","x":0.25,"y":0.7},{"label":"自社","x":0.8,"y":0.82,"self":true}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -505,7 +505,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-scatter>`
 
-データ（子の `<script type="application/json">`）の見本: `{"series":[{"label":"晴れ","points":[[24,210],[28,380],[31,560],{"x":34,"y":690,"label":"猛暑日"}]}],"trend":"linear"}`
+データ（子の `<script type="application/json">`）の例: `{"series":[{"label":"晴れ","points":[[24,210],[28,380],[31,560],{"x":34,"y":690,"label":"猛暑日"}]}],"trend":"linear"}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -537,7 +537,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-timeline>`
 
-データ（子の `<script type="application/json">`）の見本: `{"nodes":[{"id":"a","label":"明治維新","when":"1868","whenLabel":"明治元年"},{"id":"b","label":"憲法の発布","when":"1889","note":"2 月 11 日"},{"id":"c","label":"日清戦争","when":"1894","end":"1895","tone":"emph"}]}`
+データ（子の `<script type="application/json">`）の例: `{"nodes":[{"id":"a","label":"明治維新","when":"1868","whenLabel":"明治元年"},{"id":"b","label":"憲法の発布","when":"1889","note":"2 月 11 日"},{"id":"c","label":"日清戦争","when":"1894","end":"1895","tone":"emph"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -558,7 +558,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - `label`：名前（`\n` で改行）。または `tex`（KaTeX）
 - `note`：箱の**中**の最後の行に小さく（`--muted`）。期間と節目では名前の後ろに続けて。例：「2 月 11 日」「新橋〜横浜」
 - `tone`：`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`。`emph` の箱は地が `--emph-tint`、枠と字が `--emph`
-- `end`：あれば期間。軸の下の段に帯で描き、名前は帯の中（入らなければ帯の右か左）に書く。名前を `\n` で何行かにすると、帯がその分太くなる
+- `end`：あれば期間。軸の下の段に、軸に沿ってその長さだけ伸ばして描く。名前は期間の中（入らなければ右か左）に書く。名前を `\n` で何行かにすると、その分太く描く
 - `end` は含まない（終わりの時点）。`"1912"` は 1912 年の初め。明治 1868–1912 と大正 1912–1926 は同じ段に並ぶ。12 月まで含めるなら次の月（`"2027-01"`）を書く。
 - `lane`：期間を名前の付いた段のまとまりに分ける（「時代」「作家」「設計」など）。まとまりの名前を左に書き、まとまりの間に薄い線を引く。重なる期間は、まとまりの中で自動で別の段に積む。`end` のない node に `lane` を書くと、その段の中の節目（◆）になる
 - `step`・`at`：出るステップと、ステップの中の開始秒
@@ -581,7 +581,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-tree>`
 
-データ（子の `<script type="application/json">`）の見本: `{"nodes":[{"id":"r","label":"動物"},{"id":"a","label":"脊椎動物","parent":"r"},{"id":"b","label":"無脊椎動物","parent":"r"}]}`
+データ（子の `<script type="application/json">`）の例: `{"nodes":[{"id":"r","label":"動物"},{"id":"a","label":"脊椎動物","parent":"r"},{"id":"b","label":"無脊椎動物","parent":"r"}]}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -612,7 +612,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 
 ### `<m-venn>`
 
-データ（子の `<script type="application/json">`）の見本: `{"sets":[{"label":"哺乳類"},{"label":"海の生き物"}],"regions":{"A":["ライオン"],"B":["マグロ"],"AB":["クジラ","イルカ"]}}`
+データ（子の `<script type="application/json">`）の例: `{"sets":[{"label":"哺乳類"},{"label":"海の生き物"}],"regions":{"A":["ライオン"],"B":["マグロ"],"AB":["クジラ","イルカ"]}}`
 
 | 値 | 型 | 既定 | 意味 |
 |---|---|---|---|
@@ -624,9 +624,9 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 観点ごとに値を並べて比べるなら `m-compare`。
 
 - `sets`：集合（2 つか 3 つ）。`label` は円の外に書く名前、`tone` は円の色（`term`・`emph`・`muted`・`accent2`・`series-1..4`。既定は `term`・`accent2`・`series-4` の順）。`--emph` は重なりを強めるのに使うので、集合には使わないほうがよい
-- `regions`：領域ごとの項目（1 つ 1 行の配列か、`\n` で改行した字）。鍵は集合の文字の組で、アルファベット順に書く。文字は `sets` の順（`sets` の 1 つ目が A・2 つ目 B・3 つ目 C）：
+- `regions`：領域ごとの項目（1 つ 1 行の配列か、`\n` で改行した字）。キーは集合の文字の組で、アルファベット順に書く。文字は `sets` の順（`sets` の 1 つ目が A・2 つ目 B・3 つ目 C）：
   - `A`：A だけ（ほかの集合には入らない）、`AB`：A と B の両方（3 つのときは、A と B に入り C には入らないところ）、`ABC`：3 つとも
-  - 2 つなら `A` `B` `AB`、3 つなら `A` `B` `C` `AB` `AC` `BC` `ABC`。どれも省いてよい。集合が 2 つのときに C を含む鍵（`C` `AC` `BC` `ABC`）を書くと、図の代わりに誤りの札が出る
+  - 2 つなら `A` `B` `AB`、3 つなら `A` `B` `C` `AB` `AC` `BC` `ABC`。どれも省いてよい。集合が 2 つのときに C を含むキー（`C` `AC` `BC` `ABC`）を書くと、図の代わりにエラーが出る
 - 円は左右対称の決まった配置で、面積は値に比例しない（2 つは左右、3 つは左上・右上・下）。`spread`（既定 1）は円の中心の間の距離 ÷ 半径で、小さいほど重なりが広い
 - 項目は、その領域の中で円の線から最も離れる位置に置く。字は `size`（既定 26 px）から 24 px まで縮める。重なりの項目は太字
 - ステップ：既定は 集合を 1 つずつ（その集合だけの項目と一緒に）→ 重なり（項目のある重なりを `--emph` で薄く塗って縁を囲み、項目を出す。項目のある重なりがなければ重なりすべて）。`overlaps="each"` なら重なりを 1 つずつ（`AB`・`AC`・`BC`・`ABC` の順）
@@ -655,16 +655,16 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - `{cue}`：ステップの中の同期点。パーツの `cues(k)` の 1 つに 1 つ（パーツの説明が求めるときだけ）
 - `{mark:ID}`・`{mark:ID|効果}`・`{mark:ID|効果|hold=秒}`・`{mark:clear}`：目印のことを言う言葉の**すぐ前**に置く。1 ステップに 1〜2 個まで。言葉でも言う。効果：`underline`（既定。手描きの下線を左から右へ）、`circle`（手描きの囲み）、`box`（角丸の枠）、`spot`（対象のまわり以外を背景色で薄くする）、`laser`（光の点が対象の下へ滑ってきて少し留まる）
 - **R-reading** `{表示|読み}` は **1 つの記号か 1 つの用語**の読み：`{θ|シータ}`、`{N₀|エヌゼロ}`、`{論語|ろんご}`。1 つの記号に星・プライム・添え字・ハットやバーが付いていてもよい（`{Q*|キュースター}`、`{θ̂|シータハット}`）。表示は普通の文字で書き、LaTeX にせず、式やいくつもの記号にしない（`{1-η|…}`・`{θとη|…}` は誤り：記号ごとに読みを付け、関係は言葉で言う）。読みは読みなしで読み違える語にだけ付ける（かなの読みは抑揚を崩しやすい）。読みは書いた所にだけ当たるので、付けた語がまた出てくるなら、出てくる所ごとに付ける
-- **R-formula** **式を読み上げない**：台本に LaTeX・`\`・`^`・`_`・`a + b = c` のような文字列を書かない。式の意味を言葉で言う（§4 の見本の [1]）
+- **R-formula** **式を読み上げない**：台本に LaTeX・`\`・`^`・`_`・`a + b = c` のような文字列を書かない。式の意味を言葉で言う（§4 の例の [1]）
 - 日本語の台本は話し言葉の です・ます。英語は話し言葉の英語。目安は 1 秒に日本語 5 字・英語 2.5 語。1 回の発言は 1〜3 文
 
 ## 5. 修正依頼
 
 利用者が**修正依頼**（規格の名前の付いた指摘の一覧と、今のファイル）を貼り付けたら、その指摘だけを直し、ほかは変えず、`id="…"` と `{#…}` をすべてそのまま残し（R-noids）、また 2 つのコードブロックで返す（R-output）。依頼に一部のスライドしかなければ、そのスライドの `<section>` だけ（`<html>` なし）とその節だけを 2 つのコードブロックで返す（エディタが id で元の場所に戻す）。
 
-## 6. 見本
+## 6. 例
 
-小さな教材の見本（架空。形を見るためで、中身は写さない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`、箱が 4 つの `m-flow` はステップ 1〜4。いくつかの束の指示の最後にも見本がある。
+小さな教材の例（架空。形を見るためで、中身はコピーしない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`、箱が 4 つの `m-flow` はステップ 1〜4。いくつかのセットの指示の最後にも例がある。
 
 ### 共通（英語・default テーマ・強調・m-flow）
 

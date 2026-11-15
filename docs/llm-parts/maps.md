@@ -35,7 +35,7 @@ Data example (child `<script type="application/json">`): `{"regions":[{"id":"13"
 
 `labels`：`focus`（既定）・`all`・`none`。`show="value"` で入る地域に値を書く（既定は書かない）。
 
-日本の範囲・東西南北の端・排他的経済水域を見せるときは layout="true"（小窓なし、本当の位置）
+日本の範囲・東西南北の端・排他的経済水域を見せるときは layout="true"（挿入図なし、本当の位置）
 
 地図データ：Natural Earth（パブリックドメイン）を加工。
 

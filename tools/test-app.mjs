@@ -575,7 +575,7 @@ try {
     await clickUntil(page, '#panel-close', () => page.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
 
     // ---------------------------------------------------------------- 8. 書き出し（ui-redesign）：「組み立てた HTML」は編集アプリから外した（コマンドの node kit/build.mjs に残す）
-    ok(await page.evaluate(() => !document.getElementById('b-export') && ![...document.querySelectorAll('#tools button')].some((b) => /組み立てた HTML|built HTML/i.test(b.textContent))), 'export: no “built HTML” export in the editor (CLI only)');
+    ok(await page.evaluate(() => !document.getElementById('b-export') && ![...document.querySelectorAll('#tools button')].some((b) => /ビルドした HTML|built HTML/i.test(b.textContent))), 'export: no “built HTML” export in the editor (CLI only)');
     ok(await page.evaluate(() => [...document.querySelectorAll('#m-export [role=menuitem]')].filter((b) => !b.hidden).map((b) => b.id).join(',')) === 'b-export-play,b-export-mp4,b-export-scorm,b-print,b-print-book', 'export: File ▸ Export ▸ has For participants (play only)…, Make a video (MP4)…, For an LMS (SCORM)…, Print slides and Print script (folder without a book)');
 
     // ---------------------------------------------------------------- 8b. 授業の部屋を付けて配る（tools/test-app-live.mjs）
@@ -712,7 +712,7 @@ try {
         'portable: original player reports the missing part and draws the remaining parts');
       const missingOpen = await pstate();
       ok(!missingOpen.portable.readOnly && !!missingOpen.portable.tierAOnly && !missingOpen.error && await page.isHidden('#notice-readonly'), 'portable: missing requirements allow tier A without a preview error');
-      ok((await page.textContent('#notice-tier-a')).includes('台本・音声・秒数だけを編集できます') && (await page.textContent('#notice-tier-a')).includes('パーツ probe@0.1.0 が必要とする base@9.9.9 がありません。組み直すにはパーツを更新してください'),
+      ok((await page.textContent('#notice-tier-a')).includes('台本・音声・秒数だけを編集できます') && (await page.textContent('#notice-tier-a')).includes('パーツ probe@0.1.0 が必要とする base@9.9.9 がありません。再ビルドするにはパーツを更新してください'),
         'portable: tier A notice names the part, its missing exact requirement and how to rebuild');
       await f.evaluate(() => DECK.go(1, 1, false));
       ok(await f.evaluate(() => DECK.state().slide === 2 && DECK.state().step === 1), 'portable: existing file with unavailable requirements keeps playing');
@@ -764,8 +764,8 @@ try {
       await page.click('#b-comments');
       // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
       ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('このファイルは、作業フォルダ（スライドと台本のファイルを入れたフォルダ）から書き出したものです。ここで直しても、作業フォルダのファイルは変わりません。作業フォルダを持っていなければ、気にせずこのまま直して保存できます。')
-        && !(await page.textContent('#notice-exported')).includes('書き出したあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
+      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('このファイルは、作業フォルダ（スライドと台本のファイルを入れたフォルダ）からエクスポートしたものです。ここで直しても、作業フォルダのファイルは変わりません。作業フォルダを持っていなければ、気にせずこのまま直して保存できます。')
+        && !(await page.textContent('#notice-exported')).includes('エクスポートしたあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
       await shot(page, 'portable-exported-notice.png');
       await clickMenuOpen(page, '#b-filemenu');
       ok(await page.isVisible('#b-save') && await page.isVisible('#b-saveas') && await page.isHidden('#b-export-portable') && (await page.getAttribute('#b-save', 'aria-disabled')) === 'false', 'portable: File ▾ has Save and Save as… (the single-file ones)');
@@ -812,7 +812,7 @@ try {
       const aRead = await readPortable(new Uint8Array(aBuf));
       ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
       ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
-      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直しても、作業フォルダのファイルは変わりません。') && (await page.textContent('#notice-exported')).includes('書き出したあと、このファイルで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
+      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直しても、作業フォルダのファイルは変わりません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、このファイルで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
       fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
       ok(ps0.portable.stale.includes(`${K('何を最小化するか')}:0`) && JSON.stringify(aRead.index.audio[`${K('何を最小化するか')}:0`]) === JSON.stringify(pmin.index.audio[`${K('何を最小化するか')}:0`]), 'tier A: the edited step\'s audio is kept as is and shown as stale');
       await shot(page, 'portable-tier-a-saved.png');
@@ -1810,7 +1810,7 @@ try {
         const k = await po.getAttribute('#refuse-reason', 'data-kind');
         const msg = await po.textContent('#refuse-reason');
         ok(k === kind && (await po.textContent('#dlg pre.tech')).includes('[no-source]') && !!(await po.$('#dlg-folder')) === folder && !(await po.$('#dlg-only')), `refuse: ${what} → its own message (${kind}${folder ? ', offers "Open the folder…"' : ''}): ${msg.slice(0, 60)}…`);
-        if (kind === 'built-output') { ok(/組み立てた発表用の HTML/.test(msg) && msg.includes(FORMAT.FILE_EXT), 'refuse: the built-output message says it is a presentation build and to open the source folder or a portable file'); if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'built-output.png') }); }
+        if (kind === 'built-output') { ok(/ビルドした発表用の HTML/.test(msg) && msg.includes(FORMAT.FILE_EXT), 'refuse: the built-output message says it is a presentation build and to open the source folder or a portable file'); if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'built-output.png') }); }
         if (kind === 'play-only') ok(/再生専用の Egatari ファイル/.test(msg), 'refuse: the play-only message names the play-only portable file');
         await clickDlg(po, '#dlg-ok');
         ok(await p === false, `refuse: ${what} is not opened`);

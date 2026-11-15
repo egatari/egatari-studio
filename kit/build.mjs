@@ -373,7 +373,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
       const rd = (p, max) => { try { return readRegularText(p, { max }).text; } catch { return null; } };
       const left = draftLeftovers(rd(src, READ_LIMITS.source), rd(path.join(path.dirname(src), 'narration.md'), READ_LIMITS.narration));
       const lines = leftoverLines(left);
-      if (lines.length) { console.error(`portable: warning: ${lines.length} template ${plural(lines.length, 'leftover')}; the file is written anyway / 雛形のままのところ（書き出しはする）:`); for (const l of lines) console.error('  ' + l); }
+      if (lines.length) { console.error(`portable: warning: ${lines.length} template ${plural(lines.length, 'leftover')}; the file is written anyway / テンプレートのままのところ（エクスポートはする）:`); for (const l of lines) console.error('  ' + l); }
     }
     let r;
     try { r = await buildPortable(src, { ...opts }); } catch (e) { console.error(`portable: ${e.code ? `[${e.code}] ` : ''}${e.message}`); process.exit(1); }

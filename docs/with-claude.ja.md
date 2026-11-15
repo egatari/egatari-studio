@@ -10,7 +10,7 @@
 同じマーケットプレイスに 2 つのプラグインがあります。
 
 - 軽量な `egatari` は `egatari:make` だけを含み、Node は要りません。構成案を見せ、承認後に `deck.html`（スライド）と `narration.md`（台本）を書きます。
-- `egatari-studio` は `egatari-studio:studio` だけを含みます。ローカルの品質チェック・組み立て・パーツ作成・既存の音声を使った動画の書き出しに使います。コマンドは npm の包み egatari（`npx egatari@0.6.x …`）で動かすので、Node.js が要ります。
+- `egatari-studio` は `egatari-studio:studio` だけを含みます。ローカルの品質チェック・ビルド・パーツ作成・既存の音声を使った動画のエクスポートに使います。コマンドは npm の包み egatari（`npx egatari@0.6.x …`）で動かすので、Node.js が要ります。
 
 ## スキルを入れる
 
@@ -34,7 +34,7 @@ Studio の **新規作成…** の **指示をコピー** の横、または **�
 
 コマンドは要りません。2 つの囲みを Studio に貼り付けます。Studio の指示書とスキルのバージョンが違えば、Studio の **AI のスキルをダウンロード** で入れ直します。チャットのスキルは自動では更新されないので、Studio が新しくなったら入れ直してください。スキルの指示と品質チェックは Studio のバージョンごとに変わります。
 
-書き終えたら、egatari-studio が入っていれば studio スキルで品質チェックと組み立てをします。それ以外は Chrome か Edge の <https://studio.egatari.org/> で作業フォルダを開きます。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使います。
+書き終えたら、egatari-studio が入っていれば studio スキルで品質チェックとビルドをします。それ以外は Chrome か Edge の <https://studio.egatari.org/> で作業フォルダを開きます。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使います。
 
 ## 最初に送る依頼
 

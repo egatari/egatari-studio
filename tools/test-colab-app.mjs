@@ -143,8 +143,8 @@ try {
   const cb = await page.evaluate(() => ({ c: [...document.querySelectorAll('#dev-audio-cloud-body .dv-steps > li')].map((li) => li.querySelector('.dv-c > button, .dv-c > a').textContent),
     heads: [...document.querySelectorAll('#dev-audio-cloud-body .dv-steps > li > .dv-sh')].map((x) => x.querySelector('.dv-num').textContent + '|' + x.querySelector('.dv-st').textContent),
     c2type: (document.getElementById('dev-audio-c2-steps') || {}).type, c2parent: document.getElementById('dev-audio-c2-steps').closest('li').id, c2: [...document.querySelectorAll('#dev-audio-c2-steps li')].map((x) => x.textContent), note: document.getElementById('dev-audio-c2-note').textContent, text: document.getElementById('dev-audio-cloud-body').textContent }));
-  ok(cb.c.join('|') === '台本を書き出す|Colab を開く|できた音声を取り込む…', 'steps 1–3: one button each, 台本を書き出す, Colab を開く, できた音声を取り込む… ' + cb.c.join('|'));
-  ok(cb.heads.join(' / ') === '手順 1|台本を書き出す / 手順 2|Colab で実行する / 手順 3|できた音声を取り込む', 'steps 1–3: a number badge and a heading each ' + cb.heads.join(' / '));
+  ok(cb.c.join('|') === '台本をエクスポート|Colab を開く|できた音声を取り込む…', 'steps 1–3: one button each, 台本をエクスポート, Colab を開く, できた音声を取り込む… ' + cb.c.join('|'));
+  ok(cb.heads.join(' / ') === '手順 1|台本をエクスポート / 手順 2|Colab で実行する / 手順 3|できた音声を取り込む', 'steps 1–3: a number badge and a heading each ' + cb.heads.join(' / '));
   ok(cb.c2type === 'a' && cb.c2parent === 'dev-audio-c2' && cb.c2.length === 4 && cb.c2[0] === COLAB_STEPS.ja[0] && cb.c2[1] === COLAB_STEPS.ja[1] && cb.c2[2] === 'ファイルを選ぶ画面で、手順 1 のファイルを選ぶ' && cb.c2[3] === COLAB_STEPS.ja[3] && /「接続」/.test(cb.c2[0]) && /ランタイムのタイプを変更/.test(cb.c2[0]) && cb.note === COLAB_TIME.ja, 'step 2: the Colab instructions as their own a–d list under step 2 (接続 → CPU when it cannot connect → すべてのセルを実行 → the file of step 1 → ZIP downloads) and the T4 timing ' + JSON.stringify(cb.c2));
   ok((await page.textContent('#dev-audio-c3 .dv-note')) === '手順 2 でダウンロードした ZIP ファイルを選びます', 'step 3: 手順 2 でダウンロードした ZIP ファイルを選びます');
   ok(!(await page.$('#dev-audio-cloud-body li[data-done="1"]')) && !(await page.$('#dev-audio-cloud-body .dv-tick')), 'steps: no ✓ before anything has happened');
@@ -156,7 +156,7 @@ try {
   // プライバシーの確認（初めての 1 回）：キャンセルすれば書き出さない
   await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #colab-privacy');
-  ok((await page.textContent('#colab-privacy')) === '台本の文は Google の環境で処理されます。共有してよい文だけにしてください。スライドやほかのファイルは渡しません。' && (await page.textContent('#dlg-title')).includes('台本を Google Colab に渡します') && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'C1: the privacy question (台本を Google Colab に渡します / 書き出す / キャンセル)');
+  ok((await page.textContent('#colab-privacy')) === '台本の文は Google の環境で処理されます。共有してよい文だけにしてください。スライドやほかのファイルは渡しません。' && (await page.textContent('#dlg-title')).includes('台本を Google Colab に渡します') && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'C1: the privacy question (台本を Google Colab に渡します / エクスポート / キャンセル)');
   let downloaded = false; page.once('download', () => { downloaded = true; });
   await clickDlg(page, '#dlg-cancel');
   await page.waitForTimeout(300);
@@ -181,7 +181,7 @@ try {
   ok(sj.inputHash === await PF.inputHash(seg0) && JSON.stringify(sj.turns[0].segments.length) === JSON.stringify(seg0.turns[0].ttsParts.length), 'export: inputHash and the segments follow the narration');
   const eta = job.steps.find((x) => x.turns.some((t) => t.segments.some((s) => s.includes('イータ'))));
   ok(!!eta && !job.steps.some((x) => x.turns.some((t) => t.segments.some((q) => /[{}]/.test(q)))), 'export: the reading dictionary is applied by the editor (イータ), no markup');
-  ok((await msgs()).some((m) => /^台本を書き出しました（\d+ ステップ）。次は「Colab を開く」$/.test(m)) && !(await msgs()).some((m) => m.includes('tts-job.json')), 'export: the panel says what to do next (no file name)');
+  ok((await msgs()).some((m) => /^台本をエクスポートしました（\d+ ステップ）。次は「Colab を開く」$/.test(m)) && !(await msgs()).some((m) => m.includes('tts-job.json')), 'export: the panel says what to do next (no file name)');
   // 書き出した後に、1 つの段階の原稿を直す（その段階は印付きになる）
   const changed = keys[2];
   const nr = await page.evaluate((k) => window.__APP_TEST.api('GET', '/__dev/narration?key=' + encodeURIComponent(k)), changed);
@@ -190,7 +190,7 @@ try {
   // 取り込み：別の教材の zip は拒否
   const other = await colabZip(job, { docId: PF.newDocId(), title: 'ほかの授業' });
   await importZip(other);
-  ok((await msgs()).some((m) => m.startsWith('この ZIP ファイルには、この教材の音声が入っていません。この教材で書き出した台本から作った ZIP ファイルを選んでください') && m.includes('「ほかの授業」') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a ZIP file made for another lesson (docId) is refused and nothing is written');
+  ok((await msgs()).some((m) => m.startsWith('この ZIP ファイルには、この教材の音声が入っていません。この教材でエクスポートした台本から作った ZIP ファイルを選んでください') && m.includes('「ほかの授業」') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a ZIP file made for another lesson (docId) is refused and nothing is written');
   ok(lastChooser && lastChooser.type === 'file' && !lastChooser.multiple && !lastChooser.dir && /\.zip/.test(lastChooser.accept), 'C3: a plain <input type=file> for one ZIP file (no folder picker) ' + JSON.stringify(lastChooser));
   // 敵対の zip：HTML を音声と言い張る・展開爆弾
   await importZip(await colabZip({ ...job, steps: [job.steps[0]] }, { mutate: (r, e) => { e[1] = [e[1][0], new TextEncoder().encode('<html><script>alert(1)</script></html>')]; } }));
@@ -203,7 +203,7 @@ try {
   // 本番の zip
   await importZip(await colabZip(job));
   const sum = (await msgs())[0];
-  ok(sum === `${keys.length - 1} ステップに AI 音声を付けました。1 ステップは、書き出した後に台本が変わっているので使っていません`, 'import: ' + sum);
+  ok(sum === `${keys.length - 1} ステップに AI 音声を付けました。1 ステップは、エクスポートした後に台本が変わっているので使っていません`, 'import: ' + sum);
   ok(await page.waitForSelector('#dev-audio-c3[data-done="1"]', { timeout: scaled(5000) }).then(() => true, () => false) && !!(await page.$('#dev-audio-c2[data-done="1"]')) && !!(await page.$('#dev-audio-c1[data-done="1"]')), 'steps 2 and 3: ✓ after the ZIP file is imported');
   await shotPanel('cloud-all-done');
   const man = JSON.parse(await opfsRead('audio/manifest.json'));

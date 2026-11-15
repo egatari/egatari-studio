@@ -34,7 +34,7 @@ const STR = {
     limits: `1 つ ${MB(ATTACH_LIMITS.fileBytes)}・合わせて ${MB(ATTACH_LIMITS.totalBytes)}・${ATTACH_LIMITS.count} 個まで`,
     none: 'まだありません', add: 'ファイルを足す…', role: '役割', noRole: '（役割なし：一覧に出ない）', titleL: '題', rename: '名前を替える…', remove: '消す',
     roles: { source: '元の原稿', pdf: 'PDF', code: 'コード', data: 'データ', supplement: '補足資料' },
-    renameAsk: '新しい名前（attachments/ の下）', removeAsk: (p) => `「${p}」を消しますか？（作業フォルダでは .cache/edits/ に控えを残します）`,
+    renameAsk: '新しい名前（attachments/ の下）', removeAsk: (p) => `「${p}」を消しますか？（作業フォルダでは .cache/edits/ にバックアップを残します）`,
     exists: (p) => `「${p}」はもうあります。先に消すか、名前を替えてください`, bad: (p, w) => `「${p}」は使えない名前です（${w}）`,
     tooLarge: (p, n) => `「${p}」は大きすぎます（${MB(n)}。1 つ ${MB(ATTACH_LIMITS.fileBytes)} まで）`, total: `添付を合わせると ${MB(ATTACH_LIMITS.totalBytes)} を超えます`,
     count: `添付は ${ATTACH_LIMITS.count} 個までです`, added: (n) => `${n} 個足しました`, removed: (p) => `消しました：${p}`, renamed: (a, b) => `名前を替えました：${a} → ${b}`,

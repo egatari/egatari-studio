@@ -499,7 +499,7 @@ t('a book from someone else: build reports the unsafe paragraphs by file, line a
   const lines = r.stderr.split('\n').filter((l) => l.includes('安全に読めない'));
   assert.equal(lines.length, 2, r.stderr.slice(0, 2000));
   assert.ok(lines[0].includes(`✗ article: ${want[0].file} ${want[0].line} 行目：節「${want[0].heading}」の段落「"a "a`) && lines[0].includes('引用符（" と \'）が'), lines[0].slice(0, 200));
-  assert.ok(lines[1].includes(`✗ article: ${want[1].file} ${want[1].line} 行目：節「${want[1].heading}」の段落「a <!-- a`) && lines[1].includes('タグの書き出し（<! と <?）が'), lines[1].slice(0, 200));
+  assert.ok(lines[1].includes(`✗ article: ${want[1].file} ${want[1].line} 行目：節「${want[1].heading}」の段落「a <!-- a`) && lines[1].includes('タグの始まり（<! と <?）が'), lines[1].slice(0, 200));
   const page = fs.readFileSync(path.join(d, 'out', 'deck.article.html'), 'utf8');
   assert.ok(!page.includes('"a "a "a') && !page.includes('a &lt;!-- a'), 'the refused files are not in the book page');
   // ふつうの本：同じ組み立てで、知らせはない

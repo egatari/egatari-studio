@@ -62,7 +62,7 @@
    git tag -a vX.Y.Z -m vX.Y.Z && git push origin vX.Y.Z
    ```
 
-7. **リリースの説明**を CHANGELOG の節から作る。説明には従う仕様のバージョンを書く：「Egatari 1.0 WD YYYY-MM-DD に従う」（英語では “Follows Egatari 1.0 Working Draft YYYY-MM-DD”）。例外があれば書く。見本のファイル、両言語の make スキルの ZIP（`npm run release:assets` が作る `egatari-make-X.Y.Z-ja.zip` と `egatari-make-X.Y.Z-en.zip`）、編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#バージョンごとの-url凍結した写し)）：
+7. **リリースの説明**を CHANGELOG の節から作る。説明には従う仕様のバージョンを書く：「Egatari 1.0 WD YYYY-MM-DD に従う」（英語では “Follows Egatari 1.0 Working Draft YYYY-MM-DD”）。例外があれば書く。見本のファイル、両言語の make スキルの ZIP（`npm run release:assets` が作る `egatari-make-X.Y.Z-ja.zip` と `egatari-make-X.Y.Z-en.zip`）、編集アプリのサイトを添える。編集アプリのサイト `editor-site-vX.Y.Z.tar.gz` はこのリリースの `dist/` で、タグの一時的な git worktree で組む。後の deploy がこれを `/vX.Y.Z/` に置き、説明の sha256 の行と合うか確かめる（[docs/editor.ja.md](docs/editor.ja.md#バージョンごとの-url凍結したコピー)）：
 
    ```bash
    awk '/^## \[X\.Y\.Z\]/{f=1;next} /^## \[/{f=0} f' CHANGELOG.md > /tmp/notes.md
@@ -75,7 +75,7 @@
 
 8. **Pages。** タグの `pages` workflow が置く。置けたことを確かめ（`gh run list --workflow pages --limit 3`）、<https://studio.egatari.org/>・<https://studio.egatari.org/vX.Y.Z/>・前のリリースの `/v…/`・<https://studio.egatari.org/parts/>（すべてのパーツのサンプル）を開く（その記録に、置いた凍結した写しと、各バージョンのページをどのリリースから取ったかが並ぶ）。同じバージョンを置き直すには、そのタグで workflow を走らせる（Actions → pages → Run workflow）
    **前のリリースは 1 つだけ。** サイトに置くのは今のバージョンと、その 1 つ前のリリースだけ（`tools/site-versions.mjs` の `KEEP_PREVIOUS`。2026-11-11 の作者の決定）。それより前は下の短いページになる。リリースのときにすることはない（自動で入れ替わる）
-   **置くバージョンの下限。** `tools/site-versions.mjs` の `HOSTED_FROM`（いまは `0.6.0`。2026-11-06 の作者の決定）より前のリリースは広げない。その `/vX.Y.Z/` は、GitHub のリリースと最新版へのリンクを出す日本語と英語の短いページになり、記録にはバージョンごとに 1 行が出る。バージョンの一覧には出ない。サイトが 800 MB を超えた知らせ（1 GB を超えると失敗）が出たら、その知らせが置いている最も古いバージョンを挙げるので、`HOSTED_FROM` を知らせの勧めるバージョンにするコミットを `main` に入れ、もう一度置く。リリースに添えたファイルはそのままでよい。ファイルの名前を `editor-site-vX.Y.Z.tar.gz` に戻しても、下限より前のバージョンはまた置かれない（[docs/editor.ja.md](docs/editor.ja.md#バージョンごとの-url凍結した写し)）
+   **置くバージョンの下限。** `tools/site-versions.mjs` の `HOSTED_FROM`（いまは `0.6.0`。2026-11-06 の作者の決定）より前のリリースは広げない。その `/vX.Y.Z/` は、GitHub のリリースと最新版へのリンクを出す日本語と英語の短いページになり、記録にはバージョンごとに 1 行が出る。バージョンの一覧には出ない。サイトが 800 MB を超えた知らせ（1 GB を超えると失敗）が出たら、その知らせが置いている最も古いバージョンを挙げるので、`HOSTED_FROM` を知らせの勧めるバージョンにするコミットを `main` に入れ、もう一度置く。リリースに添えたファイルはそのままでよい。ファイルの名前を `editor-site-vX.Y.Z.tar.gz` に戻しても、下限より前のバージョンはまた置かれない（[docs/editor.ja.md](docs/editor.ja.md#バージョンごとの-url凍結したコピー)）
    ブラウザが受け取る圧縮した応答も確かめる：`curl -s -o /dev/null -w "%{http_code}" -H "Accept-Encoding: gzip, deflate, br, zstd" https://studio.egatari.org/` が `200` を出すこと（圧縮した 404 がキャッシュに残り、ドメインを替えても消えないことがある）
 
 ## @egatari/fonts-extra

@@ -123,7 +123,7 @@ await t('品質チェック：端末の字体を名指した字に fontNotEmbedd
 
 await t('知らせの言葉：日本語は「端末」で、名前を挙げる（「機械」と言わない）。英語は device', () => {
   const ja = message('ja', 'fontNotEmbedded', { fonts: ['Hiragino Maru Gothic ProN'] }), en = message('en', 'fontNotEmbedded', { fonts: ['X'] });
-  assert.ok(ja.startsWith('ファイルに入っていない字体です') && ja.includes('開く端末によって見え方が変わります') && ja.includes('Hiragino Maru Gothic ProN') && !ja.includes('機械'), ja);
+  assert.ok(ja.startsWith('ファイルに入っていないフォントです') && ja.includes('開く端末によって見え方が変わります') && ja.includes('Hiragino Maru Gothic ProN') && !ja.includes('機械'), ja);
   assert.ok(en.startsWith('This font is not embedded in the file') && en.includes('looks different on each device'), en);
 });
 

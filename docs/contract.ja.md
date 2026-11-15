@@ -1,9 +1,9 @@
 <!-- i18n: pair=contract.md sha256=45eee6b1cd0d0f59 -->
-# 約束事（作るときの記法についての Studio の注）
+# 規約（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
 
-**規範の文は形式の仕様で、このページではない。**作るときの記法（スライド・ステップ・スライドの種類・時間の定数・数式・ファイルの参照・スライドの識別子・台本・読み・パーツの約束・強調・モーフ）は [Egatari の形式の仕様 §8](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#8-authoring-source-contract-version-1) が決める。タイムラインは §5.5、スライドへのリンクは §9.1A。表示のモード・先のステップを薄く見せる選び・授業の外へ出るリンクは [Egatari Player 1.0](https://github.com/egatari/egatari-spec/blob/main/egatari-player-1.0.md)（P1・P4）。このページには、Egatari Studio が足すものだけを書く：実装の置き場所、実行時の API、開発サーバー、`✎` の仮の行、品質チェックの指摘の名前、Studio 自身の CSS の手がかり。食い違うときは仕様が正しい。変えるときは仕様を先に直す。
+**規範の文は形式の仕様で、このページではない。**作るときの記法（スライド・ステップ・スライドの種類・時間の定数・数式・ファイルの参照・スライドの識別子・台本・読み・パーツの規約・強調・モーフ）は [Egatari の形式の仕様 §8](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#8-authoring-source-contract-version-1) が決める。タイムラインは §5.5、スライドへのリンクは §9.1A。表示のモード・先のステップを薄く見せる選び・授業の外へ出るリンクは [Egatari Player 1.0](https://github.com/egatari/egatari-spec/blob/main/egatari-player-1.0.md)（P1・P4）。このページには、Egatari Studio が足すものだけを書く：実装の置き場所、実行時の API、開発サーバー、`✎` の仮の行、品質チェックの指摘の名前、Studio 自身の CSS の手がかり。食い違うときは仕様が正しい。変えるときは仕様を先に直す。
 
 選択肢・記法・キーの 1 行ずつの一覧は [reference.ja.md](reference.ja.md)（[English](reference.md)）。下の節の番号は、ほかからの参照が切れないように残している。
 
@@ -11,7 +11,7 @@
 |---|---|
 | 位置 *(i, k, t)*・ステップ・スライドの種類・時間の定数・数式・原稿の中の参照 | 形式 §8.0 |
 | タイムライン（`dur`・`lead`・`pad_after`・`hold`・上書き） | 形式 §5.5 |
-| スライドの識別子と鍵・ステップの印 | 形式 §8.1 |
+| スライドの識別子とキー・ステップの印 | 形式 §8.1 |
 | 台本（ブロック・発言・`{cue}`・`{note:…}`・拡張の行）・読み | 形式 §8.2・§8.3 |
 | パーツ（`ctx`・ステップ・先を薄く見せる・見せ方・参加者の入力・音・テーマの色） | 形式 §8.4 |
 | 強調（`{mark}`） | 形式 §8.5 |
@@ -22,18 +22,18 @@
 
 ## 1. 位置と時刻
 
-- Studio の実行系は画面を 1 か所で描く：`DECK.seek(i, k, t)`（`t = Infinity` はそのステップの最終状態）。発表では実時間を、動画の書き出しでは仮の時間を渡す。**パーツは実時間の時計、`setTimeout`、`requestAnimationFrame`、シードのない乱数を使ってはいけない**
+- Studio のランタイムは画面を 1 か所で描く：`DECK.seek(i, k, t)`（`t = Infinity` はそのステップの最終状態）。発表では実時間を、動画のエクスポートでは仮の時間を渡す。**パーツは実時間の時計、`setTimeout`、`requestAnimationFrame`、シードのない乱数を使ってはいけない**
 - ステップ 0 でスライドが切り替わっている間（`seek(i, 0, t, from)`）は、前のスライド `from` を最終状態で下に描く。元のスライドから入った `data-morph` のスライドは、代わりにモーフで動く（§8）
-- 画面を撮るもの（動画の書き出し・品質チェック）は、`seek` の後に `requestAnimationFrame` を 2 回待ってから撮る
+- 画面を撮るもの（動画のエクスポート・品質チェック）は、`seek` の後に `requestAnimationFrame` を 2 回待ってから撮る
 - テーマの色は `oklch()` と `color-mix()` で書くので、`getComputedStyle` の値が rgb とは限らない。数が要るときは canvas に塗って読み戻す
 
 ## 2. 表示モード
 
-モードと「先のステップを薄く見せる」は Player P1。Studio の実行系では：`?mode=talk|video`（既定は `talk`。次に `deck-meta.offer.open.mode`、次に `<html data-mode>`）。以前のバージョンの `learn` のモードはなくなった（Egatari Player 1.4.0）：`?mode=learn`・`offer` や埋め込みの命令の `learn` は `talk` と読み、パーツの `ctx.mode` は `talk` か `video` だけ。自習は `talk` の再生で行う：再生 / 一時停止（一時停止は同じ所から続く）、ツールバーの前へ / 次へと跳ぶ（数字＋Enter・一覧）は再生の状態を保ち、再生速度は 0.75・1・1.25・1.5・2 倍（`DECK.rate`）。声の高さは保ち、タイムラインの時計も同じ速さで進む（画面は `(i, k, t)` のまま）。発表者の送りのキーは再生を止め、発表者のツール（発表者ビュー・レーザーポインター・ペン）はそのまま。文書が隠れたら再生を止める（Player P3）。人が開いた `video`（自動操作のブラウザ `navigator.webdriver` でないとき。エクスポートはそこで `DECK.seek` を呼ぶ）は開始のボタンを 1 つだけ出し、押すとほかの操作なしにタイムラインに沿って最後まで流れる。エクスポートは変わらない。`deck-meta.offer`（形式 §1.2）が開くときのモードと見え方、並べ方の選びに出す見え方を決める（[reference](reference.ja.md#再生と進行状況)）。進行状況は `kit/track.js` が記録する（Player P6、[reference](reference.ja.md#再生と進行状況)）。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
+モードと「先のステップを薄く見せる」は Player P1。Studio のランタイムでは：`?mode=talk|video`（既定は `talk`。次に `deck-meta.offer.open.mode`、次に `<html data-mode>`）。以前のバージョンの `learn` のモードはなくなった（Egatari Player 1.4.0）：`?mode=learn`・`offer` や埋め込みの命令の `learn` は `talk` と読み、パーツの `ctx.mode` は `talk` か `video` だけ。自習は `talk` の再生で行う：再生 / 一時停止（一時停止は同じ所から続く）、ツールバーの前へ / 次へと跳ぶ（数字＋Enter・一覧）は再生の状態を保ち、再生速度は 0.75・1・1.25・1.5・2 倍（`DECK.rate`）。声の高さは保ち、タイムラインの時計も同じ速さで進む（画面は `(i, k, t)` のまま）。発表者の送りのキーは再生を止め、発表者のツール（発表者ビュー・レーザーポインター・ペン）はそのまま。文書が隠れたら再生を止める（Player P3）。人が開いた `video`（自動操作のブラウザ `navigator.webdriver` でないとき。エクスポートはそこで `DECK.seek` を呼ぶ）は開始のボタンを 1 つだけ出し、押すとほかの操作なしにタイムラインに沿って最後まで流れる。エクスポートは変わらない。`deck-meta.offer`（形式 §1.2）が開くときのモードと見え方、並べ方の選びに出す見え方を決める（[reference](reference.ja.md#再生と進行状況)）。進行状況は `kit/track.js` が記録する（Player P6、[reference](reference.ja.md#再生と進行状況)）。**先のステップを薄く見せる**は選び `?preview=1`（キー `l`）で、テーマの `--preview-opacity` で薄くする。`data-preview="none"` の要素と、`preview: "none"` を宣言したパーツは先を見せない（形式 §8.4）。
 
 ## 3. パーツ（Web Components）
 
-パーツの約束は形式 §8.4。Studio の実行時の API での書き方：
+パーツの規約は形式 §8.4。Studio の実行時の API での書き方：
 
 ```js
 DECK.define("m-sweep", class extends DECK.MotionElement {
@@ -48,41 +48,41 @@ DECK.define("m-sweep", class extends DECK.MotionElement {
 });
 ```
 
-- `ctx` は形式 §8.4 に挙げたものだけ。ほかに頼らない（Studio の実行系は内部のもの `ctx.deck` も渡すが、約束の一部ではなく、1.x のパーツにだけ渡す）
-- **パーツライブラリ 2.0（試し。教材ごとに選ぶ）。** 作業フォルダの `egatari.json` に `"componentsCatalogue": "2"`（または `"2.0.0"` のようなカタログのバージョン。組み立ての `--components-catalogue`）がある教材は、egatari/components 2.x のパーツで組む（`vendor/components/sha256/<hash>/`、`components.lock.json` の content 表で解決、カタログは `components2.lock.json` で固定、`node tools/components2-update.mjs v2.Y.Z` で取り込む）。組み立ては登録簿 `egatariParts`（`kit/parts-registry.js`、形式 §6.1）を書き、使う要素が要るパーツを依存の順に、ちょうどのバージョンで書く。教材の中のパーツ（`<デッキ>/components/<名前>/index.js`）は、`egatariParts.define` を書いていれば埋め込みの 2.0 のパーツ、`DECK.define` なら 1.x のパーツのまま。パーツの meta は（埋め込みでも写しでも）字で読み、動かさない：`define` の最初の引数に、決まった形の object の字で書く（鍵は名前か "…"、値は "…" か同じ形の object。注釈・式・展開・末尾の , は書かない）。そうでないパーツは書かずに知らせる。1 つのファイルで要素の名前は 1 つ：同じ要素の名前の定義が 2 つ要る（1 つのパーツの 2 つのバージョンでも、名前の違うパーツでも）ときは、組み立ては断ってぶつかりを知らせる（作り手がパーツを直す）。登録簿の `status()` は `{defined, failed: [{name, version, element?, reason}]}`（`meta`・`factory`・`missing`・`dependency`・`duplicate`・`element`）。実行系は失敗したパーツの要素を字の代わりにする。パーツが `build.fields` に宣言した欄は組み立てのときに決まった名前で描き（今は KaTeX の `<欄>Html`。abcjs の `<欄>Svg`・`<欄>Map` はまだ）、`build.subset` の塊は教材の字に出てくるキーだけを、宣言ごとに宣言した順に残す（形式 §6.2）。教材の字は、原稿を parse5 で文書として読み（scripting は有効）木の順にたどった字の節と属性の値（字の参照は読む。同じ名前の属性は最初のもの。`template` の中身も。文書型は数えない）・パーツに渡すデータを JSON として読んだもの（欄の名前・字列の値・数は `String()` の書き方。JSON でなければ書いたまま）・台本（書いたまま）・パーツの `glyphs` を、節ごとに改行でつないだもの。注釈・要素と属性の名前・`<style>` と `<script>` の中身は数えない。`char` の宣言はその字に出てくるキーを、`match: "name"` の宣言（アイコンの名前など）は同じ字を `a`–`z`・`0`–`9`・`-` 以外の字ごとに切った語にちょうど等しいキー（大文字・小文字は畳まない）と宣言の `keep` の名前を残し、Egatari ファイルの索引に `subset.names` として残す（何も残さなければ `[]`）。キーは字列。形の悪い宣言（未知の `match`、`keep` の形の違い・`char` の宣言の `keep`、塊がない・JSON でない、字列でないキー）は知らせて、パーツを全部のまま書き、`subset` を記録しない。ライブラリのパーツの `build` は `components2.lock.json` のカタログの項目（factory が返す値と同じもの）から読む。2.0 のパーツには `deck` のない `ctx` を渡し、実行系は `layout(ctx)` を呼び（窓の大きさが変わるたび・字が読み込まれた・スライドが見えた・隠れていた文書が見えた）、パーツの知らせを `DECK.componentReports` に残す（`error`・`data`・`attr` は `DECK.componentErrors` にも）。Egatari ファイルの索引は、ライブラリも含めて実際に書いたパーツ・依存のバージョン・描画の記録・絞り込んだコードの hash を残す。配置の報告は品質チェックの警告になり、2.0 だけの教材ではプレーヤーの 1.x 用の土台と公開の補助を入れない（教材自身の `<script>` がそれ（`DECK.define`・`DECK.MotionElement`・`DECK.el` …）を使うときは入れる）。`componentsCatalogue` がなければ、今までどおりパーツライブラリ 1.x で組む。新しい教材は `"2"` を選ぶ：編集アプリの「新規作成…」（チャットの AI の出力を新しい教材に貼り付ける）・`npm run new`・`npx egatari new` と make スキルの作業フォルダは、`egatari.json` に `"componentsCatalogue": "2"` を書く（AI への指示が既定の 2.x のカタログのパーツを説明するため）。それのない教材とフォルダは 1.x のままで、黙って切り替えない。1.x の作業フォルダが `"2"` にある要素のためだけに組めないとき、編集アプリは「パーツライブラリ 2 を使う」を出し、押せばその項目だけを書いて（ほかの項目はバイトのまま）組み直す。どちらでも、教材が使う要素は選んだカタログになければならない（形式 §6）：ほかのカタログにしかない要素（1.x の教材の `<m-score>`（2.x だけ）や、`"2.0.0"` を選んだ教材の 2.1.0 で足された要素）、ライブラリのパーツの名前（`<m-plot>`）、1.x の教材で `components` に 2.x のバージョンを固定したパーツは、組み立てと原稿の品質チェックを止め、エラー `component-not-in-catalogue` がその要素と直し方（`egatari.json` に `"componentsCatalogue": "2"` と書く、など）を言う。編集アプリも同じ言葉を出す。教材が自分で定義する要素（`components/<名前>/index.js`、または自分の `<script>` の `DECK.define`・`customElements.define`・`egatariParts.define`）は探さず、どのカタログにもない名前は今までどおり警告（`component not found`）。登録簿なしの 2.0 のパーツ（手で作ったファイルだけ）に出会った 1.x のプレーヤーは投げずに、その要素を `DECK.componentErrors` に知らせ（`phase: "define"`・`reason: "registry"`）、字の代わりを出す
-- 参加者の入力：`ctx.extend(seconds)` は今のステップの実時間の時計と自動再生の待ち時間だけを変え、累計の延長秒数を返す（`0` は読むだけ）。同じスライドのステップ間では累計を保ち、`ctx.entered` で消す。短縮は残り時間が 0 になるところまで（累計は「経過した時間−作者の長さ」より下がらない）。`DECK.stepExtension(i, k)` は累計を公開し、実時間のステップのパーツの効果音はこれに合わせて時刻を付け直す。作者の長さ・タイムライン・動画・印刷・発表者の原稿は変えない。ライブのクライアントがなければ `ctx.live` は null。`poll(id)` は結果を公開済みで回答が 3 人以上のときだけ、選択肢ごとの数の写しを返す。ライブの `setPollResult(id, {revealed, counts})` は公開操作に対応するライブ層のための接続口。今の v1 の通信には学習者への結果公開の通知がないので、先生用の集計を公開済みの結果として扱わない
+- `ctx` は形式 §8.4 に挙げたものだけ。ほかに頼らない（Studio のランタイムは内部のもの `ctx.deck` も渡すが、規約の一部ではなく、1.x のパーツにだけ渡す）
+- **パーツライブラリ 2.0（試し。教材ごとに選ぶ）。** 作業フォルダの `egatari.json` に `"componentsCatalogue": "2"`（または `"2.0.0"` のようなカタログのバージョン。ビルドの `--components-catalogue`）がある教材は、egatari/components 2.x のパーツでビルドする（`vendor/components/sha256/<hash>/`、`components.lock.json` の content 表で解決、カタログは `components2.lock.json` で固定、`node tools/components2-update.mjs v2.Y.Z` で取り込む）。ビルドは登録簿 `egatariParts`（`kit/parts-registry.js`、形式 §6.1）を書き、使う要素が要るパーツを依存の順に、ちょうどのバージョンで書く。教材の中のパーツ（`<デッキ>/components/<名前>/index.js`）は、`egatariParts.define` を書いていれば埋め込みの 2.0 のパーツ、`DECK.define` なら 1.x のパーツのまま。パーツの meta は（埋め込みでもコピーでも）字で読み、動かさない：`define` の最初の引数に、決まった形の object の字で書く（キーは名前か "…"、値は "…" か同じ形の object。注釈・式・展開・末尾の , は書かない）。そうでないパーツは書かずに知らせる。1 つのファイルで要素の名前は 1 つ：同じ要素の名前の定義が 2 つ要る（1 つのパーツの 2 つのバージョンでも、名前の違うパーツでも）ときは、ビルドは断ってぶつかりを知らせる（作り手がパーツを直す）。登録簿の `status()` は `{defined, failed: [{name, version, element?, reason}]}`（`meta`・`factory`・`missing`・`dependency`・`duplicate`・`element`）。ランタイムは失敗したパーツの要素を字の代わりにする。パーツが `build.fields` に宣言した欄はビルドのときに決まった名前で描き（今は KaTeX の `<欄>Html`。abcjs の `<欄>Svg`・`<欄>Map` はまだ）、`build.subset` の塊は教材の字に出てくるキーだけを、宣言ごとに宣言した順に残す（形式 §6.2）。教材の字は、原稿を parse5 で文書として読み（scripting は有効）木の順にたどった字の節と属性の値（字の参照は読む。同じ名前の属性は最初のもの。`template` の中身も。文書型は数えない）・パーツに渡すデータを JSON として読んだもの（欄の名前・字列の値・数は `String()` の書き方。JSON でなければ書いたまま）・台本（書いたまま）・パーツの `glyphs` を、節ごとに改行でつないだもの。注釈・要素と属性の名前・`<style>` と `<script>` の中身は数えない。`char` の宣言はその字に出てくるキーを、`match: "name"` の宣言（アイコンの名前など）は同じ字を `a`–`z`・`0`–`9`・`-` 以外の字ごとに切った語にちょうど等しいキー（大文字・小文字は畳まない）と宣言の `keep` の名前を残し、Egatari ファイルの索引に `subset.names` として残す（何も残さなければ `[]`）。キーは字列。形の悪い宣言（未知の `match`、`keep` の形の違い・`char` の宣言の `keep`、塊がない・JSON でない、字列でないキー）は知らせて、パーツを全部のまま書き、`subset` を記録しない。ライブラリのパーツの `build` は `components2.lock.json` のカタログの項目（factory が返す値と同じもの）から読む。2.0 のパーツには `deck` のない `ctx` を渡し、ランタイムは `layout(ctx)` を呼び（ウィンドウのサイズが変わるたび・字が読み込まれた・スライドが見えた・隠れていた文書が見えた）、パーツの知らせを `DECK.componentReports` に残す（`error`・`data`・`attr` は `DECK.componentErrors` にも）。Egatari ファイルの索引は、ライブラリも含めて実際に書いたパーツ・依存のバージョン・描画の記録・絞り込んだコードの hash を残す。配置の報告は品質チェックの警告になり、2.0 だけの教材ではプレーヤーの 1.x 用の土台と公開の補助を入れない（教材自身の `<script>` がそれ（`DECK.define`・`DECK.MotionElement`・`DECK.el` …）を使うときは入れる）。`componentsCatalogue` がなければ、今までどおりパーツライブラリ 1.x でビルドする。新しい教材は `"2"` を選ぶ：編集アプリの「新規作成…」（チャットの AI の出力を新しい教材に貼り付ける）・`npm run new`・`npx egatari new` と make スキルの作業フォルダは、`egatari.json` に `"componentsCatalogue": "2"` を書く（AI への指示が既定の 2.x のカタログのパーツを説明するため）。それのない教材とフォルダは 1.x のままで、黙って切り替えない。1.x の作業フォルダが `"2"` にある要素のためだけにビルドできないとき、編集アプリは「パーツライブラリ 2 を使う」を出し、押せばその項目だけを書いて（ほかの項目はバイトのまま）再ビルドする。どちらでも、教材が使う要素は選んだカタログになければならない（形式 §6）：ほかのカタログにしかない要素（1.x の教材の `<m-score>`（2.x だけ）や、`"2.0.0"` を選んだ教材の 2.1.0 で足された要素）、ライブラリのパーツの名前（`<m-plot>`）、1.x の教材で `components` に 2.x のバージョンを固定したパーツは、ビルドと原稿の品質チェックを止め、エラー `component-not-in-catalogue` がその要素と直し方（`egatari.json` に `"componentsCatalogue": "2"` と書く、など）を言う。編集アプリも同じ言葉を出す。教材が自分で定義する要素（`components/<名前>/index.js`、または自分の `<script>` の `DECK.define`・`customElements.define`・`egatariParts.define`）は探さず、どのカタログにもない名前は今までどおり警告（`component not found`）。登録簿なしの 2.0 のパーツ（手で作ったファイルだけ）に出会った 1.x のプレーヤーは投げずに、その要素を `DECK.componentErrors` に知らせ（`phase: "define"`・`reason: "registry"`）、字の代わりを出す
+- 参加者の入力：`ctx.extend(seconds)` は今のステップの実時間の時計と自動再生の待ち時間だけを変え、累計の延長秒数を返す（`0` は読むだけ）。同じスライドのステップ間では累計を保ち、`ctx.entered` で消す。短縮は残り時間が 0 になるところまで（累計は「経過した時間−作者の長さ」より下がらない）。`DECK.stepExtension(i, k)` は累計を公開し、実時間のステップのパーツの効果音はこれに合わせて時刻を付け直す。作者の長さ・タイムライン・動画・印刷・発表者の原稿は変えない。ライブのクライアントがなければ `ctx.live` は null。`poll(id)` は結果を公開済みで回答が 3 人以上のときだけ、選択肢ごとの数のコピーを返す。ライブの `setPollResult(id, {revealed, counts})` は公開操作に対応するライブ層のための接続口。今の v1 の通信には学習者への結果公開の通知がないので、先生用の集計を公開済みの結果として扱わない
 - 見ている人のものでない描画（印刷・スライド一覧・品質チェック・動画のコマ）はスライドに入ったことにしない：`ctx.entered` は `false` のまま、見ている位置に戻るときも学習者の入力を消さない。別の位置を描いて戻るツールは、`DECK.seek` を `DECK.aside(fn)` の中で呼ぶ
-- 手で動かした状態：パーツの中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると、実行系はそのパーツに触れた印を付け、次にステップに入るとき（どの `DECK.seek` や `DECK.go` も、リンク、発表者ビューの指示、印刷）、まず別のステップ（t = Infinity）で描いてから (k, t) を `ctx.reset = true` で描く。触れていないパーツは 1 回だけ描く
+- 手で動かした状態：パーツの中で `pointerdown`・`keydown`・`wheel`・`input`・`change` が起きると、ランタイムはそのパーツに触れた印を付け、次にステップに入るとき（どの `DECK.seek` や `DECK.go` も、リンク、発表者ビューの指示、印刷）、まず別のステップ（t = Infinity）で描いてから (k, t) を `ctx.reset = true` で描く。触れていないパーツは 1 回だけ描く
 - **色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style="stroke:var(--emph)"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）
 - 光：`var(--lit)` は光と、光が照らすもの（太陽・灯り・月の明るい側。format §8.4）。塗りの色で、字の色には使わない。これで塗った形には `var(--fg)` か `var(--muted)` の輪郭線も付ける。使うパーツは、ほかの役割から作った予備の値を付ける（`var(--lit, var(--bg))` や、役割どうしの `color-mix()`）。`--lit` より前に作られたテーマでも動くように。役割の色相を変えて作った色（相対色の構文。`oklch(from var(--accent2) l c calc(h + 30))` など）は役割を持たず、品質チェックはじかに書いた色と同じく情報として知らせる（`colorOutside`）。役割どうし・役割と `--bg` の `color-mix()` はよい
 - データ：検算したスクリプトが出した数だけを使う。パーツの子に `<script type="application/json">{{JSON:file.json}}</script>` を置き、`this.data` で読む（直下の子にちょうど 1 つ。2 つ以上なら `this.data` は `null` で、スライドは独自のコードを持つものとして扱う）
-- データの形は `static shape` で宣言する（`kit/shape.js`：JSON Schema の小さな部分集合 `{schema, example, note?}`。文で書くパーツは `{text: true, example}`、子の `<a href>` は `{links: true, example}`。json の属性は `static props` に `shape` を持てる）。実行系はステップを数える前に確かめる：合わないとき、または `mount`・`render` が例外を投げたときは描かず、その場に何が悪いかを書いた代わり（`.m-error`）を出し、ステップの数は `steps` 属性（なければ 0）、問題は `DECK.componentErrors` へ（品質チェックがコマンドでもブラウザでも読む。スタックは出さない）。指示のパーツの一覧に形と例が出る
-- 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースの写しを `vendor/components/sha256/<hash>/` に持ち、パーツごとの既定のバージョンを `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだバージョンはすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
-- バージョン：組み立てはパーツライブラリのパーツごとに、教材に固定したバージョン（Egatari ファイルを組み直すときは、ファイルが記録した SHA-256 に `index.js` が合うバージョン。作業フォルダでは `egatari.json` の `components`（`{<名前>: <バージョン>}`、format spec §3.3。Egatari ファイルの中の写しにはエクスポートが使ったバージョンを書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録のバージョンを書く）を使い、なければ `components.lock.json` の既定のバージョンを使う。パーツライブラリが取り下げたバージョンは `components.lock.json` の `yanked`（`{<バージョン>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げたバージョンを固定した・記録した教材は、そのバージョンのままで組み、警告 `yanked: m-<名前> <バージョン> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと組み直しのボタン）。置き換えのバージョンに黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` はパーツライブラリのリリースのバージョン、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout で書き出したファイル（CRLF のバイトの hash）も、バージョンを引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8）は Studio の実行系にあり、パーツではない
+- データの形は `static shape` で宣言する（`kit/shape.js`：JSON Schema の小さな部分集合 `{schema, example, note?}`。文で書くパーツは `{text: true, example}`、子の `<a href>` は `{links: true, example}`。json の属性は `static props` に `shape` を持てる）。ランタイムはステップを数える前に確かめる：合わないとき、または `mount`・`render` が例外を投げたときは描かず、その場に何が悪いかを書いた代わり（`.m-error`）を出し、ステップの数は `steps` 属性（なければ 0）、問題は `DECK.componentErrors` へ（品質チェックがコマンドでもブラウザでも読む。スタックは出さない）。指示のパーツの一覧に形と例が出る
+- 置き場所：`components/<名前>/{index.js, demo.html, README.md}`。README の先頭（frontmatter）に `name` `series` `summary` `steps` `props` を書く。パーツライブラリのパーツは別のリポジトリ [egatari/components](https://github.com/egatari/components) にある（提案はその Issue へ）。Studio はそのリリースのコピーを `vendor/components/sha256/<hash>/` に持ち、パーツごとの既定のバージョンを `components.lock.json` で固定する（リリースの取り込みは `npm run components:update -- vX.Y.Z`。取り込んだバージョンはすべて残す）。教材専用のパーツは `<教材>/components/<名前>/` に置き、先に探される
+- バージョン：ビルドはパーツライブラリのパーツごとに、教材に固定したバージョン（Egatari ファイルを再ビルドするときは、ファイルが記録した SHA-256 に `index.js` が合うバージョン。作業フォルダでは `egatari.json` の `components`（`{<名前>: <バージョン>}`、format spec §3.3。Egatari ファイルの中のコピーにはエクスポートが使ったバージョンを書き（作業フォルダの `egatari.json` は変えない）、それがないファイルは展開が記録のバージョンを書く）を使い、なければ `components.lock.json` の既定のバージョンを使う。パーツライブラリが取り下げたバージョンは `components.lock.json` の `yanked`（`{<バージョン>: {replacement, reason, date}}`。最新のリリースの `manifest.json` から取り込む。format spec §6）に載る。取り下げたバージョンを固定した・記録した教材は、そのバージョンのままでビルドし、警告 `yanked: m-<名前> <バージョン> …` を出す（`kit/check.mjs` も同じ。編集アプリは知らせと再ビルドのボタン）。置き換えのバージョンに黙って替えることはしない。Egatari ファイルは `{name, version, sha256}` を記録し、`version` はパーツライブラリのリリースのバージョン、`sha256` は `index.js` の同一性の hash（改行をそろえてから hash する：CRLF と単独の CR を LF に、先頭の UTF-8 の BOM を除く。format spec §6。どの OS の checkout でも同じ hash）。このきまりの前に Windows の checkout が書いたファイル（CRLF のバイトの hash）も、バージョンを引ける（固定の `crlfSha256`）。動きの素（印 §7・モーフ §8）は Studio のランタイムにあり、パーツではない
 
 ## 4. 台本（narration.md）
 
 記法は形式 §8.1〜§8.3。Studio が足すもの：
 
-- `npm run new` はどのスライドにも id を付ける。`npm run ids -- <deck>` は id のない教材に id を付ける（台本の見出しの `{#id}` も付け、`audio/manifest.json`・`timeline.json`・`comments.json` の鍵も付け替える）。そのような教材を開いて直せるように、Studio の組み立ては id のないスライドをまだ見出しで鍵にし、品質チェックが知らせる（`legacyIndex`・`linkNoId`）。鍵の重なりはエラーで、組めるように組み立ては後のスライドに `#2`・`#3`… を付ける
-- Egatari ファイルには見出しによる鍵を書かない：エクスポートが先に id のないスライドと台本の見出しに id を付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` の鍵も。控えは `.cache/edits/`）
-- 発表者への指示 `{note:…}` は共通の解析で表示・TTS・音声の hash から除く。発表者ビューは控えの台本から元の位置に表示する。字幕・動画・印刷には出さない。書式の誤りは品質チェックの `narrNote` エラーにする。
-- 組み立ては発言ごとに `{role, text, ttsParts}` を `deck-narration`（`DECK.NARRATION`）に書く：`ttsParts`（`kit/core/narration-core.mjs` の `renderText`。`inputHash` に入るのと同じ値）は表示せず、字の絞り込みにも入れない。読み上げで聞く（§5）がこれを読む
-- `✎ ` で始まる行は、編集アプリが新しいスライドに置いた仮の行（Studio の決まりで、形式の一部ではない）。ふつうの台本の文なので、残せば読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残ったテンプレートの字は `templateText`）、編集アプリは TTS と書き出しの前にその警告を出す
+- `npm run new` はどのスライドにも id を付ける。`npm run ids -- <deck>` は id のない教材に id を付ける（台本の見出しの `{#id}` も付け、`audio/manifest.json`・`timeline.json`・`comments.json` のキーも付け替える）。そのような教材を開いて直せるように、Studio のビルドは id のないスライドをまだ見出しをキーにし、品質チェックが知らせる（`legacyIndex`・`linkNoId`）。キーの重なりはエラーで、ビルドできるようにビルドは後のスライドに `#2`・`#3`… を付ける
+- Egatari ファイルには見出しによるキーを書かない：エクスポートが先に id のないスライドと台本の見出しに id を付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` のキーも。バックアップは `.cache/edits/`）
+- 発表者への指示 `{note:…}` は共通の解析で表示・TTS・音声の hash から除く。発表者ビューはバックアップの台本から元の位置に表示する。字幕・動画・印刷には出さない。書式の誤りは品質チェックの `narrNote` エラーにする。
+- ビルドは発言ごとに `{role, text, ttsParts}` を `deck-narration`（`DECK.NARRATION`）に書く：`ttsParts`（`kit/core/narration-core.mjs` の `renderText`。`inputHash` に入るのと同じ値）は表示せず、字の絞り込みにも入れない。読み上げで聞く（§5）がこれを読む
+- `✎ ` で始まる行は、編集アプリが新しいスライドに置いた仮の行（Studio の決まりで、形式の一部ではない）。ふつうの台本の文なので、残せば読み上げられる。品質チェックが警告し（`narrPlaceholder`。スライドに残ったテンプレートの字は `templateText`）、編集アプリは TTS とエクスポートの前にその警告を出す
 - 式をそのまま読まない（品質チェックが警告する）。拡張の行は、開発サーバー・編集アプリ・`npm run ids` がそのまま残す
 
 ## 5. タイムライン
 
-式と定数は形式 §5.5 と §8.0。Studio では `DECK.timeline()` が計算する（自動再生も動画の書き出しも同じ関数）。`timeline.json` には例外だけを書く（`{"<スライドの id>:2": {"pad_after": 1.0}}`）。
+式と定数は形式 §5.5 と §8.0。Studio では `DECK.timeline()` が計算する（自動再生も動画のエクスポートも同じ関数）。`timeline.json` には例外だけを書く（`{"<スライドの id>:2": {"pad_after": 1.0}}`）。
 
 - `startOffset`（エンコーダの遅れの秒。編集アプリの MP3 では 0.025057 など）のある音声は、そのメディアの時刻から鳴らし、そこを `dur` と同期点の時刻の 0 とする（自動再生も `render/render.mjs` も）
-- どの組み立ても、ステップの音声の `kind` を `deck-audio` の項目に書く（再生専用の派生は索引を落とすので、プレーヤーは `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば `tts` とする。音のない `dry-run` には `kind` を付けない。プレーヤーは `deck-audio` の `kind` を先に読み、前のファイルでは索引の音声の記録に戻る（`DECK.audioKind(key)`）。形式 §7.3 のとおり、音声の作り方は情報と再生の操作の近くで言い、スライドの上や字幕には出さない：どこかのステップの音声が TTS なら、ツールバーに小さな「AI 音声」/ "AI voice" の札（title と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）と、そのステップの発表者ビューにも同じ文。`imported` の音声には「音声の作り方は記録されていません」/ "How the audio was made is not recorded" をそこに出し、札は付けない（`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には付けない
+- どのビルドも、ステップの音声の `kind` を `deck-audio` の項目に書く（再生専用の派生は索引を落とすので、プレーヤーは `deck-audio` に頼る）。`kind` のない manifest の記録は、`engine` があれば `tts` とする。音のない `dry-run` には `kind` を付けない。プレーヤーは `deck-audio` の `kind` を先に読み、前のファイルでは索引の音声の記録に戻る（`DECK.audioKind(key)`）。形式 §7.3 のとおり、音声の作り方は情報と再生の操作の近くで言い、スライドの上や字幕には出さない：どこかのステップの音声が TTS なら、ツールバーに小さな「AI 音声」/ "AI voice" のラベル（title と `aria-label` は「音声は AI で合成したものです」/ "The narration audio is AI-generated"）、キーの一覧（<kbd>?</kbd>）と、そのステップの発表者ビューにも同じ文。`imported` の音声には「音声の作り方は記録されていません」/ "How the audio was made is not recorded" をそこに出し、ラベルは付けない（`DECK.aiVoice(key)`・`DECK.unknownVoice(key)`・`DECK.voiceNote(key)`・`DECK.VOICE_NOTE`）。録音には付けない
 - **読み上げで聞く**（形式 §5.6）はタイムラインに入らない：音声のないステップで「読み上げで聞く（音声ファイルにはなりません）」を押すと、端末の読み上げの声（`speechSynthesis`。`localService` の声だけ）で `ttsParts` を読む（`ttsParts` のない前のファイルでは「読み方は反映されません（古いファイル）」）。`dur`・`DECK.timeline()`・`deck-audio`・描く画面を変えず、何も書かず、`?mode=video` と印刷にはない（`kit/core/read-aloud.mjs`、`DECK.ReadAloud`）
-- 強調まで含めた動きの終わりは `motion = max(anim, marksEnd)`。動画の書き出しはここまでのコマを撮る
+- 強調まで含めた動きの終わりは `motion = max(anim, marksEnd)`。動画のエクスポートはここまでのコマを撮る
 
 ## 6. （廃止）
 
-canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくした。§7 から後への参照が切れないように番号を残す。
+canon へのエクスポート（Marp 形式の教材一式）は 0.4.2 でなくした。§7 から後への参照が切れないように番号を残す。
 
 ## 7. 強調（`{mark}`）
 
@@ -90,31 +90,31 @@ canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくし�
 
 - 効果：`underline`（既定。手描きの下線を左から右へ）、`circle`（手描きの囲み）、`box`（角丸の枠）、`spot`（対象のまわり以外を背景色で薄くする）、`laser`（光の点が対象の下へ滑ってきて少し留まる）
 - 目印：スライドの中の `id="ID"` か `data-mark="ID"` の要素。式の一部は KaTeX の `\htmlId{ID}{…}` / `\htmlData{mark=ID}{…}`（build はこの 2 つと `\htmlClass` だけを許す）。同じ ID を何枚かで使うなら `data-mark` にする（id は文書の中で一意に）
-- 描き方：スライドに重ねた SVG（`svg.marks`、1280×720）に、目印の字の輪郭（字の箱の和）から形を作って描く。手描きの揺れは ID とステップで決まる乱数で作る。次の `spot`・`laser` は前のものの位置から動く
-- 組み立ては `{"スライドの id:ステップ": bounds}`（`{mark}` のあるステップだけ）を `<script id="deck-marks">` に入れる。`DECK.MARKS`、品質チェック用に `DECK.marks(i, k)`（`[{id, effect, start, end, found}]`）
-- 品質チェック：組み立ては目印が原稿の字にないと警告する（パーツが作る要素は見えない）。品質チェックは実際の画面で目印を探し、なければ警告し、ステップごとの強調を情報として並べる
+- 描き方：スライドに重ねた SVG（`svg.marks`、1280×720）に、目印の字の輪郭（文字の枠の和）から形を作って描く。手描きの揺れは ID とステップで決まる乱数で作る。次の `spot`・`laser` は前のものの位置から動く
+- ビルドは `{"スライドの id:ステップ": bounds}`（`{mark}` のあるステップだけ）を `<script id="deck-marks">` に入れる。`DECK.MARKS`、品質チェック用に `DECK.marks(i, k)`（`[{id, effect, start, end, found}]`）
+- 品質チェック：ビルドは目印が原稿の字にないと警告する（パーツが作る要素は見えない）。品質チェックは実際の画面で目印を探し、なければ警告し、ステップごとの強調を情報として並べる
 
 ## 8. モーフ（`data-morph`）
 
 対応のさせ方と時刻は形式 §8.6。Studio では：
 
-- `\morph{ID}{…}` は組み立ての既定のマクロ。`\htmlId{eta}{\morph{eta}{…}}` のように強調の目印と重ねられる。元のスライドを最終状態で下に描き、対応した要素は、字の輪郭の中心が元の場所に重なる位置から translate と scale（transform-origin は左上）で動き、色は補間する。対応した要素を囲む枠や背景（`.thm` など）は終わりに入れ替わる。字の違う要素どうしを対応させると伸び縮みする。位置は (from, i) ごとに覚え、窓の大きさや字が変わると測り直す。`DECK.T.morph` = 0.9
+- `\morph{ID}{…}` はビルドの既定のマクロ。`\htmlId{eta}{\morph{eta}{…}}` のように強調の目印と重ねられる。元のスライドを最終状態で下に描き、対応した要素は、字の輪郭の中心が元の場所に重なる位置から translate と scale（transform-origin は左上）で動き、色は補間する。対応した要素を囲む枠や背景（`.thm` など）は終わりに入れ替わる。字の違う要素どうしを対応させると伸び縮みする。位置は (from, i) ごとに覚え、ウィンドウのサイズや字が変わると測り直す。`DECK.T.morph` = 0.9
 - 品質チェック：元のスライドがない、合う `data-id` が 1 つもない、ID が重なる、を警告し、対応を情報として並べる（`DECK.morph(i)` = `{src, ids, later, dupSrc, dupDst}`）
 
 ## 9. スライドへのリンク
 
 書き方と動きは形式 §9.1A と Player P4（`#<スライドの id>` か `#<スライドの id>:<ステップ>` のアンカー。数字だけの `#N` はスライドの番号）。Studio では：
 
-- **戻る**：左上の小さなボタン（リンクで来たときだけ出て、戻る先のスライドの名前を書く）、Backspace（ペンを使っていないとき）、Alt+←、ブラウザの戻る。上の窓ではリンク 1 つごとに履歴を 1 つ足す（`pushState`）。枠の中では積み上げをメモリにだけ持つ。どのスライドの id にも合わない # は、id のない教材のために見出しから決めた名前と比べ、品質チェックがそのリンクを警告する
-- 埋め込み（`?embed=1`）の知らせは Player P8。Studio の内部の `deck-pos` の知らせ（発表者ビュー・編集アプリ）は `cause` と `back` も運ぶ。発表者ビューの窓は本体の窓についていき、Backspace・Alt+← を本体に送る
+- **戻る**：左上の小さなボタン（リンクで来たときだけ出て、戻る先のスライドの名前を書く）、Backspace（ペンを使っていないとき）、Alt+←、ブラウザの戻る。上のウィンドウではリンク 1 つごとに履歴を 1 つ足す（`pushState`）。枠の中では積み上げをメモリにだけ持つ。どのスライドの id にも合わない # は、id のない教材のために見出しから決めた名前と比べ、品質チェックがそのリンクを警告する
+- 埋め込み（`?embed=1`）の知らせは Player P8。Studio の内部の `deck-pos` の知らせ（発表者ビュー・編集アプリ）は `cause` と `back` も運ぶ。発表者ビューのウィンドウは本体のウィンドウについていき、Backspace・Alt+← を本体に送る
 - 実行時の API：`DECK.resolveFragment(f)` → `{i, k, key, id}` か `{error}`、`DECK.fragment(i, k)`、`DECK.follow(f)`、`DECK.back()`、`DECK.links()` → `{depth, follow, back}`、`DECK.visited(i | key)`（`m-menu` が使う）
 - 品質チェック：ないスライドへのリンク、範囲の外のステップ、結論の行のないスライドの `concl`、最後より後のスライドの番号は**エラー**。`#N` のリンク、id のないスライドへのリンク、ない相手のファイルへの相対リンクは警告
 
 ### 授業の外へ出るリンク
 
-決まりは Player P4.2。Studio は純ロジックの `kit/core/link-policy.mjs`（`LinkPolicy().decide(link, {base, hosts})`。DOM も `node:` も使わない）で実装し、実行系（`DECK.LinkPolicy`）・試験・将来の再生ページが共有する。
+決まりは Player P4.2。Studio は純ロジックの `kit/core/link-policy.mjs`（`LinkPolicy().decide(link, {base, hosts})`。DOM も `node:` も使わない）で実装し、ランタイム（`DECK.LinkPolicy`）・テスト・将来の再生ページが共有する。
 
-- 確認の箱は `#deck-extlink`（`role="alertdialog"`・`aria-modal`）：行き先のホストと完全なアドレス、**開く** で `noopener,noreferrer` の新しい窓に開く。focus は **キャンセル** から、Tab は箱の中を回り、Esc か外のクリックで取り消してリンクに focus を戻す。後ろの授業は `inert`。ふつうの `https:` のリンクは、見ている間にホストごとに 1 回だけ聞く（メモリにだけ持つ）。リンクの字と行き先のホストが違う、`https:` でない、`download` がある、ユーザー名やパスワードがある、punycode のホスト、は毎回聞く。ほかの scheme は断る（`file:` で開いた授業から隣のファイルへの相対リンクは毎回聞く）
+- 確認の箱は `#deck-extlink`（`role="alertdialog"`・`aria-modal`）：行き先のホストと完全なアドレス、**開く** で `noopener,noreferrer` の新しいウィンドウで開く。focus は **キャンセル** から、Tab は箱の中を回り、Esc か外のクリックで取り消してリンクに focus を戻す。後ろの授業は `inert`。ふつうの `https:` のリンクは、見ている間にホストごとに 1 回だけ聞く（メモリにだけ持つ）。リンクの字と行き先のホストが違う、`https:` でない、`download` がある、ユーザー名やパスワードがある、punycode のホスト、は毎回聞く。ほかの scheme は断る（`file:` で開いた授業から隣のファイルへの相対リンクは毎回聞く）
 - 動画のモードと発表者ビューの中の画面では何もしない。印刷では箱を隠す。編集アプリのプレビューと開発サーバーの枠（sandbox。ポップアップなし）では、箱は行き先を伝えるだけで **開く** がない
 - プレーヤーが自分で作るリンク（ライブの「ブラウザで参加する」・添付の保存）は箱を通さない：プレーヤーが JavaScript の性質 `__egaOwn` で印を付け、授業の HTML からは付けられない（`tools/test-extlinks.mjs` が確かめる）
 - 実行時の API：`DECK.LinkPolicy()`、`DECK.extLink(href, text?, download?)`
@@ -127,10 +127,10 @@ canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくし�
 <div class="code wall" data-clip>…箱でわざと切る長い XML…</div>
 ```
 
-- 品質チェック（コマンド版・ブラウザ版。`kit/core/layout-scan.mjs` の 1 つの実装）は、`overflow` が `visible` でない箱で切れる字（`textClipped`）、SVG の枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりに描いた `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）を警告しなければならない。どのスライドでも、`.body` のないスライドでスライドの外に出る字（`textOffSlide`）、ほかの字の箱やスライドの帯（飾り）に重なる字の箱（`textOverlap`）、表のセルで途中で折り返す短い語（`cellWordBreak`）も警告しなければならない。どれも R-fit の警告
-- 要素に `data-clip` を付けると、そこで切るのはわざとだと示す：その要素の中の字（子孫もすべて、SVG の字も）を、これらの検査で知らせてはならない。縦横どちらの向きにも効く。ほかの検査（`bodyBottom`・`smallText` など）も表示も変えてはならない
+- 品質チェック（コマンド版・ブラウザ版。`kit/core/layout-scan.mjs` の 1 つの実装）は、`overflow` が `visible` でない箱で切れる字（`textClipped`）、SVG の枠（viewBox）で切れるかスライドの外に出る SVG の字（`svgTextOut`）、まわりに描いた `<rect>` からはみ出す SVG の字（`svgTextBox`）、`.body` の外に置いてスライドの外に出るか見出し・結論の行・ページ番号に重なる字（`outsideBody`）を警告しなければならない。どのスライドでも、`.body` のないスライドでスライドの外に出る字（`textOffSlide`）、ほかの文字の枠やスライドの飾りに重なる文字の枠（`textOverlap`）、表のセルで途中で折り返す短い語（`cellWordBreak`）も警告しなければならない。どれも R-fit の警告
+- 要素に `data-clip` を付けると、そこで切るのはわざとだと示す：その要素の中の字（子孫もすべて、SVG の字も）を、これらのチェックで知らせてはならない。縦横どちらの向きにも効く。ほかのチェック（`bodyBottom`・`smallText` など）も表示も変えてはならない
 - 本文が下にはみ出すスライド（`bodyBottom`）では、`.body` の中の字がスライドの外に出ることを重ねて知らせない（スライドの端の `svgTextOut`）。本文を減らせばどちらも直る
-- 祖先が隠す箱は測らない：読み上げ用に見えなくした入れ物の中（`overflow` が `visible` でない 2px 以下の箱。1×1 の `.sr-only` の形）や、`clip-path: inset(…)`・`clip: rect(…)` で何も残らない祖先の中は、クラスの名前によらず、体裁のどの検査（`bodyBottom`・`bodyRight`・`smallText`・`textOverlap` など）でも知らせてはならない。本文の場所の検査は、祖先の `overflow` が見せる部分だけを測る。見える大きさの箱で切れる字は今までどおり `textClipped`
+- 祖先が隠す箱は測らない：読み上げ用に見えなくした入れ物の中（`overflow` が `visible` でない 2px 以下の箱。1×1 の `.sr-only` の形）や、`clip-path: inset(…)`・`clip: rect(…)` で何も残らない祖先の中は、クラスの名前によらず、体裁のどのチェック（`bodyBottom`・`bodyRight`・`smallText`・`textOverlap` など）でも知らせてはならない。本文の場所のチェックは、祖先の `overflow` が見せる部分だけを測る。見える大きさの箱で切れる字は今までどおり `textClipped`
 - 書き手は `data-clip` を、切ること自体が伝えたいことであるところ（下を薄くしたコードの「壁」など）にだけ使い、はみ出しを隠すためには使わない
 
 `data-overlap="ok"` は意図して重ねて描く SVG の字の印（`kit/core/layout-scan.mjs` の `OVERLAP_ATTR`）。
@@ -140,8 +140,8 @@ canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくし�
 <g data-overlap="ok"><g><text x="100" y="100">…意図して重ねる字…</text></g></g>
 ```
 
-- 検査は、同じパーツの中も含めて、見える SVG の字どうしを比べなければならない。空白を除く字のインクの箱だけを使い（回転していない字は、フォントの行の高さ全体でなく、測った字のインク）、重なりの許容は 2 px とする。空の字・塗らない字（`<text>` の `fill` が none か透明で、線もない）・調べるステップで隠れた字・行や離れた span の間の空所を数えてはならない。同じ字を同じ場所に 2 度描いたもの（動く前の、行き先ごとの札の写しなど）は 1 つに読めるので数えてはならない。箱・viewBox・スライドからはみ出すと知らせた字（`svgTextBox`・`svgTextOut`）を、重なりとしてもう一度知らせてはならない。この検査は字と線・点を比べない
-- SVG の `<text>` 自身か、いずれかの祖先の `<g>` に、正確に `data-overlap="ok"` があるときだけ、その `<text>` を `textOverlap` から除く。値のない属性・空の値・ほかの値（`OK` も含む）や、`<tspan>`・`<svg>`・HTML 要素の印では字を除いてはならない。切れ・はみ出し・字の大きさの最小の検査も表示も変えてはならない。パーツは意図して重ねる字かそのグループだけに印を付け、パーツ全体には付けない。`data-clip` も引き続き `textOverlap` から字を除く
+- チェックは、同じパーツの中も含めて、見える SVG の字どうしを比べなければならない。空白を除く字のインクの箱だけを使い（回転していない字は、フォントの行の高さ全体でなく、測った字のインク）、重なりの許容は 2 px とする。空の字・塗らない字（`<text>` の `fill` が none か透明で、線もない）・調べるステップで隠れた字・行や離れた span の間の空所を数えてはならない。同じ字を同じ場所に 2 度描いたもの（動く前の、行き先ごとのラベルのコピーなど）は 1 つに読めるので数えてはならない。箱・viewBox・スライドからはみ出すと知らせた字（`svgTextBox`・`svgTextOut`）を、重なりとしてもう一度知らせてはならない。このチェックは字と線・点を比べない
+- SVG の `<text>` 自身か、いずれかの祖先の `<g>` に、正確に `data-overlap="ok"` があるときだけ、その `<text>` を `textOverlap` から除く。値のない属性・空の値・ほかの値（`OK` も含む）や、`<tspan>`・`<svg>`・HTML 要素の印では字を除いてはならない。切れ・はみ出し・字の大きさの最小のチェックも表示も変えてはならない。パーツは意図して重ねる字かそのグループだけに印を付け、パーツ全体には付けない。`data-clip` も引き続き `textOverlap` から字を除く
 - `textOverlap` は R-fit の警告。SVG の字では、そのスライドの両方の字を示し、項目を動かすか座標を変えるか、`m-flow` の逆向きの辺に `shift` を付けるよう書き手に勧める
 
 `data-annot` も同じ種類の書き方の決まり（Studio では `kit/core/layout-scan.mjs` の `ANNOT_ATTR`）で、**わざと小さくした注記**を示す。
@@ -150,39 +150,39 @@ canon への書き出し（Marp 形式の教材の束）は 0.4.2 でなくし�
 <span class="kb-num" data-annot>10</span>
 ```
 
-- 要素に `data-annot` を付けると、その中の字は、説明する字の脇に添える注記（`m-kanbun` の返り点・読む順の番号など）だと示す：その要素の中の字（子孫もすべて、SVG の字も）を、字が小さい（`smallText`・`smallSvgText`。R-fit の 24px・27px の最小）として知らせてはならない。ほかの検査（`textClipped`・`bodyBottom` など）も表示も変えてはならない
+- 要素に `data-annot` を付けると、その中の字は、説明する字の脇に添える注記（`m-kanbun` の返り点・読む順の番号など）だと示す：その要素の中の字（子孫もすべて、SVG の字も）を、字が小さい（`smallText`・`smallSvgText`。R-fit の 24px・27px の最小）として知らせてはならない。ほかのチェック（`textClipped`・`bodyBottom` など）も表示も変えてはならない
 - `data-annot` が効くのは、パーツが mount で作った要素だけで、書き手が書いたものには効かない：プレーヤーは、パーツが mount する前に、スライド自身の記述にある `data-annot`（`m-*` の中に手で書いた子も）をすべて外すので、印を付けて小さい字を逃れることはできない。パーツは mount の中で付ける
-- パーツは `data-annot` は、字の中を指す短い印（数字や数文字）にだけ使い、内容には使わない：文・図の札・表のセルは注記ではない。最小を守れるところは守り、この印は最後の手段にする
+- パーツは `data-annot` は、字の中を指す短い印（数字や数文字）にだけ使い、内容には使わない：文・図のラベル・表のセルは注記ではない。最小を守れるところは守り、この印は最後の手段にする
 
-## 11. ライブの板（拡張 live。下書き）
+## 11. ライブのパネル（拡張 live。下書き）
 
-ライブを付けてエクスポートした再生専用の写しにだけ、ライブのプレーヤー（`kit/live.js` と `kit/core/live-policy.mjs`。`kit/core/live.mjs` が入れる）が入る。ほかの出力は変わらない。ふるまいの正本は形式の[拡張 `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md)、通信は [egatari/live](https://github.com/egatari/live)。ここに書くのは Studio の実行系の約束。
+ライブを付けてエクスポートした再生専用のコピーにだけ、ライブのプレーヤー（`kit/live.js` と `kit/core/live-policy.mjs`。`kit/core/live.mjs` が入れる）が入る。ほかの出力は変わらない。ふるまいの正本は形式の[拡張 `live`](https://github.com/egatari/egatari-spec/blob/main/extensions/live.md)、通信は [egatari/live](https://github.com/egatari/live)。ここに書くのは Studio のランタイムの規約。
 
-- 板は初めたたんでいる：出すのは印 `#live-mark`（`aria-expanded` を持つ `<button>`。右上）だけで、`#stage` は窓いっぱい（`fit()` の置き方のまま）。印は、つながりの状態（`data-state`・色の点・読み上げ用の字）を見せる。板は、印を押すと開き（たたむまで開いたまま）、投票（`*` でないもの）のあるステップでは、ライブの時間の中で、つなげるか「ブラウザで参加する」を出せる文書なら自分で開く。そのステップを離れると、参加者が **開いたままにする** を押していなければたたむ。開いたことは板の外の polite な live region で知らせ、フォーカスは動かさない
-- 開いた板は舞台の外：`#live-pane` は右（縦長の窓では下）に置き、`#stage` は残りの場所に `fit()` と同じ式で収める。`DECK.seek(i, k, t)` の描くもの・字幕・印・印刷を変えてはならない。動画（`?mode=video`）・発表者ビューとその中の画面（`?presenter`・`?view`）では板を作らず、印刷では（印も）隠す
-- `deck:pos`（`detail.key`）は、どの投票を出すか・板を開くかを決めるためだけに聞く。位置や時間は送らない。時計（つなぎ直し・つながりを保つ ping・ライブの時間の終わり）を使うが、舞台に何も描かないので許される
-- endpoint は `https:` でなければならない。ループバックの `http:` を許すのは、試験が `buildPortable(…, {liveDevLoopback: true})`（コマンドの引数にはしない）で組む開発用のバージョンのプレーヤーだけ。切り替えは `kit/core/live-policy.mjs` の定数で、その組み立てだけが入れる。配る教材のプレーヤー・編集アプリのエクスポート・`kit/build.mjs --live` は `http:` を断る
-- つなぐのは「参加する」の後、ライブの時間の中（2 分のゆとり）で、枠の中でない `file:`・`http(s):` の文書のうち、CSP の `<meta>` がちょうど 1 つでその `connect-src` が endpoint と同じものだけ。ほか（枠・`srcdoc`・sandbox やプレビューの文書）ではライブの場所を字で見せる
-- 質問（下書き）：ライブの時間の中で、ライブに `qa` の活動があれば、板の外の右下に **?**（`#live-ask .lv-q`。`aria-label` を持つ `<button>`、44 px 以上）を出す。押すと板を開いて質問の欄へ（まだ参加していなければ「参加する」へ）。自分からはつながない。質問には、送るときに画面にあるスライドの id とステップ（`slideKey:stepKey`。欄にはスライドとステップを言葉で出す）と、教材のバージョン `sourceSha256`（再生専用の `deck-meta` にはないので、`kit/core/live.mjs` が書き出すブロックの `live.sourceSha256` に入れる）と、任意で囲んだところを付ける。**囲む**（`aria-pressed`）で舞台の上に描く層 `#live-ink`（舞台の座標の SVG。`#stage` の外。Esc で終わる）を出し、線は `LivePolicy().normStrokes`（20 本・1 本 500 点・合わせて 2000 点まで）で整える。囲んだところはそのステップのもので、ステップが変われば消す（知らせる）
-- **わからない**（`#live-ask .lv-cf`。`aria-pressed`）は、参加中で、ライブに画面のステップの `confused` の活動があるとき **?** の横に出す。押すとそのステップに印を付け、もう一度押すと取り消す。自分の質問へのホストの返事は、板の **ホストからの返事** に並べる（読み直した後も、参加するときにライブがもう一度送る）。新しい返事は知らせ、板をたたんでいれば `#live-mark` に印を付ける。サーバーの字は字のまま。**?**・**わからない**・描く層は、印刷では隠し、動画と発表者ビューでは作らない
+- パネルは初めたたんでいる：出すのは印 `#live-mark`（`aria-expanded` を持つ `<button>`。右上）だけで、`#stage` はウィンドウいっぱい（`fit()` の置き方のまま）。印は、接続の状態（`data-state`・色の点・読み上げ用の字）を見せる。パネルは、印を押すと開き（たたむまで開いたまま）、投票（`*` でないもの）のあるステップでは、ライブの時間の中で、接続するか「ブラウザで参加する」を出せる文書なら自分で開く。そのステップを離れると、参加者が **開いたままにする** を押していなければたたむ。開いたことはパネルの外の polite な live region で知らせ、フォーカスは動かさない
+- 開いたパネルはスライド（表示領域）の外：`#live-pane` は右（縦長のウィンドウでは下）に置き、`#stage` は残りの場所に `fit()` と同じ式で収める。`DECK.seek(i, k, t)` の描くもの・字幕・印・印刷を変えてはならない。動画（`?mode=video`）・発表者ビューとその中の画面（`?presenter`・`?view`）ではパネルを作らず、印刷では（印も）隠す
+- `deck:pos`（`detail.key`）は、どの投票を出すか・パネルを開くかを決めるためだけに聞く。位置や時間は送らない。時計（再接続・接続を保つ ping・ライブの時間の終わり）を使うが、スライドに何も描かないので許される
+- endpoint は `https:` でなければならない。ループバックの `http:` を許すのは、テストが `buildPortable(…, {liveDevLoopback: true})`（コマンドの引数にはしない）でビルドする開発用のバージョンのプレーヤーだけ。切り替えは `kit/core/live-policy.mjs` の定数で、そのビルドだけが入れる。配る教材のプレーヤー・編集アプリのエクスポート・`kit/build.mjs --live` は `http:` を断る
+- 接続するのは「参加する」の後、ライブの時間の中（2 分のゆとり）で、枠の中でない `file:`・`http(s):` の文書のうち、CSP の `<meta>` がちょうど 1 つでその `connect-src` が endpoint と同じものだけ。ほか（枠・`srcdoc`・sandbox やプレビューの文書）ではライブの場所を字で見せる
+- 質問（下書き）：ライブの時間の中で、ライブに `qa` の活動があれば、パネルの外の右下に **?**（`#live-ask .lv-q`。`aria-label` を持つ `<button>`、44 px 以上）を出す。押すとパネルを開いて質問の欄へ（まだ参加していなければ「参加する」へ）。自分からは接続しない。質問には、送るときに画面にあるスライドの id とステップ（`slideKey:stepKey`。欄にはスライドとステップを言葉で出す）と、教材のバージョン `sourceSha256`（再生専用の `deck-meta` にはないので、`kit/core/live.mjs` が出力するブロックの `live.sourceSha256` に入れる）と、任意で囲んだところを付ける。**囲む**（`aria-pressed`）でスライドの上に描く層 `#live-ink`（スライドの座標の SVG。`#stage` の外。Esc で終わる）を出し、線は `LivePolicy().normStrokes`（20 本・1 本 500 点・合わせて 2000 点まで）で整える。囲んだところはそのステップのもので、ステップが変われば消す（知らせる）
+- **わからない**（`#live-ask .lv-cf`。`aria-pressed`）は、参加中で、ライブに画面のステップの `confused` の活動があるとき **?** の横に出す。押すとそのステップに印を付け、もう一度押すと取り消す。自分の質問へのホストの回答は、パネルの **ホストからの回答** に並べる（読み直した後も、参加するときにライブがもう一度送る）。新しい回答は知らせ、パネルをたたんでいれば `#live-mark` に印を付ける。サーバーの字は字のまま。**?**・**わからない**・描く層は、印刷では隠し、動画と発表者ビューでは作らない
 
 ## 12. テーマと体裁の CSS
 
-テーマ（`tokens.css`）は、どの組み立ての口でも、`kit/base.css` と `kit/layouts.css` の後（`kit/latin.css` の前）に読む。なので、テーマは変数だけでなく体裁の規則も上書きできる：表紙・章の扉・見出し・`.body` の余白・結論の行・ページ番号・箇条書きの印・進み具合の帯。`html` を前に付けるなどして詳細度で勝たなくてよい。
+テーマ（`tokens.css`）は、どのビルドの口でも、`kit/base.css` と `kit/layouts.css` の後（`kit/latin.css` の前）に読む。なので、テーマは変数だけでなく体裁の規則も上書きできる：表紙・章の扉・見出し・`.body` の余白・結論の行・ページ番号・箇条書きの印・プログレスバー。`html` を前に付けるなどして詳細度で勝たなくてよい。
 
 - テーマが何を替えても、色の変数は形式 §8.4 の意味のまま。パーツはその変数だけを使い、品質チェックの色の決まり（`--bg` とのコントラスト）はどのテーマにも効く
-- 体裁の箱を動かすテーマにも品質チェックは効く。テーマは箱の場所を `theme.json` の `metrics`（`"v": 1`）で宣言する。値は 1280×720 の舞台の px で、項目は `body.left`・`body.right`・`body.top`・`body.floor`・`body.line`・`concl.top`・`concl.height`・`tate.rule`・`tate.conclRight`・`tate.left`・`tate.floor`（意味と既定は[リファレンス](reference.ja.md#テーマ)）。書かない項目は `extends` の親から項目ごとに、親もなければ既定（今の `kit/layouts.css`）から取るので、`metrics` のないテーマは今までとまったく同じに検査する（[形式の仕様](https://github.com/egatari/egatari-spec) §6）
+- 体裁の箱を動かすテーマにも品質チェックは効く。テーマは箱の場所を `theme.json` の `metrics`（`"v": 1`）で宣言する。値は 1280×720 のスライドの px で、項目は `body.left`・`body.right`・`body.top`・`body.floor`・`body.line`・`concl.top`・`concl.height`・`tate.rule`・`tate.conclRight`・`tate.left`・`tate.floor`（意味と既定は[リファレンス](reference.ja.md#テーマ)）。書かない項目は `extends` の親から項目ごとに、親もなければ既定（今の `kit/layouts.css`）から取るので、`metrics` のないテーマは今までとまったく同じに品質チェックする（[形式の仕様](https://github.com/egatari/egatari-spec) §6）
 - 品質チェックは、本文の場所の限り（`bodyBottom`・`bodyRight`・`tateBodyHead`・`bodyConclCol`・`bodyLeft`）をこの値から導く。`metrics` が動かすのは限りの場所だけで、限りそのものは変えない：余裕（結論の行の上 6px、横の 4px）、字の大きさの最小（R-fit）、見出しと結論の字数（R-title・R-concl）は `metrics` では変わらない
-- 同梱のテーマ（`themes/`）と公式のテーマ庫のテーマが本文・結論の行・縦組みの列を既定の場所から動かすなら、`metrics` を宣言しなければならない。その CSS が描く箱が宣言と 1px を超えて違えば `tools/test-theme-metrics.mjs` が失敗する。ほかのテーマ（自分のテーマ）は宣言を勧める：品質チェック（`npm run check` と編集アプリの品質チェック）は、描いた箱が宣言と 1px を超えて違うとき、または `metrics` のないテーマが箱を動かしたとき、教材に 1 回 `themeMetricsDrift` を警告する。警告は項目ごとに宣言の値と描いた値、箱を動かしたのがテーマの CSS かスライドの `<style>` かを言う。箱を測るのは同梱の字体が読み込まれてから（`document.fonts.ready` の後、見出しとページ番号の字体が読み込み済みと答えたとき）だけで、代わりの字体では測らない：読み込めなければ比べずに、教材に 1 回 `metricsFontLoad` を警告する。`node tools/theme-metrics.mjs measure <テーマ>` が、描いたテーマから測った塊を出す。値は整数の px で、どの端も限りが緩くなる側へ外向きに丸める（1px 未満なので、丸めだけではずれにならない）
-- スライドは `metrics` を持たず、変えられない：箱を動かすスライドの `<style>` には `themeMetricsDrift` が出て、限りはテーマのまま。数でない・範囲の外・ほかの値と合わない値は組み立ての警告（`theme-metrics: …`。品質チェックは教材に 1 回の `themeMetricsInvalid` にまとめる）で、その項目は（合わない値なら、そのテーマの塊ごと）親の値を使う
-- `metrics` は検査と書き手のツールのためだけのもの。プレーヤーは描くのに使わない（描くのは CSS だけ）。テーマの同一性には入る：`theme.json` はほかのテーマのファイルと同じくテーマの `sha256` に数える
+- 同梱のテーマ（`themes/`）と公式のテーマ庫のテーマが本文・結論の行・縦組みの列を既定の場所から動かすなら、`metrics` を宣言しなければならない。その CSS が描く箱が宣言と 1px を超えて違えば `tools/test-theme-metrics.mjs` が失敗する。ほかのテーマ（自分のテーマ）は宣言を勧める：品質チェック（`npm run check` と編集アプリの品質チェック）は、描いた箱が宣言と 1px を超えて違うとき、または `metrics` のないテーマが箱を動かしたとき、教材に 1 回 `themeMetricsDrift` を警告する。警告は項目ごとに宣言の値と描いた値、箱を動かしたのがテーマの CSS かスライドの `<style>` かを言う。箱を測るのは同梱のフォントが読み込まれてから（`document.fonts.ready` の後、見出しとページ番号のフォントが読み込み済みと答えたとき）だけで、代わりのフォントでは測らない：読み込めなければ比べずに、教材に 1 回 `metricsFontLoad` を警告する。`node tools/theme-metrics.mjs measure <テーマ>` が、描いたテーマから測った塊を出す。値は整数の px で、どの端も限りが緩くなる側へ外向きに丸める（1px 未満なので、丸めだけではずれにならない）
+- スライドは `metrics` を持たず、変えられない：箱を動かすスライドの `<style>` には `themeMetricsDrift` が出て、限りはテーマのまま。数でない・範囲の外・ほかの値と合わない値はビルドの警告（`theme-metrics: …`。品質チェックは教材に 1 回の `themeMetricsInvalid` にまとめる）で、その項目は（合わない値なら、そのテーマの塊ごと）親の値を使う
+- `metrics` は品質チェックと書き手のツールのためだけのもの。プレーヤーは描くのに使わない（描くのは CSS だけ）。テーマの同一性には入る：`theme.json` はほかのテーマのファイルと同じくテーマの `sha256` に数える
 - 同梱のテーマは変数だけを決めるので、この順で見た目は変わらない
 
 ## 13. レビューのメモ：手書きの印
 
 レビューのメモは作業フォルダの `comments.json` の項目（[形式の仕様](https://github.com/egatari/egatari-spec) §3.3）。配る物には入れない：Egatari ファイル（.ega.html）は、再生専用でもそうでなくても `comments.json` を入れない。項目は `{id, created, key, range, pin?, strokes?, quote, comment, status, resolved?}`。この節はスライドの上の場所 2 つの形を決める（ほかの読み手、たとえば作業フォルダにメモを取り込む Egatari Live の今後のレビューの機能が、同じ形を使えるように）。
 
-- 座標：スライドの座標（1280×720、原点はスライドの左上）。表示の倍率・窓の大きさによらない。点はステップ `key` の最後の状態（`DECK.seek(i, k, Infinity)`）を指す
+- 座標：スライドの座標（1280×720、原点はスライドの左上）。表示の倍率・ウィンドウのサイズによらない。点はステップ `key` の最後の状態（`DECK.seek(i, k, Infinity)`）を指す
 - `pin`（なくてもよい）：`{x, y}`。0 ≤ x ≤ 1280、0 ≤ y ≤ 720 の数で、0.1 に丸める。Alt+クリックのメモは押した点、マーカーは全部の線の重心
 - `strokes`（なくてもよい。`pin` があるときだけ）：マーカー（編集モードの `m`）で描いた印。折れ線の並び `[[[x, y], …], …]`：
   - 1 つのメモに線は 1 本でも何本でも（丸と矢印、いくつもの下線）：20 本まで、1 本 500 点まで、合わせて 2000 点まで
