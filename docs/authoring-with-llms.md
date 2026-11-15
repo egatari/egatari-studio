@@ -20,23 +20,24 @@ For a free chat AI, choose the light instructions in the editor’s “New” an
 
 A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
-This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized part (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized parts of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [data](llm-parts/data.md) (`m-balance`, `m-ci`, `m-code`, `m-folds`, `m-mapping`, `m-sampling`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-market`); [tools](llm-parts/tools.md) (`m-timer`); [science](llm-parts/science.md) (`m-orbit`, `m-particles`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; in the light instructions, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the light instructions' limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the light instructions with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
+This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized part (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized parts of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [data](llm-parts/data.md) (`m-balance`, `m-ci`, `m-code`, `m-folds`, `m-mapping`, `m-sampling`); [algo](llm-parts/algo.md) (`m-network`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-diverge`, `m-market`); [tools](llm-parts/tools.md) (`m-callout`, `m-checklist`, `m-timer`); [science](llm-parts/science.md) (`m-orbit`, `m-particles`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; in the light instructions, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the light instructions' limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the light instructions with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
 
 | Pack | Size | Cap | Paste length | Cap |
 |---|---:|---:|---:|---:|
-| Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 29.6 KB | 45 KB | 30,358 | 31,000 |
-| Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 32.6 KB | 45 KB | 30,987 | 31,000 |
-| Light instructions: standard + data (the core four shortened too) | 29.8 KB | 45 KB | 30,540 | 31,000 |
-| Light instructions: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare, m-cards, m-pie left out) | 32.6 KB | 45 KB | 30,785 | 31,000 |
-| Light instructions: standard + maps (the core four shortened too; m-fishbone left out) | 32.1 KB | 45 KB | 30,978 | 31,000 |
-| Light instructions: standard + kokugo (the core four shortened too; m-fishbone, m-quad, m-cycle left out) | 34.1 KB | 45 KB | 30,796 | 31,000 |
-| Light instructions: standard + english (the core four shortened too) | 27.3 KB | 45 KB | 27,511 | 31,000 |
-| Light instructions: standard + music (the core four shortened too) | 28.9 KB | 45 KB | 28,641 | 31,000 |
-| Light instructions: standard + business (the core four shortened too) | 30.2 KB | 45 KB | 29,554 | 31,000 |
-| Light instructions: standard + tools (the core four shortened too) | 27.9 KB | 45 KB | 27,913 | 31,000 |
-| Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree left out) | 35.9 KB | 45 KB | 30,823 | 31,000 |
-| Detailed instructions: every standard part | 47.9 KB | 150 KB | — | — |
-| Detailed instructions: every part set (this file and every set pack) | 111.7 KB | 150 KB | — | — |
+| Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 30.0 KB | 45 KB | 30,810 | 31,000 |
+| Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi left out) | 32.6 KB | 45 KB | 30,964 | 31,000 |
+| Light instructions: standard + data (the core four shortened too) | 30.0 KB | 45 KB | 30,733 | 31,000 |
+| Light instructions: standard + algo (the core four shortened too) | 27.2 KB | 45 KB | 27,866 | 31,000 |
+| Light instructions: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare, m-cards, m-pie left out) | 32.8 KB | 45 KB | 30,978 | 31,000 |
+| Light instructions: standard + maps (the core four shortened too; m-fishbone, m-quad left out) | 31.9 KB | 45 KB | 30,853 | 31,000 |
+| Light instructions: standard + kokugo (the core four shortened too; m-fishbone, m-quad, m-cycle left out) | 34.2 KB | 45 KB | 30,989 | 31,000 |
+| Light instructions: standard + english (the core four shortened too) | 27.4 KB | 45 KB | 27,704 | 31,000 |
+| Light instructions: standard + music (the core four shortened too) | 29.1 KB | 45 KB | 28,834 | 31,000 |
+| Light instructions: standard + business (the core four shortened too; m-fishbone left out) | 31.2 KB | 45 KB | 30,622 | 31,000 |
+| Light instructions: standard + tools (the core four shortened too) | 30.2 KB | 45 KB | 30,247 | 31,000 |
+| Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 35.4 KB | 45 KB | 30,353 | 31,000 |
+| Detailed instructions: every standard part | 48.4 KB | 150 KB | — | — |
+| Detailed instructions: every part set (this file and every set pack) | 116.9 KB | 150 KB | — | — |
 
 All of them are generated by `node tools/make-llm-guide.mjs` from [contract.md](contract.md), the part READMEs and `tools/llm-guide/`; do not edit them by hand.
 
@@ -46,7 +47,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `f086a47b`
+Pack version: `048faa50`
 
 You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -142,10 +143,11 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 | Contents | `m-menu` | Whole at once |
 | Predict, then check | `m-predict` | The question and choices, then the answer |
 | Place / map | not in this text: the nearest part, or HTML or inline SVG | The map, then regions, points and arrows one at a time |
+| Deviation, increase and decrease | not in this text: the nearest part, or HTML or inline SVG | The baseline, then the differences |
 
-Some parts are not included in these instructions (for Spread, Compare (amounts or features), Steps of a process, Two quantities, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
+Some parts are not included in these instructions (for Spread, Compare (amounts or features), Steps of a process, Deviation, increase and decrease, Two quantities, Place / map, Part of a whole, Cycle, and more). Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.8.0/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.10.0/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 
@@ -162,7 +164,7 @@ These standard parts may be used in any lesson; a part set, when it is included 
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
-| `<m-bars>` | Bars grow from 0 by step (vertical, horizontal, grouped, stacked); the axis max can widen by step | max group/scale step (default 1 group = 1 step) | `{groups:[{label?,value?:num,values?:num[],step?,at?,tone?} (value or values),…],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
+| `<m-bars>` | Bars grow from 0 by step (vertical, horizontal, grouped, stacked); the axis max can widen by step | max group/scale step (default 1 group = 1 step) | `{groups:[{label?,value?:num,values?:num[],err?:num\|any[],step?,at?,tone?} (value or values),…],sig?:{from:int,to:int,group?:int,label?,step?}[],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
 | `<m-cards>` | Icon cards in a row or 2 rows, by step; arrows for order | largest card step (default 1 card = 1 step) | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |
 | `<m-compare>` | Table comparing 2–3 things: one column, the other, then row differences | columns + 1 (diff step; none if no diff/better) | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
 | `<m-curves>` | Lines drawn one at a time on shared axes, each named at its end (no legend) | largest step (default: number of series) | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],area?:any[],areaLabel?:str\|any[],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — the data is the array itself, not {"series": […]}; axes go in attributes (xr="[0,10]" xl="…"); the expression field is f in x (not fn, not u) |
@@ -194,10 +196,13 @@ Data example (child `<script type="application/json">`): `{"series":[{"label":"S
 | `ticks` | bool | `true` | ticks and grid |
 | `al` | string | `""` | axis title |
 | `stack` | bool | `false` | stack values; "percent" = 100 % |
+| `mark` | string | `"bar"` | bar or dot (a point with its error bar) |
 
 For quantities shown and compared one at a time: yearly sales, ranked answers, before/after.
 
 - group: `label` (`\n` = 2 lines), `value` or `values` (one per series), `step`, `at` (start s), `tone` (bar and value colour)
+- err: ± number or `[low, high]`; per series for `values`
+- sig: `[{"from": 0, "to": 2, "label": "**"}]` brackets groups 0 and 2 (`group`: series in a group); vertical, unstacked only
 - series: `label` (2+ series: on the first group's bars; no legend), `tone` (default `--series-1..4`)
 - scale: `[{"step": 3, "max": 27, "at": 0.4}]`: the max moves to `max` over `zoom` s; the old range stays as a faint band; taller bars stop at the top and grow as it widens
 - `orient="h"`: names left, values right; `ticks="false"` for ranks

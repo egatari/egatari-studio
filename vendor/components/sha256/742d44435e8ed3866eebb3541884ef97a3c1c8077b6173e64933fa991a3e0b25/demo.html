@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-network の見本</title>
+<!-- 組み方：node kit/build.mjs components/network/demo.html -o components/network/out/demo.html（グラフと数値は架空。状態・合計・確率は python3 tools/network-demo.py の出力） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl">
+  <h2>幅優先探索：近い順に広げる（待ち行列）</h2>
+  <div class="body">
+    <m-network style="height:540px">
+      <script type="application/json">
+        {
+          "nodes": [{"id": "A", "x": 0, "y": 2}, {"id": "B", "x": 3, "y": 0}, {"id": "C", "x": 3, "y": 4}, {"id": "D", "x": 6, "y": 1}, {"id": "E", "x": 6, "y": 4}, {"id": "F", "x": 9, "y": 2}],
+          "edges": [{"from": "A", "to": "B"}, {"from": "A", "to": "C"}, {"from": "B", "to": "C"}, {"from": "B", "to": "D"}, {"from": "C", "to": "E"}, {"from": "D", "to": "E"}, {"from": "D", "to": "F"}, {"from": "E", "to": "F"}],
+          "frontierKind": "queue",
+          "steps": [
+            {"frontier": ["A"], "note": "A から始める"},
+            {"current": "A", "visited": ["A"], "frontier": ["B", "C"], "parent": {"B": "A", "C": "A"}, "note": "A を取り出し、隣の B・C を後ろへ"},
+            {"current": "B", "visited": ["A", "B"], "frontier": ["C", "D"], "parent": {"D": "B"}, "note": "B を取り出し、隣の D を後ろへ"},
+            {"current": "C", "visited": ["A", "B", "C"], "frontier": ["D", "E"], "parent": {"E": "C"}, "note": "C を取り出し、隣の E を後ろへ"},
+            {"current": "D", "visited": ["A", "B", "C", "D"], "frontier": ["E", "F"], "parent": {"F": "D"}, "note": "D を取り出し、隣の F を後ろへ"},
+            {"current": "E", "visited": ["A", "B", "C", "D", "E"], "frontier": ["F"], "note": "E を取り出す（新しい隣はない）"},
+            {"current": "F", "visited": ["A", "B", "C", "D", "E", "F"], "frontier": [], "note": "F を取り出す（新しい隣はない）"},
+            {"current": null, "note": "全部の頂点を訪れた"}
+          ]
+        }
+      </script>
+    </m-network>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>ダイクストラ法：A から F への最短経路</h2>
+  <div class="body">
+    <m-network style="height:540px">
+      <script type="application/json">
+        {
+          "nodes": [{"id": "A", "x": 0, "y": 2}, {"id": "B", "x": 3, "y": 0}, {"id": "C", "x": 3, "y": 4}, {"id": "D", "x": 6, "y": 1}, {"id": "E", "x": 6, "y": 4}, {"id": "F", "x": 9, "y": 2}],
+          "edges": [{"from": "A", "to": "B", "w": 4}, {"from": "A", "to": "C", "w": 2}, {"from": "B", "to": "C", "w": 1}, {"from": "B", "to": "D", "w": 5}, {"from": "C", "to": "E", "w": 8}, {"from": "D", "to": "E", "w": 2}, {"from": "D", "to": "F", "w": 6}, {"from": "E", "to": "F", "w": 3}],
+          "frontierKind": "pq",
+          "total": {"label": "距離"},
+          "steps": [
+            {"frontier": [["A", 0]], "note": "A の距離を 0 に"},
+            {"current": "A", "visited": ["A"], "frontier": [["C", 2], ["B", 4]], "parent": {"B": "A", "C": "A"}, "note": "A（距離 0）を確定"},
+            {"current": "C", "visited": ["A", "C"], "frontier": [["B", 3], ["E", 10]], "parent": {"B": "C", "E": "C"}, "note": "C（距離 2）を確定"},
+            {"current": "B", "visited": ["A", "C", "B"], "frontier": [["D", 8], ["E", 10]], "parent": {"D": "B"}, "note": "B（距離 3）を確定"},
+            {"current": "D", "visited": ["A", "C", "B", "D"], "frontier": [["E", 10], ["F", 14]], "parent": {"F": "D"}, "note": "D（距離 8）を確定"},
+            {"current": "E", "visited": ["A", "C", "B", "D", "E"], "frontier": [["F", 13]], "parent": {"F": "E"}, "note": "E（距離 10）を確定"},
+            {"current": "F", "visited": ["A", "C", "B", "D", "E", "F"], "frontier": [], "note": "F（距離 13）を確定"},
+            {"current": "F", "frontier": [], "parent": {"B": null, "C": null, "E": null, "D": null, "F": null}, "take": [["A", "C"], ["C", "E"], ["E", "F"]], "total": 13, "note": "A から F への最短経路"}
+          ]
+        }
+      </script>
+    </m-network>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>巡回路：最近傍法から 2-opt へ（架空）</h2>
+  <div class="body">
+    <m-network style="height:540px">
+      <script type="application/json">
+        {
+          "nodes": [{"id": "P", "x": 6, "y": 3}, {"id": "Q", "x": 0, "y": 2}, {"id": "R", "x": 8, "y": 3}, {"id": "S", "x": 9, "y": 1}, {"id": "T", "x": 4, "y": 1}, {"id": "U", "x": 1, "y": 4}, {"id": "V", "x": 4, "y": 4}],
+          "complete": true,
+          "total": {"label": "巡回路の長さ", "check": false},
+          "steps": [
+            {"current": "R", "visited": ["P", "R"], "take": [["P", "R"]], "total": 2.0, "note": "P からいちばん近い R へ"},
+            {"current": "S", "visited": ["P", "R", "S"], "take": [["R", "S"]], "total": 4.24, "note": "R からいちばん近い S へ"},
+            {"current": "T", "visited": ["P", "R", "S", "T"], "take": [["S", "T"]], "total": 9.24, "note": "S からいちばん近い T へ"},
+            {"current": "V", "visited": ["P", "R", "S", "T", "V"], "take": [["T", "V"]], "total": 12.24, "note": "T からいちばん近い V へ"},
+            {"current": "U", "visited": ["P", "R", "S", "T", "V", "U"], "take": [["V", "U"]], "total": 15.24, "note": "V からいちばん近い U へ"},
+            {"current": "Q", "visited": ["P", "R", "S", "T", "V", "U", "Q"], "take": [["U", "Q"]], "total": 17.47, "note": "U からいちばん近い Q へ"},
+            {"current": "P", "take": [["Q", "P"]], "total": 23.55, "note": "出発点へ戻る（最近傍法）"},
+            {"current": null, "drop": [["T", "V"], ["Q", "P"]], "take": [["T", "Q"], ["V", "P"]], "total": 20.83, "note": "T–V と Q–P を T–Q と V–P に（2-opt）"}
+          ]
+        }
+      </script>
+    </m-network>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>マルコフ連鎖：天気の移り変わり（架空）</h2>
+  <div class="body">
+    <m-network style="height:540px">
+      <script type="application/json">
+        {
+          "directed": true,
+          "stochastic": true,
+          "nodes": [{"id": "晴", "x": 0, "y": 0}, {"id": "曇", "x": 4, "y": 0}, {"id": "雨", "x": 2, "y": 3}],
+          "edges": [{"from": "晴", "to": "晴", "w": 0.6}, {"from": "晴", "to": "曇", "w": 0.3}, {"from": "晴", "to": "雨", "w": 0.1}, {"from": "曇", "to": "晴", "w": 0.4}, {"from": "曇", "to": "曇", "w": 0.4}, {"from": "曇", "to": "雨", "w": 0.2}, {"from": "雨", "to": "晴", "w": 0.2}, {"from": "雨", "to": "曇", "w": 0.4}, {"from": "雨", "to": "雨", "w": 0.4}],
+          "total": {"label": "この道筋の確率", "check": false},
+          "steps": [
+            {"current": "晴", "note": "晴の日から始める"},
+            {"current": "曇", "take": [["晴", "曇"]], "total": 0.3, "note": "晴 → 曇（確率 0.3）"},
+            {"current": "曇", "take": [["曇", "曇"]], "total": 0.12, "note": "曇 → 曇（確率 0.4）", "drop": [["晴", "曇"]]},
+            {"current": "曇", "take": [["曇", "曇"]], "total": 0.048, "note": "曇 → 曇（確率 0.4）", "drop": [["曇", "曇"]]},
+            {"current": "雨", "take": [["曇", "雨"]], "total": 0.0096, "note": "曇 → 雨（確率 0.2）", "drop": [["曇", "曇"]]}
+          ]
+        }
+      </script>
+    </m-network>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
