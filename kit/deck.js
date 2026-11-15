@@ -104,18 +104,29 @@ function el(tag, attrs, parent){
 }
 // @legacy-part-base:start
 // SVG の中の簡単な数式記法：*..* は斜体、_x は下付き、^x は上付き。本格的な式は DECK.svgMath を使う
+// * は部品庫の base 1.2.0 の mtext と同じ規則（#199）：開く * の直後と閉じる * の直前が空白でない対のときだけ斜体（markdown と同じ）。
+// 「A* 探索」「5*3」「注*」の * はそのまま。\* \_ \^ \\ はその字そのもの。下付き・上付きの大きさ（17）は前のまま
 function mtext(parent, x, y, str, attrs){
   var t = el("text", Object.assign({x: x, y: y, "font-size": 24}, attrs || {}), parent);
   var it = false, i = 0, buf = "";
+  str = String(str == null ? "" : str);
   function flush(extra){
     if (!buf) return;
     var s = el("tspan", extra || {}, t);
     if (it){ s.setAttribute("font-style", "italic"); s.setAttribute("class", "mi"); }
     s.textContent = buf; buf = "";
   }
+  function closer(from){
+    for (var j = from; j < str.length; j++){
+      if (str[j] === "\\"){ j++; continue; }
+      if (str[j] === "*" && !/\s/.test(str[j - 1])) return true;
+    }
+    return false;
+  }
   while (i < str.length){
     var c = str[i];
-    if (c === "*"){ flush(); it = !it; i++; }
+    if (c === "\\" && i + 1 < str.length && "*_^\\".indexOf(str[i + 1]) >= 0){ buf += str[i + 1]; i += 2; }
+    else if (c === "*" && (it ? !/\s/.test(str[i - 1]) : i + 1 < str.length && !/[\s*]/.test(str[i + 1]) && closer(i + 2))){ flush(); it = !it; i++; }
     else if ((c === "_" || c === "^") && i + 1 < str.length){
       flush(); buf = str[i + 1];
       flush({"baseline-shift": c === "_" ? "sub" : "super", "font-size": "17"});
