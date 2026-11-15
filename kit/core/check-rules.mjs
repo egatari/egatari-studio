@@ -67,6 +67,7 @@ export const RULES = Object.freeze([
   // ---- 検査器の族（C-*）
   { id: 'C-build', kind: 'checker', phase: '読み込み', codes: ['build', 'consoleError', 'extensionVersion', 'component-requires-missing', 'component-not-in-catalogue'] },
   { id: 'C-ids', kind: 'checker', phase: '読み込み', codes: ['slideId', 'legacyDataKey', 'legacyIndex'] },
+  { id: 'C-images', kind: 'checker', phase: '読み込み', codes: ['imgTooLarge', 'imgTotal'] },
   { id: 'C-vocab', kind: 'checker', phase: '読み込み', codes: ['legacyColorClass', 'legacyStepAttr', 'legacyLectureMode'] },
   { id: 'C-template', kind: 'checker', phase: 'B 台本', codes: ['templateText', 'narrPlaceholder'] },
   { id: 'C-font', kind: 'checker', phase: 'A 体裁', codes: ['themeMetricsDrift', 'metricsFontLoad', 'themeMetricsInvalid', 'fontsExtraMissing', 'fontNotCovered', 'fontNotEmbedded'] },

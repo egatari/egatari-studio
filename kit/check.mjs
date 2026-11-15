@@ -65,6 +65,7 @@ import { legacyVocabulary } from './core/legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './core/color-vocab.mjs';
 import { kickerFindings } from './core/kicker.mjs';
 import { cautionFindings } from './core/caution.mjs';
+import { imageSizeFindings } from './core/image-size.mjs';
 import { predictStepProblems } from './core/predict-steps.mjs';
 import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
 import { uncoveredGlyphs } from './core/font-coverage.mjs';
@@ -147,6 +148,8 @@ catch (e) {
 const lang = built.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
 const JA = isJapanese(lang);
 const ML = langArg === 'en' || langArg === 'ja' ? langArg : JA ? 'ja' : 'en';
+// ローカルの画像も data: URI になった後で数える（編集アプリと同じ関数）
+for (const f of imageSizeFindings(built.html)) report(f.i, f.sev, f.code, f.a);
 // テーマの寸法の宣言（theme.json の metrics。kit/core/theme-metrics.mjs）：本文の場所の限りに使い、描いた箱と比べる（A）
 const themeInfo = built.theme || { name: built.stats.theme, metrics: null, declared: false };
 const metricsWarn = [];

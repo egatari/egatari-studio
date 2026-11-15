@@ -13,6 +13,8 @@ export const IN_EDITOR = Object.freeze([
   'slideId', 'legacyDataKey', 'legacyIndex', 'legacyColorClass', 'legacyStepAttr', 'legacyLectureMode', 'colorOutside', 'narrHeadingDiffers',
   'kickerLong', 'kickerPlace', 'kickerSlide',
   'cautionEmpty', 'cautionLabel',
+  // 組み立てた文書の埋め込み画像から（kit/core/image-size.mjs）
+  'imgTooLarge', 'imgTotal',
   'narrNote', 'narrFormula', 'turnLong', 'narrLang', 'predictAnswerWithCount', 'predictAnswerNeverShown',
   // app/main.js・app/llm.js（作業場所の原稿と台本から）
   'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral', 'readingGap',

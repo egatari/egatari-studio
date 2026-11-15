@@ -340,6 +340,8 @@ export const MESSAGES = {
   morphLater: { ja: (a) => `モーフ：ステップ 0 で見えないので動かさない：${a.ids}`, en: (a) => `morph: not moved because not visible at step 0: ${a.ids}` },
   morphDupSrc: { ja: (a) => `モーフ：元のスライドに data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: the source slide has data-id “${a.id}” more than once (only the first is used): keep one` },
   morphDupDst: { ja: (a) => `モーフ：data-id「${a.id}」が 2 つ以上ある（初めのものだけを使う）：1 つにする`, en: (a) => `morph: data-id “${a.id}” appears more than once (only the first is used): keep one` },
+  imgTooLarge: { ja: (a) => `教材に埋め込む画像 ${a.image} が 1 MiB を超えている（${mibOf(a.n)}）：必要な部分を切り抜くか、幅 1600 px ほどの JPEG・WebP で保存する`, en: (a) => `the lesson’s embedded image ${a.image} is over 1 MiB (${mibOf(a.n)}): crop it or save it as JPEG/WebP about 1600 px wide` },
+  imgTotal: { ja: (a) => `教材に埋め込む画像は ${a.count} 枚、合計 ${mibOf(a.n)}（パーツ自身の画像を除く）`, en: (a) => `the lesson has ${a.count} embedded ${plural(a.count, 'image')}, totalling ${mibOf(a.n)} (excluding parts' own images)` },
   imgAlt: { ja: (a) => `alt の無い画像が ${a.n} 枚（${a.list}）：内容を alt="…" に書く（飾りなら alt=""）`, en: (a) => `${a.n} ${plural(a.n, 'image')} without alt (${a.list}): describe ${a.n === 1 ? 'it' : 'them'} in alt="…" (alt="" if decorative)` },
   svgName: { ja: (a) => `名前の無い SVG の図が ${a.n} 個：aria-label="…" か <title>…</title> を付ける（飾りなら aria-hidden="true"）`, en: (a) => `${a.n} SVG ${plural(a.n, 'figure')} without a name: add aria-label="…" or <title>…</title> (aria-hidden="true" if decorative)` },
   compName: { ja: (a) => `名前の無いパーツ：${a.list}（読み上げ用に aria-label="…" を付けられる）`, en: (a) => `parts without a name: ${a.list} (an aria-label="…" helps screen readers)` },

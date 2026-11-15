@@ -38,11 +38,24 @@ fs.cpSync(path.join(FIX, 'en-rawmath'), STALE, { recursive: true });
 fs.mkdirSync(path.join(STALE, 'audio'), { recursive: true });
 fs.writeFileSync(path.join(STALE, 'audio', 'a.wav'), silentWav(1));
 fs.writeFileSync(path.join(STALE, 'audio', 'manifest.json'), JSON.stringify({ segments: { 's-attn:0': { file: 'a.wav', dur: 1, inputHash: null } } }));
+// ローカルの画像が埋め込まれた後、両方で同じ警告と合計になることを確かめる
+const IMAGES = path.join(work, 'en-images');
+fs.mkdirSync(IMAGES, { recursive: true });
+const image = (bytes) => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"><!--';
+  return svg + 'x'.repeat(bytes - svg.length - 10) + '--></svg>\n';
+};
+fs.writeFileSync(path.join(IMAGES, 'small.svg'), image(1048575));
+fs.writeFileSync(path.join(IMAGES, 'large.svg'), image(1048577));
+fs.writeFileSync(path.join(IMAGES, 'deck.html'), '<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Images</title></head><body><div id="stage"><section class="slide noconcl" id="s-images"><h2>Images</h2><div class="body"><img src="small.svg" alt="Small image" width="16" height="16"><img src="large.svg" alt="Large image" width="16" height="16"></div></section></div></body></html>');
+fs.writeFileSync(path.join(IMAGES, 'narration.md'), '## Images {#s-images}\n[0] Two images.\n');
 const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'ja-flow', lang: 'ja' }, { name: 'ja-geometry', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }, { name: 'ja-kicker', lang: 'ja' }, { name: 'en-kicker', lang: 'en' }];
 const GEO = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox'];
+FIXTURES.push({ name: 'en-images', lang: 'en', dir: IMAGES });
 const dirOf = (f) => f.dir || path.join(FIX, f.name);
 // 見本が出すはずの code（見本を直して減ったら気づくように）
 const WANT = {
+  'en-images': ['imgTooLarge', 'imgTotal'],
   'en-rawmath': ['rawMath', 'narrFormula', 'narrNote', 'narrOrphan', 'narrMissing', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'linkCount', 'legacyColorClass', 'colorOutside'],
   'en-stale': ['audioStale', 'rawMath'],
   'ja-flow': ['compLayout'],
@@ -80,7 +93,7 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
   for (const c of codes) for (const k of classes(c)) counts[k]++;
   console.log('  info inventory: ' + Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
   // 道筋：編集アプリが code を出すファイル（プレビューの中・原稿の文字列・作業場所の台本と音声）に、その code が文字列で現れる
-  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs', 'kit/core/caution.mjs']
+  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs', 'kit/core/caution.mjs', 'kit/core/image-size.mjs']
     .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   const unreached = IN_EDITOR.filter((c) => !new RegExp(`["'\`]${c}["'\`]`).test(src));
   ok(!unreached.length, `inventory: every IN_EDITOR code (${IN_EDITOR.length}) appears as a string in the editor's check path` + (unreached.length ? ': not found ' + unreached.join(', ') : ''));
@@ -210,6 +223,12 @@ try {
     for (const [code, re] of Object.entries(BUILD_WARN)) if ((st.warn || []).some((w) => re.test(w))) have.add(code);
     const cliCodes = [...new Set(CLI[name].map((x) => x.code))].sort();
     const missing = cliCodes.filter((c) => !have.has(c) && !cliOnly(c));
+    // バイト数・合計・画像の番号も、コマンド版と編集アプリで同じ
+    for (const code of ['imgTooLarge', 'imgTotal']) {
+      const cli = CLI[name].filter((x) => x.code === code).map((x) => ({ i: x.slide === null ? null : x.slide - 1, sev: x.sev, a: x.data }));
+      const editor = results.filter((x) => x.code === code).map((x) => ({ i: x.i, sev: x.sev, a: x.arg }));
+      ok(JSON.stringify(cli) === JSON.stringify(editor), `parity ${name}: ${code} has the same bytes, slide and severity`);
+    }
     ok(!missing.length, `parity ${name}: every code the command line reports is in the editor's check, or listed in CLI_ONLY (${cliCodes.length} codes)` + (missing.length ? ': missing ' + missing.join(', ') : ''));
     // 同じ code はスライドも同じ（スライドごとの指摘：rawMath・desuMasu など、本文と台本と原稿から見るもの）
     for (const code of ['rawMath', 'desuMasu', 'punctMixed', 'narrFormula', 'narrNote', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'morphNoSrc', 'legacyDataKey', 'legacyIndex', 'predictAnswerWithCount', 'predictAnswerNeverShown', 'compLayout', ...GEO, 'geoTateSlides', 'kickerLong', 'kickerPlace', 'kickerSlide']) {
