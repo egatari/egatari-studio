@@ -184,8 +184,8 @@ export const MESSAGES = {
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
   kickerLong: { rule: 'R-headings', ja: (a) => `肩見出しが長い（${a.n} ${a.latin ? '文字' : '字分'}。${a.latin ? 'ラテン文字は 40 文字まで' : '24 字分まで。全角 1・半角 0.5'}）：${quoteJa(a.t)}を短くする`, en: (a) => `the kicker has ${a.n} ${a.latin ? 'characters' : 'units'}, over ${a.max} (${a.latin ? 'Latin script' : 'full-width 1, ASCII 0.5'}): shorten “${a.t}”` },
   kickerPlace: { rule: 'R-headings', ja: () => '肩見出し（.kicker）はスライドに 1 つだけ、見出しの直前に置く', en: () => 'place just one kicker (.kicker) per slide, immediately before the heading' },
-  cautionEmpty: { rule: 'R-headings', ja: () => '注意・警告の枠（.caution）にラベル以外の本文を書く', en: () => 'write body text besides the label in the caution or warning box (.caution)' },
-  cautionLabel: { rule: 'R-headings', ja: () => '注意・警告のラベルは組み立てが付けるので、枠の先頭に書いたラベルを消す', en: () => 'remove the label written at the start of the caution or warning box; the build adds it' },
+  cautionEmpty: { rule: 'R-caution', ja: () => '注意・警告の枠（.caution）にラベル以外の本文を書く', en: () => 'write body text besides the label in the caution or warning box (.caution)' },
+  cautionLabel: { rule: 'R-caution', ja: () => '注意・警告のラベルは組み立てが付けるので、枠の先頭に書いたラベルを消す', en: () => 'remove the label written at the start of the caution or warning box; the build adds it' },
   kickerSlide: { rule: 'R-headings', ja: () => '表紙・章の扉・縦書きのスライド（layout-tate）には肩見出し（.kicker）を置かない', en: () => 'do not use a kicker (.kicker) on a cover, chapter divider or vertical slide (layout-tate)' },
   titleLong: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 字で長い（26 字まで。全角 1・半角 0.5）：${quoteJa(a.t)}を短くするか、要点を結論の行に移す`, en: (a) => `the heading has ${a.n} units, over 26 (full-width 1, ASCII 0.5): shorten “${a.t}” or move the point to the conclusion line` },
   titleLongEn: { rule: 'R-title', ja: (a) => `見出しが ${a.n} 文字で長い（英文は 60 文字まで）：${quoteJa(a.t)}を短くする`, en: (a) => `the heading has ${a.n} characters, over 60: shorten “${a.t}”` },

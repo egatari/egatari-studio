@@ -46,8 +46,8 @@ const inert = deck('en', '<template><div class="caution"></div></template><scrip
 assert.equal(insertCautionLabels(inert), inert);
 const bad = deck('en', '<div class="caution"></div><div class="caution warn">Warning: Body</div>');
 assert.deepEqual(sourceFindings({ deck: bad }).filter((f) => f.code.startsWith('caution')).map(({ i, sev, code }) => ({ i, sev, code })), expected);
-assert.equal(ruleOfCode('cautionEmpty'), 'R-headings');
-assert.equal(ruleOfCode('cautionLabel'), 'R-headings');
+assert.equal(ruleOfCode('cautionEmpty'), 'R-caution');
+assert.equal(ruleOfCode('cautionLabel'), 'R-caution');
 console.log('ok   source checks, all labels/colons, idempotence, inert examples and editor source path');
 
 const samples = [];
