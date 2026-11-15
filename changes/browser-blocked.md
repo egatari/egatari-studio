@@ -1,0 +1,4 @@
+### Fixed
+
+- When a browser is installed but cannot start (in a sandbox such as Codex's workspace-write, or whenever `CODEX_SANDBOX` is set), `check`, `doctor` and the other commands that need a browser now say so in one line: 「ブラウザを起動できない：サンドボックスの外で動かす（Codex では、このコマンドをサンドボックスの外で動かすのを許可する）。ブラウザをダウンロードしない」 / "the browser could not start: run this outside the sandbox (in Codex, allow this command to run outside the sandbox); do not download a browser". The advice to install a browser (`npx playwright-core install chromium`) is given only when none is installed. Before, the "no browser found" message led Codex to download Chromium into the sandbox (backlog #215)
+- The studio skill tells Codex to ask the user to run the command outside the sandbox instead, never to download a browser or write its own substitute check, and to say plainly when the visual checks were not done

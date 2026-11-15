@@ -25,17 +25,29 @@ export function scaleDefaults(browser) {
   return browser;
 }
 // launch と同じ順で探し、どれで起動したかも返す：{browser, via}（via は 'CHROME_PATH' | 'chrome' | 'msedge' | 'chromium'。egatari doctor）
+// 起動できないときの 2 つ（backlog #215）：ブラウザが入っていない（code 'browser-missing'：入れ方を案内）と、入っているのに起動できない
+// （code 'browser-blocked'：サンドボックスなど。入れ方は案内しない。Codex は「no browser found → install」の文に従って Chromium を落としに行った）
+const NOT_FOUND = /is not found|Executable doesn't exist|not installed|ENOENT|no such file|please run the following command to download/i;
+export const BROWSER_BLOCKED = 'ブラウザを起動できない：サンドボックスの外で動かす（Codex では、このコマンドをサンドボックスの外で動かすのを許可する）。ブラウザをダウンロードしない / '
+  + 'the browser could not start: run this outside the sandbox (in Codex, allow this command to run outside the sandbox); do not download a browser';
+export const BROWSER_MISSING = 'ブラウザがない / no browser found.\n'
+  + '  Install Google Chrome or Microsoft Edge, or run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome.';
+const sandboxed = () => !!(process.env.CODEX_SANDBOX || process.env.CODEX_SANDBOX_NETWORK_DISABLED);
 export async function launchWhich(opts = {}) {
-  if (process.env.CHROME_PATH) return { browser: await chromium.launch({ ...opts, executablePath: process.env.CHROME_PATH }), via: 'CHROME_PATH' };
   const tried = [];
+  const fail = () => {
+    const blocked = sandboxed() || tried.some((t) => !NOT_FOUND.test(t.msg));
+    const detail = tried.map((t) => '  (' + t.via + ': ' + t.msg + ')\n').join('');
+    return Object.assign(new Error((blocked ? BROWSER_BLOCKED : BROWSER_MISSING) + '\n' + detail), { code: blocked ? 'browser-blocked' : 'browser-missing' });
+  };
+  const first = (e) => String(e && e.message).split('\n')[0];
+  if (process.env.CHROME_PATH) {
+    try { return { browser: await chromium.launch({ ...opts, executablePath: process.env.CHROME_PATH }), via: 'CHROME_PATH' }; } catch (e) { tried.push({ via: 'CHROME_PATH', msg: first(e) }); throw fail(); }
+  }
   for (const channel of ['chrome', 'msedge']) {
-    try { return { browser: await chromium.launch({ ...opts, channel }), via: channel }; } catch (e) { tried.push(channel + ': ' + String(e.message).split('\n')[0]); }
+    try { return { browser: await chromium.launch({ ...opts, channel }), via: channel }; } catch (e) { tried.push({ via: channel, msg: first(e) }); }
   }
-  try { return { browser: await chromium.launch(opts), via: 'chromium' }; } catch (e) {
-    throw new Error('ブラウザを起動できない / no browser found.\n'
-      + '  Install Google Chrome or Microsoft Edge, or run `npx playwright-core install chromium`, or set CHROME_PATH=/path/to/chrome.\n'
-      + tried.map((t) => '  (' + t + ')\n').join('') + '  (chromium: ' + String(e.message).split('\n')[0] + ')');
-  }
+  try { return { browser: await chromium.launch(opts), via: 'chromium' }; } catch (e) { tried.push({ via: 'chromium', msg: first(e) }); throw fail(); }
 }
 export { chromium };
 
