@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=0fcd34d477454f47 -->
+<!-- i18n: pair=README.ja.md sha256=1c11554a652c7984 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -103,7 +103,7 @@ First delete the old `~/.claude/skills/motion-*` entries (and any copies in a pr
 /plugin install egatari-studio@egatari
 ```
 
-Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes. When the skill finds that it is old, it tells you once (and keeps working).
+Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto-update. In the Marketplaces tab, select egatari and press Enter, then choose Enable auto-update on the screen that opens (it is only there, not in the list or the Installed tab). If you still don't see it, update by hand after each release: `claude plugin marketplace update egatari`, then `claude plugin update egatari@egatari` and `claude plugin update egatari-studio@egatari`. Claude Code turns auto-update on by default only for Anthropic's official marketplaces; others such as egatari start with it off. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes. When the skill finds that it is old, it tells you once (and keeps working).
 
 The studio skill runs its commands through the egatari npm package (`npx egatari@0.6.x …`, see [With npm (no clone)](#with-npm-no-clone)): no clone and no `npm ci`, only Node.js (it starts with `npx egatari@0.6.x doctor`, which shows what is missing and how to install it). Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or, for every tool you have (Claude Code and Codex) at once, run `npx egatari@0.6.x skills update` and restart the tool. With make alone, open the finished working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 

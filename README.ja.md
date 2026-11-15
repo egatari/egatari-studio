@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=c7a979ed3fc40edf -->
+<!-- i18n: pair=README.md sha256=49c2ad09cb07bcd5 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -105,7 +105,7 @@ Claude Code や Cowork（Claude のデスクトップアプリ）で教材を作
 /plugin install egatari-studio@egatari
 ```
 
-入れたら、自動更新を有効にする：`/plugin` → Marketplaces → egatari → Enable auto-update。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れている。スキルの指示と品質チェックは Studio のバージョンごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。スキルが古いとわかれば、スキル自身が 1 回だけ知らせる（作業は止めない）。
+入れたら、自動更新を有効にする：`/plugin` → Marketplaces → egatari → Enable auto-update。Marketplaces のタブで egatari を選んで Enter を押し、開いた画面で Enable auto-update を選ぶ（一覧や Installed のタブにはない）。見つからないときは、リリースのたびに手で更新する：`claude plugin marketplace update egatari` のあと、`claude plugin update egatari@egatari` と `claude plugin update egatari-studio@egatari`。Claude Code が初めから自動で更新するのは Anthropic の公式のマーケットプレイスだけで、egatari のようなほかのマーケットプレイスは初めは自動更新が切れている。スキルの指示と品質チェックは Studio のバージョンごとに変わるので、古いスキルのままだと、新しい決まりや直しが使われない。スキルが古いとわかれば、スキル自身が 1 回だけ知らせる（作業は止めない）。
 
 studio スキルはコマンドを npm の包み egatari（`npx egatari@0.6.x …`、[npm で使う（clone しない）](#npm)）で動かす。リポジトリの clone も `npm ci` も要らず、Node.js があればよい（初めに `npx egatari@0.6.x doctor` で足りないものと入れ方を確かめる）。更新は `/plugin update egatari@egatari` と `/plugin update egatari-studio@egatari`。入れているツール（Claude Code・Codex）すべてをまとめて更新するには `npx egatari@0.6.x skills update` を実行し、ツールを再起動する。make だけを使う場合は、書き終えた作業フォルダを Chrome か Edge の <https://studio.egatari.org/> で開く。Mac の Safari は Egatari ファイル（.ega.html）で開く手順を使う。
 
