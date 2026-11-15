@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示のバージョン：22b7d41b**
+**指示のバージョン：3bcb89c8**
 **スキルのバージョン：0.6.13**
 
 Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
@@ -77,7 +77,7 @@ Studio の音声のパネルで付けてもらう（この PC で AI 音声を�
 
 # AI への指示
 
-指示のバージョン：`22b7d41b`
+指示のバージョン：`3bcb89c8`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -141,7 +141,7 @@ Studio の音声のパネルで付けてもらう（この PC で AI 音声を�
 
 ### 2.4 数式（KaTeX）
 
-- **R-math** 行内は `\( … \)`、別行は `\[ … \]`。式の中の `<` は `\lt`、`>` は `\gt`。標準のほかに使えるマクロ：`\hlE{…}`（emph）`\hlT{…}`（term）`\hlM{…}`（muted）、`\htmlId{ID}{…}`、`\htmlData{mark=ID}{…}`、`\htmlClass{…}{…}`、`\morph{ID}{…}`。`\newcommand` と `\color` は使わない。記号は最初に使う所で定義する（`\(\mu\)`：母平均）
+- **R-math** 行内は `\( … \)`、別行は `\[ … \]`。式の中の `<` は `\lt`、`>` は `\gt`。標準のほかに使えるマクロ：`\hlE{…}`（emph）`\hlT{…}`（term）`\hlM{…}`（muted）、`\htmlId{ID}{…}`、`\htmlData{mark=ID}{…}`、`\htmlClass{…}{…}`、`\morph{ID}{…}`。`\newcommand` と `\color` は使わない。項の説明は `\underbrace{…}_{\text{…}}`・`\overbrace{…}^{…}`。`$$` は使わない。記号は最初に使う所で定義する（`\(\mu\)`：母平均）
 
 ### 2.5 強調とモーフ
 
