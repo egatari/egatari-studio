@@ -116,6 +116,8 @@ const TX = {
     // 新規作成 ④ のパーツの一覧（kit/core/new-deck.mjs の partsList・recommend）
     partsLegend: 'AI にどのパーツを使わせますか',
     partsGallery: 'すべてのパーツのサンプルを見る',
+    // 畳んだパーツの一覧の 1 行（backlog #211。軽量・詳細のどちらでも畳む。「詳細」の語は使わない：有料のプランの名前）
+    partsFold: (n) => `AI が使うパーツ：${n} 種類`, partsFoldAct: '選び直す',
     partsHint: '伝えたいことごとに並べています。標準パーツは全部選んであります。外したパーツは AI が使わず、要るときは近い形を HTML で描きます。表・画像・数式・図形は、選ばなくてもいつも使えます',
     whySub: (sub, names) => `① の使う場面が${sub}なので、${names}も選びました`,
     whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
@@ -289,6 +291,7 @@ const TX = {
     seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
     partsLegend: 'Which parts may the AI use?',
     partsGallery: 'See samples of all parts',
+    partsFold: (n) => `Parts the AI may use: ${n}`, partsFoldAct: 'Change',
     partsHint: 'Grouped by what to convey. All standard parts are chosen. The AI won’t use a part you untick; if it needs one, it draws something close in HTML. Tables, images, equations and shapes are always available.',
     whySub: (sub, names) => `Also chose ${names}, because the setting in step 1 is ${sub}.`,
     whyWord: (word, names) => `Also chose ${names}, because step 2 mentions ${word}.`,
@@ -786,7 +789,7 @@ export function setupLlm(app) {
     const boxes = new Map();
     const pick = (t) => {
       const cb = el('input', { type: 'checkbox', id: 'paste-part-' + t.replace(/^m-/, ''), value: t, 'aria-describedby': 'paste-part-' + t.replace(/^m-/, '') + '-d' });
-      cb.addEventListener('change', () => { if (cb.checked) ticked.add(t); else ticked.delete(t); touched.add(t); update(); });
+      cb.addEventListener('change', () => { if (cb.checked) ticked.add(t); else ticked.delete(t); touched.add(t); fold.open = true; update(); });
       boxes.set(t, cb);
       const badge = el('span', { cls: 'pick-badge', text: X.suggested, hidden: '' });
       const fromBadge = el('span', { cls: 'pick-badge from-sample', text: X.fromSample, hidden: '' });
@@ -811,7 +814,11 @@ export function setupLlm(app) {
     const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
       el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }),
       // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
-      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), why, groups, count]);
+      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), groups, count]);
+    // 一覧は初めは畳む（backlog #211、作者 11/15・設計 d5）：1 行「AI が使うパーツ：N 種類　選び直す」。推した理由（why）と大きさの目盛りは畳む範囲の外でいつも見せる。
+    // 外す候補が出たら自動で開き、作成者がチェックを替えたら、この新規作成のあいだは開いたまま（閉じるのは作成者だけ）
+    const foldText = el('span', { id: 'paste-parts-sum-text' });
+    const fold = el('details', { id: 'paste-parts-fold', cls: 'parts-fold' }, [el('summary', { id: 'paste-parts-summary' }, [foldText, el('span', { cls: 'parts-fold-act', text: X.partsFoldAct })]), partsSet]);
     // 指示の大きさ：軽量・詳細の目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
     const total = el('span', { id: 'paste-pack-size', cls: 'hint', tabindex: '-1' });
     const fill = el('span', { cls: 'meter-fill' });
@@ -859,6 +866,7 @@ export function setupLlm(app) {
       }
       setRadios(planSet, 'paste-plan', draft.plan);
       count.textContent = X.partsCount(chosen().length, listed.length);
+      foldText.textContent = X.partsFold(chosen().length);
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
       const cap = capKb(draft.plan), capBytes = cap * 1024;
@@ -890,6 +898,7 @@ export function setupLlm(app) {
       over.hidden = !isOver;
       overText.textContent = isOver ? X.overCap(kbOf(Math.ceil(bytes * (size - capBytes) / size)), candidates.length ? names(candidates) : '') : '';
       trim.hidden = !candidates.length;
+      if (candidates.length) fold.open = true;   // 外す候補は一覧で確かめる
       // 詳細の指示：ファイルに保存するのが主、コピーは従（長い指示は Gemini で貼り付けが切れる。owner の確認、2026-11-05）
       const paid = draft.plan === 'paid';
       save.hidden = !paid;
@@ -928,7 +937,7 @@ export function setupLlm(app) {
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planHint, partsSet, structRow, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint].filter(Boolean), [summary, copyMsg, copyMsg.box]);
+    const node = step('paste-step-send', title, [planSet, planHint, fold, why, structRow, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint].filter(Boolean), [summary, copyMsg, copyMsg.box]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
