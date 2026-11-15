@@ -481,7 +481,9 @@ try {
     const lay2 = await trustedLayout(page, 'preview');
     ok(lay2.outside && lay2.ids.includes('dev-comment') && lay2.inert === true, 'comment: the note box is in the trusted side panel, the preview is inert ' + JSON.stringify(lay2));
     await page.press('#dev-comment textarea', 'Meta+Enter');
-    await page.waitForTimeout(400);
+    // 送ると枠が閉じ、プレビューの inert が外れる（保存の往復のあと。固定の 400 ms では込んだ CI で間に合わなかった：backlog #206）。外れるのを待つ
+    await page.waitForFunction(() => !document.getElementById('dev-comment') || !document.getElementById('dev-comment').getClientRects().length, null, { timeout: scaled(10000) }).catch(() => {});
+    await page.waitForFunction(() => document.getElementById('preview').inert === false, null, { timeout: scaled(10000) }).catch(() => {});
     ok((await trustedLayout(page, 'preview')).inert === false, 'comment: the preview takes clicks again after the note box closes');
     const comments = JSON.parse(await opfs.read('comments.json') || '[]');
     ok(comments.length === 1 && comments[0].comment === 'この見出しを短く' && comments[0].status === 'open' && comments[0].key === `${K('何を最小化するか')}:0`, 'comment: comments.json written');
@@ -1906,7 +1908,9 @@ try {
         // 残す：読み込み直しても同じフォルダ（IndexedDB）
         await po.goto(BASE);
         await po.waitForSelector('#drop');
-        await po.waitForFunction(() => window.__APP_TEST.themeFolder().name === 'thm-user', null, { timeout: scaled(30000) });
+        // 起動時の initThemeFolder は、handle を置いてから許可を問い合わせ（await permissionOf）、そのあと組み直して画面の字を書く。
+        // name だけを待つと state と #w-themes-state がまだ前のままのことがある（込んだ CI で落ちた：backlog #206）。3 つがそろうのを待つ
+        await po.waitForFunction(() => { const t = window.__APP_TEST.themeFolder(), e = document.getElementById('w-themes-state'); return t.name === 'thm-user' && t.state === 'granted' && !!e && e.textContent.includes('thm-user'); }, null, { timeout: scaled(30000) }).catch(() => {});
         ok((await tst()).state === 'granted' && (await po.textContent('#w-themes-state')).includes('thm-user'), 'theme folder: remembered after a reload (handle in IndexedDB), shown on the first screen');
         // 許可の求め直し：次の訪問では許可が切れている（prompt）。知らせの「「thm-user」を使う」で求め直し、許せば組み直す
         await po.evaluate(async () => {

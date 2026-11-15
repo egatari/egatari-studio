@@ -131,7 +131,8 @@ const k = box.width / 1280;
 await pv.mouse.move(box.x + 300 * k, box.y + 400 * k); await pv.mouse.down();
 for (let i = 1; i <= 10; i++) await pv.mouse.move(box.x + (300 + i * 60) * k, box.y + (400 - i * 15) * k, { steps: 3 });
 await pv.mouse.up();
-await pv.waitForTimeout(300);
+// 線も窓をまたいで届く：固定の 300 ms でなく、本体に描かれるのを待つ（backlog #206）
+await p.waitForFunction(() => { const c = document.getElementById('dt-canvas'), d = c && c.getContext('2d').getImageData(0, 0, c.width, c.height).data; let n = 0; if (d) for (let i = 3; i < d.length; i += 4) if (d[i] > 40) n++; return n > 300; }, null, { timeout: scaled(3000) }).catch(() => {});
 ok(await inked(p) > 300, '発表者ビューで描いた線が本体に出る');
 const px = await p.evaluate(() => { const c = document.getElementById('dt-canvas'), d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
   for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 250) return [d[i], d[i + 1], d[i + 2]]; });
@@ -140,7 +141,8 @@ ok(await fr.evaluate(() => DECK.tools.mode()) === 'pen', '「今の画面」も�
 await shot(pv, 'presenter');
 await shot(p, 'presenter-main');
 await pv.keyboard.press('Escape');
-await pv.waitForTimeout(100);
+// 発表者ビューの Esc は本体へ知らせが届いてから効く（窓をまたぐ。backlog #206：macOS の CI で固定の 100 ms では届かないことがあった）。届くのを待つ
+await p.waitForFunction(() => DECK.tools.mode() === null, null, { timeout: scaled(3000) }).catch(() => {});
 ok(await p.evaluate(() => DECK.tools.mode()) === null, '発表者ビューの Esc で本体も解除');
 await pv.close();
 
