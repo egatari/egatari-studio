@@ -45,6 +45,7 @@ const SINGLE_SET_EXPECTED = {
   // math は m-pie、maps は m-fishbone、kokugo は m-cycle、science は m-tree を 1 つ多く外す（stats は同じ）
   // v0.6.13：言いたいことの表がこの指示にパーツのある行だけになり（d5 11/15）、短くなった。math は m-compare・m-cards・m-pie、kokugo は m-cycle、
   // science は m-tree を外さずに収まる（部品庫 2.9.0 の m-bars の誤差棒・有意差の注記は無料のプランでは書かない）
+  // 注意の枠の 1 行（R-caution）を足しても、この並びのまま（v0.6.13 の統合で計り直した）
   en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi'],
     maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
