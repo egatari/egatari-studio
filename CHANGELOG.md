@@ -8,6 +8,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.14] - 2026-11-17
+
+### Added
+
+- `egatari check --no-browser` (backlog #215 (c)): runs only the checks of the source (build, slide ids, vocabulary, audio, attachments, reference voices) without starting a browser, for sandboxes where none can start. The checks of how slides look and move are skipped: their rules are `skipped` with the reason `noBrowser` (a rule with an error in what was checked is `failed`), `--json` adds `"noBrowser": true`, and the text output says what was skipped and to run the full check with a browser before sharing. The studio skill offers it when running the check outside the sandbox is not allowed. `tools/test-check-no-browser.mjs`
+- The CLI and editor quality checks warn when an embedded image exceeds 1 MiB, suggest cropping or saving as JPEG/WebP about 1600 px wide, and report the lesson's total embedded image size, excluding parts' own images.
+- Parts library tier `local` (local (CLI) only, backlog #213): Studio accepts parts the parts library marks `local`, such as `m-trace`, which shows the record a local tracer writes while code runs. They are never in the chat AI instructions (free or paid), the New… parts list or the purpose tables; the make skill for CLIs such as Claude Code and Codex gets them in `references/parts/local.md` (Japanese and English). An unknown tier still stops the generation, so an older Studio never puts such a part into the instructions by mistake. `tools/test-local-tier.mjs` checks that the instructions stay byte-identical with a local part
+- Quality check: a new R-fit warning `partSvgOut` (command line and editor) when the `<svg>` directly inside a part element sticks out of the element's box by more than 2px, as happens with a working-folder part whose root `<svg>` has no width and height; the studio skill's part-writing section now says to give it a width and height (or `width:100%;height:100%`) (backlog #208)
+- Readable content of parts (format spec §2.1 *Readable content of components*, backlog #216): when a part marks elements with `data-readable` (such as the full source behind the code window of `m-code` 2.2.0, or a table filled in steps), the single-file export copies them, at the final state of the slide, into that slide's article in the readable layer after the steps, keeping only `pre`, `code`, `table`, `thead`, `tbody`, `tr`, `th`, `td`, `caption`, `ol`, `ul`, `li`, `p` and `span` (other elements become their text) and the attributes `colspan`, `rowspan` and `lang`. The book, print and the document without script no longer lose the lines. The command line opens the player in a headless browser only when the lesson has such a mark; the editor asks its preview. The player gets `DECK.readableParts()` (player change; bump at the next rc). A producer that cannot open the player copies nothing and says so. `docs/contract.md` tells part authors how to mark. `tools/test-readable-parts.mjs`
+
+### Changed
+
+- The AI instructions say in one line how to label a term in an equation: `\underbrace{…}_{\text{…}}` or `\overbrace{…}^{…}`, inside `\[ … \]`, never `$$` (backlog #225 (a)). Both already pass the math rendering and the quality check, Japanese `\text{}` and `\htmlId` inside included
+- The bundled samples are copied again from egatari/examples 6c59e42: the 羅生門 book's afterword, `parts-showcase` and `sentence-structure` with the 2026-11-15 wording (no coined words such as 札), and the other samples' sources (file contents unchanged)
+- The fix request for the AI (修正依頼) names the part's height when the body overflows at the bottom because of a part with `style="height:…px"`: it adds “in m-tree, change style height:380px to height:370px” (the overflow subtracted, rounded down to 10 px) after the amount to cut (backlog #224). In the nightly evaluation a 1 px overflow of `m-tree` stayed through two rounds of fixes. The editor now keeps which part overflowed (#196) for its fix request too, as the command line already did. `tools/test-fix-part-height.mjs`
+- Egatari Player 1.8.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. New `DECK.readableParts()` returns the HTML of the elements marked `data-readable` inside parts at each slide's last state, which the Egatari file export copies into the readable layer (backlog #216). `DECK.mtext` reads `*` with the same rule as the base text (backlog #199). The Live panel and the key help use the established Japanese words (パネル, 接続, 再接続, 回答, ウィンドウ, ツールバー; backlog #223). Slides look the same; playback, steps and timing are unchanged
+- Japanese wording (backlog #223, owner 2026-11-15): coined Japanese words are replaced with the established terms in everything a reader sees — the editor and Viewer, CLI and quality-check messages, docs, README, the studio and make skills and the AI instructions. Code comments and test names are unchanged. Examples: 板 → パネル (the menu 「パネル」; 横の板 → サイドパネル), 下の帯 → ステータスバー, 発表の帯 → 発表バー, 窓 → ウィンドウ／パネル, スライド（窓） and 舞台 → スライド（表示領域）, 写し → コピー, 字体 → フォント, 控え → バックアップ, 実行系 → ランタイム (プレーヤー on screen), 組み立て・組み直す → ビルド・再ビルド (構成 where it meant structure), 書き出す → エクスポート (台本をエクスポート too), 手元 → ローカル, パーツの束 → パーツのセット, 見本 → 例, 道具 → ツール, AI の返事 → 出力, ホストからの返事 → ホストからの回答, 約束事 → 規約, Viewer つなぎ直す → 再接続. 札 and 帯 are said by meaning (カード, タイル, ラベル, ツールチップ, バー, 期間 on a timeline); 帯グラフ stays
+- The AI instructions say the same for the parts' own text (m-kpi and m-menu cards, m-folds 「k 分割交差検証のフォールド」, m-timeline periods) through a Japanese word map in `tools/make-llm-guide.mjs` until the parts library's READMEs change; the New… tile 目次 reads 「カードの格子」
+- Glossary (`docs/terms.json`): stage is スライド（表示領域）, presentation-bar 発表バー, export-script 台本をエクスポート, and new entries panel, side-panel, status-bar, bar, card, copy, font, backup, runtime, root, software-test, reconnect, build, local, parts-set and contract. `npm run lint:terms` now flags 札, 帯 and 板 in docs too (`avoidPatterns`), so the old words don't come back
+- The reading dictionary (`tts/yomi.yaml`) no longer turns “AI” into エーアイ (backlog #163): the owner heard raw “AI” read as エーアイ with natural intonation in both voices (bob and gendo), while the kana gave unnatural intonation. Audio made from now on reads “AI” as written
+
+### Fixed
+
+- `DECK.mtext` (the player's small SVG text markup for older parts and hand-written SVG) follows the parts library's base 1.2.0 rule for `*` (backlog #199): `*` italicises only as a pair with non-space just inside, as in markdown, so labels such as `A* 探索`, `5*3` and `注*` stay as written instead of turning italic; `\*`, `\_` and `\^` draw the character itself. Sub- and superscripts keep their size. Changes the bundled player (bump at the next rc). `tools/test-deck-mtext.mjs`
+
 ## [0.6.13] - 2026-11-15
 
 ### Added
@@ -1563,7 +1588,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.13...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.14...HEAD
+[0.6.14]: https://github.com/egatari/egatari-studio/compare/v0.6.13...v0.6.14
 [0.6.13]: https://github.com/egatari/egatari-studio/compare/v0.6.12...v0.6.13
 [0.6.12]: https://github.com/egatari/egatari-studio/compare/v0.6.11...v0.6.12
 [0.6.11]: https://github.com/egatari/egatari-studio/compare/v0.6.10...v0.6.11

@@ -1,3 +1,0 @@
-### Added
-
-- `egatari check --no-browser` (backlog #215 (c)): runs only the checks of the source (build, slide ids, vocabulary, audio, attachments, reference voices) without starting a browser, for sandboxes where none can start. The checks of how slides look and move are skipped: their rules are `skipped` with the reason `noBrowser` (a rule with an error in what was checked is `failed`), `--json` adds `"noBrowser": true`, and the text output says what was skipped and to run the full check with a browser before sharing. The studio skill offers it when running the check outside the sandbox is not allowed. `tools/test-check-no-browser.mjs`

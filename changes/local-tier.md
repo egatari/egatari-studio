@@ -1,3 +1,0 @@
-### Added
-
-- Parts library tier `local` (local (CLI) only, backlog #213): Studio accepts parts the parts library marks `local`, such as `m-trace`, which shows the record a local tracer writes while code runs. They are never in the chat AI instructions (free or paid), the New… parts list or the purpose tables; the make skill for CLIs such as Claude Code and Codex gets them in `references/parts/local.md` (Japanese and English). An unknown tier still stops the generation, so an older Studio never puts such a part into the instructions by mistake. `tools/test-local-tier.mjs` checks that the instructions stay byte-identical with a local part
