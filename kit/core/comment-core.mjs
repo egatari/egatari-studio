@@ -11,6 +11,12 @@ export function normPin(p) {
   return { x: clamp(p.x, SLIDE_W), y: clamp(p.y, SLIDE_H) };
 }
 
+// マーカーの重心の下のパーツ。名前はタグ、id は data-id（なければ省略）。未知の項目は残さない。
+export function normPart(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p) || typeof p.name !== 'string' || !/^m-[^\s<>]*$/.test(p.name) || p.name.length > 100) return null;
+  return { name: p.name, ...(typeof p.id === 'string' && p.id ? { id: p.id.replace(/\s+/g, ' ').trim().slice(0, 200) } : {}) };
+}
+
 // strokes：編集モードのマーカー（コメントのペン、m）で描いた線。1 つのメモに線は何本でも（丸と矢印など。STROKES_MAX 本まで）。
 //   線はスライドの座標の点の並び [[x, y], …]（1280×720、表示の倍率によらない）。形は docs/contract.md「Review notes」（§13）
 //   pin と同じく信頼しない知らせが元なので、線ごとに：配列でなければ・点（有限の数の組）が 2 つに満たなければその線は捨てる。

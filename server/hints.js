@@ -13,6 +13,7 @@
 //            段階の途中（動いている間）に押しても、点は鍵の段階の最後の状態（DECK.seek(i, k, Infinity)）を指すものとして残す
 //   comment  {…, strokes}           マーカー（編集中の道具 ink、m）で線を描き終えるたび（kit/tools.js の deck:ink）。strokes は書きかけのメモの線の全部
 //            [[[x, y], …], …]（スライドの座標。親が edit-ink-reset を送るか段階が変わるまで足していく。20 本まで）。
+//            part は重心の下の最も内側の m-* 要素の {name, id?}（id は data-id）。
 //            pin は全部の線の重心（長さで重みを付けた区間の中点の平均）、key・src・quote・near は Alt+クリックと同じく、重心の下の要素から
 //            （重心が舞台の外・描く面の外なら 1 本目の 1 点目の下）。線を丸め・間引き・確かめるのは親の画面と書き込む側（kit/core/comment-core.mjs の normStrokes）
 //   位置は実行系の deck-pos（kit/deck.js）をそのまま使う
@@ -222,12 +223,31 @@ document.addEventListener("deck:ink", function(e){
   var key = window.DECK.state().key;
   if (key !== inkKey){ inkPend = []; inkKey = key; }
   if (inkPend.length >= INK_MAX){ if (window.DECK.toast) window.DECK.toast(window.DECK.ja === false ? "A comment holds at most 20 lines" : "1 つのコメントの線は 20 本まで"); return; }
-  var S = inkPend.concat([P]), c = centroid(S), at = pointAt(c[0], c[1]) || pointAt(S[0][0][0], S[0][0][1]);
+  var S = inkPend.concat([P]), c = centroid(S), at, m, part = null;
+  // 同じステップの最後の状態で調べる。描いた線が何個のパーツをまたいでも、重心の下の 1 個だけ。
+  window.DECK.aside(function(){
+    var pos = posOfKey(key);
+    if (pos) window.DECK.seek(pos.i, pos.k, Infinity);
+    var center = pointAt(c[0], c[1]);
+    if (center) {
+      var path = center.ev.composedPath();
+      for (var j = 0; j < path.length; j++) {
+        var el = path[j], tag = el.localName || "";
+        if (tag.indexOf("m-") === 0) {
+          part = {name: tag};
+          var id = el.getAttribute("data-id"); if (id) part.id = id;
+          break;
+        }
+      }
+    }
+    at = center || pointAt(S[0][0][0], S[0][0][1]);
+    if (at) m = commentHint(at.ev, at.target);
+  });
   if (!at) return;
   inkPend = S;
-  var m = commentHint(at.ev, at.target);
   m.pin = {x: Math.round(c[0] * 10) / 10, y: Math.round(c[1] * 10) / 10};
   m.strokes = S.slice();
+  if (part) m.part = part;
   send(m);
 });
 // r（録音モードを開く）の直後の Space は、デッキに渡さない（デッキが段階を進めてしまう）。録音モードはすぐフォーカスを

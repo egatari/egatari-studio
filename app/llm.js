@@ -28,7 +28,7 @@ import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, BATCH } from '../kit/core/llm-outline.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
-import { buildFixRequest, cutOffRequest, rulesFor } from '../kit/core/llm-fix.mjs';
+import { buildFixRequest, cutOffRequest, rulesFor, commentNoteLine } from '../kit/core/llm-fix.mjs';
 import { readingProblems, readingGaps, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { message, MESSAGES, ruleOf } from '../kit/check-messages.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
@@ -194,7 +194,7 @@ const TX = {
     reviseHint: '修正依頼には、品質チェックの指摘、① に書いたこと、開いているコメント、今のスライドと台本が入ります（長い教材は指摘のあるスライドだけ）',
     copyRevise: '修正依頼をコピー', reviseNothing: '直すことが見つかりません。① に直してほしいことを書いてください',
     revised: (kb, n, c) => `コピーしました（${kb} KB。指摘 ${n} 件${c ? `・コメント ${c} 件` : ''}）。チャットの AI に貼り付けて送ってください。AI が書き終えたら ③ へ`,
-    wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => `- ${c.where}${c.quote ? `「${c.quote}」` : ''}：${c.text}`,
+    wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => commentNoteLine(c, 'ja'),
     err: {
       'no-blocks': 'スライドも台本も見つかりません。AI の出力のコードブロックを、枠の右上のボタンでコピーして貼り付けてください',
       ambiguous: 'スライドと台本の両方が入っていますが、コードブロックの区切り（```）がないので分けられません。2 つのコードブロックを 1 つずつコピーして、それぞれの欄に貼り付けてください',
@@ -359,7 +359,7 @@ const TX = {
     reviseHint: 'The fix request includes the quality check findings, what you wrote in step 1, open comments and the current slides and script (for a long lesson, only the slides with findings).',
     copyRevise: 'Copy the fix request', reviseNothing: 'Nothing to fix was found. Write what to change in step 1.',
     revised: (kb, n, c) => `Copied (${kb} KB; ${n} ${plural(n, 'finding')}${c ? `, ${c} ${plural(c, 'comment')}` : ''}). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
-    wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`,
+    wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => commentNoteLine(c, 'en'),
     err: {
       'no-blocks': 'No slides or script found. Copy the code blocks of the AI’s output with the copy button at the top right of each box, and paste them.',
       ambiguous: 'This has both slides and script but no code block lines (```), so they cannot be separated. Copy the two code blocks one at a time into their fields.',
@@ -1570,7 +1570,7 @@ export function setupLlm(app) {
     const slides = S.slides || [];
     return list.filter((c) => c && c.status !== 'resolved' && String(c.comment || '').trim()).map((c) => {
       const key = String(c.key || ''), i = slides.findIndex((s) => key === s.key || key.startsWith(s.key + ':'));
-      return { where: i >= 0 ? T.sl.slideName(i + 1, slides[i].heading || slides[i].key) : key, quote: String(c.quote || '').replace(/\s+/g, ' ').trim().slice(0, 120), text: String(c.comment).trim() };
+      return { part: c.part, strokes: c.strokes, stroke: c.stroke, where: i >= 0 ? T.sl.slideName(i + 1, slides[i].heading || slides[i].key) : key, quote: String(c.quote || '').replace(/\s+/g, ' ').trim().slice(0, 120), text: String(c.comment).trim() };
     });
   }
   // 「修正…」の ②：修正依頼（kit/core/llm-fix.mjs）に、直してほしいことと開いているメモを足す。直すことが何もなければ null

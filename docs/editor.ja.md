@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=288bd3187e1d2f3a -->
+<!-- i18n: pair=editor.md sha256=c0192879fa3fe484 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -270,6 +270,7 @@ Egatari ファイルを直している間、保存していない変更をこの
 - `deck.html`：編集した要素の中身だけ
 - `narration.md`：編集したステップの行だけ（注釈やほかの行はそのまま）
 - `comments.json`：コメント `[{id, created, key, range, pin, quote, comment, status}]`（`pin` は押した点 `{x, y}` のスライドの座標、1280×720。マーカーは描いた印 `strokes` を足す（前のコメントは 1 本の `stroke` のこともある）：[規約 §13](contract.ja.md#13-レビューのメモ手書きの印)。[開発サーバー](dev-server.ja.md#書き換えるファイル)を参照。コメントが何を指しているかを見るには、フォルダに `npm run comment-shots -- <作業フォルダ>` を動かす：未対応のコメントごとに、そのステップをピン付きで `.cache/comment-shots/` に描く）
+  パーツの上のマーカーのコメントには `part: {name, id?}` も残す（そのステップの重心の下にある最も内側の `m-*` タグと、あれば `data-id`）。AI への修正依頼には「パーツ：<tag>（data-id: <id>）」の 1 行を足す（id がなければ括弧は省く）。パーツの外の文章や図は、これまでの近くの字のまま。`part` のない前のコメントも使え、読み手は知らない項目を無視する。
 - `audio/<rec|tts|imp>_<hash>.mp3` と `audio/manifest.json`：音声のパネルの **この音声を使う** で（変わるのはそのステップの記録だけ。前の manifest はバックアップする）
 - [スライド一覧](#スライド一覧足す複製削除並べ替え)で：`deck.html`（スライドをまるごと入れる・コピーする・消す・動かす）、`narration.md`（節をまるごと）、`audio/manifest.json` と、スライドを消したときはその音声の `audio/` のファイル（先にバックアップする。元に戻すで書き戻す）
 - [「本」のパネル](#本下書き)で：保存した本のファイル（`article.md` か `article/<名前>.md`。ファイルをまるごと）と、**確認済みにする** では `egatari.json` の `articleLinks`（ほかの項目はバイトのまま）
