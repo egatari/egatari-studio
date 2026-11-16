@@ -1,6 +1,6 @@
 // 新規作成 ③ のテーマの見本の絵（app/llm.js の themeQuestion、tools/theme-thumbs.mjs が作る app/theme-thumbs/）の試験
 //   node tools/test-app-theme-thumbs.mjs [作業用のフォルダ] [--shots <フォルダ>]
-// 1. 配信版（dist/theme-thumbs/ に 2 枚ずつ）：選べるテーマごとに、選ぶと表紙と本文の 2 枚が出て、alt が「<テーマ名> の見本：表紙」「… の見本：本文」、
+// 1. 配信版（dist/theme-thumbs/ に 2 枚ずつ）：選べるテーマごとに、選ぶと表紙と本文の 2 枚が出て、alt が「<テーマ名> のサンプル：表紙」「… のサンプル：本文」、
 //    絵が読み込める（naturalWidth 640）。押すと大きく出る窓が新規作成の窓の上に開き、Esc で閉じても新規作成の窓は開いたまま・押した絵に戻る。× でも閉じる
 // 2. 英語の画面：alt が「<theme> sample: cover」「… sample: body」、× の名前が Close
 // 3. 幅 390 px：2 枚が縦に並び、横にスクロールしない（--shots なら themethumbs-1280.png・themethumbs-390.png）
@@ -77,9 +77,9 @@ try {
       await page.selectOption('#paste-theme', t.name);
       await loaded(page);
       const p = await pics(page);
-      ok(p.length === 2 && p[0].alt === `${t.label.ja} の見本：表紙` && p[1].alt === `${t.label.ja} の見本：本文`
+      ok(p.length === 2 && p[0].alt === `${t.label.ja} のサンプル：表紙` && p[1].alt === `${t.label.ja} のサンプル：本文`
         && p[0].src === `theme-thumbs/${t.name}-cover.webp` && p[1].src === `theme-thumbs/${t.name}-body.webp` && p.every((x) => x.w === 640 && x.shown === 320),
-      `ja ${t.name}: two pictures, 320 px wide, alt 「${t.label.ja} の見本：表紙」「…：本文」 ` + JSON.stringify(p.map((x) => [x.alt, x.w, x.shown])));
+      `ja ${t.name}: two pictures, 320 px wide, alt 「${t.label.ja} のサンプル：表紙」「…：本文」 ` + JSON.stringify(p.map((x) => [x.alt, x.w, x.shown])));
     }
     await page.selectOption('#paste-theme', 'default');
     await loaded(page);
@@ -90,8 +90,8 @@ try {
     await page.click('#paste-theme-samples .theme-sample[data-kind=body]');
     await page.waitForSelector('#theme-sample-zoom[open]');
     const z = await page.evaluate(() => { const d = document.getElementById('theme-sample-zoom'), i = d.querySelector('img'); return { label: d.getAttribute('aria-label'), alt: i.alt, src: i.getAttribute('src'), w: Math.round(i.getBoundingClientRect().width), close: document.getElementById('theme-sample-close').getAttribute('aria-label'), focus: document.activeElement && document.activeElement.id }; });
-    ok(z.label === '藍 の見本：本文' && z.alt === '藍 の見本：本文' && z.src === 'theme-thumbs/default-body.webp' && z.w > 600 && z.close === '閉じる' && z.focus === 'theme-sample-close',
-      'ja zoom: clicking the body picture shows it larger, named 「藍 の見本：本文」, with a × button 「閉じる」 that has the focus ' + JSON.stringify(z));
+    ok(z.label === '藍 のサンプル：本文' && z.alt === '藍 のサンプル：本文' && z.src === 'theme-thumbs/default-body.webp' && z.w > 600 && z.close === '閉じる' && z.focus === 'theme-sample-close',
+      'ja zoom: clicking the body picture shows it larger, named 「藍 のサンプル：本文」, with a × button 「閉じる」 that has the focus ' + JSON.stringify(z));
     await page.keyboard.press('Escape');
     await page.waitForSelector('#theme-sample-zoom', { state: 'detached' });
     ok(await page.evaluate(() => document.getElementById('dlg').open) && await page.evaluate(() => document.activeElement && document.activeElement.matches('.theme-sample[data-kind=body]')),

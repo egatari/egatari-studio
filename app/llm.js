@@ -100,7 +100,7 @@ const TX = {
     // ③ 見た目
     themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ',
     // テーマの見本の絵（表紙と本文の 1 枚。押すと大きく出す）
-    themeSampleAlt: { cover: (n) => `${n} の見本：表紙`, body: (n) => `${n} の見本：本文` }, themeSampleClose: '閉じる',
+    themeSampleAlt: { cover: (n) => `${n} のサンプル：表紙`, body: (n) => `${n} のサンプル：本文` }, themeSampleClose: '閉じる',
     themeLine: REQUEST_WORDS.ja.themeLine,
     // ④ AI に送る
     // 指示の詳しさ（内部の名前は plan：free = 軽量・paid = 詳細。作者の決定 2026-11-07）
