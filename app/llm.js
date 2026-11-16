@@ -99,6 +99,8 @@ const TX = {
     },
     // ③ 見た目
     themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ',
+    // テーマの見本の絵（表紙と本文の 1 枚。押すと大きく出す）
+    themeSampleAlt: { cover: (n) => `${n} の見本：表紙`, body: (n) => `${n} の見本：本文` }, themeSampleClose: '閉じる',
     themeLine: REQUEST_WORDS.ja.themeLine,
     // ④ AI に送る
     // 指示の詳しさ（内部の名前は plan：free = 軽量・paid = 詳細。作者の決定 2026-11-07）
@@ -278,6 +280,7 @@ const TX = {
       other: { title: 'e.g. Neighbourhood summer festival', audience: 'e.g. Families in the neighbourhood', content: 'e.g. Date, time, place, what to bring', wishes: 'e.g. A cheerful tone' },
     },
     themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load theme…', themeMine: 'My themes',
+    themeSampleAlt: { cover: (n) => `${n} sample: cover`, body: (n) => `${n} sample: body` }, themeSampleClose: 'Close',
     themeLine: REQUEST_WORDS.en.themeLine,
     planLegend: 'Choose the instructions for the AI',
     plan: { free: 'Light (any AI)', paid: 'Detailed (for paid AI plans)' },
@@ -656,6 +659,19 @@ export function setupLlm(app) {
     return Q;
   }
 
+  // テーマの見本の絵を大きく出す窓（「テーマを読み込む」の窓と同じく、新規作成の窓 #dlg の上に重ねる別の <dialog>。Esc・×・絵の外を押すと閉じ、押した絵に戻る）
+  function zoomSample(src, alt) {
+    const back = document.activeElement;
+    const d = el('dialog', { id: 'theme-sample-zoom', cls: 'app-dlg', 'aria-label': alt });
+    const close = el('button', { type: 'button', id: 'theme-sample-close', cls: 'ghost', 'aria-label': X.themeSampleClose, title: X.themeSampleClose, text: '×', onclick: () => d.close() });
+    d.append(close, el('img', { src, alt, width: 640, height: 360 }));
+    d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+    d.addEventListener('close', () => { d.remove(); if (back && back.isConnected) back.focus(); });
+    document.body.append(d);
+    d.showModal();
+    close.focus();
+  }
+
   // ③ 見た目（テーマ）。選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマ）。自分のテーマ（フォルダ・このブラウザ）は「自分のテーマ」の見出しの下。
   // 最後の「テーマを読み込む…」で読み込みの窓（ZIP ファイル・テーマのフォルダ）。一覧は「テーマを変更…」と同じ（app.themeOptions）
   async function themeQuestion(title, ctl) {
@@ -677,10 +693,22 @@ export function setupLlm(app) {
     });
     // 選んだ同梱のテーマの「向き」（研究・講義向け など）を、選ぶ欄の下に小さく
     const note = el('small', { id: 'paste-theme-note', cls: 'hint' });
-    const showNote = () => { const o = sel.selectedOptions[0]; note.textContent = (o && o.dataset.note) || ''; };
+    // 選んだ同梱のテーマの見本の絵 2 枚（表紙と本文の 1 枚。tools/theme-thumbs.mjs がサンプル「パーツ図鑑」から作る。app.themeThumbs）。
+    // 押すと大きく出す（新規作成の窓の上に重ねる別の窓。Esc と × で閉じる）。絵のないテーマ（自分のテーマ）では出さない
+    const samples = el('div', { id: 'paste-theme-samples', cls: 'theme-samples' });
+    const showSamples = () => {
+      const o = sel.selectedOptions[0], pics = o && !o.dataset.user && app.themeThumbs ? app.themeThumbs[o.value] : null;
+      samples.hidden = !pics;
+      samples.replaceChildren(...(pics ? ['cover', 'body'].filter((k) => pics[k]).map((k) => {
+        const alt = X.themeSampleAlt[k](o.textContent);
+        return el('button', { type: 'button', cls: 'theme-sample', 'data-kind': k, 'aria-haspopup': 'dialog', onclick: () => zoomSample(pics[k], alt) },
+          [el('img', { src: pics[k], alt, width: 320, height: 180, loading: 'lazy', decoding: 'async' })]);
+      }) : []));
+    };
+    const showNote = () => { const o = sel.selectedOptions[0]; note.textContent = (o && o.dataset.note) || ''; showSamples(); };
     sel.addEventListener('change', showNote);
     showNote();
-    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note])], {
+    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note]), samples], {
       q: () => X.themeLabel, answer: () => (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : sel.value),
       valid: () => !!sel.value, onNext: () => ctl.next(2), onChange: () => ctl.reopen(2), tag: sameTheme,
     });

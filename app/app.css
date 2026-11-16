@@ -436,6 +436,16 @@ main{flex:1;min-height:0;display:flex}
 #dlg.page .paste-step.current,#dlg.page .paste-step:focus-within{border-left-color:var(--accent)}
 #dlg.page .paste-step.pending{padding-bottom:6px}
 #dlg.page #dlg-buttons{position:sticky;bottom:-24px;background:var(--panel);padding:10px 0;margin-top:8px;border-top:1px solid var(--line)}
+/* 新規作成 ③：選んだテーマの見本の絵（表紙と本文。幅 320 px、狭い画面では欄の幅に縮めて縦に並ぶ）と、押すと大きく出す窓 */
+#dlg .theme-samples{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+#dlg .theme-samples[hidden]{display:none}
+#dlg .theme-sample{padding:0;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:zoom-in;line-height:0;max-width:100%;overflow:hidden}
+#dlg .theme-sample:hover,#dlg .theme-sample:focus-visible{border-color:var(--accent)}
+#dlg .theme-sample img{display:block;width:320px;max-width:100%;height:auto;aspect-ratio:16/9}
+#theme-sample-zoom{border:0;border-radius:10px;padding:0;background:#fff;width:min(960px,94vw);max-width:94vw;max-height:94vh;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+#theme-sample-zoom::backdrop{background:rgba(10,12,16,.7)}
+#theme-sample-zoom img{display:block;width:100%;height:auto;max-height:94vh;object-fit:contain;aspect-ratio:16/9}
+#theme-sample-close{position:absolute;top:6px;right:6px;width:36px;height:36px;padding:0;border-radius:50%;font-size:22px;line-height:1;background:rgba(255,255,255,.92);color:#222;border:1px solid rgba(0,0,0,.25)}
 #dlg .paste-content{flex-basis:100%}
 #dlg .paste-content textarea{min-height:160px;font:13px/1.5 inherit;font-family:inherit}
 #dlg .paste-outline{margin:6px 0 8px;padding-left:1.6em;max-height:30vh;overflow:auto;font-size:13.5px}

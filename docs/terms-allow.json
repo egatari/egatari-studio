@@ -616,6 +616,36 @@
       "term": "backup",
       "reason": "控えめ (subdued) is an ordinary word, not 控え for a backup.",
       "keep": true
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "の見本：(表紙|本文)",
+      "term": "sample",
+      "reason": "Alt text of a theme's sample images in New step 3 (「<テーマ名> の見本：表紙」, standards session 2026-11-16, backlog #184 (2)): a specimen of the theme, not a sample lesson (サンプル)."
+    },
+    {
+      "file": "docs/editor.ja.md",
+      "pattern": "見本の画像|の見本：(表紙|本文)",
+      "term": "sample",
+      "reason": "Describes the theme's sample images in New step 3 and quotes their alt text (standards session 2026-11-16): a specimen of the theme, not a sample lesson (サンプル)."
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "の見本：(表紙|本文)",
+      "term": "voice-sample",
+      "reason": "Alt text of a theme's sample images in New step 3 (standards session 2026-11-16), not a voice preview."
+    },
+    {
+      "file": "docs/editor.ja.md",
+      "pattern": "見本の画像|の見本：(表紙|本文)",
+      "term": "voice-sample",
+      "reason": "The theme's sample images in New step 3 and their alt text (standards session 2026-11-16), not a voice preview."
+    },
+    {
+      "file": "docs/editor.md",
+      "pattern": "sample images|sample: (cover|body)",
+      "term": "voice-sample",
+      "reason": "The theme's sample images in New step 3 and their alt text (standards session 2026-11-16), not a voice preview."
     }
   ]
 }
