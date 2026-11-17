@@ -19,7 +19,7 @@
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, fitSize, setPart, TIERS, FREE_CORE } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice, paidOnly } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
 import { PARTS_GALLERY } from './parts-gallery.js';
@@ -788,7 +788,9 @@ export function setupLlm(app) {
     let rec = [];                // おすすめの束と理由（recommend）
     const recSets = () => new Set(rec.map((r) => r.set));
     const isRec = (t) => recSets().has(TIERS.parts[t].set);
-    const chosen = () => listed.filter((t) => ticked.has(t));
+    // 有料のプランの指示にだけ入るパーツ（paidOnly。受け皿のない束のパーツ）は、軽量の指示では一覧に出さず、選んだことにもしない（印を付けても指示に入らないので）
+    const offered = (t) => !(draft.plan === 'free' && paidOnly(t));
+    const chosen = () => listed.filter((t) => ticked.has(t) && offered(t));
     const quote = (s) => (LANG === 'ja' ? `「${s}」` : `“${s}”`);
     const names = (tags) => tags.map((t) => partLabel(t, LANG)).join(LANG === 'ja' ? '・' : ', ');
     // パーツ 1 つ：チェックボックスと絵・名前・1 行の説明（label で全体を押せる）。おすすめには小さな札
@@ -868,10 +870,12 @@ export function setupLlm(app) {
     const update = () => {
       for (const [t, cb] of boxes) {
         const fromIt = fromParts.includes(t) && ticked.has(t);
+        picks.get(t).hidden = !offered(t);
         cb.checked = ticked.has(t); picks.get(t).fromBadge.hidden = !fromIt; picks.get(t).badge.hidden = fromIt || !(isRec(t) && TIERS.parts[t].tier !== 'standard');
       }
       setRadios(planSet, 'paste-plan', draft.plan);
-      count.textContent = X.partsCount(chosen().length, listed.length);
+      for (const g of partsList(null)) groupNodes.get(g.id).hidden = !g.parts.some(offered);
+      count.textContent = X.partsCount(chosen().length, listed.filter(offered).length);
       foldText.textContent = X.partsFold(chosen().length);
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';

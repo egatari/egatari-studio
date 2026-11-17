@@ -4,4 +4,4 @@
 
 ### Changed
 
-- Parts of a part set that Studio has no instructions for yet (the parts library's univ: `m-ctable`, `m-vector`, until part sets become labels) are described only in the paid-plan instructions, with the standard parts, and never name the set. New… lists them without a tick; the free plan leaves them out, since their catalogue lines would take the English standard instructions to 31,588 paste units (cap 31,000)
+- Parts of a part set that Studio has no instructions for yet (the parts library's univ: `m-ctable`, `m-vector`, until part sets become labels) are described only in the paid-plan instructions, with the standard parts, and never name the set. New… lists them, without a tick, only for the paid plan; the free plan leaves them out, since their catalogue lines would take the English standard instructions to 31,588 paste units (cap 31,000)

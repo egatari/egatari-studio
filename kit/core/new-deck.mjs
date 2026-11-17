@@ -13,7 +13,9 @@
 //   SUBJECT_SETS                       教科の形の束（この順に並べる）
 //   SUB_SETS                           小分類 → おすすめの束（§2.3）
 //   WORDS                              {ja|en: {束: [言葉]}}（§2.4。英語の画面では英語の表）
-//   partsList(sub)                     → [{id, label: {ja, en}, parts: [タグ]}]（④ の並び。id は伝えたいことの id か 'subject'）
+//   partsList(sub, plan)               → [{id, label: {ja, en}, parts: [タグ]}]（④ の並び。id は伝えたいことの id か 'subject'）。
+//                                        plan が 'free' なら、有料のプランの指示にだけ入るパーツ（paidOnly）を出さない（plan なしは全部）
+//   paidOnly(tag)                      → 有料のプランの指示にだけ入るパーツか（受け皿のない束のパーツ。tools/make-llm-guide.mjs の hasReceiver）
 //   recommend({sub, text, lang})       → [{set, sub?, word?}]（おすすめの束と理由。小分類が先、それから言葉。束ごとに 1 つ）
 //   initialParts(rec)                  → 初めに選んでおくパーツ（標準の全部とおすすめの束のパーツ。一覧の順）
 //   partsOfSet(set)                    → 束のパーツ（一覧に出るものだけ）
@@ -34,6 +36,7 @@
 // 見せ方（variant。format spec §8.4）は名前だけで選ぶ。教材のシード値（data-egatari-seed）はなくなった：書かない。前の原稿にあれば、そのまま残す（誰も読まない）
 import { updateConfig, merge, configObject } from './config-file.mjs';
 import { TIERS, PACK_CAP_KB } from './llm-pack.mjs';
+import { PACK } from './llm-pack-data.mjs';
 import { partOrder } from './part-labels.mjs';
 import { componentsOff } from './purposes.mjs';
 
@@ -163,8 +166,10 @@ const groupOf = (t) => {
   return p && TIERS.purposes.some((x) => x.id === intoOf(p)) ? intoOf(p) : 'other';
 };
 const byTier = (a, b) => (PARTS[a].tier === 'standard' ? 0 : 1) - (PARTS[b].tier === 'standard' ? 0 : 1);
-export function partsList(sub) {
-  const tags = partOrder(Object.keys(PARTS).filter(shown));
+// 有料のプランの指示にだけ入るパーツ（材料の paidOnly）。無料のプランの ④ には出さない（印を付けても指示に入らないので）
+export const paidOnly = (t) => !!(PACK.en.components[t] && PACK.en.components[t].paidOnly);
+export function partsList(sub, plan) {
+  const tags = partOrder(Object.keys(PARTS).filter((t) => shown(t) && !(plan === 'free' && paidOnly(t))));
   const groups = TIERS.purposes.filter((p) => !p.into).map((p) => ({ id: p.id, label: p.label, parts: tags.filter((t) => groupOf(t) === p.id).sort(byTier) }));
   const other = { ...OTHER_GROUP, parts: tags.filter((t) => groupOf(t) === 'other').sort(byTier) };
   const subject = { ...SUBJECT_GROUP, parts: SUBJECT_SETS.flatMap((s) => tags.filter((t) => groupOf(t) === 'subject' && PARTS[t].set === s)) };

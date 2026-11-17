@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan, paidOnly } from '../kit/core/new-deck.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
 import { NEW_LESSON_CATALOGUE, withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
@@ -129,6 +129,10 @@ ok('a part set without a receiver (univ, owner 11/17): its parts are in the part
   assert.deepEqual(PAID_ONLY, ['m-ctable', 'm-vector']);
   for (const t of PAID_ONLY) { assert.equal(TIERS.parts[t].tier, 'specialized', t); assert.equal(TIERS.parts[t].set, undefined, t); assert.ok(partsList(null).some((g) => g.parts.includes(t)), t); }
   assert.ok(!initialParts([]).some((t) => PAID_ONLY.includes(t)));
+  // 軽量の指示（free）の ④ には出さない（印を付けても指示に入らないので）。詳細の指示（paid）とプランなしでは出す
+  const listedFor = (plan) => partsList(null, plan).flatMap((g) => g.parts);
+  for (const t of PAID_ONLY) { assert.ok(!listedFor('free').includes(t), t + ': not listed on the free plan'); assert.ok(listedFor('paid').includes(t) && paidOnly(t), t + ': listed on the paid plan'); }
+  assert.deepEqual(listedFor('free'), listedFor('paid').filter((t) => !PAID_ONLY.includes(t)));
   assert.ok(!SET_LABELS.some((x) => x.set === 'univ') && !PACK_DATA.sets.includes('univ'));
   for (const lang of ['en', 'ja']) {
     const free = buildPack({ sets: [], lang, plan: 'free' }), paid = buildPack({ sets: [], lang, plan: 'paid' });
