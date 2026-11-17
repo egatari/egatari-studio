@@ -77,7 +77,7 @@ const FAKE_TURNSTILE = `(() => {
   const onload = new URL(document.currentScript.src).searchParams.get('onload');
   const ws = [];
   window.turnstile = {
-    render(el, o) { el.textContent = 'fake check'; el.style.height = '65px'; ws.push(o); setTimeout(() => o.callback('fake-token-' + ws.length), 150); return 'w' + ws.length; },
+    render(el, o) { el.textContent = 'fake check'; el.style.height = '65px'; ws.push(o); const n = ws.length; const t = setInterval(() => { if (window.__passCheck) { clearInterval(t); o.callback('fake-token-' + n); } }, 50); return 'w' + n; },
     reset() { const o = ws[ws.length - 1]; if (o) setTimeout(() => o.callback('fake-token-again'), 400); },
   };
   window[onload]();
@@ -114,6 +114,13 @@ try {
     ok(await p.waitForSelector('#part-request', { state: 'detached', timeout: scaled(5000) }).then(() => true, () => false), 'P1: Close removes the dialog');
     await ctx.close();
   }
+  // 試験の確認（差し替えた Turnstile）は、試験が通すまで済まない（はやい機械で、押せないことを確かめる前に済んでしまわないように）
+  const passCheck = async (p) => {
+    const widget = () => p.frames().find((f) => f.url().startsWith(`${RELAY}/widget`));
+    for (let i = 0; i < 300 && !widget(); i++) await new Promise((r) => setTimeout(r, 50));
+    await widget().waitForFunction(() => !!window.turnstile, null, { timeout: scaled(15000) });
+    await widget().evaluate(() => { window.__passCheck = true; });
+  };
   // P2 中継があるとき
   {
     const { ctx, p, mainReqs } = await open('ja', 'P2');
@@ -125,6 +132,7 @@ try {
     ok(!(await p.$('#part-request input[type=file]')), 'P2: no file field (drawings and photos are not sent)');
     const src = await p.getAttribute('#pr-check', 'src');
     ok(src === `${RELAY}/widget?parent=${encodeURIComponent(BASE.slice(0, -1))}&lang=ja`, `P2: the frame is the relay's widget, with this page's origin and the language (${src})`);
+    await passCheck(p);
     await p.waitForFunction(() => !document.getElementById('pr-send').disabled, null, { timeout: scaled(15000) });
     ok(true, 'P2: Send is enabled once the check has passed');
     await p.click('#pr-send');
@@ -146,6 +154,8 @@ try {
     await p.click('#pr-close');
     // P3 誤り
     await p.click('#w-request');
+    await p.waitForSelector('#part-request[open] #pr-check');
+    await passCheck(p);
     await p.waitForFunction(() => document.getElementById('pr-send') && !document.getElementById('pr-send').disabled, null, { timeout: scaled(15000) });
     await p.fill('#pr-what', '別の図');
     github.next = () => new Response('{"message":"Bad credentials"}', { status: 401 });
@@ -153,6 +163,7 @@ try {
     await p.waitForFunction((t) => document.getElementById('pr-status').textContent === t, STR.ja.errFail, { timeout: scaled(15000) });
     ok(true, 'P3: GitHub refuses: 「送れませんでした」 (errFail)');
     ok(!(await p.$('#pr-url')), 'P3: no issue link');
+    await passCheck(p);
     await p.waitForFunction(() => !document.getElementById('pr-send').disabled, null, { timeout: scaled(15000) });
     ok(true, 'P3: after a new check, Send works again');
     await p.click('#pr-cancel');
