@@ -12,4 +12,4 @@
 
 `trace.py`・`trace-demo` はパーツ集のリポジトリ（egatari/components）の tools フォルダにある。そこから取ってきて使う。
 
-[README](https://github.com/egatari/components/blob/v2.14.0/components/trace/README.md)
+[README](https://github.com/egatari/components/blob/v2.14.1/components/trace/README.md)
