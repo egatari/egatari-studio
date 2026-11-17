@@ -524,7 +524,7 @@ main{flex:1;min-height:0;display:flex}
 /* テーマを作る画面（新規作成 ③ の「オリジナル」。app/theme-workshop.js） */
 #dlg .theme-shop{margin:8px 0 4px;padding:8px 12px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;min-width:0}
 #dlg .theme-shop[hidden]{display:none}
-#dlg .theme-shop h3{margin:0 0 2px}
+#dlg .theme-shop h4{font-size:14px;margin:0 0 2px}
 #dlg .shop-inputs{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-end}
 #dlg .shop-field{display:flex;flex-direction:column;gap:2px;min-width:0}
 #dlg .shop-label{font-size:13px}

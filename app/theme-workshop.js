@@ -150,7 +150,7 @@ export function createThemeWorkshop(app) {
   const baseHex = el('input', { type: 'text', id: 'shop-base-hex', 'aria-label': X.baseHex, maxlength: '7', spellcheck: 'false', autocomplete: 'off', inputmode: 'text' });
   baseIn.addEventListener('input', () => setBase(baseIn.value));
   baseHex.addEventListener('input', () => { const ok = isHex(baseHex.value); baseHex.toggleAttribute('aria-invalid', !ok); if (ok) setBase(baseHex.value, true); });
-  const logoFile = el('input', { type: 'file', id: 'shop-logo-file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', hidden: '' });
+  const logoFile = el('input', { type: 'file', id: 'shop-logo-file', accept: 'image/png,image/jpeg,image/webp,image/svg+xml', 'aria-label': X.logo, hidden: '' });
   const logoBtn = el('button', { type: 'button', id: 'shop-logo', text: X.logo, onclick: () => logoFile.click() });
   const logoOut = el('div', { id: 'shop-logo-colours', cls: 'shop-swatches', role: 'group', 'aria-label': X.logoColours, hidden: '' });
   const logoNote = el('p', { id: 'shop-logo-note', cls: 'hint', role: 'status', hidden: '' });
@@ -248,7 +248,7 @@ export function createThemeWorkshop(app) {
     return el('div', { cls: 'shop-colour', 'data-token': k }, [el('label', { for: `shop-c-${k}`, text: cap(X.name[k]) }), c, h]);
   }));
   const reset = el('button', { type: 'button', id: 'shop-reset', text: X.reset, onclick: () => { S.overrides = {}; render(); } });
-  const coverFile = el('input', { type: 'file', id: 'shop-cover-file', accept: COVER_TYPES.join(','), hidden: '' });
+  const coverFile = el('input', { type: 'file', id: 'shop-cover-file', accept: COVER_TYPES.join(','), 'aria-label': X.cover, hidden: '' });
   const coverNow = el('span', { id: 'shop-cover-now', cls: 'hint', text: X.coverNone });
   const coverRemove = el('button', { type: 'button', id: 'shop-cover-remove', text: X.coverRemove, hidden: '', onclick: () => { S.cover = ''; S.coverBg = null; coverNow.textContent = X.coverNone; coverRemove.hidden = true; render(); } });
   coverFile.addEventListener('change', async () => {
@@ -298,7 +298,7 @@ export function createThemeWorkshop(app) {
 
   // ---------------------------------------------------------------- 全体
   const node = el('section', { id: 'theme-shop', cls: 'theme-shop', 'aria-labelledby': 'theme-shop-h', hidden: '' }, [
-    el('h3', { id: 'theme-shop-h', text: X.head }),
+    el('h4', { id: 'theme-shop-h', text: X.head }),
     el('p', { cls: 'hint', text: X.lead }),
     el('div', { cls: 'shop-inputs' }, [
       el('div', { cls: 'shop-field' }, [el('label', { for: 'shop-base', text: X.base }), el('div', { cls: 'shop-row' }, [baseIn, baseHex, logoBtn, logoFile])]),
