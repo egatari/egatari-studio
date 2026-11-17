@@ -1,5 +1,5 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
-//   node tools/test-all.mjs [--only 名前,名前] [--jobs N] [--verbose] [--list] [--help]
+//   node tools/test-all.mjs [--only 名前,名前] [--platform] [--skip-os-independent] [--jobs N] [--verbose] [--list] [--help]
 //   --help：使い方を出して終わる
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
@@ -17,6 +17,8 @@
 // --platform：OS に左右されるところだけを走らせる（CI の macOS の既定。.github/workflows/test.yml）：ブラウザの試験でない段（組み立て・品質チェック・
 //   作ったファイルの --check・単体の検査）と、先頭の 40 行に「// test-all: platform」の行がある試験（パス・file:// の URL・字体と字の組み方・
 //   WebKit・npm の包み）。ほかの試験はブラウザの中の振る舞いを見るので、Linux と Windows の全部の試験で足りる
+// --skip-os-independent：先頭の 40 行に「// test-all: os-independent」の行がある試験（ファイルの中身や作ったものだけを確かめ、OS で結果が変わらない重い段）を外す。
+//   CI の macOS で、タグ（v*）の push でない実行が付ける（.github/workflows/test.yml）。Linux と Windows は毎回走らせ、macOS ではタグの実行だけで走らせる
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,10 +33,14 @@ const JOBS_MAX = 6;
 // これより少ないメモリ（GiB）の機械では、メモリを多く使う段どうしを重ねない（下の HEAVY）
 const MEM_HEAVY_GIB = 12;
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--jobs N] [--verbose] [--list]
-  --only name,name  run only these steps (and the builds they need); "test-components" and "test-app" select both halves
+  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--skip-os-independent] [--jobs N] [--verbose] [--list]
+  --only name,name  run only these steps (and the builds they need); "test-components" and "test-app" select all their shards
   --platform        run only the platform-sensitive steps: every step that is not a browser test (builds, checks,
                     generated-file checks, unit tests) and the tests marked "// test-all: platform" (paths, fonts, WebKit, npm pack)
+  --skip-os-independent
+                    leave out the tests marked "// test-all: os-independent": heavy steps whose result depends only on file
+                    contents and generated output, not on the OS (CI's macOS job sets it except for a v* tag push;
+                    Linux and Windows run them every time)
   --jobs N          run up to N steps at once, longest first (default: CPUs - 1, at most ${JOBS_MAX}); steps marked
                     "// test-all: serial" run last, one at a time. --jobs 1 runs the steps in table order
   --verbose         stream every step's output (also when CI is set)
@@ -49,6 +55,7 @@ const oi = args.indexOf('--only');
 if (oi >= 0 && !(args[oi + 1] && !args[oi + 1].startsWith('--'))) { console.error('test-all: --only needs step names (name,name); --list prints them'); process.exit(2); }
 const only = oi >= 0 ? new Set(args[oi + 1].split(',')) : null;
 const platformOnly = args.includes('--platform');
+const skipOsIndependent = args.includes('--skip-os-independent');
 const verbose = args.includes('--verbose') || !!process.env.CI;
 const ji = args.indexOf('--jobs');
 const jobs = ji >= 0 ? Number(args[ji + 1]) : Math.max(1, Math.min(JOBS_MAX, (os.availableParallelism ? os.availableParallelism() : os.cpus().length) - 1));
@@ -72,6 +79,8 @@ const markOf = (f) => { const m = head40(f).match(MARK); return m ? m[1] : null;
 const SERIAL = /^\/\/ test-all: serial\b/m;
 // OS に左右される試験の印（--platform で走らせる）
 const PLATFORM = /^\/\/ test-all: platform\b/m;
+// OS で結果の変わらない重い試験の印（--skip-os-independent で外す。CI の macOS のタグでない実行）
+const OS_INDEPENDENT = /^\/\/ test-all: os-independent\b/m;
 const testFiles = fs.readdirSync(rel('tools')).filter((f) => /^test-.+\.mjs$/.test(f) && f !== 'test-all.mjs').sort();
 const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace(/\.mjs$/, ''), ['tools/' + f]]);
 const steps = [
@@ -193,9 +202,9 @@ const steps = [
   // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
   ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
-  // 編集アプリ（サンプルが 6 つになって、ubuntu の CI で 1 段の上限 900 秒の際の 870〜900 秒になった）は、前半（2〜10d）と後半（10c〜13b）の 2 段に分ける
-  // （--only test-app で両方。tools/test-app.mjs の --part）
-  ...[1, 2].map((i) => [`test-app ${i}/2`, ['tools/test-app.mjs', '--part', `${i}/2`, path.join(tmp, `app-${i}`)]]),
+  // 編集アプリ（サンプルが 6 つになって、ubuntu の CI で 1 段の上限 900 秒の際の 870〜900 秒になった）は 3 段に分ける：2〜10d と 11、10c・12・13・13b、12b・12c
+  // （2 段のときは後半が ubuntu で 519〜900 秒、macOS で 878 秒。handoff Issue #10）。--only test-app ですべて。tools/test-app.mjs の --part
+  ...[1, 2, 3].map((i) => [`test-app ${i}/3`, ['tools/test-app.mjs', '--part', `${i}/3`, path.join(tmp, `app-${i}`)]]),
   // 編集アプリのプレビューで音声が鳴ること（1 ファイル・発表者ビュー・展開したフォルダ）：時間に敏感なので test-app から分けた（serial。backlog #156）
   ['test-app-audio', ['tools/test-app-audio.mjs', path.join(tmp, 'app-audio')]],
   // 新規作成 ③ のテーマの見本の絵（表紙と本文）：テーマごとの 2 枚と alt（ja・en）、大きく出す窓（Esc・×）、幅 390 px、1 ファイル版の data: URL
@@ -340,8 +349,9 @@ if (orphans.length) {
 // 時間の目安（秒）：長い段から先に始め、最後に長い段が 1 つだけ残らないように。windows-latest の main の CI（run 41300438072）の値。
 // 載っていない段は HINT_DEFAULT_S。目安が外れても結果は変わらない（終わる時刻が変わるだけ）
 const HINT_DEFAULT_S = 8;
+// test-app は 3 段に分けたとき（v0.6.15、handoff Issue #10）に、2 段の 222 秒ずつを手元で測った割合（1/3：139 秒・2/3：165 秒のうちサンプルを組むのが約 74 秒・3/3：113 秒。サンプルは同じ回のほかの段と分け合うので、組み済みとして）で分けた
 const HINT_S = {
-  'test-app 1/2': 222, 'test-app 2/2': 222, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
+  'test-app 1/3': 175, 'test-app 2/3': 130, 'test-app 3/3': 140, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
   'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
   'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35, 'test-app-mp4': 30, 'test-render-audio': 35,
@@ -366,7 +376,7 @@ const depsOf = (name, argv) => [...new Set([needs[name], ...(after[name] || []),
 // メモリを多く使う段（ブラウザのページをいくつも開く・子のプロセスで品質チェックを並べる）。macOS の CI（3 vCPU・7 GB）で 2 つが重なると、
 // どちらも 3 倍近く遅くなり（test-app 340 → 1300 s、test-pack-catalogue 200 → 830 s。14 GB の runner では重なっても 390〜450 s）、
 // 段の上限で止められ、runner が応答をなくして job ごと落ちたこともある（run 41795793989 の 2 回目）。少ないメモリの機械ではこれらを重ねない
-const HEAVY = new Set(['test-app 1/2', 'test-app 2/2', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
+const HEAVY = new Set(['test-app 1/3', 'test-app 2/3', 'test-app 3/3', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
 const heavyAlone = process.env.TEST_HEAVY_ALONE ? process.env.TEST_HEAVY_ALONE === '1' : os.totalmem() < MEM_HEAVY_GIB * 2 ** 30;
 const lockOf = (name) => lock[name] || (heavyAlone && HEAVY.has(name) ? 'memory' : null);
 const isSerial = (name, argv) => argv.some((a) => /^tools\/test-.+\.mjs$/.test(a) && SERIAL.test(head40(a.slice('tools/'.length))));
@@ -424,10 +434,11 @@ function run(name, argv, stream = verbose) {
     ch.on('close', (code, sig) => { clearTimeout(timer); active.delete(name); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }
-// 選んだ段（--only・--platform）と、それが待つ段（組み立て。needs・after・引数の組んだデッキ）
+// 選んだ段（--only・--platform・--skip-os-independent）と、それが待つ段（組み立て。needs・after・引数の組んだデッキ）
 const testOf = (argv) => argv.find((a) => /^tools\/test-.+\.mjs$/.test(a));
 const isPlatform = (argv) => { const t = testOf(argv); return !t || (argv.length === 1 && markOf(t.slice('tools/'.length)) === 'unit') || PLATFORM.test(head40(t.slice('tools/'.length))); };
-const picked = (name, argv) => (!only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, ''))) && (!platformOnly || isPlatform(argv));
+const isOsIndependent = (argv) => { const t = testOf(argv); return !!t && OS_INDEPENDENT.test(head40(t.slice('tools/'.length))); };
+const picked = (name, argv) => (!only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, ''))) && (!platformOnly || isPlatform(argv)) && !(skipOsIndependent && isOsIndependent(argv));
 const chosen = new Set();
 const choose = (name, argv) => {
   if (chosen.has(name)) return;
@@ -436,7 +447,7 @@ const choose = (name, argv) => {
 };
 for (const [name, argv] of steps) if (picked(name, argv)) choose(name, argv);
 const selected = (name) => chosen.has(name);
-// --list（--only・--platform があれば、選んだ段だけ）
+// --list（--only・--platform・--skip-os-independent があれば、選んだ段だけ）
 if (args.includes('--list')) {
   for (const [name, argv] of steps) if (selected(name)) console.log(`${name}\tnode ${argv.map((a) => a.split(tmp).join('<tmp>')).join(' ')}`);
   if (!process.env.MOTION_TEST_ARTIFACTS) fs.rmSync(tmp, { recursive: true, force: true });

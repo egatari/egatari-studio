@@ -1,4 +1,6 @@
 // AI への指示（instruction pack）が出すパーツと、新しい教材の既定のカタログ（パーツライブラリ 2.x）が合っているか（#165 の続き）
+// test-all: os-independent（--skip-os-independent で外す：確かめるのは指示とカタログの中身が合うこと。見本を組む・ブラウザで動かす所は、
+//   macOS でも test-components（各パーツの demo.html）と組み立て・品質チェックの段が走らせる）
 //   node tools/test-pack-catalogue.mjs [出力先] [名前 …]
 // 新しい教材は egatari.json の "componentsCatalogue": "2"（components2.lock.json の default）で組む。指示はその既定のカタログの manifest から作る。
 // 確かめること：
