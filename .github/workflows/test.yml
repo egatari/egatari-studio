@@ -150,9 +150,9 @@ jobs:
   macos:
     runs-on: macos-latest
     # 2026-11-12: 120 for push/full (was 90): v0.6.11 suite growth (test-app 2/2 301→771 s) cut two full runs at 90 min with 2 steps left; back to 90 once the duplication in test-app is fixed (before v0.6.11-rc.1)
-    # v0.6.15 (handoff Issue #10): test-app is now 3 shards and push/full runs skip test-pack-catalogue (--skip-os-independent, see the top); still 120 until
-    # a push/full run is measured: 90 if it fits, else keep 120
-    timeout-minutes: ${{ (github.event_name == 'push' || inputs.full) && 120 || 40 }}
+    # v0.6.15 (handoff Issue #10): test-app is now 3 shards and branch/full runs skip test-pack-catalogue (--skip-os-independent, see the top).
+    # Measured full run 44159306371: 76 min (test-app 310/344/404 s) -> 90. Tag runs keep 120: they also run test-pack-catalogue (200-330 s alone)
+    timeout-minutes: ${{ github.ref_type == 'tag' && 120 || (github.event_name == 'push' || inputs.full) && 90 || 40 }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
