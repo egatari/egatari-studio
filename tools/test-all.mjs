@@ -192,6 +192,10 @@ const steps = [
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
   // Viewer のマークアップ（本の書き込み・暗記）：枠の中の層、ページの側の検査（形・上限・docId）、共有の端末、鍵盤、試験の形の偽の頼み
   ['test-viewer-markup', ['tools/test-viewer-markup.mjs', path.join(tmp, 'viewer-markup')]],
+  // Viewer の作成と編集の行（spec §3.6.1 edits）：古いプレーヤー＋段 A で足した edits・新しいプレーヤー・edits なし。一覧のダイアログ、英語、390px
+  ['test-viewer-credits', ['tools/test-viewer-credits.mjs', path.join(tmp, 'viewer-credits')]],
+  // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-credits-webkit', ['tools/test-viewer-credits.mjs', path.join(tmp, 'viewer-credits-webkit'), '--webkit']],
   // サイトのプレーヤー（play/site-player.mjs、tools/build-site-player.mjs）：見出しなしの置き場所で、lock との照合・opaque な枠・リンクの箱・枠の中を断る
   ['test-site-player', ['tools/test-site-player.mjs', path.join(tmp, 'site-player')]],
   // Viewer のページの WCAG 2.2 AA の自動の検査（axe-core）：最初の画面・教材・本・マークアップ・ダイアログ・ライブの参加の画面。教材の枠の中は一覧にするだけ
