@@ -5,9 +5,11 @@
 
 ### `<m-trace>`
 
-値はローカルで動かすトレーサー `tools/trace.py`（`uv run tools/trace.py prog.py --out trace.json`）の出力をそのまま子の JSON に書く。手で書かない。パーツはコードを実行しない。
+値はローカルで動かすトレーサー `trace.py`（`uv run trace.py prog.py --out trace.json`）の出力をそのまま子の JSON に書く。手で書かない。パーツはコードを実行しない。
 
 
-サンプルは `demo.html`（for 文の合計、辞書で数える、バブルソートを by="time" で）。トレースは `tools/trace-demo/` のプログラムを `tools/trace.py` で追った出力。
+サンプルは `demo.html`（for 文の合計、辞書で数える、バブルソートを by="time" で）。トレースは `trace-demo/` のプログラムを `trace.py` で追った出力。
+
+`trace.py`・`trace-demo` はパーツ集のリポジトリ（egatari/components）の tools フォルダにある。そこから取ってきて使う。
 
 [README](https://github.com/egatari/components/blob/v2.14.0/components/trace/README.md)

@@ -186,7 +186,10 @@ assert.ok(make.includes('egatari-studio') && make.includes('https://studio.egata
 for (const tag of Object.keys(data.ja.components)) assert.ok(Object.entries(generated).some(([f, t]) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && t.includes(`### \`<${tag}>\``)), tag);
 // 束（セット）ごとの参照ファイル：標準・材料の束（manifest の set）・特殊。特殊は README への道だけで、本文や props を複製しない（backlog #125）
 const refFiles = Object.keys(generated).filter((f) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && !f.includes('/en/')).map((f) => path.basename(f)).sort();
-assert.deepEqual(refFiles, ['standard', ...data.sets, 'extra'].map((x) => x + '.md').sort());
+// local（ローカル（CLI）向け、#213。m-trace）は、そのパーツがあるときだけ
+const hasLocal = !!generated[`${MAKE_SKILL_DIR}/references/parts/local.md`];
+assert.deepEqual(refFiles, ['standard', ...data.sets, 'extra', ...(hasLocal ? ['local'] : [])].map((x) => x + '.md').sort());
+if (hasLocal) assert.ok(!/\btools\//.test(generated[`${MAKE_SKILL_DIR}/references/parts/local.md`]), 'local.md: no repository paths (tools/…)');
 const extraRef = generated[`${MAKE_SKILL_DIR}/references/parts/extra.md`];
 assert.ok(data.extra.includes('m-codetree') && data.extra.includes('m-collect'));
 for (const t of data.extra) assert.ok(extraRef.includes(`${t.replace(/^m-/, '')}/README.md`) && !data.ja.components[t], t);

@@ -5,8 +5,10 @@ Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the outp
 
 ### `<m-trace>`
 
-JSON from `uv run tools/trace.py prog.py --out trace.json`, never by hand.
+JSON from `uv run trace.py prog.py --out trace.json`, never by hand.
 
-Demo: `demo.html` (a for-loop sum, counting words in a dict, bubble sort with by="time"); traces from `tools/trace-demo/` through `tools/trace.py`.
+Demo: `demo.html` (a for-loop sum, counting words in a dict, bubble sort with by="time"); traces from `trace-demo/` through `trace.py`.
+
+`trace.py`, `trace-demo` are in the tools folder of the parts library repository (egatari/components). Get them from there.
 
 [README](https://github.com/egatari/components/blob/v2.14.0/components/trace/README.en.md)

@@ -613,7 +613,17 @@ export function skillFiles(data, lang = 'ja', local = []) {
       const intro = ja
         ? 'ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI で、ローカルのツールの出力（例：トレーサーが書くコードの実行の記録）から作る。チャットの AI への指示には入らない。そのツールを動かせないときは使わない。'
         : 'Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer\'s record of running code). They are not in the chat AI instructions. Do not use them when you cannot run the tool.';
-      const body = (x) => `### \`<${x.tag}>\`\n\n${String((ja ? x.ja : x.en || x.ja) || '').trim()}\n\n[README](${x.src}${x.tag.replace(/^m-/, '')}/README${ja ? '' : '.en'}.md)`;
+      // README の本文はパーツ集のリポジトリから見たパス（tools/trace.py など）で書かれる。スキルは Studio のリポジトリの外でも読まれるので、
+      // そのパスはパーツ集のものだと書き添え、リポジトリの中の場所の前置き（tools/）は外す（tools/test-plugin.mjs の makeForbidden）
+      const repoPaths = (t) => {
+        const named = new Set();
+        const out = t.replace(/\btools\/([A-Za-z0-9_.-]+\/?)/g, (_, p) => { named.add(p.replace(/\/$/, '')); return p; });
+        if (!named.size) return out;
+        const list = [...named].map((p) => `\`${p}\``).join(ja ? '・' : ', ');
+        return out + '\n\n' + (ja ? `${list} はパーツ集のリポジトリ（egatari/components）の tools フォルダにある。そこから取ってきて使う。`
+          : `${list} ${named.size > 1 ? 'are' : 'is'} in the tools folder of the parts library repository (egatari/components). Get ${named.size > 1 ? 'them' : 'it'} from there.`);
+      };
+      const body = (x) => `### \`<${x.tag}>\`\n\n${repoPaths(String((ja ? x.ja : x.en || x.ja) || '').trim())}\n\n[README](${x.src}${x.tag.replace(/^m-/, '')}/README${ja ? '' : '.en'}.md)`;
       files[`${MAKE_SKILL_DIR}/${refDir}local.md`] = skillTerms(head + `# ${ja ? 'local のパーツ' : 'local parts'}\n\n${intro}\n\n` + [...local].sort((a, b) => (a.tag < b.tag ? -1 : 1)).map(body).join('\n\n') + '\n');
     }
     const links = [...sets.keys(), ...(local.length ? ['local'] : [])].map((set) => `- [${set}](${refDir}${set}.md)`).join('\n');
