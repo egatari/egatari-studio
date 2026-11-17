@@ -285,6 +285,27 @@
       "pairs": true
     },
     {
+      "file": "app/i18n.js",
+      "line": "editRoleTitle:",
+      "term": "created-by",
+      "reason": "The question before the first save (format spec §7.3) asks whether the person is one of the creators; en says “a creator of this lesson”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "editRoleMine:",
+      "term": "created-by",
+      "reason": "The answer to that question; en says “I am a creator of this lesson”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "editShown:",
+      "term": "created-by",
+      "reason": "Says where the edit appears in File info (after the creators); en says “after the creators”.",
+      "pairs": true
+    },
+    {
       "file": "app/llm.js",
       "line": "thumbAlt:",
       "term": "sample",

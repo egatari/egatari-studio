@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=49236660ec88a924 -->
+<!-- i18n: pair=reference.md sha256=a1ac24fe7e77e197 -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -298,7 +298,7 @@ CSS はほかのフォント（端末に入っているフォントなど）も�
 | Backspace / Alt+← | それ以外で、スライドへのリンクで来た後：リンクを押した位置へ戻る（左上の **戻る** ボタンとブラウザの戻るも同じ） |
 | Tab / Shift+Tab | ツールバーのボタンを選ぶ（Enter / Space で押す。Esc でスライドに戻る） |
 | Esc | ツールを解除、キーの一覧を閉じる |
-| ? | キーの一覧（`server/dev.mjs` で開いたときは開発サーバーのキーも）。ファイルに書かれていれば、教材のファイルの情報（題名・作成者・著作権・ライセンス・クレジットの表示）も |
+| ? | キーの一覧（`server/dev.mjs` で開いたときは開発サーバーのキーも）。ファイルに書かれていれば、教材のファイルの情報（題名・作成者・編集・著作権・ライセンス・クレジットの表示）も |
 
 ### ツールバー（開いたときに出て、その後はマウスを動かす・タップすると出る）
 
@@ -553,7 +553,7 @@ Egatari の品質管理は、**規格**（[書き方の指示](authoring-with-ll
 
 - **入るもの**：build が作業フォルダから読むファイルすべて（`deck.html`・`narration.md`・`macros.tex`・`timeline.json`・データ・図・画像・CSS・作業フォルダのパーツとテーマ）、ローカルのパスを声の名前だけにした `voice.json`、`audio/manifest.json` の音声のうち台本にあるステップのもの（`--embed-audio` と同じく AAC に圧縮。ffmpeg がなければ WAV のまま、警告）。音声は 1 回だけ入り、ランタイムはそこから再生する。
 - **入らないもの**：`comments.json`、ドットで始まるファイルとフォルダ（`.cache/`・`.git/`・`.env` など）、`out/`・`video/`・`bundle/`・`node_modules/`、バックアップ、`*.local.json`、資格情報、使っていない音声と TTS のバックアップのファイル。build が読んだのに外したファイルは知らせる。このリポジトリのパーツとテーマはコピーせず、名前・バージョン・SHA-256 で参照する（自分のテーマのフォルダ（`EGATARI_THEMES`・`~/.egatari/themes`）のテーマは、教材の `themes/<名前>/` としてコピーする）。パーツライブラリ・テーマ庫の名前は 1 つの識別子（`^[a-z][a-z0-9-]{0,63}$`）で、それ以外（パス・`..`・大文字）の名前を書いたファイルは読み手が断る。
-- **教材の id**：初めてのエクスポートで、作業フォルダに乱数の `docId` を持つ `egatari.json` を作る。教材と一緒に残す（次のエクスポートも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`license`・`copyright`・`attribution`・`creators` はランタイムのメタデータ（`deck-meta`。作業フォルダのビルドでも）にもコピーするので、再生専用のコピーにも残り、プレーヤーのキーの一覧（`?`）の「ファイルの情報」に出る（題名・作成者・著作権・ライセンス・クレジットの表示）。題と言語は `<title>` と `<html lang>` から。
+- **教材の id**：初めてのエクスポートで、作業フォルダに乱数の `docId` を持つ `egatari.json` を作る。教材と一緒に残す（次のエクスポートも同じ id になる）。任意の `metadata` に `license`（SPDX の識別子か URL）・`copyright`・`attribution`・`creators`・`edits`・`description`・`accessibility`・`curriculum`・`completion`・`derivedFrom`・`authorship`・`audience` を書ける。`edits`（形式の §3.6.1）は、ほかの人の教材を直した人の記録で、古い順に `[{"by": "○○高校 情報科", "note": "2 章のデータを地域のものに差し替え"}]` のように書く。`by` はその人が表示することにした名前（名前を出さないときは書かない）、`note` は直した内容で、日付は持たない。`by` と `note` の文字だけを持つ object でない項目は、警告を出してコピーしない。`license`・`copyright`・`attribution`・`creators`・`edits` はランタイムのメタデータ（`deck-meta`。作業フォルダのビルドでも）にもコピーするので、再生専用のコピーにも残り、プレーヤーのキーの一覧（`?`）の「ファイルの情報」に出る（題名・作成者・編集・著作権・ライセンス・クレジットの表示）。`edits` の項目は作成者の後に 1 件 1 行で「編集：○○高校 情報科（2 章のデータを地域のものに差し替え）」、名前のない項目は「元の教材から編集されています」と出る。題と言語は `<title>` と `<html lang>` から。
 - **プレーヤーと作成**（仕様 §4.1・§7.1）：索引と `deck-meta` に、同梱のプレーヤー `player`（`{"name": "egatari-player", "version": …, "title": "Egatari Player"}`。`title` は人に見せる名前、`name` は変わらない識別子。バージョンは `kit/player.json` のもので、プレーヤーのファイルが `kit/player.lock.json` に記録したリリースと違えば `+dev.<commit>` を付ける。`npm run player:check`）と、ファイルを書いたソフト（作成）`generator`（`{"name": "egatari-studio", "version": <Studio のバージョン>, "title": "Egatari Studio"}`）を書く。`contracts` は `{"source": 1}`。再ビルドしない保存（段 A）は `player` と `generator` をバイトのまま残す。再ビルドするとこの Studio のものを書き、ファイルがほかのプレーヤーを持っていたときは知らせる（`playerChange`）。編集アプリはそのとき保存の前に聞く（[編集アプリ](editor.ja.md)の「再ビルドして保存する」）。
 - **ファイルの CSP**（仕様 §4.2 の file policy）：`<meta charset>` のすぐ後、どのスクリプト・スタイル・リンクよりも前に `<meta http-equiv="Content-Security-Policy">`。中身は基準のもので、どこにも繋がらない（`connect-src 'none'`）。ライブ付きの再生専用ファイルは、ライブの endpoint だけをその場で `connect-src` に足す。`embed`（どのファイルでも `deck-extensions` にコピーする）の行き先は `frame-src` に入る。CSP がない・置き場所が違う・中身が違う（解析したディレクティブで比べる）ファイルは、読み手が「仕様に合わない」と知らせる（再生はできる）。
 - **スライドの id**（仕様 §8.1）：ファイルの中のスライドにはどれも id、台本の見出しにはどれも `{#id}` がある。ないもの（AI が書いたばかりの教材、見出しの字・手で書いた `data-key`・`s<n>` の旧いキー）にはエクスポートで付け、作業フォルダにも書き戻す（`audio/manifest.json`・`timeline.json`・`comments.json`・`egatari.json` のキーも。バックアップは `.cache/edits/`）。build と品質チェックは id のないものも受け付ける。

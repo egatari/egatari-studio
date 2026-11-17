@@ -250,6 +250,13 @@ const ja = {
   rNdCopyright: 'ライセンスが書かれておらず、著作権の表示だけがあります。改変したり、改変したものを配ったりすると、権利者の著作権を侵すおそれがあります',
   rConfirm: 'これを理解したうえで、自分の責任で編集します', rContinue: '編集を有効にする', rightsDeclined: '編集をやめました',
   rKeep: '保存しても、著作権・クレジットの表示・作成者はそのまま残ります', rClaims: 'これらはファイルに書かれた申告で、エディタが確かめたものではありません',
+  // 保存の前に、作成者か、ほかの人の教材を編集しているかを聞く（format spec §7.3。metadata.edits）
+  editRoleTitle: 'この教材の作成者ですか', editRoleCreators: (n) => `作成者：${n}`,
+  editRoleMine: 'はい、この教材の作成者です', editRoleOther: 'いいえ、ほかの人の教材を編集しています',
+  editBy: '名前（学校名など）', editByPh: '例：○○高校 情報科', editNote: '編集した内容（省略できます）', editNotePh: '例：2 章のデータを地域のものに差し替え',
+  editShown: 'ファイルの情報で、作成者の後に「編集：名前（内容）」と表示されます。名前は入力したとおりにファイルに保存されます',
+  editRequired: (l) => `この教材のライセンス（${l}）は、変更したことを示すよう求めています。名前を空にすると、名前なしで「元の教材から編集されています」と表示されます`,
+  editRemember: 'この端末では、この教材について次からは聞きません',
   reading: (n) => `${n} を読んでいます…`, cannotReadFile: 'ファイルを読めませんでした', cannotOpenFile: (n) => `${n} を開けません`,
   refuse: (c) => ({
     'no-source': `このファイルは Egatari ファイル（${FX}）ではないので、ここでは開けません。作業フォルダか ${FX} のファイルを開いてください`,
@@ -712,6 +719,12 @@ const en = {
   rNdCopyright: 'No license is stated, only a copyright notice. Modifying the lesson or sharing a modified copy may infringe the rights holder’s copyright.',
   rConfirm: 'I understand this and edit on my own responsibility', rContinue: 'Enable editing', rightsDeclined: 'Editing cancelled',
   rKeep: 'Saving keeps the copyright, attribution and creators as they are.', rClaims: 'These are claims written in the file; the editor has not verified them.',
+  editRoleTitle: 'Are you a creator of this lesson?', editRoleCreators: (n) => `Created by: ${n}`,
+  editRoleMine: 'Yes, I am a creator of this lesson', editRoleOther: 'No, I am editing someone else’s lesson',
+  editBy: 'Name (such as your school)', editByPh: 'e.g. Example High School, Computer Science', editNote: 'What you changed (optional)', editNotePh: 'e.g. Replaced the data in chapter 2 with local data',
+  editShown: 'File info shows “Edited by: name (what you changed)” after the creators. The name is saved in the file as you type it.',
+  editRequired: (l) => `The license of this lesson (${l}) asks you to indicate changes. If you leave the name empty, it shows “Edited from the original lesson” without a name.`,
+  editRemember: 'You will not be asked again about this lesson on this device.',
   reading: (n) => `Reading ${n}…`, cannotReadFile: 'Could not read the file', cannotOpenFile: (n) => `Cannot open ${n}`,
   refuse: (c) => ({
     'no-source': `This file is not an Egatari file (${FX}), so it cannot be opened here. Open a working folder or a ${FX} file.`,

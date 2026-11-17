@@ -26,7 +26,7 @@ import { loadLame } from './mp3-loader.js';
 import { writeFile, cancelledError, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
-import { rightsOf } from './rights.js';
+import { rightsOf, requiresChangeNote, addEdit } from './rights.js';
 import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex } from '../kit/core/portable.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
@@ -42,7 +42,7 @@ import { imageSizeFindings } from '../kit/core/image-size.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { colabVideoUrl } from '../kit/core/colab-core.mjs';
-import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
+import { updateConfig, merge as configMerge, configObject } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { scormPackage, completionRule, SCORM_EXT } from '../kit/core/scorm.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
@@ -1638,7 +1638,7 @@ async function openPortableNow(input) {
   stopPoll();
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
-  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, fresh: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
     neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の返事を貼り付けて作った：まだどのファイルにもない
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
@@ -1854,6 +1854,65 @@ async function themeOnlyChange(P, a, files) {
     return themeOf(before) !== to && withTheme(before, to) === after;
   } catch { return false; }
 }
+// ---------------------------------------------------------------- 編集の記録（format spec §3.6.1・§7.3）
+// エディタには、だれが編集しているかが分からないので聞く。内容を変えて初めて保存するとき、この教材の作成者か、ほかの人の教材を編集しているかを聞く。
+// 答えはこの端末に教材（docId）ごとに覚える（ファイルには書かない）。ファイルに書くのは、使う人が入力した名前と内容だけ。
+// ほかの人の教材なら metadata.edits に 1 件足す（同じ名前があれば内容だけ新しくする。app/rights.js の addEdit）。ライセンスが変更を示すよう求め
+// （Creative Commons の 4.0）、名前が空なら名前なしの項目を足す。今ある項目は消さず、変えない。
+// 聞かないもの：この Studio で作った（AI の返事から・deck.html だけを開いた）教材、だれの教材とも書かれていない教材（作成者・著作権・ライセンス・クレジット・編集の記録がない）
+const EDIT_ROLE_KEY = 'egatari-edit-role:';
+function editRoleKnown(docId) { try { return localStorage.getItem(EDIT_ROLE_KEY + docId); } catch { return null; } }
+function editRoleRemember(docId, v) { try { localStorage.setItem(EDIT_ROLE_KEY + docId, v); } catch { /* 使えない環境：開いている間だけ覚える */ } }
+// → true（保存を続ける）・false（キャンセルした）
+async function askEditRole(P, ws, live) {
+  if (P.editRole || P.fresh || P.sourceOnly || P.neverSaved || !ws.dirty) return true;
+  const md = P.index && P.index.metadata && typeof P.index.metadata === 'object' ? P.index.metadata : {};
+  const R = rightsOf(md);
+  if (!R.creators.length && !R.copyright && !R.license && !R.attribution && !Array.isArray(md.edits)) return true;
+  const docId = P.index.docId;
+  const known = (window.__APP_TEST && window.__APP_TEST.editRole) || editRoleKnown(docId);
+  if (known === 'creator' || known === 'other') { P.editRole = known; return true; }
+  const required = requiresChangeNote(R.license);
+  const radio = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-role', value, id: 'edit-role-' + value }), el('span', { text: label })]);
+  const mine = radio('creator', T.editRoleMine), other = radio('other', T.editRoleOther);
+  const by = el('input', { type: 'text', id: 'edit-by', maxlength: '120', placeholder: T.editByPh, autocomplete: 'organization' });
+  const note = el('input', { type: 'text', id: 'edit-note', maxlength: '300', placeholder: T.editNotePh });
+  const fields = el('div', { id: 'edit-fields' }, [
+    el('label', { for: 'edit-by', text: T.editBy }), by,
+    el('label', { for: 'edit-note', text: T.editNote }), note,
+    el('p', { cls: 'hint', text: T.editShown }),
+    required ? el('p', { id: 'edit-required', cls: 'hint', text: T.editRequired(R.license) }) : null,
+  ]);
+  fields.hidden = true;
+  const pending = ask({ title: T.editRoleTitle, body: [
+    R.creators.length ? el('p', { id: 'edit-role-creators', text: T.editRoleCreators(R.creators.join(EN ? ', ' : '、')) }) : null,
+    mine, other, fields, el('p', { cls: 'hint', text: T.editRemember })],
+  buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: true }] });
+  // どちらかを選ぶまで保存できない（黙って既定を選ばない）
+  const go = $('dlg-save');
+  go.disabled = true;
+  for (const r of [mine, other]) r.querySelector('input').addEventListener('change', () => { go.disabled = false; fields.hidden = !other.querySelector('input').checked; });
+  const v = await pending;
+  if (v !== 'save' || !live()) return false;
+  const role = other.querySelector('input').checked ? 'other' : 'creator';
+  if (role === 'other') {
+    const CFG = FORMAT.CONFIG_FILE;
+    let old = null;
+    try { old = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { old = null; }
+    if (!live()) return false;
+    let text = null;
+    try {
+      const cm = configObject(old).metadata;
+      const cur = cm && typeof cm === 'object' && Object.prototype.hasOwnProperty.call(cm, 'edits') ? cm.edits : md.edits;
+      const next = addEdit(cur, { by: by.value, note: note.value, required });
+      if (next) text = updateConfig(old, { metadata: configMerge({ edits: next }) });
+    } catch (e) { toast(String((e && e.message) || e), true); return false; }
+    if (text !== null) { try { await ws.writeText(CFG, text, { live }); } catch { return false; } if (!live()) return false; }
+  }
+  P.editRole = role;
+  editRoleRemember(docId, role);
+  return true;
+}
 async function savePortable(mode = 'save') {
   if (S.saving) { toast(T.api.busySave, true); return; }
   S.saving = true;
@@ -1877,6 +1936,8 @@ async function savePortableBound(mode) {
   }
   if (S.building) await S.building;
   if (!live()) { cancelled(); return; }
+  // ほかの人の教材を初めて保存する：作成者か、編集しているかを聞き、編集なら設定のファイルの metadata.edits に足す（format spec §7.3）
+  if (!(await askEditRole(P, ws, live))) { if (!live()) cancelled(); else status(''); return; }
   status(T.saving);
   P.lastRefusal = null; P.lastTierA = null;
   let saveWarnings = [], uncovered = '';
@@ -2494,6 +2555,7 @@ window.__APP_TEST = {
   open: (h) => openFolder(h),
   saveHandle: null,
   dirHandle: null,
+  editRole: window.__APP_TEST_EDIT_ROLE || null,   // 試験：保存の前の「この教材の作成者ですか」に答えたことにする（'creator' | 'other'）
   state: () => ({ building: !!S.building, earlier: S.earlier ? { ...S.earlier } : null, deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0, lastQuickCheck: S.lastQuickCheck ? { ...S.lastQuickCheck } : null,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
