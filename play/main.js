@@ -14,6 +14,7 @@ import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { readFileBounded } from '../app/bounded-read.js';
 import { sha256Hex } from './markup.mjs';
+import { ink, W as INK_W, H as INK_H, MEMO_H as INK_MEMO } from './ink.mjs';   // PROTOTYPE (handoff #27)
 
 /* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
 const VERSION = __PLAY_VERSION__;
@@ -129,6 +130,7 @@ function startFrame() {
   $('live-start').hidden = true;
   S.playing.started = true;
   S.frame = makeFrame(S.doc, S.title);
+  $('b-ink').hidden = !!(S.playing && S.playing.live);
   S.doc = null;
   applyLayout();                       // everything around the frame is placed first
   $('stage-wrap').appendChild(S.frame);
@@ -228,6 +230,7 @@ function applyLayout() {
   S.layout = L;
   const place = (el, q) => { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; el.style.width = q.w + 'px'; el.style.height = q.h + 'px'; };
   place($('stage-wrap'), L.frame);
+  if (INK.on && L.mode === 'none') inkLayout(L, place);
   $('player').setAttribute('data-mode', L.mode);
   $('b-live').hidden = !live || headless;
   if (L.live) { place($('live'), L.live); $('live').hidden = false; } else $('live').hidden = true;
@@ -259,7 +262,33 @@ function setPollView(open) {
 function onLive(kind, n) {
   if (kind === 'polls' && n === 0) setPollView(false);
 }
+// ---------------------------------------------------------------- handwriting PROTOTYPE (handoff #27; play/ink.mjs)
+// 「手書き」: the frame shrinks to the slide's height and the slide plus a memo area below it become one surface over the page.
+// Lessons with a Live are left out of the prototype. Nothing is kept on a shared device.
+const INK = { on: false, ui: null };
+function inkLayout(L, place) {
+  const ratio = (INK_H + INK_MEMO) / INK_W, barH = 52;
+  const sw = Math.floor(Math.min(L.frame.w, (L.frame.h - barH) / ratio)), sh = Math.round(sw * INK_H / INK_W);
+  place($('stage-wrap'), { x: L.frame.x, y: L.frame.y, w: L.frame.w, h: sh });
+  const r = { x: L.frame.x + Math.round((L.frame.w - sw) / 2), y: L.frame.y, w: sw, h: Math.round(sw * ratio) };
+  INK.ui.place(r);
+  Object.assign(INK.ui.barEl.style, { left: '50%', top: (r.y + r.h + 4) + 'px' });
+}
+function setInk(on) {
+  if (on === INK.on) return;
+  INK.on = on;
+  $('b-ink').setAttribute('aria-pressed', String(on));
+  document.body.classList.toggle('inking', on);
+  if (on) {
+    INK.ui = ink({ root: $('player'), words: W, shared: () => $('shared').checked,
+      send: (key, shift) => { if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egaViewer: 'key', key, shift: !!shift }, '*'); } });
+    if (S.slideKey) INK.ui.setPage(S.playing.docId || 'no-doc', S.slideKey);
+  } else if (INK.ui) { INK.ui.destroy(); INK.ui = null; }
+  applyLayout();
+}
+
 function closeLesson(quiet) {
+  setInk(false); S.slideKey = '';
   if (M) M.close();
   if (S.frame && fsElement() === S.frame) fsRequest(false);
   if (S.live) { S.live.stop(); S.live = null; }
@@ -275,6 +304,7 @@ function closeLesson(quiet) {
   $('player').hidden = true;
   $('lesson-info').hidden = true;
   $('b-close').hidden = true;
+  $('b-ink').hidden = true;
   $('start').hidden = false;
   renderRecents();
   try { $('main').focus(); } catch { /* ignore */ }
@@ -303,7 +333,8 @@ window.addEventListener('message', (e) => {
   // spec §9.4 openLink: {egatari, href, text, download?}; text at most 200 characters; download only as true.
   // Untrusted: links.request applies §11 and asks for a tap; a download is refused (the frame cannot save files)
   if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
-  else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
+  else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { S.slideKey = m.slideKey; if (INK.on) INK.ui.setPage(S.playing.docId || 'no-doc', m.slideKey); if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
+  else if (m.type === 'deck-pos' && isStr(m.key, 220) && INK.on && !S.slideKey) INK.ui.setPage(S.playing.docId || 'no-doc', m.key.split(':')[0]);
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) { if (S.live) S.live.setStep(m.key); }
   // the lesson's shim asks for fullscreen (play/lesson-shim.js 4): exactly {egaViewer, on}. Untrusted: the browser enters it only
   // on the viewer's own activation, and only the frame element goes fullscreen
@@ -543,6 +574,7 @@ async function main() {
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
   drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f, f.name); });
+  $('b-ink').addEventListener('click', () => setInk(!INK.on));
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });
   window.addEventListener('popstate', () => { if (S.playing) closeLesson(); });
   $('b-live').addEventListener('click', focusLive);
