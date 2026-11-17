@@ -62,7 +62,7 @@ Nothing below has been done yet. Never write a secret (the Turnstile secret key 
    - Put the site key in `relay/wrangler.production.toml`: `TURNSTILE_SITEKEY = "<site key>"` and commit it (it is public). Keep the secret key for step 5.
 2. **Label.** In egatari/components, create the label `request` if it does not exist: **Issues → Labels → New label**, name `request`, description `Part request from Egatari Studio`, any colour. (Or `gh label create request -R egatari/components --description "Part request from Egatari Studio"`.)
 3. **GitHub token.** github.com → your avatar → **Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token**:
-   - Token name: `egatari part-request relay`; Description: `Creates issues in egatari/components from Egatari Studio`
+   - Token name: `Egatari part request relay`; Description: `Creates issues in egatari/components from Egatari Studio`
    - **Resource owner: egatari**
    - **Expiration:** a custom date about a year ahead (the longest the organization allows). Put a reminder a week before it, to make a new token and repeat step 5 for `GITHUB_TOKEN`.
    - **Repository access: Only select repositories → egatari/components**
