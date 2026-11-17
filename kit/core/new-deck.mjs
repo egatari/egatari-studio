@@ -96,6 +96,7 @@ export const SET_LABELS = [
   { set: 'stats', label: { ja: '統計の図', en: 'Statistics charts' }, inside: { ja: 'ヒストグラム・箱ひげ図・ヒートマップ', en: 'Histograms, box plots, heatmaps' } },
   { set: 'data', label: { ja: '情報・データサイエンス', en: 'Data science and code' }, inside: { ja: '標本抽出・信頼区間・交差検証・コードの解説', en: 'Sampling, confidence intervals, cross-validation, code walkthroughs' } },
   { set: 'algo', label: { ja: 'アルゴリズム', en: 'Algorithms' }, inside: { ja: 'グラフの探索・最短経路・巡回セールスマン', en: 'Graph search, shortest paths, the traveling salesman' } },
+  { set: 'ml', label: { ja: '機械学習', en: 'Machine learning' }, inside: { ja: 'ニューラルネット・2 次元の分類・等高線と勾配降下法', en: 'Neural networks, 2-D classification, contours and gradient descent' } },
   { set: 'math', label: { ja: '算数・数学', en: 'Arithmetic and mathematics' }, inside: { ja: '筆算・数直線・テープ図・関数', en: 'Column arithmetic, number lines, tape diagrams, functions' } },
   { set: 'maps', label: { ja: '地図', en: 'Maps' }, inside: { ja: '日本地図・世界地図', en: 'Maps of Japan and the world' } },
   { set: 'kokugo', label: { ja: '国語', en: 'Japanese language arts' }, inside: { ja: '漢文・古文・現代文・縦書き', en: 'Kanbun, kobun, modern texts, vertical writing' } },
@@ -130,6 +131,11 @@ export const WORDS = Object.freeze({
     music: ['音階', '和音', { w: 'コード', not: ['ソースコード', 'バーコード', 'QRコード', 'コーディング'] }, '鍵盤', '楽譜'],
     business: ['市場', 'KPI', '売上', '事業', 'ピッチ'],
     tools: ['タイマー', 'ワークショップ', '演習時間', 'グループワーク'],
+    // 束 algo（部品庫 2.10.0、d5 11/15）：「グラフ」単独は棒グラフ・円グラフに当たるので入れない。小分類からは推さない（SUB_SETS にない）
+    // 部品庫 2.12 の m-network 2.1.0（グラフィカルモデル・パス図・HMM のトレリス）も束 algo。統計・機械学習の授業でも言葉ですすめる（d5 11/15）
+    algo: ['探索', '最短経路', '巡回セールスマン', 'グラフ理論', 'グラフの探索', 'アルゴリズム', '幅優先', 'ダイクストラ', 'グラフィカルモデル', 'パス図', '構造方程式', 'ベイジアンネットワーク', '隠れマルコフ', 'HMM', 'マルコフ連鎖', '因果ダイアグラム'],
+    // 束 ml（部品庫 2.12・2.13：m-nnet・m-classify2d・m-contour、backlog #219）。小分類からは推さない。「等高線」は地図にも当たるので入れない
+    ml: ['機械学習', 'ニューラルネット', 'パーセプトロン', '深層学習', 'ディープラーニング', '活性化関数', '勾配降下', 'ロジスティック回帰', 'サポートベクター', 'SVM', '決定木', 'k 平均', 'k平均', 'k-means', '近傍法', '損失関数', '分類器', 'scikit-learn'],
   },
   en: {
     stats: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian', 'estimation', 'hypothesis test', 'hypothesis testing'],
@@ -141,6 +147,8 @@ export const WORDS = Object.freeze({
     music: ['musical scale', 'major scale', 'minor scale', 'chord', 'chords', 'keyboard', 'piano', 'sheet music', 'musical score'],
     business: ['market', 'markets', 'KPI', 'KPIs', 'sales', 'revenue', 'business', 'pitch'],
     tools: ['timer', 'workshop', 'exercise time', 'group work'],
+    algo: ['graph search', 'graph theory', 'breadth-first search', 'BFS', 'shortest path', 'traveling salesman', 'TSP', 'algorithm', 'algorithms', 'Dijkstra', 'graphical model', 'path diagram', 'structural equation', 'Bayesian network', 'hidden Markov', 'HMM', 'Markov chain', 'causal diagram'],
+    ml: ['machine learning', 'neural network', 'neural networks', 'perceptron', 'deep learning', 'activation function', 'gradient descent', 'logistic regression', 'support vector', 'SVM', 'decision tree', 'decision trees', 'k-means', 'nearest neighbor', 'nearest neighbors', 'loss function', 'classifier', 'classifiers', 'scikit-learn'],
   },
 });
 

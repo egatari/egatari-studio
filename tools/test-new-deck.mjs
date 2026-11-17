@@ -49,8 +49,10 @@ const SINGLE_SET_EXPECTED = {
   en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi'],
     maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
-    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'] },
-  ja: {},
+    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'],
+    // v0.6.15：束 algo（m-network）と ml（m-nnet・m-classify2d・m-contour）は、中核の 4 つを短くすれば何も外さずに収まる（部品庫 2.13.0）
+    algo: [], ml: [] },
+  ja: { algo: [], ml: [] },
 };
 for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
 const EXTRA = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'extra').sort();
@@ -104,6 +106,20 @@ ok('parts list (#124): grouped by what to convey, the subject forms last (first 
   for (const g of list) { const k = g.parts.map((t) => TIERS.parts[t].tier === 'standard' ? 0 : 1); assert.deepEqual(k, [...k].sort(), g.id); }
   for (const t of all) assert.ok(partDesc(t, 'ja') && partDesc(t, 'en'), t + ': a one-line description');
   assert.deepEqual(partsOfSet('stats').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
+});
+ok('words for the algo set (#214): search and graph-model words recommend algo; a bar graph does not', () => {
+  assert.deepEqual(recommend({ sub: null, text: 'ダイクストラ法で最短経路を探す', lang: 'ja' }).map((r) => r.set), ['algo']);
+  assert.deepEqual(recommend({ sub: null, text: '隠れマルコフモデルで品詞を推定する', lang: 'ja' }).map((r) => r.set).includes('algo'), true);
+  assert.deepEqual(recommend({ sub: null, text: 'A path diagram for the structural equation model', lang: 'en' }).map((r) => r.set), ['algo']);
+  assert.ok(!recommend({ sub: null, text: '棒グラフで売上を比べる', lang: 'ja' }).some((r) => r.set === 'algo'), 'a bar graph is not a graph algorithm');
+  assert.ok(!recommend({ sub: null, text: 'a bar graph of sales', lang: 'en' }).some((r) => r.set === 'algo'));
+});
+ok('words for the ml set (#219): neural networks, classifiers and gradient descent recommend ml; contour lines on a map do not', () => {
+  assert.deepEqual(partsOfSet('ml').sort(), ['m-classify2d', 'm-contour', 'm-nnet']);
+  assert.deepEqual(recommend({ sub: null, text: 'ニューラルネットの順伝播を 1 層ずつ', lang: 'ja' }).map((r) => r.set), ['ml']);
+  assert.deepEqual(recommend({ sub: null, text: 'SVM のマージンとサポートベクター', lang: 'ja' }).map((r) => r.set), ['ml']);
+  assert.deepEqual(recommend({ sub: null, text: 'Gradient descent on a loss surface', lang: 'en' }).map((r) => r.set), ['ml']);
+  assert.ok(!recommend({ sub: null, text: '等高線で山の高さを読む', lang: 'ja' }).some((r) => r.set === 'ml'));
 });
 ok('initial ticks (#124 §2.2): every standard part; a specialized set from the subcategory table or the words of step 2 (with the reason); English words on the English screen', () => {
   const std = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard');
