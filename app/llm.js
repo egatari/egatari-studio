@@ -23,6 +23,7 @@ import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, parts
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
 import { PARTS_GALLERY } from './parts-gallery.js';
+import { createPartRequest } from './part-request.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
@@ -408,6 +409,8 @@ export function setupLlm(app) {
   const { S, $, el, ask, toast, status, T, EN, download } = app;
   const X = EN ? TX.en : TX.ja;
   const LANG = EN ? 'en' : 'ja';
+  // 「こんなパーツが欲しい…」（app/part-request.js）：新規作成の窓の上に重ねて出す
+  const partRequest = createPartRequest({ lang: LANG, el });
   // 窓を閉じてから教材が見えるまで（新規作成・Egatari ファイルの置き換え）、待つ間のロゴ（「開いています…」と同じ。app/wait-logo.js の cover）で覆う。
   // 返事から組み、開き、最初に組み直すまで（合わせて 1〜2 秒）、はじめの画面にも前の教材にも戻らない。作り終えた・誤りで窓に戻るときに消す
   let uncover = null;
@@ -848,7 +851,9 @@ export function setupLlm(app) {
     const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
       el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }),
       // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
-      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), groups, count]);
+      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery }),
+        // 一覧にないパーツを開発者に頼む（handoff Issue #35）
+        ' ', el('button', { type: 'button', id: 'paste-part-request', cls: 'linkish', text: partRequest.label, onclick: () => partRequest.open() })]), groups, count]);
     // 一覧は初めは畳む（backlog #211、作者 11/15・設計 d5）：1 行「AI が使うパーツ：N 種類　選び直す」。推した理由（why）と大きさの目盛りは畳む範囲の外でいつも見せる。
     // 外す候補が出たら自動で開き、作成者がチェックを替えたら、この新規作成のあいだは開いたまま（閉じるのは作成者だけ）
     const foldText = el('span', { id: 'paste-parts-sum-text' });

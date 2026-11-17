@@ -56,6 +56,7 @@ import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { partsIndexHref } from './parts-gallery.js';
+import { createPartRequest } from './part-request.js';
 import { createExamplesGallery } from './examples-gallery.js';
 import { account as accountRules, factsFromSource } from '../kit/core/check-rules.mjs';
 import { EDITOR_ALIAS, BUILD_WARN } from '../kit/core/check-parity.mjs';
@@ -2336,6 +2337,10 @@ $('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e)
 $('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('w-claude').href = WITH_CLAUDE_URL;
 $('w-parts').href = partsIndexHref(location);
+// 「こんなパーツが欲しい…」（app/part-request.js。handoff Issue #35）：パーツの一覧の隣
+const partRequest = createPartRequest({ lang: EN ? 'en' : 'ja', el });
+$('w-request').textContent = partRequest.label;
+$('w-request').onclick = () => partRequest.open();
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();
