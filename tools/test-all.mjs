@@ -261,6 +261,8 @@ steps.push(
   ['test-geometry-check', ['tools/test-geometry-check.mjs']],
   // パーツの直下の <svg> が要素の箱から出る（partSvgOut、backlog #208）：作業フォルダのパーツの大きさのない <svg> は警告、大きさを付けた <svg> は出ない
   ['test-part-svg-out', ['tools/test-part-svg-out.mjs']],
+  // 試用の教材で品質チェックが見逃したもの（handoff Issue #40）：横並び（.cols）の列からはみ出す式（colOverflow）と、パーツが ctx.report("range", …) で知らせた範囲の外の値（compReport）
+  ['test-check-gaps', ['tools/test-check-gaps.mjs']],
   // 品質チェックのコマンド版と編集アプリが同じ指摘を出すこと（v0.6.9：英語の教材に残った $…$ の rawMath が編集アプリに出なかった）。
   // コマンド版だけのものは kit/core/check-parity.mjs の CLI_ONLY（わけを 1 行）。編集アプリを組んで配り、修正依頼に rawMath が入ることも
   ['test-check-parity', ['tools/test-check-parity.mjs', path.join(tmp, 'check-parity')]],

@@ -51,7 +51,7 @@ compData: ['R-components'], consoleError: ['R-components'],
     contrast: ['R-colors'], formula: ['R-formula'], missingSection: ['R-headings'], narrHeadingDiffers: ['R-headings'], markTarget: ['R-marks'],
   // 体裁の検査（kit/core/layout-scan.mjs）がブラウザ版にも出すコマンド版の code
   titleColon: ['R-title'], tateTitle: ['R-title'], tateBodyHead: ['R-fit'], bodyConclCol: ['R-fit'], bodyLeft: ['R-fit'], smallSvgText: ['R-fit'],
-  textClipped: ['R-fit'], svgTextOut: ['R-fit'], svgTextBox: ['R-fit'], outsideBody: ['R-fit'], partSvgOut: ['R-fit'],
+  textClipped: ['R-fit'], svgTextOut: ['R-fit'], svgTextBox: ['R-fit'], outsideBody: ['R-fit'], partSvgOut: ['R-fit'], colOverflow: ['R-fit'],
   textOffSlide: ['R-fit'], textOverlap: ['R-fit'], cellWordBreak: ['R-fit'],
 };
 const BY_TEXT = [
