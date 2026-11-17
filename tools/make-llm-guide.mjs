@@ -64,10 +64,23 @@ export function catalogue(version) {
   if (!cat) throw new Error(`components2.lock.json: default ${v} is not a catalogue`);
   return { version: v, tag: cat.tag, source: lock2.source, manifest: JSON.parse(read('vendor', 'components-2', `manifest-${v}.json`)), parts: cat.parts, lock2 };
 }
-// 束の並び：manifest の専門の部品の set を SET_ORDER の順に
+// 束の受け皿（tools/llm-guide/sets/<束>.md）があるか。受け皿のない束（univ。パーツのセットを多重ラベルにするまで先生に見せない、作者 11/17、
+// handoff/parts-labels-2026-11-17.md）のパーツは、有料のプランの指示にだけ標準のパーツとして入れる（材料の paidOnly）。束の名前はどこにも出さない。
+// 無料のプランの一覧の 1 行にも載せたいが、英語の標準すべてが貼り付けの長さ 31,000 を越える（部品庫 2.13.0 で 31,588）ので、今は載せない
+export const hasReceiver = (s) => fs.existsSync(rel('tools', 'llm-guide', 'sets', s + '.md'));
+// manifest の専門の部品の set（受け皿のないものも）
+const manifestSets = (manifest) => new Set(Object.values(manifest.components).filter((c) => c.kind === 'element' && c.tier === 'specialized' && c.set).map((c) => c.set));
+// 束の並び：manifest の専門の部品の set のうち受け皿のあるものを SET_ORDER の順に
 export function setsOf(manifest) {
-  const have = new Set(Object.values(manifest.components).filter((c) => c.kind === 'element' && c.tier === 'specialized' && c.set).map((c) => c.set));
+  const have = new Set([...manifestSets(manifest)].filter(hasReceiver));
   return [...SET_ORDER.filter((s) => have.has(s)), ...[...have].filter((s) => !SET_ORDER.includes(s)).sort()];
+}
+// 受け皿のない束 → そのパーツ（タグ）
+export function unreceivedOf(manifest) {
+  const out = {};
+  for (const c of Object.values(manifest.components)) if (c.kind === 'element' && c.tier === 'specialized' && c.set && !hasReceiver(c.set)) (out[c.set] ||= []).push(c.tag);
+  for (const s of Object.keys(out)) out[s].sort();
+  return out;
 }
 
 // ---------------------------------------------------------------- 段と束（パーツライブラリ 2.0 の manifest）
@@ -95,6 +108,8 @@ export function tiersFrom(cat = catalogue()) {
     if (!['standard', 'specialized', 'extra'].includes(c.tier)) throw new Error(`manifest-${cat.version}.json: ${c.tag} has tier ${JSON.stringify(c.tier)}`);
     if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${cat.version}.json: ${c.tag} is specialized without a set`);
     const display = displayOf(c, cat.version);
+    // 受け皿のない束のパーツは束の名前なしで（新規作成の一覧に出すが、初めは印を付けない。指示は有料のプランにだけ入る：材料の paidOnly）
+    if (c.tier === 'specialized' && !hasReceiver(c.set)) { parts[c.tag] = { tier: 'specialized', purposes: [...(c.purposes || [])], ...(display ? { display } : {}) }; continue; }
     parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])], ...(display ? { display } : {}) };
   }
   const purposes = (m.purposes || []).map((p) => ({ id: p.id, label: p.label || { ja: p.ja, en: p.en }, ...(p.tile && p.tile.into ? { into: p.tile.into } : {}) }));
@@ -223,34 +238,8 @@ function cleanReadme(body) {
 }
 // 部品庫の日本語の字の作った言葉（札・帯・区画・窓など）を、指示では王道の言葉に言い換える（#223。handoff/ux-wording-principles.md の 6b）。
 // 部品の節と一覧の行に、書いた順に replaceAll で掛ける（英語の字には当たらない）。見つからなくても失敗しない：部品庫の README が直れば、その行を消す
-const ERR_JA = '図の代わりにエラーが出る';
-const JA_WORDS = {
-  'm-bars': [['薄い帯で残し', '薄い色で残し']],
-  'm-callout': [['組み立てが教材に埋め込む', 'ビルドのときに教材に埋め込む']],
-  'm-cards': [['- 道具：', '- ツール：']],
-  'm-code': [['言語の札', '言語のラベル']],
-  'm-compare': [['図の代わりに誤りの札が出る', ERR_JA]],
-  'm-curves': [['図の代わりに札が出る', ERR_JA], ['札', 'ラベル']],
-  'm-folds': [['検証用の区画を', 'k 分割交差検証のフォールドを'], ['k 個の区画名', 'k 個のフォールドの名前']],
-  'm-gendai': [['札を付け', 'ラベルを付け']],
-  'm-heatmap': [['[行, 列, 段階]', '[行, 列, ステップ]']],
-  'm-hist': [['部品が数える', 'パーツが数える']],
-  'm-kobun': [['押したときの札', '押したときのポップアップ']],
-  'm-kpi': [['札の上の帯の色', 'カードの上のバーの色'], ['札', 'カード']],
-  'm-map-japan': [['小窓なし', '挿入図なし']],
-  'm-mapping': [['結果の札', '結果のカード']],
-  'm-menu': [['ステップの鍵', 'ステップのキー'], ['札', 'カード']],
-  'm-boxplot': [['書き出す値', '表示する値']],
-  'm-particles': [['比較のための写し', '比較のためのコピー']],
-  'm-score': [['組み立てが足す', 'ビルドのときに足す']],
-  'm-sweep': [['図の代わりに札が出る', ERR_JA]],
-  'm-timeline': [
-    ['期間は帯にして、重なる期間は段を分けて積む', '期間は軸に沿ってその長さだけ伸ばして描き、重なる期間は段を分けて積む'],
-    ['軸の下の段に帯で描き、名前は帯の中（入らなければ帯の右か左）に書く。名前を `\\n` で何行かにすると、帯がその分太くなる', '軸の下の段に、軸に沿ってその長さだけ伸ばして描く。名前は期間の中（入らなければ右か左）に書く。名前を `\\n` で何行かにすると、その分太く描く'],
-  ],
-  'm-timer': [['区切り 1 つが 1 段階', '区切り 1 つが 1 ステップ'], ['実行系が対応していれば', 'プレーヤーが対応していれば']],
-  'm-venn': [['図の代わりに誤りの札が出る', ERR_JA], ['鍵', 'キー']],
-};
+// 部品庫 2.13.0 で、それまでの言い換え（29 個）はどれも部品庫の README の側で直り、当たるものがなくなったので外した（v0.6.15。外しても指示は 1 バイトも変わらない）
+const JA_WORDS = {};
 export const jaWords = (name, s) => (JA_WORDS[name] || []).reduce((x, [a, b]) => x.replaceAll(a, b), s);
 // 部品の README・props の言い方が、この指示のほかの決まりとぶつかるとき、指示の側で言い換える（部品庫は変えない）。
 // find が部品の節にないときは失敗させる（部品庫が直ったら、この言い換えも要らないか見直す）
@@ -415,7 +404,7 @@ function components(cat, sets, readmeEn = {}) {
     const [fm, body] = frontmatter(read(path.relative(ROOT, path.join(dir, 'README.md'))));
     const js = fs.existsSync(path.join(dir, 'index.js')) ? read(path.relative(ROOT, path.join(dir, 'index.js'))) : '';
     if (fm.name !== c.tag) throw new Error(`${file}: frontmatter name ${fm.name} is not ${c.tag}`);
-    const set = c.tier === 'extra' ? 'extra' : c.tier === 'local' ? 'local' : c.tier === 'standard' ? STANDARD : c.set;
+    const set = c.tier === 'extra' ? 'extra' : c.tier === 'local' ? 'local' : c.tier === 'standard' || !sets.includes(c.set) ? STANDARD : c.set;
     const blocks = splitBlocks(body, file, sets);
     if (Object.keys(blocks.ext).length && set !== STANDARD) throw new Error(`${file}: <!-- llm: … --> extension blocks are only for standard parts (this one is ${c.tier})`);
     const cls = js ? classOf(js, fm.name) : null;
@@ -431,7 +420,8 @@ function components(cat, sets, readmeEn = {}) {
       if (Object.keys(eblocks.ext).sort().join() !== Object.keys(blocks.ext).sort().join()) throw new Error(`${efile}: llm blocks (${Object.keys(eblocks.ext).join(', ') || 'none'}) are not README.md's (${Object.keys(blocks.ext).join(', ') || 'none'})`);
       en = { fm: efm, body: eblocks.own, ext: eblocks.ext };
     }
-    out.push({ fm, set, build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {}, ...(en ? { en } : {}) });
+    // 受け皿のない束のパーツ（univ）：標準として有料のプランの指示にだけ（paidOnly）
+    out.push({ fm, set, ...(c.tier === 'specialized' && set === STANDARD ? { paidOnly: true } : {}), build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {}, ...(en ? { en } : {}) });
   }
   return out;
 }
@@ -767,7 +757,7 @@ export function generate(opts = {}) {
   const warnings = [];
   const cat = catalogue(opts.catalogue);  // opts.catalogue：既定でない版の部品庫で作る（試験が前の版の材料と比べるため）
   const SETS = setsOf(cat.manifest);
-  for (const s of SETS) if (!fs.existsSync(rel('tools', 'llm-guide', 'sets', s + '.md'))) throw new Error(`tools/llm-guide/sets/${s}.md is missing (the part set ${s} is in manifest-${cat.version}.json)`);
+  for (const [s, tags] of Object.entries(unreceivedOf(cat.manifest))) warnings.push(`part set ${s} (${tags.join(', ')}) has no tools/llm-guide/sets/${s}.md: its parts go with the standard parts on the paid plan only`);
   // opts.addLocal（試験用）：ローカル（CLI）向けのパーツを足して作る [{fm: {name}, body, en?: {body}}]（指示が変わらないことを確かめる）
   const all = [...components(cat, SETS, opts.readmeEn), ...(opts.addLocal || []).map((c) => ({ ...c, set: 'local' }))];
   const comps = all.filter((c) => c.set !== 'extra' && c.set !== 'local');
@@ -782,7 +772,7 @@ export function generate(opts = {}) {
   // 表（{{PURPOSES}}）は組み立てのときに作る（入っている束・外した言いたいことに合わせる。kit/core/llm-pack-assemble.mjs）
   const data = { sets: SETS, purposes: P, parts: allParts, extra: all.filter((c) => c.set === 'extra').map((c) => c.fm.name), partsSrc: src };
   // 束の見本が抜き出しで見せる部品（{{WORKED 名前 "見出し" 部品}}）
-  const shownInWorked = new Set(SETS.flatMap((x) => [...read('tools', 'llm-guide', 'sets', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z]+(?:-[a-z]+)*)\}\}/g)].map((m) => m[1])));
+  const shownInWorked = new Set(SETS.flatMap((x) => [...read('tools', 'llm-guide', 'sets', x + '.md').matchAll(/\{\{WORKED \w+ "[^"]+" (m-[a-z0-9]+(?:-[a-z0-9]+)*)\}\}/g)].map((m) => m[1])));
   const pre = {};
   for (const lang of ['en', 'ja']) {
     const ja = lang === 'ja';
@@ -806,7 +796,7 @@ export function generate(opts = {}) {
       let deck = read('tools', 'llm-guide', 'worked', name, 'deck.html').trim(), narr = read('tools', 'llm-guide', 'worked', name, 'narration.md').trim();
       const heads = [];
       deck = deck.replace(/\n*(<section class="slide[^"]*">[\s\S]*?<\/section>)/g, (m, sec) => {
-        const tags = [...new Set([...sec.matchAll(/<(m-[a-z]+(?:-[a-z]+)*)[\s>]/g)].map((x) => x[1]))];
+        const tags = [...new Set([...sec.matchAll(/<(m-[a-z0-9]+(?:-[a-z0-9]+)*)[\s>]/g)].map((x) => x[1]))];
         if (!tags.length) return m;
         heads.push([(sec.match(/<h[12]>([^<]*)<\/h[12]>/) || [])[1], tags]);
         return `<!--part:${tags.join(',')}-->${m}<!--/part-->`;
@@ -820,7 +810,7 @@ export function generate(opts = {}) {
     };
     const fill = (tpl) => tpl
       .replace(/\{\{contract §(\d+) "([^"]+)"\}\}/g, (_, sec, prefix) => contractBullet(contract, sec, prefix, contractFile))
-      .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z]+(?:-[a-z]+)*))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
+      .replace(/\{\{WORKED (\w+) "([^"]+)"(?: (m-[a-z0-9]+(?:-[a-z0-9]+)*))?\}\}/g, (_, n, t, tag) => (tag ? excerpt(n, t, tag) : worked(n, t)));
     // 型紙も英語と日本語の組（1 行目の印は写さない）
     const full = fill(splitStamp(read('tools', 'llm-guide', ja ? 'template.ja.md' : 'template.md')).body)
       .replace('{{GENERATED}}', GENERATED(path.basename(contractFile)));
@@ -845,7 +835,7 @@ export function generate(opts = {}) {
       const e = entryOf(c, lang, shownInWorked);
       const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, markRefs(demote(stripRepoRefs(x)), c.fm.name, known)]));
       const freeEntry = freeEntryOf(c.fm.name, lang === 'en' && c.enSource ? 'en' : 'ja', e.entry, c.fm.version, warnings);
-      D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(freeEntry ? { free: markRefs(freeEntry, c.fm.name, known) } : {}), ...(e.sup ? { sup: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
+      D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(freeEntry ? { free: markRefs(freeEntry, c.fm.name, known) } : {}), ...(e.sup ? { sup: true } : {}), ...(c0.paidOnly ? { paidOnly: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
     }
     for (const s of SETS) {
       const f = `tools/llm-guide/sets/${s}${ja ? '.ja' : ''}.md`;
@@ -888,7 +878,7 @@ export function generate(opts = {}) {
     // 大きさ（KB）と貼り付けの長さ（freePaste…）は、収めた指示そのものを測る
     const textOf = (tags, short) => assemble(data, { ...packOptsOf(data, tags, 'free', { short }), lang });
     const fitted = (sets) => {
-      const f = fitPack(data, [...membersOf(data[lang], STANDARD), ...sets.flatMap((s) => membersOf(data[lang], s))], 'free', { sizeOf: (tags, short) => fitSize(textOf(tags, short), 'free'), capBytes: LIMITS.free * 1024 });
+      const f = fitPack(data, [...membersOf(data[lang], STANDARD).filter((t) => !data[lang].components[t].paidOnly), ...sets.flatMap((s) => membersOf(data[lang], s))], 'free', { sizeOf: (tags, short) => fitSize(textOf(tags, short), 'free'), capBytes: LIMITS.free * 1024 });
       const text = textOf(f.tags, f.short);
       return { ...f, kb: Buffer.byteLength(text, 'utf8') / 1024, paste: pasteUnits(text) };
     };

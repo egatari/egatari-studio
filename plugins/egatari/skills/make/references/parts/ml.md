@@ -1,0 +1,42 @@
+<!-- generated; do not edit by hand -->
+# ml のパーツ
+
+指示のバージョン：255ebc50
+
+| パーツ | 内容 | steps | データの形 |
+|---|---|---|---|
+| `<m-classify2d>` | scikit-learn の分類を 2 次元で描く。点・領域・境界・確率や決定関数の等高線・サポートベクトル・ボロノイ図・決定木の分割・k 平均法 | 点 → 領域 → 等高線 → サポートベクトル（決定木は分割 1 つずつ → 葉、k 平均法は割り当てと更新を交互に） | `{axes:{x:{label?,range:[num,num]},y:{label?,range:[num,num]}},classes?:{id:int,label?}[],points:(num\|null)[][],grid?:{nx:int,ny:int,labels?:str\|any[]},fields?:{name?:str,class?:int,values:any[],levels:num[],style?:("solid"\|"dash")[],labels?:bool}[],sv?:int[],voronoi?:{seeds:(num\|null)[][]},tree?:{nodes:{id:str,feature?:0\|1,threshold?:num,left?:str,right?:str,class?:int}[]},kmeans?:{iters:{centroids:[num,num][],assign:int[]}[]}}` |
+| `<m-contour>` | 2 変数の関数の等高線を値ごとに引き、勾配の矢印と、勾配降下法などの反復の道を 1 点ずつ見せる | 等高線の値ごと（by="all" なら 1）→ 勾配 → 道の点ごと | `{f?:str,label?,grid?:{nx:int,ny:int,values:any[]},range:{x:[num,num],y:[num,num]},axes?:{x?:str,y?:str},levels:num[],gradient?:{at:[num,num][],scale?:num,tangent?:bool},path?:[num,num][],monotone?:bool,equal?:bool} (f or grid)` |
+| `<m-nnet>` | ニューラルネットの層を並べ、前向きの計算を層ごとに見せる。ニューロンはまとめた丸か、Σ（重み付きの和）と f（活性化関数）に分けた形 | 入力 1 ＋ まとめた層 1・分けた層 2（steps を書けばその数） | `{layers:{n:int,label?,names?:str[],act?:"identity"\|"step"\|"relu"\|"sigmoid"\|"tanh"\|"softmax",form?:"combined"\|"split"}[],weights?:num[][][],biases?:num[][],values?:{x?:num[],z?:num[][],a?:num[][]},steps?:{show?:"x",layer?:int,phase?:"z"\|"a"\|"delta"\|"grad",open?:int,focus?:[int,int],note?}[]}` |
+
+### `<m-classify2d>`
+
+データ（子の `<script type="application/json">`）の例: `{"axes":{"x":{"label":"x₁","range":[0,4]},"y":{"label":"x₂","range":[0,3]}},"classes":[{"id":0,"label":"A"},{"id":1,"label":"B"}],"points":[[1,1,0],[1.2,2,0],[2.8,1.1,1],[3.1,2.4,1]],"grid":{"nx":5,"ny":4,"labels":"0*2 1*3 0*2 1*3 0*2 1*3 0*3 1*2"}}`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `size` | number | `24` | 字の大きさ（px、24 以上） |
+| `marker` | number | `8` | 点の印の半径（px） |
+
+### `<m-contour>`
+
+データ（子の `<script type="application/json">`）の例: `{"f":"x**2 + 3*y**2","range":{"x":[-3,3],"y":[-2,2]},"levels":[1,2,4,8],"gradient":{"at":[[1,1]]},"path":[[2.5,1.5],[1.5,0.3],[0.9,0.06]],"monotone":true}`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `size` | number | `24` | 字の大きさ（px、24 以上） |
+| `by` | enum | `"level"` | 等高線を値ごとに 1 ステップ（level）か、まとめて 1 ステップ（all） |
+
+関数は式 `f`（`x` と `y` の算術の式）か、スクリプトが計算した格子の値 `grid` のどちらか。`levels`（8 個まで）、`gradient.at`（勾配の矢印を描く点）、`path`（反復の点。スクリプトの出力）。大きさの目安：`equal`（既定）で range が正方形なら、図は（高さ − 約 95px）の正方形で左に寄り、右に 240px 以上空けば関数の名前と反復ごとの f の欄になる。高さ 440px なら幅 740px ほど（右に別の字や図を並べる）。横いっぱいに使うなら range の x を広げるか `equal: false`。
+
+### `<m-nnet>`
+
+データ（子の `<script type="application/json">`）の例: `{"layers":[{"n":2,"label":"入力層"},{"n":1,"label":"出力層","act":"step","form":"split"}],"weights":[[[1,1]]],"biases":[[-1.5]],"values":{"x":[1,1],"z":[[0.5]],"a":[[1]]}}`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `digits` | number | `2` | 値の小数の桁 |
+| `edges` | string | `"plain"` | 辺の描き方：plain（細い線）か weight（重みの大きさで太さ、符号で実線と点線） |
+| `size` | number | `24` | 字の大きさ（px、24 以上） |
+
+値（重み・バイアス・z・a）は計算を走らせたスクリプトの出力を書く。パーツは z = W·a + b と a = f(z) を確かめる。活性化関数の曲線は m-curves で描く。高さ 480px 以上。

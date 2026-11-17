@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示のバージョン：3bcb89c8**
+**指示のバージョン：255ebc50**
 **スキルのバージョン：0.6.14**
 
 Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
@@ -43,6 +43,8 @@ Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@
 - [standard](references/parts/standard.md)
 - [stats](references/parts/stats.md)
 - [data](references/parts/data.md)
+- [algo](references/parts/algo.md)
+- [ml](references/parts/ml.md)
 - [math](references/parts/math.md)
 - [maps](references/parts/maps.md)
 - [kokugo](references/parts/kokugo.md)
@@ -52,6 +54,7 @@ Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@
 - [tools](references/parts/tools.md)
 - [science](references/parts/science.md)
 - [extra](references/parts/extra.md)
+- [local](references/parts/local.md)
 
 ## 本（article）
 
@@ -77,7 +80,7 @@ Studio の音声のパネルで付けてもらう（この PC で AI 音声を�
 
 # AI への指示
 
-指示のバージョン：`3bcb89c8`
+指示のバージョン：`255ebc50`
 
 短い **Egatari の教材**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。教材は頼まれた言語で書きます（スライドと台本は同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 

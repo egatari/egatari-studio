@@ -1,16 +1,16 @@
 <!-- generated; do not edit by hand -->
 # extra のパーツ
 
-指示のバージョン：3bcb89c8
+指示のバージョン：255ebc50
 
 ### `<m-codetree>`
 
-[README](https://github.com/egatari/components/blob/v2.9.1/components/codetree/README.md)
+[README](https://github.com/egatari/components/blob/v2.13.0/components/codetree/README.md)
 
 ### `<m-collect>`
 
-[README](https://github.com/egatari/components/blob/v2.9.1/components/collect/README.md)
+[README](https://github.com/egatari/components/blob/v2.13.0/components/collect/README.md)
 
 ### `<m-kakijun>`
 
-[README](https://github.com/egatari/components/blob/v2.9.1/components/kakijun/README.md)
+[README](https://github.com/egatari/components/blob/v2.13.0/components/kakijun/README.md)

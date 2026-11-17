@@ -1,13 +1,14 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: 3bcb89c8
+Instruction version: 255ebc50
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
 | `<m-bars>` | Bars grow from 0 by step (vertical, horizontal, grouped, stacked); the axis max can widen by step | max group/scale step (default 1 group = 1 step) | `{groups:[{label?,value?:num,values?:num[],err?:num\|any[],step?,at?,tone?} (value or values),…],sig?:{from:int,to:int,group?:int,label?,step?}[],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
 | `<m-cards>` | Icon cards in a row or 2 rows, by step; arrows for order | largest card step (default 1 card = 1 step) | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |
 | `<m-compare>` | Table comparing 2–3 things: one column, the other, then row differences | columns + 1 (diff step; none if no diff/better) | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
+| `<m-ctable>` | ANOVA, contingency and potential-outcome tables filled by step; sources, results and a formula line; arithmetic checked | fill stages | `{kind:"anova"\|"contingency"\|"po"\|"table",rows?:(object\|str\|any[])[],cols?:str[],n?:num[][],margins?:bool,expected?:num[][],chi2?:num,or?:num,units?:{id?:str,t:0\|1,y0:num,y1:num}[],ate?:num,naive?:num,header?:str[],note?}` |
 | `<m-curves>` | Lines drawn one at a time on shared axes, each named at its end (no legend) | largest step (default: number of series) | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],area?:any[],areaLabel?:str\|any[],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — the data is the array itself, not {"series": […]}; axes go in attributes (xr="[0,10]" xl="…"); the expression field is f in x (not fn, not u) |
 | `<m-cycle>` | Cycle diagram: stage boxes on a circle clockwise from 12, joined by arc arrows (last back to first too) | number of stages (default 1 per step; per-step n each; `node` step wins) | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
 | `<m-fishbone>` | Fishbone (cause-and-effect) diagram, one main bone at a time, head last; auto layout | bones + 1 (head), or the largest step | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — nodes without parent are main bones (categories); their children are causes, grandchildren finer causes (3 levels max) |
@@ -18,8 +19,9 @@ Instruction version: 3bcb89c8
 | `<m-predict>` | Predict, reveal; votes as bars, answer framed | 0 question, 1 bars, answer-step (2) | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices are objects {"label": …} (not strings); answer is the 0-based index of the right choice; counts (optional) has one whole number ≥ 0 per choice |
 | `<m-quad>` | 2-axis positioning map (4 quadrants); points one per step | largest step / to.step (1 point = 1 step) | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | Scatter plot; point series by step, then a trend line (least squares or 2 points) | series + trend (default 1 series = 1 step, lines 1 step) | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — points are [x, y] or {"x", "y", "label"}; axes go in attributes (xr="[0,10]" xl="…"); trend is "linear" or {"fit": "linear", "label": "…"} or {"pts": [[x0, y0], [x1, y1]]} |
-| `<m-timeline>` | Timeline; events one by one; periods as bands, overlaps stacked; end exclusive ("1912" = start of 1912) | event count (default 1 per step in time order; per-step n each; `node` step wins) | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
+| `<m-timeline>` | Timeline; events one by one; periods drawn along the axis, overlaps stacked; end exclusive ("1912" = start of 1912) | event count (default 1 per step in time order; per-step n each; `node` step wins) | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
 | `<m-tree>` | Hierarchy tree (org chart, taxonomy), built level by level from the root; auto layout | depth (by="level") or `node` count (by="node"); or the largest step | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — exactly one `node` without parent (the root) |
+| `<m-vector>` | Plane vectors and 2 × 2 matrices step by step: ops, linear maps, eigenvectors, bases; formulas beside | vectors → each op → matrix → basis | `{range?:[num,num,num,num],vectors:{id:str,v:[num,num],label?,from?:[num,num]}[],ops?:[{sum?:[str,str],diff?:[str,str],scale?:[str\|num,str\|num],proj?:[str,str],dot?:[str,str],as?:str,label?,value?:num\|num[],note?} (sum or diff or scale or proj or dot),…],matrix?:[[num,num],[num,num]],basis?:[[num,num],[num,num]],basisLabels?:[str,str],show?:("grid"\|"unit"\|"eigen"\|"det")[]}` |
 | `<m-venn>` | Venn of 2–3 sets, one by one; then overlaps with items | sets + 1 (overlaps="each": sets + overlaps with items, or all overlaps if none) | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
 
 ### `<m-bars>`
@@ -109,6 +111,17 @@ Data example (child `<script type="application/json">`): `{"sides":[{"label":"Pa
 - `better`: better column index (from 0): bold, `--emph` frame at diff step
 - Steps: column 1 (+ point names) → 2 → (3) → diffs; column `step` overrides
 - `variant`: `fade` (default), `slide`, `reveal` (row by row); same steps
+
+### `<m-ctable>`
+
+Data example (child `<script type="application/json">`): `{"kind":"anova","rows":[{"name":"A","ss":120,"df":2,"ms":60,"f":7.5},{"name":"E","ss":96,"df":12,"ms":8},{"name":"T","ss":216,"df":14}]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `digits` | number | `-1` | decimals |
+| `size` | number | `26` | text px |
+
+From a script; arithmetic checked. `kind`: anova, contingency, po, table.
 
 ### `<m-curves>`
 
@@ -246,7 +259,7 @@ Contents; choosing where to start. Add the menu after import; in the first draft
 
 - One child `<a href>` = one card. `href`: `#<slide id>` (step 0) or `#<id>:<step>` (`0`, `1`, … `concl`); ids are added on import; content = title
 - `data-icon`: circle text (`1`, `A`). `data-sub`: subtitle
-- `per-step="n"`: n cards per step (from `data-from`); unshown cards inert. `0` = all at once
+- `per-step="n"`: n cards per step (from `data-from`). `0` = all at once
 - `cols` default: ≤ 3 cards 1 row, 4 → 2, more → 3. Min height `--mm-h` (104px), gap `--mm-gap` (18px). Fill, centred: `style="height:100%;align-content:center;--mm-h:150px"`
 
 ### `<m-pie>`
@@ -364,7 +377,7 @@ History, lives, schedules. No coordinates; content and times only.
 - `label` (`\n`) or `tex` (KaTeX)
 - `note`: small last line in the box (`--muted`); after the name for periods/milestones
 - `tone`: `term` (default), `emph`, `muted`, `accent2`, `series-1..4`
-- `end`: period, a band below the axis; name inside (or beside); `\n` names thicken it
+- `end`: a period, drawn along the axis below it; name inside (or beside); `\n` names thicken it
 - `end` is exclusive: Meiji 1868–1912 and Taishō 1912–1926 share a row; through December = next month (`"2027-01"`)
 - `lane`: named group of rows ("Eras", "Authors"); overlaps stack within; `lane` without `end` = milestone (◆)
 - `step`, `at` (start s)
@@ -378,7 +391,7 @@ Layout:
 - Events (no `end` or `lane`): axis dot plus date-and-name box, alternating sides (`v`: left/right); 2 rows when crowded
 - With periods: round ticks; event boxes all above the axis
 - Steps: time order, periods and events together; the axis comes with the first
-- `variant`: `fade` (default), `draw` (lines first, bands drawn), `grow` (boxes grow, bands stretch); same steps and end
+- `variant`: `fade` (default), `draw` (lines first, periods drawn), `grow` (boxes grow, periods stretch); same steps and end
 - Show later steps faintly (`ctx.preview`): later items faint
 - `cues(k)`: start times of 2nd+ items in a step (for `{cue}`)
 
@@ -406,6 +419,16 @@ Parent–child structures (org charts, taxonomies, outlines). No coordinates; la
 - Fit (~440 px high): ~8 four-character boxes per level (`down`), ~7 (`right`); ~5 levels. More leaves: 2 staggered rows (~16 / ~11), then 2-line names. Text ≥ 24 px; overflow spills, reported. Too many: split
 - `variant`: `fade` (default), `draw` (lines first), `grow`
 - Show later steps faintly (`ctx.preview`): later parts faint
+
+### `<m-vector>`
+
+Data example (child `<script type="application/json">`): `{"range":[-4,4,-3,3],"vectors":[{"id":"a","v":[2,1],"label":"*a*"},{"id":"b","v":[-1,2],"label":"*b*"}],"ops":[{"sum":["a","b"],"as":"c","label":"*a* + *b*"},{"dot":["a","b"],"value":0}]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `size` | number | `26` | text px |
+
+`vectors` (`id`, `v`, `label`), `ops`: `sum`, `diff`, `scale` (`["a", 2]`), `proj`, `dot`; `as` names a result; `value` is checked. Or `matrix` or `basis`.
 
 ### `<m-venn>`
 

@@ -26,7 +26,7 @@
 //   assemble(data, {sets, lang, plan})           buildPack の本体（材料を渡す。tools/make-llm-guide.mjs が作りたての材料で使う）
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
-//   loadedParts(sets)                            その束で組み立てに入る部品（標準と、選んだ束の部品）
+//   loadedParts(sets, plan)                      その束で組み立てに入る部品（標準と、選んだ束の部品。有料のプランでは paidOnly の部品も）
 //   trimCandidates・fitPlan・fitPack             無料のプランの目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。fitSample は「このサンプルを参考に作る」の収め方。編集アプリ（kit/core/new-deck.mjs が出し直す）と
 //                                                コマンド（kit/llm-pack.mjs）が同じ関数を使う
 //   partsPackOpts(tags, plan, {short, full})     選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?, full?}（buildPack・packWithRequest に渡す。
@@ -40,9 +40,9 @@ export const SETS = PACK.sets;
 export const TIERS = PACK.tiers;
 export const normalizeSets = (sets) => norm(sets, PACK);
 // その束で組み立てに入る部品（標準と、選んだ束の部品。どちらのプランでも同じ。無料のプランの BRIEF も一覧に入る）
-export function loadedParts(sets = []) {
+export function loadedParts(sets = [], plan = 'free') {
   const ss = norm(sets, PACK);
-  return Object.keys(PACK.en.components).sort().filter((t) => { const s = PACK.en.components[t].set; return s === STANDARD || ss.includes(s); });
+  return Object.keys(PACK.en.components).sort().filter((t) => { const c = PACK.en.components[t]; return (c.set === STANDARD && (!c.paidOnly || plan === 'paid')) || ss.includes(c.set); });
 }
 export const partsPackOpts = (tags, plan = 'free', opts = {}) => packOptsOf(PACK, tags, plan, opts);
 // 目安に収める（本体は kit/core/llm-pack-assemble.mjs。材料はこの指示の PACK）
