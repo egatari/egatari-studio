@@ -1123,11 +1123,12 @@ window.addEventListener('message', (e) => {
     // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
     if (m.type === 'app-layout-changed' && /^(slides|split|book)$/.test(String(m.layout))) { if (book.present() && m.layout !== (S.view || 'slides')) setView(m.layout, false); }
     else if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
-    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result' || m.type === 'app-readable-result') && S.checks.has(m.id)) {
+    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result' || m.type === 'app-readable-result' || m.type === 'app-shot-result') && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) {
         S.checks.delete(m.id);
-        if (m.type === 'app-steps-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
+        if (m.type === 'app-shot-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
+        else if (m.type === 'app-steps-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
         else if (m.type === 'app-readable-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : null);
         else w.res(Array.isArray(m.results) ? m.results : []);
       }
@@ -1314,8 +1315,61 @@ async function quickCheck() {
     el('p', { id: 'check-rules', cls: 'hint', text: T.checkRules(rules.summary) }),
     // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
     el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(fixable ? [llm.fixButton(results)] : [])]),
+    el('button', { type: 'button', id: 'b-copyshot', cls: 'fixreq', text: T.copyShot, 'aria-describedby': 'copyshot-hint', onclick: copyShot }),
+    el('p', { id: 'copyshot-hint', cls: 'hint', text: T.copyShotHint }),
     ...items,
   ]);
+}
+// 品質チェックの「スライドの画像と確認の依頼をコピー」（backlog #227）：今のスライドを最後のステップにした画像（PNG。プレビューの中で描く、
+// app/frame-shim.js の slideShot）と、図と結論の行を確かめてもらう依頼の文を、1 回でクリップボードに書く（image/png と text/plain の 1 つの
+// ClipboardItem）。先生が自分のチャットの AI に貼り付ける。Studio からはどこにも送らない。
+// クリップボードへの書き込みは押した操作の中で始める（Safari は値を Promise で渡す形だけを許す）。画像を書けないブラウザ（許可がない・
+// 画像のクリップボードがない）では、画像を保存するボタンと依頼の文をコピーするボタンの窓にする
+const shotLabel = (r) => {
+  const i = r.i, s = (S.slides || [])[i];
+  return { n: i + 1, title: s && s.heading ? s.heading : '', id: r.key || (s && s.key) || '', k: r.k + 1 };
+};
+const shotText = (r) => T.copyShotRequest(shotLabel(r));
+const canCopyImage = () => typeof ClipboardItem === 'function' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function'
+  && (typeof ClipboardItem.supports !== 'function' || ClipboardItem.supports('image/png'));
+function copyShot() {
+  const i = S.pos && Number.isFinite(S.pos.i) ? S.pos.i : 0;
+  const shot = askFrame('app-shot', { i }).then((r) => (r && r.png instanceof Blob ? r : null));
+  let wrote = Promise.resolve(false);
+  if (canCopyImage()) {
+    try {
+      const need = (f) => { const p = shot.then((r) => { if (!r) throw new Error('no image'); return f(r); }); p.catch(() => {}); return p; };   // 書けなくても捕まらない拒否にしない
+      const item = new ClipboardItem({ 'image/png': need((r) => r.png), 'text/plain': need((r) => new Blob([shotText(r)], { type: 'text/plain' })) });
+      wrote = navigator.clipboard.write([item]).then(() => true, () => false);
+    } catch { wrote = Promise.resolve(false); }
+  }
+  return Promise.all([shot, wrote]).then(([r, ok]) => {
+    if (!r) { toast(T.copyShotNoImage, true); return; }
+    if (window.__APP_TEST) window.__APP_TEST.lastCopy = shotText(r);
+    if (ok) { toast(T.copyShotDone(r.i + 1)); return; }
+    return copyShotFallback(r);
+  });
+}
+// 画像をクリップボードに書けなかったとき：画像を保存（ダウンロード）と依頼の文のコピーを、それぞれのボタンで（押した操作の中で書く）
+async function copyShotFallback(r) {
+  const text = shotText(r), L = shotLabel(r);
+  const area = el('textarea', { id: 'copyshot-text', readonly: '', rows: '8', spellcheck: 'false', 'aria-label': T.copyShotTextLabel });
+  area.value = text;
+  const lead = el('p', { id: 'copyshot-lead', role: 'status', text: T.copyShotFailLead });
+  const save = () => download(`${deckBase()}-${L.n}.png`, r.png, 'image/png');
+  const copyText = async () => {
+    try { await navigator.clipboard.writeText(text); lead.textContent = T.copyShotTextCopied; return; } catch { /* 下へ */ }
+    try { area.focus(); area.select(); if (document.execCommand('copy')) { lead.textContent = T.copyShotTextCopied; return; } } catch { /* 下へ */ }
+    lead.textContent = T.copyShotTextFailed;
+  };
+  await ask({ title: T.copyShotFailTitle, kind: 'paste', body: [
+    lead,
+    el('div', { cls: 'paste-guide' }, [
+      el('button', { type: 'button', id: 'copyshot-save', text: T.copyShotSave, onclick: save }),
+      el('button', { type: 'button', id: 'copyshot-copy', cls: 'pri', text: T.copyShotCopyText, onclick: copyText }),
+    ]),
+    area,
+  ], buttons: [{ id: 'cancel', label: T.close }] });
 }
 // 原稿の文字列だけで決まる品質チェックの指摘（kit/core/check-source.mjs）：作業場所の deck.html・narration.md・voice.json の lang から。読めなければなし
 async function sourceChecks() {

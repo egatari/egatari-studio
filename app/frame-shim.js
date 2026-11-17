@@ -71,6 +71,11 @@ window.addEventListener("message", function(e){
   });
   else if (m.type === "app-silence-sounds") whenReady(function(){ if (window.DECK && DECK.silenceSounds) DECK.silenceSounds(m.on); });
   else if (m.type === "app-audio") whenReady(function(){ previewAudio(m.items); });
+  // スライドの画像（品質チェックの「スライドの画像と確認の依頼をコピー」。app/main.js の copyShot）：PNG を親の窓に渡すだけ
+  else if (m.type === "app-shot") whenReady(function(){
+    var send = function(r){ parentWin.postMessage({type: "app-shot-result", id: m.id, load: cfg.load, results: r}, "*"); };
+    try { slideShot(m.i).then(send, function(e){ send({error: String(e && e.message || e)}); }); } catch (e) { send({error: String(e && e.message || e)}); }
+  });
 });
 // 品質チェックは、実行系が組み上がってから（DECK.ready）。頼みが先に届いても待つ（空の結果を「エラー 0」として返さない）。
 // 10 秒たっても組み上がらなければ、そのまま検査する（実行系が止まったデッキ：スクリプトのエラーを返す）
@@ -166,6 +171,64 @@ function printScript(){
     window.addEventListener("afterprint", done);
     window.print();
     parentWin.postMessage({type: "app-printed", what: "script"}, "*");
+  });
+}
+// スライド i（なければ今のスライド）を最後のステップ（DECK.seek(i, max, Infinity)。スライド一覧の縮図・台本を印刷と同じ状態）にして文書を写し、
+// そのスライドだけを 1280×720 の SVG（foreignObject）に入れて canvas に描き、PNG にする。ライブラリは使わない。
+// 字体・画像は文書の中の data: なので、SVG の画像の中でも読める。SVG は data: で渡す（blob: だと origin のない枠では canvas が汚れて書き出せない。
+// data: なら Chromium・WebKit とも書き出せる）。見ている位置は写した直後に戻す（DECK.aside。描く前なので表示は動かない）。
+// → {png: Blob, i, k（最後のステップ、0 から）, key（スライドの id）, w, h} か {error}
+function slideShot(want){
+  var D = window.DECK, W = 1280, H = 720, MARK = "data-eg-shot";
+  if (!D || !D.slides || !D.slides.length) return Promise.resolve({error: "no slides"});
+  var cur = D.state().slide - 1, i = typeof want === "number" && want >= 0 && want < D.slides.length ? Math.floor(want) : cur;
+  var s = D.slides[i], max = s._max, root = null, pics = [];
+  var take = function(){
+    D.seek(i, max, Infinity);
+    // canvas は写しに中身が入らないので、画像にしておく（読めなければそのまま）
+    var cvs = [].slice.call(s.querySelectorAll("canvas"));
+    pics = cvs.map(function(c, n){ c.setAttribute(MARK + "-c", String(n)); try { return c.toDataURL("image/png"); } catch (e) { return null; } });
+    D.slides.forEach(function(x, j){ x.setAttribute(MARK + (j === i ? "-keep" : "-drop"), ""); });
+    try { root = document.documentElement.cloneNode(true); }
+    finally {
+      D.slides.forEach(function(x){ x.removeAttribute(MARK + "-drop"); x.removeAttribute(MARK + "-keep"); });
+      cvs.forEach(function(c){ c.removeAttribute(MARK + "-c"); });
+    }
+  };
+  if (D.aside) D.aside(take);
+  else { var st = D.state(); take(); D.seek(st.slide - 1, st.step, Infinity); }
+  var body = root.querySelector("body"), stage = root.querySelector("#stage");
+  if (!body || !stage) return Promise.resolve({error: "no stage"});
+  [].forEach.call(root.querySelectorAll("script,noscript,[" + MARK + "-drop],.deck-tools"), function(e){ if (e.parentNode) e.parentNode.removeChild(e); });
+  // 舞台の外（道具の列・知らせ）は写さない
+  [].slice.call(body.children).forEach(function(c){ if (!c.contains(stage)) body.removeChild(c); });
+  [].forEach.call(root.querySelectorAll("canvas[" + MARK + "-c]"), function(c){
+    var u = pics[+c.getAttribute(MARK + "-c")];
+    if (!u) return;
+    var im = document.createElement("img"); im.src = u; im.setAttribute("style", c.getAttribute("style") || ""); im.className = c.className;
+    im.width = c.width; im.height = c.height; c.parentNode.replaceChild(im, c);
+  });
+  var fix = function(e, d){ d.split(";").forEach(function(x){ var j = x.indexOf(":"); if (j > 0) e.style.setProperty(x.slice(0, j), x.slice(j + 1), "important"); }); };
+  fix(root, "margin:0;padding:0;width:" + W + "px;height:" + H + "px;overflow:hidden");
+  fix(body, "margin:0;padding:0;width:" + W + "px;height:" + H + "px;overflow:hidden");
+  fix(stage, "position:absolute;left:0;top:0;margin:0;width:" + W + "px;height:" + H + "px;transform:none");
+  // 写すスライドは見える形で（DECK.aside の中では、今のスライドの印が替わらないことがある。台本を印刷の写しと同じ）
+  var kept = root.querySelector("[" + MARK + "-keep]");
+  if (kept) { kept.removeAttribute(MARK + "-keep"); fix(kept, "visibility:visible;opacity:1"); }
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '"><foreignObject x="0" y="0" width="' + W + '" height="' + H + '">'
+    + new XMLSerializer().serializeToString(root) + "</foreignObject></svg>";
+  return new Promise(function(res, rej){
+    var img = new Image(), fail = function(){ rej(new Error("the slide could not be drawn")); };
+    var draw = function(){
+      try {
+        var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+        cv.getContext("2d").drawImage(img, 0, 0, W, H);
+        cv.toBlob(function(b){ if (b) res({png: b, i: i, k: max, key: s._key, w: W, h: H}); else rej(new Error("the image could not be made")); }, "image/png");
+      } catch (e) { rej(e); }
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    if (img.decode) img.decode().then(draw, fail);
+    else { img.onload = draw; img.onerror = fail; }
   });
 }
 // 写しの中の id を付け替え、url(#…) と href="#…" も合わせる（kit/tools.js の uniqIds と同じ）
