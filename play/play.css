@@ -33,6 +33,20 @@ html[data-framed] #framed { display: block !important; padding: 16px; }
 @media (prefers-color-scheme: dark) { #home .logo-light { display: none; } #home .logo-dark { display: inline; } }
 #lesson-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
 #lesson-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* the credit line under the title (spec §3.6.1 edits): one line, cut with … ; it opens the full list (#cred-box) */
+#lesson-names { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+#lesson-names #lesson-title { max-width: 100%; }
+#lesson-credit { max-width: 100%; min-height: 24px; font-size: 0.8125rem; color: var(--muted); text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a phone: up to two lines, so that 編集：… is not cut away behind the creators */
+@media (max-width: 599px) { #lesson-credit { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  #lesson-credit .cred-part { display: inline-block; max-width: 100%; text-decoration: underline; } }
+#cred-box { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
+#cred-box::backdrop { background: rgba(0, 0, 0, 0.5); }
+#cred-lesson { margin: 8px 0; font-weight: 600; }
+#cred-list { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+#cred-list dt { color: var(--muted); }
+#cred-list dd { margin: 0; overflow-wrap: anywhere; }
 body.playing #home .name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .badge { flex: none; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); white-space: nowrap; }
 .bar-buttons { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: none; }

@@ -31,7 +31,7 @@
     <span class="name">Egatari Viewer</span>
   </a>
   <div id="lesson-info" hidden>
-    <span id="lesson-title"></span>
+    <div id="lesson-names"><span id="lesson-title"></span><button type="button" id="lesson-credit" class="linklike" hidden></button></div>
     <span id="lesson-kind" class="badge"></span>
   </div>
   <div id="markup-bar" role="toolbar" data-i18n-label="mMarkup" aria-label="マークアップ" hidden>
@@ -142,6 +142,11 @@
 <dialog id="m-confirm" aria-describedby="m-confirm-t">
   <p id="m-confirm-t"></p>
   <div class="row"><button type="button" id="b-mconfirm-no" data-i18n="mCancel">やめる</button><button type="button" id="b-mconfirm-yes" class="pri danger" data-i18n="mDelete">消す</button></div>
+</dialog>
+<dialog id="cred-box" aria-labelledby="cred-t">
+  <div class="m-top"><h2 id="cred-t" data-i18n="credTitle">作成と編集</h2><button type="button" id="b-cred-close" data-i18n="linkClose">閉じる</button></div>
+  <p id="cred-lesson"></p>
+  <dl id="cred-list"></dl>
 </dialog>
 <div id="sr" class="sr-only" role="status" aria-live="polite"></div>
 <dialog id="link-box" aria-labelledby="link-t" aria-describedby="link-n">

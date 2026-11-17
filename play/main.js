@@ -41,6 +41,7 @@ function setLang(l) {
   $('b-lang').lang = l === 'ja' ? 'en' : 'ja';
   $('player').setAttribute('aria-label', W().lessonFrame);
   if (S.playing) $('lesson-kind').textContent = S.playing.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
+  renderCredit();
   renderRecents();
   renderInstallHint();
   if (M) M.setWords(W);
@@ -92,7 +93,7 @@ function play(text, r, info, fileSha = Promise.resolve('')) {
   closeLesson(true);
   const live = r.live && LP.validate(r.live, { key: true }).length === 0 ? r.live : null;
   const title = r.meta.title || info.name;
-  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, sourceSha256: r.meta.sourceSha256 || '', fileSha, started: false };
+  S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, sourceSha256: r.meta.sourceSha256 || '', fileSha, started: false, credits: r.meta.credits || null, lang: r.meta.lang || '' };
   S.doc = lessonDocument(text, { shim: __LESSON_SHIM__, hideLive: !!r.live });
   S.title = title;
   document.body.classList.add('playing');
@@ -102,6 +103,7 @@ function play(text, r, info, fileSha = Promise.resolve('')) {
   $('lesson-title').textContent = title;
   $('lesson-title').lang = r.meta.lang || '';
   $('lesson-kind').textContent = r.kind === 'editable' ? W().kindEditable : W().kindPlayOnly;
+  renderCredit();
   $('b-close').hidden = false;
   if (!(history.state && history.state.egaViewer)) history.pushState({ egaViewer: 1 }, '');
   if (!live) { startFrame(); return; }
@@ -259,8 +261,37 @@ function setPollView(open) {
 function onLive(kind, n) {
   if (kind === 'polls' && n === 0) setPollView(false);
 }
+// ---------------------------------------------------------------- credits (spec §3.6.1 edits, §7.3)
+// When the lesson records edits, a line under the title says who created it and the most recent edit
+// (「作成：A ／ 編集：B ほか n 件」); pressing it lists them all. The Viewer reads them from deck-meta (play/scan.mjs),
+// so they show whatever player the file carries: a tier A save adds edits but keeps the file's player, which may not show them.
+function renderCredit() {
+  const b = $('lesson-credit'), c = S.playing && S.playing.credits;
+  if (!c || !c.edits.length) { b.hidden = true; b.textContent = ''; if ($('cred-box').open) $('cred-box').close(); return; }
+  const last = c.edits[c.edits.length - 1];
+  // 「作成：…」と「編集：…」はそれぞれ 1 つのまとまりで折り返す（狭い画面で「編／集」と切れないように）
+  const part = (t) => { const s = document.createElement('span'); s.className = 'cred-part'; s.textContent = t; return s; };
+  b.replaceChildren(...(c.creators.length ? [part(W().credLineCreated(c.creators.join(W().credJoin))), W().credLineSep] : []), part(W().credLineEdited(last.by, c.edits.length - 1)));
+  b.title = W().credOpenHint;
+  b.setAttribute('aria-haspopup', 'dialog');
+  b.hidden = false;
+  if ($('cred-box').open) fillCredits();
+}
+function fillCredits() {
+  const c = S.playing.credits, w = W(), dl = $('cred-list');
+  $('cred-lesson').textContent = S.playing.title; $('cred-lesson').lang = S.playing.lang;
+  dl.replaceChildren();
+  const row = (k, v) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); };
+  if (c.creators.length) row(w.credCreated, c.creators.join(w.credJoin));
+  for (const e of c.edits) row(e.by ? w.credEdited : w.credEditedNoBy, (e.by || w.credNoBy) + (e.note ? (lang === 'ja' ? `（${e.note}）` : ` (${e.note})`) : ''));
+  if (c.copyright) row(w.credCopyright, c.copyright);
+  row(w.credLicense, c.license || w.credLicenseNone);
+}
+function openCredits() { fillCredits(); $('cred-box').showModal(); $('b-cred-close').focus(); }
+
 function closeLesson(quiet) {
   if (M) M.close();
+  if ($('cred-box').open) $('cred-box').close();
   if (S.frame && fsElement() === S.frame) fsRequest(false);
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
@@ -543,6 +574,9 @@ async function main() {
   drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
   drop.addEventListener('dragleave', () => drop.classList.remove('over'));
   drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f, f.name); });
+  $('lesson-credit').addEventListener('click', openCredits);
+  $('b-cred-close').addEventListener('click', () => $('cred-box').close());
+  $('cred-box').addEventListener('close', () => { if (S.playing && !$('lesson-credit').hidden) $('lesson-credit').focus(); });
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });
   window.addEventListener('popstate', () => { if (S.playing) closeLesson(); });
   $('b-live').addEventListener('click', focusLive);
