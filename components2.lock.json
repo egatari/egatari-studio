@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.9.1",
+  "default": "2.12.0",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -523,6 +523,143 @@
         "timer": "0aef0b1aaa430f2f4cb3a3bc09e23f5cb00f280d9b524f692b0ddce99e267c3b",
         "tree": "03ad8f02fe39c4adc55aae617b79763bd7880af6786126e358f8c02ad7fb7dd8",
         "venn": "df17b0c9aa191c1fcd4d89cb4ec6a0d2cb24dac320ad2133ba918eeee88ec489"
+      }
+    },
+    "2.12.0": {
+      "tag": "v2.12.0",
+      "tarballSha256": "15326dca3c305191dbb0adb98351dc2bef05a73614d8c6d2fdb1c482071afeeb",
+      "manifestSha256": "908d4ba58201064cdd1cccfe61baaa3b8d73dbbba1af0a679e9bcc6a4a4c6b18",
+      "parts": {
+        "balance": "2.0.1",
+        "bars": "2.1.0",
+        "base": "1.2.0",
+        "boxplot": "2.0.5",
+        "boxplot-core": "1.0.0",
+        "callout": "2.0.0",
+        "cards": "2.0.4",
+        "checklist": "2.0.0",
+        "ci": "2.0.1",
+        "code": "2.2.0",
+        "code-core": "1.0.0",
+        "codetree": "2.0.6",
+        "codetree-core": "1.0.0",
+        "collect": "2.0.4",
+        "compare": "2.0.4",
+        "ctable": "2.0.0",
+        "curves": "2.2.1",
+        "cycle": "2.0.5",
+        "diverge": "2.0.0",
+        "expr": "1.0.0",
+        "fishbone": "2.1.1",
+        "flow": "2.1.0",
+        "folds": "2.0.1",
+        "gendai": "2.0.3",
+        "heatmap": "2.1.1",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.3",
+        "hist": "2.0.5",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.0.2",
+        "kanbun": "2.0.3",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.5",
+        "kobun": "2.0.3",
+        "kpi": "2.0.4",
+        "map-japan": "2.2.0",
+        "map-world": "2.2.0",
+        "mapping": "2.0.1",
+        "market": "2.0.4",
+        "markup-reader": "1.0.2",
+        "menu": "2.0.3",
+        "network": "2.1.0",
+        "nnet": "2.0.0",
+        "numberline": "2.0.3",
+        "orbit": "2.0.6",
+        "particles": "2.0.2",
+        "pie": "2.0.3",
+        "plot": "1.1.2",
+        "predict": "2.1.1",
+        "quad": "2.1.1",
+        "sampling": "2.0.1",
+        "scatter": "2.0.5",
+        "score": "2.1.1",
+        "seq": "2.0.5",
+        "shape": "1.0.0",
+        "sweep": "2.1.2",
+        "syntax": "2.0.3",
+        "tape": "2.0.4",
+        "timeline": "2.0.4",
+        "timer": "2.0.5",
+        "trace": "2.0.0",
+        "tree": "2.1.1",
+        "venn": "2.0.3"
+      },
+      "content": {
+        "balance": "5458baef7a30298cf4b0029331f13233d162403e686f9c20085dd2104cad7141",
+        "bars": "08778858e2fb42765077b50e08f848089b1d11ea394909a4f611557b94b3acf2",
+        "base": "147987bd84722249dab609293d4fafa93f0a2aac25b8517fda1710840b575d00",
+        "boxplot": "e6d219f67d241fdf00a40d4cec261d9dd3c09ad3110d3418d4e843d0f2b8c196",
+        "boxplot-core": "fadd24868e2730ec14b8f3f1e9cb75b8577a48b8d71beaa12ef089f7a3ba0a7d",
+        "callout": "1fac9a4c6608f0150a51275fb11bad0dcff00bed1696c2d93d150fa97219e41a",
+        "cards": "609e45a826d07a54cbbcbf4ce2ad6b5474dca1d0be394eb9fad895db4a73422f",
+        "checklist": "1854c2d9091a44f465a8de71de2ef3cfa26de3750c67aba4d0ab6eef9b826b8c",
+        "ci": "f9cef6dd9580a4f19aa09d47f736ab2391f5f585b20b16a62bd781398cb6b8ac",
+        "code": "2bae0f89ba91574c6ffb654e246365acd9aaf16a7aae92d95e1bad045671fbd2",
+        "code-core": "ddd4b9cbbc282cbb3117ff662e1a14ecdb3cc7c16072a574418ec6a6eecef4d8",
+        "codetree": "e653a4da80f7761442dc5b504ea5b0700fd0acf1979beeff56122cfdb3d4654c",
+        "codetree-core": "bb139fb1c2e4d010aa82a2c50db120f95f12a0a251cded3130a71dd57dec0274",
+        "collect": "3c69bf3b3c6b9f76048fbc0839b3aa9699723570086d3d44bac799230ed6de5b",
+        "compare": "b9e27e84b2c534b87d6da5da30ee808d7863cbd1b818082b4c11d1f8b7129b1a",
+        "ctable": "0a08eb254e59cb306adb32c940ffe54e88efa3c9b7ef05ee021c38995996e742",
+        "curves": "f219b47f32b0a78e8f8f5dac83596acfed24dd6e8bfe3f05f8ebfb9582d64485",
+        "cycle": "4526a332a77fce02370c58d6acd2b83777bfac10aca91e304f105ca2d6935e21",
+        "diverge": "9ffe48f7c39657aacbbca355c8268a4682f306c0e453bdd73b69c3ed7e0cb030",
+        "expr": "faf6a2f0b5df589639de624e75c5b20594f517e4426f6415d152809249b00b92",
+        "fishbone": "5b3a29cd3ad1c572ba2864430fde589a0fa90f5a7cf6c8753ccfc97dd16d99f3",
+        "flow": "a426e6a3f8f4593403ba63ecc4a3f1f41064f4016fd9fb8d51e7876bf8c6f573",
+        "folds": "8886ccd82d68dc1bbf5b7ffcef746074ce8a3d26414d55691dc5e691e4976ded",
+        "gendai": "a18b2b15d00c76462a43823b5c270c7ddd7c31794da9c236f74f20f80ec2ffdb",
+        "heatmap": "a979207c60fbd2a12cb557297eb0217eb098d660de684530a0f43d0d9c64e6ef",
+        "heatmap-core": "43740da51de85c1b7ec1eaf688f93fd9ea25b15977ab075e6abac196f08643a6",
+        "hissan": "c8c0de41d603b61c6ec4dc1da5b50559e213dd1f3693ee5019df858016fd6daf",
+        "hist": "ae06622a328da2a01260bc68b28bb632c391e8d62a4e8387638e5a944525a418",
+        "hist-core": "07013c263cc595382dbcfd4931ca8b016f9dfb673440adf28911c95bd465cf9d",
+        "icons": "deae02519dd79e53cf18137777d486cb3b3234ab02a71d26c4e2925593b047ba",
+        "kakijun": "cff7ed8a0e0708bcef2e13105b28810bda867251a9f205ad9c2f1a5b4f759866",
+        "kanbun": "48a776e7683e1aba8cad5aa4067914c017681efaa74f175066e0ab081bf3d013",
+        "kanbun-core": "f268cf809438c8af63a42f9c9121110fc7263e4d705c40c6206ce46cf7ec167b",
+        "keyboard": "2352e0e22460f4a3c46dca6cef27cd9c63f161a411f1cf56c75c585e9124503c",
+        "kobun": "0396a1895978803ae342b7f598f187b17ead47800e8f8317a5cb041111349813",
+        "kpi": "52149f061935e65502b8353cf70285bba93ab24451d2daac26b994d3901d3864",
+        "map-japan": "682c9c8871eccd19ff1264e0323a2e4c5798b0488b612ba0339c6fe85aab5914",
+        "map-world": "67eaf344bddac79b74ed03fdcd70285c7b52b160e6c5ffbd6897848179aa5230",
+        "mapping": "c5226220649a5854d56ceeaea16722fe54a79b4197f71c51c4e1523bf22bec32",
+        "market": "d831672acd189fd9e6bd294bdbceab539f4b2dc4ec0415e776a9fe740c499544",
+        "markup-reader": "a0c71874d83045baaef70285bd00d87a7c6c43219fa5630dfff60d5cb08509be",
+        "menu": "2564dd8096be4cb3ba43703dc76029c1ba3965b831e430597c754865df4b67f4",
+        "network": "94f4891971b26f5bc157ef9f7f630b1528fc7e2a4c63e84e01951a5a3f94cedc",
+        "nnet": "fb0a77a344098c53cc90215685cee32b0d31362a1de5b5ac0eee422ed2c3c430",
+        "numberline": "1073e03374f0fe65d2691f160bfd8c092986c168d0bd6a6094ebd444d4b89c27",
+        "orbit": "49fc5add9b34d9a34fcf9ffa3772da4a36d054feead033a7212b98ce1e18705d",
+        "particles": "0dc2a0945e7a4004278fcc9b8f02223bbb87f6269bffe3dd3ebeb3a78ce23d34",
+        "pie": "87cc60da38d209cda449dd7c24171e287ac8184c5036ca04548ef9e2015c2d9e",
+        "plot": "553e132d1f84caad648bb7175a206d4c5d18c005b5ca17989f5e8a5e3f5cdfa1",
+        "predict": "061415b5f5a1861e115103224ebbcaf689b602cd9972516001f50f4646d3692a",
+        "quad": "7c2b93508a09a5dd36639ab1329ca6d00487b326c53db436b14295174dc03369",
+        "sampling": "c3fad2047cec6a2bd8a5b907f752e2addeeea2f373fd8115914552dcee0b2f6f",
+        "scatter": "3ace61e46a4555eab46ca8053db2fb76a874d4d5409bc5891cc449f43ef7e0bd",
+        "score": "b08a536a07498629c026f8fc2962acda791c83a99268ac715db5e764087000e2",
+        "seq": "6364043cb31bbd86aacb7432af1a8affef8cae5c6efdbe13fbebd116fd51b91f",
+        "shape": "8a892d25d0bb6105ba31ea690b465876ce3af1fbaf18e2a9ce44ad2fee81260e",
+        "sweep": "97c074a5473618c65f4c23263f056870a0b7940e73475f2a1f32f68c08d8eb0f",
+        "syntax": "d998b5db828427505e39cdae67676dc6480c791d6037152dec222ae81cdbba1f",
+        "tape": "362590bb028486c9b92c90b0c04bb21c9989b7da1b9d234f0d3c26093770eb52",
+        "timeline": "dd1ff8de877573e30635928e9abce0b1fba8dfc95a079eca86703a884d3c3d59",
+        "timer": "3c79d2605e1949c302a5e190dab3d12812e548af7d66e80dd73dc517dfa1ae3d",
+        "trace": "4220949efd68ff86e73ee6a0920b9f5b53f445cfcd657db72ecb2b55da1cc019",
+        "tree": "eb0b402dc4738b2dca2918c7f64a4d6fc3c27b4ba419270bbe8240a3c8a77f0c",
+        "venn": "f4204773037ae296786e3614b5bfd7487b0f5ba6d5cf92ce20262bb7613e1b6b"
       }
     },
     "2.2.0": {
@@ -2527,6 +2664,26 @@
           "base": "1.2.0"
         },
         "license": "MIT"
+      },
+      "2.2.0": {
+        "sha256": "ef068f79fe55a70ab0aa4e9367a7ae8b72444b3afaafb1cefbc3da1b268b8317",
+        "kind": "element",
+        "tag": "m-code",
+        "requires": {
+          "base": "1.2.0",
+          "code-core": "1.0.0"
+        },
+        "license": "MIT"
+      }
+    },
+    "code-core": {
+      "1.0.0": {
+        "sha256": "e6da9f0ddf382c07be7fdb36fa0b09e92ec57780ba424f4cd02c9346a0364ff5",
+        "kind": "library",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "license": "MIT"
       }
     },
     "codetree": {
@@ -2752,6 +2909,17 @@
         "sha256": "4e9600ec1fe57dc643c318f2220c084f5805544d2d00aaca5bd397bb7f56270f",
         "kind": "element",
         "tag": "m-compare",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "license": "MIT"
+      }
+    },
+    "ctable": {
+      "2.0.0": {
+        "sha256": "1d3340876adc219135ab8ef849343fa35d07cbee705c94de6708c4b64b8b63a2",
+        "kind": "element",
+        "tag": "m-ctable",
         "requires": {
           "base": "1.2.0"
         },
@@ -3840,6 +4008,16 @@
         },
         "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
         "license": "MIT"
+      },
+      "2.2.0": {
+        "sha256": "97ad90bf53455353c72cc9c983244030ad2ba88bc283d033e8b82751effb5869",
+        "kind": "element",
+        "tag": "m-map-japan",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
+        "license": "MIT"
       }
     },
     "map-world": {
@@ -3882,6 +4060,16 @@
       },
       "2.1.0": {
         "sha256": "518154f0d5054ccb44d146815df881af0c3bce2ac8bd0d524722e7bd6d7f48ed",
+        "kind": "element",
+        "tag": "m-map-world",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,°×−、。〜あいかがきくけごしすただつてでとにのはばべまらりるれろをァアィイウェエォオカガキギクグケコゴサザシジスズセゼソタダチッツテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュユョヨラリルレロワン・ー上下世中丹主京人以位例値入六共凡出分列前動北千南単口台号合名和図国土地域基塗大太央字定小尖属島州帰度後択捉数文方既日書有朝未本東桁極樺歯民沖洋湾満界目礁秒竹符米級経線緯群舞色衆西見語諸赤足軍連道邦長閣限陸階離韓項領首鮮鳥（）：；",
+        "license": "MIT"
+      },
+      "2.2.0": {
+        "sha256": "2164cb8ae6607bf6e01461888440ea9050f2d22b5bf69810abd9b118bd1799dd",
         "kind": "element",
         "tag": "m-map-world",
         "requires": {
@@ -4016,6 +4204,28 @@
         "sha256": "4bccdd6248c457d012eb8ea7eb65dfbdcd0ea3377cdc0e3cad00f75e71f854ba",
         "kind": "element",
         "tag": "m-menu",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "license": "MIT"
+      }
+    },
+    "network": {
+      "2.1.0": {
+        "sha256": "a825e90839ccfb7584124e4b6c2dac03917ec422e65ca07129b2401a60776c36",
+        "kind": "element",
+        "tag": "m-network",
+        "requires": {
+          "base": "1.2.0"
+        },
+        "license": "MIT"
+      }
+    },
+    "nnet": {
+      "2.0.0": {
+        "sha256": "4f1d550b4bab008f4ed6deffcb91dbe7b64381cecf4416a3d2d21519f5f3a6b0",
+        "kind": "element",
+        "tag": "m-nnet",
         "requires": {
           "base": "1.2.0"
         },
@@ -4887,6 +5097,18 @@
         "tag": "m-timer",
         "requires": {
           "base": "1.2.0"
+        },
+        "license": "MIT"
+      }
+    },
+    "trace": {
+      "2.0.0": {
+        "sha256": "8be66ea395a5a6ad12984f40030625a604b7f36a9b44c6c3cf2e7191a1f091ee",
+        "kind": "element",
+        "tag": "m-trace",
+        "requires": {
+          "base": "1.2.0",
+          "code-core": "1.0.0"
         },
         "license": "MIT"
       }

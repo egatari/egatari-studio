@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-ctable の見本</title>
+<!-- 組み方：node kit/build.mjs components/ctable/demo.html -o components/ctable/out/demo.html（データはすべて架空。値は uv run --with numpy --with scipy python tools/ctable-demo.py の出力） -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl">
+  <h2>一元配置の分散分析表を埋める（架空のテスト）</h2>
+  <div class="body">
+    <m-ctable style="height:400px">
+      <script type="application/json">{"kind": "anova", "rows": [{"name": "教え方", "ss": 423.3, "df": 2, "ms": 211.67, "f": 22.68, "p": 0.0001}, {"name": "誤差", "ss": 112.0, "df": 12, "ms": 9.33}, {"name": "全体", "ss": 535.3, "df": 14}]}</script>
+    </m-ctable>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>朝食と眠さの 2×2 の表（架空の調査）</h2>
+  <div class="body">
+    <m-ctable style="height:440px">
+      <script type="application/json">{"kind": "contingency", "rows": ["朝食あり", "朝食なし"], "cols": ["眠くない", "眠い"], "n": [[30, 10], [15, 25]], "expected": [[22.5, 17.5], [22.5, 17.5]], "chi2": 11.43, "or": 5.0}</script>
+    </m-ctable>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>潜在結果の表：見えない半分を開く（架空）</h2>
+  <div class="body">
+    <m-ctable style="height:520px">
+      <script type="application/json">{"kind": "po", "units": [{"id": "1", "t": 1, "y0": 60, "y1": 72}, {"id": "2", "t": 1, "y0": 70, "y1": 75}, {"id": "3", "t": 1, "y0": 65, "y1": 74}, {"id": "4", "t": 0, "y0": 55, "y1": 63}, {"id": "5", "t": 0, "y0": 58, "y1": 62}, {"id": "6", "t": 0, "y0": 50, "y1": 61}], "ate": 8.17, "naive": 19.33}</script>
+    </m-ctable>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
