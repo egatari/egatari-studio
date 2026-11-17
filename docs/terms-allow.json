@@ -616,6 +616,12 @@
       "term": "backup",
       "reason": "控えめ (subdued) is an ordinary word, not 控え for a backup.",
       "keep": true
+    },
+    {
+      "file": "docs/editor.md",
+      "pattern": "sample images|sample: (cover|body)",
+      "term": "voice-sample",
+      "reason": "The theme's sample images in New step 3 and their alt text (standards session 2026-11-16), not a voice preview."
     }
   ]
 }
