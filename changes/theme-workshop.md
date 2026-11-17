@@ -1,0 +1,3 @@
+### Added
+
+- New…, step ③: **Custom** opens a theme builder (display prototype, backlog #58). Pick one main colour (or colours from a logo image) and a font; the other colours are derived from it, a cover and a body slide preview the result, and background checks (contrast, colour vision, greyscale, washed-out projection, cover title over the background image) speak up only when something fails, with the nearest passing colour. **More** edits the derived colours and adds a cover background image, stored in `tokens.css` as a `data:` URI (so it is in the theme hash and the file). **Save theme** puts it into My themes; **Download as ZIP file** gives the theme folder (`kit/core/theme-derive.mjs`, `app/theme-workshop.js`).

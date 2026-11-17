@@ -521,3 +521,35 @@ main{flex:1;min-height:0;display:flex}
 #dlg .paste-answered .pick-badge{position:static;margin:0 8px;vertical-align:1px}
 #dlg .paste-from{margin:0 0 10px}
 #err-fix{margin-top:14px}
+/* テーマを作る画面（新規作成 ③ の「オリジナル」。app/theme-workshop.js） */
+#dlg .theme-shop{margin:8px 0 4px;padding:8px 12px 10px;border:1px solid var(--line);border-radius:8px;font-size:13.5px;min-width:0}
+#dlg .theme-shop[hidden]{display:none}
+#dlg .theme-shop h3{margin:0 0 2px}
+#dlg .shop-inputs{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:flex-end}
+#dlg .shop-field{display:flex;flex-direction:column;gap:2px;min-width:0}
+#dlg .shop-label{font-size:13px}
+#dlg .shop-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-width:0}
+#dlg .theme-shop input[type=color]{width:38px;height:30px;padding:1px 2px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+#dlg .theme-shop input[type=text]{font:inherit;font-size:13.5px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);min-width:0}
+#dlg .theme-shop input[type=text][maxlength="7"]{width:6.5em;font-family:ui-monospace,Menlo,monospace}
+#dlg .theme-shop input[aria-invalid]{border-color:var(--bad-fg)}
+#dlg .shop-swatches{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 0}
+#dlg .shop-swatches[hidden],#dlg .shop-checks[hidden],#dlg .theme-shop [hidden]{display:none}
+#dlg .theme-shop .chip{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.25);vertical-align:-2px;margin-right:6px}
+#dlg .shop-swatch,#dlg .shop-fix{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;white-space:nowrap}
+#dlg .shop-preview{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 2px}
+#dlg .shop-slide{position:relative;aspect-ratio:16/9;overflow:hidden;border:1px solid var(--line);border-radius:4px;background:#fff;min-width:0}
+@media (max-width:560px){ #dlg .shop-preview{grid-template-columns:1fr} }
+#dlg .shop-checks{margin:8px 0;padding:6px 10px;border-radius:6px;background:var(--warn-bg);color:var(--warn-fg)}
+#dlg .shop-checks-head{margin:0 0 4px;font-weight:600}
+#dlg .shop-checks ul{margin:0;padding-left:1.2em}
+#dlg .shop-check{margin:0 0 6px}
+#dlg .shop-check .shop-fix{margin-left:8px}
+#dlg .shop-more{margin:8px 0}
+#dlg .shop-colours{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin:6px 0}
+#dlg .shop-colour{display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:center}
+#dlg .shop-colour[data-changed] label{font-weight:600}
+#dlg .shop-cover{margin-top:8px}
+#dlg .shop-save{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+#dlg .shop-save .shop-field{flex:1 1 200px}
+#dlg .shop-save .hint{flex-basis:100%;margin:0}

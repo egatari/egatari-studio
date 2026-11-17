@@ -660,11 +660,14 @@ export function setupLlm(app) {
   // 最後の「テーマを読み込む…」で読み込みの窓（ZIP ファイル・テーマのフォルダ）。一覧は「テーマを変更…」と同じ（app.themeOptions）
   async function themeQuestion(title, ctl) {
     const sel = el('select', { id: 'paste-theme' });
-    const LOAD = '\u0000load';
+    const LOAD = '\u0000load', ORIGINAL = '\u0000original';
+    // テーマを作る画面（「オリジナル」。app/theme-workshop.js）：選ぶと選ぶ欄の下に開く。保存すると自分のテーマに入り、そのテーマを選んだ形になる（開いたまま）
+    const shop = app.themeWorkshop ? app.themeWorkshop({ onSaved: async (name) => { await fill(); if ([...sel.options].some((o) => o.value === name)) { sel.value = name; newTheme = name; } sel.dispatchEvent(new Event('change')); } }) : null;
     const fill = async () => {
       const opts = app.themeOptions ? await app.themeOptions() : (app.themes || ['default']).map((t) => ({ value: t, label: t }));
       const opt = (o) => el('option', { value: o.value, text: o.label, ...(o.user ? { 'data-user': '' } : {}), ...(o.note ? { 'data-note': o.note } : {}) }), mine = opts.filter((o) => o.user);
       sel.replaceChildren(...opts.filter((o) => !o.user).map(opt), ...(mine.length ? [el('optgroup', { label: X.themeMine }, mine.map(opt))] : []),
+        ...(shop ? [el('option', { value: ORIGINAL, text: shop.words.original })] : []),
         ...(app.loadOtherTheme ? [el('option', { value: LOAD, text: X.themeLoad })] : []));
       const vals = opts.map((o) => o.value);
       sel.value = vals.includes(newTheme) ? newTheme : vals.includes('default') ? 'default' : vals[0];
@@ -672,7 +675,9 @@ export function setupLlm(app) {
     };
     await fill();
     sel.addEventListener('change', async () => {
-      if (sel.value === LOAD) { sel.value = newTheme; if (await app.loadOtherTheme()) await fill(); ctl.changed(); return; }
+      if (sel.value === LOAD) { sel.value = shop && shop.isOpen() && !shop.saved ? ORIGINAL : newTheme; if (await app.loadOtherTheme()) await fill(); ctl.changed(); return; }
+      if (sel.value === ORIGINAL) { shop.open(newTheme); ctl.changed(); return; }
+      if (shop && sel.value !== shop.saved) shop.close();
       newTheme = sel.value; ctl.changed();
     });
     // 選んだ同梱のテーマの「向き」（研究・講義向け など）を、選ぶ欄の下に小さく
@@ -680,9 +685,9 @@ export function setupLlm(app) {
     const showNote = () => { const o = sel.selectedOptions[0]; note.textContent = (o && o.dataset.note) || ''; };
     sel.addEventListener('change', showNote);
     showNote();
-    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note])], {
+    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note]), shop ? shop.node : null], {
       q: () => X.themeLabel, answer: () => (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : sel.value),
-      valid: () => !!sel.value, onNext: () => ctl.next(2), onChange: () => ctl.reopen(2), tag: sameTheme,
+      valid: () => !!sel.value && sel.value !== ORIGINAL, onNext: () => ctl.next(2), onChange: () => ctl.reopen(2), tag: sameTheme,
     });
   }
 
