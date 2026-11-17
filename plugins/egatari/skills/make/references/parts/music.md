@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # music のパーツ
 
-指示のバージョン：b64db6a0
+指示のバージョン：049c5f95
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

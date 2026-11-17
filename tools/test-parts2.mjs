@@ -703,9 +703,14 @@ for (const [code, what] of [
   const v2140 = lock2.catalogues['2.14.0'], v2141 = lock2.catalogues['2.14.1'];
   ok(v2140 && v2140.tag === 'v2.14.0' && v2140.tarballSha256 === 'a7f1dd944c59589ee7e74b7291797bb63e3d27a58a6f8d3337e5544f0805eafb' && v2140.manifestSha256 === 'fcd3d558f67c426fe7185e8eb967546cfc308bde53913cac6e3a10b8c03c9465',
     '2.14.0: pinned to the released tarball and manifest (v2.14.0)');
-  ok(lock2.default === '2.14.1' && v2141 && v2141.tag === 'v2.14.1' && v2141.tarballSha256 === 'd6d3b8d346e3d341b33b44fe6a160528d87adac55d69942af9e149a17144430d' && v2141.manifestSha256 === '5a3f493700d6f61f2ee193d7922b38dd08a4d1ac35b5871b4cc5e132faba5e22',
-    '2.14.1: the default; pinned to the released tarball and manifest (v2.14.1)');
+  ok(v2141 && v2141.tag === 'v2.14.1' && v2141.tarballSha256 === 'd6d3b8d346e3d341b33b44fe6a160528d87adac55d69942af9e149a17144430d' && v2141.manifestSha256 === '5a3f493700d6f61f2ee193d7922b38dd08a4d1ac35b5871b4cc5e132faba5e22',
+    '2.14.1: pinned to the released tarball and manifest (v2.14.1)');
   ok(Object.keys(v2130.parts).every((n) => n in v2140.parts && n in v2141.parts), '2.14.0 and 2.14.1: nothing removed since 2.13.0');
+  // 2.15.0：札・箱・線を描くパーツに data-part（R-geometry、#45）、m-sweep・m-seq の範囲外の知らせ（range、#47）。既定（v0.6.15 から）
+  const v2150 = lock2.catalogues['2.15.0'];
+  ok(lock2.default === '2.15.0' && v2150 && v2150.tag === 'v2.15.0' && v2150.tarballSha256 === '9beea9eb56cc8276b3fd7e1e81461f30942daa0d0bc2820eec400afd3058e12e' && v2150.manifestSha256 === '2fb6498a5a3abce4d061d977304bfe88dfa16581fe90eb1f5e74e6d182305448',
+    '2.15.0: the default; pinned to the released tarball and manifest (v2.15.0)');
+  ok(Object.keys(v2141.parts).every((n) => n in v2150.parts), '2.15.0: nothing removed since 2.14.1');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
