@@ -232,7 +232,8 @@
         "2.0.2",
         "2.0.3",
         "2.0.4",
-        "2.0.5"
+        "2.0.5",
+        "2.0.6"
       ],
       "sha256": {
         "1.9.0": "38e8b48b9f4635b808f3fc1f789cb9308cf5e2b9302e88823d52e9c5e8084865",
@@ -247,7 +248,8 @@
         "2.0.2": "b9820bf24fe7ac072f7eff870ec99101c63a0d543d881fac1597eff271190af7",
         "2.0.3": "41773b1a750a0ebd0e55254b6f88edcbe6a7d651fd9c4e9f23a5b615ab62c793",
         "2.0.4": "1e8403ac83b19e4e9880fb998a1892f2c563f42a62952b42de1ad2b5d00ce9b2",
-        "2.0.5": "d57abfc7cd1510463d658fcb2e52c5597afde59c256da66ada5507d4408616c7"
+        "2.0.5": "d57abfc7cd1510463d658fcb2e52c5597afde59c256da66ada5507d4408616c7",
+        "2.0.6": "ccb7902a2386b63e334afb9ae4e1aa2c18576030a272e7eab2c62e3199b9de83"
       },
       "crlfSha256": {
         "1.9.0": "914a71cead3d1b0a2a76d7fa38f026593f226d9b5424e533c1e8198e63a73865",
@@ -271,7 +273,8 @@
         "2.0.2": "12704ccb92a1f864a18cce824a2400e8e3141e8dba7db34805cb1d8522aae08e",
         "2.0.3": "60ed5c6384cb748f66f56132360f91c550e5083ef131b28a060710dc1f5dc18f",
         "2.0.4": "2af8f6248ebd499dd036bffcac49b3e43fd8c74a0435bd256e2b1dbd8141b4d5",
-        "2.0.5": "e6d219f67d241fdf00a40d4cec261d9dd3c09ad3110d3418d4e843d0f2b8c196"
+        "2.0.5": "e6d219f67d241fdf00a40d4cec261d9dd3c09ad3110d3418d4e843d0f2b8c196",
+        "2.0.6": "1b15fcc12b2fa43821e6299e87aae31aa69dbbc5a0d1b80088a5d7c5f8b8f7f5"
       }
     },
     "boxplot-core": {
@@ -1198,7 +1201,8 @@
         "2.0.1",
         "2.0.2",
         "2.1.0",
-        "2.1.1"
+        "2.1.1",
+        "2.1.2"
       ],
       "sha256": {
         "1.13.0": "c23ff72229549f82bfcc21fc5255d58ea4badbedd0926d18d0f2d1ce83bcca66",
@@ -1207,7 +1211,8 @@
         "2.0.1": "bbc58a845901f748f00c3617eafe2a37a1bccddc7adb30472627db42e838c35d",
         "2.0.2": "16b7d23d4e83c0849417100b495dfd7843a98af735169b1c9f4f21b707fef57b",
         "2.1.0": "bec98bed6ba090a961916d76d67e72ed9b3b971089a4e6106c073cf3ff31f7b6",
-        "2.1.1": "c3bb5161f9ca747e402704c46661c21177d4934bab90a825ea4da5d0717a30a3"
+        "2.1.1": "c3bb5161f9ca747e402704c46661c21177d4934bab90a825ea4da5d0717a30a3",
+        "2.1.2": "928d767723a29ee87fce4f726b5ea7a78ac53706036ae29ffbf8563f92ea5821"
       },
       "crlfSha256": {
         "1.13.0": "4706fcc3d1c2cb8e99009e7fa5fb24986c59f29619b52ff153e7e9493651cef9",
@@ -1220,7 +1225,8 @@
         "2.0.1": "0f85ecc000a5665e85229d05a36c0c14e1ddc4bb6b4a4fbedb0fb836b36ea0c2",
         "2.0.2": "2a6b20b93f1169ef2435cdf3bfca57d24c9111fe9aaf8e61f0d049cf8a70e9df",
         "2.1.0": "8ef66bd1e800bcbedef436585469d308665aaa1ab6011aee699544302d0a8ad0",
-        "2.1.1": "c129c1c6c5df8ddafed87ea41fe6f9fc03784b2904059321f970d16ff3238bf8"
+        "2.1.1": "c129c1c6c5df8ddafed87ea41fe6f9fc03784b2904059321f970d16ff3238bf8",
+        "2.1.2": "8f861d71df72a82be86a3e63abf7d69bbab5aac6fa68be6e077c4e19c3519ed8"
       }
     },
     "heatmap-core": {
@@ -1294,7 +1300,8 @@
         "2.0.2",
         "2.0.3",
         "2.0.4",
-        "2.0.5"
+        "2.0.5",
+        "2.0.6"
       ],
       "sha256": {
         "1.9.0": "8d2a4da2b10fedf145dccded9e5659b6ea98655f4ab64a3b2198efd13ed7376b",
@@ -1309,7 +1316,8 @@
         "2.0.2": "6472a7ba18a8bff9d2e4d388b80e38bba5975baaf1820f1266fc0b547a0ca056",
         "2.0.3": "5b965ecc33c31fbee1c172728dbee999d854460d8c802f53024edb300987b293",
         "2.0.4": "509329649ba50579d691f4c68e60c3e007ba89c43914fb2c932208a255bde1c3",
-        "2.0.5": "8c36e75620a647e405c4ff9915b346a016b4646ae7b2cfde211fb4c89280aaaa"
+        "2.0.5": "8c36e75620a647e405c4ff9915b346a016b4646ae7b2cfde211fb4c89280aaaa",
+        "2.0.6": "1140c863c61314b884dd21f523b95a79cb6fce883d381a0844bf20539dfed088"
       },
       "crlfSha256": {
         "1.9.0": "ab191b9afe43b2ef0b0ee477016a664bedee3a3a544412439d895e355a3a9334",
@@ -1333,7 +1341,8 @@
         "2.0.2": "a6486154cbfe25c500a64cbb2128be45c2e2365e848c34d4c5c10e9a93f6e73c",
         "2.0.3": "07c2fb9b3f55134e5e659704ef544d7bc85f55259f033181217c4abb75f8c3ce",
         "2.0.4": "f0ac8d6498c1f51ea963f6c0776937f9dc6d2a9f2ac0fdbe6243d94cc3bbc06d",
-        "2.0.5": "ae06622a328da2a01260bc68b28bb632c391e8d62a4e8387638e5a944525a418"
+        "2.0.5": "ae06622a328da2a01260bc68b28bb632c391e8d62a4e8387638e5a944525a418",
+        "2.0.6": "cf0985ffcd8e7cbe2175ddb9a4342b2a4aa3f322794188fc99af8789b494460d"
       }
     },
     "hist-core": {
@@ -1694,7 +1703,8 @@
         "2.0.1",
         "2.0.2",
         "2.0.3",
-        "2.0.4"
+        "2.0.4",
+        "2.0.5"
       ],
       "sha256": {
         "1.0.0": "92fdf38c290c4efd5cf3c202b75ed7035da148434475d0cc8f32d078bab8335e",
@@ -1723,7 +1733,8 @@
         "2.0.1": "71ef38e3ad6d13b41ff0c07077897f1ea574fd46b9502e88a8ff602294786a3d",
         "2.0.2": "ebfdbe90122bbd0cffc5515a7ff1be644a2fade92a646f54cc5a8e5a0c539bbd",
         "2.0.3": "b467fe9d7ec0b832011b160688dd45881aa5094fab4399448fa456a2648d694e",
-        "2.0.4": "ea3e6a231e725365e008ce33d9ef48e625fc489884d9ebd394bdf29d82ed5e57"
+        "2.0.4": "ea3e6a231e725365e008ce33d9ef48e625fc489884d9ebd394bdf29d82ed5e57",
+        "2.0.5": "d05d1c316ca066623d0a81ebd84e808d53844a776c17229fb19afa4b811265b0"
       },
       "crlfSha256": {
         "1.0.0": "f1b86f6a27a663f4e114394b5926f69a5e708e2dbf09a9cffd59f5def90e6b2c",
@@ -1776,7 +1787,8 @@
         "2.0.1": "32aa0052bbb1f20f0d97fc8dde7413b49d51c342c7ac2f38f88377d4c5100d88",
         "2.0.2": "c252d5ceed6735b7ca8095ac8ef035dfc79f8492b2624d7d2eb94d2a27fafe2b",
         "2.0.3": "d386f2b94cd9fbed765ad301aa7009228599edb2859efe7f37a98d7aaa44b9bb",
-        "2.0.4": "19803bbabc26cab7937b17c101f0529239ad505e2ef72a5b21c5d0b9afb063b5"
+        "2.0.4": "19803bbabc26cab7937b17c101f0529239ad505e2ef72a5b21c5d0b9afb063b5",
+        "2.0.5": "38f6385118112c679b520909d677935176e0c7aa2183a877324eeb5108606eae"
       }
     },
     "map-japan": {
@@ -2057,7 +2069,8 @@
         "2.0.0",
         "2.0.1",
         "2.0.2",
-        "2.0.3"
+        "2.0.3",
+        "2.0.4"
       ],
       "sha256": {
         "1.0.0": "21bf8b24304b61dd8e55c971c9412b69536a0e7d290ce7dbb08705afb2757f3b",
@@ -2085,7 +2098,8 @@
         "2.0.0": "413386d15786020035b40f804d862050f87e97358faf3c0ca358371b13516074",
         "2.0.1": "f1857d0170abff2563ad54e2b3ad631f190eed5be5f9474b8cb2047bf84836e7",
         "2.0.2": "a66af8f2835664175adfba7e628f3ffe4fbeb99c32fa9b2501456cae306f4cb0",
-        "2.0.3": "4bccdd6248c457d012eb8ea7eb65dfbdcd0ea3377cdc0e3cad00f75e71f854ba"
+        "2.0.3": "4bccdd6248c457d012eb8ea7eb65dfbdcd0ea3377cdc0e3cad00f75e71f854ba",
+        "2.0.4": "89af3e3933b7d3967b92b5d77ceef195e2dae34b986a9428a98db5a7d343cd39"
       },
       "crlfSha256": {
         "1.0.0": "161dfe97be603cf020b32667e3997bad8487bbfa67bc5500f1bef4d36a5b25bc",
@@ -2137,7 +2151,8 @@
         "2.0.0": "39f28bd9009d9d31a6bf06f31d917b85ea42026e8ecadce0102fff87b4689420",
         "2.0.1": "3f8fbe9132d44899f4ee663239185cc92336751b358497bf668d694702a82041",
         "2.0.2": "b9ee9d0f48ab61977d3aa618e6155ccc3453dbf452235f438fa15db6f554f961",
-        "2.0.3": "3fdd15756f779a16362dd854f143ca4343154059882d88d44adf64745c7876e3"
+        "2.0.3": "3fdd15756f779a16362dd854f143ca4343154059882d88d44adf64745c7876e3",
+        "2.0.4": "5644e63364f46ee53d5f8623355149753147cdc4720e4c66fc9b8a32627e68a5"
       }
     },
     "numberline": {
@@ -2594,19 +2609,22 @@
         "2.0.0",
         "2.0.1",
         "2.1.0",
-        "2.1.1"
+        "2.1.1",
+        "2.1.2"
       ],
       "sha256": {
         "2.0.0": "483b893377f2ece73851e496a6b156958bd37a98b76ee8045b5406992b00a301",
         "2.0.1": "cc1c0221e9dff3cbdb2568fcef24c229f03831b926bcc6cef0e72a442a5f7c86",
         "2.1.0": "31ffe74f29d89955647c87e91c880de140853149f68713ae9cf59f0f53327013",
-        "2.1.1": "cf4fa043c6fc046d4fa4c0bd707230801acc1a2df7bf53ba86bc2d1c2c93f90f"
+        "2.1.1": "cf4fa043c6fc046d4fa4c0bd707230801acc1a2df7bf53ba86bc2d1c2c93f90f",
+        "2.1.2": "37909868fe5ea6758f0c1b618ad33c8ce7d736336f7485eda3602c4b7e8b1892"
       },
       "content": {
         "2.0.0": "92111d5968d74b63bc43c559c35498507bd654aa76d87dcc1462e276863c7457",
         "2.0.1": "513ffe334833d2f6c32627089f5f77e40d9a37b8e17e237106c1c78a4a8f7ee5",
         "2.1.0": "abbe3a79cdd442191cb76ac572a7fa62af694850c115c4abba30356bae5f475f",
-        "2.1.1": "babd98da50ea334b63f79c66be436d092e8aea32654e011a6444667abb882e77"
+        "2.1.1": "babd98da50ea334b63f79c66be436d092e8aea32654e011a6444667abb882e77",
+        "2.1.2": "c201dbc3f1f790c59cc010b3be3566daa9085754614402e9dc1296dba9e87769"
       },
       "catalogue": "2"
     },
@@ -3050,7 +3068,8 @@
         "2.0.2",
         "2.0.3",
         "2.0.4",
-        "2.0.5"
+        "2.0.5",
+        "2.0.6"
       ],
       "sha256": {
         "1.7.0": "f42b2549bbcceccbc2dd5d58c24dcc3d8df8c5ff41f83c8975c51a38af1a6cfb",
@@ -3068,7 +3087,8 @@
         "2.0.2": "5dff770971556b8a6ff1c895ee07f3a7140564f8105d1831327c267bebb8daec",
         "2.0.3": "13a640b8b1c8cb6522b0318f696dcf7d9b2f7c5f4c8b577f6163b95bacbeac24",
         "2.0.4": "3cb7123bf1b1970c6af8b747ba8bd58d4e76dda600ac3090ef825fe62f82fa01",
-        "2.0.5": "10f240c201d4f8643086ecf4ca2533ead01645921a7c7323c54dd4e38c633d77"
+        "2.0.5": "10f240c201d4f8643086ecf4ca2533ead01645921a7c7323c54dd4e38c633d77",
+        "2.0.6": "17cdc0528ed5762336f1ed59f77f66787f4ba98b0b64b493c1f47b19ebf0147d"
       },
       "crlfSha256": {
         "1.7.0": "d86ed6ddba29c6c419c9d133470ba66762210bed1423ba0d81b5df604634ff87",
@@ -3098,7 +3118,8 @@
         "2.0.2": "0aef0b1aaa430f2f4cb3a3bc09e23f5cb00f280d9b524f692b0ddce99e267c3b",
         "2.0.3": "9043427ed434c76fba5b11ddd863c40d99b6157e194cfc729895cbaa4940496c",
         "2.0.4": "d2df3d70fc7c6e07e3cad7332a7e5501e84abeb24653786e567f57046adebcba",
-        "2.0.5": "3c79d2605e1949c302a5e190dab3d12812e548af7d66e80dd73dc517dfa1ae3d"
+        "2.0.5": "3c79d2605e1949c302a5e190dab3d12812e548af7d66e80dd73dc517dfa1ae3d",
+        "2.0.6": "1117758820dc561f41cf9d1cc0bab8cf3173cde7771ac10a12b94c96007c0f55"
       }
     },
     "tree": {
@@ -3435,15 +3456,18 @@
       "default": "2.0.0",
       "versions": [
         "2.0.0",
-        "2.0.1"
+        "2.0.1",
+        "2.1.0"
       ],
       "sha256": {
         "2.0.0": "d5d1c993132c5d4a4bae8bbf26c62a5cd33edd79d352b1264e6ae64611d60d2b",
-        "2.0.1": "58601c3d7b441495878463efad3549e21950751679392fec36accffeb776f071"
+        "2.0.1": "58601c3d7b441495878463efad3549e21950751679392fec36accffeb776f071",
+        "2.1.0": "3e0c69aeb54dc6fa0e34482697913a1982957b6b4343d3071c9bce28bdea77b4"
       },
       "content": {
         "2.0.0": "d75c461bb7b2b1c9a2b6d15bee1e11bcec88ef94931174d6b222cd309f6a0287",
-        "2.0.1": "b490139e9afa84164054738532d5ec4985bf071e40791d903012fe3b850bae43"
+        "2.0.1": "b490139e9afa84164054738532d5ec4985bf071e40791d903012fe3b850bae43",
+        "2.1.0": "4e7ba7759ddebfa5432b733e5f10abfd336ef7d6cc4d46305d5ff7d00ed3a423"
       },
       "catalogue": "2"
     },
@@ -3580,6 +3604,58 @@
       },
       "content": {
         "2.0.0": "4220949efd68ff86e73ee6a0920b9f5b53f445cfcd657db72ecb2b55da1cc019"
+      },
+      "catalogue": "2"
+    },
+    "classify2d": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "cac934e614bec36c8f042233375a934ab2a7bc16d90729440796561ef0c6163c"
+      },
+      "content": {
+        "2.0.0": "fc48e703adab4715157f8dbb0e33c8b5c00099358ae522484290a7098fda2910"
+      },
+      "catalogue": "2"
+    },
+    "contour": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "4cd05f4db7dbe7a7b46bf1bd446fb8c54912e5966a184605556d5d3480489492"
+      },
+      "content": {
+        "2.0.0": "d448fec2aeb436f187875c493b1592b373c6a18274ffc64231dbe3f1b54f8cbc"
+      },
+      "catalogue": "2"
+    },
+    "contour-core": {
+      "default": "1.0.0",
+      "versions": [
+        "1.0.0"
+      ],
+      "sha256": {
+        "1.0.0": "0935abe547ca44523e5c56f0c568270ffc424da43a315fd2de193a01d9bd4a60"
+      },
+      "content": {
+        "1.0.0": "89c8c16788e24df17920542ed6eb6557dea4a10e835de8fe839e439ccbba8014"
+      },
+      "catalogue": "2"
+    },
+    "vector": {
+      "default": "2.0.0",
+      "versions": [
+        "2.0.0"
+      ],
+      "sha256": {
+        "2.0.0": "d64653f4a4558edd2be94c1fb536a535d3a310af658fd19b4461727124a69fb0"
+      },
+      "content": {
+        "2.0.0": "60e3e41c34034e16f9f7ee9ce6c8d669ebb753614989fc2e5e181ef295e83631"
       },
       "catalogue": "2"
     }
