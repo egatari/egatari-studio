@@ -3,7 +3,8 @@
 //   node tools/test-viewer-a11y.mjs [作業フォルダ] [--webkit] [--json <ファイル>] [--report]
 // Viewer のページ（play/）を次の状態で開き、axe-core（wcag2a・wcag2aa・wcag21a・wcag21aa・wcag22aa の規則）を当てる：
 //   start（教材なし、ja・en・暗い背景）、about の節まで、教材を開いた（スライド）、本の表示、マークアップの帯、
-//   マークアップの一覧（ハイライト 1 つ）、確かめの窓（この色を全部消す）、リンクの確かめ、ライブのある教材（参加の前）
+//   マークアップの一覧（ハイライト 1 つ）、確かめの窓（この色を全部消す）、リンクの確かめ、ライブのある教材（参加の前）、
+//   編集の記録（metadata.edits）のある教材の「作成と編集」の行と一覧（明るい・暗い背景。handoff #32）
 // 検査はページ（Viewer の画面）だけ。教材の枠（#lesson、sandbox）の中はプレーヤー（kit/）なので別に数え、--report で一覧に出すだけ
 // （落とさない。直しは dev の担当）。
 // 落とす条件：Viewer のページに、KNOWN にない違反（規則 id × 状態）がある。KNOWN は直すまでの一覧で、直ったら消す
@@ -55,6 +56,9 @@ fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, extensions: { live: { v: 1, 
 const iso = (ms) => new Date(ms).toISOString().replace(/\.\d+Z$/, 'Z');
 const now = Date.now();
 put('live.play.ega.html', (await buildPortable(deck, { playOnly: true, live: { v: 1, endpoint: ENDPOINT, room: 'r-7k2q6xw4', key: 'Q2xhc3Nyb29tS2V5MDAwMD', window: { from: iso(now - 60e3), to: iso(now + 2 * 3600e3) } } })).html);
+// the same book with edits by other people (spec §3.6.1): the credit line under the title and its list (play/main.js renderCredit)
+fs.writeFileSync(cfgPath, JSON.stringify({ ...cfg0, metadata: { ...(cfg0.metadata || {}), creators: ['Test Author'], license: 'CC-BY-4.0', edits: [{ by: '○○高校 情報科', note: '2 章の例を差し替え' }, {}] } }, null, 2) + '\n');
+put('edited.play.ega.html', (await buildPortable(deck, { playOnly: true })).html);
 fs.writeFileSync(cfgPath, JSON.stringify(cfg0, null, 2) + '\n');
 
 // ---------------------------------------------------------------- the Viewer, served with its own headers
@@ -166,6 +170,17 @@ console.log('lesson');
   await toBook(p, f);
   await check('lesson (book, dark)', p, f);
   await c.close(); }
+console.log('credits');
+for (const [suffix, opt] of [['', {}], [', dark', { scheme: 'dark' }]]) {
+  const { c, p } = await page(opt);
+  const f = await open(p, 'edited.play.ega.html');
+  ok(await until(() => p.isVisible('#lesson-credit')), `credits${suffix}: the line under the title is shown`);
+  if (!suffix) await check('credits (line)', p, f);
+  await p.click('#lesson-credit');
+  ok(await until(() => p.isVisible('#cred-box'), 3000), `credits${suffix}: the list opens`);
+  await check(`credits (list${suffix})`, p, f);
+  await c.close();
+}
 console.log('live');
 { const { c, p } = await page();
   await p.setInputFiles('#file', FIX['live.play.ega.html']);

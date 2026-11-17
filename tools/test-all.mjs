@@ -198,7 +198,7 @@ const steps = [
   ['test-viewer-credits-webkit', ['tools/test-viewer-credits.mjs', path.join(tmp, 'viewer-credits-webkit'), '--webkit']],
   // サイトのプレーヤー（play/site-player.mjs、tools/build-site-player.mjs）：見出しなしの置き場所で、lock との照合・opaque な枠・リンクの箱・枠の中を断る
   ['test-site-player', ['tools/test-site-player.mjs', path.join(tmp, 'site-player')]],
-  // Viewer のページの WCAG 2.2 AA の自動の検査（axe-core）：最初の画面・教材・本・マークアップ・ダイアログ・ライブの参加の画面。教材の枠の中は一覧にするだけ
+  // Viewer のページの WCAG 2.2 AA の自動の検査（axe-core）：最初の画面・教材・本・マークアップ・ダイアログ・ライブの参加の画面・作成と編集。教材の枠の中は一覧にするだけ
   ['test-viewer-a11y', ['tools/test-viewer-a11y.mjs', path.join(tmp, 'viewer-a11y')]],
   // 同じ検査を WebKit で（WebKit が入っていなければ skip で通る）
   ['test-viewer-a11y-webkit', ['tools/test-viewer-a11y.mjs', path.join(tmp, 'viewer-a11y-webkit'), '--webkit']],

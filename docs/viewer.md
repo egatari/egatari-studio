@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=afe55f743dbe59b2 -->
+<!-- i18n: pair=viewer.ja.md sha256=0676304caa77a92d -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -101,7 +101,7 @@ The lesson's own player (`kit/tools.js`) takes touch itself, so the page adds no
 
 ## Accessibility
 
-The aim is WCAG 2.2 AA for the Viewer's own page (the header, the start page, the markup bar and list, the dialogs, the Live join screen and pane). `tools/test-viewer-a11y.mjs` (Chromium; `--webkit` for WebKit; `--report` lists each finding, `--json <file>` writes them) runs axe-core with the WCAG 2.0/2.1/2.2 A and AA rules on the page in these states: the start page (Japanese, English, dark), a lesson open as slides and as a book (light and dark), the markup bar, the markup list with a highlight, the confirmation for deleting a colour, the link box, and a lesson with a Live before joining and while watching. It fails on any violation in the page. The lesson's frame (the player inside the file, `kit/`) is checked in the same states and listed, but does not fail the test. axe finds only part of WCAG; the keyboard, screen-reader (VoiceOver, NVDA) and 400% zoom checks are done by hand.
+The aim is WCAG 2.2 AA for the Viewer's own page (the header, the start page, the markup bar and list, the dialogs, the Live join screen and pane). `tools/test-viewer-a11y.mjs` (Chromium; `--webkit` for WebKit; `--report` lists each finding, `--json <file>` writes them) runs axe-core with the WCAG 2.0/2.1/2.2 A and AA rules on the page in these states: the start page (Japanese, English, dark), a lesson open as slides and as a book (light and dark), the markup bar, the markup list with a highlight, the confirmation for deleting a colour, the link box, a lesson with a Live before joining and while watching, and a lesson with edits: the credit line under the title and its list (light and dark). It fails on any violation in the page. The lesson's frame (the player inside the file, `kit/`) is checked in the same states and listed, but does not fail the test. axe finds only part of WCAG; the keyboard, screen-reader (VoiceOver, NVDA) and 400% zoom checks are done by hand.
 
 ## Building
 
