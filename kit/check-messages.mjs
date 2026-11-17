@@ -239,6 +239,10 @@ export const MESSAGES = {
   partSvgOut: { rule: 'R-fit',
     ja: (a) => `${compName(a, true)}の図（いちばん外側の <svg>）がパーツの箱からはみ出す（${a.px}px${moreJa(a)}）：パーツのコードで、その <svg> に width と height を付ける（または style で width:100%;height:100%）`,
     en: (a) => `the figure (outermost <svg>) of ${compName(a, false)} sticks out of the part's box (${a.px}px${moreEn(a)}): in the part's code, give that <svg> a width and height (or width:100%;height:100% in its style)` },
+  // 横並び（.cols）の列からはみ出す中身（handoff Issue #40）。a：col（はみ出した列。左から、縦の並びは上から）・cols（列の数）・into（重なる隣の列）・px・t・n・v（列が上下に並ぶ）
+  colOverflow: { rule: 'R-fit',
+    ja: (a) => `横並び（.cols）の${a.v ? '上' : '左'}から ${a.col} 列目の中身が列の幅を超え、${a.into ? `${a.into} 列目に重なる` : 'はみ出す'}（「${a.t}」${moreJa(a)}、${a.px}px）：式や語を短くするか、長い式は列の外の別の行に置くか、列を減らして幅を広げる`,
+    en: (a) => `content in column ${a.col} of ${a.cols} (from the ${a.v ? 'top' : 'left'}) of a side-by-side layout (.cols) is wider than the column and ${a.into ? `overlaps column ${a.into}` : 'sticks out'} (“${a.t}”${moreEn(a)}, ${a.px}px): shorten the formula or words, put a long formula on its own line outside the columns, or use fewer columns so each is wider` },
   // 字の箱がスライドの外に出る・重なる（どのスライドでも。#64）と、表の短いセルの語が割れる（#65）。警告。表紙と章の扉では置ける子要素を添える
   textOffSlide: { rule: 'R-fit',
     ja: (a) => `字がスライドの外に出る（「${a.t}」${moreJa(a)}、${a.px}px）：字を短くするか、位置を直して 1280×720 の内に収める${PLACE_JA[a.kind] || ''}`,
@@ -354,9 +358,14 @@ export const MESSAGES = {
   compLayout: { rule: 'R-fit',
     ja: (a) => `${compName(a, true)}を置く場所が足りない：${a.msg}。パーツを置く場所を広げるか、表示する内容を減らす`,
     en: (a) => `${compName(a, false)} does not have enough room: ${a.msg}. Give the part more space or show less content` },
+  // パーツが ctx.report で知らせた見た目の問題（format spec §8.4 の code：range・size・theme ほか）。range（値が表示する範囲の外）は直し方を言う（handoff Issue #40）
   compReport: { rule: 'R-components',
-    ja: (a) => `${compName(a, true)}からの知らせ：${a.msg}。表示する値や量、テーマの色を確かめる`,
-    en: (a) => `${compName(a, false)} reports a problem: ${a.msg}. Check the values, the amount of content and the theme colours` },
+    ja: (a) => (a.code === 'range'
+      ? `${compName(a, true)}の値が表示する範囲の外にある：${a.msg}。範囲の属性（xr・yr など）を、値がすべて入るように書く`
+      : `${compName(a, true)}からの知らせ：${a.msg}。表示する値や量、テーマの色を確かめる`),
+    en: (a) => (a.code === 'range'
+      ? `${compName(a, false)} has values outside the range it shows: ${a.msg}. Set its range attributes (such as xr and yr) so that every value fits`
+      : `${compName(a, false)} reports a problem: ${a.msg}. Check the values, the amount of content and the theme colours`) },
   compData: { rule: 'R-components',
     ja: (a) => `${compName(a, true)}のデータが合わない：${compWhat(a, true)}${compHow(a, true) ? `。${compHow(a, true)}` : ''}`,
     en: (a) => `${compName(a, false)} has data it cannot draw: ${compWhat(a, false)}${compHow(a, false) ? `. Write it like this: ${compHow(a, false)}` : ''}` },

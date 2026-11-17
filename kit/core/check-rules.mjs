@@ -41,7 +41,7 @@ const ATTACH = ['attachBadConfig', 'attachBadName', 'attachExcluded', 'attachDup
 
 export const RULES = Object.freeze([
   // ---- 作者への決まり（R-*）
-  { id: 'R-fit', kind: 'authoring', phase: 'A 体裁', codes: ['bodyBottom', 'bodyRight', 'tateBodyHead', 'bodyConclCol', 'bodyLeft', 'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'textOffSlide', 'textOverlap', 'cellWordBreak', 'compLayout'] },
+  { id: 'R-fit', kind: 'authoring', phase: 'A 体裁', codes: ['bodyBottom', 'bodyRight', 'tateBodyHead', 'bodyConclCol', 'bodyLeft', 'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'colOverflow', 'textOffSlide', 'textOverlap', 'cellWordBreak', 'compLayout'] },
   { id: 'R-title', kind: 'authoring', phase: 'A 体裁', codes: ['titleLong', 'titleLongEn', 'titleColon', 'tateTitle'] },
   { id: 'R-concl', kind: 'authoring', phase: 'A 体裁', codes: ['conclLong', 'conclLongEn', 'conclOverflow'] },
   { id: 'R-headings', kind: 'authoring', phase: 'A 体裁', codes: ['secHeading', 'narrHeadingDiffers', 'kickerLong', 'kickerPlace', 'kickerSlide'] },

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>品質チェックの穴：横並びの列からはみ出す式（Issue #40）</title>
+</head>
+<body>
+<div id="stage">
+
+<!-- 試用の教材のスライド（架空のデータ）：左の列の分数の式が列の幅を超え、右の列の字に重なる（colOverflow） -->
+<section class="slide" id="s-wt755y">
+  <h2>平均値と中央値の求め方</h2>
+  <div class="body">
+    <div class="cols">
+      <div>
+        <p class="sub"><span class="term">平均値</span>（合計 ÷ 人数）</p>
+        <div class="big">\[ \frac{2+7+7+8+8+8+9+9+9+10}{10} = \hlT{7.7}\text{点} \]</div>
+      </div>
+      <div>
+        <p class="sub"><span class="emph">中央値</span>（真ん中の順位の値）</p>
+        <p>5番目と6番目の平均：</p>
+        <div class="big">\[ \frac{8 + 8}{2} = \hlE{8.0}\text{点} \]</div>
+      </div>
+    </div>
+  </div>
+  <div class="concl"><span>10人の平均値は7.7点、中央値は8.0点</span></div>
+</section>
+
+<!-- 直したもの：長い式を列の外の別の行に置く（何も出ない） -->
+<section class="slide" id="s-fixed">
+  <h2>平均値と中央値の求め方</h2>
+  <div class="body">
+    <div class="big">\[ \frac{2+7+7+8+8+8+9+9+9+10}{10} = \hlT{7.7}\text{点} \]</div>
+    <div class="cols">
+      <div><p class="sub"><span class="term">平均値</span>（合計 ÷ 人数）</p></div>
+      <div><p>5番目と6番目の平均：\( \frac{8 + 8}{2} = \hlE{8.0} \)点</p></div>
+    </div>
+  </div>
+  <div class="concl"><span>10人の平均値は7.7点、中央値は8.0点</span></div>
+</section>
+
+<!-- わざと切る印（data-clip）の中の列は見ない -->
+<section class="slide" id="s-clip">
+  <h2>印の付いた横並び</h2>
+  <div class="body">
+    <div class="cols" data-clip>
+      <div><div class="big">\[ \frac{2+7+7+8+8+8+9+9+9+10}{10} = 7.7 \]</div></div>
+      <div><p>右の列の字</p></div>
+    </div>
+  </div>
+  <div class="concl"><span>印があれば知らせない</span></div>
+</section>
+
+</div>
+</body>
+</html>

@@ -248,7 +248,7 @@ export function layoutScan(s, o) {
   }
   // 箱が字を切るか（縦・横）。HTML の箱は内側（padding の箱）、SVG はその表示の枠（viewBox を写した場所）
   const over = (p, q, x, y) => Math.max(x ? q.l - p.l : 0, x ? p.r - q.r : 0, y ? q.t - p.t : 0, y ? p.b - q.b : 0);
-  const found = { textClipped: null, svgTextOut: null, svgTextBox: null, outsideBody: null, partSvgOut: null, textOffSlide: null, textOverlap: null, cellWordBreak: null };
+  const found = { textClipped: null, svgTextOut: null, svgTextBox: null, outsideBody: null, partSvgOut: null, colOverflow: null, textOffSlide: null, textOverlap: null, cellWordBreak: null };
   const note = (code, a) => { const f = found[code]; if (f) f.n++; else found[code] = Object.assign({ n: 1 }, a); };
   const done = new Set();   // 上の 4 つ（textClipped・svgTextOut・svgTextBox・outsideBody）か、スライドの外（textOffSlide）で知らせた字。重なり（textOverlap）では見ない
   // 表紙・章の扉（.body のないスライド）の知らせには、置ける子要素を添える
@@ -506,7 +506,72 @@ export function layoutScan(s, o) {
     const same = [...s.querySelectorAll(e.localName)], label = (e.getAttribute('aria-label') || '').trim();
     note('partSvgOut', { tag: e.localName, ...(same.length > 1 ? { index: same.indexOf(e) } : {}), ...(label ? { label: label.slice(0, 40) } : {}), px: Math.round(px) });
   });
-  for (const code of ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'textOffSlide', 'textOverlap', 'cellWordBreak']) if (found[code]) add('warn', code, found[code]);
+  // ---------------------------------------------------------------- 横並び（.cols）の列からはみ出す中身（handoff Issue #40。警告）
+  // .cols の子（列）ごとに、中の字（Range の行の矩形）・KaTeX の式の見た目の箱（.katex-html の .base を合わせた箱。式の箱 .katex-display では切らない）・
+  // 画像と図（img・svg・video・canvas・table）の箱が、列の箱から列の並ぶ向き（ふつうは左右、縦組みの .cols は上下）に TOL より外に出る。
+  // 列は min-width:0 なので、折り返せない式や語は列の幅を超えて隣の列の上に描かれる（textOverlap は式の箱を .katex-display で切って見るので見えない）。
+  // 隣の列の箱に入れば into にその列の番号を添える。overflow が visible でない列（中で切れる：textClipped が見る）、見えない列、わざと切る印（CLIP）の中は見ない。
+  // パーツ（m-*）の中はパーツの描き方（partSvgOut・compLayout）が見るので数えない。知らせはスライドの最初の 1 つと数
+  s.querySelectorAll('.cols').forEach((cs) => {
+    if (skip(cs) || !shown(cs) || hiddenEl(cs)) return;
+    const cols = [...cs.children].filter((e) => !/^(script|style|template)$/i.test(e.localName) && shown(e) && !skip(e));
+    if (cols.length < 2) return;
+    const cbs = cols.map((e) => box(e.getBoundingClientRect()));
+    // 列の並ぶ向き：2 列目が 1 列目の横にあれば左右、でなければ上下
+    const horiz = cbs[1].l >= cbs[0].r - TOL || cbs[1].r <= cbs[0].l + TOL;
+    const lo = horiz ? 'l' : 't', hi = horiz ? 'r' : 'b';
+    const order = cbs.map((q, i) => i).sort((i, j) => cbs[i][lo] - cbs[j][lo]);
+    order.forEach((ci, pos) => {
+      const col = cols[ci], q = cbs[ci];
+      if (!(q.r > q.l && q.b > q.t)) return;
+      const st = getComputedStyle(col);
+      if (st.overflowX !== 'visible' || st.overflowY !== 'visible') return;
+      let worst = null;
+      // own：el がその箱の要素そのものか（字の Range の箱なら false：字の要素の overflow も切る）
+      const take = (b, t, el, own) => {
+        const { v } = seen(b, el, own, col);
+        if (!v) return;
+        const d = Math.max(q[lo] - v[lo], v[hi] - q[hi]);
+        if (d > TOL && (!worst || d > worst.d)) worst = { d, v, t };
+      };
+      const inPart = (el) => { for (let e = el; e && e !== col; e = e.parentElement) if (/^m-/.test(e.localName)) return true; return false; };
+      const tw = document.createTreeWalker(col, NodeFilter.SHOW_TEXT);
+      let n;
+      while ((n = tw.nextNode())) {
+        if (!n.textContent.trim()) continue;
+        const e = n.parentElement;
+        if (!e || e.closest('svg, .katex') || skip(e) || inPart(e) || !shown(e) || hiddenEl(e)) continue;
+        const rg = document.createRange(); rg.selectNodeContents(n);
+        for (const r of rg.getClientRects()) if (r.width > 0 && r.height > 0) take(box(r), sample(n.textContent), e, false);
+      }
+      col.querySelectorAll('.katex').forEach((kx) => {
+        if (kx.parentElement.closest('.katex') || skip(kx) || inPart(kx) || !shown(kx) || hiddenEl(kx)) return;
+        const html = kx.querySelector('.katex-html');
+        if (!html) return;
+        let u = null;
+        for (const e of html.children) {
+          const r = e.getBoundingClientRect();
+          if (!r.width || !r.height) continue;
+          const b = box(r);
+          u = u ? { l: Math.min(u.l, b.l), t: Math.min(u.t, b.t), r: Math.max(u.r, b.r), b: Math.max(u.b, b.b) } : b;
+        }
+        // 知らせの字は書いた式（TeX）のほうが原稿で探しやすい。なければ見えている字
+        const tex = kx.querySelector('annotation[encoding="application/x-tex"]');
+        if (u) take(u, sample((tex ? tex.textContent : html.textContent).replace(/\u200b/g, '')), kx, true);
+      });
+      col.querySelectorAll('img, svg, video, canvas, table').forEach((e) => {
+        if ((e.localName === 'svg' && e.parentElement.closest('svg')) || e.closest('.katex') || skip(e) || inPart(e) || !shown(e) || hiddenEl(e)) return;
+        const r = e.getBoundingClientRect();
+        if (r.width || r.height) take(box(r), e.localName === 'img' ? (e.getAttribute('alt') || '<img>').slice(0, 24) : '<' + e.localName + '>', e, true);
+      });
+      if (!worst) return;
+      // 隣の列に入るか：はみ出した側の隣の列の箱に TOL より深く入る
+      const side = worst.v[hi] - q[hi] >= q[lo] - worst.v[lo] ? 1 : -1, nb = order[pos + side];
+      const into = nb !== undefined && (side > 0 ? worst.v[hi] - cbs[nb][lo] : cbs[nb][hi] - worst.v[lo]) > TOL ? pos + side + 1 : null;
+      note('colOverflow', { t: worst.t, px: Math.round(worst.d), col: pos + 1, cols: cols.length, ...(into ? { into } : {}), ...(horiz ? {} : { v: true }) });
+    });
+  });
+  for (const code of ['textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'colOverflow', 'textOffSlide', 'textOverlap', 'cellWordBreak']) if (found[code]) add('warn', code, found[code]);
 
   // 章の扉（.sec）の題は h1。h2 だけで書いた扉を知らせる（#128。CSS は h2 も読めるようにしたが、書き方は h1 にそろえる）
   if (s.classList.contains('sec') && s.querySelector('h2') && !s.querySelector('h1')) add('warn', 'secHeading', { t: sample((s.querySelector('h2').textContent || '').replace(/\s+/g, ' ').trim()) });
