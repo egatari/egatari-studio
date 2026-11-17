@@ -17,6 +17,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { launch } from '../kit/browser.mjs';
+import { answerCreator } from './edit-role-answer.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
@@ -148,7 +149,7 @@ await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${srv.address().port}/`;
 console.log('app', BASE);
 
-const browser = await launch();
+const browser = answerCreator(await launch());
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP' });
 const page = await ctx.newPage();
 const errs = [];

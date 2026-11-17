@@ -18,6 +18,8 @@
 //   実行系の JSON（deck-narration・deck-marks・deck-timing・deck-audio）の、変わった段階の項目だけ（ほかの項目のバイトはそのまま）
 //   読める層（§2.1）の、変わった段階の <div data-step-key> だけ
 //   deck-meta の sourceSha256（新しい教材として保存するときは docId も）
+//   編集の記録（§3.6.1・§7.3）：設定のファイルの metadata.edits が変わったときは、索引の metadata.edits と deck-meta.edits を同じ値に
+//     （編集アプリが保存の前に聞いて足す。仕様の §7.2 の表にはまだない場所）
 //   索引（files・blobs・audio の変わった記録・requires・sourceSha256・拡張・新しい教材の docId と derivedFrom、新しい教材で外す exportedFrom）と data-sha256
 //   塊（新しい中身を足し、どこからも参照されなくなったものを除く）
 //   字の補い：新しい <style id="<前置><n>">（n は今ある補いの番号の次・0 から。最後の字の <style> の後に。今の文書が埋め込む字（family・weight・style）
@@ -39,7 +41,7 @@ import {
   readableStep, readableStepOrder, extensionsFrom, excludedReason, LIMITS, RE, KNOWN, copyUnknown, validateDeckMeta, isOffset,
 } from './portable.mjs';
 import { parseNarration, narrationMap, marksMap, splitKey } from './narration-core.mjs';
-import { isJapanese, LATIN_MAX, parseRange, fontFaceCss, FONTS, fontByFamily, FONT_LIST } from './build-core.mjs';
+import { isJapanese, LATIN_MAX, parseRange, fontFaceCss, FONTS, fontByFamily, FONT_LIST, normalizeEdits } from './build-core.mjs';
 import { planAttachments, problemText, isAttachPath, inspectAttachment, blocking, nameProblem, roleProblem, attachmentMime, ATTACH_ROLES } from './attachments.mjs';
 import { updateConfig } from './config-file.mjs';
 
@@ -58,7 +60,7 @@ const TIER_A_FILES = new Set(['narration.md', 'timeline.json', CFG]);
 // player と generator（§4.1）は段 A では書き換えない（ここに並べるのは、足す項目を入れる順のため）
 const INDEX_ORDER = ['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom'];
 const ATTACH_KNOWN = new Set(['path', 'role', 'title', 'description']);
-const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators'];
+const META_RIGHTS = ['title', 'license', 'copyright', 'attribution', 'creators', 'edits'];
 
 const dict = () => Object.create(null);
 const own = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
@@ -258,6 +260,7 @@ async function run(original, filesIn, opts) {
   if (identity && !(typeof identity.docId === 'string' && RE.docId.test(identity.docId))) refuse('bad-identity', 'identity.docId is not a lowercase UUID');
 
   let linksNew, linksSet = false;   // 設定のファイルを変えたときの articleLinks（索引にも同じ値を書く。§9C.7）
+  let editsNew = null;               // 設定のファイルの metadata.edits が索引と違うとき、その値（§3.6.1。索引と deck-meta に書く）
   // 1. どの原稿が変わったか。段 A の場所だけで済むもの（口述原稿・timeline.json・設定のファイル）のほかは断る
   const changed = [];
   for (const p of new Set([...Object.keys(old), ...NEW.keys()])) {
@@ -291,6 +294,13 @@ async function run(original, filesIn, opts) {
     if (!isObj(c) || c.docId !== docId) refuse('config-changed', `${CFG}: docId differs from the document`);
     const cm = isObj(c.metadata) ? c.metadata : dict(), im = isObj(ix.metadata) ? ix.metadata : dict();
     for (const k of Object.keys(cm)) {
+      // 編集の記録（§3.6.1）：編集アプリが保存の前に足す（§7.3）。形が合えば、索引の metadata.edits と deck-meta.edits を同じ値に書き換える
+      if (k === 'edits' && !deepEqual(cm.edits, im.edits)) {
+        const ed = normalizeEdits(cm.edits);
+        if (!ed.edits || ed.dropped || !deepEqual(ed.edits, cm.edits)) refuse('config-changed', `${CFG}: metadata.edits is not a list of {by?, note?} (the lesson must be rebuilt)`);
+        editsNew = ed.edits;
+        continue;
+      }
       const want = k === 'derivedFrom' ? (identity ? identity.derivedFrom : im.derivedFrom) : im[k];
       if (!deepEqual(cm[k], want)) refuse('config-changed', `${CFG}: metadata.${k} differs from the document (the lesson must be rebuilt)`);
     }
@@ -479,6 +489,7 @@ async function run(original, filesIn, opts) {
   if (!hasAudio) { if (own(ix, 'audio')) setIx(['audio'], undefined); }
   else if (!own(ix, 'audio')) setIx(['audio'], newAudio);
   else for (const k of audioChanged) setIx(['audio', k], own(newAudio, k) ? newAudio[k] : undefined, Object.keys(newAudio));
+  if (editsNew) setIx(['metadata', 'edits'], editsNew, [...KNOWN.metadata]);
   if (identity) {
     setIx(['docId'], identity.docId);
     if (identity.derivedFrom) setIx(['metadata', 'derivedFrom'], identity.derivedFrom, [...KNOWN.metadata]);
@@ -523,6 +534,7 @@ async function run(original, filesIn, opts) {
   for (const k of audioChanged) edit('deck-audio', (t) => jsonSet(t, [k], own(newAudio, k) ? deckAudio(newAudio[k]) : undefined, Object.keys(newAudio)));
   if (srcSha !== ix.sourceSha256) edit('deck-meta', (t) => jsonSet(t, ['sourceSha256'], srcSha));
   if (identity) edit('deck-meta', (t) => jsonSet(t, ['docId'], identity.docId));
+  if (editsNew) edit('deck-meta', (t) => jsonSet(t, ['edits'], editsNew, ['format', 'version', 'contracts', 'player', 'generator', 'docId', 'title', 'lang', 'portable', 'sourceSha256', 'tracking', 'completion', 'license', 'copyright', 'attribution', 'creators', 'edits', 'offer']));
 
   // 8. 字の補い：変わった段階の表示の字のうち、今の文書の字（@font-face）が持たないもの
   let supplement = null, uncovered = '';

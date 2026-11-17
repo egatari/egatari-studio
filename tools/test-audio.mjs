@@ -21,6 +21,7 @@ import http from 'node:http';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
+import { answerCreator } from './edit-role-answer.mjs';
 import { buildPortable, build } from '../kit/build.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
@@ -109,7 +110,7 @@ const srv = http.createServer((req, res) => {
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${srv.address().port}/`;
 
-const browser = await launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${MIC}%noloop`, '--autoplay-policy=no-user-gesture-required'] });
+const browser = answerCreator(await launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-audio-capture=${MIC}%noloop`, '--autoplay-policy=no-user-gesture-required'] }));
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP', permissions: ['microphone'] });
 const page = await ctx.newPage();
 const errs = [];

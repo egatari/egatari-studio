@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=d5459a3f5da3697a -->
+<!-- i18n: pair=editor.ja.md sha256=0aca175d2c0ef87d -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -189,7 +189,7 @@ An Egatari file is what `npm run build -- <deck.html> --portable` (or **File ▾
 
 - **Open.** Press **Open a file (.ega.html)…** on the first screen or **File ▾ → Open…**, or drop the file onto the first screen. The editor reads the file as bytes and extracts it in a Web Worker with an HTML parser that runs no scripts; the file itself is never loaded as a page, so nothing in it runs during import. Every hash, size limit and path rule of the format is checked first, exactly as `npm run portable -- unpack` does. The HTML is parsed with budgets counted while parsing (elements, attributes, nesting depth), and the source files it carries may hold at most 500 000 tags, so a file of millions of tiny elements is refused before a full tree is built; a read that takes longer than 30 s stops the worker and refuses the file. The build and the code check of an opened lesson (folder or Egatari file) also run in a worker, within the build limits (see [reference](reference.md#build-limits)); a build that takes longer than 60 s stops that worker and fails (`build-timeout`), and the page stays responsive meanwhile. The build reads from the folder only the files it references (at most 8 at a time, each up to its listed size; a file that grew since the listing is refused); a reply from a stopped worker is dropped. Every file is read with its size checked from `File.size` before reading and from the bytes read (`app/bounded-read.js`); `deck.html`, `narration.md` and `comments.json` have fixed limits (32 MiB, 16 MiB, 4 MiB) and a larger one is refused without being read. The source then lives in memory (an in-memory folder); the preview, the editing tools and the quality check work on it as on a folder. Outside changes are not watched (there is no folder).
 - **Save.** **Save** writes the same file again when the browser gave a writable handle (Open a file (.ega.html)… or drag and drop in Chrome / Edge; the browser may ask for permission the first time). Otherwise it asks where to save, or downloads the file when there is no save dialog (Safari, Firefox). The document id (`docId`) stays, and Save never sets or changes `derivedFrom`. **File ▾ → Save as…** asks whether to **Save as a new file**:
-  - ticked (“Save as a new file (it becomes separate from the original)”): asks where to save and writes the lesson under a new `docId`, with the original recorded as `derivedFrom` (its `docId` and source hash). Copyright, attribution and creators are kept. The open document becomes the new lesson (later saves keep the new id).
+  - ticked (“Save as a new file (it becomes separate from the original)”): asks where to save and writes the lesson under a new `docId`, with the original recorded as `derivedFrom` (its `docId` and source hash). Copyright, attribution, creators and edits are kept. The open document becomes the new lesson (later saves keep the new id).
   - not ticked: asks where to save and writes the same lesson (same `docId`) to another file.
 
   A dot (●) before the file name (and after **File ▾**) means there are unsaved changes; leaving the page or opening another file asks first. In every save the license, copyright, attribution and creators, members of the index the editor does not know (at every level: metadata, audio records, archived blobs, parts and themes, extensions) and extension data are kept, and untouched audio is copied byte for byte. The editor may add the settings file (the lesson id and metadata at the root of the source) to a file that lacks it; that changes the source hash, which the save updates anyway.
@@ -215,6 +215,15 @@ While you edit an Egatari file, the editor keeps the unsaved changes in this bro
 ### Editing prompt (“Edit this file?”)
 
 Each time a file is opened for editing, before the first change (the first save from edit mode or the script drawer, or pressing Edit / Script), the editor shows the lesson's title, creators, copyright, license and attribution as written in the file (they are claims; nothing verifies them). If the license does not permit derivatives (a Creative Commons `-ND` license, or “All rights reserved”), or there is a copyright notice but no license, it warns that modifying or sharing a modified copy may infringe the rights holder's copyright, and editing starts only after you tick the confirmation. Cancel leaves the file unchanged. Saving never removes the copyright, attribution or creators.
+
+### Saving someone else's lesson (“Are you a creator of this lesson?”)
+
+The editor cannot know who is editing, so the first time you save changes to a file that names its creators, copyright, license or attribution, it asks **“Are you a creator of this lesson?”** (format spec §7.3). Choose one answer before **Save** can be pressed:
+
+- **Yes, I am a creator of this lesson**: the file is saved as usual.
+- **No, I am editing someone else’s lesson**: type a name (such as your school) and, optionally, what you changed. The save adds an entry to `metadata.edits`, and the player's **File info** shows it after the creators: “Edited by: name (what you changed)”. When an entry with the same name is already there, only its note is replaced. When the license asks you to indicate changes (every Creative Commons 4.0 license, such as CC BY 4.0) and you leave the name empty, an entry without a name is added and shows “Edited from the original lesson”.
+
+The answer is remembered on this device for that lesson (its `docId`, in the browser's storage, not in the file), so it is asked once. Only the name and note you type go into the file. Lessons you made in this editor (from the AI's output, or a `deck.html` opened on its own) are not asked about. Saving never removes or changes existing entries of `edits`; **Save as a new file** keeps them. Cancel keeps the changes unsaved.
 
 ### Opening a slides file (deck.html) or a built presentation
 

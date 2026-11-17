@@ -13,7 +13,7 @@
 import { boundedParse, PARSE_LIMITS } from './bounded-html.mjs';
 import { plural } from './plural.mjs';
 import { codeReasons } from './code-scan.mjs';
-import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS, normalizeOffer, OFFER_MODES, OFFER_FACES } from './build-core.mjs';
+import { build as coreBuild, jsonScript, MIME, buildBudget, chargedEnv, BuildLimitError, DECK_META_RIGHTS, normalizeOffer, OFFER_MODES, OFFER_FACES, normalizeEdits, editsDroppedWarning } from './build-core.mjs';
 import { parseNarration } from './narration-core.mjs';
 import { FORMAT } from './format.mjs';
 import { readLock, vendorDir, resolveComponent, pinsForIndex, versionForSha, VERSION_RE } from './components-lock.mjs';
@@ -492,12 +492,21 @@ function audioRecordCheck(r, w, e) {
   }
 }
 const strArr = (a) => Array.isArray(a) && a.every((x) => typeof x === 'string');
+// metadata.edits・deck-meta.edits（§3.6.1）：[{by?, note?}]（文字の値だけ。ほかの項目は持たない）
+function editsCheck(v, w, e) {
+  if (!Array.isArray(v)) { e.push(`${w}: not an array`); return; }
+  v.forEach((x, i) => {
+    if (!isObj(x)) { e.push(`${w}[${i}]: not an object`); return; }
+    for (const k of Object.keys(x)) if (k !== 'by' && k !== 'note') e.push(`${w}[${i}]: unknown member "${k}"`); else if (typeof x[k] !== 'string') e.push(`${w}[${i}].${k}: not a string`);
+  });
+}
 function metadataCheck(m, w, e) {
   if (!isObj(m)) { e.push(`${w}: not an object`); return; }
   if (!(typeof m.title === 'string' && m.title.length)) e.push(`${w}.title: not a non-empty string`);
   if (!(typeof m.lang === 'string' && m.lang.length <= 64 && RE.lang.test(m.lang))) e.push(`${w}.lang: not a BCP 47 tag`);
   for (const k of ['description', 'license', 'copyright', 'attribution']) if (own(m, k) && typeof m[k] !== 'string') e.push(`${w}.${k}: not a string`);
   for (const k of ['creators', 'curriculum']) if (own(m, k) && !strArr(m[k])) e.push(`${w}.${k}: not an array of strings`);
+  if (own(m, 'edits')) editsCheck(m.edits, `${w}.edits`, e);
   for (const k of ['created', 'modified', 'email']) if (own(m, k)) e.push(`${w}: must not contain "${k}"`);
   if (own(m, 'accessibility')) {
     const a = m.accessibility;
@@ -591,6 +600,7 @@ export function validateDeckMeta(m, opts = {}) {
   if (own(m, 'completion')) completionCheck(m.completion, 'deck-meta.completion', e);
   for (const k of ['license', 'copyright', 'attribution']) if (own(m, k) && typeof m[k] !== 'string') e.push(`deck-meta.${k}: not a string`);
   if (own(m, 'creators') && !strArr(m.creators)) e.push('deck-meta.creators: not an array of strings');
+  if (own(m, 'edits')) editsCheck(m.edits, 'deck-meta.edits', e);
   if (own(m, 'offer')) offerCheck(m.offer, 'deck-meta.offer', e);
   return e;
 }
@@ -688,7 +698,7 @@ const escAttr = (s) => escText(s).replace(/"/g, '&quot;');
 const plain = (s) => String(s).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/\\\(|\\\)/g, '').replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
 const stepOrder = (k) => (k === 'concl' ? Infinity : +k);
 // 書き出す metadata：設定のファイル（FORMAT.CONFIG_FILE）の metadata のうち仕様の項目だけ（時刻・メールなどは入れない）
-const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience', 'citations', 'series', 'primary', 'offer'];
+const META_KEYS = ['description', 'license', 'copyright', 'attribution', 'creators', 'edits', 'accessibility', 'curriculum', 'completion', 'derivedFrom', 'authorship', 'audience', 'citations', 'series', 'primary', 'offer'];
 
 // この書き手が意味を知っている索引の項目（ほかは知らない項目として、作り直しても残す）
 const KNOWN_INDEX = new Set(['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'entry', 'sourceSha256', 'files', 'blobs', 'audio', 'components', 'themes', 'metadata', 'excluded', 'extensions', FORMAT.ATTACH_KEY, 'exportedFrom', 'article', 'articleLinks']);
@@ -709,7 +719,7 @@ export function configAttachmentsMatch(conf, index) {
 }
 // 1 ファイルを作業フォルダに出すときの設定のファイル（§3.3・§3.8）：docId を残し、索引の権利の表示を写し、index.attachments を書く
 // （書き直す要がなければ null）。text：今の設定のファイルの文字列（なければ null）。ほかの項目はバイトのまま（kit/core/config-file.mjs）
-const RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
+const RIGHTS = ['license', 'copyright', 'attribution', 'creators', 'edits'];
 export function folderConfig(index, text) {
   const meta = isObj(index.metadata) ? index.metadata : {};
   const list = Array.isArray(index[FORMAT.ATTACH_KEY]) ? index[FORMAT.ATTACH_KEY] : null;
@@ -1310,6 +1320,12 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   if (own(metadata, 'offer')) { const o = normalizeOffer(metadata.offer); if (o) metadata.offer = o; else delete metadata.offer; }
   if (own(metadata, 'primary') && !OFFER_FACES.includes(metadata.primary)) delete metadata.primary;
   if (own(em, 'title') && typeof em.title === 'string' && em.title) metadata.title = em.title;
+  // 編集の記録（§3.6.1）：形の合わない項目は捨てて知らせる（ほかの項目は捨てない）
+  if (own(metadata, 'edits')) {
+    const ed = normalizeEdits(metadata.edits);
+    if (ed.edits) metadata.edits = ed.edits; else delete metadata.edits;
+    if (ed.dropped) warnings.push(`${LOG}: ${editsDroppedWarning(ed.dropped)}`);
+  }
   // player：同梱の再生器（§4.1。kit/core/player.mjs。出した版と中身が同じでなければ "+dev.<commit>"）。generator：書いたソフト（Egatari Studio）
   const pl = await resolvePlayer(env0);
   // title：人に見せる名前（spec §3.1・§4.1。name は変わらない識別子）
@@ -1353,6 +1369,8 @@ export async function exportPortable(env0, srcPath, opts = {}) {
     ...(metadata.completion ? { completion: metadata.completion } : {}),
     // 権利の表示と作成者（format spec §4・§7.3）：再生専用の派生は索引を持たないので、ここに写したものだけが残る
     ...Object.fromEntries(DECK_META_RIGHTS.filter((k) => own(metadata, k)).map((k) => [k, k === 'creators' ? [...metadata[k]] : metadata[k]])),
+    // 編集の記録（§3.6.1・§7.3）：再生専用の派生にも「編集」が残るように
+    ...(metadata.edits ? { edits: metadata.edits.map((x) => ({ ...x })) } : {}),
     // 見せるモードと見え方（§1.2）：再生専用の派生にも残るように deck-meta に写す（Player P1 が読む）
     ...(metadata.offer ? { offer: JSON.parse(JSON.stringify(metadata.offer)) } : {}),
   };

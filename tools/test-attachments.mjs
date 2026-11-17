@@ -24,6 +24,7 @@ import crypto from 'node:crypto';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch, fileUrl } from '../kit/browser.mjs';
+import { answerCreator } from './edit-role-answer.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { readPortable, playOnly, scanDocument, replaceIndexText } from '../kit/core/portable.mjs';
@@ -434,7 +435,7 @@ async function craft(html, adds) {
   const at = out.indexOf(`<script type="${FORMAT.MIME}" id="${FORMAT.INDEX_ID}"`);
   return out.slice(0, at) + chunks + out.slice(at);
 }
-const browser = await launch();
+const browser = answerCreator(await launch());
 {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, acceptDownloads: true, locale: 'ja-JP' });
   const pg = await ctx.newPage();
