@@ -10,4 +10,4 @@
 
 サンプルは `demo.html`（for 文の合計、辞書で数える、バブルソートを by="time" で）。トレースは `tools/trace-demo/` のプログラムを `tools/trace.py` で追った出力。
 
-[README](https://github.com/egatari/components/blob/v2.13.0/components/trace/README.md)
+[README](https://github.com/egatari/components/blob/v2.14.0/components/trace/README.md)

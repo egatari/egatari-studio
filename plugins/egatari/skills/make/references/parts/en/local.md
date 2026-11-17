@@ -9,4 +9,4 @@ JSON from `uv run tools/trace.py prog.py --out trace.json`, never by hand.
 
 Demo: `demo.html` (a for-loop sum, counting words in a dict, bubble sort with by="time"); traces from `tools/trace-demo/` through `tools/trace.py`.
 
-[README](https://github.com/egatari/components/blob/v2.13.0/components/trace/README.en.md)
+[README](https://github.com/egatari/components/blob/v2.14.0/components/trace/README.en.md)

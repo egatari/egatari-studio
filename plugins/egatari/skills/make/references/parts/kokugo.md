@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # kokugo のパーツ
 
-指示のバージョン：255ebc50
+指示のバージョン：823ca8ef
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

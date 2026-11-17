@@ -1,16 +1,16 @@
 <!-- generated; do not edit by hand -->
 # extra parts
 
-Instruction version: 255ebc50
+Instruction version: 823ca8ef
 
 ### `<m-codetree>`
 
-[README](https://github.com/egatari/components/blob/v2.13.0/components/codetree/README.md)
+[README](https://github.com/egatari/components/blob/v2.14.0/components/codetree/README.md)
 
 ### `<m-collect>`
 
-[README](https://github.com/egatari/components/blob/v2.13.0/components/collect/README.md)
+[README](https://github.com/egatari/components/blob/v2.14.0/components/collect/README.md)
 
 ### `<m-kakijun>`
 
-[README](https://github.com/egatari/components/blob/v2.13.0/components/kakijun/README.md)
+[README](https://github.com/egatari/components/blob/v2.14.0/components/kakijun/README.md)

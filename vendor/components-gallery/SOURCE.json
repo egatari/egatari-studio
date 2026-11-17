@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/components",
-  "commit": "093310e3af5bd38f25fb0ccd86d530ecf6f8e288",
+  "commit": "5ff5925e06bd99640182835e9a0bfd00a5a66f6a",
   "files": {
     "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
     "tools/gallery.mjs": "4475905ab04d16377ab920f2b77f740b78474bb863d4157a37ddc52220696055",
