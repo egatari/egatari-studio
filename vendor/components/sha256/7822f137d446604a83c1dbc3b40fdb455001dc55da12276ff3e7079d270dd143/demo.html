@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-sampling の見本（架空のシミュレーション）</title>
+</head>
+<body>
+<div id="stage">
+<section class="slide">
+  <h2>玉を戻さずに 4 個取る（シミュレーション）</h2>
+  <div class="body"><m-sampling style="height:440px"><script type="application/json">{"balls":{"赤":3,"青":2},"of":"赤","n":4,"replace":false,"repeat":40,"seed":1}</script></m-sampling></div>
+  <div class="concl"><span>赤 3・青 2 の架空の袋。点は 1 回の標本比率</span></div>
+</section>
+<section class="slide">
+  <h2>玉を戻して 4 個取る（シミュレーション）</h2>
+  <div class="body"><m-sampling style="height:440px"><script type="application/json">{"balls":{"赤":3,"青":2},"of":"赤","n":4,"replace":true,"repeat":40,"seed":1}</script></m-sampling></div>
+  <div class="concl"><span>同じ架空の袋。戻さない場合と分布の広がりを比べる</span></div>
+</section>
+<section class="slide">
+  <h2>さいころ 2 回の平均（シミュレーション）</h2>
+  <div class="body"><m-sampling style="height:440px"><script type="application/json">{"values":[1,2,3,4,5,6],"n":2,"replace":true,"repeat":40,"seed":3}</script></m-sampling></div>
+  <div class="concl"><span>架空の試行。標本平均の点を積んで分布を作る</span></div>
+</section>
+</div>
+</body>
+</html>
