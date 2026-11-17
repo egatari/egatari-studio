@@ -137,6 +137,7 @@ const steps = [
   ['test-comment-shots', ['tools/test-comment-shots.mjs', path.join(tmp, 'comment-shots')]],
   // マーカー（#70）：編集モードのコメントのペン → comments.json の stroke → 重ね → comment-shots、書き出しにコメントが入らないこと
   ['test-ink-comments', ['tools/test-ink-comments.mjs', path.join(tmp, 'ink-comments')]],
+  ['test-stroke-part', ['tools/test-stroke-part.mjs']],
   ['test-sheet', ['tools/test-sheet.mjs', path.join(tmp, 'sheet')]],
   // 守り：プレビューの決まり（CSP）が、デッキの文書のどの細工よりも先に効くこと（編集アプリと同じ決まりのページで）
   ['test-security', ['tools/test-security.mjs']],

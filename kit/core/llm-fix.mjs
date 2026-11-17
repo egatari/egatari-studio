@@ -15,8 +15,19 @@ import { sectionsOf, narrSections } from './llm-import.mjs';
 import { cleanErrorText } from './error-text.mjs';
 import { quoteJa } from './quote-ja.mjs';
 import { plural } from './plural.mjs';
+import { normPart, entryStrokes } from './comment-core.mjs';
 import { commonBody, componentsIn, componentNotes } from './llm-pack.mjs';
 import { DEFAULT_METRICS, limitsOf } from './theme-metrics.mjs';
+
+// 「修正…」に足すコメント 1 件。パーツはマーカーだけ。点の近くの字はこれまでどおり残す。
+export function commentNoteLine(c, lang = 'en') {
+  const ja = lang === 'ja', part = entryStrokes(c) ? normPart(c.part) : null;
+  const line = ja ? `- ${c.where}${c.quote ? `「${c.quote}」` : ''}：${c.text}`
+    : `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`;
+  if (!part) return line;
+  return line + '\n  ' + (ja ? `パーツ：${part.name}${part.id ? `（data-id: ${part.id}）` : ''}`
+    : `Part: ${part.name}${part.id ? ` (data-id: ${part.id})` : ''}`);
+}
 
 export function guideRules(guide) {
   const out = new Map();

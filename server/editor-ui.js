@@ -213,6 +213,11 @@ const pinOf = (p) => {
   const c = (v, hi) => Math.round(Math.max(0, Math.min(hi, v)) * 10) / 10;
   return { x: c(p.x, W), y: c(p.y, H) };
 };
+// kit/core/comment-core.mjs の normPart と同じ規則（開発サーバーはこのファイルをそのまま配る）。
+export function partOf(p) {
+  if (!p || typeof p !== 'object' || Array.isArray(p) || typeof p.name !== 'string' || !/^m-[^\s<>]*$/.test(p.name) || p.name.length > 100) return null;
+  return { name: p.name, ...(typeof p.id === 'string' && p.id ? { id: p.id.replace(/\s+/g, ' ').trim().slice(0, 200) } : {}) };
+}
 // マーカーの線（strokes：線の並び、線は [[x, y], …]、スライドの座標）：kit/core/comment-core.mjs の normStrokes・entryStrokes・strokesCentroid と
 // 同じ規則の写し（tools/test-ink-comments.mjs が同じ答えか確かめる）。線ごとに 2 点に満たなければ捨て、端に寄せて 0.1 に丸め、続けて同じ点は 1 つ、
 // 500 点を超えれば Ramer–Douglas–Peucker で間引く。初めの 20 本を使い、点の合計が 2000 を超えれば全部を同じ誤差でさらに間引く。前の形の stroke は 1 本として読む
@@ -566,7 +571,7 @@ export function createEditorUI(o) {
     let pin = pinOf(hint.pin);
     const strokes = pin ? entryStrokesOf(hint) : null;
     if (strokes) pin = strokesCentroidOf(strokes);
-    return { key, range, quote, pin, strokes };
+    return { key, range, quote, pin, strokes, part: strokes ? partOf(hint.part) : null };
   }
   function openComment(hint) {
     const at0 = placeOf(hint);
@@ -617,8 +622,8 @@ export function createEditorUI(o) {
     function doSave() {
       if (!ta.value.trim() || cbox !== box) return;
       save.disabled = true;
-      const { key, range, quote, pin, strokes } = at;
-      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), comment: ta.value }).then((j) => {
+      const { key, range, quote, pin, strokes, part } = at;
+      api('POST', '/__dev/comment', { key, range, quote, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), ...(part ? { part } : {}), comment: ta.value }).then((j) => {
         if (j._status !== 200) { save.disabled = false; showErr(msg, j._offline ? L.offline : (j.error || L.cFail)); return; }
         ta.value = ''; closeComment(true); toast(L.cDone);
         if (commentsOpen) loadComments();

@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=d5459a3f5da3697a -->
+<!-- i18n: pair=editor.ja.md sha256=d9d605449f54bc20 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -272,6 +272,7 @@ Exactly the same as the dev server ([dev-server.md#files-it-rewrites](dev-server
 - `deck.html`: only the contents of the element you edited
 - `narration.md`: only the lines of the step you edited (comments and other lines stay)
 - `comments.json`: comments, `[{id, created, key, range, pin, quote, comment, status}]` (`pin` is the clicked point `{x, y}` in slide coordinates, 1280×720; a marker comment adds `strokes`, the drawn marks (older comments may have a single `stroke`), see [contract §13](contract.md#13-review-notes-the-ink-stroke); see the [dev server](dev-server.md#files-it-rewrites). To look at what the comments point at, run `npm run comment-shots -- <working folder>` on the folder: it renders each open comment's step with its pin into `.cache/comment-shots/`)
+  Marker comments over a part also keep `part: {name, id?}`: the innermost `m-*` tag under the centroid in that step, with its `data-id` if present. The AI fix request adds “Part: <tag> (data-id: <id>)” (no parentheses without an id); plain text and figures outside parts keep the existing nearby text. Older comments without `part` still work; readers ignore unknown fields.
 - `audio/<rec|tts|imp>_<hash>.mp3` and `audio/manifest.json`: with **Use this take** in the Audio panel (only the step's record changes; the previous manifest is backed up)
 - with the [slide list](#slide-list-add-duplicate-delete-reorder): `deck.html` (whole slides inserted, copied, removed or moved), `narration.md` (whole sections), `audio/manifest.json` and, when a slide is deleted, its audio files in `audio/` (backed up first; Undo writes them back)
 - with the [Book panel](#book-draft): the book file you saved (`article.md` or `article/<name>.md`, the whole file) and, with **Mark as checked**, `articleLinks` in `egatari.json` (other members stay byte for byte)

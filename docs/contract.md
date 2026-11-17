@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.ja.md sha256=2ac6320250c1c281 -->
+<!-- i18n: pair=contract.ja.md sha256=61a329026c53fdbb -->
 # Contract (Studio notes on the authoring source)
 
 English | [日本語](contract.ja.md)
@@ -180,9 +180,11 @@ A theme (`tokens.css`) is loaded after `kit/base.css` and `kit/layouts.css` (and
 - `metrics` is for checks and authoring tools only. The player never uses it to draw (only CSS draws), and it is part of the theme's identity: `theme.json` counts toward the theme's `sha256` like any other theme file
 - The bundled themes set tokens only, so the order does not change how they render
 
+- Marker comments identify the part under their pin in the rendered theme layout, in the final state of that step (§13).
+
 ## 13. Review notes: the ink stroke
 
-Review notes are the entries of `comments.json` in the working folder ([format spec](https://github.com/egatari/egatari-spec) §3.3). They are never put into a distributed file: an Egatari file (.ega.html), play-only or not, leaves `comments.json` out. An entry is `{id, created, key, range, pin?, strokes?, quote, comment, status, resolved?}`; this section fixes the shape of the two places on the slide, so that another reader (a future review mode of Egatari Live that imports notes into the working folder) can use the same shape.
+Review notes are the entries of `comments.json` in the working folder ([format spec](https://github.com/egatari/egatari-spec) §3.3). They are never put into a distributed file: an Egatari file (.ega.html), play-only or not, leaves `comments.json` out. An entry is `{id, created, key, range, pin?, strokes?, part?, quote, comment, status, resolved?}`; this section fixes the shape of the two places on the slide, so that another reader (a future review mode of Egatari Live that imports notes into the working folder) can use the same shape.
 
 - Coordinates: slide coordinates, 1280×720, origin at the top left of the slide, independent of the zoom and the window. A point names the final state of the step `key` (`DECK.seek(i, k, Infinity)`)
 - `pin` (optional): `{x, y}`, numbers with 0 ≤ x ≤ 1280 and 0 ≤ y ≤ 720, rounded to 0.1. An Alt+click note's pin is the clicked point; a marker comment's pin is the centroid of all its strokes
@@ -190,6 +192,7 @@ Review notes are the entries of `comments.json` in the working folder ([format s
   - one or more strokes per note (a circle and an arrow, several underlines): at most 20 strokes, at most 500 points each and at most 2000 points in all
   - each stroke has at least 2 points, each a pair of numbers clamped to the slide and rounded to 0.1, no two consecutive points equal; nothing else in a point (no pressure, no time); a reader draws each stroke as its own open polyline
   - centroid (the marker's `pin`): over all strokes, the mean of the segment midpoints weighted by segment length, Σ ℓᵢ·mᵢ / Σ ℓᵢ (the first point of the first stroke if the length is 0). The note's `key`, `range` and `quote` come from the element under this centroid
+- `part` (optional, only with `strokes`): `{name, id?}`, the innermost element whose tag starts with `m-` under the pin in that step. `name` is its tag (for example `m-bars`), `id` is its `data-id` when present. Even when the marks span several parts, only the one under the centroid is recorded. Both the dev server and the editor app save this field. The AI fix request adds one line to that comment: “Part: m-bars (data-id: bars)” (Japanese: “パーツ：m-bars（data-id: bars）”), omitting the parentheses without an id. Outside parts, the existing text near the point is unchanged. Older entries without `part` remain valid; readers ignore unknown fields. This is working-folder review metadata, not a format-spec change
 - Normalizing (`normStrokes` in `kit/core/comment-core.mjs`, the one rule for both writers, the dev server and the editor app; the writers set `pin` to the centroid of the normalized strokes): a value that is not an array, has more than 200 strokes or more than 20000 points in all gives no strokes (the note is kept without them); per stroke, a value that is not an array, has more than 5000 points or fewer than 2 valid distinct points is dropped, invalid points are dropped and the rest clamped, rounded and de-duplicated, and above 500 points it is simplified with Ramer–Douglas–Peucker, keeping both ends, with a tolerance that starts at 0.25 and doubles until at most 500 points remain; the first 20 strokes are kept, and while they have more than 2000 points in all, every stroke is simplified again with one tolerance that starts at 0.25 and doubles; no stroke left gives no strokes
 - Older entries: entries without `pin` or `strokes` stay valid. An entry written before multi-stroke notes has `stroke`, a single polyline `[[x, y], …]`; readers MUST read it as `strokes: [stroke]` (`entryStrokes`; `strokes` wins when both are present). Writers write only `strokes`. Readers MUST ignore strokes they cannot read and still show the note
 - Display: the editor draws the strokes in its own overlay over the preview (`#dev-pins`), in the pin colour (red for listed notes, amber while the note is being written), never into the slides' DOM; `npm run comment-shots` draws all of them on both images and widens the crop to the bounding box of all strokes plus 48 px
