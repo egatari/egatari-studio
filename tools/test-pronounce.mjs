@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { checkWord, applyReading, findBare, readingIn, splitReadings, joinReadings } from '../kit/core/readings.mjs';
 import { narrationWord, applyNarrationReading, parseNarration } from '../kit/core/narration-core.mjs';
 import { launch } from '../kit/browser.mjs';
+import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-pronounce-')));
@@ -93,7 +94,7 @@ async function openApp(lang, { noStorage = false } = {}) {
     window.__testDir = d;
   }, { 'deck.html': fs.readFileSync(path.join(DECK_DIR, 'deck.html'), 'utf8'), 'narration.md': NARR });
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__testDir)) === true, lang + ': opened the working folder');
-  await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: 30000 });
+  await page.waitForFunction(() => window.__APP_TEST.state().loads > 0, null, { timeout: scaled(30000) });
   const deckFrame = () => page.frames().find((f) => f.parentFrame() === page.mainFrame());
   for (let i = 0; i < 100; i++) { const f = deckFrame(); try { if (f && await f.evaluate(() => !!(window.DECK && DECK.ready))) break; } catch { /* 読み込み中 */ } await page.waitForTimeout(100); }
   const readNarr = () => page.evaluate(async () => (await (await window.__testDir.getFileHandle('narration.md')).getFile()).text());
@@ -118,7 +119,7 @@ async function openApp(lang, { noStorage = false } = {}) {
     return false;
   }, [s, n, m, caretAfter]);
   const field = (n = 0) => page.evaluate((n) => { const e = document.querySelectorAll('#dev-narr .dv-text')[n]; return { value: e.value, text: e.textContent, shown: e.innerText, rubies: [...e.querySelectorAll('ruby.dv-rb')].map((r) => [r.dataset.x, r.querySelector('rt').textContent]) }; }, n);
-  const save = async () => { await page.click('#dev-narr .dv-foot button.dv-pri'); await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty, null, { timeout: 15000 }); };
+  const save = async () => { await page.click('#dev-narr .dv-foot button.dv-pri'); await page.waitForFunction(() => !window.__APP_TEST.ui().narrDirty, null, { timeout: scaled(15000) }); };
   return { ctx, page, errs, go, selectText, field, save, readNarr };
 }
 
@@ -209,7 +210,9 @@ try {
     await page.click('#dev-pron-apply');
     ok(/保存すると、ほかのステップの 2 か所にも読み方を付けます/.test(await page.textContent('#dev-narr .dv-foot .dv-st')), 'all: the status says the other steps get it on save');
     await save();
-    await page.waitForFunction(() => /ほかのステップの 2 か所にも読み方を付けました/.test(document.querySelector('#dev-narr .dv-foot .dv-st').textContent), null, { timeout: 15000 });
+    // 保存の後のプレビューの読み込み直しで台本の欄が作り直されても、この 1 行は残る（server/editor-ui.js の saved。以前は 50 ms ほどで
+    // 「narration.md N 行目」に替わり、込んだ Windows の CI ではこの待ちが 1 行を見ないまま時間切れになった。handoff Issue #49）
+    await page.waitForFunction(() => /ほかのステップの 2 か所にも読み方を付けました/.test(document.querySelector('#dev-narr .dv-foot .dv-st').textContent), null, { timeout: scaled(15000) });
     md = await readNarr();
     const segs2 = parseNarration(md);
     const thetas = segs2.flatMap((s) => s.turns.map((t) => t.raw)).filter((t) => t.includes('θ'));
