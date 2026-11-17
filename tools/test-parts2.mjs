@@ -691,14 +691,21 @@ for (const [code, what] of [
   ok(added2120.join() === 'code-core,ctable,network,nnet,trace' && Object.keys(v291.parts).every((n) => n in v2120.parts), `2.12.0: code-core, m-ctable, m-network, m-nnet and m-trace are added, nothing removed (${added2120.join(', ')})`);
   // 2.13.0：m-classify2d・m-contour（束 ml）、m-vector（束 univ）と、ライブラリの contour-core。既定はこちら（v0.6.15 から）
   const v2130 = lock2.catalogues['2.13.0'];
-  ok(lock2.default === '2.13.0' && v2130 && v2130.tag === 'v2.13.0' && v2130.tarballSha256 === '26bf9066e183246b2d9c9de853d03389057f8d4936ccd8f093e78ae65f59951c' && v2130.manifestSha256 === 'ae5e74429f60210f11cf14f396112a58debf8b02850be39f710a042285d840fa',
-    '2.13.0: the default; pinned to the released tarball and manifest (v2.13.0)');
+  ok(v2130 && v2130.tag === 'v2.13.0' && v2130.tarballSha256 === '26bf9066e183246b2d9c9de853d03389057f8d4936ccd8f093e78ae65f59951c' && v2130.manifestSha256 === 'ae5e74429f60210f11cf14f396112a58debf8b02850be39f710a042285d840fa',
+    '2.13.0: pinned to the released tarball and manifest (v2.13.0)');
   const added2130 = Object.keys(v2130.parts).filter((n) => !(n in v2120.parts)).sort();
   ok(added2130.join() === 'classify2d,contour,contour-core,vector' && Object.keys(v2120.parts).every((n) => n in v2130.parts), `2.13.0: m-classify2d, m-contour, contour-core and m-vector are added, nothing removed (${added2130.join(', ')})`);
   const m2130 = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.13.0.json'), 'utf8'));
   const setOf2130 = (n) => m2130.components[n] && `${m2130.components[n].tier}/${m2130.components[n].set || ''}`;
   ok(['network', 'nnet', 'classify2d', 'contour', 'ctable', 'vector', 'trace'].map(setOf2130).join() === 'specialized/algo,specialized/ml,specialized/ml,specialized/ml,specialized/univ,specialized/univ,local/',
     '2.13.0: m-network in algo; m-nnet, m-classify2d and m-contour in ml; m-ctable and m-vector in univ; m-trace is tier local');
+  // 2.14.0：base 1.3.0 の添字・curves 2.3.0 の範囲外の知らせ。2.14.1：curves 2.3.1（範囲外を range の種類で）。既定は 2.14.1（v0.6.15 から。#34・#41）
+  const v2140 = lock2.catalogues['2.14.0'], v2141 = lock2.catalogues['2.14.1'];
+  ok(v2140 && v2140.tag === 'v2.14.0' && v2140.tarballSha256 === 'a7f1dd944c59589ee7e74b7291797bb63e3d27a58a6f8d3337e5544f0805eafb' && v2140.manifestSha256 === 'fcd3d558f67c426fe7185e8eb967546cfc308bde53913cac6e3a10b8c03c9465',
+    '2.14.0: pinned to the released tarball and manifest (v2.14.0)');
+  ok(lock2.default === '2.14.1' && v2141 && v2141.tag === 'v2.14.1' && v2141.tarballSha256 === 'd6d3b8d346e3d341b33b44fe6a160528d87adac55d69942af9e149a17144430d' && v2141.manifestSha256 === '5a3f493700d6f61f2ee193d7922b38dd08a4d1ac35b5871b4cc5e132faba5e22',
+    '2.14.1: the default; pinned to the released tarball and manifest (v2.14.1)');
+  ok(Object.keys(v2130.parts).every((n) => n in v2140.parts && n in v2141.parts), '2.14.0 and 2.14.1: nothing removed since 2.13.0');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
