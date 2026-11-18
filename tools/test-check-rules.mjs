@@ -111,6 +111,7 @@ ok('factsFromSource: partMarks and allTate (content slides only: cover and sec a
   assert.equal(factsFromSource({ deck: '<div data-part-failure="define"></div>' }).partMarks, false);
   // 枠の中の印（handoff #46）だけの手書きの図も R-geometry の対象
   assert.equal(factsFromSource({ deck: '<svg><rect data-within="cell" x="1"/></svg>' }).partMarks, true);
+  assert.equal(factsFromSource({ deck: '<svg><rect data-frame="Cell" x="1"/></svg>' }).partMarks, true);
   assert.equal(factsFromSource({ deck: '<svg><rect data-withinx="cell"/></svg>' }).partMarks, false);
   // インラインの SVG（作成者の図）も R-geometry の対象：線が図の端で欠けるか（geoClippedStroke、handoff #52）を測る
   assert.equal(factsFromSource({ deck: '<svg viewBox="0 0 10 10"><rect x="0" width="10" height="10"/></svg>' }).svg, true);

@@ -11,14 +11,16 @@
 //   @ で始まる端（@spine・@moved など）は節でない
 //   わざと重ねる所：要素そのものか祖先の <g> に o.overlap の印（data-overlap="ok"、kit/core/layout-scan.mjs の OVERLAP_ATTR。handoff #45 の決定 3）。
 //        その要素が関わる重なりの知らせ（geoEdgeThroughBox・geoLineOverLabel・geoLabelOverlap）を出さない。値は "ok" だけ。箱の縁を越える字（geoLabelOutsideBox）は重なりでないので外さない
-//   枠の中（handoff #46。属性の名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。名前は 1 つ（[a-z][a-z0-9-]*）。宣言した図形だけを、ステップごとに測る（geometrySteps）
+//   枠の中（handoff #46。属性の名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。名前は 1 つ（WITHIN_NAME）。宣言した図形だけを、ステップごとに測る（geometrySteps）。
+//        名前の形に合わない値は測らず、要素ごとに geoBadMarkName（警告。a: {el, kind: 'shape'|'frame', attr, value}）で知らせる
 //   図の端で欠ける線（handoff #52）：印は要らない。インラインの SVG（作成者の図もパーツの図も）の線のある形の要素を、ステップごとに測る（geometrySteps）
 //
-//   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt, overlap, within, frame, clip}
+//   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt, overlap, within, frame, name, clip}
 //     bands  字体ごとの字の範囲（kit/core/text-band.mjs の TEXT_BANDS。{字体の名前: {up, down}}、em）
 //     dflt   表にない字体だけの字の範囲（DEFAULT_BAND）
 //     overlap わざと重ねる印の属性の名前（OVERLAP_ATTR）。なければ外さない
 //     within・frame  枠の中の印の属性の名前（WITHIN_ATTRS）
+//     name   枠の中の印の値の形（WITHIN_NAME。RegExp の source）。なければ枠の中は見ない
 //     clip   わざと切る印の属性の名前（kit/core/layout-scan.mjs の CLIP_ATTR）。その中の形は図の端で欠けても知らせない
 //     o.mode === 'step' のときだけ、今の表示で測る 1 段階分を返す：枠の外に出た図形（geoOutsideFrame）と図の端で欠ける線（geoClippedStroke）
 //     縦書きのスライド（layout-tate）は測らない（[] を返す。数は geometryTate）
@@ -41,6 +43,9 @@
 
 // 枠の中の印の名前（仕様 §8.4 Marks for geometry checks）。呼ぶ側が o.within・o.frame として渡す（kit/core/layout-scan.mjs の GEO_OPTS）
 export const WITHIN_ATTRS = Object.freeze({ within: 'data-within', frame: 'data-frame' });
+// その値の形：名前 1 つ（小文字の英字で始まり、小文字の英字・数字・-）。関数は外の名前を使えないので、呼ぶ側が o.name（RegExp の source）として渡す（GEO_OPTS）。
+// これに合わない値は測らず、geoBadMarkName（警告）で知らせる（綴りの誤りで点検が黙って外れないように。handoff #46、11/18 の決定）
+export const WITHIN_NAME = '^[a-z][a-z0-9-]*$';
 
 export function geometryScan(s, o) {
   const out = [];
@@ -48,7 +53,20 @@ export function geometryScan(s, o) {
   const BANDS = (o && o.bands) || {}, DFLT = (o && o.dflt) || { up: 0.86, down: 0.26 };
   const SEL = (v) => '[data-part="' + v + '"]';
   const STEP = !!(o && o.mode === 'step'), WA = (o && o.within) || '', FA = (o && o.frame) || '', OV = (o && o.overlap) || '', CL = (o && o.clip) || '';
-  const WITHIN = STEP && !!WA && !!FA && !!s.querySelector('[' + WA + ']'), EDGE = STEP && !!s.querySelector('svg');
+  const NAME = o && o.name ? new RegExp(o.name) : null;
+  const add = (sev, code, a) => out.push({ code, sev, a });
+  // 枠の中の印の値が名前 1 つ（o.name）でない（geoBadMarkName。handoff #46）：その印は測らないので、黙って点検が外れないよう知らせる。
+  // 要素ごとに 1 つ（data-within と data-frame の両方が名前でなければ data-within のほう）。値の形だけを見るので、見えているかに依らない。
+  // 名前の合わない印だけのスライドも見る（下の data-part の有無で返す前に）。o.mode === 'step' のときは出さない（ステップごとに重なるので）
+  if (!STEP && NAME && WA && FA) {
+    const seen = { [WA]: 0, [FA]: 0 };
+    for (const el of s.querySelectorAll('[' + WA + '],[' + FA + ']')) {
+      const n = el.hasAttribute(WA) ? ++seen[WA] : 0, m = el.hasAttribute(FA) ? ++seen[FA] : 0;
+      const bad = [[WA, 'shape', n], [FA, 'frame', m]].find(([at]) => el.hasAttribute(at) && !NAME.test(el.getAttribute(at)));
+      if (bad) add('warn', 'geoBadMarkName', { el: el.getAttribute('data-part-id') || el.id || el.localName + '#' + bad[2], kind: bad[1], attr: bad[0], value: el.getAttribute(bad[0]) });
+    }
+  }
+  const WITHIN = STEP && !!WA && !!FA && !!NAME && !!s.querySelector('[' + WA + ']'), EDGE = STEP && !!s.querySelector('svg');
   if (STEP ? !WITHIN && !EDGE : !s.querySelector([SEL('box'), SEL('edge'), SEL('label'), SEL('mark')].join(','))) return out;
   const sr = s.getBoundingClientRect();
   const k = sr.width / 1280 || 1;
@@ -56,7 +74,6 @@ export function geometryScan(s, o) {
   const box = (r) => ({ l: SX(r.left), t: SY(r.top), r: SX(r.right), b: SY(r.bottom) });
   const rnd = (v) => Math.round(v);
   const rr = (q) => [rnd(q.l), rnd(q.t), rnd(q.r), rnd(q.b)];
-  const add = (sev, code, a) => out.push({ code, sev, a });
   const TOL = 2;
 
   // 字体の並び → 字の範囲（kit/core/text-band.mjs の textBand と同じ決め方：並びの中で表にある字体の最も広いもの、なければ dflt）
@@ -424,8 +441,7 @@ export function geometryScan(s, o) {
         dist: (x, y) => (x >= q.l && x <= q.r && y >= q.t && y <= q.b ? Math.min(x - q.l, q.r - x, y - q.t, q.b - y) : Math.hypot(Math.max(q.l - x, 0, x - q.r), Math.max(q.t - y, 0, y - q.b))),
       };
     };
-    // 名前は 1 つだけ（[a-z][a-z0-9-]*）。並べた名前・大文字・空などの値は、data-part の知らない値と同じく印でないとみなして測らない（枠の側も同じ値でしか合わない）
-    const NAME = /^[a-z][a-z0-9-]*$/;
+    // 名前は 1 つだけ（o.name）。並べた名前・大文字・空などの値は測らない（枠の側も同じ値でしか合わない）。その値は geoBadMarkName が最後のステップで 1 度知らせる
     const all = [...s.querySelectorAll('[' + WA + ']')];
     all.forEach((el, n) => {
       const name = el.getAttribute(WA) || '';
@@ -614,11 +630,11 @@ export function geometrySteps(s, o, seek, scan) {
 }
 
 // 縦横が混ざる教材で、形の点検から外した縦書きのスライド（印のあるもの）の数。中身のスライドがみな縦書きなら 0。geometryScan と同じく文字列でページに入れる
-// 印：data-part の 4 つと、枠の中の印（o.within。渡されたときだけ）
+// 印：data-part の 4 つと、枠の中の印（o.within・o.frame。渡されたときだけ）
 export function geometryTate(slides, o) {
   const content = [].filter.call(slides || [], (s) => !s.classList.contains('cover') && !s.classList.contains('sec'));
   const tate = content.filter((s) => s.classList.contains('layout-tate'));
   if (!tate.length || tate.length === content.length) return 0;
-  const sel = ['box', 'edge', 'label', 'mark'].map((v) => '[data-part="' + v + '"]').concat(o && o.within ? ['[' + o.within + ']'] : []).join(',');
+  const sel = ['box', 'edge', 'label', 'mark'].map((v) => '[data-part="' + v + '"]').concat(o && o.within ? ['[' + o.within + ']'] : [], o && o.frame ? ['[' + o.frame + ']'] : []).join(',');
   return tate.filter((s) => !!s.querySelector(sel)).length;
 }

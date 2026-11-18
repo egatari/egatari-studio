@@ -9,12 +9,14 @@
 //   - 箱に <circle>（形で測る）。辺の端に点（mark）の id：その点の字とその点を中に持つ箱は相手にしない。data-overlap="ok"（要素か祖先の <g>）は重なりの知らせから外す（handoff #45 の決定 1〜3）。
 //     どれも、印を付けない対照（わざと重ねたもの）は今までどおり出る
 //   - geoOutsideFrame（handoff #46）：data-within の図形が data-frame の枠の外に出る。geometrySteps が全部のステップで測る（途中のステップだけのはみ出しも出る）。<g> は中の形と字の全部。名前でない値は測らない
+//   - geoBadMarkName（handoff #46、11/18 の決定）：data-within・data-frame の値が名前 1 つ（WITHIN_NAME）でなければ、要素ごとに 1 つ警告（綴りの誤りで点検が黙って外れないように）。
+//     名前の合わない印だけのスライド（data-part なし）でも出る
 //   - geoClippedStroke（handoff #52）：インラインの SVG の端で形の線が欠ける。端ぴったり（出る）・3px 内側・大半が外の飾り・overflow="visible"・data-overlap="ok"・data-clip（出ない）・
 //     途中のステップだけ（そのステップで出る）。端に沿う線（出る）と端から端の butt の線（出ない）、変形
 //   node tools/test-geometry-check.mjs
 import assert from 'node:assert/strict';
 import { shareBrowser, launch } from '../kit/browser.mjs';
-import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS } from '../kit/core/geometry-check.mjs';
+import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS, WITHIN_NAME } from '../kit/core/geometry-check.mjs';
 import { layoutScan, withLayoutScan, GEO_OPTS, OVERLAP_ATTR } from '../kit/core/layout-scan.mjs';
 import { TEXT_BANDS, DEFAULT_BAND, textBand } from '../kit/core/text-band.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
@@ -23,7 +25,7 @@ import { ruleOfCode } from '../kit/core/check-rules.mjs';
 await shareBrowser();
 
 const GEO = GEO_OPTS;
-const CODES = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoClippedStroke', 'geoTateSlides'];
+const CODES = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoBadMarkName', 'geoClippedStroke', 'geoTateSlides'];
 let n = 0, fail = 0;
 const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n' + e.stack); } };
 
@@ -44,9 +46,16 @@ await t('ledger and messages: every geometry code is R-geometry, with ids and on
   assert.ok(message('ja', 'geoOutsideFrame', w).startsWith('図形 chr が枠 cell の外に出る（41px、ステップ 2、978, 341。外に出るステップは 1・2・結論）：そのステップの図形 chr の位置か大きさを、パーツのデータか図の座標で変えて、枠 cell の内側に収める（枠を大きくしてもよい）'), message('ja', 'geoOutsideFrame', w));
   assert.match(message('en', 'geoOutsideFrame', { ...w, steps: ['2'] }), /^figure shape chr goes outside frame cell \(by 41px at step 2, at 978, 341\): at that step, move or shrink shape chr/);
   assert.match(message('ja', 'geoOutsideFrame', { ...w, step: 'concl', steps: ['concl'] }), /（41px、結論のステップ、/);
+  // 印の値が名前でない：要素と値を言い、直し方を 1 つ
+  assert.ok(message('ja', 'geoBadMarkName', { el: 'chr', kind: 'shape', attr: 'data-within', value: 'A B' }).startsWith('図形 chr の data-within の値が名前の形に合わない（"A B"）：小文字の英字で始まる名前 1 つにする'));
+  assert.ok(message('ja', 'geoBadMarkName', { el: 'rect#2', kind: 'frame', attr: 'data-frame', value: '' }).startsWith('枠 rect#2 の data-frame の値が名前の形に合わない（""）：小文字の英字で始まる名前 1 つにする'));
+  assert.match(message('en', 'geoBadMarkName', { el: 'cell', kind: 'frame', attr: 'data-frame', value: 'Cell' }), /^the data-frame value of frame cell is not a name \("Cell"\): use one name that starts with a lowercase letter/);
 });
 await t('attribute names: data-overlap comes from OVERLAP_ATTR, data-within and data-frame from WITHIN_ATTRS only', () => {
-  assert.deepEqual([GEO_OPTS.overlap, GEO_OPTS.within, GEO_OPTS.frame], [OVERLAP_ATTR, WITHIN_ATTRS.within, WITHIN_ATTRS.frame]);
+  assert.deepEqual([GEO_OPTS.overlap, GEO_OPTS.within, GEO_OPTS.frame, GEO_OPTS.name], [OVERLAP_ATTR, WITHIN_ATTRS.within, WITHIN_ATTRS.frame, WITHIN_NAME]);
+  // 名前の形は WITHIN_NAME の 1 か所（関数の中に正規表現を書かない）
+  for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!String(f).includes('[a-z][a-z0-9-]'), 'no name pattern written inside ' + f.name);
+  assert.ok(['cell', 'cell-2', 'a'].every((v) => new RegExp(WITHIN_NAME).test(v)) && !['A B', 'Cell', '', 'cell nucleus', ' cell', '2cell'].some((v) => new RegExp(WITHIN_NAME).test(v)));
   for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!/['"`]data-(within|frame|overlap)/.test(String(f)), 'no attribute name written as a string inside ' + f.name);
 });
 await t('injection: the scanner is self-contained, has no </script or <!--, and the editor wrapper passes it with the band table', () => {
@@ -253,7 +262,15 @@ try {
   const W5 = CELL + '<rect data-k="0" data-within="cell nucleus" x="900" y="340" width="80" height="40"/><rect data-k="0" data-within="Cell" x="900" y="400" width="80" height="40"/>'
     + '<rect data-k="0" data-within=" cell" x="900" y="300" width="80" height="40"/><rect data-k="0" data-within="" x="900" y="250" width="80" height="40"/>'
     + '<rect data-frame="box a" x="100" y="100" width="50" height="50"/><rect data-k="0" data-within="box" x="300" y="100" width="50" height="50"/>';
-  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${[W0, W1, W2, W3, W0, W4, W5].map((x, i) => slide(x, i === 4 ? 'slide layout-tate' : 'slide')).join('\n')}</body></html>`);
+  // 名前の形に合わない値（geoBadMarkName）：data-part のないスライド。data-within・data-frame のそれぞれに "A B"・"Cell"・""・"cell nucleus"（出る）と "cell"・"cell-2"（出ない）。
+  // 要素の名前は data-part-id・id・タグ#その属性の要素の中の番号。両方が名前でない要素は 1 つだけ（data-within のほう）
+  const R = (a) => `<rect ${a} x="10" y="10" width="20" height="20"/>`;
+  const W6 = R('data-within="A B" data-part-id="w1"') + R('data-within="Cell" id="w2"') + R('data-within=""') + '<circle data-within="cell nucleus" cx="50" cy="50" r="5"/>'
+    + R('data-within="cell" data-part-id="ok1"') + R('data-within="cell-2" data-part-id="ok2"')
+    + R('data-frame="A B" data-part-id="f1"') + R('data-frame="Cell" id="f2"') + R('data-frame=""') + '<ellipse data-frame="cell nucleus" cx="50" cy="50" rx="5" ry="5"/>'
+    + R('data-frame="cell" data-part-id="ok3"') + R('data-frame="cell-2" data-part-id="ok4"')
+    + '<g data-within="X" data-frame="Y" data-part-id="both"></g>';
+  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${[W0, W1, W2, W3, W0, W4, W5, W6].map((x, i) => slide(x, i === 4 ? 'slide layout-tate' : 'slide')).join('\n')}</body></html>`);
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometrySteps = ${geometrySteps}`);
   const walk = (i, cstep = -1) => page.evaluate(([i, o, cstep]) => {
@@ -297,6 +314,19 @@ try {
   });
   await t('geoOutsideFrame: a value that is not one name ([a-z][a-z0-9-]*) is not a mark (lists, capitals, spaces, empty), on the shape or the frame', async () => {
     assert.deepEqual((await walk(6)).out, []);
+  });
+  await t('geoBadMarkName: a data-within or data-frame value that is not one name is warned once per element, also on a slide without data-part; names are not', async () => {
+    const r = await walk(7);
+    assert.deepEqual(r.out, []);
+    assert.deepEqual(r.plain.map((x) => `${x.code}|${x.sev}|${x.a.el}|${x.a.kind}|${x.a.attr}|${x.a.value}`), [
+      'geoBadMarkName|warn|w1|shape|data-within|A B', 'geoBadMarkName|warn|w2|shape|data-within|Cell', 'geoBadMarkName|warn|rect#3|shape|data-within|',
+      'geoBadMarkName|warn|circle#4|shape|data-within|cell nucleus',
+      'geoBadMarkName|warn|f1|frame|data-frame|A B', 'geoBadMarkName|warn|f2|frame|data-frame|Cell', 'geoBadMarkName|warn|rect#3|frame|data-frame|',
+      'geoBadMarkName|warn|ellipse#4|frame|data-frame|cell nucleus',
+      'geoBadMarkName|warn|both|shape|data-within|X',
+    ]);
+    // 名前の合わない印のある W5 も、最後のステップの geometryScan で知らせる（測らないだけで黙らない）
+    assert.deepEqual((await walk(6)).plain.map((x) => x.a.value), ['cell nucleus', 'Cell', ' cell', '', 'box a']);
   });
 
   // ---------------------------------------------------------------- 図の端で欠ける線（handoff #52）

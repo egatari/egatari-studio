@@ -490,7 +490,7 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS, 
     const body = s.querySelector('.body');
     // はみ出し・切れ・字の大きさ・字数（kit/core/layout-scan.mjs。編集アプリの品質チェックと同じ関数）
     for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT, overlap: OVERLAP, metrics: METRICS })) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
-    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）
+    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）。枠の中の印の値が名前でない geoBadMarkName もここから
     for (const f of window.__geometryScan(s, GEO)) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
     // 図形が枠の外に出る（geoOutsideFrame。handoff #46）・図形の線が図の端で欠ける（geoClippedStroke。handoff #52）：全部のステップで 1 回だけ歩いて測る
     // （編集アプリと同じ関数）。測るものがないスライドは歩かない（null）。歩いた後は最後のステップに戻す

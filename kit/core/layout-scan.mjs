@@ -23,7 +23,7 @@
 // だから外の名前を使わない（中だけで閉じる）。仲立ちはデッキの script の要素の中にそのまま入るので、閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
 
 import { findRawMath } from './raw-math.mjs';
-import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS } from './geometry-check.mjs';
+import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS, WITHIN_NAME } from './geometry-check.mjs';
 import { TEXT_BANDS, DEFAULT_BAND } from './text-band.mjs';
 
 // わざと切る印（CLIP_ATTR。docs/contract.md §10）：その要素の中（子孫も、SVG の字も）は、箱で切れる・スライドの外に出る・
@@ -39,9 +39,9 @@ export const ANNOT_ATTR = 'data-annot';
 export const OVERLAP_ATTR = 'data-overlap';
 
 // 描いた図の形の点検（kit/core/geometry-check.mjs）に渡す値：字の範囲の表（kit/core/text-band.mjs）・わざと重ねる印の名前（OVERLAP_ATTR。R-geometry も見る、handoff #45）・
-// 枠の中の印の名前（WITHIN_ATTRS。handoff #46）・わざと切る印の名前（CLIP_ATTR。その中は図の端で欠ける線 geoClippedStroke を見ない、handoff #52）。
+// 枠の中の印の名前（WITHIN_ATTRS）と値の形（WITHIN_NAME。handoff #46）・わざと切る印の名前（CLIP_ATTR。その中は図の端で欠ける線 geoClippedStroke を見ない、handoff #52）。
 // コマンド版（kit/check.mjs）・編集アプリ（withLayoutScan）・試験が同じこれを使う
-export const GEO_OPTS = Object.freeze({ bands: TEXT_BANDS, dflt: DEFAULT_BAND, overlap: OVERLAP_ATTR, within: WITHIN_ATTRS.within, frame: WITHIN_ATTRS.frame, clip: CLIP_ATTR });
+export const GEO_OPTS = Object.freeze({ bands: TEXT_BANDS, dflt: DEFAULT_BAND, overlap: OVERLAP_ATTR, within: WITHIN_ATTRS.within, frame: WITHIN_ATTRS.frame, name: WITHIN_NAME, clip: CLIP_ATTR });
 
 export function layoutScan(s, o) {
   const JA = !!o.JA, CLIP = o.clip, ANNOT = o.annot, OVERLAP = o.overlap, refRe = new RegExp(o.refRe);

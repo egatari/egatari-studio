@@ -301,6 +301,10 @@ export const MESSAGES = {
   geoOutsideFrame: { rule: 'R-geometry',
     ja: (a) => `図形 ${a.shape} が枠 ${a.frame} の外に出る（${a.px}px、${stepJa(a.step)}、${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `。外に出るステップは ${a.steps.map((x) => (x === 'concl' ? '結論' : x)).join('・')}` : ''}）：そのステップの図形 ${a.shape} の位置か大きさを、パーツのデータか図の座標で変えて、枠 ${a.frame} の内側に収める（枠を大きくしてもよい）`,
     en: (a) => `figure shape ${a.shape} goes outside frame ${a.frame} (by ${a.px}px at ${stepEn(a.step)}, at ${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `; outside at steps ${a.steps.map((x) => (x === 'concl' ? 'conclusion' : x)).join(', ')}` : ''}): at that step, move or shrink shape ${a.shape} in the part's data or the figure's coordinates so it stays inside frame ${a.frame} (or make the frame larger)` },
+  // 枠の中の印の値が名前 1 つでない（handoff #46）：その印は測っていない。kind は shape（data-within）か frame（data-frame）
+  geoBadMarkName: { rule: 'R-geometry',
+    ja: (a) => `${a.kind === 'frame' ? '枠' : '図形'} ${a.el} の ${a.attr} の値が名前の形に合わない（"${a.value}"）：小文字の英字で始まる名前 1 つにする`,
+    en: (a) => `the ${a.attr} value of ${a.kind === 'frame' ? 'frame' : 'shape'} ${a.el} is not a name ("${a.value}"): use one name that starts with a lowercase letter (a–z, 0–9 and -)` },
   // 図形の線が図の端で欠ける（handoff #52）：インラインの SVG の形の線が、SVG の見える範囲の端で切れる。いちばん大きく欠けたステップと、欠けた辺ごとの量、欠けるステップの一覧。
   // id のない形は「種類#n」（スライドの中で n 番目のその種類の要素）。形そのものが端を越える（stroke が false）なら、線の太さの半分でなく形を寄せる
   geoClippedStroke: { rule: 'R-geometry',
