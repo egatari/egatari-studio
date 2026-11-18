@@ -1063,7 +1063,7 @@ function helpHtml(){
     '<div class="dt-foot dt-pres-tip">' + (j ? "発表者ビューから抜けられないとき：Mac は cmd+Tab で本体のウィンドウに戻って p（Windows は Alt+Tab）"
       : "Stuck in the presenter view? On a Mac, press cmd+Tab to get back to the main window, then p (on Windows, Alt+Tab)") + "</div>" + rightsHtml() + aiHtml() + attHtml() + about + fbHtml + "</div>";
 }
-// ファイルの情報（format spec §7.3：題名・作成者・著作権・ライセンス・クレジットの表示）。deck-meta から出し、deck-meta にない項目は索引の metadata から
+// ファイルの情報（format spec §7.3：題名・作成者・編集・著作権・ライセンス・クレジットの表示）。deck-meta から出し、deck-meta にない項目は索引の metadata から
 // （deck-meta に creators を写す前の版の 1 ファイル向け。再生専用の派生と作業フォルダの組み立ては索引を持たない）。どれもなければ出さない。
 // ライセンスだけがないときは「書かれていません」（エディタのファイルの情報と同じ）
 var RIGHTS_IX = null;
@@ -1080,10 +1080,17 @@ function rightsHtml(){
   };
   var pick = function(k){ return Object.prototype.hasOwnProperty.call(M, k) ? M[k] : md()[k]; };
   var title = str(pick("title")), creators = list(pick("creators")), copyright = str(pick("copyright")), license = str(pick("license")), attribution = str(pick("attribution"));
-  if (!creators.length && !copyright && !license && !attribution) return "";
+  // 編集の記録（§3.6.1）：作成者の後に、古い順に 1 件 1 行。名前のない項目は「元の教材から編集されています」（直した部分を作成者のものに見せない）
+  var edits = Array.isArray(pick("edits")) ? pick("edits").filter(function(x){ return x && typeof x === "object" && !Array.isArray(x); }).slice(0, 50) : [];
+  if (!creators.length && !copyright && !license && !attribution && !edits.length) return "";
   var rows = [];
   if (title) rows.push([j ? "題名" : "Title", title]);
   if (creators.length) rows.push([j ? "作成者" : "Created by", creators.join(j ? "、" : ", ")]);
+  edits.forEach(function(x){
+    var by = str(x.by).slice(0, 300), note = str(x.note).slice(0, 300);
+    var what = by || (j ? "元の教材から編集されています" : "Edited from the original lesson");
+    rows.push([j ? "編集" : by ? "Edited by" : "Edited", what + (note ? (j ? "（" + note + "）" : " (" + note + ")") : "")]);
+  });
   if (copyright) rows.push([j ? "著作権" : "Copyright", copyright]);
   rows.push([j ? "ライセンス" : "License", license || (j ? "書かれていません" : "not stated")]);
   if (attribution) rows.push([j ? "クレジットの表示" : "Attribution", attribution]);

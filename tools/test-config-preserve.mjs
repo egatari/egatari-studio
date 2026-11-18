@@ -15,6 +15,7 @@ import http from 'node:http';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
+import { answerCreator } from './edit-role-answer.mjs';
 import { buildPortable, nodeEnv, updateThemePins } from '../kit/build.mjs';
 import { exportPortable, readPortable } from '../kit/core/portable.mjs';
 import { build as coreBuild } from '../kit/core/build-core.mjs';
@@ -168,7 +169,7 @@ const srv = http.createServer((req, res) => {
 });
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${srv.address().port}/`;
-const browser = await launch();
+const browser = answerCreator(await launch());
 const errs = [];
 try {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP' });

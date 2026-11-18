@@ -28,7 +28,7 @@ export const KINDS = Object.freeze(['preface', 'chapter', 'appendix', 'afterword
 // 前付けに書ける項目と型（§9C.2）
 const FM_MEMBERS = { title: 'string', subtitle: 'string', lang: 'lang', bibliography: 'string', 'writing-mode': 'mode', chapter: 'posint', kind: 'kind', numbering: 'boolean' };
 // 指令ごとに書ける option（§9C.2）
-const DIRECTIVES = { figure: ['label', 'alt'], table: ['label', 'class'], aside: ['label', 'class'], exercise: ['label', 'nonumber'], solution: ['label'], glossary: [] };
+const DIRECTIVES = { figure: ['label', 'alt'], table: ['label', 'class'], aside: ['label', 'class', 'nonumber'], exercise: ['label', 'nonumber'], solution: ['label'], glossary: [] };
 const ROLES = new Set(['step', 'ruby', 'term', 'sub', 'sup']);
 const ADMONITIONS = new Set(['admonition', 'note', 'tip', 'hint', 'important', 'warning', 'caution', 'attention', 'danger', 'error', 'seealso', 'margin', 'sidebar', 'topic']);
 // 名前の決まり（§8.1・§9C.3・§9C.4）
@@ -307,6 +307,8 @@ export function parseArticleText(src, opts = {}) {
       return;
     }
     for (const k of Object.keys(opts0)) if (!allowed.includes(k)) add('error', 'articleOption', '§9C.2', node, { name, option: k });
+    // コラムの :nonumber:（§9C.2、wd-2026-11-18）：番号を付けない。myst の aside は知らない項目を捨てるので、ここで写す（exercise と同じ enumerated: false）
+    if (name === 'aside' && Object.prototype.hasOwnProperty.call(opts0, 'nonumber')) for (const c of node.children || []) if (c.type === 'aside') c.enumerated = false;
     if (name === 'figure') figureDirective(node, parents);
     if (name === 'table') tableDirective(node);
     if (name === 'solution' && !String(node.args || '').trim()) add('error', 'articleSolutionLabel', '§9C.2', node);

@@ -285,6 +285,27 @@
       "pairs": true
     },
     {
+      "file": "app/i18n.js",
+      "line": "editRoleTitle:",
+      "term": "created-by",
+      "reason": "The question before the first save (format spec §7.3) asks whether the person is one of the creators; en says “a creator of this lesson”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "editRoleMine:",
+      "term": "created-by",
+      "reason": "The answer to that question; en says “I am a creator of this lesson”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "editShown:",
+      "term": "created-by",
+      "reason": "Says where the edit appears in File info (after the creators); en says “after the creators”.",
+      "pairs": true
+    },
+    {
       "file": "app/llm.js",
       "line": "thumbAlt:",
       "term": "sample",
@@ -585,12 +606,6 @@
       "keep": true
     },
     {
-      "file": "app/part-thumbs.js",
-      "pattern": "報告書づくりの道具",
-      "term": "tools",
-      "reason": "Sample content of a part thumbnail (a made-up report), not the Tools group."
-    },
-    {
       "file": "app/i18n.js",
       "line": "saveNote:",
       "term": "caution-box",
@@ -616,6 +631,12 @@
       "term": "backup",
       "reason": "控えめ (subdued) is an ordinary word, not 控え for a backup.",
       "keep": true
+    },
+    {
+      "file": "docs/editor.md",
+      "pattern": "sample images|sample: (cover|body)",
+      "term": "voice-sample",
+      "reason": "The theme's sample images in New step 3 and their alt text (standards session 2026-11-16), not a voice preview."
     }
   ]
 }

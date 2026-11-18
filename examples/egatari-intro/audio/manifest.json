@@ -1,0 +1,564 @@
+{
+ "segments": {
+  "s-5njg6q:0": {
+   "file": "seg_a220aa4a5770.m4a",
+   "dur": 6.973,
+   "cues": [],
+   "digest": "a220aa4a5770",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "9f93a69ea5eb3d1de57a1d85f13e842efb836033a1a95c0cb8c3f730102548e5",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-n37lrw:0": {
+   "file": "seg_86c1d4e7e1ce.m4a",
+   "dur": 3.13,
+   "cues": [],
+   "digest": "86c1d4e7e1ce",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "8e3fdc6d891c92a070b0a9cf2d9d18b95af72763b709858426f149f833267037",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-n37lrw:1": {
+   "file": "seg_4bc0c2f21723.m4a",
+   "dur": 5.636,
+   "cues": [],
+   "digest": "4bc0c2f21723",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "ce3e7fded3bb0142d3cf20ff0fec62b7757526f1bc9f4269132ab7875a682b13",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-n37lrw:2": {
+   "file": "seg_f768a4ef581e.m4a",
+   "dur": 4.619,
+   "cues": [],
+   "digest": "f768a4ef581e",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "fa8a4a755b77467eeaeea122841d30d32f3531f8e6e29b0aeab4740ba1199687",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-n37lrw:concl": {
+   "file": "seg_214578ca0a91.m4a",
+   "dur": 2.81,
+   "cues": [],
+   "digest": "214578ca0a91",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "98613757c56679eb1d2872c36a2c3e79a1d5757e5d610303a124eb231974bca8",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-lnttv2:0": {
+   "file": "seg_05a1116f0c3b.m4a",
+   "dur": 4.119,
+   "cues": [],
+   "digest": "05a1116f0c3b",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "90d04653e62448972b6240f8676d685f4d6b30dc5bce901c22bf4d5f1a9143cb",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-lnttv2:1": {
+   "file": "seg_1f894b9c49af.m4a",
+   "dur": 2.82,
+   "cues": [],
+   "digest": "1f894b9c49af",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "7930e91532d7f63fe23d85ec4e706a82dd93adabffe0878e17e315934b0fa791",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-lnttv2:2": {
+   "file": "seg_76052c0012b0.m4a",
+   "dur": 3.694,
+   "cues": [],
+   "digest": "76052c0012b0",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "8305d82a6b47459fbe25f698c8e3b6e08d4475a32ab29d273ce8f14558ebf1ea",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-lnttv2:3": {
+   "file": "seg_33bff893e661.m4a",
+   "dur": 5.315,
+   "cues": [],
+   "digest": "33bff893e661",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "eacd46c4fcbd77b84dad5c4bbd7afcff4e1d359f1a2b981e8a654f047eb2cd28",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-lnttv2:concl": {
+   "file": "seg_d1109650926f.m4a",
+   "dur": 3.536,
+   "cues": [],
+   "digest": "d1109650926f",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "8bd5cf3ac3774b9209ae071060a0247ea25a1d5e2a6e77875787f31d8305f6bf",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:0": {
+   "file": "seg_83ff472bf633.m4a",
+   "dur": 9.301,
+   "cues": [],
+   "digest": "83ff472bf633",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "7af96be8041884ec6b70c18b97888b32e04c22af2ce485dfbc11fa483d22ba07",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:1": {
+   "file": "seg_0266c02ba948.m4a",
+   "dur": 4.07,
+   "cues": [],
+   "digest": "0266c02ba948",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "a46395f72391672ee37b652d25f3e295bad38220aa21e70475238b4feecf117c",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:2": {
+   "file": "seg_091a7931e76d.m4a",
+   "dur": 1.592,
+   "cues": [],
+   "digest": "091a7931e76d",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "728eda56f12e71b3add5ab10482277ae5d671060aa1285e4c0bb30a7324ca334",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:3": {
+   "file": "seg_b5df7d8b133e.m4a",
+   "dur": 13.104,
+   "cues": [],
+   "digest": "b5df7d8b133e",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "c9ba32764b76a78f48aa33c946d3655b1a4580a1c90a660ded4c2f4d8055893e",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:4": {
+   "file": "seg_df6d14555490.m4a",
+   "dur": 3.806,
+   "cues": [],
+   "digest": "df6d14555490",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "c4229a8ca9af526c4a6b6a8fe207b6fc9e173421752a3c11cc000c777f603b8b",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:5": {
+   "file": "seg_27a224754d3f.m4a",
+   "dur": 3.287,
+   "cues": [],
+   "digest": "27a224754d3f",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "e2f9196021d10af67792253cb425466e6d658854ff5de8859bcddbd5d0255e61",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-6a7bsf:concl": {
+   "file": "seg_db4fcde6297e.m4a",
+   "dur": 7.792,
+   "cues": [],
+   "digest": "db4fcde6297e",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "753612636be3354c1fa65392516cfac12b624ea998e9df3c930e181be05731a1",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:0": {
+   "file": "seg_c524bc23940e.m4a",
+   "dur": 4.044,
+   "cues": [],
+   "digest": "c524bc23940e",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "b0a68497c4f955cf0f52eb8e1fa891752fb3be79c00b80bc627bc6a63b7dbd0f",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:1": {
+   "file": "seg_9d410bff804c.m4a",
+   "dur": 3.634,
+   "cues": [],
+   "digest": "9d410bff804c",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "711ddd471c8359f2d7f71889037e8adc63c24e10ad69fcf1e7c92dff280a9d49",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:2": {
+   "file": "seg_ec3332d7befa.m4a",
+   "dur": 3.648,
+   "cues": [],
+   "digest": "ec3332d7befa",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "ebadbaa3ba313481b52f04c71a8c8862557b114fb15a563ff15a063f59ff6927",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:3": {
+   "file": "seg_fad5ccfb69fe.m4a",
+   "dur": 4.791,
+   "cues": [],
+   "digest": "fad5ccfb69fe",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "f56602c5019ea4a20002cf425e5cabbdc8eef2a368af2b613855072ac798bd73",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:4": {
+   "file": "seg_dc76413b4135.m4a",
+   "dur": 3.159,
+   "cues": [],
+   "digest": "dc76413b4135",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "f6c092af00bbfa74e75ff47baa8012beb55df4e608023a539fc4782a6d338b48",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:5": {
+   "file": "seg_7de0a3b1d70d.m4a",
+   "dur": 3.63,
+   "cues": [],
+   "digest": "7de0a3b1d70d",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "c2faf6ae62e19179739434c25983e437e34b0340e304d0293d05cb16f5843128",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:6": {
+   "file": "seg_74dca7ba5525.m4a",
+   "dur": 2.592,
+   "cues": [],
+   "digest": "74dca7ba5525",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "41609783dfa50f641d1ebdd345722c8ff21ce642d83d8de954a04dc4ec267a72",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-2yzir5:concl": {
+   "file": "seg_e3b21f37b8bc.m4a",
+   "dur": 4.028,
+   "cues": [],
+   "digest": "e3b21f37b8bc",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "915ee49afbe754016a11a7a69f2fbe372409fa16c96bce0caf0b53351dbdf801",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-w5shrc:0": {
+   "file": "seg_fe18569a4b9b.m4a",
+   "dur": 8.695,
+   "cues": [],
+   "digest": "fe18569a4b9b",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "771c30be619af18c432228f7b21b078021ed078a4a31b6127ee0fb9551e0a106",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-w5shrc:1": {
+   "file": "seg_086b57a1297b.m4a",
+   "dur": 9.122,
+   "cues": [],
+   "digest": "086b57a1297b",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "df24bfd6ccb13450e02c21cc0333ca0a84558101d4bc41faacfc71e2251ae9ef",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  },
+  "s-w5shrc:concl": {
+   "file": "seg_9ae65fe238dd.m4a",
+   "dur": 3.115,
+   "cues": [],
+   "digest": "9ae65fe238dd",
+   "engine": "irodori",
+   "kind": "tts",
+   "inputHash": "72f0d66c836ba66e364f31076ff35c1f687908decaa4e9692200d908e763d490",
+   "recipe": {
+    "engine": "irodori",
+    "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
+    "voice": {
+     "expert": "bob",
+     "novice": "alice"
+    },
+    "seed": null,
+    "dictionary": "55ca5c480bb9",
+    "processing": "trim=True/-45dB/0.05;norm=-20.0/-1.5/11.0;pause_ms=350"
+   }
+  }
+ }
+}

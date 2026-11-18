@@ -1,5 +1,5 @@
 // 編集アプリ（app/）の確認
-//   node tools/test-app.mjs [作業用のフォルダ] [--shots 画像のフォルダ] [--part 1/2|2/2]
+//   node tools/test-app.mjs [作業用のフォルダ] [--shots 画像のフォルダ] [--part 1/3|2/3|3/3]
 // 1. tools/build-app.mjs で作業用のフォルダに組み、dist/ を 127.0.0.1 で配る（根と /egatari-studio/ の両方。13 でサイトの形を確かめる）
 // 2. OPFS（navigator.storage.getDirectory()）に examples/minimal を写したフォルダを作り、window.__APP_TEST_OPEN(handle) で開く
 // 3. ブラウザで組んだ HTML が Node の build（字を絞り込まない）と同じか・書き出しの字の切り出しが Node とバイトまで同じか・原稿の編集・口述原稿・コメント・外での変更・
@@ -17,6 +17,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { launch } from '../kit/browser.mjs';
+import { answerCreator } from './edit-role-answer.mjs';
 import { build, buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
@@ -44,14 +45,16 @@ import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
-// --part i/2：半分だけ（test-all が別々の段 test-app 1/2・2/2 として走らせる。遅い CI の 1 段の上限 900 秒に収めるため。サンプルが 6 つになって 870〜900 秒になった）。
-// 1/2 は 2〜10d と 11（10b が書いたファイルを開く）、2/2 は 10c〜13b（11 を除く）。組み立てと配る所（1）と、最後のコンソールのエラーの確かめは両方で。なしなら全部
+// --part i/3：3 つに分けた 1 つだけ（test-all が別々の段 test-app 1/3〜3/3 として走らせる。遅い CI の 1 段の上限 900 秒に収めるため。
+// 2 つに分けていたときは、後半が ubuntu の CI で 519〜900 秒になった。handoff Issue #10）。
+// 1/3 は 2〜10d と 11（10b が書いたファイルを開く）、2/3 は 10c・12・13・13b（サンプルの一覧とサイトの形）、3/3 は 12b・12c（チャットの AI との行き来・新規作成の流れ・スライド一覧）。
+// 組み立てと配る所（1）と、最後のコンソールのエラーの確かめはどれでも。なしなら全部
 const pi = args.indexOf('--part');
-const partM = pi >= 0 ? String(args.splice(pi, 2)[1] || '').match(/^([12])\/2$/) : null;
-if (pi >= 0 && !partM) { console.error('--part must be 1/2 or 2/2'); process.exit(2); }
+const partM = pi >= 0 ? String(args.splice(pi, 2)[1] || '').match(/^([123])\/3$/) : null;
+if (pi >= 0 && !partM) { console.error('--part must be 1/3, 2/3 or 3/3'); process.exit(2); }
 const PART = partM ? Number(partM[1]) : 0;
 const inPart = (i) => !PART || PART === i;
-if (PART) console.log(`part ${PART}/2`);
+if (PART) console.log(`part ${PART}/3`);
 const si = args.indexOf('--shots');
 const SHOTS = si >= 0 ? path.resolve(args[si + 1]) : null;
 const work = path.resolve(args.find((a, i) => !a.startsWith('--') && !(si >= 0 && i === si + 1)) || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-app-')));
@@ -126,7 +129,7 @@ const pother = await (async () => {
 const fixture = (name) => fixtures.find((f) => f.name === name);
 
 // ---------------------------------------------------------------- 1. 組んで配る
-// サンプル（dist/examples）を使うのは 2/2 だけ（12 のサンプルの一覧）。1/2 は組まない（17 本で 70 秒前後、macOS の CI ではその 2〜3 倍）
+// サンプル（dist/examples）を使うのは 2/3（10c のサンプルの一覧・13 のサイト）と 3/3（12b が examples/minimal を開く）。1/3 は組まない（17 本で 70 秒前後、macOS の CI ではその 2〜3 倍）
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, ...(PART === 1 ? ['--no-examples'] : [])], { stdio: 'inherit' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.txt': 'text/plain', '.md': 'text/plain', '.wav': 'audio/wav', '.m4a': 'audio/mp4' };
 let fontFetches = 0;
@@ -148,7 +151,7 @@ await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${srv.address().port}/`;
 console.log('app', BASE);
 
-const browser = await launch();
+const browser = answerCreator(await launch());
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP' });
 const page = await ctx.newPage();
 const errs = [];
@@ -237,10 +240,10 @@ async function waitLoads(n, timeout = 30000) {
   return frameReady();
 }
 
-// examples/minimal（id を付けたもの）の 2 つのファイル：1/2 は OPFS に、2/2 はフォルダを開く・1 ファイル版の試験に写す
+// examples/minimal（id を付けたもの）の 2 つのファイル：1/3 は OPFS に、2/3 はフォルダを開く・1 ファイル版の試験に写す
 const files = { 'deck.html': MINI.deck, 'narration.md': MINI.narration };
 try {
-  // ================================================================ 1/2：はじめの画面から 10d まで（OPFS の examples/minimal を開いた 1 つのページで続けて）と 11
+  // ================================================================ 1/3：はじめの画面から 10d まで（OPFS の examples/minimal を開いた 1 つのページで続けて）と 11
   if (inPart(1)) {
     // ---------------------------------------------------------------- 2. はじめの画面
     await page.goto(BASE);
@@ -1607,7 +1610,7 @@ try {
       await pt.close();
     }
 
-    // ---------------------------------------------------------------- 11. 英語の画面（10b で保存した exported-edited を開くので 1/2 に）
+    // ---------------------------------------------------------------- 11. 英語の画面（10b で保存した exported-edited を開くので 1/3 に）
     const pe = await browser.newPage({ locale: 'en-US' });
     watch(pe, 'en');
     await pe.goto(BASE);
@@ -1629,7 +1632,7 @@ try {
     await pe.close();
   }
 
-  // ================================================================ 2/2：10c（原稿・組んだ HTML・サンプルの教材を開く）から 13b まで（どれも自分のページを開く）
+  // ================================================================ 2/3：10c（原稿・組んだ HTML・サンプルの教材を開く）・12（どれも自分のページを開く）。13・13b は下でもう一度 inPart(2)
   if (inPart(2)) {
     // ---------------------------------------------------------------- 10c. 原稿の deck.html・組んだ HTML・見本の教材（はじめの画面）
     // 「ファイルを開く」で原稿の deck.html：断らずに、フォルダを開くか、このファイルだけを開くかを聞く。組んだ発表の HTML・再生専用の
@@ -2256,6 +2259,10 @@ try {
     await checkSkillDownload(p1, { lang: 'en', selector: '#help-download-skill', ok });
     await p1.close();
 
+  }
+
+  // ================================================================ 3/3：12b・12c（どれも自分のページを開く）
+  if (inPart(3)) {
     // ---------------------------------------------------------------- 12b. チャットの AI との行き来：貼り付け・修正依頼（tools/test-app-llm.mjs）
     await testLlm({ browser, BASE, ok, watch, shotDir: SHOTS });
     await testAppOutline({ browser, BASE, ok, watch, shotDir: SHOTS });
@@ -2265,6 +2272,10 @@ try {
     // ---------------------------------------------------------------- 12c. スライド一覧：足す・複製・削除（元に戻す）・並べ替え（tools/test-app-slides.mjs）
     await testAppSlides({ browser, BASE, ok, watch, work, shotDir: SHOTS });
 
+  }
+
+  // ================================================================ 2/3 の続き：13・13b（サイトの形と版ごとの URL。サンプルを使う）
+  if (inPart(2)) {
     // ---------------------------------------------------------------- 13. サイトの形（GitHub Pages）：根と下のパスの両方
     // 根 = 配信版の編集アプリ、/editor/ = 前の場所（根へ移す。問い合わせと # を残す）、/editor.html = 1 ファイル版、/lab/irodori.html = 試験ページ
     for (const base of [BASE, BASE + SUB]) {

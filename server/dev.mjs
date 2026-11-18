@@ -20,7 +20,7 @@ import { narrationWord, applyNarrationReading } from '../kit/core/narration-core
 import { checkWord, isWellFormedReading } from '../kit/core/readings.mjs';
 import { safeWriteFile, readContained, backupFile, pruneBackups } from '../kit/safe-fs.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/bounded-read.mjs';
-import { normPin, entryStrokes, strokesCentroid } from '../kit/core/comment-core.mjs';
+import { normPin, entryStrokes, strokesCentroid, normPart } from '../kit/core/comment-core.mjs';
 import { userThemeDirs } from '../kit/theme-dirs.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -448,8 +448,9 @@ const server = http.createServer(async (req, res) => {
       let pin = normPin(b.pin);
       const strokes = pin ? entryStrokes(b) : null;
       if (strokes) pin = strokesCentroid(strokes);
+      const part = strokes ? normPart(b.part) : null;
       const c = { id: 'c' + Date.now().toString(36) + crypto.randomBytes(2).toString('hex'), created: new Date().toISOString(),
-        key: String(b.key || ''), range: b.range || null, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), quote: String(b.quote || '').slice(0, 200), comment: String(b.comment).trim(), status: 'open' };
+        key: String(b.key || ''), range: b.range || null, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), ...(part ? { part } : {}), quote: String(b.quote || '').slice(0, 200), comment: String(b.comment).trim(), status: 'open' };
       list.push(c); writeComments(list);
       console.log(`comment ${c.key}: ${c.comment.slice(0, 40)}`);
       return send(res, 200, c);

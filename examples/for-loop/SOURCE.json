@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
+  "path": "lessons/for-loop",
+  "files": {
+    "SOURCE.md": "caecefb58b4c769a6e337bbeadb659d8b51b31ec30cf2ac89f3d2ec0e1645383",
+    "data/count_votes.json": "59c84a17eb67a633ba35392233b21e1647e20cc27f24cf08685906fe695978f9",
+    "data/reset_bug.json": "60e0bdaa1b2dacffd1077999b04a82bbe743ee252d404b4530f712968cc88aeb",
+    "data/sum_avg.json": "0a418869b70d08f5afc94bcd81fa1859fb362457d284518c0031a672581a918a",
+    "deck.html": "40c342a7027f2c583cdf1b866797e3f143d5f22b5b20d3e824ca1a5723b775f4",
+    "egatari.json": "2df631053f7dec68009b361d9a2a0e5c19d5c0f83855d56849fcc5190514d5a8",
+    "narration.md": "ede38db7f5352585291bf50e7aac0692a767e2bca17428fdb0e4c9de799a35e0",
+    "sample.json": "ad98567ff02032019072405aaa0239a146257b7903dea344942fb913e5c1ecce",
+    "scripts/make_traces.py": "1cf68e80c84fa6d2a252b2c4af3675090f3c9614931f7f8ad0579dc4e4f58c38",
+    "scripts/progs/count_votes.py": "2a9f77bb293a746a1e08b2f44191bc5e70c18923db29d1e12945ed235cfc574c",
+    "scripts/progs/reset_bug.py": "a4108108ed1c192fef5e5aa59f69e06d3781eb166388a52ceff91bb431081ee7",
+    "scripts/progs/sum_avg.py": "fc7142e371889f5bb07a1a99a7cee0a172df5576b5d6465b05c628cdc47e8373"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

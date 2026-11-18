@@ -4,21 +4,28 @@
 //     ひし形の箱（<polygon>）は形で測る（外接矩形の中でも形の外なら出ない）。1 つの辺の 2 本の線は別々に測る。@ で始まる端は節でない（箱がなくても測る）
 //   - geoLineOverLabel：自分の辺の字は除く。縁取り（data-part-halo）があれば情報。字の範囲は基線から上 up・下 down（kit/core/text-band.mjs の値）
 //   - geoLabelOverlap：字どうし・持ち主でない点。foreignObject の字は中身を Range で測る
-//   - geoLabelOutsideBox：data-part-at="outside" の字は見ない
+//   - geoLabelOutsideBox：data-part-at="outside" の字は見ない。<circle>・<ellipse>・<polygon> の箱は形と比べる（外接矩形の中でも形の外なら出る）
 //   - 縦書きのスライドは測らない。geometryTate は縦横が混ざる教材の、印のある縦書きのスライドの数
+//   - 箱に <circle>（形で測る）。辺の端に点（mark）の id：その点の字とその点を中に持つ箱は相手にしない。data-overlap="ok"（要素か祖先の <g>）は重なりの知らせから外す（handoff #45 の決定 1〜3）。
+//     どれも、印を付けない対照（わざと重ねたもの）は今までどおり出る
+//   - geoOutsideFrame（handoff #46）：data-within の図形が data-frame の枠の外に出る。geometrySteps が全部のステップで測る（途中のステップだけのはみ出しも出る）。<g> は中の形と字の全部。名前でない値は測らない
+//   - geoBadMarkName（handoff #46、11/18 の決定）：data-within・data-frame の値が名前 1 つ（WITHIN_NAME）でなければ、要素ごとに 1 つ警告（綴りの誤りで点検が黙って外れないように）。
+//     名前の合わない印だけのスライド（data-part なし）でも出る
+//   - geoClippedStroke（handoff #52）：インラインの SVG の端で形の線が欠ける。端ぴったり（出る）・3px 内側・大半が外の飾り・overflow="visible"・data-overlap="ok"・data-clip（出ない）・
+//     途中のステップだけ（そのステップで出る）。端に沿う線（出る）と端から端の butt の線（出ない）、変形
 //   node tools/test-geometry-check.mjs
 import assert from 'node:assert/strict';
 import { shareBrowser, launch } from '../kit/browser.mjs';
-import { geometryScan, geometryTate } from '../kit/core/geometry-check.mjs';
-import { layoutScan, withLayoutScan } from '../kit/core/layout-scan.mjs';
+import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS, WITHIN_NAME } from '../kit/core/geometry-check.mjs';
+import { layoutScan, withLayoutScan, GEO_OPTS, OVERLAP_ATTR } from '../kit/core/layout-scan.mjs';
 import { TEXT_BANDS, DEFAULT_BAND, textBand } from '../kit/core/text-band.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
 import { ruleOfCode } from '../kit/core/check-rules.mjs';
 // ブラウザは 1 つだけ起動する（kit/browser.mjs の shareBrowser）
 await shareBrowser();
 
-const GEO = { bands: TEXT_BANDS, dflt: DEFAULT_BAND };
-const CODES = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoTateSlides'];
+const GEO = GEO_OPTS;
+const CODES = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoBadMarkName', 'geoClippedStroke', 'geoTateSlides'];
 let n = 0, fail = 0;
 const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n' + e.stack); } };
 
@@ -34,11 +41,27 @@ await t('ledger and messages: every geometry code is R-geometry, with ids and on
   assert.match(message('ja', 'geoLineOverLabel', { edge: 'a→b', from: 'a', to: 'b', label: 'k', t: '箱の字', at: [200, 200], halo: true }), /縁取り/);
   assert.match(message('ja', 'geoLabelOutsideBox', { box: 'n', t: '長い', px: { left: 80, right: 79, top: 0, bottom: 0 } }), /（左 80px・右 79px）/);
   assert.match(message('en', 'geoTateSlides', { n: 1 }), /1 vertical \(layout-tate\) slide were/);
+  // 枠の外：図形の id・ステップ・はみ出した量（px）を言う。外に出るステップが 2 つ以上なら一覧も
+  const w = { shape: 'chr', frame: 'cell', step: '2', px: 41, at: [978, 341], steps: ['1', '2', 'concl'] };
+  assert.ok(message('ja', 'geoOutsideFrame', w).startsWith('図形 chr が枠 cell の外に出る（41px、ステップ 2、978, 341。外に出るステップは 1・2・結論）：そのステップの図形 chr の位置か大きさを、パーツのデータか図の座標で変えて、枠 cell の内側に収める（枠を大きくしてもよい）'), message('ja', 'geoOutsideFrame', w));
+  assert.match(message('en', 'geoOutsideFrame', { ...w, steps: ['2'] }), /^figure shape chr goes outside frame cell \(by 41px at step 2, at 978, 341\): at that step, move or shrink shape chr/);
+  assert.match(message('ja', 'geoOutsideFrame', { ...w, step: 'concl', steps: ['concl'] }), /（41px、結論のステップ、/);
+  // 印の値が名前でない：要素と値を言い、直し方を 1 つ
+  assert.ok(message('ja', 'geoBadMarkName', { el: 'chr', kind: 'shape', attr: 'data-within', value: 'A B' }).startsWith('図形 chr の data-within の値が名前の形に合わない（"A B"）：小文字の英字で始まる名前 1 つにする'));
+  assert.ok(message('ja', 'geoBadMarkName', { el: 'rect#2', kind: 'frame', attr: 'data-frame', value: '' }).startsWith('枠 rect#2 の data-frame の値が名前の形に合わない（""）：小文字の英字で始まる名前 1 つにする'));
+  assert.match(message('en', 'geoBadMarkName', { el: 'cell', kind: 'frame', attr: 'data-frame', value: 'Cell' }), /^the data-frame value of frame cell is not a name \("Cell"\): use one name that starts with a lowercase letter/);
+});
+await t('attribute names: data-overlap comes from OVERLAP_ATTR, data-within and data-frame from WITHIN_ATTRS only', () => {
+  assert.deepEqual([GEO_OPTS.overlap, GEO_OPTS.within, GEO_OPTS.frame, GEO_OPTS.name], [OVERLAP_ATTR, WITHIN_ATTRS.within, WITHIN_ATTRS.frame, WITHIN_NAME]);
+  // 名前の形は WITHIN_NAME の 1 か所（関数の中に正規表現を書かない）
+  for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!String(f).includes('[a-z][a-z0-9-]'), 'no name pattern written inside ' + f.name);
+  assert.ok(['cell', 'cell-2', 'a'].every((v) => new RegExp(WITHIN_NAME).test(v)) && !['A B', 'Cell', '', 'cell nucleus', ' cell', '2cell'].some((v) => new RegExp(WITHIN_NAME).test(v)));
+  for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!/['"`]data-(within|frame|overlap)/.test(String(f)), 'no attribute name written as a string inside ' + f.name);
 });
 await t('injection: the scanner is self-contained, has no </script or <!--, and the editor wrapper passes it with the band table', () => {
-  for (const f of [geometryScan, geometryTate]) assert.ok(!/<\/script|<!--/i.test(String(f)));
-  const g = new Function('return ' + withLayoutScan('(function(){return [typeof geometryScan, typeof geometryTate, GEO_OPTS];})'))()();
-  assert.deepEqual(g, ['function', 'function', JSON.parse(JSON.stringify(GEO))]);
+  for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!/<\/script|<!--/i.test(String(f)));
+  const g = new Function('return ' + withLayoutScan('(function(){return [typeof geometryScan, typeof geometrySteps, typeof geometryTate, GEO_OPTS];})'))()();
+  assert.deepEqual(g, ['function', 'function', 'function', JSON.parse(JSON.stringify(GEO))]);
   // 表の決め方は kit/core/text-band.mjs の textBand と同じ（中に写した bandOf）
   assert.deepEqual(textBand("'BIZ UDPGothic', sans-serif"), { up: 0.86, down: 0.12 });
 });
@@ -84,7 +107,36 @@ const S4 = T('u1', 'box', 100, 200, '重なる字') + T('u2', 'box', 150, 210, '
 const S5 = BOX('n', 100, 100, 200, 100) + T('n', 'box', 200, 165, 'とても長い箱の名前', 'text-anchor="middle"')
   + BOX('o', 600, 100, 200, 100) + T('o', 'box', 700, 165, 'とても長い箱の名前', 'text-anchor="middle" data-part-at="outside"')
   + BOX('r', 100, 400, 300, 100) + T('r', 'box', 250, 465, '収まる', 'text-anchor="middle"');
-const SLIDES = [slide(S0), slide(S1), slide(S2), slide(S3), slide(S4), slide(S5), slide(S0 + S3 + S4 + S5, 'slide layout-tate')];
+// 7：箱に <circle>（形で測る：外接矩形の中でも円の外なら出ない）
+const S7 = '<circle data-part="box" data-part-id="cc" cx="640" cy="200" r="100"/>'
+  + EDGE('p→q', LINE(500, 200, 780, 200))      // 円を通る
+  + EDGE('p→q#2', LINE(540, 115, 580, 115));   // 外接矩形の中だが、円の外
+// 8：辺の端に点（mark）の id。点 pt は領域 R の中にあり、引き出し線は R の中から出て pt の字に入る（出ない）。
+//    対照：点 p2 からの線は、つないでいない箱 B2 を通り、別の点 p3 の字を横切る（出る）
+const MK = (id, x, y) => `<circle data-part="mark" data-part-id="${id}" cx="${x}" cy="${y}" r="8"/>`;
+const S8 = BOX('R', 100, 100, 400, 300) + MK('pt', 300, 250) + T('pt', 'mark', 700, 260, '点の名前', 'data-part-at="outside"')
+  + '<g data-part="edge" data-part-id="pt→@lbl" data-part-from="pt" data-part-to="@lbl">' + LINE(300, 250, 720, 250) + '</g>'
+  + MK('p2', 300, 550) + BOX('B2', 600, 500, 100, 100) + MK('p3', 850, 600) + T('p3', 'mark', 900, 560, '別の点', 'data-part-at="outside"')
+  + '<g data-part="edge" data-part-id="p2→@far" data-part-from="p2" data-part-to="@far">' + LINE(300, 550, 1150, 550) + '</g>';
+// 9：data-overlap="ok"。印のある箱・字・辺（祖先の <g> の印も）は重なりの知らせから外れる。対照：印のないもの、値が "OK" のもの（効かない）。
+//    箱の縁を越える字（geoLabelOutsideBox）は重なりでないので、印があっても出る
+const S9 = BOX('ob', 100, 50, 100, 100).replace('<rect ', '<rect data-overlap="ok" ') + EDGE('x→y', LINE(50, 100, 250, 100))
+  + BOX('cb', 400, 50, 100, 100) + EDGE('x2→y2', LINE(350, 100, 550, 100))
+  + T('o1', 'box', 100, 300, '重なる字', 'data-overlap="ok"') + T('o2', 'box', 150, 310, '重なる')
+  + T('o3', 'box', 600, 300, '重なる字') + T('o4', 'box', 650, 310, '重なる')
+  + '<g data-overlap="ok"><g>' + T('o5', 'box', 100, 460, '線の下の字') + '</g></g>' + EDGE('e5→e6', LINE(50, 450, 400, 450))
+  + T('o6', 'box', 600, 460, '線の下の字', 'data-overlap="OK"') + EDGE('e7→e8', LINE(550, 450, 900, 450))
+  + EDGE('e9→e10', LINE(50, 650, 400, 650), 'data-overlap="ok"') + T('o7', 'box', 100, 660, '線の下の字')
+  + BOX('ow', 900, 600, 100, 60) + T('ow', 'box', 950, 645, 'とても長い字', 'text-anchor="middle" data-overlap="ok"');
+// 10：箱の字（geoLabelOutsideBox）を、円・楕円・ひし形の箱では形と比べる。c1・e1・d1 の字は外接矩形の中だが形の外（出る）。c2・e2・d2 の字は形の中（出ない）
+const CENTER = (id, x, y) => T(id, 'box', x, y, '中', 'text-anchor="middle"');
+const S10 = '<circle data-part="box" data-part-id="c1" cx="200" cy="200" r="100"/>' + T('c1', 'box', 115, 145, '角')
+  + '<circle data-part="box" data-part-id="c2" cx="200" cy="500" r="100"/>' + CENTER('c2', 200, 515)
+  + '<ellipse data-part="box" data-part-id="e1" cx="600" cy="200" rx="150" ry="80"/>' + T('e1', 'box', 460, 165, '角')
+  + '<ellipse data-part="box" data-part-id="e2" cx="600" cy="500" rx="150" ry="80"/>' + CENTER('e2', 600, 515)
+  + '<polygon data-part="box" data-part-id="d1" points="1000,100 1100,200 1000,300 900,200"/>' + T('d1', 'box', 910, 145, '角')
+  + '<polygon data-part="box" data-part-id="d2" points="1000,400 1100,500 1000,600 900,500"/>' + CENTER('d2', 1000, 515);
+const SLIDES = [slide(S0), slide(S1), slide(S2), slide(S3), slide(S4), slide(S5), slide(S0 + S3 + S4 + S5, 'slide layout-tate'), slide(S7), slide(S8), slide(S9), slide(S10)];
 
 const b = await launch();
 try {
@@ -137,6 +189,33 @@ try {
     assert.ok(px.left > 50 && px.right > 50 && Math.abs(px.left - px.right) <= 2 && px.top === 0 && px.bottom === 0, JSON.stringify(px));
     near(xs[0].a.boxRect, [100, 100, 300, 200], 1);
   });
+  await t('circle box: measured by its shape (a line inside the bounding box but outside the circle is fine)', async () => {
+    const xs = await scan(7);
+    assert.deepEqual(xs.map((x) => `${x.code}|${x.a.edge}|${x.a.box}`), ['geoEdgeThroughBox|p→q|cc']);
+    near(xs[0].a.seg, [543, 200, 737, 200]);
+  });
+  await t('edge ends naming marks: the end mark\'s label and the box holding the end mark are not obstacles; other boxes and labels still are', async () => {
+    const xs = await scan(8);
+    assert.deepEqual(xs.map((x) => `${x.code}|${x.a.edge}|${x.a.box || x.a.label}`).sort(), ['geoEdgeThroughBox|p2→@far|B2', 'geoLineOverLabel|p2→@far|p3']);
+  });
+  await t('data-overlap="ok" on a box, a label, an ancestor <g> or an edge removes its overlap findings; unmarked and "OK" controls are still reported; geoLabelOutsideBox stays', async () => {
+    const xs = await scan(9);
+    assert.deepEqual(xs.map((x) => `${x.code}|${x.a.edge || x.a.label || x.a.box}|${x.a.box || x.a.other || x.a.label}`).sort(), [
+      'geoEdgeThroughBox|x2→y2|cb', 'geoLabelOutsideBox|ow|ow', 'geoLabelOverlap|o3|o4', 'geoLineOverLabel|e7→e8|o6',
+    ]);
+  });
+  await t('geoLabelOutsideBox on circle, ellipse and polygon boxes compares with the shape: a label inside the bounding box but outside the shape is reported, a label inside the shape is not', async () => {
+    const xs = await scan(10);
+    assert.deepEqual(xs.map((x) => `${x.code}|${x.a.box}`), ['geoLabelOutsideBox|c1', 'geoLabelOutsideBox|e1', 'geoLabelOutsideBox|d1']);
+    for (const x of xs) {
+      // 外接矩形の中なので、外接矩形と比べたら出ない字。はみ出しは左上
+      const [l, tp] = x.a.rect;
+      assert.ok(l >= x.a.boxRect[0] && tp >= x.a.boxRect[1], JSON.stringify(x.a));
+      assert.ok(x.a.px.left > 2 && x.a.px.top > 2 && x.a.px.right === 0 && x.a.px.bottom === 0, JSON.stringify(x.a.px));
+    }
+    // 円：字の範囲の左上の角（115, 110.6）は円の輪郭から約 23px 外
+    assert.ok(Math.hypot(xs[0].a.px.left, xs[0].a.px.top) >= 18 && Math.hypot(xs[0].a.px.left, xs[0].a.px.top) <= 28, JSON.stringify(xs[0].a.px));
+  });
   await t('a vertical slide (layout-tate) is not measured', async () => {
     assert.deepEqual(await scan(6), []);
   });
@@ -162,6 +241,140 @@ try {
     });
     assert.deepEqual(r, [1, 0, 0]);
   });
+  // ---------------------------------------------------------------- 枠の中（handoff #46）
+  // 分裂期の細胞（backlog #91 の DNA の再現）：楕円の細胞 cell の中の染色体 chr。ステップ 1 だけ染色体が細胞の右へ 40px 出る（最後のステップでは中に戻る）。
+  // ステップは data-k の要素を出し入れする seek で作る（kit/deck.js の DECK.seek の代わり）
+  const CELL = '<ellipse data-frame="cell" cx="640" cy="360" rx="300" ry="200" style="stroke-width:2"/>';
+  const CHR = (k, x) => `<rect data-k="${k}" data-part-id="chr" data-within="cell" x="${x}" y="340" width="80" height="40" style="stroke-width:4"/>`;
+  const W0 = CELL + CHR(0, 600) + CHR(1, 900) + CHR(2, 820);                      // ステップ 1 だけ外（右端 980、楕円の右端は y=340 で 938.5）
+  const W1 = CELL + CHR(0, 600) + CHR(1, 820) + CHR(2, 600);                      // 対照：ずっと中
+  // 表のマス：同じ名前の枠が 2 つ（よく収まるほうと比べる）。字の図形は字の範囲で測る。2 つ目の字はマスの右へはみ出す
+  const W2 = '<rect data-frame="cell" x="100" y="100" width="300" height="80"/><rect data-frame="cell" x="400" y="100" width="300" height="80"/>'
+    + '<text data-k="0" data-within="cell" data-part-id="t1" x="420" y="155" style="fill:#000;stroke:none">収まる</text>'
+    + '<text data-k="0" data-within="cell" data-part-id="t2" x="120" y="155" style="fill:#000;stroke:none">マスからはみ出す長い字</text>';
+  // 枠の名前が合わない図形・枠のない図形は測らない。宣言のない図形（data-within なし）は外に出ていても見ない
+  const W3 = CELL + '<rect data-k="0" data-within="nucleus" x="900" y="340" width="80" height="40"/>' + '<rect data-k="0" x="900" y="400" width="80" height="40"/>';
+  // <g> の図形は中の形と字の全部で測る：grp は中の四角は収まるが字が細胞の右へ出る（出る）。grp2 は字も中（出ない）
+  const W4 = CELL + '<g data-k="0" data-within="cell" data-part-id="grp"><rect x="600" y="340" width="40" height="40"/><text x="860" y="375" style="fill:#000;stroke:none">はみ出す字</text></g>'
+    + '<g data-k="0" data-within="cell" data-part-id="grp2"><rect x="500" y="300" width="40" height="40"/><text x="500" y="420" style="fill:#000;stroke:none">中</text></g>';
+  // 名前は 1 つ（[a-z][a-z0-9-]*）。並べた名前・大文字・前の空白・空の値は印でないとみなし、外に出ていても測らない（data-part の知らない値と同じ）。
+  // 枠の側の値が名前でなければ、どの図形とも合わない
+  const W5 = CELL + '<rect data-k="0" data-within="cell nucleus" x="900" y="340" width="80" height="40"/><rect data-k="0" data-within="Cell" x="900" y="400" width="80" height="40"/>'
+    + '<rect data-k="0" data-within=" cell" x="900" y="300" width="80" height="40"/><rect data-k="0" data-within="" x="900" y="250" width="80" height="40"/>'
+    + '<rect data-frame="box a" x="100" y="100" width="50" height="50"/><rect data-k="0" data-within="box" x="300" y="100" width="50" height="50"/>';
+  // 名前の形に合わない値（geoBadMarkName）：data-part のないスライド。data-within・data-frame のそれぞれに "A B"・"Cell"・""・"cell nucleus"（出る）と "cell"・"cell-2"（出ない）。
+  // 要素の名前は data-part-id・id・タグ#その属性の要素の中の番号。両方が名前でない要素は 1 つだけ（data-within のほう）
+  const R = (a) => `<rect ${a} x="10" y="10" width="20" height="20"/>`;
+  const W6 = R('data-within="A B" data-part-id="w1"') + R('data-within="Cell" id="w2"') + R('data-within=""') + '<circle data-within="cell nucleus" cx="50" cy="50" r="5"/>'
+    + R('data-within="cell" data-part-id="ok1"') + R('data-within="cell-2" data-part-id="ok2"')
+    + R('data-frame="A B" data-part-id="f1"') + R('data-frame="Cell" id="f2"') + R('data-frame=""') + '<ellipse data-frame="cell nucleus" cx="50" cy="50" rx="5" ry="5"/>'
+    + R('data-frame="cell" data-part-id="ok3"') + R('data-frame="cell-2" data-part-id="ok4"')
+    + '<g data-within="X" data-frame="Y" data-part-id="both"></g>';
+  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${[W0, W1, W2, W3, W0, W4, W5, W6].map((x, i) => slide(x, i === 4 ? 'slide layout-tate' : 'slide')).join('\n')}</body></html>`);
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometrySteps = ${geometrySteps}`);
+  const walk = (i, cstep = -1) => page.evaluate(([i, o, cstep]) => {
+    const s = document.querySelectorAll('section')[i];
+    s._max = 2; s._cstep = cstep;
+    const seen = [];
+    const seek = (k) => { seen.push(k); s.querySelectorAll('[data-k]').forEach((e) => { e.style.display = +e.getAttribute('data-k') === k ? '' : 'none'; }); };
+    return { out: window.__geometrySteps(s, o, seek, window.__geometryScan), seen, plain: window.__geometryScan(s, o) };
+  }, [i, GEO, cstep]);
+  await t('geoOutsideFrame: a chromosome out of the cell at a middle step only is found (every step walked; id, step, overshoot in px)', async () => {
+    const r = await walk(0);
+    assert.deepEqual(r.seen, [0, 1, 2]);
+    assert.deepEqual(r.out.map((x) => `${x.code}|${x.sev}|${x.a.shape}|${x.a.frame}|${x.a.step}|${x.a.steps.join(',')}`), ['geoOutsideFrame|warn|chr|cell|1|1']);
+    // はみ出しの量：角（980, 340）から楕円まで約 41px ＋ 図形の線の半分 2 − 枠の線の半分 1
+    assert.ok(r.out[0].a.px >= 38 && r.out[0].a.px <= 46, JSON.stringify(r.out[0].a));
+    assert.ok(r.out[0].a.at[0] >= 970 && r.out[0].a.at[0] <= 982, JSON.stringify(r.out[0].a.at));
+    // 最後のステップ（2）だけを測る geometryScan には出ない（それが #91 の見逃し）
+    assert.deepEqual(r.plain, []);
+  });
+  await t('geoOutsideFrame: the conclusion step is named concl', async () => {
+    const r = await walk(0, 1);
+    assert.deepEqual([r.out[0].a.step, r.out[0].a.steps], ['concl', ['concl']]);
+  });
+  await t('geoOutsideFrame control: a chromosome that stays inside the cell at every step is not reported', async () => {
+    assert.deepEqual((await walk(1)).out, []);
+  });
+  await t('geoOutsideFrame: text measured by its band; several frames with one name (a table\'s cells) compare with the best-fitting one', async () => {
+    const xs = (await walk(2)).out;
+    assert.deepEqual(xs.map((x) => `${x.a.shape}|${x.a.frame}`), ['t2|cell']);
+    assert.ok(xs[0].a.px > 20, JSON.stringify(xs[0].a));
+  });
+  await t('geoOutsideFrame: only declared shapes with a matching visible frame are measured; vertical slides are not walked', async () => {
+    assert.deepEqual((await walk(3)).out, []);
+    const r = await walk(4);
+    assert.deepEqual([r.out, r.seen], [null, []]);
+  });
+  await t('geoOutsideFrame: a <g> is measured by every shape and text inside it', async () => {
+    const xs = (await walk(5)).out;
+    assert.deepEqual(xs.map((x) => `${x.a.shape}|${x.a.frame}|${x.a.step}`), ['grp|cell|0']);
+    assert.ok(xs[0].a.at[0] > 940, JSON.stringify(xs[0].a));
+  });
+  await t('geoOutsideFrame: a value that is not one name ([a-z][a-z0-9-]*) is not a mark (lists, capitals, spaces, empty), on the shape or the frame', async () => {
+    assert.deepEqual((await walk(6)).out, []);
+  });
+  await t('geoBadMarkName: a data-within or data-frame value that is not one name is warned once per element, also on a slide without data-part; names are not', async () => {
+    const r = await walk(7);
+    assert.deepEqual(r.out, []);
+    assert.deepEqual(r.plain.map((x) => `${x.code}|${x.sev}|${x.a.el}|${x.a.kind}|${x.a.attr}|${x.a.value}`), [
+      'geoBadMarkName|warn|w1|shape|data-within|A B', 'geoBadMarkName|warn|w2|shape|data-within|Cell', 'geoBadMarkName|warn|rect#3|shape|data-within|',
+      'geoBadMarkName|warn|circle#4|shape|data-within|cell nucleus',
+      'geoBadMarkName|warn|f1|frame|data-frame|A B', 'geoBadMarkName|warn|f2|frame|data-frame|Cell', 'geoBadMarkName|warn|rect#3|frame|data-frame|',
+      'geoBadMarkName|warn|ellipse#4|frame|data-frame|cell nucleus',
+      'geoBadMarkName|warn|both|shape|data-within|X',
+    ]);
+    // 名前の合わない印のある W5 も、最後のステップの geometryScan で知らせる（測らないだけで黙らない）
+    assert.deepEqual((await walk(6)).plain.map((x) => x.a.value), ['cell nucleus', 'Cell', ' cell', '', 'box a']);
+  });
+
+  // ---------------------------------------------------------------- 図の端で欠ける線（handoff #52）
+  // 600×300 の SVG（viewBox も同じ、スライドの座標と同じ大きさ）をスライドの (100, 100) に置く。線の太さは 4（半分の 2px が端の外に出ると欠ける）
+  const FIG = (body, attrs = '') => `<div style="height:360px;position:relative"><section class="slide" style="position:absolute;left:0;top:0;width:1280px;height:720px;transform:scale(.5);transform-origin:0 0;margin:0">
+<svg width="600" height="300" viewBox="0 0 600 300" ${attrs} style="position:absolute;left:100px;top:100px;fill:none;stroke:#000;stroke-width:4">${body}</svg></section></div>`;
+  const FRAME = (extra = '') => `<rect id="frame" x="100" y="50" width="500" height="200" ${extra}/>`;   // 右端が SVG の右端ぴったり
+  const E = [
+    FIG(FRAME()),                                                                                   // 0 端ぴったりの枠：右端で 2px 欠ける
+    FIG('<rect id="in3" x="100" y="50" width="497" height="200"/>'),                                 // 1 3px 内側：欠けない
+    FIG('<circle id="deco" cx="600" cy="150" r="100"/><rect x="560" y="-200" width="200" height="300" style="stroke-width:20"/>'),   // 2 大半が外の飾り
+    FIG(FRAME(), 'overflow="visible"'),                                                             // 3 overflow="visible"
+    FIG(FRAME('data-overlap="ok"') + '<g data-overlap="ok"><g><rect x="0" y="0" width="100" height="100"/></g></g>'),   // 4 data-overlap="ok"（要素・祖先の <g>）
+    FIG('<rect data-k="0" id="mv" x="100" y="50" width="400" height="200"/><rect data-k="1" id="mv" x="200" y="50" width="400" height="200"/><rect data-k="2" id="mv" x="150" y="50" width="400" height="200"/>'),   // 5 ステップ 1 だけ端
+    FIG('<line x1="50" y1="0" x2="550" y2="0"/><line x1="0" y1="150" x2="600" y2="150"/><line x1="0" y1="200" x2="600" y2="200" style="stroke-linecap:square"/>'
+      + '<rect x="-20" y="-20" width="640" height="340" style="fill:#eee;stroke:none"/>'),         // 6 上の端に沿う線（欠ける）・端から端の butt の線（欠けない）・square の端（欠ける）・塗りだけの背景（見ない）
+    FIG('<g transform="translate(400,100) scale(2)"><rect id="tf" x="0" y="0" width="100" height="50" style="stroke-width:2"/></g><g data-clip><rect x="0" y="250" width="100" height="50"/></g>'),   // 7 変形（線も 2 倍）と、わざと切る印
+    FIG('<rect x="0" y="0" width="600" height="300" style="stroke-width:1"/><rect x="0" y="100" width="100" height="100" style="stroke-width:2"/>'),   // 8 線の半分が 1px 以下：欠けない
+  ];
+  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${E.join('\n')}</body></html>`);
+  const clips = async (i) => (await walk(i)).out;
+  const show = (xs) => (xs || []).map((x) => `${x.code}|${x.a.shape}|${x.a.step}|${x.a.steps.join(',')}|${['left', 'right', 'top', 'bottom'].map((k) => x.a.side[k]).join(',')}|${x.a.stroke}`);
+  await t('geoClippedStroke: a frame exactly on the SVG edge loses half its stroke (right edge by 2px, step 0)', async () => {
+    const xs = await clips(0);
+    assert.deepEqual(show(xs), ['geoClippedStroke|frame|0|0,1,2|0,2,0,0|true']);
+    assert.equal(xs[0].a.px, 2);
+    assert.equal(message('ja', 'geoClippedStroke', { ...xs[0].a, steps: ['0'] }), '図形 frame の線が図の端で欠ける（右端で 2px、ステップ 0）：図形を内側へ線の太さの半分以上寄せるか、viewBox を広げる（R-geometry）');
+  });
+  await t('geoClippedStroke: 3px inside is fine', async () => { assert.deepEqual(await clips(1), []); });
+  await t('geoClippedStroke: a decoration mostly outside the SVG is not reported (less than 90% inside)', async () => { assert.deepEqual(await clips(2), []); });
+  await t('geoClippedStroke: an SVG with overflow="visible" does not clip, so it is not walked', async () => {
+    const r = await walk(3);
+    assert.deepEqual([r.out, r.seen], [null, []]);
+  });
+  await t('geoClippedStroke: data-overlap="ok" on the shape or an ancestor <g> leaves it out', async () => { assert.deepEqual(await clips(4), []); });
+  await t('geoClippedStroke: a shape on the edge at a middle step only is reported with that step', async () => {
+    assert.deepEqual(show(await clips(5)), ['geoClippedStroke|mv|1|1|0,2,0,0|true']);
+    assert.match(message('ja', 'geoClippedStroke', (await clips(5))[0].a), /（右端で 2px、ステップ 1）/);
+  });
+  await t('geoClippedStroke: a line along the top edge is reported; a butt-capped line from edge to edge is not; a square cap is; a fill-only background is not measured', async () => {
+    assert.deepEqual(show(await clips(6)), ['geoClippedStroke|line#1|0|0,1,2|0,0,2,0|true', 'geoClippedStroke|line#3|0|0,1,2|2,2,0,0|true']);
+  });
+  await t('geoClippedStroke: transforms scale the shape and the stroke; data-clip leaves it out; unnamed shapes are kind#n', async () => {
+    assert.deepEqual(show(await clips(7)), ['geoClippedStroke|tf|0|0,1,2|0,2,0,0|true']);
+    assert.match(message('ja', 'geoClippedStroke', { shape: 'rect#2', side: { left: 3, right: 0, top: 0, bottom: 0 }, px: 3, stroke: false, step: '0', steps: ['0'] }),
+      /^図形 rect#2（スライドの中の 2 つ目の <rect>）が図の端で欠ける（左端で 3px、ステップ 0）：図形を図の内側へ寄せるか小さくするか、viewBox を広げる/);
+  });
+  await t('geoClippedStroke: 1px or less is not reported (stroke-width 1 and 2 on the edge)', async () => { assert.deepEqual(await clips(8), []); });
 } finally { await b.close(); }
 console.log(`\n${n - fail}/${n} passed`);
 process.exitCode = fail ? 1 : 0;

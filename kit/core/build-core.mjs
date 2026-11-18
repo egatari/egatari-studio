@@ -53,6 +53,24 @@ export function localPartFile(env, P, deckDir, tag) {
 }
 
 export const DECK_META_RIGHTS = ['license', 'copyright', 'attribution', 'creators'];
+// metadata.edits（format spec §3.6.1：ほかの人の教材を直した人の記録 [{by?, note?}]、古い順）を書く形にする。索引の metadata.edits と deck-meta.edits に使う。
+// 形の合わない項目（object でない・by と note のほかの項目がある・by や note が文字でない）は捨て、その数を dropped に。by・note の前後の空白は除き、
+// 空になったものは書かない（名前のない項目は {}）。配列でなければ全体を捨てる。→ {edits（なければ null）, dropped}
+export function normalizeEdits(v) {
+  if (v === undefined) return { edits: null, dropped: 0 };
+  if (!Array.isArray(v)) return { edits: null, dropped: 1 };
+  const out = [];
+  let dropped = 0;
+  for (const x of v) {
+    const ok = x !== null && typeof x === 'object' && !Array.isArray(x) && Object.keys(x).every((k) => (k === 'by' || k === 'note') && typeof x[k] === 'string');
+    if (!ok) { dropped++; continue; }
+    const e = {};
+    for (const k of ['by', 'note']) if (typeof x[k] === 'string' && x[k].trim()) e[k] = x[k].trim();
+    out.push(e);
+  }
+  return { edits: out, dropped };
+}
+export const editsDroppedWarning = (n) => `metadata.edits: ${n} malformed ${n === 1 ? 'entry was' : 'entries were'} not copied (each entry is {by?, note?} with text values)`;
 // metadata.offer（format spec §1.2：作者が見せるモードと見え方、開くときの {mode, face}）を書く形にする。deck-meta.offer と索引の metadata.offer に使う。
 // 前の版の learn は talk と読む（Player P1）。知らない値・重なりは捨て、空になった modes・faces は書かない。open は offer の中にあるものだけ。
 // 何も残らなければ null（書かない）
@@ -1139,7 +1157,7 @@ export function build(env0, srcPath, opts = {}) {
   const headCss = `<style id="deck-base">\n${styleSafe(`${fonts.css}${kcss}\n${read(KIT, 'base.css')}\n${read(KIT, 'layouts.css')}\n${opts.articleCss || ''}\n${theme.css}\n${isJapanese(lang) ? '' : read(KIT, 'latin.css')}`)}</style>`;
   if (!/id="bar"/.test(html)) html = html.replace(/<\/body>/, '<div id="bar"></div><div id="jump"></div>\n</body>');
   // 作業フォルダの組み立ても、設定のファイルの metadata.completion を deck-meta に写す（format spec §9.2。再生器の記録が終えた判定を読む。1 ファイルと同じ）。
-  // 権利の表示と作成者（license・copyright・attribution・creators。§4・§7.3）と offer（§1.2）も写す：再生器のファイルの情報と開き方が deck-meta から出る。形の合わない値は写さない
+  // 権利の表示と作成者（license・copyright・attribution・creators。§4・§7.3）、編集の記録（edits。§3.6.1）と offer（§1.2）も写す：再生器のファイルの情報と開き方が deck-meta から出る。形の合わない値は写さない
   const folderCompletion = () => {
     const cfg = P.join(deckDir, FORMAT.CONFIG_FILE);
     if (!env.exists(cfg) || !inDeck(cfg)) return {};
@@ -1151,6 +1169,10 @@ export function build(env0, srcPath, opts = {}) {
       const v = md[k];
       if (k === 'creators' ? Array.isArray(v) && v.every((x) => typeof x === 'string') : typeof v === 'string') out[k] = k === 'creators' ? [...v] : v;
     }
+    // 編集の記録（§3.6.1・§7.3）：再生器のファイルの情報が「編集」を出す。形の合わない項目は写さず知らせる
+    const ed = normalizeEdits(md.edits);
+    if (ed.edits) out.edits = ed.edits;
+    if (ed.dropped) warn.push(editsDroppedWarning(ed.dropped));
     // 見せるモードと見え方（format spec §1.2、Player P1）：再生器が deck-meta.offer を読む
     const offer = normalizeOffer(md.offer);
     if (offer) out.offer = offer;

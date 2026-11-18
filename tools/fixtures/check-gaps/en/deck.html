@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check gaps: values outside a part's range (Issue #40)</title>
+</head>
+<body>
+<div id="stage">
+
+<!-- The trial slide (fictional figures, trimmed): m-curves without yr, so the default [0, 1] cuts off two of the three lines.
+     m-curves 2.2.1 does not report it; once the parts library reports ctx.report("range", …), the check gives compReport here -->
+<section class="slide" id="s-tj7qxs">
+  <h2>Fictional population paths, 1980–2020</h2>
+  <div class="body">
+    <m-curves xr="[1980,2020]" xl="Year" yl="Population (millions)" style="height:330px" aria-label="Line chart of fictional population">
+      <script type="application/json">[
+        {"label":"City A","pts":[[1980,11.6],[2000,12.1],[2020,14.0]],"step":1},
+        {"label":"City B","pts":[[1980,6.2],[2000,7.0],[2020,7.5]],"step":1},
+        {"label":"City C","pts":[[1980,0.78],[2000,0.76],[2020,0.67]],"step":1}
+      ]</script>
+    </m-curves>
+  </div>
+  <div class="concl"><span>City A climbed, City B slowed, City C declined</span></div>
+</section>
+
+<!-- A part that reports values outside its range (ctx.report("range", …)): compReport, a warning -->
+<section class="slide" id="s-range">
+  <h2>Values outside the range</h2>
+  <div class="body">
+    <m-rangeplot yr="[0,1]" values="[11.6,6.2,0.78]" aria-label="Three values" style="width:400px;height:200px"></m-rangeplot>
+  </div>
+  <div class="concl"><span>Two values are cut off</span></div>
+</section>
+
+<!-- The same part with a range that holds every value: nothing reported -->
+<section class="slide" id="s-inrange">
+  <h2>Values inside the range</h2>
+  <div class="body">
+    <m-rangeplot yr="[0,15]" values="[11.6,6.2,0.78]" aria-label="Three values" style="width:400px;height:200px"></m-rangeplot>
+  </div>
+  <div class="concl"><span>Every value is shown</span></div>
+</section>
+
+</div>
+</body>
+</html>

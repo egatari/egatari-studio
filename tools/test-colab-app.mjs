@@ -13,6 +13,7 @@ import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
+import { answerCreator } from './edit-role-answer.mjs';
 import { buildPortable } from '../kit/build.mjs';
 import * as PF from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -46,7 +47,7 @@ const srv = http.createServer((req, res) => {
 await new Promise((r) => srv.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${srv.address().port}/`;
 
-const browser = await launch({});
+const browser = answerCreator(await launch({}));
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP', acceptDownloads: true });
 const page = await ctx.newPage();
 const errs = [];

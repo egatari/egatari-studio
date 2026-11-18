@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-checklist の見本</title>
+<!-- 組み方：node kit/build.mjs components/checklist/demo.html -o components/checklist/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>実習に入る前に</h2>
+  <div class="body">
+    <m-checklist style="height:440px">
+      <script type="application/json">{
+        "items": [
+          {"label": "名札を胸に付けた"},
+          {"label": "指輪と腕時計を外した"},
+          {"label": "石けんで手を洗った", "note": "指の間と爪の先まで 30 秒"},
+          {"label": "手を乾かし、消毒した"}
+        ]
+      }</script>
+    </m-checklist>
+  </div>
+  <div class="concl"><span>→ 4 つがそろってから実習室に入る</span></div>
+</section>
+
+<section class="slide noconcl">
+  <h2>窓口に持ってくるもの（A 市の転入の手続き、架空）</h2>
+  <div class="body">
+    <m-checklist style="height:440px">
+      <script type="application/json">{
+        "items": [
+          {"label": "転出証明書", "note": "前に住んでいた市区町村で受け取る"},
+          {"label": "本人を確かめる書類", "note": "運転免許証・マイナンバーカードなど"},
+          {"label": "印鑑", "mark": "cross", "note": "要らない（署名でよい）"},
+          {"label": "国民健康保険の保険証", "mark": "none", "note": "加入している人だけ"}
+        ]
+      }</script>
+    </m-checklist>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>項目も 1 つずつ出す（reveal="true"）</h2>
+  <div class="body">
+    <m-checklist reveal="true" style="height:440px">
+      <script type="application/json">{
+        "items": [
+          {"label": "患者さんの名前を、本人に言ってもらう"},
+          {"label": "リストバンドの名前と照らし合わせる"},
+          {"label": "これから行うことを説明する"}
+        ]
+      }</script>
+    </m-checklist>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

@@ -67,6 +67,12 @@ const LOCAL = {
   'm-checklist': { icon: 'checklist', desc: { ja: '確かめる項目に 1 つずつ ✓ を付ける', en: 'Items to check, ticked one at a time' } },
   'm-diverge': { icon: 'waterfall', desc: { ja: '基準から増減を積み上げ、合計まで見せる', en: 'Increases and decreases stacked from a baseline to the total' } },
   'm-code': { icon: 'syntax', desc: { ja: '短いコードを行ごとに説明し、出力を見せる', en: 'Explains short code line by line, then shows the output' } },
+  'm-network': { icon: 'tree', desc: { ja: 'グラフの探索や最短経路を、頂点と辺の上で 1 ステップずつ', en: 'Graph search and shortest paths, one step at a time on nodes and edges' } },
+  'm-nnet': { icon: 'flow', desc: { ja: 'ニューラルネットの順伝播を層ごとに計算して見せる', en: 'A neural network’s forward pass, computed layer by layer' } },
+  'm-classify2d': { icon: 'scatter', desc: { ja: '2 次元の点と、分類の領域・境界をモデルの出力どおりに', en: 'Points in 2-D with a classifier’s regions and boundaries, as the model output them' } },
+  'm-contour': { icon: 'heatmap', desc: { ja: '2 変数の関数の等高線と勾配、勾配降下法の道', en: 'Contours of a two-variable function, its gradient and a descent path' } },
+  'm-ctable': { icon: 'compare', desc: { ja: '分散分析表・分割表を計算のステップごとに埋める', en: 'ANOVA and contingency tables, filled in step by step' } },
+  'm-vector': { icon: 'matrix', desc: { ja: '平面のベクトルと 2 × 2 の行列の変換を 1 ステップずつ', en: 'Plane vectors and 2 × 2 matrix maps, one step at a time' } },
 };
 // 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）
 export const PART_LABELS = Object.freeze(Object.fromEntries([...Object.keys(LOCAL), ...Object.keys(MANIFEST_NAMES).filter((t) => !LOCAL[t])]

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-trace の見本</title>
+<!-- 組み方：node kit/build.mjs components/trace/demo.html -o components/trace/out/demo.html（トレースは uv run tools/trace.py tools/trace-demo/<名前>.py の出力。説明 note だけ手で足した） -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>for 文で合計を求める流れを 1 行ずつ追う</h2>
+  <div class="body">
+    <m-trace style="height:320px">
+      <script type="application/json">{"lang": "python", "code": "scores = [3, 1, 2]\ntotal = 0\nfor s in scores:\n    total += s\nprint(total)", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "454a15f5915a1bcfe331381852453b431b39b29f778dc5a20ea7546fc0cd2aaa", "truncated": false}, "steps": [{"line": 1, "vars": {"scores": [3, 1, 2]}, "note": "点数のリストを作る"}, {"line": 2, "vars": {"scores": [3, 1, 2], "total": 0}, "note": "合計 total を 0 から始める"}, {"line": 3, "vars": {"scores": [3, 1, 2], "total": 0, "s": 3}, "note": "s に最初の値 3 が入る"}, {"line": 4, "vars": {"scores": [3, 1, 2], "total": 3, "s": 3}, "note": "total に s を足して 3"}, {"line": 3, "vars": {"scores": [3, 1, 2], "total": 3, "s": 1}, "note": "s に次の値 1"}, {"line": 4, "vars": {"scores": [3, 1, 2], "total": 4, "s": 1}, "note": "足して 4"}, {"line": 3, "vars": {"scores": [3, 1, 2], "total": 4, "s": 2}, "note": "s に次の値 2"}, {"line": 4, "vars": {"scores": [3, 1, 2], "total": 6, "s": 2}, "note": "足して 6"}, {"line": 3, "vars": {"scores": [3, 1, 2], "total": 6, "s": 2}, "note": "値が残っていないので、繰り返しを終える"}, {"line": 5, "vars": {"scores": [3, 1, 2], "total": 6, "s": 2}, "out": "6\n", "note": "合計を表示する"}]}</script>
+    </m-trace>
+  </div>
+  <div class="concl"><span>for の行は、値を取り出すたびと、終わるときに通る</span></div>
+</section>
+
+<section class="slide">
+  <h2>辞書で単語を数えるとき、counts はこう変わる</h2>
+  <div class="body">
+    <m-trace style="height:320px">
+      <script type="application/json">{"lang": "python", "code": "words = [\"りんご\", \"みかん\", \"りんご\"]\ncounts = {}\nfor w in words:\n    counts[w] = counts.get(w, 0) + 1\nprint(counts)", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "64512f36b35eda15e9ca05ae2353893f096efe4d99803c5811fc37ac81f4c4ca", "truncated": false}, "steps": [{"line": 1, "vars": {"words": ["りんご", "みかん", "りんご"]}}, {"line": 2, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {}}}, {"line": 3, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {}, "w": "りんご"}}, {"line": 4, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 1}, "w": "りんご"}}, {"line": 3, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 1}, "w": "みかん"}}, {"line": 4, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 1, "みかん": 1}, "w": "みかん"}}, {"line": 3, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 1, "みかん": 1}, "w": "りんご"}}, {"line": 4, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 2, "みかん": 1}, "w": "りんご"}}, {"line": 3, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 2, "みかん": 1}, "w": "りんご"}}, {"line": 5, "vars": {"words": ["りんご", "みかん", "りんご"], "counts": {"りんご": 2, "みかん": 1}, "w": "りんご"}, "out": "{'りんご': 2, 'みかん': 1}\n"}]}</script>
+    </m-trace>
+  </div>
+  <div class="concl"><span>まだない単語は get の既定値 0 から数え始める</span></div>
+</section>
+
+<section class="slide">
+  <h2>バブルソートで xs の並びが変わる様子</h2>
+  <div class="body">
+    <m-trace by="time" rate="3" style="height:320px">
+      <script type="application/json">{"lang": "python", "code": "xs = [4, 2, 3, 1]\nn = len(xs)\nfor i in range(n - 1):\n    for j in range(n - 1 - i):\n        if xs[j] > xs[j + 1]:\n            xs[j], xs[j + 1] = xs[j + 1], xs[j]\nprint(xs)", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "fe4998f67377508a5520e13f090c5911da3e27ace2ac2b534ca6eed197928e9f", "truncated": false}, "show": ["xs", "i", "j"], "steps": [{"line": 1, "vars": {"xs": [4, 2, 3, 1]}}, {"line": 2, "vars": {"xs": [4, 2, 3, 1]}}, {"line": 3, "vars": {"xs": [4, 2, 3, 1], "i": 0}}, {"line": 4, "vars": {"xs": [4, 2, 3, 1], "i": 0, "j": 0}}, {"line": 5, "vars": {"xs": [4, 2, 3, 1], "i": 0, "j": 0}}, {"line": 6, "vars": {"xs": [2, 4, 3, 1], "i": 0, "j": 0}}, {"line": 4, "vars": {"xs": [2, 4, 3, 1], "i": 0, "j": 1}}, {"line": 5, "vars": {"xs": [2, 4, 3, 1], "i": 0, "j": 1}}, {"line": 6, "vars": {"xs": [2, 3, 4, 1], "i": 0, "j": 1}}, {"line": 4, "vars": {"xs": [2, 3, 4, 1], "i": 0, "j": 2}}, {"line": 5, "vars": {"xs": [2, 3, 4, 1], "i": 0, "j": 2}}, {"line": 6, "vars": {"xs": [2, 3, 1, 4], "i": 0, "j": 2}}, {"line": 4, "vars": {"xs": [2, 3, 1, 4], "i": 0, "j": 2}}, {"line": 3, "vars": {"xs": [2, 3, 1, 4], "i": 1, "j": 2}}, {"line": 4, "vars": {"xs": [2, 3, 1, 4], "i": 1, "j": 0}}, {"line": 5, "vars": {"xs": [2, 3, 1, 4], "i": 1, "j": 0}}, {"line": 4, "vars": {"xs": [2, 3, 1, 4], "i": 1, "j": 1}}, {"line": 5, "vars": {"xs": [2, 3, 1, 4], "i": 1, "j": 1}}, {"line": 6, "vars": {"xs": [2, 1, 3, 4], "i": 1, "j": 1}}, {"line": 4, "vars": {"xs": [2, 1, 3, 4], "i": 1, "j": 1}}, {"line": 3, "vars": {"xs": [2, 1, 3, 4], "i": 2, "j": 1}}, {"line": 4, "vars": {"xs": [2, 1, 3, 4], "i": 2, "j": 0}}, {"line": 5, "vars": {"xs": [2, 1, 3, 4], "i": 2, "j": 0}}, {"line": 6, "vars": {"xs": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 4, "vars": {"xs": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 3, "vars": {"xs": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 7, "vars": {"xs": [1, 2, 3, 4], "i": 2, "j": 0}, "out": "[1, 2, 3, 4]\n"}]}</script>
+    </m-trace>
+  </div>
+  <div class="concl"><span>隣どうしを比べて入れ替え、大きい値から右端に決まる</span></div>
+</section>
+
+</div>
+</body>
+</html>

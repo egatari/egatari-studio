@@ -342,7 +342,10 @@ export function createEngine(res, loadLazy, { renderAbc, article = null, fontSub
       const xenv = mkEnv(() => full, miss);
       if (sub) xenv.subsetFont = sub;
       withArticle(xenv);
-      if (readable) xenv.readableParts = () => readable();   // 書いた文書ではなく、同じ作業場所から組んだプレビューで読む（本文のステップと同じ）
+      // 書いた文書ではなく、同じ作業場所から組んだプレビューで読む（本文のステップと同じ）。答えは作業場所だけで決まるので、この書き出しの中では 1 回だけ聞く
+      // （足りないファイル・楽譜を読んで組み直すたびに聞き直さない）
+      let asked = null;
+      if (readable) xenv.readableParts = () => (asked ||= readable());
       const { signal, ...o } = opts;
       if (ws && ws.kind === 'memory' && !('missingFiles' in o)) o.missingFiles = 'warn';   // build-client.js と同じ
       const tally = tallyOf(opts), live = liveOf(opts);
@@ -357,6 +360,9 @@ export function createEngine(res, loadLazy, { renderAbc, article = null, fontSub
       }
       throw new Error('could not read all files');
     },
+    // 索引だけ（開くときの部品庫の照合・取り下げた版の組み直し・テーマの更新。書いた文書は使わない）：字は切り出さず（索引は字によらない）、
+    // パーツの読める中身（§2.1）も聞かない（読める層は索引の後で文書に入るので索引は変わらない。開く途中はプレビューがまだなく、聞くと答えを待って止まる）
+    exportIndex(file, opts = {}) { return this.exportPortable(file, { ...opts, subset: false, readableParts: false }); },
     // 本（format spec §9C）：本文を読み、点検し、組む（kit/core/article-page.mjs の renderedArticle。書き出しと同じ組み方）。
     // opts：lang・title（組んだデッキの <html lang> と <title>。書き出しと同じ）・themeCss（読むための頁の色）・uiLang（知らせの言葉 'ja' | 'en'）・checkSteps（false で確かめない）。
     // 返すもの：本文がなければ null。あれば {html（<article id="egatari-article">）, page（読むための 1 枚の HTML）, problems: [{sev, code, text, file, line}],

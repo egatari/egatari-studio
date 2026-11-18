@@ -19,6 +19,7 @@ const bad = [];
 let named = 0, local = 0;
 for (const c of Object.values(m.components)) {
   if (c.kind !== 'element' || !c.tag) continue;
+  if (c.tier === 'local') continue;   // ローカル（CLI）向けのパーツ（#213）は新規作成の一覧に出ない
   if (c.display != null) {
     const w = want(c.display);
     named++;

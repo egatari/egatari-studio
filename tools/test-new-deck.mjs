@@ -15,7 +15,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan, paidOnly } from '../kit/core/new-deck.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
 import { NEW_LESSON_CATALOGUE, withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
@@ -35,9 +35,10 @@ let n = 0;
 const ok = (name, fn) => { fn(); n++; console.log('  ok   ' + name); };
 
 // 指示に入る部品（標準と、選んだ束の部品）。外した伝えたいことの行が名前を出すのは、指示に入る部品だけ
-const choiceRequest = (c, P, lang) => choiceRequestOf({ ...c, parts: loadedParts((c && c.sets) || []) }, P, lang);
+const choiceRequest = (c, P, lang) => choiceRequestOf({ ...c, parts: loadedParts((c && c.sets) || [], c && c.plan) }, P, lang);
 const MANIFEST2 = () => JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
-const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === STANDARD).sort();
+// 標準のパーツ（受け皿のない束のパーツ paidOnly は、材料では標準の場所にあるが、新規作成では専門と同じく初めは印なし）
+const STD = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === STANDARD && !PACK_DATA.en.components[t].paidOnly).sort();
 // 束を 1 つ選んだ無料のプランの指示で外すパーツ（kit/core/llm-pack-assemble.mjs の SINGLE_SET_DROP_ORDER の順、収まったところで止める。2026-11-06）。
 // 載っていない束は何も外さない。日本語はどの束も中核の 4 つを短くすれば収まる
 const SINGLE_SET_EXPECTED = {
@@ -49,14 +50,17 @@ const SINGLE_SET_EXPECTED = {
   en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi'],
     maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad'],
     // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
-    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'] },
-  ja: {},
+    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'],
+    // v0.6.15：束 algo（m-network）と ml（m-nnet・m-classify2d・m-contour）は、中核の 4 つを短くすれば何も外さずに収まる（部品庫 2.13.0）
+    algo: [], ml: [] },
+  ja: { algo: [], ml: [] },
 };
 for (const lang of ['en', 'ja']) for (const s of SETS) SINGLE_SET_EXPECTED[lang][s] ||= [];
+const PAID_ONLY = Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].paidOnly).sort();
 const EXTRA = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'extra').sort();
 const ofSet = (s) => Object.keys(PACK_DATA.en.components).filter((t) => PACK_DATA.en.components[t].set === s).sort();
-const described = (text) => [...text.matchAll(/^### `<(m-[a-z]+(?:-[a-z]+)*)>`$/gm)].map((x) => x[1]).sort();   // 拡張の節（### `<m-flow>`：この束の拡張）は数えない
-const rowsOf = (text) => [...new Set([...text.matchAll(/^\| `<(m-[a-z]+(?:-[a-z]+)*)>` \|/gm)].map((x) => x[1]))].sort();
+const described = (text) => [...text.matchAll(/^### `<(m-[a-z0-9]+(?:-[a-z0-9]+)*)>`$/gm)].map((x) => x[1]).sort();   // 拡張の節（### `<m-flow>`：この束の拡張）は数えない
+const rowsOf = (text) => [...new Set([...text.matchAll(/^\| `<(m-[a-z0-9]+(?:-[a-z0-9]+)*)>` \|/gm)].map((x) => x[1]))].sort();
 const named = (text, t) => new RegExp(t + '(?![a-z-])').test(text);
 
 ok('categories: Teaching / Research / Business / Guides / Other (no “Academic”); 13 subcategories set the structure', () => {
@@ -85,6 +89,8 @@ ok('parts list (#124): grouped by what to convey, the subject forms last (first 
   const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
   for (const [t, x] of Object.entries(TIERS.parts)) {
     const c = Object.values(m.components).find((y) => y.tag === t);
+    // 受け皿のない束（univ。作者 11/17）のパーツは標準として（束の名前を出さない）
+    if (c && c.tier === 'specialized' && !SETS.includes(c.set)) { assert.ok(x.tier === 'specialized' && x.set === undefined, t + ': a part set without a receiver: no set name'); continue; }
     assert.ok(c && c.tier === x.tier && (c.set || undefined) === x.set, t + ': tier and set as in the manifest');
   }
   const list = partsList(null), all = list.flatMap((g) => g.parts);
@@ -104,6 +110,35 @@ ok('parts list (#124): grouped by what to convey, the subject forms last (first 
   for (const g of list) { const k = g.parts.map((t) => TIERS.parts[t].tier === 'standard' ? 0 : 1); assert.deepEqual(k, [...k].sort(), g.id); }
   for (const t of all) assert.ok(partDesc(t, 'ja') && partDesc(t, 'en'), t + ': a one-line description');
   assert.deepEqual(partsOfSet('stats').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
+});
+ok('words for the algo set (#214): search and graph-model words recommend algo; a bar graph does not', () => {
+  assert.deepEqual(recommend({ sub: null, text: 'ダイクストラ法で最短経路を探す', lang: 'ja' }).map((r) => r.set), ['algo']);
+  assert.deepEqual(recommend({ sub: null, text: '隠れマルコフモデルで品詞を推定する', lang: 'ja' }).map((r) => r.set).includes('algo'), true);
+  assert.deepEqual(recommend({ sub: null, text: 'A path diagram for the structural equation model', lang: 'en' }).map((r) => r.set), ['algo']);
+  assert.ok(!recommend({ sub: null, text: '棒グラフで売上を比べる', lang: 'ja' }).some((r) => r.set === 'algo'), 'a bar graph is not a graph algorithm');
+  assert.ok(!recommend({ sub: null, text: 'a bar graph of sales', lang: 'en' }).some((r) => r.set === 'algo'));
+});
+ok('words for the ml set (#219): neural networks, classifiers and gradient descent recommend ml; contour lines on a map do not', () => {
+  assert.deepEqual(partsOfSet('ml').sort(), ['m-classify2d', 'm-contour', 'm-nnet']);
+  assert.deepEqual(recommend({ sub: null, text: 'ニューラルネットの順伝播を 1 層ずつ', lang: 'ja' }).map((r) => r.set), ['ml']);
+  assert.deepEqual(recommend({ sub: null, text: 'SVM のマージンとサポートベクター', lang: 'ja' }).map((r) => r.set), ['ml']);
+  assert.deepEqual(recommend({ sub: null, text: 'Gradient descent on a loss surface', lang: 'en' }).map((r) => r.set), ['ml']);
+  assert.ok(!recommend({ sub: null, text: '等高線で山の高さを読む', lang: 'ja' }).some((r) => r.set === 'ml'));
+});
+ok('a part set without a receiver (univ, owner 11/17): its parts are in the parts list without a set name and not ticked at first; only the paid plan describes them', () => {
+  assert.deepEqual(PAID_ONLY, ['m-ctable', 'm-vector']);
+  for (const t of PAID_ONLY) { assert.equal(TIERS.parts[t].tier, 'specialized', t); assert.equal(TIERS.parts[t].set, undefined, t); assert.ok(partsList(null).some((g) => g.parts.includes(t)), t); }
+  assert.ok(!initialParts([]).some((t) => PAID_ONLY.includes(t)));
+  // 軽量の指示（free）の ④ には出さない（印を付けても指示に入らないので）。詳細の指示（paid）とプランなしでは出す
+  const listedFor = (plan) => partsList(null, plan).flatMap((g) => g.parts);
+  for (const t of PAID_ONLY) { assert.ok(!listedFor('free').includes(t), t + ': not listed on the free plan'); assert.ok(listedFor('paid').includes(t) && paidOnly(t), t + ': listed on the paid plan'); }
+  assert.deepEqual(listedFor('free'), listedFor('paid').filter((t) => !PAID_ONLY.includes(t)));
+  assert.ok(!SET_LABELS.some((x) => x.set === 'univ') && !PACK_DATA.sets.includes('univ'));
+  for (const lang of ['en', 'ja']) {
+    const free = buildPack({ sets: [], lang, plan: 'free' }), paid = buildPack({ sets: [], lang, plan: 'paid' });
+    assert.ok(!/m-ctable|m-vector/.test(free), lang + ': not in the free plan');
+    assert.ok(paid.includes('### `<m-ctable>`') && paid.includes('### `<m-vector>`'), lang + ': described on the paid plan');
+  }
 });
 ok('initial ticks (#124 §2.2): every standard part; a specialized set from the subcategory table or the words of step 2 (with the reason); English words on the English screen', () => {
   const std = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard');
@@ -145,9 +180,11 @@ ok('AI plan: free (default) and paid change the suggested size limit and how muc
   for (const lang of ['en', 'ja']) for (const tags of [initialParts([]), ['m-bars', 'm-hist', 'm-timer'], ['m-kanbun', 'm-flow', 'm-kpi'], []]) for (const plan of AI_PLANS) {
     const text = packWithRequest({ ...partsPackOpts(tags, plan), lang });
     const what = `${lang} ${plan} ${tags.join('+') || '(none)'}`;
-    assert.deepEqual(described(text), [...tags].filter((t) => plan === 'paid' || !BRIEF.includes(t)).sort(), what + ': described');
-    assert.deepEqual(rowsOf(text), [...tags].sort(), what + ': catalogue rows');
-    for (const t of Object.keys(TIERS.parts).filter((x) => !tags.includes(x))) assert.ok(!named(text, t), `${what}: ${t} is named`);
+    // 受け皿のない束のパーツ（paidOnly。univ）は有料のプランにだけ入る
+    const inPack = tags.filter((t) => plan === 'paid' || !PAID_ONLY.includes(t));
+    assert.deepEqual(described(text), [...inPack].filter((t) => plan === 'paid' || !BRIEF.includes(t)).sort(), what + ': described');
+    assert.deepEqual(rowsOf(text), [...inPack].sort(), what + ': catalogue rows');
+    for (const t of Object.keys(TIERS.parts).filter((x) => !inPack.includes(x))) assert.ok(!named(text, t), `${what}: ${t} is named`);
   }
   assert.deepEqual(partsPackOpts(['m-hist', 'm-timer', 'm-bars']).sets, ['stats', 'tools']);
   assert.equal(partsPackOpts(['m-bars']).plan, 'free'); assert.equal(partsPackOpts(['m-bars'], 'paid').plan, 'paid');
@@ -304,11 +341,13 @@ ok('purposes: the tiles are the default catalogue manifest\'s own purposes (17),
   assert.ok(!JSON.stringify(PURPOSES.list).includes('＊'), 'no star markers');
   // m-bars は 3 つの札に使う：全部外したときだけ使わせない。m-folds（部品庫 2.6.0 の束 data）の札は compare だけ（model は札なし）
   // m-diverge（部品庫 2.9.0、束 business）は compare と deviation（2.9.1 から自分の札）に使う：compare を外しても deviation の札で残る
-  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-curves', 'm-folds', 'm-numberline']);
-  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-curves', 'm-folds', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
+  // m-contour（部品庫 2.13.0、束 ml）の札は change だけ（model は札なし）。m-ctable（束 univ）は part-whole と cause-effect
+  assert.deepEqual(componentsOff(['compare', 'change'], PURPOSES), ['m-compare', 'm-contour', 'm-curves', 'm-folds', 'm-numberline']);
+  assert.deepEqual(componentsOff(['compare', 'change', 'part-whole'], PURPOSES), ['m-bars', 'm-compare', 'm-contour', 'm-curves', 'm-folds', 'm-market', 'm-numberline', 'm-pie', 'm-tape']);
   // m-kakijun は 2.2.0 候補で extra に移り（backlog #170）、process の部品からは外れる（extra は purposes の計算に入らない）
   // m-callout・m-checklist（部品庫 2.9.0、束 tools）の札も process だけ
-  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan']);   // m-code（束 data）の札は process だけ
+  // m-network（束 algo）・m-nnet（束 ml）の札も process だけ（model は札なし）
+  assert.deepEqual(componentsOff(['process'], PURPOSES), ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan', 'm-network', 'm-nnet']);   // m-code（束 data）の札は process だけ
   assert.deepEqual(componentsOff(['deviation'], PURPOSES), [], 'm-diverge also serves compare');
   assert.deepEqual(componentsOff(['compare', 'deviation'], PURPOSES).filter((t) => t === 'm-diverge'), ['m-diverge'], 'm-diverge goes when both its tiles are off');
   assert.deepEqual(componentsOff([], PURPOSES), []);
@@ -372,7 +411,8 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
   assert.ok(componentsOff(['compare'], P).includes('m-rankonly') && !componentsOff(['change'], P).includes('m-rankonly'));
   assert.ok(componentsOff(['compare'], PURPOSES).includes('m-compare'));
   assert.ok(!named(packWithRequest({ lang: 'en', plan: 'paid', exclude: componentsOff(['compare'], PURPOSES), off: ['compare'] }), 'm-compare'), 'paid, compare off: m-compare is gone');
-  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan', 'm-map-world']);
+  // m-vector（束 univ、受け皿なし：有料のプランだけ）の札は spatial と model
+  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan', 'm-map-world', 'm-vector']);
   for (const lang of ['en', 'ja']) {
     for (const [what, opts] of [['free+maps', { sets: ['maps'], plan: 'free' }], ['free+maps+kokugo', { sets: ['maps', 'kokugo'], plan: 'free' }], ['paid+maps', { sets: ['maps'], plan: 'paid' }]]) {
       const on = packWithRequest({ ...opts, lang });
@@ -382,8 +422,9 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
       assert.ok(!off.includes(PURPOSES.list.find((p) => p.id === 'spatial').name[lang] + ' |'), `${lang} ${what}: spatial off → no spatial row`);
     }
     // maps が入っていない：場所・地図の行は出さない（d5 2026-11-15：パーツのない言いたいことは載せない）、地図の名前も出さない
+    // （有料のプランでは m-vector が場所・地図の行を持つので、それを外して比べる）
     const name = PURPOSES.list.find((p) => p.id === 'spatial').name[lang];
-    for (const opts of [{ sets: [] }, { sets: ['stats', 'kokugo'] }, { sets: [], plan: 'paid' }]) {
+    for (const opts of [{ sets: [] }, { sets: ['stats', 'kokugo'] }, { sets: [], plan: 'paid', exclude: ['m-vector'] }]) {
       const t = packWithRequest({ ...opts, lang });
       assert.ok(!t.includes('map-japan'), `${lang} ${opts.sets.join('+') || 'standard'}: m-map-japan is not named without maps`);
       assert.ok(!t.split('\n').some((l) => l.startsWith('| ' + name + ' |')), `${lang}: no spatial row without maps`);
@@ -391,7 +432,7 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
   }
 });
 
-const tagsIn = (text) => new Set([...text.matchAll(/m-[a-z]+(?:-[a-z]+)*(?![a-z-])/g)].map((m) => m[0]));
+const tagsIn = (text) => new Set([...text.matchAll(/m-[a-z0-9]+(?:-[a-z0-9]+)*(?![a-z-])/g)].map((m) => m[0]));
 ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the included parts, never names a part outside the catalogue, and has no star markers`, () => {
   for (const lang of ['en', 'ja']) {
     const all = buildPack({ sets: 'all', lang });
@@ -419,7 +460,9 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
     }
   }
   const en = buildPack({ sets: 'all', lang: 'en' });
-  assert.match(en, /^\| change over time \| `m-curves`, `m-bars` \(few points\) \| one line at a time \|$/mi);
+  // m-contour（部品庫 2.13.0、束 ml）も change。sets: 'all' では ml も入る
+  assert.match(en, /^\| change over time \| `m-contour`, `m-curves`, `m-bars` \(few points\) \| one line at a time \|$/mi);
+  assert.match(buildPack({ sets: [], lang: 'en' }), /^\| change over time \| `m-curves`, `m-bars` \(few points\) \| one line at a time \|$/mi);
   assert.match(en, /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
   assert.doesNotMatch(buildPack({ sets: [], lang: 'en' }), /^\| spread \|/mi);
   assert.match(buildPack({ sets: ['stats'], lang: 'en' }), /^\| spread \| `m-boxplot`, `m-hist`, `m-seq` \| whole at once \|$/mi);
@@ -497,11 +540,11 @@ ok('free pack fits a Gemini paste with the brief: UTF-16 units + line feeds <= 3
 ok('pack: paid = every standard part + the chosen sets, all described; free = the same parts, with only FREE_CORE and the set parts described; nothing unchosen leaks', () => {
   for (const lang of ['en', 'ja']) for (const plan of AI_PLANS) for (const sets of SET_CHOICES) {
     const text = packWithRequest({ sets, lang, plan });
-    const want = [...STD, ...sets.flatMap(ofSet)].sort();
+    const want = [...STD, ...(plan === 'paid' ? PAID_ONLY : []), ...sets.flatMap(ofSet)].sort();
     const what = `${lang} ${plan} ${sets.join('+') || '(none)'}`;
     assert.deepEqual(rowsOf(text), want, what + ': catalogue rows');
     assert.deepEqual(described(text), want.filter((t) => plan === 'paid' || !BRIEF.includes(t)), what + ': described parts');
-    assert.deepEqual(loadedParts(sets).sort(), want, what + ': loadedParts is the pack catalogue');
+    assert.deepEqual(loadedParts(sets, plan).sort(), want, what + ': loadedParts is the pack catalogue');
     for (const t of Object.keys(TIERS.parts).filter((x) => !want.includes(x))) assert.ok(!named(text, t), `${what}: ${t} (not chosen) is named`);
   }
   assert.throws(() => buildPack({ sets: ['academic'] }), /unknown part set/);
@@ -523,7 +566,7 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
       const req = choiceRequest({ ...choice, category: 'research', subcategory: 'conference', purposesOff: off }, PURPOSES, lang);
       const whole = packWithRequest({ sets, lang, request: '# R\n\n' + req, exclude: ex, off, plan });
       // 読み込んだ部品（標準と選んだ束）のほかは、どこにも名前が出ない（「使わない」の行も含めて）
-      const loaded = new Set(loadedParts(sets));
+      const loaded = new Set(loadedParts(sets, plan));
       for (const t of partsIn(whole)) assert.ok(loaded.has(t), `${lang} ${plan} ${JSON.stringify(sets)} off ${off.join('+')}: ${t} is named but not loaded`);
       const lines = whole.split('\n');
       const dont = lines.filter((l) => /^- (Purposes turned off|使わない言いたいこと)/.test(l));
@@ -541,8 +584,8 @@ ok('pack: no part used only by the purposes turned off appears anywhere in the c
 });
 // 写す文が名前を出す部品（m-…）は、その文の部品の一覧（§3 の表の行か ### の説明）にあるものだけ。
 // 一覧から外した部品の名前を、説明や注意の文が出してしまう（これから足す文で起きやすい）のを見つける。CSS の変数（--mm-h）などは数えない
-const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z]+(?:-[a-z]+)*(?![a-z-])/g)].map((m) => m[0]));
-const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z]+(?:-[a-z]+)*)>`/gm)].map((m) => m[1]));
+const namedParts = (text) => new Set([...text.matchAll(/(?<![\w-])m-[a-z0-9]+(?:-[a-z0-9]+)*(?![a-z-])/g)].map((m) => m[0]));
+const catalogOf = (text) => new Set([...text.matchAll(/^(?:\| `<|### `<)(m-[a-z0-9]+(?:-[a-z0-9]+)*)>`/gm)].map((m) => m[1]));
 const notInCatalog = (text) => { const c = catalogOf(text); return [...namedParts(text)].filter((t) => !c.has(t)); };
 ok('gen: the size rows (free standard fails over 45 KB, free + a set is only reported, paid pairs fail over 150 KB, the paid worst case warns); a pack over its cap is named with the bytes over and its three largest sections', () => {
   const g = generate();
@@ -604,7 +647,7 @@ ok('purpose table (d5 2026-11-15): in every pack (each language, plan, no set, e
     const what = `${lang} ${plan} ${sets === 'all' ? 'all' : sets.join('+') || 'standard'}`;
     assert.ok(rows.length > 0, what + ': a table');
     for (const l of rows) {
-      const tags = [...l.matchAll(/`(m-[a-z]+(?:-[a-z]+)*)`/g)].map((m) => m[1]);
+      const tags = [...l.matchAll(/`(m-[a-z0-9]+(?:-[a-z0-9]+)*)`/g)].map((m) => m[1]);
       assert.ok(tags.length > 0, `${what}: the row names a part: ${l}`);
       for (const tag of tags) assert.ok(t.includes('`<' + tag + '>`'), `${what}: ${tag} in the table is in the catalog`);
     }
@@ -612,7 +655,7 @@ ok('purpose table (d5 2026-11-15): in every pack (each language, plan, no set, e
 });
 ok('pack: turning purposes off removes the parts used only for them from the catalog (standard and sets) and tells the AI', () => {
   const off = componentsOff(['key-number', 'process', 'contents'], PURPOSES);
-  assert.deepEqual(off, ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu']);
+  assert.deepEqual(off, ['m-callout', 'm-cards', 'm-checklist', 'm-code', 'm-flow', 'm-hissan', 'm-kpi', 'm-menu', 'm-network', 'm-nnet']);
   const full = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', plan: 'paid' });
   const cut = packWithRequest({ sets: ['business'], lang: 'en', request: 'R', exclude: off, off: ['key-number', 'process', 'contents'], plan: 'paid' });
   assert.ok(full.includes('### `<m-flow>`') && full.includes('### `<m-kpi>`') && full.includes('| `<m-menu>` |'));

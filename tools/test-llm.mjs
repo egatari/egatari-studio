@@ -156,8 +156,10 @@ ok('部品の居場所：どの部品もちょうど 1 か所（標準は共通�
   for (const lang of ['en', 'ja']) for (const plan of ['free', 'paid']) {
     const common = commonBody(lang, { plan }), parts = Object.fromEntries(SETS.map((s) => [s, setPart(s, lang)]));
     for (const c of els) {
-      const head = `### \`<${c.tag}>\``, where = c.tier === 'extra' ? null : c.tier === 'standard' ? (plan === 'free' && !FREE_CORE.includes(c.tag) ? null : 'standard') : c.set;
-      assert.equal(setOf(c.tag), c.tier === 'extra' ? null : c.tier === 'standard' ? 'standard' : c.set, c.tag);
+      // 段 local（m-trace）はどの指示にもない。受け皿のない束（univ）の専門のパーツは、有料のプランの共通の本体にだけ（材料の paidOnly）
+      const unreceived = c.tier === 'specialized' && !SETS.includes(c.set);
+      const head = `### \`<${c.tag}>\``, where = c.tier === 'extra' || c.tier === 'local' ? null : unreceived ? (plan === 'paid' ? 'standard' : null) : c.tier === 'standard' ? (plan === 'free' && !FREE_CORE.includes(c.tag) ? null : 'standard') : c.set;
+      assert.equal(setOf(c.tag), c.tier === 'extra' || c.tier === 'local' ? null : c.tier === 'standard' || unreceived ? 'standard' : c.set, c.tag);
       const places = [['standard', common], ...Object.entries(parts)].filter(([, t]) => t.split('\n').includes(head)).map(([x]) => x);
       assert.deepEqual(places, where ? [where] : [], `${lang} ${plan} ${c.tag}: ${places}`);
     }
@@ -194,8 +196,8 @@ ok('規格の名前は英語と日本語で同じ・規格は共通の本体だ�
   for (const r of ['R-output', 'R-noids', 'R-headings', 'R-title', 'R-concl', 'R-fit', 'R-narr-steps', 'R-reading', 'R-formula', 'R-marks', 'R-colors']) assert.ok(en.includes(r), r);
   for (const g of [ALL_EN, ALL_JA]) {
     for (const t of ['m-flow', 'm-sweep', 'm-kpi', 'm-bars', 'm-kanbun']) assert.ok(g.includes('```deck.html') && g.includes(`<${t}`), t);
-    // 無料のプランのすべての束：標準と専門のすべての部品が一覧の行にある（説明は中核の 4 つと専門）
-    for (const t of Object.keys(PACK.en.components)) assert.ok(g.includes(`| \`<${t}>\` |`), t);
+    // 無料のプランのすべての束：標準と専門のすべての部品が一覧の行にある（説明は中核の 4 つと専門）。受け皿のない束のパーツ（paidOnly）は有料のプランだけ
+    for (const t of Object.keys(PACK.en.components)) assert.equal(g.includes(`| \`<${t}>\` |`), !PACK.en.components[t].paidOnly, t);
     assert.ok(!/<!--\/?part/.test(g), 'part markers are removed');
     assert.ok(!/<!--\s*llm:/.test(g), 'llm markers are removed');
   }

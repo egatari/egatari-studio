@@ -19,7 +19,7 @@
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
 import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, fitSize, setPart, TIERS, FREE_CORE } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice, paidOnly } from '../kit/core/new-deck.mjs';
 import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
 import { THUMBS } from './part-thumbs.js';
 import { PARTS_GALLERY } from './parts-gallery.js';
@@ -28,7 +28,7 @@ import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { insertRequest, insertSlides } from '../kit/core/llm-insert.mjs';
 import { parseOutline, withOutline, outlineOf, nextBatch, remaining, batchRequest, BATCH } from '../kit/core/llm-outline.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
-import { buildFixRequest, cutOffRequest, rulesFor } from '../kit/core/llm-fix.mjs';
+import { buildFixRequest, cutOffRequest, rulesFor, commentNoteLine } from '../kit/core/llm-fix.mjs';
 import { readingProblems, readingGaps, orphanDetail } from '../kit/core/narration-lint.mjs';
 import { message, MESSAGES, ruleOf } from '../kit/check-messages.mjs';
 import { quoteJa } from '../kit/core/quote-ja.mjs';
@@ -99,6 +99,8 @@ const TX = {
     },
     // ③ 見た目
     themeHint: 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', themeLabel: 'テーマ', themeLoad: 'テーマを読み込む…', themeMine: '自分のテーマ',
+    // テーマの見本の絵（表紙と本文の 1 枚。押すと大きく出す）
+    themeSampleAlt: { cover: (n) => `${n} のサンプル：表紙`, body: (n) => `${n} のサンプル：本文` }, themeSampleClose: '閉じる',
     themeLine: REQUEST_WORDS.ja.themeLine,
     // ④ AI に送る
     // 指示の詳しさ（内部の名前は plan：free = 軽量・paid = 詳細。作者の決定 2026-11-07）
@@ -194,7 +196,7 @@ const TX = {
     reviseHint: '修正依頼には、品質チェックの指摘、① に書いたこと、開いているコメント、今のスライドと台本が入ります（長い教材は指摘のあるスライドだけ）',
     copyRevise: '修正依頼をコピー', reviseNothing: '直すことが見つかりません。① に直してほしいことを書いてください',
     revised: (kb, n, c) => `コピーしました（${kb} KB。指摘 ${n} 件${c ? `・コメント ${c} 件` : ''}）。チャットの AI に貼り付けて送ってください。AI が書き終えたら ③ へ`,
-    wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => `- ${c.where}${c.quote ? `「${c.quote}」` : ''}：${c.text}`,
+    wishHead: '## 直してほしいこと', notesHead: '## 開いているメモ（コメント）', noteLine: (c) => commentNoteLine(c, 'ja'),
     err: {
       'no-blocks': 'スライドも台本も見つかりません。AI の出力のコードブロックを、枠の右上のボタンでコピーして貼り付けてください',
       ambiguous: 'スライドと台本の両方が入っていますが、コードブロックの区切り（```）がないので分けられません。2 つのコードブロックを 1 つずつコピーして、それぞれの欄に貼り付けてください',
@@ -278,6 +280,7 @@ const TX = {
       other: { title: 'e.g. Neighbourhood summer festival', audience: 'e.g. Families in the neighbourhood', content: 'e.g. Date, time, place, what to bring', wishes: 'e.g. A cheerful tone' },
     },
     themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load theme…', themeMine: 'My themes',
+    themeSampleAlt: { cover: (n) => `${n} sample: cover`, body: (n) => `${n} sample: body` }, themeSampleClose: 'Close',
     themeLine: REQUEST_WORDS.en.themeLine,
     planLegend: 'Choose the instructions for the AI',
     plan: { free: 'Light (any AI)', paid: 'Detailed (for paid AI plans)' },
@@ -359,7 +362,7 @@ const TX = {
     reviseHint: 'The fix request includes the quality check findings, what you wrote in step 1, open comments and the current slides and script (for a long lesson, only the slides with findings).',
     copyRevise: 'Copy the fix request', reviseNothing: 'Nothing to fix was found. Write what to change in step 1.',
     revised: (kb, n, c) => `Copied (${kb} KB; ${n} ${plural(n, 'finding')}${c ? `, ${c} ${plural(c, 'comment')}` : ''}). Paste it into your chat AI and send. When the AI has finished, go to step 3.`,
-    wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => `- ${c.where}${c.quote ? ` “${c.quote}”` : ''}: ${c.text}`,
+    wishHead: '## What I want changed', notesHead: '## Open notes (comments)', noteLine: (c) => commentNoteLine(c, 'en'),
     err: {
       'no-blocks': 'No slides or script found. Copy the code blocks of the AI’s output with the copy button at the top right of each box, and paste them.',
       ambiguous: 'This has both slides and script but no code block lines (```), so they cannot be separated. Copy the two code blocks one at a time into their fields.',
@@ -656,6 +659,19 @@ export function setupLlm(app) {
     return Q;
   }
 
+  // テーマの見本の絵を大きく出す窓（「テーマを読み込む」の窓と同じく、新規作成の窓 #dlg の上に重ねる別の <dialog>。Esc・×・絵の外を押すと閉じ、押した絵に戻る）
+  function zoomSample(src, alt) {
+    const back = document.activeElement;
+    const d = el('dialog', { id: 'theme-sample-zoom', cls: 'app-dlg', 'aria-label': alt });
+    const close = el('button', { type: 'button', id: 'theme-sample-close', cls: 'ghost', 'aria-label': X.themeSampleClose, title: X.themeSampleClose, text: '×', onclick: () => d.close() });
+    d.append(close, el('img', { src, alt, width: 640, height: 360 }));
+    d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+    d.addEventListener('close', () => { d.remove(); if (back && back.isConnected) back.focus(); });
+    document.body.append(d);
+    d.showModal();
+    close.focus();
+  }
+
   // ③ 見た目（テーマ）。選択肢は見せる名前（標準・ビジネス・国語と、自分のテーマ）。自分のテーマ（フォルダ・このブラウザ）は「自分のテーマ」の見出しの下。
   // 最後の「テーマを読み込む…」で読み込みの窓（ZIP ファイル・テーマのフォルダ）。一覧は「テーマを変更…」と同じ（app.themeOptions）
   async function themeQuestion(title, ctl) {
@@ -682,10 +698,22 @@ export function setupLlm(app) {
     });
     // 選んだ同梱のテーマの「向き」（研究・講義向け など）を、選ぶ欄の下に小さく
     const note = el('small', { id: 'paste-theme-note', cls: 'hint' });
-    const showNote = () => { const o = sel.selectedOptions[0]; note.textContent = (o && o.dataset.note) || ''; };
+    // 選んだ同梱のテーマの見本の絵 2 枚（表紙と本文の 1 枚。tools/theme-thumbs.mjs がサンプル「パーツ図鑑」から作る。app.themeThumbs）。
+    // 押すと大きく出す（新規作成の窓の上に重ねる別の窓。Esc と × で閉じる）。絵のないテーマ（自分のテーマ）では出さない
+    const samples = el('div', { id: 'paste-theme-samples', cls: 'theme-samples' });
+    const showSamples = () => {
+      const o = sel.selectedOptions[0], pics = o && !o.dataset.user && app.themeThumbs ? app.themeThumbs[o.value] : null;
+      samples.hidden = !pics;
+      samples.replaceChildren(...(pics ? ['cover', 'body'].filter((k) => pics[k]).map((k) => {
+        const alt = X.themeSampleAlt[k](o.textContent);
+        return el('button', { type: 'button', cls: 'theme-sample', 'data-kind': k, 'aria-haspopup': 'dialog', onclick: () => zoomSample(pics[k], alt) },
+          [el('img', { src: pics[k], alt, width: 320, height: 180, loading: 'lazy', decoding: 'async' })]);
+      }) : []));
+    };
+    const showNote = () => { const o = sel.selectedOptions[0]; note.textContent = (o && o.dataset.note) || ''; showSamples(); };
     sel.addEventListener('change', showNote);
     showNote();
-    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note]), shop ? shop.node : null], {
+    return question('paste-step-theme', title, [el('p', { cls: 'hint', text: X.themeHint }), el('div', { cls: 'paste-field' }, [el('label', { for: 'paste-theme', text: X.themeLabel }), sel, note]), samples, shop ? shop.node : null], {
       q: () => X.themeLabel, answer: () => (sel.selectedOptions[0] ? sel.selectedOptions[0].textContent : sel.value),
       valid: () => !!sel.value && sel.value !== ORIGINAL, onNext: () => ctl.next(2), onChange: () => ctl.reopen(2), tag: sameTheme,
     });
@@ -793,7 +821,9 @@ export function setupLlm(app) {
     let rec = [];                // おすすめの束と理由（recommend）
     const recSets = () => new Set(rec.map((r) => r.set));
     const isRec = (t) => recSets().has(TIERS.parts[t].set);
-    const chosen = () => listed.filter((t) => ticked.has(t));
+    // 有料のプランの指示にだけ入るパーツ（paidOnly。受け皿のない束のパーツ）は、軽量の指示では一覧に出さず、選んだことにもしない（印を付けても指示に入らないので）
+    const offered = (t) => !(draft.plan === 'free' && paidOnly(t));
+    const chosen = () => listed.filter((t) => ticked.has(t) && offered(t));
     const quote = (s) => (LANG === 'ja' ? `「${s}」` : `“${s}”`);
     const names = (tags) => tags.map((t) => partLabel(t, LANG)).join(LANG === 'ja' ? '・' : ', ');
     // パーツ 1 つ：チェックボックスと絵・名前・1 行の説明（label で全体を押せる）。おすすめには小さな札
@@ -873,10 +903,12 @@ export function setupLlm(app) {
     const update = () => {
       for (const [t, cb] of boxes) {
         const fromIt = fromParts.includes(t) && ticked.has(t);
+        picks.get(t).hidden = !offered(t);
         cb.checked = ticked.has(t); picks.get(t).fromBadge.hidden = !fromIt; picks.get(t).badge.hidden = fromIt || !(isRec(t) && TIERS.parts[t].tier !== 'standard');
       }
       setRadios(planSet, 'paste-plan', draft.plan);
-      count.textContent = X.partsCount(chosen().length, listed.length);
+      for (const g of partsList(null)) groupNodes.get(g.id).hidden = !g.parts.some(offered);
+      count.textContent = X.partsCount(chosen().length, listed.filter(offered).length);
       foldText.textContent = X.partsFold(chosen().length);
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
@@ -1575,7 +1607,7 @@ export function setupLlm(app) {
     const slides = S.slides || [];
     return list.filter((c) => c && c.status !== 'resolved' && String(c.comment || '').trim()).map((c) => {
       const key = String(c.key || ''), i = slides.findIndex((s) => key === s.key || key.startsWith(s.key + ':'));
-      return { where: i >= 0 ? T.sl.slideName(i + 1, slides[i].heading || slides[i].key) : key, quote: String(c.quote || '').replace(/\s+/g, ' ').trim().slice(0, 120), text: String(c.comment).trim() };
+      return { part: c.part, strokes: c.strokes, stroke: c.stroke, where: i >= 0 ? T.sl.slideName(i + 1, slides[i].heading || slides[i].key) : key, quote: String(c.quote || '').replace(/\s+/g, ' ').trim().slice(0, 120), text: String(c.comment).trim() };
     });
   }
   // 「修正…」の ②：修正依頼（kit/core/llm-fix.mjs）に、直してほしいことと開いているメモを足す。直すことが何もなければ null

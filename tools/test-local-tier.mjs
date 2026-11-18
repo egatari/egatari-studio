@@ -20,11 +20,12 @@ ok('tiersFrom: tier local is accepted and left out of the parts list; an unknown
   assert.throws(() => tiersFrom(withTier('mystery')), /has tier "mystery"/);
 });
 
-const LOCAL = [{ fm: { name: 'm-trace' }, body: 'ローカルのトレーサーの出力を、行ごとに見せる。\n\n- `src`：トレースの JSON', en: { body: 'Shows a local tracer\'s output line by line.\n\n- `src`: the trace JSON' } }];
+// 部品庫 2.12.0 から既定のカタログに本物の m-trace がある。試験はもう 1 つ架空のローカルのパーツ（m-tracex）を足して比べる
+const LOCAL = [{ fm: { name: 'm-tracex' }, body: 'ローカルのトレーサーの出力を、行ごとに見せる。\n\n- `src`：トレースの JSON', en: { body: 'Shows a local tracer\'s output line by line.\n\n- `src`: the trace JSON' } }];
 const a = generate(), b = generate({ addLocal: LOCAL });
-ok('the chat instructions are byte-identical with a local part: pack data and instruction version', () => {
+ok('the chat instructions are byte-identical with one more local part: pack data and instruction version', () => {
   assert.equal(JSON.stringify(b.data), JSON.stringify(a.data));
-  for (const f of Object.keys(a.files)) if (!/plugins\/egatari\/skills\/make\/(SKILL(\.en)?\.md|references\/)/.test(f)) assert.equal(b.files[f], a.files[f], f);
+  for (const f of Object.keys(a.files)) if (!/plugins\/egatari\/skills\/make\/references\/parts\/(en\/)?local\.md$/.test(f)) assert.equal(b.files[f], a.files[f], f);
   assert.equal(JSON.stringify(b.sizes), JSON.stringify(a.sizes));
 });
 ok('no assembled pack mentions m-trace (free and paid, ja and en)', () => {
@@ -33,23 +34,18 @@ ok('no assembled pack mentions m-trace (free and paid, ja and en)', () => {
     assert.ok(!text.includes('m-trace'), `${lang} ${plan}`);
   }
 });
-ok('the skill gets references/parts/local.md (ja and en) and a line in its list; nothing else in the skill changes', () => {
-  const ja = Object.keys(b.files).find((f) => f.endsWith('references/parts/local.md')), en = Object.keys(b.files).find((f) => f.endsWith('references/parts/en/local.md'));
+ok('the skill gets references/parts/local.md (ja and en) with the parts library\'s m-trace and a line in its list; m-trace is named nowhere else', () => {
+  const ja = Object.keys(a.files).find((f) => f.endsWith('references/parts/local.md')), en = Object.keys(a.files).find((f) => f.endsWith('references/parts/en/local.md'));
   assert.ok(ja && en);
-  assert.match(b.files[ja], /ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI/);
-  assert.match(b.files[ja], /### `<m-trace>`\n\nローカルのトレーサーの出力/);
-  assert.match(b.files[en], /Local \(CLI\) only parts/);
+  assert.match(a.files[ja], /ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI/);
+  assert.match(a.files[ja], /### `<m-trace>`\n\n/);
+  assert.match(a.files[en], /Local \(CLI\) only parts/);
+  assert.match(a.files[en], /### `<m-trace>`\n\n/);
+  for (const f of [ja, en]) assert.ok(a.files[f].includes('<m-trace>') && b.files[f].includes('<m-trace>') && b.files[f].includes('<m-tracex>') && !a.files[f].includes('<m-tracex>'), f);
+  assert.match(b.files[ja], /### `<m-tracex>`\n\nローカルのトレーサーの出力/);
   assert.match(b.files[en], /Shows a local tracer's output/);
-  const added = Object.keys(b.files).filter((f) => !(f in a.files)).sort();
-  assert.deepEqual(added, [ja, en].sort());
-  const changed = Object.keys(a.files).filter((f) => a.files[f] !== b.files[f]);
-  for (const f of changed) {
-    assert.match(f, /SKILL(\.en)?\.md$/, f);
-    const plus = b.files[f].split('\n').filter((l) => !a.files[f].split('\n').includes(l));
-    assert.ok(plus.length === 1 && /\[local\]\(references\/parts\/(en\/)?local\.md\)/.test(plus[0]), f + ': ' + plus.join(' | '));
-  }
-});
-ok('without a local part nothing is written for it', () => {
-  assert.ok(!Object.keys(a.files).some((f) => f.endsWith('/local.md')));
+  assert.deepEqual(Object.keys(b.files).sort(), Object.keys(a.files).sort());
+  for (const f of Object.keys(a.files).filter((x) => x !== ja && x !== en)) assert.ok(!/m-trace(?![a-z0-9-])/.test(a.files[f]), f + ' names m-trace');
+  for (const f of Object.keys(a.files).filter((x) => /skills\/make\/SKILL(\.en)?\.md$/.test(x))) assert.match(a.files[f], /\[local\]\(references\/parts\/(en\/)?local\.md\)/, f);
 });
 console.log(`local-tier: ${n} ok`);

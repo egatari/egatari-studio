@@ -20,10 +20,10 @@ export const IN_EDITOR = Object.freeze([
   'refVoice', 'audioStale', 'narrPlaceholder', 'templateText', 'readingExpr', 'readingSeveral', 'readingGap',
   // 体裁の検査（kit/core/layout-scan.mjs。bodyBottom・bodyRight は EDITOR_ALIAS）
   'titleLong', 'titleLongEn', 'titleColon', 'tateTitle', 'conclLong', 'conclLongEn', 'conclOverflow', 'tateBodyHead', 'bodyConclCol', 'bodyLeft',
-  'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'textOffSlide', 'textOverlap', 'cellWordBreak',
+  'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'colOverflow', 'textOffSlide', 'textOverlap', 'cellWordBreak',
   'secHeading', 'textContrast', 'cardsHint',
   // 描いた図の形（kit/core/geometry-check.mjs。R-geometry）
-  'geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoTateSlides',
+  'geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoBadMarkName', 'geoClippedStroke', 'geoTateSlides',
   // プレビューの中（app/frame-shim.js）
   'themeMetricsDrift', 'metricsFontLoad', 'fontNotEmbedded', 'desuMasu', 'rawMath', 'katexError', 'punctMixed', 'narrRecheck',
   'linkEmpty', 'linkUnknown', 'linkNumberRange', 'linkNoConcl', 'linkStepRange', 'linkBadStep', 'linkNumber', 'linkNoId', 'linkCount',

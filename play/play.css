@@ -33,6 +33,20 @@ html[data-framed] #framed { display: block !important; padding: 16px; }
 @media (prefers-color-scheme: dark) { #home .logo-light { display: none; } #home .logo-dark { display: inline; } }
 #lesson-info { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
 #lesson-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+/* the credit line under the title (spec §3.6.1 edits): one line, cut with … ; it opens the full list (#cred-box) */
+#lesson-names { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; }
+#lesson-names #lesson-title { max-width: 100%; }
+#lesson-credit { max-width: 100%; min-height: 24px; font-size: 0.8125rem; color: var(--muted); text-align: left;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a phone: up to two lines, so that 編集：… is not cut away behind the creators */
+@media (max-width: 599px) { #lesson-credit { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  #lesson-credit .cred-part { display: inline-block; max-width: 100%; text-decoration: underline; } }
+#cred-box { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
+#cred-box::backdrop { background: rgba(0, 0, 0, 0.5); }
+#cred-lesson { margin: 8px 0; font-weight: 600; }
+#cred-list { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; }
+#cred-list dt { color: var(--muted); }
+#cred-list dd { margin: 0; overflow-wrap: anywhere; }
 body.playing #home .name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .badge { flex: none; font-size: 0.75rem; border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; color: var(--muted); white-space: nowrap; }
 .bar-buttons { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: none; }
@@ -87,7 +101,9 @@ body.playing { height: 100dvh; min-height: 0; overflow: hidden; }
 #live { position: absolute; overflow: auto; background: var(--panel); z-index: 2; }
 #live:focus { outline: none; }
 body.headless #bar { display: none; }
-#live-start { position: absolute; inset: 0; overflow: auto; padding: 16px; max-width: 640px; margin: 0 auto; }
+/* the join screen covers the stage with the page's own background (it lay on the dark stage, unreadable in the light theme: axe color-contrast,
+   tools/test-viewer-a11y.mjs); its text column stays 640px wide in the middle */
+#live-start { position: absolute; inset: 0; z-index: 1; overflow: auto; background: var(--bg); padding: 16px max(16px, calc((100% - 640px) / 2)); }
 #live-start h2 { font-size: 1.25rem; margin: 8px 0 12px; }
 #live-poll-view { display: none; }
 #b-poll-back, #b-strip-close, #b-poll { display: none; }
@@ -230,3 +246,19 @@ span.m-q { flex: 1; }
 .m-danger { color: var(--err); }
 button.pri.danger { background: var(--err); border-color: var(--err); color: #fff; }
 #m-confirm .row { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* handwriting (handoff #27, play/ink.mjs): the slide and the memo area are one surface; the tools are icons with names */
+.ink-surf, .ink-live { position: absolute; z-index: 5; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ink-live { pointer-events: none; z-index: 6; }
+.ink-bar { position: absolute; z-index: 7; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: calc(100vw - 16px); overflow-x: auto; }
+.ink-bar button { min-width: 40px; min-height: 40px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; }
+.ink-bar button[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.ink-bar button:disabled { opacity: .45; }
+.ink-sep { width: 1px; align-self: stretch; margin: 4px 2px; background: var(--line); }
+.ink-dot { width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--line); }
+.ink-k { background: #1f1f1f; } .ink-r { background: #d22a3a; } .ink-b { background: #1f5fbf; }
+/* the swatches show the shade the pen paints on this slide (dark slide: the light shades, play/ink.mjs SHADE) */
+.ink-bar[data-tone=dark] .ink-k { background: #f2f2f2; } .ink-bar[data-tone=dark] .ink-r { background: #ff7b88; } .ink-bar[data-tone=dark] .ink-b { background: #7db8ff; }
+/* a phone: the memo area would be too small to write in, and the header needs the room (the markup hint) */
+@media (max-width: 599px) { #b-ink { display: none; } }

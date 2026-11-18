@@ -118,9 +118,15 @@ const specSnapshot = (() => { try { return JSON.parse(fs.readFileSync(rel(...FOR
 // アプリを組んだ commit を渡す（中身が出した版と違えば "+dev.<commit>"。git がなければ "+dev"）
 for (const f of [PLAYER_JSON, PLAYER_LOCK, ...PLAYER_FILES]) text['/repo/' + f] = fs.readFileSync(rel(...f.split('/')), 'utf8');
 const commit = (() => { const r = spawnSync('git', ['-C', ROOT, 'rev-parse', '--short=7', 'HEAD'], { encoding: 'utf8' }); return r.status === 0 && /^[0-9a-f]{4,40}$/.test(r.stdout.trim()) ? r.stdout.trim() : ''; })();
-const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples, exampleSections: examples.length ? EXAMPLE_SECTIONS : [], exampleGrouping: EXAMPLE_GROUPING };
+// 新規作成 ③ のテーマの見本の絵（app/theme-thumbs/。tools/theme-thumbs.mjs が作る）：配信版は dist/theme-thumbs/ に写して相対の URL、1 ファイル版は data: URL（16 枚で約 0.3 MB）
+const THEME_THUMBS = rel('app', 'theme-thumbs');
+const themeThumbFiles = fs.existsSync(path.join(THEME_THUMBS, 'index.json')) ? Object.keys(JSON.parse(fs.readFileSync(path.join(THEME_THUMBS, 'index.json'), 'utf8')).themes || {})
+  .flatMap((t) => ['cover', 'body'].map((k) => [t, k, `${t}-${k}.webp`])).filter(([, , f]) => fs.existsSync(path.join(THEME_THUMBS, f))) : [];
+const themeThumbsOf = (href) => { const o = {}; for (const [t, k, f] of themeThumbFiles) (o[t] ||= {})[k] = href(f); return o; };
+const resources = { version, commit, specSnapshot, text, b64, lazy, hints, themes, components, yomi, examples, exampleSections: examples.length ? EXAMPLE_SECTIONS : [], exampleGrouping: EXAMPLE_GROUPING,
+  themeThumbs: themeThumbsOf((f) => 'theme-thumbs/' + f) };
 const hostedOnly = (v) => v.startsWith('/repo/fonts/') && !SINGLE_FONTS.some((p) => v.startsWith(`/repo/fonts/${p}/`));
-const resourcesSingle = { ...resources, lazyJs: null, makeSkillZips: Object.fromEntries(Object.entries(makeSkillZips).map(([lang, bytes]) => [lang, bytes.toString('base64')])), text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
+const resourcesSingle = { ...resources, lazyJs: null, themeThumbs: themeThumbsOf((f) => 'data:image/webp;base64,' + fs.readFileSync(path.join(THEME_THUMBS, f)).toString('base64')), makeSkillZips: Object.fromEntries(Object.entries(makeSkillZips).map(([lang, bytes]) => [lang, bytes.toString('base64')])), text: Object.fromEntries(Object.entries(text).filter(([v]) => !hostedOnly(v))), lazy: lazy.filter((v) => !hostedOnly(v)) };
 
 // ---------------------------------------------------------------- 組む（esbuild）
 // 持ち運べる 1 ファイルを読む Worker（app/portable-worker.js）：先に 1 本にまとめ、main.js に文字列（virtual:portable-worker）で入れる。
@@ -227,7 +233,7 @@ const ED = OUT;
 fs.mkdirSync(ED, { recursive: true });
 for (const f of fs.readdirSync(ED)) if (/^egatari-make-.*-(ja|en)\.zip$/.test(f)) fs.rmSync(path.join(ED, f));
 for (const [lang, bytes] of Object.entries(makeSkillZips)) fs.writeFileSync(path.join(ED, `egatari-make-${version}-${lang}.zip`), bytes);
-for (const f of ['index.html', 'app.js', 'article-tools.js', 'font-subset.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
+for (const f of ['index.html', 'app.js', 'article-tools.js', 'font-subset.js', 'app.css', 'fonts', 'editor', 'lab', PARTS_DIR, 'vendor', 'LICENSE.txt', 'NOTICE.txt', '.nojekyll', 'manifest.webmanifest', 'theme-thumbs', 'version-notice.js', 'versions.json', 'favicon.svg', ...ICON_FILES]) fs.rmSync(path.join(ED, f), { recursive: true, force: true });
 fs.writeFileSync(path.join(ED, 'app.js'), NOTICE + js);
 fs.writeFileSync(path.join(ED, 'app.css'), css);
 fs.writeFileSync(path.join(ED, 'article-tools.js'), articleJs);
@@ -245,6 +251,8 @@ fs.writeFileSync(path.join(ED, 'index.html'), html.replace('<!--APP_ICONS-->', (
 for (const f of [...ICON_FILES, 'favicon.svg']) fs.copyFileSync(LOGO(f), path.join(ED, f));
 fs.writeFileSync(path.join(ED, 'manifest.webmanifest'), JSON.stringify(MANIFEST, null, 2) + '\n');
 fs.writeFileSync(path.join(ED, '.nojekyll'), '');
+fs.mkdirSync(path.join(ED, 'theme-thumbs'), { recursive: true });
+for (const [, , f] of themeThumbFiles) fs.copyFileSync(path.join(THEME_THUMBS, f), path.join(ED, 'theme-thumbs', f));
 let fontBytes = 0;
 for (const [v, f] of Object.entries(lazyFiles)) {
   const to = path.join(ED, v.replace(/^\/repo\//, ''));

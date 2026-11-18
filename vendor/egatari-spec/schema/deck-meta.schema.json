@@ -74,6 +74,21 @@
         "type": "string"
       }
     },
+    "edits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "by": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
     "offer": {
       "type": "object",
       "properties": {

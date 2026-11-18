@@ -5,7 +5,9 @@
 //   scanLesson(text) → {ok: true, kind: 'editable' | 'play-only', meta, live, liveFrom}
 //                    | {ok: false, error: 'not-egatari' | 'parse' | 'too-complex'}
 //     kind      'editable' when the archive layer (the index) is present (a portable file), else 'play-only' (spec §2, §3.7)
-//     meta      {title, lang, docId, portable} from deck-meta, and sourceSha256 from the archive index (portable files only)
+//     meta      {title, lang, docId, portable} from deck-meta, and sourceSha256 from the archive index (portable files only);
+//               credits {creators, edits, copyright, license} from deck-meta, else the index metadata (spec §3.6, §3.6.1 edits, §7.3).
+//               The Viewer shows them itself, so that edits show whatever player the file carries (a tier A save keeps an old player)
 //     live      extensions.live as written in the file (deck-extensions in a play-only file, the index in an editable one), or null.
 //               The caller validates it (kit/core/live-policy.mjs); nothing here trusts it
 //     liveFrom  'deck-extensions' | 'index' | null
@@ -16,6 +18,17 @@ import { FORMAT } from '../kit/core/format.mjs';
 const IDS = new Set(['deck-meta', 'deck-extensions', FORMAT.INDEX_ID]);
 const MAX = { 'deck-meta': 256 * 1024, 'deck-extensions': 256 * 1024, [FORMAT.INDEX_ID]: 4 * 1024 * 1024 };
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const text = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+
+// Credits as the player shows them (kit/tools.js rightsHtml): deck-meta first (play-only files have no index), then the index metadata.
+// edits: [{by, note}] oldest first (spec §3.6.1); an entry without by stays (it says the lesson was edited, naming no one). At most 50 of each.
+export function credits(dm, md) {
+  const pick = (k) => (Object.prototype.hasOwnProperty.call(dm, k) ? dm[k] : md[k]);
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const creators = arr(pick('creators')).map((x) => text(x, 300)).filter(Boolean).slice(0, 50);
+  const edits = arr(pick('edits')).filter(isObj).slice(0, 50).map((x) => ({ by: text(x.by, 300), note: text(x.note, 300) }));
+  return { creators, edits, copyright: text(pick('copyright'), 300), license: text(pick('license'), 300) };
+}
 
 export function scanLesson(text) {
   let doc;
@@ -52,6 +65,7 @@ export function scanLesson(text) {
   const str = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '');
   const meta = { title: str(dm.title, 300), lang: str(dm.lang, 35), docId: str(dm.docId, 100), portable: dm.portable === true,
     sourceSha256: index && /^[0-9a-f]{64}$/.test(index.sourceSha256 || '') ? index.sourceSha256 : '' };   // the lesson's version (play/markup.mjs madeOn)
+  meta.credits = credits(dm, index && isObj(index.metadata) ? index.metadata : {});
   let live = null, liveFrom = null;
   const ext = json('deck-extensions', 'application/json');
   if (ext && isObj(ext.live)) { live = ext.live; liveFrom = 'deck-extensions'; }

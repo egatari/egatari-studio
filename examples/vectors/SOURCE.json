@@ -1,0 +1,18 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
+  "path": "lessons/vectors",
+  "files": {
+    "SOURCE.md": "cbb44e5ad0adb2bedf2de5025dd145960634a0df4c23bc2783d87c970bc44c7c",
+    "data/basis.json": "02e1ec7c5161d3f884c1151bb0d4a3fde427aaa6e097d773ab32a1b6767f29d7",
+    "data/matrix.json": "36ab59dbde2ebe9cb2848dd4e8cfa9bd15a05366965a2f81f344ecb0ca4ed382",
+    "data/proj_dot.json": "736a134ce7d688789d19fc0ec6832d60ba8fc1a25769f1e6bf9c2b19bb6ce8f8",
+    "data/sum_diff.json": "b3aa328b6b6d8b13fe512e983e4f48cbd5cdf55cd4d5dd6eff5775eef385fdff",
+    "deck.html": "4df3b6fbc9f7b82289ae4a62e9d9f518286a89e91363cd34bfcaf4289edce96a",
+    "egatari.json": "233b95852df9683422c688b8089787f9034e65056cb0139c6055404ddbe5ccd6",
+    "narration.md": "6188da078310929cc7b49bc9f36cc36f7b510561257789382deb730365dd882b",
+    "sample.json": "46a578929a85cf6834a596a244eed9b065d5bc422655828742bc8c0afa61e9a5",
+    "scripts/make_data.py": "c1a5ca05d7d79f20e9082e68356e37ad9ab685508a9ba4eddbcac365d07257d4"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

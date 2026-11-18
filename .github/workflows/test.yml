@@ -5,6 +5,9 @@ name: test
 # Other runs (branch dispatches, pull requests) run the platform-sensitive set there (npm test -- --platform: builds, checks, unit tests, paths,
 # fonts, WebKit, npm pack, and the clean environment), in one job. The condition is written out where it is used (jobs.<id>.if and strategy cannot read env):
 #   github.event_name == 'push' || inputs.full
+# On macOS, every run except a tag push also leaves out the heavy OS-independent tests (npm test -- --skip-os-independent: the tests marked
+# "// test-all: os-independent", which look only at file contents and generated output; now test-pack-catalogue). Linux and Windows run them every time,
+# and macOS runs them for v* tags (release and rc), so a tag still gets every test on all three OSes. Condition: github.ref_type != 'tag'
 on:
   push:
     branches: [main]
@@ -117,6 +120,14 @@ jobs:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           # 900 s was too tight for test-app here: 760 s median and up to 876 s in 2026-11-03/04, and run 41957733017 reached 900 s while still progressing
           TEST_STEP_TIMEOUT_S: '1200'
+          # TEST_TIMEOUT_SCALE 3 (handoff Issue #49): every wait's cap is 3x here, as on macOS (tools/wait-scale.mjs, Playwright's 30 s default in
+          # kit/browser.mjs; the step cap stays TEST_STEP_TIMEOUT_S). Windows is not slower on the whole (in 10 green runs of 2026-11-15..17 each
+          # step's median was the same as Linux's, ratio 1.00), but it stalls: of 1900 step runs under 120 s, 77 took over 10 s more than that
+          # step's median and 17 over 30 s more (Linux: 5 and 0). In 12 Windows-only failed attempts of 2026-11-15..17, 7 failures were a
+          # different test each time running out a 15 s, 30 s or 60 s wait for something that takes about 1 s (a page load, the editor's
+          # first load, the preview getting ready); they passed on rerun.
+          # The waits end when their condition holds, so a passing run is not slower
+          TEST_TIMEOUT_SCALE: '3'
         # --jobs 3 (backlog #156): see the test job
         run: npm test -- --jobs 3
       - name: Upload screenshots on failure
@@ -134,7 +145,7 @@ jobs:
           retention-days: 3
 
   # Tier 1 on macOS: a case-insensitive file system (APFS) and /var → /private/var temp paths, the macOS fonts, and WebKit (Playwright's, closest to Safari). Uses the preinstalled Google Chrome.
-  # Full runs (see the top) run all of npm test here; other runs the platform-sensitive set (npm test -- --platform, 94 of 157 steps: 11.5 min against 64-69 min for all, run 41957733017), then tools/clean-env.mjs
+  # Full runs (see the top) run all of npm test here (without the OS-independent tests unless the run is for a tag); other runs the platform-sensitive set (npm test -- --platform, 94 of 157 steps: 11.5 min against 64-69 min for all, run 41957733017), then tools/clean-env.mjs
   # (the clean job's macOS leg; test-npm-pack in the set is the pack job's), so a branch run asks for one macOS runner instead of three.
   # Why: on the 3-vCPU, 7 GB arm64 runner npm test took 37-89 min (median 62) in the 86 macOS jobs of 2026-11-03/04, and 33 of the 62 that finished failed, mostly in a different test each time;
   # macOS jobs also waited for a runner ("not acquired by Runner ... after multiple attempts" after 15-40 min, 7 jobs) and one runner lost contact mid-run (41795793989).
@@ -143,10 +154,13 @@ jobs:
   # (test-app 340-600 s → 1100-1300 s, test-pack-catalogue 200-330 s → 630-830 s; on the occasional 14 GB runner 390-450 s even when they overlapped).
   # One at a time, three full runs (41933828143, 41942340958, 41950024877) were green in 64-69 min, test-app 728-797 s; swap still grew by 0.7-1.1 GB while test-app ran
   # TEST_TIMEOUT_SCALE 3: every wait's cap (tools/wait-scale.mjs, Playwright's 30 s default in kit/browser.mjs, the 600 s step cap) is 3x here; the waits end
-  # when their condition holds, so a passing run is not slower. Linux and Windows keep the factor 1
+  # when their condition holds, so a passing run is not slower. Windows uses 3 too (see the windows job); Linux keeps the factor 1
   macos:
     runs-on: macos-latest
     # 2026-11-12: 120 for push/full (was 90): v0.6.11 suite growth (test-app 2/2 301→771 s) cut two full runs at 90 min with 2 steps left; back to 90 once the duplication in test-app is fixed (before v0.6.11-rc.1)
+    # v0.6.15 (handoff Issue #10): test-app is now 3 shards and branch/full runs skip test-pack-catalogue (--skip-os-independent, see the top).
+    # Measured full runs: 44159306371 76 min, but 44224344487 was cancelled at 90 min with 208 of ~210 steps done (a slower runner: test-app 384/428/535 s)
+    # -> 120 for push/full and tags (handoff Issue #10: 90 only if it fits)
     timeout-minutes: ${{ (github.event_name == 'push' || inputs.full) && 120 || 40 }}
     steps:
       - uses: actions/checkout@v7
@@ -161,12 +175,13 @@ jobs:
         # test-viewer-webkit, test-touch, test-book-css, test-fullscreen and test-print-backgrounds also run in WebKit when it is installed (they skip otherwise)
         run: npx playwright-core install webkit
       # (written as !full && '--platform' || '': an empty string after && is false and would always pick the second value)
-      - name: npm test${{ !(github.event_name == 'push' || inputs.full) && ' -- --platform' || '' }}
+      - name: npm test -- --jobs 2${{ !(github.event_name == 'push' || inputs.full) && ' --platform' || '' }}${{ github.ref_type != 'tag' && ' --skip-os-independent' || '' }}
         env:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           TEST_TIMEOUT_SCALE: '3'
           TEST_STEP_TIMEOUT_S: '1800'
-        run: npm test -- --jobs 2 ${{ !(github.event_name == 'push' || inputs.full) && '--platform' || '' }}
+        # --skip-os-independent except for a tag push (see the top)
+        run: npm test -- --jobs 2 ${{ !(github.event_name == 'push' || inputs.full) && '--platform' || '' }} ${{ github.ref_type != 'tag' && '--skip-os-independent' || '' }}
       - name: Clean environment (the clean job's macOS leg)
         # the same as the clean job: an empty HOME (so no Playwright browsers and no user theme folder) and no TTS server
         if: ${{ !(github.event_name == 'push' || inputs.full) }}

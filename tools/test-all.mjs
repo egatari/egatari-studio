@@ -1,9 +1,9 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
-//   node tools/test-all.mjs [--only 名前,名前] [--jobs N] [--verbose] [--list] [--help]
+//   node tools/test-all.mjs [--only 名前,名前] [--platform] [--skip-os-independent] [--jobs N] [--verbose] [--list] [--help]
 //   --help：使い方を出して終わる
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
-// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-particles-zero（m-particles を 0 × 0・幅 0・30 px にしても固まらない）・test-pack-catalogue（指示が出すパーツが新しい教材のカタログ 2 で組めて動く）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-audio（編集アプリのプレビューの音声）・test-pronounce（台本の欄の読み方のボタン）・test-app-theme-workshop（新規作成 ③ のテーマを作る画面）・test-app-earlier（旧形式のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-app-mp4（動画（MP4）にする…の窓）・test-app-drafts（保存していない変更をブラウザに残して復元する）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）・test-embed（埋め込みの命令と知らせ。Player P8）・test-presenter-next（発表者ビューの「次のスライド」と、先のステップを薄く見せる「今の画面」）
+// 2. 単体の検査：tools/test-*.mjs のうち、先頭の 40 行に「// test-all: unit」の行があるもの（名前の順。引数なし。ブラウザのいらないもの）・i18n pairs（組が古くなっていないかの知らせ。知らせだけで失敗にしない）・components（部品庫の写しと固定）・themes-lock（同梱のテーマの版の固定）・catalog・katex ranges・part thumbs（作ったファイルの --check）・theme thumbs（新規作成 ③ のテーマの見本の絵。テーマが変わったら知らせるだけ）・changelog（断片の書き方）・check（3 つとも、エラー 0）・smoke・test-components・test-tools・test-controls・test-preview（先のステップを薄く見せる・部品の ctx・? のファイルの版）・test-message-sources（postMessage の送り手）・test-touch（タッチ画面の操作の帯。WebKit があれば WebKit でも）・test-bar-hint（開いたときの帯・出し方の 1 行・取っ手）・test-line-break（日本語の行頭禁則）・test-autoplay・test-blackout（暗転）・test-links（スライドへのリンク）・test-dev-server・test-edit-modes（発表の道具と編集モード）・test-comment-shots（コメントの画像）・test-ink-comments（マーカー）・test-sheet（コンタクトシート）・test-security（守り）・test-a11y・test-mount-hidden（隠れた iframe で起動して後で出す）・test-parts-host（部品庫 2.0 の受け口）・test-particles-zero（m-particles を 0 × 0・幅 0・30 px にしても固まらない）・test-pack-catalogue（指示が出すパーツが新しい教材のカタログ 2 で組めて動く）・test-step-reset（手で変えた部品の状態を段階に入るたびに戻す）・test-capture（画面を撮る道具）・test-portable（持ち運べる 1 ファイル）・test-tier-a（段 A の編集）・test-attachments（添付）・test-ref-voice（参照音声を教材に入れない）・test-app（編集アプリ）・test-app-audio（編集アプリのプレビューの音声）・test-app-theme-thumbs（新規作成 ③ のテーマの見本の絵）・test-pronounce（台本の欄の読み方のボタン）・test-app-theme-workshop（新規作成 ③ のテーマを作る画面）・test-app-earlier（旧形式のファイル）・test-app-player-change（保存でプレーヤーが変わる知らせ）・test-app-exported-marker（手で書き換えた書き出しの印）・test-app-save-rebuild（組み直す保存の確かめとわけ）・test-app-mp4（動画（MP4）にする…の窓）・test-app-copyshot（品質チェックのスライドの画像と確認の依頼のコピー）・test-app-drafts（保存していない変更をブラウザに残して復元する）・test-input-focus（キーがスライドに届くこと）・test-presenter-exit（発表者ビューから抜けること）・test-embed（埋め込みの命令と知らせ。Player P8）・test-presenter-next（発表者ビューの「次のスライド」と、先のステップを薄く見せる「今の画面」）
 // 3. npm run new の雛形（ja・en）を作って組み、check でエラー 0。npm の包み（test-npm-pack）
 // どれか 1 つでも失敗すれば終了コード 1。各テストの出力は失敗したものだけ全部見せる
 // tools/test-*.mjs はどれも、単体の印（test-all: unit）があるか、下の段の引数に出てくるか、「// test-all: part of <段>」（ほかの試験が読み込む）の
@@ -17,6 +17,8 @@
 // --platform：OS に左右されるところだけを走らせる（CI の macOS の既定。.github/workflows/test.yml）：ブラウザの試験でない段（組み立て・品質チェック・
 //   作ったファイルの --check・単体の検査）と、先頭の 40 行に「// test-all: platform」の行がある試験（パス・file:// の URL・字体と字の組み方・
 //   WebKit・npm の包み）。ほかの試験はブラウザの中の振る舞いを見るので、Linux と Windows の全部の試験で足りる
+// --skip-os-independent：先頭の 40 行に「// test-all: os-independent」の行がある試験（ファイルの中身や作ったものだけを確かめ、OS で結果が変わらない重い段）を外す。
+//   CI の macOS で、タグ（v*）の push でない実行が付ける（.github/workflows/test.yml）。Linux と Windows は毎回走らせ、macOS ではタグの実行だけで走らせる
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -31,10 +33,14 @@ const JOBS_MAX = 6;
 // これより少ないメモリ（GiB）の機械では、メモリを多く使う段どうしを重ねない（下の HEAVY）
 const MEM_HEAVY_GIB = 12;
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--jobs N] [--verbose] [--list]
-  --only name,name  run only these steps (and the builds they need); "test-components" and "test-app" select both halves
+  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--skip-os-independent] [--jobs N] [--verbose] [--list]
+  --only name,name  run only these steps (and the builds they need); "test-components" and "test-app" select all their shards
   --platform        run only the platform-sensitive steps: every step that is not a browser test (builds, checks,
                     generated-file checks, unit tests) and the tests marked "// test-all: platform" (paths, fonts, WebKit, npm pack)
+  --skip-os-independent
+                    leave out the tests marked "// test-all: os-independent": heavy steps whose result depends only on file
+                    contents and generated output, not on the OS (CI's macOS job sets it except for a v* tag push;
+                    Linux and Windows run them every time)
   --jobs N          run up to N steps at once, longest first (default: CPUs - 1, at most ${JOBS_MAX}); steps marked
                     "// test-all: serial" run last, one at a time. --jobs 1 runs the steps in table order
   --verbose         stream every step's output (also when CI is set)
@@ -49,6 +55,7 @@ const oi = args.indexOf('--only');
 if (oi >= 0 && !(args[oi + 1] && !args[oi + 1].startsWith('--'))) { console.error('test-all: --only needs step names (name,name); --list prints them'); process.exit(2); }
 const only = oi >= 0 ? new Set(args[oi + 1].split(',')) : null;
 const platformOnly = args.includes('--platform');
+const skipOsIndependent = args.includes('--skip-os-independent');
 const verbose = args.includes('--verbose') || !!process.env.CI;
 const ji = args.indexOf('--jobs');
 const jobs = ji >= 0 ? Number(args[ji + 1]) : Math.max(1, Math.min(JOBS_MAX, (os.availableParallelism ? os.availableParallelism() : os.cpus().length) - 1));
@@ -72,6 +79,8 @@ const markOf = (f) => { const m = head40(f).match(MARK); return m ? m[1] : null;
 const SERIAL = /^\/\/ test-all: serial\b/m;
 // OS に左右される試験の印（--platform で走らせる）
 const PLATFORM = /^\/\/ test-all: platform\b/m;
+// OS で結果の変わらない重い試験の印（--skip-os-independent で外す。CI の macOS のタグでない実行）
+const OS_INDEPENDENT = /^\/\/ test-all: os-independent\b/m;
 const testFiles = fs.readdirSync(rel('tools')).filter((f) => /^test-.+\.mjs$/.test(f) && f !== 'test-all.mjs').sort();
 const unit = testFiles.filter((f) => markOf(f) === 'unit').map((f) => [f.replace(/\.mjs$/, ''), ['tools/' + f]]);
 const steps = [
@@ -95,6 +104,8 @@ const steps = [
   ['catalog', ['tools/catalog.mjs', '--check']],
   ['katex ranges', ['tools/katex-ranges.mjs', '--check']],
   ['part thumbs', ['tools/part-thumbs.mjs', '--check']],
+  // 新規作成 ③ のテーマの見本の絵（app/theme-thumbs/）：絵が記録のとおりか（違えば失敗）。テーマが絵を作った後に変わっていれば知らせるだけ（終了コードは 0）
+  ['theme thumbs', ['tools/theme-thumbs.mjs', '--check']],
   // CHANGELOG の断片（changes/*.md）の書き方
   ['changelog', ['tools/changelog.mjs', '--check']],
   ['build minimal', ['kit/build.mjs', 'examples/minimal/deck.html']],
@@ -137,6 +148,7 @@ const steps = [
   ['test-comment-shots', ['tools/test-comment-shots.mjs', path.join(tmp, 'comment-shots')]],
   // マーカー（#70）：編集モードのコメントのペン → comments.json の stroke → 重ね → comment-shots、書き出しにコメントが入らないこと
   ['test-ink-comments', ['tools/test-ink-comments.mjs', path.join(tmp, 'ink-comments')]],
+  ['test-stroke-part', ['tools/test-stroke-part.mjs']],
   ['test-sheet', ['tools/test-sheet.mjs', path.join(tmp, 'sheet')]],
   // 守り：プレビューの決まり（CSP）が、デッキの文書のどの細工よりも先に効くこと（編集アプリと同じ決まりのページで）
   ['test-security', ['tools/test-security.mjs']],
@@ -180,17 +192,31 @@ const steps = [
   ['test-viewer-webkit', ['tools/test-viewer-webkit.mjs', path.join(tmp, 'viewer-webkit')]],
   // Viewer のマークアップ（本の書き込み・暗記）：枠の中の層、ページの側の検査（形・上限・docId）、共有の端末、鍵盤、試験の形の偽の頼み
   ['test-viewer-markup', ['tools/test-viewer-markup.mjs', path.join(tmp, 'viewer-markup')]],
+  // Viewer の作成と編集の行（spec §3.6.1 edits）：古いプレーヤー＋段 A で足した edits・新しいプレーヤー・edits なし。一覧のダイアログ、英語、390px
+  ['test-viewer-credits', ['tools/test-viewer-credits.mjs', path.join(tmp, 'viewer-credits')]],
+  // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-credits-webkit', ['tools/test-viewer-credits.mjs', path.join(tmp, 'viewer-credits-webkit'), '--webkit']],
+  // Viewer の手書き（スライドとメモ欄、play/ink.mjs）：枠の高さ・道具の名前・メモ欄の地・3 色・消しゴムと取り消し・スライドごとの保存・指・共有の端末
+  ['test-viewer-ink', ['tools/test-viewer-ink.mjs', path.join(tmp, 'viewer-ink')]],
+  // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-ink-webkit', ['tools/test-viewer-ink.mjs', path.join(tmp, 'viewer-ink-webkit'), '--webkit']],
   // サイトのプレーヤー（play/site-player.mjs、tools/build-site-player.mjs）：見出しなしの置き場所で、lock との照合・opaque な枠・リンクの箱・枠の中を断る
   ['test-site-player', ['tools/test-site-player.mjs', path.join(tmp, 'site-player')]],
+  // Viewer のページの WCAG 2.2 AA の自動の検査（axe-core）：最初の画面・教材・本・マークアップ・ダイアログ・ライブの参加の画面・作成と編集。教材の枠の中は一覧にするだけ
+  ['test-viewer-a11y', ['tools/test-viewer-a11y.mjs', path.join(tmp, 'viewer-a11y')]],
+  // 同じ検査を WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-a11y-webkit', ['tools/test-viewer-a11y.mjs', path.join(tmp, 'viewer-a11y-webkit'), '--webkit']],
   // 全画面（f・帯の「全画面」）：Viewer のページが枠そのものを全画面にし状態を教材に戻す・教材だけでは全画面にできない・要素の全画面がない所（iPhone）で
   // ボタンを出さない・1 ファイルの接頭辞付きの API と断られたときの知らせ。Chromium と WebKit（なければ WebKit の分は skip）
   ['test-fullscreen', ['tools/test-fullscreen.mjs', path.join(tmp, 'fullscreen')]],
   // 編集アプリ（app/）：dist/ を組んで配り、OPFS のフォルダと持ち運べる 1 ファイルで編集・保存・書き出しなどを確かめる
-  // 編集アプリ（サンプルが 6 つになって、ubuntu の CI で 1 段の上限 900 秒の際の 870〜900 秒になった）は、前半（2〜10d）と後半（10c〜13b）の 2 段に分ける
-  // （--only test-app で両方。tools/test-app.mjs の --part）
-  ...[1, 2].map((i) => [`test-app ${i}/2`, ['tools/test-app.mjs', '--part', `${i}/2`, path.join(tmp, `app-${i}`)]]),
+  // 編集アプリ（サンプルが 6 つになって、ubuntu の CI で 1 段の上限 900 秒の際の 870〜900 秒になった）は 3 段に分ける：2〜10d と 11、10c・12・13・13b、12b・12c
+  // （2 段のときは後半が ubuntu で 519〜900 秒、macOS で 878 秒。handoff Issue #10）。--only test-app ですべて。tools/test-app.mjs の --part
+  ...[1, 2, 3].map((i) => [`test-app ${i}/3`, ['tools/test-app.mjs', '--part', `${i}/3`, path.join(tmp, `app-${i}`)]]),
   // 編集アプリのプレビューで音声が鳴ること（1 ファイル・発表者ビュー・展開したフォルダ）：時間に敏感なので test-app から分けた（serial。backlog #156）
   ['test-app-audio', ['tools/test-app-audio.mjs', path.join(tmp, 'app-audio')]],
+  // 新規作成 ③ のテーマの見本の絵（表紙と本文）：テーマごとの 2 枚と alt（ja・en）、大きく出す窓（Esc・×）、幅 390 px、1 ファイル版の data: URL
+  ['test-app-theme-thumbs', ['tools/test-app-theme-thumbs.mjs', path.join(tmp, 'app-theme-thumbs')]],
   // 読み方のボタン（台本の欄。#101）：ルビの欄・元に戻す・すべてに・辞書・聞く（声は差し替え）・英語
   ['test-pronounce', ['tools/test-pronounce.mjs', path.join(tmp, 'pronounce')]],
   // 新規作成 ③ のテーマを作る画面（「オリジナル」。#58 の表示の試作）：基調色からのプレビュー、通らない色の知らせと直す色、ロゴの色、表紙の背景画像、保存・ZIP ファイル、英語、幅 390
@@ -199,6 +225,10 @@ const steps = [
   ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
   // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
+  // 編集の記録 metadata.edits（format spec §3.6.1・§7.3）：組み立てが索引と deck-meta に写す・段 A の保存・プレーヤーのファイルの情報の「編集」・保存の前の「この教材の作成者ですか」
+  ['test-metadata-edits', ['tools/test-metadata-edits.mjs', path.join(tmp, 'metadata-edits')]],
+  // 古いプレーヤー（1.9.0 より前）のファイルに段 A で編集の記録を足すときの知らせと「プレーヤーを新しくして保存」（段 B。handoff #53）
+  ['test-app-old-player', ['tools/test-app-old-player.mjs', path.join(tmp, 'old-player')]],
   // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5）：あとで読み込む本の道具・本の表示・本文の欄・合っていないかもしれない組・本だけを組み直す保存・印刷
   ['test-app-book', ['tools/test-app-book.mjs', path.join(tmp, 'app-book')]],
   // 「このサンプルを参考に作る」（backlog #130）：サンプルを大きく再生する窓・新規作成に場面・見た目・パーツと構成・?from-sample=・コピーを開いて編集
@@ -213,6 +243,8 @@ const steps = [
   ['test-app-save-rebuild', ['tools/test-app-save-rebuild.mjs', path.join(tmp, 'save-rebuild')]],
   // 「エクスポート ▸」→「動画（MP4）にする…」（#131）：Colab の動画のノートを開く窓（ファイルの名前・音声の更新が必要な数・保存して／エクスポートして開く・止められたときのリンク。日本語と英語）
   ['test-app-mp4', ['tools/test-app-mp4.mjs', path.join(tmp, 'app-mp4')]],
+  // 品質チェックの「スライドの画像と確認の依頼をコピー」（backlog #227）：1 回の書き込みに PNG と依頼の文・押す前の位置のまま・画像を書けないブラウザと断られたときの保存とコピーの窓
+  ['test-app-copyshot', ['tools/test-app-copyshot.mjs', path.join(tmp, 'app-copyshot')]],
   // キーがスライドに届くこと（入力のフォーカス）：暗転・ペンとレーザー・外へのリンクの箱・編集アプリの枠からのキー・未保存の口述原稿・発表者ビューの「次」（組んだデッキと編集アプリ）
   ['test-viewer-input-browser', ['tools/test-viewer-input-browser.mjs']],
   ['test-input-focus', ['tools/test-input-focus.mjs', path.join(tmp, 'input-focus')]],
@@ -258,6 +290,8 @@ steps.push(
   ['test-geometry-check', ['tools/test-geometry-check.mjs']],
   // パーツの直下の <svg> が要素の箱から出る（partSvgOut、backlog #208）：作業フォルダのパーツの大きさのない <svg> は警告、大きさを付けた <svg> は出ない
   ['test-part-svg-out', ['tools/test-part-svg-out.mjs']],
+  // 試用の教材で品質チェックが見逃したもの（handoff Issue #40）：横並び（.cols）の列からはみ出す式（colOverflow）と、パーツが ctx.report("range", …) で知らせた範囲の外の値（compReport）
+  ['test-check-gaps', ['tools/test-check-gaps.mjs']],
   // 品質チェックのコマンド版と編集アプリが同じ指摘を出すこと（v0.6.9：英語の教材に残った $…$ の rawMath が編集アプリに出なかった）。
   // コマンド版だけのものは kit/core/check-parity.mjs の CLI_ONLY（わけを 1 行）。編集アプリを組んで配り、修正依頼に rawMath が入ることも
   ['test-check-parity', ['tools/test-check-parity.mjs', path.join(tmp, 'check-parity')]],
@@ -329,11 +363,12 @@ if (orphans.length) {
 // 時間の目安（秒）：長い段から先に始め、最後に長い段が 1 つだけ残らないように。windows-latest の main の CI（run 41300438072）の値。
 // 載っていない段は HINT_DEFAULT_S。目安が外れても結果は変わらない（終わる時刻が変わるだけ）
 const HINT_DEFAULT_S = 8;
+// test-app は 3 段に分けたとき（v0.6.15、handoff Issue #10）に、2 段の 222 秒ずつを手元で測った割合（1/3：139 秒・2/3：165 秒のうちサンプルを組むのが約 74 秒・3/3：113 秒。サンプルは同じ回のほかの段と分け合うので、組み済みとして）で分けた
 const HINT_S = {
-  'test-app 1/2': 222, 'test-app 2/2': 222, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
+  'test-app 1/3': 175, 'test-app 2/3': 130, 'test-app 3/3': 140, 'test-pack-catalogue': 300, 'test-components 1/2': 198, 'test-components 2/2': 189, 'test-step-reset': 137, 'test-play': 129, 'test-recording': 113, 'test-theme-switch': 107,
   'test-presenter-exit': 99, 'test-audio': 95, 'test-live': 73, 'test-attachments': 70, 'test-input-focus': 68, 'test-npm-pack': 66, 'test-tier-a': 63,
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
-  'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35, 'test-app-mp4': 30, 'test-render-audio': 35,
+  'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35, 'test-app-mp4': 30, 'test-app-copyshot': 30, 'test-render-audio': 35,
   'test-check-overflow': 33, 'test-check-parity': 30, 'test-dev-server': 33, 'test-a11y': 30, 'check kokugo': 30, 'test-parts-host': 30, 'test-links': 29, 'test-config-preserve': 28,
   'test-app-player-change': 27, 'test-bar-hint': 26, 'test-yanked': 26, 'test-llm': 26, 'test-live-results': 25, 'test-app-earlier': 24, 'test-exported-from': 24,
   'test-controls': 24, 'test-read-aloud': 24, 'test-file-shape': 23, 'test-viewer-input-browser': 21, 'test-extlinks': 21, 'test-shape': 20, 'test-ref-voice': 20,
@@ -355,7 +390,7 @@ const depsOf = (name, argv) => [...new Set([needs[name], ...(after[name] || []),
 // メモリを多く使う段（ブラウザのページをいくつも開く・子のプロセスで品質チェックを並べる）。macOS の CI（3 vCPU・7 GB）で 2 つが重なると、
 // どちらも 3 倍近く遅くなり（test-app 340 → 1300 s、test-pack-catalogue 200 → 830 s。14 GB の runner では重なっても 390〜450 s）、
 // 段の上限で止められ、runner が応答をなくして job ごと落ちたこともある（run 41795793989 の 2 回目）。少ないメモリの機械ではこれらを重ねない
-const HEAVY = new Set(['test-app 1/2', 'test-app 2/2', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
+const HEAVY = new Set(['test-app 1/3', 'test-app 2/3', 'test-app 3/3', 'test-pack-catalogue', 'test-components 1/2', 'test-components 2/2', 'test-step-reset']);
 const heavyAlone = process.env.TEST_HEAVY_ALONE ? process.env.TEST_HEAVY_ALONE === '1' : os.totalmem() < MEM_HEAVY_GIB * 2 ** 30;
 const lockOf = (name) => lock[name] || (heavyAlone && HEAVY.has(name) ? 'memory' : null);
 const isSerial = (name, argv) => argv.some((a) => /^tools\/test-.+\.mjs$/.test(a) && SERIAL.test(head40(a.slice('tools/'.length))));
@@ -400,10 +435,14 @@ const memTimer = setInterval(async () => {
   if (sw > mem.swapMax) { mem.swapMax = sw; mem.swapAt = names; }
 }, 5000);
 memTimer.unref();
+// メモリを多く使う段の V8 の上限（MB）。GitHub の macOS の runner（7 GB）では既定の上限が約 2 GB で、test-llm-guide-en は
+// パーツ集のバージョンごとに指示を組んで比べるので、2.14 を足して上限に当たった（CI 44155905265、ローカルの最大は約 3.7 GB の RSS）
+const HEAP_MB = { 'test-llm-guide-en': 3072 };
 function run(name, argv, stream = verbose) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     active.add(name);
+    if (HEAP_MB[name]) argv = [`--max-old-space-size=${HEAP_MB[name]}`, ...argv];
     const ch = spawn(process.execPath, argv, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
     let out = '';
     ch.stdout.on('data', (d) => { out += d; if (stream) process.stdout.write(d); });
@@ -413,10 +452,11 @@ function run(name, argv, stream = verbose) {
     ch.on('close', (code, sig) => { clearTimeout(timer); active.delete(name); resolve({ name, code: code ?? (sig ? 128 : 1), out, sec: (Date.now() - t0) / 1000 }); });
   });
 }
-// 選んだ段（--only・--platform）と、それが待つ段（組み立て。needs・after・引数の組んだデッキ）
+// 選んだ段（--only・--platform・--skip-os-independent）と、それが待つ段（組み立て。needs・after・引数の組んだデッキ）
 const testOf = (argv) => argv.find((a) => /^tools\/test-.+\.mjs$/.test(a));
 const isPlatform = (argv) => { const t = testOf(argv); return !t || (argv.length === 1 && markOf(t.slice('tools/'.length)) === 'unit') || PLATFORM.test(head40(t.slice('tools/'.length))); };
-const picked = (name, argv) => (!only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, ''))) && (!platformOnly || isPlatform(argv));
+const isOsIndependent = (argv) => { const t = testOf(argv); return !!t && OS_INDEPENDENT.test(head40(t.slice('tools/'.length))); };
+const picked = (name, argv) => (!only || only.has(name) || only.has(name.replace(/ \d+\/\d+$/, ''))) && (!platformOnly || isPlatform(argv)) && !(skipOsIndependent && isOsIndependent(argv));
 const chosen = new Set();
 const choose = (name, argv) => {
   if (chosen.has(name)) return;
@@ -425,7 +465,7 @@ const choose = (name, argv) => {
 };
 for (const [name, argv] of steps) if (picked(name, argv)) choose(name, argv);
 const selected = (name) => chosen.has(name);
-// --list（--only・--platform があれば、選んだ段だけ）
+// --list（--only・--platform・--skip-os-independent があれば、選んだ段だけ）
 if (args.includes('--list')) {
   for (const [name, argv] of steps) if (selected(name)) console.log(`${name}\tnode ${argv.map((a) => a.split(tmp).join('<tmp>')).join(' ')}`);
   if (!process.env.MOTION_TEST_ARTIFACTS) fs.rmSync(tmp, { recursive: true, force: true });

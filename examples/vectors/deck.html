@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>内積・正射影と 1 次変換</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-yvetsl">
+  <div class="venue">線形代数（大学の講義）</div>
+  <h1>内積・正射影と 1 次変換</h1>
+</section>
+
+<section class="slide" id="s-6xmah2">
+  <h2>ベクトルの和と差を矢印で描く</h2>
+  <div class="body">
+    <m-vector style="height:420px" aria-label="a = (3, 1) と b = (1, 2)。和 a + b = (4, 3) は b を a の先につないで求め、差 a − b = (2, −1) は b の先から a の先への矢印">
+      <script type="application/json">{"range": [-1, 5, -1, 4], "vectors": [{"id": "a", "v": [3, 1]}, {"id": "b", "v": [1, 2]}], "ops": [{"sum": ["a", "b"], "as": "c", "value": [4, 3]}, {"diff": ["a", "b"], "as": "d", "value": [2, -1]}]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>和は先につなぎ、差は b の先から a の先へ</span></div>
+</section>
+
+<section class="slide" id="s-n3pdxx">
+  <h2>内積は正射影の長さと b の長さの積</h2>
+  <div class="body">
+    <m-vector style="height:420px" aria-label="a = (1, 3) を b = (4, 2) の直線へ正射影すると (2, 1)。内積 a·b = 1×4 + 3×2 = 10">
+      <script type="application/json">{"range": [-1, 5, -1, 4], "vectors": [{"id": "a", "v": [1, 3]}, {"id": "b", "v": [4, 2]}], "ops": [{"proj": ["a", "b"], "value": [2, 1]}, {"dot": ["a", "b"], "value": 10}]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>a·b = 10 は、正射影の長さ √5 × b の長さ 2√5</span></div>
+</section>
+
+<section class="slide" id="s-2664md">
+  <h2>行列で平面を動かすと固有ベクトルは向きを保つ</h2>
+  <div class="body">
+    <m-vector style="height:420px" aria-label="行列 M = [[3, 1], [0, 2]] で格子と単位正方形を動かす。v = (1, 1) は (4, 2) へ。固有値は 3 と 2、固有ベクトルの向きは (1, 0) と (−1, 1)。行列式 6 は面積の倍率">
+      <script type="application/json">{"range": [-2, 5, -1, 4], "vectors": [{"id": "v", "v": [1, 1]}], "matrix": [[3, 1], [0, 2]], "show": ["grid", "unit", "eigen"]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>単位正方形の面積は、行列式の 6 倍になる</span></div>
+</section>
+
+<section class="slide" id="s-sp546x">
+  <h2>基底を取り替えて同じベクトルを読み直す</h2>
+  <div class="body">
+    <m-vector style="height:420px" aria-label="新しい基底 b1 = (1, 1)、b2 = (1, −1) で a = (3, 1) を読むと、a = 2b1 + 1b2">
+      <script type="application/json">{"range": [-1, 4, -2, 3], "vectors": [{"id": "a", "v": [3, 1]}], "basis": [[1, 1], [1, -1]]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>a = (3, 1) は、新しい基底では 2b₁ + b₂</span></div>
+</section>
+
+<section class="slide" id="s-ay44ea">
+  <h2>今日の 4 つの見方のまとめ</h2>
+  <div class="body">
+    <ul>
+      <li><span class="term">和と差</span>：矢印を先につなぐ、先から先へ引く</li>
+      <li><span class="term">内積</span>：正射影の長さ × もう一方の長さ。直交なら 0</li>
+      <li><span class="term">行列</span>：平面全体を動かす。固有ベクトルは向きを保ち、行列式は面積の倍率</li>
+      <li><span class="term">基底</span>：同じベクトルを、別の物差しで読み直す</li>
+    </ul>
+    <p class="note">図の値はパーツが計算し、scripts/make_data.py（numpy）の値と照らし合わせている</p>
+  </div>
+  <div class="concl"><span>どれも、矢印の向きと長さで考えられる</span></div>
+</section>
+
+</div>
+</body>
+</html>

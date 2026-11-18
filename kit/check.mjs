@@ -9,7 +9,7 @@
 //    ただし段階の状態は DECK.seek(i, k, Infinity) で作る（beforeprint の代わり）
 //    はみ出し・切れ・字の大きさ・字数は kit/core/layout-scan.mjs（編集アプリの品質チェックと同じ関数）。箱で切れる字・スライドの外に出る
 //    図の字・図の箱からはみ出す字・本文の外に置いた字は警告。わざと切るところは要素に data-clip（CLIP_ATTR）を付けて外す
-//    描いた図の形（パーツの印 data-part を測る：箱を通る線・字を横切る線・重なる字・箱の縁を越える字）は kit/core/geometry-check.mjs（R-geometry、警告。編集アプリと同じ関数）
+//    描いた図の形（パーツの印 data-part を測る：箱を通る線・字を横切る線・重なる字・箱の縁を越える字。data-within の図形が枠の外に出るかは全部のステップで）は kit/core/geometry-check.mjs（R-geometry、警告。編集アプリと同じ関数）
 //    本文の場所の限りはテーマの寸法の宣言（theme.json の metrics、contract §12）から導き、描いた箱が宣言と違えば themeMetricsDrift（警告、デッキに 1 回）。
 //    読めない宣言は themeMetricsInvalid（警告、デッキに 1 回）。同梱の字体が読み込めなければ測らずに metricsFontLoad（警告、デッキに 1 回）
 //    埋め込んだ字体のどれにもない見える字（スライド・台本・本）は fontNotCovered（情報、デッキに 1 回。端末の字体で出るだけで、v0.6.6 までと見え方は同じ。kit/core/font-coverage.mjs）
@@ -57,9 +57,8 @@ import { createHash } from 'node:crypto';
 import { readRegular, readHead, READ_LIMITS } from './bounded-read.mjs';
 import { audioState } from './core/audio-core.mjs';
 import { scanBalance } from './fill-scan.mjs';
-import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR } from './core/layout-scan.mjs';
-import { geometryScan, geometryTate } from './core/geometry-check.mjs';
-import { TEXT_BANDS, DEFAULT_BAND } from './core/text-band.mjs';
+import { layoutScan, metricsProbe, metricsFonts, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR, GEO_OPTS } from './core/layout-scan.mjs';
+import { geometryScan, geometrySteps, geometryTate } from './core/geometry-check.mjs';
 import { placeholderSteps, templateTextIn } from './core/template-text.mjs';
 import { legacyVocabulary } from './core/legacy-vocab.mjs';
 import { colorsOutsideVocabulary } from './core/color-vocab.mjs';
@@ -456,8 +455,8 @@ phase = 'A 体裁'; visited.add(phase);
 // 体裁の検査の関数（kit/core/layout-scan.mjs）をページに入れる（文字列で。デッキの決まり（CSP）に依らない）
 await page.evaluate(`window.__layoutScan = ${layoutScan}`);
 await page.evaluate(`window.__findRawMath = ${findRawMath}`);
-// 描いた図の形（kit/core/geometry-check.mjs、R-geometry。編集アプリの品質チェックと同じ関数）。字の範囲の表は値で渡す（kit/core/text-band.mjs）
-await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometryTate = ${geometryTate}`);
+// 描いた図の形（kit/core/geometry-check.mjs、R-geometry。編集アプリの品質チェックと同じ関数）。字の範囲の表と印の名前は値で渡す（kit/core/layout-scan.mjs の GEO_OPTS）
+await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometrySteps = ${geometrySteps}; window.__geometryTate = ${geometryTate}`);
 const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS, GEO]) => {
   const S = DECK.slides;
   const step0 = [], punct = [];
@@ -491,8 +490,15 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS, 
     const body = s.querySelector('.body');
     // はみ出し・切れ・字の大きさ・字数（kit/core/layout-scan.mjs。編集アプリの品質チェックと同じ関数）
     for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT, overlap: OVERLAP, metrics: METRICS })) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
-    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）
+    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）。枠の中の印の値が名前でない geoBadMarkName もここから
     for (const f of window.__geometryScan(s, GEO)) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
+    // 図形が枠の外に出る（geoOutsideFrame。handoff #46）・図形の線が図の端で欠ける（geoClippedStroke。handoff #52）：全部のステップで 1 回だけ歩いて測る
+    // （編集アプリと同じ関数）。測るものがないスライドは歩かない（null）。歩いた後は最後のステップに戻す
+    const stepped = window.__geometrySteps(s, GEO, (k) => DECK.seek(m.i, k, Infinity), window.__geometryScan);
+    if (stepped) {
+      for (const f of stepped) warns.push([f.code, f.a, f.sev]);
+      DECK.seek(m.i, m.max, Infinity);
+    }
     if (body) {
       const txt = (() => { const c = body.cloneNode(true); c.querySelectorAll('.katex-mathml').forEach((x) => x.remove()); document.body.appendChild(c); c.style.cssText = 'position:absolute;left:-99999px;width:' + body.clientWidth + 'px'; const r = c.innerText; c.remove(); return r; })();
       // 句読点はデッキの中でそろっていればよい（どちらにするかは元の原稿に合わせる）。数えて後で比べる
@@ -508,8 +514,8 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS, 
     if (issues.length) style.push({ i: m.i, issues });
     if (warns.length) soft.push({ i: m.i, issues: warns });
   });
-  return { step0, style, soft, punct, geoTate: window.__geometryTate(S) };
-}, [meta, JA, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR, themeInfo.metrics, { bands: TEXT_BANDS, dflt: DEFAULT_BAND }]);
+  return { step0, style, soft, punct, geoTate: window.__geometryTate(S, GEO) };
+}, [meta, JA, CLIP_ATTR, ANNOT_ATTR, OVERLAP_ATTR, themeInfo.metrics, GEO_OPTS]);
 
 // テーマの寸法の宣言と描いた箱（見えない見本のスライドで 1 回測る。宣言がなければ既定と比べる）
 // 測るのは同梱の字体が読み込まれてから（代わりの字体では測らない。読み込めなければ metricsFontLoad を知らせて測らない）

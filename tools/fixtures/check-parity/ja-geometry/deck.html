@@ -9,7 +9,15 @@
   パーツの印（data-part）を付けた SVG を手で書いたもの（印を付けるパーツライブラリ 2.8.0 はまだ入っていない）。
   geoEdgeThroughBox：線 a→c が箱 b の下の方を通る。geoLineOverLabel：線 b→d が a→c の字「確認」を横切る。
   geoLabelOverlap：箱 d の外の字「保管の場所」が点 p1 に重なる。geoLabelOutsideBox：箱 c の字が箱の左右にはみ出す。
+  geoOutsideFrame（handoff #46）：s-cell は分裂期の細胞（backlog #91 の DNA の再現）。染色体 chr-r がステップ 1（後期）だけ細胞の楕円の右へ出て、
+  ステップ 2（終期）では長くなった細胞の中に戻る（最後のステップだけを測ると見逃す）。s-cell-ok は対照：どのステップでも中にある。
+  前のステップの図は、次のステップの図が出たら隠す（下の style。.on は実行系が出たステップの要素に付ける）
+  geoClippedStroke（handoff #52、kouen P.13 の再現）：s-edge の外枠 outer が SVG の右端ぴったりにあり、線の太さの半分が欠ける。
+  左の箱（x=0、線の太さ 2）は欠ける量が 1px なので出ない。
 -->
+<style>
+  .mitosis .telo.on ~ .ana, .mitosis .telo.on ~ .round, .mitosis .telo.on ~ .meta, .mitosis .ana.on ~ .meta { display: none }
+</style>
 </head>
 <body>
 <div id="stage">
@@ -26,6 +34,7 @@
         <g data-part="edge" data-part-id="a→c" data-part-from="a" data-part-to="c"><line data-part-line x1="200" y1="125" x2="840" y2="125"/></g>
         <g data-part="edge" data-part-id="b→d" data-part-from="b" data-part-to="d"><line data-part-line x1="520" y1="140" x2="520" y2="300"/></g>
         <circle data-part="mark" data-part-id="p1" cx="800" cy="345" r="10"/>
+        <rect data-within="Cell" data-part-id="typo" x="1060" y="390" width="20" height="20"/>
       </g>
       <g style="fill:var(--fg)" text-anchor="middle">
         <text data-part="label" data-part-id="a" data-part-of="box" x="100" y="100">入口</text>
@@ -35,6 +44,61 @@
         <text data-part="label" data-part-id="a→c" data-part-of="edge" x="520" y="215">確認</text>
         <text data-part="label" data-part-id="d" data-part-of="box" data-part-at="outside" x="740" y="355">保管の場所</text>
       </g>
+    </svg>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-cell">
+  <h2>染色体が細胞の外に出る</h2>
+  <div class="body">
+    <svg class="mitosis" width="1100" height="420" viewBox="0 0 1100 420" aria-label="細胞分裂の 3 つの時期" style="fill:none;stroke:var(--fg);stroke-width:2">
+      <g class="telo" data-step="2">
+        <ellipse data-frame="cell" cx="550" cy="210" rx="380" ry="150"/>
+        <rect data-within="cell" data-part-id="chr-l" x="220" y="190" width="60" height="40" style="stroke-width:4"/>
+        <rect data-within="cell" data-part-id="chr-r" x="820" y="190" width="60" height="40" style="stroke-width:4"/>
+      </g>
+      <g class="ana" data-step="1">
+        <rect data-within="cell" data-part-id="chr-l" x="330" y="190" width="60" height="40" style="stroke-width:4"/>
+        <rect data-within="cell" data-part-id="chr-r" x="760" y="190" width="60" height="40" style="stroke-width:4"/>
+      </g>
+      <ellipse class="round" data-frame="cell" cx="550" cy="210" rx="240" ry="150"/>
+      <g class="meta">
+        <rect data-within="cell" data-part-id="chr-l" x="490" y="190" width="50" height="40" style="stroke-width:4"/>
+        <rect data-within="cell" data-part-id="chr-r" x="560" y="190" width="50" height="40" style="stroke-width:4"/>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-cell-ok">
+  <h2>染色体が細胞の中にある</h2>
+  <div class="body">
+    <svg class="mitosis" width="1100" height="420" viewBox="0 0 1100 420" aria-label="細胞分裂の 3 つの時期" style="fill:none;stroke:var(--fg);stroke-width:2">
+      <g class="telo" data-step="2">
+        <ellipse data-frame="cell" cx="550" cy="210" rx="380" ry="150"/>
+        <rect data-within="cell" data-part-id="chr-l" x="220" y="190" width="60" height="40" style="stroke-width:4"/>
+        <rect data-within="cell" data-part-id="chr-r" x="820" y="190" width="60" height="40" style="stroke-width:4"/>
+      </g>
+      <g class="ana" data-step="1">
+        <rect data-within="cell" data-part-id="chr-l" x="330" y="190" width="60" height="40" style="stroke-width:4"/>
+        <rect data-within="cell" data-part-id="chr-r" x="700" y="190" width="60" height="40" style="stroke-width:4"/>
+      </g>
+      <ellipse class="round" data-frame="cell" cx="550" cy="210" rx="240" ry="150"/>
+      <g class="meta">
+        <rect data-within="cell" data-part-id="chr-l" x="490" y="190" width="50" height="40" style="stroke-width:4"/>
+        <rect data-within="cell" data-part-id="chr-r" x="560" y="190" width="50" height="40" style="stroke-width:4"/>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-edge">
+  <h2>枠の線が図の端で欠ける</h2>
+  <div class="body">
+    <svg width="1100" height="420" viewBox="0 0 1100 420" aria-label="3 つの大学の取り組み" style="fill:none;stroke:var(--fg);stroke-width:2">
+      <rect data-part-id="outer" x="700" y="20" width="400" height="380" style="stroke-width:6"/>
+      <rect x="0" y="40" width="300" height="140"/>
+      <rect x="360" y="40" width="300" height="140"/>
     </svg>
   </div>
 </section>

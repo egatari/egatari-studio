@@ -27,9 +27,21 @@
     "site": true,
     "sha256": "ff62e26684a3734df1399ba3b61314c4bddd179f9660b5b71a51fabe596205aa"
   },
+  "for-loop": {
+    "src": "b4c9c937f3af853f",
+    "title": "for 文で合計と平均を求める"
+  },
+  "vectors": {
+    "src": "578ffb9b4461a9ac",
+    "title": "内積・正射影と 1 次変換"
+  },
   "bayes": {
     "site": true,
     "sha256": "d86a0a081dee7d76749978b26f50f4aa6a0ab17cfeaeadb8718f8762fda03702"
+  },
+  "classify-cv": {
+    "src": "b91e0fd285550ca5",
+    "title": "分類の境界と交差検証"
   },
   "population": {
     "site": true,

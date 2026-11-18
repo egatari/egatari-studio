@@ -1,0 +1,23 @@
+{
+  "v": 1,
+  "request": "高校の情報 I で、for 文で合計と平均を求める授業のスライドを作ってください。小テスト 3 回の点数の合計と平均、total = 0 を for の中に書いてしまう誤り、辞書で文化祭の出し物の票を数える例を、コードを 1 行ずつ実行した記録（変数と出力）で見せ、最後に繰り返しの前・中・後に書くものをまとめます。実行の記録はトレーサーで作ってください。",
+  "category": "teaching",
+  "subcategory": "class",
+  "theme": "default",
+  "parts": [
+    "m-cards"
+  ],
+  "structure": [
+    {"heading": "for 文で合計と平均を求める", "point": "表紙"},
+    {"heading": "合計と平均を 1 行ずつ追う", "point": "7・9・8 点の合計 24 と平均 8.0 を、1 行ずつの変数と出力で"},
+    {"heading": "total = 0 を for の中に書くと", "point": "予想してから見る。繰り返すたびに 0 に戻り、表示は 8"},
+    {"heading": "辞書で出し物の票を数える", "point": "get の既定値 0 から数え、劇 2 票・展示 1 票"},
+    {"heading": "繰り返しの前と中に書くもの", "point": "前は 1 回、中は毎回、後は 1 回。3 枚のカードで"}
+  ],
+  "book": false,
+  "lang": "ja",
+  "rights": {
+    "license": "CC-BY-4.0",
+    "attribution": "Gendo Kumoi (egatari/examples)"
+  }
+}

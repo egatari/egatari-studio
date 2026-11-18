@@ -3,7 +3,7 @@
 // 読み書きするのは原稿（deck.html）・narration.md・comments.json と、控えの .cache/edits/ だけ
 import { short } from '../kit/core/sha1.mjs';
 import { READ_LIMITS, ReadOverError, utf8Length } from '../kit/core/bounded-read-core.mjs';
-import { normPin, entryStrokes, strokesCentroid } from '../kit/core/comment-core.mjs';
+import { normPin, entryStrokes, strokesCentroid, normPart } from '../kit/core/comment-core.mjs';
 import { rewriteNarration, narrationRev, rawTurns, splitKey, isStepKey, narrationWord, applyNarrationReading } from '../kit/core/narration-core.mjs';
 import { checkWord, isWellFormedReading } from '../kit/core/readings.mjs';
 
@@ -172,7 +172,8 @@ export function createDevApi(ctx) {
           let pin = normPin(body.pin);
           const strokes = pin ? entryStrokes(body) : null;
           if (strokes) pin = strokesCentroid(strokes);
-          const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}),
+          const part = strokes ? normPart(body.part) : null;
+          const c = { id: rid(), created: new Date().toISOString(), key: String(body.key || ''), range: body.range || null, ...(pin ? { pin } : {}), ...(strokes ? { strokes } : {}), ...(part ? { part } : {}),
             quote: String(body.quote || '').slice(0, 200), comment: String(body.comment).trim(), status: 'open' };
           list.push(c); await writeComments(ws, list, live);
           if (live()) ctx.onComment && ctx.onComment();

@@ -1,4 +1,4 @@
-<!-- i18n: pair=dev-server.ja.md sha256=a9836a65a7abff07 -->
+<!-- i18n: pair=dev-server.ja.md sha256=e48945850c606401 -->
 # Dev server (fix the slides in the browser)
 
 English | [日本語](dev-server.ja.md)
@@ -47,6 +47,7 @@ The same goes for the script: if the lines of that step have changed elsewhere s
 - `narration.md`: replaces only the lines of that step (`[k] …` and its continuation lines). If there are none, they are added at the position given by the order of slides and steps.
   All other lines (including comments) stay as they were. Deleting all turns removes the lines of that step
 - `comments.json`: comments for the AI, `[{id, created, key, range, pin, quote, comment, status}]` (key is `slideKey:step`, range is the position in deck.html, pin is the clicked point `{x, y}` in slide coordinates, 1280×720, independent of the zoom; older comments without `pin` still work; a marker comment adds `strokes`, the drawn marks as lists of points `[[[x, y], …], …]` in the same coordinates (older comments may have a single `stroke`, read as one mark), and its `pin` is the centroid of all marks: [contract §13](contract.md#13-review-notes-the-ink-stroke)). The point refers to the final state of the step (`DECK.seek(i, k, Infinity)`), also when you clicked during its animation. quote begins with the text near the point when there is any (a label or word inside a figure or part, at most 60 characters), followed by the first 80 characters of the element
+  Marker comments over a part also keep `part: {name, id?}`: the innermost `m-*` tag under the centroid in that step, with its `data-id` if present. The AI fix request adds “Part: <tag> (data-id: <id>)” (no parentheses without an id); plain text and figures outside parts keep the existing nearby text. Older comments without `part` still work; readers ignore unknown fields.
 - `.cache/edits/`: copies of deck.html and narration.md from before each rewrite (the latest 30)
 
 ## Protection

@@ -89,13 +89,14 @@ async function context(browser, init) {
   p.on('pageerror', (e) => errors.push(e.message));
   return { ctx, p, errors };
 }
-const deckReady = (f) => until(() => f.evaluate(() => !!(window.DECK && DECK.ready && document.getElementById('dt-cb'))), 20000);
+const deckReady = (f) => until(() => f.evaluate(() => !!(window.DECK && DECK.ready && document.getElementById('dt-cb'))), scaled(20000));
 async function viewerLesson(o) {
   await o.p.goto(site); await o.p.waitForSelector('html[data-ready]', { timeout: scaled(20000) });
   await o.p.setInputFiles('#file', LESSON);
   await o.p.waitForSelector('#lesson', { timeout: scaled(20000) });
   let f = null;
-  await until(async () => { f = await (await o.p.$('#lesson')).contentFrame(); return !!f && await f.evaluate(() => !!(window.DECK && DECK.ready && document.getElementById('dt-cb'))); }, 20000);
+  // the checks after this read the lesson's bar: stop here when the lesson never got ready (it went on with a frame not ready before)
+  if (!await until(async () => { f = await (await o.p.$('#lesson')).contentFrame(); return !!f && await f.evaluate(() => !!(window.DECK && DECK.ready && document.getElementById('dt-cb'))); }, scaled(20000))) throw new Error('the lesson in the viewer did not get ready');
   return f;
 }
 // the bar's 全画面 button, pressed with a real click (the bar ignores a click in its first 350 ms after the pointer revealed it)

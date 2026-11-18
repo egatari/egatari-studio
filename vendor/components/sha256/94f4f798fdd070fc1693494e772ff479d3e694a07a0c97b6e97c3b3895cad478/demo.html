@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-folds の見本（架空のシミュレーション）</title>
+<!-- 2 枚目からの分割は uv run tools/folds-demo.py の出力（架空の 20 標本を tools/sk2ega.py model_selection に通した） -->
+</head>
+<body>
+<div id="stage">
+<section class="slide">
+  <h2>検証に使うフォールドを順に替える（架空データ）</h2>
+  <div class="body"><m-folds style="height:440px"><script type="application/json">{"k":5,"errors":[0.21,0.18,0.25,0.19,0.22],"labels":["1","2","3","4","5"]}</script></m-folds></div>
+  <div class="concl"><span>架空の誤差。すべてのフォールドを 1 回ずつ検証に使う</span></div>
+</section>
+<section class="slide">
+  <h2>クラスの比率を保つ KFold（StratifiedKFold）</h2>
+  <div class="body"><m-folds style="height:400px"><script type="application/json">{"samples":[{"class":0},{"class":0},{"class":0},{"class":1},{"class":0},{"class":0},{"class":0},{"class":1},{"class":0},{"class":0},{"class":0},{"class":1},{"class":0},{"class":0},{"class":0},{"class":1},{"class":0},{"class":0},{"class":0},{"class":1}],"classes":[{"id":0,"label":"A"},{"id":1,"label":"B"}],"splitter":"StratifiedKFold","splits":[{"test":[0,7,8,14,16],"train":[1,2,3,4,5,6,9,10,11,12,13,15,17,18,19]},{"test":[1,6,12,17,19],"train":[0,2,3,4,5,7,8,9,10,11,13,14,15,16,18]},{"test":[2,4,10,13,15],"train":[0,1,3,5,6,7,8,9,11,12,14,16,17,18,19]},{"test":[3,5,9,11,18],"train":[0,1,2,4,6,7,8,10,12,13,14,15,16,17,19]}]}</script></m-folds></div>
+  <div class="concl"><span>どのフォールドにも B が 1 個ずつ入る（架空データ）</span></div>
+</section>
+<section class="slide">
+  <h2>同じ場所の標本を分けない GroupKFold</h2>
+  <div class="body"><m-folds style="height:400px"><script type="application/json">{"samples":[{"group":"P"},{"group":"P"},{"group":"P"},{"group":"P"},{"group":"Q"},{"group":"Q"},{"group":"Q"},{"group":"Q"},{"group":"R"},{"group":"R"},{"group":"R"},{"group":"R"},{"group":"S"},{"group":"S"},{"group":"S"},{"group":"S"},{"group":"T"},{"group":"T"},{"group":"T"},{"group":"T"}],"splitter":"GroupKFold","splits":[{"test":[16,17,18,19],"train":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]},{"test":[12,13,14,15],"train":[0,1,2,3,4,5,6,7,8,9,10,11,16,17,18,19]},{"test":[8,9,10,11],"train":[0,1,2,3,4,5,6,7,12,13,14,15,16,17,18,19]},{"test":[4,5,6,7],"train":[0,1,2,3,8,9,10,11,12,13,14,15,16,17,18,19]},{"test":[0,1,2,3],"train":[4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19]}]}</script></m-folds></div>
+  <div class="concl"><span>1 つの場所の 4 個が、いっしょに検証に回る（架空データ）</span></div>
+</section>
+<section class="slide">
+  <h2>時系列は、過去で訓練して後の期間で検証する</h2>
+  <div class="body"><m-folds style="height:400px"><script type="application/json">{"samples":[{"t":1},{"t":2},{"t":3},{"t":4},{"t":5},{"t":6},{"t":7},{"t":8},{"t":9},{"t":10},{"t":11},{"t":12},{"t":13},{"t":14},{"t":15},{"t":16},{"t":17},{"t":18},{"t":19},{"t":20}],"splitter":"TimeSeriesSplit","splits":[{"test":[4,5,6,7],"train":[0,1,2,3]},{"test":[8,9,10,11],"train":[0,1,2,3,4,5,6,7]},{"test":[12,13,14,15],"train":[0,1,2,3,4,5,6,7,8,9,10,11]},{"test":[16,17,18,19],"train":[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]}]}</script></m-folds></div>
+  <div class="concl"><span>後の分割ほど訓練の期間が長い（架空データ）</span></div>
+</section>
+</div>
+</body>
+</html>

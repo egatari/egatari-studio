@@ -26,8 +26,9 @@ import { loadLame } from './mp3-loader.js';
 import { writeFile, cancelledError, hasPermission, askPermission, recentList, recentAdd, recentRemove } from './fsx.js';
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
-import { rightsOf } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex } from '../kit/core/portable.mjs';
+import { rightsOf, requiresChangeNote, addEdit } from './rights.js';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex, sameJson } from '../kit/core/portable.mjs';
+import { playerShowsEdits, parsePlayerJson, PLAYER_JSON } from '../kit/core/player.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
@@ -42,7 +43,7 @@ import { imageSizeFindings } from '../kit/core/image-size.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
 import { colabVideoUrl } from '../kit/core/colab-core.mjs';
-import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs';
+import { updateConfig, merge as configMerge, configObject } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { scormPackage, completionRule, SCORM_EXT } from '../kit/core/scorm.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
@@ -1137,11 +1138,12 @@ window.addEventListener('message', (e) => {
     // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
     if (m.type === 'app-layout-changed' && /^(slides|split|book)$/.test(String(m.layout))) { if (book.present() && m.layout !== (S.view || 'slides')) setView(m.layout, false); }
     else if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
-    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result' || m.type === 'app-readable-result') && S.checks.has(m.id)) {
+    else if ((m.type === 'app-check-result' || m.type === 'app-steps-result' || m.type === 'app-readable-result' || m.type === 'app-shot-result') && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) {
         S.checks.delete(m.id);
-        if (m.type === 'app-steps-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
+        if (m.type === 'app-shot-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
+        else if (m.type === 'app-steps-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : {});
         else if (m.type === 'app-readable-result') w.res(m.results && typeof m.results === 'object' && !Array.isArray(m.results) ? m.results : null);
         else w.res(Array.isArray(m.results) ? m.results : []);
       }
@@ -1328,8 +1330,61 @@ async function quickCheck() {
     el('p', { id: 'check-rules', cls: 'hint', text: T.checkRules(rules.summary) }),
     // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
     el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(fixable ? [llm.fixButton(results)] : [])]),
+    el('button', { type: 'button', id: 'b-copyshot', cls: 'fixreq', text: T.copyShot, 'aria-describedby': 'copyshot-hint', onclick: copyShot }),
+    el('p', { id: 'copyshot-hint', cls: 'hint', text: T.copyShotHint }),
     ...items,
   ]);
+}
+// 品質チェックの「スライドの画像と確認の依頼をコピー」（backlog #227）：今のスライドを最後のステップにした画像（PNG。プレビューの中で描く、
+// app/frame-shim.js の slideShot）と、図と結論の行を確かめてもらう依頼の文を、1 回でクリップボードに書く（image/png と text/plain の 1 つの
+// ClipboardItem）。先生が自分のチャットの AI に貼り付ける。Studio からはどこにも送らない。
+// クリップボードへの書き込みは押した操作の中で始める（Safari は値を Promise で渡す形だけを許す）。画像を書けないブラウザ（許可がない・
+// 画像のクリップボードがない）では、画像を保存するボタンと依頼の文をコピーするボタンの窓にする
+const shotLabel = (r) => {
+  const i = r.i, s = (S.slides || [])[i];
+  return { n: i + 1, title: s && s.heading ? s.heading : '', id: r.key || (s && s.key) || '', k: r.k + 1 };
+};
+const shotText = (r) => T.copyShotRequest(shotLabel(r));
+const canCopyImage = () => typeof ClipboardItem === 'function' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function'
+  && (typeof ClipboardItem.supports !== 'function' || ClipboardItem.supports('image/png'));
+function copyShot() {
+  const i = S.pos && Number.isFinite(S.pos.i) ? S.pos.i : 0;
+  const shot = askFrame('app-shot', { i }).then((r) => (r && r.png instanceof Blob ? r : null));
+  let wrote = Promise.resolve(false);
+  if (canCopyImage()) {
+    try {
+      const need = (f) => { const p = shot.then((r) => { if (!r) throw new Error('no image'); return f(r); }); p.catch(() => {}); return p; };   // 書けなくても捕まらない拒否にしない
+      const item = new ClipboardItem({ 'image/png': need((r) => r.png), 'text/plain': need((r) => new Blob([shotText(r)], { type: 'text/plain' })) });
+      wrote = navigator.clipboard.write([item]).then(() => true, () => false);
+    } catch { wrote = Promise.resolve(false); }
+  }
+  return Promise.all([shot, wrote]).then(([r, ok]) => {
+    if (!r) { toast(T.copyShotNoImage, true); return; }
+    if (window.__APP_TEST) window.__APP_TEST.lastCopy = shotText(r);
+    if (ok) { toast(T.copyShotDone(r.i + 1)); return; }
+    return copyShotFallback(r);
+  });
+}
+// 画像をクリップボードに書けなかったとき：画像を保存（ダウンロード）と依頼の文のコピーを、それぞれのボタンで（押した操作の中で書く）
+async function copyShotFallback(r) {
+  const text = shotText(r), L = shotLabel(r);
+  const area = el('textarea', { id: 'copyshot-text', readonly: '', rows: '8', spellcheck: 'false', 'aria-label': T.copyShotTextLabel });
+  area.value = text;
+  const lead = el('p', { id: 'copyshot-lead', role: 'status', text: T.copyShotFailLead });
+  const save = () => download(`${deckBase()}-${L.n}.png`, r.png, 'image/png');
+  const copyText = async () => {
+    try { await navigator.clipboard.writeText(text); lead.textContent = T.copyShotTextCopied; return; } catch { /* 下へ */ }
+    try { area.focus(); area.select(); if (document.execCommand('copy')) { lead.textContent = T.copyShotTextCopied; return; } } catch { /* 下へ */ }
+    lead.textContent = T.copyShotTextFailed;
+  };
+  await ask({ title: T.copyShotFailTitle, kind: 'paste', body: [
+    lead,
+    el('div', { cls: 'paste-guide' }, [
+      el('button', { type: 'button', id: 'copyshot-save', text: T.copyShotSave, onclick: save }),
+      el('button', { type: 'button', id: 'copyshot-copy', cls: 'pri', text: T.copyShotCopyText, onclick: copyText }),
+    ]),
+    area,
+  ], buttons: [{ id: 'cancel', label: T.close }] });
 }
 // 原稿の文字列だけで決まる品質チェックの指摘（kit/core/check-source.mjs）：作業場所の deck.html・narration.md・voice.json の lang から。読めなければなし
 async function sourceChecks() {
@@ -1652,7 +1707,7 @@ async function openPortableNow(input) {
   stopPoll();
   const ws = workspaceFromPortable(name, r);
   const narr0 = r.files.get ? r.files.get('narration.md') : r.files['narration.md'];
-  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
+  const P = { index: r.index, deckMeta: r.deckMeta, name, handle, warnings: r.warnings, readOnly: null, tierAOnly: null, rightsOk: !!input.fresh, fresh: !!input.fresh, extended, mislabelled, codeReasons: reasons, codeOk: true, saved: null,
     neverSaved: !!input.fresh && !handle && !(input.replacing && S.portable && !S.portable.neverSaved),   // AI の返事を貼り付けて作った：まだどのファイルにもない
     original: new TextDecoder().decode(bytes), narr0: narr0 ? new TextDecoder().decode(narr0) : null, sourceMatches: r.sourceMatches, lastTier: null };
   resetDeck(ws, P);
@@ -1868,6 +1923,82 @@ async function themeOnlyChange(P, a, files) {
     return themeOf(before) !== to && withTheme(before, to) === after;
   } catch { return false; }
 }
+// ---------------------------------------------------------------- 編集の記録（format spec §3.6.1・§7.3）
+// エディタには、だれが編集しているかが分からないので聞く。内容を変えて初めて保存するとき、この教材の作成者か、ほかの人の教材を編集しているかを聞く。
+// 答えはこの端末に教材（docId）ごとに覚える（ファイルには書かない）。ファイルに書くのは、使う人が入力した名前と内容だけ。
+// ほかの人の教材なら metadata.edits に 1 件足す（同じ名前があれば内容だけ新しくする。app/rights.js の addEdit）。ライセンスが変更を示すよう求め
+// （Creative Commons の 4.0）、名前が空なら名前なしの項目を足す。今ある項目は消さず、変えない。
+// 聞かないもの：この Studio で作った（AI の返事から・deck.html だけを開いた）教材、だれの教材とも書かれていない教材（作成者・著作権・ライセンス・クレジット・編集の記録がない）
+const EDIT_ROLE_KEY = 'egatari-edit-role:';
+function editRoleKnown(docId) { try { return localStorage.getItem(EDIT_ROLE_KEY + docId); } catch { return null; } }
+function editRoleRemember(docId, v) { try { localStorage.setItem(EDIT_ROLE_KEY + docId, v); } catch { /* 使えない環境：開いている間だけ覚える */ } }
+// → true（保存を続ける）・false（キャンセルした）
+async function askEditRole(P, ws, live) {
+  if (P.editRole || P.fresh || P.sourceOnly || P.neverSaved || !ws.dirty) return true;
+  const md = P.index && P.index.metadata && typeof P.index.metadata === 'object' ? P.index.metadata : {};
+  const R = rightsOf(md);
+  if (!R.creators.length && !R.copyright && !R.license && !R.attribution && !Array.isArray(md.edits)) return true;
+  const docId = P.index.docId;
+  const known = (window.__APP_TEST && window.__APP_TEST.editRole) || editRoleKnown(docId);
+  if (known === 'creator' || known === 'other') { P.editRole = known; return true; }
+  const required = requiresChangeNote(R.license);
+  const radio = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-role', value, id: 'edit-role-' + value }), el('span', { text: label })]);
+  const mine = radio('creator', T.editRoleMine), other = radio('other', T.editRoleOther);
+  const by = el('input', { type: 'text', id: 'edit-by', maxlength: '120', placeholder: T.editByPh, autocomplete: 'organization' });
+  const note = el('input', { type: 'text', id: 'edit-note', maxlength: '300', placeholder: T.editNotePh });
+  const fields = el('div', { id: 'edit-fields' }, [
+    el('label', { for: 'edit-by', text: T.editBy }), by,
+    el('label', { for: 'edit-note', text: T.editNote }), note,
+    el('p', { cls: 'hint', text: T.editShown }),
+    required ? el('p', { id: 'edit-required', cls: 'hint', text: T.editRequired(R.license) }) : null,
+  ]);
+  fields.hidden = true;
+  const pending = ask({ title: T.editRoleTitle, body: [
+    R.creators.length ? el('p', { id: 'edit-role-creators', text: T.editRoleCreators(R.creators.join(EN ? ', ' : '、')) }) : null,
+    mine, other, fields, el('p', { cls: 'hint', text: T.editRemember })],
+  buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: true }] });
+  // どちらかを選ぶまで保存できない（黙って既定を選ばない）
+  const go = $('dlg-save');
+  go.disabled = true;
+  for (const r of [mine, other]) r.querySelector('input').addEventListener('change', () => { go.disabled = false; fields.hidden = !other.querySelector('input').checked; });
+  const v = await pending;
+  if (v !== 'save' || !live()) return false;
+  const role = other.querySelector('input').checked ? 'other' : 'creator';
+  if (role === 'other') {
+    const CFG = FORMAT.CONFIG_FILE;
+    let old = null;
+    try { old = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { old = null; }
+    if (!live()) return false;
+    let text = null;
+    try {
+      const cm = configObject(old).metadata;
+      const cur = cm && typeof cm === 'object' && Object.prototype.hasOwnProperty.call(cm, 'edits') ? cm.edits : md.edits;
+      const next = addEdit(cur, { by: by.value, note: note.value, required });
+      if (next) text = updateConfig(old, { metadata: configMerge({ edits: next }) });
+    } catch (e) { toast(String((e && e.message) || e), true); return false; }
+    if (text !== null) { try { await ws.writeText(CFG, text, { live }); } catch { return false; } if (!live()) return false; }
+  }
+  P.editRole = role;
+  editRoleRemember(docId, role);
+  return true;
+}
+// 段 A の保存で編集の記録（metadata.edits）が変わるのに、ファイルのプレーヤーがそれを表示しない（Egatari Player の
+// EDITS_SHOWN_SINCE より前・ほかのプレーヤー。kit/core/player.mjs の playerShowsEdits）か。段 A はプレーヤーを替えない（§7.2）ので、
+// 記録はファイルに入るが、再生するときに表示されない（format spec §7.3）。「保存」（プレーヤーはそのまま）を選んだ文書には、開いている間は聞かない
+function editsNotShown(P, a) {
+  const md = (x) => (x && x.metadata && typeof x.metadata === 'object' ? x.metadata : {});
+  const after = md(a.index).edits;
+  return !P.oldPlayerKept && Array.isArray(after) && after.length > 0 && !sameJson(md(P.index).edits ?? null, after) && !playerShowsEdits(P.index && P.index.player);
+}
+// プレーヤーを新しくするときの元と先の版（再ビルドの確かめのわけに入れる。handoff #53、規格化 11/18）。先はこのエディタが同梱する kit/player.json の版
+function playerVersions(P) {
+  const pl = P.index && P.index.player;
+  const from = pl && typeof pl === 'object' && pl.version != null ? String(pl.version).replace(/\+.*$/, '') : '';
+  let to = '';
+  try { to = parsePlayerJson(RES.text['/repo/' + PLAYER_JSON]).version || ''; } catch { to = ''; }
+  return from && to ? { from, to } : {};
+}
+const playerLabel = (x) => `${x.title || x.name}${x.version ? ' ' + x.version : ''}`;
 async function savePortable(mode = 'save') {
   if (S.saving) { toast(T.api.busySave, true); return; }
   S.saving = true;
@@ -1891,6 +2022,8 @@ async function savePortableBound(mode) {
   }
   if (S.building) await S.building;
   if (!live()) { cancelled(); return; }
+  // ほかの人の教材を初めて保存する：作成者か、編集しているかを聞き、編集なら設定のファイルの metadata.edits に足す（format spec §7.3）
+  if (!(await askEditRole(P, ws, live))) { if (!live()) cancelled(); else status(''); return; }
   status(T.saving);
   P.lastRefusal = null; P.lastTierA = null;
   let saveWarnings = [], uncovered = '';
@@ -1924,21 +2057,37 @@ async function savePortableBound(mode) {
       a = await tierA(P.original, files, { identity, fonts: engine.fonts, fontSubset: () => fontSubsetLoader.subsetFont(), article: { html: rs.html } });
       if (!live()) { cancelled(); return; }
     }
-    if (a.ok) {
+    // 編集の記録を足すのに、ファイルのプレーヤーがそれを表示しない：知らせて、プレーヤーを新しくする保存（段 B の組み直し）を選べるようにする。
+    // 選んだら段 A の結果を使わず、下の段 B の道（「スライドを再ビルドして保存します」とプレーヤーが変わる知らせ）をそのまま通る
+    let updatePlayer = false;
+    if (a.ok && editsNotShown(P, a)) {
+      status('');
+      const pl = P.index && P.index.player, canRebuild = !P.tierAOnly;
+      const v = await ask({ title: T.oldPlayerTitle, kind: 'warn', body: [el('p', { id: 'old-player', text: T.oldPlayerBody }),
+        el('p', { id: 'old-player-which', cls: 'hint', text: T.oldPlayerWhich(pl && typeof pl === 'object' && typeof pl.name === 'string' ? playerLabel({ ...pl, version: String(pl.version ?? '') }) : T.oldPlayerNone) }),
+        canRebuild ? el('p', { id: 'old-player-update', cls: 'hint', text: T.oldPlayerUpdateHint }) : null],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: !canRebuild }, ...(canRebuild ? [{ id: 'update-player', label: T.oldPlayerUpdate, pri: true }] : [])] });
+      if (!live()) { cancelled(); return; }
+      if (v === 'update-player') updatePlayer = true;
+      else if (v === 'save') P.oldPlayerKept = true;
+      else { status(''); return; }
+      status(T.saving);
+    }
+    if (a.ok && !updatePlayer) {
       html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; if (typeof a.config === 'string') cfgText = a.config;
       // 字の補いのない新しい字（字体のファイルを持たない版のアプリ・どの字体にもない字）：断らずに保存し、画面の言葉で名指す（決めごと 3。保存の知らせにも）
       uncovered = (a.changes && a.changes.uncovered) || '';
       saveWarnings = (a.warnings || []).filter((w) => !w.startsWith(FONT_FALLBACK_WARN)).concat(uncovered ? [T.fontFallback(uncovered)] : []);
     }
     else {
-      P.lastRefusal = { code: a.code, reason: a.reason };
+      if (!updatePlayer) P.lastRefusal = { code: a.code, reason: a.reason };
       if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
       // まだどこにも保存していない文書（AI の出力から作った・deck.html だけを開いた）は、この Studio が組んだものなので、組み直しても
       // 見え方は変わらない：聞かずに組み直す。テーマを変えただけ（原稿の違いが <html> の data-theme だけ）なら、そのわけだけを言う
       if (!((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved)) {
-        const why = (await themeOnlyChange(P, a, files)) ? 'theme-changed' : a.code;
+        const why = updatePlayer ? 'player-update' : (await themeOnlyChange(P, a, files)) ? 'theme-changed' : a.code;
         const body = why === 'theme-changed' ? [el('p', { id: 'tier-b-why', text: T.tierBWhy(why) })]
-          : [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { id: 'tier-b-why', cls: 'hint', text: T.tierBWhy(why) }), el('p', { cls: 'hint', text: T.tierBGap })];
+          : [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { id: 'tier-b-why', cls: 'hint', text: T.tierBWhy(why, why === 'player-update' ? playerVersions(P) : undefined) }), el('p', { cls: 'hint', text: T.tierBGap })];
         const v = await ask({ title: T.tierBTitle, kind: why === 'theme-changed' ? undefined : 'warn', body,
           buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
         if (v !== 'rebuild') { status(''); return; }
@@ -1956,8 +2105,8 @@ async function savePortableBound(mode) {
       if (r.playerChange) {
         if (!live()) { cancelled(); return; }
         status('');
-        const pc = r.playerChange, label = (x) => `${x.title || x.name}${x.version ? ' ' + x.version : ''}`;
-        const go = await ask({ title: T.playerChangeTitle, kind: 'warn', body: [el('p', { id: 'player-change', text: T.playerChangeBody(label(pc.from), label(pc.to)) })],
+        const pc = r.playerChange;
+        const go = await ask({ title: T.playerChangeTitle, kind: 'warn', body: [el('p', { id: 'player-change', text: T.playerChangeBody(playerLabel(pc.from), playerLabel(pc.to)) })],
           buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.playerChangeGo, pri: true }] });
         if (go !== 'save') return;
         if (!live()) { cancelled(); return; }
@@ -2508,6 +2657,7 @@ window.__APP_TEST = {
   open: (h) => openFolder(h),
   saveHandle: null,
   dirHandle: null,
+  editRole: window.__APP_TEST_EDIT_ROLE || null,   // 試験：保存の前の「この教材の作成者ですか」に答えたことにする（'creator' | 'other'）
   state: () => ({ building: !!S.building, earlier: S.earlier ? { ...S.earlier } : null, deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0, lastQuickCheck: S.lastQuickCheck ? { ...S.lastQuickCheck } : null,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
@@ -2586,7 +2736,7 @@ window.addEventListener('beforeunload', (e) => { if ((S.portable && S.ws && S.ws
 // ---------------------------------------------------------------- チャットの AI との行き来（貼り付け・修正依頼。app/llm.js）
 // AI の返事の貼り付けは Worker で 1 ファイルにする：その前に、字の切り出しの道具を Worker につなげる（読めなければ分割ファイルのまま）
 const fontSubsetForWorker = async () => { builder.setExtra(await fontSubsetLoader.workerPrelude(), 'fontSubset'); };
-const llm = setupLlm({ S, $, el, ask, cover: (text) => wait.cover(text), toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, examples: RES.examples, themeOptions, loadOtherTheme: () => loadThemeDialog(), themeWorkshop });
+const llm = setupLlm({ S, $, el, ask, cover: (text) => wait.cover(text), toast, status, T, EN, downloadAiSkill, download, builder, buildTimeout, fontSubsetForWorker, openPortable, rebuild, quickCheck, checkResults, updateName, slides: slidesPanel, themes: RES.themes, themeThumbs: RES.themeThumbs || null, examples: RES.examples, themeOptions, loadOtherTheme: () => loadThemeDialog(), themeWorkshop });
 window.__APP_TEST.paste = (text, mode) => llm.importText(text, mode || 'new');
 window.__APP_TEST.insertAi = (after) => llm.insertWithAi(after);
 window.__APP_TEST.fixRequest = async () => { await quickCheck(); const b = $('b-fixreq'); if (b) b.click(); };
