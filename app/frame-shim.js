@@ -297,7 +297,7 @@ function quickCheck(fonts){
       if (!code) return add(i, f.sev, f.code, a);
       add(i, f.sev, code, f.code === "bodyBottom" ? a.px + " > " + a.lim : f.code === "bodyRight" ? (a.lim !== undefined ? a.px + " > " + a.lim : a.px) : f.code === "smallText" ? a.px + "px「" + a.t + "」" : a.n, a && a.part);   // はみ出したパーツ（#196）は修正依頼が高さの値を添えるのに使う（#224）
     });
-    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）：コマンド版と同じ関数・code・値
+    // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）：コマンド版と同じ関数・code・値。枠の中の印の値が名前でない geoBadMarkName もここから
     geometryScan(s, GEO_OPTS).forEach(function(f){ add(i, f.sev, f.code, f.a); });
     // 図形が枠の外に出る（geoOutsideFrame。handoff #46）：全部のステップで測る（コマンド版と同じ関数）。測った後は最後のステップに戻す
     if (s.querySelector("[" + GEO_OPTS.within + "]")) {

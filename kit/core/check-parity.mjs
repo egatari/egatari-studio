@@ -23,7 +23,7 @@ export const IN_EDITOR = Object.freeze([
   'smallText', 'smallSvgText', 'textClipped', 'svgTextOut', 'svgTextBox', 'outsideBody', 'partSvgOut', 'colOverflow', 'textOffSlide', 'textOverlap', 'cellWordBreak',
   'secHeading', 'textContrast', 'cardsHint',
   // 描いた図の形（kit/core/geometry-check.mjs。R-geometry）
-  'geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoTateSlides',
+  'geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoBadMarkName', 'geoTateSlides',
   // プレビューの中（app/frame-shim.js）
   'themeMetricsDrift', 'metricsFontLoad', 'fontNotEmbedded', 'desuMasu', 'rawMath', 'katexError', 'punctMixed', 'narrRecheck',
   'linkEmpty', 'linkUnknown', 'linkNumberRange', 'linkNoConcl', 'linkStepRange', 'linkBadStep', 'linkNumber', 'linkNoId', 'linkCount',

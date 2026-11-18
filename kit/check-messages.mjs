@@ -289,6 +289,10 @@ export const MESSAGES = {
   geoOutsideFrame: { rule: 'R-geometry',
     ja: (a) => `図形 ${a.shape} が枠 ${a.frame} の外に出る（${a.px}px、${stepJa(a.step)}、${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `。外に出るステップは ${a.steps.map((x) => (x === 'concl' ? '結論' : x)).join('・')}` : ''}）：そのステップの図形 ${a.shape} の位置か大きさを、パーツのデータか図の座標で変えて、枠 ${a.frame} の内側に収める（枠を大きくしてもよい）`,
     en: (a) => `figure shape ${a.shape} goes outside frame ${a.frame} (by ${a.px}px at ${stepEn(a.step)}, at ${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `; outside at steps ${a.steps.map((x) => (x === 'concl' ? 'conclusion' : x)).join(', ')}` : ''}): at that step, move or shrink shape ${a.shape} in the part's data or the figure's coordinates so it stays inside frame ${a.frame} (or make the frame larger)` },
+  // 枠の中の印の値が名前 1 つでない（handoff #46）：その印は測っていない。kind は shape（data-within）か frame（data-frame）
+  geoBadMarkName: { rule: 'R-geometry',
+    ja: (a) => `${a.kind === 'frame' ? '枠' : '図形'} ${a.el} の ${a.attr} の値が名前の形に合わない（"${a.value}"）：小文字の英字で始まる名前 1 つにする`,
+    en: (a) => `the ${a.attr} value of ${a.kind === 'frame' ? 'frame' : 'shape'} ${a.el} is not a name ("${a.value}"): use one name that starts with a lowercase letter (a–z, 0–9 and -)` },
   geoTateSlides: { rule: 'R-geometry',
     ja: (a) => `縦書きのスライド ${a.n} 枚の図は、図の形の点検で測っていない：その図の線・箱・字の重なりは目で確かめる`,
     en: (a) => `the figures on ${a.n} vertical (layout-tate) slide${a.n === 1 ? '' : 's'} were not measured by the figure geometry check: check their lines, boxes and text for overlaps by eye` },
