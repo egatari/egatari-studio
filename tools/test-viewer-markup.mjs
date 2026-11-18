@@ -394,7 +394,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   const count = () => p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const g = o.result.transaction('lessons').objectStore('lessons').getAll(); g.onsuccess = () => res(g.result.reduce((n, r) => n + r.highlights.length, 0)); }; }));
   await p.click('#shared');
   await until(() => p.isVisible('#m-confirm'));
-  ok((await p.textContent('#m-confirm-t')) === 'この端末に保存したハイライトも消します（1 つの教材、2 件）。元に戻せません。' && (await p.textContent('#b-mconfirm-yes')) === '消して切り替える',
+  ok((await p.textContent('#m-confirm-t')) === 'この端末に保存したハイライト（1 つの教材、2 件）も消します。元に戻せません。' && (await p.textContent('#b-mconfirm-yes')) === '消して切り替える',
     `turning 共有の端末 on asks first, with the counts (${await p.textContent('#m-confirm-t')})`);
   await shot(p, '10-shared-ask');
   await p.click('#b-mconfirm-no');

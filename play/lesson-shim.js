@@ -16,6 +16,9 @@
 //      and the page puts the frame element itself into fullscreen (or leaves it) and reports {egaViewer: "fullscreen-state", on,
 //      enabled, refused?}. The getters (fullscreenElement, fullscreenEnabled and the webkit names) and the fullscreenchange events
 //      follow that state, so any player version inside the file (one that knows only the unprefixed API, too) shows its button right.
+//   5. Handwriting (play/ink.mjs): the page asks {egaViewer: "ink-bg"} and this answers {egaViewer: "ink-bg", rgb: [r, g, b]}, the
+//      background colour of the slide on screen (or of the document), so the memo area below the slide takes the same colour.
+//      Numbers only; the page checks them.
 (function lessonShim() {
   "use strict";
   try { history.replaceState(null, "", "about:srcdoc?embed=1"); } catch (e) { /* the page falls back to deck-pos */ }
@@ -118,5 +121,17 @@
       settle(FS.waitOn, false, new TypeError("Fullscreen request denied"));
       fire("fullscreenerror"); fire("webkitfullscreenerror");
     }
+  });
+  // 5. The slide's background for the handwriting memo area
+  window.addEventListener("message", function (e) {
+    var m = e.data;
+    if (e.source !== parentWin || !m || m.egaViewer !== "ink-bg") return;
+    var els = [document.querySelector("#stage > .slide.active"), document.body, document.documentElement], rgb = null;
+    for (var i = 0; i < els.length && !rgb; i++) {
+      if (!els[i]) continue;
+      var n = (getComputedStyle(els[i]).backgroundColor.match(/[\d.]+/g) || []).map(Number);
+      if (n.length >= 3 && (n.length < 4 || n[3] > 0.5)) rgb = [Math.round(n[0]), Math.round(n[1]), Math.round(n[2])];
+    }
+    try { parentWin.postMessage({ egaViewer: "ink-bg", rgb: rgb || [255, 255, 255] }, "*"); } catch (x) { /* gone */ }
   });
 })();

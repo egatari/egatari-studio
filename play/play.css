@@ -246,3 +246,19 @@ span.m-q { flex: 1; }
 .m-danger { color: var(--err); }
 button.pri.danger { background: var(--err); border-color: var(--err); color: #fff; }
 #m-confirm .row { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* handwriting (handoff #27, play/ink.mjs): the slide and the memo area are one surface; the tools are icons with names */
+.ink-surf, .ink-live { position: absolute; z-index: 5; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.ink-live { pointer-events: none; z-index: 6; }
+.ink-bar { position: absolute; z-index: 7; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 4px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px; max-width: calc(100vw - 16px); overflow-x: auto; }
+.ink-bar button { min-width: 40px; min-height: 40px; padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; }
+.ink-bar button[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.ink-bar button:disabled { opacity: .45; }
+.ink-sep { width: 1px; align-self: stretch; margin: 4px 2px; background: var(--line); }
+.ink-dot { width: 18px; height: 18px; border-radius: 50%; box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--line); }
+.ink-k { background: #1f1f1f; } .ink-r { background: #d22a3a; } .ink-b { background: #1f5fbf; }
+/* the swatches show the shade the pen paints on this slide (dark slide: the light shades, play/ink.mjs SHADE) */
+.ink-bar[data-tone=dark] .ink-k { background: #f2f2f2; } .ink-bar[data-tone=dark] .ink-r { background: #ff7b88; } .ink-bar[data-tone=dark] .ink-b { background: #7db8ff; }
+/* a phone: the memo area would be too small to write in, and the header needs the room (the markup hint) */
+@media (max-width: 599px) { #b-ink { display: none; } }
