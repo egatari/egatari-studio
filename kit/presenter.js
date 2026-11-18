@@ -190,7 +190,9 @@ DECK.presenterView = function(){
   tap.addEventListener("click", function(e){ e.preventDefault(); e.stopPropagation(); try { window.focus(); } catch (err) {} unTap(); });
   window.addEventListener("focus", unTap);
   document.addEventListener("keydown", unTap, true);   // キーが届いているなら覆いはいらない
-  try { window.focus(); } catch (e) {}
+  // 枠の中（編集アプリの #pf）では、使う人の操作なしに focus() を呼ぶと Chrome 158 から権限の方針の違反（focus-without-user-activation）になる。
+  // 枠のときは窓（app/main.js の PRES_DOC）がフォーカスを持つので、自分の窓のときだけ呼ぶ
+  if (window.parent === window) { try { window.focus(); } catch (e) {} }
   // 編集アプリの窓の中の枠（#pf）では、枠の hasFocus は窓にフォーカスがあっても false のことがある。窓（app/main.js の PRES_DOC）が自分の hasFocus を見て知らせる
   if (window.parent !== window) window.addEventListener("message", function(e){ if (e.source === window.parent && e.data && e.data.type === "app-pres-tap" && !document.hasFocus()) tap.hidden = false; });
   else setTimeout(function(){ if (!document.hasFocus()) tap.hidden = false; }, 300);
