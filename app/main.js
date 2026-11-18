@@ -27,7 +27,8 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf, requiresChangeNote, addEdit } from './rights.js';
-import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex } from '../kit/core/portable.mjs';
+import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex, sameJson } from '../kit/core/portable.mjs';
+import { playerShowsEdits } from '../kit/core/player.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
@@ -1913,6 +1914,15 @@ async function askEditRole(P, ws, live) {
   editRoleRemember(docId, role);
   return true;
 }
+// 段 A の保存で編集の記録（metadata.edits）が変わるのに、ファイルのプレーヤーがそれを表示しない（Egatari Player の
+// EDITS_SHOWN_SINCE より前・ほかのプレーヤー。kit/core/player.mjs の playerShowsEdits）か。段 A はプレーヤーを替えない（§7.2）ので、
+// 記録はファイルに入るが、再生するときに表示されない（format spec §7.3）。「保存」（プレーヤーはそのまま）を選んだ文書には、開いている間は聞かない
+function editsNotShown(P, a) {
+  const md = (x) => (x && x.metadata && typeof x.metadata === 'object' ? x.metadata : {});
+  const after = md(a.index).edits;
+  return !P.oldPlayerKept && Array.isArray(after) && after.length > 0 && !sameJson(md(P.index).edits ?? null, after) && !playerShowsEdits(P.index && P.index.player);
+}
+const playerLabel = (x) => `${x.title || x.name}${x.version ? ' ' + x.version : ''}`;
 async function savePortable(mode = 'save') {
   if (S.saving) { toast(T.api.busySave, true); return; }
   S.saving = true;
@@ -1971,19 +1981,35 @@ async function savePortableBound(mode) {
       a = await tierA(P.original, files, { identity, fonts: engine.fonts, fontSubset: () => fontSubsetLoader.subsetFont(), article: { html: rs.html } });
       if (!live()) { cancelled(); return; }
     }
-    if (a.ok) {
+    // 編集の記録を足すのに、ファイルのプレーヤーがそれを表示しない：知らせて、プレーヤーを新しくする保存（段 B の組み直し）を選べるようにする。
+    // 選んだら段 A の結果を使わず、下の段 B の道（「スライドを再ビルドして保存します」とプレーヤーが変わる知らせ）をそのまま通る
+    let updatePlayer = false;
+    if (a.ok && editsNotShown(P, a)) {
+      status('');
+      const pl = P.index && P.index.player, canRebuild = !P.tierAOnly;
+      const v = await ask({ title: T.oldPlayerTitle, kind: 'warn', body: [el('p', { id: 'old-player', text: T.oldPlayerBody }),
+        el('p', { id: 'old-player-which', cls: 'hint', text: T.oldPlayerWhich(pl && typeof pl === 'object' && typeof pl.name === 'string' ? playerLabel({ ...pl, version: String(pl.version ?? '') }) : T.oldPlayerNone) }),
+        canRebuild ? el('p', { id: 'old-player-update', cls: 'hint', text: T.oldPlayerUpdateHint }) : null],
+      buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: !canRebuild }, ...(canRebuild ? [{ id: 'update-player', label: T.oldPlayerUpdate, pri: true }] : [])] });
+      if (!live()) { cancelled(); return; }
+      if (v === 'update-player') updatePlayer = true;
+      else if (v === 'save') P.oldPlayerKept = true;
+      else { status(''); return; }
+      status(T.saving);
+    }
+    if (a.ok && !updatePlayer) {
       html = a.html; index = a.index; deckMeta = a.deckMeta; tier = 'A'; P.lastTierA = a.changes; if (typeof a.config === 'string') cfgText = a.config;
       // 字の補いのない新しい字（字体のファイルを持たない版のアプリ・どの字体にもない字）：断らずに保存し、画面の言葉で名指す（決めごと 3。保存の知らせにも）
       uncovered = (a.changes && a.changes.uncovered) || '';
       saveWarnings = (a.warnings || []).filter((w) => !w.startsWith(FONT_FALLBACK_WARN)).concat(uncovered ? [T.fontFallback(uncovered)] : []);
     }
     else {
-      P.lastRefusal = { code: a.code, reason: a.reason };
+      if (!updatePlayer) P.lastRefusal = { code: a.code, reason: a.reason };
       if (P.tierAOnly) { status(''); await ask({ title: T.tierAOnlyTitle, kind: 'warn', body: [el('p', { id: 'tier-a-only', text: T.tierAOnlySave(P.tierAOnly) }), el('pre', { cls: 'tech', text: `[${a.code}] ${a.reason}` })], buttons: [{ id: 'ok', label: T.ok, pri: true }] }); return; }
       // まだどこにも保存していない文書（AI の出力から作った・deck.html だけを開いた）は、この Studio が組んだものなので、組み直しても
       // 見え方は変わらない：聞かずに組み直す。テーマを変えただけ（原稿の違いが <html> の data-theme だけ）なら、そのわけだけを言う
       if (!((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved)) {
-        const why = (await themeOnlyChange(P, a, files)) ? 'theme-changed' : a.code;
+        const why = updatePlayer ? 'player-update' : (await themeOnlyChange(P, a, files)) ? 'theme-changed' : a.code;
         const body = why === 'theme-changed' ? [el('p', { id: 'tier-b-why', text: T.tierBWhy(why) })]
           : [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { id: 'tier-b-why', cls: 'hint', text: T.tierBWhy(why) }), el('p', { cls: 'hint', text: T.tierBGap })];
         const v = await ask({ title: T.tierBTitle, kind: why === 'theme-changed' ? undefined : 'warn', body,
@@ -2003,8 +2029,8 @@ async function savePortableBound(mode) {
       if (r.playerChange) {
         if (!live()) { cancelled(); return; }
         status('');
-        const pc = r.playerChange, label = (x) => `${x.title || x.name}${x.version ? ' ' + x.version : ''}`;
-        const go = await ask({ title: T.playerChangeTitle, kind: 'warn', body: [el('p', { id: 'player-change', text: T.playerChangeBody(label(pc.from), label(pc.to)) })],
+        const pc = r.playerChange;
+        const go = await ask({ title: T.playerChangeTitle, kind: 'warn', body: [el('p', { id: 'player-change', text: T.playerChangeBody(playerLabel(pc.from), playerLabel(pc.to)) })],
           buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.playerChangeGo, pri: true }] });
         if (go !== 'save') return;
         if (!live()) { cancelled(); return; }

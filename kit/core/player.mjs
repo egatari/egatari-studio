@@ -10,6 +10,10 @@
 //                                ファイルに書く版：中身が出した版と同じ（sha256 と版が lock と同じ）なら json.version、
 //                                違えば json.version + "+dev." + commit（commit がなければ "+dev"）
 //   resolvePlayer(env)           env（組み立ての env：path・ROOT・readText・exists、任意の commit）から {name, version, title, released, sha256}
+//   EDITS_SHOWN_SINCE            編集の記録（metadata.edits、format spec §3.6.1）を再生のときに表示する最初の再生器の版（"1.9.0"。ここだけに書く）
+//   compareVersions(a, b)        X.Y.Z（後ろの "+dev…" などの build の印は見ない）の大小：-1 | 0 | 1。読めなければ null
+//   playerShowsEdits(player)     索引の player {name, version} の再生器が edits を表示するか。Egatari Player の EDITS_SHOWN_SINCE 以上だけ true
+//                                （ほかの再生器・player がない・版が読めないものは、表示するか分からないので false）
 import { RUNTIME_MODULES, RUNTIME_NAMESPACES } from './build-core.mjs';
 import { normalizeEol } from './identity-hash.mjs';
 
@@ -77,6 +81,20 @@ export function playerVersion(json, lock, sha256, commit) {
   if (isReleased(json, lock, sha256)) return json.version;
   const c = typeof commit === 'string' && /^[0-9a-f]{4,40}$/.test(commit) ? '.' + commit : '';
   return `${json.version}+dev${c}`;
+}
+
+export const EDITS_SHOWN_SINCE = '1.9.0';
+const CORE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[0-9A-Za-z.-]+)?$/;
+export function compareVersions(a, b) {
+  const x = CORE.exec(String(a ?? '')), y = CORE.exec(String(b ?? ''));
+  if (!x || !y) return null;
+  for (let i = 1; i <= 3; i++) { const d = Number(x[i]) - Number(y[i]); if (d) return d < 0 ? -1 : 1; }
+  return 0;
+}
+export function playerShowsEdits(player) {
+  if (!isObj(player) || player.name !== PLAYER.name) return false;
+  const c = compareVersions(player.version, EDITS_SHOWN_SINCE);
+  return c !== null && c >= 0;
 }
 
 export async function resolvePlayer(env) {
