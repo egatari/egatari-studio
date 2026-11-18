@@ -152,7 +152,8 @@ try {
     await page.click('#copyshot-copy');
     await page.waitForFunction((t) => document.getElementById('copyshot-lead').textContent === t, T.copied, { timeout: scaled(10000) }).catch(() => {});
     ok((await page.textContent('#copyshot-lead')) === T.copied, `en: Copy request says it copied (${await page.textContent('#copyshot-lead')})`);
-    const text = await page.evaluate(() => navigator.clipboard.readText());
+    // Windows のクリップボードは改行を CRLF で返す（テキストの欄は LF）
+    const text = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
     ok(/^Look at the image of this slide/.test(text) && /^Image: slide 3 “.+” \(id: s-[a-z0-9]+\), at its last step \(step \d+\)$/m.test(text) && text === await page.inputValue('#copyshot-text'),
       `en: the clipboard has the request text only (${JSON.stringify(text.split('\n').pop())})`);
     await ctx.close();
