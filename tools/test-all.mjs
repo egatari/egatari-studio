@@ -221,6 +221,8 @@ const steps = [
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
   // 編集の記録 metadata.edits（format spec §3.6.1・§7.3）：組み立てが索引と deck-meta に写す・段 A の保存・プレーヤーのファイルの情報の「編集」・保存の前の「この教材の作成者ですか」
   ['test-metadata-edits', ['tools/test-metadata-edits.mjs', path.join(tmp, 'metadata-edits')]],
+  // 古いプレーヤー（1.9.0 より前）のファイルに段 A で編集の記録を足すときの知らせと「プレーヤーを新しくして保存」（段 B。handoff #53）
+  ['test-app-old-player', ['tools/test-app-old-player.mjs', path.join(tmp, 'old-player')]],
   // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5）：あとで読み込む本の道具・本の表示・本文の欄・合っていないかもしれない組・本だけを組み直す保存・印刷
   ['test-app-book', ['tools/test-app-book.mjs', path.join(tmp, 'app-book')]],
   // 「このサンプルを参考に作る」（backlog #130）：サンプルを大きく再生する窓・新規作成に場面・見た目・パーツと構成・?from-sample=・コピーを開いて編集
