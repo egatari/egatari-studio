@@ -135,7 +135,7 @@ const ja = {
     '2. 図がつぶれたり、切れたりしていないか',
     '3. 直すところがあれば、スライドの HTML（deck.html）のどこをどう直せばよいか',
     '',
-    `画像：スライド ${n}${title ? `「${title}」` : ''}${id ? `（id：${id}）` : ''}の最後のステップ（ステップ ${k}）`,
+    `画像：スライド ${n}${title ? quoteJa(title) : ''}${id ? `（id：${id}）` : ''}の最後のステップ（ステップ ${k}）`,
   ].join('\n'),
   sevError: 'エラー', sevWarn: '警告', sevInfo: '情報', wholeDeck: '教材全体', slideN: (n, t) => `スライド ${n}${t ? '：' + t : ''}`,
   checkMsg: (c, a) => ({
