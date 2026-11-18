@@ -145,6 +145,7 @@ canon へのエクスポート（Marp 形式の教材一式）は 0.4.2 でな�
 
 - チェックは、同じパーツの中も含めて、見える SVG の字どうしを比べなければならない。空白を除く字のインクの箱だけを使い（回転していない字は、フォントの行の高さ全体でなく、測った字のインク）、重なりの許容は 2 px とする。空の字・塗らない字（`<text>` の `fill` が none か透明で、線もない）・調べるステップで隠れた字・行や離れた span の間の空所を数えてはならない。同じ字を同じ場所に 2 度描いたもの（動く前の、行き先ごとのラベルのコピーなど）は 1 つに読めるので数えてはならない。箱・viewBox・スライドからはみ出すと知らせた字（`svgTextBox`・`svgTextOut`）を、重なりとしてもう一度知らせてはならない。このチェックは字と線・点を比べない
 - SVG の `<text>` 自身か、いずれかの祖先の `<g>` に、正確に `data-overlap="ok"` があるときだけ、その `<text>` を `textOverlap` から除く。値のない属性・空の値・ほかの値（`OK` も含む）や、`<tspan>`・`<svg>`・HTML 要素の印では字を除いてはならない。切れ・はみ出し・字の大きさの最小のチェックも表示も変えてはならない。パーツは意図して重ねる字かそのグループだけに印を付け、パーツ全体には付けない。`data-clip` も引き続き `textOverlap` から字を除く
+- 描いた図の形の点検（R-geometry、`kit/core/geometry-check.mjs`）も `data-overlap="ok"` を見る：`data-part` の印のある要素か祖先の `<g>` に付いていれば、その要素が関わる重なりの知らせ（`geoEdgeThroughBox`・`geoLineOverLabel`・`geoLabelOverlap`）を出さない。`geoLabelOutsideBox` は重なりでないので出る（handoff #45）
 - `textOverlap` は R-fit の警告。SVG の字では、そのスライドの両方の字を示し、項目を動かすか座標を変えるか、`m-flow` の逆向きの辺に `shift` を付けるよう書き手に勧める
 
 `data-annot` も同じ種類の書き方の決まり（Studio では `kit/core/layout-scan.mjs` の `ANNOT_ATTR`）で、**わざと小さくした注記**を示す。

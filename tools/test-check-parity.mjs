@@ -2,7 +2,8 @@
 //   node tools/test-check-parity.mjs [作業用のフォルダ]
 // 見本（tools/fixtures/check-parity）：en-rawmath（英語の教材に $…$ の数式が 4 枚残る。持ち主の報告：コマンド版は rawMath のエラーと R-formula の警告を出すのに、
 // 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない・答えが数と同時に開く m-predict・答えが出ない m-predict）と
-// ja-geometry（パーツの印 data-part を付けた手書きの SVG。描いた図の形の点検 R-geometry の 4 つの警告が 1 つずつ、同じ値で出る。kit/core/geometry-check.mjs）。
+// ja-geometry（パーツの印 data-part を付けた手書きの SVG。描いた図の形の点検 R-geometry の 4 つの警告が 1 つずつ、同じ値で出る。kit/core/geometry-check.mjs。
+// 分裂期の細胞で、途中のステップだけ染色体が細胞の外に出る geoOutsideFrame（試作、handoff #46）も 1 つ、同じ値で出る。対照のスライドには出ない）。
 // 0. 静的な棚卸し：MESSAGES のどの code も IN_EDITOR・CLI_ONLY（CLI_ONLY_PREFIX）・EDITOR_ALIAS と BUILD_WARN の行き先のちょうど 1 つに入る。
 //    一覧が MESSAGES にない code を名指さない。IN_EDITOR の code は編集アプリの道筋のファイルに文字列として現れる（見本が出さない code も見る）
 // 1. コマンド版を --json で走らせ、見本が狙った code を出すこと
@@ -50,7 +51,7 @@ fs.writeFileSync(path.join(IMAGES, 'large.svg'), image(1048577));
 fs.writeFileSync(path.join(IMAGES, 'deck.html'), '<!DOCTYPE html><html lang="en" data-theme="default"><head><meta charset="utf-8"><title>Images</title></head><body><div id="stage"><section class="slide noconcl" id="s-images"><h2>Images</h2><div class="body"><img src="small.svg" alt="Small image" width="16" height="16"><img src="large.svg" alt="Large image" width="16" height="16"></div></section></div></body></html>');
 fs.writeFileSync(path.join(IMAGES, 'narration.md'), '## Images {#s-images}\n[0] Two images.\n');
 const FIXTURES = [{ name: 'en-rawmath', lang: 'en' }, { name: 'ja-mix', lang: 'ja' }, { name: 'ja-flow', lang: 'ja' }, { name: 'ja-geometry', lang: 'ja' }, { name: 'en-stale', lang: 'en', dir: STALE }, { name: 'ja-kicker', lang: 'ja' }, { name: 'en-kicker', lang: 'en' }];
-const GEO = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox'];
+const GEO = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame'];
 FIXTURES.push({ name: 'en-images', lang: 'en', dir: IMAGES });
 const dirOf = (f) => f.dir || path.join(FIX, f.name);
 // 見本が出すはずの code（見本を直して減ったら気づくように）
@@ -267,11 +268,16 @@ try {
     if (name === 'ja-geometry') {
       // 4 つの警告が 1 つずつ、コマンド版と編集アプリで同じ値（id と丸めた座標）
       const c = CLI[name].filter((x) => x.code.startsWith('geo')), e = results.filter((x) => x.code.startsWith('geo'));
-      ok(GEO.every((code) => c.filter((x) => x.code === code && x.sev === 'warn').length === 1) && c.length === GEO.length, `cli ja-geometry: each of the 4 geometry warnings once (${c.map((x) => x.code).join(', ')})`);
-      ok(GEO.every((code) => e.filter((x) => x.code === code && x.sev === 'warn').length === 1) && e.length === GEO.length, `editor ja-geometry: each of the 4 geometry warnings once (${e.map((x) => x.code).join(', ')})`);
+      ok(GEO.every((code) => c.filter((x) => x.code === code && x.sev === 'warn').length === 1) && c.length === GEO.length, `cli ja-geometry: each of the ${GEO.length} geometry warnings once (${c.map((x) => x.code).join(', ')})`);
+      ok(GEO.every((code) => e.filter((x) => x.code === code && x.sev === 'warn').length === 1) && e.length === GEO.length, `editor ja-geometry: each of the ${GEO.length} geometry warnings once (${e.map((x) => x.code).join(', ')})`);
       const same = GEO.every((code) => JSON.stringify((c.find((x) => x.code === code) || {}).data) === JSON.stringify((e.find((x) => x.code === code) || {}).arg));
       ok(same, 'parity ja-geometry: the same ids and coordinates in the command line and the editor' + (same ? '' : `: cli ${JSON.stringify(c.map((x) => x.data))} editor ${JSON.stringify(e.map((x) => x.arg))}`));
       ok(!CLI[name].some((x) => ['textOverlap', 'svgTextBox'].includes(x.code)), 'cli ja-geometry: marked labels are left to the geometry check (no textOverlap or svgTextBox for them)');
+      // 枠の外（試作）：染色体 chr-r がステップ 1（後期）だけ細胞の外。最後のステップでは中なので、全部のステップを測らないと出ない。対照のスライド 3 には出ない
+      const fc = c.find((x) => x.code === 'geoOutsideFrame'), fe = results.find((x) => x.code === 'geoOutsideFrame');
+      ok(fc && fc.slide === 2 && fc.data.shape === 'chr-r' && fc.data.frame === 'cell' && fc.data.step === '1' && fc.data.px > 20 && fe && fe.i === 1,
+        `geoOutsideFrame: the middle step of the mitosis slide, in both (cli ${JSON.stringify(fc && fc.data)})`);
+      ok(req.includes('図形 chr-r が枠 cell の外に出る') && req.includes('ステップ 1') && req.includes(`${fc && fc.data.px}px`), 'fix request ja-geometry: the shape id, the step and the overshoot in px');
     }
     if (name === 'en-stale') {
       const c = CLI[name].filter((x) => x.code === 'audioStale'), e = results.filter((x) => x.code === 'audioStale');

@@ -2,18 +2,28 @@
 // 編集アプリのプレビュー（app/frame-shim.js）が同じこの関数を使う（体裁の検査 kit/core/layout-scan.mjs と同じ入れ方）
 //
 // 部品は描いた要素に印（札）を付けるだけで、測るのはここ 1 か所：
-//   箱   形の要素そのもの（<rect>・<path>・<ellipse>・<polygon>）に data-part="box"・data-part-id
-//   辺   <g data-part="edge" data-part-id data-part-from data-part-to>。線そのもの（<line> か <path>）に data-part-line（矢じりは除く）。1 つの辺に線が 2 本のこともある
+//   箱   形の要素そのもの（<rect>・<path>・<ellipse>・<polygon>・<circle>）に data-part="box"・data-part-id。形の中かは isPointInFill で測る
+//   辺   <g data-part="edge" data-part-id data-part-from data-part-to>。線そのもの（<line> か <path>）に data-part-line（矢じりは除く）。1 つの辺に線が 2 本のこともある。
+//        端（from・to）は箱の id か点（mark）の id（点から字への引き出し線。handoff #45 の決定 2）。端が点なら、その点の字と、その点を中に持つ箱は、この辺の通過・横切りの相手にしない
 //   字   <text data-part="label" data-part-id=<持ち主> data-part-of="box|edge|mark">。縁取りがあれば data-part-halo、箱の外に置く字は data-part-at="outside"。
 //        foreignObject の字は中身を Range で測る
 //   点   data-part="mark"（m-quad の点。<g transform> の中の <circle cx=0 cy=0> でも getBoundingClientRect で測る）。字の障害物
 //   @ で始まる端（@spine・@moved など）は節でない
+//   わざと重ねる所：要素そのものか祖先の <g> に o.overlap の印（data-overlap="ok"、kit/core/layout-scan.mjs の OVERLAP_ATTR。handoff #45 の決定 3）。
+//        その要素が関わる重なりの知らせ（geoEdgeThroughBox・geoLineOverLabel・geoLabelOverlap）を出さない。値は "ok" だけ。箱の縁を越える字（geoLabelOutsideBox）は重なりでないので外さない
+//   枠の中（試作、handoff #46。名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。宣言した図形だけを、ステップごとに測る（geometryWithin）
 //
-//   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt}
+//   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt, overlap, within, frame}
 //     bands  字体ごとの字の範囲（kit/core/text-band.mjs の TEXT_BANDS。{字体の名前: {up, down}}、em）
 //     dflt   表にない字体だけの字の範囲（DEFAULT_BAND）
+//     overlap わざと重ねる印の属性の名前（OVERLAP_ATTR）。なければ外さない
+//     within・frame  枠の中の印の属性の名前（WITHIN_ATTRS）。o.mode === 'within' のときだけ、今の表示で枠の外に出た図形（geoOutsideFrame の 1 段階分）を返す
 //     縦書きのスライド（layout-tate）は測らない（[] を返す。数は geometryTate）
-//   geometryTate(slides) → n   縦横が混ざる教材で、測らなかった縦書きのスライドのうち印のあるものの数（geoTateSlides）。
+//   geometryWithin(s, o, seek, scan) → [{code: 'geoOutsideFrame', sev, a: {shape, frame, step, px, at, steps}}]
+//     スライドの全部のステップ（0 … s._max。static は 0 だけ）を seek(k) で出し、scan（= geometryScan）を o.mode = 'within' で呼ぶ。
+//     図形と枠の組ごとに 1 つ：いちばん大きくはみ出したステップ（step。結論のステップは 'concl'）・その量（px）・その点（at）と、はみ出したステップの一覧（steps）。
+//     最後のステップだけでは途中のはみ出しを逃す（backlog #91 の分裂期の染色体）。終わった後の表示は呼ぶ側が戻す
+//   geometryTate(slides, o) → n   縦横が混ざる教材で、測らなかった縦書きのスライドのうち印のあるものの数（geoTateSlides）。
 //     中身のスライド（表紙・章の扉を除く）がみな縦書きなら 0（そのときは決まりの台帳が R-geometry を skipped/tate にする。kit/core/check-rules.mjs の factsFromSource の allTate と同じ数え方）
 //
 // 座標はスライドの座標（1280×720。拡大率で割る）。
@@ -25,12 +35,16 @@
 // この関数は文字列にしてページに入れる（check.mjs は page.evaluate、編集アプリは仲立ちの文字列に埋める）。
 // だから外の名前を使わない（中だけで閉じる）。閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
 
+// 枠の中の印の名前（試作。仕様で名前が決まったらここだけを直す）。呼ぶ側が o.within・o.frame として渡す（kit/core/layout-scan.mjs の GEO_OPTS）
+export const WITHIN_ATTRS = Object.freeze({ within: 'data-within', frame: 'data-frame' });
+
 export function geometryScan(s, o) {
   const out = [];
   if (!s || s.classList.contains('layout-tate')) return out;
   const BANDS = (o && o.bands) || {}, DFLT = (o && o.dflt) || { up: 0.86, down: 0.26 };
   const SEL = (v) => '[data-part="' + v + '"]';
-  if (!s.querySelector([SEL('box'), SEL('edge'), SEL('label'), SEL('mark')].join(','))) return out;
+  const WITHIN = !!(o && o.mode === 'within'), WA = (o && o.within) || '', FA = (o && o.frame) || '', OV = (o && o.overlap) || '';
+  if (WITHIN ? !WA || !FA || !s.querySelector('[' + WA + ']') : !s.querySelector([SEL('box'), SEL('edge'), SEL('label'), SEL('mark')].join(','))) return out;
   const sr = s.getBoundingClientRect();
   const k = sr.width / 1280 || 1;
   const SX = (x) => (x - sr.left) / k, SY = (y) => (y - sr.top) / k;
@@ -72,17 +86,23 @@ export function geometryScan(s, o) {
   };
   const strokeOf = (el, M) => { const w = parseFloat(getComputedStyle(el).strokeWidth); return (isFinite(w) ? w : 1) * (M ? M.sc : 1); };
   const textOf = (el) => (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  // わざと重ねる印（data-overlap="ok"）：要素そのものか、スライドの中の祖先の <g>
+  const okOverlap = (el) => {
+    if (!OV) return false;
+    for (let e = el; e && e !== s; e = e.parentElement) if ((e === el || e.localName === 'g') && e.getAttribute(OV) === 'ok') return true;
+    return false;
+  };
 
   // ---------------------------------------------------------------- 箱
   const boxes = [];
-  for (const el of s.querySelectorAll(SEL('box'))) {
+  if (!WITHIN) for (const el of s.querySelectorAll(SEL('box'))) {
     if (!shown(el)) continue;
     const q = box(el.getBoundingClientRect());
     if (q.r - q.l <= 0 || q.b - q.t <= 0) continue;
     const M = mapper(el);
     let inv = null;
     if (M && typeof el.isPointInFill === 'function') { try { inv = M.m.inverse(); } catch (e) { inv = null; } }
-    boxes.push({ el, id: el.getAttribute('data-part-id') || '', root: rootOf(el), q, inv, sw: strokeOf(el, M) });
+    boxes.push({ el, id: el.getAttribute('data-part-id') || '', root: rootOf(el), q, inv, sw: strokeOf(el, M), ok: okOverlap(el) });
   }
   // 点（スライドの座標）が箱の内側に tol より深く入っているか：点とそのまわり 8 方向の tol の点がみな箱の形の中
   // （形は isPointInFill。ひし形の <polygon>・楕円・角の丸い <rect> も形どおり。形を測れない要素は外接矩形）
@@ -102,7 +122,7 @@ export function geometryScan(s, o) {
   // ---------------------------------------------------------------- 辺（線ごとの折れ線、スライドの座標）
   const LINE = 'line,path,polyline,polygon';
   const edges = [];
-  for (const g of s.querySelectorAll(SEL('edge'))) {
+  if (!WITHIN) for (const g of s.querySelectorAll(SEL('edge'))) {
     if (!shown(g)) continue;
     const id = g.getAttribute('data-part-id') || '', from = g.getAttribute('data-part-from') || '', to = g.getAttribute('data-part-to') || '';
     const els = g.matches(LINE) && g.hasAttribute('data-part-line') ? [g] : [...g.querySelectorAll('[data-part-line]')].filter((x) => x.matches(LINE));
@@ -122,9 +142,9 @@ export function geometryScan(s, o) {
         const n = Math.min(2000, Math.max(2, Math.ceil(len * M.sc / 4)));
         for (let i = 0; i <= n; i++) { const p = el.getPointAtLength(len * i / n); pts.push(M.pt(p.x, p.y)); }
       }
-      lines.push({ el, pts, tol: strokeOf(el, M) / 2 + TOL });
+      lines.push({ el, pts, tol: strokeOf(el, M) / 2 + TOL, ok: okOverlap(el) });
     }
-    if (lines.length) edges.push({ el: g, id, from, to, root: rootOf(g), lines });
+    if (lines.length) edges.push({ el: g, id, from, to, root: rootOf(g), lines, ok: okOverlap(g) });
   }
   // 折れ線を 2px ごとの点に細かくする（箱の通過を見る）
   const dense = (pts) => {
@@ -195,18 +215,134 @@ export function geometryScan(s, o) {
     }
     return htmlTextRects(el);
   };
+
+  // ---------------------------------------------------------------- 0. 図形が枠の外に出る（geoOutsideFrame の 1 段階分。o.mode === 'within'。試作、handoff #46）
+  // 図形（data-within="名前"）の輪郭の点が、同じ名前の枠（data-frame="名前"）の形の中にあるかを、今の表示で測る。
+  //   図形の点：形の要素（SVGGeometryElement）は輪郭を getTotalLength・getPointAtLength で 2px ごと（多くても 2000 点）。<g> なら中の見えている形の要素と字の全部。
+  //     字は字の範囲（上の textRects。R-geometry の text-band と同じ値）の周り。HTML の要素は外接矩形の周り
+  //   枠：形の要素なら isPointInFill（楕円・円・多角形も形どおり）と、輪郭の折れ線までの距離。そのほか（<g>・HTML）は外接矩形
+  //   はみ出しの量：点が枠の外なら枠の輪郭までの距離。図形の線の太さの半分を足し、枠の線の太さの半分を引く（線どうしが重なって描けているなら中）。2px までは中とみなす
+  //   同じ名前の枠が同じ図（rootOf）にいくつもあれば、いちばんよく収まる枠と比べる（表のマスなど）。同じ図になければスライドの中から。見えている枠がなければ測らない
+  if (WITHIN) {
+    const GEOM = 'path,rect,circle,ellipse,line,polyline,polygon';
+    const NOT_DRAWN = 'defs,clipPath,mask,marker,pattern,symbol';
+    const outline = (el, step) => {
+      const M = mapper(el);
+      if (!M) return [];
+      let len = 0;
+      try { len = el.getTotalLength(); } catch (e) { len = 0; }
+      if (!(len > 0)) return [];
+      const n = Math.min(2000, Math.max(8, Math.ceil(len * M.sc / step)));
+      const pts = [];
+      for (let i = 0; i <= n; i++) { const p = el.getPointAtLength(len * i / n); pts.push(M.pt(p.x, p.y)); }
+      return pts;
+    };
+    const halfPaint = (el) => {
+      const st = getComputedStyle(el);
+      if (st.stroke === 'none' || parseFloat(st.strokeOpacity) === 0) return 0;
+      return strokeOf(el, mapper(el)) / 2;
+    };
+    const rectRing = (q) => {
+      const pts = [], w = q.r - q.l, h = q.b - q.t, n = Math.max(1, Math.ceil(w / 4)), m = Math.max(1, Math.ceil(h / 4));
+      for (let i = 0; i <= n; i++) { const x = q.l + w * i / n; pts.push({ x, y: q.t }, { x, y: q.b }); }
+      for (let j = 1; j < m; j++) { const y = q.t + h * j / m; pts.push({ x: q.l, y }, { x: q.r, y }); }
+      return pts;
+    };
+    const shapePts = (el) => {
+      const pts = [];
+      const geo = (g) => { const w = halfPaint(g); for (const p of outline(g, 2)) pts.push({ x: p.x, y: p.y, w }); };
+      const txt = (t) => { for (const r of textRects(t)) for (const p of rectRing(r)) pts.push({ x: p.x, y: p.y, w: 0 }); };
+      if (el.namespaceURI === 'http://www.w3.org/2000/svg' && el.localName !== 'svg') {
+        if (el.matches(GEOM)) geo(el);
+        else if (el.localName === 'text' || el.localName === 'foreignObject') txt(el);
+        else {
+          for (const g of el.querySelectorAll(GEOM)) if (shown(g) && !g.closest(NOT_DRAWN)) geo(g);
+          for (const t of el.querySelectorAll('text,foreignObject')) if (shown(t) && !t.parentElement.closest('text,foreignObject')) txt(t);
+        }
+      } else for (const p of rectRing(box(el.getBoundingClientRect()))) pts.push({ x: p.x, y: p.y, w: 0 });
+      return pts;
+    };
+    // 点から折れ線（閉じた輪郭）までの距離
+    const toRing = (ring, x, y) => {
+      let d = Infinity;
+      for (let i = 0; i < ring.length; i++) {
+        const a = ring[i], b = ring[(i + 1) % ring.length], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+        const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0;
+        d = Math.min(d, Math.hypot(x - a.x - dx * t, y - a.y - dy * t));
+      }
+      return d;
+    };
+    const frameOf = (el) => {
+      if (el.namespaceURI === 'http://www.w3.org/2000/svg' && typeof el.isPointInFill === 'function') {
+        const M = mapper(el);
+        let inv = null;
+        try { inv = M && M.m.inverse(); } catch (e) { inv = null; }
+        const ring = outline(el, 2);
+        if (inv && ring.length > 2) {
+          return {
+            half: halfPaint(el),
+            inside: (x, y) => { const cx = sr.left + x * k, cy = sr.top + y * k; try { return el.isPointInFill(new DOMPoint(inv.a * cx + inv.c * cy + inv.e, inv.b * cx + inv.d * cy + inv.f)); } catch (e) { return true; } },
+            dist: (x, y) => toRing(ring, x, y),
+          };
+        }
+      }
+      const q = box(el.getBoundingClientRect());
+      return {
+        half: 0,
+        inside: (x, y) => x >= q.l && x <= q.r && y >= q.t && y <= q.b,
+        dist: (x, y) => (x >= q.l && x <= q.r && y >= q.t && y <= q.b ? Math.min(x - q.l, q.r - x, y - q.t, q.b - y) : Math.hypot(Math.max(q.l - x, 0, x - q.r), Math.max(q.t - y, 0, y - q.b))),
+      };
+    };
+    const all = [...s.querySelectorAll('[' + WA + ']')];
+    all.forEach((el, n) => {
+      const name = el.getAttribute(WA) || '';
+      if (!name || !shown(el)) return;
+      const sel = '[' + FA + '="' + name.replace(/["\\]/g, '\\$&') + '"]';
+      const root = rootOf(el);
+      let fs = [...s.querySelectorAll(sel)].filter((f) => f !== el && !el.contains(f) && shown(f));
+      const near = fs.filter((f) => rootOf(f) === root);
+      if (near.length) fs = near;
+      if (!fs.length) return;
+      const pts = shapePts(el);
+      if (!pts.length) return;
+      let best = null;
+      for (const f of fs) {
+        const F = frameOf(f);
+        let worst = -Infinity, at = null;
+        for (const p of pts) {
+          let v;
+          if (F.inside(p.x, p.y)) { if (p.w - F.half <= TOL) continue; v = p.w - F.half - F.dist(p.x, p.y); }
+          else v = F.dist(p.x, p.y) + p.w - F.half;
+          if (v > worst) { worst = v; at = p; }
+        }
+        if (!best || worst < best.worst) best = { worst, at };
+        if (best.worst <= TOL) break;
+      }
+      if (best && best.worst > TOL) {
+        add('warn', 'geoOutsideFrame', { shape: el.getAttribute('data-part-id') || el.id || el.localName + '#' + (n + 1), frame: name, px: rnd(best.worst), at: [rnd(best.at.x), rnd(best.at.y)] });
+      }
+    });
+    return out;
+  }
+
   const labels = [];
   for (const el of s.querySelectorAll(SEL('label'))) {
     if (!shown(el)) continue;
     const rs = textRects(el);
     if (!rs.length) continue;
-    labels.push({ el, id: el.getAttribute('data-part-id') || '', of: el.getAttribute('data-part-of') || '', outside: el.getAttribute('data-part-at') === 'outside', halo: el.hasAttribute('data-part-halo'), t: textOf(el), root: rootOf(el), rs });
+    labels.push({ el, id: el.getAttribute('data-part-id') || '', of: el.getAttribute('data-part-of') || '', outside: el.getAttribute('data-part-at') === 'outside', halo: el.hasAttribute('data-part-halo'), t: textOf(el), root: rootOf(el), rs, ok: okOverlap(el) });
   }
   const marks = [];
   for (const el of s.querySelectorAll(SEL('mark'))) {
     if (!shown(el)) continue;
     const q = box(el.getBoundingClientRect());
-    if (q.r - q.l > 0 && q.b - q.t > 0) marks.push({ el, id: el.getAttribute('data-part-id') || '', root: rootOf(el), q });
+    if (q.r - q.l > 0 && q.b - q.t > 0) marks.push({ el, id: el.getAttribute('data-part-id') || '', root: rootOf(el), q, ok: okOverlap(el) });
+  }
+  // 辺の端が点（mark）のとき：その点の字と、その点を中に持つ箱は、この辺の相手にしない（点から字への引き出し線。handoff #45 の決定 2）
+  for (const E of edges) {
+    const ends = marks.filter((Mk) => Mk.root === E.root && Mk.id && (Mk.id === E.from || Mk.id === E.to));
+    E.markIds = ends.map((Mk) => Mk.id);
+    E.inBoxes = boxes.filter((B) => B.root === E.root && ends.some((Mk) => deepIn(B, (Mk.q.l + Mk.q.r) / 2, (Mk.q.t + Mk.q.b) / 2, 0)));
   }
   const meet = (a, b, tol) => {
     const q = { l: Math.max(a.l, b.l), t: Math.max(a.t, b.t), r: Math.min(a.r, b.r), b: Math.min(a.b, b.b) };
@@ -215,10 +351,12 @@ export function geometryScan(s, o) {
 
   // ---------------------------------------------------------------- 1. 辺が元でも先でもない箱の内側を通る（geoEdgeThroughBox）
   for (const E of edges) {
+    if (E.ok) continue;
     for (const B of boxes) {
-      if (B.root !== E.root || B.id === E.from || B.id === E.to) continue;
+      if (B.root !== E.root || B.id === E.from || B.id === E.to || B.ok || E.inBoxes.includes(B)) continue;
       let seg = null;
       for (const L of E.lines) {
+        if (L.ok) continue;
         let first = null, last = null;
         for (const p of dense(L.pts)) {
           if (deepIn(B, p.x, p.y, L.tol)) { if (!first) first = p; last = p; }
@@ -245,10 +383,12 @@ export function geometryScan(s, o) {
     return { x: a.x + dx * tm, y: a.y + dy * tm };
   };
   for (const E of edges) {
+    if (E.ok) continue;
     for (const Lb of labels) {
-      if (Lb.root !== E.root || (Lb.of === 'edge' && Lb.id === E.id) || E.el.contains(Lb.el)) continue;
+      if (Lb.root !== E.root || Lb.ok || (Lb.of === 'edge' && Lb.id === E.id) || (Lb.of === 'mark' && E.markIds.includes(Lb.id)) || E.el.contains(Lb.el)) continue;
       let at = null;
       for (const L of E.lines) {
+        if (L.ok) continue;
         for (const r of Lb.rs) {
           const q = { l: r.l + L.tol, t: r.t + L.tol, r: r.r - L.tol, b: r.b - L.tol };
           if (q.r <= q.l || q.b <= q.t) continue;
@@ -264,15 +404,16 @@ export function geometryScan(s, o) {
   // ---------------------------------------------------------------- 3. 字の範囲どうし・字と持ち主でない点が重なる（geoLabelOverlap）
   for (let i = 0; i < labels.length; i++) {
     const A = labels[i];
+    if (A.ok) continue;
     for (let j = i + 1; j < labels.length; j++) {
       const B = labels[j];
-      if (A.root !== B.root || A.el.contains(B.el) || B.el.contains(A.el)) continue;
+      if (A.root !== B.root || B.ok || A.el.contains(B.el) || B.el.contains(A.el)) continue;
       let q = null;
       for (const r of A.rs) { for (const u of B.rs) if ((q = meet(r, u, TOL))) break; if (q) break; }
       if (q) add('warn', 'geoLabelOverlap', { label: A.id, of: A.of, t: A.t, other: B.id, otherOf: B.of, u: B.t, mark: false, rect: rr(q) });
     }
     for (const Mk of marks) {
-      if (Mk.root !== A.root || (A.of === 'mark' && A.id === Mk.id) || Mk.el.contains(A.el) || A.el.contains(Mk.el)) continue;
+      if (Mk.root !== A.root || Mk.ok || (A.of === 'mark' && A.id === Mk.id) || Mk.el.contains(A.el) || A.el.contains(Mk.el)) continue;
       let q = null;
       for (const r of A.rs) if ((q = meet(r, Mk.q, TOL))) break;
       if (q) add('warn', 'geoLabelOverlap', { label: A.id, of: A.of, t: A.t, other: Mk.id, otherOf: 'mark', u: '', mark: true, rect: rr(q) });
@@ -292,11 +433,33 @@ export function geometryScan(s, o) {
   return out;
 }
 
+// 図形が枠の外に出る（geoOutsideFrame。試作、handoff #46）を、スライドの全部のステップで測ってまとめる。geometryScan と同じく文字列でページに入れる。
+// seek(k)：そのステップの終わりの表示にする（kit/check.mjs と編集アプリは DECK.seek(i, k, Infinity)）。scan：geometryScan（中で外の名前を使えないので渡してもらう）
+export function geometryWithin(s, o, seek, scan) {
+  const WA = (o && o.within) || '';
+  if (!s || !WA || s.classList.contains('layout-tate') || !s.querySelector('[' + WA + ']')) return [];
+  const max = s.classList.contains('static') ? 0 : (isFinite(s._max) && s._max > 0 ? s._max : 0);
+  const oo = Object.assign({}, o, { mode: 'within' }), by = new Map(), order = [];
+  for (let k = 0; k <= max; k++) {
+    seek(k);
+    const name = k === s._cstep ? 'concl' : String(k);
+    for (const f of scan(s, oo)) {
+      const key = f.a.shape + '\n' + f.a.frame;
+      let r = by.get(key);
+      if (!r) { r = { code: f.code, sev: f.sev, a: { shape: f.a.shape, frame: f.a.frame, step: name, px: f.a.px, at: f.a.at, steps: [] } }; by.set(key, r); order.push(r); }
+      r.a.steps.push(name);
+      if (f.a.px > r.a.px) { r.a.px = f.a.px; r.a.step = name; r.a.at = f.a.at; }
+    }
+  }
+  return order;
+}
+
 // 縦横が混ざる教材で、形の点検から外した縦書きのスライド（印のあるもの）の数。中身のスライドがみな縦書きなら 0。geometryScan と同じく文字列でページに入れる
-export function geometryTate(slides) {
+// 印：data-part の 4 つと、枠の中の印（o.within。渡されたときだけ）
+export function geometryTate(slides, o) {
   const content = [].filter.call(slides || [], (s) => !s.classList.contains('cover') && !s.classList.contains('sec'));
   const tate = content.filter((s) => s.classList.contains('layout-tate'));
   if (!tate.length || tate.length === content.length) return 0;
-  const sel = ['box', 'edge', 'label', 'mark'].map((v) => '[data-part="' + v + '"]').join(',');
+  const sel = ['box', 'edge', 'label', 'mark'].map((v) => '[data-part="' + v + '"]').concat(o && o.within ? ['[' + o.within + ']'] : []).join(',');
   return tate.filter((s) => !!s.querySelector(sel)).length;
 }

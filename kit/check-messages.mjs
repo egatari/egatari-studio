@@ -285,6 +285,10 @@ export const MESSAGES = {
   geoLabelOutsideBox: { rule: 'R-geometry',
     ja: (a) => `図の字「${a.t}」が箱 ${a.box} の縁を越える（${geoSides(a.px, 'ja')}）：字を短くするか改行するか、パーツのデータで箱 ${a.box} を大きくする（m-flow なら w・h）`,
     en: (a) => `figure text “${a.t}” goes past the border of box ${a.box} (${geoSides(a.px, 'en')}): shorten the text, break it into lines, or make box ${a.box} larger in the part's data (in m-flow, w and h)` },
+  // 図形が枠の外に出る（試作、handoff #46）：data-within の図形と data-frame の枠。いちばん大きくはみ出したステップと量、外に出るステップの一覧
+  geoOutsideFrame: { rule: 'R-geometry',
+    ja: (a) => `図形 ${a.shape} が枠 ${a.frame} の外に出る（${a.px}px、${stepJa(a.step)}、${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `。外に出るステップは ${a.steps.map((x) => (x === 'concl' ? '結論' : x)).join('・')}` : ''}）：そのステップの図形 ${a.shape} の位置か大きさを、パーツのデータか図の座標で変えて、枠 ${a.frame} の内側に収める（枠を大きくしてもよい）`,
+    en: (a) => `figure shape ${a.shape} goes outside frame ${a.frame} (by ${a.px}px at ${stepEn(a.step)}, at ${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `; outside at steps ${a.steps.map((x) => (x === 'concl' ? 'conclusion' : x)).join(', ')}` : ''}): at that step, move or shrink shape ${a.shape} in the part's data or the figure's coordinates so it stays inside frame ${a.frame} (or make the frame larger)` },
   geoTateSlides: { rule: 'R-geometry',
     ja: (a) => `縦書きのスライド ${a.n} 枚の図は、図の形の点検で測っていない：その図の線・箱・字の重なりは目で確かめる`,
     en: (a) => `the figures on ${a.n} vertical (layout-tate) slide${a.n === 1 ? '' : 's'} were not measured by the figure geometry check: check their lines, boxes and text for overlaps by eye` },

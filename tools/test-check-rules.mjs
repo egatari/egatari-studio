@@ -108,6 +108,9 @@ ok('factsFromSource: partMarks and allTate (content slides only: cover and sec a
   assert.equal(factsFromSource({ deck: deck(['slide cover']) }).allTate, false);
   assert.equal(factsFromSource({ deck: '<svg><rect data-part="box" data-part-id="a"/></svg>' }).partMarks, true);
   assert.equal(factsFromSource({ deck: '<div data-part-failure="define"></div>' }).partMarks, false);
+  // 枠の中の印（試作、handoff #46）だけの手書きの図も R-geometry の対象
+  assert.equal(factsFromSource({ deck: '<svg><rect data-within="cell" x="1"/></svg>' }).partMarks, true);
+  assert.equal(factsFromSource({ deck: '<svg><rect data-withinx="cell"/></svg>' }).partMarks, false);
 });
 ok('ruleSet text depends only on ids and codes', () => {
   const t = ruleSetText();
