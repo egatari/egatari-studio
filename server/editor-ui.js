@@ -731,8 +731,11 @@ export function createEditorUI(o) {
       return;
     }
     const sk = splitKey(key);
+    // saved：保存の結果の 1 行（「保存しました（ほかのステップの 2 か所にも…）」）。保存でプレビューが読み込み直され、同じステップの欄を
+    // 作り直しても残す（作り直しは保存の直後に来るので、残さないと 1 行がすぐ消えて読めなかった。handoff Issue #49）
+    const saved = narr && narr.key === key && !narr.dirty ? narr.saved : null;
     // edit：入力のたびに増える版。保存の応答は、送った版が今も同じときだけ「保存した」にする（保存の途中の入力を未保存のまま残す）
-    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, edit: 0, i: pos.i, pendingAll: new Map() };
+    const cur = narr = { key, slideKey: sk[0], stepKey: sk[1], turns: [], dirty: false, edit: 0, i: pos.i, pendingAll: new Map(), saved };
     renderDrawer(true);
     Promise.all([info ? info : loadInfo(), api('GET', '/__dev/narration?key=' + encodeURIComponent(key))]).then(([, j]) => {
       if (narr !== cur) return;
@@ -747,7 +750,7 @@ export function createEditorUI(o) {
     drawer.innerHTML = '';
     const s = slideOf(narr.slideKey);
     const title = (s && (s.heading || s.title)) || narr.slideKey;
-    const status = h('span', { cls: 'dv-st', text: narr.line ? L.nLine(narr.line) : L.nNone });
+    const status = h('span', { cls: 'dv-st', text: narr.saved || (narr.line ? L.nLine(narr.line) : L.nNone) });
     const saveBtn = h('button', { cls: 'dv-pri', text: L.save });
     const revert = h('button', { text: L.cancel, title: L.revertT });
     const body = h('div', { cls: 'dv-body' });
@@ -765,7 +768,7 @@ export function createEditorUI(o) {
     if (narr.error) { saveBtn.disabled = true; showErr(nmsg, narr.error); return; }
     const pendingN = () => [...narr.pendingAll.values()].reduce((n, x) => n + x.n, 0);
     const dirtyText = () => (pendingN() ? L.dirtyAll(pendingN()) : L.dirty);
-    const markDirty = () => { narr.edit++; narr.dirty = true; status.textContent = dirtyText(); status.className = 'dv-st dv-dirty'; updateSide(); };
+    const markDirty = () => { narr.edit++; narr.dirty = true; narr.saved = null; status.textContent = dirtyText(); status.className = 'dv-st dv-dirty'; updateSide(); };
     // 台本の欄（server/script-field.js）と、読み方の欄（#101）。fields：発言ごとの欄、lastField：最後に入った欄
     let fields = [], lastField = 0, pron = null;
     const narrLang = () => textLang(narr.turns.map((t) => t.text).join(' ')) ;
@@ -935,7 +938,7 @@ export function createEditorUI(o) {
     const cur = narr;
     function doSave() {
       if (saveBtn.disabled || narr !== cur) return;
-      saveBtn.disabled = true; saveBtn.textContent = L.saving;
+      saveBtn.disabled = true; saveBtn.textContent = L.saving; cur.saved = null;
       const sent = cur.edit;
       api('POST', '/__dev/narration', { slideKey: cur.slideKey, stepKey: cur.stepKey, turns: cur.turns.map((t) => ({ ...t })), rev: cur.rev }).then((j) => {
         saveBtn.textContent = L.save;
@@ -946,7 +949,7 @@ export function createEditorUI(o) {
         // 送った後に入力があれば（版が進んだ）、未保存のまま：欄の中身を替えず、デッキに付いていかず、プレビューは inert のまま
         if (cur.edit !== sent) { status.textContent = L.dirty; status.className = 'dv-st dv-dirty'; updateSide(); return; }
         const finish = (n) => {
-          cur.dirty = false; status.textContent = n ? L.savedAll(n) : j.changed ? L.saved : L.noChange; status.className = 'dv-st'; updateSide();
+          cur.dirty = false; status.textContent = cur.saved = n ? L.savedAll(n) : j.changed ? L.saved : L.noChange; status.className = 'dv-st'; updateSide();
           if (narr === cur && pos && pos.key !== cur.key) narrFollow(true);
         };
         // 読み方の「この台本のすべてに」：ほかのステップにも付ける（このステップを保存した後）

@@ -4,7 +4,8 @@
 // Viewer のページ（play/）を次の状態で開き、axe-core（wcag2a・wcag2aa・wcag21a・wcag21aa・wcag22aa の規則）を当てる：
 //   start（教材なし、ja・en・暗い背景）、about の節まで、教材を開いた（スライド）、本の表示、マークアップの帯、
 //   マークアップの一覧（ハイライト 1 つ）、確かめの窓（この色を全部消す）、リンクの確かめ、ライブのある教材（参加の前）、
-//   編集の記録（metadata.edits）のある教材の「作成と編集」の行と一覧（明るい・暗い背景。handoff #32）
+//   編集の記録（metadata.edits）のある教材の「作成と編集」の行と一覧（明るい・暗い背景。handoff #32）、
+//   手書き（スライドとメモ欄、道具のバー。明るい・暗い背景。handoff #27）
 // 検査はページ（Viewer の画面）だけ。教材の枠（#lesson、sandbox）の中はプレーヤー（kit/）なので別に数え、--report で一覧に出すだけ
 // （落とさない。直しは dev の担当）。
 // 落とす条件：Viewer のページに、KNOWN にない違反（規則 id × 状態）がある。KNOWN は直すまでの一覧で、直ったら消す
@@ -179,6 +180,15 @@ for (const [suffix, opt] of [['', {}], [', dark', { scheme: 'dark' }]]) {
   await p.click('#lesson-credit');
   ok(await until(() => p.isVisible('#cred-box'), 3000), `credits${suffix}: the list opens`);
   await check(`credits (list${suffix})`, p, f);
+  await c.close();
+}
+console.log('handwriting');
+for (const [suffix, opt] of [['', {}], [', dark', { scheme: 'dark' }]]) {
+  const { c, p } = await page(opt);
+  const f = await open(p, 'book.play.ega.html');
+  await p.click('#b-ink');
+  ok(await until(() => p.isVisible('.ink-bar')), `handwriting${suffix}: the tools are shown`);
+  await check(`handwriting${suffix}`, p, f);
   await c.close();
 }
 console.log('live');

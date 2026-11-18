@@ -55,7 +55,7 @@ export const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
 export function briefParts(data, plan = 'free', short = false, full = null) {
   if (planName(plan) === 'paid') return [];
   const keep = Array.isArray(full) ? full : short ? [] : FREE_CORE;
-  return Object.keys(data.en.components).sort().filter((t) => data.en.components[t].set === STANDARD && !keep.includes(t));
+  return Object.keys(data.en.components).sort().filter((t) => data.en.components[t].set === STANDARD && !data.en.components[t].paidOnly && !keep.includes(t));
 }
 export function normalizeSets(sets, data) {
   if (sets === undefined || sets === null) return [];
@@ -95,8 +95,11 @@ export function goneParts(data, lang, exclude, sets) {
 export const membersOf = (D, set) => Object.keys(D.components).sort().filter((n) => D.components[n].set === set);
 
 // 共通の本体（標準の部品の一覧と説明・言いたいことの表）。sets：入っている束（表が指す部品を決める。既定 [] は標準だけ。null ならすべて）。off：外した札
-export function commonOf(data, lang, { exclude = [], sets = [], off = [], plan = 'free', short = false, full = null } = {}) {
+// 有料のプランの指示にだけ入る部品（材料の paidOnly：受け皿のない束のパーツ。tools/make-llm-guide.mjs の hasReceiver）
+export const paidOnlyParts = (data) => Object.keys(data.en.components).sort().filter((t) => data.en.components[t].paidOnly);
+export function commonOf(data, lang, { exclude: exclude0 = [], sets = [], off = [], plan = 'free', short = false, full = null } = {}) {
   const D = langOf(data, lang);
+  const exclude = planName(plan) === 'free' ? [...new Set([...exclude0, ...paidOnlyParts(data)])] : exclude0;
   const ss = sets === null ? [...data.sets] : normalizeSets(sets, data);
   const gone = goneParts(data, lang, exclude, ss);
   const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, sets: ss, off }) : '');

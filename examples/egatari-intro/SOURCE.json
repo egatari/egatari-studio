@@ -1,14 +1,14 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "6c59e425989365a857fe766bb5c998a737c2dd1e",
+  "commit": "c91d1679fa4f5b0e34da6cd5fcd438c17946dc5c",
   "path": "lessons/egatari-intro",
   "files": {
-    "article/01.md": "fade49ef845bc6facf8d1be4fffa897ce2ea5ecc95ec7561716c285e48109fb8",
+    "article/01.md": "b1633e203241333f1e4365d9e4eeece9718ec4644c843e383c965b3fa2c1ac2f",
     "data/kpi.json": "02cc484b5d7f44f629e26eca694ac39f31c3126513243ef4313b17dd4822852c",
-    "deck.html": "226297624a48e7468d99208ac4560ad39fc549225ce13bed3888096f282ebc5e",
+    "deck.html": "97fbeca71ba93cfbb5932fe54f1fa9ee83279d2c369d20628b998c36a74054a0",
     "egatari.json": "6f166117f113a3e82f75cf13bd610492536ade394582e69d52f8a6ebbe4b6897",
-    "narration.md": "887daac1c6900d85277c62d87bb261608aeee2d2ad566da00d2169d529d2a6cd",
-    "sample.json": "0a97cd0f25cc1e1c272d45cde7a729dbbe7b98153f2dae15f84536056315b6d2",
+    "narration.md": "23cb165212577c878370d3b20ab9e54cbca9166426c6bb759be313ba813bd254",
+    "sample.json": "0045cf3a3dbc2c6262bea8cf4efce731e839a1a3aefd5e16f33b7f03055da648",
     "scripts/make_data.py": "6d934820dd8e29deb028634f908514fb281d507e58493592c87f2fa0da9b0824"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."

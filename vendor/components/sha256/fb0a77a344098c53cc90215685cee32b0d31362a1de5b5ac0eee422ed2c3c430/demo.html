@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-nnet の見本</title>
+<!-- 組み方：node kit/build.mjs components/nnet/demo.html -o components/nnet/out/demo.html（重みは架空。値は uv run --with numpy python tools/nnet-demo.py の出力） -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide noconcl">
+  <h2>パーセプトロンで AND を計算する</h2>
+  <div class="body">
+    <m-nnet style="height:440px">
+      <script type="application/json">{"layers": [{"n": 2, "label": "入力", "names": ["*x*_1", "*x*_2"]}, {"n": 1, "label": "出力", "act": "step", "form": "split", "names": ["*y*"]}], "weights": [[[1.0, 1.0]]], "biases": [[-1.5]], "values": {"x": [1, 1], "z": [[0.5]], "a": [[1.0]]}}</script>
+    </m-nnet>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>3–4–4–2 の前向きの計算（架空の重み）</h2>
+  <div class="body">
+    <m-nnet edges="weight" style="height:540px">
+      <script type="application/json">{"layers": [{"n": 3, "label": "入力層", "names": ["*x*_1", "*x*_2", "*x*_3"]}, {"n": 4, "label": "隠れ層 1", "act": "relu"}, {"n": 4, "label": "隠れ層 2", "act": "relu"}, {"n": 2, "label": "出力層", "act": "sigmoid", "names": ["*y*_1", "*y*_2"]}], "weights": [[[0.1, -0.11, 0.51], [0.08, -0.43, 0.29], [1.04, 0.76, -0.56], [-1.01, -0.5, 0.03]], [[-1.86, -0.18, -1.0, -0.59], [-0.44, -0.25, 0.33, 0.83], [-0.1, 1.09, -0.53, 0.28], [0.72, 0.08, -0.59, -0.74]], [[-0.37, 0.18, -0.81, -0.17], [-0.13, 0.43, 0.17, 0.28]]], "biases": [[-0.2, -0.04, 0.24, 0.45], [-0.38, 0.45, 0.4, 0.23], [0.08, -0.09]], "values": {"x": [0.5, -1.2, 0.8], "z": [[0.39, 0.75, -0.6, 0.57], [-1.58, 0.56, 1.34, 0.15], [-0.93, 0.42]], "a": [[0.39, 0.75, 0.0, 0.57], [0.0, 0.56, 1.34, 0.15], [0.28, 0.6]]}}</script>
+    </m-nnet>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>隠れ層 2 を Σ と ReLU に分けて見る（架空）</h2>
+  <div class="body">
+    <m-nnet edges="weight" style="height:540px">
+      <script type="application/json">{"layers": [{"n": 3, "label": "入力層", "names": ["*x*_1", "*x*_2", "*x*_3"]}, {"n": 4, "label": "隠れ層 1", "act": "relu"}, {"n": 4, "label": "隠れ層 2", "act": "relu"}, {"n": 2, "label": "出力層", "act": "sigmoid", "names": ["*y*_1", "*y*_2"]}], "weights": [[[0.1, -0.11, 0.51], [0.08, -0.43, 0.29], [1.04, 0.76, -0.56], [-1.01, -0.5, 0.03]], [[-1.86, -0.18, -1.0, -0.59], [-0.44, -0.25, 0.33, 0.83], [-0.1, 1.09, -0.53, 0.28], [0.72, 0.08, -0.59, -0.74]], [[-0.37, 0.18, -0.81, -0.17], [-0.13, 0.43, 0.17, 0.28]]], "biases": [[-0.2, -0.04, 0.24, 0.45], [-0.38, 0.45, 0.4, 0.23], [0.08, -0.09]], "values": {"x": [0.5, -1.2, 0.8], "z": [[0.39, 0.75, -0.6, 0.57], [-1.58, 0.56, 1.34, 0.15], [-0.93, 0.42]], "a": [[0.39, 0.75, 0.0, 0.57], [0.0, 0.56, 1.34, 0.15], [0.28, 0.6]]}, "steps": [{"show": "x"}, {"layer": 1, "phase": "a"}, {"open": 2, "note": "隠れ層 2 を Σ と ReLU に分けて見る"}, {"layer": 2, "phase": "z"}, {"focus": [2, 0]}, {"layer": 2, "phase": "a"}, {"layer": 3, "phase": "a"}]}</script>
+    </m-nnet>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

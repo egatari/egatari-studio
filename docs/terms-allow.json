@@ -606,12 +606,6 @@
       "keep": true
     },
     {
-      "file": "app/part-thumbs.js",
-      "pattern": "報告書づくりの道具",
-      "term": "tools",
-      "reason": "Sample content of a part thumbnail (a made-up report), not the Tools group."
-    },
-    {
       "file": "app/i18n.js",
       "line": "saveNote:",
       "term": "caution-box",

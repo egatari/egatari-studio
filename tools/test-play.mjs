@@ -193,7 +193,7 @@ async function page(url = site.url, opts = {}) {
   if (url) { await p.goto(url); await p.waitForSelector('html[data-ready]', { timeout: scaled(15000) }); }
   return { ctx, p, errors, close: () => ctx.close() };
 }
-const lessonFrame = async (p) => { await p.waitForSelector('#lesson'); let f = null; await until(async () => { f = (await (await p.$('#lesson')).contentFrame()); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, 15000); return f; };
+const lessonFrame = async (p) => { await p.waitForSelector('#lesson'); let f = null; await until(async () => { f = (await (await p.$('#lesson')).contentFrame()); return f && await f.evaluate(() => !!(window.DECK && DECK.ready)); }, scaled(15000)); return f; };
 const openFixture = async (p, name) => { await p.setInputFiles('#file', FIX[name]); };
 const state = (p) => p.evaluate(() => window.__play.state());
 
@@ -355,7 +355,7 @@ console.log('service worker');
   const p2 = await o.ctx.newPage();
   await p2.goto(site.url); await p2.waitForSelector('html[data-ready]');
   // the new window asks again each second while it launches (play/main.js): wait past its whole launch (10 s from its registration)
-  await until(() => p2.evaluate(() => window.__play.state().sw), 15000); await sleep(10500);
+  await until(() => p2.evaluate(() => window.__play.state().sw), scaled(15000)); await sleep(10500);
   ok(await p2.textContent('#version') === v1 && await o.p.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting) && await f1.evaluate(() => DECK.state().slide) === 2,
     'a second window while a lesson plays: the new version still waits through the second window\'s launch; the playing lesson is untouched');
   await p2.close();
@@ -381,38 +381,38 @@ console.log('service worker');
     if (!activated) throw new Error(`the next launch: with every window closed, the browser did not activate the waiting version within ${NEXT_LAUNCH_MS / 1000} s (${seen})`); }
   // the page may still reload once as it takes over: wait for the page, not for the first load
   await p3.goto(site.url, { waitUntil: 'commit', timeout: scaled(30000) }); await p3.waitForSelector('html[data-ready]', { timeout: scaled(30000) });
-  ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, 15000), `the next launch: version ${b2.version}`);
+  ok(await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b2.version; }, scaled(15000)), `the next launch: version ${b2.version}`);
   c = await cached(p3);
   ok(Object.keys(c).length === 1 && Object.keys(c)[0].endsWith(b2.version), 'the next launch: only the new version\'s cache remains');
   // a launch at the start screen with a version waiting (a home-screen app that was never closed, then opened): taken over at once
   // (an update found more than 10 s after the launch waits even at the start screen: the Viewer is in use, not being launched)
   // The page's launch is the 10 s after its service worker registration resolves (play/main.js initSW), which can come well after
   // html[data-ready] on a slow runner: count the 10 s from there (state().sw), or the update below is found while the page still launches
-  const inUse = async (p) => { await until(() => p.evaluate(() => window.__play.state().sw), 15000); await sleep(10500); };
+  const inUse = async (p) => { await until(() => p.evaluate(() => window.__play.state().sw), scaled(15000)); await sleep(10500); };
   await inUse(p3);
   await p3.evaluate(() => caches.open('egatari-play-0.4.8-0000000000'));   // a cache under the name before the rename
   const b3 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v3' });
   await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
-  ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b2.version,
+  ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), scaled(15000)) && await p3.textContent('#version') === b2.version,
     'a third version found while the Viewer is in use: it waits (no reload)');
   await p3.evaluate(() => { try { const a = JSON.parse(sessionStorage.getItem('__swlog') || '[]'); a.push(`${Date.now() % 1e6} goto`); sessionStorage.setItem('__swlog', JSON.stringify(a)); } catch { /* no log */ } });
   await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });   // as above: the takeover may be slow, and the page may reload once
   { const took = await until(async () => { await p3.waitForSelector('html[data-ready]'); return await p3.textContent('#version') === b3.version; }, 15000);
     ok(took, `a launch at the start screen (the only window): the waiting version takes over (${b3.version})` + (took ? '' : ' ' + await swDiag(p3))); }
-  ok(await until(async () => { const k = await p3.evaluate(() => caches.keys()); return k.length === 1 && k[0] === 'egatari-viewer-' + b3.version; }, 10000), 'activate: only the egatari-viewer- cache of this version remains (the old egatari-play- cache is deleted)');
+  ok(await until(async () => { const k = await p3.evaluate(() => caches.keys()); return k.length === 1 && k[0] === 'egatari-viewer-' + b3.version; }, scaled(10000)), 'activate: only the egatari-viewer- cache of this version remains (the old egatari-play- cache is deleted)');
   // a launch while another window of the Viewer is still open: the worker answers 'busy'; the launching page asks again each second,
   // so when the other window closes during the launch, the waiting version takes over (the previous page of the same tab, still
   // unloading, is such a window for a moment on a slow device)
   await inUse(p3);
   const b4 = await buildPlay({ out: OUT, endpoints: [fake.endpoint], devLoopback: true, tag: 'v4' });
   await p3.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
-  ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), 15000) && await p3.textContent('#version') === b3.version, 'a fourth version: it waits');
+  ok(await until(() => p3.evaluate(async () => !!(await navigator.serviceWorker.getRegistration()).waiting), scaled(15000)) && await p3.textContent('#version') === b3.version, 'a fourth version: it waits');
   // the other window plays a lesson, so it never asks for the takeover itself
   const p4 = await o.ctx.newPage();
   await p4.goto(site.url); await p4.waitForSelector('html[data-ready]');
   await openFixture(p4, 'lesson.play.ega.html'); await lessonFrame(p4);
   await p3.goto(site.url, { waitUntil: 'commit', timeout: NEXT_LAUNCH_MS }); await p3.waitForSelector('html[data-ready]', { timeout: NEXT_LAUNCH_MS });
-  await until(() => p3.evaluate(() => window.__play.state().sw), 15000);
+  await until(() => p3.evaluate(() => window.__play.state().sw), scaled(15000));
   await sleep(1500);
   const waitedForP4 = await p3.textContent('#version') === b3.version;
   await p4.close();

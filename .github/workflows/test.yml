@@ -120,6 +120,14 @@ jobs:
           MOTION_TEST_ARTIFACTS: ${{ runner.temp }}/motion-test-artifacts
           # 900 s was too tight for test-app here: 760 s median and up to 876 s in 2026-11-03/04, and run 41957733017 reached 900 s while still progressing
           TEST_STEP_TIMEOUT_S: '1200'
+          # TEST_TIMEOUT_SCALE 3 (handoff Issue #49): every wait's cap is 3x here, as on macOS (tools/wait-scale.mjs, Playwright's 30 s default in
+          # kit/browser.mjs; the step cap stays TEST_STEP_TIMEOUT_S). Windows is not slower on the whole (in 10 green runs of 2026-11-15..17 each
+          # step's median was the same as Linux's, ratio 1.00), but it stalls: of 1900 step runs under 120 s, 77 took over 10 s more than that
+          # step's median and 17 over 30 s more (Linux: 5 and 0). In 12 Windows-only failed attempts of 2026-11-15..17, 7 failures were a
+          # different test each time running out a 15 s, 30 s or 60 s wait for something that takes about 1 s (a page load, the editor's
+          # first load, the preview getting ready); they passed on rerun.
+          # The waits end when their condition holds, so a passing run is not slower
+          TEST_TIMEOUT_SCALE: '3'
         # --jobs 3 (backlog #156): see the test job
         run: npm test -- --jobs 3
       - name: Upload screenshots on failure
@@ -146,13 +154,14 @@ jobs:
   # (test-app 340-600 s → 1100-1300 s, test-pack-catalogue 200-330 s → 630-830 s; on the occasional 14 GB runner 390-450 s even when they overlapped).
   # One at a time, three full runs (41933828143, 41942340958, 41950024877) were green in 64-69 min, test-app 728-797 s; swap still grew by 0.7-1.1 GB while test-app ran
   # TEST_TIMEOUT_SCALE 3: every wait's cap (tools/wait-scale.mjs, Playwright's 30 s default in kit/browser.mjs, the 600 s step cap) is 3x here; the waits end
-  # when their condition holds, so a passing run is not slower. Linux and Windows keep the factor 1
+  # when their condition holds, so a passing run is not slower. Windows uses 3 too (see the windows job); Linux keeps the factor 1
   macos:
     runs-on: macos-latest
     # 2026-11-12: 120 for push/full (was 90): v0.6.11 suite growth (test-app 2/2 301→771 s) cut two full runs at 90 min with 2 steps left; back to 90 once the duplication in test-app is fixed (before v0.6.11-rc.1)
     # v0.6.15 (handoff Issue #10): test-app is now 3 shards and branch/full runs skip test-pack-catalogue (--skip-os-independent, see the top).
-    # Measured full run 44159306371: 76 min (test-app 310/344/404 s) -> 90. Tag runs keep 120: they also run test-pack-catalogue (200-330 s alone)
-    timeout-minutes: ${{ github.ref_type == 'tag' && 120 || (github.event_name == 'push' || inputs.full) && 90 || 40 }}
+    # Measured full runs: 44159306371 76 min, but 44224344487 was cancelled at 90 min with 208 of ~210 steps done (a slower runner: test-app 384/428/535 s)
+    # -> 120 for push/full and tags (handoff Issue #10: 90 only if it fits)
+    timeout-minutes: ${{ (github.event_name == 'push' || inputs.full) && 120 || 40 }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7

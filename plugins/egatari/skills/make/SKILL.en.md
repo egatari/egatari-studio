@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 3bcb89c8**
+**Instruction version: 049c5f95**
 **Skill version: 0.6.14**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -43,6 +43,8 @@ Choose the parts for the outline from the standard parts and the specialized set
 - [standard](references/parts/en/standard.md)
 - [stats](references/parts/en/stats.md)
 - [data](references/parts/en/data.md)
+- [algo](references/parts/en/algo.md)
+- [ml](references/parts/en/ml.md)
 - [math](references/parts/en/math.md)
 - [maps](references/parts/en/maps.md)
 - [kokugo](references/parts/en/kokugo.md)
@@ -52,6 +54,7 @@ Choose the parts for the outline from the standard parts and the specialized set
 - [tools](references/parts/en/tools.md)
 - [science](references/parts/en/science.md)
 - [extra](references/parts/en/extra.md)
+- [local](references/parts/en/local.md)
 
 ## Book (article)
 
@@ -77,7 +80,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `3bcb89c8`
+Pack version: `049c5f95`
 
 You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
