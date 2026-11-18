@@ -125,6 +125,40 @@ for (const device of ['iPad (gen 11)', 'iPad (gen 11) landscape', 'iPad Mini']) 
   await o.ctx.close();
 }
 
+// Chrome on iPad after a rotation to landscape: 100dvh stays at the portrait height while visualViewport has the landscape one (handoff #18:
+// a dark band above the slide, the slide cut at the bottom, the page scrolling and put back at the top). Here visualViewport reports a
+// height shorter than the layout viewport: the page and the frame must keep to the visible height, with nothing to scroll
+console.log('Chrome on iPad, landscape (100dvh taller than what is visible)');
+{ const vis = 600;
+  const ctx = await browser.newContext({ ...devices['iPad (gen 11) landscape'], locale: 'ja-JP', serviceWorkers: 'block' });
+  await ctx.route(/^https?:\/\/(?!127\.0\.0\.1[:/])/, (r) => r.fulfill({ status: 200, contentType: 'text/plain', body: 'outside' }));
+  await ctx.addInitScript((h) => { if (window.visualViewport) Object.defineProperty(VisualViewport.prototype, 'height', { get: () => h, configurable: true }); }, vis);
+  const p = await ctx.newPage();
+  const errors = [];
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(site); await p.waitForSelector('html[data-ready]', { timeout: scaled(20000) });
+  const vp = p.viewportSize();
+  for (const name of ['lesson.play.ega.html', 'live.play.ega.html']) {
+    await p.setInputFiles('#file', FIX[name]);
+    if (name.startsWith('live')) { await p.waitForSelector('#b-watch', { state: 'visible' }); await p.tap('#b-watch'); }
+    await lessonFrame(p);
+    await p.evaluate(() => window.scrollTo(0, 200));
+    await p.evaluate(() => window.dispatchEvent(new Event('resize')));
+    await sleep(400);
+    const g = await p.evaluate(() => {
+      const r = (id) => { const b = document.getElementById(id).getBoundingClientRect(); return { top: Math.round(b.top), bottom: Math.round(b.bottom) }; };
+      return { body: Math.round(document.body.getBoundingClientRect().height), sy: window.scrollY, frame: r('stage-wrap'), live: document.getElementById('live').hidden ? null : r('live') };
+    });
+    const bottom = Math.max(g.frame.bottom, g.live ? g.live.bottom : 0);
+    ok(g.body === vis && g.sy === 0 && bottom <= vis && g.frame.bottom - g.frame.top > 0.5 * vis,
+      `${name} (layout ${vp.width} × ${vp.height}, visible ${vis}): the page is the visible height, the frame${g.live ? " and the Live bar" : ""} end inside it, still at the top ${JSON.stringify(g)}`);
+    await p.tap('#b-close');
+    await until(() => p.evaluate(() => !document.getElementById('lesson')));
+  }
+  ok(await p.evaluate(() => !document.documentElement.style.getPropertyValue('--view-h')), 'closing the lesson drops the measured height (the start screen scrolls as before)');
+  ok(errors.length === 0, `no page errors (${errors.join(' | ')})`);
+  await ctx.close(); }
+
 // a Mac with Safari (keyboard): the navigation keys move the lesson wherever the focus is (tools/viewer-keys-check.mjs).
 // WebKit does not focus a button on a click, and may refuse the page's iframe.focus(): the page hands the keys over
 console.log('keys (Desktop Safari)');
