@@ -1,15 +1,15 @@
 <!-- generated; do not edit by hand -->
 # data のパーツ
 
-指示のバージョン：3bcb89c8
+指示のバージョン：049c5f95
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
 | `<m-balance>` | 確率の重りを置き、支点が期待値でつり合う様子を示す | 数直線と重り→支点を期待値へ→値と和の式（3 ステップ） | `{values:num[],probs:num[],name?:str}` |
 | `<m-ci>` | 正規標本の区間を重ね、母平均を含む割合で信頼水準を説明する | 軸と μ→区間を順に→含む数と外れの強調（3 ステップ） | `{mu:num,sigma:num,n:num,reps?:num,level?:num,seed?:num}` |
 | `<m-code>` | 短いコードを行ごとに説明し、最後に出力を見せる | コード全体→説明を順に→出力（説明数＋1、出力ありは＋2） | `{code:str,lang?:str,output?:str,steps:{lines:(int\|[int,int])[],note}[]}` |
-| `<m-folds>` | k 分割交差検証のフォールドを順に替え、各分割の誤差と平均を示す | 分割を 1 行ずつ→平均（k + 1 ステップ） | `{k:num,errors?:num[],labels?:str[]}` |
-| `<m-mapping>` | 実験の結果を数値へ対応させ、同じ値になる結果をまとめて確率分布を作る | 結果のカード→対応の矢印→同じ値の色と個数・確率の和→分布の横棒の 4 ステップ | `{outcomes:{label,x:num,p?:num,balls?:str[]}[],name?:str,unit?:str,fractions?:bool,picture?:"dots"\|"dice"\|"coins"\|"grapes"\|"balls"}` |
+| `<m-folds>` | データを k 個に分けた 1 つ（フォールド）を検証に使い、検証に使うフォールドを順に替えて、各分割の誤差と平均を示す | 分割を 1 行ずつ→平均（k + 1 ステップ） | `{k?:num,errors?:num[],labels?:str[],samples?:{class?:int,group?:str,t?:num\|str}[],splits?:{test:int[],train?:int[]}[],splitter?:"KFold"\|"StratifiedKFold"\|"GroupKFold"\|"TimeSeriesSplit"\|"ShuffleSplit"\|"holdout",classes?:{id:int,label?}[]} (k or splits)` |
+| `<m-mapping>` | 実験の結果を数値へ対応させ、同じ値になる結果をまとめて確率分布を作る | 結果のラベル→対応の矢印→同じ値の色と個数・確率の和→分布の横棒の 4 ステップ | `{outcomes:{label,x:num,p?:num,balls?:str[]}[],name?:str,unit?:str,fractions?:bool,picture?:"dots"\|"dice"\|"coins"\|"grapes"\|"balls"}` |
 | `<m-sampling>` | 母集団から標本を取り、比率・平均の標本分布を積む | 母集団→抽出→統計量と点→反復の 4 ステップ | `{balls?:object,values?:num[],of?:str,n:num,replace?:bool,repeat?:num,seed?:num,stat?:"mean"\|"proportion",digits?:num} (balls or values)` |
 
 ### `<m-balance>`
@@ -51,8 +51,8 @@
 
 `<m-code style="height:440px">` の子に JSON を置く。
 
-- `code`：1184px 幅・24px で半角約 76 字/行。高さ ≈ 132 + 34×行 + 35×(説明一覧の行 − 1)、一覧は 1 行約 40 字。440px を超すなら行を減らすか分ける
-- `lang`：言語のラベル。`steps[{lines,note}]`：行は 1 始まり、`"lines":[3]` か範囲 `[3,4]`（両端を含む）、短い説明
+- `code`：440px で 9 行・1 行 76 字まで全部見える。長い行は折り返し、行が多ければステップごとにスクロールして見せる（16 行まで。超すなら分ける）
+- `lang`：言語名。`steps[{lines,note}]`：行は 1 始まり、`[3]`、範囲 `[3,4]`、飛び飛びは 3 つ以上 `[2,5,9]`。説明は 30 字まで
 - `output`：省略可の出力文字列（8 行まで）
 
 台本はコードを読み上げない。その行が何をするかを言葉で言う（変数名や記号は 1 つずつなら書いてよい）。
@@ -69,7 +69,7 @@
 
 - `k`：分割数 2〜10 の整数。既定文字で k = 5 は高さ 316px 以上（誤差なし 264px）
 - `errors`：省略可。k 個の非負誤差
-- `labels`：省略可。k 個のフォールドの名前（既定 1〜k）
+- `labels`：省略可。k 個のフォールド名（既定 1〜k）
 
 ### `<m-mapping>`
 

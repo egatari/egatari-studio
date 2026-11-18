@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-vector の見本</title>
+<!-- 組み方：node kit/build.mjs components/vector/demo.html -o components/vector/out/demo.html（計算はパーツがする。value は確かめのために書いた） -->
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>ベクトルの和は、矢印を先につないで求める</h2>
+  <div class="body">
+    <m-vector style="height:400px">
+      <script type="application/json">{"range": [-3, 4, -1, 4], "vectors": [{"id": "a", "v": [2, 1]}, {"id": "b", "v": [-1, 2]}], "ops": [{"sum": ["a", "b"], "as": "c", "value": [1, 3]}, {"dot": ["a", "b"], "value": 0}]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>内積が 0 なので、a と b は直交している</span></div>
+</section>
+
+<section class="slide">
+  <h2>正射影の長さと内積の関係</h2>
+  <div class="body">
+    <m-vector style="height:400px">
+      <script type="application/json">{"range": [-1, 4, -1, 4], "vectors": [{"id": "a", "v": [1, 3]}, {"id": "b", "v": [3, 1]}], "ops": [{"proj": ["a", "b"], "value": [1.8, 0.6]}, {"dot": ["a", "b"], "value": 6}]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>正射影は、内積 ÷ |b|² を b に掛けたもの</span></div>
+</section>
+
+<section class="slide">
+  <h2>行列で平面を動かすと、固有ベクトルの向きは変わらない</h2>
+  <div class="body">
+    <m-vector style="height:400px">
+      <script type="application/json">{"vectors": [{"id": "v", "v": [1, 1]}, {"id": "w", "v": [1, 0]}], "matrix": [[2, 1], [1, 2]], "show": ["grid", "unit", "eigen"]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>v は 3 倍に伸びるだけで、向きは同じまま</span></div>
+</section>
+
+<section class="slide">
+  <h2>基底を取り替えて、同じベクトルを別の座標で読む</h2>
+  <div class="body">
+    <m-vector style="height:400px">
+      <script type="application/json">{"vectors": [{"id": "a", "v": [2, 1]}], "basis": [[1, 1], [-1, 1]]}</script>
+    </m-vector>
+  </div>
+  <div class="concl"><span>同じ矢印でも、基底が変われば座標の数が変わる</span></div>
+</section>
+
+</div>
+</body>
+</html>

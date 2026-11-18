@@ -260,7 +260,7 @@ function packGallery(){
       const d = demoParts(text(`${x.name}/demo.html`), tags[i]);
       if (d.style) styles.push(d.style);
       scripts.push(...d.scripts);
-      const tier = x.c.tier === 'specialized' && x.c.set ? `専門のパーツ（${SET_LABEL[x.c.set] || x.c.set}）` : x.c.tier === 'extra' ? '特殊なパーツ' : '標準パーツ';
+      const tier = x.c.tier === 'specialized' && x.c.set ? `専門のパーツ（${SET_LABEL[x.c.set] || x.c.set}）` : x.c.tier === 'extra' ? '特殊なパーツ' : x.c.tier === 'local' ? 'ローカル専用のパーツ' : '標準パーツ';
       slides.push(introSlide({ name: tags[i], summary: x.f.summary, purposes: (x.c.purposes || []).map(label).join('・'), variants: x.c.variants || [],
         group: `${esc(tier)}　バージョン：${esc(x.c.version)}`, n: d.secs.length, ia: flags(text(`${x.name}/index.js`)).interactive,
         mark: x.mark, next: x.mark ? next : '', sample: 'サンプル', samplesHref: samplesHrefOf(tags[i]) }), ...d.secs);

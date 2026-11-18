@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-code の見本</title>
+</head>
+<body>
+<div id="stage">
+<section class="slide">
+  <h2>店ごとの売上平均を計算する</h2>
+  <div class="body"><m-code style="height:440px"><script type="application/json">{"lang":"python","code":"import pandas as pd\ndf = pd.read_csv(\"sales.csv\")\ndf.groupby(\"store\")[\"sales\"].mean()","steps":[{"lines":[1],"note":"pandas を読み込む"},{"lines":[2],"note":"CSV を表として読む"},{"lines":[3],"note":"店ごとの平均"}],"output":"store\nA    120.5\nB     98.0"}</script></m-code></div>
+  <div class="concl"><span>架空の売上データ。店ごとにまとめてから平均を求める</span></div>
+</section>
+<section class="slide">
+  <h2>繰り返しで平均を求める</h2>
+  <div class="body"><m-code style="height:440px"><script type="application/json">{"lang":"python","code":"def mean(values):\n    total = 0\n    for value in values:\n        total += value\n    return total / len(values)\n\nprint(mean([2, 4, 6]))","steps":[{"lines":[1,2],"note":"関数を定義し、合計を 0 にする"},{"lines":[3,4],"note":"値を一つずつ合計する"},{"lines":[5,7],"note":"個数で割り、関数の結果を表示"}],"output":"4.0"}</script></m-code></div>
+  <div class="concl"><span>合計を個数で割ると平均になる</span></div>
+</section>
+<section class="slide">
+  <h2>交差検証のコード（scikit-learn）</h2>
+  <div class="body"><m-code style="height:420px"><script type="application/json">{"lang": "python", "code": "from sklearn.model_selection import cross_val_score\nfrom sklearn.tree import DecisionTreeClassifier\nfrom sklearn.datasets import load_iris\nX, y = load_iris(return_X_y=True)\nmodel = DecisionTreeClassifier(max_depth=3, random_state=0)\nscores = cross_val_score(model, X, y, cv=5)\nprint(scores.mean())", "steps": [{"lines": [1, 3], "note": "ライブラリを読み込む"}, {"lines": [4], "note": "アヤメのデータ"}, {"lines": [5], "note": "決定木を用意"}, {"lines": [6, 7], "note": "5 分割の交差検証で平均の正解率を出す"}], "output": "0.96"}</script></m-code></div>
+  <div class="concl"><span>5 つのフォールドを 1 つずつ検証に使い、平均する</span></div>
+</section>
+
+<section class="slide noconcl">
+  <h2>長いコードはスクロールして見せる（14 行）</h2>
+  <div class="body"><m-code style="height:440px"><script type="application/json">{"lang": "python", "code": "import numpy as np\nfrom sklearn.datasets import load_iris\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.linear_model import LogisticRegression\n\nX, y = load_iris(return_X_y=True)\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=0)\n\nmodel = LogisticRegression(max_iter=200)\nmodel.fit(X_train, y_train)\n\npred = model.predict(X_test)\nacc = np.mean(pred == y_test)\nprint(round(acc, 3))", "steps": [{"lines": [1, 4], "note": "ライブラリを読み込む"}, {"lines": [6, 7], "note": "データを訓練用とテスト用に 7 対 3 で分ける"}, {"lines": [9, 10], "note": "ロジスティック回帰で学習"}, {"lines": [12, 14], "note": "テスト用で予測し、正解率を表示"}], "output": "0.978"}</script></m-code></div>
+</section>
+</div>
+</body>
+</html>

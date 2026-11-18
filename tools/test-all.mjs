@@ -425,10 +425,14 @@ const memTimer = setInterval(async () => {
   if (sw > mem.swapMax) { mem.swapMax = sw; mem.swapAt = names; }
 }, 5000);
 memTimer.unref();
+// メモリを多く使う段の V8 の上限（MB）。GitHub の macOS の runner（7 GB）では既定の上限が約 2 GB で、test-llm-guide-en は
+// パーツ集のバージョンごとに指示を組んで比べるので、2.14 を足して上限に当たった（CI 44155905265、ローカルの最大は約 3.7 GB の RSS）
+const HEAP_MB = { 'test-llm-guide-en': 3072 };
 function run(name, argv, stream = verbose) {
   return new Promise((resolve) => {
     const t0 = Date.now();
     active.add(name);
+    if (HEAP_MB[name]) argv = [`--max-old-space-size=${HEAP_MB[name]}`, ...argv];
     const ch = spawn(process.execPath, argv, { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], env: process.env });
     let out = '';
     ch.stdout.on('data', (d) => { out += d; if (stream) process.stdout.write(d); });

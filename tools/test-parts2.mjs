@@ -678,11 +678,39 @@ for (const [code, what] of [
   ok(v290.parts.bars === '2.1.0' && /\berr\b/.test(fs.readFileSync(c2(v290, 'bars', 'index.js'), 'utf8')) && /\bsig\b/.test(fs.readFileSync(c2(v290, 'bars', 'index.js'), 'utf8')), '2.9.0: m-bars 2.1.0 reads err and sig');
   // 2.9.1（リリース 4407bcb）：tarball は 2.9.0 と同じバイト。manifest の purposes だけが変わり、deviation（差・増減）が自分の札（絵 waterfall）を持つ。既定はこちら
   const v291 = lock2.catalogues['2.9.1'];
-  ok(lock2.default === '2.9.1' && v291 && v291.tag === 'v2.9.1' && v291.tarballSha256 === v290.tarballSha256 && v291.manifestSha256 === '91ba1966ad5c7a8f2d7cffc9b4169a3dc81b200dae3b560854b0d57d3701a087'
-    && JSON.stringify(v291.parts) === JSON.stringify(v290.parts), '2.9.1: the default; the same tarball and parts as 2.9.0, a new manifest');
+  ok(v291 && v291.tag === 'v2.9.1' && v291.tarballSha256 === v290.tarballSha256 && v291.manifestSha256 === '91ba1966ad5c7a8f2d7cffc9b4169a3dc81b200dae3b560854b0d57d3701a087'
+    && JSON.stringify(v291.parts) === JSON.stringify(v290.parts), '2.9.1: the same tarball and parts as 2.9.0, a new manifest');
   const m291 = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.9.1.json'), 'utf8'));
   const dev291 = (m291.purposes || []).find((p) => p.id === 'deviation');
   ok(dev291 && dev291.tile === 'own' && dev291.icon === 'waterfall', `2.9.1: deviation has its own tile with the waterfall icon (${JSON.stringify(dev291 && { tile: dev291.tile, icon: dev291.icon })})`);
+  // 2.12.0（2.10・2.11 は取り込まずに 2.9.1 から）：m-network（束 algo）、m-nnet（束 ml）、m-ctable（束 univ）、段 local の m-trace と、ライブラリの code-core
+  const v2120 = lock2.catalogues['2.12.0'];
+  ok(v2120 && v2120.tag === 'v2.12.0' && v2120.tarballSha256 === '15326dca3c305191dbb0adb98351dc2bef05a73614d8c6d2fdb1c482071afeeb' && v2120.manifestSha256 === '908d4ba58201064cdd1cccfe61baaa3b8d73dbbba1af0a679e9bcc6a4a4c6b18',
+    '2.12.0: pinned to the released tarball and manifest (v2.12.0)');
+  const added2120 = Object.keys(v2120.parts).filter((n) => !(n in v291.parts)).sort();
+  ok(added2120.join() === 'code-core,ctable,network,nnet,trace' && Object.keys(v291.parts).every((n) => n in v2120.parts), `2.12.0: code-core, m-ctable, m-network, m-nnet and m-trace are added, nothing removed (${added2120.join(', ')})`);
+  // 2.13.0：m-classify2d・m-contour（束 ml）、m-vector（束 univ）と、ライブラリの contour-core。既定はこちら（v0.6.15 から）
+  const v2130 = lock2.catalogues['2.13.0'];
+  ok(v2130 && v2130.tag === 'v2.13.0' && v2130.tarballSha256 === '26bf9066e183246b2d9c9de853d03389057f8d4936ccd8f093e78ae65f59951c' && v2130.manifestSha256 === 'ae5e74429f60210f11cf14f396112a58debf8b02850be39f710a042285d840fa',
+    '2.13.0: pinned to the released tarball and manifest (v2.13.0)');
+  const added2130 = Object.keys(v2130.parts).filter((n) => !(n in v2120.parts)).sort();
+  ok(added2130.join() === 'classify2d,contour,contour-core,vector' && Object.keys(v2120.parts).every((n) => n in v2130.parts), `2.13.0: m-classify2d, m-contour, contour-core and m-vector are added, nothing removed (${added2130.join(', ')})`);
+  const m2130 = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', 'manifest-2.13.0.json'), 'utf8'));
+  const setOf2130 = (n) => m2130.components[n] && `${m2130.components[n].tier}/${m2130.components[n].set || ''}`;
+  ok(['network', 'nnet', 'classify2d', 'contour', 'ctable', 'vector', 'trace'].map(setOf2130).join() === 'specialized/algo,specialized/ml,specialized/ml,specialized/ml,specialized/univ,specialized/univ,local/',
+    '2.13.0: m-network in algo; m-nnet, m-classify2d and m-contour in ml; m-ctable and m-vector in univ; m-trace is tier local');
+  // 2.14.0：base 1.3.0 の添字・curves 2.3.0 の範囲外の知らせ。2.14.1：curves 2.3.1（範囲外を range の種類で）。既定は 2.14.1（v0.6.15 から。#34・#41）
+  const v2140 = lock2.catalogues['2.14.0'], v2141 = lock2.catalogues['2.14.1'];
+  ok(v2140 && v2140.tag === 'v2.14.0' && v2140.tarballSha256 === 'a7f1dd944c59589ee7e74b7291797bb63e3d27a58a6f8d3337e5544f0805eafb' && v2140.manifestSha256 === 'fcd3d558f67c426fe7185e8eb967546cfc308bde53913cac6e3a10b8c03c9465',
+    '2.14.0: pinned to the released tarball and manifest (v2.14.0)');
+  ok(v2141 && v2141.tag === 'v2.14.1' && v2141.tarballSha256 === 'd6d3b8d346e3d341b33b44fe6a160528d87adac55d69942af9e149a17144430d' && v2141.manifestSha256 === '5a3f493700d6f61f2ee193d7922b38dd08a4d1ac35b5871b4cc5e132faba5e22',
+    '2.14.1: pinned to the released tarball and manifest (v2.14.1)');
+  ok(Object.keys(v2130.parts).every((n) => n in v2140.parts && n in v2141.parts), '2.14.0 and 2.14.1: nothing removed since 2.13.0');
+  // 2.15.0：札・箱・線を描くパーツに data-part（R-geometry、#45）、m-sweep・m-seq の範囲外の知らせ（range、#47）。既定（v0.6.15 から）
+  const v2150 = lock2.catalogues['2.15.0'];
+  ok(lock2.default === '2.15.0' && v2150 && v2150.tag === 'v2.15.0' && v2150.tarballSha256 === '9beea9eb56cc8276b3fd7e1e81461f30942daa0d0bc2820eec400afd3058e12e' && v2150.manifestSha256 === '2fb6498a5a3abce4d061d977304bfe88dfa16581fe90eb1f5e74e6d182305448',
+    '2.15.0: the default; pinned to the released tarball and manifest (v2.15.0)');
+  ok(Object.keys(v2141.parts).every((n) => n in v2150.parts), '2.15.0: nothing removed since 2.14.1');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

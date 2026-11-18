@@ -2,7 +2,7 @@
 //   components/<name>/index.js     defines <m-<name>> (DECK.define('m-<name>', …))
 //   components/<name>/README.md    frontmatter: name (m-<name>), version (the part's own version X.Y.Z, spec §6.1; 1.x parts: 1.13.0),
 //                                  series, tier (standard | specialized | extra), set (only for specialized: stats, math, science, maps,
-//                                  kokugo, english, music, business, tools), display (optional: "<ja> / <en>", a name other than the tag),
+//                                  kokugo, english, music, business, tools, algo, ml, univ), display (optional: "<ja> / <en>", a name other than the tag),
 //                                  summary, steps, purposes (ids in purposes.json), props,
 //                                  license (optional: an SPDX expression MIT AND <id>, for a part carrying data under another licence),
 //                                  and variants when index.js declares `static variants` (the same names in the same order)
@@ -32,11 +32,12 @@ export const SERIES = ['common', 'academic', 'business', 'kokugo', 'info', 'soci
 // `kokugo` 国語 / Japanese, `music` 音楽 / Music, `english` 英語 / English (subject series, like kokugo)
 // Tiers of element parts (parts-tiers-2026-10-27 §1, owner decision): standard parts are always offered, specialized ones
 // in sets (chosen by scene and words), extra ones only when a lesson clearly needs them (read their README). Library parts
-// have no tier. The ids never change; TIER_LABEL and SET_LABEL are how CATALOG.md names them.
-export const TIERS = ['standard', 'specialized', 'extra'];
-export const TIER_LABEL = { standard: '標準', specialized: '専門', extra: '特殊' };
-export const SETS = ['stats', 'data', 'math', 'science', 'maps', 'kokugo', 'english', 'music', 'business', 'tools'];
-export const SET_LABEL = { stats: '統計', data: '情報・データサイエンス', math: '数学', science: '理科', maps: '地図', kokugo: '国語', english: '英語', music: '音楽', business: 'ビジネス', tools: 'ツール' };
+// have no tier. Local parts (design-trace-network §0) are in no chat pack: they need a local tool's output (m-trace: a tracer
+// script), so only the Claude Code skill references carry them. The ids never change; TIER_LABEL and SET_LABEL are how CATALOG.md names them.
+export const TIERS = ['standard', 'specialized', 'extra', 'local'];
+export const TIER_LABEL = { standard: '標準', specialized: '専門', extra: '特殊', local: 'ローカル' };
+export const SETS = ['stats', 'data', 'math', 'science', 'maps', 'kokugo', 'english', 'music', 'business', 'tools', 'algo', 'ml', 'univ'];
+export const SET_LABEL = { stats: '統計', data: '情報・データサイエンス', math: '数学', science: '理科', maps: '地図', kokugo: '国語', english: '英語', music: '音楽', business: 'ビジネス', tools: 'ツール', algo: 'アルゴリズム', ml: '機械学習', univ: '大学の統計・数理' };
 export const DISPLAY_RE = /^[^/]+ \/ [^/]+$/;
 export const SERIES_LABEL = { common: '標準パーツ', academic: '数理・統計', business: 'ビジネス', kokugo: '国語', info: '情報', social: '地図（社会）', music: '音楽', english: '英語' };
 // Components released before demo.html was required (do not add to this list)
@@ -316,6 +317,13 @@ export function lint(root, warns = []) {
     errs.push(...llmBlocks(rtext, `components/${name}/README.md`));
     if (!f) { errs.push(`components/${name}/README.md: no frontmatter`); continue; }
     errs.push(...lintEn(name, dir, f, rtext, js));
+    // Studio's make-llm-guide reads llm: markers only at the start of a line and stops on any other ("malformed llm marker")
+    for (const file of ['README.md', 'README.en.md']) {
+      const fp = path.join(dir, file);
+      if (fs.existsSync(fp)) fs.readFileSync(fp, 'utf8').split('\n').forEach((ln, i) => {
+        if (/<!--\s*llm:/.test(ln) && !/^<!--\s*llm:\s*[\w-]+\s*-->\s*$/.test(ln)) errs.push(`components/${name}/${file}:${i + 1}: an llm: marker must be alone at the start of a line (<!-- llm: omit -->, <!-- llm: <set> --> or <!-- llm: end -->; Studio stops on any other)`);
+      });
+    }
     for (const k of ['name', 'version', 'series', 'tier', 'summary', 'steps', 'props']) if (!(k in f)) errs.push(`components/${name}/README.md: frontmatter has no ${k}`);
     if ('tier' in f && !TIERS.includes(f.tier)) errs.push(`components/${name}/README.md: tier ${f.tier} is not one of ${TIERS.join(', ')}`);
     if (f.tier === 'specialized' && !SETS.includes(f.set)) errs.push(`components/${name}/README.md: a specialized part needs set: one of ${SETS.join(', ')}${'set' in f ? ` (not ${f.set})` : ''}`);

@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # stats のパーツ
 
-指示のバージョン：3bcb89c8
+指示のバージョン：049c5f95
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -94,7 +94,7 @@
 子の JSON の並び：パーツが数える。か `{"table": [{"from", "to", "count"}]}`。2 組なら `"series": [{"label", "values" か "table"}]`（重ねる）。
 
 - 階級は start 以上 start＋width 未満
-- `kind="dots"`：ドットプロット（values が要る）
+- `kind="dots"`：ドットプロット（values が要る）。整数の値をその値の上に積むなら `bins` を書かない（書くと階級の中央に積む）
 - `polygon` `relative` `cumulative`：`"on"`
 - `marks="mean,median,mode"`：代表値の線
 - `build="values"`：値を 1 つずつ積む。`"bins"`：階級を 1 つずつ

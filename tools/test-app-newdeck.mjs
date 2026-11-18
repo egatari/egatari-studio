@@ -195,7 +195,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'AI に渡す指示を選んでください'
       && (await text(p1, '#paste-plan-hint')) === '選んだ指示で、大きさの目安が変わります（軽量は 45 KB、詳細は 150 KB まで）。長すぎる指示は、チャットの AI が最後まで読めないことがあります'
       && (await text(p1, '#paste-parts legend')) === 'AI にどのパーツを使わせますか' && (await ticks(p1)) === sorted(STD) && await p1.isHidden('#paste-parts-why') && (await badges(p1)) === ''
-      && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null).flatMap((g) => g.parts).length} 種類）`
+      && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null, 'free').flatMap((g) => g.parts).length} 種類）`
       && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
       'S1 ④: the instructions question (light by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
     // パーツの一覧は初めは畳む（backlog #211）：1 行「AI が使うパーツ：N 種類　選び直す」。開くと今の見出しと一覧。目盛りは畳む範囲の外で見えたまま
@@ -567,16 +567,24 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.fill('#paste-title', 'わり算の筆算とデータの分布（2）');
     await p8.click('#paste-next-content');
     ok((await ticks(p8)) === after8, 'S8 ④: a new guess does not tick again what was unticked');
+    // 有料のプランの指示にだけ入るパーツ（paidOnly：受け皿のない束 univ の m-ctable・m-vector）は、軽量の指示では一覧に出ない（印を付けても指示に入らないので）
+    const hiddenPick = (pg, id) => pg.$eval(id, (x) => x.closest('label.pick').hidden);
+    ok(await hiddenPick(p8, '#paste-part-ctable') && await hiddenPick(p8, '#paste-part-vector') && !(await p8.isChecked('#paste-part-ctable')) && !(await p8.isChecked('#paste-part-vector')),
+      'S8 ④: on the free plan the paid-only parts (m-ctable, m-vector) are not listed');
     // 有料のプランは目安だけが変わる（印はそのまま）
     await p8.check('#paste-plan-paid');
+    ok(!(await hiddenPick(p8, '#paste-part-ctable')) && !(await hiddenPick(p8, '#paste-part-vector')) && !(await p8.isChecked('#paste-part-ctable')),
+      'S8 ④: on the paid plan the paid-only parts are listed, without a tick');
     ok((await ticks(p8)) === after8 && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '150' && /（目安は 150 KB まで）$/.test(await text(p8, '#paste-pack-size')), 'S8 ④: the paid plan changes only the limit');
     // キーボード：チェックボックスにフォーカスしてスペースで外す・付ける。写す指示はいつも印のとおり
     await p8.focus('#paste-part-tape');
     await p8.keyboard.press('Space');
     ok(!(await p8.isChecked('#paste-part-tape')), 'S8 ④: Space on a focused part unticks it');
+    await p8.check('#paste-part-ctable');
     const c8 = await copy(p8);
     const want8 = (await ticks(p8)).split(',');
     ok(c8 === packWithRequest({ ...partsPackOpts(want8, 'paid'), lang: 'ja', request: tailOf(c8, 'ja') }) && !/m-tape(?![a-z-])/.test(c8) && c8.includes('### `<m-hissan>`'), 'S8 ④: the copied instructions describe exactly the ticked parts');
+    ok(want8.includes('m-ctable') && c8.includes('### `<m-ctable>`'), 'S8 ④: a paid-only part ticked on the paid plan is described in the copied instructions');
     await shot(p8, 'flow-s8-parts.png', 'paste-step-send');
 
     // ================================================================ S9 前に分野を選んだ教材（egatari.json の studio.newDeck）を開いたまま新規作成：前の選び方は読まず、いつも初めの選び方から。記録は書き換えない
