@@ -8,6 +8,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.15] - 2026-11-19
+
+### Added
+
+- Book text: an aside with `:nonumber:` (format spec §9C.2, WD 2026-11-18) gets no number and is not counted, like an exercise with `:nonumber:`; the asides after it keep their numbers. Spec fixture `article-text/valid/aside-nonumber`
+- Quality check: a new R-fit warning `colOverflow` (command line and editor) when content of a side-by-side column (`.cols`), such as a long KaTeX fraction, is wider than the column and covers the next one; it names the column, the column it runs into and the formula as written, and says to shorten it, put it on its own line outside the columns, or use fewer columns (handoff Issue #40)
+- Parts library 2.13.0 is now the default (release edc6457, tarball 26bf9066…), imported after 2.12.0 (release 200fcde, tarball 15326dca…); Studio goes there from 2.9.1. New parts: `m-network` (グラフの探索 / Graph search: graph search, shortest paths and tours one step at a time, also graphical models, path diagrams and HMM trellises) in the new algo set; `m-nnet` (ニューラルネット / Neural network), `m-classify2d` (2 次元の分類 / 2-D classification) and `m-contour` (等高線 / Contour plot) in the new ml set; `m-ctable` (計算して埋まる表 / Computed table) and `m-vector` (ベクトルと行列 / Vectors and matrices); and `m-trace` (コードの実行を追う / Code trace), the first part of tier `local`, which only the make skill's `references/parts/local.md` describes. `m-code`, `m-map-japan`, `m-map-world`, `m-folds` and seven other parts get new versions; more parts get README updates only. The parts gallery is re-synced to the 2.13.0 release
+- New… shows the six new chat parts with a one-line description and an icon
+- Edits by others (format spec §3.6.1 `edits` and §7.3, handoff #31): `metadata.edits` (`[{by?, note?}]`, oldest first, no dates) in `egatari.json` is copied to the index and to `deck-meta` (also in a working-folder build; malformed entries are dropped with a warning), and the player's File info shows each entry after the creators as “Edited by: name (note)” / 「編集：名前（内容）」, or “Edited from the original lesson” / 「元の教材から編集されています」 for an entry without a name (player change; bump at the next rc). The editor asks “Are you a creator of this lesson?” before the first save of changes to a lesson that names its rights holder; someone editing another person's lesson can add a name and a note, and when the license is a Creative Commons 4.0 license an entry without a name is added if the name is left empty. The answer is remembered per `docId` on the device, not in the file. Saving without rebuilding (tier A) also writes `metadata.edits` and `deck-meta.edits`; existing entries are never removed. `tools/test-metadata-edits.mjs`
+- Edits on a file with an older player (format spec §7.3, handoff #53): when a save without rebuilding (tier A) adds to `metadata.edits` and the file's player does not show edits (Egatari Player before 1.9.0, another player, or none; `EDITS_SHOWN_SINCE` and `playerShowsEdits` in `kit/core/player.mjs`), the editor says so once and offers **Update the player and save** / 「プレーヤーを新しくして保存」, which takes the existing rebuild-and-save path (tier B) with its confirmations. `tools/test-app-old-player.mjs`
+- AI instructions: two new part sets. algo (アルゴリズム / Algorithms: `m-network`) is for computing and operations research classes; ml (機械学習 / Machine learning: `m-nnet`, `m-classify2d`, `m-contour`) is for machine-learning classes. Both tell the AI to write the values a script actually computed. New… recommends them from the words of step 2 (for example ダイクストラ, パス図, 隠れマルコフ, ニューラルネット, 勾配降下, SVM; Dijkstra, path diagram, neural network, gradient descent), and slide insertion lists them by name
+- The editor's New page shows two sample images next to the theme in step ③, the cover and one body slide of the sample “Parts showcase” built in that theme; click one to see it larger (Esc or × closes it). `npm run theme-thumbs` makes them, and `npm run gen:check` warns when a theme changed after its images were made.
+- Viewer: `tools/test-viewer-a11y.mjs` runs axe-core (WCAG 2.2 AA rules) on the Viewer's page in twelve states, in Chromium and WebKit, as part of `npm test`; the lesson's frame is listed but does not fail it. axe-core 4.14.0 is a new dev dependency.
+- Viewer: when a lesson records edits (`metadata.edits`, spec §3.6.1), a line under the title says who created it and the most recent edit (「作成：… ／ 編集：… ほか n 件」 / "Created by … / Edited by … and n more"); pressing it lists every edit, oldest first, with copyright and license. It reads `deck-meta`, so it shows whatever player the file carries. New test `tools/test-viewer-credits.mjs` (Chromium and WebKit).
+
+### Changed
+
+- Quality check: when a part reports values outside the range it shows (`ctx.report("range", …)`), the `compReport` warning now says to set the part's range attributes (such as `xr` and `yr`) so that every value fits (handoff Issue #40)
+- CI and tests (handoff Issue #10): `npm test -- --skip-os-independent` leaves out the heavy tests marked `// test-all: os-independent` (now `test-pack-catalogue`);
+  macOS sets it on every run except a `v*` tag push, while Linux and Windows run them every time. test-app runs as three steps (`test-app 1/3`–`3/3`) instead of two.
+- The Japanese word map for the parts' own text in `tools/make-llm-guide.mjs` (added in 0.6.14) is empty: the parts library 2.13.0 READMEs use the glossary words themselves, and the instructions are byte-identical without it
+- The bundled samples are copied again from egatari/examples c91d167: the 2026-11-17 wording (書き出す → エクスポート, 見本 → 例, 札 said by meaning) in `egatari-intro`, `quarterly-report` and `sentence-structure`, and the other samples' sources (file contents unchanged)
+- Bundled samples synced to egatari/examples dee813a: 羅生門 (rashomon) and egatari-intro (ja, en) now carry their narration audio (handoff #42), and three new samples are added — for-loop (Education · Classes · 情報: totals and averages with a for loop, traced line by line with m-trace), vectors (Education · Classes · 数学: dot product, projection and linear maps with m-vector) and classify-cv (Education · University lectures: decision boundaries and cross-validation with m-classify2d, m-contour and m-folds); parts-showcase gains five slides for the 2.13 parts (handoff #22). Covers and theme pictures are regenerated
+- Egatari Player 1.9.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. File info (the key help `?`) shows the edits recorded in `metadata.edits` (spec §3.6.1, §7.3) after the creators, one line each, oldest first: 「編集：名前（内容）」 / “Edited by: name (note)”, and 「元の教材から編集されています」 / “Edited from the original lesson” for an entry without a name (handoff #31). The presenter view inside the editor no longer calls `focus()` on load without a user action (Chrome 158 reports it as a permissions policy violation, `focus-without-user-activation`); the presenter window still takes focus, and a click on the view focuses it as before. Slides look the same; playback, steps and timing are unchanged
+- Parts of a part set that Studio has no instructions for yet (the parts library's univ: `m-ctable`, `m-vector`, until part sets become labels) are described only in the paid-plan instructions, with the standard parts, and never name the set. New… lists them, without a tick, only for the paid plan; the free plan leaves them out, since their catalogue lines would take the English standard instructions to 31,588 paste units (cap 31,000)
+- Marker comments now save the innermost part under the strokes’ centroid in `comments.json` and name its tag and optional `data-id` in the AI fix request; comments outside parts keep the existing nearby text (handoff #29, backlog #90 stage 1).
+
+### Fixed
+
+- Editor: opening a single file whose parts mark readable content (§2.1, e.g. `m-trace` in the bundled `parts-showcase`) no longer stalls for about 40 s on "reading". The index-only dry export that the editor runs while opening (`exportIndex`) asked the not-yet-loaded preview for the parts' readable content and waited for its 20 s limit, once per rebuild; it now skips that step (the readable layer does not affect the index), and a real export asks the preview once per export instead of once per retry. `tools/test-workspace.mjs`
+- Viewer: the Live join screen (before 参加する) lay on the dark stage with dark text and was barely readable in the light theme; it now has the page's background.
+
 ## [0.6.14] - 2026-11-17
 
 ### Added
@@ -1588,7 +1620,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.14...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.15...HEAD
+[0.6.15]: https://github.com/egatari/egatari-studio/compare/v0.6.14...v0.6.15
 [0.6.14]: https://github.com/egatari/egatari-studio/compare/v0.6.13...v0.6.14
 [0.6.13]: https://github.com/egatari/egatari-studio/compare/v0.6.12...v0.6.13
 [0.6.12]: https://github.com/egatari/egatari-studio/compare/v0.6.11...v0.6.12
