@@ -115,7 +115,7 @@ try {
         let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
         out.png = btoa(s); out.size = b.size;
       }
-      if (it && it.types.includes('text/plain')) out.text = await (await it.getType('text/plain')).text();
+      if (it && it.types.includes('text/plain')) out.text = (await (await it.getType('text/plain')).text()).replace(/\r\n/g, '\n');   // Windows は CRLF で返す
       return out;
     });
     ok(clip.n === 1 && /image\/png/.test(clip.types[0]) && /text\/plain/.test(clip.types[0]), `ja: one clipboard item with image/png and text/plain (${JSON.stringify(clip.types)})`);
