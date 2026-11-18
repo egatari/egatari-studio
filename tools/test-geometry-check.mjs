@@ -4,11 +4,11 @@
 //     ひし形の箱（<polygon>）は形で測る（外接矩形の中でも形の外なら出ない）。1 つの辺の 2 本の線は別々に測る。@ で始まる端は節でない（箱がなくても測る）
 //   - geoLineOverLabel：自分の辺の字は除く。縁取り（data-part-halo）があれば情報。字の範囲は基線から上 up・下 down（kit/core/text-band.mjs の値）
 //   - geoLabelOverlap：字どうし・持ち主でない点。foreignObject の字は中身を Range で測る
-//   - geoLabelOutsideBox：data-part-at="outside" の字は見ない
+//   - geoLabelOutsideBox：data-part-at="outside" の字は見ない。<circle>・<ellipse>・<polygon> の箱は形と比べる（外接矩形の中でも形の外なら出る）
 //   - 縦書きのスライドは測らない。geometryTate は縦横が混ざる教材の、印のある縦書きのスライドの数
 //   - 箱に <circle>（形で測る）。辺の端に点（mark）の id：その点の字とその点を中に持つ箱は相手にしない。data-overlap="ok"（要素か祖先の <g>）は重なりの知らせから外す（handoff #45 の決定 1〜3）。
 //     どれも、印を付けない対照（わざと重ねたもの）は今までどおり出る
-//   - geoOutsideFrame（試作、handoff #46）：data-within の図形が data-frame の枠の外に出る。geometryWithin が全部のステップで測る（途中のステップだけのはみ出しも出る）
+//   - geoOutsideFrame（handoff #46）：data-within の図形が data-frame の枠の外に出る。geometryWithin が全部のステップで測る（途中のステップだけのはみ出しも出る）。<g> は中の形と字の全部。名前でない値は測らない
 //   node tools/test-geometry-check.mjs
 import assert from 'node:assert/strict';
 import { shareBrowser, launch } from '../kit/browser.mjs';
@@ -37,7 +37,7 @@ await t('ledger and messages: every geometry code is R-geometry, with ids and on
   assert.match(message('ja', 'geoLineOverLabel', { edge: 'a→b', from: 'a', to: 'b', label: 'k', t: '箱の字', at: [200, 200], halo: true }), /縁取り/);
   assert.match(message('ja', 'geoLabelOutsideBox', { box: 'n', t: '長い', px: { left: 80, right: 79, top: 0, bottom: 0 } }), /（左 80px・右 79px）/);
   assert.match(message('en', 'geoTateSlides', { n: 1 }), /1 vertical \(layout-tate\) slide were/);
-  // 枠の外（試作）：図形の id・ステップ・はみ出した量（px）を言う。外に出るステップが 2 つ以上なら一覧も
+  // 枠の外：図形の id・ステップ・はみ出した量（px）を言う。外に出るステップが 2 つ以上なら一覧も
   const w = { shape: 'chr', frame: 'cell', step: '2', px: 41, at: [978, 341], steps: ['1', '2', 'concl'] };
   assert.ok(message('ja', 'geoOutsideFrame', w).startsWith('図形 chr が枠 cell の外に出る（41px、ステップ 2、978, 341。外に出るステップは 1・2・結論）：そのステップの図形 chr の位置か大きさを、パーツのデータか図の座標で変えて、枠 cell の内側に収める（枠を大きくしてもよい）'), message('ja', 'geoOutsideFrame', w));
   assert.match(message('en', 'geoOutsideFrame', { ...w, steps: ['2'] }), /^figure shape chr goes outside frame cell \(by 41px at step 2, at 978, 341\): at that step, move or shrink shape chr/);
@@ -117,7 +117,15 @@ const S9 = BOX('ob', 100, 50, 100, 100).replace('<rect ', '<rect data-overlap="o
   + T('o6', 'box', 600, 460, '線の下の字', 'data-overlap="OK"') + EDGE('e7→e8', LINE(550, 450, 900, 450))
   + EDGE('e9→e10', LINE(50, 650, 400, 650), 'data-overlap="ok"') + T('o7', 'box', 100, 660, '線の下の字')
   + BOX('ow', 900, 600, 100, 60) + T('ow', 'box', 950, 645, 'とても長い字', 'text-anchor="middle" data-overlap="ok"');
-const SLIDES = [slide(S0), slide(S1), slide(S2), slide(S3), slide(S4), slide(S5), slide(S0 + S3 + S4 + S5, 'slide layout-tate'), slide(S7), slide(S8), slide(S9)];
+// 10：箱の字（geoLabelOutsideBox）を、円・楕円・ひし形の箱では形と比べる。c1・e1・d1 の字は外接矩形の中だが形の外（出る）。c2・e2・d2 の字は形の中（出ない）
+const CENTER = (id, x, y) => T(id, 'box', x, y, '中', 'text-anchor="middle"');
+const S10 = '<circle data-part="box" data-part-id="c1" cx="200" cy="200" r="100"/>' + T('c1', 'box', 115, 145, '角')
+  + '<circle data-part="box" data-part-id="c2" cx="200" cy="500" r="100"/>' + CENTER('c2', 200, 515)
+  + '<ellipse data-part="box" data-part-id="e1" cx="600" cy="200" rx="150" ry="80"/>' + T('e1', 'box', 460, 165, '角')
+  + '<ellipse data-part="box" data-part-id="e2" cx="600" cy="500" rx="150" ry="80"/>' + CENTER('e2', 600, 515)
+  + '<polygon data-part="box" data-part-id="d1" points="1000,100 1100,200 1000,300 900,200"/>' + T('d1', 'box', 910, 145, '角')
+  + '<polygon data-part="box" data-part-id="d2" points="1000,400 1100,500 1000,600 900,500"/>' + CENTER('d2', 1000, 515);
+const SLIDES = [slide(S0), slide(S1), slide(S2), slide(S3), slide(S4), slide(S5), slide(S0 + S3 + S4 + S5, 'slide layout-tate'), slide(S7), slide(S8), slide(S9), slide(S10)];
 
 const b = await launch();
 try {
@@ -185,6 +193,18 @@ try {
       'geoEdgeThroughBox|x2→y2|cb', 'geoLabelOutsideBox|ow|ow', 'geoLabelOverlap|o3|o4', 'geoLineOverLabel|e7→e8|o6',
     ]);
   });
+  await t('geoLabelOutsideBox on circle, ellipse and polygon boxes compares with the shape: a label inside the bounding box but outside the shape is reported, a label inside the shape is not', async () => {
+    const xs = await scan(10);
+    assert.deepEqual(xs.map((x) => `${x.code}|${x.a.box}`), ['geoLabelOutsideBox|c1', 'geoLabelOutsideBox|e1', 'geoLabelOutsideBox|d1']);
+    for (const x of xs) {
+      // 外接矩形の中なので、外接矩形と比べたら出ない字。はみ出しは左上
+      const [l, tp] = x.a.rect;
+      assert.ok(l >= x.a.boxRect[0] && tp >= x.a.boxRect[1], JSON.stringify(x.a));
+      assert.ok(x.a.px.left > 2 && x.a.px.top > 2 && x.a.px.right === 0 && x.a.px.bottom === 0, JSON.stringify(x.a.px));
+    }
+    // 円：字の範囲の左上の角（115, 110.6）は円の輪郭から約 23px 外
+    assert.ok(Math.hypot(xs[0].a.px.left, xs[0].a.px.top) >= 18 && Math.hypot(xs[0].a.px.left, xs[0].a.px.top) <= 28, JSON.stringify(xs[0].a.px));
+  });
   await t('a vertical slide (layout-tate) is not measured', async () => {
     assert.deepEqual(await scan(6), []);
   });
@@ -210,7 +230,7 @@ try {
     });
     assert.deepEqual(r, [1, 0, 0]);
   });
-  // ---------------------------------------------------------------- 枠の中（試作、handoff #46）
+  // ---------------------------------------------------------------- 枠の中（handoff #46）
   // 分裂期の細胞（backlog #91 の DNA の再現）：楕円の細胞 cell の中の染色体 chr。ステップ 1 だけ染色体が細胞の右へ 40px 出る（最後のステップでは中に戻る）。
   // ステップは data-k の要素を出し入れする seek で作る（kit/deck.js の DECK.seek の代わり）
   const CELL = '<ellipse data-frame="cell" cx="640" cy="360" rx="300" ry="200" style="stroke-width:2"/>';
@@ -223,7 +243,15 @@ try {
     + '<text data-k="0" data-within="cell" data-part-id="t2" x="120" y="155" style="fill:#000;stroke:none">マスからはみ出す長い字</text>';
   // 枠の名前が合わない図形・枠のない図形は測らない。宣言のない図形（data-within なし）は外に出ていても見ない
   const W3 = CELL + '<rect data-k="0" data-within="nucleus" x="900" y="340" width="80" height="40"/>' + '<rect data-k="0" x="900" y="400" width="80" height="40"/>';
-  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${[W0, W1, W2, W3, W0].map((x, i) => slide(x, i === 4 ? 'slide layout-tate' : 'slide')).join('\n')}</body></html>`);
+  // <g> の図形は中の形と字の全部で測る：grp は中の四角は収まるが字が細胞の右へ出る（出る）。grp2 は字も中（出ない）
+  const W4 = CELL + '<g data-k="0" data-within="cell" data-part-id="grp"><rect x="600" y="340" width="40" height="40"/><text x="860" y="375" style="fill:#000;stroke:none">はみ出す字</text></g>'
+    + '<g data-k="0" data-within="cell" data-part-id="grp2"><rect x="500" y="300" width="40" height="40"/><text x="500" y="420" style="fill:#000;stroke:none">中</text></g>';
+  // 名前は 1 つ（[a-z][a-z0-9-]*）。並べた名前・大文字・前の空白・空の値は印でないとみなし、外に出ていても測らない（data-part の知らない値と同じ）。
+  // 枠の側の値が名前でなければ、どの図形とも合わない
+  const W5 = CELL + '<rect data-k="0" data-within="cell nucleus" x="900" y="340" width="80" height="40"/><rect data-k="0" data-within="Cell" x="900" y="400" width="80" height="40"/>'
+    + '<rect data-k="0" data-within=" cell" x="900" y="300" width="80" height="40"/><rect data-k="0" data-within="" x="900" y="250" width="80" height="40"/>'
+    + '<rect data-frame="box a" x="100" y="100" width="50" height="50"/><rect data-k="0" data-within="box" x="300" y="100" width="50" height="50"/>';
+  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${[W0, W1, W2, W3, W0, W4, W5].map((x, i) => slide(x, i === 4 ? 'slide layout-tate' : 'slide')).join('\n')}</body></html>`);
   await page.evaluate(() => document.fonts.ready);
   await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometryWithin = ${geometryWithin}`);
   const walk = (i, cstep = -1) => page.evaluate(([i, o, cstep]) => {
@@ -259,6 +287,14 @@ try {
     assert.deepEqual((await walk(3)).out, []);
     const r = await walk(4);
     assert.deepEqual([r.out, r.seen], [[], []]);
+  });
+  await t('geoOutsideFrame: a <g> is measured by every shape and text inside it', async () => {
+    const xs = (await walk(5)).out;
+    assert.deepEqual(xs.map((x) => `${x.a.shape}|${x.a.frame}|${x.a.step}`), ['grp|cell|0']);
+    assert.ok(xs[0].a.at[0] > 940, JSON.stringify(xs[0].a));
+  });
+  await t('geoOutsideFrame: a value that is not one name ([a-z][a-z0-9-]*) is not a mark (lists, capitals, spaces, empty), on the shape or the frame', async () => {
+    assert.deepEqual((await walk(6)).out, []);
   });
 } finally { await b.close(); }
 console.log(`\n${n - fail}/${n} passed`);

@@ -3,7 +3,7 @@
 // 見本（tools/fixtures/check-parity）：en-rawmath（英語の教材に $…$ の数式が 4 枚残る。持ち主の報告：コマンド版は rawMath のエラーと R-formula の警告を出すのに、
 // 編集アプリの品質チェックは何も出さなかった）と ja-mix（です・ます・句読点の混在・旧来の鍵・data-steps・モーフの相手がない・答えが数と同時に開く m-predict・答えが出ない m-predict）と
 // ja-geometry（パーツの印 data-part を付けた手書きの SVG。描いた図の形の点検 R-geometry の 4 つの警告が 1 つずつ、同じ値で出る。kit/core/geometry-check.mjs。
-// 分裂期の細胞で、途中のステップだけ染色体が細胞の外に出る geoOutsideFrame（試作、handoff #46）も 1 つ、同じ値で出る。対照のスライドには出ない）。
+// 分裂期の細胞で、途中のステップだけ染色体が細胞の外に出る geoOutsideFrame（handoff #46）も 1 つ、同じ値で出る。対照のスライドには出ない）。
 // 0. 静的な棚卸し：MESSAGES のどの code も IN_EDITOR・CLI_ONLY（CLI_ONLY_PREFIX）・EDITOR_ALIAS と BUILD_WARN の行き先のちょうど 1 つに入る。
 //    一覧が MESSAGES にない code を名指さない。IN_EDITOR の code は編集アプリの道筋のファイルに文字列として現れる（見本が出さない code も見る）
 // 1. コマンド版を --json で走らせ、見本が狙った code を出すこと
@@ -273,7 +273,7 @@ try {
       const same = GEO.every((code) => JSON.stringify((c.find((x) => x.code === code) || {}).data) === JSON.stringify((e.find((x) => x.code === code) || {}).arg));
       ok(same, 'parity ja-geometry: the same ids and coordinates in the command line and the editor' + (same ? '' : `: cli ${JSON.stringify(c.map((x) => x.data))} editor ${JSON.stringify(e.map((x) => x.arg))}`));
       ok(!CLI[name].some((x) => ['textOverlap', 'svgTextBox'].includes(x.code)), 'cli ja-geometry: marked labels are left to the geometry check (no textOverlap or svgTextBox for them)');
-      // 枠の外（試作）：染色体 chr-r がステップ 1（後期）だけ細胞の外。最後のステップでは中なので、全部のステップを測らないと出ない。対照のスライド 3 には出ない
+      // 枠の外：染色体 chr-r がステップ 1（後期）だけ細胞の外。最後のステップでは中なので、全部のステップを測らないと出ない。対照のスライド 3 には出ない
       const fc = c.find((x) => x.code === 'geoOutsideFrame'), fe = results.find((x) => x.code === 'geoOutsideFrame');
       ok(fc && fc.slide === 2 && fc.data.shape === 'chr-r' && fc.data.frame === 'cell' && fc.data.step === '1' && fc.data.px > 20 && fe && fe.i === 1,
         `geoOutsideFrame: the middle step of the mitosis slide, in both (cli ${JSON.stringify(fc && fc.data)})`);

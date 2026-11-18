@@ -492,7 +492,7 @@ const aOut = await page.evaluate(([metaList, JA, CLIP, ANNOT, OVERLAP, METRICS, 
     for (const f of window.__layoutScan(s, { JA, refRe: '文献', clip: CLIP, annot: ANNOT, overlap: OVERLAP, metrics: METRICS })) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
     // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）
     for (const f of window.__geometryScan(s, GEO)) (f.sev === 'error' ? issues : warns).push([f.code, f.a, f.sev]);
-    // 図形が枠の外に出る（geoOutsideFrame。試作、handoff #46）：全部のステップで測る（編集アプリと同じ関数）。測った後は最後のステップに戻す
+    // 図形が枠の外に出る（geoOutsideFrame。handoff #46）：全部のステップで測る（編集アプリと同じ関数）。測った後は最後のステップに戻す
     if (s.querySelector('[' + GEO.within + ']')) {
       for (const f of window.__geometryWithin(s, GEO, (k) => DECK.seek(m.i, k, Infinity), window.__geometryScan)) warns.push([f.code, f.a, f.sev]);
       DECK.seek(m.i, m.max, Infinity);

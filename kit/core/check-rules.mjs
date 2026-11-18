@@ -19,7 +19,7 @@
 //       excused か skipped の決まりに code が出たら problems（台帳の誤り）。problems があるか、どれにもならない決まりがあれば status は incomplete
 import { cliOnly } from './check-parity.mjs';
 import { WITHIN_ATTRS } from './geometry-check.mjs';
-// 枠の中の印（試作、handoff #46）が原稿にあるか（属性の名前は WITHIN_ATTRS の 1 か所）
+// 枠の中の印（handoff #46）が原稿にあるか（属性の名前は WITHIN_ATTRS の 1 か所）
 const WITHIN_RE = new RegExp('\\s' + WITHIN_ATTRS.within + '\\s*=');
 
 export const EXCUSES = Object.freeze(['noNarration', 'noAudio', 'noAttachments', 'noParts', 'noMarks', 'noMorphs', 'noLinks', 'noBook', 'tate', 'lang']);

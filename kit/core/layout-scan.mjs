@@ -39,7 +39,7 @@ export const ANNOT_ATTR = 'data-annot';
 export const OVERLAP_ATTR = 'data-overlap';
 
 // 描いた図の形の点検（kit/core/geometry-check.mjs）に渡す値：字の範囲の表（kit/core/text-band.mjs）・わざと重ねる印の名前（OVERLAP_ATTR。R-geometry も見る、handoff #45）・
-// 枠の中の印の名前（WITHIN_ATTRS。試作、handoff #46）。コマンド版（kit/check.mjs）・編集アプリ（withLayoutScan）・試験が同じこれを使う
+// 枠の中の印の名前（WITHIN_ATTRS。handoff #46）。コマンド版（kit/check.mjs）・編集アプリ（withLayoutScan）・試験が同じこれを使う
 export const GEO_OPTS = Object.freeze({ bands: TEXT_BANDS, dflt: DEFAULT_BAND, overlap: OVERLAP_ATTR, within: WITHIN_ATTRS.within, frame: WITHIN_ATTRS.frame });
 
 export function layoutScan(s, o) {

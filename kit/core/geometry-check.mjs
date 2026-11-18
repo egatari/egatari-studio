@@ -11,7 +11,7 @@
 //   @ で始まる端（@spine・@moved など）は節でない
 //   わざと重ねる所：要素そのものか祖先の <g> に o.overlap の印（data-overlap="ok"、kit/core/layout-scan.mjs の OVERLAP_ATTR。handoff #45 の決定 3）。
 //        その要素が関わる重なりの知らせ（geoEdgeThroughBox・geoLineOverLabel・geoLabelOverlap）を出さない。値は "ok" だけ。箱の縁を越える字（geoLabelOutsideBox）は重なりでないので外さない
-//   枠の中（試作、handoff #46。名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。宣言した図形だけを、ステップごとに測る（geometryWithin）
+//   枠の中（handoff #46。属性の名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。名前は 1 つ（[a-z][a-z0-9-]*）。宣言した図形だけを、ステップごとに測る（geometryWithin）
 //
 //   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt, overlap, within, frame}
 //     bands  字体ごとの字の範囲（kit/core/text-band.mjs の TEXT_BANDS。{字体の名前: {up, down}}、em）
@@ -35,7 +35,7 @@
 // この関数は文字列にしてページに入れる（check.mjs は page.evaluate、編集アプリは仲立ちの文字列に埋める）。
 // だから外の名前を使わない（中だけで閉じる）。閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
 
-// 枠の中の印の名前（試作。仕様で名前が決まったらここだけを直す）。呼ぶ側が o.within・o.frame として渡す（kit/core/layout-scan.mjs の GEO_OPTS）
+// 枠の中の印の名前（仕様 §8.4 Marks for geometry checks）。呼ぶ側が o.within・o.frame として渡す（kit/core/layout-scan.mjs の GEO_OPTS）
 export const WITHIN_ATTRS = Object.freeze({ within: 'data-within', frame: 'data-frame' });
 
 export function geometryScan(s, o) {
@@ -93,6 +93,38 @@ export function geometryScan(s, o) {
     return false;
   };
 
+  // 形の要素の輪郭（getTotalLength・getPointAtLength でスライドの座標 step px ごと、8〜2000 点）。測れなければ []
+  const outline = (el, step) => {
+    const M = mapper(el);
+    if (!M) return [];
+    let len = 0;
+    try { len = el.getTotalLength(); } catch (e) { len = 0; }
+    if (!(len > 0)) return [];
+    const n = Math.min(2000, Math.max(8, Math.ceil(len * M.sc / step)));
+    const pts = [];
+    for (let i = 0; i <= n; i++) { const p = el.getPointAtLength(len * i / n); pts.push(M.pt(p.x, p.y)); }
+    return pts;
+  };
+  // 点から折れ線（閉じた輪郭）のいちばん近い点 {x, y, d}
+  const nearRing = (ring, x, y) => {
+    let best = { x, y, d: Infinity };
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i], b = ring[(i + 1) % ring.length], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+      const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0;
+      const qx = a.x + dx * t, qy = a.y + dy * t, d = Math.hypot(x - qx, y - qy);
+      if (d < best.d) best = { x: qx, y: qy, d };
+    }
+    return best;
+  };
+  const toRing = (ring, x, y) => nearRing(ring, x, y).d;
+  // 矩形の周りの点（4px ごと）
+  const rectRing = (q) => {
+    const pts = [], w = q.r - q.l, h = q.b - q.t, n = Math.max(1, Math.ceil(w / 4)), m = Math.max(1, Math.ceil(h / 4));
+    for (let i = 0; i <= n; i++) { const x = q.l + w * i / n; pts.push({ x, y: q.t }, { x, y: q.b }); }
+    for (let j = 1; j < m; j++) { const y = q.t + h * j / m; pts.push({ x: q.l, y }, { x: q.r, y }); }
+    return pts;
+  };
+
   // ---------------------------------------------------------------- 箱
   const boxes = [];
   if (!WITHIN) for (const el of s.querySelectorAll(SEL('box'))) {
@@ -107,15 +139,15 @@ export function geometryScan(s, o) {
   // 点（スライドの座標）が箱の内側に tol より深く入っているか：点とそのまわり 8 方向の tol の点がみな箱の形の中
   // （形は isPointInFill。ひし形の <polygon>・楕円・角の丸い <rect> も形どおり。形を測れない要素は外接矩形）
   const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7071, 0.7071], [0.7071, -0.7071], [-0.7071, 0.7071], [-0.7071, -0.7071]];
+  const inFillOf = (b, px, py) => {
+    const cx = sr.left + px * k, cy = sr.top + py * k, m = b.inv;
+    try { return b.el.isPointInFill(new DOMPoint(m.a * cx + m.c * cy + m.e, m.b * cx + m.d * cy + m.f)); } catch (e) { return true; }
+  };
   const deepIn = (b, x, y, tol) => {
     if (x <= b.q.l + tol || x >= b.q.r - tol || y <= b.q.t + tol || y >= b.q.b - tol) return false;
     if (!b.inv) return true;
-    const inFill = (px, py) => {
-      const cx = sr.left + px * k, cy = sr.top + py * k, m = b.inv;
-      try { return b.el.isPointInFill(new DOMPoint(m.a * cx + m.c * cy + m.e, m.b * cx + m.d * cy + m.f)); } catch (e) { return true; }
-    };
-    if (!inFill(x, y)) return false;
-    for (const d of DIRS) if (!inFill(x + d[0] * tol, y + d[1] * tol)) return false;
+    if (!inFillOf(b, x, y)) return false;
+    for (const d of DIRS) if (!inFillOf(b, x + d[0] * tol, y + d[1] * tol)) return false;
     return true;
   };
 
@@ -216,7 +248,7 @@ export function geometryScan(s, o) {
     return htmlTextRects(el);
   };
 
-  // ---------------------------------------------------------------- 0. 図形が枠の外に出る（geoOutsideFrame の 1 段階分。o.mode === 'within'。試作、handoff #46）
+  // ---------------------------------------------------------------- 0. 図形が枠の外に出る（geoOutsideFrame の 1 段階分。o.mode === 'within'。handoff #46）
   // 図形（data-within="名前"）の輪郭の点が、同じ名前の枠（data-frame="名前"）の形の中にあるかを、今の表示で測る。
   //   図形の点：形の要素（SVGGeometryElement）は輪郭を getTotalLength・getPointAtLength で 2px ごと（多くても 2000 点）。<g> なら中の見えている形の要素と字の全部。
   //     字は字の範囲（上の textRects。R-geometry の text-band と同じ値）の周り。HTML の要素は外接矩形の周り
@@ -226,27 +258,10 @@ export function geometryScan(s, o) {
   if (WITHIN) {
     const GEOM = 'path,rect,circle,ellipse,line,polyline,polygon';
     const NOT_DRAWN = 'defs,clipPath,mask,marker,pattern,symbol';
-    const outline = (el, step) => {
-      const M = mapper(el);
-      if (!M) return [];
-      let len = 0;
-      try { len = el.getTotalLength(); } catch (e) { len = 0; }
-      if (!(len > 0)) return [];
-      const n = Math.min(2000, Math.max(8, Math.ceil(len * M.sc / step)));
-      const pts = [];
-      for (let i = 0; i <= n; i++) { const p = el.getPointAtLength(len * i / n); pts.push(M.pt(p.x, p.y)); }
-      return pts;
-    };
     const halfPaint = (el) => {
       const st = getComputedStyle(el);
       if (st.stroke === 'none' || parseFloat(st.strokeOpacity) === 0) return 0;
       return strokeOf(el, mapper(el)) / 2;
-    };
-    const rectRing = (q) => {
-      const pts = [], w = q.r - q.l, h = q.b - q.t, n = Math.max(1, Math.ceil(w / 4)), m = Math.max(1, Math.ceil(h / 4));
-      for (let i = 0; i <= n; i++) { const x = q.l + w * i / n; pts.push({ x, y: q.t }, { x, y: q.b }); }
-      for (let j = 1; j < m; j++) { const y = q.t + h * j / m; pts.push({ x: q.l, y }, { x: q.r, y }); }
-      return pts;
     };
     const shapePts = (el) => {
       const pts = [];
@@ -261,16 +276,6 @@ export function geometryScan(s, o) {
         }
       } else for (const p of rectRing(box(el.getBoundingClientRect()))) pts.push({ x: p.x, y: p.y, w: 0 });
       return pts;
-    };
-    // 点から折れ線（閉じた輪郭）までの距離
-    const toRing = (ring, x, y) => {
-      let d = Infinity;
-      for (let i = 0; i < ring.length; i++) {
-        const a = ring[i], b = ring[(i + 1) % ring.length], dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
-        const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / L2)) : 0;
-        d = Math.min(d, Math.hypot(x - a.x - dx * t, y - a.y - dy * t));
-      }
-      return d;
     };
     const frameOf = (el) => {
       if (el.namespaceURI === 'http://www.w3.org/2000/svg' && typeof el.isPointInFill === 'function') {
@@ -293,11 +298,13 @@ export function geometryScan(s, o) {
         dist: (x, y) => (x >= q.l && x <= q.r && y >= q.t && y <= q.b ? Math.min(x - q.l, q.r - x, y - q.t, q.b - y) : Math.hypot(Math.max(q.l - x, 0, x - q.r), Math.max(q.t - y, 0, y - q.b))),
       };
     };
+    // 名前は 1 つだけ（[a-z][a-z0-9-]*）。並べた名前・大文字・空などの値は、data-part の知らない値と同じく印でないとみなして測らない（枠の側も同じ値でしか合わない）
+    const NAME = /^[a-z][a-z0-9-]*$/;
     const all = [...s.querySelectorAll('[' + WA + ']')];
     all.forEach((el, n) => {
       const name = el.getAttribute(WA) || '';
-      if (!name || !shown(el)) return;
-      const sel = '[' + FA + '="' + name.replace(/["\\]/g, '\\$&') + '"]';
+      if (!NAME.test(name) || !shown(el)) return;
+      const sel = '[' + FA + '="' + name + '"]';
       const root = rootOf(el);
       let fs = [...s.querySelectorAll(sel)].filter((f) => f !== el && !el.contains(f) && shown(f));
       const near = fs.filter((f) => rootOf(f) === root);
@@ -421,19 +428,34 @@ export function geometryScan(s, o) {
   }
 
   // ---------------------------------------------------------------- 4. 箱の中の字が箱の縁を越える（geoLabelOutsideBox）。data-part-at="outside" の字は見ない
+  //    <rect> の箱は外接矩形と比べる。<circle>・<ellipse>・<polygon>・<path> の箱は形と比べる（ほかの点検と同じ isPointInFill と輪郭までの距離）：
+  //    字の範囲の周りの点のうち形の外のものについて、輪郭のいちばん近い点からのずれを左右上下に分けて、いちばん大きいものを px にする（2px までは中）
   for (const Lb of labels) {
     if (Lb.of !== 'box' || Lb.outside) continue;
     const B = boxes.find((b) => b.id === Lb.id && b.root === Lb.root);
     if (!B) continue;
     const l = Math.min.apply(null, Lb.rs.map((r) => r.l)), r = Math.max.apply(null, Lb.rs.map((x) => x.r));
     const t = Math.min.apply(null, Lb.rs.map((x) => x.t)), b = Math.max.apply(null, Lb.rs.map((x) => x.b));
+    const ring = B.inv && B.el.localName !== 'rect' ? outline(B.el, 2) : [];
+    if (ring.length > 2) {
+      const d = { left: 0, right: 0, top: 0, bottom: 0 };
+      let worst = 0;
+      for (const q of Lb.rs) for (const p of rectRing(q)) {
+        if (inFillOf(B, p.x, p.y)) continue;
+        const o = nearRing(ring, p.x, p.y);
+        worst = Math.max(worst, o.d);
+        d.left = Math.max(d.left, o.x - p.x); d.right = Math.max(d.right, p.x - o.x); d.top = Math.max(d.top, o.y - p.y); d.bottom = Math.max(d.bottom, p.y - o.y);
+      }
+      if (worst > TOL) add('warn', 'geoLabelOutsideBox', { box: B.id, t: Lb.t, px: { left: rnd(d.left), right: rnd(d.right), top: rnd(d.top), bottom: rnd(d.bottom) }, rect: rr({ l, t, r, b }), boxRect: rr(B.q) });
+      continue;
+    }
     const px = { left: rnd(Math.max(0, B.q.l - l)), right: rnd(Math.max(0, r - B.q.r)), top: rnd(Math.max(0, B.q.t - t)), bottom: rnd(Math.max(0, b - B.q.b)) };
     if (B.q.l - l > TOL || r - B.q.r > TOL || B.q.t - t > TOL || b - B.q.b > TOL) add('warn', 'geoLabelOutsideBox', { box: B.id, t: Lb.t, px, rect: rr({ l, t, r, b }), boxRect: rr(B.q) });
   }
   return out;
 }
 
-// 図形が枠の外に出る（geoOutsideFrame。試作、handoff #46）を、スライドの全部のステップで測ってまとめる。geometryScan と同じく文字列でページに入れる。
+// 図形が枠の外に出る（geoOutsideFrame。handoff #46）を、スライドの全部のステップで測ってまとめる。geometryScan と同じく文字列でページに入れる。
 // seek(k)：そのステップの終わりの表示にする（kit/check.mjs と編集アプリは DECK.seek(i, k, Infinity)）。scan：geometryScan（中で外の名前を使えないので渡してもらう）
 export function geometryWithin(s, o, seek, scan) {
   const WA = (o && o.within) || '';

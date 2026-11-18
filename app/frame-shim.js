@@ -299,7 +299,7 @@ function quickCheck(fonts){
     });
     // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）：コマンド版と同じ関数・code・値
     geometryScan(s, GEO_OPTS).forEach(function(f){ add(i, f.sev, f.code, f.a); });
-    // 図形が枠の外に出る（geoOutsideFrame。試作、handoff #46）：全部のステップで測る（コマンド版と同じ関数）。測った後は最後のステップに戻す
+    // 図形が枠の外に出る（geoOutsideFrame。handoff #46）：全部のステップで測る（コマンド版と同じ関数）。測った後は最後のステップに戻す
     if (s.querySelector("[" + GEO_OPTS.within + "]")) {
       geometryWithin(s, GEO_OPTS, function(k){ DECK.seek(i, k, Infinity); }, geometryScan).forEach(function(f){ add(i, f.sev, f.code, f.a); });
       DECK.seek(i, s._max, Infinity);
