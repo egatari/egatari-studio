@@ -8,11 +8,13 @@
 //   - 縦書きのスライドは測らない。geometryTate は縦横が混ざる教材の、印のある縦書きのスライドの数
 //   - 箱に <circle>（形で測る）。辺の端に点（mark）の id：その点の字とその点を中に持つ箱は相手にしない。data-overlap="ok"（要素か祖先の <g>）は重なりの知らせから外す（handoff #45 の決定 1〜3）。
 //     どれも、印を付けない対照（わざと重ねたもの）は今までどおり出る
-//   - geoOutsideFrame（handoff #46）：data-within の図形が data-frame の枠の外に出る。geometryWithin が全部のステップで測る（途中のステップだけのはみ出しも出る）。<g> は中の形と字の全部。名前でない値は測らない
+//   - geoOutsideFrame（handoff #46）：data-within の図形が data-frame の枠の外に出る。geometrySteps が全部のステップで測る（途中のステップだけのはみ出しも出る）。<g> は中の形と字の全部。名前でない値は測らない
+//   - geoClippedStroke（handoff #52）：インラインの SVG の端で形の線が欠ける。端ぴったり（出る）・3px 内側・大半が外の飾り・overflow="visible"・data-overlap="ok"・data-clip（出ない）・
+//     途中のステップだけ（そのステップで出る）。端に沿う線（出る）と端から端の butt の線（出ない）、変形
 //   node tools/test-geometry-check.mjs
 import assert from 'node:assert/strict';
 import { shareBrowser, launch } from '../kit/browser.mjs';
-import { geometryScan, geometryWithin, geometryTate, WITHIN_ATTRS } from '../kit/core/geometry-check.mjs';
+import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS } from '../kit/core/geometry-check.mjs';
 import { layoutScan, withLayoutScan, GEO_OPTS, OVERLAP_ATTR } from '../kit/core/layout-scan.mjs';
 import { TEXT_BANDS, DEFAULT_BAND, textBand } from '../kit/core/text-band.mjs';
 import { message, MESSAGES } from '../kit/check-messages.mjs';
@@ -21,7 +23,7 @@ import { ruleOfCode } from '../kit/core/check-rules.mjs';
 await shareBrowser();
 
 const GEO = GEO_OPTS;
-const CODES = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoTateSlides'];
+const CODES = ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoClippedStroke', 'geoTateSlides'];
 let n = 0, fail = 0;
 const t = async (name, fn) => { n++; try { await fn(); console.log('ok   ' + name); } catch (e) { fail++; console.log('FAIL ' + name + '\n' + e.stack); } };
 
@@ -45,11 +47,11 @@ await t('ledger and messages: every geometry code is R-geometry, with ids and on
 });
 await t('attribute names: data-overlap comes from OVERLAP_ATTR, data-within and data-frame from WITHIN_ATTRS only', () => {
   assert.deepEqual([GEO_OPTS.overlap, GEO_OPTS.within, GEO_OPTS.frame], [OVERLAP_ATTR, WITHIN_ATTRS.within, WITHIN_ATTRS.frame]);
-  for (const f of [geometryScan, geometryWithin, geometryTate]) assert.ok(!/['"`]data-(within|frame|overlap)/.test(String(f)), 'no attribute name written as a string inside ' + f.name);
+  for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!/['"`]data-(within|frame|overlap)/.test(String(f)), 'no attribute name written as a string inside ' + f.name);
 });
 await t('injection: the scanner is self-contained, has no </script or <!--, and the editor wrapper passes it with the band table', () => {
-  for (const f of [geometryScan, geometryWithin, geometryTate]) assert.ok(!/<\/script|<!--/i.test(String(f)));
-  const g = new Function('return ' + withLayoutScan('(function(){return [typeof geometryScan, typeof geometryWithin, typeof geometryTate, GEO_OPTS];})'))()();
+  for (const f of [geometryScan, geometrySteps, geometryTate]) assert.ok(!/<\/script|<!--/i.test(String(f)));
+  const g = new Function('return ' + withLayoutScan('(function(){return [typeof geometryScan, typeof geometrySteps, typeof geometryTate, GEO_OPTS];})'))()();
   assert.deepEqual(g, ['function', 'function', 'function', JSON.parse(JSON.stringify(GEO))]);
   // 表の決め方は kit/core/text-band.mjs の textBand と同じ（中に写した bandOf）
   assert.deepEqual(textBand("'BIZ UDPGothic', sans-serif"), { up: 0.86, down: 0.12 });
@@ -253,13 +255,13 @@ try {
     + '<rect data-frame="box a" x="100" y="100" width="50" height="50"/><rect data-k="0" data-within="box" x="300" y="100" width="50" height="50"/>';
   await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${[W0, W1, W2, W3, W0, W4, W5].map((x, i) => slide(x, i === 4 ? 'slide layout-tate' : 'slide')).join('\n')}</body></html>`);
   await page.evaluate(() => document.fonts.ready);
-  await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometryWithin = ${geometryWithin}`);
+  await page.evaluate(`window.__geometryScan = ${geometryScan}; window.__geometrySteps = ${geometrySteps}`);
   const walk = (i, cstep = -1) => page.evaluate(([i, o, cstep]) => {
     const s = document.querySelectorAll('section')[i];
     s._max = 2; s._cstep = cstep;
     const seen = [];
     const seek = (k) => { seen.push(k); s.querySelectorAll('[data-k]').forEach((e) => { e.style.display = +e.getAttribute('data-k') === k ? '' : 'none'; }); };
-    return { out: window.__geometryWithin(s, o, seek, window.__geometryScan), seen, plain: window.__geometryScan(s, o) };
+    return { out: window.__geometrySteps(s, o, seek, window.__geometryScan), seen, plain: window.__geometryScan(s, o) };
   }, [i, GEO, cstep]);
   await t('geoOutsideFrame: a chromosome out of the cell at a middle step only is found (every step walked; id, step, overshoot in px)', async () => {
     const r = await walk(0);
@@ -286,7 +288,7 @@ try {
   await t('geoOutsideFrame: only declared shapes with a matching visible frame are measured; vertical slides are not walked', async () => {
     assert.deepEqual((await walk(3)).out, []);
     const r = await walk(4);
-    assert.deepEqual([r.out, r.seen], [[], []]);
+    assert.deepEqual([r.out, r.seen], [null, []]);
   });
   await t('geoOutsideFrame: a <g> is measured by every shape and text inside it', async () => {
     const xs = (await walk(5)).out;
@@ -296,6 +298,53 @@ try {
   await t('geoOutsideFrame: a value that is not one name ([a-z][a-z0-9-]*) is not a mark (lists, capitals, spaces, empty), on the shape or the frame', async () => {
     assert.deepEqual((await walk(6)).out, []);
   });
+
+  // ---------------------------------------------------------------- 図の端で欠ける線（handoff #52）
+  // 600×300 の SVG（viewBox も同じ、スライドの座標と同じ大きさ）をスライドの (100, 100) に置く。線の太さは 4（半分の 2px が端の外に出ると欠ける）
+  const FIG = (body, attrs = '') => `<div style="height:360px;position:relative"><section class="slide" style="position:absolute;left:0;top:0;width:1280px;height:720px;transform:scale(.5);transform-origin:0 0;margin:0">
+<svg width="600" height="300" viewBox="0 0 600 300" ${attrs} style="position:absolute;left:100px;top:100px;fill:none;stroke:#000;stroke-width:4">${body}</svg></section></div>`;
+  const FRAME = (extra = '') => `<rect id="frame" x="100" y="50" width="500" height="200" ${extra}/>`;   // 右端が SVG の右端ぴったり
+  const E = [
+    FIG(FRAME()),                                                                                   // 0 端ぴったりの枠：右端で 2px 欠ける
+    FIG('<rect id="in3" x="100" y="50" width="497" height="200"/>'),                                 // 1 3px 内側：欠けない
+    FIG('<circle id="deco" cx="600" cy="150" r="100"/><rect x="560" y="-200" width="200" height="300" style="stroke-width:20"/>'),   // 2 大半が外の飾り
+    FIG(FRAME(), 'overflow="visible"'),                                                             // 3 overflow="visible"
+    FIG(FRAME('data-overlap="ok"') + '<g data-overlap="ok"><g><rect x="0" y="0" width="100" height="100"/></g></g>'),   // 4 data-overlap="ok"（要素・祖先の <g>）
+    FIG('<rect data-k="0" id="mv" x="100" y="50" width="400" height="200"/><rect data-k="1" id="mv" x="200" y="50" width="400" height="200"/><rect data-k="2" id="mv" x="150" y="50" width="400" height="200"/>'),   // 5 ステップ 1 だけ端
+    FIG('<line x1="50" y1="0" x2="550" y2="0"/><line x1="0" y1="150" x2="600" y2="150"/><line x1="0" y1="200" x2="600" y2="200" style="stroke-linecap:square"/>'
+      + '<rect x="-20" y="-20" width="640" height="340" style="fill:#eee;stroke:none"/>'),         // 6 上の端に沿う線（欠ける）・端から端の butt の線（欠けない）・square の端（欠ける）・塗りだけの背景（見ない）
+    FIG('<g transform="translate(400,100) scale(2)"><rect id="tf" x="0" y="0" width="100" height="50" style="stroke-width:2"/></g><g data-clip><rect x="0" y="250" width="100" height="50"/></g>'),   // 7 変形（線も 2 倍）と、わざと切る印
+    FIG('<rect x="0" y="0" width="600" height="300" style="stroke-width:1"/><rect x="0" y="100" width="100" height="100" style="stroke-width:2"/>'),   // 8 線の半分が 1px 以下：欠けない
+  ];
+  await page.setContent(`<!DOCTYPE html><html><body style="margin:0">${E.join('\n')}</body></html>`);
+  const clips = async (i) => (await walk(i)).out;
+  const show = (xs) => (xs || []).map((x) => `${x.code}|${x.a.shape}|${x.a.step}|${x.a.steps.join(',')}|${['left', 'right', 'top', 'bottom'].map((k) => x.a.side[k]).join(',')}|${x.a.stroke}`);
+  await t('geoClippedStroke: a frame exactly on the SVG edge loses half its stroke (right edge by 2px, step 0)', async () => {
+    const xs = await clips(0);
+    assert.deepEqual(show(xs), ['geoClippedStroke|frame|0|0,1,2|0,2,0,0|true']);
+    assert.equal(xs[0].a.px, 2);
+    assert.equal(message('ja', 'geoClippedStroke', { ...xs[0].a, steps: ['0'] }), '図形 frame の線が図の端で欠ける（右端で 2px、ステップ 0）：図形を内側へ線の太さの半分以上寄せるか、viewBox を広げる（R-geometry）');
+  });
+  await t('geoClippedStroke: 3px inside is fine', async () => { assert.deepEqual(await clips(1), []); });
+  await t('geoClippedStroke: a decoration mostly outside the SVG is not reported (less than 90% inside)', async () => { assert.deepEqual(await clips(2), []); });
+  await t('geoClippedStroke: an SVG with overflow="visible" does not clip, so it is not walked', async () => {
+    const r = await walk(3);
+    assert.deepEqual([r.out, r.seen], [null, []]);
+  });
+  await t('geoClippedStroke: data-overlap="ok" on the shape or an ancestor <g> leaves it out', async () => { assert.deepEqual(await clips(4), []); });
+  await t('geoClippedStroke: a shape on the edge at a middle step only is reported with that step', async () => {
+    assert.deepEqual(show(await clips(5)), ['geoClippedStroke|mv|1|1|0,2,0,0|true']);
+    assert.match(message('ja', 'geoClippedStroke', (await clips(5))[0].a), /（右端で 2px、ステップ 1）/);
+  });
+  await t('geoClippedStroke: a line along the top edge is reported; a butt-capped line from edge to edge is not; a square cap is; a fill-only background is not measured', async () => {
+    assert.deepEqual(show(await clips(6)), ['geoClippedStroke|line#1|0|0,1,2|0,0,2,0|true', 'geoClippedStroke|line#3|0|0,1,2|2,2,0,0|true']);
+  });
+  await t('geoClippedStroke: transforms scale the shape and the stroke; data-clip leaves it out; unnamed shapes are kind#n', async () => {
+    assert.deepEqual(show(await clips(7)), ['geoClippedStroke|tf|0|0,1,2|0,2,0,0|true']);
+    assert.match(message('ja', 'geoClippedStroke', { shape: 'rect#2', side: { left: 3, right: 0, top: 0, bottom: 0 }, px: 3, stroke: false, step: '0', steps: ['0'] }),
+      /^図形 rect#2（スライドの中の 2 つ目の <rect>）が図の端で欠ける（左端で 3px、ステップ 0）：図形を図の内側へ寄せるか小さくするか、viewBox を広げる/);
+  });
+  await t('geoClippedStroke: 1px or less is not reported (stroke-width 1 and 2 on the edge)', async () => { assert.deepEqual(await clips(8), []); });
 } finally { await b.close(); }
 console.log(`\n${n - fail}/${n} passed`);
 process.exitCode = fail ? 1 : 0;

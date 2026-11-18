@@ -23,7 +23,7 @@
 // だから外の名前を使わない（中だけで閉じる）。仲立ちはデッキの script の要素の中にそのまま入るので、閉じるタグと HTML の注釈の始まりを書かない（tools/build-app.mjs が確かめる）
 
 import { findRawMath } from './raw-math.mjs';
-import { geometryScan, geometryWithin, geometryTate, WITHIN_ATTRS } from './geometry-check.mjs';
+import { geometryScan, geometrySteps, geometryTate, WITHIN_ATTRS } from './geometry-check.mjs';
 import { TEXT_BANDS, DEFAULT_BAND } from './text-band.mjs';
 
 // わざと切る印（CLIP_ATTR。docs/contract.md §10）：その要素の中（子孫も、SVG の字も）は、箱で切れる・スライドの外に出る・
@@ -39,8 +39,9 @@ export const ANNOT_ATTR = 'data-annot';
 export const OVERLAP_ATTR = 'data-overlap';
 
 // 描いた図の形の点検（kit/core/geometry-check.mjs）に渡す値：字の範囲の表（kit/core/text-band.mjs）・わざと重ねる印の名前（OVERLAP_ATTR。R-geometry も見る、handoff #45）・
-// 枠の中の印の名前（WITHIN_ATTRS。handoff #46）。コマンド版（kit/check.mjs）・編集アプリ（withLayoutScan）・試験が同じこれを使う
-export const GEO_OPTS = Object.freeze({ bands: TEXT_BANDS, dflt: DEFAULT_BAND, overlap: OVERLAP_ATTR, within: WITHIN_ATTRS.within, frame: WITHIN_ATTRS.frame });
+// 枠の中の印の名前（WITHIN_ATTRS。handoff #46）・わざと切る印の名前（CLIP_ATTR。その中は図の端で欠ける線 geoClippedStroke を見ない、handoff #52）。
+// コマンド版（kit/check.mjs）・編集アプリ（withLayoutScan）・試験が同じこれを使う
+export const GEO_OPTS = Object.freeze({ bands: TEXT_BANDS, dflt: DEFAULT_BAND, overlap: OVERLAP_ATTR, within: WITHIN_ATTRS.within, frame: WITHIN_ATTRS.frame, clip: CLIP_ATTR });
 
 export function layoutScan(s, o) {
   const JA = !!o.JA, CLIP = o.clip, ANNOT = o.annot, OVERLAP = o.overlap, refRe = new RegExp(o.refRe);
@@ -763,9 +764,9 @@ export async function metricsFonts(doc, timeoutMs) {
 
 // 編集アプリの仲立ち（app/frame-shim.js の文字列。「(function frameShim(cfg){…})」）に、この関数・寸法の比べ方（metricsProbe・metricsFonts）・残った数式の検出（findRawMath）と印の名前を渡す形にする。
 // 戻り値も「(…)(cfg)」で呼べる 1 つの式（仲立ちの中では layoutScan・metricsProbe・metricsFonts・findRawMath・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP という名前で使える）
-// 描いた図の形の点検（kit/core/geometry-check.mjs の geometryScan・geometryWithin・geometryTate）とその値（上の GEO_OPTS）も同じ名前で渡す
+// 描いた図の形の点検（kit/core/geometry-check.mjs の geometryScan・geometrySteps・geometryTate）とその値（上の GEO_OPTS）も同じ名前で渡す
 export function withLayoutScan(shimSrc) {
   // 仲立ちの文字列は注釈の行から始まるので、return の後ろで改行して括弧で囲む（return の直後の改行で式が切れないように）
   // findRawMath（kit/core/raw-math.mjs）：組まれずに残った数式（rawMath）。コマンド版（kit/check.mjs）と同じ関数を仲立ちにも渡す
-  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts, findRawMath, geometryScan, geometryWithin, geometryTate, GEO_OPTS){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts}, ${findRawMath}, ${geometryScan}, ${geometryWithin}, ${geometryTate}, ${JSON.stringify(GEO_OPTS)})`;
+  return `(function(layoutScan, LAYOUT_CLIP, LAYOUT_ANNOT, LAYOUT_OVERLAP, metricsProbe, metricsFonts, findRawMath, geometryScan, geometrySteps, geometryTate, GEO_OPTS){return (\n${String(shimSrc).trim()}\n);})(${layoutScan}, ${JSON.stringify(CLIP_ATTR)}, ${JSON.stringify(ANNOT_ATTR)}, ${JSON.stringify(OVERLAP_ATTR)}, ${metricsProbe}, ${metricsFonts}, ${findRawMath}, ${geometryScan}, ${geometrySteps}, ${geometryTate}, ${JSON.stringify(GEO_OPTS)})`;
 }

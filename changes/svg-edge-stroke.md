@@ -1,0 +1,3 @@
+### Added
+
+- Quality check: a shape's stroke cut off at the edge of an inline SVG is reported. Every stroked shape in a clipping SVG (author figures and part figures; not `overflow="visible"`) is measured at the end of every step, by its bounding box grown by half the stroke width, in the same pass as `geoOutsideFrame`. Only the accident shape is reported: more than 1px cut on some edge while at least 90% of it is inside; `data-overlap="ok"` and `data-clip` leave a shape out. The new R-geometry warning `geoClippedStroke` (command line and editor) names the shape, the edge and px, and the step; the AI fix request carries the same. A lesson with inline SVGs and no parts now runs R-geometry (handoff Issue #52)

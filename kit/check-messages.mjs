@@ -36,6 +36,18 @@ const geoSides = (px, lang) => {
   const xs = Object.keys(name).filter((k) => px && px[k] > 0).map((k) => `${name[k]} ${px[k]}px`);
   return xs.join(lang === 'en' ? ', ' : '・');
 };
+// 図の端で欠ける辺（geoClippedStroke）：「右端で 2px」・"right edge by 2px"
+const geoEdges = (px, lang) => {
+  const name = lang === 'en' ? { left: 'left', right: 'right', top: 'top', bottom: 'bottom' } : { left: '左', right: '右', top: '上', bottom: '下' };
+  const xs = Object.keys(name).filter((k) => px && px[k] > 0).map((k) => (lang === 'en' ? `${name[k]} edge by ${px[k]}px` : `${name[k]}端で ${px[k]}px`));
+  return xs.join(lang === 'en' ? ', ' : '・');
+};
+// id のない形（rect#3）：スライドの中で何番目のその種類の要素か
+const geoNth = (id, lang) => {
+  const m = /^([a-z]+)#(\d+)$/.exec(String(id || ''));
+  if (!m) return '';
+  return lang === 'en' ? ` (the ${m[2]}${['th', 'st', 'nd', 'rd'][(m[2] % 100 > 10 && m[2] % 100 < 14) || m[2] % 10 > 3 ? 0 : m[2] % 10]} <${m[1]}> on the slide)` : `（スライドの中の ${m[2]} つ目の <${m[1]}>）`;
+};
 const WHERE_JA = { slides: 'スライド', narration: '台本', article: '本' }, WHERE_EN = { slides: 'slides', narration: 'script', article: 'book' };
 const mibOf = (n) => (n / 1048576).toFixed(1) + ' MiB';
 // 添付（§3.8）の型と条件の言葉
@@ -289,6 +301,11 @@ export const MESSAGES = {
   geoOutsideFrame: { rule: 'R-geometry',
     ja: (a) => `図形 ${a.shape} が枠 ${a.frame} の外に出る（${a.px}px、${stepJa(a.step)}、${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `。外に出るステップは ${a.steps.map((x) => (x === 'concl' ? '結論' : x)).join('・')}` : ''}）：そのステップの図形 ${a.shape} の位置か大きさを、パーツのデータか図の座標で変えて、枠 ${a.frame} の内側に収める（枠を大きくしてもよい）`,
     en: (a) => `figure shape ${a.shape} goes outside frame ${a.frame} (by ${a.px}px at ${stepEn(a.step)}, at ${geoPt(a.at)}${Array.isArray(a.steps) && a.steps.length > 1 ? `; outside at steps ${a.steps.map((x) => (x === 'concl' ? 'conclusion' : x)).join(', ')}` : ''}): at that step, move or shrink shape ${a.shape} in the part's data or the figure's coordinates so it stays inside frame ${a.frame} (or make the frame larger)` },
+  // 図形の線が図の端で欠ける（handoff #52）：インラインの SVG の形の線が、SVG の見える範囲の端で切れる。いちばん大きく欠けたステップと、欠けた辺ごとの量、欠けるステップの一覧。
+  // id のない形は「種類#n」（スライドの中で n 番目のその種類の要素）。形そのものが端を越える（stroke が false）なら、線の太さの半分でなく形を寄せる
+  geoClippedStroke: { rule: 'R-geometry',
+    ja: (a) => `図形 ${a.shape}${geoNth(a.shape, 'ja')}${a.stroke === false ? '' : ' の線'}が図の端で欠ける（${geoEdges(a.side, 'ja')}、${stepJa(a.step)}${Array.isArray(a.steps) && a.steps.length > 1 ? `。欠けるステップは ${a.steps.map((x) => (x === 'concl' ? '結論' : x)).join('・')}` : ''}）：${a.stroke === false ? '図形を図の内側へ寄せるか小さくする' : '図形を内側へ線の太さの半分以上寄せる'}か、viewBox を広げる`,
+    en: (a) => `figure shape ${a.shape}${geoNth(a.shape, 'en')}${a.stroke === false ? ' is' : '\'s stroke is'} cut off at the edge of the figure (${geoEdges(a.side, 'en')} at ${stepEn(a.step)}${Array.isArray(a.steps) && a.steps.length > 1 ? `; cut off at steps ${a.steps.map((x) => (x === 'concl' ? 'conclusion' : x)).join(', ')}` : ''}): ${a.stroke === false ? 'move the shape inside the figure or make it smaller' : 'move the shape inward by at least half its stroke width'}, or widen the viewBox` },
   geoTateSlides: { rule: 'R-geometry',
     ja: (a) => `縦書きのスライド ${a.n} 枚の図は、図の形の点検で測っていない：その図の線・箱・字の重なりは目で確かめる`,
     en: (a) => `the figures on ${a.n} vertical (layout-tate) slide${a.n === 1 ? '' : 's'} were not measured by the figure geometry check: check their lines, boxes and text for overlaps by eye` },

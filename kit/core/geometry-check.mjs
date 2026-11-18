@@ -11,17 +11,21 @@
 //   @ で始まる端（@spine・@moved など）は節でない
 //   わざと重ねる所：要素そのものか祖先の <g> に o.overlap の印（data-overlap="ok"、kit/core/layout-scan.mjs の OVERLAP_ATTR。handoff #45 の決定 3）。
 //        その要素が関わる重なりの知らせ（geoEdgeThroughBox・geoLineOverLabel・geoLabelOverlap）を出さない。値は "ok" だけ。箱の縁を越える字（geoLabelOutsideBox）は重なりでないので外さない
-//   枠の中（handoff #46。属性の名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。名前は 1 つ（[a-z][a-z0-9-]*）。宣言した図形だけを、ステップごとに測る（geometryWithin）
+//   枠の中（handoff #46。属性の名前は WITHIN_ATTRS の 1 か所）：図形に data-within="名前"、枠に data-frame="名前"。名前は 1 つ（[a-z][a-z0-9-]*）。宣言した図形だけを、ステップごとに測る（geometrySteps）
+//   図の端で欠ける線（handoff #52）：印は要らない。インラインの SVG（作成者の図もパーツの図も）の線のある形の要素を、ステップごとに測る（geometrySteps）
 //
-//   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt, overlap, within, frame}
+//   geometryScan(s, o) → [{code, sev, a}]   s：最終段階まで出したスライドの <section>。o = {bands, dflt, overlap, within, frame, clip}
 //     bands  字体ごとの字の範囲（kit/core/text-band.mjs の TEXT_BANDS。{字体の名前: {up, down}}、em）
 //     dflt   表にない字体だけの字の範囲（DEFAULT_BAND）
 //     overlap わざと重ねる印の属性の名前（OVERLAP_ATTR）。なければ外さない
-//     within・frame  枠の中の印の属性の名前（WITHIN_ATTRS）。o.mode === 'within' のときだけ、今の表示で枠の外に出た図形（geoOutsideFrame の 1 段階分）を返す
+//     within・frame  枠の中の印の属性の名前（WITHIN_ATTRS）
+//     clip   わざと切る印の属性の名前（kit/core/layout-scan.mjs の CLIP_ATTR）。その中の形は図の端で欠けても知らせない
+//     o.mode === 'step' のときだけ、今の表示で測る 1 段階分を返す：枠の外に出た図形（geoOutsideFrame）と図の端で欠ける線（geoClippedStroke）
 //     縦書きのスライド（layout-tate）は測らない（[] を返す。数は geometryTate）
-//   geometryWithin(s, o, seek, scan) → [{code: 'geoOutsideFrame', sev, a: {shape, frame, step, px, at, steps}}]
-//     スライドの全部のステップ（0 … s._max。static は 0 だけ）を seek(k) で出し、scan（= geometryScan）を o.mode = 'within' で呼ぶ。
-//     図形と枠の組ごとに 1 つ：いちばん大きくはみ出したステップ（step。結論のステップは 'concl'）・その量（px）・その点（at）と、はみ出したステップの一覧（steps）。
+//   geometrySteps(s, o, seek, scan) → null | [{code: 'geoOutsideFrame', sev, a: {shape, frame, step, px, at, steps}} | {code: 'geoClippedStroke', sev, a: {shape, side, px, stroke, step, steps}}]
+//     スライドの全部のステップ（0 … s._max。static は 0 だけ）を seek(k) で出し、scan（= geometryScan）を o.mode = 'step' で呼ぶ（2 つの検査で 1 回だけ歩く）。
+//     測るものがない（枠の中の印も、線のある形の入った SVG もない）スライドは歩かずに null。
+//     図形（と枠）ごとに 1 つ：いちばん大きく出た・欠けたステップ（step。結論のステップは 'concl'）とその値（px ほか）と、出た・欠けたステップの一覧（steps）。
 //     最後のステップだけでは途中のはみ出しを逃す（backlog #91 の分裂期の染色体）。終わった後の表示は呼ぶ側が戻す
 //   geometryTate(slides, o) → n   縦横が混ざる教材で、測らなかった縦書きのスライドのうち印のあるものの数（geoTateSlides）。
 //     中身のスライド（表紙・章の扉を除く）がみな縦書きなら 0（そのときは決まりの台帳が R-geometry を skipped/tate にする。kit/core/check-rules.mjs の factsFromSource の allTate と同じ数え方）
@@ -43,8 +47,9 @@ export function geometryScan(s, o) {
   if (!s || s.classList.contains('layout-tate')) return out;
   const BANDS = (o && o.bands) || {}, DFLT = (o && o.dflt) || { up: 0.86, down: 0.26 };
   const SEL = (v) => '[data-part="' + v + '"]';
-  const WITHIN = !!(o && o.mode === 'within'), WA = (o && o.within) || '', FA = (o && o.frame) || '', OV = (o && o.overlap) || '';
-  if (WITHIN ? !WA || !FA || !s.querySelector('[' + WA + ']') : !s.querySelector([SEL('box'), SEL('edge'), SEL('label'), SEL('mark')].join(','))) return out;
+  const STEP = !!(o && o.mode === 'step'), WA = (o && o.within) || '', FA = (o && o.frame) || '', OV = (o && o.overlap) || '', CL = (o && o.clip) || '';
+  const WITHIN = STEP && !!WA && !!FA && !!s.querySelector('[' + WA + ']'), EDGE = STEP && !!s.querySelector('svg');
+  if (STEP ? !WITHIN && !EDGE : !s.querySelector([SEL('box'), SEL('edge'), SEL('label'), SEL('mark')].join(','))) return out;
   const sr = s.getBoundingClientRect();
   const k = sr.width / 1280 || 1;
   const SX = (x) => (x - sr.left) / k, SY = (y) => (y - sr.top) / k;
@@ -127,7 +132,7 @@ export function geometryScan(s, o) {
 
   // ---------------------------------------------------------------- 箱
   const boxes = [];
-  if (!WITHIN) for (const el of s.querySelectorAll(SEL('box'))) {
+  if (!STEP) for (const el of s.querySelectorAll(SEL('box'))) {
     if (!shown(el)) continue;
     const q = box(el.getBoundingClientRect());
     if (q.r - q.l <= 0 || q.b - q.t <= 0) continue;
@@ -154,7 +159,7 @@ export function geometryScan(s, o) {
   // ---------------------------------------------------------------- 辺（線ごとの折れ線、スライドの座標）
   const LINE = 'line,path,polyline,polygon';
   const edges = [];
-  if (!WITHIN) for (const g of s.querySelectorAll(SEL('edge'))) {
+  if (!STEP) for (const g of s.querySelectorAll(SEL('edge'))) {
     if (!shown(g)) continue;
     const id = g.getAttribute('data-part-id') || '', from = g.getAttribute('data-part-from') || '', to = g.getAttribute('data-part-to') || '';
     const els = g.matches(LINE) && g.hasAttribute('data-part-line') ? [g] : [...g.querySelectorAll('[data-part-line]')].filter((x) => x.matches(LINE));
@@ -248,21 +253,142 @@ export function geometryScan(s, o) {
     return htmlTextRects(el);
   };
 
-  // ---------------------------------------------------------------- 0. 図形が枠の外に出る（geoOutsideFrame の 1 段階分。o.mode === 'within'。handoff #46）
+  // ---------------------------------------------------------------- 0. 図形が枠の外に出る（geoOutsideFrame の 1 段階分。o.mode === 'step'。handoff #46）
   // 図形（data-within="名前"）の輪郭の点が、同じ名前の枠（data-frame="名前"）の形の中にあるかを、今の表示で測る。
   //   図形の点：形の要素（SVGGeometryElement）は輪郭を getTotalLength・getPointAtLength で 2px ごと（多くても 2000 点）。<g> なら中の見えている形の要素と字の全部。
   //     字は字の範囲（上の textRects。R-geometry の text-band と同じ値）の周り。HTML の要素は外接矩形の周り
   //   枠：形の要素なら isPointInFill（楕円・円・多角形も形どおり）と、輪郭の折れ線までの距離。そのほか（<g>・HTML）は外接矩形
   //   はみ出しの量：点が枠の外なら枠の輪郭までの距離。図形の線の太さの半分を足し、枠の線の太さの半分を引く（線どうしが重なって描けているなら中）。2px までは中とみなす
   //   同じ名前の枠が同じ図（rootOf）にいくつもあれば、いちばんよく収まる枠と比べる（表のマスなど）。同じ図になければスライドの中から。見えている枠がなければ測らない
-  if (WITHIN) {
-    const GEOM = 'path,rect,circle,ellipse,line,polyline,polygon';
-    const NOT_DRAWN = 'defs,clipPath,mask,marker,pattern,symbol';
-    const halfPaint = (el) => {
-      const st = getComputedStyle(el);
-      if (st.stroke === 'none' || parseFloat(st.strokeOpacity) === 0) return 0;
-      return strokeOf(el, mapper(el)) / 2;
+  const GEOM = 'path,rect,circle,ellipse,line,polyline,polygon';
+  const NOT_DRAWN = 'defs,clipPath,mask,marker,pattern,symbol';
+  const halfPaint = (el) => {
+    const st = getComputedStyle(el);
+    if (st.stroke === 'none' || parseFloat(st.strokeOpacity) === 0) return 0;
+    return strokeOf(el, mapper(el)) / 2;
+  };
+  // ---------------------------------------------------------------- 0'. 図形の線が図の端で欠ける（geoClippedStroke の 1 段階分。o.mode === 'step'。handoff #52）
+  // インラインの SVG の、線（stroke）の見える形の要素（<rect>・<circle>・<ellipse>・<line>・<polyline>・<polygon>・<path>。字は svgTextOut が見る）ごとに、
+  // 描いた範囲（形の外接矩形を線の太さの半分だけ広げたもの。スライドの座標）を、その形を切る範囲（祖先の <svg> のうち overflow が visible でないものの見える範囲。
+  // 外側の <svg> は箱、中の <svg> は x・y・width・height。軸ごと）と比べる。overflow が visible の <svg>（属性でも CSS でも）は切らないので見ない。
+  //   描いた範囲：変形が回転・傾きのない（ふつうの）形は getBBox の角を getScreenCTM で写し、線の太さの半分を足す。回転した形は輪郭（outline）の点の外接矩形。
+  //     開いた線（<line>・<polyline>・z のない <path>）は輪郭の点を法線の向きにだけ線の太さの半分ずらす（butt の端は長さの向きに出ない。round・square の端は出る）
+  //   知らせるのは「事故の形」：どこかの辺で 1px より多く欠け、かつ描いた範囲の 9 割以上が見える範囲の中（大半が外の飾りは知らせない）。
+  //     9 割は面積の割合（軸ごとの重なりの割合の積）。太さのない向き（水平・垂直の線の太さの向き）は割合に入れない（端に沿う線は、太さの半分が欠けても長さは中）
+  //   測らないもの：線のない形（塗りだけの背景は端からはみ出させることが多い）・見えない形・defs など描かれない所・KaTeX・目印の重ね（svg.marks）・
+  //     わざと切る印（o.clip）の中・clip-path か mask の付いた形（とその祖先）・data-overlap="ok"（要素そのものか祖先の <g>）
+  //   1 つの形の値：side（左右上下の欠けた量、1px 以下は 0）・px（いちばん大きい量）・stroke（形そのものは中にあり、線の太さの分だけ欠ける）
+  const clippedStrokes = () => {
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const SKIP = NOT_DRAWN + ',text,.katex,svg.marks' + (CL ? ',[' + CL + ']' : '');
+    const CUT = 1, SHARE = 0.9;
+    // <svg> の見える範囲（{l, t, r, b, x, y}。x・y はその軸で切るか）。切らないか、大きさがなければ null
+    const vps = new Map();
+    const viewport = (e) => {
+      if (vps.has(e)) return vps.get(e);
+      let v = null;
+      const st = getComputedStyle(e), x = st.overflowX !== 'visible', y = st.overflowY !== 'visible';
+      if (x || y) {
+        const p = e.parentElement, outer = !p || p.namespaceURI !== SVGNS || p.localName === 'foreignObject';
+        let q = null;
+        if (outer) q = box(e.getBoundingClientRect());
+        else {
+          const M = mapper(p);
+          if (M) {
+            const X = e.x.baseVal.value, Y = e.y.baseVal.value, W = e.width.baseVal.value, H = e.height.baseVal.value;
+            const c = [M.pt(X, Y), M.pt(X + W, Y), M.pt(X, Y + H), M.pt(X + W, Y + H)];
+            q = { l: Math.min.apply(null, c.map((a) => a.x)), r: Math.max.apply(null, c.map((a) => a.x)), t: Math.min.apply(null, c.map((a) => a.y)), b: Math.max.apply(null, c.map((a) => a.y)) };
+          }
+        }
+        if (q && q.r - q.l > 0 && q.b - q.t > 0) v = Object.assign(q, { x, y });
+      }
+      vps.set(e, v);
+      return v;
     };
+    // 形を切る範囲：祖先の <svg> の見える範囲を重ねたもの（外側の <svg> まで）。どれも切らなければ null
+    const clipOf = (el) => {
+      let q = null;
+      for (let e = el.parentElement; e && e !== s; e = e.parentElement) {
+        if (e.localName !== 'svg' || e.namespaceURI !== SVGNS) continue;
+        const v = viewport(e);
+        if (v) {
+          if (!q) q = { l: -Infinity, t: -Infinity, r: Infinity, b: Infinity, x: false, y: false };
+          if (v.x) { q.l = Math.max(q.l, v.l); q.r = Math.min(q.r, v.r); q.x = true; }
+          if (v.y) { q.t = Math.max(q.t, v.t); q.b = Math.min(q.b, v.b); q.y = true; }
+        }
+        const p = e.parentElement;
+        if (!p || p.namespaceURI !== SVGNS || p.localName === 'foreignObject') break;
+      }
+      return q;
+    };
+    const cutBy = (el) => {
+      for (let e = el; e && e !== s; e = e.parentElement) {
+        const st = getComputedStyle(e);
+        if ((st.clipPath && st.clipPath !== 'none') || (st.maskImage && st.maskImage !== 'none')) return true;
+        if (e.localName === 'svg' && (!e.parentElement || e.parentElement.namespaceURI !== SVGNS)) break;
+      }
+      return false;
+    };
+    const bbOf = (pts) => ({ l: Math.min.apply(null, pts.map((p) => p.x)), r: Math.max.apply(null, pts.map((p) => p.x)), t: Math.min.apply(null, pts.map((p) => p.y)), b: Math.max.apply(null, pts.map((p) => p.y)) });
+    const grow = (q, w) => ({ l: q.l - w, t: q.t - w, r: q.r + w, b: q.b + w });
+    const seen = {};
+    for (const el of s.querySelectorAll(GEOM)) {
+      const tag = el.localName;
+      seen[tag] = (seen[tag] || 0) + 1;
+      const nth = seen[tag];
+      if (el.namespaceURI !== SVGNS || el.closest(SKIP) || okOverlap(el)) continue;
+      const C = clipOf(el);
+      if (!C) continue;
+      const st = getComputedStyle(el);
+      if (st.stroke === 'none' || parseFloat(st.strokeOpacity) === 0 || !(parseFloat(st.strokeWidth) > 0)) continue;
+      const M = mapper(el);
+      if (!M) continue;
+      let bb;
+      try { bb = el.getBBox(); } catch (e) { continue; }
+      // 線の太さの半分（スライドの座標）。non-scaling-stroke は画面の px
+      const w = (st.vectorEffect === 'non-scaling-stroke' ? parseFloat(st.strokeWidth) / k : strokeOf(el, M)) / 2;
+      const g0 = bbOf([M.pt(bb.x, bb.y), M.pt(bb.x + bb.width, bb.y), M.pt(bb.x, bb.y + bb.height), M.pt(bb.x + bb.width, bb.y + bb.height)]);
+      // 端から離れた形は細かく測らない（回転した形の外接矩形は実際より大きいので、離れていればなお離れている。square の端の斜めの角まで見て 1.5 倍）
+      const w2 = w * 1.5;
+      if ((!C.x || (g0.l - w2 - C.l > CUT && C.r - g0.r - w2 > CUT)) && (!C.y || (g0.t - w2 - C.t > CUT && C.b - g0.b - w2 > CUT))) continue;
+      if (!shown(el) || cutBy(el)) continue;
+      const rot = Math.abs(M.m.b) > 1e-6 || Math.abs(M.m.c) > 1e-6;
+      const open = tag === 'line' || tag === 'polyline' || (tag === 'path' && !/z/i.test(el.getAttribute('d') || ''));
+      let g = g0, p;
+      if (!open) {
+        if (rot) { const pts = outline(el, 4); if (pts.length) g = bbOf(pts); }
+        p = grow(g, w);
+      } else {
+        const pts = tag === 'line' ? [M.pt(el.x1.baseVal.value, el.y1.baseVal.value), M.pt(el.x2.baseVal.value, el.y2.baseVal.value)] : outline(el, 4);
+        if (pts.length < 2) continue;
+        g = bbOf(pts);
+        const ps = [], cap = st.strokeLinecap;
+        for (let i = 0; i < pts.length; i++) {
+          const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], L = Math.hypot(b.x - a.x, b.y - a.y);
+          if (!(L > 0)) continue;
+          const tx = (b.x - a.x) / L, ty = (b.y - a.y) / L, nx = -ty * w, ny = tx * w, q = pts[i];
+          ps.push({ x: q.x + nx, y: q.y + ny }, { x: q.x - nx, y: q.y - ny });
+          const end = i === 0 ? -1 : i === pts.length - 1 ? 1 : 0;
+          if (end && cap === 'round') ps.push({ x: q.x - w, y: q.y }, { x: q.x + w, y: q.y }, { x: q.x, y: q.y - w }, { x: q.x, y: q.y + w });
+          if (end && cap === 'square') { const ex = end * tx * w, ey = end * ty * w; ps.push({ x: q.x + ex + nx, y: q.y + ey + ny }, { x: q.x + ex - nx, y: q.y + ey - ny }); }
+        }
+        if (!ps.length) continue;
+        p = bbOf(ps);
+      }
+      const side = { left: C.x ? C.l - p.l : 0, right: C.x ? p.r - C.r : 0, top: C.y ? C.t - p.t : 0, bottom: C.y ? p.b - C.b : 0 };
+      const worst = Math.max(side.left, side.right, side.top, side.bottom);
+      if (!(worst > CUT)) continue;
+      const share = (a0, a1, c0, c1, thin) => (thin || a1 - a0 <= 0 ? 1 : Math.max(0, Math.min(a1, c1) - Math.max(a0, c0)) / (a1 - a0));
+      const inside = share(p.l, p.r, C.l, C.r, !C.x || g.r - g.l < 1) * share(p.t, p.b, C.t, C.b, !C.y || g.b - g.t < 1);
+      if (inside < SHARE) continue;
+      // 形そのもの（線の太さを除く）は見える範囲の中か（中なら線だけが欠ける）
+      const geo = Math.max(C.x ? C.l - g.l : 0, C.x ? g.r - C.r : 0, C.y ? C.t - g.t : 0, C.y ? g.b - C.b : 0);
+      for (const kk of Object.keys(side)) side[kk] = side[kk] > CUT ? rnd(side[kk]) : 0;
+      add('warn', 'geoClippedStroke', { shape: el.getAttribute('data-part-id') || el.id || tag + '#' + nth, side, px: rnd(worst), stroke: geo <= CUT });
+    }
+  };
+
+  if (WITHIN) {
     const shapePts = (el) => {
       const pts = [];
       const geo = (g) => { const w = halfPaint(g); for (const p of outline(g, 2)) pts.push({ x: p.x, y: p.y, w }); };
@@ -329,6 +455,9 @@ export function geometryScan(s, o) {
         add('warn', 'geoOutsideFrame', { shape: el.getAttribute('data-part-id') || el.id || el.localName + '#' + (n + 1), frame: name, px: rnd(best.worst), at: [rnd(best.at.x), rnd(best.at.y)] });
       }
     });
+  }
+  if (STEP) {
+    if (EDGE) clippedStrokes();
     return out;
   }
 
@@ -457,20 +586,28 @@ export function geometryScan(s, o) {
 
 // 図形が枠の外に出る（geoOutsideFrame。handoff #46）を、スライドの全部のステップで測ってまとめる。geometryScan と同じく文字列でページに入れる。
 // seek(k)：そのステップの終わりの表示にする（kit/check.mjs と編集アプリは DECK.seek(i, k, Infinity)）。scan：geometryScan（中で外の名前を使えないので渡してもらう）
-export function geometryWithin(s, o, seek, scan) {
-  const WA = (o && o.within) || '';
-  if (!s || !WA || s.classList.contains('layout-tate') || !s.querySelector('[' + WA + ']')) return [];
+export function geometrySteps(s, o, seek, scan) {
+  if (!s || s.classList.contains('layout-tate')) return null;
+  const WA = (o && o.within) || '', CL = (o && o.clip) || '';
+  // 歩くのは、枠の中の印があるか、形の要素の入った、切る（overflow が visible でない）SVG があるスライドだけ
+  const SKIP = '.katex,svg.marks' + (CL ? ',[' + CL + ']' : '');
+  const svgs = [].filter.call(s.querySelectorAll('svg'), (g) => {
+    if (g.closest(SKIP) || !g.querySelector('path,rect,circle,ellipse,line,polyline,polygon')) return false;
+    const st = getComputedStyle(g);
+    return st.overflowX !== 'visible' || st.overflowY !== 'visible';
+  });
+  if (!(WA && s.querySelector('[' + WA + ']')) && !svgs.length) return null;
   const max = s.classList.contains('static') ? 0 : (isFinite(s._max) && s._max > 0 ? s._max : 0);
-  const oo = Object.assign({}, o, { mode: 'within' }), by = new Map(), order = [];
+  const oo = Object.assign({}, o, { mode: 'step' }), by = new Map(), order = [];
   for (let k = 0; k <= max; k++) {
     seek(k);
     const name = k === s._cstep ? 'concl' : String(k);
     for (const f of scan(s, oo)) {
-      const key = f.a.shape + '\n' + f.a.frame;
+      const key = f.code + '\n' + f.a.shape + '\n' + (f.a.frame || '');
       let r = by.get(key);
-      if (!r) { r = { code: f.code, sev: f.sev, a: { shape: f.a.shape, frame: f.a.frame, step: name, px: f.a.px, at: f.a.at, steps: [] } }; by.set(key, r); order.push(r); }
+      if (!r) { r = { code: f.code, sev: f.sev, a: Object.assign({}, f.a, { step: name, steps: [] }) }; by.set(key, r); order.push(r); }
       r.a.steps.push(name);
-      if (f.a.px > r.a.px) { r.a.px = f.a.px; r.a.step = name; r.a.at = f.a.at; }
+      if (f.a.px > r.a.px) r.a = Object.assign({}, f.a, { step: name, steps: r.a.steps });
     }
   }
   return order;

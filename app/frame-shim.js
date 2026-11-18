@@ -9,7 +9,7 @@
 //           なければ既定の寸法（今までと同じ限り）
 // layoutScan・metricsProbe・metricsFonts・LAYOUT_CLIP・LAYOUT_ANNOT・LAYOUT_OVERLAP：体裁の検査の関数・テーマの寸法と描いた箱を比べる関数・測る前の字体の確かめと、わざと切る印・小さい注記の印・重ね字の印の名前（kit/core/layout-scan.mjs）。
 // findRawMath：組まれずに残った数式（rawMath。kit/core/raw-math.mjs。コマンド版と同じ関数）。
-// geometryScan・geometryWithin・geometryTate・GEO_OPTS：描いた図の形の点検（kit/core/geometry-check.mjs、R-geometry。コマンド版と同じ関数）とその値（字の範囲の表・印の名前。kit/core/layout-scan.mjs の GEO_OPTS）。
+// geometryScan・geometrySteps・geometryTate・GEO_OPTS：描いた図の形の点検（kit/core/geometry-check.mjs、R-geometry。コマンド版と同じ関数）とその値（字の範囲の表・印の名前。kit/core/layout-scan.mjs の GEO_OPTS）。
 // app/main.js が withLayoutScan でこの文字列を包んで渡す
 (function frameShim(cfg){
 "use strict";
@@ -299,9 +299,11 @@ function quickCheck(fonts){
     });
     // 描いた図の形（パーツの印 data-part を測る。縦書きのスライドは測らない）：コマンド版と同じ関数・code・値
     geometryScan(s, GEO_OPTS).forEach(function(f){ add(i, f.sev, f.code, f.a); });
-    // 図形が枠の外に出る（geoOutsideFrame。handoff #46）：全部のステップで測る（コマンド版と同じ関数）。測った後は最後のステップに戻す
-    if (s.querySelector("[" + GEO_OPTS.within + "]")) {
-      geometryWithin(s, GEO_OPTS, function(k){ DECK.seek(i, k, Infinity); }, geometryScan).forEach(function(f){ add(i, f.sev, f.code, f.a); });
+    // 図形が枠の外に出る（geoOutsideFrame。handoff #46）・図形の線が図の端で欠ける（geoClippedStroke。handoff #52）：全部のステップで 1 回だけ歩いて測る
+    // （コマンド版と同じ関数）。測るものがないスライドは歩かない（null）。歩いた後は最後のステップに戻す
+    var stepped = geometrySteps(s, GEO_OPTS, function(k){ DECK.seek(i, k, Infinity); }, geometryScan);
+    if (stepped) {
+      stepped.forEach(function(f){ add(i, f.sev, f.code, f.a); });
       DECK.seek(i, s._max, Infinity);
     }
     // 本文の字（kit/check.mjs の A と同じ：KaTeX の読み上げ用の MathML を除いた innerText）：です・ます（日本語のデッキ）・残った数式（$…$・\( \[）・句読点を数える

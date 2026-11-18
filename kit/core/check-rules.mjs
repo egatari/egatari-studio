@@ -11,8 +11,9 @@
 //   ruleSet()    → 台帳の版（決まりの id と code の並びの sha256 の先頭 12。where や phase が変わっても変わらない）は呼ぶ側が sha256 で作る：ruleSetText()
 //   account({results, visited, facts, inEditor}) → {status, rules, summary, problems}
 //       results：[{sev: 'error'|'warn'|'info', code}]。visited：通った段の名前の集合（編集アプリは null：その版の編集アプリが見る決まりはどれも通ったとみなす）
-//       facts：{narration, audio, attachments, parts: [タグ…], partMarks, marks, morphs, links, book, tate, allTate, lang}
-//         partMarks：図の形の印（data-part="box|edge|label|mark"）か、枠の中の印（kit/core/geometry-check.mjs の WITHIN_ATTRS.within）が原稿にある。allTate：中身のスライド（表紙・章の扉を除く）がみな縦書き
+//       facts：{narration, audio, attachments, parts: [タグ…], partMarks, svg, marks, morphs, links, book, tate, allTate, lang}
+//         partMarks：図の形の印（data-part="box|edge|label|mark"）か、枠の中の印（kit/core/geometry-check.mjs の WITHIN_ATTRS.within）が原稿にある。allTate：中身のスライド（表紙・章の扉を除く）がみな縦書き。
+//         svg：原稿にインラインの <svg> がある（作成者の図。線が図の端で欠けるかを測る）
 //       inEditor：編集アプリの品質チェック（コマンド版だけの決まりは skipped/notInEditor）
 //   factsFromSource({deck, narration, audio, attachments, book}) → facts：原稿と台本の文字列から（コマンド版と編集アプリで同じ判定にする）。
 //       audio・attachments・book は呼ぶ側がファイルの有無から（audio/manifest.json か voice.json・attachments/・article.md か article/）
@@ -53,10 +54,11 @@ export const RULES = Object.freeze([
   { id: 'R-style', kind: 'authoring', phase: 'A 体裁', codes: ['desuMasu', 'punctMixed'], applies: (f) => (f.lang === 'ja' ? null : 'lang') },
   { id: 'R-math', kind: 'authoring', phase: 'A 体裁', codes: ['rawMath', 'katexError'] },
   { id: 'R-purpose', kind: 'authoring', phase: 'A 体裁', codes: ['cardsHint'] },
-  // 描いた図の形（kit/core/geometry-check.mjs、backlog #201）：パーツが付けた印（data-part）を測る。パーツも印もない教材は noParts。
+  // 描いた図の形（kit/core/geometry-check.mjs、backlog #201）：パーツが付けた印（data-part）と、インラインの SVG の線が図の端で欠けるか（geoClippedStroke、handoff #52）を測る。
+  // パーツも印もインラインの SVG もない教材は noParts。
   // 中身のスライドがみな縦書きなら skipped/tate（まだ測らない）。縦横が混ざれば横書きのスライドだけを見て geoTateSlides（情報）
-  { id: 'R-geometry', kind: 'authoring', phase: 'A 体裁', codes: ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoTateSlides'],
-    applies: (f) => ((f.parts || []).length || f.partMarks ? null : 'noParts'), skips: (f) => (f.allTate ? 'tate' : null) },
+  { id: 'R-geometry', kind: 'authoring', phase: 'A 体裁', codes: ['geoEdgeThroughBox', 'geoLineOverLabel', 'geoLabelOverlap', 'geoLabelOutsideBox', 'geoOutsideFrame', 'geoClippedStroke', 'geoTateSlides'],
+    applies: (f) => ((f.parts || []).length || f.partMarks || f.svg ? null : 'noParts'), skips: (f) => (f.allTate ? 'tate' : null) },
   { id: 'R-colors', kind: 'authoring', phase: 'C パレット', codes: ['colorOutside', 'textContrast', 'contrastLow'] },
   { id: 'R-balance', kind: 'authoring', phase: 'N 釣り合い', codes: ['balance'] },
   // 台本がない教材にも、ステップごとに narrMissing が出る（台本を書くこと自体がこの決まり）。だから外さない。言語と確かめ直しの知らせも台本なしで出る
@@ -100,7 +102,7 @@ export function factsFromSource({ deck = '', narration = '', audio = false, atta
     narration: /\S/.test(narration), audio: !!audio, attachments: !!attachments, book: !!book,
     parts: [...new Set([...deck.matchAll(/<(m-[a-z][a-z0-9]*(?:-[a-z0-9]+)*)[\s>/]/g)].map((m) => m[1]))].sort(),
     marks: /\{mark:/.test(narration), morphs: /\bdata-morph\b/.test(deck), links: /<a\b[^>]*\shref=/i.test(deck),
-    partMarks: /\sdata-part=["']?(?:box|edge|label|mark)\b/.test(deck) || WITHIN_RE.test(deck),
+    partMarks: /\sdata-part=["']?(?:box|edge|label|mark)\b/.test(deck) || WITHIN_RE.test(deck), svg: /<svg[\s>]/i.test(deck),
     tate: /\blayout-tate\b/.test(deck), allTate: content.length > 0 && content.every((c) => c.includes('layout-tate')), lang: /^ja\b/i.test(lang) || !lang ? 'ja' : 'en',
   };
 }

@@ -83,6 +83,7 @@ ok('R-geometry: noParts without parts or data-part marks; marks alone make it ap
   const g = (f) => account({ results: [], visited: phasesAll, facts: f }).rules.find((r) => r.id === 'R-geometry');
   assert.deepEqual([g(NONE).state, g(NONE).reason], ['excused', 'noParts']);
   assert.equal(g({ ...NONE, partMarks: true }).state, 'checked');
+  assert.equal(g({ ...NONE, svg: true }).state, 'checked', 'an inline SVG alone makes it apply (geoClippedStroke, handoff #52)');
   assert.equal(g(FULL).state, 'checked');
 });
 ok('R-geometry: a lesson whose content slides are all vertical is skipped (tate), not excused; tate is in SKIPS and EXCUSES', () => {
@@ -111,6 +112,9 @@ ok('factsFromSource: partMarks and allTate (content slides only: cover and sec a
   // 枠の中の印（handoff #46）だけの手書きの図も R-geometry の対象
   assert.equal(factsFromSource({ deck: '<svg><rect data-within="cell" x="1"/></svg>' }).partMarks, true);
   assert.equal(factsFromSource({ deck: '<svg><rect data-withinx="cell"/></svg>' }).partMarks, false);
+  // インラインの SVG（作成者の図）も R-geometry の対象：線が図の端で欠けるか（geoClippedStroke、handoff #52）を測る
+  assert.equal(factsFromSource({ deck: '<svg viewBox="0 0 10 10"><rect x="0" width="10" height="10"/></svg>' }).svg, true);
+  assert.equal(factsFromSource({ deck: '<img src="a.svg" alt="a"><svgx></svgx>' }).svg, false);
 });
 ok('ruleSet text depends only on ids and codes', () => {
   const t = ruleSetText();

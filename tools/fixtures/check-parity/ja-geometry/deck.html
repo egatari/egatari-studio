@@ -12,6 +12,8 @@
   geoOutsideFrame（handoff #46）：s-cell は分裂期の細胞（backlog #91 の DNA の再現）。染色体 chr-r がステップ 1（後期）だけ細胞の楕円の右へ出て、
   ステップ 2（終期）では長くなった細胞の中に戻る（最後のステップだけを測ると見逃す）。s-cell-ok は対照：どのステップでも中にある。
   前のステップの図は、次のステップの図が出たら隠す（下の style。.on は実行系が出たステップの要素に付ける）
+  geoClippedStroke（handoff #52、kouen P.13 の再現）：s-edge の外枠 outer が SVG の右端ぴったりにあり、線の太さの半分が欠ける。
+  左の箱（x=0、線の太さ 2）は欠ける量が 1px なので出ない。
 -->
 <style>
   .mitosis .telo.on ~ .ana, .mitosis .telo.on ~ .round, .mitosis .telo.on ~ .meta, .mitosis .ana.on ~ .meta { display: none }
@@ -85,6 +87,17 @@
         <rect data-within="cell" data-part-id="chr-l" x="490" y="190" width="50" height="40" style="stroke-width:4"/>
         <rect data-within="cell" data-part-id="chr-r" x="560" y="190" width="50" height="40" style="stroke-width:4"/>
       </g>
+    </svg>
+  </div>
+</section>
+
+<section class="slide noconcl" id="s-edge">
+  <h2>枠の線が図の端で欠ける</h2>
+  <div class="body">
+    <svg width="1100" height="420" viewBox="0 0 1100 420" aria-label="3 つの大学の取り組み" style="fill:none;stroke:var(--fg);stroke-width:2">
+      <rect data-part-id="outer" x="700" y="20" width="400" height="380" style="stroke-width:6"/>
+      <rect x="0" y="40" width="300" height="140"/>
+      <rect x="360" y="40" width="300" height="140"/>
     </svg>
   </div>
 </section>
