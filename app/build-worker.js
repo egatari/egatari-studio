@@ -79,7 +79,7 @@ self.onmessage = async (e) => {
         const r = await engine.build(m.file, m.opts || {});
         value = { html: r.html, trusted: r.trusted, stats: r.stats, slides: r.slides, theme: r.theme || null, previewAudio: r.previewAudio || null, reasons: typeof m.prefix === 'string' ? rendered(r, m.prefix) : null };
       } else if (m.op === 'exportIndex') {
-        const r = await engine.exportPortable(m.file, { ...(m.opts || {}), subset: false });   // 索引だけ：字は切り出さない（索引は字によらない）
+        const r = await engine.exportIndex(m.file, m.opts || {});   // 索引だけ（字の切り出しも読める中身もなし。app/engine.js）
         value = { index: r.index, registryEquivalent: r.registryEquivalent || [], yanked: (r.stats && r.stats.yanked) || [], themePinned: (r.stats && r.stats.themePinned) || [], themeVersions: (r.stats && r.stats.themeVersions) || {} };
       } else if (m.op === 'exportHtml') {
         // 持ち運べる 1 ファイルそのもの（AI の返事の貼り付け：メモリの上の原稿を、開く前に 1 ファイルにする。app/llm.js）

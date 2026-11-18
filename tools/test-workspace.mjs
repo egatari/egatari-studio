@@ -452,6 +452,26 @@ ok('編集アプリの組み立ては、組み立てが参照したファイル�
   assert.equal(ws4.reads.size, 0);
 });
 
+// 開くときの試しの書き出し（build-worker の exportIndex）は、パーツの読める中身（§2.1）をプレビューに聞かない：開く途中はプレビューがまだなく、
+// 聞くと答えの期限（app/main.js の CHECK_MS）まで止まる（parts-showcase の m-trace で、組み直しごとに 20 秒）。本当の書き出しは 1 回だけ聞く
+ok('編集アプリ：索引だけの書き出しはパーツの読める中身を聞かない・書き出しは 1 回だけ聞く', async () => {
+  const { res, loadLazy } = appResources();
+  const src = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures', 'readable-parts');
+  const files = Object.fromEntries(fs.readdirSync(src, { recursive: true }).filter((f) => fs.statSync(path.join(src, f)).isFile())
+    .map((f) => [f.split(path.sep).join('/'), fs.readFileSync(path.join(src, f), 'utf8')]));
+  let asked = 0;
+  const E = createEngine(res, loadLazy, { readable: async () => { asked++; return { 's-code': ['<pre>x</pre>'] }; } });
+  const ws = memoryWorkspace('readable', files);
+  E.setWorkspace(ws); E.setListing(await ws.list());
+  const ix = await E.exportIndex('deck.html', {});
+  assert.equal(asked, 0, 'exportIndex never asks the preview');
+  assert.ok(ix.html.includes('data-readable'), 'the lesson does mark readable content');
+  const full = await E.exportPortable('deck.html', {});
+  assert.equal(asked, 1, 'a real export asks once');
+  assert.deepEqual(ix.index.components, full.index.components);
+  assert.deepEqual(ix.index.themes, full.index.themes);
+});
+
 ok('権利：改変を認めないライセンスと、ライセンスのない著作権の表示は確認が要る', () => {
   for (const l of ['CC-BY-ND-4.0', 'CC-BY-NC-ND-4.0', 'https://creativecommons.org/licenses/by-nd/4.0/', 'https://creativecommons.org/licenses/by-nc-nd/4.0/deed.ja', 'CC BY-ND 4.0', 'All rights reserved']) assert.ok(isNoDerivatives(l), l);
   for (const l of ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0', 'MIT', 'CC0-1.0', 'https://creativecommons.org/licenses/by/4.0/', 'LicenseRef-and', '', null]) assert.ok(!isNoDerivatives(l), String(l));

@@ -1,0 +1,83 @@
+{
+  "type": "root",
+  "children": [
+    {
+      "type": "heading",
+      "depth": 2,
+      "children": [
+        {
+          "type": "text",
+          "value": "平均と中央値"
+        }
+      ],
+      "label": "sec-k3n7p2",
+      "identifier": "sec-k3n7p2"
+    },
+    {
+      "type": "aside",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "この節のねらい"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "平均と中央値の違いを、外れ値のあるデータで説明できる。"
+            }
+          ]
+        }
+      ],
+      "class": "goals",
+      "enumerated": false
+    },
+    {
+      "type": "aside",
+      "children": [
+        {
+          "type": "admonitionTitle",
+          "children": [
+            {
+              "type": "text",
+              "value": "微分で確かめる"
+            }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "children": [
+            {
+              "type": "text",
+              "value": "損失を "
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " で微分して 0 とおくと、"
+            },
+            {
+              "type": "inlineMath",
+              "value": "c"
+            },
+            {
+              "type": "text",
+              "value": " は平均になる。"
+            }
+          ]
+        }
+      ],
+      "label": "box-derivative",
+      "identifier": "box-derivative"
+    }
+  ]
+}

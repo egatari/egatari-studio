@@ -86,7 +86,7 @@ export function numberArticle(article, lang) {
           const num = next('table');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
           set(n, { kind: 'table', num, text: num ? `${W.table}${W.sp}${num}` : null });
         } else if (n.type === 'aside') {
-          const num = next('aside');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）
+          const num = n.enumerated === false ? null : next('aside');   // 名前がなくても番号を付ける（mystmd と同じ。§9C.1A）。:nonumber: は数えない（§9C.2）
           set(n, { kind: 'aside', num, text: num ? `${W.aside}${W.sp}${num}` : null, title: titleOf(n) });
         } else if (n.type === 'exercise') {
           const num = n.enumerated === false ? null : next('exercise');

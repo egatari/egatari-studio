@@ -67,6 +67,7 @@ A conforming parser written without MyST's tools should produce these trees; res
 | `frontmatter-numbering-false` | front matter `numbering: false` |
 | `japanese-vertical` | front matter `writing-mode: vertical-rl`, Japanese text |
 | `aside` | `:::{aside}` with a title, `:label:`, math and two paragraphs (Japanese) |
+| `aside-nonumber` | an aside with `:class: goals` and `:nonumber:` (not counted), then a numbered aside |
 | `proof-theorem` | `:::{prf:theorem}` with a title and label, then `:::{prf:proof}` |
 | `proof-kinds` | `definition` with a title, `lemma` without one, `remark` without a label |
 | `footnote` | `[^1]` and its definition |

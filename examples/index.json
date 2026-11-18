@@ -116,9 +116,29 @@
       "subject": "情報"
     },
     {
+      "name": "for-loop",
+      "section": "teaching",
+      "path": "lessons/for-loop",
+      "group": "class",
+      "subject": "情報"
+    },
+    {
+      "name": "vectors",
+      "section": "teaching",
+      "path": "lessons/vectors",
+      "group": "class",
+      "subject": "数学"
+    },
+    {
       "name": "bayes",
       "section": "teaching",
       "path": "lessons/bayes",
+      "group": "lecture"
+    },
+    {
+      "name": "classify-cv",
+      "section": "teaching",
+      "path": "lessons/classify-cv",
       "group": "lecture"
     },
     {

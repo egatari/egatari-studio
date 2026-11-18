@@ -1,0 +1,1 @@
+{"range": [-2, 5, -1, 4], "vectors": [{"id": "v", "v": [1, 1]}], "matrix": [[3, 1], [0, 2]], "show": ["grid", "unit", "eigen"]}

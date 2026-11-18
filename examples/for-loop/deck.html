@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>for 文で合計と平均を求める</title>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide cover noconcl static" id="s-vbs6xy">
+  <div class="venue">情報 I（高校）・プログラミング</div>
+  <h1>for 文で合計と平均を求める</h1>
+</section>
+
+<section class="slide" id="s-luqbfp">
+  <h2>合計と平均を 1 行ずつ追う</h2>
+  <div class="body">
+    <m-trace style="height:430px" aria-label="小テスト 3 回の点 7、9、8 の合計と平均を求めるコードを 1 行ずつ実行した記録。合計は 24、平均は 8.0">
+      <script type="application/json">{"lang": "python", "code": "scores = [7, 9, 8]\ntotal = 0\nfor s in scores:\n    total += s\nprint(total)\nprint(total / len(scores))", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "3eafda1e8436e4e9ec43ad31070907536484ff8fd5a0297e1420d23e8bf5a7a5", "truncated": false}, "steps": [{"line": 1, "vars": {"scores": [7, 9, 8]}, "note": "点数のリストを作る"}, {"line": 2, "vars": {"scores": [7, 9, 8], "total": 0}, "note": "合計 total を 0 から始める"}, {"line": 3, "vars": {"scores": [7, 9, 8], "total": 0, "s": 7}, "note": "s に最初の点 7 が入る"}, {"line": 4, "vars": {"scores": [7, 9, 8], "total": 7, "s": 7}, "note": "total に 7 を足して 7"}, {"line": 3, "vars": {"scores": [7, 9, 8], "total": 7, "s": 9}, "note": "s に次の点 9"}, {"line": 4, "vars": {"scores": [7, 9, 8], "total": 16, "s": 9}, "note": "足して 16"}, {"line": 3, "vars": {"scores": [7, 9, 8], "total": 16, "s": 8}, "note": "s に次の点 8"}, {"line": 4, "vars": {"scores": [7, 9, 8], "total": 24, "s": 8}, "note": "足して 24"}, {"line": 3, "vars": {"scores": [7, 9, 8], "total": 24, "s": 8}, "note": "点が残っていないので、繰り返しを終える"}, {"line": 5, "vars": {"scores": [7, 9, 8], "total": 24, "s": 8}, "out": "24\n", "note": "合計 24 を表示する"}, {"line": 6, "vars": {"scores": [7, 9, 8], "total": 24, "s": 8}, "out": "8.0\n", "note": "合計を人数 3 で割って、平均 8.0"}]}</script>
+    </m-trace>
+  </div>
+  <div class="concl"><span>合計の箱は、繰り返しの前に 0 で用意する</span></div>
+</section>
+
+<section class="slide" id="s-qmx3ll">
+  <h2>total = 0 を for の中に書くと</h2>
+  <div class="body">
+    <m-trace style="height:430px" aria-label="total = 0 を for 文の中に書いたコードの実行の記録。繰り返すたびに total が 0 に戻り、表示は 8">
+      <script type="application/json">{"lang": "python", "code": "scores = [7, 9, 8]\nfor s in scores:\n    total = 0\n    total += s\nprint(total)", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "329a9fcc804528bec69f5190b5bca97d2000a52a7fe388f64c3893a74f22ad31", "truncated": false}, "steps": [{"line": 1, "vars": {"scores": [7, 9, 8]}, "note": "点数のリストを作る"}, {"line": 2, "vars": {"scores": [7, 9, 8], "s": 7}, "note": "s に最初の点 7 が入る"}, {"line": 3, "vars": {"scores": [7, 9, 8], "s": 7, "total": 0}, "note": "total を 0 にする"}, {"line": 4, "vars": {"scores": [7, 9, 8], "s": 7, "total": 7}, "note": "足して 7"}, {"line": 2, "vars": {"scores": [7, 9, 8], "s": 9, "total": 7}, "note": "s に次の点 9"}, {"line": 3, "vars": {"scores": [7, 9, 8], "s": 9, "total": 0}, "note": "total がまた 0 に戻る"}, {"line": 4, "vars": {"scores": [7, 9, 8], "s": 9, "total": 9}, "note": "足して 9 ── 7 が消えた"}, {"line": 2, "vars": {"scores": [7, 9, 8], "s": 8, "total": 9}, "note": "s に次の点 8"}, {"line": 3, "vars": {"scores": [7, 9, 8], "s": 8, "total": 0}, "note": "また 0 に戻る"}, {"line": 4, "vars": {"scores": [7, 9, 8], "s": 8, "total": 8}, "note": "足して 8"}, {"line": 2, "vars": {"scores": [7, 9, 8], "s": 8, "total": 8}, "note": "繰り返しを終える"}, {"line": 5, "vars": {"scores": [7, 9, 8], "s": 8, "total": 8}, "out": "8\n", "note": "表示は 8。合計の 24 にならない"}]}</script>
+    </m-trace>
+  </div>
+  <div class="concl"><span>中に書いた初期化は、繰り返すたびに実行される</span></div>
+</section>
+
+<section class="slide" id="s-4xwccp">
+  <h2>辞書で出し物の票を数える</h2>
+  <div class="body">
+    <m-trace style="height:430px" aria-label="文化祭の出し物の 3 票を辞書で数えるコードの実行の記録。劇 2 票、展示 1 票">
+      <script type="application/json">{"lang": "python", "code": "votes = [\"劇\", \"展示\", \"劇\"]\ncounts = {}\nfor v in votes:\n    counts[v] = counts.get(v, 0) + 1\nprint(counts)", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "b7599d2094f60a92d4ae7dc632c7a9d14afc338755d8c1cdda19365236bcfd55", "truncated": false}, "steps": [{"line": 1, "vars": {"votes": ["劇", "展示", "劇"]}, "note": "3 人の票のリストを作る"}, {"line": 2, "vars": {"votes": ["劇", "展示", "劇"], "counts": {}}, "note": "数える辞書 counts を空で用意する"}, {"line": 3, "vars": {"votes": ["劇", "展示", "劇"], "counts": {}, "v": "劇"}, "note": "v に「劇」"}, {"line": 4, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 1}, "v": "劇"}, "note": "劇はまだないので 0 + 1 = 1"}, {"line": 3, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 1}, "v": "展示"}, "note": "v に「展示」"}, {"line": 4, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 1, "展示": 1}, "v": "展示"}, "note": "展示も 0 + 1 = 1"}, {"line": 3, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 1, "展示": 1}, "v": "劇"}, "note": "v に 2 票目の「劇」"}, {"line": 4, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 2, "展示": 1}, "v": "劇"}, "note": "劇は 1 + 1 = 2"}, {"line": 3, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 2, "展示": 1}, "v": "劇"}, "note": "票が残っていないので終える"}, {"line": 5, "vars": {"votes": ["劇", "展示", "劇"], "counts": {"劇": 2, "展示": 1}, "v": "劇"}, "out": "{'劇': 2, '展示': 1}\n", "note": "出し物ごとの票の数を表示する"}]}</script>
+    </m-trace>
+  </div>
+  <div class="concl"><span>まだない名前は get の 0 から数え始める</span></div>
+</section>
+
+<section class="slide" id="s-nye7ax">
+  <h2>繰り返しの前と中に書くもの</h2>
+  <div class="body">
+    <m-cards style="height:330px" layout="row" aria-label="書く場所と実行の回数。前は 1 回だけで total = 0 や counts = {}、中は毎回で total += s や数を 1 増やす行、後は 1 回だけで表示や平均">
+      <script type="application/json">{"cards": [
+        {"icon": "login", "title": "前：1 回だけ", "text": "total = 0\ncounts = {}"},
+        {"icon": "repeat", "title": "中：毎回", "text": "total += s\n数を 1 増やす行"},
+        {"icon": "logout", "title": "後：1 回だけ", "text": "結果の表示\n合計 ÷ 個数の平均"}
+      ]}</script>
+    </m-cards>
+    <p class="note">点数と票は架空。実行の記録はパーツ集のトレーサー（tools/trace.py）の出力</p>
+  </div>
+  <div class="concl"><span>どこに書くかで、何回実行されるかが決まる</span></div>
+</section>
+
+</div>
+</body>
+</html>

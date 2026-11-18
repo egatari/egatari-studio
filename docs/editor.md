@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=da631e75eb7f689d -->
+<!-- i18n: pair=editor.ja.md sha256=9061e2e23b076629 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -224,6 +224,12 @@ The editor cannot know who is editing, so the first time you save changes to a f
 - **No, I am editing someone else’s lesson**: type a name (such as your school) and, optionally, what you changed. The save adds an entry to `metadata.edits`, and the player's **File info** shows it after the creators: “Edited by: name (what you changed)”. When an entry with the same name is already there, only its note is replaced. When the license asks you to indicate changes (every Creative Commons 4.0 license, such as CC BY 4.0) and you leave the name empty, an entry without a name is added and shows “Edited from the original lesson”.
 
 The answer is remembered on this device for that lesson (its `docId`, in the browser's storage, not in the file), so it is asked once. Only the name and note you type go into the file. Lessons you made in this editor (from the AI's output, or a `deck.html` opened on its own) are not asked about. Saving never removes or changes existing entries of `edits`; **Save as a new file** keeps them. Cancel keeps the changes unsaved.
+
+Saving without rebuilding (rewriting only script, audio and timing) keeps the file's player. The edit record is shown from Egatari Player 1.9.0 on (`EDITS_SHOWN_SINCE` in `kit/core/player.mjs`), so when such a save adds an edit record to a file with an earlier player (or another player), the editor says **“The player of this Egatari file is old: the edit record is saved in the file, but it is not shown when the file is played.”** and names the file's player and its version:
+
+- **Update the player and save**: the slides are rebuilt and saved (the same path as after a slide edit, with the same **The slides will be rebuilt and saved** confirmation, followed by **The player will change** for a file with another player). The saved file plays with the current player, which shows the edit record.
+- **Save**: saved without rebuilding, as before. The edit record goes into the file and the player stays as it is. The notice is not shown again while that document is open.
+- **Cancel**: nothing is saved; the next save shows the notice again.
 
 ### Opening a slides file (deck.html) or a built presentation
 

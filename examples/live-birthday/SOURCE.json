@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "c91d1679fa4f5b0e34da6cd5fcd438c17946dc5c",
+  "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
   "path": "lessons/live-birthday",
   "files": {
     "data/birthday.json": "191cb38032c39e0ce23b73bfd6e3da1dc6a18c6a788965c8212eebc5bd7d54d4",

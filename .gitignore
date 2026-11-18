@@ -17,6 +17,8 @@ tts/voices/*
 **/audio/
 # 品質チェックの決まりの試験の教材：古くなった音声の一覧（C-audio の audioStale を仕込む。音声のファイルはない）
 !tools/fixtures/seeded-defects/ja/audio/
+# 同梱のサンプルの音声（egatari/examples から写したもの。tools/examples-sync.mjs と SOURCE.json。handoff #42）
+!examples/*/audio/
 **/video/
 **/bundle/
 # dev-server notes, local settings and secrets

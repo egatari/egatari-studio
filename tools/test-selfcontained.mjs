@@ -77,7 +77,10 @@ const PLACEHOLDER = /(^|\/)(name|名前|…)(\/|$)|…/;
 // CHANGELOG.md と changes/ は過去のことも書くので見ない。tools/llm-guide/ は docs/ に入る型（リンクは docs/ から見たもの）
 // docs/llm-book(.ja).md は make の SKILL.md にそのまま差し込む正本なので、リンクはスキルのフォルダから見る
 const LINK_BASE = { 'docs/llm-book.md': 'plugins/egatari/skills/make', 'docs/llm-book.ja.md': 'plugins/egatari/skills/make' };
-const docs = tracked.filter((f) => f.endsWith('.md') && !f.startsWith('vendor/') && !f.startsWith('changes/') && !f.startsWith('tools/llm-guide/') && f !== 'CHANGELOG.md');
+// 同梱のサンプル（examples/<名前>/。egatari/examples から直さずに写したもの、SOURCE.json がある）の文書は、あちらのリポジトリから見たパス
+// （tools/trace.py など）を書くので見ない（写しの中身は tools/examples-sync.mjs --check が SOURCE.json の sha256 で確かめる）
+const copiedExample = (f) => /^examples\/[^/]+\//.test(f) && fs.existsSync(path.join(ROOT, f.split('/').slice(0, 2).join('/'), 'SOURCE.json'));
+const docs = tracked.filter((f) => f.endsWith('.md') && !f.startsWith('vendor/') && !f.startsWith('changes/') && !f.startsWith('tools/llm-guide/') && f !== 'CHANGELOG.md' && !copiedExample(f));
 for (const f of docs) {
   const t = read(f);
   t.split('\n').forEach((l, i) => {

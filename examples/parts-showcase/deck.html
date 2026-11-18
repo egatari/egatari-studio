@@ -21,7 +21,7 @@
       <a href="#s-qxu6ql" data-icon="1" data-sub="比べる・変化・内訳・数字">比べる・数字</a>
       <a href="#s-yr2ine" data-icon="2" data-sub="手順・年表・予定">手順・予定</a>
       <a href="#s-pzrox3" data-icon="3" data-sub="原因・循環・階層・位置づけ・重なり">しくみ・つながり</a>
-      <a href="#s-3avvfk" data-icon="4" data-sub="量の関係・ばらつき・パラメータ">データ</a>
+      <a href="#s-3avvfk" data-icon="4" data-sub="量の関係・ばらつき・分類・検証">データ</a>
       <a href="#s-wm5imv" data-icon="5" data-sub="日本・世界">場所・地図</a>
       <a href="#s-2eagqz" data-icon="6" data-sub="予想・まとめる・時間を区切る">参加と進行</a>
       <a href="#s-yqgm6f" data-icon="7" data-sub="漢文・古文・現代文・英文">文章の構造</a>
@@ -229,6 +229,17 @@
   </div>
 </section>
 
+<section class="slide" id="s-h2m4kk">
+  <h2>手順：バブルソートで点数を並べ替える</h2>
+  <div class="body">
+    <m-trace by="time" rate="3" style="height:360px" aria-label="点数のリスト 3、1、4、2 をバブルソートで並べ替えるコードの実行の記録を、1 秒に 3 行の速さで流す。入れ替えは 3 回で、最後に 1、2、3、4 と表示される">
+      <script type="application/json">{"lang": "python", "code": "scores = [3, 1, 4, 2]\nn = len(scores)\nfor i in range(n - 1):\n    for j in range(n - 1 - i):\n        if scores[j] > scores[j + 1]:\n            scores[j], scores[j + 1] = scores[j + 1], scores[j]\nprint(scores)", "source": {"tool": "egatari-trace 0.1", "python": "3.13.18", "sha256": "937b07f77523c2eeedab772d8c565af361bccda1486010b693bb14980acebf65", "truncated": false}, "show": ["scores", "i", "j"], "steps": [{"line": 1, "vars": {"scores": [3, 1, 4, 2]}}, {"line": 2, "vars": {"scores": [3, 1, 4, 2]}}, {"line": 3, "vars": {"scores": [3, 1, 4, 2], "i": 0}}, {"line": 4, "vars": {"scores": [3, 1, 4, 2], "i": 0, "j": 0}}, {"line": 5, "vars": {"scores": [3, 1, 4, 2], "i": 0, "j": 0}}, {"line": 6, "vars": {"scores": [1, 3, 4, 2], "i": 0, "j": 0}}, {"line": 4, "vars": {"scores": [1, 3, 4, 2], "i": 0, "j": 1}}, {"line": 5, "vars": {"scores": [1, 3, 4, 2], "i": 0, "j": 1}}, {"line": 4, "vars": {"scores": [1, 3, 4, 2], "i": 0, "j": 2}}, {"line": 5, "vars": {"scores": [1, 3, 4, 2], "i": 0, "j": 2}}, {"line": 6, "vars": {"scores": [1, 3, 2, 4], "i": 0, "j": 2}}, {"line": 4, "vars": {"scores": [1, 3, 2, 4], "i": 0, "j": 2}}, {"line": 3, "vars": {"scores": [1, 3, 2, 4], "i": 1, "j": 2}}, {"line": 4, "vars": {"scores": [1, 3, 2, 4], "i": 1, "j": 0}}, {"line": 5, "vars": {"scores": [1, 3, 2, 4], "i": 1, "j": 0}}, {"line": 4, "vars": {"scores": [1, 3, 2, 4], "i": 1, "j": 1}}, {"line": 5, "vars": {"scores": [1, 3, 2, 4], "i": 1, "j": 1}}, {"line": 6, "vars": {"scores": [1, 2, 3, 4], "i": 1, "j": 1}}, {"line": 4, "vars": {"scores": [1, 2, 3, 4], "i": 1, "j": 1}}, {"line": 3, "vars": {"scores": [1, 2, 3, 4], "i": 2, "j": 1}}, {"line": 4, "vars": {"scores": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 5, "vars": {"scores": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 4, "vars": {"scores": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 3, "vars": {"scores": [1, 2, 3, 4], "i": 2, "j": 0}}, {"line": 7, "vars": {"scores": [1, 2, 3, 4], "i": 2, "j": 0}, "out": "[1, 2, 3, 4]\n"}]}</script>
+    </m-trace>
+    <p class="note">パーツ：コードの実行を追う（m-trace）・記録は tools/trace.py の出力・点数は架空</p>
+  </div>
+  <div class="concl"><span>コードが 1 行ごとに変数をどう変えるかを見せるときに</span></div>
+</section>
+
 <section class="slide" id="s-5fmppq">
   <h2>年表・予定：新システム導入の予定</h2>
   <div class="body">
@@ -392,6 +403,50 @@
     <p class="note">パーツ：パラメータの変化（m-sweep）</p>
   </div>
   <div class="concl"><span>パラメータで形がどう変わるかを重ねて見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-mfxh6r">
+  <h2>ベクトル：2 本のロープで荷物を引く力</h2>
+  <div class="body">
+    <m-vector style="height:400px" aria-label="荷物を 2 本のロープで引く力 F1 = (4, 1) と F2 = (1, 3)。合わせた力は (5, 4)">
+      <script type="application/json">{"range": [-1, 6, -1, 5], "vectors": [{"id": "f1", "v": [4, 1], "label": "*F*_1"}, {"id": "f2", "v": [1, 3], "label": "*F*_2"}], "ops": [{"sum": ["f1", "f2"], "as": "r", "value": [5, 4]}]}</script>
+    </m-vector>
+    <p class="note">パーツ：ベクトルと行列（m-vector）・力の大きさは架空</p>
+  </div>
+  <div class="concl"><span>ベクトルの和・内積・行列の動きを矢印で見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-dqfxfs">
+  <h2>最小を探す：等高線の谷を勾配降下法で下る</h2>
+  <div class="body">
+    <m-contour by="all" style="height:400px" aria-label="f = (x − 1) の 2 乗 + 2(y + 0.5) の 2 乗の等高線と勾配の矢印。(−2, 1.5) から勾配降下法で 5 点進み、f は 17 から 0.15 まで下がる">
+      <script type="application/json">{"f": "(x-1)**2 + 2*(y+0.5)**2", "label": "*f* = (*x* − 1)² + 2(*y* + 0.5)²", "range": {"x": [-3, 3], "y": [-2, 2]}, "levels": [0.5, 2, 5, 10], "gradient": {"at": [[-2, 1.5], [2.5, -1.5]]}, "path": [[-2.0, 1.5], [-0.8, -0.1], [-0.08, -0.42], [0.352, -0.484], [0.6112, -0.4968]], "monotone": true}</script>
+    </m-contour>
+    <p class="note">パーツ：等高線（m-contour）・道の点は scripts/contour.py の計算</p>
+  </div>
+  <div class="concl"><span>2 変数の関数の形と、最小へ向かう道を見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-w3qc3t">
+  <h2>分類：重さと糖度でりんごを分ける決定木</h2>
+  <div class="body">
+    <m-classify2d style="height:360px" aria-label="架空のりんご 36 個の重さと糖度。深さ 2 の決定木が、糖度 12.9 度と重さ 271.5 g で分け、出荷と加工の領域を塗る">
+      <script type="application/json">{"axes": {"x": {"label": "重さ（g）", "range": [204.1, 394.9]}, "y": {"label": "糖度（度）", "range": [9.53, 16.37]}}, "classes": [{"id": 0, "label": "出荷"}, {"id": 1, "label": "加工"}], "points": [[345.0, 11.2, 1], [317.0, 11.0, 1], [334.0, 13.8, 0], [234.0, 11.7, 1], [321.0, 10.1, 1], [377.0, 11.2, 1], [288.0, 15.5, 0], [238.0, 14.3, 1], [373.0, 13.5, 0], [328.0, 12.4, 1], [252.0, 14.9, 1], [328.0, 11.6, 1], [379.0, 13.8, 0], [254.0, 10.1, 1], [357.0, 13.9, 0], [332.0, 15.8, 0], [255.0, 14.3, 1], [250.0, 10.5, 1], [373.0, 13.5, 0], [274.0, 11.9, 1], [291.0, 15.5, 0], [325.0, 10.1, 1], [290.0, 10.1, 1], [220.0, 10.6, 1], [262.0, 12.0, 1], [296.0, 15.3, 0], [342.0, 13.4, 0], [317.0, 14.0, 0], [289.0, 10.3, 1], [251.0, 11.0, 1], [346.0, 12.3, 1], [250.0, 13.8, 1], [336.0, 14.5, 0], [300.0, 13.4, 0], [308.0, 11.7, 1], [281.0, 11.1, 1]], "tree": {"nodes": [{"id": "n0", "feature": 1, "threshold": 12.9, "left": "n1", "right": "n2"}, {"id": "n1", "class": 1}, {"id": "n2", "feature": 0, "threshold": 271.5, "left": "n3", "right": "n4"}, {"id": "n3", "class": 1}, {"id": "n4", "class": 0}]}}</script>
+    </m-classify2d>
+    <p class="note">パーツ：2 次元の分類（m-classify2d）・値は sk2ega.py の決定木・りんごは架空</p>
+  </div>
+  <div class="concl"><span>分類のモデルが平面をどう分けるかを見せるときに</span></div>
+</section>
+
+<section class="slide" id="s-5cbmlz">
+  <h2>検証：過去の月で学び、次の月で確かめる</h2>
+  <div class="body">
+    <m-folds style="height:400px" aria-label="16 か月のデータを時系列の分割で 4 回分ける。毎回、それより前の月で学び、次の 3 か月で確かめる">
+      <script type="application/json">{"samples": [{"t": 1}, {"t": 2}, {"t": 3}, {"t": 4}, {"t": 5}, {"t": 6}, {"t": 7}, {"t": 8}, {"t": 9}, {"t": 10}, {"t": 11}, {"t": 12}, {"t": 13}, {"t": 14}, {"t": 15}, {"t": 16}], "splitter": "TimeSeriesSplit", "splits": [{"test": [4, 5, 6], "train": [0, 1, 2, 3]}, {"test": [7, 8, 9], "train": [0, 1, 2, 3, 4, 5, 6]}, {"test": [10, 11, 12], "train": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]}, {"test": [13, 14, 15], "train": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]}]}</script>
+    </m-folds>
+    <p class="note">パーツ：交差検証（m-folds）・分割は scikit-learn の TimeSeriesSplit（tools/sk2ega.py）</p>
+  </div>
+  <div class="concl"><span>データを学習と検証にどう分けるかを見せるときに</span></div>
 </section>
 
 <section class="slide noconcl" id="s-wm5imv">
