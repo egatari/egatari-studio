@@ -181,6 +181,7 @@ ok('読み辞書：kit/core/yomi.mjs と tts/yomi.py が同じ文を返す', () 
   assert.equal(applyYomi('Egatari の教材を SCORM で LMS に入れ、CSS で見た目を変える。', terms).text, '絵語り の教材を スコーム で エルエムエス に入れ、シーエスエス で見た目を変える。');
   assert.equal(applyYomi('EgatariStudio と CSSOM は置き換えない。', terms).text, 'EgatariStudio と CSSOM は置き換えない。');
   assert.equal(applyYomi('Open it in Egatari.', terms).text, 'Open it in Egatari.');
+  assert.equal(applyYomi('HTML と PDF の URL を開く。', terms).text, 'エイチティーエムエル と PDF の URL を開く。');   // PDF・URL は載せない（作者 11/19）
   if (!UV) { console.log('    skip comparison: uv not found'); return; }
   const r = PY(`import sys, json, yomi
 from pathlib import Path
