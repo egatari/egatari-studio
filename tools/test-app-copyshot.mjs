@@ -45,15 +45,15 @@ const HOST = `http://127.0.0.1:${srv.address().port}/`;
 
 // 画面の言葉（app/i18n.js と同じもの。変えたらここも）
 const W = {
-  ja: { btn: 'スライドの画像と確認の依頼をコピー', done: (n) => `コピーしました（スライド ${n} の画像と依頼の文）。チャットの AI に貼り付けてください`,
+  ja: { btn: 'スライドの画像と確認の依頼をコピー', done: (n) => `コピーしました（スライド ${n} の画像と依頼の文）。対話型 AI に貼り付けてください`,
     failTitle: '画像をクリップボードにコピーできませんでした', save: '画像を保存', copy: '依頼の文をコピー',
-    copied: '依頼の文をコピーしました。チャットの AI に貼り付け、保存した画像を添付してください',
+    copied: '依頼の文をコピーしました。対話型 AI に貼り付け、保存した画像を添付してください',
     req: (n, title, id, k) => ['このスライドの画像を見て、次の 3 つを確かめてください。', '1. 図と結論の行（スライドの下の 1 文）が、同じことを言っているか',
       '2. 図がつぶれたり、切れたりしていないか', '3. 直すところがあれば、スライドの HTML（deck.html）のどこをどう直せばよいか', '',
       `画像：スライド ${n}「${title}」（id：${id}）の最後のステップ（ステップ ${k}）`].join('\n') },
-  en: { btn: 'Copy slide image and check request', done: (n) => `Copied (the image of slide ${n} and the request). Paste it into your chat AI`,
+  en: { btn: 'Copy slide image and check request', done: (n) => `Copied (the image of slide ${n} and the request). Paste it into the AI chatbot`,
     failTitle: 'Could not copy the image to the clipboard', save: 'Save image', copy: 'Copy request',
-    copied: 'Copied the request. Paste it into your chat AI and attach the saved image',
+    copied: 'Copied the request. Paste it into the AI chatbot and attach the saved image',
     req: (n, title, id, k) => ['Look at the image of this slide and check three things:', '1. Do the figure and the conclusion line (the one sentence at the bottom of the slide) say the same thing?',
       '2. Is the figure squashed or cut off?', '3. If something needs fixing, where and how should the slides HTML (deck.html) change?', '',
       `Image: slide ${n} “${title}” (id: ${id}), at its last step (step ${k})`].join('\n') },
