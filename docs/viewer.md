@@ -1,4 +1,4 @@
-<!-- i18n: pair=viewer.ja.md sha256=1bba1ec28e4973cd -->
+<!-- i18n: pair=viewer.ja.md sha256=82fc5d3ec13d99af -->
 # Egatari Viewer
 
 English | [日本語](viewer.ja.md)
@@ -78,7 +78,7 @@ When a lesson carries a valid `extensions.live` with a key (a play-only file exp
 - **Join first.** A lesson with Live opens on a start screen: 「参加する」 (Join) with the window and the destination host, and 「参加しないで見る」 (Watch without joining). The lesson's frame is placed only after one of them, so the Join tap can never meet the frame. Watching without joining makes no request at all; Join stays available in the Live controls. For an endpoint the page does not connect to, the start screen offers the room's join page link instead of Join.
 - No request before the viewer presses Join, and none outside the window. Only what an activity needs is sent: questions, votes, a name if the viewer types one, a random id made on this device, and pings. Text from the room is shown as text. Retries follow `LivePolicy.plan` (`kit/core/live-policy.mjs`).
 - The page learns the current step from the lesson's position events, to show that step's poll; a step with a poll is announced.
-- **Layout** (`play/layout.mjs`), chosen once when the lesson starts, from its activities and the screen, and kept while it plays (only a rotation, or a desktop window resize, lays it out again):
+- **Layout** (`play/layout.mjs`), chosen once when the lesson starts, from its activities and the screen, and kept while it plays (only a rotation, or a desktop window resize, lays it out again). The screen is the visible size (`visualViewport`), and the page itself is made that tall while a lesson plays (`--view-h`), not `100dvh`: in Chrome on iPad, `100dvh` stayed at the portrait height after a rotation to landscape, so the frame ran below the screen, with a dark band above the slide and a page that scrolled back to the top (2026-11-19):
 
   | Lesson | Phone portrait | Phone landscape | Wide screen |
   |---|---|---|---|

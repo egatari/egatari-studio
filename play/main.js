@@ -220,11 +220,15 @@ const variant = () => { const q = new URLSearchParams(location.search).get('nosl
 // above all when the status bar was shown in portrait; visualViewport follows the screen. The page itself never scrolls while playing
 // (play.css body.playing), and is put back at the top in case it scrolled before.
 // While a text field has the focus the on-screen keyboard shrinks visualViewport, so the frame keeps innerHeight then.
+// The page's own height is that same visible height (--view-h on <html>, read by play.css body.playing), not 100dvh: in Chrome on
+// iPad, 100dvh can stay at the portrait height after a rotation, and the frame (the player's height) then ran below the screen, with
+// a dark band above a slide cut at the bottom, and a page that scrolled and was put back at the top on every resize (handoff #18).
 const typing = () => { const a = document.activeElement; return !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); };
 const viewSize = () => { const v = typing() ? null : window.visualViewport; return { vw: Math.round(v ? v.width : window.innerWidth), vh: Math.round(v ? v.height : window.innerHeight) }; };
 function applyLayout() {
   const live = !!(S.playing && S.playing.live);
   const { vw, vh } = viewSize();
+  document.documentElement.style.setProperty('--view-h', vh + 'px');
   if (window.scrollX || window.scrollY) window.scrollTo(0, 0);
   const headless = live && isPhoneLandscape(vw, vh);
   document.body.classList.toggle('headless', headless);
@@ -341,6 +345,7 @@ function closeLesson(quiet) {
   S.playing = null;
   if (quiet) return;
   document.body.classList.remove('playing');
+  document.documentElement.style.removeProperty('--view-h');
   $('player').hidden = true;
   $('lesson-info').hidden = true;
   $('b-close').hidden = true;
