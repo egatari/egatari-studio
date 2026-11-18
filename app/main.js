@@ -28,7 +28,7 @@ import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf, requiresChangeNote, addEdit } from './rights.js';
 import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex, sameJson } from '../kit/core/portable.mjs';
-import { playerShowsEdits } from '../kit/core/player.mjs';
+import { playerShowsEdits, parsePlayerJson, PLAYER_JSON } from '../kit/core/player.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
@@ -1922,6 +1922,14 @@ function editsNotShown(P, a) {
   const after = md(a.index).edits;
   return !P.oldPlayerKept && Array.isArray(after) && after.length > 0 && !sameJson(md(P.index).edits ?? null, after) && !playerShowsEdits(P.index && P.index.player);
 }
+// プレーヤーを新しくするときの元と先の版（再ビルドの確かめのわけに入れる。handoff #53、規格化 11/18）。先はこのエディタが同梱する kit/player.json の版
+function playerVersions(P) {
+  const pl = P.index && P.index.player;
+  const from = pl && typeof pl === 'object' && pl.version != null ? String(pl.version).replace(/\+.*$/, '') : '';
+  let to = '';
+  try { to = parsePlayerJson(RES.text['/repo/' + PLAYER_JSON]).version || ''; } catch { to = ''; }
+  return from && to ? { from, to } : {};
+}
 const playerLabel = (x) => `${x.title || x.name}${x.version ? ' ' + x.version : ''}`;
 async function savePortable(mode = 'save') {
   if (S.saving) { toast(T.api.busySave, true); return; }
@@ -2011,7 +2019,7 @@ async function savePortableBound(mode) {
       if (!((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved)) {
         const why = updatePlayer ? 'player-update' : (await themeOnlyChange(P, a, files)) ? 'theme-changed' : a.code;
         const body = why === 'theme-changed' ? [el('p', { id: 'tier-b-why', text: T.tierBWhy(why) })]
-          : [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { id: 'tier-b-why', cls: 'hint', text: T.tierBWhy(why) }), el('p', { cls: 'hint', text: T.tierBGap })];
+          : [el('p', { id: 'tier-b-warn', text: T.tierBWarn }), el('p', { id: 'tier-b-why', cls: 'hint', text: T.tierBWhy(why, why === 'player-update' ? playerVersions(P) : undefined) }), el('p', { cls: 'hint', text: T.tierBGap })];
         const v = await ask({ title: T.tierBTitle, kind: why === 'theme-changed' ? undefined : 'warn', body,
           buttons: [{ id: 'cancel', label: T.cancel }, { id: 'rebuild', label: T.tierBGo, pri: true }] });
         if (v !== 'rebuild') { status(''); return; }

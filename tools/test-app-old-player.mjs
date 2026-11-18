@@ -178,7 +178,7 @@ try {
       await clickDlg(page, '#dlg-update-player');
       await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
       ok((await page.textContent('#dlg-title')) === 'The slides will be rebuilt and saved' && (await page.textContent('#tier-b-warn')).startsWith('The slides are rebuilt with the current version')
-        && (await page.textContent('#tier-b-why')) === 'To update the player, the slides are rebuilt and saved.', 'c. the existing rebuild confirmation follows, with the reason ' + JSON.stringify(await page.textContent('#tier-b-why')));
+        && (await page.textContent('#tier-b-why')) === 'To update the player from 1.8.0 to 1.9.0, the slides are rebuilt and saved.', 'c. the existing rebuild confirmation follows, with the reason ' + JSON.stringify(await page.textContent('#tier-b-why')));
       await page.screenshot({ path: path.join(work, 'old-player-rebuild.png') });
       await clickDlg(page, '#dlg-rebuild');
     }
