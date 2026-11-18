@@ -1,0 +1,19 @@
+{
+  "repository": "https://github.com/egatari/examples",
+  "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
+  "path": "lessons/classify-cv",
+  "files": {
+    "SOURCE.md": "75c68bea4d5275a1a3acbb0a441f302583ba4590e88f92e303ab3c545a9af020",
+    "data/folds.json": "156496e616ad30f8f940cffcf9dc2f89160acf7c3ac8d82d6624bb2cea0c1620",
+    "data/logistic.json": "abf6239b6a153172ec756c6deafe5368d1a8f306b55c3cf5a39094b5e7f64485",
+    "data/loss.json": "b0fdcfa005804582671e3949d6df2ff9bb4f63057d7f7e225623acacc4dedf0e",
+    "data/parts.csv": "d0b3d4c613688b06756f8abe5397228d50800fdf229ea6574bfe8826bbadd522",
+    "data/svm.json": "7395d38631d33757076009744bb87363d2a556d62db00d8ade7bf01092f40fb6",
+    "deck.html": "8d42abc6f6ad3094aa2ee98fbcf987fb703d38b1f958b38de0bb681801ed0d77",
+    "egatari.json": "7dcc1c5f59d406cd8a61f9f506d4a0daae70c5ee7f4970d48931035e7448f83b",
+    "narration.md": "1cc4641c279efcf92b9f74ab7c15c903c02863a78a701517c13305be5eae70f6",
+    "sample.json": "a7b4d5e7e3c10372f17b50a2176072d9d59f8057de26f3571aea19d91adcd7bb",
+    "scripts/make_data.py": "ddeec5330bcf192670305a5f57cdc6d5127305873034f66171b7e4b9d950956f"
+  },
+  "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
+}

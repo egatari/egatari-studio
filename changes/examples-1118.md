@@ -1,0 +1,3 @@
+### Changed
+
+- Bundled samples synced to egatari/examples dee813a: 羅生門 (rashomon) and egatari-intro (ja, en) now carry their narration audio (handoff #42), and three new samples are added — for-loop (Education · Classes · 情報: totals and averages with a for loop, traced line by line with m-trace), vectors (Education · Classes · 数学: dot product, projection and linear maps with m-vector) and classify-cv (Education · University lectures: decision boundaries and cross-validation with m-classify2d, m-contour and m-folds); parts-showcase gains five slides for the 2.13 parts (handoff #22). Covers and theme pictures are regenerated

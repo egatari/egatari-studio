@@ -2,7 +2,7 @@
   "note": "Written by tools/theme-thumbs.mjs; do not edit by hand. theme: the theme folder hash (tools/themes-lock.mjs themeDirSha) when the pictures were made; cover, body: sha256 of the WebP files.",
   "source": {
     "lesson": "examples/parts-showcase",
-    "commit": "6c59e425989365a857fe766bb5c998a737c2dd1e",
+    "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
     "slides": {
       "cover": "s-mbteyz",
       "body": "s-wm5imv"
@@ -13,43 +13,43 @@
   "themes": {
     "default": {
       "theme": "ffc6d52e612bc492e5f17fdd99699c0f84addb894f490d4e1680ab63f94ef95a",
-      "cover": "1c9e9a3c6fce7b1c70df44a9a6479e9afae60272acd0a0616d98ce1ff8afdee0",
-      "body": "c0defee8a241eca0ba688b01ce4d9672d087d78de02f77b28c9fa1ab7ac08cce"
+      "cover": "42cbacf2c0c3b4244ad5439abbd59499d4317b396036864910540d283bc39255",
+      "body": "3f131e5284fa555015046fd3101ed702ac507ac547df61bd7321c0dbbaad8567"
     },
     "sumi": {
       "theme": "209055910c0735b1d7f0445bc3fd2eef24de7a97870dc9b73d15a9ab42fc8142",
-      "cover": "72ea13deac4022b56974e864e780e14f2e472f28e985dfc24eea3dc49eb8ed19",
-      "body": "e0361f2d2efff5805393b4aafe7f6cef48827619743c4b4e796abf0b2d5d45d9"
+      "cover": "a93c276b32cf29015a00f4a1ce2230a11ec51436c4232a46be70e195fc5a32b7",
+      "body": "6c40ff84959e3eee61ade460d893c43257291ff5869b3ff6e150299e857a1f84"
     },
     "kokugo": {
       "theme": "c0648c072d5ea7e3f87339487c0111819540b20172fcb516d5e752a5f51f4088",
-      "cover": "e8cd20266b32671c3e889aff9c9092bdf2a0dee3a223dd763ea379ff2d41033e",
-      "body": "ee8429041bfdef9903b3747f2f024013bf2eab1a3e69564958b1b46051bb29a8"
+      "cover": "a5cfb58183ec47a491fa9e4738182ba0c1fbc55fe312abdffaa353cda4bc4810",
+      "body": "cf64671c277fadaf77824de104876edbe4b58db77993d82e4502ea871fab52ca"
     },
     "tokiwa": {
       "theme": "2245ce93018cea06be42f8346cd89ed0d447969e68853825f5a2b72a749d6aea",
-      "cover": "fadea5476ccb7396a2306440465126f7ac674b7f019773ddcbd8df4995564f19",
-      "body": "69d824ae0f5cb65f0b3dc68d432e424a5847e87b389e4fe94f4781ba2cbcbd31"
+      "cover": "92a38041905c6ecabf701ffce5723137ea9dff1ceead787366d15d01cf98b944",
+      "body": "9f2099d4af410f784e6dc4c63d04231d041d7615b193bdff31bfdd78ee2e4668"
     },
     "murasaki": {
       "theme": "294f93b0a6ea816d8e28834084a25c8e8e6b612a4d2a32747e19d63dcc77063f",
-      "cover": "d72cf55ad559b3fe6f0b46c21a3f8a51d4c2bfbab86b73f86049c2b90ca0eb31",
-      "body": "18ecc50a4d6bd4a8e1e0fd46f35e7c19e9b71a5f10351b943e2f4c28c0c57f19"
+      "cover": "967fb756e9487b2cbcc74e048591a5907d21c26d3ef96b68c8fdbed8911a98c0",
+      "body": "5eb08eef5f8f33eebbcda4b0d70a7c9a89e074bd9084018d4a56fed6a067bd69"
     },
     "kogecha": {
       "theme": "c5615ce04e08fe8f43cc1240ddff6217189e23e41958fcf5d9895413869e5224",
-      "cover": "9c4407273e941c0b1a9b29dc34e48017f10fd8025f0d40e501fb483f7aa2315b",
-      "body": "3d4879ded915d0e147e6216f9f8609d36358505d37eecdd9f8ddcd694431898b"
+      "cover": "c98faa8cdfc82da056d05e465aeed1a7b7d65a96b81d8c9234b38689e24f8142",
+      "body": "808e56c80ac354b2508f0a5267e13cc3981eb91cee6890515a74e7afe564d170"
     },
     "asagi": {
       "theme": "8c244b89e84309240f7411d4ecb8386fe6be1ee45dd42d0e341e2d3342eb0dda",
-      "cover": "0d68fc6d72c537c19d56744445bdab3a9fde773be3bfd0e2433c080b3dfec02e",
-      "body": "b97bdb187287727c0127238b1b74cfc5b00b545ef621fcfd7ab54cf7599aed22"
+      "cover": "d47909efaf1074f32b9a58fbd287bd33256b6545d56add87186a94afbefa5c32",
+      "body": "dc2969650c58ae83fd3ad947be1092ab13a84a927ab04c3e02c5163a6a540a7b"
     },
     "bengara": {
       "theme": "9edcb4cb80cec26de2f73b32f6662efe49f046c7b04e255a10803657faf86df9",
-      "cover": "f94b4c687681e7db74b5ebf4d896fe56a13b07c2d76b441c2b3177ca73ef2780",
-      "body": "c5fa8ed2b3398af4fa797827dd70b82eaf0c57cd9fed3523e84eaffc83698528"
+      "cover": "0e8ca6220f3a747be7346c422e8d1b919050e3f1990a528b695037b4ffdc2f79",
+      "body": "ef39476d997fc9da8ea6ea8d764e11b33dde94c6c1b6f67815f7845f3ad81a6b"
     }
   }
 }

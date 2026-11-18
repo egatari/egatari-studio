@@ -5,7 +5,8 @@
     "copyright": "© 2026 雲居玄道",
     "creators": [
       "雲居玄道"
-    ]
+    ],
+    "attribution": "台本の音声：AI による合成（Irodori-TTS v4.1 Small、MIT。声は Egatari Studio の既定の合成の声 bob）"
   },
   "article": {
     "chapters": [
