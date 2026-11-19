@@ -28,9 +28,9 @@ ok('noPairs: ["book"] skips the pair check for book only; other terms are still 
   assert.deepEqual(pairs({ allow: [], noPairs: ['book'] }), ['slide s']);
   assert.ok(loadRules(root).noPairs.has('book'));
 });
-ok('the repository lists book, format-version and no-results (見つかりません is generic) and note (メモ is inside メモリ) in noPairs', () => {
+ok('the repository lists book, format-version and no-results (見つかりません is generic) and note (メモ is inside メモリ) in noPairs; browser, folder, editor-generic and library are spelling-only entries (#60)', () => {
   const cfg = JSON.parse(fs.readFileSync(new URL('../docs/terms-allow.json', import.meta.url), 'utf8'));
-  assert.deepEqual(cfg.noPairs, ['book', 'format-version', 'no-results', 'note', 'build', 'copy', 'bar', 'card', 'export-script', 'backup', 'delete', 'discard', 'send', 'draft-autosave', 'made-with', 'create', 'generative-ai']);
+  assert.deepEqual(cfg.noPairs, ['book', 'format-version', 'no-results', 'note', 'build', 'copy', 'bar', 'card', 'export-script', 'backup', 'delete', 'discard', 'send', 'draft-autosave', 'made-with', 'create', 'generative-ai', 'browser', 'folder', 'editor-generic', 'library']);
 });
 ok('the Viewer\'s strings (play/i18n.mjs, play/main.js) are scanned like app/*.js', () => {
   for (const f of ['play/i18n.mjs', 'play/main.js', 'app/main.js']) assert.ok(UI_CODE.some((g) => globRe(g).test(f)), f);
