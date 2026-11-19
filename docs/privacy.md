@@ -1,21 +1,21 @@
-<!-- i18n: pair=privacy.ja.md sha256=591df158165e2107 -->
+<!-- i18n: pair=privacy.ja.md sha256=92da9ed830e43e67 -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
 
 ## About this page
 
-This page is written by us, the developers of Egatari, and explains what Egatari Studio (the app for making lessons, https://studio.egatari.org/) and the player that plays lessons (Egatari Player) send over the internet, and what they store on which device.
+This page is written by us, the developers of Egatari, and explains what Egatari Studio (the app for making Egatari files, https://studio.egatari.org/) and the player that plays them (Egatari Player) send over the internet, and what they store on which device.
 
 - It covers Studio, the `.ega.html` files Studio exports (the files handed out to learners), and Egatari Viewer, the play-only page (https://viewer.egatari.org/).
 - It describes what the code actually does. We have not added ads or usage tracking.
 - It also says how to block or check each connection, for school IT staff.
-- Live: an optional feature, chosen by the creator for each lesson and open for a set time, where participants send questions and votes from their own devices to a Live server during a lesson or talk; lessons without Live never connect to a Live server.
+- Live: an optional feature, chosen by the creator for each file and open for a set time, where participants send questions and votes from their own devices to a Live server during a lesson or talk; files without Live never connect to a Live server.
 - The evidence in the code (files and lines) is in the [appendix](#appendix-evidence-in-the-code-for-maintainers).
 
-## Where the lesson files are
+## Where the Egatari files are
 
-- A lesson is a folder on the creator's computer or a single file (`.ega.html`). Studio does not send lessons to any server.
+- The slides, script and audio are in a working folder on the creator's computer or in an Egatari file (`.ega.html`). Studio does not send them to any server.
 - The Studio page runs under a policy that forbids connecting to other servers (CSP `connect-src 'self'`). It connects only to the Studio site itself.
 - Backups made during editing are stored in `.cache/edits/` inside the folder the creator chose, up to 30 files.
 - Only when using Google Colab does the creator export the script text and hand it to Colab themselves (see the table).
@@ -27,12 +27,12 @@ This page is written by us, the developers of Egatari, and explains what Egatari
 | When | Sent to | What is sent | How to stop it |
 |---|---|---|---|
 | Opening the Studio page (automatic) | studio.egatari.org (served by GitHub Pages). The interface, fonts and the version list (`versions.json`) come from the same site | The same as loading any web page (IP address, browser type and so on). For what GitHub and Cloudflare, which host the site, keep, see "Site logs" below | The offline editor (save `editor.html` and open it) does not fetch the version list |
-| Making AI voice "on this computer" (on click; a confirmation the first time) | Where the model and libraries are served from: cdn.jsdelivr.net, huggingface.co, us.aws.cdn.hf.co (Hugging Face's download host). Runs in a separate small window. The code it loads is pinned to a version and checked against its expected content before it runs (from v0.6.6) | Download requests only. The script text and the lesson are not sent. Speech is generated on the creator's computer's GPU | Cancel in the confirmation. Nothing is downloaded if it is not used. The models can be deleted from the "How to use" panel |
-| Making AI voice in Google Colab (on click; a confirmation the first time) | The creator exports `tts-job.json` and chooses it in Colab. Colab is a Google service | `tts-job.json`: the script text (after the reading dictionary), voice names, the lesson title (up to 120 characters), the lesson ID and the version. No slides or other files. If the creator chooses their own reference voice for voice cloning, that also goes to Colab | Don't use "Make in the cloud". Record, or use "This computer" |
+| Making AI voice "on this computer" (on click; a confirmation the first time) | Where the model and libraries are served from: cdn.jsdelivr.net, huggingface.co, us.aws.cdn.hf.co (Hugging Face's download host). Runs in a separate small window. The code it loads is pinned to a version and checked against its expected content before it runs (from v0.6.6) | Download requests only. The script text and the file are not sent. Speech is generated on the creator's computer's GPU | Cancel in the confirmation. Nothing is downloaded if it is not used. The models can be deleted from the "How to use" panel |
+| Making AI voice in Google Colab (on click; a confirmation the first time) | The creator exports `tts-job.json` and chooses it in Colab. Colab is a Google service | `tts-job.json`: the script text (after the reading dictionary), voice names, the file title (up to 120 characters), the file ID and the version. No slides or other files. If the creator chooses their own reference voice for voice cloning, that also goes to Colab | Don't use "Make in the cloud". Record, or use "This computer" |
 | Inside Colab (Colab does this itself) | GitHub (Studio's code), PyPI and npm (libraries), Hugging Face and GitHub releases (models) | Download requests, inside Google's servers | Same as above |
-| Pressing "Send feedback" (on click) | github.com/egatari/egatari-studio/issues/new (opens in a new window; nothing is sent until the person who pressed it submits the form) | Fields filled in in advance: version, browser name and major version, OS type, language, mode. No lesson content | Don't press it. Export the `.ega.html` with `data-feedback="off"` and the button is not shown |
+| Pressing "Send feedback" (on click) | github.com/egatari/egatari-studio/issues/new (opens in a new window; nothing is sent until the person who pressed it submits the form) | Fields filled in in advance: version, browser name and major version, OS type, language, mode. No file content | Don't press it. Export the `.ega.html` with `data-feedback="off"` and the button is not shown |
 | Following links such as the guide or the parts gallery (on click) | github.com, studio.egatari.org, a Live host page and so on | The same as any link (what the destination server receives) | Don't follow the link |
-| Using Live (questions and polls) (participant's action; press "Join" once) | The Live server written in the lesson (by default https://live.egatari.org; the lesson's creator can choose another) | Questions and votes the participant chooses to send, a name only if they type one, a random ID made on the device, pings to keep the connection, and the join code (from v0.6.6, sent in the first message after connecting, not in the connection address). The viewing position and timing are not sent | Export without Live. Block only that server on the school network |
+| Using Live (questions and polls) (participant's action; press "Join" once) | The Live server written in the file (by default https://live.egatari.org; the file's creator can choose another) | Questions and votes the participant chooses to send, a name only if they type one, a random ID made on the device, pings to keep the connection, and the join code (from v0.6.6, sent in the first message after connecting, not in the connection address). The viewing position and timing are not sent | Export without Live. Block only that server on the school network |
 
 Notes:
 - Analytics: we have not added analytics code to Studio or the player. For the access logs that GitHub and Cloudflare, which host the sites, keep, see "Site logs" below.
@@ -42,7 +42,7 @@ Notes:
 
 Studio and the player do not send the following.
 
-- Studio never sends lesson slides, scripts, audio or images to a Studio server. The server has no service for saving or sharing lessons.
+- Studio never sends file slides, scripts, audio or images to a Studio server. The server has no service for saving or sharing files.
 - Studio's preview runs under a policy that cannot connect anywhere (`connect-src 'none'`).
 - Read-aloud (the browser's speech) uses only voices installed on the device. Network voices are not chosen.
 - Recording is processed on the device. The microphone is used only when the record button is pressed.
@@ -51,7 +51,7 @@ Studio and the player do not send the following.
 
 ## What is stored on devices
 
-All of it is stored only in the browser and is not sent anywhere. Clearing the browser's site data removes it. It is stored on one of two devices: the creator's device (the computer running Studio), or the device of the person who opens the lesson (learners and participants).
+All of it is stored only in the browser and is not sent anywhere. Clearing the browser's site data removes it. It is stored on one of two devices: the creator's device (the computer running Studio), or the device of the person who opens the file (learners and participants).
 
 ### The creator's device (Studio)
 
@@ -62,29 +62,33 @@ All of it is stored only in the browser and is not sent anywhere. Clearing the b
 | localStorage (Studio) | `egatari-rec-keep-recording` | A recording setting (one on/off switch) | Same |
 | localStorage (Studio) | `egatari-slides-open` | Whether the slide list was open | Same |
 | localStorage (Studio) | `egatari-studio-live-results-notice` | That the note about importing Live results was shown | Same |
-| sessionStorage (Studio) | `motion-editor-reopen` | A mark to reopen the lesson right after changing the language (gone when the tab is closed) | Close the tab |
-| IndexedDB (Studio) | `motion-slides-editor` | "Handles" to recently opened lesson folders and files (markers pointing to their location; up to 8). The lesson contents are not stored | Clear site data |
+| localStorage (Studio) | `egatari-edit-role:<file ID>` | The answer to "Are you a creator of this file?" before saving, per file. The name and note given are written into the file, not here | Same |
+| sessionStorage (Studio) | `motion-editor-reopen` | A mark to reopen the file right after changing the language (gone when the tab is closed) | Close the tab |
+| IndexedDB (Studio) | `motion-slides-editor` | "Handles" to recently opened working folders and Egatari files (markers pointing to their location; up to 8). The file contents are not stored | Clear site data |
+| IndexedDB (Studio) | `egatari-drafts` | Unsaved changes (while an Egatari file is being edited, the original file and the changed files, kept every few seconds; up to 10, removed 30 days after the last change; not used for working folders) | "Discard changes" or "Discard all" under "Unsaved changes" on the start screen, or clear site data |
 | IndexedDB (Studio) | `egatari-theme-folder` | The handle of the theme folder. "My themes" (`my:<name>`) are stored together with the theme files' contents | "Delete" in the "My themes" window, or clear site data |
 | Cache Storage (Studio's AI voice window) | `irodori-lab-<version>`, `transformers-cache` | The AI voice models (about 1.3 GB for Japanese, about 330 MB for English) | "Delete models" in the "How to use" panel |
 | In the creator's folder | `.cache/edits/` | Backups before edits (up to 30) | Delete them from the folder |
 
-### The device of the person who opens the lesson (learners and participants; the player and Egatari Viewer)
+### The device of the person who opens the file (learners and participants; the player and Egatari Viewer)
 
 | Where | Name (key) | What | How to remove |
 |---|---|---|---|
 | localStorage (the `.ega.html` player) | `deck-capsize` | Caption size (S / M / L) | Clear site data |
 | localStorage (the `.ega.html` player) | `<format>-player-bar-hint-v1` | That the controls hint was shown | Same |
-| localStorage (the `.ega.html` player) | `<format>-player-progress:<lesson>` | Progress per lesson (which steps were played or read, and whether it was finished) | Same |
-| localStorage (the `.ega.html` player) | `<format>-player-resume:<lesson>` | The place reached in each lesson, for "Resumed where you left off" (slide, step, place in the book pane) | Same |
-| localStorage (the `.ega.html` player) | `<format>-player-layout:<lesson>`, `<format>-player-split`, `<format>-player-read-size` / `-read-lh` / `-read-bg` | The chosen layout, the divider position, and the book pane's text size, line spacing and background | Same |
+| localStorage (the `.ega.html` player) | `<format>-player-progress:<file>` | Progress per file (which steps were played or read, and whether it was finished) | Same |
+| localStorage (the `.ega.html` player) | `<format>-player-resume:<file>` | The place reached in each file, for "Resumed where you left off" (slide, step, place in the book pane) | Same |
+| localStorage (the `.ega.html` player) | `<format>-player-layout:<file>`, `<format>-player-split`, `<format>-player-read-size` / `-read-lh` / `-read-bg` | The chosen layout, the divider position, and the book pane's text size, line spacing and background | Same |
 | localStorage / sessionStorage (an `.ega.html` with Live) | `egatari-live-pid:<Live ID>`, `egatari-live-joined:<Live ID>` | A random ID made on the device, and whether the participant joined (the joined mark lasts only while the tab is open) | Clear site data, or close the tab |
-| Egatari Viewer: OPFS (IndexedDB if not available) | `recent/`, database `egatari-viewer` | Copies of recently opened lesson files (up to 10), on that device only | "Delete" in the list, "Delete all", or tick the "Shared device" checkbox |
-| Egatari Viewer: localStorage | `egatari-viewer-keep`, `egatari-viewer-shared`, `egatari-viewer-lang`, `egatari-viewer-install-hint` | Whether to store copies, whether it is a shared device, the language, whether the install hint was closed | Clear site data |
-| Egatari Viewer: Cache Storage | `egatari-viewer-<version>` | The Viewer's own files (so it opens offline). No lesson files | Clear site data |
+| Egatari Viewer: OPFS (IndexedDB if not available) | `recent/`, database `egatari-viewer` | Copies of recently opened Egatari files (up to 10), on that device only | "Delete" in the list, "Delete all", or turn on "Shared device" |
+| Egatari Viewer: IndexedDB | `egatari-viewer-notes` | Highlights in the book, per file, on that device only (never written into the file) | "Delete all of this colour" in the list, or turn on "Shared device" |
+| Egatari Viewer: IndexedDB | `egatari-viewer-ink` | Handwriting on the slide and the memo area, per file and slide, on that device only (never written into the file) | The eraser, or turn on "Shared device" |
+| Egatari Viewer: localStorage | `egatari-viewer-keep`, `egatari-viewer-shared`, `egatari-viewer-lang`, `egatari-viewer-install-hint`, `egatari-viewer-colour-names` | Whether to store copies, whether it is a shared device, the language, whether the install hint was closed, the meanings given to highlight colours | Clear site data |
+| Egatari Viewer: Cache Storage | `egatari-viewer-<version>` | The Viewer's own files (so it opens offline). No Egatari files | Clear site data |
 
 Notes:
-- While playing, the address after `#` is rewritten to the current place (the slide ID and the step). For "Resumed where you left off", the place reached in each lesson is stored on the device of the person who opened the lesson (see the table above). Not when embedded, inside an LMS, or in Studio's preview.
-- By default, Egatari Viewer stores copies of recently opened lessons. Ticking "Shared device" stores no copies and deletes the existing ones. On devices shared at a school, please ask people to tick it.
+- While playing, the address after `#` is rewritten to the current place (the slide ID and the step). For "Resumed where you left off", the place reached in each file is stored on the device of the person who opened the file (see the table above). Not when embedded, inside an LMS, or in Studio's preview.
+- By default, Egatari Viewer stores copies of recently opened files. Turning on "Shared device" stores no copies, highlights or handwriting and deletes the existing ones. On devices shared at a school, please ask people to turn it on.
 
 ## Files handed out to learners (the player)
 
@@ -94,8 +98,8 @@ Notes:
   - The file is opened directly (not inside an LMS or another page's frame; there it only shows a "Join in the browser" link).
   - The participant presses "Join" once.
 - "Send feedback", in the ? key list and the presenter view, opens GitHub in a new window only when pressed.
-- Links to other sites in a lesson show the destination and ask before opening. A lesson whose creator added an embed (YouTube, Vimeo, Google Maps, OpenStreetMap) allows those destinations to be shown, and they may load from there when the lesson is opened.
-- Progress: opened inside an LMS (SCORM 1.2), the player passes progress (started, finished, the place reached, which steps were seen, session time) to that LMS. Embedded in another page (`?embed=1`), it tells the embedding page the same events. Otherwise it only stores them on the device of the person who opened the lesson (see the table above).
+- Links to other sites in a file show the destination and ask before opening. A file whose creator added an embed (YouTube, Vimeo, Google Maps, OpenStreetMap) allows those destinations to be shown, and they may load from there when the file is opened.
+- Progress: opened inside an LMS (SCORM 1.2), the player passes progress (started, finished, the place reached, which steps were seen, session time) to that LMS. Embedded in another page (`?embed=1`), it tells the embedding page the same events. Otherwise it only stores them on the device of the person who opened the file (see the table above).
 
 ## Checking it at a school
 
@@ -103,7 +107,7 @@ Checking with the CSP (the connection policy):
 
 1. Open the `.ega.html` in a text editor. Near the top of `<head>` there is one `<meta>` with `Content-Security-Policy`.
 2. If its `connect-src` is `'none'`, the file does not connect anywhere. With Live, it connects only to the one server listed in `connect-src` (`https://…` and `wss://…`).
-3. If YouTube or others are added to `frame-src`, the lesson uses embeds.
+3. If YouTube or others are added to `frame-src`, the file uses embeds.
 4. The Studio page (studio.egatari.org) has `default-src 'self'`, `connect-src 'self'`, `frame-src 'none'`. Only the AI voice window (`lab/tts-helper.html`) connects, and only to `cdn.jsdelivr.net`, `huggingface.co` and `us.aws.cdn.hf.co`.
 5. Egatari Viewer sets its connection policy in HTTP headers (`_headers`). It connects only to itself and to Live servers (by default live.egatari.org).
 
@@ -123,9 +127,9 @@ GitHub and Cloudflare, which host the sites, keep access logs (IP address, brows
 
 The Live server (live.egatari.org) keeps the contents of a Live (questions, votes, "I'm lost" marks, a name only if typed, the random ID made on the device) in that Live only. They are deleted automatically when a grace period after the end of the live time has passed (24 hours by default; the host who creates the Live can choose 0 to 7 days). To keep the results, download them from the host page during the grace period.
 
-After that, Cloudflare's platform, where the server runs, still keeps backups for up to 30 days. They hold only the Live contents listed above, and nothing we never stored, such as IP addresses. Restoring from these backups would require us to write and run code for it, which we do not do. After 30 days the backups are gone too. If this is a concern, export the lesson without Live, or name in the lesson a Live server the creator runs themselves.
+After that, Cloudflare's platform, where the server runs, still keeps backups for up to 30 days. They hold only the Live contents listed above, and nothing we never stored, such as IP addresses. Restoring from these backups would require us to write and run code for it, which we do not do. After 30 days the backups are gone too. If this is a concern, export the file without Live, or name in the file a Live server the creator runs themselves.
 
-IP addresses, browser information and access logs are not stored (request logging is turned off). The IP address is used only when a Live is created, to prevent mass creation (Cloudflare's Turnstile check and a rate limit), and is not stored. If the lesson names a different Live server, that server's own rules apply.
+IP addresses, browser information and access logs are not stored (request logging is turned off). The IP address is used only when a Live is created, to prevent mass creation (Cloudflare's Turnstile check and a rate limit), and is not stored. If the file names a different Live server, that server's own rules apply.
 
 ---
 

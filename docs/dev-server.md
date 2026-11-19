@@ -1,9 +1,9 @@
-<!-- i18n: pair=dev-server.ja.md sha256=e48945850c606401 -->
-# Dev server (fix the slides in the browser)
+<!-- i18n: pair=dev-server.ja.md sha256=9128700cd0139016 -->
+# Dev server (edit the slides in the browser)
 
 English | [日本語](dev-server.ja.md)
 
-A small server for fixing the text and the script in the browser, and for leaving comments for the AI (what to change), without opening the slides' HTML by hand.
+A small server for editing the text and the script in the browser, and for leaving comments for the AI (what to change), without opening the slides' HTML by hand.
 The list of options, endpoints and keys is in [reference.md#dev-server](reference.md#dev-server).
 You do not need VS Code. It listens on 127.0.0.1 only.
 To do the same without Node, use the [editor app](editor.md) (Chrome / Edge).
@@ -16,7 +16,7 @@ npm run dev -- path/to/deck.html --port 5174 --theme sumi
 ```
 
 It watches the working folder (deck.html, narration.md, timeline.json, macros.tex, data/, figs/, components/, audio/manifest.json)
-the repository's kit/, vendor/components/ and themes/, and your theme folders (EGATARI_THEMES, ~/.egatari/themes) (a folder of the lesson that is a symbolic link is not watched; the server warns once). When something changes it rebuilds and reloads the page (staying on the same slide and step).
+the repository's kit/, vendor/components/ and themes/, and your theme folders (EGATARI_THEMES, ~/.egatari/themes) (a folder of the working folder that is a symbolic link is not watched; the server warns once). When something changes it rebuilds and reloads the page (staying on the same slide and step).
 When the build fails, the error is shown on the page. Fix it and save, and the slides come back.
 `?presenter=1`, `?mode=lecture` and the like work as usual. Audio is read from `/deck/audio/…`.
 
@@ -70,7 +70,7 @@ So that a browser that has another site open cannot rewrite your slides and scri
   A wrong token gets 403 (after restarting the server, reload the page)
 - Requests with `Origin: null` (what the sandboxed slides would send) or with `Sec-Fetch-Site` other than `same-origin` get 403, even with the right token
 - Writes (POST) get 415 unless `Content-Type: application/json`, and 403 if an Origin is present and is not 127.0.0.1 or localhost on the same port
-- A text edit must name an element that the current build marked as editable (`data-src`) and whose HTML still has the same hash; a script edit must name a slide of the lesson and the current revision of that step. Otherwise 409 (or 400)
+- A text edit must name an element that the current build marked as editable (`data-src`) and whose HTML still has the same hash; a script edit must name a slide in the working folder and the current revision of that step. Otherwise 409 (or 400)
 - The frame page cannot be put in a frame by another page (`frame-ancestors 'none'`)
 - `/deck/…` does not serve names starting with a dot (the copies in `.cache/edits/`, `.env`, and so on). Symlinks pointing outside the working folder also get 403
 - Malformed URLs (such as `/%ZZ`) get 400
@@ -79,9 +79,9 @@ So that a browser that has another site open cannot rewrite your slides and scri
 
 `tools/test-dev-server.mjs` checks this with slides that try to write (`tools/hostile-deck.mjs`: a part and an inline script that send the old write messages with forged text, read the token, reach for the frame page, and `fetch` / XHR / beacon the write endpoints with and without a guessed token): nothing in the folder changes until Save is pressed in the frame page.
 
-## Asking an AI coding tool
+## Asking an AI agent
 
-Ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" (with the egatari:make skill installed in Claude Code, "Apply the comments" is enough). The tool reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
+Ask your AI agent (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" (with the egatari:make skill installed in Claude Code, "Apply the comments" is enough). The tool reads the entries with `status: "open"` in `comments.json`, uses `key`, `quote` and `range` as clues
 to edit deck.html (or narration.md, or a part), and sets the finished ones to `"status": "resolved"`.
 range is the position at the time the comment was left, so if it has shifted, the tool searches for quote. For a marker comment (`strokes`), the drawn marks are what the comment refers to (inside the circle, at the arrow's head); `npm run comment-shots` draws it on the images. If the server is running, the result appears on the page as soon as it is saved.
 
@@ -91,4 +91,4 @@ To see what a comment points at, the tool should first run
 npm run comment-shots -- <working folder>      # node tools/comment-shots.mjs <working folder> [id …] [--all]
 ```
 
-It builds the slides, renders each open comment's step headlessly (`DECK.seek(i, k, Infinity)`, the same picture every time), draws the pin (and a marker comment's strokes, in the same colour) and writes into `<deck>/.cache/comment-shots/` (ignored by git): `<id>.png` (480×300 of the slide around the pin at 2×, widened to the bounding box of all strokes plus 48 px when there are strokes; the whole slide when there is no pin), `<id>-full.png` (the whole slide, 1280×720) and `index.json`. No image comes from the preview.
+It builds the slides, renders each open comment's step headlessly (`DECK.seek(i, k, Infinity)`, the same picture every time), draws the pin (and a marker comment's strokes, in the same colour) and writes into `<working folder>/.cache/comment-shots/` (ignored by git): `<id>.png` (480×300 of the slide around the pin at 2×, widened to the bounding box of all strokes plus 48 px when there are strokes; the whole slide when there is no pin), `<id>-full.png` (the whole slide, 1280×720) and `index.json`. No image comes from the preview.

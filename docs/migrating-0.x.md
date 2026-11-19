@@ -1,15 +1,15 @@
-<!-- i18n: pair=migrating-0.x.ja.md sha256=9ef6a7ab651d7e50 -->
-# Moving a lesson from an earlier version to Egatari 1.0
+<!-- i18n: pair=migrating-0.x.ja.md sha256=b459df7eabac6c30 -->
+# Moving a file in an older format to Egatari 1.0
 
 English | [日本語](migrating-0.x.ja.md)
 
-This page is written so that a person, or an AI coding agent such as Claude Code or Codex, can follow it step by step. You can point the agent at this page and say: "convert `<file>` to Egatari 1.0 by following this page".
+This page is written so that a person, or an AI agent such as Claude Code or Codex, can follow it step by step. You can point the agent at this page and say: "convert `<file>` to Egatari 1.0 by following this page".
 
 ## Do you need this?
 
-You don't need it to **play** an old lesson: every Egatari file carries its own player, so a lesson made with an earlier version keeps playing as it is. You also don't need it to **edit** an old lesson: the earlier editor stays available at its versioned address, for example `https://studio.egatari.org/v0.4.8/` (versioned addresses exist from v0.4.1 on; `https://studio.egatari.org/versions.json` lists them). When you open such a file, the current editor says so, plays it, and offers **Open in the earlier Studio** and **Open the migration guide** (this page).
+You don't need it to **play** an old file: every Egatari file carries its own player, so a file made with an earlier version keeps playing as it is. You also don't need it to **edit** an old file: the earlier editor stays available at its versioned address, for example `https://studio.egatari.org/v0.4.8/` (versioned addresses exist from v0.4.1 on; `https://studio.egatari.org/versions.json` lists them). When you open such a file, the current editor says so, plays it, and offers **Open in the earlier Studio** and **Open the migration guide** (this page).
 
-You need it only if you want to edit an old lesson **in the current editor**.
+You need it only if you want to edit an old file **in the current editor**.
 
 A file is from an earlier version when its index (the `egatari-index` block) or its `deck-meta` block has no `player` member.
 
@@ -25,7 +25,7 @@ A file is from an earlier version when its index (the `egatari-index` block) or 
 | `:name:` in the article | `:label:` only |
 | `data-anim` and `data-steps` (old animations), `data-mode="lecture"`, colour classes `blue` `red` `gray` | Removed; `data-step` and parts, `data-mode="talk"`, `term` `emph` `muted` |
 
-The lesson's identity (`docId`), its text, its audio and its rights information do not change.
+The file's identity (`docId`), its text, its audio and its rights information do not change.
 
 ## Steps
 
@@ -65,7 +65,7 @@ You need a copy of the current Egatari Studio repository (`npm ci --ignore-scrip
    npm run portable -- pack lesson/ -o lesson.ega.html
    ```
 
-   Fix only errors that the steps above caused. Warnings about wording or layout are the author's choice and are not part of the move. `pack` may also say that a theme is pinned to the version the lesson recorded (for example `theme pinned: default 1.1.0 …`): that is expected, because the move keeps the lesson's look. Do not update themes or parts as part of the move.
+   Fix only errors that the steps above caused. Warnings about wording or layout are the author's choice and are not part of the move. `pack` may also say that a theme is pinned to the version the file recorded (for example `theme pinned: default 1.1.0 …`): that is expected, because the move keeps the file's look. Do not update themes or parts as part of the move.
 
 5. **Confirm.** The new file's index has `player`, and `docId` equals the old file's. Open it in the current editor, step through every slide, and compare the final step of each slide with the old file. Tell the author which slides, if any, look different.
 

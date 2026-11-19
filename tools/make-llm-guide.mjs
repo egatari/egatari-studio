@@ -566,7 +566,7 @@ const PLACEHOLDER = /\{\{(?:SIZE|CATALOG|EXTENSIONS|WORKED|contract|GENERATED|SE
 const PACK_VERSION = '{{PACK_VERSION}}';
 
 // スキルには貼り付け用の大きさの上限を掛けない。パーツの説明は同じ材料から束（セット）ごとに分ける：標準・束ごと（専門）と、特殊は README への道だけ
-const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': '教材', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者', '検査': '品質チェック' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
+const skillTerms = (text) => Object.entries({ '部品': 'パーツ', '口述原稿': '台本', '段階': 'ステップ', 'デッキ': 'スライド', '頼む文': '指示', '注目の演出': '強調', '動く図': 'パーツ', '言いたいこと': '伝えたいこと', '学ぶ人': '学習者', '検査': '品質チェック' }).reduce((s, [from, to]) => s.replaceAll(from, to), text);
 
 const CLI_MINOR = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
 export const MAKE_SKILL_DIR = 'plugins/egatari/skills/make';
@@ -611,8 +611,8 @@ export function skillFiles(data, lang = 'ja', local = []) {
     }
     if (local.length) {
       const intro = ja
-        ? 'ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI で、ローカルのツールの出力（例：トレーサーが書くコードの実行の記録）から作る。チャットの AI への指示には入らない。そのツールを動かせないときは使わない。'
-        : 'Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer\'s record of running code). They are not in the chat AI instructions. Do not use them when you cannot run the tool.';
+        ? 'ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI で、ローカルのツールの出力（例：トレーサーが書くコードの実行の記録）から作る。対話型AIへの指示には含まれない。そのツールを動かせないときは使わない。'
+        : 'Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer\'s record of running code). They are not in the instructions for AI chatbots. Do not use them when you cannot run the tool.';
       // README の本文はパーツ集のリポジトリから見たパス（tools/trace.py など）で書かれる。スキルは Studio のリポジトリの外でも読まれるので、
       // そのパスはパーツ集のものだと書き添え、リポジトリの中の場所の前置き（tools/）は外す（tools/test-plugin.mjs の makeForbidden）
       const repoPaths = (t) => {
@@ -634,44 +634,44 @@ export function skillFiles(data, lang = 'ja', local = []) {
     files[`${MAKE_SKILL_DIR}/references/${ja ? '' : 'en/'}book.md`] = skillTerms(head + docLinks(splitStamp(read('docs', ja ? 'llm-book-ref.ja.md' : 'llm-book-ref.md')).body.trim()) + '\n');
     const text = ja ? `---
 name: make
-description: Egatari Studio で、構成案から HTML の教材・ステップ・パーツ・台本を作る。「動きのあるスライドを作って」「Egatari にして」「教材を作って」で使う。Use for making HTML lessons, animated slides and scripts.
+description: Egatari Studio で、構成案から Egatari のスライド・ステップ・パーツ・台本・本を作る。「動きのあるスライドを作って」「Egatari にして」「Egatari ファイルを作って」「教材を作って」で使う。Use for making Egatari slides, scripts and books.
 ---
 
 ${head}
-Always reply in the language the user writes in. Write slides and narration in the lesson's language.
+Always reply in the language the user writes in. Write slides and narration in the file's language.
 
-# egatari:make：教材を作る
+# egatari:make：スライドと台本を作る
 
-Egatari はオープンな教材の形式（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
+Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザーで再生でき、生成AIで作成・修正できます（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
 **指示のバージョン：${data.version}**
 **スキルのバージョン：${skillVersion()}**
 
-Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と知らせる。
+Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と伝える。
 Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egatari@${CLI_MINOR}.x skills update\`。更新の道がないツールでは案内を省き、\`egatari --version\` のバージョンを利用者に伝える。
-チャットでは Studio の『AI のスキルをダウンロード』で入れ直す。
+対話型AIでは Studio の『AI のスキルをダウンロード』で追加し直す。
 
-入れたら、自動で更新されるようにしてもらう。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。チャットでは Studio が新しくなったら『AI のスキルをダウンロード』で入れ直す。
+インストールしたら、自動更新を有効にするよう利用者に依頼する。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。対話型AIでは Studio を更新したら『AI のスキルをダウンロード』で追加し直す。
 
-**古いバージョンの知らせ**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダではビルドの出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルのバージョン」の行のバージョン。
+**古いバージョンの通知**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダではビルドの出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルのバージョン」の行のバージョン。
 
 - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
 - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。\`npx egatari@${CLI_MINOR}.x skills update\` で更新できます。」
-- チャット：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で入れ直せます。」
+- 対話型AI：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で追加し直せます。」
 
-ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示のバージョン」の行しか持たず、どちらが新しいかはわからないので、この知らせには使わない（上の「新しいパーツがあります」だけに使う）。
+ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示のバージョン」の行しか持たず、どちらが新しいかはわからないので、この通知には使わない（上の「新しいパーツがあります」だけに使う）。
 
 ## 進め方
 
-まず材料・対象・長さ・言語・テーマを確かめ、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは頼まれたときだけ。
+まず材料・対象・長さ・言語・テーマを確認し、構成案を見せる。各項目は見出し・伝えたいこと・おすすめのパーツと理由・結論の行・材料。数値を作らない。利用者が構成案とパーツを承認したら書く。話者は既定で 1 人、掛け合いは依頼されたときだけ。
 
 構成案を見せたら、承認を得るまで止まる（ファイルを書かない）。続きは利用者の回答を受けてから（\`codex exec\` なら resume で）。
 
-下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を直して返す。
+下の共通の書き方に従う。書き終えたら、ファイルを書けるかどうかに応じて「書き終えたら」の手順で渡す。修正依頼を受けたら、その指摘を修正して返す。
 
 ## パーツを選ぶ
 
-構成案のパーツは標準（standard）と専門（セットごと）から選ぶ。標準はいつも、専門は教材に合うセットだけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（セットごと）から選ぶ。標準はいつも、専門はファイルの内容に合うセットだけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
 
 ${links}
 
@@ -679,45 +679,45 @@ ${book}
 
 ## 音声を付ける
 
-Studio の音声のパネルで付けてもらう（この PC で AI 音声を作る・録音・Google Colab）。egatari-studio が入っていれば、その studio スキルの手順でローカルで付けられる。
+Studio の音声のパネルで付けるよう利用者に案内する（この PC で AI 音声を作る・録音・Google Colab）。egatari-studio をインストールしていれば、その studio スキルの手順でローカルで付けられる。
 
 ## 書き終えたら
 
-ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` と、\`{"componentsCatalogue": "2"}\` だけの \`egatari.json\` を書く（新しい教材はパーツライブラリ 2 でビルドする。ここに出てくるパーツは 2 のもの。\`egatari.json\` がないと前の 1 のままビルドされ、2 だけのパーツがビルドのエラーになる）。この場合は、下の R-output の灰色の枠（コードブロック）の代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・ビルドを行い、Egatari ファイル（\`.ega.html\`）で仕上げる。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、開始画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選んでもらう。Safari・Firefox では、2 つのファイルの内容を「新規作成…」→「AI の出力を貼り付ける」（New… → “Paste the AI’s output”）に貼り付けてもらう。
+ファイルを書けるなら、新しいフォルダに \`deck.html\` と \`narration.md\` と、\`{"componentsCatalogue": "2"}\` だけの \`egatari.json\` を書く（新しいファイルはパーツライブラリ 2 でビルドする。ここに出てくるパーツは 2 のもの。\`egatari.json\` がないと前の 1 のままビルドされ、2 だけのパーツがビルドのエラーになる）。この場合は、下の R-output の灰色の枠（コードブロック）の代わりにファイルで渡す。\`egatari-studio:studio\` が使えれば、そのスキルへ進み、品質チェック・id の付与・ビルドを行い、Egatari ファイル（\`.ega.html\`）で仕上げる。使えなければ、Chrome か Edge で <https://studio.egatari.org/> を開き、スタート画面か「ファイル」メニューの「フォルダで作業する…」（Work in a folder…）でそのフォルダを選ぶよう利用者に依頼する。Safari・Firefox では、2 つのファイルの内容を「新規作成…」→「AI の出力を貼り付ける」（New… → “Paste the AI’s output”）に貼り付けるよう依頼する。
 
 ファイルを書けなければ、Studio の「新規作成…」→「AI の出力を貼り付ける」に貼り付けられるように、下の R-output に従い、\`deck.html\` と \`narration.md\` の 2 つのコードブロックを返す。
 
-どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付けるツールが後で付ける。修正では今ある id を保つ。
+どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付けるツールが後で付ける。修正では今ある id を変えない。
 
-頼まれていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
+依頼されていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
 
 ${common}
 ` : `---
 name: make
-description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”.
+description: Make Egatari slides, steps, parts, scripts and books for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari”, “make an Egatari file” or “make a lesson”.
 ---
 
 ${head}
-Always reply in the language the user writes in. Write slides and narration in the lesson's language.
+Always reply in the language the user writes in. Write slides and narration in the file's language.
 
-# egatari:make: Make a lesson
+# egatari:make: Make slides and script
 
-Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
+Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
 **Instruction version: ${data.version}**
 **Skill version: ${skillVersion()}**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use \`/plugin update egatari@egatari\`. In Codex, use \`npx egatari@${CLI_MINOR}.x skills update\`. If a tool has no update path, leave out the instruction and tell the user the version from \`egatari --version\`.
-In a chat AI, add it again with "Download the AI skill" in Studio.
+In an AI chatbot, add it again with "Download the AI skill" in Studio.
 
-After installing, have the user turn on automatic updates: the skill's instructions and quality checks change with each Studio release. In Claude Code: \`/plugin\` → Marketplaces → egatari → Enable auto-update (marketplaces other than the official one start with auto-update off). In Codex: run \`npx egatari@${CLI_MINOR}.x skills update\` after each Studio release. In a chat AI: when Studio is updated, add the skill again with "Download the AI skill".
+After installing, have the user turn on automatic updates: the skill's instructions and quality checks change with each Studio release. In Claude Code: \`/plugin\` → Marketplaces → egatari → Enable auto-update (marketplaces other than the official one start with auto-update off). In Codex: run \`npx egatari@${CLI_MINOR}.x skills update\` after each Studio release. In an AI chatbot: when Studio is updated, add the skill again with "Download the AI skill".
 
 **Old-version notice**: a file the user opens records the version of the Studio that made it. In a single file (\`.ega.html\`) it is \`"generator":{"name":"egatari-studio","version":"…"}\` in \`<script id="deck-meta">\`; in a working folder it is \`"version"\` in \`deck-meta\` of the build output \`out/deck.html\`. Only when that version is newer than the skill version above (compare as numbers: 0.6.10 is newer than 0.6.9), say the line below and keep working (do not stop). Say it once per conversation (once in total with the studio skill). <version> is the skill version.
 
 - Claude Code: “The Egatari skill is an old version (<version>). You can update it with /plugin (Marketplaces → egatari → Enable auto-update keeps it updated automatically).”
 - Codex: “The Egatari skill is an old version (<version>). You can update it with \`npx egatari@${CLI_MINOR}.x skills update\`.”
-- Chat AI: “The Egatari skill is an old version (<version>). You can add it again with “Download the AI skill” in Studio.”
+- AI chatbot: “The Egatari skill is an old version (<version>). You can add it again with “Download the AI skill” in Studio.”
 
 Say nothing when the file's version is the same as the skill version or older, or cannot be read. Instructions copied in Studio carry only the instruction version, which does not tell which is newer, so do not use them for this notice (only for “new parts are available” above).
 
@@ -731,7 +731,7 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the content. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
 
 ${links}
 
@@ -743,11 +743,11 @@ Ask the user to add audio in Studio's audio panel (make AI voice on this compute
 
 ## When you finish
 
-If you can write files, write \`deck.html\`, \`narration.md\` and an \`egatari.json\` containing only \`{"componentsCatalogue": "2"}\` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without \`egatari.json\` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the code blocks required by R-output below. If \`egatari-studio:studio\` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (\`.ega.html\`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
+If you can write files, write \`deck.html\`, \`narration.md\` and an \`egatari.json\` containing only \`{"componentsCatalogue": "2"}\` into a new folder (new files are built with parts library 2, which the parts described here belong to; without \`egatari.json\` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the code blocks required by R-output below. If \`egatari-studio:studio\` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (\`.ega.html\`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
 
 If you cannot write files, return the two code blocks \`deck.html\` and \`narration.md\` following R-output below, ready to paste into Studio's New… → “Paste the AI’s output”.
 
-In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
+In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a file.
 
 Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
 
@@ -756,7 +756,7 @@ ${common}
     files[`${MAKE_SKILL_DIR}/${ja ? 'SKILL.md' : 'SKILL.en.md'}`] = skillTerms(text);
   }
   if (lang === 'en') files[`${MAKE_SKILL_DIR}/SKILL.md`] = files[`${MAKE_SKILL_DIR}/SKILL.en.md`];
-  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', version: JSON.parse(read('package.json')).version, description: 'Make Egatari lessons with the make skill.', skills: './skills/' }, null, 2) + '\n';
+  files['plugins/egatari/.claude-plugin/plugin.json'] = JSON.stringify({ name: 'egatari', version: JSON.parse(read('package.json')).version, description: 'Make Egatari files with the make skill.', skills: './skills/' }, null, 2) + '\n';
   return files;
 }
 

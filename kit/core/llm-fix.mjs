@@ -74,19 +74,19 @@ export function rulesFor(p) {
 
 const L = {
   en: {
-    head: 'Fix request for an Egatari lesson (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
+    head: 'Fix request for Egatari slides and script (deck.html + narration.md). The instructions you followed are the Egatari authoring guide; the standards are quoted below.',
     ask: 'Fix only the findings listed. Keep everything else as it is, and keep every id="…" and {#…} exactly (R-noids). Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks, ```deck.html and ```narration.md (R-output).',
-    askPartial: (n) => `The lesson is long, so only the ${n} ${plural(n, 'slide')} with problems ${n === 1 ? 'is' : 'are'} included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
-    problems: 'Findings', rules: 'Standards', components: 'Parts used in this lesson (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
-    where: (p) => (p.i === null || p.i === undefined ? 'Whole lesson' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
+    askPartial: (n) => `The file is long, so only the ${n} ${plural(n, 'slide')} with problems ${n === 1 ? 'is' : 'are'} included below. Reply with the same two blocks, but put only those <section> elements in the deck.html block (no <html>, keep their ids) and only their sections in the narration.md block (keep the {#id} headings) (R-output).`,
+    problems: 'Findings', rules: 'Standards', components: 'Parts used in this file (from the instructions)', files: 'Current files', partialFiles: 'Current slides with problems',
+    where: (p) => (p.i === null || p.i === undefined ? 'Whole file' : `Slide ${p.i + 1}${p.id ? ` (id ${p.id})` : ''}${p.title ? ` “${p.title}”` : ''}`),
     sev: { error: 'error', warn: 'warning' },
   },
   ja: {
-    head: 'Egatari の教材（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
-    ask: '挙げた指摘だけを直してください。ほかは変えず、id="…" と {#…} はすべてそのまま残してください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの本文に、ちょうど 2 つの灰色の枠（コードブロック） ```deck.html と ```narration.md を書いてください（R-output）。',
-    askPartial: (n) => `教材が長いので、問題のあるスライド ${n} 枚だけを下に載せています。出力は同じ 2 つのコードブロックで、deck.html のコードブロックにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md のコードブロックにはその節だけを（{#id} の見出しのまま）入れてください（R-output）。`,
-    problems: '指摘', rules: '規格', components: 'この教材で使っているパーツ（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
-    where: (p) => (p.i === null || p.i === undefined ? '教材全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? quoteJa(p.title) : ''}`),
+    head: 'Egatari のスライドと台本（deck.html と narration.md）の修正依頼です。書くときに従った指示は Egatari の書き方の指示（authoring guide）で、規格の文章は下に引いています。',
+    ask: '挙げた指摘だけを修正してください。ほかは変えず、id="…" と {#…} はすべて変えないでください（R-noids）。Canvas・スライド作成・ファイルの機能は使わず、チャットの本文に、ちょうど 2 つの灰色の枠（コードブロック） ```deck.html と ```narration.md を書いてください（R-output）。',
+    askPartial: (n) => `ファイルが長いので、問題のあるスライド ${n} 枚だけを下に載せています。出力は同じ 2 つのコードブロックで、deck.html のコードブロックにはそのスライドの <section> だけを（<html> なしで、id はそのまま）、narration.md のコードブロックにはその節だけを（{#id} の見出しのまま）書いてください（R-output）。`,
+    problems: '指摘', rules: '規格', components: 'このファイルで使っているパーツ（指示の説明）', files: '今のファイル', partialFiles: '問題のあるスライド（今のもの）',
+    where: (p) => (p.i === null || p.i === undefined ? 'ファイル全体' : `スライド ${p.i + 1}${p.id ? `（id ${p.id}）` : ''}${p.title ? quoteJa(p.title) : ''}`),
     sev: { error: 'エラー', warn: '警告' },
   },
 };
@@ -149,14 +149,14 @@ export function partHeightHint(p, deck, secs, lang = 'en') {
 export function cutOffRequest(err, lang = 'en') {
   if (err && err.code === 'no-blocks') {
     return lang === 'ja'
-      ? '前の出力には灰色の枠（コードブロック）がありませんでした。ファイル・キャンバス・添付では出さず、チャットの本文に、2 つのコードブロック ```deck.html と ```narration.md を書いて送り直してください。どちらも最後まで書いて閉じてください（R-output）。\n'
+      ? '前の出力には灰色の枠（コードブロック）がありませんでした。ファイル・キャンバス・添付では出さず、チャットの本文に、2 つのコードブロック ```deck.html と ```narration.md を書いて送信し直してください。どちらも最後まで書いて閉じてください（R-output）。\n'
       : 'Your previous reply had no code blocks. Do not output files, a canvas or attachments: write both code blocks, ```deck.html and ```narration.md, in the body of your chat message, complete and closed (R-output).\n';
   }
   const file = err.kind === 'deck' ? 'deck.html' : err.kind === 'narration' ? 'narration.md' : null;
   return lang === 'ja'
-    ? `前の出力は途中で切れていました${file ? `（${file} の灰色の枠（コードブロック）が閉じていません）` : ''}。${file === 'narration.md' ? 'narration.md のコードブロックだけを、最初から最後まで書いて閉じた形で送り直してください（deck.html は受け取りました）。' : `同じ教材を、枚数を減らした短い形で、2 つの${file ? 'コードブロック' : '灰色の枠（コードブロック）'} \`\`\`deck.html と \`\`\`narration.md をどちらも閉じて送り直してください。`}コードブロックの途中で終わらないでください（R-output）。
+    ? `前の出力は途中で切れていました${file ? `（${file} の灰色の枠（コードブロック）が閉じていません）` : ''}。${file === 'narration.md' ? 'narration.md のコードブロックだけを、最初から最後まで書いて閉じた形で送信し直してください（deck.html は受け取りました）。' : `同じスライドと台本を、枚数を減らした短い形で、2 つの${file ? 'コードブロック' : '灰色の枠（コードブロック）'} \`\`\`deck.html と \`\`\`narration.md をどちらも閉じて送信し直してください。`}コードブロックの途中で終わらないでください（R-output）。
 `
-    : `Your previous reply was cut off${file ? ` (the ${file} block is not closed)` : ''}. ${file === 'narration.md' ? 'Send only the narration.md block again, complete and closed (the deck.html block arrived).' : 'Send the lesson again in a shorter form (fewer slides), as two closed blocks, ```deck.html and ```narration.md.'} Never stop in the middle of a block (R-output).
+    : `Your previous reply was cut off${file ? ` (the ${file} block is not closed)` : ''}. ${file === 'narration.md' ? 'Send only the narration.md block again, complete and closed (the deck.html block arrived).' : 'Send the slides and script again in a shorter form (fewer slides), as two closed blocks, ```deck.html and ```narration.md.'} Never stop in the middle of a block (R-output).
 `;
 }
 

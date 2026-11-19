@@ -36,27 +36,27 @@ export function slideCountOf(text) {
 const L = {
   ja: {
     outlineHead: '# まず構成案だけを返してください',
-    outlineText: (n) => `この教材は ${n} 枚あるので、2 回に分けて作ります。今回は deck.html と narration.md はまだ書かず、構成案だけを返してください（R-outline）。` +
+    outlineText: (n) => `このスライドは全 ${n} 枚あるので、2 回に分けて作ります。今回は deck.html と narration.md はまだ書かず、構成案だけを返してください（R-outline）。` +
       '```outline の灰色の枠（コードブロック） 1 つに、Markdown の表を書きます。列は「番号」「見出し」「要点（1 行）」で、スライドごとに 1 行、全スライドを順に並べます。コードブロックの外には 1 行の添え書きだけ。',
     tableHead: '| 番号 | 見出し | 要点 |',
     batchHead: (a, b) => `# 構成案の ${a}〜${b} 枚目を作ってください`,
-    batchFirst: (a, b, n) => `構成案（全 ${n} 枚）の ${a}〜${b} 枚目を、ちょうど ${b - a + 1} 枚作ってください。規格（R-…）と出力の形（R-output）は AI への指示のとおりで、deck.html は <!DOCTYPE html> からの全体を書きます。残りのスライドは後で頼みます。`,
-    batchNext: (a, b, n, x) => `構成案（全 ${n} 枚）の ${a}〜${b} 枚目を、ちょうど ${b - a + 1} 枚作ってください。今の教材の${x}の後ろに入ります。規格と出力の形は、教材を作ったときの AI への指示のとおりです。`,
+    batchFirst: (a, b, n) => `構成案（全 ${n} 枚）の ${a}〜${b} 枚目を、ちょうど ${b - a + 1} 枚作ってください。規格（R-…）と出力の形（R-output）は AI への指示のとおりで、deck.html は <!DOCTYPE html> からの全体を書きます。残りのスライドは後で依頼します。`,
+    batchNext: (a, b, n, x) => `構成案（全 ${n} 枚）の ${a}〜${b} 枚目を、ちょうど ${b - a + 1} 枚作ってください。今のスライドの${x}の後ろに挿入します。規格と出力の形は、最初に作ったときの AI への指示のとおりです。`,
     where: (x) => `スライド ${x.n}「${x.h}」`,
     outlineList: '## 構成案（全体。返さない）', range: (a, b) => `← 今回は ${a}〜${b} 枚目`,
-    near: '## 足す場所の前のスライド（参考。返さない）',
+    near: '## 挿入する場所の前のスライド（参考。返さない）',
     reply: '## 返し方',
     replyFirst: '```deck.html の灰色の枠（コードブロック）に deck.html の全体（今回のスライドだけ）を、```narration.md のコードブロックにその台本を書きます。',
-    replyNext: '足すスライドだけを返してください。```deck.html の灰色の枠（コードブロック）に <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md のコードブロックに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。',
+    replyNext: '挿入するスライドだけを返してください。```deck.html の灰色の枠（コードブロック）に <section class="slide"> だけを並べ（<!DOCTYPE>・<html>・<head> は付けない。id は書かない）、```narration.md のコードブロックに、そのスライドの台本の節（## 見出し と [0] からの行）を同じ順で書きます。',
   },
   en: {
     outlineHead: '# First, send only the outline',
-    outlineText: (n) => `This lesson has ${n} slides, so it is made in two passes. This time, write no deck.html or narration.md yet: send only the outline (R-outline). ` +
+    outlineText: (n) => `These slides are ${n} in all, so it is made in two passes. This time, write no deck.html or narration.md yet: send only the outline (R-outline). ` +
       'In one ```outline block, write a Markdown table with the columns “#”, “Heading” and “Point (one line)”, one row per slide, every slide in order. Outside the block, at most a one-line note.',
     tableHead: '| # | Heading | Point |',
     batchHead: (a, b) => `# Please make slides ${a}–${b} of the outline`,
     batchFirst: (a, b, n) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} ${plural(b - a + 1, 'slide')}. The standards (R-…) and the output format (R-output) are those of the instructions for the AI; write the whole deck.html from <!DOCTYPE html>. The other slides are requested later.`,
-    batchNext: (a, b, n, x) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} ${plural(b - a + 1, 'slide')}. They go ${x} of the current lesson. The standards and the output format are those of the instructions for the AI used to make it.`,
+    batchNext: (a, b, n, x) => `Make slides ${a}–${b} of the outline (${n} slides in all), exactly ${b - a + 1} ${plural(b - a + 1, 'slide')}. They go ${x} of the current file. The standards and the output format are those of the instructions for the AI used to make it.`,
     where: (x) => `after slide ${x.n}, “${x.h}”,`,
     outlineList: '## The outline (all of it; do not send it back)', range: (a, b) => `← this time: ${a}–${b}`,
     near: '## The slide before the new ones (for reference; do not send it back)',
