@@ -197,7 +197,12 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   ok(await until(async () => near(await pixel(p, 640, 1000), [0x10, 0x14, 0x18], 3)), 'a dark slide: the memo area is dark ' + JSON.stringify(await pixel(p, 640, 1000)));
   ok(await p.evaluate(() => document.querySelector('.ink-bar').dataset.tone === 'dark'), 'a dark slide: the light shades');
   ok(await strokes(p) === 0, 'another lesson: its own pages');
+  // 描く前に手書きが入っていることを待ち、描いた後は線が記録されるまで待つ（遅い macOS の CI では、すぐ見ると線がまだなく、
+  // 下の「2 枚のスライド」も 1 枚になって落ちた）
+  await until(() => p.evaluate(() => document.getElementById('b-ink').getAttribute('aria-pressed') === 'true'));
   await draw(p, [[200, 1000], [400, 1000]]);
+  await until(async () => (await strokes(p)) === 1);
+  await until(async () => near(await inkAt(p, 300, 1000, [16, 20, 24]), [0xff, 0x7b, 0x88], 40));
   ok(near(await inkAt(p, 300, 1000, [16, 20, 24]), [0xff, 0x7b, 0x88], 40), 'red on a dark slide is the light red ' + JSON.stringify(await inkAt(p, 300, 1000, [16, 20, 24])));
   await shot(p, 'ink-dark');
   await p.click('#b-close');
