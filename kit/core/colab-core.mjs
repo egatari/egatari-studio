@@ -160,7 +160,7 @@ export async function planImport({ zip, segs, docId = null, yomi = null }) {
   const pr = parseRecords(new TextDecoder().decode(rj));
   if (pr.fatal) { out.reject = { code: 'bad-records', why: pr.problems[0].why }; return out; }
   out.generator = pr.generator;
-  if (docId !== null && pr.docId !== null && docId !== pr.docId) { out.reject = { code: 'doc-id', why: 'the job was made for another lesson (docId differs)', title: pr.title }; return out; }
+  if (docId !== null && pr.docId !== null && docId !== pr.docId) { out.reject = { code: 'doc-id', why: 'the job was made for another file (docId differs)', title: pr.title }; return out; }
   for (const p of pr.problems) out.skipped.push({ key: p.key || null, why: p.why });
   const byKey = new Map(segs.map((s) => [`${s.slideKey}:${s.stepKey}`, s]));
   for (const [key, rec] of pr.records) {

@@ -177,8 +177,8 @@ export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, 
   const head = L === 'ja' ? '| 言いたいこと | パーツ | ステップ |\n|---|---|---|' : '| purpose | parts | steps |\n|---|---|---|';
   // 入っていない束：あることだけ（束・部品・言いたいことの名前を出さない。d5 2026-11-15。説明のない部品の属性を AI に推させない）
   const other = elsewhere.length ? '\n\n' + (L === 'ja'
-    ? `この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作る人が新規作成でパーツを足せる）`
-    : `Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new lesson).`) : '';
+    ? `この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作成者が新規作成でパーツを追加できる）`
+    : `Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new file).`) : '';
   const url = src ? '\n\n' + (L === 'ja' ? `各パーツの説明（バージョンを固定）：${src}<名前>/README.md（名前は \`m-\` を除いたもの）` : `Each part's description (pinned version): ${src}<name>/README.md (the name without \`m-\`)`) : '';
   return head + '\n' + rows.join('\n') + other + url;
 }

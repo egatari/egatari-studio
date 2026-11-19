@@ -2052,7 +2052,7 @@ window.addEventListener("message", function(e){
     // 表示のモード（Player P8）：learn は talk と読む（P1）。今のモードなら同じ形で答える。読み込んだ後にモードを替えることはしない（?mode= で読み込み直す）
     var want = normMode(m.mode), now = ctxMode();
     if (want === now) post({egatari: "mode", id: m.id, mode: now});
-    else post({egatari: "error", id: m.id, code: "mode", message: want === "talk" || want === "video" ? "the mode is chosen when the lesson loads (?mode=)" : "unknown mode"});
+    else post({egatari: "error", id: m.id, code: "mode", message: want === "talk" || want === "video" ? "the mode is chosen when the file loads (?mode=)" : "unknown mode"});
   } else if (EMBED && e.source === window.parent && m.egatari === "rate"){
     var rv = DECK.rate(m.value);
     if (rv !== +m.value) post({egatari: "error", id: m.id, code: "rate", message: "unsupported rate"});
@@ -2326,7 +2326,7 @@ function extLink(a){
   }
   if (d.verdict === "open"){ extOpen(d.url); return; }
   var notes = d.reasons.map(function(r){ return L10N(EXT_WHY[r][0], EXT_WHY[r][1]); });
-  var ttl = d.must ? L10N("このリンクを開いてよいか確かめてください", "Check before opening this link") : L10N("授業の外のページを開きます", "This opens a page outside the lesson");
+  var ttl = d.must ? L10N("このリンクを開いてよいか確認してください", "Check before opening this link") : L10N("このファイルの外のページを開きます", "This opens a page outside this file");
   extDialog({title: ttl, host: d.host || d.scheme + ":", url: d.url, notes: notes, from: from,
     open: function(){ EXT_LP.remember(EXT.hosts, d); extOpen(d.url); }});
 }

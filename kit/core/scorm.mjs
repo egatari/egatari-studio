@@ -88,7 +88,7 @@ export function scormPackage(html) {
   if (scan.byId.has(FORMAT.INDEX_ID)) fail('scorm-not-play-only', `the file still carries its editable source (${FORMAT.INDEX_ID}); package the play-only copy`);
   if (!Array.isArray(meta.tracking) || !meta.tracking.includes('scorm12')) fail('scorm-no-tracking', 'the player in this file does not report progress through SCORM 1.2 (deck-meta.tracking has no "scorm12")');
   if (typeof meta.docId !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(meta.docId)) fail('scorm-no-docid', 'deck-meta.docId is not a UUID');
-  const title = typeof meta.title === 'string' && meta.title.trim() ? meta.title : 'Lesson';
+  const title = typeof meta.title === 'string' && meta.title.trim() ? meta.title : 'Untitled';
   const steps = stepCount(html);
   if (suspendLength(steps) > SUSPEND_MAX) fail('scorm-too-many-steps', `${steps} steps: the resume data (cmi.suspend_data) could exceed ${SUSPEND_MAX} characters (SCORM 1.2 binding §2.2)`);
   const manifest = scormManifest({ docId: meta.docId, title });

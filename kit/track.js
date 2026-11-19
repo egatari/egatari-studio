@@ -260,7 +260,7 @@ function schedule(){ if (!tickT && document.visibilityState !== "hidden") tickT 
 // ---------------------------------------------------------------- 起動
 function notice(){
   var d = document.createElement("div"); d.id = "deck-track-notice"; d.setAttribute("role", "status");
-  d.textContent = JA ? "進行状況を記録できなくなりました。記録するには、この教材を開いた学習サイト（LMS）から開き直してください。" : "Progress can no longer be recorded. To record it, reopen this lesson from your learning platform (LMS).";
+  d.textContent = JA ? "進行状況を記録できなくなりました。記録するには、このファイルを開いた学習サイト（LMS）から開き直してください。" : "Progress can no longer be recorded. To record it, reopen this file from your learning platform (LMS).";
   d.style.cssText = "position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:60;max-width:min(92vw,560px);padding:8px 14px;border-radius:8px;" +
     "background:rgba(20,20,20,.9);color:#fff;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Hiragino Sans','Segoe UI',sans-serif";
   document.body.appendChild(d);

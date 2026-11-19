@@ -870,7 +870,7 @@ if (asJson) {
   const stepOf = (s) => (s === null ? '' : EN ? (s === 'concl' ? 'conclusion: ' : `step ${s}: `) : (s === 'concl' ? '結論のステップ：' : `ステップ ${s}：`));
   for (const key of keys) {
     const id = key >= 0 && meta[key] && meta[key].id;
-    const label = key === -1 ? (EN ? '■ Whole lesson' : '■ 教材全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;
+    const label = key === -1 ? (EN ? '■ Whole file' : '■ ファイル全体') : `■ ${key + 1}: ${titleOf(key)}${id ? ` (${id})` : ''}`;
     console.log(label);
     const items = groups.get(key).sort((a, b) => SEV_RANK[a.sev] - SEV_RANK[b.sev]);
     for (const r of items) console.log(`  [${MARK[r.sev]}] ${stepOf(r.step)}${cliHints(r.what)}`);
@@ -879,7 +879,7 @@ if (asJson) {
   console.log(EN ? `${counts.error} ${plural(counts.error, 'error')}, ${counts.warn} ${plural(counts.warn, 'warning')}, ${counts.info} info` : `エラー ${counts.error}　警告 ${counts.warn}　情報 ${counts.info}`);
   const S = acc.summary;
   console.log(EN ? `quality check items: ${S.checked} done, ${S.excused} not applicable, ${S.skipped} not run, ${S.failed} failed (of ${S.total})` : `品質チェックの項目：見た ${S.checked}　当てはまらない ${S.excused}　見られなかった ${S.skipped}　落ちた ${S.failed}（${S.total} のうち）`);
-  if (noBrowser) console.log(EN ? 'run without a browser (--no-browser): only the checks of the source were done; the checks of how slides look and move (R-fit, contrast, parts, narration steps and more) were skipped. Run the check with a browser before you share the lesson' : 'ブラウザなしで動かした（--no-browser）：原稿だけでできるチェックをした。スライドの見た目と動きのチェック（R-fit・コントラスト・パーツ・台本のステップなど）は飛ばした。教材を配る前に、ブラウザのある所で品質チェックをかけ直す');
+  if (noBrowser) console.log(EN ? 'run without a browser (--no-browser): only the checks of the source were done; the checks of how slides look and move (R-fit, contrast, parts, narration steps and more) were skipped. Run the check with a browser before you share the file' : 'ブラウザなしで動かした（--no-browser）：原稿だけでできるチェックをした。スライドの見た目と動きのチェック（R-fit・コントラスト・パーツ・台本のステップなど）は飛ばした。教材を配る前に、ブラウザのある所で品質チェックをかけ直す');
   if (acc.status === 'incomplete') console.log((EN ? 'the check did not finish: ' : '点検が終わっていない：') + [...acc.unset.map((id) => id + (EN ? ' (not looked at)' : '（見ていない）')), ...acc.problems].join('; '));
 }
 // 出力を書き終えてから終える（stdout がパイプのとき、process.exit は書きかけの出力（64 KiB を超える分）を捨てる。--json の大きな結果が途中で切れていた）

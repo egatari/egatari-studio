@@ -9,7 +9,7 @@
 //   matchReference(refs, rel, bytes?)        → 当たった参照音声（場所が同じか、中身のバイトが同じ）か null
 //   REFERENCE_VOICE_RULE                     知らせに添える決まりの言葉（英語。画面は app/i18n.js・kit/check-messages.mjs）
 
-export const REFERENCE_VOICE_RULE = 'a lesson does not carry the reference recording a voice was cloned from, only the narration audio made with it (Egatari §5, recipe)';
+export const REFERENCE_VOICE_RULE = 'an Egatari file does not carry the reference recording a voice was cloned from, only the narration audio made with it (Egatari §5, recipe)';
 const DEFAULT_NAMES = Object.freeze({ expert: 'bob', novice: 'alice' });
 const isPathForm = (v) => /[\\/]/.test(v) || /\.wav$/i.test(v);
 const fold = (p) => p.normalize('NFC').toLowerCase();

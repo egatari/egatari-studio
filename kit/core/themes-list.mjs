@@ -15,7 +15,7 @@ export const CHOOSABLE = Object.freeze([
 export const RETIRED = Object.freeze(['business']);
 // 選べなくしたテーマの見せる名前（その教材を開いたときの「テーマを変更…」の今のテーマ）
 export const RETIRED_LABEL = Object.freeze({ business: { ja: 'ビジネス', en: 'Business' } });
-export const RETIRED_NOTE = Object.freeze({ ja: '新しくは選べない', en: 'No longer offered for new lessons' });
+export const RETIRED_NOTE = Object.freeze({ ja: '新しくは選べない', en: 'No longer offered for new files' });
 // 同梱のテーマの名前の並び（have：同梱のテーマの名前）→ 選べるものを画面の順に。同梱にあって一覧にないもの（RETIRED を除く）は後ろに名前の順
 export function choosableOf(have) {
   const set = new Set(have);

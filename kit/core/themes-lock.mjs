@@ -162,5 +162,5 @@ export function themeUpdate(lock, name, from) {
 // 知らせの 1 行（CLI と編集アプリの警告の板）
 export function themePinnedWarning(u) {
   const list = u.tokens.map((x) => `${x.token} ${x.from} → ${x.to}`).join(', ');
-  return `theme pinned: ${u.name} ${u.from} is the version this lesson recorded; the current ${u.name} is ${u.to}${list ? ` (${list})` : ''}. It is built with ${u.from}, never restyled silently. To update: in the editor press 「テーマを更新」 / Update theme; on the command line rebuild with --update-themes, or set "${u.name}": "${u.to}" under themes in egatari.json / 記録したバージョンのテーマで組む。黙って新しい色にしない`;
+  return `theme pinned: ${u.name} ${u.from} is the version this file recorded; the current ${u.name} is ${u.to}${list ? ` (${list})` : ''}. It is built with ${u.from}, never restyled silently. To update: in the editor press 「テーマを更新」 / Update theme; on the command line rebuild with --update-themes, or set "${u.name}": "${u.to}" under themes in egatari.json / 記録したバージョンのテーマでビルドする。自動では新しい色に変えない`;
 }

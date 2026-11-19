@@ -53,7 +53,7 @@
 <main id="main" tabindex="-1">
   <section id="start" aria-labelledby="start-h">
     <h1 id="start-h" data-i18n="startTitle">Egatari ファイルを再生する</h1>
-    <p data-i18n="startLead">Egatari ファイル（.ega.html）を選ぶと、この画面で再生します。ファイルはこの端末の中で読み、どこにもアップロードしません。</p>
+    <p data-i18n="startLead">Egatari ファイル（.ega.html）を選ぶと、ここで再生します。ファイルはこの端末の中で読み込み、どこにもアップロードしません。</p>
     <p id="install" class="notice install" hidden><span id="install-text"></span><button type="button" id="b-install" class="pri" hidden data-i18n="installButton">インストール</button><button type="button" id="b-install-x" class="x" data-i18n-label="installDismiss" aria-label="この案内を閉じる">×</button></p>
     <div id="drop">
       <label class="pick" for="file"><span data-i18n="pick">ファイルを開く</span></label>
@@ -64,11 +64,11 @@
     <p id="msg" role="alert"></p>
     <section id="recent" aria-labelledby="recent-h">
       <h2 id="recent-h" data-i18n="recentTitle">最近のファイル</h2>
-      <p class="notice"><strong data-i18n="deviceOnly">この端末にだけ保存されます</strong><span data-i18n="deviceOnlyMore">。最近開いたファイルは、このブラウザの中にだけ残り、どこにもアップロードされません。いつでも削除できます。</span></p>
+      <p class="notice"><strong data-i18n="deviceOnly">この端末にだけ保存されます</strong><span data-i18n="deviceOnlyMore">。最近開いたファイルは、このブラウザの中にだけ保存され、どこにもアップロードされません。いつでも削除できます。</span></p>
       <p id="recent-persist" class="small" hidden></p>
-      <label class="keep"><input type="checkbox" id="keep" checked> <span data-i18n="keep">開いたファイルを最近の一覧に残す</span></label>
+      <label class="keep"><input type="checkbox" id="keep" checked> <span data-i18n="keep">開いたファイルを「最近のファイル」に保存する</span></label>
       <label class="keep"><input type="checkbox" id="shared" aria-describedby="shared-note"> <span data-i18n="shared">共有の端末</span></label>
-      <p id="shared-note" class="small" data-i18n="sharedNote">学校の iPad のように何人かで使う端末では、オンにしてください。最近のファイルとハイライトを保存せず、いま保存されているものもこの端末から消します。</p>
+      <p id="shared-note" class="small" data-i18n="sharedNote">学校の iPad のように複数の人で使う端末では、オンにしてください。最近のファイル・ハイライト・手書きを保存せず、いま保存されているものもこの端末から削除します。</p>
       <p id="recent-store" class="small"></p>
       <ul id="recent-list"></ul>
       <p id="recent-empty" class="small" data-i18n="recentEmpty">まだありません。</p>
@@ -78,18 +78,18 @@
       <h2 id="about-h" data-i18n="aboutTitle">Egatari Viewer について</h2>
       <ul>
         <li data-i18n="about1">iPad・iPhone のように、ファイルのアプリから HTML のファイルを直接開けない端末で、Egatari ファイルを再生するためのアプリです。</li>
-        <li data-i18n="about2">教材は、Egatari Viewer とは切り離された枠の中で動きます。教材からは、Egatari Viewer の保存場所にも、ネットワークにも届きません。</li>
-        <li data-i18n="about3">ライブ（質問・投票）のある教材では、「参加する」を押したときだけ、Egatari Viewer が教材に書かれたライブにつなぐか、ブラウザの新しいタブでライブを開きます。</li>
+        <li data-i18n="about2">Egatari ファイルは、Egatari Viewer とは切り離された枠の中で動きます。ファイルからは、Egatari Viewer の保存場所とネットワークにはアクセスできません。</li>
+        <li data-i18n="about3">ライブ（質問・投票）のあるファイルでは、「参加する」を押したときだけ、Egatari Viewer がファイルに書かれたライブに接続するか、ブラウザの新しいタブでライブを開きます。</li>
         <li data-i18n="about5">ホーム画面に追加すると、ネットワークがなくても開けます。新しいバージョンは、次に開いたときから使われます（再生中には入れ替わりません）。</li>
-        <li data-i18n="about4">教材を作る・直すのは Egatari Studio です。</li>
+        <li data-i18n="about4">Egatari ファイルの作成・編集は Egatari Studio で行います。</li>
       </ul>
       <p class="small"><a href="https://github.com/egatari/egatari-spec" rel="noopener noreferrer" target="_blank" data-i18n="specLink">Egatari の仕様</a> · <span data-i18n="version">バージョン</span> <span id="version"></span></p>
     </section>
   </section>
-  <section id="player" hidden aria-label="教材">
+  <section id="player" hidden aria-label="Egatari ファイル">
     <div id="stage-wrap"></div>
     <section id="live-start" hidden aria-labelledby="live-start-h">
-      <h2 id="live-start-h" data-i18n="startTitle2">この教材にはライブ（質問・投票）があります</h2>
+      <h2 id="live-start-h" data-i18n="startTitle2">このファイルにはライブ（質問・投票）があります</h2>
       <p id="live-start-notice"></p>
       <p id="live-start-window" class="small"></p>
       <p id="live-start-state" class="msg"></p>
@@ -99,11 +99,11 @@
         <span id="live-dest" class="small dest"></span>
       </div>
       <div class="row"><button type="button" id="b-watch" data-i18n="watch">参加しないで見る</button></div>
-      <p class="small" data-i18n="privacy">送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません。</p>
+      <p class="small" data-i18n="privacy">送信するのは、送信した質問と投票（入力したときは名前）と、この端末で作った番号だけです。表示中の位置や時間は送信しません。</p>
     </section>
     <aside id="live" hidden aria-labelledby="live-h" tabindex="-1" data-mode="">
       <div class="live-head">
-        <button type="button" id="b-strip-close" class="x" data-i18n-label="closeLesson" aria-label="教材を閉じる">×</button>
+        <button type="button" id="b-strip-close" class="x" data-i18n-label="closeLesson" aria-label="ファイルを閉じる">×</button>
         <span class="dot" aria-hidden="true"></span>
         <h2 id="live-h" data-i18n="liveTitle">ライブ（質問・投票）</h2>
         <span id="live-state" class="state"></span>
@@ -119,15 +119,15 @@
         <div id="live-name-row" hidden>
           <label for="live-name" data-i18n="name">名前（任意）</label>
           <input type="text" id="live-name" autocomplete="off">
-          <p class="small" data-i18n="nameNote">名前はホストだけに見えます（入れなければ名前なしで送られます）</p>
+          <p class="small" data-i18n="nameNote">名前はホストだけに見えます（入力しなければ名前なしで送信されます）</p>
         </div>
         <div id="live-qa" hidden>
           <label for="live-q" data-i18n="ask">ホストへの質問</label>
           <textarea id="live-q"></textarea>
-          <div class="row"><button type="button" id="b-send" class="pri" data-i18n="send">送る</button></div>
+          <div class="row"><button type="button" id="b-send" class="pri" data-i18n="send">送信</button></div>
         </div>
         <div id="live-shown" hidden><h3 data-i18n="shown">ホストが全員に表示した質問</h3><ul id="live-shown-list"></ul></div>
-        <p class="small" data-i18n="privacy">送るのは、送ると決めた質問と投票（と入れたときの名前）、この端末で作った番号だけです。見ている位置や時間は送りません。</p>
+        <p class="small" data-i18n="privacy">送信するのは、送信した質問と投票（入力したときは名前）と、この端末で作った番号だけです。表示中の位置や時間は送信しません。</p>
       </div>
       <div id="live-poll-view">
         <button type="button" id="b-poll-back" data-i18n="pollBack">戻る</button>
@@ -142,7 +142,7 @@
 </dialog>
 <dialog id="m-confirm" aria-describedby="m-confirm-t">
   <p id="m-confirm-t"></p>
-  <div class="row"><button type="button" id="b-mconfirm-no" data-i18n="mCancel">やめる</button><button type="button" id="b-mconfirm-yes" class="pri danger" data-i18n="mDelete">消す</button></div>
+  <div class="row"><button type="button" id="b-mconfirm-no" data-i18n="mCancel">キャンセル</button><button type="button" id="b-mconfirm-yes" class="pri danger" data-i18n="mDelete">削除</button></div>
 </dialog>
 <dialog id="cred-box" aria-labelledby="cred-t">
   <div class="m-top"><h2 id="cred-t" data-i18n="credTitle">作成と編集</h2><button type="button" id="b-cred-close" data-i18n="linkClose">閉じる</button></div>
