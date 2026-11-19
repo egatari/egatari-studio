@@ -136,22 +136,28 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   ok(await p.evaluate(() => document.querySelector('.ink-bar').dataset.tone === 'light'), 'a light slide: the light shades');
 
   // draw: red (the default) from the memo up into the slide, then black, then blue
+  // after each draw, wait for the stroke to be recorded and painted before looking (the dark slide below failed this way on a slow macOS CI)
   await draw(p, [[200, 1000], [300, 900], [400, 650]]);
-  ok(await strokes(p) === 1, 'one stroke drawn with the mouse');
+  ok(await until(async () => (await strokes(p)) === 1), 'one stroke drawn with the mouse');
+  await until(async () => near(await inkAt(p, 300, 900, slideBg), [0xd2, 0x2a, 0x3a], 40));
   ok(near(await inkAt(p, 300, 900, slideBg), [0xd2, 0x2a, 0x3a], 40), 'red by default ' + JSON.stringify(await inkAt(p, 300, 900, slideBg)));
   await press(p, 'c-k'); await draw(p, [[700, 900], [900, 900]]);
+  await until(async () => near(await inkAt(p, 800, 900, slideBg), [0x1f, 0x1f, 0x1f], 40));
   ok(near(await inkAt(p, 800, 900, slideBg), [0x1f, 0x1f, 0x1f], 40), 'black ' + JSON.stringify(await inkAt(p, 800, 900, slideBg)));
   await press(p, 'c-b'); await draw(p, [[700, 1050], [900, 1050]]);
+  await until(async () => near(await inkAt(p, 800, 1050, slideBg), [0x1f, 0x5f, 0xbf], 40));
   ok(near(await inkAt(p, 800, 1050, slideBg), [0x1f, 0x5f, 0xbf], 40), 'blue ' + JSON.stringify(await inkAt(p, 800, 1050, slideBg)));
   ok(await p.evaluate(() => document.querySelector('.ink-bar button[data-k="c-b"]').getAttribute('aria-pressed') === 'true' && document.querySelector('.ink-bar button[data-k="pen"]').getAttribute('aria-pressed') === 'true'), 'the chosen colour and the pen are pressed');
   ok(await strokes(p) === 3, 'three strokes');
   // eraser: the stroke it touches, whole; undo brings it back
   await press(p, 'eraser'); await draw(p, [[780, 880], [820, 920]]);
+  await until(async () => (await strokes(p)) === 2);
   ok(await strokes(p) === 2 && !near(await inkAt(p, 800, 900, slideBg), [0x1f, 0x1f, 0x1f], 40), 'the eraser removes the whole black stroke');
   await press(p, 'undo');
+  await until(async () => (await strokes(p)) === 3);
   ok(await strokes(p) === 3 && near(await inkAt(p, 800, 900, slideBg), [0x1f, 0x1f, 0x1f], 40), 'undo brings it back');
   await press(p, 'undo');
-  ok(await strokes(p) === 2, 'undo again takes away the last stroke drawn (blue)');
+  ok(await until(async () => (await strokes(p)) === 2), 'undo again takes away the last stroke drawn (blue)');
   await press(p, 'pen');
   await shot(p, 'ink-light');
 
@@ -218,6 +224,8 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   await sleep(600);
   ok(await strokes(p) === 0, 'after 共有の端末: nothing kept');
   await draw(p, [[200, 1000], [400, 1000]]);
+  // the stroke must be there in the page, so that 'nothing is saved' below means the device kept nothing, not that nothing was drawn
+  ok(await until(async () => (await strokes(p)) === 1), 'on a shared device the stroke is drawn on the page');
   await sleep(600);
   await p.click('#b-close');
   await sleep(300);
