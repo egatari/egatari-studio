@@ -36,7 +36,7 @@ export function slideCountOf(text) {
 const L = {
   ja: {
     outlineHead: '# まず構成案だけを返してください',
-    outlineText: (n) => `このスライドは全 ${n} 枚あるので、2 回に分けて作ります。今回は deck.html と narration.md はまだ書かず、構成案だけを返してください（R-outline）。` +
+    outlineText: (n) => `スライドは全 ${n} 枚あるので、2 回に分けて作ります。今回は deck.html と narration.md はまだ書かず、構成案だけを返してください（R-outline）。` +
       '```outline の灰色の枠（コードブロック） 1 つに、Markdown の表を書きます。列は「番号」「見出し」「要点（1 行）」で、スライドごとに 1 行、全スライドを順に並べます。コードブロックの外には 1 行の添え書きだけ。',
     tableHead: '| 番号 | 見出し | 要点 |',
     batchHead: (a, b) => `# 構成案の ${a}〜${b} 枚目を作ってください`,
@@ -51,7 +51,7 @@ const L = {
   },
   en: {
     outlineHead: '# First, send only the outline',
-    outlineText: (n) => `These slides are ${n} in all, so it is made in two passes. This time, write no deck.html or narration.md yet: send only the outline (R-outline). ` +
+    outlineText: (n) => `There are ${n} slides, so they are made in two passes. This time, write no deck.html or narration.md yet: send only the outline (R-outline). ` +
       'In one ```outline block, write a Markdown table with the columns “#”, “Heading” and “Point (one line)”, one row per slide, every slide in order. Outside the block, at most a one-line note.',
     tableHead: '| # | Heading | Point |',
     batchHead: (a, b) => `# Please make slides ${a}–${b} of the outline`,
