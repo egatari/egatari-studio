@@ -37,10 +37,10 @@ ok('長い題名は 80 字・255 バイトに収める（字の途中で切ら�
   const e = exportName('😀'.repeat(100), 'deck', X);
   assert.ok(new TextEncoder().encode(e).length <= 255 && /^(😀)+\.ega\.html$/u.test(e), e);
 });
-ok('題名がなければデッキの名前、それもなければ lesson', () => {
+ok('題名がなければデッキの名前、それもなければ untitled', () => {
   assert.equal(exportName('', 'deck', X), 'deck.ega.html');
   assert.equal(exportName(undefined, 'talk', '.html'), 'talk.html');
-  assert.equal(exportName('', '', X), 'lesson.ega.html');
+  assert.equal(exportName('', '', X), 'untitled.ega.html');
 });
 ok('字は NFC にそろえる', () => {
   assert.equal(exportName('が', 'deck', X), 'が.ega.html');

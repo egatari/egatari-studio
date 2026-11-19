@@ -112,7 +112,7 @@ try {
   await p1.waitForSelector('#examples-gallery .ex-door');
   await revealExample(p1, 'kokugo-kanbun');
   const rows = await p1.$$eval('#examples-list li', (li) => li.map((x) => [x.dataset.example, x.querySelector('.ex-view').textContent, x.querySelector('.ex-view').getAttribute('aria-label')]));
-  ok(rows.length > 0 && rows.every((r) => r[1] === '再生' && r[2].startsWith('再生: ')) && (await text(p1, '#examples .hint')) === 'Egatari で作ったサンプルの教材です。再生して、同じ作り方で自分の教材を作れます。',
+  ok(rows.length > 0 && rows.every((r) => r[1] === '再生' && r[2].startsWith('再生: ')) && (await text(p1, '#examples .hint')) === 'Egatari で作ったサンプルです。再生して、同じ作り方で自分のファイルを作れます。',
     'F1: every sample tile has 「再生」 (accessible name with the title): ' + JSON.stringify(rows.map((r) => r[1])));
   const KS = sample('kokugo-kanbun');
   await play(p1, 'kokugo-kanbun');
@@ -124,7 +124,7 @@ try {
   ok(inFrame.slides === KS.structure.length && inFrame.lang === 'ja', 'F1: the frame runs the file’s own player (' + JSON.stringify(inFrame) + ')');
   const dlg = await p1.evaluate(() => ({ title: document.getElementById('dlg-title').textContent, req: document.getElementById('sample-request').textContent, rights: document.getElementById('sample-rights').textContent,
     buttons: [...document.querySelectorAll('#dlg-buttons button')].map((b) => [b.id, b.textContent, b.className]) }));
-  ok(dlg.title === '漢文を読む――返り点から書き下し文へ' && dlg.req === 'AI への頼み方： ' + KS.request && dlg.rights === 'ライセンス：CC BY 4.0（雲居玄道（Egatari Studio））'
+  ok(dlg.title === '漢文を読む――返り点から書き下し文へ' && dlg.req === 'AI への指示： ' + KS.request && dlg.rights === 'ライセンス：CC BY 4.0（雲居玄道（Egatari Studio））'
     && JSON.stringify(dlg.buttons) === JSON.stringify([['dlg-copy', 'コピーを開いて編集', 'ghost small'], ['dlg-cancel', '閉じる', ''], ['dlg-like', 'このサンプルを参考に作る', 'pri']]),
     'F1: the window shows the title, how the AI was asked, the license, and 「コピーを開いて編集」 (small) · 「閉じる」 · 「このサンプルを参考に作る」 (main): ' + JSON.stringify(dlg));
   const note = await p1.evaluate(() => { const n = document.getElementById('sample-like-note'), b = document.getElementById('dlg-like'); return { text: n && n.textContent, after: !!n && n.previousElementSibling && n.previousElementSibling.id === 'dlg-buttons', by: b.getAttribute('aria-describedby') }; });
@@ -135,7 +135,7 @@ try {
   await clickDlg(p1, '#dlg-like');
   await dlgWait(p1, '#dlg[open] #paste-step-kind');
   ok(!(await p1.$('#sample-frame')) && !(await p1.$('#sample-like-note')) && !(await p1.$('iframe[title="漢文を読む――返り点から書き下し文へ"]')), 'F1: closing the window removes the sample’s frame (its player stops)');
-  ok((await text(p1, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。',
+  ok((await text(p1, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作るものの内容を書いてください。',
     'F1: New… says it starts from the sample and what was filled in');
   ok((await answer(p1, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await badgeOn(p1, 'kind') && (await answer(p1, 'theme')).startsWith('テーマ：') && await badgeOn(p1, 'theme')
     && (await p1.inputValue('#paste-theme')) === 'kokugo', 'F1: ① and ③ are answered from the sample, each with 「サンプルから」: ' + (await answer(p1, 'kind')) + ' / ' + (await answer(p1, 'theme')));
@@ -239,7 +239,7 @@ try {
   // 凍結した写し（/v9.9.9/）の中：その写しの組み立てに入っているサンプルで、根と同じに開く（何も読みに行かない）
   const p3c = await open('ja', 'f3c', '&from-sample=kokugo-kanbun', 'v9.9.9/');
   await dlgWait(p3c, '#dlg[open] #paste-step-content.current');
-  ok((await text(p3c, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。'
+  ok((await text(p3c, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作るものの内容を書いてください。'
     && (await p3c.inputValue('#paste-theme')) === 'kokugo' && await badgeOn(p3c, 'kind') && (await p3c.evaluate(() => location.pathname + location.search)) === '/v9.9.9/?lang=ja',
     'F3: inside a frozen copy (/v9.9.9/?lang=ja&from-sample=kokugo-kanbun) New… opens from the sample the same way, and the parameter leaves the address');
   await p3c.context().close();
@@ -276,7 +276,7 @@ try {
   await p7.click('#paste-samples-list li[data-example="kokugo-kanbun"] button');
   await dlgWait(p7, '#dlg[open] #ai-from-sample');
   await p7.waitForSelector('#paste-step-content.current');
-  ok((await text(p7, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作る教材のことを書いてください。'
+  ok((await text(p7, '#ai-from-sample')) === 'サンプル「漢文を読む――返り点から書き下し文へ」から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作るものの内容を書いてください。'
     && (await answer(p7, 'kind')) === '使う場面：授業・研修／授業（小・中・高）' && await badgeOn(p7, 'kind') && (await p7.inputValue('#paste-theme')) === 'kokugo' && (await p7.inputValue('#paste-title')) === ''
     && !(await p7.$('#paste-from-sample')) && await p7.evaluate(() => document.activeElement && document.activeElement.id === 'paste-title'),
     'F7: choosing 漢文 enters the from-sample path in the same state as the sample card’s button (① ③ from the sample, ② open and empty; no third entry inside it)');

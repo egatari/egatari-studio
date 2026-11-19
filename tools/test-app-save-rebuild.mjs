@@ -49,9 +49,9 @@ const HOST = `http://127.0.0.1:${srv.address().port}/`;
 
 // 画面の言葉（app/i18n.js と同じもの。変えたらここも）
 const WORDS = {
-  ja: { theme: 'テーマを替えたので、スライドを新しいテーマで再ビルドして保存します。再ビルドしない保存（台本・音声・秒数の所だけの書き換え）では、テーマは変わりません。',
-    html: 'スライドの HTML を直したので', look: '見え方が変わることがあります' },
-  en: { theme: 'You changed the theme, so the slides are rebuilt with the new theme and saved. Saving without rebuilding (rewriting only script, audio and timing) would not change the theme.',
+  ja: { theme: 'テーマを変更したので、スライドを新しいテーマで再ビルドして保存します。再ビルドしない保存（台本・音声・秒数の所だけの書き換え）では、テーマは変わりません。',
+    html: 'スライドの HTML を編集したので', look: '見え方が変わることがあります' },
+  en: { theme: 'You changed the theme (Change theme…), so the slides are rebuilt with the new theme and saved. Saving without rebuilding (rewriting only script, audio and timing) would not change the theme.',
     html: 'You edited the slides HTML', look: 'may look different' },
 };
 

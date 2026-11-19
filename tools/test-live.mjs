@@ -113,10 +113,10 @@ ok(sv('activities')(L0.activities), 'schema: the activities shape is the protoco
   ok(stepLabel('s-cjatth:2', slides, 'ja') === '4 枚目『XML の壁』・ステップ 3' && stepLabel('s-cjatth:concl', slides, 'en') === "Slide 4 'XML の壁', conclusion", 'label: later steps and the conclusion step');
   ok(stepLabel('s-a:0', slides, 'ja') === '2 枚目『s-a』・ステップ 1', 'label: a slide without a heading uses its key');
   { const l = stepLabel('s-long:1', slides, 'ja'), h = /『(.*)』/.exec(l)[1]; ok([...h].length === 24 && h.endsWith('…') && l.endsWith('・ステップ 2'), `label: a long heading is cut to about 24 characters (${l})`); }
-  ok(stepLabel('*', slides, 'ja') === '教材全体' && stepLabel('*', slides, 'en') === 'whole lesson', 'label: * is the whole lesson');
+  ok(stepLabel('*', slides, 'ja') === 'ファイル全体' && stepLabel('*', slides, 'en') === 'whole file', 'label: * is the whole file');
   ok(stepLabel('s-gone:1', slides, 'ja') === 's-gone · ステップ 2' && stepFallback('s-cjatth:0', 'en') === 's-cjatth · step 1', 'label: an unknown slide falls back to the key, "s-xxx · ステップ 1"');
   ok(stepText('s-cjatth:0', '', 'ja') === 's-cjatth · ステップ 1' && stepText('s-cjatth:0', 'X', 'ja') === 'X', 'stepText: the label, or the formatted key for older activities');
-  const withLabel = (label) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa', label: '教材全体' }], 's-cjatth:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'], label }] } });
+  const withLabel = (label) => ({ ...L0, activities: { '*': [{ id: 'qa', kind: 'qa', label: 'ファイル全体' }], 's-cjatth:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'], label }] } });
   ok(LP.validate(withLabel('x'.repeat(80)), { key: true }).length === 0 && sv('activities')(withLabel('x'.repeat(80)).activities), 'validate: a label of up to 80 characters is allowed (policy and vendored schema)');
   ok(LP.validate(withLabel('x'.repeat(81)), { key: true }).some((e) => /label/.test(e)) && !sv('activities')(withLabel('x'.repeat(81)).activities) && LP.validate(withLabel(3), { key: true }).some((e) => /label/.test(e)), 'validate: a longer or non-string label is refused');
   ok(LP.validate({ ...L0, activities: { 's:0': [{ id: 'p', kind: 'poll', prompt: 'p', choices: ['a', 'b'] }] } }, { key: true }).length === 0, 'validate: activities without a label are still valid'); }
@@ -290,7 +290,7 @@ console.log('no network');
   quiet(o.net, 'after the window'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html'])); await sleep(1500);
   const t = await o.p.$eval('#live-pane .lv-notice', (e) => e.textContent);
-  ok(t.includes(host) && /のライブでホストに質問や投票を送れます/.test(t), `before Join: the notice names the endpoint ("${t}")`);
+  ok(t.includes(host) && /のライブでホストに質問や投票を送信できます/.test(t), `before Join: the notice names the endpoint ("${t}")`);
   ok(await o.p.$eval('#live-pane .lv-join', (b) => !b.disabled && b.textContent === '参加する'), 'before Join: the Join button is there');
   quiet(o.net, 'before Join is clicked'); await o.close(); }
 { fake.reset(); const o = await open(fileUrl(files['live.html']) + '?mode=video'); await sleep(800);
@@ -370,7 +370,7 @@ const sent = () => fake.messages.slice();
   const key = (await st(o.p)).step;
   await o.p.fill('#live-pane textarea', '勾配が消えるのはなぜですか？');
   await o.p.click('#live-pane .lv-send');
-  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '質問を送りました'), 'ask → ack: "question sent" in the live region');
+  ok(await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === '質問を送信しました'), 'ask → ack: "question sent" in the live region');
   const askM = fake.messages.find((m) => m.t === 'ask');
   ok(askM && askM.activity === 'qa' && askM.step === key && askM.text === '勾配が消えるのはなぜですか？', `ask: the step key is the one on screen when sent (${askM && askM.step})`);
   ok(await o.p.$eval('#live-pane textarea', (e) => e.value === ''), 'ask: the box is cleared after the ack');
@@ -637,7 +637,7 @@ async function drawCircle(p, cx, cy, r) {
   await o.p.keyboard.press('Escape');
   await o.p.evaluate(() => document.activeElement && document.activeElement.blur());
   await o.p.keyboard.press('ArrowRight');
-  ok(await until(async () => (await st(o.p)).strokes === 0) && await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'ステップが変わったので、囲んだところを消しました'), 'a step change clears the circle and says so');
+  ok(await until(async () => (await st(o.p)).strokes === 0) && await until(async () => (await o.p.$eval('#live-pane-status', (e) => e.textContent)) === 'ステップが変わったので、囲んだところを削除しました'), 'a step change clears the circle and says so');
   // 「わからない」：押す・もう一度押すと取り消す。ステップごと
   const n0 = fake.messages.length;
   const key2 = (await st(o.p)).step;

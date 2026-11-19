@@ -776,8 +776,8 @@ if (RA){
 function press(k, shift){ document.dispatchEvent(new KeyboardEvent("keydown", {key: k, shiftKey: !!shift, bubbles: true, cancelable: true})); }
 var JA = DECK.ja !== false;
 var TIP = JA
-  ? {prev: "前へ", next: "次へ", auto: "再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消す", over: "スライド一覧", view: "表示",
-     lect: "先のステップを薄く見せる", cap: "字幕", mute: "効果音を消す", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
+  ? {prev: "前へ", next: "次へ", auto: "再生", laser: "レーザーポインター", pen: "ペン", vpen: "消えるペン", clear: "書き込みを消去", over: "スライド一覧", view: "表示",
+     lect: "先のステップを薄く見せる", cap: "字幕", mute: "効果音をミュート", read: "読み上げで聞く（音声ファイルにはなりません）", pres: "発表者ビュー", full: "全画面", help: "キーの一覧", ink: "マーカー"}
   : {prev: "Previous", next: "Next", auto: "Play", laser: "Laser pointer", pen: "Pen", vpen: "Fading pen", clear: "Clear ink", over: "Slide overview", view: "View",
      lect: "Show later steps faintly", cap: "Captions", mute: "Mute sound effects", read: "Listen with read-aloud (not saved as audio)", pres: "Presenter view", full: "Fullscreen", help: "Keyboard shortcuts", ink: "Marker"};
 // 再生（Player P1）：前へ・再生 / 一時停止・次へ・再生速度。帯の前へ・次へは再生の状態を保つ（DECK.playStep。キーの ← → は発表者の送りで、再生を止める）。
@@ -1044,7 +1044,7 @@ function helpHtml(){
       row(K("?"), j ? "このキーの一覧" : "This help")]))),
     sec(j ? "ツール" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),
-      row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消す（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
+      row(K("Shift") + "+" + K("d"), j ? "ペンの色" : "Pen color"), row(K("Backspace"), j ? "ペンのとき：書き込みを消去（Shift で全部）" : "With a pen: clear ink (Shift: all slides)"),
       row(K("Esc"), j ? "ツールを解除" : "Exit tool")])
   ];
   if (isDev()) cols.push(sec(j ? "開発サーバー" : "Dev server", [
@@ -1055,7 +1055,7 @@ function helpHtml(){
   var fb = DECK.feedbackUrl && DECK.feedbackUrl();
   var about = aboutHtml();
   var fbHtml = fb ? '<div class="dt-fb"><a href="' + fb.replace(/&/g, "&amp;").replace(/"/g, "&quot;") + '" target="_blank" rel="noopener">' +
-    (j ? "フィードバックを送る" : "Send feedback") + "</a>" +
+    (j ? "フィードバックを送信" : "Send feedback") + "</a>" +
     (DECK.VERSION && !about ? '<span class="dt-ver">v' + DECK.VERSION + "</span>" : "") + "</div>" : "";
   return '<div class="dt-card"><div class="dt-cols">' + cols.join("") + '</div><div class="dt-foot">' +
     (j ? "ツールバーのボタンでも同じ操作ができます · ? / Esc で閉じる" : "The buttons in the toolbar do the same · ? / Esc to close") + "</div>" +
@@ -1088,7 +1088,7 @@ function rightsHtml(){
   if (creators.length) rows.push([j ? "作成者" : "Created by", creators.join(j ? "、" : ", ")]);
   edits.forEach(function(x){
     var by = str(x.by).slice(0, 300), note = str(x.note).slice(0, 300);
-    var what = by || (j ? "元の教材から編集されています" : "Edited from the original lesson");
+    var what = by || (j ? "元のファイルから編集されています" : "Edited from the original file");
     rows.push([j ? "編集" : by ? "Edited by" : "Edited", what + (note ? (j ? "（" + note + "）" : " (" + note + ")") : "")]);
   });
   if (copyright) rows.push([j ? "著作権" : "Copyright", copyright]);

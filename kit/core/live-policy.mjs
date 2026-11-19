@@ -80,9 +80,9 @@ export function LivePolicy(opts) {
     if (!parseEndpoint(live.endpoint)) add('endpoint', 'live.endpoint', {}, 'live.endpoint: not an https origin (e.g. https://live.example.org)');
     if (!str(live.room) || !RE.room.test(live.room)) add('room', 'live.room', {}, 'live.room: not a room id (r- and 8 characters a-z, 2-7)');
     if (wantKey) { if (!str(live.key) || !RE.key.test(live.key)) add('key', 'live.key', {}, 'live.key: not a key (22 or more characters A-Z a-z 0-9 _ -)'); }
-    else if (own(live, 'key')) add('keyStored', 'live.key', {}, 'live.key: the key must not be stored in the lesson (it goes only into the exported file)');
+    else if (own(live, 'key')) add('keyStored', 'live.key', {}, 'live.key: the key must not be stored in the file (it goes only into the exported file)');
     if (own(live, 'sourceSha256')) {
-      if (!wantKey) add('unknownMember', 'live.sourceSha256', { member: 'sourceSha256' }, 'live.sourceSha256: only in the exported file (the lesson has its own sourceSha256)');
+      if (!wantKey) add('unknownMember', 'live.sourceSha256', { member: 'sourceSha256' }, 'live.sourceSha256: only in the exported file (the file has its own sourceSha256)');
       else if (!str(live.sourceSha256) || !RE.sha256.test(live.sourceSha256)) add('sourceSha256', 'live.sourceSha256', {}, 'live.sourceSha256: not 64 lowercase hex digits');
     }
     var w = live.window;

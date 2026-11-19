@@ -1640,7 +1640,7 @@ async function openPortableNow(input) {
   const handle = input.handle || null;
   try {
     const file = input.file || (handle ? await handle.getFile() : null);
-    name = input.name || (file && file.name) || 'lesson' + FORMAT.FILE_EXT;
+    name = input.name || (file && file.name) || 'untitled' + FORMAT.FILE_EXT;
     // 大きさは読む前に（File.size。読んでから比べると、断るファイルでもまず全部を確保してしまう。§11）
     const size = input.bytes ? input.bytes.byteLength : file ? file.size : 0;
     if (!(size <= LIMITS.fileBytes)) {
@@ -1690,7 +1690,7 @@ async function openPortableNow(input) {
     try {
       const pr = await builder.build(pws, await pws.list(), r.index.entry, { dev: true }, reasonsPrefix(), { timeout: buildTimeout() });
       for (const x of pr.reasons) if (!reasons.includes(x)) reasons.push(x);
-    } catch (e) { if (e.code === 'build-timeout') throw e; reasons.push('cannot build the lesson to check it: ' + String(e && e.message || e).slice(0, 120)); }
+    } catch (e) { if (e.code === 'build-timeout') throw e; reasons.push('cannot build the file to check it: ' + String(e && e.message || e).slice(0, 120)); }
   } catch (e) {
     status('');
     await ask({ title: T.cannotOpenFile(name), kind: 'warn', body: refusal(e.code || 'error', String(e.message || e)), buttons: [{ id: 'ok', label: T.ok, pri: true }] });

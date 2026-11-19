@@ -1,9 +1,9 @@
 <!-- i18n: pair=with-claude.ja.md sha256=53dece5591077b57 -->
-# Making Egatari lessons with Claude Code or Cowork
+# Making Egatari files with Claude Code or Cowork
 
 English | [日本語](with-claude.ja.md)
 
-Ask Claude for a lesson in plain words. Claude writes the script (the script, `narration.md`) and the slides with their **steps** and **parts**, runs the quality checks, and gives you a folder you can open in Egatari Studio.
+Ask Claude in plain words for what you want to make. Claude writes the script (the script, `narration.md`) and the slides with their **steps** and **parts**, runs the quality checks, and gives you a folder you can open in Egatari Studio.
 
 ## What you get
 
@@ -28,11 +28,11 @@ Then turn on auto-update: `/plugin` → Marketplaces → egatari → Enable auto
 
 The first two lines are enough for authoring alone. Studio needs no `npm ci`: the studio skill starts with `npx egatari@0.6.x doctor`, which checks Node.js, a browser, uv and ffmpeg and shows how to install what is missing. Update with `/plugin update egatari@egatari` and `/plugin update egatari-studio@egatari`, or run `npx egatari@0.6.x skills update` (it also updates Codex) and restart the tool. Codex: see "Using it with Codex" in the README.
 
-### Chat Claude and Cowork
+### claude.ai and Cowork
 
 In Studio, choose **Download the AI skill** beside **Copy the instructions** in **New…**, or in **Help (?)**. Upload the downloaded `egatari-make-<version>-ja.zip` or `egatari-make-<version>-en.zip` to install only make. Studio offers the ZIP for its current UI language and running version, served from its own site. The single file offline editor carries both languages too. Developers can also create a ZIP with `node tools/make-llm-guide.mjs --zip out/release --lang ja` (or `--lang en`). Its `make/SKILL.md` and references come from the same generator as `plugins/egatari/skills/make/`.
 
-No commands are needed: paste the two output blocks into Studio. If Studio's pack version differs from the skill's version, add it again with **Download the AI skill** in Studio. A chat skill does not update by itself, so add it again whenever Studio is updated: the skill's instructions and quality checks change with each Studio release.
+No commands are needed: paste the two code blocks into Studio. If Studio's instructions version differs from the skill's version, add it again with **Download the AI skill** in Studio. A claude.ai skill does not update by itself, so add it again whenever Studio is updated: the skill's instructions and quality checks change with each Studio release.
 
 When authoring is done, use the studio skill for checks and builds if egatari-studio is installed. Otherwise, open the working folder at <https://studio.egatari.org/> in Chrome or Edge. On Mac, Safari uses the single file (.ega.html) path.
 

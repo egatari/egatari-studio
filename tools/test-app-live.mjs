@@ -73,14 +73,14 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       const onAny = (r) => { if (!/^(data|blob|about):/.test(r.url())) all.push(r.url()); };
       ctx.on('request', onAny);
       ok(!(await page.$eval('#live-manual', (d) => d.open)) && (await page.textContent('#live-panel')).includes('ホストのページで先にライブを作った場合（前からの方法）'), 'one-way: the earlier way is folded away (secondary)');
-      ok(/まだライブ ID と参加コードがありません/.test(await page.textContent('#live-ids')) && /文字列は、① でライブ ID と参加コードをこの画面で作ると出ます/.test(await page.textContent('#live-setup-note')), 'one-way: before making ids, the panel says how to get the string');
+      ok(/まだライブ ID と参加コードがありません/.test(await page.textContent('#live-ids')) && /文字列は、① でライブ ID と参加コードをここで作ると表示されます/.test(await page.textContent('#live-setup-note')), 'one-way: before making ids, the panel says how to get the string');
       const lead = await page.textContent('#live-panel .lead');
-      ok(/ライブ ID と参加コードをこの画面で作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ エクスポートする/.test(lead) && /インターネットに接続しません/.test(lead), 'one-way: the lead explains the single paste in plain Japanese');
+      ok(/ライブ ID と参加コードをここで作る → ② ライブの時間と質問・投票を決める → ③ できた文字列をコピーして、ホストのページに 1 回だけ貼る → ④ エクスポートする/.test(lead) && /インターネットに接続しません/.test(lead), 'one-way: the lead explains the single paste in plain Japanese');
       await page.click('#live-make');
       await page.waitForFunction(() => /^r-[a-z2-7]{8}$/.test(document.querySelector('#live-room').value));
       const room = await page.inputValue('#live-room'), key = await page.inputValue('#live-key');
-      ok(/^[A-Za-z0-9_-]{22}$/.test(key) && (await page.textContent('#live-ids')).includes(`ライブ ID ${room}（この画面で作りました`), `one-way: the panel made a Live ID (${room}) and a 22-character join code`);
-      ok(await page.$eval('#live-setup', (e) => e.hidden) && /「エクスポートする前に直すこと」がなくなると/.test(await page.textContent('#live-setup-note')) && await page.$eval('#live-setup-copy', (b) => b.disabled), 'one-way: no string while something is missing (the live time)');
+      ok(/^[A-Za-z0-9_-]{22}$/.test(key) && (await page.textContent('#live-ids')).includes(`ライブ ID ${room}（ここで作りました`), `one-way: the panel made a Live ID (${room}) and a 22-character join code`);
+      ok(await page.$eval('#live-setup', (e) => e.hidden) && /「エクスポートする前に修正すること」がなくなると/.test(await page.textContent('#live-setup-note')) && await page.$eval('#live-setup-copy', (b) => b.disabled), 'one-way: no string while something is missing (the live time)');
       const f1 = new Date(Date.now() + 3600e3), t1 = new Date(Date.now() + 2 * 3600e3);
       await setWindow(f1, t1);
       const str = await page.inputValue('#live-setup');
@@ -176,8 +176,8 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.click('#live-read');
     ok(await page.inputValue('#live-room') === cr.room && await page.inputValue('#live-key') === cr.key && (await page.inputValue('#live-from')).length === 16, 'live panel: the teacher page\'s copy block fills room, key and window');
     ok(await page.$eval('#live-manual', (d) => d.open) && !(await page.$('#live-setup')) && (await page.textContent('#live-ids')).includes(`ライブ ID ${cr.room}（ホストのページで作ったライブの設定を使っています`), 'live panel: with settings from the host page there is no string to paste, and the earlier way stays open');
-    ok(await page.isChecked('#live-qa'), 'live panel: Q&A for the whole lesson is on by default');
-    ok(await page.isChecked('#live-confused') && /わからない/.test(await page.textContent('label:has(#live-confused)')), 'live panel: the one-tap “I don\'t follow” (whole lesson) is on by default');
+    ok(await page.isChecked('#live-qa'), 'live panel: Q&A for the whole file is on by default');
+    ok(await page.isChecked('#live-confused') && /わからない/.test(await page.textContent('label:has(#live-confused)')), 'live panel: the one-tap “I don\'t follow” (whole file) is on by default');
     // 投票：プレビューの段階に
     await frame.evaluate(() => DECK.go(1, 1, false));
     await page.waitForFunction(() => true);
@@ -223,7 +223,7 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.waitForTimeout(300);
     ok(await page.isVisible('#dlg[open] #live-panel') && /選択肢 3/.test(await page.textContent('#toast')), 'live: Export… with something to fix keeps the dialog open and says what');
     // 直すことは画面の言葉で（validate の code から。英語の開発者向けの文を出さない）
-    { const t = await page.textContent('#live-problems'); ok(/投票 p1：選択肢 3 を入れてください（100 字まで）/.test(t) && !/live\.activities|characters/.test(t), `live panel: the problem is in plain Japanese ("${t}")`); }
+    { const t = await page.textContent('#live-problems'); ok(/投票 p1：選択肢 3 を入力してください（100 字まで）/.test(t) && !/live\.activities|characters/.test(t), `live panel: the problem is in plain Japanese ("${t}")`); }
     await page.$eval('#live-problem-box', (e) => e.scrollIntoView({ block: 'center' })); await shot(page, 'live-panel-problems.png');
     await page.fill('#live-poll-0-c2', '変わらない');
     // 教材に残す（鍵なし）

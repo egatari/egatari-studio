@@ -1,18 +1,18 @@
 <!-- i18n: pair=template.ja.md sha256=7168113161a920ab -->
 {{GENERATED}}
-# Authoring an Egatari lesson with a chat AI
+# Writing Egatari slides and script with an AI chatbot
 
 English | [日本語](authoring-with-llms.ja.md)
 
-For a free chat AI, choose the light instructions in the editor’s “New” and copy them; they are a lighter version.
+For a free AI chatbot, choose the light instructions in the editor’s “New” and copy them; they are a lighter version.
 
-**For people.** This is an instruction pack for chat AIs (claude.ai, Gemini, ChatGPT, …) that writes a first draft of an [Egatari](https://github.com/egatari/egatari-spec) lesson (Egatari is an open file format; Egatari Studio is the editor): HTML slides with step-by-step reveals and a spoken script. No install and no coding tool needed.
+**For people.** This is an instruction pack for an AI chatbot such as ChatGPT, Gemini or Claude that writes a first draft of an [Egatari](https://github.com/egatari/egatari-spec) file (Egatari is a format that bundles slides, script, audio and a book into a single HTML file; Egatari Studio is the editor): HTML slides with step-by-step reveals and a spoken script. No install and no AI agent needed.
 
 1. Open a new chat and paste **everything from “Instructions for the AI” to the end**, followed by the part set packs you need (below), and end with the **What I want** section filled in (title, audience, length, language, speakers, other wishes; one narrator by default). The editor assembles the pack from your answers to a few questions and copies it, with “What I want” at the end (**New… → answer the four questions → Copy the instructions**; it puts what you wrote at the end, so you can send it even when the chat turns the long paste into an attachment).
 2. The AI’s output has two grey boxes (code blocks). Copy each with the copy button at its top right, paste them into the two fields of step 5 of that dialog in Egatari Studio (slides and script), and press **Create** (if you copied the whole output, paste it into either field and it is split in two). The editor gives every slide a stable id, runs the quality check and opens it.
-3. Fix the findings of the quality check, or press **Copy a fix request for your AI** in the quality check panel and paste that into the same chat; paste the AI’s output in step 3 of **Revise…** and press **Replace**. To add slides later, use **Insert slide… → Have a chat AI write it**.
+3. Fix the findings of the quality check, or press **Copy a fix request for your AI** in the quality check panel and paste that into the same chat; paste the AI’s output in step 3 of **Revise…** and press **Replace**. To insert slides later, use **Insert slide… → Have an AI chatbot write it…**.
 
-**Paste it each time, or register it once.** Pasting the pack at the start of each chat works in every chat AI and always uses the current pack; this is the default. If you write lessons often, you can keep the pack in the chat AI instead (copy it from the editor, or save this file and the part set packs you need as text files):
+**Paste it each time, or register it once.** Pasting the pack at the start of each chat works in every AI chatbot and always uses the current pack; this is the default. If you use it often, you can keep the pack in the AI chatbot instead (copy it from the editor, or save this file and the part set packs you need as text files):
 
 - **claude.ai**: make a Project and put the pack in its instructions, or add it as a project file; every chat in the project uses it. Where skills are available, a skill can carry the pack too.
 - **ChatGPT**: a Project (instructions or files), or a custom GPT. The pack is longer than a custom GPT's instruction box allows, so upload it as a Knowledge file and write “Follow the attached Egatari instruction pack exactly” in the instructions.
@@ -34,11 +34,11 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 Pack version: `{{PACK_VERSION}}`
 
-You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
+You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
 **Before you start (the most common failures):**
 
-- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep the lesson short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).
+- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep it short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).
 - **Sizes on the 1280×720 slide** (the quality checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and parts, is at least 24 px.**
 - **Charts and figures:** parts draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the part, not the text. A part of 380 px leaves room for one short line; with two lines, use 330 px.
 - **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox="0 0 560 320" width="560" height="320">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a part when one fits.
@@ -46,8 +46,8 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 ## 1. Output format
 
 - **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. No files, canvas or attachments: write both blocks in your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the lesson would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).
-- **R-outline** When the request asks for an **outline only** (a long lesson made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
-- **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given a lesson that already has ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
+- **R-outline** When the request asks for an **outline only** (a long file made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
+- **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given slides that already have ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
 
 ## 2. deck.html
 
@@ -59,7 +59,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lesson title</title>
+<title>Title</title>
 </head>
 <body>
 <div id="stage">
@@ -70,7 +70,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 </html>
 ```
 
-- `lang`: `en`, `ja`, … (the language of the lesson). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.
+- `lang`: `en`, `ja`, … (the language of the slides and script). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.
 - No `<script>` except part data (§2.6), no `<link>`. A `<style>` block is allowed only for layout (sizes, gaps), never colors.
 
 ### 2.2 Slides
@@ -120,18 +120,18 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 - **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.
 - **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.
 - **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a part of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes.
-- **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole lesson (`、。` or `，．`). English slides: short phrases, sentence case.
+- **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole file (`、。` or `，．`). English slides: short phrases, sentence case.
 
 ## 3. Part catalog
 
-Standard parts fit any lesson; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
+Standard parts fit any file; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 {{CATALOG}}
 
 ## 4. narration.md
 
 ```markdown
-# Script: <lesson title>
+# Script: <title>
 
 ## The decay law
 [0] Here is the decay law. We follow how many atoms are left.
@@ -160,7 +160,7 @@ When the user pastes a **fix request** (a list of findings with the ids of the s
 
 ## 6. Worked example
 
-A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Some part sets end with an example of their own.
+A small example, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Some part sets end with an example of their own.
 
 {{WORKED common "Common (English, default theme, marks<!--part:m-flow-->, m-flow<!--/part-->)"}}
 
@@ -168,7 +168,7 @@ A small lesson, fictional, showing the structure only (do not copy its content).
 
 *(Fill in A or B and delete the other; delete fields you leave empty.)*
 
-**A. Make a new lesson**
+**A. Make a new file**
 
 - Title (used as is on the cover):
 - Audience:
@@ -179,7 +179,7 @@ A small lesson, fictional, showing the structure only (do not copy its content).
 
 **B. From the material and discussion in this chat**
 
-Make the lesson from the material given in this chat and what we have discussed so far.
+Make the slides and script from the material given in this chat and what we have discussed so far.
 
 - Title (used as is on the cover):
 - Audience:

@@ -400,7 +400,7 @@ try {
     await page.waitForSelector('#dev-narr .dev-turn .dv-text');
     const nta = page.locator('#dev-narr .dev-turn .dv-text').first();
     await nta.fill('アプリから書き直した口述原稿です。');
-    await page.click('#dev-narr button:has-text("発言を足す")');
+    await page.click('#dev-narr button:has-text("発言を追加")');
     await page.locator('#dev-narr .dev-turn .dv-text').last().fill('足した発言です。');
     await shot(page, 'narration.png');
     ok(await page.evaluate(() => document.getElementById('preview').inert && window.__APP_TEST.ui().editing), 'narration: the preview is inert while a narration field is being edited (unsaved)');
@@ -547,7 +547,7 @@ try {
       await opfs.write('deck.html', scoreDeck);
       await page.waitForSelector('#errbox:not([hidden])', { timeout: scaled(15000) });
       const et = await page.textContent('#errtext');
-      ok(et.includes('<m-score> は、この教材が使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
+      ok(et.includes('<m-score> は、このファイルが使うパーツライブラリ 1.x（既定）にないパーツです') && et.includes('egatari.json に "componentsCatalogue": "2" と書いて') && !/\bat \S+:\d+/.test(et),
         'catalogue: a 1.x lesson using <m-score> fails to build with the same message as build and check, in the editor\'s language: ' + et.slice(0, 120));
       ok(await page.isVisible('#err-fix') && (await page.textContent('#err-fix')) === 'パーツライブラリ 2 を使う', 'catalogue: the error offers 「パーツライブラリ 2 を使う」 (a working folder whose only problem is parts library 2)');
       await shot(page, 'catalogue-error.png');
@@ -763,11 +763,11 @@ try {
       // コメントの欄：1 ファイルではコメントは保存されない（閉じると消える）と知らせる
       await page.click('#b-comments');
       await page.waitForSelector('#dev-comments');
-      ok((await page.textContent('#dev-comments-volatile')) === 'Egatari ファイルではコメントは保存されません（閉じると消えます）。残すなら作業フォルダで', 'portable: the comments pane says notes are not saved in a single file');
+      ok((await page.textContent('#dev-comments-volatile')) === 'Egatari ファイルではコメントは保存されません（閉じると失われます）。保存するなら作業フォルダで', 'portable: the comments pane says notes are not saved in a single file');
       await page.click('#b-comments');
       // 作業フォルダから書き出した写し（exportedFrom、format spec §3.1）：ここで直してもフォルダに入らないと知らせ、「作業フォルダに書き出す…」のボタンを出す（編集は断らない。下で編集して保存する）
       ok(pmin.index.exportedFrom && pmin.index.exportedFrom.sourceSha256 === pmin.index.sourceSha256, 'exportedFrom: the CLI folder export carries the marker with its own sourceSha256');
-      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('このファイルは、作業フォルダ（スライドと台本のファイルを入れたフォルダ）からエクスポートしたものです。ここで直しても、作業フォルダのファイルは変わりません。作業フォルダを持っていなければ、気にせずこのまま直して保存できます。')
+      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).startsWith('このファイルは、作業フォルダ（スライドと台本のファイルを入れたフォルダ）からエクスポートしたものです。ここで編集しても、作業フォルダのファイルは変わりません。作業フォルダを持っていなければ、気にせずこのまま編集して保存できます。')
         && !(await page.textContent('#notice-exported')).includes('エクスポートしたあと') && await page.isVisible('#notice-exported #b-exported-unpack') && (await page.textContent('#b-exported-unpack')) === '作業フォルダにエクスポート…', 'exportedFrom: opening the exported copy shows the notice (ja) with the "Export working folder…" button (the menu item\'s name); not edited since export');
       await shot(page, 'portable-exported-notice.png');
       await clickMenuOpen(page, '#b-filemenu');
@@ -815,7 +815,7 @@ try {
       const aRead = await readPortable(new Uint8Array(aBuf));
       ok(aRead.sourceMatches && aRead.warnings.length === 0 && aRead.docId === pmin.index.docId && !aRead.index.metadata.derivedFrom, 'tier A: the saved file reads back cleanly, same docId, no derivedFrom');
       ok(JSON.stringify(aRead.index.exportedFrom) === JSON.stringify(pmin.index.exportedFrom) && aRead.index.sourceSha256 !== aRead.index.exportedFrom.sourceSha256, 'exportedFrom: the tier A save keeps the marker unchanged (the copy\'s sourceSha256 now differs from it)');
-      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで直しても、作業フォルダのファイルは変わりません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、このファイルで直した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
+      ok(await page.isVisible('#notice-exported') && (await page.textContent('#notice-exported')).includes('ここで編集しても、作業フォルダのファイルは変わりません。') && (await page.textContent('#notice-exported')).includes('エクスポートしたあと、このファイルで編集した所があります。'), 'exportedFrom: after the save the notice says the copy was edited since export');
       fs.writeFileSync(path.join(PW, 'exported-edited' + FORMAT.FILE_EXT), aBuf);   // 英語の画面（下の 11.）で開く
       ok(ps0.portable.stale.includes(`${K('何を最小化するか')}:0`) && JSON.stringify(aRead.index.audio[`${K('何を最小化するか')}:0`]) === JSON.stringify(pmin.index.audio[`${K('何を最小化するか')}:0`]), 'tier A: the edited step\'s audio is kept as is and shown as stale');
       await shot(page, 'portable-tier-a-saved.png');
@@ -863,7 +863,7 @@ try {
       await clickCommand(page, '#b-save');
       await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(30000) });
       ok((await page.textContent('#tier-b-warn')).includes('編集していないスライドも、見え方が変わることがあります'), 'tier B: warns before saving that slides you did not edit may look different');
-      ok((await page.textContent('#dlg-body')).includes('スライドの HTML を直したので'), 'tier B: says why it cannot save without rebuilding');
+      ok((await page.textContent('#dlg-body')).includes('スライドの HTML を編集したので'), 'tier B: says why it cannot save without rebuilding');
       await shot(page, 'portable-tier-b-warning.png');
       await clickDlg(page, '#dlg-cancel');
       await page.waitForTimeout(200);
@@ -1599,7 +1599,7 @@ try {
             ok(m === 'lecture' && (await pt.getAttribute('#b-lecturemode', 'aria-checked')) === 'true' && (await pt.getAttribute('#b-videomode', 'aria-checked')) === 'false' && (await pt.getAttribute('#b-full', 'aria-checked')) === 'true', `preview (${lang}): 先のステップを薄く見せる turns the option on (internal mode lecture); the slide show stays the chosen mode`);
             await clickCommand(pt, '#b-lecturemode');
           }
-          ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.filter((x) => !x.hidden).map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確かめる (f)', '動画で確かめる', '先のステップを薄く見せる (l)', '発表者ビューで確かめる (p)']), `preview (${lang}): the Preview ▾ labels`);
+          ok(JSON.stringify(await pt.$$eval('#m-preview [role^=menuitem]', (xs) => xs.filter((x) => !x.hidden).map((x) => x.textContent))) === JSON.stringify(lang === 'en' ? ['Check as a slide show (f)', 'Check as a video', 'Show later steps faintly (l)', 'Check in presenter view (p)'] : ['スライドショーで確認 (f)', '動画で確認', '先のステップを薄く見せる (l)', '発表者ビューで確認 (p)']), `preview (${lang}): the Preview ▾ labels`);
         }
         // 狭い幅では 2 行に折り返し、はみ出さない
         await pt.setViewportSize({ width: 900, height: 860 });
@@ -2001,7 +2001,7 @@ try {
         if (SHOTS) await po.screenshot({ path: path.join(SHOTS, 'theme-zip-dialog.png') });
         await po.click('#theme-mine li[data-theme="mytml"] .theme-delete');
         await po.waitForSelector('#dlg[open] #dlg-delete');
-        ok((await po.textContent('#theme-delete-msg')) === '「mytml」をこのブラウザから削除します。読み込んだ ZIP ファイルは残ります。', 'theme zip: Delete asks first and says the ZIP file is kept');
+        ok((await po.textContent('#theme-delete-msg')) === '「mytml」をこのブラウザから削除します。読み込んだ ZIP ファイルは削除されません。', 'theme zip: Delete asks first and says the ZIP file is kept');
         await clickDlg(po, '#dlg-delete');
         await po.waitForFunction(() => JSON.stringify(window.__APP_TEST.themeFolder().mine) === '["evil"]', null, { timeout: scaled(30000) });
         await po.waitForSelector('#dlg[open] #theme-mine li[data-theme="evil"]');
@@ -2167,10 +2167,10 @@ try {
       await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
       await ps.goto(BASE);
       await ps.waitForSelector('#drop');
-      ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「新規作成…」（チャットの AI に書いてもらった教材を貼ると') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成…: paste what a chat AI wrote); 新規作成… stays on');
+      ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「新規作成…」（対話型AIで作成したものを貼り付けると') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成…: paste what a chat AI wrote); 新規作成… stays on');
       await ps.click('#w-new');
       await ps.waitForSelector('#dlg[open] #paste-step-kind');
-      ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')), 'safari: 新規作成… opens the chat AI dialog (as everywhere)');
+      ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')), 'safari: 新規作成… opens the AI chatbot dialog (as everywhere)');
       ok(JSON.stringify(await ps.$$eval('#paste-theme option', (xs) => xs.map((x) => x.textContent))) === JSON.stringify(['藍', '墨', '国語', '常盤', '江戸紫', '焦茶', '浅葱', '弁柄', 'オリジナル', 'テーマを読み込む…']), 'safari: the theme select offers 「テーマを読み込む…」');
       await toThemeQuestion(ps);
       await ps.selectOption('#paste-theme', { label: 'テーマを読み込む…' });

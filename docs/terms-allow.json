@@ -74,7 +74,14 @@
     "bar",
     "card",
     "export-script",
-    "backup"
+    "backup",
+    "delete",
+    "discard",
+    "send",
+    "draft-autosave",
+    "made-with",
+    "create",
+    "generative-ai"
   ],
   "allow": [
     {
@@ -254,21 +261,15 @@
       "reason": "Live server close reason 4429, not a quality-check finding."
     },
     {
-      "file": "docs/editor.ja.md",
-      "pattern": "圧縮 \\(zip 形式\\) フォルダー",
-      "term": "zip-file",
-      "reason": "Windows Explorer's own menu label."
-    },
-    {
       "file": "**",
       "pattern": "補足資料|元の資料|PDF などの資料|その資料|渡した資料|発表資料",
-      "term": "lesson",
+      "term": "egatari-file",
       "reason": "資料 meaning source material or presentation material (attachment role, the user's own documents, a trigger phrase), not the lesson."
     },
     {
       "file": "docs/threat-model.ja.md",
       "pattern": "「Trust model: a deck is code」",
-      "term": "lesson",
+      "term": "egatari-file",
       "reason": "Verbatim title of a SECURITY.md section."
     },
     {
@@ -416,7 +417,7 @@
     },
     {
       "file": "kit/live.js",
-      "pattern": "送りません|\\bsent\\b",
+      "pattern": "送信しません|\\bsent\\b",
       "term": "no-upload",
       "reason": "Live: what the participant's device really sends to the host (a question, a vote) and what it does not; a send, not an upload claim."
     },
@@ -428,9 +429,9 @@
     },
     {
       "file": "app/i18n.js",
-      "pattern": "Sample lessons",
+      "pattern": "Samples made with Egatari|A sample in Japanese",
       "term": "voice-sample",
-      "reason": "The glossary term sample (Samples) in the examples lead, not a voice sample."
+      "reason": "The glossary term sample (Samples) in the examples lead and the language badge of a sample tile, not a voice sample."
     },
     {
       "file": "app/i18n.js",
@@ -476,12 +477,6 @@
       "reason": "The same line, quoted in the editor docs."
     },
     {
-      "file": "docs/contract.ja.md",
-      "pattern": "作り手がパーツを直す",
-      "term": "created-by",
-      "reason": "作り手 here means whoever makes the parts, not metadata.creators"
-    },
-    {
       "file": "skills/studio/SKILL.md",
       "pattern": "作り手の「確認しました」",
       "term": "created-by",
@@ -515,7 +510,7 @@
     },
     {
       "file": "play/i18n.mjs",
-      "pattern": "見ている位置や時間は送りません",
+      "pattern": "表示中の位置や時間は送信しません",
       "term": "no-upload",
       "reason": "Live privacy line: questions and votes really are sent to the host; it says what is not sent, not a file upload."
     },
@@ -637,6 +632,82 @@
       "pattern": "sample images|sample: (cover|body)",
       "term": "voice-sample",
       "reason": "The theme's sample images in New step 3 and their alt text (standards session 2026-11-16), not a voice preview."
+    },
+    {
+      "file": "**",
+      "pattern": "取り消(?:しました|します|して|した|す|し)",
+      "term": "delete",
+      "reason": "取り消す means cancel or undo (用語集の cancel・undo の文脈), not 消す in the sense of delete."
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "exampleLikeNote:",
+      "term": "subject",
+      "reason": "The line under Make one based on this sample (owner wording, 2026-11-05): 題材 / topic is what the new file is about, not the parts label subject; en says “from your topic”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "btnRetake:",
+      "term": "recording",
+      "reason": "The recording-mode button 再録音 (owner 2026-11-19); en keeps the usual Retake.",
+      "pairs": true
+    },
+    {
+      "file": "app/llm.js",
+      "pattern": "for a lesson: introduction, development, summary",
+      "term": "egatari-file",
+      "reason": "A school lesson (the setting 授業): the structure the AI uses for a class, not the file (#36 inventory §4.3)."
+    },
+    {
+      "file": "app/attachments-panel.js",
+      "pattern": "添付（下書き・試行）|下書き・試行（形式の §3.8 の案）",
+      "term": "draft-autosave",
+      "reason": "下書き here is the draft status of the attachments feature in the format spec (§3.8 draft), not the browser's kept unsaved changes."
+    },
+    {
+      "file": "app/attachments-panel.js",
+      "line": "読み手のためのファイル",
+      "term": "reader",
+      "reason": "読み手 in its plain sense (the people who read the file), not the parts label reader; en says “Files for readers”.",
+      "pairs": true
+    },
+    {
+      "file": "play/site-player.mjs",
+      "pattern": "This sample is not in the gallery|No sample was chosen",
+      "term": "voice-sample",
+      "reason": "The gallery's samples (the sample term) on egatari.org, not a voice preview."
+    },
+    {
+      "file": "kit/check-messages.mjs",
+      "pattern": "読み手の一覧",
+      "term": "reader",
+      "pairs": true,
+      "reason": "読み手 in its plain sense: the people who read the file (the attachments' download list), not the parts label reader."
+    },
+    {
+      "file": "docs/editor*.md",
+      "pattern": "School lesson",
+      "term": "egatari-file",
+      "reason": "The setting label 授業（小・中・高） / School lesson in New…: a class lesson, not the file (#36 inventory §4.3, §6.3)."
+    },
+    {
+      "file": "docs/editor.md",
+      "pattern": "for a lesson: introduction, development",
+      "term": "egatari-file",
+      "reason": "Quotes the New… hint for the setting: the structure of a class lesson, not the file (#36 inventory §4.3)."
+    },
+    {
+      "file": "docs/editor*.md",
+      "pattern": "添付（下書き・試行）|下書き・試行",
+      "term": "draft-autosave",
+      "reason": "Quotes the Attachments panel title: 下書き is the draft status of the feature in the format spec (§3.8), not the browser's kept unsaved changes."
+    },
+    {
+      "file": "plugins/egatari/skills/make/SKILL.md",
+      "pattern": "「教材を作って」",
+      "term": "egatari-file",
+      "reason": "A trigger phrase people type to call the skill; kept on purpose (#36 inventory §4.4)."
     }
   ]
 }

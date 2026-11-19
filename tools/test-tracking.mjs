@@ -408,7 +408,7 @@ f.src = 'deck.html' + location.search;
     await p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
     const note = await p.evaluate(() => { const n = document.getElementById('deck-track-notice'); return n ? n.textContent : null; });
     await c.close();
-    if (!vals.noNote) ok(note === '進行状況を記録できなくなりました。記録するには、この教材を開いた学習サイト（LMS）から開き直してください。', `back/forward cache after finishing: a notice that progress is no longer recorded (${note})`), vals.noNote = 1;
+    if (!vals.noNote) ok(note === '進行状況を記録できなくなりました。記録するには、このファイルを開いた学習サイト（LMS）から開き直してください。', `back/forward cache after finishing: a notice that progress is no longer recorded (${note})`), vals.noNote = 1;
     return { calls, state, pos };
   };
   const sets = (calls, k) => calls.filter((x) => x[0] === 'LMSSetValue' && x[1] === k).map((x) => x[2]);

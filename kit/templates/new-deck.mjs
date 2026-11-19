@@ -18,7 +18,7 @@ const T = EN ? {
   venue: 'Event or course name',
   au: 'Your name<br>Affiliation',
   hint: [
-    'A new lesson made by `npm run new`. Replace the sample slides with your own.',
+    'New slides made by `npm run new`. Replace the sample slides with your own.',
     'Each sample shows one feature: steps (data-step), math (KaTeX, \\hlE, \\htmlId), emphasis ({mark} in narration.md) and a part (m-sweep).',
     'Keys: → / Space next step, ← previous, p presenter view, a autoplay, l Lecture view, ? list of keys',
   ],
@@ -31,10 +31,10 @@ const T = EN ? {
   },
   s2: {
     h: 'Math and emphasis',
-    p: 'Math in TeX notation is typeset with KaTeX when the lesson is built',
+    p: 'Math in TeX notation is typeset with KaTeX when the slides are built',
     li: ['<code>\\hlE{…}</code> colors a term with the theme', '<code>{mark:ID}</code> in the script emphasizes a part of the slide'],
     concl: '→ Point at what you are talking about',
-    n: ['Math is typeset when the lesson is built.', 'Here is a straight line.', 'A highlighted term uses the theme color.', 'Emphasis in the script can {mark:slope|circle}circle the slope while you say it.'],
+    n: ['Math is typeset when the slides are built.', 'Here is a straight line.', 'A highlighted term uses the theme color.', 'Emphasis in the script can {mark:slope|circle}circle the slope while you say it.'],
     nc: 'Use emphasis to point at what you are talking about.',
   },
   s3: {
@@ -47,12 +47,12 @@ const T = EN ? {
   },
   s4: { h: 'Summary', li: ['Steps follow the order you speak', 'Math and emphasis point at what matters', 'Parts animate with the steps'],
     n: ['To sum up.', 'Steps follow the order you speak.', 'Math and emphasis point at what matters.', 'Parts animate with the steps.'] },
-  cover: 'Welcome. This is a new lesson.',
+  cover: 'Welcome. These are new slides.',
 } : {
   venue: '会の名前・授業名',
   au: '氏名<br>所属',
   hint: [
-    '`npm run new` で作った新しい教材。サンプルのスライドを自分の内容に置き換えて使う。',
+    '`npm run new` で作った新しいスライド。サンプルのスライドを自分の内容に置き換えて使う。',
     'サンプルは 1 枚に 1 つの機能：ステップ（data-step）、数式（KaTeX・\\hlE・\\htmlId）、強調（narration.md の {mark}）、パーツ（m-sweep）。',
     '操作：→ / Space で次のステップ、← で前、p で発表者ビュー、a で自動再生、l で授業の表示、? でキーの一覧',
   ],
@@ -81,7 +81,7 @@ const T = EN ? {
   },
   s4: { h: 'まとめ', li: ['ステップは、話す順に見せる', '数式と強調で、大事な所を指す', 'パーツは、ステップに合わせて動く'],
     n: ['まとめます。', 'ステップは、話す順に見せます。', '数式と強調で、大事な所を指します。', 'パーツは、ステップに合わせて動きます。'] },
-  cover: 'ようこそ。これは新しい教材です。',
+  cover: 'ようこそ。これは新しいスライドです。',
 };
 
 const deck = `<!DOCTYPE html>

@@ -196,7 +196,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         ok(errs.length === 0 && mine.every(([sv]) => sv === 'warn') && mine.filter(([, t]) => /テンプレートの字のまま/.test(t)).length === 1 && mine.filter(([, t]) => /仮の行（✎）のまま/.test(t)).length === nSteps && mine.length === nSteps + 1,
           `${tag}: add "${kind}": no errors; the new slide gets the template warnings only (template text 1, placeholder narration ${nSteps})${errs.length || mine.length !== nSteps + 1 ? ' ' + JSON.stringify([errs, mine]) : ''}`);
         ok(sec.every((g) => g.turns.length === 1 && g.turns[0].raw.startsWith('✎ ')), `${tag}: add "${kind}": every placeholder line starts with the fixed mark "✎ "`);
-        if (kind === 'title-body') ok(/足しました/.test(await announced()), `${tag}: the add is announced (aria-live)`);
+        if (kind === 'title-body') ok(/挿入しました/.test(await announced()), `${tag}: the add is announced (aria-live)`);
         added.push(id);
         if (mode === 'folder' && kind === 'figure') await shot('slides-add.png');
       }
@@ -285,7 +285,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         ok(!keys(after.deck).includes(victim) && keys(after.deck).length === keys(before.deck).length - 1, `${tag}: delete removes the slide`);
         ok(!sections(after.narr).includes(victim) && sections(after.narr).length === sections(before.narr).length - 1, `${tag}: delete removes its narration section`);
         ok(segKeys(after.man).every((x) => !x.startsWith(victim + ':')) && (await Promise.all(vFiles.map(exists))).every((x) => !x), `${tag}: delete removes its audio entries and files`);
-        ok(/消しました/.test(await announced()) && (await sl()).undo && await page.isVisible('#sl-undo'), `${tag}: the delete is announced and Undo is offered`);
+        ok(/削除しました/.test(await announced()) && (await sl()).undo && await page.isVisible('#sl-undo'), `${tag}: the delete is announced and Undo is offered`);
         if (mode === 'folder') await shot('slides-undo.png');
         const b1 = (await state()).builds;
         await page.click('#sl-undo');
@@ -376,7 +376,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await clickDlg(page, '#dlg-cancel');
         await clickCommand(page, '#b-insert');
         await page.waitForSelector('#dlg[open] #insert-choices');
-        ok(await page.isVisible('#insert-title-body') && await page.isVisible('#insert-ai') && (await page.textContent('#insert-lead')).includes('スライド 2'), `${tag}: Slide ▾ → Insert slide… offers the templates and the chat AI, after the selected slide`);
+        ok(await page.isVisible('#insert-title-body') && await page.isVisible('#insert-ai') && (await page.textContent('#insert-lead')).includes('スライド 2'), `${tag}: Slide ▾ → Insert slide… offers the templates and the AI chatbot, after the selected slide`);
         if (mode === 'folder') await shot('slides-insert-dialog.png');
         await clickDlg(page, '#dlg-cancel');
       }

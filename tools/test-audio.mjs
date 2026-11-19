@@ -456,7 +456,7 @@ try {
   const rLim = await recordOne(3500, false);
   const limText = await page.evaluate(() => (document.getElementById('rec-limit') || {}).textContent || '');
   const eLim = JSON.parse(await opfsRead('audio/manifest.json')).segments[pk];
-  ok(/1\.5 秒を超えたので止めました/.test(limText) && rLim.raw < 2.2 && eLim.file !== manL0.file && eLim.dur <= 1.6, `limit: recording stops at the limit and the take up to it is used (${rLim.raw} s raw, ${eLim.dur} s; ${limText})`);
+  ok(/1\.5 秒を超えたので録音を停止しました/.test(limText) && rLim.raw < 2.2 && eLim.file !== manL0.file && eLim.dur <= 1.6, `limit: recording stops at the limit and the take up to it is used (${rLim.raw} s raw, ${eLim.dur} s; ${limText})`);
   ok(/1\.5 秒を超えた/.test(await page.evaluate(() => document.getElementById('rec-alert').textContent) || ''), 'limit: the stop is reported in the alert region');
   await page.evaluate(() => { window.__APP_TEST.recMaxSeconds = undefined; });
   await closeRec();
@@ -586,7 +586,7 @@ try {
     ok(/^スライド 3「.+」・ステップ 2$/.test(C.head) && /^AI 音声· \d+\.\d 秒/.test(C.cur), 'C: heading スライド n「…」・ステップ k and the current audio “AI 音声 · n 秒” ' + JSON.stringify([C.head, C.cur]));
     ok(['dev-audio-play', 'dev-audio-read', 'dev-audio-rec', 'dev-audio-import', 'dev-audio-revert', 'dev-audio-tts', 'dev-audio-read-sel'].every((x) => C.tools.includes(x)) && (await page.textContent('#dev-audio-tts')) === 'この PC で作り直す', 'C: 聞く・読み上げで聞く・録音 (r)・ファイルから取り込む・前に戻す・この PC で作り直す ' + C.tools.join());
     await page.click('#dev-audio-play');
-    ok(await page.waitForFunction(() => { const a = document.getElementById('dev-audio-player'), b = document.getElementById('dev-audio-play'); return a && (!a.paused || a.ended) && b.textContent === (a.ended ? '▶ 聞く' : '■ 止める'); }, null, { timeout: scaled(5000) }).then(() => true, () => false), 'C: ▶ 聞く plays the step audio (and becomes ■ 止める)');
+    ok(await page.waitForFunction(() => { const a = document.getElementById('dev-audio-player'), b = document.getElementById('dev-audio-play'); return a && (!a.paused || a.ended) && b.textContent === (a.ended ? '▶ 聞く' : '■ 停止'); }, null, { timeout: scaled(5000) }).then(() => true, () => false), 'C: ▶ 聞く plays the step audio (and becomes ■ 止める)');
     await page.click('#dev-audio-play');
     // 外したもの
     const txt = await page.textContent('#dev-audio');

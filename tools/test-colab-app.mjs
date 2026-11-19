@@ -146,7 +146,7 @@ try {
     c2type: (document.getElementById('dev-audio-c2-steps') || {}).type, c2parent: document.getElementById('dev-audio-c2-steps').closest('li').id, c2: [...document.querySelectorAll('#dev-audio-c2-steps li')].map((x) => x.textContent), note: document.getElementById('dev-audio-c2-note').textContent, text: document.getElementById('dev-audio-cloud-body').textContent }));
   ok(cb.c.join('|') === '台本をエクスポート|Colab を開く|できた音声を取り込む…', 'steps 1–3: one button each, 台本をエクスポート, Colab を開く, できた音声を取り込む… ' + cb.c.join('|'));
   ok(cb.heads.join(' / ') === '手順 1|台本をエクスポート / 手順 2|Colab で実行する / 手順 3|できた音声を取り込む', 'steps 1–3: a number badge and a heading each ' + cb.heads.join(' / '));
-  ok(cb.c2type === 'a' && cb.c2parent === 'dev-audio-c2' && cb.c2.length === 4 && cb.c2[0] === COLAB_STEPS.ja[0] && cb.c2[1] === COLAB_STEPS.ja[1] && cb.c2[2] === 'ファイルを選ぶ画面で、手順 1 のファイルを選ぶ' && cb.c2[3] === COLAB_STEPS.ja[3] && /「接続」/.test(cb.c2[0]) && /ランタイムのタイプを変更/.test(cb.c2[0]) && cb.note === COLAB_TIME.ja, 'step 2: the Colab instructions as their own a–d list under step 2 (接続 → CPU when it cannot connect → すべてのセルを実行 → the file of step 1 → ZIP downloads) and the T4 timing ' + JSON.stringify(cb.c2));
+  ok(cb.c2type === 'a' && cb.c2parent === 'dev-audio-c2' && cb.c2.length === 4 && cb.c2[0] === COLAB_STEPS.ja[0] && cb.c2[1] === COLAB_STEPS.ja[1] && cb.c2[2] === 'ファイルを選ぶダイアログで、手順 1 のファイルを選ぶ' && cb.c2[3] === COLAB_STEPS.ja[3] && /「接続」/.test(cb.c2[0]) && /ランタイムのタイプを変更/.test(cb.c2[0]) && cb.note === COLAB_TIME.ja, 'step 2: the Colab instructions as their own a–d list under step 2 (接続 → CPU when it cannot connect → すべてのセルを実行 → the file of step 1 → ZIP downloads) and the T4 timing ' + JSON.stringify(cb.c2));
   ok((await page.textContent('#dev-audio-c3 .dv-note')) === '手順 2 でダウンロードした ZIP ファイルを選びます', 'step 3: 手順 2 でダウンロードした ZIP ファイルを選びます');
   ok(!(await page.$('#dev-audio-cloud-body li[data-done="1"]')) && !(await page.$('#dev-audio-cloud-body .dv-tick')), 'steps: no ✓ before anything has happened');
   ok(!(await page.$eval('#dev-audio-colab-import', (b) => b.disabled)), 'steps: step 3 is usable before steps 1 and 2');
@@ -157,7 +157,7 @@ try {
   // プライバシーの確認（初めての 1 回）：キャンセルすれば書き出さない
   await clickUntil(page, '#dev-audio-colab-export', () => page.waitForSelector('#dlg[open] #colab-privacy', { timeout: scaled(2500) }));
   await page.waitForSelector('#dlg[open] #colab-privacy');
-  ok((await page.textContent('#colab-privacy')) === '台本の文は Google の環境で処理されます。共有してよい文だけにしてください。スライドやほかのファイルは渡しません。' && (await page.textContent('#dlg-title')).includes('台本を Google Colab に渡します') && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'C1: the privacy question (台本を Google Colab に渡します / エクスポート / キャンセル)');
+  ok((await page.textContent('#colab-privacy')) === '台本の文は Google の環境で処理されます。共有してよい文だけにしてください。スライドとほかのファイルは含めません。' && (await page.textContent('#dlg-title')).includes('台本を Google Colab で処理します') && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'C1: the privacy question (台本を Google Colab で処理します / エクスポート / キャンセル)');
   let downloaded = false; page.once('download', () => { downloaded = true; });
   await clickDlg(page, '#dlg-cancel');
   await page.waitForTimeout(300);
@@ -191,7 +191,7 @@ try {
   // 取り込み：別の教材の zip は拒否
   const other = await colabZip(job, { docId: PF.newDocId(), title: 'ほかの授業' });
   await importZip(other);
-  ok((await msgs()).some((m) => m.startsWith('この ZIP ファイルには、この教材の音声が入っていません。この教材でエクスポートした台本から作った ZIP ファイルを選んでください') && m.includes('「ほかの授業」') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a ZIP file made for another lesson (docId) is refused and nothing is written');
+  ok((await msgs()).some((m) => m.startsWith('この ZIP ファイルには、このファイルの音声が入っていません。このファイルからエクスポートした台本から作った ZIP ファイルを選んでください') && m.includes('「ほかの授業」') && !m.includes('docId')) && (await opfsRead('audio/manifest.json')) === null, 'import: a ZIP file made for another lesson (docId) is refused and nothing is written');
   ok(lastChooser && lastChooser.type === 'file' && !lastChooser.multiple && !lastChooser.dir && /\.zip/.test(lastChooser.accept), 'C3: a plain <input type=file> for one ZIP file (no folder picker) ' + JSON.stringify(lastChooser));
   // 敵対の zip：HTML を音声と言い張る・展開爆弾
   await importZip(await colabZip({ ...job, steps: [job.steps[0]] }, { mutate: (r, e) => { e[1] = [e[1][0], new TextEncoder().encode('<html><script>alert(1)</script></html>')]; } }));

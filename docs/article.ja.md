@@ -3,9 +3,9 @@
 
 [English](article.md) | 日本語
 
-教材は、スライドと台本の横に**本**（教科書の章・論文などの長い文章）を持てます。本は **Egatari Text 1** で書きます。MyST Markdown の小さな一部を固定したもので、[形式の仕様 §9C](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#9c-article-layer-feature-article-v1-draft)（草案）が決めています。このページは Studio の短い手引きで、決まりの本文は仕様です。
+Egatari ファイルは、スライドと台本の横に**本**（教科書の章・論文などの長い文章）を持てます。本は **Egatari Text 1** で書きます。MyST Markdown の小さな一部を固定したもので、[形式の仕様 §9C](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#9c-article-layer-feature-article-v1-draft)（草案）が決めています。このページは Studio の短い手引きで、決まりの本文は仕様です。
 
-> 作業中（v0.6.5）。Studio は本を読み、品質チェックし、別のページとしてビルドします。引用を書式に合わせて整え、本を Egatari ファイル（.ega.html）に入れ、リンクしたスライドと節が合っていないかもしれないときに知らせます。再生の画面はスライドの横か本だけで見せ（[スライドと本](reference.ja.md#スライドと本)）、編集アプリは直して印刷します（[編集アプリ](editor.ja.md)）。
+> 作業中（v0.6.5）。Studio は本を読み、品質チェックし、別のページとしてビルドします。引用を書式に合わせて整え、本を Egatari ファイル（.ega.html）に含め、リンクしたスライドと節が合っていないかもしれないときに通知します。再生ではスライドの横か本だけで表示し（[スライドと本](reference.ja.md#スライドと本)）、編集アプリは編集して印刷します（[編集アプリ](editor.ja.md)）。
 
 ## 作業フォルダのファイル
 
@@ -31,12 +31,12 @@ chapter: 1
 
 | 項目 | 意味 |
 |---|---|
-| `title`・`subtitle` | 章の題（章のファイルには必ず書く）。本の題は教材の題 |
+| `title`・`subtitle` | 章の題（章のファイルには必ず書く）。本の題はファイルのタイトル |
 | `chapter` | 章の番号（正の整数）。読む順に大きくなる。1 から始まらなくてよい |
 | `kind` | `preface`（前書き）・`chapter`（章。既定）・`appendix`（付録）・`afterword`（後書き）。ファイルはこの順に並べる。前書きと後書きは節の番号なし。付録は A・B…と記号が付き、`chapter` は書かない |
 | `numbering` | `false` でこのファイルの節の番号を付けない（図と式の番号は付く） |
 | `writing-mode` | `vertical-rl` で縦書き（国語など）。表も縦組み（行が 1 列になり、1 行目が右端、行のセルは上から下へ。セルの 1〜2 桁の数字は縦中横）。表は天付き（表・表題・本文のセルは行の頭から。見出しのセルと行の見出しはセルの中で中央）。図・式・コードは横組みのまま。頁は初め（右端）を開く。段落の頭の全角の空白（U+3000）は残るので、青空文庫のように字下げした段落はそのまま字下げになる |
-| `lang`・`bibliography` | 書くなら、教材の言語・`references.json` と同じにする。全部の章で同じ |
+| `lang`・`bibliography` | 書くなら、ファイルの言語・`references.json` と同じにする。全部の章で同じ |
 
 ## 書けるもの
 
@@ -44,7 +44,7 @@ CommonMark の書き方（段落、`##`〜`####` の見出し、強調、箇条�
 
 | 書き方 | 書くこと |
 |---|---|
-| 節の id | 何も書かない：`npm run ids -- <作業フォルダ>` が、id のない `##` の見出しの前に `(sec-xxxxxx)=` の行を足す。手で書いたり変えたりしない |
+| 節の id | 何も書かない：`npm run ids -- <作業フォルダ>` が、id のない `##` の見出しの前に `(sec-xxxxxx)=` の行を追加する。手で書いたり変えたりしない |
 | 数式 | `$x^2$`。別行は `$$ … $$`。名前を付けると番号が付く：`$$ … $$ (eq-loss)` |
 | 図 | `:::{figure} images/tree.png` に `:label: fig-tree` と `:alt: 図の説明`。最初の段落が図の題、残りは注 |
 | 小さな図を並べた図 | `::::{figure}` の中に `:::{figure} <パス>` を 2 つ以上（それぞれ `:alt:`） |
@@ -114,7 +114,7 @@ HTML（上の表のほか）、ほかの指令と役割（`{note}` などの囲�
 
 ### 引用とライセンス
 
-引用は [citeproc-js](https://github.com/Juris-M/citeproc-js) で書式を整えます（CPAL-1.0 で使います）。動くのはローカルでビルドするときと `pack` のとき、それに文献を引く本を編集アプリが見せる・保存するときです（編集アプリは、そのときだけ手を加えていない citeproc のファイルを読み込みます）。教材と Egatari ファイルに入るのは書式を整えた字だけです。citeproc で引用の書式を整えたとき、ビルドと `pack` は帰属の表示を出し、編集アプリは本の下に出します（英語のまま）。
+引用は [citeproc-js](https://github.com/Juris-M/citeproc-js) で書式を整えます（CPAL-1.0 で使います）。動くのはローカルでビルドするときと `pack` のとき、それに文献を引く本を編集アプリが表示・保存するときです（編集アプリは、そのときだけ手を加えていない citeproc のファイルを読み込みます）。作業フォルダのビルドと Egatari ファイルに入るのは書式を整えた字だけです。citeproc で引用の書式を整えたとき、ビルドと `pack` は帰属の表示を出し、編集アプリは本の下に表示します（英語のまま）。
 
 > Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/
 
@@ -122,8 +122,8 @@ HTML（上の表のほか）、ほかの指令と役割（`{note}` などの囲�
 
 ## スライドと節のリンク
 
-スライドの `data-article` が節の id を挙げるか、節の中にそのスライドへの `{step}` のリンクがあると、スライドと節はリンクしています。`data-article` には節の id を空白で区切っていくつも書けます（関わりの深い順）：`<section class="slide" id="s-k3f9q2" data-article="sec-h7q2xz sec-q7r2x5">`。最初のものがそのスライドの節で、**本で読む**はそこを開き、本はスライドに付いてそこへ動きます。`npm run ids -- <作業フォルダ>` は新しいリンクを `egatari.json` に記録します（`articleLinks`：節の字と、スライドと台本の hash）。後でどちらかが変わると、品質チェックがその組について「スライドと本が合っていないかもしれません」と知らせます。字は自動では直しません。読み比べて直すところを直し、`npm run ids -- <作業フォルダ> --confirm-links` で、合っていることを記録し直します。
+スライドの `data-article` が節の id を挙げるか、節の中にそのスライドへの `{step}` のリンクがあると、スライドと節はリンクしています。`data-article` には節の id を空白で区切っていくつも書けます（関わりの深い順）：`<section class="slide" id="s-k3f9q2" data-article="sec-h7q2xz sec-q7r2x5">`。最初のものがそのスライドの節で、**本で読む**はそこを開き、本はスライドに付いてそこへ動きます。`npm run ids -- <作業フォルダ>` は新しいリンクを `egatari.json` に記録します（`articleLinks`：節の字と、スライドと台本の hash）。後でどちらかが変わると、品質チェックがその組について「スライドと本が合っていないかもしれません」と知らせます。字は自動では修正しません。読み比べて修正が必要な所を修正し、`npm run ids -- <作業フォルダ> --confirm-links` で、合っていることを記録し直します。
 
 ## Egatari ファイル
 
-`npm run portable -- pack <作業フォルダ>`（と `node kit/build.mjs <deck.html> --portable`）は本を Egatari ファイルに入れます。章のファイル・`references.json`・本の画像が中に入り、ビルドした本はファイルの読める文の最後（`#egatari-article`）に入るので、スクリプトなしでも読めます。誤りのある本は出力しません。先に品質チェックの挙げたものを直します。id のない節には id を付け、作業フォルダにも書き戻します。`unpack` は同じファイルと、`egatari.json` の読む順を出します。編集アプリは本を見せ、品質チェックし、直し、印刷します（[編集アプリ](editor.ja.md#本下書き)）。本だけを直したときは本だけを再ビルドして Egatari ファイルを保存し、本のある作業フォルダもエクスポートできます。
+`npm run portable -- pack <作業フォルダ>`（と `node kit/build.mjs <deck.html> --portable`）は本を Egatari ファイルに含めます。章のファイル・`references.json`・本の画像が中に入り、ビルドした本はファイルの読める文の最後（`#egatari-article`）に入るので、スクリプトなしでも読めます。誤りのある本は出力しません。先に品質チェックの挙げたものを修正します。id のない節には id を付け、作業フォルダにも書き戻します。`unpack` は同じファイルと、`egatari.json` の読む順を出します。編集アプリは本を表示し、品質チェックし、編集し、印刷します（[編集アプリ](editor.ja.md#本下書き)）。本だけを編集したときは本だけを再ビルドして Egatari ファイルを保存し、本のある作業フォルダもエクスポートできます。

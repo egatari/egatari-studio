@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
+  "commit": "4a02065904cc43f4c4a4379c3ed8bace747e2910",
   "path": "lessons/live-birthday",
   "files": {
     "data/birthday.json": "191cb38032c39e0ce23b73bfd6e3da1dc6a18c6a788965c8212eebc5bd7d54d4",
@@ -9,7 +9,7 @@
     "data/predict.json": "39510ab38b2b9cefe127b6ae9e683676bdd8cf5f87ae35ba8ec5d4af5fed530e",
     "deck.html": "a771d573765c0489d2d1067a3a162ad40b07d26d25811bd11db0bdc7eb963427",
     "egatari.json": "4b2c35ebba2804ab7d99b71ebad4a4930a95e5974007814db5d0d19427c70172",
-    "gallery/README.md": "af0601ad7875e3965d5f4cf84377dfb224b5e33a1e89ba4de622fc2674d22f3b",
+    "gallery/README.md": "9d61047c8ebfe92a9145febbd7b862966a647b54a74b4a4c14cf985f748a28e7",
     "gallery/host-page-example.png": "a6eb4dd452d10b5dcbf5aee27090c524645835dce269e0699beb7f38a37f5bea",
     "narration.md": "ddbe4a88716218ac947c408097e0e7d8eab6f22cd7969eb687a8bf8689bdb5b3",
     "sample.json": "3bd5f214edb0dbeaaf4c047363314b9025a4b688fede4499f88b2109c1834e2e",

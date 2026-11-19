@@ -24,7 +24,7 @@ const SCRIPTS = {
   ids: ['tools/ids.mjs', 'スライドに安定した id を付ける / give slides stable ids', '<folder | deck.html> [--dry-run]'],
   'ids-of': ['tools/ids-of.mjs', 'Egatari ファイルの docId・sourceSha256・ファイル全体の SHA-256 を 1 行ずつ出す / print docId, sourceSha256 and the whole-file SHA-256 of Egatari files', '<file.ega.html> [<file> …] [--json]'],
   portable: ['tools/portable.mjs', 'Egatari ファイル（.ega.html）と作業フォルダの行き来 / Egatari file (.ega.html) <-> working folder', 'unpack|pack|attach|compare …'],
-  video: ['render/render.mjs', '音声の入った教材を動画に（ffmpeg が要る。音声は作らない）/ export a lesson with its audio to video (needs ffmpeg; makes no audio)', '<folder | .ega.html>  または / or  <out/deck.html> --out <dir> [--full] [--only key,…]'],
+  video: ['render/render.mjs', '音声の入った Egatari ファイルを動画に（ffmpeg が要る。音声は作らない）/ export an Egatari file with its audio to video (needs ffmpeg; makes no audio)', '<folder | .ega.html>  または / or  <out/deck.html> --out <dir> [--full] [--only key,…]'],
 };
 
 function help() {
@@ -212,7 +212,7 @@ async function doctor() {
   console.log(`egatari ${PKG.version} (${ROOT})`);
   const range = PKG.engines?.node || '';
   show(satisfies(process.versions.node, range), 'node', `${process.versions.node}（要るもの / required: ${range}）`,
-    'Node.js を入れ直す / install a supported Node.js: https://nodejs.org/', true);
+    'Node.js をインストールし直す / install a supported Node.js: https://nodejs.org/', true);
   const uv = firstLine('uv', ['--version']);
   show(!!uv, 'uv', uv || 'なし / not found（tts に使う / used by tts）',
     '入れ方 / install: https://docs.astral.sh/uv/getting-started/installation/', false);
@@ -236,7 +236,7 @@ async function doctor() {
   // 部品の写し：組み立てが読む index.js を、固定（components.lock.json）と manifest のファイルごとの sha256 で（kit/vendor-verify.mjs）
   const vv = verifyVendorIndex(ROOT);
   show(!vv.problems.length, 'parts', vv.problems.length ? `パーツのコピーが固定と合わない / the vendored parts do not match their pins: ${vv.problems.slice(0, 3).join('; ')}${vv.problems.length > 3 ? ` (+${vv.problems.length - 3})` : ''}`
-    : `index.js ${vv.versions} バージョン、固定と manifest の sha256 に合う / ${vv.versions} versions match the lock and the manifests`, 'パッケージを入れ直す / reinstall the package (`npm install egatari`)', true);
+    : `index.js ${vv.versions} バージョン、固定と manifest の sha256 に合う / ${vv.versions} versions match the lock and the manifests`, 'パッケージをインストールし直す / reinstall the package (`npm install egatari`)', true);
   try {
     const dv = defaultVoices();
     show(!dv.missing, 'voices', dv.missing ? `既定の声 ${dv.missing} 本は初めての egatari tts で取り寄せる / ${dv.missing} default voices are downloaded on the first egatari tts (to ${dv.dir})`

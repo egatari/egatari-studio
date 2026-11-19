@@ -42,7 +42,7 @@ await t('compReport: a part’s ctx.report("range", …) is a warning whose mess
   const a = { code: 'range', tag: 'm-curves', label: '人口', msg: '[curves] series 0 is outside yr [0, 1]' };
   assert.equal(message('ja', 'compReport', a), 'パーツ <m-curves>「人口」の値が表示する範囲の外にある：[curves] series 0 is outside yr [0, 1]。範囲の属性（xr・yr など）を、値がすべて入るように書く（R-components）');
   assert.equal(message('en', 'compReport', a), 'the part <m-curves> “人口” has values outside the range it shows: [curves] series 0 is outside yr [0, 1]. Set its range attributes (such as xr and yr) so that every value fits (R-components)');
-  assert.match(message('ja', 'compReport', { ...a, code: 'size' }), /からの知らせ：.*テーマの色を確かめる/);
+  assert.match(message('ja', 'compReport', { ...a, code: 'size' }), /からの知らせ：.*テーマの色を確認する/);
   assert.equal(ruleOfCode('compReport'), 'R-components');
 });
 

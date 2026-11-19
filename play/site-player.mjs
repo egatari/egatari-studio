@@ -26,10 +26,10 @@ async function sha256Hex(bytes) { const h = await crypto.subtle.digest('SHA-256'
 const lang = /^en\b/i.test(document.documentElement.lang || '') ? 'en' : 'ja';
 const W = () => WORDS[lang];
 const T = lang === 'en'
-  ? { loading: 'Loading the lesson…', unknown: 'This lesson is not in the gallery.', noId: 'No lesson was chosen.', fetch: 'The lesson could not be loaded.',
-    mismatch: 'The file does not match the gallery list, so it is not played.', framed: 'This page does not run inside another page\'s frame.', frame: 'Lesson' }
-  : { loading: '教材を読み込んでいます…', unknown: 'この教材は一覧にありません。', noId: '教材が選ばれていません。', fetch: '教材を読み込めませんでした。',
-    mismatch: 'ファイルが一覧と合わないため、再生しません。', framed: 'このページはほかのページの枠の中では動きません。', frame: '教材' };
+  ? { loading: 'Loading the file…', unknown: 'This sample is not in the gallery.', noId: 'No sample was chosen.', fetch: 'The file could not be loaded.',
+    mismatch: 'The file does not match the gallery list, so it is not played.', framed: 'This page does not run inside another page\'s frame.', frame: 'Egatari file' }
+  : { loading: 'ファイルを読み込んでいます…', unknown: 'このサンプルは一覧にありません。', noId: 'サンプルが選ばれていません。', fetch: 'ファイルを読み込めませんでした。',
+    mismatch: 'ファイルが一覧と合わないため、再生しません。', framed: 'このページはほかのページの枠の中では動きません。', frame: 'Egatari ファイル' };
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const root = document.getElementById('egatari-player');

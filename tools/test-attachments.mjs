@@ -554,7 +554,7 @@ const browser = answerCreator(await launch());
   await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
   ok((await page.textContent('#panel-title')) === 'ファイルの情報' && /試行/.test(await page.textContent('#panel-body .info-h')) && !!(await page.$('#info-list')), 'editor: File info shows title/license/creators, then the attachments marked experimental (試行)');
-  ok((await page.$$eval('#info-list dt', (x) => x.map((e) => e.textContent))).slice(0, 3).join() === '題名,ライセンス,作成者', 'editor: File info lists the title, the license and the creators');
+  ok((await page.$$eval('#info-list dt', (x) => x.map((e) => e.textContent))).slice(0, 3).join() === 'タイトル,ライセンス,作成者', 'editor: File info lists the title, the license and the creators');
   // 形式の版（ファイルの version と仕様の写しの版）と、作った Studio（generator.version）。再生器の添え書き
   const ixA = JSON.parse(scanDocument(HTML).byId.get(FORMAT.INDEX_ID).text);
   const snap = (() => { try { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'egatari-spec', 'SOURCE.json'), 'utf8')); return j.snapshot; } catch { return undefined; } })();
@@ -610,7 +610,7 @@ const browser = answerCreator(await launch());
   await page.fill('[data-attach-title="attachments/slides.tex"]', '');
   await page.press('[data-attach-title="attachments/slides.tex"]', 'Tab');
   await waitIdle();
-  ok(/題は要ります/.test(await toastText()) && (await page.$eval('[data-attach-title="attachments/slides.tex"]', (x) => x.value)) === 'Slides (TeX)', 'editor: a title cannot be cleared');
+  ok(/タイトルは必須です/.test(await toastText()) && (await page.$eval('[data-attach-title="attachments/slides.tex"]', (x) => x.value)) === 'Slides (TeX)', 'editor: a title cannot be cleared');
   // 役割と題
   await page.selectOption('[data-attach-role="attachments/code/run.py"]', 'code');
   await waitIdle();

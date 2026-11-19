@@ -12,9 +12,9 @@
 
 English | [日本語](README.ja.md)
 
-Egatari makes lessons and presentations, with narration, for classes, training and public guides.
+Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it. Egatari Studio is the tool that makes and edits Egatari files.
 
-A lesson is one self-contained HTML file, with step-by-step reveals and parts that follow the order of your explanation. One set of slides and script (`deck.html` + `narration.md`) gives you a live talk (with later steps shown faintly if you like), a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
+An Egatari file is one self-contained HTML file, with step-by-step reveals and parts that follow the order of your explanation. One set of slides and script (`deck.html` + `narration.md`) gives you a live talk (with later steps shown faintly if you like), a PDF, and, optionally, a narrated video made with TTS. It is designed to be driven by [Claude Code](https://claude.com/claude-code) through the skills in `skills/`, but every step is a plain Node command and works without it.
 
 *Egatari Studio (formerly motion-academic-slides). The npm package, the skills and the commands keep their names.*
 
@@ -24,8 +24,9 @@ A lesson is one self-contained HTML file, with step-by-step reveals and parts th
 
 Pick one.
 
-- **Editor app, nothing to install**: open <https://studio.egatari.org/> in Chrome or Edge and make or open a lesson there ([Editor app](#editor-app-no-install)).
-- **With a chat AI**: install the Egatari skill for Claude or Codex, turn on its updates (Claude Code: `/plugin` → Marketplaces → egatari → Enable auto-update; Codex: `npx egatari@0.6.x skills update` after each Studio release) and ask for a lesson ([Claude Code](#using-it-with-claude-code), [Codex](#using-it-with-codex)).
+- **Editor app, nothing to install**: open <https://studio.egatari.org/> in Chrome or Edge and make or open an Egatari file there ([Editor app](#editor-app-no-install)).
+- **With an AI chatbot**: add the make skill (`egatari-make-skill.zip`) to an AI chatbot such as ChatGPT, Gemini or Claude and ask it for a file (see the end of [Codex](#using-it-with-codex)).
+- **With AI agents**: install the Egatari skills for Claude Code or Codex, turn on their updates (Claude Code: `/plugin` → Marketplaces → egatari → Enable auto-update; Codex: `npx egatari@0.6.x skills update` after each Studio release) and ask for a file ([Claude Code](#using-it-with-claude-code), [Codex](#using-it-with-codex)).
 - **Command line**:
 
 ```bash
@@ -41,17 +42,17 @@ Needs Node.js ≥ 22.23.4 ([Requirements](#requirements)). More commands: [With 
 
 - **Steps**: `data-step="k"` shows content in the order you speak. The conclusion line (`.concl`) always comes last
 - **Math**: KaTeX, rendered at build time. `\hlE{…}` / `\hlT{…}` / `\hlM{…}` color a term using the theme
-- **Parts**: Web Components from [egatari/components](https://github.com/egatari/components) (vendored in `vendor/components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch lessons `m-bars`, `m-quad`, `m-market`, `m-kpi`, and for coding lectures `m-codetree` (decoding a bit string with a code tree); `m-flow` also draws money and service flows). Parts come in sets by subject: stats, data (`m-code`, `m-sampling`, `m-ci` …), math, maps, kokugo, english, music, business, tools and science ([part sets](docs/llm-parts/)). The screen depends only on (slide, step, time), so the same lesson can be exported frame by frame to video
+- **Parts**: Web Components from [egatari/components](https://github.com/egatari/components) (vendored in `vendor/components/`: `m-sweep`, `m-curves`, `m-flow`, `m-collect`, `m-seq`, and for business and pitch slides `m-bars`, `m-quad`, `m-market`, `m-kpi`, and for coding lectures `m-codetree` (decoding a bit string with a code tree); `m-flow` also draws money and service flows). Parts come in sets by subject: stats, data (`m-code`, `m-sampling`, `m-ci` …), math, maps, kokugo, english, music, business, tools and science ([part sets](docs/llm-parts/)). The screen depends only on (slide, step, time), so the same file can be exported frame by frame to video
 - **Links to slides**: an ordinary `<a href="#<slide id>">` (or `#<slide id>:<step>`) jumps to that slide or step and offers **Back** (button, Backspace, Alt+←, browser back); `m-menu` lays such links out as a grid of cards for a contents or choice slide. Plain anchors, no script, so an Egatari file (`.ega.html`) stays Core. See [contract §9](docs/contract.md#9-links-to-slides)
 - **Japanese language arts (国語)**: vertical writing (`.tate`), ruby, a Mincho font (BIZ UDPMincho) and theme `kokugo`; `m-kanbun` (白文 → 返り点 and 送り仮名 → the reading order traced character by character → 書き下し文), `m-kobun` (品詞分解 sentence by sentence, auxiliary-verb conjugation cards, modern translation), `m-gendai` (side lines, demonstrative → referent arrows, paragraph roles). See [reference](docs/reference.md#japanese-language-arts-kokugo)
 - **Emphasis**: `{mark:ID|circle}` in the script draws a hand-drawn underline, circle, box, spotlight or laser pointer dot on the slide at that word
 - **Morph transitions**: `data-morph` slides an equation or element from its place on the previous slide to its new place (like Keynote's Magic Move)
 - **Two modes from one source**: slide show (`?mode=talk`) and video (`?mode=video`). Show later steps faintly is an option of the slide show (`l`; `?mode=lecture` opens it with the option on)
 - **Presenter tools**: presenter view with speaker notes and timer, slide overview, laser pointer, pen, fading pen, toolbar
-- **Themes**: one base color per theme (`themes/<name>/tokens.css`). Parts only use theme variables. Eight bundled themes; new lessons choose from seven: 藍 Indigo (`default`), 墨 Ink (`sumi`), 国語 Kokugo, 常盤 Evergreen, 江戸紫 Edo purple, 焦茶 Dark brown, 浅葱 Teal. `business` stays bundled so that lessons using it still build ([reference](docs/reference.md#themes))
-- **Quality control**: the standards (R-fit, R-steps, …) say what a lesson must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, script coverage, contrast, part determinism, emphasis and morphs
-- **Dev server**: edit text and the script in the browser, leave comments for your AI coding tool
-- **Egatari file (`.ega.html`)**: `--portable` writes one HTML file (at the top of the lesson folder, named from the lesson title; the path is printed) that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the editable slides and script. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for Egatari files](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
+- **Themes**: one base color per theme (`themes/<name>/tokens.css`). Parts only use theme variables. Eight bundled themes; new files choose from seven: 藍 Indigo (`default`), 墨 Ink (`sumi`), 国語 Kokugo, 常盤 Evergreen, 江戸紫 Edo purple, 焦茶 Dark brown, 浅葱 Teal. `business` stays bundled so that files using it still build ([reference](docs/reference.md#themes))
+- **Quality control**: the standards (R-fit, R-steps, …) say what slides and script must meet; the quality checker `kit/check.mjs` (`npm run check`) reports overflow, text size, steps, script coverage, contrast, part determinism, emphasis and morphs
+- **Dev server**: edit text and the script in the browser, leave comments for your AI agent
+- **Egatari file (`.ega.html`)**: `--portable` writes one HTML file (at the top of the working folder, named from the title; the path is printed) that plays offline and also carries its source and audio, so it can be unpacked back into a working folder (`npm run portable -- unpack|pack`); `--play-only` writes a copy without the editable slides and script. It follows **Egatari** (絵語り, “narrating with pictures”), an open [format for Egatari files](https://github.com/egatari/egatari-spec) (draft 1.0). See [reference](docs/reference.md#single-file---portable)
 - **Output**: one self-contained HTML file (fonts, math, and local images, videos and stylesheets referenced by the slides embedded; works offline). Print to PDF from the browser or with `tools/pdf.mjs`
 
 **Reference**: every option, syntax, key and environment variable on one page: [docs/reference.md](docs/reference.md)
@@ -70,18 +71,18 @@ The same editing as the dev server, as a web page that opens an Egatari file (`.
 
 | Form | What it is | Here |
 |---|---|---|
-| Working folder | A folder with `deck.html`, `narration.md`, `audio/` …; the commands, AI coding tools (Claude Code, Codex, Gemini CLI …) and other editors read and write it | Edit it with “Work in a folder…” (Chrome / Edge) |
+| Working folder | A folder with `deck.html`, `narration.md`, `audio/` …; the commands, AI agents (Claude Code, Codex, Gemini CLI …) and other editors read and write it | Edit it with “Work in a folder…” (Chrome / Edge) |
 | Egatari file (`.ega.html`) | One HTML file that carries its source and audio (`--portable`); open it in a browser to play | Edit it with “Open…” (any browser) |
 | Play-only (`--play-only`) | An Egatari file without the editable slides and script | Cannot be edited (open the original Egatari file or the working folder) |
 | Built HTML (`out/deck.html`) | The presentation output of `node kit/build.mjs` | Cannot be edited (open the working folder) |
 
 - **Open the editor:** **<https://studio.egatari.org/>** in Chrome or Edge (nothing to install), or build it yourself with `npm run build:app` and open `dist/editor.html` (the Offline editor, about 10 MB) by double-clicking it.
-- **Open an Egatari file, no folder needed:** “Open a file (.ega.html)…” on the first screen (or dragging and dropping the file) opens an [Egatari file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as…” writes a copy, or (ticking “Save as a new file”) a lesson under a new id that records the original, “Export working folder…” writes the source and audio to an empty folder; the lesson id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A script, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Save as…” writes an Egatari file. Works in any current browser (saving downloads where there is no file picker)
+- **Open an Egatari file, no folder needed:** “Open a file (.ega.html)…” on the start screen (or dragging and dropping the file) opens an [Egatari file (`.ega.html`)](docs/reference.md#single-file---portable) and edits it in memory; the file is extracted in a worker without running it. “Save” writes the same file again (or downloads it), “Save as…” writes a copy, or (ticking “Save as a new file”) a file under a new id that records the original, “Export working folder…” writes the source and audio to an empty folder; the file id and the rights notices are kept, and the license is shown before the first edit (with a confirmation for no-derivatives licenses). A script, audio or timing edit is saved without rebuilding: only those parts of the file change. A slide edit rebuilds the file, after a warning that slides you did not edit may look different. For an open folder, “Save as…” writes an Egatari file. Works in any current browser (saving downloads where there is no file picker)
 - **Edit:** the same keys as the dev server: `e` + double-click for the source, `n` for the script, Alt / ⌥ Option + click for a comment (`comments.json`), `c` for the list. Backups go to `.cache/edits/` in the folder.
-- **Open a working folder:** drag and drop the working folder (the one with `deck.html`) onto the page, or press “Work in a folder…”, and let the browser edit that folder. **New…** has a chat AI write a new lesson (a new working folder: `npm run new`). Recent working folders are listed on the first screen.
-- **Draft with a chat AI, no coding tool needed:** “New…” asks four questions (where it is used, what it is about, how it looks, and whether the AI gets light or detailed instructions), copies the [instructions for the AI](docs/authoring-with-llms.md) for claude.ai, Gemini or ChatGPT, and takes the AI’s output in two fields, slides and script (paste the whole output into either and it is split): the editor gives the slides ids, creates the lesson as a new Egatari file (scripts in the output ask before running, like any opened file) and runs the quality check. “Copy a fix request for your AI” in the quality check panel writes the findings, the standards they break and the current files for the same chat; “Revise…” replaces the slides from its output in the current lesson (keeping its id and audio); “Insert slide…” can have the AI add slides after the one you select
+- **Open a working folder:** drag and drop the working folder (the one with `deck.html`) onto the page, or press “Work in a folder…”, and let the browser edit that folder. **New…** makes a new Egatari file with an AI chatbot (a new working folder: `npm run new`). Recent working folders are listed on the start screen.
+- **Draft with an AI chatbot, no AI agent needed:** “New…” asks four questions (where it is used, what it is about, how it looks, and whether the AI gets light or detailed instructions), copies the [instructions for the AI](docs/authoring-with-llms.md) for ChatGPT, Gemini or claude.ai, and takes the AI’s output in two fields, slides and script (paste the whole output into either and it is split): the editor gives the slides ids, creates it as a new Egatari file (scripts in the output ask before running, like any opened file) and runs the quality check. “Copy a fix request for your AI” in the quality check panel writes the findings, the standards they break and the current files for the same chat; “Revise…” replaces the slides from its output in the current file (keeping its id and audio); “Insert slide…” inserts slides the AI wrote after the one you select
 - **Script audio, one step at a time:** “Audio” plays the step's audio and marks it stale when the script changed after it was made; record a take from the microphone (with a level meter), import a file, or regenerate the step with “Make AI voice on this computer” (Irodori-TTS for Japanese with the reading dictionary, Kokoro for English; needs WebGPU, the model is downloaded once), then “Use this take”. Takes are processed like `tts/core.py` (trimmed, −20 LUFS) and saved as MP3 with where they came from ([details](docs/editor.md#script-audio-audio-panel)). In an Egatari file this is saved without rebuilding
-- **Work with an AI coding tool:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
+- **Work with an AI agent:** when anything else changes the files (Claude Code, Codex, a text editor), the editor notices within about 2 seconds, rebuilds, and stays on the same slide and step. A build error is shown over the preview until it is fixed.
 - **Language:** the editor follows your browser language; the **English / 日本語** button at the top right (or `?lang=en` / `?lang=ja`) switches it.
 - **Toolbar:** File ▾ (New…, Open…, Save, Save as…, Export ▸ For participants (play-only)… / Print slides / Print book (Print script without a book), File info…, Work in a folder…), Slide ▾ (Insert slide…, Duplicate, Delete, Revise…), Quality check (with a warning count), Preview ▾ (check as a slide show or as a video, show later steps faintly, or in presenter view with the script and the next step).
 
@@ -93,7 +94,7 @@ Details: [docs/editor.md](docs/editor.md) ([日本語](docs/editor.ja.md)).
 
 ## Using it with Claude Code
 
-Making lessons with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
+Making files with Claude Code or Cowork (the Claude desktop app): [docs/with-claude.md](docs/with-claude.md) ([日本語](docs/with-claude.ja.md)).
 
 First delete the old `~/.claude/skills/motion-*` entries (and any copies in a project's `.claude/skills/`). The light `egatari` entry contains only make for authoring and needs no Node. Add `egatari-studio` for local quality checks, builds, parts and video. To use studio, install both entries:
 
@@ -119,13 +120,13 @@ codex plugin add egatari-studio@egatari
 
 Then, after each Studio release, run `npx egatari@0.6.x skills update` and restart Codex. The skill's instructions and quality checks change with each Studio release, so an old skill misses the newer rules and fixes.
 
-Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a lesson. Codex's workspace-write sandbox blocks the network and the browser, so run `check` and `build` outside it, or with network and browser access allowed. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
+Add `egatari` alone for authoring (no Node.js needed); add `egatari-studio` too for local checks, builds, parts and video. Restart Codex, then ask for a file. Codex's workspace-write sandbox blocks the network and the browser, so run `check` and `build` outside it, or with network and browser access allowed. Update with `codex plugin marketplace upgrade egatari` and `codex plugin add egatari@egatari` / `codex plugin add egatari-studio@egatari` again (Codex has no separate update command), or run `npx egatari@0.6.x skills update`, which does this for Claude Code and Codex alike. `npx egatari@0.6.x doctor` warns when an installed skill is older than the package.
 
-For a chat AI, upload `egatari-make-skill.zip`. When Studio is updated, add it again with “Download the AI skill” in Studio. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
+For an AI chatbot such as ChatGPT, Gemini or Claude, upload `egatari-make-skill.zip`. When Studio is updated, add it again with “Download the AI skill” in Studio. Developers can create it with `node tools/make-llm-guide.mjs --zip out/release`. Its `make/` contents match the generated, committed `plugins/egatari/skills/make/` directory.
 
 | Skill | Use it for |
 |---|---|
-| `egatari:make` | plan, write, step and narrate a lesson (no Node needed) |
+| `egatari:make` | plan, write, step and narrate slides and script (no Node needed) |
 | `egatari-studio:studio` | local quality checks and builds, writing parts, and exporting video with existing audio |
 
 Example prompts:
@@ -163,7 +164,7 @@ node kit/build.mjs $D/deck.html                          # rebuild so the audio 
 node render/render.mjs $D/out/deck.html --out $D/video   # add --only "更新の式:2" for one step (or --only 更新の式 for a whole slide), --full for one file
 ```
 
-- Voices: `--voices expert=bob,novice=alice`, or `<deck>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English lesson `<name>_en.wav` is used when it exists
+- Voices: `--voices expert=bob,novice=alice`, or `<working folder>/voice.json` (`{"expert": "me"}`, or a path to a wav file). The defaults are `bob` (single speaker) and `bob` / `alice` (dialogue), looked up as `tts/voices/<name>.wav`; in an English file `<name>_en.wav` is used when it exists
 - If the server is not running or a voice file is missing, `synth.py` stops and names the URL or file it could not reach
 - No Mac? `synth.py` works with any OpenAI-compatible TTS server that takes the same request ([docs/video.md](docs/video.md#tts-server-mac-windows-linux)); the editor app can also make or record each step's audio
 - **Self-playing HTML with audio**: `node kit/build.mjs $D/deck.html --embed-audio` puts the script audio inside the HTML, so the HTML file plays with `a` (autoplay) anywhere. The audio is compressed to AAC (64 kbps, mono; about 4.5 MB for a 5-minute talk, instead of ~30 MB as WAV), which every current browser plays. Without `--embed-audio` the HTML refers to the WAV files in `audio/` and nothing is converted. If ffmpeg is missing, the WAV files are embedded as they are and the build warns
@@ -190,7 +191,7 @@ What video needs (ffmpeg, uv, a TTS server, reference voices) is under Tier 2 in
 | number + Enter | go to that page |
 | f | fullscreen |
 | p | presenter view (speaker notes, next step, timer) |
-| a | autoplay (plays the audio if the lesson has it) |
+| a | autoplay (plays the audio if the file has it) |
 | l | show later steps faintly (on/off) |
 | b | black screen |
 | s / Shift+s | captions (script, about two lines at a time) / caption size S, M, L |
@@ -202,7 +203,7 @@ What video needs (ffmpeg, uv, a TTS server, reference voices) is under Tier 2 in
 
 All keys (Home/End, PageUp/PageDown, presenter-view keys) and URL parameters: [docs/reference.md#presenting](docs/reference.md#presenting).
 
-A toolbar with the same actions is shown for about 5 s when the lesson opens (the first time on a device, with a line that says how to bring it back), then whenever the mouse moves or the screen is tapped; it hides after 2.5 s. While it is hidden, a faint **Show toolbar** button at the bottom left brings it back. Drawings are kept per slide and never appear in print or video.
+A toolbar with the same actions is shown for about 5 s when the file opens (the first time on a device, with a line that says how to bring it back), then whenever the mouse moves or the screen is tapped; it hides after 2.5 s. While it is hidden, a faint **Show toolbar** button at the bottom left brings it back. Drawings are kept per slide and never appear in print or video.
 
 ![toolbar](docs/images/controls.png)
 
@@ -220,16 +221,16 @@ printf '{"name": "mylab", "extends": "default"}\n' > themes/mylab/theme.json
 node kit/build.mjs examples/minimal/deck.html --theme mylab
 ```
 
-A theme can also sit next to a lesson (`<deck>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the working folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). In the editor app, choose your theme folder once (**Choose theme folder…**, read only; [editor](docs/editor.md)), or put the theme in the lesson's `themes/`; otherwise it builds with `default` and a warning naming the missing theme. An Egatari file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch lessons: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
+A theme can also sit in the working folder (`<working folder>/themes/<name>/`) or in a folder of your own themes: set `EGATARI_THEMES` to a list of folders (separated by `:`, or `;` on Windows), or use `~/.egatari/themes` (it may be a symbolic link). Themes are looked up in the working folder, its `themes/`, your theme folders, then the bundled `themes/` ([reference](docs/reference.md#themes)). In the editor app, choose your theme folder once (**Choose theme folder…**, read only; [editor](docs/editor.md)), or put the theme in the working folder's `themes/`; otherwise it builds with `default` and a warning naming the missing theme. An Egatari file carries such a theme with it. Included: `default` (neutral), `business` (neutral, for business and pitch slides: navy with orange emphasis, no logo) and `kokugo` (Mincho, for Japanese language arts). No institutional themes or logos are bundled.
 
 ## Examples
 
 | Example | What it shows |
 |---|---|
 | [`examples/minimal`](examples/minimal) | Japanese, 6 slides on gradient descent: steps, KaTeX with `\hlE`, `{mark}`, `data-morph`, `m-sweep`, a script for every step. A fuller example to learn from (`npm run new` makes a clean template) |
-| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: lesson-local parts (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `default` |
+| [`examples/tmlr2026-calibration`](examples/tmlr2026-calibration) | English, 14 slides introducing a TMLR 2026 paper: parts of that working folder only (`components/`), data made by scripts (`scripts/`, `data/`), English TTS (`voice.json`), theme `default` |
 | [`examples/pitch-fictional`](examples/pitch-fictional) | Japanese, 10 slides: a pitch for a fictional company (株式会社レポミル, a SaaS that drafts reports). `m-kpi`, `m-flow` (money flows and `pulse`), `m-bars` (with an axis rescale), `m-quad`, `m-market`, theme `business`, data written by a script (`scripts/`, `data/`). The company, product and every number are made up |
-| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 11 slides for a 国語 lesson: a contents slide with `m-menu` (links to each part, Back to return), kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
+| [`examples/kokugo-kanbun`](examples/kokugo-kanbun) | Japanese, 11 slides for a 国語 class: a contents slide with `m-menu` (links to each part, Back to return), kanbun with `m-kanbun` (『史記』, 孟浩然「春暁」, 杜甫「春望」, 『論語』), 『枕草子』 with `m-kobun`, an original modern text with `m-gendai` (vertical), theme `kokugo` |
 | [`examples/heikin-chuouchi`](examples/heikin-chuouchi) | Japanese, 10 slides **with a book** (`article/`, 4 files: chapter numbers, figures, equations, citations, links between the book and the slides) for high-school maths: mean and median as the lowest point of the sum of squared and absolute deviations. `m-curves`, `m-sweep`, `m-bars`, theme `default`. Copied from [egatari/examples](https://github.com/egatari/examples) (`SOURCE.json`); CC BY 4.0 |
 | [`examples/rashomon`](examples/rashomon) | Japanese, 7 slides (5 vertical) **with a book** (`article.md`, vertical) for reading 芥川龍之介「羅生門」 in high school, with `m-gendai`, theme `kokugo`. The story's text is from Aozora Bunko (public domain); the reading guide, slides and script are CC BY 4.0. Copied from [egatari/examples](https://github.com/egatari/examples) (`SOURCE.json`) |
 
@@ -299,7 +300,7 @@ npm run sheet -- examples/minimal                        # one PNG with every sl
 node server/dev.mjs examples/minimal/deck.html      # dev server at http://127.0.0.1:8730/ (Ctrl+C to stop)
 ```
 
-#### Start your own lesson
+#### Start your own slides
 
 ```bash
 npm run new -- talks/mytalk --lang en --theme default --title "My talk"
@@ -308,13 +309,13 @@ npm run dev -- talks/mytalk/deck.html      # edit in the browser
 npm run check -- talks/mytalk/deck.html    # the last line should read "エラー 0" (0 errors)
 ```
 
-`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. It also writes `egatari.json` with `"componentsCatalogue": "2"`: new lessons are built with parts library 2, the parts the chat AI's instructions describe (a folder without that setting, such as an older lesson, keeps parts library 1). Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
+`npm run new -- <folder>` creates `deck.html` and `narration.md` from a clean template: a cover and sample slides showing steps, math, emphasis and a part, with a script for every step. It also writes `egatari.json` with `"componentsCatalogue": "2"`: new files are built with parts library 2, the parts the AI chatbot's instructions describe (a folder without that setting, such as an older working folder, keeps parts library 1). Options: `--lang en|ja` (default `ja`), `--theme <name>` (default `default`), `--title "…"`. It refuses to write into a folder that is not empty. You can change the theme later with `<html data-theme="business">` or `--theme business`. With `<html lang="en">` body text is set in Source Sans 3 and the quality check uses the English standards. For a fuller example, see `examples/minimal/`.
 
-Every slide of a new lesson has a stable id (`<section class="slide" id="s-k3f9q2">`), and its script heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking the script, audio or timing. For a lesson made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
+Every new slide has a stable id (`<section class="slide" id="s-k3f9q2">`), and its script heading names it (`## Heading {#s-k3f9q2}`), so you can rename headings without breaking the script, audio or timing. For a working folder made before ids, run `npm run ids -- talks/mytalk` once: it adds ids and renames the keys in `narration.md`, `audio/manifest.json`, `timeline.json` and `comments.json` (keeping backups in `.cache/edits/`).
 
 ### Editing in the browser (dev server)
 
-You rarely need to open `deck.html` by hand. Start the dev server and fix things on the slide itself:
+You rarely need to open `deck.html` by hand. Start the dev server and edit on the slide itself:
 
 ```bash
 node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:8730/  (Ctrl+C to stop)
@@ -322,9 +323,9 @@ node server/dev.mjs path/to/deck.html            # then open http://127.0.0.1:87
 
 The page shows the slides (arrow keys, `p`, `a`, … all work), with the editing tools around it: the slides run in a sandboxed frame and can only point at what to edit, and nothing is written until you press Save in the editing tools. It reloads by itself whenever a file of the slides changes, and stays on the same slide and step.
 
-1. **Fix text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
-2. **Fix the script: `n`.** A drawer shows the script of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
-3. **Leave a comment: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then ask your AI coding tool (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" and it edits the slides; the page updates as soon as it saves.
+1. **Edit text: `e`, then double-click.** Editable elements get a dotted outline. Double-click one to open its source (HTML, with math as `\( … \)`), edit, and press ⌘/Ctrl+Enter. Only that element is replaced in `deck.html`.
+2. **Edit the script: `n`.** A drawer shows the script of the current step. Edit the text (add or remove turns, change the speaker) and save. Only that step is replaced in `narration.md`.
+3. **Leave a comment: Alt+click (on a Mac, hold ⌥ Option and click).** Write what you want changed ("make this figure larger", "split this slide"). Comments go to `comments.json`; `c` lists them. Then ask your AI agent (Claude Code, Codex, Gemini CLI …) to "apply the comments in comments.json" and it edits the slides; the page updates as soon as it saves.
 4. **Undo:** the previous versions of `deck.html` and `narration.md` are kept in `.cache/edits/` (last 30).
 
 | `e` + double-click: edit the source | `n`: edit the script | Alt / ⌥ Option + click: comment |
@@ -338,10 +339,10 @@ Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.j
 | Path | Contents |
 |---|---|
 | `docs/contract.md` | the contract: position and time, parts, script, timeline, emphasis, morphs. **Read this first** ([日本語](docs/contract.ja.md)) |
-| `docs/dev-server.md`, `docs/editor.md`, `docs/video.md`, `docs/distributing.md` | guides: the dev server, the editor app, making a video, and handing a lesson to learners ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md), [日本語](docs/distributing.ja.md)) |
-| `docs/authoring-with-llms.md` | instructions for chat AIs (claude.ai, Gemini, ChatGPT) to write a first draft; the common body (standard parts); the part set packs (stats, data, math, maps, kokugo, english, music, business, tools, science) are in `docs/llm-parts/`; generated by `tools/make-llm-guide.mjs`, assembled by `node kit/llm-pack.mjs` ([日本語](docs/authoring-with-llms.ja.md)) |
+| `docs/dev-server.md`, `docs/editor.md`, `docs/video.md`, `docs/distributing.md` | guides: the dev server, the editor app, making a video, and distributing a file to learners ([日本語](docs/dev-server.ja.md), [日本語](docs/editor.ja.md), [日本語](docs/video.ja.md), [日本語](docs/distributing.ja.md)) |
+| `docs/authoring-with-llms.md` | instructions for AI chatbots such as ChatGPT, Gemini or Claude to write a first draft; the common body (standard parts); the part set packs (stats, data, math, maps, kokugo, english, music, business, tools, science) are in `docs/llm-parts/`; generated by `tools/make-llm-guide.mjs`, assembled by `node kit/llm-pack.mjs` ([日本語](docs/authoring-with-llms.ja.md)) |
 | `docs/reference.md` | reference: slide syntax, script, timing, themes, keys, URL parameters, and all CLI options and environment variables ([日本語](docs/reference.ja.md)) |
-| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, script parser, quality checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-lesson template |
+| `kit/` | runtime (`deck.js`, `presenter.js`, `tools.js`), styles, build, script parser, quality checker, browser launcher; `kit/core/` is the build shared by Node and the editor app, `kit/templates/` the new-slides template |
 | `vendor/components/` | copies of the [egatari/components](https://github.com/egatari/components) releases (parts), every version brought in; default versions pinned in `components.lock.json`; catalog in `vendor/components/CATALOG.md`. Update with `npm run components:update -- vX.Y.Z` |
 | `themes/` | themes |
 | `server/` | dev server and in-browser editor |
@@ -349,7 +350,7 @@ Details: [docs/dev-server.md](docs/dev-server.md) ([日本語](docs/dev-server.j
 | `tts/`, `render/` | tier 2: TTS (a uv project), video rendering |
 | `skills/studio/` | local Claude Code studio skill |
 | `plugins/egatari/` | generated light plugin with only make |
-| `tools/` | new-lesson template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
+| `tools/` | new-slides template (`new.mjs`), tests and helpers (`smoke`, `test-*`, `shot`, `pdf`, `get-fonts.mjs`) |
 | `CHANGELOG.md` | changes in each release |
 
 Tests (need Chrome):
@@ -367,19 +368,19 @@ node tools/test-app.mjs                                            # editor app 
 
 ## Feedback & contributing
 
-- In a lesson, press `?` and click **Send feedback** (also in the presenter view). It opens a [feedback form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) with only the version, browser, OS, language and mode filled in; nothing from your slides is sent. Turn it off with `<html data-feedback="off">`
+- In a playing file, press `?` and click **Send feedback** (also in the presenter view). It opens a [feedback form](https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml) with only the version, browser, OS, language and mode filled in; nothing from your slides is sent. Turn it off with `<html data-feedback="off">`
 - In Claude Code, say "send feedback": the skill drafts an issue from the session and creates it only after you confirm
-- Want a new figure? Write it in your lesson first (inline SVG, or a lesson-local part); to have it in the Parts library, [propose it in egatari/components](https://github.com/egatari/components/issues/new?template=proposal.yml)
+- Want a new figure? Write it in your slides first (inline SVG, or a part of that working folder only); to have it in the Parts library, [propose it in egatari/components](https://github.com/egatari/components/issues/new?template=proposal.yml)
 - Questions: [Discussions](https://github.com/egatari/egatari-studio/discussions). How to contribute: [CONTRIBUTING.md](CONTRIBUTING.md)
 - What changed in each release: [CHANGELOG.md](CHANGELOG.md)
 
 ## Security
 
-A lesson is code: its scripts and parts run in your browser and in the headless Chrome used by the quality checker and renderer, and the build reads local files inside the working folder. Build and serve only lessons you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
+An Egatari file is code: its scripts and parts run in your browser and in the headless Chrome used by the quality checker and renderer, and the build reads local files inside the working folder. Build and serve only files you trust. The trust model and how to report a vulnerability: [SECURITY.md](SECURITY.md).
 
 ## License
 
 - Code: [MIT](LICENSE), Copyright (c) 2026 Gendo Kumoi. Fonts and KaTeX fonts: see [NOTICE](NOTICE)
-- Fonts: BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic, [fonts/OFL-BIZUDPMincho.txt](fonts/OFL-BIZUDPMincho.txt) for BIZ UDPMincho; the `@fontsource` packages ship their own license files). Built lessons embed subsets of them. KaTeX and its fonts are MIT
+- Fonts: BIZ UDPGothic, BIZ UDPMincho and Source Sans 3 are licensed under the SIL Open Font License 1.1 ([fonts/OFL.txt](fonts/OFL.txt) for BIZ UDPGothic, [fonts/OFL-BIZUDPMincho.txt](fonts/OFL-BIZUDPMincho.txt) for BIZ UDPMincho; the `@fontsource` packages ship their own license files). Built files embed subsets of them. KaTeX and its fonts are MIT
 - Logo: the Egatari logo ([assets/logo/](assets/logo/), and the editor's favicon and app icons) is not covered by the MIT license. You may use it unmodified to refer to Egatari or to Egatari-compatible software (software that reads or writes Egatari files). See [NOTICE](NOTICE)
 - No university or other institutional logos are included (the institutional themes were removed after 0.4.0; see [CHANGELOG.md](CHANGELOG.md)). A theme you add yourself, with its logos, is under its own terms

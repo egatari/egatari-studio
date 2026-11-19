@@ -1,30 +1,30 @@
 ---
 name: make
-description: Make HTML lessons, animated slides, steps, parts and scripts for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari” or “make a lesson”.
+description: Make Egatari slides, steps, parts, scripts and books for Egatari Studio, starting from an outline. Use for “make animated slides”, “make this into Egatari”, “make an Egatari file” or “make a lesson”.
 ---
 
 <!-- generated; do not edit by hand -->
 
-Always reply in the language the user writes in. Write slides and narration in the lesson's language.
+Always reply in the language the user writes in. Write slides and narration in the file's language.
 
-# egatari:make: Make a lesson
+# egatari:make: Make slides and script
 
-Egatari is an open lesson format ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
+Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: 049c5f95**
+**Instruction version: ac7fb486**
 **Skill version: 0.6.15**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
-In a chat AI, add it again with "Download the AI skill" in Studio.
+In an AI chatbot, add it again with "Download the AI skill" in Studio.
 
-After installing, have the user turn on automatic updates: the skill's instructions and quality checks change with each Studio release. In Claude Code: `/plugin` → Marketplaces → egatari → Enable auto-update (marketplaces other than the official one start with auto-update off). In Codex: run `npx egatari@0.6.x skills update` after each Studio release. In a chat AI: when Studio is updated, add the skill again with "Download the AI skill".
+After installing, have the user turn on automatic updates: the skill's instructions and quality checks change with each Studio release. In Claude Code: `/plugin` → Marketplaces → egatari → Enable auto-update (marketplaces other than the official one start with auto-update off). In Codex: run `npx egatari@0.6.x skills update` after each Studio release. In an AI chatbot: when Studio is updated, add the skill again with "Download the AI skill".
 
 **Old-version notice**: a file the user opens records the version of the Studio that made it. In a single file (`.ega.html`) it is `"generator":{"name":"egatari-studio","version":"…"}` in `<script id="deck-meta">`; in a working folder it is `"version"` in `deck-meta` of the build output `out/deck.html`. Only when that version is newer than the skill version above (compare as numbers: 0.6.10 is newer than 0.6.9), say the line below and keep working (do not stop). Say it once per conversation (once in total with the studio skill). <version> is the skill version.
 
 - Claude Code: “The Egatari skill is an old version (<version>). You can update it with /plugin (Marketplaces → egatari → Enable auto-update keeps it updated automatically).”
 - Codex: “The Egatari skill is an old version (<version>). You can update it with `npx egatari@0.6.x skills update`.”
-- Chat AI: “The Egatari skill is an old version (<version>). You can add it again with “Download the AI skill” in Studio.”
+- AI chatbot: “The Egatari skill is an old version (<version>). You can add it again with “Download the AI skill” in Studio.”
 
 Say nothing when the file's version is the same as the skill version or older, or cannot be read. Instructions copied in Studio carry only the instruction version, which does not tell which is newer, so do not use them for this notice (only for “new parts are available” above).
 
@@ -38,7 +38,7 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the lesson. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the content. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
 
 - [standard](references/parts/en/standard.md)
 - [stats](references/parts/en/stats.md)
@@ -58,7 +58,7 @@ Choose the parts for the outline from the standard parts and the specialized set
 
 ## Book (article)
 
-A lesson can have a **book** (a textbook chapter, a paper or a reading) beside its slides and script. The book's body is text to read; the script is what is spoken at each step. Do not force the body into the script (R-article).
+An Egatari file can have a **book** (a textbook chapter, a paper or a reading) beside its slides and script. The book's body is text to read; the script is what is spoken at each step. Do not force the body into the script (R-article).
 
 When a book is requested, read [references/book.md](references/en/book.md) before writing the outline. Write the book in Claude Code (where files can be written). There is no form to paste into chat. Studio's editor can read a book, fix its text, check its links and print it, but it does not create a book from scratch or reorganize its chapters.
 
@@ -70,23 +70,23 @@ Ask the user to add audio in Studio's audio panel (make AI voice on this compute
 
 ## When you finish
 
-If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new lessons are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the code blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (`.ega.html`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
+If you can write files, write `deck.html`, `narration.md` and an `egatari.json` containing only `{"componentsCatalogue": "2"}` into a new folder (new files are built with parts library 2, which the parts described here belong to; without `egatari.json` the folder builds with the older library 1, and parts only library 2 has stop the build). Deliver these files instead of the code blocks required by R-output below. If `egatari-studio:studio` is available, continue with that skill for quality checks, ids and building; it finishes with an Egatari file (`.ega.html`). Otherwise ask the user to open <https://studio.egatari.org/> in Chrome or Edge and select the folder using “Work in a folder…” (フォルダで作業する…) on the start screen or in the File menu. In Safari or Firefox, paste the contents of the two files into New… → “Paste the AI’s output” (新規作成… →「AI の出力を貼り付ける」).
 
 If you cannot write files, return the two code blocks `deck.html` and `narration.md` following R-output below, ready to paste into Studio's New… → “Paste the AI’s output”.
 
-In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a lesson.
+In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a file.
 
 Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
 
 # Instructions for the AI
 
-Pack version: `049c5f95`
+Pack version: `ac7fb486`
 
-You will write one short **Egatari lesson**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
+You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
 **Before you start (the most common failures):**
 
-- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep the lesson short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).
+- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep it short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).
 - **Sizes on the 1280×720 slide** (the quality checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and parts, is at least 24 px.**
 - **Charts and figures:** parts draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the part, not the text. A part of 380 px leaves room for one short line; with two lines, use 330 px.
 - **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox="0 0 560 320" width="560" height="320">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a part when one fits.
@@ -94,8 +94,8 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 ## 1. Output format
 
 - **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. No files, canvas or attachments: write both blocks in your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the lesson would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).
-- **R-outline** When the request asks for an **outline only** (a long lesson made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
-- **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given a lesson that already has ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
+- **R-outline** When the request asks for an **outline only** (a long file made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.
+- **R-noids** Do **not** write slide ids. Write `<section class="slide">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given slides that already have ids (a fix request), keep every existing `id="…"` and `{#…}` exactly as it is.
 
 ## 2. deck.html
 
@@ -107,7 +107,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lesson title</title>
+<title>Title</title>
 </head>
 <body>
 <div id="stage">
@@ -118,7 +118,7 @@ You will write one short **Egatari lesson**: HTML slides with step-by-step revea
 </html>
 ```
 
-- `lang`: `en`, `ja`, … (the language of the lesson). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.
+- `lang`: `en`, `ja`, … (the language of the slides and script). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.
 - No `<script>` except part data (§2.6), no `<link>`. A `<style>` block is allowed only for layout (sizes, gaps), never colors.
 
 ### 2.2 Slides
@@ -168,18 +168,18 @@ Choose candidate parts from the set references.
 - **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.
 - **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.
 - **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a part of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes.
-- **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole lesson (`、。` or `，．`). English slides: short phrases, sentence case.
+- **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole file (`、。` or `，．`). English slides: short phrases, sentence case.
 
 ## 3. Part catalog
 
-Standard parts fit any lesson; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
+Standard parts fit any file; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values="[0.1,0.5]"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.
 
 Read only the parts you need from the set references above.
 
 ## 4. narration.md
 
 ```markdown
-# Script: <lesson title>
+# Script: <title>
 
 ## The decay law
 [0] Here is the decay law. We follow how many atoms are left.
@@ -208,7 +208,7 @@ When the user pastes a **fix request** (a list of findings with the ids of the s
 
 ## 6. Worked example
 
-A small lesson, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`; the `m-flow` with 4 boxes gives steps 1–4. The static cover has `[0]` only. Some part sets end with an example of their own.
+A small example, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`; the `m-flow` with 4 boxes gives steps 1–4. The static cover has `[0]` only. Some part sets end with an example of their own.
 
 ### Common (English, default theme, marks, m-flow)
 

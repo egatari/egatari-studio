@@ -136,7 +136,7 @@ try {
       ok((await page.textContent('#dlg-title')) === '編集の記録が表示されません', 'a. title ' + JSON.stringify(await page.textContent('#dlg-title')));
       ok((await page.textContent('#old-player')) === 'この Egatari ファイルのプレーヤーは古いため、編集の記録はファイルに入りますが、再生するときに表示されません。', 'a. the body is the requested sentence');
       ok((await page.textContent('#old-player-which')) === 'このファイルのプレーヤー：Egatari Player 1.8.0', 'a. names the player of the file ' + JSON.stringify(await page.textContent('#old-player-which')));
-      ok((await page.textContent('#dlg-update-player')) === 'プレーヤーを新しくして保存' && (await page.textContent('#dlg-save')) === '保存' && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'a. buttons キャンセル / 保存 / プレーヤーを新しくして保存');
+      ok((await page.textContent('#dlg-update-player')) === 'プレーヤーを更新して保存' && (await page.textContent('#dlg-save')) === '保存' && (await page.textContent('#dlg-cancel')) === 'キャンセル', 'a. buttons キャンセル / 保存 / プレーヤーを更新して保存');
       await page.screenshot({ path: path.join(work, 'old-player.png') });
       await clickDlg(page, '#dlg-cancel');
     }

@@ -68,7 +68,7 @@ for (const dir of ['make', 'parts', 'video']) assert.ok(!fs.existsSync(path.join
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'parts.md', 'video.md']);
 for (const [f, name, triggers] of [
   [`${MAKE_SKILL_DIR}/SKILL.md`, 'make', ['動きのあるスライドを作って', '教材を作って']],
-  ['skills/studio/SKILL.md', 'studio', ['動画にして', 'パーツを作って', 'この図をパーツにして', 'checking and building lessons locally']],
+  ['skills/studio/SKILL.md', 'studio', ['動画にして', 'パーツを作って', 'この図をパーツにして', 'checking and building Egatari working folders locally']],
 ]) {
   const fm = read(f).match(/^---\n([\s\S]*?)\n---/)[1];
   assert.ok(fm.includes(`name: ${name}\n`));
@@ -127,7 +127,7 @@ for (const [f, t] of [['make', make], ['studio', studio]]) {
   assert.ok(t.includes(notice(`\`${codexUpdate}\` で更新できます。`)), `${f}: notice (Codex)`);
   assert.ok(/1 回の会話で 1 回だけ/.test(t) && /作業は止めずに続ける/.test(t), `${f}: once, never blocks`);
 }
-assert.ok(make.includes(notice('Studio の『AI のスキルをダウンロード』で入れ直せます。')), 'make: notice (chat)');
+assert.ok(make.includes(notice('Studio の『AI のスキルをダウンロード』で追加し直せます。')), 'make: notice (chat)');
 assert.ok(make.includes('"generator":{"name":"egatari-studio","version":"…"}') && make.includes('`out/deck.html` の `deck-meta` の `"version"`'), 'make: the file signals');
 assert.ok(studio.includes('`ok   skills   指示のバージョン …（Studio X.Y.Z）`') && studio.includes('`指示の版 …`'), 'studio: compares with the doctor line, new and old wording');
 const makeEn = read(`${MAKE_SKILL_DIR}/SKILL.en.md`);
@@ -212,7 +212,7 @@ for (const language of ['ja', 'en']) {
   }
   const description = text.match(/^description: (.+)$/m)[1];
   assert.ok([...description].length <= 1024);
-  assert.ok(text.includes(language === 'ja' ? 'チャットでは Studio の『AI のスキルをダウンロード』で入れ直す' : 'In a chat AI, add it again with "Download the AI skill" in Studio'));
+  assert.ok(text.includes(language === 'ja' ? '対話型AIでは Studio の『AI のスキルをダウンロード』で追加し直す' : 'In an AI chatbot, add it again with "Download the AI skill" in Studio'));
   const book = read(`docs/llm-book${language === 'ja' ? '.ja' : ''}.md`).replace(/^<!-- i18n:.*-->\n/, '').trim();
   assert.ok(text.includes(book), `${language}: book comes from docs`);
 }

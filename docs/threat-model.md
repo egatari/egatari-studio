@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.ja.md sha256=f9322f6abf39df1d -->
+<!-- i18n: pair=threat-model.ja.md sha256=cfa52eb63f2afd68 -->
 # Threat model
 
 English | [日本語](threat-model.ja.md)
@@ -7,40 +7,40 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 
 ## What is protected
 
-- The files on the computer of the person who opens, edits or builds a lesson (outside the lesson's working folder, and the editor's own storage and folder handles).
-- Script text and other lesson content, which should leave the computer only where this document says so.
+- The files on the computer of the person who opens, edits or builds a file (outside the file's working folder, and the editor's own storage and folder handles).
+- Script text and other file content, which should leave the computer only where this document says so.
 - The integrity of what Studio builds and ships (the editor site, release assets, vendored parts).
 
 ## Assumptions
 
-- A working folder is treated like a source-code repository: you build, check or serve only lessons you trust ([SECURITY.md](../SECURITY.md), "Trust model: a deck is code").
+- A working folder is treated like a source-code repository: you build, check or serve only files you trust ([SECURITY.md](../SECURITY.md), "Trust model: a deck is code").
 - The local computer and other local processes are trusted. Another local user or a process changing the folder while a tool runs is out of scope (SECURITY.md, "Residual risks").
-- What you name on the command line or in the environment (lesson path, `--theme`, `-o`, `EGATARI_THEMES`, `IRODORI_URL`) is trusted.
+- What you name on the command line or in the environment (working folder path, `--theme`, `-o`, `EGATARI_THEMES`, `IRODORI_URL`) is trusted.
 
-## 1. Authored lessons: untrusted HTML in the preview iframe
+## 1. Authored files: untrusted HTML in the preview iframe
 
-**Threat.** A lesson (or the AI's output pasted into the editor, or a downloaded Egatari file) is HTML with inline scripts and parts. It can try to read or write files, reach the network, drive the editor UI, or imitate it.
+**Threat.** A file (or the AI's output pasted into the editor, or a downloaded Egatari file) is HTML with inline scripts and parts. It can try to read or write files, reach the network, drive the editor UI, or imitate it.
 
 **What is in place.**
 - While you edit, the slides run in a sandboxed iframe with an opaque origin (`sandbox="allow-scripts allow-modals"`, no `allow-same-origin`) under a Content-Security-Policy with `connect-src 'none'` and other resources limited to `data:` / `blob:` (`app/preview-doc.js` `PREVIEW_CSP` for the editor app; `server/dev.mjs` for the dev server, which also allows its own `/deck/audio/`).
-- The slides can only send hints (`server/hints.js`); they carry no text to write. The editing UI runs outside the slides, reads the source itself and writes only when you press Save. The editor app asks before it runs a lesson that has code, and decides "has code" from the built content (`kit/core/code-scan.mjs`), not from what an Egatari file declares.
+- The slides can only send hints (`server/hints.js`); they carry no text to write. The editing UI runs outside the slides, reads the source itself and writes only when you press Save. The editor app asks before it runs a file that has code, and decides "has code" from the built content (`kit/core/code-scan.mjs`), not from what an Egatari file declares.
 - Reads go through bounded readers (`kit/bounded-read.mjs`, `app/bounded-read.js`; `tools/test-raw-reads.mjs` guards against direct reads). The build refuses paths that leave the working folder (`../`, absolute paths, symbolic links), and budgets bound includes, embeds, formulas and total size. Writes go through `kit/safe-fs.mjs`. Attachments are download-only and never run.
 - The editor page itself forbids `eval` (no `'unsafe-eval'`).
-- The book text (`article.md`, `article/`) of an opened lesson or Egatari file is untrusted input to the book reader, in the CLI and in the editor alike (`kit/core/article-text.mjs`). Both use the same book-tools bundle with markdown-it 14.3.3, which fixes the five advisories affecting 13.0.2; the myst packages and markdown-it are development dependencies, and `npm audit` on an installed `egatari` is clean (SECURITY.md). The guard stays as a second layer (defence in depth): each file is at most 1 MiB, and a paragraph with more than 512 quotation marks (`"` and `'`) or more than 64 tag openings (`<!`, `<?`) is refused before it is parsed (`articleUnsafeParagraph`). Playing never reads book text: Egatari Viewer and the player inside an Egatari file contain neither myst-parser nor markdown-it.
+- The book text (`article.md`, `article/`) of an opened working folder or Egatari file is untrusted input to the book reader, in the CLI and in the editor alike (`kit/core/article-text.mjs`). Both use the same book-tools bundle with markdown-it 14.3.3, which fixes the five advisories affecting 13.0.2; the myst packages and markdown-it are development dependencies, and `npm audit` on an installed `egatari` is clean (SECURITY.md). The guard stays as a second layer (defence in depth): each file is at most 1 MiB, and a paragraph with more than 512 quotation marks (`"` and `'`) or more than 64 tag openings (`<!`, `<?`) is refused before it is parsed (`articleUnsafeParagraph`). Playing never reads book text: Egatari Viewer and the player inside an Egatari file contain neither myst-parser nor markdown-it.
 
-**Not covered.** The lesson's own code still runs inside the preview and can draw anything in the slide area, including a fake editor card; only controls in the editor's own panels are trustworthy. The dev server's slides document and `PREVIEW_CSP` keep `'unsafe-eval'` so yanked part versions still play there. Resource use is bounded per budget, not by total process memory or time. `kit/check.mjs`, `tools/pdf.mjs`, `render/` and the tests run a lesson's code in headless Chrome (SECURITY.md), so run them on trusted lessons only.
+**Not covered.** The file's own code still runs inside the preview and can draw anything in the slide area, including a fake editor card; only controls in the editor's own panels are trustworthy. The dev server's slides document and `PREVIEW_CSP` keep `'unsafe-eval'` so yanked part versions still play there. Resource use is bounded per budget, not by total process memory or time. `kit/check.mjs`, `tools/pdf.mjs`, `render/` and the tests run the slides' code in headless Chrome (SECURITY.md), so run them on trusted files only.
 
 ## 2. Play-only files opened locally
 
 **Threat.** A participant opens a `.ega.html` or play-only copy (`--play-only`) received from someone else, from a `file:` URL.
 
-**What is in place.** A play-only copy has no source, only the slides and audio, and it plays offline. Local assets are embedded as data URIs. Attachments in an Egatari file are never opened or run: the player offers only a download, after checking the index hash, size and SHA-256, as `application/octet-stream`. Packing refuses executables, scripts, HTML, SVG, archives and macro-enabled Office files (`kit/core/attach-content.mjs`). Links that leave the lesson never navigate the lesson's window: the player shows the destination host and full address and opens it only on **Open**, in a new tab with `noopener,noreferrer`; it asks every time when the link text names another host, the address is not `https:`, or the link downloads a file, and refuses `javascript:`, `data:`, `file:` and other schemes (`kit/core/link-policy.mjs`, contract §9; Egatari Player P4.2). A page that plays lessons in a frame applies the same rule to the lesson's `openLink` requests (Player P8) in its own interface.
+**What is in place.** A play-only copy has no source, only the slides and audio, and it plays offline. Local assets are embedded as data URIs. Attachments in an Egatari file are never opened or run: the player offers only a download, after checking the index hash, size and SHA-256, as `application/octet-stream`. Packing refuses executables, scripts, HTML, SVG, archives and macro-enabled Office files (`kit/core/attach-content.mjs`). Links that leave the file never navigate the file's window: the player shows the destination host and full address and opens it only on **Open**, in a new tab with `noopener,noreferrer`; it asks every time when the link text names another host, the address is not `https:`, or the link downloads a file, and refuses `javascript:`, `data:`, `file:` and other schemes (`kit/core/link-policy.mjs`, contract §9; Egatari Player P4.2). A page that plays files in a frame applies the same rule to the file's `openLink` requests (Player P8) in its own interface.
 
-**Not covered.** A play-only file is still a page whose scripts run in your browser when you open it, and nothing in the copy shows whether its author is who you think. Open files only from people you trust, or inside a sandboxed frame. `http(s)` references that an author left in the lesson are not removed; the build warns that the lesson is then not fully offline. What an attachment does after you save and open it is outside Egatari.
+**Not covered.** A play-only file is still a page whose scripts run in your browser when you open it, and nothing in the copy shows whether its author is who you think. Open files only from people you trust, or inside a sandboxed frame. `http(s)` references that an author left in the file are not removed; the build warns that the file is then not fully offline. What an attachment does after you save and open it is outside Egatari.
 
 ## 3. Live: network only inside the live time
 
-**Threat.** A lesson file that contacts a server could leak a participant's presence or input, or be pointed at an unintended server.
+**Threat.** A file file that contacts a server could leak a participant's presence or input, or be pointed at an unintended server.
 
 **What is in place** (`kit/core/live-policy.mjs`, `kit/live.js`, `kit/core/live.mjs`; contract.md §11).
 - Only a play-only copy exported with Live carries the player. Every other output is unchanged.
@@ -48,7 +48,7 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 - The player connects only after the participant presses **Join**, only when `inWindow` is true (the live time, with 2 minutes of leeway), and only from a top-level `file:`, `content:` or `http(s):` document (`docContext`). Frames, sandboxed documents, the editor's preview and the dev server's preview show the Live's address as text instead; when in doubt it does not connect.
 - The exported file must carry exactly one CSP `<meta>` whose `connect-src` is exactly the endpoint in both `https://` and `wss://` forms (`connectSrc`, `cspOk`; `kit/core/live.mjs` refuses a file that already has a CSP). The WebSocket URL is built only on the same origin as the endpoint (`socketUrl`, `sameEndpoint`).
 - Reconnection stops outside the live time (`plan` returns `window_over`) and on the server's stop codes, with back-off and jitter.
-- The join code is not stored in the lesson (`validate` rejects `live.key` there); it goes only into the exported copy. In the join link it sits after `#`, so it is not sent to the server as part of the address (`joinUrl`).
+- The join code is not stored in the file (`validate` rejects `live.key` there); it goes only into the exported copy. In the join link it sits after `#`, so it is not sent to the server as part of the address (`joinUrl`).
 
 **Not covered.** Anyone holding the exported copy has the join code and can join during the live time; **Change join code** locks out copies that leaked. Content sent to the Live (questions, poll answers) goes to the Live server you chose; its protection is that of [egatari/live](https://github.com/egatari/live), not of this repository.
 
@@ -58,7 +58,7 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 
 **What is in place** (docs/editor.md, "Make AI voice in the cloud (Google Colab)"; `kit/core/colab-core.mjs`).
 - The editor asks once before export, because in Colab the script text is processed in Google's environment and the model files come from Hugging Face. `tts-job.json` holds only the text to read, voice names, each step's `inputHash`, the `docId` and the target recipe.
-- The returned ZIP file is untrusted. It is read as bytes with limits checked before allocation (ZIP file 512 MiB, 64 MiB per audio file, `records.json` 4 MiB, at most 400 steps), and zip64, encryption and unknown compression are refused. Only `records.json` and `audio/<name>.wav` are read, names are checked, the audio must decode as a WAV of the recorded length, and nothing is interpreted as HTML or code. The editor recomputes each `inputHash` from the current script instead of trusting the notebook, and refuses a ZIP file made for another lesson (`docId`).
+- The returned ZIP file is untrusted. It is read as bytes with limits checked before allocation (ZIP file 512 MiB, 64 MiB per audio file, `records.json` 4 MiB, at most 400 steps), and zip64, encryption and unknown compression are refused. Only `records.json` and `audio/<name>.wav` are read, names are checked, the audio must decode as a WAV of the recorded length, and nothing is interpreted as HTML or code. The editor recomputes each `inputHash` from the current script instead of trusting the notebook, and refuses a ZIP file made for another file (`docId`).
 - The notebook link is pinned to a release tag.
 
 **Not covered.** What Google or Hugging Face do with the text and the model files. The Colab check is verified only for the one environment named in the docs.

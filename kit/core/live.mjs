@@ -231,8 +231,8 @@ export function localToRfc3339(value, offsetMin) {
 const LABEL_MAX = LP.LIMITS.label;
 const HEADING_MAX = 24;
 const WORDS = {
-  ja: { whole: '教材全体', step: (k) => `ステップ ${k}`, concl: '結論', slide: (n, h, st) => `${n} 枚目『${h}』・${st}`, fb: (s, st) => `${s} · ${st}` },
-  en: { whole: 'whole lesson', step: (k) => `step ${k}`, concl: 'conclusion', slide: (n, h, st) => `Slide ${n} '${h}', ${st}`, fb: (s, st) => `${s} · ${st}` },
+  ja: { whole: 'ファイル全体', step: (k) => `ステップ ${k}`, concl: '結論', slide: (n, h, st) => `${n} 枚目『${h}』・${st}`, fb: (s, st) => `${s} · ${st}` },
+  en: { whole: 'whole file', step: (k) => `step ${k}`, concl: 'conclusion', slide: (n, h, st) => `Slide ${n} '${h}', ${st}`, fb: (s, st) => `${s} · ${st}` },
 };
 const words = (lang) => WORDS[lang === 'en' ? 'en' : 'ja'];
 const cut = (t, n) => { const c = [...t]; return c.length <= n ? t : c.slice(0, n - 1).join('').trimEnd() + '…'; };

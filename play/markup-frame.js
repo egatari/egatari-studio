@@ -337,7 +337,7 @@
 
   // ---------------------------------------------------------------- the small window
   var host = null, root = null, pop = null, popFor = null;   // popFor: {range} for a new one, {id} for a highlight
-  function words() { return S.words || { y: "黄", p: "桃", b: "青", del: "消す", window: "ハイライト" }; }
+  function words() { return S.words || { y: "黄", p: "桃", b: "青", del: "削除", window: "ハイライト" }; }
   function makePop() {
     if (host) return;
     host = document.createElement("div");

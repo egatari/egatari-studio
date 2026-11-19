@@ -157,7 +157,7 @@ console.log('lesson');
   await until(() => p.isVisible('#m-list'));
   await check('markup list', p, f);
   // 「この色を全部消す」 (yellow has one highlight): the confirmation dialog, then cancel
-  await p.locator('#m-list button', { hasText: 'この色を全部消す' }).first().click();
+  await p.locator('#m-list button', { hasText: 'この色をすべて削除' }).first().click();
   ok(await until(() => p.isVisible('#m-confirm'), 3000), 'the confirmation for deleting a colour opens');
   await check('confirm (delete a colour)', p, f);
   await p.keyboard.press('Escape');

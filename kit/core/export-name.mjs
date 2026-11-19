@@ -35,10 +35,10 @@ function fit(name, ext) {
 }
 export function exportName(title, fallback, ext) {
   const e = String(ext || '');
-  for (const cand of [title, fallback, 'lesson']) {
+  for (const cand of [title, fallback, 'untitled']) {
     const n = fit(clean(cand), e);
     if (n && !RESERVED.test(n)) return n + e;
     if (n) return n + '_' + e;          // CON → CON_.ega.html
   }
-  return 'lesson' + e;
+  return 'untitled' + e;
 }

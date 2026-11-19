@@ -109,7 +109,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     'llm: an unclosed code block shows the reason under the slides field, keeps “Create” disabled and offers “Copy instructions to resend”: ' + s.deck);
   await page.click('#paste-copy-cutoff');
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-cut-copied').textContent));
-  ok(/Send the lesson again in a shorter form/.test(await clip()) && (await page.textContent('#paste-cut-copied')) === 'Copied. Paste it into the chat and send, then paste the AI’s output here.', 'llm: the resend request asks for a shorter lesson');
+  ok(/Send the slides and script again in a shorter form/.test(await clip()) && (await page.textContent('#paste-cut-copied')) === 'Copied. Paste it into the chat and send, then paste the AI’s output here.', 'llm: the resend request asks for a shorter lesson');
   await refusedCopy(page, ok, { want: await clip(), what: 'llm resend', button: '#paste-copy-cutoff', msg: 'paste-cut-copied', box: 'paste-cut-text', shot: shotDir && path.join(shotDir, 'copy-refused-cutoff.png') });
   await shot('paste-error.png', 'paste-step-paste');
   await page.fill('#paste-deck', 'I could not do it, sorry.');
@@ -189,7 +189,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   const req = await page.inputValue('#fix-text');
   ok(req.includes('R-title') && /\*\*R-title\*\* Heading: Japanese at most 26 units/.test(req) && req.includes('R-narr-steps') && req.includes('R-reading') && req.includes('````deck.html') && req.includes('{#s-'),
     'llm: the fix request names the errors, quotes their rules from the guide and includes the current files');
-  ok(req.includes('## Parts used in this lesson') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
+  ok(req.includes('## Parts used in this file') && req.includes('### `<m-kpi>`') && req.includes('### `<m-bars>`') && !req.includes('### `<m-sweep>`'), 'llm: the fix request includes the notes of the components the deck uses');
   ok((await clip()) === req, 'llm: the fix request is on the clipboard');
   ok(/script \[4\] has no matching step on the slide \(narration\.md line/.test(req) && /Lines to change: line \d+: “\[4\]/.test(req), 'llm: the fix request quotes the orphan narration lines');
   const leadRe = new RegExp(`^Copied \\(${packKb(req).replace('.', '\\.')} KB: (?:1 finding|\\d+ findings), their standards and the current slides and script\\)\\. Paste it into the same chat and send, then paste the AI’s output in step 3 of “Revise…”\\.$`);
@@ -212,7 +212,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await clickDlg(page, '#dlg-paste');
   await page.waitForSelector('#dlg[open] #paste-deck');
   await page.waitForFunction(() => document.activeElement && document.activeElement.id === 'paste-deck');
-  ok((await page.textContent('#dlg-title')) === 'Revise' && await page.$('#paste-wish') && (await page.textContent('#dlg-import')) === 'Replace' && (await page.textContent('#ai-howto')) === 'Write what to change to make a fix request for a chat AI. Paste the AI’s output here and the slides are replaced.',
+  ok((await page.textContent('#dlg-title')) === 'Revise' && await page.$('#paste-wish') && (await page.textContent('#dlg-import')) === 'Replace' && (await page.textContent('#ai-howto')) === 'Write what to change to make a fix request for an AI chatbot such as ChatGPT, Gemini or Claude. Paste the AI’s output here and the slides are replaced.',
     'llm: “Paste the AI’s output…” opens Revise with the focus in the slides field');
   await page.fill('#paste-deck', fixedSec);
   await page.fill('#paste-narr', fixedNarr);
@@ -479,8 +479,8 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     await clickUntil(p, '#b-slides', () => p.waitForSelector('#slides:not([hidden]) #sl-o-0', { timeout: scaled(2500) }));
     await p.click('#sl-o-0');
     await clickUntil(p, '#sl-add', () => p.waitForSelector('#sl-add-menu:not([hidden])', { timeout: scaled(2500) }));
-    ok((await p.textContent('#sl-add')) === 'Insert slide ▾' && (await p.textContent('#sl-add-tpl-h')) === 'From a template' && (await p.textContent('#sl-add-ai')) === 'Have a chat AI write it…' && await p.$('#sl-add-title-body'),
-      'llm insert: the slide list’s “Insert slide ▾” offers From a template (the slide templates) and Have a chat AI write it');
+    ok((await p.textContent('#sl-add')) === 'Insert slide ▾' && (await p.textContent('#sl-add-tpl-h')) === 'From a template' && (await p.textContent('#sl-add-ai')) === 'Create with an AI chatbot…' && await p.$('#sl-add-title-body'),
+      'llm insert: the slide list’s “Insert slide ▾” offers From a template (the slide templates) and Create with an AI chatbot');
     await p.click('#sl-add-ai');
     await p.waitForSelector('#dlg[open] #paste-insert-n');
     ok((await p.textContent('#dlg-title')) === 'Insert slides' && (await p.textContent('#paste-insert-where')) === `Insert after slide 1, “${heads3[0]}”` && /^Describe the slides to add/.test(await p.textContent('#ai-howto'))
@@ -539,7 +539,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     await clickUntil(p, '#sl-close', () => p.waitForSelector('#slides[hidden]', { state: 'attached', timeout: scaled(2500) }));
     await p.evaluate(() => { window.__APP_TEST.insertAi(null); });
     await p.waitForSelector('#dlg[open] #paste-insert-where');
-    ok(/^Insert after the last slide \(6, /.test(await p.textContent('#paste-insert-where')), 'llm insert: with no slide selected, the chat AI insert goes after the last slide: ' + await p.textContent('#paste-insert-where'));
+    ok(/^Insert after the last slide \(6, /.test(await p.textContent('#paste-insert-where')), 'llm insert: with no slide selected, the AI chatbot insert goes after the last slide: ' + await p.textContent('#paste-insert-where'));
     await clickDlg(p, '#dlg-cancel');
     await p.close();
   }

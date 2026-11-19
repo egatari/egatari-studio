@@ -270,7 +270,7 @@ export function validateIndex(ix) {
   if (!isObj(ix)) return ['index: not an object'];
   // entry と article（§9C.1）：少なくともどちらか（記事だけの教材は entry なし。§4「Lessons without slides」）
   need(ix, ['format', 'version', 'profile', 'requires', 'contracts', 'player', 'generator', 'docId', 'sourceSha256', 'files', 'blobs', 'metadata'], 'index');
-  if (!own(ix, 'entry') && !own(ix, 'article')) e.push('index: missing "entry" (or "article": a lesson has slides, an article, or both)');
+  if (!own(ix, 'entry') && !own(ix, 'article')) e.push('index: missing "entry" (or "article": a file has slides, an article, or both)');
   if (own(ix, 'format') && ix.format !== FID) e.push(`format: not "${FID}"`);
   if (own(ix, 'version')) versionCheck(ix.version, 'version', e);
   if (own(ix, 'profile') && !['core', 'extended'].includes(ix.profile)) e.push('profile: not core or extended');
@@ -817,7 +817,7 @@ function sectionTags(html) { return (html.match(/<section\b[^>]*>/gi) || []).fil
 export async function exportPortable(env0, srcPath, opts = {}) {
   const P = env0.path;
   // 記事（§9C）のある教材は、本文の道具（env.articleTools）を持たない書き手では作り直さない（作り直すと記事が落ちる：§7.2）
-  if (isObj(opts.carry) && own(opts.carry, 'article') && typeof env0.articleTools !== 'function') fail('article-unsupported', 'the lesson has an article (§9C), which this editor does not implement: only tier A edits are possible');
+  if (isObj(opts.carry) && own(opts.carry, 'article') && typeof env0.articleTools !== 'function') fail('article-unsupported', 'the file has an article (§9C), which this editor does not implement: only tier A edits are possible');
   const deckDir = P.dirname(P.resolve(srcPath));
   const rel = (p) => P.relative(deckDir, p).split(P.sep).join('/');
   const warnings = [], writes = dict();
@@ -1029,7 +1029,7 @@ export async function exportPortable(env0, srcPath, opts = {}) {
   // 授業の部屋の設定（extensions.live。format spec の extensions/live.md）：教材には鍵を残さない（鍵は書き出す再生専用の派生にだけ入る。kit/core/live.mjs）
   if (isObj(econf.extensions) && own(econf.extensions, 'live')) {
     if (!isObj(econf.extensions.live)) fail('bad-config', `${CFG}: extensions.live is not an object`);
-    if (econf.extensions.live.v === 1 && own(econf.extensions.live, 'key')) fail('bad-config', `${CFG}: extensions.live.key must not be stored in the lesson (the key goes only into the exported play-only file); remove it`);
+    if (econf.extensions.live.v === 1 && own(econf.extensions.live, 'key')) fail('bad-config', `${CFG}: extensions.live.key must not be stored in the file (the key goes only into the exported play-only file); remove it`);
   }
   // 新しい教材として保存（§7.3）：新しい docId と derivedFrom（§3.6.1）。原稿のフォルダの設定のファイルも書き換える（writes）
   if (opts.identity) {
@@ -1805,12 +1805,12 @@ export async function readPortable(input, opts = {}) {
   for (const p of paths) shas[p] = ix.blobs[ix.files[p]].sha256;
   const computed = await sourceSha256(shas);
   // §3.4：索引の値・計算し直した値・deck-meta の値のどれか 2 つが違えば「組んだ教材と原稿が食い違う」（段 A の編集はしない）
-  if (computed !== ix.sourceSha256) warnings.push('the compiled lesson and its source disagree (the index sourceSha256 does not match its files): tier A edits are not allowed');
+  if (computed !== ix.sourceSha256) warnings.push('the built slides and their source disagree (the index sourceSha256 does not match its files): tier A edits are not allowed');
   const sourceMatches = !!deckMeta && deckMeta.sourceSha256 === ix.sourceSha256 && computed === ix.sourceSha256;
   if (!deckMeta) warnings.push('no deck-meta in the runtime layer');
   else {
     for (const e of validateDeckMeta(deckMeta, { preDraft })) warnings.push(e);
-    if (deckMeta.sourceSha256 !== ix.sourceSha256) warnings.push('the compiled lesson and its source disagree (deck-meta.sourceSha256 differs from the index): tier A edits are not allowed');
+    if (deckMeta.sourceSha256 !== ix.sourceSha256) warnings.push('the built slides and their source disagree (deck-meta.sourceSha256 differs from the index): tier A edits are not allowed');
     if (deckMeta.docId !== ix.docId) warnings.push('deck-meta.docId differs from the index docId');
   }
   // ファイルの決まり（§4.2）：置き場所と中身（基準と、実行系が宣言した拡張の行き先だけ）。合わなければ知らせる（再生はできる。前の草案には決まりがない）

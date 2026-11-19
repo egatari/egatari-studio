@@ -135,8 +135,8 @@ const errs = [];
 try {
   // 4. プレーヤーのファイルの情報
   for (const [file, want] of [
-    ['ja', [['作成者', 'Test Author'], ['編集', '○○高校 情報科（2 章の例を地域のデータに差し替え）'], ['編集', '元の教材から編集されています']]],
-    ['en', [['Created by', 'Test Author'], ['Edited by', '○○高校 情報科 (2 章の例を地域のデータに差し替え)'], ['Edited', 'Edited from the original lesson']]],
+    ['ja', [['作成者', 'Test Author'], ['編集', '○○高校 情報科（2 章の例を地域のデータに差し替え）'], ['編集', '元のファイルから編集されています']]],
+    ['en', [['Created by', 'Test Author'], ['Edited by', '○○高校 情報科 (2 章の例を地域のデータに差し替え)'], ['Edited', 'Edited from the original file']]],
   ]) {
     const page = await browser.newPage();
     page.on('pageerror', (e) => errs.push(`${file} player: ${e.message}`));
@@ -174,7 +174,7 @@ try {
     if (answer) {
       ok(asked, `${label}: before the first save, the editor asks whether you are a creator`);
       if (asked) {
-        ok((await page.textContent('#dlg-title')) === 'この教材の作成者ですか' && (await page.textContent('#edit-role-creators')) === '作成者：Test Author', `${label}: the question names the creators`);
+        ok((await page.textContent('#dlg-title')) === 'このファイルの作成者ですか' && (await page.textContent('#edit-role-creators')) === '作成者：Test Author', `${label}: the question names the creators`);
         ok(await page.isDisabled('#dlg-save'), `${label}: Save is disabled until one answer is chosen`);
         await page.check('#edit-role-' + answer.role);
         if (answer.role === 'other') {
@@ -227,7 +227,7 @@ try {
   const sv = pe.evaluate(() => window.__APP_TEST.save('save'));
   await pe.waitForSelector('#dlg[open] #edit-role-other', { timeout: scaled(15000) });
   await pe.check('#edit-role-other');
-  ok((await pe.textContent('#dlg-title')) === 'Are you a creator of this lesson?' && (await pe.textContent('#edit-required')).startsWith('The license of this lesson (CC-BY-4.0) asks you to indicate changes.'), 'en: the question and the license note');
+  ok((await pe.textContent('#dlg-title')) === 'Are you a creator of this file?' && (await pe.textContent('#edit-required')).startsWith('The license of this file (CC-BY-4.0) asks you to indicate changes.'), 'en: the question and the license note');
   await clickDlg(pe, '#dlg-cancel');
   await sv;
   ok((await pe.evaluate(() => window.__APP_TEST.state().portable.dirty)) && (await pe.evaluate(() => window.__APP_TEST.saved())) === null, 'en: Cancel → nothing saved, still unsaved');

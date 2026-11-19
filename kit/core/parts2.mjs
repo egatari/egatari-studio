@@ -311,15 +311,15 @@ export function catalogueMessage(lang, a) {
   const key = `"componentsCatalogue": "${a.value}"`;
   switch (a.hint) {
     case 'select2': return a.catalogue === '1.x'
-      ? (ja ? `<${a.tag}> は、この教材が使う${cat}にないパーツです（パーツライブラリ 2.x のパーツ）。egatari.json に ${key} と書いて、パーツライブラリ 2.x を選んでください`
-        : `<${a.tag}> is not in ${cat}, which this lesson uses; it is a parts library 2.x part. Select parts library 2.x: set ${key} in egatari.json.`)
+      ? (ja ? `<${a.tag}> は、このファイルが使う${cat}にないパーツです（パーツライブラリ 2.x のパーツ）。egatari.json に ${key} と書いて、パーツライブラリ 2.x を選んでください`
+        : `<${a.tag}> is not in ${cat}, which this file uses; it is a parts library 2.x part. Select parts library 2.x: set ${key} in egatari.json.`)
       : (ja ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです。egatari.json に ${key} と書いてください`
         : `<${a.tag}> is not in ${cat}, which egatari.json selects. Set ${key} in egatari.json.`);
     case 'pin': return ja
-      ? `<${a.tag}> は egatari.json の components で ${a.pin}（パーツライブラリ 2.x のバージョン）に固定されていますが、この教材は${cat}を使います。egatari.json に ${key} と書くか、"${a.part}" の固定を外してください`
-      : `<${a.tag}> is pinned to ${a.pin} (a parts library 2.x version) under components in egatari.json, but this lesson uses ${cat}. Set ${key} in egatari.json, or remove the "${a.part}" pin.`;
+      ? `<${a.tag}> は egatari.json の components で ${a.pin}（パーツライブラリ 2.x のバージョン）に固定されていますが、このファイルは${cat}を使います。egatari.json に ${key} と書くか、"${a.part}" の固定を解除してください`
+      : `<${a.tag}> is pinned to ${a.pin} (a parts library 2.x version) under components in egatari.json, but this file uses ${cat}. Set ${key} in egatari.json, or remove the "${a.part}" pin.`;
     case 'select1': return ja
-      ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです（パーツライブラリ 1.x のパーツ）。1.x を使うには egatari.json から "componentsCatalogue" を外してください`
+      ? `<${a.tag}> は、egatari.json で選んだ${cat}にないパーツです（パーツライブラリ 1.x のパーツ）。1.x を使うには egatari.json から "componentsCatalogue" を削除してください`
       : `<${a.tag}> is not in ${cat}, which egatari.json selects; it is a parts library 1.x part. Remove "componentsCatalogue" from egatari.json to use parts library 1.x.`;
     case 'library': return ja
       ? `<${a.tag}> は要素ではありません：${a.part} はほかのパーツが使うライブラリのパーツで、<${a.tag}> を定義しません。パーツの一覧にある要素を使うか、<${a.tag}> を外してください`

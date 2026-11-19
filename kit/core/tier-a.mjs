@@ -253,7 +253,7 @@ async function run(original, filesIn, opts) {
   const NEW = filesIn instanceof Map ? filesIn : new Map(Object.entries(filesIn || {}));
   const r = await readPortable(original);
   if (r.extractOnly) refuse('extract-only', 'the file can only be extracted (unknown version or feature)');
-  if (!r.sourceMatches) refuse('source-mismatch', 'the compiled lesson and its source disagree (sourceSha256): tier A edits are not allowed (§3.4)');
+  if (!r.sourceMatches) refuse('source-mismatch', 'the built slides and their source disagree (sourceSha256): tier A edits are not allowed (§3.4)');
   const ix = r.index, old = r.files;
   const identity = opts.identity || null;
   const docId = identity ? identity.docId : ix.docId;
@@ -275,9 +275,9 @@ async function run(original, filesIn, opts) {
   const ARTICLE_FILES = new Set(artIx ? [...(typeof artIx.path === 'string' ? [artIx.path] : Array.isArray(artIx.chapters) ? artIx.chapters : []), ...(typeof artIx.references === 'string' ? [artIx.references] : [])] : []);
   const articleChanged = changed.filter((p) => ARTICLE_FILES.has(p));
   const outside = changed.filter((p) => !TIER_A_FILES.has(p) && !isAttachPath(p) && !ARTICLE_FILES.has(p));
-  if (outside.length) refuse('source-changed', `slide source changed (${outside.join(', ')}): the lesson must be rebuilt (tier B)`, outside);
+  if (outside.length) refuse('source-changed', `slide source changed (${outside.join(', ')}): the file must be rebuilt (tier B)`, outside);
   const artGone = articleChanged.filter((p) => !NEW.get(p));
-  if (artGone.length) refuse('source-changed', `an article file was removed (${artGone.join(', ')}): the lesson must be rebuilt (tier B)`, artGone);
+  if (artGone.length) refuse('source-changed', `an article file was removed (${artGone.join(', ')}): the file must be rebuilt (tier B)`, artGone);
   const articleHtml = opts.article && typeof opts.article.html === 'string' ? opts.article.html.replace(/\r\n?/g, '\n') : null;
   if (articleChanged.length && articleHtml === null) refuse('article-changed', `the article changed (${articleChanged.join(', ')}): render it again and pass it (opts.article), or rebuild`, articleChanged);
   if (articleChanged.length && !new RegExp(`^<article id="${ARTICLE_ID}"[\\s>][\\s\\S]*</article>$`).test(articleHtml)) refuse('layout', `opts.article.html is not one <article id="${ARTICLE_ID}"> element`);
@@ -286,7 +286,7 @@ async function run(original, filesIn, opts) {
   if (attachChanged.length) {
     const srcText = Object.keys(old).filter((p) => !isAttachPath(p) && !p.startsWith('audio/') && p !== CFG && /^text\/|json|xml|svg/.test(mimeOf(p))).map((p) => dec.decode(old[p])).join('\n');
     const used = attachChanged.filter((p) => srcText.includes(p));
-    if (used.length) refuse('source-changed', `the slide source refers to the changed attachment (${used.join(', ')}): the lesson must be rebuilt (tier B)`, used);
+    if (used.length) refuse('source-changed', `the slide source refers to the changed attachment (${used.join(', ')}): the file must be rebuilt (tier B)`, used);
   }
   if (changed.includes(CFG)) {
     let c;
@@ -297,18 +297,18 @@ async function run(original, filesIn, opts) {
       // 編集の記録（§3.6.1）：編集アプリが保存の前に足す（§7.3）。形が合えば、索引の metadata.edits と deck-meta.edits を同じ値に書き換える
       if (k === 'edits' && !deepEqual(cm.edits, im.edits)) {
         const ed = normalizeEdits(cm.edits);
-        if (!ed.edits || ed.dropped || !deepEqual(ed.edits, cm.edits)) refuse('config-changed', `${CFG}: metadata.edits is not a list of {by?, note?} (the lesson must be rebuilt)`);
+        if (!ed.edits || ed.dropped || !deepEqual(ed.edits, cm.edits)) refuse('config-changed', `${CFG}: metadata.edits is not a list of {by?, note?} (the file must be rebuilt)`);
         editsNew = ed.edits;
         continue;
       }
       const want = k === 'derivedFrom' ? (identity ? identity.derivedFrom : im.derivedFrom) : im[k];
-      if (!deepEqual(cm[k], want)) refuse('config-changed', `${CFG}: metadata.${k} differs from the document (the lesson must be rebuilt)`);
+      if (!deepEqual(cm[k], want)) refuse('config-changed', `${CFG}: metadata.${k} differs from the document (the file must be rebuilt)`);
     }
     for (const k of META_RIGHTS) if (k !== 'title' && own(im, k) && !own(cm, k)) refuse('config-changed', `${CFG}: metadata.${k} is missing`);
     // 章の読む順（article。§9C.7）が変われば本文の組み直し（段 B）。つながりの記録（articleLinks）は段 A の場所（§7.2）：索引も同じ値に
     let oc = null;
     try { oc = own(old, CFG) ? parseJsonStrict(dec.decode(old[CFG])) : null; } catch { oc = null; }
-    if (!deepEqual(isObj(oc) ? oc.article : undefined, c.article)) refuse('source-changed', `${CFG}: the order of the article's chapters changed: the lesson must be rebuilt (tier B)`);
+    if (!deepEqual(isObj(oc) ? oc.article : undefined, c.article)) refuse('source-changed', `${CFG}: the order of the article's chapters changed: the file must be rebuilt (tier B)`);
     if (own(c, 'articleLinks')) {
       const AL = c.articleLinks, okRec = (r) => isObj(r) && RE.sha256.test(String(r.article)) && RE.sha256.test(String(r.slide));
       if (!isObj(AL) || !Object.values(AL).every((m) => isObj(m) && Object.values(m).every(okRec))) refuse('config-changed', `${CFG}: articleLinks is not {slideKey: {sectionId: {article, slide}}}`);

@@ -303,7 +303,7 @@ try {
     ok(c0.emph === OLD_EMPH_CSS && c0.muted === OLD_MUTED, `${lang}: the preview keeps the 1.0.0 colors (no silent restyle: ${c0.emph}, ${c0.muted})`);
     const notice = await page.textContent('#notice-theme-pinned');
     ok(notice.includes('default') && notice.includes(OLD) && notice.includes(NEW) && notice.includes('#C50516') && notice.includes('#BE3012') && notice.includes('#6E6E6E') && notice.includes('#5C5853') && notice.includes('#F5F5F5'), `${lang}: the notice lists old → new colors`);
-    ok(/never restyled silently|黙って新しい色にはしません/.test(notice), `${lang}: the notice says nothing is restyled silently`);
+    ok(/never restyled silently|自動では新しい色に変えません/.test(notice), `${lang}: the notice says nothing is restyled silently`);
     const sw = await page.$$eval('#notice-theme-pinned .swatch', (a) => a.map((e) => getComputedStyle(e).backgroundColor));
     ok(JSON.stringify(sw) === JSON.stringify([OLD_EMPH, NEW_EMPH, OLD_MUTED, NEW_MUTED, 'rgb(255, 255, 255)', 'rgb(245, 245, 245)']), `${lang}: swatches show the old and new colors ${JSON.stringify(sw)}`);
     const btn = await page.textContent('#b-theme-update');

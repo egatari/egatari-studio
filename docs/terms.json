@@ -1,5 +1,5 @@
 {
- "version": "2026-11-15",
+ "version": "2026-11-19",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -8,20 +8,25 @@
    "group": "Format and files",
    "en": "Egatari file",
    "ja": "Egatari ファイル",
-   "definition": "A single .ega.html file that plays and can be opened and edited in the editor.",
+   "definition": "What a user makes and shares, whatever it is for: one .ega.html file with slides and script, audio and/or a book, that plays in a browser and can be opened and edited in Egatari Studio. Say Egatari file where it stands alone (headings, first mention, about texts) and file where the context makes it clear (menus, notices). ega ファイル is the short form for speech and headings; the screens do not show it. The en has no short form. Use 教材 / lesson only when the content really is teaching material (education samples, subject sets of parts, learner-facing pedagogy).",
    "avoid": {
     "ja": [
      "1 ファイル",
-     "持ち運べる"
+     "持ち運べる",
+     "教材（ファイルの意味で）",
+     "デッキ",
+     "資料（教材の意味で）"
     ],
     "en": [
-     "portable file"
+     "portable file",
+     "lesson (for the file)",
+     "deck"
     ]
    },
    "internal": "portable (spec)",
-   "decided": "2026-10-25",
+   "decided": "2026-11-17",
    "by": "owner",
-   "note": ""
+   "note": "#36: 教材 → Egatari ファイル (owner 2026-11-17); the lesson term (2026-10-25) is retired into this one. Earlier wording 2026-10-25 (owner)."
   },
   {
    "id": "play-only",
@@ -44,31 +49,11 @@
    "note": ""
   },
   {
-   "id": "lesson",
-   "group": "Format and files",
-   "en": "Lesson",
-   "ja": "教材",
-   "definition": "The whole thing a user makes and shares (one Egatari file); スライド is only the slide part.",
-   "avoid": {
-    "ja": [
-     "デッキ",
-     "資料（教材の意味で）"
-    ],
-    "en": [
-     "deck"
-    ]
-   },
-   "internal": "",
-   "decided": "2026-10-25",
-   "by": "standards",
-   "note": ""
-  },
-  {
    "id": "slides",
    "group": "Format and files",
    "en": "Slides",
    "ja": "スライド",
-   "definition": "The slide content of a lesson (deck.html). Editing the markup itself is “Edit HTML”.",
+   "definition": "The slide content of a file (deck.html). Editing the markup itself is “Edit HTML”.",
    "avoid": {
     "ja": [
      "原稿",
@@ -146,7 +131,7 @@
    "group": "Format and files",
    "en": "Created by",
    "ja": "作成者",
-   "definition": "The people who made the lesson (metadata.creators), shown in File info in the editor and the player.",
+   "definition": "The people who made the file (metadata.creators), shown in File info in the editor and the player.",
    "avoid": {
     "ja": [
      "作り手"
@@ -156,14 +141,14 @@
    "internal": "creators",
    "decided": "2026-11-04",
    "by": "owner",
-   "note": "作り手 stays only where it means people who make lessons or parts in general."
+   "note": "作り手 stays only where it means people who make files or parts in general."
   },
   {
    "id": "sample",
    "group": "Format and files",
    "en": "Samples",
    "ja": "サンプル",
-   "definition": "Example lessons shipped with the editor.",
+   "definition": "Example files shipped with the editor.",
    "avoid": {
     "ja": [
      "見本",
@@ -212,7 +197,7 @@
    "internal": "?from-sample=<name>",
    "decided": "2026-11-05",
    "by": "owner",
-   "note": "Renamed from このサンプルのように作る / Make one like this sample (2026-11-05, owner): the lesson follows the sample, it does not copy it. The noun stays サンプル."
+   "note": "Renamed from このサンプルのように作る / Make one like this sample (2026-11-05, owner): the new file follows the sample, it does not copy it. The noun stays サンプル."
   },
   {
    "id": "kicker",
@@ -278,7 +263,7 @@
    "group": "Format and files",
    "en": "Thumbnail",
    "ja": "サムネイル",
-   "definition": "The image on a sample tile: a step that shows what the lesson does, not its title slide. Its alt text is 「〈題名〉のサムネイル」.",
+   "definition": "The image on a sample tile: a step that shows what the file does, not its title slide. Its alt text is 「〈題名〉のサムネイル」.",
    "avoid": {
     "ja": [
      "表紙の絵",
@@ -366,7 +351,7 @@
    "group": "Format and files",
    "en": "Template",
    "ja": "テンプレート",
-   "definition": "A slide layout used when inserting a slide, and the starting set of slides for a new lesson.",
+   "definition": "A slide layout used when inserting a slide, and the starting set of slides for a new file.",
    "avoid": {
     "ja": [
      "雛形"
@@ -402,7 +387,7 @@
    "group": "Structure and playback",
    "en": "Slide",
    "ja": "スライド",
-   "definition": "One screen of a lesson.",
+   "definition": "One screen of a file.",
    "avoid": {
     "ja": [],
     "en": []
@@ -562,7 +547,7 @@
    "group": "Structure and playback",
    "en": "Play / Pause",
    "ja": "再生 / 一時停止",
-   "definition": "Playback in Slide show (Player P1): plays the lesson along the timeline with its narration; pausing resumes from the same point. The toolbar's previous / next keep playing. Self-study uses it: the former self-study mode (spec learn) was removed in Egatari Player 1.4.0.",
+   "definition": "Playback in Slide show (Player P1): plays the file along the timeline with its narration; pausing resumes from the same point. The toolbar's previous / next keep playing. Self-study uses it: the former self-study mode (spec learn) was removed in Egatari Player 1.4.0.",
    "avoid": {
     "ja": [],
     "en": []
@@ -611,7 +596,7 @@
    "group": "Structure and playback",
    "en": "Book",
    "ja": "本",
-   "definition": "The read face of a lesson (the article), shown as a scrolled text or as pages, single or as a spread; a pane beside or instead of the slides (key r).",
+   "definition": "The read face of a file (the article), shown as a scrolled text or as pages, single or as a spread; a pane beside or instead of the slides (key r).",
    "avoid": {
     "ja": [
      "読む面"
@@ -630,7 +615,7 @@
    "group": "Structure and playback",
    "en": "Read with script",
    "ja": "台本で読む",
-   "definition": "For a lesson without a book: the slides shown small in a column, each followed by its steps' script, like a handout (spec: the text pane without an article). Key r.",
+   "definition": "For a file without a book: the slides shown small in a column, each followed by its steps' script, like a handout (spec: the text pane without an article). Key r.",
    "avoid": {
     "ja": [
      "ノート表示"
@@ -834,7 +819,7 @@
    "group": "Structure and playback",
    "en": "Markup",
    "ja": "マークアップ",
-   "definition": "Egatari Viewer v0.7: the learner's bar for marking up a lesson while reading or viewing (highlight, pen, note, recall, export), and its toggle button at the right end of the presentation bar. The name iPad uses for its pen bar (Photos, PDF, Notes).",
+   "definition": "Egatari Viewer v0.7: the learner's bar for marking up a file while reading or viewing (highlight, pen, note, recall, export), and its toggle button at the right end of the presentation bar. The name iPad uses for its pen bar (Photos, PDF, Notes).",
    "avoid": {
     "ja": [
      "学習モード"
@@ -1028,19 +1013,21 @@
    "group": "Structure and playback",
    "en": "Player",
    "ja": "プレーヤー",
-   "definition": "The part of an Egatari file that plays the lesson. The one Egatari ships is Egatari Player; other players may exist (spec §4.1).",
+   "definition": "The part of an Egatari file that plays it: the slides, narration and audio along the timeline in the modes talk and video, with playback (play/pause, previous/next, jump, speed 0.75–2×), panes, and the presentation tools of its bar (laser, pen that is not kept, presenter view). It keeps nothing a viewer adds: it writes nothing into the file and saves no markup or progress. What a learner keeps — markup, recall, saving and exporting, progress — belongs to the app that opens the file, such as Egatari Viewer (Player P5). The one Egatari ships is Egatari Player; other players may exist (spec §4.1).",
    "avoid": {
     "ja": [
-     "再生器"
+     "再生器",
+     "自習モード"
     ],
     "en": [
-     "runtime (UI)"
+     "runtime (UI)",
+     "learn mode"
     ]
    },
    "internal": "player (spec §4.1)",
-   "decided": "2026-10-25",
+   "decided": "2026-11-05",
    "by": "owner",
-   "note": ""
+   "note": "Owner 11/5: the player only plays; the learner experience is Viewer (textbook-reader-memo-2026-11-05.md §2.1). #36 aligned the definition. The word itself: 2026-10-25 (owner)."
   },
   {
    "id": "egatari-player",
@@ -1067,7 +1054,7 @@
    "group": "Structure and playback",
    "en": "Egatari Viewer",
    "ja": "Egatari Viewer",
-   "definition": "The web app that opens and plays Egatari files (viewer.egatari.org; home-screen name Ega Viewer; icon え). Never translated.",
+   "definition": "The app for learners that opens Egatari files and plays them with Egatari Player, and adds what the learner keeps: markup (highlight, note, pen), recall, saving and exporting the markup (.ega-notes, on this device only, never written into the file), how each file was last shown, and progress. viewer.egatari.org; home-screen name Ega Viewer; icon え. Never translated.",
    "avoid": {
     "ja": [
      "Egatari Play",
@@ -1078,9 +1065,9 @@
     ]
    },
    "internal": "play-site",
-   "decided": "2026-10-25",
+   "decided": "2026-11-05",
    "by": "owner",
-   "note": ""
+   "note": "The app where a learner can write and save (owner 11/17, #36); the player keeps nothing. Name: 2026-10-25 (owner)."
   },
   {
    "id": "egatari-studio",
@@ -1354,10 +1341,10 @@
   },
   {
    "id": "new",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "New…",
    "ja": "新規作成…",
-   "definition": "Create a lesson by asking a chat AI.",
+   "definition": "Create a file by asking an AI chatbot.",
    "avoid": {
     "ja": [
      "新しいデッキ"
@@ -1370,26 +1357,70 @@
    "note": ""
   },
   {
-   "id": "chat-ai",
-   "group": "New lesson, insert, revise (chat AI)",
-   "en": "Chat AI",
-   "ja": "チャットの AI",
-   "definition": "ChatGPT, Gemini, Claude and similar chat services.",
+   "id": "ai-chatbot",
+   "group": "New file, insert, revise (AI chatbot)",
+   "en": "AI chatbot",
+   "ja": "対話型AI",
+   "definition": "ChatGPT, Gemini, Claude and similar services where a person types and the AI answers in a conversation. In New… the person pastes the instructions there and pastes back its output. First mention per document or per dialog uses the long form 対話型の生成AI（ChatGPT・Gemini・Claude など） / an AI chatbot such as ChatGPT, Gemini or Claude; later mentions, menus and buttons use the short form 対話型AI / AI chatbot. The ja follows MEXT's guideline (2023, 対話型の文章生成AI); the en follows the usual English wording in education (AI chatbots such as ChatGPT). Not a word-for-word pair. Written without a space (対話型AI).",
+   "avoid": {
+    "ja": [
+     "チャットの AI",
+     "チャット AI",
+     "AI チャット"
+    ],
+    "en": [
+     "chat AI",
+     "conversational AI"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-11-18",
+   "by": "owner",
+   "note": "Owner 2026-11-18 (#36); en AI chatbot decided by standards 2026-11-18."
+  },
+  {
+   "id": "ai-agent",
+   "group": "New file, insert, revise (AI chatbot)",
+   "en": "AI agents",
+   "ja": "AIエージェント",
+   "definition": "Claude Code, Codex, Cowork and similar tools that work in files and run commands. Name the product where possible (Claude Code・Codex で作る（上級）); use AIエージェント / AI agents (in code contexts, coding agents) only when speaking of them together.",
+   "avoid": {
+    "ja": [
+     "エージェンティックAI",
+     "AI のコーディングツール",
+     "コーディングツール（まとめて言うとき）"
+    ],
+    "en": [
+     "agentic AI",
+     "AI coding tool"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-11-18",
+   "by": "owner",
+   "note": ""
+  },
+  {
+   "id": "generative-ai",
+   "group": "New file, insert, revise (AI chatbot)",
+   "en": "Generative AI",
+   "ja": "生成AI",
+   "definition": "AI chatbots and AI agents together (e.g. 生成AIで作成・修正できます / generative AI can write and edit it).",
    "avoid": {
     "ja": [],
     "en": []
    },
    "internal": "",
-   "decided": "2026-10-25",
+   "decided": "2026-11-18",
    "by": "owner",
-   "note": "Date from the commit that first recorded it (5194262d); no earlier record."
+   "note": ""
   },
   {
    "id": "instructions",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Instructions",
    "ja": "指示",
-   "definition": "The text copied to the chat AI (pack plus request).",
+   "definition": "The text copied to the AI chatbot (pack plus request).",
    "avoid": {
     "ja": [
      "頼む文",
@@ -1406,7 +1437,7 @@
   },
   {
    "id": "fix-request",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Fix request",
    "ja": "修正依頼",
    "definition": "Instructions asking the AI to fix findings and comments.",
@@ -1424,10 +1455,10 @@
   },
   {
    "id": "ai-output",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "The AI's output",
    "ja": "AI の出力",
-   "definition": "What the chat AI returns.",
+   "definition": "What the AI chatbot returns.",
    "avoid": {
     "ja": [
      "AI の返事"
@@ -1443,7 +1474,7 @@
   },
   {
    "id": "code-block",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Code block",
    "ja": "コードブロック",
    "definition": "A grey box in the AI's output holding one file.",
@@ -1462,10 +1493,10 @@
   },
   {
    "id": "create",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Create",
    "ja": "作成",
-   "definition": "Final button of New: build the lesson from the pasted output.",
+   "definition": "Final button of New: build the file from the pasted output.",
    "avoid": {
     "ja": [
      "開く"
@@ -1481,7 +1512,7 @@
   },
   {
    "id": "insert",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Insert",
    "ja": "挿入",
    "definition": "Final button of Insert slides.",
@@ -1496,7 +1527,7 @@
   },
   {
    "id": "replace",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Replace",
    "ja": "置き換える",
    "definition": "Final button of Revise.",
@@ -1515,10 +1546,10 @@
   },
   {
    "id": "setting",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Setting",
    "ja": "使う場面",
-   "definition": "Where the lesson will be used (question: Where will you use it?).",
+   "definition": "Where the file will be used (question: Where will you use it?).",
    "avoid": {
     "ja": [
      "場面",
@@ -1537,7 +1568,7 @@
   },
   {
    "id": "subjects",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Subjects",
    "ja": "内容の分野",
    "definition": "Part sets for a subject, offered when inserting slides for a different chat (question: Will the slides need any of these?). New… lists parts instead (backlog #124). Headings use 内容の分野; running text may say 分野.",
@@ -1557,10 +1588,10 @@
   },
   {
    "id": "subject-english",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "English (foreign language)",
    "ja": "英語",
-   "definition": "The subject tile for English as a foreign language (parts series english). The en label says (foreign language) so that it is not confused with the lesson language English.",
+   "definition": "The subject tile for English as a foreign language (parts series english). The en label says (foreign language) so that it is not confused with the file's language English.",
    "avoid": {
     "ja": [
      "語学"
@@ -1576,7 +1607,7 @@
   },
   {
    "id": "subject-music",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Music",
    "ja": "音楽",
    "definition": "The subject tile for music (parts series music: keyboard, score).",
@@ -1591,10 +1622,10 @@
   },
   {
    "id": "light-instructions",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Light instructions",
    "ja": "軽量の指示",
-   "definition": "The shorter instructions for any chat AI (New… step 4, option 「軽量（どの AI でも）」 / “Light (any AI)”, marked 「迷ったらこちら」 / “If unsure”; the default). Suggested size limit 45 KB and 31,000 UTF-16 code units plus line feeds so that a paste is not cut, whichever is reached first; depending on the parts chosen, part descriptions are shortened or some parts are left out. Shown short as 軽量 / Light in the answered line.",
+   "definition": "The shorter instructions for any AI chatbot (New… step 4, option 「軽量（どの AI でも）」 / “Light (any AI)”, marked 「迷ったらこちら」 / “If unsure”; the default). Suggested size limit 45 KB and 31,000 UTF-16 code units plus line feeds so that a paste is not cut, whichever is reached first; depending on the parts chosen, part descriptions are shortened or some parts are left out. Shown short as 軽量 / Light in the answered line.",
    "avoid": {
     "ja": [
      "無料のプラン",
@@ -1607,14 +1638,14 @@
    "internal": "plan: free",
    "decided": "2026-11-07",
    "by": "owner",
-   "note": "replaces free-plan (無料のプラン, 2026-11-03): the question now asks which instructions to use, not the chat AI's plan; the pack text is unchanged"
+   "note": "replaces free-plan (無料のプラン, 2026-11-03): the question now asks which instructions to use, not the AI chatbot's plan; the pack text is unchanged"
   },
   {
    "id": "detailed-instructions",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Detailed instructions",
    "ja": "詳細の指示",
-   "definition": "The long instructions that describe every part in full (New… step 4, option 「詳細（有料の AI 向け）」 / “Detailed (for paid AI plans)”), for chat AIs that read long text. Suggested size limit 150 KB (a cap, not unlimited); Save the instructions as a file is the primary action. Shown short as 詳細 / Detailed in the answered line.",
+   "definition": "The long instructions that describe every part in full (New… step 4, option 「詳細（有料の AI 向け）」 / “Detailed (for paid AI plans)”), for AI chatbots that read long text. Suggested size limit 150 KB (a cap, not unlimited); Save the instructions as a file is the primary action. Shown short as 詳細 / Detailed in the answered line.",
    "avoid": {
     "ja": [
      "有料のプラン",
@@ -1633,7 +1664,7 @@
   },
   {
    "id": "tools",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Tools",
    "ja": "ツール",
    "definition": "Parts the AI uses only when ticked (e.g. Timer); in New… they are listed under Time-boxing.",
@@ -1650,7 +1681,7 @@
   },
   {
    "id": "standard-parts",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Standard parts",
    "ja": "標準パーツ",
    "definition": "Parts ticked from the start in New… (the standard tier of the parts library).",
@@ -1671,7 +1702,7 @@
   },
   {
    "id": "parts-in-instructions",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Parts in these instructions",
    "ja": "この指示に入るパーツ",
    "definition": "The parts whose notes are in the copied instructions.",
@@ -1688,7 +1719,7 @@
   },
   {
    "id": "what-to-convey",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "What to convey",
    "ja": "伝えたいこと",
    "definition": "The 15 tiles (compare, change, …, place/map); turning one off tells the AI not to use it.",
@@ -1707,15 +1738,45 @@
    "note": ""
   },
   {
-   "id": "title",
-   "group": "New lesson, insert, revise (chat AI)",
-   "en": "Title (shown on the cover)",
-   "ja": "タイトル（表紙に出ます）",
-   "definition": "The lesson's title, used on the cover as written.",
+   "id": "subject",
+   "group": "New file, insert, revise (AI chatbot)",
+   "en": "Subject",
+   "ja": "題材",
+   "definition": "A label of a part, and the optional choice in New… step 4: the field the content belongs to (統計・数学・情報・理科・社会・国語・英語・音楽・経営; 医療・防災 reserved). Parts whose subject matches are listed higher in the instructions. Not the Title.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "#43 (owner 2026-11-17, parts-labels-2026-11-17.md)."
+  },
+  {
+   "id": "reader",
+   "group": "New file, insert, revise (AI chatbot)",
+   "en": "Audience",
+   "ja": "読み手",
+   "definition": "A label of a part: who the slides are for (小中・高校・大学・社会人・一般). New… does not ask it; it follows from the setting (only 授業（小・中・高） asks 小中 or 高校).",
    "avoid": {
     "ja": [
-     "題材"
+     "対象者（このラベルで）"
     ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "#43 (owner 2026-11-17, parts-labels-2026-11-17.md)."
+  },
+  {
+   "id": "title",
+   "group": "New file, insert, revise (AI chatbot)",
+   "en": "Title (shown on the cover)",
+   "ja": "タイトル（表紙に出ます）",
+   "definition": "The file's title, used on the cover as written.",
+   "avoid": {
+    "ja": [],
     "en": [
      "topic"
     ]
@@ -1723,11 +1784,11 @@
    "internal": "",
    "decided": "2026-10-25",
    "by": "owner",
-   "note": ""
+   "note": "題材 left the avoid list on 2026-11-19 (owner): it is now the parts label subject (#43)."
   },
   {
    "id": "leave-to-ai",
-   "group": "New lesson, insert, revise (chat AI)",
+   "group": "New file, insert, revise (AI chatbot)",
    "en": "Leave it to the AI",
    "ja": "AI に任せる",
    "definition": "The chosen state of an optional field: the AI decides.",
@@ -1856,7 +1917,7 @@
    "group": "Parts and themes",
    "en": "Change theme…",
    "ja": "テーマを変更…",
-   "definition": "Switch the lesson's theme (Slide menu).",
+   "definition": "Switch the file's theme (Slide menu).",
    "avoid": {
     "ja": [
      "テーマを変える…"
@@ -2000,7 +2061,7 @@
    "group": "Quality",
    "en": "Quality check",
    "ja": "品質チェック",
-   "definition": "Checking a lesson against the standards.",
+   "definition": "Checking slides and script against the standards.",
    "avoid": {
     "ja": [
      "検査",
@@ -2041,7 +2102,7 @@
    "group": "Format and files",
    "en": "Learner",
    "ja": "学習者",
-   "definition": "A person studying with a lesson (pedagogy and help text). In Live, and for play-only recipients in menus, use 参加者 / participant.",
+   "definition": "A person studying with an Egatari file (pedagogy and help text). In Live, and for play-only recipients in menus, use 参加者 / participant.",
    "avoid": {
     "ja": [
      "学ぶ人"
@@ -2051,7 +2112,7 @@
    "internal": "",
    "decided": "2026-10-25",
    "by": "standards",
-   "note": ""
+   "note": "In pedagogy text 教材 may stay (#36)."
   },
   {
    "id": "live",
@@ -2295,7 +2356,7 @@
    "group": "Buttons and common words",
    "en": "Export",
    "ja": "エクスポート",
-   "definition": "Save the lesson in another form (menu action). Its messages use the same word: エクスポートしました.",
+   "definition": "Save the file in another form (menu action). Its messages use the same word: エクスポートしました.",
    "avoid": {
     "ja": [
      "書き出し（メニュー名で）",
@@ -2316,7 +2377,7 @@
    "group": "Buttons and common words",
    "en": "Device",
    "ja": "端末",
-   "definition": "The computer or tablet a person views or edits a lesson on (the school word, as in 1人1台端末). Use パソコン only when it really means a PC.",
+   "definition": "The computer or tablet a person views or edits a file on (the school word, as in 1人1台端末). Use パソコン only when it really means a PC.",
    "avoid": {
     "ja": [
      "機械（端末の意味で）"
@@ -2335,7 +2396,7 @@
    "group": "Buttons and common words",
    "en": "Participant / Learner",
    "ja": "参加者／学習者",
-   "definition": "The person who opens a lesson. 参加者 for a person in a session or receiving a play-only file (see participant); 学習者 when the point is learning (self-study, pedagogy). When the device is meant, say 端末 and name no person (e.g. 開く端末の明朝で表示されます). The spec keeps its English word viewer; it is not shown in the UI, where Viewer is the app name Egatari Viewer.",
+   "definition": "The person who opens a file. 参加者 for a person in a session or receiving a play-only file (see participant); 学習者 when the point is learning (self-study, pedagogy). When the device is meant, say 端末 and name no person (e.g. 開く端末の明朝で表示されます). The spec keeps its English word viewer; it is not shown in the UI, where Viewer is the app name Egatari Viewer.",
    "avoid": {
     "ja": [
      "見る人"
@@ -2412,7 +2473,7 @@
    "group": "Reading aids",
    "en": "Search in the book / Search in the script",
    "ja": "本の中を検索／台本の中を検索",
-   "definition": "Name and placeholder of the search box; the second form for a lesson without a book (Read with script).",
+   "definition": "Name and placeholder of the search box; the second form for a file without a book (Read with script).",
    "avoid": {
     "ja": [],
     "en": []
@@ -2543,7 +2604,7 @@
    "group": "Reading aids",
    "en": "Resumed where you left off",
    "ja": "前回の続きから",
-   "definition": "One-time notice when a lesson reopens in the book at the place last read on this device.",
+   "definition": "One-time notice when a file reopens in the book at the place last read on this device.",
    "avoid": {
     "ja": [
      "前の続きから"
@@ -2706,7 +2767,7 @@
    "group": "Buttons and common words",
    "en": "Card / tile / label",
    "ja": "カード／タイル／ラベル",
-   "definition": "By meaning: a part that shows a number or item is a card (m-kpi); a choice on the New lesson screen is a tile; a short word marker is a label; a hint over a button is a tooltip. 札 is not used for any of them.",
+   "definition": "By meaning: a part that shows a number or item is a card (m-kpi); a choice in New… is a tile; a short word marker is a label; a hint over a button is a tooltip. 札 is not used for any of them.",
    "avoid": {
     "ja": [],
     "en": []
@@ -2776,7 +2837,7 @@
    "group": "Format and files",
    "en": "Runtime",
    "ja": "ランタイム",
-   "definition": "The code inside a lesson file that plays it. On screen it is the player (プレーヤー).",
+   "definition": "The code inside an Egatari file that plays it. On screen it is the player (プレーヤー).",
    "avoid": {
     "ja": [
      "実行系"
@@ -2810,7 +2871,7 @@
    "group": "Quality",
    "en": "Test",
    "ja": "テスト",
-   "definition": "A software test of Studio or a part. An exam in a lesson stays 試験.",
+   "definition": "A software test of Studio or a part. An exam in teaching material stays 試験.",
    "avoid": {
     "ja": [
      "試験（ソフトの意味で）"
@@ -2846,7 +2907,7 @@
    "group": "Format and files",
    "en": "Build",
    "ja": "ビルド",
-   "definition": "Making the playable file from the source (egatari build); rebuilding is 再ビルド. The structure of a lesson is 構成.",
+   "definition": "Making the playable file from the source (egatari build); rebuilding is 再ビルド. The structure of a file is 構成.",
    "avoid": {
     "ja": [
      "組み立て",
@@ -2912,6 +2973,121 @@
    "decided": "2026-11-15",
    "by": "owner",
    "note": "#223 (owner 2026-11-15, rule 6b)"
+  },
+  {
+   "id": "discard",
+   "group": "Buttons and common words",
+   "en": "Discard",
+   "ja": "破棄",
+   "definition": "Throw away changes that were not saved, e.g. 変更を破棄 / Discard changes (Google Docs and Office wording). The button is the noun 破棄; the message 破棄しました.",
+   "avoid": {
+    "ja": [
+     "捨てる",
+     "捨てます",
+     "捨てました"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "ui-ja-audit-2026-11-19 §5; ux-wording-principles §1-7."
+  },
+  {
+   "id": "delete",
+   "group": "Buttons and common words",
+   "en": "Delete",
+   "ja": "削除",
+   "definition": "Remove a slide, a theme, a highlight, a recent file or a kept change. The same word as the Delete button and menu (one action, one word); messages say 削除しました.",
+   "avoid": {
+    "ja": [
+     "消す",
+     "消します",
+     "消しました",
+     "消して"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "ui-ja-audit-2026-11-19 §5. 消える (disappears by itself) and 字幕を消す-like display toggles are other words; judge by meaning."
+  },
+  {
+   "id": "read-only",
+   "group": "Buttons and common words",
+   "en": "Read-only",
+   "ja": "読み取り専用",
+   "definition": "A file opened so that it can be played and exported but not edited or saved (Office wording).",
+   "avoid": {
+    "ja": [
+     "読むだけで開"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "ui-ja-audit-2026-11-19 §5."
+  },
+  {
+   "id": "start-screen",
+   "group": "Buttons and common words",
+   "en": "Start screen",
+   "ja": "スタート画面",
+   "definition": "What Studio shows before a file is open: New…, Open…, recent files, samples, unsaved changes (PowerPoint/Word wording). The one compound where an app view is called 画面.",
+   "avoid": {
+    "ja": [
+     "はじめの画面",
+     "最初の画面"
+    ],
+    "en": [
+     "first screen"
+    ]
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "Owner 2026-11-19 (ui-ja-audit §4-2)."
+  },
+  {
+   "id": "send",
+   "group": "Buttons and common words",
+   "en": "Send",
+   "ja": "送信",
+   "definition": "Sending a question, a vote or a message (Live), and sending instructions in an AI chatbot (its Send button).",
+   "avoid": {
+    "ja": [
+     "送る（ライブ・AI への送信で）",
+     "送ります",
+     "送りました",
+     "送れます",
+     "送れません"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "ui-ja-audit-2026-11-19 §5. Moving to the next step is not 送る either (進める)."
+  },
+  {
+   "id": "draft-autosave",
+   "group": "Buttons and common words",
+   "en": "Kept in this browser",
+   "ja": "一時保存",
+   "definition": "Studio keeps unsaved changes of an Egatari file in the browser every few seconds (IndexedDB) so they can be restored after the tab closes. The verb is 一時保存する; the list and its heading stay 保存していない変更 / Unsaved changes. Saving to the file is 保存.",
+   "avoid": {
+    "ja": [
+     "下書き（この意味で）",
+     "残す（この意味で）"
+    ],
+    "en": []
+   },
+   "internal": "app/drafts.js",
+   "decided": "2026-11-19",
+   "by": "owner",
+   "note": "Owner 2026-11-19 (ui-ja-audit §4-1)."
   }
  ]
 }

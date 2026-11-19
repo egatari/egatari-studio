@@ -285,7 +285,7 @@ console.log('editor');
     await exportTo('#b-export-portable', 'without.ega.html');
     await page.waitForSelector('#dlg[open] #live-results-export-warn');
     if (SHOTS) await page.screenshot({ path: path.join(SHOTS, 'editor-live-results-export.png') });
-    ok(/Live の結果が入っています。人に渡すなら外してください/.test(await page.textContent('#live-results-export-warn')) && !!(await page.$('#dlg-without')) && !!(await page.$('#dlg-with')), 'editor: exporting a single file with results warns and offers export without them');
+    ok(/Live の結果が入っています。配布するときは除いてください/.test(await page.textContent('#live-results-export-warn')) && !!(await page.$('#dlg-without')) && !!(await page.$('#dlg-with')), 'editor: exporting a single file with results warns and offers export without them');
     await clickDlg(page, '#dlg-without');
     const wo = await readPortable(await waitFile('without.ega.html'));
     ok(!(wo.index[KEY] || []).length && !Object.keys(wo.files).some((p) => p.startsWith('attachments/')), 'editor: “結果を外して書き出す” writes a single file without the results');

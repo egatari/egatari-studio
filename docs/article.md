@@ -3,7 +3,7 @@
 
 English | [日本語](article.ja.md)
 
-A lesson can carry a **book**: long-form text (a textbook chapter, a paper) beside its slides and script. The book is written in **Egatari Text 1**, a small, frozen part of MyST Markdown defined by the [format specification §9C](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#9c-article-layer-feature-article-v1-draft) (draft). This page is Studio's short guide; the specification is the normative text.
+An Egatari file can carry a **book**: long-form text (a textbook chapter, a paper) beside its slides and script. The book is written in **Egatari Text 1**, a small, frozen part of MyST Markdown defined by the [format specification §9C](https://github.com/egatari/egatari-spec/blob/main/egatari-1.0.md#9c-article-layer-feature-article-v1-draft) (draft). This page is Studio's short guide; the specification is the normative text.
 
 > Work in progress (v0.6.5). Studio reads, checks and renders the book as a separate page, formats citations, puts the book into the Egatari file (.ega.html) and tells you when linked slides and sections may no longer match. The player shows it beside the slides or alone ([Slides and book](reference.md#slides-and-book)), and the editor app edits and prints it ([editor](editor.md)).
 
@@ -31,12 +31,12 @@ chapter: 1
 
 | Member | Meaning |
 |---|---|
-| `title`, `subtitle` | the chapter's title (a chapter file must have one); the book's title is the lesson's title |
+| `title`, `subtitle` | the chapter's title (a chapter file must have one); the book's title is the file's title |
 | `chapter` | the chapter number (a positive integer); chapter numbers increase in reading order and need not start at 1 |
 | `kind` | `preface`, `chapter` (default), `appendix` or `afterword`. Files come in that order. Prefaces and afterwords have no section numbers; appendices are lettered A, B, … and take no `chapter` |
 | `numbering` | `false` turns off this file's section numbers (figures and equations stay numbered) |
 | `writing-mode` | `vertical-rl` for vertical writing (Japanese language arts); tables are vertical too (each row becomes a column, the first row on the right, a row's cells top to bottom; 1–2 digit numbers in cells stand upright) and set from the top of the line: the table, its caption and body cells start at the top, header cells and row headers are centred in their cells. Figures, equations and code stay horizontal; the page opens at its start (the right edge). A full-width space (U+3000) at the start of a paragraph stays, so paragraphs indented as in Aozora Bunko keep their indent |
-| `lang`, `bibliography` | when given, equal to the lesson's language and to `references.json`; the same in every chapter |
+| `lang`, `bibliography` | when given, equal to the file's language and to `references.json`; the same in every chapter |
 
 ## What you can write
 
@@ -114,7 +114,7 @@ A locator (`p. 3`, `3 頁`) is printed as you wrote it. Works in `references.jso
 
 ### Citations and licences
 
-Citations are formatted by [citeproc-js](https://github.com/Juris-M/citeproc-js), used under the CPAL-1.0. It runs when you build or pack on your computer, and in the editor app when it shows or saves a book that cites references (the app loads the unmodified citeproc file only then); lessons and Egatari files carry the formatted text, not citeproc. When it formats citations, the build and `pack` print its attribution, and the editor app shows it under the book:
+Citations are formatted by [citeproc-js](https://github.com/Juris-M/citeproc-js), used under the CPAL-1.0. It runs when you build or pack on your computer, and in the editor app when it shows or saves a book that cites references (the app loads the unmodified citeproc file only then); built working folders and Egatari files carry the formatted text, not citeproc. When it formats citations, the build and `pack` print its attribution, and the editor app shows it under the book:
 
 > Citations formatted by citeproc-js — (c) Frank Bennett — citeproc-js implements the Citation Style Language — https://citationstyles.org/
 

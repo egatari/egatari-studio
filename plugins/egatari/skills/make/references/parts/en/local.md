@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # local parts
 
-Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer's record of running code). They are not in the chat AI instructions. Do not use them when you cannot run the tool.
+Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer's record of running code). They are not in the instructions for AI chatbots. Do not use them when you cannot run the tool.
 
 ### `<m-trace>`
 

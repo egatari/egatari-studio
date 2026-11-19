@@ -29,8 +29,8 @@ t('1 MiB 未満・ちょうどは警告しない（Base64 の文字数ではな�
 t('1 MiB を超えた画像はスライドごとの警告。日本語と英語で直し方を伝える', () => {
   const [f] = warnings(imageSizeFindings(slide('<p>Small</p>') + slide(img(MiB + 1))));
   assert.deepEqual(f, { i: 1, sev: 'warn', code: 'imgTooLarge', a: { image: 1, n: MiB + 1, max: MiB } });
-  assert.equal(message('ja', f.code, f.a), '教材に埋め込む画像 1 が 1 MiB を超えている（1.0 MiB）：必要な部分を切り抜くか、幅 1600 px ほどの JPEG・WebP で保存する');
-  assert.equal(message('en', f.code, f.a), 'the lesson’s embedded image 1 is over 1 MiB (1.0 MiB): crop it or save it as JPEG/WebP about 1600 px wide');
+  assert.equal(message('ja', f.code, f.a), 'ファイルに埋め込む画像 1 が 1 MiB を超えている（1.0 MiB）：必要な部分を切り抜くか、幅 1600 px ほどの JPEG・WebP で保存する');
+  assert.equal(message('en', f.code, f.a), 'the file’s embedded image 1 is over 1 MiB (1.0 MiB): crop it or save it as JPEG/WebP about 1600 px wide');
   for (const code of ['imgTooLarge', 'imgTotal']) {
     assert.equal(ruleOfCode(code), 'C-images');
     assert.ok(IN_EDITOR.includes(code));
@@ -41,8 +41,8 @@ t('画像が 2 枚なら合計を情報として伝える。同じ画像を 2 �
   assert.equal(warnings(r).length, 0);
   assert.deepEqual(f.a, { n: 2 * (MiB - 1), count: 2 });
   assert.equal(f.sev, 'info');
-  assert.equal(message('ja', f.code, f.a), '教材に埋め込む画像は 2 枚、合計 2.0 MiB（パーツ自身の画像を除く）');
-  assert.equal(message('en', f.code, f.a), "the lesson has 2 embedded images, totalling 2.0 MiB (excluding parts' own images)");
+  assert.equal(message('ja', f.code, f.a), 'ファイルに埋め込む画像は 2 枚、合計 2.0 MiB（パーツ自身の画像を除く）');
+  assert.equal(message('en', f.code, f.a), "the file has 2 embedded images, totalling 2.0 MiB (excluding parts' own images)");
 });
 t('パーツの中の画像は警告も合計も重ねない。後のスライドの番号は保つ', () => {
   const r = imageSizeFindings(slide(`<m-callout><div>${img(MiB + 1)}</div></m-callout>`) + slide(img(MiB + 2)));

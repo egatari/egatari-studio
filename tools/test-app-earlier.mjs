@@ -140,9 +140,9 @@ try {
   ok(await openFile(page, 'draft') === true, 'file: a pre-1.0 file opens (not refused)');
   let n = await notice(page);
   ok(n && n.kind === 'file' && n.visible && !n.readonly, 'file: the earlier-version notice is shown (instead of the generic read-only line)');
-  ok(n && n.lead === '旧形式のファイルです（Egatari Studio v0.3.1 で作成）。 このまま再生できますが、このバージョンの Studio では編集も保存もできません。以前のバージョンの Studio で開けば、これまでどおり編集できます。このバージョンで編集するには、移し替えの手引きに沿って移してください。', 'file: notice names the situation and what to do ' + JSON.stringify(n && n.lead));
+  ok(n && n.lead === '旧形式のファイルです（Egatari Studio v0.3.1 で作成）。 このまま再生できますが、このバージョンの Studio では編集・保存はできません。以前のバージョンの Studio で開けば、これまでどおり編集できます。このバージョンで編集するには、移行の手引きに沿って移行してください。', 'file: notice names the situation and what to do ' + JSON.stringify(n && n.lead));
   ok(n && n.studio.text === '以前のバージョンの Studio で開く' && n.studio.href === HOST + 'site/v0.4.8/' && n.studio.target === '_blank' && /noopener/.test(n.studio.rel), 'file: 「以前のバージョンの Studio で開く」 → newest pre-1.0 version in versions.json (0.3.1 is not listed) ' + JSON.stringify(n && n.studio));
-  ok(n && n.guide.text === '移し替えの手引きを開く' && n.guide.href === guideUrl('ja'), 'file: 「移し替えの手引きを開く」 → docs/migrating-0.x.ja.md on GitHub');
+  ok(n && n.guide.text === '移行の手引きを開く' && n.guide.href === guideUrl('ja'), 'file: 「移し替えの手引きを開く」 → docs/migrating-0.x.ja.md on GitHub');
   ok(n && n.hint === '以前のバージョンの Studio（v0.4.8）は新しいタブで開きます。そこで、このファイルをもう一度開いてください。' && n.cli.includes('v0.4.8 のタグで npm run portable -- unpack <ファイル> <フォルダ>'), 'file: hint (new tab) and the CLI line (unpack at the earlier tag)');
   ok(await previewSlides(page) > 0, 'file: the file plays in the preview with its own player (no rebuild)');
   let st = await state(page);
