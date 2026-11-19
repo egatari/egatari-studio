@@ -162,9 +162,14 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   await shot(p, 'ink-light');
 
   // a finger does not draw; a swipe on the surface moves a step
+  // the two are separate gestures: a swipe moves to the next slide, whose page is empty, so counting the strokes after a swipe
+  // counts the next slide's page as soon as the move has gone through (on a slow macOS CI under WebKit it read 0, not 2).
+  // A finger drag that is not a swipe stays on this slide; the page handles the synthetic events synchronously, so the count
+  // and the pixels read just after it are final (「指でも書く」 below draws the same way and is counted the same way)
   const before = await slideAt(p);
+  await finger(p, [600, 950], [620, 1100]);
+  ok(await slideAt(p) === before && await strokes(p) === 2 && near(await inkAt(p, 610, 1025, slideBg), slideBg, 8), 'a finger does not draw ' + JSON.stringify([await strokes(p), await inkAt(p, 610, 1025, slideBg)]));
   await finger(p, [900, 400], [300, 420]);
-  ok(await strokes(p) === 2, 'a finger does not draw');
   ok(await until(async () => (await slideAt(p)) !== before), 'a finger swipe moves on');
   ok(await until(async () => (await strokes(p)) === 0), 'another slide: its own (empty) page');
   await press(p, 'finger');
