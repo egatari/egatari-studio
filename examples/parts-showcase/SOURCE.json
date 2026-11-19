@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
+  "commit": "4a02065904cc43f4c4a4379c3ed8bace747e2910",
   "path": "lessons/parts-showcase",
   "files": {
     "LICENSES/strokesvg-LICENSE.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
@@ -34,7 +34,7 @@
     "data/timeline.json": "031880a891bf13acdb6e1aec03f0f97b6feba3aa34c8e36be3f7ff681169dd5f",
     "data/trace.json": "a502ede41a6217c38a011304007047493b9668f9ace22c93781e8c3218d71f59",
     "data/vector.json": "1a317045fd5bc2ae5b9fee3f0d03c1ea8b270026ddf1dd1d36db2b4cb19b582d",
-    "deck.html": "8dfc5847a5582fd809a1f545830610d5801a4131cfef2d2b98e1ad684d960941",
+    "deck.html": "60551ce3174266815ee059366ee72a3334391726b482e214decc1ead8d1a25ab",
     "egatari.json": "a88722d0cc0394b0dfe11f6842ab32308644ad9cdece2b32f89d158d545f70c5",
     "fragments/02-bars.html": "74020595943b5a1abc2793f705fe01975b8aa6d9db9aa4b9c2bf554bc618edba",
     "fragments/02-bars.md": "e199a9389abebbdfcf94e67217f38b1125d7fef00444e92d9bc4c58ff8cc2c7b",
@@ -110,8 +110,8 @@
     "fragments/37-keyboard.md": "984f8ee60b8752a4fa4bbb378c9b6fb769c5f355df8017e473b9edb596abbc4a",
     "fragments/38-score.html": "98fdcab28d195a35df91834460ebf5205715c07359c310eb20a7bac9e5bb3b71",
     "fragments/38-score.md": "b6e40df8a27cdf047acb488a5d455464724015c9f504c244f8bfebdc877be12e",
-    "narration.md": "9d50748f605d8b881851cccd8a5af0a994a831a6732bd52c0b9b91dc088b00c1",
-    "scripts/assemble.py": "890b07325fdabcf50cb37ce0f4f491e7c14bc6e4982430ee95faff92b902414d",
+    "narration.md": "8f02acb0c346f3fcc289ff53d9b9baa2400646222b9c70f4ac65460d62e8b309",
+    "scripts/assemble.py": "86cf8c2bd7b92a87efe661024d36047c8e9a6bfd3bdff0b4e2c36184f8d554a8",
     "scripts/bars.py": "bf9634c273ed46252d2f699d6136d7d7d5760db48341192c0f9c60933ffa665f",
     "scripts/boxplot.py": "c85b12752eb20649b2b453b00a74be9337f21c289ffdcd08e02ddb9cc321c39c",
     "scripts/build-themes.sh": "670a6df3c7d3ecc3cf79396652d3bd33028b9db72365913dc05e92c6506d5968",

@@ -17,7 +17,7 @@
 [concl] The slides you show and the book you read are in the same file.
 
 ## The AI need not get it right the first time {#s-csvids}
-[0] A chat AI can write the slides for you. But the instructions it follows are long and detailed, so it may not get everything right at once.
+[0] An AI chatbot such as ChatGPT, Gemini or Claude can write the slides for you. But the instructions it follows are long and detailed, so it may not get everything right at once.
 [1] Say you ask for six slides on your fire drill.
 [2] The AI writes them.
 [3] Egatari's quality check examines them at once. This is a real finding: the body of slide two runs one line too long, so cut one line.

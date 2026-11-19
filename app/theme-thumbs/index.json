@@ -2,7 +2,7 @@
   "note": "Written by tools/theme-thumbs.mjs; do not edit by hand. theme: the theme folder hash (tools/themes-lock.mjs themeDirSha) when the pictures were made; cover, body: sha256 of the WebP files.",
   "source": {
     "lesson": "examples/parts-showcase",
-    "commit": "dee813a9b6aa3988595b4cc64c25b97a4e3a98fe",
+    "commit": "4a02065904cc43f4c4a4379c3ed8bace747e2910",
     "slides": {
       "cover": "s-mbteyz",
       "body": "s-wm5imv"

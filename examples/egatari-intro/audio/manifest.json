@@ -201,13 +201,13 @@
    }
   },
   "s-6a7bsf:0": {
-   "file": "seg_83ff472bf633.m4a",
-   "dur": 9.301,
+   "file": "seg_477f8159d02b.m4a",
+   "dur": 14.38,
    "cues": [],
-   "digest": "83ff472bf633",
+   "digest": "477f8159d02b",
    "engine": "irodori",
    "kind": "tts",
-   "inputHash": "7af96be8041884ec6b70c18b97888b32e04c22af2ce485dfbc11fa483d22ba07",
+   "inputHash": "a5e4186f9aaf303428ec8911293f035a40b8a41d5a2389217a3150133efd3255",
    "recipe": {
     "engine": "irodori",
     "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
@@ -221,13 +221,13 @@
    }
   },
   "s-6a7bsf:1": {
-   "file": "seg_0266c02ba948.m4a",
-   "dur": 4.07,
+   "file": "seg_c170f21ff380.m4a",
+   "dur": 4.078,
    "cues": [],
-   "digest": "0266c02ba948",
+   "digest": "c170f21ff380",
    "engine": "irodori",
    "kind": "tts",
-   "inputHash": "a46395f72391672ee37b652d25f3e295bad38220aa21e70475238b4feecf117c",
+   "inputHash": "abba5a1b51d6c306561e45dabb6c684372fd611ac558fc6258abbe074f07c655",
    "recipe": {
     "engine": "irodori",
     "model": "mlx-community/Irodori-TTS-v4.1-Small-fp16",
