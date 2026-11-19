@@ -148,7 +148,7 @@ try {
     await page.click('#shop-cover-remove');
     await page.waitForFunction(() => document.getElementById('shop-checks').hidden);
     // 保存（ZIP・自分のテーマ）
-    ok(await page.isDisabled('#shop-save') && (await page.textContent('#shop-save-note')) === 'テーマの名前を入れてください', 'ja save: needs a name first');
+    ok(await page.isDisabled('#shop-save') && (await page.textContent('#shop-save-note')) === 'テーマの名前を入力してください', 'ja save: needs a name first');
     await page.fill('#shop-name', 'Science classes');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#shop-zip')]);
     const z = await readZip(new Uint8Array(fs.readFileSync(await dl.path())), { maxMembers: 10, maxMemberBytes: () => 1 << 22, maxTotalBytes: 1 << 23 });

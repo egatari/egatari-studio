@@ -436,6 +436,8 @@ main{flex:1;min-height:0;display:flex}
 #dlg.page h2{font-size:22px;margin:6px 0 12px}
 #dlg.page .page-back{position:fixed;top:10px;left:12px;z-index:2;padding:4px 10px;color:var(--accent);background:var(--panel)}
 #dlg.page h2#dlg-title{margin-top:28px}
+/* 狭い画面（中身の左に余白がない）では「← 戻る」を重ねず流れに置く（中身の上に重なっていた。handoff #38）。下の「キャンセル」と Esc でも閉じる */
+@media (max-width:640px){#dlg.page .page-back{position:static;margin:0 0 2px}#dlg.page h2#dlg-title{margin-top:6px}}
 #dlg.page .paste-step{border-left:3px solid var(--line);border-top:0;margin:0 0 6px 6px;padding:6px 0 14px 18px}
 #dlg.page .paste-step h3{font-size:16px;margin:0 0 6px}
 #dlg.page .paste-step.current,#dlg.page .paste-step:focus-within{border-left-color:var(--accent)}
