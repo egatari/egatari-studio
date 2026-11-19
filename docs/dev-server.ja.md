@@ -79,9 +79,9 @@ npm run dev -- path/to/deck.html --port 5174 --theme sumi
 
 `tools/test-dev-server.mjs` は、書き込みを試みるスライド（`tools/hostile-deck.mjs`：古い書き込みの知らせを偽の本文で送信し、合言葉を読み、外枠のページに触り、書き込みの口に合言葉なし・当て推量の合言葉で `fetch`・XHR・beacon するパーツとインラインのスクリプト）で、外枠で「保存」を押すまでフォルダの中が何も変わらないことを確認する。
 
-## AIエージェントへの依頼
+## AI エージェントへの依頼
 
-AIエージェント（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントを反映して」と依頼する（Claude Code に egatari:make のスキルを追加していれば「コメントを反映して」で通じる）。ツールは `comments.json` の `status: "open"` を読み、`key`・`quote`・`range` を手がかりに
+AI エージェント（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントを反映して」と依頼する（Claude Code に egatari:make のスキルを追加していれば「コメントを反映して」で通じる）。ツールは `comments.json` の `status: "open"` を読み、`key`・`quote`・`range` を手がかりに
 deck.html（または narration.md・パーツ）を修正し、終わったものを `"status": "resolved"` にする。
 range はコメントを保存した時点の位置なので、ずれていれば quote で探す。マーカー（`strokes`）は、描いた印がコメントの指すもの（丸の中・矢印の先）。`npm run comment-shots` が画像に印を描く。サーバーが動いていれば、修正した結果はすぐページに表示される。
 

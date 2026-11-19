@@ -2167,7 +2167,7 @@ try {
       await ps.addInitScript(() => { delete window.showDirectoryPicker; delete window.showSaveFilePicker; delete window.showOpenFilePicker; delete Window.prototype.showDirectoryPicker; delete Window.prototype.showSaveFilePicker; delete Window.prototype.showOpenFilePicker; });
       await ps.goto(BASE);
       await ps.waitForSelector('#drop');
-      ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「新規作成…」（対話型AIで作成したものを貼り付けると') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成…: paste what a chat AI wrote); 新規作成… stays on');
+      ok(await ps.isVisible('#unsupported') && (await ps.textContent('#unsupported')).includes('「新規作成…」（対話型 AI で作成したものを貼り付けると') && !(await ps.isDisabled('#w-new')) && !(await ps.$('#w-paste')), 'safari: the note says how to make a new lesson (新規作成…: paste what a chat AI wrote); 新規作成… stays on');
       await ps.click('#w-new');
       await ps.waitForSelector('#dlg[open] #paste-step-kind');
       ok(!(await ps.$('#dlg-new-blank')) && !(await ps.$('#dlg-new-template')), 'safari: 新規作成… opens the AI chatbot dialog (as everywhere)');

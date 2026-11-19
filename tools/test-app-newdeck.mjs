@@ -47,7 +47,7 @@ const sorted = (xs) => [...xs].sort().join();
 // New と Help は同じ ZIP を渡す。キーでも押せて、同じサイトの現在のパス（凍結版を含む）から取る。
 export async function checkSkillDownload(p, { lang, selector, ok, base }) {
   const label = lang === 'ja' ? 'AI のスキルをダウンロード' : 'Download the AI skill';
-  const hint = lang === 'ja' ? 'Claude などの対話型AIに追加すると、指示を貼り付けずに作成できます。Studio を更新したら追加し直してください（スキルの指示と品質チェックはバージョンごとに変わります）' : 'Add it to an AI chatbot such as Claude to create files without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each version)';
+  const hint = lang === 'ja' ? 'Claude などの対話型 AI に追加すると、指示を貼り付けずに作成できます。Studio を更新したら追加し直してください（スキルの指示と品質チェックはバージョンごとに変わります）' : 'Add it to an AI chatbot such as Claude to create files without pasting the instructions. Add it again when Studio is updated (the skill’s instructions and quality checks change with each version)';
   const b = p.locator(selector);
   ok(await b.isVisible() && await b.textContent() === label && await p.getByRole('button', { name: label, exact: true }).count() === 1, `skill (${lang}, ${selector}): accessible button with the exact label`);
   if (selector === '#paste-download-skill') {
@@ -126,10 +126,10 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // ================================================================ S1 小学校の先生：明日の理科「てこのはたらき」を 6 枚で（無料の ChatGPT、出力の全体を貼る）
     const p1 = await open('ja', 's1');
     await startNew(p1);
-    ok((await text(p1, '#dlg-title')) === '新規作成' && (await text(p1, '#ai-howto')) === '4 つの問いに答えると、対話型の生成AI（ChatGPT・Gemini・Claude など）に送信する指示ができます。AI の出力をここに貼り付けると、スライドができます。',
+    ok((await text(p1, '#dlg-title')) === '新規作成' && (await text(p1, '#ai-howto')) === '4 つの問いに答えると、対話型の生成 AI（ChatGPT・Gemini・Claude など）に送信する指示ができます。AI の出力をここに貼り付けると、スライドができます。',
       'S1: the page is 「新規作成」 and says: answer four questions, paste the output');
     const heads = await p1.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
-    ok(heads.join('|') === '① どんな場面で使いますか|② 何について、だれに向けて作りますか|③ どんな見た目にしますか|④ 対話型AIに指示を送信します|⑤ AI の出力を貼り付けます', 'S1: five questions in thinking order: ' + heads.join(' / '));
+    ok(heads.join('|') === '① どんな場面で使いますか|② 何について、だれに向けて作りますか|③ どんな見た目にしますか|④ 対話型 AI に指示を送信します|⑤ AI の出力を貼り付けます', 'S1: five questions in thinking order: ' + heads.join(' / '));
     ok(JSON.stringify(await visible(p1, ['paste-step-kind', 'paste-step-content', 'paste-step-theme', 'paste-step-send', 'paste-step-paste'])) === '[true,true,true,true,true]'
       && (await flowState(p1)) === 'kind:open:step:-:body:- content:shut:-:pending:nobody:- theme:shut:-:pending:nobody:- send:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-'
       && (await p1.$$eval('#dlg-body .paste-step-h', (xs) => xs.every((x) => x.tagName === 'BUTTON' && x.closest('h3') && x.getAttribute('aria-controls')))),
@@ -193,7 +193,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
       'S1 ④: both options show the new wording (name, 「迷ったらこちら」 on 軽量, and the note under each, which describes its radio); no plan question or 「Egatari は無料です」 line is left: ' + JSON.stringify(opts1));
     // ④ 指示の問い（軽量が既定）→ パーツの一覧（標準は全部。てこからは専門の束を推さない：理由なし。授業（小・中・高）は教科の形が一番上）→ メーター → コピー
     ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'AI に渡す指示を選んでください'
-      && (await text(p1, '#paste-plan-hint')) === '選んだ指示で、大きさの目安が変わります（軽量は 45 KB、詳細は 150 KB まで）。長すぎる指示は、対話型AIが最後まで読めないことがあります'
+      && (await text(p1, '#paste-plan-hint')) === '選んだ指示で、大きさの目安が変わります（軽量は 45 KB、詳細は 150 KB まで）。長すぎる指示は、対話型 AI が最後まで読めないことがあります'
       && (await text(p1, '#paste-parts legend')) === 'AI にどのパーツを使わせますか' && (await ticks(p1)) === sorted(STD) && await p1.isHidden('#paste-parts-why') && (await badges(p1)) === ''
       && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null, 'free').flatMap((g) => g.parts).length} 種類）`
       && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
@@ -219,7 +219,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:shut:-:-:nobody:answer paste:open:step:-:body:-'
       && (await answer(p1, 'send')) === `指示：軽量・パーツ ${STD.length} 種類・コピーしました` && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-deck'),
       'S1 ④: 「指示をコピー」 opens ⑤ (focus in the slides field) and folds ④ to 「指示：軽量・パーツ 15 種類・コピーしました」: ' + await flowState(p1));
-    ok(/^コピーしました（[\d.]+ KB）。対話型AIのタブに貼り付けて送信してください。長いので、貼り付けるとファイルの添付の形になることがありますが、そのまま送信できます。AI が書き終えたら ⑤ へ$/.test(await text(p1, '#paste-copied')), 'S1 ④: the copied message says to send it even as an attachment, then go to ⑤');
+    ok(/^コピーしました（[\d.]+ KB）。対話型 AI のタブに貼り付けて送信してください。長いので、貼り付けるとファイルの添付の形になることがありますが、そのまま送信できます。AI が書き終えたら ⑤ へ$/.test(await text(p1, '#paste-copied')), 'S1 ④: the copied message says to send it even as an attachment, then go to ⑤');
     // ⑤ 欄 2 つ。出力の全体をスライドの欄に貼る → 分ける
     ok((await text(p1, '#paste-step3-hint')).startsWith('AI の出力には、灰色の枠（コードブロック）が 2 つあります。') && (await text(p1, 'label[for=paste-deck]')) === 'スライド（deck.html）' && (await text(p1, 'label[for=paste-narr]')) === '台本（narration.md）'
       && (await p1.getAttribute('#paste-deck', 'placeholder')) === 'deck.html のコードブロックを貼り付け', 'S1 ⑤: two fields, スライド（deck.html） and 台本（narration.md）; the hint introduces the code blocks as grey boxes');
@@ -241,8 +241,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p1.evaluate(() => { window.__APP_TEST.insertAi(null); });
     await p1.waitForSelector('#dlg[open] #paste-insert-n');
     const ih = await p1.$$eval('#dlg-body section.paste-step h3', (xs) => xs.map((x) => x.textContent));
-    ok((await text(p1, '#dlg-title')) === 'スライドの挿入' && ih.join('|') === '① どんなスライドを挿入しますか|② 対話型AIに指示を送信します|③ AI の出力を貼り付けます'
-      && (await text(p1, '#ai-howto')) === '挿入したいスライドを書くと、対話型の生成AI（ChatGPT・Gemini・Claude など）に送信する指示ができます。AI の出力をここに貼り付けると、スライドを挿入します。' && (await text(p1, 'label[for=paste-with-pack]')) === 'このファイルを作ったのとは別のチャットに送信する（指示の全体も付けます）',
+    ok((await text(p1, '#dlg-title')) === 'スライドの挿入' && ih.join('|') === '① どんなスライドを挿入しますか|② 対話型 AI に指示を送信します|③ AI の出力を貼り付けます'
+      && (await text(p1, '#ai-howto')) === '挿入したいスライドを書くと、対話型の生成 AI（ChatGPT・Gemini・Claude など）に送信する指示ができます。AI の出力をここに貼り付けると、スライドを挿入します。' && (await text(p1, 'label[for=paste-with-pack]')) === 'このファイルを作ったのとは別のチャットに送信する（指示の全体も付けます）',
       'S6: 「スライドの挿入」 with three questions, and the choice to send to a different chat: ' + ih.join(' / '));
     ok((await flowState(p1)) === '1:open:step:-:body:- 2:shut:-:pending:nobody:- paste:shut:-:pending:nobody:-', 'S6: insert follows the same one-open flow (① open, ② ③ headings): ' + await flowState(p1));
     await p1.fill('#paste-insert-wish', '練習問題を 1 つ');
@@ -476,7 +476,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p5.check('#paste-cat-research');
     await p5.check('#paste-sub-seminar');
     await p5.click('#paste-next-kind');
-    ok((await p5.$$eval('#paste-content-mode label', (xs) => xs.map((x) => x.textContent))).join('|') === 'AI に任せる（タイトルだけで考えます）|ここに書く・貼る（授業のメモや教科書の文をそのまま貼れます）|対話型AIに渡してある（PDF などの資料を添付した、または内容を話し合った）'
+    ok((await p5.$$eval('#paste-content-mode label', (xs) => xs.map((x) => x.textContent))).join('|') === 'AI に任せる（タイトルだけで考えます）|ここに書く・貼る（授業のメモや教科書の文をそのまま貼れます）|対話型 AI に渡してある（PDF などの資料を添付した、または内容を話し合った）'
       && await p5.isChecked('#paste-content-mode-ai') && await p5.isHidden('#paste-content-given-note') && !(await p5.$('#paste-discussed')),
       'S5 ②: 内容 has three answers (AI に任せる, ここに書く・貼る, チャットの AI に渡してある); no separate “already discussed” switch');
     await p5.fill('#paste-title', 'ゼミの進め方');
@@ -490,7 +490,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p5.fill('#paste-audience', '研究室の学部 4 年生');
     await shot(p5, 'flow-s5.png', 'paste-step-content');
     await p5.click('#paste-next-content');
-    ok((await answer(p5, 'content')) === 'タイトル：ゼミの進め方・研究室の学部 4 年生・内容は対話型AIに渡してある', 'S5 ②: the answered line says the content is already with the AI chatbot');
+    ok((await answer(p5, 'content')) === 'タイトル：ゼミの進め方・研究室の学部 4 年生・内容は対話型 AI に渡してある', 'S5 ②: the answered line says the content is already with the AI chatbot');
     await p5.click('#paste-next-theme');
     await p5.check('#paste-plan-paid');
     const c5 = await copy(p5);
@@ -507,7 +507,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(dl5.suggestedFilename() === 'egatari-instructions-ja.txt', `S5 ④: 「指示をファイルに保存」 downloads egatari-instructions-ja.txt (got ${dl5.suggestedFilename()})`);
     const file5 = await dl5.path();
     ok(!!file5 && fs.readFileSync(file5, 'utf8') === c5, 'S5 ④: the saved file has exactly the bytes 「指示をコピー」 would put on the clipboard (UTF-8, no BOM)');
-    ok(/^保存しました（[\d.]+ KB）。ダウンロードしたファイルを対話型AIに添付して送信してください。AI が書き終えたら ⑤ へ$/.test(await text(p5, '#paste-copied')), 'S5 ④: saving shows 「保存しました（N KB）…」, following the copy note’s wording without the “turns into an attachment” caveat');
+    ok(/^保存しました（[\d.]+ KB）。ダウンロードしたファイルを対話型 AI に添付して送信してください。AI が書き終えたら ⑤ へ$/.test(await text(p5, '#paste-copied')), 'S5 ④: saving shows 「保存しました（N KB）…」, following the copy note’s wording without the “turns into an attachment” caveat');
     // 長さを指定すると B にも書く
     await p5.click('#paste-change-content');
     await p5.check('#paste-length-mode-write');
@@ -552,7 +552,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     // 無料のプランで越えたら、まず中核の 4 つの説明を短くし（知らせる）、それでも越えれば専門のパーツだけを外す候補に（標準のパーツは外さない。backlog #125）
     ok(await p8.isVisible('#paste-shortened') && (await text(p8, '#paste-shortened')) === '軽量の指示に収めるため、棒グラフ・流れ図・目次・予想と答えの説明を短くしました',
       'S8 ④: over the free limit, the core four are shortened first, and the meter says so: ' + await text(p8, '#paste-shortened'));
-    ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、対話型AIが最後まで読めないことがあります。外す候補：/.test(over8) && !['棒グラフ', '流れ図', '目次', '予想と答え', '折れ線'].some((w) => over8.includes(w))
+    ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、対話型 AI が最後まで読めないことがあります。外す候補：/.test(over8) && !['棒グラフ', '流れ図', '目次', '予想と答え', '折れ線'].some((w) => over8.includes(w))
       && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '45'
       && (await text(p8, '#paste-trim')) === '候補を外す',
       'S8 ④: still over the free plan’s 45 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);

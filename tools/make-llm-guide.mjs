@@ -611,7 +611,7 @@ export function skillFiles(data, lang = 'ja', local = []) {
     }
     if (local.length) {
       const intro = ja
-        ? 'ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI で、ローカルのツールの出力（例：トレーサーが書くコードの実行の記録）から作る。対話型AIへの指示には含まれない。そのツールを動かせないときは使わない。'
+        ? 'ローカル（CLI）向けのパーツ。Claude Code・Codex などの CLI で、ローカルのツールの出力（例：トレーサーが書くコードの実行の記録）から作る。対話型 AI への指示には含まれない。そのツールを動かせないときは使わない。'
         : 'Local (CLI) only parts. Made in a CLI such as Claude Code or Codex from the output of a local tool (for example, a tracer\'s record of running code). They are not in the instructions for AI chatbots. Do not use them when you cannot run the tool.';
       // README の本文はパーツ集のリポジトリから見たパス（tools/trace.py など）で書かれる。スキルは Studio のリポジトリの外でも読まれるので、
       // そのパスはパーツ集のものだと書き添え、リポジトリの中の場所の前置き（tools/）は外す（tools/test-plugin.mjs の makeForbidden）
@@ -642,22 +642,22 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 # egatari:make：スライドと台本を作る
 
-Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザーで再生でき、生成AIで作成・修正できます（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
+Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザで再生でき、生成 AI で作成・修正できます（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
 **指示のバージョン：${data.version}**
 **スキルのバージョン：${skillVersion()}**
 
 Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と伝える。
 Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egatari@${CLI_MINOR}.x skills update\`。更新の道がないツールでは案内を省き、\`egatari --version\` のバージョンを利用者に伝える。
-対話型AIでは Studio の『AI のスキルをダウンロード』で追加し直す。
+対話型 AI では Studio の『AI のスキルをダウンロード』で追加し直す。
 
-インストールしたら、自動更新を有効にするよう利用者に依頼する。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。対話型AIでは Studio を更新したら『AI のスキルをダウンロード』で追加し直す。
+インストールしたら、自動更新を有効にするよう利用者に依頼する。スキルの指示と品質チェックは Studio のバージョンごとに変わる。Claude Code では \`/plugin\` → Marketplaces → egatari → Enable auto-update（公式でないマーケットプレイスは、初めは自動更新が切れている）。Codex では Studio のリリースのたびに \`npx egatari@${CLI_MINOR}.x skills update\`。対話型 AI では Studio を更新したら『AI のスキルをダウンロード』で追加し直す。
 
 **古いバージョンの通知**：利用者が開いたファイルを Studio が作っていれば、その Studio のバージョンが書いてある。Egatari ファイル（\`.ega.html\`）では \`<script id="deck-meta">\` の \`"generator":{"name":"egatari-studio","version":"…"}\`、作業フォルダではビルドの出力 \`out/deck.html\` の \`deck-meta\` の \`"version"\`。そのバージョンが上の「スキルのバージョン」の行のバージョンより新しいときだけ（バージョンは数で比べる。0.6.10 は 0.6.9 より新しい）、次の 1 行を伝え、作業は止めずに続ける。伝えるのは 1 回の会話で 1 回だけ（studio スキルと合わせて 1 回）。<バージョン> は「スキルのバージョン」の行のバージョン。
 
 - Claude Code：「Egatari のスキルが古いバージョン（<バージョン>）です。/plugin で更新できます（Marketplaces → egatari → Enable auto-update で自動に）。」
 - Codex：「Egatari のスキルが古いバージョン（<バージョン>）です。\`npx egatari@${CLI_MINOR}.x skills update\` で更新できます。」
-- 対話型AI：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で追加し直せます。」
+- 対話型 AI：「Egatari のスキルが古いバージョン（<バージョン>）です。Studio の『AI のスキルをダウンロード』で追加し直せます。」
 
 ファイルのバージョンがスキルのバージョンと同じか古いとき、バージョンが読めないときは何も言わない。Studio でコピーした指示書は「指示のバージョン」の行しか持たず、どちらが新しいかはわからないので、この通知には使わない（上の「新しいパーツがあります」だけに使う）。
 

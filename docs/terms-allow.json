@@ -81,7 +81,11 @@
     "draft-autosave",
     "made-with",
     "create",
-    "generative-ai"
+    "generative-ai",
+    "browser",
+    "folder",
+    "editor-generic",
+    "library"
   ],
   "allow": [
     {
