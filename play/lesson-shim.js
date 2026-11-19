@@ -19,6 +19,10 @@
 //   5. Handwriting (play/ink.mjs): the page asks {egaViewer: "ink-bg"} and this answers {egaViewer: "ink-bg", rgb: [r, g, b]}, the
 //      background colour of the slide on screen (or of the document), so the memo area below the slide takes the same colour.
 //      Numbers only; the page checks them.
+//   6. Handwriting needs the slides view (handoff #27): the player keeps its view on <html data-deck-layout> (kit/panes.js:
+//      slides, book or split). When it changes (the viewer chose 「スライドと本」 or the book in the player's own menu, or pressed r),
+//      this tells the page {egaViewer: "layout", layout}, and the page closes the handwriting outside the slides view. The page
+//      itself asks for the slides view with the spec's {egatari: "layout", layout: "slides"} (spec §9.4) when it turns handwriting on.
 (function lessonShim() {
   "use strict";
   try { history.replaceState(null, "", "about:srcdoc?embed=1"); } catch (e) { /* the page falls back to deck-pos */ }
@@ -134,4 +138,14 @@
     }
     try { parentWin.postMessage({ egaViewer: "ink-bg", rgb: rgb || [255, 255, 255] }, "*"); } catch (x) { /* gone */ }
   });
+  // 6. The player's view, for handwriting
+  try {
+    var LAYOUTS = { slides: 1, book: 1, split: 1 }, lastLayout = null;
+    new MutationObserver(function () {
+      var v = document.documentElement.getAttribute("data-deck-layout");
+      if (!LAYOUTS[v] || v === lastLayout) return;
+      lastLayout = v;
+      try { parentWin.postMessage({ egaViewer: "layout", layout: v }, "*"); } catch (x) { /* gone */ }
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-deck-layout"] });
+  } catch (e) { /* no MutationObserver: handwriting stays as it is */ }
 })();

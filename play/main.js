@@ -298,6 +298,8 @@ function fillCredits() {
 function openCredits() { fillCredits(); $('cred-box').showModal(); $('b-cred-close').focus(); }
 // ---------------------------------------------------------------- handwriting (handoff #27; play/ink.mjs)
 // 「手書き」: the frame shrinks to the slide's height and the slide plus a memo area below it become one surface over the page.
+// Only in the player's slides view: turning it on asks the player for that view, and choosing the book or 「スライドと本」 in the
+// player closes it (play/lesson-shim.js 6; the owner's iPad check 11/20: the strokes lay off the shrunk slide and over the book).
 // Not for lessons with a Live (the Live pane needs the room). Kept per lesson (its docId, or the file's SHA-256 when it has none)
 // and slide key, on this device only; nothing is kept on a shared device. The memo area takes the slide's background, which the
 // lesson's shim reports on request (play/lesson-shim.js 5): untrusted, so only three whole numbers 0–255 are taken.
@@ -326,6 +328,8 @@ function setInk(on) {
     INK.ui = ink({ root: $('player'), words: W, shared: () => $('shared').checked,
       send: (key, shift) => { if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egaViewer: 'key', key, shift: !!shift }, '*'); } });
     if (S.slideKey) inkPage(S.slideKey);
+    // the slides view (spec §9.4 embedding: the player answers with the same message, which this page ignores)
+    if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*');
   } else if (INK.ui) { INK.ui.destroy(); INK.ui = null; }
   applyLayout();
 }
@@ -385,6 +389,11 @@ window.addEventListener('message', (e) => {
     if (S.live) S.live.setStep(m.key);
   }
   else if (m.egaViewer === 'ink-bg' && Object.keys(m).length === 2 && rgbOk(m.rgb)) { if (INK.on) INK.ui.setBackground(m.rgb); }
+  // the player's view changed (play/lesson-shim.js 6): handwriting is drawn over the slide as the slides view shows it, so in the
+  // book or 「スライドと本」 it would lie off the slide; it closes (the strokes stay on this device). Untrusted: exactly {egaViewer, layout}
+  else if (m.egaViewer === 'layout' && Object.keys(m).length === 2 && (m.layout === 'book' || m.layout === 'split' || m.layout === 'slides')) {
+    if (INK.on && m.layout !== 'slides') { setInk(false); announce(W().inkClosedView); }
+  }
   // the lesson's shim asks for fullscreen (play/lesson-shim.js 4): exactly {egaViewer, on}. Untrusted: the browser enters it only
   // on the viewer's own activation, and only the frame element goes fullscreen
   else if (m.egaViewer === 'fullscreen' && typeof m.on === 'boolean' && Object.keys(m).length === 2) fsRequest(m.on);
