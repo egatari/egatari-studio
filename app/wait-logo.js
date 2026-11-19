@@ -1,10 +1,11 @@
-// 待つ間のロゴ（assets/logo/egatari-draw-{light,dark}.svg：太陽 → え → かぎ括弧を一度だけ描いて止まる。動きを減らす設定では完成形）。
+// 待つ間のロゴ（assets/logo/egatari-draw-loop-{light,dark}.svg：太陽 → え → かぎ括弧を 2.5 秒で描き、約 1 秒止めて約 0.4 秒で消すのをくり返す。動きを減らす設定では完成形。
+// 長さの分からない待ちで止まって見えないように、くり返す版を使う（作者 11/19、handoff #56）
 // 待ちが WAIT_MS（約 1 秒）を超えたときだけ出す（すぐ終わる組み立てや読み込みでは出さない）。SVG はファイルのまま（手を加えず）
 // Blob の URL の <img> で見せる（CSP の img-src blob:）。出すたびに新しい URL なので、描く動きは毎回はじめから
 //   const stop = slowWait(host, { tone: 'auto' | 'light' | 'dark' });   … stop()
 //   const w = createWaitOverlay(el); const end = w.begin(); … end();  w.pause()（確かめの窓を出す前など）;  const off = w.cover('…'); … off()
-import LIGHT from '../assets/logo/egatari-draw-light.svg?text';
-import DARK from '../assets/logo/egatari-draw-dark.svg?text';
+import LIGHT from '../assets/logo/egatari-draw-loop-light.svg?text';
+import DARK from '../assets/logo/egatari-draw-loop-dark.svg?text';
 
 export const WAIT_MS = 1000;
 const prefersDark = () => { try { return matchMedia('(prefers-color-scheme: dark)').matches; } catch { return false; } };
