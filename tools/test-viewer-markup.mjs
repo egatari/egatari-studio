@@ -8,6 +8,7 @@
 //  5. 暗記：選んだ色の字を隠し、押すと 1 つずつ現れる。帯を閉じると終わる
 //  6. 一覧：この色だけ表示・この色を非表示・この色を全部消す（ページの中の確かめ）
 //  7. 共有の端末：保存しない
+//  1b. 狭い幅（560 px 以下）ではアイコンだけ：鉛筆ではなく蛍光ペンの形（手書きと紛れない。handoff #62）。名前は「マークアップ」のまま
 //  8. 枠からの偽の頼み（長すぎる引用・余分な項目・別の docId）は受け付けない
 // --shots：作業フォルダに画面の PNG を残す（目で見る用）
 import fs from 'node:fs';
@@ -199,6 +200,9 @@ const hintOf = (p) => p.evaluate(() => { const h = document.getElementById('mark
   ok(await p.isVisible('#markup-hint') && box1.y === box0.y && !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)),
     `on a phone the hint is shown, the frame stays (${box0.y} → ${box1.y}) and nothing scrolls sideways`);
   ok(await p.evaluate(() => { const h = document.getElementById('markup-hint'); return h.scrollHeight <= h.clientHeight + 1; }), 'on a phone the whole hint fits (not cut)');
+  // narrower than 560 px the button shows only its icon: a highlighter, not the pencil of a drawing tool (handoff #62); its name stays
+  ok(await p.evaluate(() => { const b = document.getElementById('b-markup'), d = b.querySelector('svg path').getAttribute('d');
+    return !d.startsWith('M4 20h4L19 9') && d.includes('M3 21h8') && b.textContent.trim() === 'マークアップ'; }), 'on a phone the button is a highlighter icon, still named 「マークアップ」');
   await p.screenshot({ path: path.join(os.tmpdir(), 'viewer-markup-hint-phone.png') });
   await c.close(); }
 
