@@ -1360,13 +1360,14 @@
    "id": "ai-chatbot",
    "group": "New file, insert, revise (AI chatbot)",
    "en": "AI chatbot",
-   "ja": "対話型AI",
-   "definition": "ChatGPT, Gemini, Claude and similar services where a person types and the AI answers in a conversation. In New… the person pastes the instructions there and pastes back its output. First mention per document or per dialog uses the long form 対話型の生成AI（ChatGPT・Gemini・Claude など） / an AI chatbot such as ChatGPT, Gemini or Claude; later mentions, menus and buttons use the short form 対話型AI / AI chatbot. The ja follows MEXT's guideline (2023, 対話型の文章生成AI); the en follows the usual English wording in education (AI chatbots such as ChatGPT). Not a word-for-word pair. Written without a space (対話型AI).",
+   "ja": "対話型 AI",
+   "definition": "ChatGPT, Gemini, Claude and similar services where a person types and the AI answers in a conversation. In New… the person pastes the instructions there and pastes back its output. First mention per document or per dialog uses the long form 対話型の生成 AI（ChatGPT・Gemini・Claude など） / an AI chatbot such as ChatGPT, Gemini or Claude; later mentions, menus and buttons use the short form 対話型 AI / AI chatbot. The ja follows MEXT's guideline (2023, 対話型の文章生成AI); the en follows the usual English wording in education (AI chatbots such as ChatGPT). Not a word-for-word pair. Written with a space between 対話型 and AI (対話型 AI; owner 2026-11-20, #60).",
    "avoid": {
     "ja": [
      "チャットの AI",
      "チャット AI",
-     "AI チャット"
+     "AI チャット",
+     "対話型AI"
     ],
     "en": [
      "chat AI",
@@ -1376,19 +1377,20 @@
    "internal": "",
    "decided": "2026-11-18",
    "by": "owner",
-   "note": "Owner 2026-11-18 (#36); en AI chatbot decided by standards 2026-11-18."
+   "note": "Owner 2026-11-18 (#36); en AI chatbot decided by standards 2026-11-18. Owner 2026-11-20 (#60): a half-width space between full-width characters and half-width letters or digits; the form without the space is avoided."
   },
   {
    "id": "ai-agent",
    "group": "New file, insert, revise (AI chatbot)",
    "en": "AI agents",
-   "ja": "AIエージェント",
-   "definition": "Claude Code, Codex, Cowork and similar tools that work in files and run commands. Name the product where possible (Claude Code・Codex で作る（上級）); use AIエージェント / AI agents (in code contexts, coding agents) only when speaking of them together.",
+   "ja": "AI エージェント",
+   "definition": "Claude Code, Codex, Cowork and similar tools that work in files and run commands. Name the product where possible (Claude Code・Codex で作る（上級）); use AI エージェント / AI agents (in code contexts, coding agents) only when speaking of them together.",
    "avoid": {
     "ja": [
      "エージェンティックAI",
      "AI のコーディングツール",
-     "コーディングツール（まとめて言うとき）"
+     "コーディングツール（まとめて言うとき）",
+     "AIエージェント"
     ],
     "en": [
      "agentic AI",
@@ -1398,22 +1400,24 @@
    "internal": "",
    "decided": "2026-11-18",
    "by": "owner",
-   "note": ""
+   "note": "Owner 2026-11-20 (#60): a half-width space between full-width characters and half-width letters or digits; the form without the space is avoided."
   },
   {
    "id": "generative-ai",
    "group": "New file, insert, revise (AI chatbot)",
    "en": "Generative AI",
-   "ja": "生成AI",
-   "definition": "AI chatbots and AI agents together (e.g. 生成AIで作成・修正できます / generative AI can write and edit it).",
+   "ja": "生成 AI",
+   "definition": "AI chatbots and AI agents together (e.g. 生成 AI で作成・修正できます / generative AI can write and edit it).",
    "avoid": {
-    "ja": [],
+    "ja": [
+     "生成AI"
+    ],
     "en": []
    },
    "internal": "",
    "decided": "2026-11-18",
    "by": "owner",
-   "note": ""
+   "note": "Owner 2026-11-20 (#60): a half-width space between full-width characters and half-width letters or digits; the form without the space is avoided."
   },
   {
    "id": "instructions",
@@ -3088,6 +3092,74 @@
    "decided": "2026-11-19",
    "by": "owner",
    "note": "Owner 2026-11-19 (ui-ja-audit §4-1)."
+  },
+  {
+   "id": "browser",
+   "group": "Spelling (long vowels)",
+   "en": "Browser",
+   "ja": "ブラウザ",
+   "definition": "Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60).",
+   "avoid": {
+    "ja": [
+     "ブラウザー"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-20",
+   "by": "owner",
+   "note": "Owner 2026-11-20 (#60): フォルダ・ブラウザ・エディタ・ライブラリ are not lengthened; プレーヤー・ユーザー are."
+  },
+  {
+   "id": "folder",
+   "group": "Spelling (long vowels)",
+   "en": "Folder",
+   "ja": "フォルダ",
+   "definition": "Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60).",
+   "avoid": {
+    "ja": [
+     "フォルダー"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-20",
+   "by": "owner",
+   "note": "Owner 2026-11-20 (#60): フォルダ・ブラウザ・エディタ・ライブラリ are not lengthened; プレーヤー・ユーザー are."
+  },
+  {
+   "id": "editor-generic",
+   "group": "Spelling (long vowels)",
+   "en": "Editor",
+   "ja": "エディタ",
+   "definition": "Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60).",
+   "avoid": {
+    "ja": [
+     "エディター"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-20",
+   "by": "owner",
+   "note": "Owner 2026-11-20 (#60): フォルダ・ブラウザ・エディタ・ライブラリ are not lengthened; プレーヤー・ユーザー are."
+  },
+  {
+   "id": "library",
+   "group": "Spelling (long vowels)",
+   "en": "Library",
+   "ja": "ライブラリ",
+   "definition": "Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60).",
+   "avoid": {
+    "ja": [
+     "ライブラリー"
+    ],
+    "en": []
+   },
+   "internal": "",
+   "decided": "2026-11-20",
+   "by": "owner",
+   "note": "Owner 2026-11-20 (#60): フォルダ・ブラウザ・エディタ・ライブラリ are not lengthened; プレーヤー・ユーザー are."
   }
  ]
 }

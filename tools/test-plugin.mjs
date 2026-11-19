@@ -212,7 +212,7 @@ for (const language of ['ja', 'en']) {
   }
   const description = text.match(/^description: (.+)$/m)[1];
   assert.ok([...description].length <= 1024);
-  assert.ok(text.includes(language === 'ja' ? '対話型AIでは Studio の『AI のスキルをダウンロード』で追加し直す' : 'In an AI chatbot, add it again with "Download the AI skill" in Studio'));
+  assert.ok(text.includes(language === 'ja' ? '対話型 AI では Studio の『AI のスキルをダウンロード』で追加し直す' : 'In an AI chatbot, add it again with "Download the AI skill" in Studio'));
   const book = read(`docs/llm-book${language === 'ja' ? '.ja' : ''}.md`).replace(/^<!-- i18n:.*-->\n/, '').trim();
   assert.ok(text.includes(book), `${language}: book comes from docs`);
 }

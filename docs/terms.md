@@ -106,9 +106,9 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | id | English | 日本語 | definition | avoid (ja / en) | internal | decided |
 |---|---|---|---|---|---|---|
 | new | New… | 新規作成… | Create a file by asking an AI chatbot. | 新しいデッキ |  | 2026-10-24 (owner) |
-| ai-chatbot | AI chatbot | 対話型AI | ChatGPT, Gemini, Claude and similar services where a person types and the AI answers in a conversation. In New… the person pastes the instructions there and pastes back its output. First mention per document or per dialog uses the long form 対話型の生成AI（ChatGPT・Gemini・Claude など） / an AI chatbot such as ChatGPT, Gemini or Claude; later mentions, menus and buttons use the short form 対話型AI / AI chatbot. The ja follows MEXT's guideline (2023, 対話型の文章生成AI); the en follows the usual English wording in education (AI chatbots such as ChatGPT). Not a word-for-word pair. Written without a space (対話型AI). Owner 2026-11-18 (#36); en AI chatbot decided by standards 2026-11-18. | チャットの AI ・ チャット AI ・ AI チャット / chat AI, conversational AI |  | 2026-11-18 (owner) |
-| ai-agent | AI agents | AIエージェント | Claude Code, Codex, Cowork and similar tools that work in files and run commands. Name the product where possible (Claude Code・Codex で作る（上級）); use AIエージェント / AI agents (in code contexts, coding agents) only when speaking of them together. | エージェンティックAI ・ AI のコーディングツール ・ コーディングツール（まとめて言うとき） / agentic AI, AI coding tool |  | 2026-11-18 (owner) |
-| generative-ai | Generative AI | 生成AI | AI chatbots and AI agents together (e.g. 生成AIで作成・修正できます / generative AI can write and edit it). |  |  | 2026-11-18 (owner) |
+| ai-chatbot | AI chatbot | 対話型 AI | ChatGPT, Gemini, Claude and similar services where a person types and the AI answers in a conversation. In New… the person pastes the instructions there and pastes back its output. First mention per document or per dialog uses the long form 対話型の生成 AI（ChatGPT・Gemini・Claude など） / an AI chatbot such as ChatGPT, Gemini or Claude; later mentions, menus and buttons use the short form 対話型 AI / AI chatbot. The ja follows MEXT's guideline (2023, 対話型の文章生成AI); the en follows the usual English wording in education (AI chatbots such as ChatGPT). Not a word-for-word pair. Written with a space between 対話型 and AI (対話型 AI; owner 2026-11-20, #60). | チャットの AI ・ チャット AI ・ AI チャット ・ 対話型AI / chat AI, conversational AI |  | 2026-11-18 (owner) |
+| ai-agent | AI agents | AI エージェント | Claude Code, Codex, Cowork and similar tools that work in files and run commands. Name the product where possible (Claude Code・Codex で作る（上級）); use AI エージェント / AI agents (in code contexts, coding agents) only when speaking of them together. | エージェンティックAI ・ AI のコーディングツール ・ コーディングツール（まとめて言うとき） ・ AIエージェント / agentic AI, AI coding tool |  | 2026-11-18 (owner) |
+| generative-ai | Generative AI | 生成 AI | AI chatbots and AI agents together (e.g. 生成 AI で作成・修正できます / generative AI can write and edit it). | 生成AI |  | 2026-11-18 (owner) |
 | instructions | Instructions | 指示 | The text copied to the AI chatbot (pack plus request). | 頼む文 ・ AI への指示書 / pack | pack | 2026-10-25 (owner) |
 | fix-request | Fix request | 修正依頼 | Instructions asking the AI to fix findings and comments. | 是正依頼 ・ 直しの依頼 |  | 2026-10-20 (owner) |
 | ai-output | The AI's output | AI の出力 | What the AI chatbot returns. | AI の返事 / reply |  | 2026-10-25 (owner) |
@@ -221,3 +221,12 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | caution-box | Caution | 注意 | A caution box in slide body text, marked with an amber bar and information icon. |  | .caution | 2026-11-15 (owner) |
 | warning-box | Warning | 警告 | A warning box in slide body text, marked with a red-orange frame and warning icon. |  | .caution.warn | 2026-11-15 (owner) |
 | font | Font | フォント | A typeface; the subset of a font embedded in a file is フォントのサブセット. #223 (owner 2026-11-15, rule 6b) | 字体 ・ 字の切り出し |  | 2026-11-15 (owner) |
+
+## Spelling (long vowels)
+
+| id | English | 日本語 | definition | avoid (ja / en) | internal | decided |
+|---|---|---|---|---|---|---|
+| browser | Browser | ブラウザ | Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60). | ブラウザー |  | 2026-11-20 (owner) |
+| folder | Folder | フォルダ | Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60). | フォルダー |  | 2026-11-20 (owner) |
+| editor-generic | Editor | エディタ | Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60). | エディター |  | 2026-11-20 (owner) |
+| library | Library | ライブラリ | Written without the long-vowel mark, following Google’s Japanese style (owner 2026-11-20, #60). | ライブラリー |  | 2026-11-20 (owner) |

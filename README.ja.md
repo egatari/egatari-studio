@@ -12,7 +12,7 @@
 
 [English](README.md) | 日本語
 
-Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザーで再生でき、生成AIで作成・修正できます。Egatari Studio は、その Egatari ファイルを作成・編集するツール。
+Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザで再生でき、生成 AI で作成・修正できます。Egatari Studio は、その Egatari ファイルを作成・編集するツール。
 
 Egatari ファイルは自己完結した 1 つの HTML で、ステップ表示とパーツで説明の順を見せる。1 組のスライドと台本（`deck.html` と `narration.md`）から、スライドショー（先のステップを薄く見せることもできる）・PDF、そして必要なら TTS の動画まで作る。[Claude Code](https://claude.com/claude-code) のスキル（`skills/`）で動かす前提で作ってあるが、どの手順も Node のコマンドなので、Claude Code なしでも使える。
 
@@ -25,8 +25,8 @@ Egatari ファイルは自己完結した 1 つの HTML で、ステップ表示
 次のどれか 1 つで始められる。
 
 - **編集アプリ（インストール不要）**：Chrome か Edge で <https://studio.egatari.org/> を開き、その場で Egatari ファイルを作成する・開く（[編集アプリ](#editor-app)）。
-- **対話型AIと**：対話型の生成AI（ChatGPT・Gemini・Claude など）に make のスキル（`egatari-make-skill.zip`）を追加し、作成を依頼する（[Codex で使う](#codex) の末尾）。
-- **AIエージェントと**：Claude Code・Codex にスキルをインストールし、自動で更新されるようにして（Claude Code は `/plugin` → Marketplaces → egatari → Enable auto-update、Codex は Studio のリリースのたびに `npx egatari@0.6.x skills update`）、作成を依頼する（[Claude Code で使う](#claude-code)、[Codex で使う](#codex)）。
+- **対話型 AI と**：対話型の生成 AI（ChatGPT・Gemini・Claude など）に make のスキル（`egatari-make-skill.zip`）を追加し、作成を依頼する（[Codex で使う](#codex) の末尾）。
+- **AI エージェントと**：Claude Code・Codex にスキルをインストールし、自動で更新されるようにして（Claude Code は `/plugin` → Marketplaces → egatari → Enable auto-update、Codex は Studio のリリースのたびに `npx egatari@0.6.x skills update`）、作成を依頼する（[Claude Code で使う](#claude-code)、[Codex で使う](#codex)）。
 - **コマンドライン**：
 
 ```bash
@@ -51,7 +51,7 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 - **発表のツール**：発表者ビュー（台本がカンペになる・タイマー）、スライド一覧、レーザーポインター、ペン、消えるペン、ツールバー
 - **テーマ**：基調色 1 つで切り替える（`themes/<名前>/tokens.css`）。パーツはテーマの変数だけを使う。同梱は 8 つで、新しいファイルは 7 つから選ぶ：藍（`default`）・墨（`sumi`）・国語・常盤・江戸紫・焦茶・浅葱。`business` は、それを使ったファイルをビルドできるように同梱のまま残す（[リファレンス](docs/reference.ja.md#テーマ)）
 - **品質管理**：規格（R-fit・R-steps など）がスライドと台本の満たすことを決め、品質チェック `kit/check.mjs`（`npm run check`）がはみ出し・文字の大きさ・ステップ・台本の抜け・配色のコントラスト・パーツの再現性・強調・モーフを調べる
-- **開発サーバー**：ブラウザの上で文言と台本を編集し、AIエージェントへのメモを保存できる
+- **開発サーバー**：ブラウザの上で文言と台本を編集し、AI エージェントへのメモを保存できる
 - **Egatari ファイル（`.ega.html`）**：`--portable` で（作業フォルダの最上位に、題名から作った名前で。書いた場所は表示される）、オフラインで再生でき、原稿と音声も中に持つ 1 つの HTML を書く。作業フォルダに戻せる（`npm run portable -- unpack|pack`）。`--play-only` は編集できるスライドと台本を入れないコピー。Egatari ファイルの公開の形式 **Egatari（絵語り）**（[仕様](https://github.com/egatari/egatari-spec)、1.0 の草案）に従う。[参照](docs/reference.ja.md#1-ファイル--portable)
 - **出力**：単一の HTML（字・数式と、原稿が参照するローカルの画像・動画・CSS を埋め込み済み、オフラインで開ける）。印刷か `tools/pdf.mjs` で PDF
 
@@ -72,7 +72,7 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 
 | 形 | 中身 | ここで |
 |---|---|---|
-| 作業フォルダ | `deck.html`・`narration.md`・`audio/` … の入ったフォルダ。コマンド・AIエージェント（Claude Code・Codex・Gemini CLI など）・ほかのエディタが読み書きする | 「フォルダで作業する…」（Chrome / Edge）で編集する |
+| 作業フォルダ | `deck.html`・`narration.md`・`audio/` … の入ったフォルダ。コマンド・AI エージェント（Claude Code・Codex・Gemini CLI など）・ほかのエディタが読み書きする | 「フォルダで作業する…」（Chrome / Edge）で編集する |
 | Egatari ファイル（`.ega.html`） | 原稿と音声を中に持つ 1 つの HTML（`--portable`）。ブラウザで開けば再生 | 「開く…」で編集する（どのブラウザでも） |
 | 再生専用（`--play-only`） | 原稿を持たない Egatari ファイル | 編集できない（元の Egatari ファイルか作業フォルダを開く） |
 | ビルドした HTML（`out/deck.html`） | `node kit/build.mjs` の発表用の出力 | 編集できない（作業フォルダを開く） |
@@ -80,10 +80,10 @@ Node.js 22.23.4 以上が要る（[要るもの](#requirements)）。ほかの�
 - **開く：** Chrome か Edge で **<https://studio.egatari.org/>** を開く（インストール不要）。または `npm run build:app` でビルドし、`dist/editor.html`（オフライン版のエディタ、約 10 MB）をダブルクリックで開く
 - **Egatari ファイルを開く（フォルダなしで）：** スタート画面の「ファイルを開く（.ega.html）…」（またはファイルをドラッグ＆ドロップ）で[Egatari ファイル（`.ega.html`）](docs/reference.ja.md#1-ファイル--portable)を開き、メモリの上で編集する。ファイルは動かさずに Worker の中で取り出す。「保存」で同じファイルに（またはダウンロード）、「名前を付けて保存…」で別のファイルに（「新しいファイルとして保存する」にチェックを入れれば、元のファイルを記録した新しい識別子のファイルに）、「作業フォルダにエクスポート…」で空のフォルダに原稿と音声をエクスポートする。ファイルの識別子と権利の表示は変えず、最初の編集の前にライセンスを見せる（改変を認めないライセンスは確認つき）。台本・音声・秒数の編集は再ビルドせずに保存し、ファイルのその所だけが変わる。スライドを編集したら、編集していないスライドの見え方が変わりうると知らせてから再ビルドする。フォルダを開いているときは「名前を付けて保存…」で Egatari ファイルに。今のどのブラウザでも使える（ファイルを選ぶダイアログがなければ保存はダウンロード）
 - **編集する：** 開発サーバーと同じキー。`e`＋ダブルクリックで原稿、`n` で台本、Alt / ⌥ option＋クリックで コメント（`comments.json`）、`c` で一覧。バックアップはフォルダの `.cache/edits/` に保存する
-- **作業フォルダを開く：** 作業フォルダ（`deck.html` の入ったもの）を画面にドラッグ＆ドロップするか「フォルダで作業する…」を押し、そのフォルダの編集を許可する。「新規作成…」は対話型AIで新しい Egatari ファイルを作成する（新しい作業フォルダはコマンドの `npm run new`）。最近開いた作業フォルダはスタート画面に並ぶ
-- **対話型AIで下書き（AIエージェントなし）：** 「新規作成…」で 4 つの問い（使う場面・何について・見た目・AI に渡す指示が軽量か詳細か）に答えると、ChatGPT・Gemini・claude.ai に送信する [AI への指示](docs/authoring-with-llms.ja.md) をコピーでき、AI の出力をスライドと台本の 2 つの欄に貼り付ける（出力の全体をどちらかに貼れば 2 つに分ける）。エディタがスライドに id を付け、新しい Egatari ファイルとして作り（出力にスクリプトがあれば、開いたファイルと同じく動かす前に確認する）、品質チェックを実行する。品質チェックのパネルの「AI への修正依頼をコピー」は、指摘・破った規格・今のファイルを同じチャット向けにコピーし、その出力で「修正…」が今のファイルのスライドを置き換える（識別子と音声は変えない）。「スライドの挿入…」では、選んだスライドの後ろに AI で作成したスライドを挿入できる
+- **作業フォルダを開く：** 作業フォルダ（`deck.html` の入ったもの）を画面にドラッグ＆ドロップするか「フォルダで作業する…」を押し、そのフォルダの編集を許可する。「新規作成…」は対話型 AI で新しい Egatari ファイルを作成する（新しい作業フォルダはコマンドの `npm run new`）。最近開いた作業フォルダはスタート画面に並ぶ
+- **対話型 AI で下書き（AI エージェントなし）：** 「新規作成…」で 4 つの問い（使う場面・何について・見た目・AI に渡す指示が軽量か詳細か）に答えると、ChatGPT・Gemini・claude.ai に送信する [AI への指示](docs/authoring-with-llms.ja.md) をコピーでき、AI の出力をスライドと台本の 2 つの欄に貼り付ける（出力の全体をどちらかに貼れば 2 つに分ける）。エディタがスライドに id を付け、新しい Egatari ファイルとして作り（出力にスクリプトがあれば、開いたファイルと同じく動かす前に確認する）、品質チェックを実行する。品質チェックのパネルの「AI への修正依頼をコピー」は、指摘・破った規格・今のファイルを同じチャット向けにコピーし、その出力で「修正…」が今のファイルのスライドを置き換える（識別子と音声は変えない）。「スライドの挿入…」では、選んだスライドの後ろに AI で作成したスライドを挿入できる
 - **台本の音声を 1 ステップずつ：** 「音声」でステップの音声を聞き、作った後に台本が変わっていれば「古い」と示す。マイクから録音する（入力レベルの表示つき）、ファイルから取り込む、AI 音声をこの PC で作る（日本語は読み辞書つきの Irodori-TTS、英語は Kokoro。WebGPU が要り、モデルは初回だけ取得）で作り直すのどれかをして、「この音声を使う」。録音し直した音声は `tts/core.py` と同じく整え（無音を削り −20 LUFS）、出どころと一緒に MP3 で保存する（[詳しく](docs/editor.ja.md#台本の音声音声のパネル)）。Egatari ファイルでは再ビルドせずに保存する
-- **AIエージェントと一緒に：** ほかのもの（Claude Code・Codex・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて再ビルドし、同じスライド・ステップのまま表示する。ビルドに失敗したら、修正されるまでプレビューの上にエラーを表示する
+- **AI エージェントと一緒に：** ほかのもの（Claude Code・Codex・テキストエディタ）がファイルを変えると、2 秒ほどで気づいて再ビルドし、同じスライド・ステップのまま表示する。ビルドに失敗したら、修正されるまでプレビューの上にエラーを表示する
 - **言語：** ふだんはブラウザの言語に合わせる。右上の **English / 日本語** のボタン（または `?lang=en`・`?lang=ja`）で切り替える
 - **ツールの列：** ファイル ▾（新規作成…・開く…・保存・名前を付けて保存…・エクスポート ▸ 参加者用（再生専用）…／スライドを印刷／本を印刷（本のないファイルは台本を印刷）・ファイルの情報…・フォルダで作業する…）、スライド ▾（スライドの挿入…・複製・削除・修正…）、品質チェック（警告の数）、プレビュー ▾（スライドショー・動画で確認、発表者ビュー（台本と次のステップを表示するウィンドウ）で確認）
 
@@ -125,7 +125,7 @@ codex plugin add egatari-studio@egatari
 
 スライドと台本を書くだけなら `egatari`（Node.js は要らない）、ローカルの品質チェック・ビルド・パーツ作成・動画には `egatari-studio` もインストールする。Codex を再起動して作成を依頼する。Codex の workspace-write サンドボックスはネットとブラウザを塞ぐので、`check` と `build` はサンドボックスの外で、またはネットとブラウザを許して動かす。更新は `codex plugin marketplace upgrade egatari` のあと `codex plugin add egatari@egatari` と `codex plugin add egatari-studio@egatari` をもう一度（Codex に更新だけの命令はない）。`npx egatari@0.6.x skills update` なら、Claude Code にも Codex にも同じことをする。インストールしたスキルが包みより古いときは `npx egatari@0.6.x doctor` が通知する。
 
-対話型の生成AI（ChatGPT・Gemini・Claude など）には `egatari-make-skill.zip` をアップロードする。Studio を更新したら、Studio の『AI のスキルをダウンロード』で追加し直す。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
+対話型の生成 AI（ChatGPT・Gemini・Claude など）には `egatari-make-skill.zip` をアップロードする。Studio を更新したら、Studio の『AI のスキルをダウンロード』で追加し直す。開発者は `node tools/make-llm-guide.mjs --zip out/release` で作れる。ZIP の `make/` は、生成してコミットする `plugins/egatari/skills/make/` と同じ内容。
 
 | スキル | 使いどころ |
 |---|---|
@@ -315,7 +315,7 @@ npm run dev -- talks/mytalk/deck.html      # ブラウザで編集する
 npm run check -- talks/mytalk/deck.html    # 最後の行が「エラー 0」になればよい
 ```
 
-`npm run new -- <フォルダ>` は、きれいなテンプレートから `deck.html` と `narration.md` を作る（表紙と、ステップ・数式・強調・パーツの例のスライド。台本は全ステップぶん）。`"componentsCatalogue": "2"` の `egatari.json` も書く：新しいファイルは、対話型AIへの指示が説明するパーツライブラリ 2 でビルドする（その設定のないフォルダ、たとえば前からの作業フォルダは、パーツライブラリ 1 のまま）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` のスライドは本文の字が Source Sans 3 になり、品質チェックも英語の規格になる。もっと作り込んだサンプルは `examples/minimal/`。
+`npm run new -- <フォルダ>` は、きれいなテンプレートから `deck.html` と `narration.md` を作る（表紙と、ステップ・数式・強調・パーツの例のスライド。台本は全ステップぶん）。`"componentsCatalogue": "2"` の `egatari.json` も書く：新しいファイルは、対話型 AI への指示が説明するパーツライブラリ 2 でビルドする（その設定のないフォルダ、たとえば前からの作業フォルダは、パーツライブラリ 1 のまま）。選択肢は `--lang en|ja`（既定 `ja`）、`--theme <名前>`（既定 `default`）、`--title "…"`。空でないフォルダには書かない。テーマは後から `<html data-theme="business">` か `--theme business` で変えられる。`<html lang="en">` のスライドは本文の字が Source Sans 3 になり、品質チェックも英語の規格になる。もっと作り込んだサンプルは `examples/minimal/`。
 
 新しいスライドにはどれも変わらない id（`<section class="slide" id="s-k3f9q2">`）があり、台本の見出しがそれを指す（`## 見出し {#s-k3f9q2}`）。見出しを編集しても、台本・音声・秒数の対応は崩れない。id のない頃に作った作業フォルダは、一度 `npm run ids -- talks/mytalk` を打つ：id を付け、`narration.md`・`audio/manifest.json`・`timeline.json`・`comments.json` のキーを付け替える（バックアップは `.cache/edits/`）。
 
@@ -331,7 +331,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 
 1. **文字を編集する：`e` → ダブルクリック。** 編集できる要素に点線の枠が出る。ダブルクリックでその部分の原稿（HTML と `\( … \)` の式）が開くので、編集して ⌘/Ctrl+Enter。`deck.html` のその要素だけが書き換わる
 2. **台本を編集する：`n`。** 右に今のステップの台本が出る。編集して保存（発言の追加・削除・話者の変更もできる）。`narration.md` のそのステップだけが書き換わる
-3. **コメントを保存する：Alt+クリック（Mac は ⌥ option キーを押したままクリック）。** 修正したいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。メモは `comments.json` に貯まり、`c` で一覧。AIエージェント（Claude Code・Codex・Gemini CLI など）に「comments.json のメモを反映して」と依頼すると修正され、保存した時点で表示される
+3. **コメントを保存する：Alt+クリック（Mac は ⌥ option キーを押したままクリック）。** 修正したいことを書く（「この図を大きく」「このスライドを 2 枚に分けて」）。メモは `comments.json` に貯まり、`c` で一覧。AI エージェント（Claude Code・Codex・Gemini CLI など）に「comments.json のメモを反映して」と依頼すると修正され、保存した時点で表示される
 4. **元に戻す：** 書き換える前の `deck.html`・`narration.md` は `.cache/edits/` に保存される（新しい 30 個）
 
 | `e`＋ダブルクリック：原稿を編集 | `n`：台本を編集 | Alt / ⌥ option+クリック：コメント |
@@ -346,7 +346,7 @@ node server/dev.mjs path/to/deck.html            # http://127.0.0.1:8730/ を開
 |---|---|
 | `docs/contract.ja.md` | 規約（位置と時刻、パーツ、台本、タイムライン、強調、モーフ）。**まずここを読む**（[English](docs/contract.md)） |
 | `docs/dev-server.ja.md`、`docs/editor.ja.md`、`docs/video.ja.md`、`docs/distributing.ja.md` | 手引き：開発サーバー、編集アプリ、動画にする、学習者への配布（[English](docs/dev-server.md)、[English](docs/editor.md)、[English](docs/video.md)、[English](docs/distributing.md)） |
-| `docs/authoring-with-llms.ja.md` | 対話型の生成AI（ChatGPT・Gemini・Claude など）で初めの下書きを作成する指示。共通の本体（標準パーツ）。セットの指示（stats・data・math・maps・kokugo・english・music・business・tools・science）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` がビルドする（[English](docs/authoring-with-llms.md)） |
+| `docs/authoring-with-llms.ja.md` | 対話型の生成 AI（ChatGPT・Gemini・Claude など）で初めの下書きを作成する指示。共通の本体（標準パーツ）。セットの指示（stats・data・math・maps・kokugo・english・music・business・tools・science）は `docs/llm-parts/`。`tools/make-llm-guide.mjs` が作り、`node kit/llm-pack.mjs` がビルドする（[English](docs/authoring-with-llms.md)） |
 | `docs/reference.ja.md` | リファレンス：原稿の記法、台本、長さ、テーマ、キー、URL の引数、すべてのコマンドの選択肢と環境変数（[English](docs/reference.md)） |
 | `kit/` | ランタイム（`deck.js` `presenter.js` `tools.js`）、体裁、ビルド、台本の解析、品質チェック、ブラウザの起動。`kit/core/` は Node と編集アプリが共有するビルドの本体、`kit/templates/` は新しいスライドのテンプレート |
 | `vendor/components/` | [egatari/components](https://github.com/egatari/components) のリリース（パーツ）のコピー。取り込んだバージョンをすべて残し、既定のバージョンは `components.lock.json` で固定。一覧は `vendor/components/CATALOG.md`。取り込みは `npm run components:update -- vX.Y.Z` |
