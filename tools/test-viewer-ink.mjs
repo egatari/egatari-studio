@@ -9,6 +9,7 @@
 //  - 指（pointerType touch）は書かず、横にはらうとステップを移る。「指でも書く」で書ける
 //  - 共有の端末をオンにすると、手書きも消すか聞いてから消す。共有の端末では保存しない
 //  - 枠の中から来た形の違う ink-bg は無視する
+//  - スライドだけの表示でだけ：教材で「スライドと本」にすると手書きを閉じ（線は残る）、手書きを押すとスライドだけに戻す（11/20 の作者の iPad の確かめ）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -201,6 +202,17 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   await open(p, LIGHT);
   await p.click('#b-ink');
   ok(await until(async () => (await strokes(p)) === 2), 'opened again: the strokes are kept on this device');
+  // only in the slides view (the owner's iPad check 11/20): choosing 「スライドと本」 in the player closes the handwriting and keeps
+  // the strokes; turning it on again puts the player back in the slides view (play/lesson-shim.js 6, spec §9.4 layout)
+  const view = async () => (await (await p.$('#lesson')).contentFrame()).evaluate(() => document.documentElement.getAttribute('data-deck-layout'));
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'split' }, '*'));
+  ok(await until(async () => (await view()) === 'split' && await p.evaluate(() => !document.querySelector('.ink-surf') && document.getElementById('b-ink').getAttribute('aria-pressed') === 'false')), 'the player in 「スライドと本」: the handwriting closes');
+  await p.click('#b-ink');
+  ok(await until(async () => (await view()) === 'slides' && (await strokes(p)) === 2), 'turning it on again: the slides view, the strokes again');
+  // untrusted: a layout message of the wrong shape from the frame is ignored
+  await (await (await p.$('#lesson')).contentFrame()).evaluate(() => { parent.postMessage({ egaViewer: 'layout', layout: 'pages' }, '*'); parent.postMessage({ egaViewer: 'layout', layout: 'book', more: 1 }, '*'); });
+  await sleep(300);
+  ok(await p.evaluate(() => !!document.querySelector('.ink-surf')), 'malformed layout messages are ignored');
   // a dark slide: a dark memo area and the light shades
   await open(p, DARK);
   ok(await until(() => p.evaluate(() => !document.getElementById('b-ink').hidden)), 'the dark lesson: the button again');
