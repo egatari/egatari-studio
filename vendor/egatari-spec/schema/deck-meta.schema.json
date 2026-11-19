@@ -132,7 +132,7 @@
           }
         }
       },
-      "description": "Modes and faces the author offers, and where the lesson opens (§1.2). The author's intent, not access control."
+      "description": "Modes and faces the author offers, and where the file opens (§1.2). The author's intent, not access control."
     }
   },
   "if": {
