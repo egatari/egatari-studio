@@ -1,12 +1,13 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "4a02065904cc43f4c4a4379c3ed8bace747e2910",
+  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
   "path": "lessons/moon-phases",
   "files": {
-    "deck.html": "f0a699baf038a47549d8b6169869e3c97eba76b53e82d294b1727b09739c827c",
-    "egatari.json": "ad53811607fc201c608922a59fa2833ebaf5940dd5f53791afb8f30ffe9ddf50",
+    "article/01.md": "1b9babd42adea7cb39bf6203458ebb5d2da8f1ea545b6481d829c7243d0438e7",
+    "deck.html": "54b1fb696a3f56fae59f9330ba427b6f25f612a39d57fd5144eaa73a18980dc2",
+    "egatari.json": "3b412546d6179bb51d167e18acf19759c9bb8a19ec2df2c9d8b75f035e65490e",
     "narration.md": "36bdcb083b1dc4289e3aba288291167b1a6fe5589a508bf552ac30edb518c123",
-    "sample.json": "ce17dbc0a7afc757a13f87be64fa08b59c5db62f428516764b17738d7094e105"
+    "sample.json": "a03f7dc81b2b594fdb414641b2902915ccd4d663fddc6bf2035ad5f4d8112a41"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
 }

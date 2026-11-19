@@ -3,8 +3,47 @@
   "metadata": {
     "license": "CC-BY-4.0",
     "copyright": "© 2026 雲居玄道",
-    "creators": ["雲居玄道"],
+    "creators": [
+      "雲居玄道"
+    ],
     "attribution": "図は教えるためのもので、大きさと距離は実際の比ではない。予想の人数は架空。"
   },
-  "docId": "3b37c603-643c-45c9-94a5-8539f6f6f00f"
+  "article": {
+    "chapters": [
+      "article/01.md"
+    ]
+  },
+  "docId": "3b37c603-643c-45c9-94a5-8539f6f6f00f",
+  "articleLinks": {
+    "s-d43eo7": {
+      "sec-4ykat3": {
+        "article": "b9d4e614e7d81bd7afede3df4657b552ef4e7b83eb3ed7d06a38133f2e95f26f",
+        "slide": "c8c0fe49eb06e366307702ae1967385ca890c02aa55e72d57bc0c2c6c5b42edb"
+      }
+    },
+    "s-l6clsi": {
+      "sec-jkmtru": {
+        "article": "d31320c666b2e324c0262bb35c34d2cae6f6399fc4f2a9d65a65401ee29b80c3",
+        "slide": "eafa007307eebf983e937253b225f3fafba3c9ba234b38d50761ac8240b096b5"
+      }
+    },
+    "s-tsl2f2": {
+      "sec-vsue5o": {
+        "article": "9dec135e02bb898cd781aa54f3a687b7c3c545def15366beef9f5595f208544c",
+        "slide": "c8898e22980d8ce87987354e88f0bd462d53a1d51e40112a7d3db25b664299e6"
+      }
+    },
+    "s-xlorhi": {
+      "sec-qxfmzp": {
+        "article": "f0c26562c6710c2c740eee74344e7d286bc0769e88313eb3bcae705ab0a17376",
+        "slide": "812e38823b411586240a9fe3454ea9686d3ec4f0dcf3e5a3012a082e7ef811a5"
+      }
+    },
+    "s-nqenml": {
+      "sec-25ou7x": {
+        "article": "32b5ff0a756c6d434a2ca08fcc67e6d984e1b8ce887f7e33a8fbd21db518e19a",
+        "slide": "9567f8aaf6239c4a1d5896b84bbcb4d7241a73fb60dc909aa3b3bb91f81b922d"
+      }
+    }
+  }
 }

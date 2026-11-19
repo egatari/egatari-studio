@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "4a02065904cc43f4c4a4379c3ed8bace747e2910",
+  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
   "path": "lessons/for-loop",
   "files": {
     "SOURCE.md": "caecefb58b4c769a6e337bbeadb659d8b51b31ec30cf2ac89f3d2ec0e1645383",
@@ -8,7 +8,7 @@
     "data/reset_bug.json": "60e0bdaa1b2dacffd1077999b04a82bbe743ee252d404b4530f712968cc88aeb",
     "data/sum_avg.json": "0a418869b70d08f5afc94bcd81fa1859fb362457d284518c0031a672581a918a",
     "deck.html": "40c342a7027f2c583cdf1b866797e3f143d5f22b5b20d3e824ca1a5723b775f4",
-    "egatari.json": "2df631053f7dec68009b361d9a2a0e5c19d5c0f83855d56849fcc5190514d5a8",
+    "egatari.json": "ba47748053282d7974e737b88e100cf757523d17ab1234e9f23f505239d3e156",
     "narration.md": "ede38db7f5352585291bf50e7aac0692a767e2bca17428fdb0e4c9de799a35e0",
     "sample.json": "ad98567ff02032019072405aaa0239a146257b7903dea344942fb913e5c1ecce",
     "scripts/make_traces.py": "1cf68e80c84fa6d2a252b2c4af3675090f3c9614931f7f8ad0579dc4e4f58c38",
