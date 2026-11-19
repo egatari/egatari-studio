@@ -201,7 +201,7 @@ try {
   const t0 = page.locator('#dev-narr .dev-turn .dv-text').first();
   ok((await t0.evaluate((e) => e.value)) === '{mark:eta|circle}{η|イータ} は学習率で、1 歩の大きさを決めます。', 'drawer (in the shell) shows raw narration');
   await t0.fill('η は、1 歩の{cue}大きさです。{φ|ファイ} とは違います。');
-  await page.locator('#dev-narr button', { hasText: '発言を足す' }).click();
+  await page.locator('#dev-narr button', { hasText: '発言を追加' }).click();
   await page.locator('#dev-narr .dev-turn .dv-text').nth(1).fill('大きさ、ですか。');
   await shot('4-narration.png');
   n = await loads();
@@ -642,7 +642,7 @@ try {
     await hp.waitForFunction(() => { const s = window.__DEV_UI.state(); return s.narrKey === s.pos.key; });
     ok(!(await inert()) && (await ui()).narrKey !== k0, 'leaving the field → the preview is interactive again and the drawer follows to the current step');
     // 未保存の変更がある：欄から離れても inert のまま。デッキからの知らせ（n・c・Escape・コメント・位置）では何も替わらない
-    await hp.locator('#dev-narr button', { hasText: '発言を足す' }).click();
+    await hp.locator('#dev-narr button', { hasText: '発言を追加' }).click();
     await hp.locator('#dev-narr .dev-head .dv-t').click();
     const k1 = (await ui()).narrKey, ig0 = (await ui()).ignored;
     ok(await inert() && (await ui()).narrDirty, 'unsaved narration (focus elsewhere) → the preview stays inert');

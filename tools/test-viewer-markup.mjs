@@ -322,7 +322,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   ok(s1.y === 2 && s1.b === 0, 'この色を非表示: blue is not painted');
   await p.click('#m-list .m-colour:nth-child(3) .m-crow button:nth-child(2)');
   await p.click('#m-list .m-colour:nth-child(3) .m-crow button:nth-child(3)');   // delete all blue
-  ok(await p.isVisible('#m-confirm') && /青のハイライトを 2 件消します。元に戻せません。/.test(await p.textContent('#m-confirm-t')), 'この色を全部消す asks in the page: 「青のハイライトを 2 件消します。元に戻せません。」');
+  ok(await p.isVisible('#m-confirm') && /青のハイライトを 2 件削除します。元に戻せません。/.test(await p.textContent('#m-confirm-t')), 'この色をすべて削除 asks in the page: 「青のハイライトを 2 件削除します。元に戻せません。」');
   await shot(p, '05-confirm');
   await p.click('#b-mconfirm-yes');
   await until(async () => (await mstate(p)).record.highlights.length === 2);
@@ -342,7 +342,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   const st4 = await mstate(p);
   ok((await sizes(f4)).y === 1 && st4.missing.length === 1 && st4.record.highlights.length === 2, `revised lesson: the moved sentence is re-attached; the rewritten one is kept as not found (not deleted) ${JSON.stringify(await sizes(f4))} ${JSON.stringify(st4.missing)}`);
   await p.click('#b-markup'); await p.click('#b-mlist');
-  ok((await p.textContent('#m-list')).includes('場所が見つからないハイライト') && (await p.textContent('#m-list')).includes('教材が直されて、元の文が見つかりません。'), 'the list shows 「場所が見つからないハイライト」 with its line');
+  ok((await p.textContent('#m-list')).includes('場所が見つからないハイライト') && (await p.textContent('#m-list')).includes('ファイルが修正されて、元の文が見つかりません。'), 'the list shows 「場所が見つからないハイライト」 with its line');
   await shot(p, '06-missing');
   await p.click('#b-mlist-close');
 
@@ -394,7 +394,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   const count = () => p.evaluate(() => new Promise((res) => { const o = indexedDB.open('egatari-viewer-notes'); o.onsuccess = () => { const g = o.result.transaction('lessons').objectStore('lessons').getAll(); g.onsuccess = () => res(g.result.reduce((n, r) => n + r.highlights.length, 0)); }; }));
   await p.click('#shared');
   await until(() => p.isVisible('#m-confirm'));
-  ok((await p.textContent('#m-confirm-t')) === 'この端末に保存したハイライト（1 つの教材、2 件）も消します。元に戻せません。' && (await p.textContent('#b-mconfirm-yes')) === '消して切り替える',
+  ok((await p.textContent('#m-confirm-t')) === 'この端末に保存したハイライト（1 つのファイル、2 件）も削除します。元に戻せません。' && (await p.textContent('#b-mconfirm-yes')) === '削除して切り替える',
     `turning 共有の端末 on asks first, with the counts (${await p.textContent('#m-confirm-t')})`);
   await shot(p, '10-shared-ask');
   await p.click('#b-mconfirm-no');
@@ -419,7 +419,7 @@ console.log('cap');
   ok((await mstate(p)).record.highlights.length === 2000, 'a stored record over the cap is cut to 2,000 when the lesson opens');
   await f.evaluate(() => { for (let i = 0; i < 50; i++) parent.postMessage({ egaViewer: 'markup-add', color: 'y', target: { section: '', quote: { exact: '中央値', prefix: '', suffix: '' } } }, '*'); });
   await until(async () => /2000 件まで/.test(await p.textContent('#sr')));
-  ok((await mstate(p)).record.highlights.length === 2000 && /2000 件まで/.test(await p.textContent('#sr')), 'a flood of adds past the cap adds nothing and says so (「ハイライトは 1 つの教材に 2000 件までです。…」)');
+  ok((await mstate(p)).record.highlights.length === 2000 && /2000 件まで/.test(await p.textContent('#sr')), 'a flood of adds past the cap adds nothing and says so (「ハイライトは 1 つのファイルに 2000 件までです。…」)');
   await c.close(); }
 
 // ---------------------------------------------------------------- 6a. 暗記 over ruby and a display equation

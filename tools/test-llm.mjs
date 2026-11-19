@@ -67,10 +67,10 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
     const paidCommon = commonBody(lang, { plan: 'paid' });
     assert.equal(file.slice(i), paidCommon + '\n' + requestBody(lang));
     // 軽量の指示・詳細の指示（v0.6.7。前は無料のプラン・有料のプラン。内部の名前は plan の free・paid のまま）
-    assert.ok(file.includes(lang === 'en' ? 'For a free chat AI, choose the light instructions in the editor’s “New” and copy them; they are a lighter version.' : '無料のチャットの AI に送るときは、編集アプリの「新規作成」で軽量の指示を選んでコピーしてください。軽くした指示になります。'), lang + ': the light-instructions line at the top');
+    assert.ok(file.includes(lang === 'en' ? 'For a free AI chatbot, choose the light instructions in the editor’s “New” and copy them; they are a lighter version.' : '無料の対話型AIに送信するときは、編集アプリの「新規作成」で軽量の指示を選んでコピーしてください。軽くした指示になります。'), lang + ': the light-instructions line at the top');
     assert.ok(/\| (Light instructions: every standard part|軽量の指示：標準のパーツすべて)[^|]*\| [\d.]+ KB \| 45 KB \|/.test(file) && /\| (Detailed instructions: every part set|詳細の指示：すべてのセット)[^|]*\| [\d.]+ KB \| 150 KB \|/.test(file),
       lang + ': the size table lists the light standard pack and the detailed full pack');
-    assert.ok(!/無料のプラン|有料のプラン|[Ff]ree plan|[Pp]aid plan/.test(file.slice(0, i)), lang + ': the preamble no longer speaks of the chat AI’s plan');
+    assert.ok(!/無料のプラン|有料のプラン|[Ff]ree plan|[Pp]aid plan/.test(file.slice(0, i)), lang + ': the preamble no longer speaks of the AI chatbot’s plan');
     const paidParts = SETS.map((s) => read('docs', 'llm-parts', `${s}${lang === 'ja' ? '.ja' : ''}.md`).replace(/^<!--[^\n]*-->\n/gm, ''));
     assert.equal([commonBody(lang, { plan: 'paid', sets: 'all' }).trimEnd(), ...paidParts.map((x) => x.trimEnd()), requestBody(lang).trimEnd()].join('\n\n') + '\n', buildPack({ sets: 'all', lang, plan: 'paid' }), lang + ': the docs together are the paid pack');
     for (const t of Object.keys(PACK.en.components)) assert.ok([file, ...paidParts].some((x) => x.includes('### `<' + t + '>`')), `${lang}: the docs describe ${t}`);
@@ -405,7 +405,7 @@ ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今�
   assert.ok(/exactly two fenced code blocks/.test(r.text) && r.partial === false);
   // 使っている部品の説明（指示と同じ文章）
   assert.deepEqual(r.components, ['m-sweep']);
-  assert.ok(r.text.includes('## Parts used in this lesson') && r.text.includes(setPart('math', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
+  assert.ok(r.text.includes('## Parts used in this file') && r.text.includes(setPart('math', 'en').match(/### `<m-sweep>`[\s\S]*?(?=\n### )/)[0].trim()));
   // 前の guide の引数：知らせて無視する（規格は指示の共通の本体から）
   const warned = [], cw = console.warn;
   console.warn = (...x) => warned.push(x.join(' '));
@@ -415,7 +415,7 @@ ok('修正依頼：エラーの言葉・規格の名前と指示の文章・今�
   } finally { console.warn = cw; }
   assert.ok(warned.length === 1 && /guide argument is no longer used/.test(warned[0]), warned.join('|'));
   const ja = buildFixRequest({ problems: probs, deck: a.deck, narration: a.narration, lang: 'ja' });
-  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つの灰色の枠（コードブロック）') && ja.text.includes('## この教材で使っているパーツ'));
+  assert.ok(ja.text.includes(`- **R-title** ${guideRules(GUIDE_JA).get('R-title')}`) && ja.text.includes('2 つの灰色の枠（コードブロック）') && ja.text.includes('## このファイルで使っているパーツ'));
   assert.deepEqual(rulesFor({ code: 'readingExpr' }), ['R-reading', 'R-formula']);
 });
 ok('長いデッキの修正依頼：問題のあるスライドとその節だけ（id 付き）を載せ、そのスライドだけを返してもらう', () => {
@@ -509,7 +509,7 @@ ok('品質チェック：static の表紙の口述原稿がない → 警告。�
   const j = JSON.parse(c.stdout);
   const has = (sev, slide, re) => j.results.some((x) => x.sev === sev && x.slide === slide && re.test(x.msg));
   assert.ok(has('warn', 1, /^スライド 1「表紙」（s-cover1）、ステップ 0：このステップの台本がない：narration.md のこのスライドの節に \[0\] の行を書く/), 'static cover narration');
-  assert.ok(has('error', 2, /ステップ 3：台本の \[3\] に当たるステップがスライドにない.*番号が 0〜2 と結論.*使えるステップの指定は \[0\] \[1\] \[2\] \[concl\].*前のステップ \[2\].*data-step="3".*直す行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
+  assert.ok(has('error', 2, /ステップ 3：台本の \[3\] に当たるステップがスライドにない.*番号が 0〜2 と結論.*使えるステップの指定は \[0\] \[1\] \[2\] \[concl\].*前のステップ \[2\].*data-step="3".*修正する行：.*「\[3\] 三つ目はありません。」.*（R-narr-steps）$/), 'orphan [3]');
   assert.ok(has('error', 3, /台本の \[concl\] に当たるステップがスライドにない.*使えるステップの指定は \[0\]。.*前のステップ \[0\].*結論の行/), 'orphan [concl]');
   assert.ok(has('warn', 2, /読みの指定 \{1-η\|いちマイナスイータ\} が式を読んでいる/), 'reading operator');
   assert.ok(has('warn', 2, /読みの指定 \{θとη\|シータとイータ\} に記号が 2 つ以上/), 'reading several');

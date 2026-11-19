@@ -63,9 +63,9 @@ const HOST = `http://127.0.0.1:${srv.address().port}/`;
 
 // 画面の言葉（app/i18n.js と同じもの。変えたらここも）
 const W = {
-  ja: { item: '動画（MP4）にする…', lead: (n) => `動画は Google Colab で作ります。この教材のファイル（${n}）を Colab に上げてください。Egatari のファイルのまま配れば、動画にしなくても再生できます。`,
+  ja: { item: '動画（MP4）にする…', lead: (n) => `動画は Google Colab で作ります。このファイル（${n}）を Colab にアップロードしてください。Egatari ファイルのまま配布すれば、動画にしなくても再生できます。`,
     stale: '1 ステップの音声の更新が必要です（動画もその音声のままになります）', open: 'Colab を開く', save: '保存して Colab を開く', exp: 'Egatari ファイルに保存して Colab を開く' },
-  en: { item: 'Make a video (MP4)…', lead: (n) => `Videos are made in Google Colab. Upload this lesson's file (${n}) to Colab. If you hand out the Egatari file as it is, it plays without making a video.`,
+  en: { item: 'Make a video (MP4)…', lead: (n) => `Videos are made in Google Colab. Upload this file (${n}) to Colab. If you hand out the Egatari file as it is, it plays without making a video.`,
     stale: '1 step: audio needs updating (the video gets the audio as it is)', open: 'Open Colab', save: 'Save and open Colab', exp: 'Save as Egatari file and open Colab' },
 };
 

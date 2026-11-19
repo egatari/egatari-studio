@@ -149,7 +149,7 @@ try {
     ok(sw.length === 16 && sw.every((c) => c && c !== 'rgba(0, 0, 0, 0)') && sw[3] === 'rgb(186, 60, 5)', 'chooser: a base and an emphasis swatch per theme ' + JSON.stringify(sw));
     ok((await page.textContent('#theme-switch-load')) === 'テーマを読み込む…' && !(await page.$('#theme-switch-mine')), 'chooser: 「テーマを読み込む…」 (the same entry as New ③); no 「自分のテーマ」 heading while there are none');
     const words = [await page.textContent('#dlg-title'), await page.textContent('#theme-switch-lead'), await page.textContent('#dlg-change'), await page.textContent('#dlg-cancel')];
-    ok(JSON.stringify(words) === JSON.stringify(['テーマを変更', 'スライドの中身はそのままで、色・書体・ロゴが替わります。', '変更', 'キャンセル']), 'chooser: title, lead and buttons ' + JSON.stringify(words));
+    ok(JSON.stringify(words) === JSON.stringify(['テーマを変更', 'スライドの中身はそのままで、色・書体・ロゴが変わります。', '変更', 'キャンセル']), 'chooser: title, lead and buttons ' + JSON.stringify(words));
     await clickDlg(page, '#dlg-cancel');
     ok(await memFile(page, 'deck.html') === deck0 && !(await state(page)).portable.dirty, 'cancel: nothing changes');
 

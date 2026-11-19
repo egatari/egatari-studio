@@ -205,7 +205,7 @@ try {
     await page.click('#dev-pron-btn');
     await page.waitForSelector('#dev-pron');
     await page.waitForFunction(() => document.getElementById('dev-pron-y').value === 'シータ' && /ほかに 2 か所/.test(document.querySelector('#dev-pron').textContent));
-    ok((await page.textContent('#dev-pron-from')) === '同じ台本のほかの所と同じ読み方を入れました', 'all: the reading used elsewhere is filled in, and it says so');
+    ok((await page.textContent('#dev-pron-from')) === '同じ台本のほかの所と同じ読み方を入力しました', 'all: the reading used elsewhere is filled in, and it says so');
     await page.check('#dev-pron-all');
     await page.click('#dev-pron-apply');
     ok(/保存すると、ほかのステップの 2 か所にも読み方を付けます/.test(await page.textContent('#dev-narr .dv-foot .dv-st')), 'all: the status says the other steps get it on save');
@@ -223,7 +223,7 @@ try {
     await selectText('傾き');
     await page.click('#dev-pron-btn');
     await page.waitForSelector('#dev-pron');
-    ok(!(await page.isChecked('#dev-pron-dict')) && (await page.textContent('#dev-pron')).includes('このブラウザに覚えます'), 'dictionary: 「辞書に登録」 is off for a new word and says where it is kept');
+    ok(!(await page.isChecked('#dev-pron-dict')) && (await page.textContent('#dev-pron')).includes('このブラウザに保存します'), 'dictionary: 「辞書に登録」 is off for a new word and says where it is kept');
     await page.fill('#dev-pron-y', 'かたむき');
     await page.check('#dev-pron-dict');
     await page.keyboard.press('Enter');
@@ -237,7 +237,7 @@ try {
     await page.click('#dev-pron-btn');
     await page.waitForSelector('#dev-pron');
     await page.waitForTimeout(300);
-    ok((await page.inputValue('#dev-pron-y')) === 'かたむき' && (await page.textContent('#dev-pron-from')) === '辞書の読み方を入れました' && await page.isChecked('#dev-pron-dict'), 'dictionary: selecting the word again fills in the reading from the dictionary, and says so');
+    ok((await page.inputValue('#dev-pron-y')) === 'かたむき' && (await page.textContent('#dev-pron-from')) === '辞書の読み方を入力しました' && await page.isChecked('#dev-pron-dict'), 'dictionary: selecting the word again fills in the reading from the dictionary, and says so');
     await page.keyboard.press('Escape');
     await page.waitForSelector('#dev-pron', { state: 'detached' });
     ok(!(await page.evaluate(() => window.__APP_TEST.ui().narrDirty)), 'Esc: closes the pronunciation field without changing the script');
@@ -247,7 +247,7 @@ try {
     await page.waitForSelector('#dev-pron-remove');
     ok((await page.inputValue('#dev-pron-y')) === 'シータ', 'edit: clicking a word with a reading opens it with the reading');
     await page.click('#dev-pron-remove');
-    ok(!(await field()).value.includes('{θ|') && (await field()).value.includes('θ'), 'edit: 「読み方を外す」 leaves the plain word');
+    ok(!(await field()).value.includes('{θ|') && (await field()).value.includes('θ'), 'edit: 「読み方を削除」 leaves the plain word');
     await page.click('#dev-narr .dv-foot button:not(.dv-pri)');
     ok(!errs.length, 'ja: no page errors ' + errs.join(' | '));
     await ctx.close();
@@ -288,7 +288,7 @@ try {
     await page.click('#dev-pron-btn');
     await page.waitForSelector('#dev-pron');
     const off = await page.evaluate(() => ({ disabled: document.getElementById('dev-pron-dict').disabled, checked: document.getElementById('dev-pron-dict').checked, why: (document.getElementById('dev-pron-dict-off') || {}).textContent, desc: document.getElementById('dev-pron-dict').getAttribute('aria-describedby') }));
-    const WHY = lang === 'en' ? 'The dictionary cannot be used in this browser (it does not keep data here, as in private browsing). You can still apply the pronunciation' : 'このブラウザでは辞書を使えません（プライベートウィンドウなど、データを残さない設定のため）。読み方はこのまま付けられます';
+    const WHY = lang === 'en' ? 'The dictionary cannot be used in this browser (it does not save data here, as in private browsing). You can still apply the pronunciation' : 'このブラウザでは辞書を使えません（プライベートウィンドウなど、データを保存しない設定のため）。読み方はこのまま付けられます';
     ok(off.disabled && !off.checked && off.why === WHY && off.desc === 'dev-pron-dict-off', lang + ' no storage: 「辞書に登録」 is disabled with one line saying why ' + JSON.stringify(off));
     await page.fill('#dev-pron-y', lang === 'en' ? 'theta' : 'シータ');
     await page.click('#dev-pron-device');

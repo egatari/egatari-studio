@@ -251,7 +251,7 @@ try {
   ok((await recState()).phase === 'idle' && !(await recState()).mic, 'security: hints from the preview cannot start a recording or open the microphone');
 
   // 端末の設定：初めはオン。従来のキー操作の確認はオフで行い、開き直しても覚えている。
-  ok(await page.isChecked('#rec-keep-recording') && await page.textContent('label[for="rec-keep-recording"]') === ' 続けて録る', 'keep recording: on by default, with a visible accessible label');
+  ok(await page.isChecked('#rec-keep-recording') && await page.textContent('label[for="rec-keep-recording"]') === ' 連続録音', 'keep recording: on by default, with a visible accessible label');
   await page.uncheck('#rec-keep-recording');
   await page.focus('#rec-mode');
   await page.keyboard.press('Escape');
@@ -317,7 +317,7 @@ try {
   ok(/前の音声に戻しました/.test(await liveHas(/前の音声に戻しました/)), 'live: the retake is announced');
   await waitPhase('idle');
   await page.keyboard.press('Backspace');
-  ok(/取り直すテイクがありません/.test(await (async () => { for (let i = 0; i < 40; i++) { const t = await alertText(); if (/取り直す/.test(t || '')) return t; await page.waitForTimeout(50); } return ''; })()), 'Backspace: nothing to retake says so');
+  ok(/再録音するテイクがありません/.test(await (async () => { for (let i = 0; i < 40; i++) { const t = await alertText(); if (/再録音する/.test(t || '')) return t; await page.waitForTimeout(50); } return ''; })()), 'Backspace: nothing to retake says so');
   // 録音中の Backspace は今のテイクを捨てる（書かない）
   const before = JSON.stringify(await manifest());
   await page.keyboard.press('Space'); await waitPhase('recording');
@@ -695,7 +695,7 @@ try {
     await page.keyboard.press('Enter');   // 録った後の Enter でも、次の空のステップを開始
     for (let j = firstContinuous; j < keys.length; j++) {
       await waitRec('recordingIdx', j);
-      ok(new RegExp(`続けて録音中：ステップ ${j + 1}/${keys.length}`).test(await liveHas(/続けて録音中/)), 'continuous: live region announces the recording step');
+      ok(new RegExp(`連続録音中：ステップ ${j + 1}/${keys.length}`).test(await liveHas(/続けて録音中/)), 'continuous: live region announces the recording step');
       if (j > firstContinuous) ok(!!(await manifest())[keys[j - 1]], 'continuous: the previous take is written before the next starts');
       await page.waitForTimeout(3600);
       await page.evaluate(({ key, longHold }) => {

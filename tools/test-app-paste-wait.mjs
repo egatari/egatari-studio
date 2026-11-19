@@ -108,7 +108,7 @@ const shotWait = async (p, name) => {
 
 // ---------------------------------------------------------------- W1・W2 新規作成（貼り付けだけの画面）
 const bdeck = worked('business', 'deck.html'), bnarr = worked('business', 'narration.md');
-for (const [lang, reduced, want, back] of [['en', false, 'Creating the lesson…', 'Opening…'], ['ja', true, '教材を作っています…', '開いています…']]) {
+for (const [lang, reduced, want, back] of [['en', false, 'Creating the file…', 'Opening…'], ['ja', true, 'ファイルを作っています…', '開いています…']]) {
   const tag = lang === 'en' ? 'W1' : 'W2';
   const p = await open(lang, tag, { reduced });
   await pasteDirect(p, replyOf(bdeck, bnarr));
@@ -156,7 +156,7 @@ for (const [lang, reduced, want, back] of [['en', false, 'Creating the lesson…
   await p.waitForFunction(() => !document.getElementById('dlg-import').disabled);
   const F = await pressAndRecord(p, '(() => { const s = window.__APP_TEST.state(); return s.portable && s.loads > 0 && s.frameLoaded === s.loads && document.getElementById("wait").hidden; })()');
   const S = summary(F);
-  ok(S.on >= 0 && S.on <= S.closed && S.tOn <= scaled(1000) && F[S.on].text === 'Creating the lesson…', `W4 (from a sample): the wait shows by the frame the dialog closes (${S.tOn} ms, “${(F[S.on] || {}).text}”)`);
+  ok(S.on >= 0 && S.on <= S.closed && S.tOn <= scaled(1000) && F[S.on].text === 'Creating the file…', `W4 (from a sample): the wait shows by the frame the dialog closes (${S.tOn} ms, “${(F[S.on] || {}).text}”)`);
   ok(!S.bare.length && !S.uncovered.length && S.off > 0 && F[F.length - 1].deck, `W4: the start screen is never shown in between, and the wait goes away with the lesson (${S.tOff} ms)`);
 
   // ---------------------------------------------------------------- W5 開いた 1 ファイルの「修正…」→［置き換える］

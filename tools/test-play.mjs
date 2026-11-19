@@ -223,7 +223,7 @@ console.log('open');
     'not an Egatari file: refused with a message that ends with what to do (choose a .ega.html exported from Egatari Studio); nothing runs');
   // a file over the limit (100 MB): refused before it is read, with what to do
   await o.p.evaluate(() => window.__play.openFile({ size: 100 * 1024 * 1024 + 1 }, 'big.ega.html'));
-  ok(await until(() => o.p.evaluate(() => /^ファイルが大きすぎます（100 MB まで）。ファイルを作った人に、100 MB までのファイルにしてもらってください。$/.test(document.querySelector('#msg').textContent))) && !(await o.p.$('#lesson')),
+  ok(await until(() => o.p.evaluate(() => /^ファイルが大きすぎます（100 MB まで）。ファイルの作成者に、100 MB までのファイルを依頼してください。$/.test(document.querySelector('#msg').textContent))) && !(await o.p.$('#lesson')),
     'too large: refused with a message that ends with what to do');
   await o.p.click('#b-lang');
   await o.p.evaluate(() => window.__play.openFile({ size: 100 * 1024 * 1024 + 1 }, 'big.ega.html'));
@@ -448,7 +448,7 @@ for (const store of ['opfs', 'idb']) {
   await o.p.uncheck('#keep');
   await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
   await sleep(300);
-  ok(await o.p.evaluate(() => document.querySelectorAll('#recent-list li').length) === 0, `${store}: with 「開いたファイルを最近の一覧に残す」 off, nothing is kept`);
+  ok(await o.p.evaluate(() => document.querySelectorAll('#recent-list li').length) === 0, `${store}: with 「開いたファイルを「最近のファイル」に保存する」 off, nothing is kept`);
   await o.p.check('#keep');
   await o.close();
 }
@@ -463,7 +463,7 @@ console.log('shared device');
   ok(await until(() => o.p.evaluate(() => document.querySelectorAll('#recent-list li').length === 0)), 'shared device on: the kept files are deleted');
   ok(await o.p.evaluate(async () => { const d = await (await navigator.storage.getDirectory()).getDirectoryHandle('recent'); let n = 0; for await (const [k] of d.entries()) if (k.endsWith('.html')) n++; return n; }) === 0, 'shared device on: nothing left in OPFS');
   ok(await o.p.isDisabled('#keep') && !(await o.p.isChecked('#keep')), 'shared device on: keeping is off and cannot be turned on');
-  ok(/何人かで使う端末/.test(await o.p.textContent('#shared-note')) && await o.p.getAttribute('#shared', 'aria-describedby') === 'shared-note', 'shared device: a short explanation, tied to the switch');
+  ok(/複数の人で使う端末/.test(await o.p.textContent('#shared-note')) && await o.p.getAttribute('#shared', 'aria-describedby') === 'shared-note', 'shared device: a short explanation, tied to the switch');
   await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
   await sleep(300);
   ok(await o.p.evaluate(() => document.querySelectorAll('#recent-list li').length) === 0, 'shared device on: an opened file is not kept');
@@ -481,7 +481,7 @@ console.log('device copies line');
   const clearShown = () => o.p.evaluate(() => !document.getElementById('keep-line-clear').hidden);
   ok(await o.p.evaluate(() => { const l = document.getElementById('keep-line'); return !!l && l.previousElementSibling === document.getElementById('drop') && l.getBoundingClientRect().height > 0; }),
     'device copies: the line sits right under the file picker and is visible');
-  ok(await line() === '開いたファイルのコピーを、この端末の「最近のファイル」に 10 件まで残します。', `device copies: by default it says copies are kept, up to 10 (${await line()})`);
+  ok(await line() === '開いたファイルのコピーを、この端末の「最近のファイル」に 10 件まで保存します。', `device copies: by default it says copies are kept, up to 10 (${await line()})`);
   ok(await o.p.getAttribute('#a-keep-shared', 'href') === '#shared' && await o.p.textContent('#a-keep-shared') === '共有の端末', 'device copies: a link to the 「共有の端末」 switch, by its name');
   ok(!(await clearShown()), 'device copies: no 「すべて削除」 while nothing is kept');
   await o.p.click('#a-keep-shared');
@@ -511,10 +511,10 @@ console.log('device copies line');
   await o.p.click('#b-keep-clear');
   ok(await until(() => o.p.evaluate(() => document.querySelectorAll('#recent-list li').length === 0)) && !(await clearShown()), 'device copies: 「すべて削除」 in the line deletes the copies, as the button in Recent files does');
   await o.p.uncheck('#keep');
-  ok(await line() === '開いたファイルは、この端末に残しません。', 'device copies: with keeping off, the line says nothing is kept');
+  ok(await line() === '開いたファイルは、この端末に保存しません。', 'device copies: with keeping off, the line says nothing is kept');
   await o.p.check('#keep');
   await o.p.check('#shared');
-  ok(await line() === '共有の端末：開いたファイルは、この端末に残しません。', 'device copies: on a shared device, the line says so');
+  ok(await line() === '共有の端末：開いたファイルは、この端末に保存しません。', 'device copies: on a shared device, the line says so');
   await o.p.click('#b-lang');
   ok(await until(async () => await line() === 'Shared device: opened files are not kept on this device.') && await o.p.textContent('#a-keep-shared') === 'Shared device', `device copies: English, shared device (${await line()})`);
   await o.p.uncheck('#shared');
@@ -547,7 +547,7 @@ const persistPage = async ({ persisted = false, reject = false } = {}) => {
   ok(await o.calls() === 0, 'persistent storage: not called on a cold load with nothing kept');
   await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
   ok(await until(async () => await o.calls() === 1), 'persistent storage: called once, right after the first file lands in recents');
-  ok(await until(async () => await o.p.textContent('#recent-persist') === 'ブラウザが空き容量や日数で消すことがあります'),
+  ok(await until(async () => await o.p.textContent('#recent-persist') === 'ブラウザが空き容量や日数で削除することがあります'),
     'persistent storage: persisted() false shows the second line');
   await openFixture(o.p, 'lesson.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
   await sleep(300);
@@ -555,7 +555,7 @@ const persistPage = async ({ persisted = false, reject = false } = {}) => {
   await o.close(); }
 { const o = await persistPage({ persisted: true });
   await openFixture(o.p, 'lesson.play.ega.html'); await lessonFrame(o.p); await o.p.click('#b-close');
-  ok(await until(async () => await o.p.textContent('#recent-persist') === 'この端末に残します（ブラウザが消さない設定）'),
+  ok(await until(async () => await o.p.textContent('#recent-persist') === 'この端末に保存します（ブラウザが自動で削除しない設定）'),
     'persistent storage: persisted() true shows the first line');
   await o.close(); }
 { const o = await persistPage({ persisted: false });
@@ -632,7 +632,7 @@ console.log('links');
   await shut();
   await click('https://evil.example/', 'https://bank.example/login');
   await until(async () => (b = await box()).open);
-  ok(b.open && b.notes.some((n) => /別のサイト/.test(n)) && /確かめて/.test(b.title), 'text naming another host: confirmed, with the reason');
+  ok(b.open && b.notes.some((n) => /別のサイト/.test(n)) && /確認して/.test(b.title), 'text naming another host: confirmed, with the reason');
   await o.p.keyboard.press('Escape');
   await until(async () => !(await box()).open);
   ok(!(await box()).open, 'Escape closes the box');
@@ -656,7 +656,7 @@ console.log('links');
   await shut();
   await click('next.ega.html', 'next');
   await until(async () => (b = await box()).open);
-  ok(b.open && b.openHidden && b.notes.some((n) => /隣にあるファイル/.test(n)), 'a relative link (a file next to the lesson) is refused with a reason');
+  ok(b.open && b.openHidden && b.notes.some((n) => /同じ場所にあるほかのファイル/.test(n)), 'a relative link (a file next to the lesson) is refused with a reason');
   await shut();
   const n0 = sent.length;
   await f.evaluate(() => { const a = document.createElement('a'); a.href = 'https://example.net/'; a.textContent = 'x'; document.body.appendChild(a); a.click(); a.remove(); });
@@ -675,7 +675,7 @@ console.log('links');
   await f.click('#tl'); await f.evaluate(() => document.getElementById('tl').remove());
   await until(async () => (b = await box()).open);
   ok(sent.length === n1 + 1 && sent[n1].download === true && Object.keys(sent[n1]).length === 4, `a download link sends download: true (${JSON.stringify(sent[n1])})`);
-  ok(b.open && b.title === 'この教材からはファイルを保存できません' && b.host === 'files.example' && b.openHidden && !b.href, `a download is refused: the host and 「この教材からはファイルを保存できません」, nothing to open (${b.title} / ${b.host})`);
+  ok(b.open && b.title === 'このファイルからは、ほかのファイルを保存できません' && b.host === 'files.example' && b.openHidden && !b.href, `a download is refused: the host and 「このファイルからは、ほかのファイルを保存できません」, nothing to open (${b.title} / ${b.host})`);
   const pages1 = o.ctx.pages().length;
   await shut();
   ok(o.ctx.pages().length === pages1, 'a download: nothing opened');
@@ -777,7 +777,7 @@ console.log('lesson bytes and the file\'s policy');
   await o.ctx.setOffline(true);
   await o.p.click('#b-start-join');
   ok(!!(await lessonFrame(o.p)), 'offline Join: the lesson plays');
-  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークに接続していません。Wi-Fi などに接続してから、「もう一度試す」を押してください。参加しなくても教材は見られます$/.test(document.getElementById('live-msg').textContent))),
+  ok(await until(() => o.p.evaluate(() => /^この端末はネットワークに接続していません。Wi-Fi などに接続してから、「もう一度試す」を押してください。参加しなくてもファイルは見られます$/.test(document.getElementById('live-msg').textContent))),
     'offline Join: the message says the device is offline and what to do');
   ok(await o.p.textContent('#b-join') === 'もう一度試す' && await o.p.isEnabled('#b-join') && fake.connections.length === 0, 'offline Join: 「もう一度試す」 is offered; nothing was attempted');
   await o.ctx.setOffline(false);
@@ -820,7 +820,7 @@ const hasFrame = (p) => p.evaluate(() => !!document.getElementById('lesson'));
     ok(await f.evaluate(() => DECK.state().key) === k0 && await o.p.inputValue('#live-q') === 'もう一度説明してください', 'live: the arrows, Space and End in the question field stay in the field (not handed to the lesson)'); }
   await o.p.click('#b-send');
   ok(await until(() => fake.messages.some((m) => m.t === 'ask' && m.text === 'もう一度説明してください' && m.activity === 'qa')), 'live: a question is sent (ask)');
-  ok(await until(() => o.p.evaluate(() => /質問を送りました/.test(document.getElementById('live-msg').textContent))), 'live: the ack is shown');
+  ok(await until(() => o.p.evaluate(() => /質問を送信しました/.test(document.getElementById('live-msg').textContent))), 'live: the ack is shown');
   { await f.evaluate(() => DECK.go(0, 0, false));
     await o.p.click('#b-live');   // the focus into the Live pane (a button there), as a viewer does
     await o.p.focus('#b-send');

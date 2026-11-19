@@ -127,7 +127,7 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   ok(Math.abs(g.fh - Math.round(g.sw * 720 / 1280)) <= 1.5 && Math.abs(g.sh - g.sw * 1200 / 1280) <= 2 && Math.abs(g.st - g.ft) <= 1, 'the frame is the slide\'s height; the surface is the slide plus the memo ' + JSON.stringify(g));
   ok(g.bt >= g.sb && g.bt < g.vh && g.sx <= g.cw, 'the tools sit under the surface, on screen, no sideways scroll');
   const names = await p.evaluate(() => [...document.querySelectorAll('.ink-bar button')].map((b) => b.getAttribute('aria-label')));
-  ok(JSON.stringify(names) === JSON.stringify(['ペン', '消しゴム', '黒', '赤', '青', '取り消し', '前へ', '次へ', '指でも書く']), 'every tool has a name ' + JSON.stringify(names));
+  ok(JSON.stringify(names) === JSON.stringify(['ペン', '消しゴム', '黒', '赤', '青', '取り消し', '前へ', '次へ', '指で書く']), 'every tool has a name ' + JSON.stringify(names));
   ok(await p.evaluate(() => document.querySelector('.ink-bar').getAttribute('aria-label') === '手書きのツール' && document.querySelector('.ink-bar button[data-k="undo"]').disabled), 'the toolbar is named; undo is off with nothing to undo');
   // the memo area takes the slide's background (white here)
   const slideBg = await (await (await p.$('#lesson')).contentFrame()).evaluate(() => getComputedStyle(document.querySelector('#stage > .slide.active')).backgroundColor.match(/\d+/g).slice(0, 3).map(Number));

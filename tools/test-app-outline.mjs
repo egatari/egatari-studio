@@ -66,8 +66,8 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.fill('#paste-length-n', '24');
     await page.click('#paste-next-content');
     await page.waitForTimeout(200);
-    ok(await page.isVisible('#paste-phase') && (await page.textContent('#paste-phase')) === '24 枚なので、2 回に分けて頼みます。まず構成案（見出しの一覧）を頼み、次に 6 枚ずつ頼みます', 'outline: with 24 slides, ④ says it is asked in two rounds');
-    ok((await page.textContent('#paste-step-paste-h')) === '⑤ AI の構成案を貼り付けます' && await page.isDisabled('#dlg-import') && (await page.textContent('#paste-step-paste .hint')) === '構成案（outline のコードブロック）を貼り付けて［次へ］。そのあと 1〜6 枚目を頼む指示をコピーします。残りは作成の後、上の知らせの「次の 6 枚を頼む」から',
+    ok(await page.isVisible('#paste-phase') && (await page.textContent('#paste-phase')) === '24 枚なので、2 回に分けて依頼します。まず構成案（見出しの一覧）を依頼し、次に 6 枚ずつ依頼します', 'outline: with 24 slides, ④ says it is asked in two rounds');
+    ok((await page.textContent('#paste-step-paste-h')) === '⑤ AI の構成案を貼り付けます' && await page.isDisabled('#dlg-import') && (await page.textContent('#paste-step-paste .hint')) === '構成案（outline のコードブロック）を貼り付けて［次へ］。そのあと 1〜6 枚目の指示をコピーします。残りは作成の後、上の通知の「次の 6 枚を作成…」から',
       'outline: ⑤ becomes 「⑤ AI の構成案を貼り付けます」 with its hint; 「作成」 waits');
     c = await copyNow();
     ok(c.includes('# まず構成案だけを返してください') && c.includes('24 枚') && c.indexOf('## 内容') < c.indexOf('# まず構成案') && c.includes('- テーマ：default') && /構成案が出たら ⑤ へ$/.test(await page.textContent('#paste-copied')), 'outline: the copied request asks for an outline only, after the content and the theme');
@@ -83,7 +83,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.click('#paste-outline-copy');
     await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 1〜6 枚目'));
     c = await copied();
-    ok((await page.textContent('#paste-outline-copy')) === '1〜6 枚目を頼む指示をコピー' && c.includes('ちょうど 6 枚') && c.includes('| 24 | 見出し 24 | 要点 24 |') && c.includes('<!DOCTYPE html>'), 'outline: 「1〜6 枚目を頼む指示をコピー」 asks for slides 1–6 (a whole deck.html), with the outline');
+    ok((await page.textContent('#paste-outline-copy')) === '1〜6 枚目の指示をコピー' && c.includes('ちょうど 6 枚') && c.includes('| 24 | 見出し 24 | 要点 24 |') && c.includes('<!DOCTYPE html>'), 'outline: 「1〜6 枚目の指示をコピー」 asks for slides 1–6 (a whole deck.html), with the outline');
     await refusedCopy(page, ok, { want: c.replace(/\r\n/g, '\n'), what: 'outline 1〜6', button: '#paste-outline-copy', msg: 'paste-outline-copied', box: 'paste-outline-copy-text', lang: 'ja', shot: shotDir && path.join(shotDir, 'copy-refused-outline.png') });
     await page.evaluate(() => document.getElementById('paste-step-paste').scrollIntoView({ block: 'start' }));
     await shot('new-outline.png');
@@ -104,7 +104,7 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     const ofile = () => page.evaluate(() => { const f = window.__APP_TEST.files(); const t = f && f['egatari.json'] ? new TextDecoder().decode(Uint8Array.from(atob(f['egatari.json']), (ch) => ch.charCodeAt(0))) : null; try { return t ? JSON.parse(t).studio.outline : null; } catch { return null; } });
     let of = await ofile();
     ok(of && of.next === 7 && of.rows.length === 24 && of.rows[23].heading === '見出し 24' && (await page.evaluate(() => window.__APP_TEST.state().portable.name)) === '長い教材.ega.html', 'outline: the first output creates the lesson and stores the outline in egatari.json (studio.outline, next: 7)');
-    ok(/構成案：残り 18 枚（全 24 枚）/.test(await page.textContent('#notice-outline')) && (await page.textContent('#b-outline-next')) === '次の 6 枚を頼む', 'outline: the notice shows 「残り 18 枚」 and 「次の 6 枚を頼む」');
+    ok(/構成案：残り 18 枚（全 24 枚）/.test(await page.textContent('#notice-outline')) && (await page.textContent('#b-outline-next')) === '次の 6 枚を作成…', 'outline: the notice shows 「残り 18 枚」 and 「次の 6 枚を頼む」');
     await shot('outline-progress.png');
     // 次の 6 枚：スライドの挿入の道（7〜12 枚目、構成案と前のスライド）
     await page.click('#b-outline-next');

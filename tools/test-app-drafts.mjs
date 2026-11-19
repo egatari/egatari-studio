@@ -136,11 +136,11 @@ try {
   // ---- 2. 読み込み直して復元：はじめの画面に出て、同じファイルを開くと問う
   const B = await newTab('B');
   await B.waitForSelector('#drafts:not([hidden]) #drafts-list li', { timeout: scaled(30000) });
-  ok((await B.textContent('#drafts-list')).includes(NAME) && (await B.textContent('#drafts-lead')).includes('ブラウザが消すことがあります'), '2: the first screen lists the unsaved changes and says the browser may delete them');
+  ok((await B.textContent('#drafts-list')).includes(NAME) && (await B.textContent('#drafts-lead')).includes('ブラウザが削除することがあります'), '2: the first screen lists the unsaved changes and says the browser may delete them');
   o = await openAndSee(B);
   ok(o.r === 'ask', '2: opening the same file asks to restore');
   const ask = await B.evaluate(() => ({ title: document.getElementById('dlg-title').textContent, body: document.getElementById('draft-ask').textContent, restore: (document.getElementById('dlg-restore') || {}).textContent, discard: (document.getElementById('dlg-discard') || {}).textContent }));
-  ok(ask.title === '保存していない変更があります' && /復元しますか？$/.test(ask.body) && ask.restore === '復元' && ask.discard === '変更を捨てる', '2: the question and its buttons ' + JSON.stringify(ask));
+  ok(ask.title === '保存していない変更があります' && /復元しますか？$/.test(ask.body) && ask.restore === '復元' && ask.discard === '変更を破棄', '2: the question and its buttons ' + JSON.stringify(ask));
   let n = (await state(B)).loads;
   await clickDlg(B, '#dlg-restore');
   await o.done;

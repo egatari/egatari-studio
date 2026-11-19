@@ -137,7 +137,7 @@ test('ミュート：端末で保存、保存できないときはメモリ、2 
     assert.equal(setting.set(true), true);
     assert.equal(setting.get(), true);
   }
-  assert.deepEqual(MUTE_LABEL, { ja: '効果音を消す', en: 'Mute sound effects' });
+  assert.deepEqual(MUTE_LABEL, { ja: '効果音をミュート', en: 'Mute sound effects' });
 });
 
 test('動画：部品の段階・作者の時刻、境目の余韻、区間の PCM も再現する', () => {

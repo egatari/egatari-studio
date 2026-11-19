@@ -137,7 +137,7 @@ const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.joi
   ok(await until(() => p.evaluate(() => document.getElementById('cred-box').open)), 'pressing the line opens the list');
   ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'b-cred-close'), 'the list: focus on 閉じる');
   const r = await rows(p);
-  ok(JSON.stringify(r) === JSON.stringify(['作成者=Test Author、B 商事', '編集=○○高校 情報科（2 章の例を地域のデータに差し替え）', '編集=元の教材から編集されています', '編集=△△中学校', '著作権=© 2026 Test Author', 'ライセンス=CC-BY-4.0']), 'the list: creators, every edit oldest first, copyright, license ' + JSON.stringify(r));
+  ok(JSON.stringify(r) === JSON.stringify(['作成者=Test Author、B 商事', '編集=○○高校 情報科（2 章の例を地域のデータに差し替え）', '編集=元のファイルから編集されています', '編集=△△中学校', '著作権=© 2026 Test Author', 'ライセンス=CC-BY-4.0']), 'the list: creators, every edit oldest first, copyright, license ' + JSON.stringify(r));
   ok(await p.evaluate(() => document.getElementById('cred-lesson').textContent.length > 0), 'the list names the lesson');
   await shot(p, 'credits-list');
   await p.keyboard.press('Escape');
@@ -148,7 +148,7 @@ const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.joi
   await p.click('#lesson-credit');
   await until(() => p.evaluate(() => document.getElementById('cred-box').open));
   const re = await rows(p);
-  ok(JSON.stringify(re) === JSON.stringify(['Created by=Test Author, B 商事', 'Edited by=○○高校 情報科 (2 章の例を地域のデータに差し替え)', 'Edited=Edited from the original lesson', 'Edited by=△△中学校', 'Copyright=© 2026 Test Author', 'License=CC-BY-4.0']), 'English list ' + JSON.stringify(re));
+  ok(JSON.stringify(re) === JSON.stringify(['Created by=Test Author, B 商事', 'Edited by=○○高校 情報科 (2 章の例を地域のデータに差し替え)', 'Edited=Edited from the original file', 'Edited by=△△中学校', 'Copyright=© 2026 Test Author', 'License=CC-BY-4.0']), 'English list ' + JSON.stringify(re));
   await p.click('#b-cred-close');
   await p.click('#b-lang');
   // 3. no edits
