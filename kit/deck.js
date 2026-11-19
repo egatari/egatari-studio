@@ -2433,10 +2433,13 @@ function whenLaidOut(fn){
     fonts();
   }
   // 隠れていた文書はまだ字（Web フォント）を読んでいない（並べて初めて読み始める）。読み終えてから mount する（ふつうの起動の load と同じく、測る字が揃ってから）
+  // 字を待つ間にまた隠れたら（出してすぐ閉じた窓・取り替えた iframe）、mount せずにもう一度並ぶのを待つ。隠れたまま mount すると部品は幅 0 で
+  // 描く（m-folds の角の丸みが負の rx になり、Windows の CI でコンソールのエラーになった）
   function fonts(){
-    if (document.fonts && document.fonts.status === "loading") document.fonts.ready.then(fonts, fn);
-    else fn();
+    if (document.fonts && document.fonts.status === "loading") document.fonts.ready.then(fonts, go);
+    else go();
   }
+  function go(){ if (laidOut()) fn(); else whenLaidOut(fn); }
   if (typeof ResizeObserver === "function"){ ro = new ResizeObserver(check); ro.observe(st); }
   window.addEventListener("resize", check);   // ResizeObserver のない環境と、窓の大きさが 0 から付いたとき
 }

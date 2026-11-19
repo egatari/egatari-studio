@@ -90,6 +90,48 @@ for (const [name, given] of CASES) {
   ok(!errs.length, `${name}: no page errors${errs.length ? ': ' + errs.join(' | ') : ''}`);
   await pn.close(); await ph.close();
 }
+
+// 出してすぐまた隠した：並んだのを見てから字を待つ間に隠れたら、mount せず、次に出したときに mount する（隠れたまま mount すると部品は幅 0 で描き、
+// examples/classify-cv の m-folds の角の丸みが負の rx ＝ コンソールのエラー「<rect> attribute rx: A negative value is not valid ("-1.561875")」。
+// Windows の CI の test-app 2/3 で出た）。字の読み込みはこちらで止めておき、隠してから終わらせる（時刻に頼らずに同じ順にする）
+{
+  const name = 'classify-cv', deck = path.join(out, name + '.html');
+  execFileSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(ROOT, 'examples', name, 'deck.html'), '-o', deck], { stdio: 'pipe' });
+  const host = path.join(out, name + '.host.html');
+  fs.writeFileSync(host, `<!doctype html><html><body style="margin:0"><iframe id="f" src="${fileUrl(deck)}" style="display:none;border:0;width:1280px;height:720px"></iframe></body></html>`);
+  const ph = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  const errs = [];
+  ph.on('pageerror', (e) => errs.push(e.message));
+  ph.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
+  await ph.goto(fileUrl(host));
+  const fr = await (await ph.$('#f')).contentFrame();
+  await fr.waitForFunction(() => document.readyState === 'complete' && window.DECK && typeof DECK.seek === 'function', null, { timeout: scaled(15000) });
+  await fr.evaluate(() => {
+    let held = true, release;
+    const p = new Promise((r) => { release = r; });
+    Object.defineProperty(document.fonts, 'status', { configurable: true, get: () => (held ? 'loading' : 'loaded') });
+    Object.defineProperty(document.fonts, 'ready', { configurable: true, get: () => (held ? p : Promise.resolve(document.fonts)) });
+    window.__releaseFonts = () => { held = false; release(document.fonts); };
+  });
+  const show = (d) => ph.evaluate((d) => { document.getElementById('f').style.display = d; }, d);
+  const frames = () => ph.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await show('block');
+  await frames(); await ph.waitForTimeout(200);
+  const waiting = await fr.evaluate(() => ({ ready: !!DECK.ready, w: document.getElementById('stage').offsetWidth }));
+  await show('none');
+  await frames(); await ph.waitForTimeout(100);
+  await fr.evaluate(() => window.__releaseFonts());
+  await ph.waitForTimeout(300);
+  const hidden = await fr.evaluate(() => ({ ready: !!DECK.ready, w: document.getElementById('stage').offsetWidth }));
+  ok(!waiting.ready && waiting.w > 0 && !hidden.ready && hidden.w === 0,
+    `${name}: shown, hidden again while the fonts load → not mounted while hidden (shown: ready=${waiting.ready}, stage ${waiting.w}; hidden again: ready=${hidden.ready}, stage ${hidden.w})`);
+  await show('block');
+  await fr.waitForFunction(() => DECK.ready, null, { timeout: scaled(15000) });
+  const g = await fr.evaluate(() => { const f = document.querySelector('m-folds'); return { cw: f.clientWidth, cell: f.geometry && f.geometry.cell, neg: [...document.querySelectorAll('rect')].filter((r) => +r.getAttribute('rx') < 0 || +r.getAttribute('ry') < 0).length }; });
+  ok(g.cell > 0 && g.neg === 0, `${name}: shown again → m-folds mounts at its width (${g.cw} px, cell ${g.cell} px, ${g.neg} rect with a negative rx/ry)`);
+  ok(!errs.length, `${name}: no page or console errors${errs.length ? ': ' + [...new Set(errs)].join(' | ') : ''}`);
+  await ph.close();
+}
 await b.close();
 console.log(fail ? `${fail} failure(s)` : 'all ok');
 process.exit(fail ? 1 : 0);
