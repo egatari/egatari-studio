@@ -117,7 +117,7 @@ try {
     // 知らせとボタン
     const notice = await page.textContent('#notice-yanked');
     ok(/m-sweep 1\.0\.0/.test(notice) && notice.includes(NEW), `${lang}: a notice names the yanked components and recommends ${NEW}`);
-    ok(/never replaced silently|黙って置き換えることはしません/.test(notice), `${lang}: the notice says that nothing is replaced silently`);
+    ok(/never replaced silently|自動では置き換えません/.test(notice), `${lang}: the notice says that nothing is replaced silently`);
     ok(/until you rebuild, this figure shows a placeholder|再ビルドするまで、この図は代わりの表示です/.test(notice), `${lang}: the notice says the figure is a placeholder until rebuilt (spec 614caae)`);
     const btn = await page.textContent('#b-yanked-rebuild');
     ok(btn === (lang === 'ja' ? `${NEW} で再ビルドする` : `Rebuild with ${NEW}`), `${lang}: button "${btn}"`);
