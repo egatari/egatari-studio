@@ -71,7 +71,8 @@ export const RULES = Object.freeze([
   { id: 'R-components', kind: 'authoring', phase: 'E タイムライン', codes: ['compReport', 'compData'], applies: (f) => ((f.parts || []).length ? null : 'noParts') },
   // ---- 検査器の族（C-*）
   { id: 'C-build', kind: 'checker', phase: '読み込み', codes: ['build', 'consoleError', 'extensionVersion', 'component-requires-missing', 'component-not-in-catalogue'] },
-  { id: 'C-ids', kind: 'checker', phase: '読み込み', codes: ['slideId', 'legacyDataKey', 'legacyIndex'] },
+  // しおり（format spec §8.0）の名前もスライドの宛先なので、id と同じ族（bookmarkDup・bookmarkLong）
+  { id: 'C-ids', kind: 'checker', phase: '読み込み', codes: ['slideId', 'legacyDataKey', 'legacyIndex', 'bookmarkDup', 'bookmarkLong'] },
   { id: 'C-images', kind: 'checker', phase: '読み込み', codes: ['imgTooLarge', 'imgTotal'] },
   { id: 'C-vocab', kind: 'checker', phase: '読み込み', codes: ['legacyColorClass', 'legacyStepAttr', 'legacyLectureMode'] },
   { id: 'C-template', kind: 'checker', phase: 'B 台本', codes: ['templateText', 'narrPlaceholder'] },

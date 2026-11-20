@@ -1970,7 +1970,8 @@ function broadcast(p){
   var ni = step < slides[cur]._max ? cur : cur + 1, nk = step < slides[cur]._max ? step + 1 : 0;
   var msg = {type: "deck-pos", i: cur, k: step, max: slides[cur]._max, n: slides.length, key: DECK.stepKey(cur, step),
              nextKey: ni < slides.length ? DECK.stepKey(ni, nk) : null, auto: p.playing, cause: p.cause || "control",
-             back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack(), viewer: inputState()};
+             back: p.top ? titleOf(slides[p.top.i]) : null, black: isBlack(), viewer: inputState(),
+             bookmarks: DECK.bookmarks(), bm: !!(p.top && p.top.bm)};
   if (presenter && !presenter.closed) presenter.postMessage(msg, "*");
   // 編集のプレビュー（server/hints.js が DECK_DEV を立てた枠）では、中継する親の窓にも送る。ほかの親（埋め込み・知らない枠）には送らない（埋め込みは下の position だけ）
   if (editorParent() && presenter !== window.parent) window.parent.postMessage(msg, "*");
@@ -2004,6 +2005,7 @@ window.addEventListener("message", function(e){
     else if (m.cmd === "goto"){ POS.setCause("seek"); go(m.i, m.k, !!m.animate); POS.setCause(null); }
     else if (m.cmd === "link" && typeof m.frag === "string") DECK.follow(m.frag);   // 発表者ビューの中の画面で押したリンク
     else if (m.cmd === "back") back();
+    else if (m.cmd === "bookmark"){ if (m.next) bookmarkNext(); else if (typeof m.n === "number") bookmarkGo(m.n); }   // 発表者ビューのしおりのボタンと q
     else if (m.cmd === "blackout"){ if (!EDIT) setBlack(!isBlack()); else e.source.postMessage({type: "deck-black", on: false}, "*"); }   // 発表者ビューの b（編集中は入らない）
     else if (m.cmd === "auto"){ if (!EDIT) DECK.autoplay(); else POS.publish(); }   // 編集中は始めない（発表者ビューのボタンは今の状態に戻す）
     // 編集の画面から送られたキー：編集のプレビュー（server/hints.js が DECK_DEV を立てる）で、親の窓から届いたものだけ。ほかの送り手（自分・子の枠・別の窓）は無視する
@@ -2207,7 +2209,7 @@ function followLink(pos, opts){
   if (DECK.view){ post({type: "deck-link", frag: fragmentOf(pos.i, pos.k)}); return false; }   // 発表者ビューの中の画面：本体に任せる
   var target = {slideKey: slides[pos.i]._key, stepKey: stepKey(slides[pos.i], pos.k)};
   if (!LINKS.follow){ post(Object.assign({egatari: "linkRefused"}, target)); return false; }
-  var depth = POS.push({i: POS.i, k: POS.k, el: opts.keyboard ? opts.el : null});
+  var depth = POS.push({i: POS.i, k: POS.k, el: opts.keyboard ? opts.el : null, bm: !!opts.bm});
   if (TOP) try { history.pushState({egatariLink: depth, to: {i: pos.i, k: pos.k}}, "", "#" + fragmentOf(pos.i, pos.k)); } catch (e) {}
   moveTo(pos.i, pos.k, "link");
   return true;
@@ -2248,6 +2250,45 @@ window.addEventListener("popstate", function(e){
     moveTo(at.i, at.k, "link");
   }
 });
+// ---------------------------------------------------------------- しおり（format spec §8.0 Bookmarks、Player P4.3）
+// <section class="slide" data-bookmark="名前"> の付いたスライドへ、操作の帯・発表者ビューのボタンと q で飛ぶ。飛ぶ先はそのスライドの最終状態
+// （#<id>:concl のリンクと同じ。結論の行のないスライドは最後のステップ）。飛ぶのはリンクと同じ流れ（followLink）で、「戻る」の跡に bm の印を付ける。
+// 跡のいちばん上が bm の間は「しおりで来ている」：続けて飛んでも（ボタン・q）跡を積まず、「元の位置に戻る」（back）はしおりを使い始める前の位置へ。
+// q は今の位置より後の次のしおりへ。最後のしおりより後で押すと、しおりで来ていれば元の位置へ戻り、そうでなければ最初のしおりへ。
+// 動画（?mode=video）・発表者ビューの中の画面では使わない（ボタンも作らない。印刷では帯ごと隠れる）
+var BM = null;
+function bookmarkList(){
+  if (BM) return BM;
+  BM = [];
+  slides.forEach(function(s, i){ var n = (s.getAttribute("data-bookmark") || "").replace(/\s+/g, " ").trim(); if (n) BM.push({i: i, name: n}); });
+  return BM;
+}
+function bmAllowed(){ return started && DECK.mode !== "video" && !DECK.view && !videoViewer(); }
+function bmPos(b){ var s = slides[b.i]; return {i: b.i, k: s._cstep >= 0 ? s._cstep : s._max}; }
+function bmOn(){ var t = POS.top(); return !!(t && t.bm); }
+function bookmarkGo(n){
+  var b = bmAllowed() ? bookmarkList()[n] : null;
+  if (!b) return false;
+  var p = bmPos(b);
+  if (!bmOn()) return followLink(p, {bm: true});
+  // しおりで来ている：跡は積まない（戻る先は元の位置のまま）。上の窓の履歴は今の項目の行き先だけを書き換える
+  if (TOP && history.state && history.state.egatariLink === POS.depth) try { history.replaceState({egatariLink: POS.depth, to: {i: p.i, k: p.k}}, "", "#" + fragmentOf(p.i, p.k)); } catch (e) {}
+  moveTo(p.i, p.k, "link");
+  return true;
+}
+function bookmarkNext(){
+  var L = bmAllowed() ? bookmarkList() : [];
+  if (!L.length) return false;
+  for (var n = 0; n < L.length; n++){ var p = bmPos(L[n]); if (p.i > POS.i || (p.i === POS.i && p.k > POS.k)) return bookmarkGo(n); }
+  if (bmOn()) return back();   // 最後のしおりの後：元の位置へ
+  return bookmarkGo(0);
+}
+DECK.bookmarks = function(){ return bmAllowed() ? bookmarkList().map(function(b){ return {i: b.i, name: b.name}; }) : []; };
+DECK.bookmark = function(n){ return bookmarkGo(n); };
+DECK.nextBookmark = function(){ return bookmarkNext(); };
+DECK.bookmarkActive = function(){ return bmAllowed() && bmOn(); };
+DECK.bookmarkBack = function(){ return bmAllowed() && bmOn() ? back() : false; };
+
 // ---------------------------------------------------------------- 授業の外へ出るリンク（format spec §11。決まりは kit/core/link-policy.mjs の LinkPolicy）
 // 外へ出るときは、行き先の host と全体を見せて確かめる（https: の普通のリンクは、同じ閲覧のあいだ同じ host に一度同意すれば再び聞かない）。
 // 見える字が別の host を名指す・https: でない・ダウンロード・userinfo・punycode の host は、毎回確かめる。http(s)・mailto・tel 以外は開かない。
@@ -2374,6 +2415,15 @@ function syncBack(){
     document.body.appendChild(b);
   }
   var to = titleOf(slides[t.i]);
+  if (t.bm){   // しおりで来ている：元の位置に戻る（Player P4.3）
+    LINKS.btn.querySelector(".lab").textContent = L10N("元の位置に戻る", "Back to where you were");
+    LINKS.btn.querySelector(".to").textContent = "";
+    LINKS.btn.title = L10N("元の位置に戻る（Backspace）", "Back to where you were (Backspace)");
+    LINKS.btn.setAttribute("aria-label", L10N("元の位置に戻る", "Back to where you were"));
+    LINKS.btn.setAttribute("aria-keyshortcuts", "Backspace Alt+ArrowLeft");
+    LINKS.btn.hidden = false;
+    return;
+  }
   LINKS.btn.querySelector(".lab").textContent = L10N("戻る", "Back");
   LINKS.btn.querySelector(".to").textContent = to;
   LINKS.btn.title = L10N("戻る：", "Back to ") + to + L10N("（Backspace / Alt+←）", " (Backspace / Alt+←)");
@@ -2674,6 +2724,7 @@ document.addEventListener("keydown", function(e){
   if (EDIT && (k === "a" || k === "b" || k === "f")) return;
   if (k === "f") DECK.toggleFullscreen();
   else if (k === "p") openPresenter();
+  else if (k === "q"){ if (bookmarkNext()) e.preventDefault(); }   // 次のしおりへ（Player P4.3）
   else if (k === "a") DECK.autoplay();
   else if (k === "l") DECK.togglePreview();
   else if (k === ">" || k === "<") stepRate(k === ">" ? 1 : -1);

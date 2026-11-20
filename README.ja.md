@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=49c2ad09cb07bcd5 -->
+<!-- i18n: pair=README.md sha256=f4d702f8466fb1cf -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -198,6 +198,7 @@ node render/render.mjs $D/out/deck.html --out $D/video   # 1 ステップだけ�
 | a | 自動再生（音声があれば流す） |
 | l | 先のステップを薄く見せる（入／切） |
 | b | 黒い画面 |
+| q | 次のしおりへ（最後の次は元の位置へ） |
 | s / Shift+s | 字幕（台本を 2 行ほどずつ）/ 字幕の大きさ S・M・L |
 | o | スライド一覧（矢印で選んで Enter） |
 | x / d / v | レーザーポインター / ペン / 消えるペン。Shift+d（またはツールバーの色のボタン）でペンの色 |

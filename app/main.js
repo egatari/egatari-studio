@@ -48,7 +48,8 @@ import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { scormPackage, completionRule, SCORM_EXT } from '../kit/core/scorm.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
-import { TEMPLATES } from '../kit/core/slide-ops.mjs';
+import { TEMPLATES, setBookmark } from '../kit/core/slide-ops.mjs';
+import { BOOKMARK_MAX, bookmarkName, bookmarkLength } from '../kit/core/bookmark.mjs';
 import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { choosableOf, themeLabel, themeNote } from '../kit/core/themes-list.mjs';
@@ -2467,6 +2468,38 @@ async function insertDialog() {
   else if (v.startsWith('tpl:')) await slidesPanel.add(v.slice(4), at);
 }
 
+// ---------------------------------------------------------------- しおり（format spec §8.0、Player P4.3）：スライド ▾ の「しおりを付ける…」・「しおりの名前を変更…」・「しおりを外す」
+// 対象のスライド（slideAt）の <section> の data-bookmark を、スライドの操作と同じ流れ（slidesPanel.apply：読んだときのままか確かめて書き、元に戻せる）で書く
+function bookmarkOf(i) { const s = (S.slides || [])[i]; return s ? bookmarkName(s.bookmark) : ''; }
+function syncBookmarkItems() {
+  const i = slideAt(), cur = i === null ? '' : bookmarkOf(i);
+  $('b-bookmark').textContent = cur ? T.bmRenameCmd : T.bmAddCmd;
+  $('b-bookmark-del').hidden = !cur;
+}
+function setBookmarkAt(i, name) {
+  return slidesPanel.apply(async (b, slides) => {
+    if (!slides[i]) return null;
+    const deck = setBookmark(b.deck, i, name);
+    if (deck === b.deck) return null;
+    return { deck, narr: b.narr, man: b.man, at: i, undoAt: i, label: T.bmUndo, done: null };
+  });
+}
+async function bookmarkDialog() {
+  const i = slideAt();
+  if (i === null) { toast(T.noSlide, true); return; }
+  const cur = bookmarkOf(i);
+  const input = el('input', { type: 'text', id: 'bookmark-name', autocomplete: 'off', spellcheck: 'false', 'aria-describedby': 'bookmark-desc' });
+  input.value = cur || T.bmDefault;
+  // 名前は空でなく 20 字（code point）まで。合わなければ閉じない
+  const good = () => { const n = bookmarkName(input.value); return !!n && bookmarkLength(n) <= BOOKMARK_MAX; };
+  input.addEventListener('input', () => input.setAttribute('aria-invalid', good() ? 'false' : 'true'));
+  const v = await ask({ title: T.bmTitle, body: [el('label', { for: 'bookmark-name', text: T.bmField }), input, el('p', { id: 'bookmark-desc', cls: 'hint', text: T.bmDesc })],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'ok', label: T.bmGo, pri: true }],
+    validate: (id) => { if (id !== 'ok' || good()) return true; input.setAttribute('aria-invalid', 'true'); input.focus(); return false; } });
+  if (v !== 'ok') return;
+  await setBookmarkAt(i, bookmarkName(input.value));
+}
+
 // ---------------------------------------------------------------- プレビュー ▾：表示のモード（スライドショー・動画）と、先のステップを薄く見せる選び。選びと動画はプレビューを ?mode= で読み込み直す
 // スライドショーは全画面にもする（f と同じ）。発表は保存した .ega.html をブラウザで開いて行う
 // 先のステップを薄く見せる（内部の名前は lecture。?mode=lecture）はスライドショーの入／切の選び：モードの選びはスライドショーのまま、選びに印
@@ -2524,6 +2557,10 @@ $('b-info').onclick = () => lessonInfo().catch((e) => toast(String(e.message || 
 $('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message || e), true));
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
 $('b-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.removeAt(i); };
+$('b-bookmark').onclick = () => bookmarkDialog().catch((e) => toast(String(e.message || e), true));
+$('b-bookmark-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } setBookmarkAt(i, null).catch((e) => toast(String(e.message || e), true)); };
+// スライド ▾ を開く前に（クリック・↓↑）、対象のスライドのしおりに合わせる（一覧の項目は開いたときに数える：menuItems）
+for (const ev of ['click', 'keydown']) $('b-slidemenu').addEventListener(ev, syncBookmarkItems, true);
 $('b-revise-cmd').onclick = () => llm.revise();
 $('b-theme-switch').onclick = () => themeSwitch.open().catch((e) => toast(String(e.message || e), true));
 $('b-videomode').onclick = () => setPreviewMode(S.previewMode === 'video' ? 'talk' : 'video');

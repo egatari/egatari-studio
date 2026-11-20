@@ -62,8 +62,8 @@ const WANT = {
   'en-rawmath': ['rawMath', 'narrFormula', 'narrNote', 'narrOrphan', 'narrMissing', 'markMissing', 'imgAlt', 'svgName', 'linkUnknown', 'linkNumber', 'linkStepRange', 'linkCount', 'legacyColorClass', 'colorOutside'],
   'en-stale': ['audioStale', 'rawMath'],
   'ja-flow': ['compLayout'],
-  'ja-kicker': ['kickerLong', 'kickerPlace', 'kickerSlide'],
-  'en-kicker': ['kickerLong', 'kickerPlace', 'kickerSlide'],
+  'ja-kicker': ['kickerLong', 'kickerPlace', 'kickerSlide', 'bookmarkDup', 'bookmarkLong'],
+  'en-kicker': ['kickerLong', 'kickerPlace', 'kickerSlide', 'bookmarkDup', 'bookmarkLong'],
   'ja-geometry': GEO,
   'ja-mix': ['readingGap', 'desuMasu', 'punctMixed', 'legacyDataKey', 'legacyIndex', 'legacyStepAttr', 'morphNoSrc', 'build', 'narrMissing', 'predictAnswerWithCount', 'predictAnswerNeverShown'],
 };
@@ -96,7 +96,7 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
   for (const c of codes) for (const k of classes(c)) counts[k]++;
   console.log('  info inventory: ' + Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
   // 道筋：編集アプリが code を出すファイル（プレビューの中・原稿の文字列・作業場所の台本と音声）に、その code が文字列で現れる
-  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs', 'kit/core/caution.mjs', 'kit/core/image-size.mjs']
+  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs', 'kit/core/caution.mjs', 'kit/core/bookmark.mjs', 'kit/core/image-size.mjs']
     .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   const unreached = IN_EDITOR.filter((c) => !new RegExp(`["'\`]${c}["'\`]`).test(src));
   ok(!unreached.length, `inventory: every IN_EDITOR code (${IN_EDITOR.length}) appears as a string in the editor's check path` + (unreached.length ? ': not found ' + unreached.join(', ') : ''));
@@ -138,6 +138,9 @@ for (const name of ['ja-kicker', 'en-kicker']) {
       `cli ${name}: ${code} has exactly the intended slides, severity and rule`);
   }
   ok(!CLI[name].some((r) => r.code === 'narrHeadingDiffers'), `cli ${name}: kickers do not change narration heading comparisons`);
+  // しおり（format spec §8.0）：同じ名前は最初のスライドに 1 つ、20 字ちょうどは出さず 21 字は出す
+  const bmk = (code) => CLI[name].filter((r) => r.code === code).map((r) => r.id + '/' + r.sev).join();
+  ok(bmk('bookmarkDup') === 's-good/warn' && bmk('bookmarkLong') === 's-after/warn', `cli ${name}: bookmarkDup and bookmarkLong on the intended slides (${bmk('bookmarkDup')} ${bmk('bookmarkLong')})`);
 }
 
 // ---------------------------------------------------------------- 2. 編集アプリ

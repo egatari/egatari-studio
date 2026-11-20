@@ -895,6 +895,21 @@
    "note": ""
   },
   {
+   "id": "bookmark",
+   "group": "Structure and playback",
+   "en": "Bookmark",
+   "ja": "しおり",
+   "definition": "A name the author puts on a slide (data-bookmark, up to 20 characters) to jump back to it in a talk: a button with the name in the toolbar and the presenter view, and q for the next one; 元の位置に戻る / Back to where you were returns. Marks that learners keep in the Viewer are a separate thing, to be named later.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "data-bookmark",
+   "decided": "2026-11-20",
+   "by": "standards",
+   "note": "handoff #67 (format §8.0, Player P4.3)."
+  },
+  {
    "id": "black-screen",
    "group": "Structure and playback",
    "en": "Black screen",

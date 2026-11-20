@@ -196,6 +196,9 @@ export const MESSAGES = {
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
   kickerLong: { rule: 'R-headings', ja: (a) => `肩見出しが長い（${a.n} ${a.latin ? '文字' : '字分'}。${a.latin ? 'ラテン文字は 40 文字まで' : '24 字分まで。全角 1・半角 0.5'}）：${quoteJa(a.t)}を短くする`, en: (a) => `the kicker has ${a.n} ${a.latin ? 'characters' : 'units'}, over ${a.max} (${a.latin ? 'Latin script' : 'full-width 1, ASCII 0.5'}): shorten “${a.t}”` },
   kickerPlace: { rule: 'R-headings', ja: () => '肩見出し（.kicker）はスライドに 1 つだけ、見出しの直前に置く', en: () => 'place just one kicker (.kicker) per slide, immediately before the heading' },
+  // しおり（format spec §8.0。kit/core/bookmark.mjs）：字数は code point
+  bookmarkDup: { ja: (a) => `しおりの名前「${a.name}」が ${a.n} 枚のスライドにあります。どれに飛ぶか分かるよう、名前を変えてください`, en: (a) => `The bookmark name “${a.name}” is on ${a.n} slides. Give each a different name so it is clear where it goes` },
+  bookmarkLong: { ja: (a) => `しおりの名前「${a.name}」は ${a.n} 字です。ツールバーに収まるよう、20 字までにしてください`, en: (a) => `The bookmark name “${a.name}” is ${a.n} characters long. Keep it to 20 or fewer so it fits the toolbar` },
   cautionEmpty: { rule: 'R-caution', ja: () => '注意・警告の枠（.caution）にラベル以外の本文を書く', en: () => 'write body text besides the label in the caution or warning box (.caution)' },
   cautionLabel: { rule: 'R-caution', ja: () => '注意・警告のラベルはビルドが付けるので、枠の先頭に書いたラベルを削除する', en: () => 'remove the label written at the start of the caution or warning box; the build adds it' },
   kickerSlide: { rule: 'R-headings', ja: () => '表紙・章の扉・縦書きのスライド（layout-tate）には肩見出し（.kicker）を置かない', en: () => 'do not use a kicker (.kicker) on a cover, chapter divider or vertical slide (layout-tate)' },

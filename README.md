@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=1c11554a652c7984 -->
+<!-- i18n: pair=README.ja.md sha256=c5ab07dbd39dbb27 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -194,6 +194,7 @@ What video needs (ffmpeg, uv, a TTS server, reference voices) is under Tier 2 in
 | a | autoplay (plays the audio if the file has it) |
 | l | show later steps faintly (on/off) |
 | b | black screen |
+| q | next bookmark (after the last one, back to where you were) |
 | s / Shift+s | captions (script, about two lines at a time) / caption size S, M, L |
 | o | slide overview (arrows + Enter) |
 | x / d / v | laser pointer / pen / fading pen; Shift+d (or the swatches in the toolbar) changes the pen color |

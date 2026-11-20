@@ -108,6 +108,8 @@ if (Q.get("presenter")){
     else if (m.type === "deck-tool-key" && !m.mod && (m.alt || !key(m.key, m.shift))){
       // Esc（道具を使っていなければ。使っていれば上の key が切る）と p：発表者ビューを閉じる（presenter.js。全画面なら全画面をやめるだけ）
       if (!m.alt && (m.key === "Escape" || m.key === "p")){ if (DECK.presenterClose) DECK.presenterClose(); return; }
+      // 「今の画面」にフォーカスがあるときの q：次のしおりへ（Player P4.3）
+      if (!m.alt && !m.shift && m.key === "q"){ if (window.opener) window.opener.postMessage({type: "deck-cmd", cmd: "bookmark", next: true}, "*"); return; }
       // 「今の画面」にフォーカスがあるときの送り操作。Backspace・Alt+← はリンクの前の位置へ戻る
       var bk = (m.key === "Backspace" && !m.alt && !m.shift) || (m.key === "ArrowLeft" && m.alt);
       var nx = !m.alt && /^(ArrowRight|ArrowDown|PageDown| )$/.test(m.key), pv = !m.alt && /^(ArrowLeft|ArrowUp|PageUp)$/.test(m.key);
@@ -143,6 +145,8 @@ css(
   ".dt-cell:hover .dt-thumb{outline-color:rgba(255,255,255,.35)}.dt-cell.sel .dt-thumb{outline-color:#fff}" +
   ".dt-cap{display:flex;gap:8px;margin-top:8px;white-space:nowrap;overflow:hidden}.dt-cap span{overflow:hidden;text-overflow:ellipsis}" +
   ".dt-cap b{font-variant-numeric:tabular-nums;color:#999;font-weight:600}" +
+  // 一覧のしおりの名前（Player P4.3）：題の後ろに小さく薄く
+  ".dt-cap .dt-bmk{flex:none;max-width:45%;color:#999;font-size:12px;align-self:center}.dt-cell.sel .dt-cap .dt-bmk{color:#ccc}" +
   ".dt-cell.cur .dt-cap b{color:#fff;background:var(--emph,#d33);border-radius:4px;padding:0 6px}.dt-cell.sel .dt-cap{color:#fff}" +
   // 操作の帯（モード表示と同じ、暗い半透明の丸い帯）
   "#dt-cb{position:fixed;left:50%;bottom:10px;z-index:35;display:flex;align-items:center;gap:1px;padding:3px 7px;border-radius:999px;" +
@@ -170,6 +174,10 @@ css(
   "#dt-cb svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}" +
   "#dt-cb kbd{font:600 9px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.55;letter-spacing:.02em}#dt-cb button.on kbd{opacity:.7}" +
   "#dt-cb .sep{width:1px;height:18px;background:rgba(255,255,255,.18);margin:0 5px}" +
+  // しおり（Player P4.3）：名前の字のボタンをまとめ、しおりで来ている間だけ「元の位置に戻る」
+  "#dt-cb .dt-bm{display:flex;align-items:center;gap:2px}" +
+  "#dt-cb .dt-bm button{width:auto;max-width:16em;padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:32px;font:600 12px/32px -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif}" +
+  "#dt-cb .dt-bm button[hidden]{display:none}#dt-cb .dt-bm button[aria-current=true]{box-shadow:inset 0 -2px 0 rgba(255,255,255,.7)}" +
   // 再生速度：字で今の速さを見せる
   "#dt-cb button[data-b=rate]{width:auto;min-width:40px;padding:0 4px;font:600 12px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}" +
   // 編集モードの間は、発表の道具（再生・再生速度・レーザー・ペン・消えるペン・色・消す・一覧・全画面）のボタンを隠す
@@ -658,6 +666,13 @@ function openOverview(){
     cell.innerHTML = '<span class="dt-thumb" style="display:block" aria-hidden="true"></span><span class="dt-cap" style="display:flex" aria-hidden="true"><b>' + (i + 1) + "</b><span></span></span>";
     cell.querySelector(".dt-thumb").appendChild(c);
     cell.querySelector(".dt-cap span").textContent = titleOf(s);
+    // しおりの名前（Player P4.3）：題の後ろに小さく
+    var bmk = (s.getAttribute("data-bookmark") || "").replace(/\s+/g, " ").trim();
+    if (bmk){
+      var bt = document.createElement("span"); bt.className = "dt-bmk"; bt.textContent = BM_T.one(bmk);
+      cell.querySelector(".dt-cap").appendChild(bt);
+      cell.setAttribute("aria-label", cell.getAttribute("aria-label") + (JA ? "（" : " (") + BM_T.one(bmk) + (JA ? "）" : ")"));
+    }
     cell.addEventListener("click", function(){ pick(i); });
     grid.appendChild(cell); cells.push(cell);
   }); });
@@ -788,7 +803,7 @@ function rateNext(){ var R = DECK.RATES || [1], j = R.indexOf(DECK.rate()); DECK
 function playStep(d){ if (DECK.playStep) DECK.playStep(d); else press(d < 0 ? "ArrowLeft" : "ArrowRight"); }
 var BTNS = [["prev", "←", function(){ playStep(-1); }], ["auto", "a", "a"], ["next", "→", function(){ playStep(1); }], ["rate", "", rateNext], null,
   ["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "⌫", function(){ clear(false); }], null,
-  ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["help", "?", "?"]];
+  ["over", "o", "o"], ["view", "r", function(b){ DECK.panes.menu(b); }], ["lect", "l", "l"], ["cap", "s", "s"], ["read", "", function(){ raStart(); }], ["mute", "", function(){ DECK.muteSounds(!DECK.muteSounds()); }], ["pres", "p", "p"], ["full", "f", "f"], null, ["bm"], null, ["help", "?", "?"]];
 TIP.auto = PLAY.play; TIP.rate = PLAY.rate;
 // 押すと入／切が変わるボタン（aria-pressed を付ける）
 var TOGGLES = ["auto", "laser", "pen", "vpen", "lect", "cap", "read", "mute", "full", "help"];
@@ -809,7 +824,10 @@ function buildBar(){
   cb = document.createElement("div"); cb.id = "dt-cb"; cb.className = "deck-tools";
   cb.setAttribute("role", "toolbar");
   cb.setAttribute("aria-label", JA ? "スライドの操作" : "Slide controls");
+  var skipSep = false;
   BTNS.forEach(function(b){
+    if (!b && skipSep){ skipSep = false; return; }
+    if (b && b[0] === "bm"){ if (!bmGroup()) skipSep = true; return; }
     if (!b){ var s = document.createElement("i"); s.className = "sep" + (cb.querySelector('[data-b="clear"]') && !cb.querySelector(".dt-tsep") ? " dt-tsep" : ""); s.setAttribute("aria-hidden", "true"); cb.appendChild(s); return; }
     if (b[0] === "read" && !RA) return;   // 読み上げ：端末で読めないとき・読めるステップがないときは出さない
     if (b[0] === "mute" && !(DECK.hasComponentSounds && DECK.hasComponentSounds())) return;
@@ -894,6 +912,29 @@ function buildBar(){
   wake();              // 先に（帯の大きさを測る前に）出す：初めから出た状態で描き、フェードさせない
   placeBar(); syncBar();   // 帯の高さ（狭い画面では 2 行）を測って置く
   if (!hintSeen()) showHint();
+}
+// しおり（format spec §8.0、Player P4.3）：しおりの名前のボタン（押すとそのスライドの最終状態へ）と、しおりで来ている間だけの「元の位置に戻る」。
+// しおりがなければ作らない（false）。動画ではこの道具ごと作らない。印刷では帯ごと隠れる
+var BM_T = JA ? {group: "しおり", one: function(n){ return "しおり：" + n; }, back: "元の位置に戻る"}
+  : {group: "Bookmarks", one: function(n){ return "Bookmark: " + n; }, back: "Back to where you were"};
+function bmGroup(){
+  var L = DECK.bookmarks ? DECK.bookmarks() : [];
+  if (!L.length) return false;
+  var g = document.createElement("span"); g.className = "dt-bm"; g.setAttribute("role", "group"); g.setAttribute("aria-label", BM_T.group);
+  L.forEach(function(x, n){
+    var e = document.createElement("button"); e.type = "button";
+    e.setAttribute("data-bm", n); e.textContent = x.name;
+    e.title = BM_T.one(x.name); e.setAttribute("aria-label", BM_T.one(x.name));
+    e._act = function(){ DECK.bookmark(n); };
+    g.appendChild(e);
+  });
+  var r = document.createElement("button"); r.type = "button";
+  r.setAttribute("data-b", "bmback"); r.textContent = "↩ " + BM_T.back; r.hidden = true;
+  r.title = BM_T.back + kk("Backspace"); r.setAttribute("aria-label", BM_T.back); r.setAttribute("aria-keyshortcuts", "Backspace");
+  r._act = function(){ DECK.bookmarkBack(); };
+  g.appendChild(r);
+  cb.appendChild(g);
+  return true;
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
 // 舞台を置く箱（kit/deck.js の fit と同じ。窓の並べ方で左の欄だけになる：kit/panes.js の DECK.stageBox）
@@ -1022,6 +1063,16 @@ function syncBar(){
     rb.title = PLAY.rate + (JA ? "：" : ": ") + rv + "×" + kk("< >");
     rb.setAttribute("aria-label", PLAY.rate + (JA ? "：" : ": ") + rv + "×");
   }
+  // しおり：しおりで来ている間だけ「元の位置に戻る」。今いるしおりのボタンに印
+  var bg = cb.querySelector(".dt-bm");
+  if (bg){
+    var act = DECK.bookmarkActive && DECK.bookmarkActive(), st = DECK.state(), L = DECK.bookmarks();
+    bg.querySelector('[data-b="bmback"]').hidden = !act;
+    [].forEach.call(bg.querySelectorAll("[data-bm]"), function(x){
+      var b = L[+x.getAttribute("data-bm")], here = !!(act && b && b.i === st.slide - 1);
+      if (here) x.setAttribute("aria-current", "true"); else x.removeAttribute("aria-current");
+    });
+  }
   // ボタンの数が変わって（ペンの色・編集モード）帯の行の数が変わったら、置き直す
   if (cb.offsetHeight !== cb._h){ cb._h = cb.offsetHeight; placeBar(); }
 }
@@ -1037,7 +1088,8 @@ function helpHtml(){
       row(K("→", "Space"), j ? "次のステップ" : "Next step"), row(K("←"), j ? "前のステップ" : "Previous step"),
       row(K("Shift") + "+" + K("←", "→"), j ? "スライド単位" : "By slide"), row(K("Home", "End"), j ? "最初 / 最後" : "First / last"),
       row(K("12") + " " + K("Enter"), j ? "そのページへ" : "Go to slide"), row(K("o"), j ? "スライド一覧" : "Slide overview"),
-      row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]),
+      row(K("Backspace") + " / " + K("Alt") + "+" + K("←"), j ? "リンクの前に戻る" : "Back (after a link)")]
+      .concat(DECK.bookmarks && DECK.bookmarks().length ? [row(K("q"), j ? "次のしおりへ（最後の次は元の位置へ）" : "Next bookmark (after the last one, back to where you were)")] : [])),
     sec(j ? "表示" : "View", [row(K("a"), PLAY.play + " / " + PLAY.pause), row(K("<") + " " + K(">"), PLAY.rate + (j ? "（遅く / 速く）" : " (slower / faster)"))].concat(DECK.panes && !isDev() && (!DECK.panes.offered || DECK.panes.offered().length > 1) ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
       row(K("b"), j ? "黒い画面" : "Black screen")].concat(canFull() ? [row(K("f"), j ? "全画面" : "Fullscreen")] : []).concat([row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
