@@ -824,4 +824,13 @@ ok('new lessons select parts library 2: npm run new writes egatari.json with "co
     assert.equal(withNewLessonCatalogue('{"docId": "x",  "studio": {"a": 1}}'), '{"docId": "x",  "studio": {"a": 1}, "componentsCatalogue": "2"}');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+ok('the id-keyed tables (subject words, audience from step 1) only name ids of the vendored manifest (standards 11/20: allowed on that condition)', () => {
+  const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
+  const subjects = new Set(m.subjects.filter((x) => !x.reserved).map((x) => x.id)), audiences = new Set(m.audiences.map((x) => x.id));
+  for (const L of ['ja', 'en']) for (const id of Object.keys(NEW_DECK.SUBJECT_WORDS[L])) assert.ok(subjects.has(id), `SUBJECT_WORDS.${L}.${id} is a subject of manifest-${TIERS.catalogue}.json`);
+  for (const c of NEW_DECK.CATEGORIES) for (const s of [{ id: null }, ...(c.subs || [])]) {
+    const a = NEW_DECK.audienceOf(c.id, s.id, null);
+    assert.ok(a === null || audiences.has(a), `audienceOf(${c.id}, ${s.id}) = ${a} is an audience of the manifest`);
+  }
+});
 console.log(`new-deck: ${n} ok`);
