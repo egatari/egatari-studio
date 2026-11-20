@@ -1475,6 +1475,14 @@ export const PACK = {
     "purposes": [
      "model"
     ],
+    "subjects": [
+     "statistics",
+     "mathematics"
+    ],
+    "audiences": [
+     "high-school",
+     "university"
+    ],
     "display": {
      "ja": "期待値はつり合いの位置",
      "en": "Expectation as a balance point"
@@ -1495,6 +1503,14 @@ export const PACK = {
     "purposes": [
      "spread",
      "compare"
+    ],
+    "subjects": [
+     "statistics",
+     "mathematics"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-callout": {
@@ -1502,6 +1518,10 @@ export const PACK = {
     "set": "tools",
     "purposes": [
      "process"
+    ],
+    "audiences": [
+     "working-adult",
+     "general"
     ],
     "display": {
      "ja": "画面の手順",
@@ -1521,6 +1541,10 @@ export const PACK = {
     "purposes": [
      "process"
     ],
+    "audiences": [
+     "working-adult",
+     "general"
+    ],
     "display": {
      "ja": "確かめる一覧",
      "en": "Checklist"
@@ -1532,6 +1556,13 @@ export const PACK = {
     "purposes": [
      "model",
      "spread"
+    ],
+    "subjects": [
+     "statistics"
+    ],
+    "audiences": [
+     "high-school",
+     "university"
     ],
     "display": {
      "ja": "信頼区間の意味",
@@ -1545,6 +1576,13 @@ export const PACK = {
      "grouping",
      "model"
     ],
+    "subjects": [
+     "informatics",
+     "statistics"
+    ],
+    "audiences": [
+     "university"
+    ],
     "display": {
      "ja": "2 次元の分類",
      "en": "2-D classification"
@@ -1557,6 +1595,13 @@ export const PACK = {
      "process",
      "model"
     ],
+    "subjects": [
+     "informatics"
+    ],
+    "audiences": [
+     "high-school",
+     "university"
+    ],
     "display": {
      "ja": "コードの解説",
      "en": "Code walkthrough"
@@ -1567,6 +1612,12 @@ export const PACK = {
     "purposes": [
      "hierarchy",
      "process"
+    ],
+    "subjects": [
+     "informatics"
+    ],
+    "audiences": [
+     "high-school"
     ],
     "display": {
      "ja": "ハフマン木",
@@ -1592,6 +1643,13 @@ export const PACK = {
      "model",
      "change"
     ],
+    "subjects": [
+     "mathematics",
+     "informatics"
+    ],
+    "audiences": [
+     "university"
+    ],
     "display": {
      "ja": "等高線",
      "en": "Contour plot"
@@ -1602,6 +1660,12 @@ export const PACK = {
     "purposes": [
      "part-whole",
      "cause-effect"
+    ],
+    "subjects": [
+     "statistics"
+    ],
+    "audiences": [
+     "university"
     ],
     "display": {
      "ja": "計算して埋まる表",
@@ -1627,6 +1691,10 @@ export const PACK = {
      "deviation",
      "compare"
     ],
+    "subjects": [
+     "business",
+     "social-studies"
+    ],
     "display": {
      "ja": "ウォーターフォール",
      "en": "Waterfall"
@@ -1651,6 +1719,13 @@ export const PACK = {
      "model",
      "compare"
     ],
+    "subjects": [
+     "informatics",
+     "statistics"
+    ],
+    "audiences": [
+     "university"
+    ],
     "display": {
      "ja": "交差検証",
      "en": "Cross-validation"
@@ -1661,6 +1736,13 @@ export const PACK = {
     "set": "kokugo",
     "purposes": [
      "text-structure"
+    ],
+    "subjects": [
+     "japanese"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-heatmap": {
@@ -1669,6 +1751,14 @@ export const PACK = {
     "purposes": [
      "compare",
      "correlation"
+    ],
+    "subjects": [
+     "statistics",
+     "informatics"
+    ],
+    "audiences": [
+     "high-school",
+     "university"
     ]
    },
    "m-hissan": {
@@ -1676,6 +1766,12 @@ export const PACK = {
     "set": "math",
     "purposes": [
      "process"
+    ],
+    "subjects": [
+     "mathematics"
+    ],
+    "audiences": [
+     "primary-junior"
     ]
    },
    "m-hist": {
@@ -1683,12 +1779,26 @@ export const PACK = {
     "set": "stats",
     "purposes": [
      "spread"
+    ],
+    "subjects": [
+     "statistics",
+     "mathematics"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-kakijun": {
     "tier": "extra",
     "purposes": [
      "process"
+    ],
+    "subjects": [
+     "japanese"
+    ],
+    "audiences": [
+     "primary-junior"
     ]
    },
    "m-kanbun": {
@@ -1696,6 +1806,12 @@ export const PACK = {
     "set": "kokugo",
     "purposes": [
      "text-structure"
+    ],
+    "subjects": [
+     "japanese"
+    ],
+    "audiences": [
+     "high-school"
     ]
    },
    "m-keyboard": {
@@ -1703,6 +1819,12 @@ export const PACK = {
     "set": "music",
     "purposes": [
      "music"
+    ],
+    "subjects": [
+     "music"
+    ],
+    "audiences": [
+     "primary-junior"
     ]
    },
    "m-kobun": {
@@ -1710,6 +1832,12 @@ export const PACK = {
     "set": "kokugo",
     "purposes": [
      "text-structure"
+    ],
+    "subjects": [
+     "japanese"
+    ],
+    "audiences": [
+     "high-school"
     ]
    },
    "m-kpi": {
@@ -1723,6 +1851,13 @@ export const PACK = {
     "set": "maps",
     "purposes": [
      "spatial"
+    ],
+    "subjects": [
+     "social-studies"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-map-world": {
@@ -1730,6 +1865,13 @@ export const PACK = {
     "set": "maps",
     "purposes": [
      "spatial"
+    ],
+    "subjects": [
+     "social-studies"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-mapping": {
@@ -1738,6 +1880,14 @@ export const PACK = {
     "purposes": [
      "model",
      "grouping"
+    ],
+    "subjects": [
+     "statistics",
+     "mathematics"
+    ],
+    "audiences": [
+     "high-school",
+     "university"
     ],
     "display": {
      "ja": "確率変数の対応",
@@ -1749,6 +1899,12 @@ export const PACK = {
     "set": "business",
     "purposes": [
      "part-whole"
+    ],
+    "subjects": [
+     "business"
+    ],
+    "audiences": [
+     "working-adult"
     ]
    },
    "m-menu": {
@@ -1764,6 +1920,13 @@ export const PACK = {
      "process",
      "model"
     ],
+    "subjects": [
+     "informatics",
+     "statistics"
+    ],
+    "audiences": [
+     "university"
+    ],
     "display": {
      "ja": "グラフの探索",
      "en": "Graph search"
@@ -1776,6 +1939,12 @@ export const PACK = {
      "model",
      "process"
     ],
+    "subjects": [
+     "informatics"
+    ],
+    "audiences": [
+     "university"
+    ],
     "display": {
      "ja": "ニューラルネット",
      "en": "Neural network"
@@ -1786,6 +1955,12 @@ export const PACK = {
     "set": "math",
     "purposes": [
      "compare"
+    ],
+    "subjects": [
+     "mathematics"
+    ],
+    "audiences": [
+     "primary-junior"
     ]
    },
    "m-orbit": {
@@ -1794,6 +1969,13 @@ export const PACK = {
     "purposes": [
      "model",
      "cycle"
+    ],
+    "subjects": [
+     "science"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-particles": {
@@ -1803,6 +1985,13 @@ export const PACK = {
      "model",
      "process",
      "compare"
+    ],
+    "subjects": [
+     "science"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ],
     "display": {
      "ja": "粒子のモデル",
@@ -1834,6 +2023,14 @@ export const PACK = {
      "model",
      "spread"
     ],
+    "subjects": [
+     "statistics",
+     "mathematics"
+    ],
+    "audiences": [
+     "high-school",
+     "university"
+    ],
     "display": {
      "ja": "標本抽出",
      "en": "Sampling"
@@ -1850,6 +2047,12 @@ export const PACK = {
     "set": "music",
     "purposes": [
      "music"
+    ],
+    "subjects": [
+     "music"
+    ],
+    "audiences": [
+     "primary-junior"
     ]
    },
    "m-seq": {
@@ -1857,6 +2060,12 @@ export const PACK = {
     "set": "stats",
     "purposes": [
      "spread"
+    ],
+    "subjects": [
+     "statistics"
+    ],
+    "audiences": [
+     "university"
     ]
    },
    "m-sweep": {
@@ -1864,6 +2073,9 @@ export const PACK = {
     "set": "math",
     "purposes": [
      "parameter"
+    ],
+    "subjects": [
+     "mathematics"
     ]
    },
    "m-syntax": {
@@ -1871,6 +2083,13 @@ export const PACK = {
     "set": "english",
     "purposes": [
      "text-structure"
+    ],
+    "subjects": [
+     "english"
+    ],
+    "audiences": [
+     "primary-junior",
+     "high-school"
     ]
    },
    "m-tape": {
@@ -1879,6 +2098,12 @@ export const PACK = {
     "purposes": [
      "part-whole",
      "compare"
+    ],
+    "subjects": [
+     "mathematics"
+    ],
+    "audiences": [
+     "primary-junior"
     ]
    },
    "m-timeline": {
@@ -1904,6 +2129,12 @@ export const PACK = {
     "tier": "specialized",
     "purposes": [
      "model"
+    ],
+    "subjects": [
+     "mathematics"
+    ],
+    "audiences": [
+     "university"
     ],
     "display": {
      "ja": "ベクトルと行列",
@@ -2092,6 +2323,122 @@ export const PACK = {
     "label": {
      "ja": "概念のつながり",
      "en": "Concept links"
+    }
+   }
+  ],
+  "subjects": [
+   {
+    "id": "statistics",
+    "label": {
+     "ja": "統計",
+     "en": "Statistics"
+    }
+   },
+   {
+    "id": "mathematics",
+    "label": {
+     "ja": "数学",
+     "en": "Mathematics"
+    }
+   },
+   {
+    "id": "informatics",
+    "label": {
+     "ja": "情報",
+     "en": "Informatics"
+    }
+   },
+   {
+    "id": "science",
+    "label": {
+     "ja": "理科",
+     "en": "Science"
+    }
+   },
+   {
+    "id": "social-studies",
+    "label": {
+     "ja": "社会",
+     "en": "Social studies"
+    }
+   },
+   {
+    "id": "japanese",
+    "label": {
+     "ja": "国語",
+     "en": "Japanese"
+    }
+   },
+   {
+    "id": "english",
+    "label": {
+     "ja": "英語",
+     "en": "English"
+    }
+   },
+   {
+    "id": "music",
+    "label": {
+     "ja": "音楽",
+     "en": "Music"
+    }
+   },
+   {
+    "id": "business",
+    "label": {
+     "ja": "経営",
+     "en": "Business"
+    }
+   },
+   {
+    "id": "medicine",
+    "label": {
+     "ja": "医療",
+     "en": "Medicine"
+    }
+   },
+   {
+    "id": "disaster",
+    "label": {
+     "ja": "防災",
+     "en": "Disaster preparedness"
+    }
+   }
+  ],
+  "audiences": [
+   {
+    "id": "primary-junior",
+    "label": {
+     "ja": "小中",
+     "en": "Primary and junior high"
+    }
+   },
+   {
+    "id": "high-school",
+    "label": {
+     "ja": "高校",
+     "en": "High school"
+    }
+   },
+   {
+    "id": "university",
+    "label": {
+     "ja": "大学",
+     "en": "University"
+    }
+   },
+   {
+    "id": "working-adult",
+    "label": {
+     "ja": "社会人",
+     "en": "Working adults"
+    }
+   },
+   {
+    "id": "general",
+    "label": {
+     "ja": "一般",
+     "en": "General public"
     }
    }
   ]

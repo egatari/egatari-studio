@@ -19,7 +19,7 @@ import { validateSample, sampleStructureRequest, SAMPLE_LIMITS } from '../kit/co
 import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, withChoice, choiceOf } from '../kit/core/new-deck.mjs';
 import { partsPackOpts, fitPack, PACK_CAP_KB, FREE_CORE, fitSample as fitSamplePack, packSize, fitSize, pasteUnits } from '../kit/core/llm-pack.mjs';
 import { fitSample } from '../kit/core/llm-pack-assemble.mjs';
-import { fromSamplePack, samplePackFit, sampleProblems, REQUEST_WORDS, packText, sampleTicks, sampleTheme, fromSampleStart } from '../kit/core/new-deck-pack.mjs';
+import { fromSamplePack, samplePackFit, sampleProblems, sampleLabels, REQUEST_WORDS, packText, sampleTicks, sampleTheme, fromSampleStart } from '../kit/core/new-deck-pack.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { packWithRequest, filledRequest } from '../kit/core/llm-request.mjs';
 import { CHOOSABLE, RETIRED } from '../kit/core/themes-list.mjs';
@@ -117,6 +117,27 @@ const cases = [
 for (const [what, o, want] of cases) ok(codes(o) === want, `rejects ${what}: ${codes(o) || '(nothing)'}`);
 ok(validateSample({ ...good(), category: 'other', subcategory: null }, ctx).length === 0 && validateSample({ ...good(), subcategory: null }, ctx).length === 0, 'accepts subcategory null (Other, None of these)');
 ok(validateSample({ ...good(), category: 'nope', parts: ['m-nope'] }).length === 0, 'without categories and parts, only the shape is checked');
+
+// ---------------------------------------------------------------- ラベル（伝えたいこと・題材・読み手。handoff #43）
+// id の一覧は同梱のパーツ集の manifest から作った材料のもの（Studio に書かない）。なくてもよく、空の配列（どれにも合う）も受ける
+{
+  const T = PACK.tiers, L = sampleLabels(), m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${T.catalogue}.json`), 'utf8'));
+  ok(['purposes', 'subjects', 'audiences'].every((k) => JSON.stringify(L[k]) === JSON.stringify(m[k].map((x) => x.id))),
+    `the label ids come from the default catalogue's manifest (${T.catalogue}: ${L.purposes.length} purposes, ${L.subjects.length} subjects, ${L.audiences.length} audiences)`);
+  const lctx = { ...ctx, labels: L };
+  const lcodes = (o) => validateSample(o, lctx).map((e) => `${e.path} ${e.code}`).sort().join(', ');
+  const p0 = L.purposes[0], s0 = L.subjects[0], a0 = L.audiences[0];
+  ok(lcodes({ ...good(), purposes: [p0], subjects: [s0], audiences: [a0] }) === '' && lcodes({ ...good(), subjects: [] }) === '' && lcodes(good()) === '',
+    'accepts known labels, an empty list and no labels');
+  for (const [what, o, want] of [
+    ['labels not an array', { ...good(), subjects: s0 }, 'subjects not-array'],
+    ['unknown label', { ...good(), audiences: ['adults'] }, 'audiences[0] unknown'],
+    ['duplicate label', { ...good(), purposes: [p0, p0] }, 'purposes[1] duplicate'],
+    ['label not an id', { ...good(), subjects: ['Statistics'] }, 'subjects[0] not-id'],
+  ]) ok(lcodes(o) === want, `rejects ${what}: ${lcodes(o) || '(nothing)'}`);
+  ok(validateSample({ ...good(), audiences: ['anything'] }).length === 0, 'without label lists, only the shape of labels is checked');
+  ok(Object.values(T.parts).some((x) => x.subjects) && Object.values(T.parts).some((x) => x.audiences), 'the parts in the tiers carry their subjects and audiences from the manifest');
+}
 
 // ---------------------------------------------------------------- 引き継ぐテーマ（sampleTheme）
 // 「このサンプルを参考に作る」が引き継ぐのは同梱の選べるテーマ（CHOOSABLE）だけ。ほかは default。

@@ -3,6 +3,9 @@
   "request": "高校 1 年の言語文化で、芥川龍之介「羅生門」を読む、本（青空文庫の本文と読みの手引き、縦書き）と組になったスライドを縦書きで作ってください。主題は下人の「勇気」の向きが場面ごとにどう変わるか。4 つの場面を本文の言葉で 1 行ずつ追い、老婆の理屈は主張・根拠・結論と指示語の矢印で示し、最後に場面ごとの勇気を表で読み返してください。引用は青空文庫の本文と照らしてください。",
   "category": "teaching",
   "subcategory": "class",
+  "purposes": ["text-structure"],
+  "subjects": ["japanese"],
+  "audiences": ["high-school"],
   "theme": "kokugo",
   "parts": ["m-gendai"],
   "structure": [

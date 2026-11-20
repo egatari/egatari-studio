@@ -3,6 +3,9 @@
   "request": "高校の数学 I「データの分析」で、平均と中央値の違いを「ズレの測り方」から説明する、本（読むための本文）と組になったスライドを作ってください。貯蓄の平均と中央値の食い違いから入り、絶対値の和は折れ線で底が中央値、二乗の和は放物線で底が平均になることを曲線で示し、二乗は微分を使わず平方完成で読んでください。外れ値を 1 つ動かす比べと、余る損と足りない損が違う仕入れ数の例で終えてください。貯蓄の数字は出典を書き、ほかのデータは架空と明記してください。",
   "category": "teaching",
   "subcategory": "class",
+  "purposes": ["model", "parameter", "spread"],
+  "subjects": ["mathematics", "statistics"],
+  "audiences": ["high-school"],
   "theme": "default",
   "parts": ["m-bars", "m-curves", "m-sweep"],
   "structure": [

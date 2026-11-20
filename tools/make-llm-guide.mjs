@@ -109,11 +109,15 @@ export function tiersFrom(cat = catalogue()) {
     if (c.tier === 'specialized' && !c.set) throw new Error(`manifest-${cat.version}.json: ${c.tag} is specialized without a set`);
     const display = displayOf(c, cat.version);
     // 受け皿のない束のパーツは束の名前なしで（新規作成の一覧に出すが、初めは印を付けない。指示は有料のプランにだけ入る：材料の paidOnly）
-    if (c.tier === 'specialized' && !hasReceiver(c.set)) { parts[c.tag] = { tier: 'specialized', purposes: [...(c.purposes || [])], ...(display ? { display } : {}) }; continue; }
-    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])], ...(display ? { display } : {}) };
+    // 題材・読み手のラベル（パーツ集 2.16.0 から。handoff #43）：README に書いたものだけ（書いていない＝どれにも合う）
+    const labels = { ...(c.subjects && c.subjects.length ? { subjects: [...c.subjects] } : {}), ...(c.audiences && c.audiences.length ? { audiences: [...c.audiences] } : {}) };
+    if (c.tier === 'specialized' && !hasReceiver(c.set)) { parts[c.tag] = { tier: 'specialized', purposes: [...(c.purposes || [])], ...labels, ...(display ? { display } : {}) }; continue; }
+    parts[c.tag] = { tier: c.tier, ...(c.set ? { set: c.set } : {}), purposes: [...(c.purposes || [])], ...labels, ...(display ? { display } : {}) };
   }
   const purposes = (m.purposes || []).map((p) => ({ id: p.id, label: p.label || { ja: p.ja, en: p.en }, ...(p.tile && p.tile.into ? { into: p.tile.into } : {}) }));
-  return { catalogue: cat.version, parts, purposes };
+  // 題材・読み手の一覧も manifest のまま（Studio に一覧を書かない。handoff #43、規格化 11/20）。古いカタログ（欄がない）では書かない
+  const list = (xs) => xs.map((x) => ({ id: x.id, label: x.label || { ja: x.ja, en: x.en } }));
+  return { catalogue: cat.version, parts, purposes, ...(m.subjects ? { subjects: list(m.subjects) } : {}), ...(m.audiences ? { audiences: list(m.audiences) } : {}) };
 }
 
 // ---------------------------------------------------------------- 部品
