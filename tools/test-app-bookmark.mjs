@@ -115,7 +115,7 @@ try {
     ok(m0.add === 'しおりを付ける…' && m0.del === null, `ja: without a bookmark the menu has only 「しおりを付ける…」 ${JSON.stringify(m0)}`);
     const shown = await bookmarkVia(page, undefined);
     ok(JSON.stringify(shown) === JSON.stringify({ title: 'しおりを付ける', label: 'しおりの名前（20 字まで）', value: '質疑用',
-      desc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときは操作の帯のボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', ok: '付ける', cancel: 'キャンセル' }), 'ja: the dialog words and the default name ' + JSON.stringify(shown));
+      desc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときはツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', ok: '付ける', cancel: 'キャンセル' }), 'ja: the dialog words and the default name ' + JSON.stringify(shown));
     const deck1 = await memFile(page, 'deck.html');
     ok(deck1 === setBookmark(deck0, 1, '質疑用') && slideTag(deck1, 1).includes('data-bookmark="質疑用"'), 'ja: 「付ける」 writes data-bookmark on the second <section> and nothing else');
     ok(await frame(page).evaluate(() => [...document.querySelectorAll('#dt-cb [data-bm]')].map((b) => b.textContent).join()) === '質疑用', 'ja: the preview control bar has the bookmark button');
@@ -155,7 +155,7 @@ try {
     ok((await menuItems(page)).add === 'Add bookmark…', 'en: 「Add bookmark…」');
     const shown = await bookmarkVia(page, undefined);
     ok(JSON.stringify(shown) === JSON.stringify({ title: 'Add bookmark', label: 'Bookmark name (up to 20 characters)', value: 'Q&A',
-      desc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the control bar or q, and use “Back to where you were” or Backspace to return', ok: 'Add', cancel: 'Cancel' }), 'en: the dialog words and the default name ' + JSON.stringify(shown));
+      desc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the toolbar or q, and use “Back to where you were” or Backspace to return', ok: 'Add', cancel: 'Cancel' }), 'en: the dialog words and the default name ' + JSON.stringify(shown));
     ok(slideTag(await memFile(page, 'deck.html'), 0).includes('data-bookmark="Q&amp;A"'), 'en: the first <section> carries data-bookmark="Q&amp;A"');
     const m = await menuItems(page);
     ok(m.add === 'Rename bookmark…' && m.del === 'Remove bookmark', `en: 「Rename bookmark…」 and 「Remove bookmark」 ${JSON.stringify(m)}`);

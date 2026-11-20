@@ -345,7 +345,7 @@ const ja = {
   // テーマを変更…（スライド ▾。app/theme-switch.js）
   // しおり（format spec §8.0。スライド ▾）
   bmAddCmd: 'しおりを付ける…', bmRenameCmd: 'しおりの名前を変更…', bmRemoveCmd: 'しおりを外す', bmTitle: 'しおりを付ける', bmField: 'しおりの名前（20 字まで）', bmDefault: '質疑用',
-  bmDesc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときは操作の帯のボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', bmGo: '付ける', bmUndo: 'しおりの変更',
+  bmDesc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときはツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', bmGo: '付ける', bmUndo: 'しおりの変更',
   themeSwitchCmd: 'テーマを変更…', themeSwitchTitle: 'テーマを変更', themeSwitchGo: '変更', themeSwitchCancel: 'キャンセル', themeSwitchNow: '（今のテーマ）', themeMineGroup: '自分のテーマ',
   themeSwitchLead: 'スライドの中身はそのままで、色・書体・ロゴが変わります。',
   themeSwitchNoRebuild: 'このファイルではテーマを変更できません（台本・音声・タイミングだけを編集できます）',
@@ -835,7 +835,7 @@ const en = {
   tierAOnlyNotice: (w) => `This file cannot be rebuilt, so only script, audio and timing can be edited (not the slides): ${w}`,
   tierAOnlyNoSlides: 'The slides of this file cannot be edited (script, audio and timing only)',
   bmAddCmd: 'Add bookmark…', bmRenameCmd: 'Rename bookmark…', bmRemoveCmd: 'Remove bookmark', bmTitle: 'Add bookmark', bmField: 'Bookmark name (up to 20 characters)', bmDefault: 'Q&A',
-  bmDesc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the control bar or q, and use “Back to where you were” or Backspace to return', bmGo: 'Add', bmUndo: 'changing the bookmark',
+  bmDesc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the toolbar or q, and use “Back to where you were” or Backspace to return', bmGo: 'Add', bmUndo: 'changing the bookmark',
   themeSwitchCmd: 'Change theme…', themeSwitchTitle: 'Change theme', themeSwitchGo: 'Change', themeSwitchCancel: 'Cancel', themeSwitchNow: '(current)', themeMineGroup: 'My themes',
   themeSwitchLead: 'The slides stay as they are; the colors, fonts and logo change.',
   themeSwitchNoRebuild: 'You cannot change theme for this file (only the script, audio and timing can be edited)',

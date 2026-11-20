@@ -198,7 +198,7 @@ export const MESSAGES = {
   kickerPlace: { rule: 'R-headings', ja: () => '肩見出し（.kicker）はスライドに 1 つだけ、見出しの直前に置く', en: () => 'place just one kicker (.kicker) per slide, immediately before the heading' },
   // しおり（format spec §8.0。kit/core/bookmark.mjs）：字数は code point
   bookmarkDup: { ja: (a) => `しおりの名前「${a.name}」が ${a.n} 枚のスライドにあります。どれに飛ぶか分かるよう、名前を変えてください`, en: (a) => `The bookmark name “${a.name}” is on ${a.n} slides. Give each a different name so it is clear where it goes` },
-  bookmarkLong: { ja: (a) => `しおりの名前「${a.name}」は ${a.n} 字です。操作の帯に収まるよう、20 字までにしてください`, en: (a) => `The bookmark name “${a.name}” is ${a.n} characters long. Keep it to 20 or fewer so it fits the control bar` },
+  bookmarkLong: { ja: (a) => `しおりの名前「${a.name}」は ${a.n} 字です。ツールバーに収まるよう、20 字までにしてください`, en: (a) => `The bookmark name “${a.name}” is ${a.n} characters long. Keep it to 20 or fewer so it fits the toolbar` },
   cautionEmpty: { rule: 'R-caution', ja: () => '注意・警告の枠（.caution）にラベル以外の本文を書く', en: () => 'write body text besides the label in the caution or warning box (.caution)' },
   cautionLabel: { rule: 'R-caution', ja: () => '注意・警告のラベルはビルドが付けるので、枠の先頭に書いたラベルを削除する', en: () => 'remove the label written at the start of the caution or warning box; the build adds it' },
   kickerSlide: { rule: 'R-headings', ja: () => '表紙・章の扉・縦書きのスライド（layout-tate）には肩見出し（.kicker）を置かない', en: () => 'do not use a kicker (.kicker) on a cover, chapter divider or vertical slide (layout-tate)' },
