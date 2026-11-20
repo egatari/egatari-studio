@@ -3,6 +3,17 @@
   "request": "中学の社会で、日本の人口の移り変わりを国勢調査のデータで見るスライドを作ってください。100 年の人口の変化、5 年で人口が増えた都道府県の地図、「1920 年より少ない県は？」の予想、100 年で何倍になったかを見せ、最後に考える問いを出してください。出典を明記し、加工して作成と書いてください。",
   "category": "teaching",
   "subcategory": "class",
+  "purposes": [
+    "change",
+    "spatial",
+    "predict"
+  ],
+  "subjects": [
+    "social-studies"
+  ],
+  "audiences": [
+    "primary-junior"
+  ],
   "theme": "kokugo",
   "parts": [
     "m-bars",

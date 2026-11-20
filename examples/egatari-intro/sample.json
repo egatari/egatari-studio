@@ -3,6 +3,14 @@
   "request": "Egatari を初めて知る人向けに、1 分で分かる紹介のスライドを 6 枚で作ってください。話す順に図が出ること、スライドと本が 1 つのファイルに入っていること、AI の下書きを品質チェックが直すこと、ブラウザだけで開けることを、1 枚に 1 つずつ。数字の例は架空と明記し、短い本も付けてください。",
   "category": "business",
   "subcategory": "intro",
+  "purposes": [
+    "process",
+    "key-number"
+  ],
+  "subjects": [],
+  "audiences": [
+    "general"
+  ],
   "theme": "default",
   "parts": [
     "m-bars",

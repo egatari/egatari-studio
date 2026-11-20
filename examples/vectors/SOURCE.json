@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/vectors",
   "files": {
     "SOURCE.md": "cbb44e5ad0adb2bedf2de5025dd145960634a0df4c23bc2783d87c970bc44c7c",
@@ -11,7 +11,7 @@
     "deck.html": "4df3b6fbc9f7b82289ae4a62e9d9f518286a89e91363cd34bfcaf4289edce96a",
     "egatari.json": "1a15942c0ed30c8a87625a00c26f36767ea1241f0d2a230cc3be2048894e6925",
     "narration.md": "6188da078310929cc7b49bc9f36cc36f7b510561257789382deb730365dd882b",
-    "sample.json": "46a578929a85cf6834a596a244eed9b065d5bc422655828742bc8c0afa61e9a5",
+    "sample.json": "f4e96588fb69374f6126d286130d7507e571a8703680842abc430672af068ec5",
     "scripts/make_data.py": "c1a5ca05d7d79f20e9082e68356e37ad9ab685508a9ba4eddbcac365d07257d4"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."

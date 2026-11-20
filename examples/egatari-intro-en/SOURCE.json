@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/egatari-intro-en",
   "files": {
     "article/01.md": "e01b670ac13e1a6f50210587beaab1985d303e23729418f993a0cf9fea8cfe39",
@@ -8,7 +8,7 @@
     "deck.html": "c52a19252985df0eb264a83feae8c8a31dd26b5b4c5818bbbea79ebf5d0cc6ee",
     "egatari.json": "c30c5d211e0a2353646f89ce68ea1f5357cb6b8db3fbd4db2a8da318ef388e90",
     "narration.md": "be5a6e4cfd3eca73a77fb2189410f47d51a23f44a2905f0b9f8eeadfe87cef1a",
-    "sample.json": "57826f965e04f74d9efaa1c041c1aa8271cafc81c7b1c11d40a1d791fc2e40bc",
+    "sample.json": "9a719714a9859a0e163dd7d22375262fa674cdc18f6f8e24755e543c73b299bf",
     "scripts/make_data.py": "58603ce93cb7ac840ecbf97fd36e71cee73ee8299cfa0d1396b7c436db2cb553"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."

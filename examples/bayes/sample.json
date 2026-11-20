@@ -3,6 +3,17 @@
   "request": "For an introductory statistics lecture, make slides on Bayes' theorem with a spam filter as the example (fictional numbers). Ask the class to guess first, then count 1,000 mails: how many are spam and how many contain the word \"free\". Then write the same count as the formula with each part named, and show how the probability changes one word at a time.",
   "category": "teaching",
   "subcategory": "lecture",
+  "purposes": [
+    "model",
+    "predict",
+    "part-whole"
+  ],
+  "subjects": [
+    "statistics"
+  ],
+  "audiences": [
+    "university"
+  ],
   "theme": "sumi",
   "parts": [
     "m-bars",

@@ -3,6 +3,14 @@
   "request": "学校の先生向けに、文部科学省の「初等中等教育段階における生成AIの利活用に関するガイドライン」を読むスライドを作ってください。位置付け、人間中心の考え方、5 つの観点、校務での使い方と守ること、学習場面の例、児童生徒が使うときの注意、著作権を順に見せ、本文は本として付け、スライドと本をつないでください。",
   "category": "guides",
   "subcategory": "rules",
+  "purposes": [
+    "compare",
+    "process"
+  ],
+  "subjects": [],
+  "audiences": [
+    "working-adult"
+  ],
   "theme": "default",
   "parts": [
     "m-cards",

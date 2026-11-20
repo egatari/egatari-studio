@@ -3,6 +3,15 @@
   "request": "高校の英語で、英文の構造（S・V・O・C・M）を読むスライドを作ってください。例文は自作し、まず動詞を見つけ、S と O と C を分け、関係代名詞の節が前の名詞を飾るところは括弧と矢印で示し、和訳も添えてください。説明は日本語で。",
   "category": "teaching",
   "subcategory": "class",
+  "purposes": [
+    "text-structure"
+  ],
+  "subjects": [
+    "english"
+  ],
+  "audiences": [
+    "high-school"
+  ],
   "theme": "kogecha",
   "parts": [
     "m-cards",

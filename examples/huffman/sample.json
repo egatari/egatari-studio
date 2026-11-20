@@ -3,6 +3,17 @@
   "request": "高校の情報 I で、ハフマン符号の授業のスライドを作ってください。「すもももももももものうち」の字を数え、少ない 2 つから順にまとめて木を作り、木から符号を読んで、固定長と長さを比べます。最後に、ファクスの MH 符号も同じ考えで、符号の列を木で復号するところを見せてください。数はスクリプトで計算してください。",
   "category": "teaching",
   "subcategory": "class",
+  "purposes": [
+    "process",
+    "hierarchy",
+    "compare"
+  ],
+  "subjects": [
+    "informatics"
+  ],
+  "audiences": [
+    "high-school"
+  ],
   "theme": "kokugo",
   "parts": [
     "m-bars",

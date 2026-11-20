@@ -1,13 +1,13 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/hand-hygiene",
   "files": {
     "SOURCE.md": "497eb0174e5c0f0591702ecc0e2f1618c51087e55eb7de440ee0069953144065",
     "deck.html": "663cabfc642ce90fbd408bcd7b6ff8fec7ab69cac75ac1432cdb5f2e054e4002",
     "egatari.json": "0d0d1a5668c5259fb3fdc35325860f327951e0d662a2f63239748a2ca481e580",
     "narration.md": "ecfecf86c81de1f25ad61d400f058c3d65740aa5a8cd0e1fc5bff99c4fa91695",
-    "sample.json": "55368d343ff4fc7c40be77b5aad316cdecf11cf7a1f5e314065d51f20752f2b7"
+    "sample.json": "f95285c3e121747906c05df91efabb4767766dd173cfb6b9a247d76a181f89f8"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
 }

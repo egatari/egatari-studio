@@ -3,6 +3,9 @@
   "request": "大学の線形代数の講義で、平面のベクトルのスライドを作ってください。和と差を矢印で、内積を正射影の長さの積として、行列 M = [[3, 1], [0, 2]] で平面を動かして固有ベクトルと行列式を、最後に基底 (1, 1)・(1, −1) で同じベクトルを読み直すところまで。値はパーツの計算と numpy の計算を照らし合わせてください。",
   "category": "teaching",
   "subcategory": "lecture",
+  "purposes": ["model"],
+  "subjects": ["mathematics"],
+  "audiences": ["university"],
   "theme": "default",
   "parts": [
     "m-vector"
