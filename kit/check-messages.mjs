@@ -196,6 +196,8 @@ export const MESSAGES = {
   // ---------------------------------------------------------------- 体裁（はみ出し・字数・表記）
   kickerLong: { rule: 'R-headings', ja: (a) => `肩見出しが長い（${a.n} ${a.latin ? '文字' : '字分'}。${a.latin ? 'ラテン文字は 40 文字まで' : '24 字分まで。全角 1・半角 0.5'}）：${quoteJa(a.t)}を短くする`, en: (a) => `the kicker has ${a.n} ${a.latin ? 'characters' : 'units'}, over ${a.max} (${a.latin ? 'Latin script' : 'full-width 1, ASCII 0.5'}): shorten “${a.t}”` },
   kickerPlace: { rule: 'R-headings', ja: () => '肩見出し（.kicker）はスライドに 1 つだけ、見出しの直前に置く', en: () => 'place just one kicker (.kicker) per slide, immediately before the heading' },
+  // 縦と横の入れ替わり（#70。kit/core/tate-mix.mjs）：表紙と扉を除いて 3 回以上
+  tateMixed: { ja: (a) => `縦書きと横書きのスライドが ${a.n} 回入れ替わります（表紙と扉を除く）。読む向きと、見出し・結論の行の位置がそのたびに変わるので、縦か横にそろえ、横書きでしか置けない図や表のスライドはまとめて置いてください`, en: (a) => `Vertical and horizontal slides switch ${a.n} times (not counting the cover and dividers). The reading direction and the heading and conclusion positions change each time: keep one direction, and put the slides with a figure or table that works only horizontally together` },
   // しおり（format spec §8.0。kit/core/bookmark.mjs）：字数は code point
   bookmarkDup: { ja: (a) => `しおりの名前「${a.name}」が ${a.n} 枚のスライドにあります。どれに飛ぶか分かるよう、名前を変えてください`, en: (a) => `The bookmark name “${a.name}” is on ${a.n} ${plural(a.n, 'slide')}. Give each a different name so it is clear where it goes` },
   bookmarkLong: { ja: (a) => `しおりの名前「${a.name}」は ${a.n} 字です。ツールバーに収まるよう、20 字までにしてください`, en: (a) => `The bookmark name “${a.name}” is ${a.n} characters long. Keep it to 20 or fewer so it fits the toolbar` },
