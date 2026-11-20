@@ -1,12 +1,13 @@
 <!-- generated; do not edit by hand -->
 # tools のパーツ
 
-指示のバージョン：373f1edf
+指示のバージョン：b70f88c1
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
 | `<m-callout>` | 画面の画像に番号の丸を置き、引き出し線で横の説明につなぐ。ステップごとに 1 つずつ（研修・手引き・操作の説明） | 説明の step の最大（既定は説明 1 つ = 1 ステップ。per-step で n 個ずつ） | `{callouts:{x:num,y:num,text:str,box?:[num,num,num,num],step?,at?}[]}` |
 | `<m-checklist>` | 確かめる項目を並べ、ステップごとに 1 つずつ印（✓・×）を描く。印はスライドの中身で、見ている人の操作を保存しない | 項目の step の最大（既定は項目 1 つ = 1 ステップ。per-step で n 個ずつ） | `{items:{label,note?,mark?:"check"\|"cross"\|"none",step?,at?}[]}` |
+| `<m-scroll>` | 縦に長い図（インライン SVG・HTML）を高さの決まった枠に入れ、ステップごとに決めた所まで送る。参加者は枠の中を手でスクロールできる | 子の data-scroll-step の最大（k 番目のステップでその要素の所まで送る） | 属性だけ（JSON の子なし） |
 | `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?:{title?:str,text?:str},phases:{title:str,short?:str,text?:str,sec:int,bells?:{left:int,count?:int}[]}[],bells?:{left:int,count?:int}[],done?:str,labels?:{ready?:str,total?:str,remaining?:str,done?:str,start?:str,next?:str,end?:str,min?:str,sec?:str,plus?:str,minus?:str}}` — phases は {"title", "sec"} の並び（sec は秒の整数。"3分" のような字ではない）。区切り 1 つが 1 ステップ |
 
 ### `<m-callout>`
@@ -55,6 +56,27 @@
 
 - 1 枚に 8 項目くらいまで。それより多ければスライドを分ける
 - 押して印を付ける「できたかな」の一覧ではない（学習者の操作を残すと個人のデータになる）
+
+### `<m-scroll>`
+
+書き方の例: `<m-scroll style="height:440px" aria-label="年表"><svg viewBox="0 0 1000 1300" width="1000" height="1300">… <g data-scroll-step="1">…</g> …</svg></m-scroll>`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `margin` | number | `12` | px：data-scroll-step の要素の上に空ける余白 |
+
+長い年表・長いフロー図・長いコードのように、1 枚のスライドに入らない縦長の図を、分けずに見せるときに使う。
+
+`<m-scroll style="height:440px" aria-label="図の名前">` の子に、図（インライン SVG や `<pre>`）をそのまま書く。
+
+- 子の要素に `data-scroll-step="k"`（1, 2, …）を付けると、k 番目のステップでその要素が枠の上に来るまで送る（上に `margin` px 空ける）。ステップの数は k の最大
+- 枠の中のホイール・タッチ・↑↓・PageUp/PageDown は枠のスクロールで、スライドは送らない。←→ と Space はスライドの操作のまま
+- 参加者が手で動かした所は、次のステップまで保たれる
+
+注意
+
+- 読み上げのために `aria-label` に図の名前を書く（省略すると「縦に送る図」）
+- 印刷・本では枠の中の見えている所しか残らない。全体を読ませたい図は、スライドを分けるか本の側に全体を置く
 
 ### `<m-timer>`
 

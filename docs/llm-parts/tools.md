@@ -10,6 +10,7 @@ Parts of this set, in addition to those of §3:
 |---|---|---|---|
 | `<m-callout>` | Screen steps: numbered circles on a screenshot, joined by leader lines to labels beside it, one per step | max callout step (default 1 callout = 1 step) | `{callouts:{x:num,y:num,text:str,box?:[num,num,num,num],step?,at?}[]}` |
 | `<m-checklist>` | A checklist: items listed, one mark (✓ or ×) drawn per step. The marks are slide content; nothing a viewer does is stored | max item step (default 1 item = 1 step) | `{items:{label,note?,mark?:"check"\|"cross"\|"none",step?,at?}[]}` |
+| `<m-scroll>` | A tall figure (SVG, HTML) in a fixed-height frame, scrolled to set places by step; viewers may scroll it | largest child data-scroll-step | attributes only (no JSON child) |
 | `<m-timer>` | グループワークの進行タイマー。区切りごとに残り時間を大きく数え、区切りの一覧で今の区切りを示す | 0 準備の画面、区切り 1 つが 1 ステップ（その長さ = sec 秒） | `{ready?:{title?:str,text?:str},phases:{title:str,short?:str,text?:str,sec:int,bells?:{left:int,count?:int}[]}[],bells?:{left:int,count?:int}[],done?:str,labels?:{ready?:str,total?:str,remaining?:str,done?:str,start?:str,next?:str,end?:str,min?:str,sec?:str,plus?:str,minus?:str}}` — phases is a list of {"title", "sec"} (sec: whole seconds, not "3分"); one phase per step |
 
 ### `<m-callout>`
@@ -46,6 +47,22 @@ For checks done one at a time: training steps, checks before work, what to bring
 
 - item: `label` (`\n` = 2 lines), `note`, `mark` (`check`, `cross`, `none`), `step`, `at`
 - The marks are the author's; a viewer cannot tick them and nothing is stored.
+
+### `<m-scroll>`
+
+Example: `<m-scroll style="height:440px" aria-label="年表"><svg viewBox="0 0 1000 1300" width="1000" height="1300">… <g data-scroll-step="1">…</g> …</svg></m-scroll>`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `margin` | number | `12` | px above target |
+
+For a tall timeline, flow or code shown without splitting it.
+
+Child of `<m-scroll style="height:440px" aria-label="name">`: the figure.
+
+- `data-scroll-step="k"` on a child: step k scrolls it to the top
+- Wheel, touch, ↑ ↓, PageUp/Down scroll the frame; ← → and Space move slides
+- A hand-scrolled place stays until the next step
 
 ### `<m-timer>`
 

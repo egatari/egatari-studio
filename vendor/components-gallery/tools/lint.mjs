@@ -424,6 +424,9 @@ export function lint(root, warns = []) {
     }
     errs.push(...labelErrors(name, f, labelLists));
     errs.push(...originErrors(name, originOf(rtext)));
+    // every element part declares its data shape (Studio's AI pack reads shape.example; m-scroll 2.0.0 lacked it, handoff #64):
+    // {schema, example} for JSON, {text: true} / {links: true}, or {schema: null, example: "<m-… …>"} for a part without data
+    if (!/static\s+shape\s*=/.test(js)) errs.push(`components/${name}/index.js: an element part declares static shape ({schema, example}, {text: true}, {links: true}, or {schema: null, example: "<m-${name} …>"} when it takes no data)`);
     const fl = flags(js);
     if (fl.operable && !fl.interactive) errs.push(`components/${name}/index.js: the viewer can operate it (an input() method, a click/pointer/key/input/change listener, a link or control, or links as data): declare static interactive = true;`);
     // groups of parts the user chooses (docs/conventions.md §7): today only "tool"; a tool needs its own new-deck tile

@@ -713,9 +713,14 @@ for (const [code, what] of [
   ok(Object.keys(v2141.parts).every((n) => n in v2150.parts), '2.15.0: nothing removed since 2.14.1');
   // 2.16.0：サンプルのラベル（subjects.json・audiences.json。handoff #43）、icons の ja.json の表記（生成 AI など。#60）。既定（v0.6.17 から）
   const v2160 = lock2.catalogues['2.16.0'];
-  ok(lock2.default === '2.16.0' && v2160 && v2160.tag === 'v2.16.0' && v2160.tarballSha256 === '1298668ce892085e310af9a28a69545c1e14a1e8da2672e2a8706efb0341d01c' && v2160.manifestSha256 === 'c44e58d564baffaf7552f89c6389ec0010ccefb552148771399e562f495639b3',
-    '2.16.0: the default; pinned to the released tarball and manifest (v2.16.0)');
+  ok(v2160 && v2160.tag === 'v2.16.0' && v2160.tarballSha256 === '1298668ce892085e310af9a28a69545c1e14a1e8da2672e2a8706efb0341d01c' && v2160.manifestSha256 === 'c44e58d564baffaf7552f89c6389ec0010ccefb552148771399e562f495639b3',
+    '2.16.0: pinned to the released tarball and manifest (v2.16.0)');
   ok(Object.keys(v2150.parts).every((n) => n in v2160.parts), '2.16.0: nothing removed since 2.15.0');
+  // 2.17.0：m-matrix（比較の行列、#64）・m-scroll（縦に送る図）。既定（v0.6.18 から）
+  const v2170 = lock2.catalogues['2.17.0'];
+  ok(lock2.default === '2.17.0' && v2170 && v2170.tag === 'v2.17.0' && v2170.tarballSha256 === '7bbfc09cc993dfffdfa0cb33003c5c525b03632849854d398d3b6ac198aad8f5' && v2170.manifestSha256 === 'aba30c356fded336ffe0d2607c5474160e557b79f711ccb9e41a3589f49c3b0c',
+    '2.17.0: the default; pinned to the released tarball and manifest (v2.17.0)');
+  ok(Object.keys(v2160.parts).every((n) => n in v2170.parts) && 'matrix' in v2170.parts && 'scroll' in v2170.parts, '2.17.0: nothing removed since 2.16.0; m-matrix and m-scroll are new');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

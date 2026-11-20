@@ -126,7 +126,7 @@ ok('words for the ml set (#219): neural networks, classifiers and gradient desce
   assert.ok(!recommend({ sub: null, text: '等高線で山の高さを読む', lang: 'ja' }).some((r) => r.set === 'ml'));
 });
 ok('a part set without a receiver (univ, owner 11/17): its parts are in the parts list without a set name and not ticked at first; only the paid plan describes them', () => {
-  assert.deepEqual(PAID_ONLY, ['m-ctable', 'm-vector']);
+  assert.deepEqual(PAID_ONLY, ['m-ctable', 'm-matrix', 'm-vector']);   // m-matrix：パーツ集 2.17.0（univ、受け皿なし）
   for (const t of PAID_ONLY) { assert.equal(TIERS.parts[t].tier, 'specialized', t); assert.equal(TIERS.parts[t].set, undefined, t); assert.ok(partsList(null).some((g) => g.parts.includes(t)), t); }
   assert.ok(!initialParts([]).some((t) => PAID_ONLY.includes(t)));
   // 軽量の指示（free）の ④ には出さない（印を付けても指示に入らないので）。詳細の指示（paid）とプランなしでは出す
@@ -136,8 +136,8 @@ ok('a part set without a receiver (univ, owner 11/17): its parts are in the part
   assert.ok(!SET_LABELS.some((x) => x.set === 'univ') && !PACK_DATA.sets.includes('univ'));
   for (const lang of ['en', 'ja']) {
     const free = buildPack({ sets: [], lang, plan: 'free' }), paid = buildPack({ sets: [], lang, plan: 'paid' });
-    assert.ok(!/m-ctable|m-vector/.test(free), lang + ': not in the free plan');
-    assert.ok(paid.includes('### `<m-ctable>`') && paid.includes('### `<m-vector>`'), lang + ': described on the paid plan');
+    assert.ok(!/m-ctable|m-matrix|m-vector/.test(free), lang + ': not in the free plan');
+    assert.ok(['m-ctable', 'm-matrix', 'm-vector'].every((t) => paid.includes('### `<' + t + '>`')), lang + ': described on the paid plan');
   }
 });
 ok('initial ticks (#124 §2.2): every standard part; a specialized set from the subcategory table or the words of step 2 (with the reason); English words on the English screen', () => {
@@ -463,7 +463,8 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
   // m-contour（部品庫 2.13.0、束 ml）も change。sets: 'all' では ml も入る
   assert.match(en, /^\| change over time \| `m-contour`, `m-curves`, `m-bars` \(few points\) \| one line at a time \|$/mi);
   assert.match(buildPack({ sets: [], lang: 'en' }), /^\| change over time \| `m-curves`, `m-bars` \(few points\) \| one line at a time \|$/mi);
-  assert.match(en, /^\| timeline, schedule \| `m-timeline` \| one event at a time \|$/mi);
+  // m-scroll（パーツ集 2.17.0、セット tools）も timeline。sets: 'all' では tools も入る
+  assert.match(en, /^\| timeline, schedule \| `m-timeline`, `m-scroll` \| one event at a time \|$/mi);
   assert.doesNotMatch(buildPack({ sets: [], lang: 'en' }), /^\| spread \|/mi);
   assert.match(buildPack({ sets: ['stats'], lang: 'en' }), /^\| spread \| `m-boxplot`, `m-hist`, `m-seq` \| whole at once \|$/mi);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn/);

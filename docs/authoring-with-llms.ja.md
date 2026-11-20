@@ -20,7 +20,7 @@
 
 登録した指示は自動では更新されません。指示のはじめに **指示のバージョン：…** の行があるので、編集アプリが更新されたらコピーし直した指示のバージョンと比べ、違えば登録したものを差し替えます。make スキル（`plugins/egatari/skills/make/`）も同じ正本から作ります。2 つのファイルを書き、ローカルの品質チェック・ビルド・音声を付ける手順は別の studio スキル（`skills/studio/`）が案内します。
 
-このファイルとセットの指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべてのパーツ（用途のとても限られる特殊のパーツは指示に含めない）。このファイルはいつも標準のパーツを説明します。**セットの指示**はそれぞれ、ある種類の材料の専門のパーツを追加する：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[data](llm-parts/data.ja.md)（`m-balance`・`m-ci`・`m-code`・`m-folds`・`m-mapping`・`m-sampling`）、[algo](llm-parts/algo.ja.md)（`m-network`）、[ml](llm-parts/ml.ja.md)（`m-classify2d`・`m-contour`・`m-nnet`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-diverge`・`m-market`）、[tools](llm-parts/tools.ja.md)（`m-callout`・`m-checklist`・`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`・`m-particles`）。編集アプリの新規作成は、標準のパーツと、パーツの一覧で印の付いたパーツのセットをコピーします。軽量の指示では、中核の 4 つのほかの標準のパーツは一覧の 1 行だけにして、標準すべてが軽量の指示の上限に収まるようにします。軽量の指示の上限は 45 KB と、貼り付けの長さ（UTF-16 の単位の数＋改行の数。Gemini が貼り付けを切るあたり）の 31,000 の、先に届くほうです。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、そのセットを入れた軽量の指示を出す。`--plan paid` を付けるとどのパーツも詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024。貼り付けの長さは UTF-16 の単位の数＋改行の数で、CRLF で貼られることがあるため改行を 2 つに数える）：
+このファイルとセットの指示を合わせたものが**指示の全体**です：規格・出力の形と、標準と専門のすべてのパーツ（用途のとても限られる特殊のパーツは指示に含めない）。このファイルはいつも標準のパーツを説明します。**セットの指示**はそれぞれ、ある種類の材料の専門のパーツを追加する：[stats](llm-parts/stats.ja.md)（`m-boxplot`・`m-heatmap`・`m-hist`・`m-seq`）、[data](llm-parts/data.ja.md)（`m-balance`・`m-ci`・`m-code`・`m-folds`・`m-mapping`・`m-sampling`）、[algo](llm-parts/algo.ja.md)（`m-network`）、[ml](llm-parts/ml.ja.md)（`m-classify2d`・`m-contour`・`m-nnet`）、[math](llm-parts/math.ja.md)（`m-hissan`・`m-numberline`・`m-sweep`・`m-tape`）、[maps](llm-parts/maps.ja.md)（`m-map-japan`・`m-map-world`）、[kokugo](llm-parts/kokugo.ja.md)（`m-gendai`・`m-kanbun`・`m-kobun`）、[english](llm-parts/english.ja.md)（`m-syntax`）、[music](llm-parts/music.ja.md)（`m-keyboard`・`m-score`）、[business](llm-parts/business.ja.md)（`m-diverge`・`m-market`）、[tools](llm-parts/tools.ja.md)（`m-callout`・`m-checklist`・`m-scroll`・`m-timer`）、[science](llm-parts/science.ja.md)（`m-orbit`・`m-particles`）。編集アプリの新規作成は、標準のパーツと、パーツの一覧で印の付いたパーツのセットをコピーします。軽量の指示では、中核の 4 つのほかの標準のパーツは一覧の 1 行だけにして、標準すべてが軽量の指示の上限に収まるようにします。軽量の指示の上限は 45 KB と、貼り付けの長さ（UTF-16 の単位の数＋改行の数。Gemini が貼り付けを切るあたり）の 31,000 の、先に届くほうです。`node kit/llm-pack.mjs --sets stats,math --lang ja` は、そのセットを入れた軽量の指示を出す。`--plan paid` を付けるとどのパーツも詳しく、`--sets all --plan paid` で指示の全体。大きさ（KB は UTF-8 のバイト数 / 1024。貼り付けの長さは UTF-16 の単位の数＋改行の数で、CRLF で貼られることがあるため改行を 2 つに数える）：
 
 | 指示 | 大きさ | 上限 | 貼り付けの長さ | 上限 |
 |---|---:|---:|---:|---:|
@@ -35,10 +35,10 @@
 | 軽量の指示：標準＋english | 39.4 KB | 45 KB | 23,696 | 31,000 |
 | 軽量の指示：標準＋music | 41.0 KB | 45 KB | 24,732 | 31,000 |
 | 軽量の指示：標準＋business（中核の 4 つも一覧の 1 行だけ） | 37.5 KB | 45 KB | 22,718 | 31,000 |
-| 軽量の指示：標準＋tools | 44.4 KB | 45 KB | 26,525 | 31,000 |
+| 軽量の指示：標準＋tools（中核の 4 つも一覧の 1 行だけ） | 37.7 KB | 45 KB | 22,735 | 31,000 |
 | 軽量の指示：標準＋science（中核の 4 つも一覧の 1 行だけ） | 41.4 KB | 45 KB | 24,129 | 31,000 |
-| 詳細の指示：標準のパーツすべて | 76.9 KB | 150 KB | — | — |
-| 詳細の指示：すべてのセット（このファイルとすべてのセットの指示）。上限を越えても知らせるだけ | 159.8 KB | 150 KB | — | — |
+| 詳細の指示：標準のパーツすべて | 79.4 KB | 150 KB | — | — |
+| 詳細の指示：すべてのセット（このファイルとすべてのセットの指示）。上限を越えても知らせるだけ | 163.9 KB | 150 KB | — | — |
 
 どれも `node tools/make-llm-guide.mjs` が [contract.ja.md](contract.ja.md)・パーツの README・`tools/llm-guide/` から作るので、手で編集しない。
 
@@ -48,7 +48,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 # AI への指示
 
-指示のバージョン：`373f1edf`
+指示のバージョン：`b70f88c1`
 
 短い **Egatari のスライドと台本**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。スライドと台本は依頼された言語で書きます（どちらも同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
@@ -129,7 +129,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 | 言いたいこと | パーツ | ステップ |
 |---|---|---|
-| 比べる（量・特徴） | `m-bars`（順位は並べ替え）、`m-compare` | 一方を出し、それから違い |
+| 比べる（量・特徴） | `m-bars`（順位は並べ替え）、`m-compare`、`m-matrix` | 一方を出し、それから違い |
 | 時間での変化 | `m-curves`、`m-bars`（点が少ないとき） | 線を 1 本ずつ |
 | 全体と内訳 | `m-ctable`、`m-pie`、`m-bars`（積み上げ） | 一度に全部 |
 | 1 つの大事な数字 | `m-kpi` | 一度に全部 |
@@ -138,7 +138,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 | 原因と結果 | `m-fishbone`、`m-ctable` | 原因、それから結果 |
 | 循環 | `m-cycle` | 順を追って 1 つずつ |
 | 階層・分類 | `m-tree` | 上から |
-| 位置づけ（2 軸） | `m-quad` | 軸、それから項目 |
+| 位置づけ（2 軸） | `m-quad`、`m-matrix` | 軸、それから項目 |
 | 重なり | `m-venn` | 集合、それから重なり |
 | 2 つの量の関係 | `m-scatter` | 点、それから傾向 |
 | 目次 | `m-menu` | 一度に全部 |
@@ -147,7 +147,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作成者が新規作成でパーツを追加できる）
 
-各パーツの説明（バージョンを固定）：https://github.com/egatari/components/blob/v2.16.0/components/<名前>/README.md（名前は `m-` を除いたもの）
+各パーツの説明（バージョンを固定）：https://github.com/egatari/components/blob/v2.17.0/components/<名前>/README.md（名前は `m-` を除いたもの）
 
 - **R-whole** 箇条書き・数字のカード・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）
 
@@ -173,6 +173,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | 大きな数字のカード（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
+| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で、空きマスは — と注）か、研究 × 要素の表（✓ △ × や短い字）を、ステップで埋める | cross は 軸と空の表 → 従来の研究 → 本研究 → 注（order="whole" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross：rows と cols は {"axis", "values"}、cells[r][c] は研究の名前の並び、{"self": true}、{"none": "空きの理由"} のどれか。attributes：cols は名前の並び、rows は {"label", "cells", "self"?} の並び |
 | `<m-menu>` | スライドへのリンクのカードを格子に並べる（目次・単元の選び方）。カードは <a href="#<スライドの id>">、行ったスライドに「見た」の印 | ceil(カードの数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
 | `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
@@ -426,6 +427,26 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - 見せ方（`variant`）：`count`・`rise`・`flip`・`underline`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - カードの並び：`cols`（既定はカードの数、4 まで）列で、行が足りなければ折り返す
 - `cues(k)`：同じステップに 2 枚以上のカードがあれば、2 枚目からの開始時刻を返す（台本の `{cue}` に合わせられる）
+
+### `<m-matrix>`
+
+データ（子の `<script type="application/json">`）の例: `{"kind":"cross","rows":{"axis":"評価基準","values":["予測誤差","ベイズリスク"]},"cols":{"axis":"予測の形","values":["点予測","分布予測"]},"cells":[[["[1]","[2]"],["[3]"]],[{"none":"自明"},{"self":true}]]}`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `order` | string | `""` | 出し方：cross は build（既定）・whole、attributes は whole（既定）・col・row |
+| `size` | number | `28` | 字の大きさ（px、24 以上。入らなければ 24 まで縮める） |
+
+`kind`：`cross`（既定、2 本の軸の交差の表）・`attributes`（行に研究、列に要素の表）。子の JSON に書く。
+
+- cross：`rows`・`cols` は `{"axis": "軸の名前", "values": [値, …]}`（どちらも 2〜4 個）。`cells[r][c]` は研究の名前の並び（引用番号か「著者（年）」、1〜3 本）、本研究のマスは `{"self": true}`、空きマスは `{"none": "空きの理由"}`（「—」と注の番号、表の下に注）。3 本目の軸は名前に印（† など）を付け、`marks: [{"mark": "†", "text": "意味"}]`
+- attributes：`cols` は要素の名前、`rows` は `{"label", "cells", "self"}`（本研究を先頭に）。空のマスは「—」
+- 本研究は「本研究」と字で書いて `--emph` の枠で囲む（色だけで分けない）
+
+注意
+
+- 交差の表の軸は 2〜4 個ずつ。それより多いときは軸の値をまとめるか、attributes の表にする
+- マスの研究は主なものを 3 本まで。全部の文献の一覧は参考文献のスライドに置く
 
 ### `<m-menu>`
 

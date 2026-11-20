@@ -20,7 +20,7 @@ For a free AI chatbot, choose the light instructions in the editor’s “New”
 
 A registered pack does not update itself. Its first lines say **Pack version: …**; after the editor is updated, compare that with a freshly copied pack and replace the registered one when they differ. The make skill (`plugins/egatari/skills/make/`) is generated from the same source. It writes the two files; the separate studio skill (`skills/studio/`) guides local quality checks, builds and adding audio.
 
-This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized part (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized parts of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [data](llm-parts/data.md) (`m-balance`, `m-ci`, `m-code`, `m-folds`, `m-mapping`, `m-sampling`); [algo](llm-parts/algo.md) (`m-network`); [ml](llm-parts/ml.md) (`m-classify2d`, `m-contour`, `m-nnet`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-diverge`, `m-market`); [tools](llm-parts/tools.md) (`m-callout`, `m-checklist`, `m-timer`); [science](llm-parts/science.md) (`m-orbit`, `m-particles`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; in the light instructions, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the light instructions' limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the light instructions with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
+This file and the part set packs together are the **full pack**: the standards, the output format and every standard and specialized part (extra parts, used only for very particular material, are never in the pack). This file always describes the standard parts. Each **part set pack** adds the specialized parts of one kind of material: [stats](llm-parts/stats.md) (`m-boxplot`, `m-heatmap`, `m-hist`, `m-seq`); [data](llm-parts/data.md) (`m-balance`, `m-ci`, `m-code`, `m-folds`, `m-mapping`, `m-sampling`); [algo](llm-parts/algo.md) (`m-network`); [ml](llm-parts/ml.md) (`m-classify2d`, `m-contour`, `m-nnet`); [math](llm-parts/math.md) (`m-hissan`, `m-numberline`, `m-sweep`, `m-tape`); [maps](llm-parts/maps.md) (`m-map-japan`, `m-map-world`); [kokugo](llm-parts/kokugo.md) (`m-gendai`, `m-kanbun`, `m-kobun`); [english](llm-parts/english.md) (`m-syntax`); [music](llm-parts/music.md) (`m-keyboard`, `m-score`); [business](llm-parts/business.md) (`m-diverge`, `m-market`); [tools](llm-parts/tools.md) (`m-callout`, `m-checklist`, `m-scroll`, `m-timer`); [science](llm-parts/science.md) (`m-orbit`, `m-particles`). The editor's New… copies the standard parts and the sets of the parts ticked in its parts list; in the light instructions, the standard parts other than the four core ones get only their one-line catalogue entry, so that every standard part fits the light instructions' limit: 45 KB and 31,000 for the paste length (UTF-16 code units plus line feeds, about where Gemini cuts a paste), whichever is reached first. `node kit/llm-pack.mjs --sets stats,math --lang en` prints the light instructions with those sets; add `--plan paid` to describe every part in full, and `--sets all --plan paid` for the full pack. Sizes (KB = UTF-8 bytes / 1024; paste length = UTF-16 code units + line feeds, since a paste may arrive with CRLF):
 
 | Pack | Size | Cap | Paste length | Cap |
 |---|---:|---:|---:|---:|
@@ -35,10 +35,10 @@ This file and the part set packs together are the **full pack**: the standards, 
 | Light instructions: standard + english (the core four shortened too) | 27.2 KB | 45 KB | 27,454 | 31,000 |
 | Light instructions: standard + music (the core four shortened too) | 28.8 KB | 45 KB | 28,584 | 31,000 |
 | Light instructions: standard + business (the core four shortened too) | 31.5 KB | 45 KB | 30,923 | 31,000 |
-| Light instructions: standard + tools (the core four shortened too) | 29.9 KB | 45 KB | 29,999 | 31,000 |
+| Light instructions: standard + tools (the core four shortened too) | 30.8 KB | 45 KB | 30,849 | 31,000 |
 | Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn left out) | 35.9 KB | 45 KB | 30,873 | 31,000 |
-| Detailed instructions: every standard part | 49.9 KB | 150 KB | — | — |
-| Detailed instructions: every part set (this file and every set pack) | 122.8 KB | 150 KB | — | — |
+| Detailed instructions: every standard part | 51.3 KB | 150 KB | — | — |
+| Detailed instructions: every part set (this file and every set pack) | 125.1 KB | 150 KB | — | — |
 
 All of them are generated by `node tools/make-llm-guide.mjs` from [contract.md](contract.md), the part READMEs and `tools/llm-guide/`; do not edit them by hand.
 
@@ -48,7 +48,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `373f1edf`
+Pack version: `b70f88c1`
 
 You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -129,7 +129,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 
 | purpose | parts | steps |
 |---|---|---|
-| Compare (amounts or features) | `m-bars` (sorted for ranking), `m-compare` | One side, then the difference |
+| Compare (amounts or features) | `m-bars` (sorted for ranking), `m-compare`, `m-matrix` | One side, then the difference |
 | Change over time | `m-curves`, `m-bars` (few points) | One line at a time |
 | Part of a whole | `m-ctable`, `m-pie`, `m-bars` (stacked) | Whole at once |
 | One key number | `m-kpi` | Whole at once |
@@ -138,7 +138,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 | Cause and effect | `m-fishbone`, `m-ctable` | Causes, then the effect |
 | Cycle | `m-cycle` | One stage at a time |
 | Hierarchy, classification | `m-tree` | Top down |
-| Position on 2 axes | `m-quad` | Axes, then items |
+| Position on 2 axes | `m-quad`, `m-matrix` | Axes, then items |
 | Overlap | `m-venn` | Sets, then the overlap |
 | Two quantities | `m-scatter` | Points, then the trend |
 | Contents | `m-menu` | Whole at once |
@@ -147,7 +147,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 
 Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new file).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.16.0/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.17.0/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 
@@ -173,6 +173,7 @@ Standard parts fit any file; a part set after §6 adds the parts for its materia
 | `<m-fishbone>` | Fishbone (cause-and-effect) diagram, one main bone at a time, head last; auto layout | bones + 1 (head), or the largest step | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — nodes without parent are main bones (categories); their children are causes, grandchildren finer causes (3 levels max) |
 | `<m-flow>` | Flow chart: boxes and arrows by step | largest node/edge step | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | KPI cards by step; count-up, change arrow, note | largest card step (default 1 card = 1 step) | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
+| `<m-matrix>` | A positioning table: the cross of two axes (studies in cells, this work framed, empty cells — with a note) or studies × elements (✓ △ × or short text), filled by step | cross: axes → studies → this work → notes (order="whole": 1). attributes: per column or row (order) + frame | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross: rows and cols are {"axis", "values"}; cells[r][c] is a list of study names, {"self": true} or {"none": "why it is empty"}. attributes: cols is a list of names, rows a list of {"label", "cells", "self"?} |
 | `<m-menu>` | Grid of slide-link cards (contents); plain <a href="#<slide id>">; visited mark | ceil(cards / per-step) (per-step="0": 0) | child `<a href>` links (not JSON) |
 | `<m-pie>` | Pie/donut; labels inside big slices, leader lines for small | 1 (all at once); per-step n slices; or slice step | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — the slices go in "slices" (not "data" or "groups"); value is a number, not a percentage string; the slices are drawn clockwise from 12 o'clock in the written order |
 | `<m-predict>` | Predict, reveal; votes as bars, answer framed | 0 question, 1 bars, answer-step (2) | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices are objects {"label": …} (not strings); answer is the 0-based index of the right choice; counts (optional) has one whole number ≥ 0 per choice |
@@ -398,6 +399,21 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 - `note`: bottom line
 - `variant`: `count` (default), `rise`, `flip`, `underline`; `count="false"` → `rise`
 - `cues(k)`: start times of 2nd+ cards in a step (for `{cue}`)
+
+### `<m-matrix>`
+
+Data example (child `<script type="application/json">`): `{"kind":"cross","rows":{"axis":"Criterion","values":["Error","Bayes risk"]},"cols":{"axis":"Output","values":["Point","Distribution"]},"cells":[[["[1]","[2]"],["[3]"]],[{"none":"Trivial"},{"self":true}]]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `order` | string | `""` | cross build\|whole; attributes whole\|col\|row |
+| `size` | number | `28` | text px (≥ 24) |
+
+`kind`: `cross` (default) or `attributes`.
+
+- cross: `rows`, `cols` = `{"axis", "values"}` (2–4 each). `cells[r][c]`: study names (1–3), `{"self": true}` or `{"none": "why"}` (— and a note). `marks`: `[{"mark": "†", "text"}]`
+- attributes: `cols` names; `rows` `{"label", "cells", "self"}`, this work first
+- This work is written out and framed in `--emph`
 
 ### `<m-menu>`
 

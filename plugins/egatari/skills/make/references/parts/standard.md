@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示のバージョン：373f1edf
+指示のバージョン：b70f88c1
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -14,6 +14,7 @@
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | 大きな数字のカード（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
+| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で、空きマスは — と注）か、研究 × 要素の表（✓ △ × や短い字）を、ステップで埋める | cross は 軸と空の表 → 従来の研究 → 本研究 → 注（order="whole" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross：rows と cols は {"axis", "values"}、cells[r][c] は研究の名前の並び、{"self": true}、{"none": "空きの理由"} のどれか。attributes：cols は名前の並び、rows は {"label", "cells", "self"?} の並び |
 | `<m-menu>` | スライドへのリンクのカードを格子に並べる（目次・単元の選び方）。カードは <a href="#<スライドの id>">、行ったスライドに「見た」の印 | ceil(カードの数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
 | `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
@@ -265,6 +266,26 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - 見せ方（`variant`）：`count`・`rise`・`flip`・`underline`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - カードの並び：`cols`（既定はカードの数、4 まで）列で、行が足りなければ折り返す
 - `cues(k)`：同じステップに 2 枚以上のカードがあれば、2 枚目からの開始時刻を返す（台本の `{cue}` に合わせられる）
+
+### `<m-matrix>`
+
+データ（子の `<script type="application/json">`）の例: `{"kind":"cross","rows":{"axis":"評価基準","values":["予測誤差","ベイズリスク"]},"cols":{"axis":"予測の形","values":["点予測","分布予測"]},"cells":[[["[1]","[2]"],["[3]"]],[{"none":"自明"},{"self":true}]]}`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `order` | string | `""` | 出し方：cross は build（既定）・whole、attributes は whole（既定）・col・row |
+| `size` | number | `28` | 字の大きさ（px、24 以上。入らなければ 24 まで縮める） |
+
+`kind`：`cross`（既定、2 本の軸の交差の表）・`attributes`（行に研究、列に要素の表）。子の JSON に書く。
+
+- cross：`rows`・`cols` は `{"axis": "軸の名前", "values": [値, …]}`（どちらも 2〜4 個）。`cells[r][c]` は研究の名前の並び（引用番号か「著者（年）」、1〜3 本）、本研究のマスは `{"self": true}`、空きマスは `{"none": "空きの理由"}`（「—」と注の番号、表の下に注）。3 本目の軸は名前に印（† など）を付け、`marks: [{"mark": "†", "text": "意味"}]`
+- attributes：`cols` は要素の名前、`rows` は `{"label", "cells", "self"}`（本研究を先頭に）。空のマスは「—」
+- 本研究は「本研究」と字で書いて `--emph` の枠で囲む（色だけで分けない）
+
+注意
+
+- 交差の表の軸は 2〜4 個ずつ。それより多いときは軸の値をまとめるか、attributes の表にする
+- マスの研究は主なものを 3 本まで。全部の文献の一覧は参考文献のスライドに置く
 
 ### `<m-menu>`
 

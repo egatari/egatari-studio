@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: 373f1edf
+Instruction version: b70f88c1
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
@@ -14,6 +14,7 @@ Instruction version: 373f1edf
 | `<m-fishbone>` | Fishbone (cause-and-effect) diagram, one main bone at a time, head last; auto layout | bones + 1 (head), or the largest step | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — nodes without parent are main bones (categories); their children are causes, grandchildren finer causes (3 levels max) |
 | `<m-flow>` | Flow chart: boxes and arrows by step | largest node/edge step | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | KPI cards by step; count-up, change arrow, note | largest card step (default 1 card = 1 step) | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
+| `<m-matrix>` | A positioning table: the cross of two axes (studies in cells, this work framed, empty cells — with a note) or studies × elements (✓ △ × or short text), filled by step | cross: axes → studies → this work → notes (order="whole": 1). attributes: per column or row (order) + frame | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross: rows and cols are {"axis", "values"}; cells[r][c] is a list of study names, {"self": true} or {"none": "why it is empty"}. attributes: cols is a list of names, rows a list of {"label", "cells", "self"?} |
 | `<m-menu>` | Grid of slide-link cards (contents); plain <a href="#<slide id>">; visited mark | ceil(cards / per-step) (per-step="0": 0) | child `<a href>` links (not JSON) |
 | `<m-pie>` | Pie/donut; labels inside big slices, leader lines for small | 1 (all at once); per-step n slices; or slice step | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — the slices go in "slices" (not "data" or "groups"); value is a number, not a percentage string; the slices are drawn clockwise from 12 o'clock in the written order |
 | `<m-predict>` | Predict, reveal; votes as bars, answer framed | 0 question, 1 bars, answer-step (2) | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices are objects {"label": …} (not strings); answer is the 0-based index of the right choice; counts (optional) has one whole number ≥ 0 per choice |
@@ -239,6 +240,21 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 - `note`: bottom line
 - `variant`: `count` (default), `rise`, `flip`, `underline`; `count="false"` → `rise`
 - `cues(k)`: start times of 2nd+ cards in a step (for `{cue}`)
+
+### `<m-matrix>`
+
+Data example (child `<script type="application/json">`): `{"kind":"cross","rows":{"axis":"Criterion","values":["Error","Bayes risk"]},"cols":{"axis":"Output","values":["Point","Distribution"]},"cells":[[["[1]","[2]"],["[3]"]],[{"none":"Trivial"},{"self":true}]]}`
+
+| prop | type | default | meaning |
+|---|---|---|---|
+| `order` | string | `""` | cross build\|whole; attributes whole\|col\|row |
+| `size` | number | `28` | text px (≥ 24) |
+
+`kind`: `cross` (default) or `attributes`.
+
+- cross: `rows`, `cols` = `{"axis", "values"}` (2–4 each). `cells[r][c]`: study names (1–3), `{"self": true}` or `{"none": "why"}` (— and a note). `marks`: `[{"mark": "†", "text"}]`
+- attributes: `cols` names; `rows` `{"label", "cells", "self"}`, this work first
+- This work is written out and framed in `--emph`
 
 ### `<m-menu>`
 
