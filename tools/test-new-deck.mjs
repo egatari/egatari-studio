@@ -55,7 +55,7 @@ const SINGLE_SET_EXPECTED = {
   // kokugo は m-cycle、science は m-tree を 1 つ多く外す
   en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], data: ['m-fishbone'],
     math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards'],
-    maps: ['m-fishbone', 'm-quad'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'], business: ['m-fishbone'], tools: ['m-fishbone'],
+    maps: ['m-fishbone', 'm-quad'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'], business: ['m-fishbone'], tools: ['m-fishbone'],   // kokugo：#70 の 1 行で m-venn も
     science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'],
     algo: [], ml: [] },
   ja: { algo: [], ml: [] },
