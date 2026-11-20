@@ -88,8 +88,8 @@ ok('EN_EDITS: the m-menu import note and the m-predict no-live-counts lines are 
   assert.ok(!predict.includes('live poll totals'), 'm-predict: the README.en.md wording is replaced');
   // EN_EDITS の find が README.en.md になくなれば失敗する
   throwsWith(() => generate({ readmeEn: { 'm-predict': readmeEn('m-predict').replace('  poll: live poll id', '  poll: poll id') } }), /EN_EDITS m-predict: "\| live poll id \|" is not in the README\.en\.md entry any more/);
-  // m-bars だけは PACK_EDITS があって EN_EDITS がない（大きさだけの言い換え）：知らせだけ
-  assert.deepEqual(base.warnings.filter((w) => /README\.en\.md is used for the en pack/.test(w)), ['m-bars: README.en.md is used for the en pack; PACK_EDITS (1) are not applied to it and there are no EN_EDITS']);
+  // m-bars は PACK_EDITS があり、EN_EDITS は空（英語の字はもう短く、言い換えが要らない。パーツ集 2.16.0 で確かめた）：知らせは出ない
+  assert.deepEqual(base.warnings.filter((w) => /README\.en\.md is used for the en pack/.test(w)), []);
 });
 
 ok('no Japanese in the 16 standard and 6 data parts\' en sections (components 2.5.0: the shape.note of m-fishbone and m-tree is {en, ja} now)', () => {
