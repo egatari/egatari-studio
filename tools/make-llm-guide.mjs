@@ -32,6 +32,7 @@ import vm from 'node:vm';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { splitStamp } from './i18n-pairs.mjs';
+import { readRegularText, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { writeZip } from '../kit/core/zip-write.mjs';
 import { parseLock, resolveCatalogueContent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
@@ -128,7 +129,7 @@ export function sampleUsage(dir = rel('examples')) {
   for (const d of fs.readdirSync(dir, { withFileTypes: true }).filter((x) => x.isDirectory()).map((x) => x.name).sort()) {
     const f = path.join(dir, d, 'sample.json');
     if (!fs.existsSync(f)) continue;
-    const parts = JSON.parse(fs.readFileSync(f, 'utf8')).parts;
+    const parts = JSON.parse(readRegularText(f, { max: READ_LIMITS.json }).text).parts;   // 上限つきの読み手で（tools/test-raw-reads.mjs）
     for (const t of new Set(Array.isArray(parts) ? parts : [])) if (typeof t === 'string') n[t] = (n[t] || 0) + 1;
   }
   return Object.fromEntries(Object.keys(n).sort().map((t) => [t, n[t]]));
