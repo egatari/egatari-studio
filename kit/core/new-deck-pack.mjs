@@ -21,6 +21,7 @@ import { partsPackOpts, fitPack, fitSample, packSize, fitSize } from './llm-pack
 import { sampleStructureRequest, validateSample } from './sample-info.mjs';
 import { outlineRequest, slideCountOf, OUTLINE_OVER } from './llm-outline.mjs';
 import { CHOOSABLE } from './themes-list.mjs';
+import { PACK } from './llm-pack-data.mjs';
 import { plural } from './plural.mjs';
 
 export const REQUEST_WORDS = Object.freeze({
@@ -83,9 +84,15 @@ export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = 
   return { text, bytes, short: f.short, candidates: over ? f.candidates : [], dropped: [], over, tags };
 }
 
+// サンプルのラベルの id（伝えたいこと・題材・読み手）：同梱のパーツ集の manifest から作った材料（PACK.tiers）のもの。一覧のない古い材料では形だけ確かめる
+export function sampleLabels() {
+  const t = PACK.tiers || {};
+  const ids = (xs) => (Array.isArray(xs) ? xs.map((x) => x.id) : null);
+  return { purposes: ids(t.purposes), subjects: ids(t.subjects), audiences: ids(t.audiences) };
+}
 export function sampleProblems(obj) {
   // テーマは誤りにしない：同梱でないテーマ（教材の中だけのテーマなど）は、引き継ぐときに default にする（sampleTheme）
-  return validateSample(obj, { categories: CATEGORIES, parts: LISTED() });
+  return validateSample(obj, { categories: CATEGORIES, parts: LISTED(), labels: sampleLabels() });
 }
 
 // 「このサンプルを参考に作る」で引き継ぐテーマ：同梱のテーマで新しく選べるもの（CHOOSABLE。kit/core/themes-list.mjs。編集アプリの ③ の一覧と同じ）だけ。

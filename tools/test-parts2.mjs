@@ -708,9 +708,14 @@ for (const [code, what] of [
   ok(Object.keys(v2130.parts).every((n) => n in v2140.parts && n in v2141.parts), '2.14.0 and 2.14.1: nothing removed since 2.13.0');
   // 2.15.0：札・箱・線を描くパーツに data-part（R-geometry、#45）、m-sweep・m-seq の範囲外の知らせ（range、#47）。既定（v0.6.15 から）
   const v2150 = lock2.catalogues['2.15.0'];
-  ok(lock2.default === '2.15.0' && v2150 && v2150.tag === 'v2.15.0' && v2150.tarballSha256 === '9beea9eb56cc8276b3fd7e1e81461f30942daa0d0bc2820eec400afd3058e12e' && v2150.manifestSha256 === '2fb6498a5a3abce4d061d977304bfe88dfa16581fe90eb1f5e74e6d182305448',
-    '2.15.0: the default; pinned to the released tarball and manifest (v2.15.0)');
+  ok(v2150 && v2150.tag === 'v2.15.0' && v2150.tarballSha256 === '9beea9eb56cc8276b3fd7e1e81461f30942daa0d0bc2820eec400afd3058e12e' && v2150.manifestSha256 === '2fb6498a5a3abce4d061d977304bfe88dfa16581fe90eb1f5e74e6d182305448',
+    '2.15.0: pinned to the released tarball and manifest (v2.15.0)');
   ok(Object.keys(v2141.parts).every((n) => n in v2150.parts), '2.15.0: nothing removed since 2.14.1');
+  // 2.16.0：サンプルのラベル（subjects.json・audiences.json。handoff #43）、icons の ja.json の表記（生成 AI など。#60）。既定（v0.6.17 から）
+  const v2160 = lock2.catalogues['2.16.0'];
+  ok(lock2.default === '2.16.0' && v2160 && v2160.tag === 'v2.16.0' && v2160.tarballSha256 === '1298668ce892085e310af9a28a69545c1e14a1e8da2672e2a8706efb0341d01c' && v2160.manifestSha256 === 'c44e58d564baffaf7552f89c6389ec0010ccefb552148771399e562f495639b3',
+    '2.16.0: the default; pinned to the released tarball and manifest (v2.16.0)');
+  ok(Object.keys(v2150.parts).every((n) => n in v2160.parts), '2.16.0: nothing removed since 2.15.0');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

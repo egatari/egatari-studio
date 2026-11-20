@@ -1,0 +1,40 @@
+---
+name: m-trace
+display: コードの実行を追う / Code trace
+version: 2.0.1
+series: info
+tier: local
+summary: 短いコードを 1 行ずつ実行した記録を見せる。今の行に印、変わった変数に印、その時点までの出力
+steps: トレースの行の数（by="time" なら 1）
+purposes: process, model
+subjects: informatics
+audiences: high-school, university
+props: dur, by, rate, size
+---
+
+値はローカルで動かすトレーサー `tools/trace.py`（`uv run tools/trace.py prog.py --out trace.json`）の出力をそのまま子の JSON に書く。手で書かない。パーツはコードを実行しない。
+
+<!-- llm: omit -->
+プログラミングの授業で、for 文や辞書の更新、並べ替えのような短いコードが 1 行ごとに変数をどう変えるかを見せるときに使う。対話型の生成 AI（ChatGPT・Gemini・Claude など）には渡さない（トレーサーを動かせないため）。Claude Code やローカルで作成するときに使う。
+
+- トレーサー：`uv run tools/trace.py prog.py [--func 名前] [--show a,b] [--max-steps 60] [--out trace.json]`。`sys.settrace` で 1 行ごとに、その行を実行した後の変数（全部。差分ではない）と、その行の出力を書く。`--func` を付けるとその関数の呼び出しの中だけ、付けなければモジュールの一番外側だけを追う。例外で止まったら、その行の出力にエラーの 1 行を書く。60 行を超えたら止めて `source.truncated` を true にする。`random` をシードなしで使うと警告する
+- JSON：`lang`・`code`・`source`（`tool`・`python`・`sha256`・`truncated`）・`show`（見せる変数と順。6 個まで）・`steps`（`line` か `lines: [a, b]`、`vars`、`out`、`note`）
+- 説明 `note` だけは、トレースの後に手で足してよい（帯に 2 行まで。毎ステップ足すか、1 つも足さないかにそろえる）
+- 値の文法：数・文字（40 字まで）・真偽・None、リスト（12 個まで、2 次元なら 6 × 6 まで）、辞書（8 個まで）、入れ子は 2 段まで、ほかは `{"repr": "…"}`。Python の書き方で見せる（`'a'`・`True`・`None`。小数の 2.0 は `{"repr": "2.0"}`）
+- 上限：コード 16 行、ステップ 60、変数 6 個、出力 8 行
+- `by="time"`：トレース全体を 1 つのステップの中で `rate` 行/秒で流す（長い繰り返しに。台本の {cue} は各行の時刻）
+- 色：今の行は `--emph` の地と太字の行番号。変わった変数は `--emph` の字と地と太字（色だけに頼らない）
+- コードが入らなければ、今の行が中央に来るようにスクロールし、隠れた行の数を「⋮（ほか n 行）」で示す。長い行は折り返す（続きの行の番号の欄は ↪）。出力が入らなければ新しい行を残し、上に「…（前の n 行）」
+- コードと出力は読める層に `pre[data-readable]`、最後の変数は `table[data-readable]` として置く
+- 先のステップは薄く見せない（「何が表示されるか」の答えになるので）
+<!-- llm: end -->
+
+サンプルは `demo.html`（for 文の合計、辞書で数える、バブルソートを by="time" で）。トレースは `tools/trace-demo/` のプログラムを `tools/trace.py` で追った出力。
+
+<!-- llm: omit -->
+注意
+
+- トレーサーは書いたコードをローカルで実行する。ファイルやネットワークを触るコードは追わない（教材用に短く切り出したコードを追う）
+- `vars` は差分ではなく全部。変わった変数の印はパーツが前のステップと比べて付ける
+- for 文の行は、繰り返しを終えるときにもう 1 回ステップになる（Python の実際の動き）。説明でそう言うとよい
+<!-- llm: end -->

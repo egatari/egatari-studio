@@ -1,6 +1,6 @@
 {
   "source": "https://github.com/egatari/components",
-  "default": "2.15.0",
+  "default": "2.16.0",
   "catalogues": {
     "2.0.0": {
       "tag": "v2.0.0",
@@ -1240,6 +1240,151 @@
         "tree": "82ffee434e7f2213031190f832f3a75a8cdf59554fdbc092c0b079d6b0753cad",
         "vector": "d582d02ceeaf1ec4d94115b806852ddb66c009788e67728ae0e08cb8d29ca546",
         "venn": "99a26795f8b351ade4a4cbbea845aeb149c96b09fe96151edda57128082185fa"
+      }
+    },
+    "2.16.0": {
+      "tag": "v2.16.0",
+      "tarballSha256": "1298668ce892085e310af9a28a69545c1e14a1e8da2672e2a8706efb0341d01c",
+      "manifestSha256": "c44e58d564baffaf7552f89c6389ec0010ccefb552148771399e562f495639b3",
+      "parts": {
+        "balance": "2.0.2",
+        "bars": "2.1.1",
+        "base": "1.3.0",
+        "boxplot": "2.0.7",
+        "boxplot-core": "1.0.0",
+        "callout": "2.1.0",
+        "cards": "2.1.0",
+        "checklist": "2.0.1",
+        "ci": "2.0.2",
+        "classify2d": "2.0.1",
+        "code": "2.2.1",
+        "code-core": "1.0.1",
+        "codetree": "2.1.0",
+        "codetree-core": "1.0.0",
+        "collect": "2.1.0",
+        "compare": "2.0.5",
+        "contour": "2.0.1",
+        "contour-core": "1.0.0",
+        "ctable": "2.0.1",
+        "curves": "2.3.1",
+        "cycle": "2.1.0",
+        "diverge": "2.0.1",
+        "expr": "1.0.0",
+        "fishbone": "2.1.2",
+        "flow": "2.1.1",
+        "folds": "2.1.2",
+        "gendai": "2.0.4",
+        "heatmap": "2.1.3",
+        "heatmap-core": "1.0.0",
+        "hissan": "2.0.4",
+        "hist": "2.0.7",
+        "hist-core": "1.0.0",
+        "icons": "1.0.0",
+        "kakijun": "2.1.0",
+        "kanbun": "2.0.4",
+        "kanbun-core": "1.0.0",
+        "keyboard": "2.0.6",
+        "kobun": "2.0.4",
+        "kpi": "2.0.6",
+        "map-japan": "2.3.0",
+        "map-world": "2.3.0",
+        "mapping": "2.1.0",
+        "market": "2.1.0",
+        "markup-reader": "1.0.3",
+        "menu": "2.0.5",
+        "network": "2.2.0",
+        "nnet": "2.1.0",
+        "numberline": "2.1.0",
+        "orbit": "2.0.7",
+        "particles": "2.0.3",
+        "pie": "2.1.0",
+        "plot": "1.1.3",
+        "predict": "2.1.2",
+        "quad": "2.1.2",
+        "sampling": "2.0.2",
+        "scatter": "2.1.0",
+        "score": "2.1.3",
+        "seq": "2.2.0",
+        "shape": "1.0.0",
+        "sweep": "2.2.0",
+        "syntax": "2.0.4",
+        "tape": "2.1.0",
+        "timeline": "2.1.0",
+        "timer": "2.0.7",
+        "trace": "2.0.1",
+        "tree": "2.1.2",
+        "vector": "2.1.0",
+        "venn": "2.1.0"
+      },
+      "content": {
+        "balance": "5521b5b40a43c48c5ae5a50ce87afb3d47bb23b133b16841086d8322364cdd5e",
+        "bars": "077678d8b14a8065c4f74a9fe1669728c68a0f763bfdca18b304f5c3d863632a",
+        "base": "aeb0b9b5991a5c1df7191c397780a699f2c7310123ca210a58486c0a23e44006",
+        "boxplot": "beeb180c0e2250bb04490b092c0a235cae47fca2ed1de2d9ef078a5c14b1a963",
+        "boxplot-core": "728576c57a5ccb39531ad4cb8074fce95480f01603a77dbf57dca0e52199f7c4",
+        "callout": "3417efe4722f569690563d9abcea8b144db2f8fa97b83cf0118fb3a34cd4cb2b",
+        "cards": "7a5adf73fc053b9f2ca56643b5683b42589edb0f63c845ecb7ae7e6b87eccc30",
+        "checklist": "8db9c936c36b79b9e3b2be37639487b15502a6937f411ed714621a8091437e9b",
+        "ci": "832556ea9c82c292a3ba9e1b332f2405c5c2f969ff8157c91ed80226ec8ac62e",
+        "classify2d": "7ab483e7fb05f646b062340d70f2749d070b4f64fed7acc0b8a7754d9ef9fded",
+        "code": "a7c4282db79d46557bdbaf84ca519606dc46f3c23455db4a26f663453f85813c",
+        "code-core": "631f4c4b90c9a41c0f26c9600d5cf2d6447251d04a20f08f48a85aeb4cb0f6fb",
+        "codetree": "b9443e1cdac4850b1ead9f8449a3061678bbb77fbc53eb9b23d01e1cf50750c3",
+        "codetree-core": "da267bc65fde0a9279127d5a82f6c253ad74984da6fb11391f00604ad9ffe80d",
+        "collect": "4c8cae404d551a1bb021e8345af5aa45d4f412f13497aa84b142f11a29a365dc",
+        "compare": "a744049fc56e0a5d5b1638bef597a4e65f99d0776a35d830a389f216f314f1bc",
+        "contour": "fa6442fa3c5082cf161c29308fe0ecbd85fa33e8e4bad08c12e7961b46b1365b",
+        "contour-core": "a1c2b2fa06e4229815ab82a9202c266ec887a67632a175854c7d136a92389ca3",
+        "ctable": "3a7962fa87c670447eed54aca08604ef03cd26bf2c334b4667190060e6a17965",
+        "curves": "ace7e82e866b577ad42bbc4b64e11bae18982e3236aadceb6c2e6c20f41234cf",
+        "cycle": "000cc8b85d22854d93587d53fe07585e0d9f0abee86d863c5ed1f6c53967912b",
+        "diverge": "f4100076a37dbde6046d85969d651feffc925bd984ffe9f333ea9bd2b6816918",
+        "expr": "c5fd7713e55e96d75824a21146c0251896d7d9dd028b4d169191433135a97981",
+        "fishbone": "3f2f66da34496213cf6140ae041122c31f13c77e5ee18ad11a3390fbc4a6ecca",
+        "flow": "95583538da2982ec5f508217a8f2821796e6a34cf755baa66f2aaeb1c6dae814",
+        "folds": "2787e410e533e4ad48b0a3c2b652579cf5797f9c51fcf32f5478212a7acef95f",
+        "gendai": "13c9ce43396b2f5693ce430a924dae4ddcd1e8a4ad0c9b9e724ff52acb874d0c",
+        "heatmap": "8e5e90c90cb6b06a790b0420e43d79d7da663f1cc19ff06d381ec849b4a8fc57",
+        "heatmap-core": "711cf58fa946c9c0abc953b2f695d02bf5a5a7f73851b09f834e894baf88be38",
+        "hissan": "e27d517f39eb554c7a9ecea7b59fcf1d347c4deeb3fe2250797aa233bfb7e2b0",
+        "hist": "701f1deef79fe05eeb18e1119e5a5c4d60a9dfe265e93a4dff79223bc598dbf0",
+        "hist-core": "8a4b6dce84d7a69aaafeb75c1c572fe7904fd49e3169c1c85851ccaeae2a7b11",
+        "icons": "b10183a66b58b827a1410cf8b0117af567647684464d5777529dc66f0cea343a",
+        "kakijun": "0dd302b82925f35743a893d5c271898ada3659aa0de2d3249ef45936aad10ae0",
+        "kanbun": "b53bfa03d1e9feb3cb492f440bf9d100c96eb4fe6b76c42b512a56e9158829cd",
+        "kanbun-core": "df3fdb2aed487d4f6e60a8abab1fe0d1e9fa2a4193fd162edf3c384ea8db5a1b",
+        "keyboard": "af3355efd6739a56c6cb53990100f41703361c475c123b9b2762421c68509036",
+        "kobun": "ccc8bfe174b6903ec254dfef4f5d1c614271ea39963649add7fcb8d83c081eba",
+        "kpi": "ce0a52fa13ae579020d1172845647daee9ba78e070736e47740f2d2feabffe7e",
+        "map-japan": "0c25d49d23529879054737aa181951519fe585c4728fd505e0e3c8869953eac7",
+        "map-world": "2a011338d0fc3c77e102eaa57cde2b6e3726bc279f133174b0b8c9a654263cbc",
+        "mapping": "6749f44ed6476a05d4e3026373c188a0e1a19b77a5836579813f62a1477ac35e",
+        "market": "208175d05b37d326855fad792b10137f785e5d05d91a2cde119d0dbd69d2ed98",
+        "markup-reader": "8bb511cb90902bc7721e59ca08685b26adbf33539e36a4a45172485d6d3d455b",
+        "menu": "109c302247e0c62720872be35392a73bea72804b0ed421ef8ced3f030f72e537",
+        "network": "2579bcb46b6525902763cd15a2e08fc5ebd9a2695cdaba63438e5b47907a47e0",
+        "nnet": "e31f6b058503f7980597c89b3e964c512ee08de7cba3fa99904d499abbb5d0e8",
+        "numberline": "b348ea64cc19632df96a91dfd7c435e4a62095aede72b504d03537be70d6d930",
+        "orbit": "1a0f21def0efbbdef64461cafa40f3883bc7f7122adf79d01f09ca4a245e5dcb",
+        "particles": "c61987e9994940fc668ed8a010e575ee52027b54ed9c5dd1cc9fdf67649092b3",
+        "pie": "42450c6b36404d66641568f6d6f55e42a4a036d4d9cdf308f709464913b32fe9",
+        "plot": "2fce5ab0c31dca0aa1586a2c69237870a9cce46c0bc6ab7392c27968d016bd15",
+        "predict": "91a9353a0c3b3744765944783aa1537b3f6ff1677c67caede643cdf2f52289cf",
+        "quad": "47f7ea3e2551abb250a9f5883716791026f0f54ae9cca6d82fabdb92478c69ae",
+        "sampling": "0840322bf51eeb3c8188ce21ad70af17c13974ac0151065a39c430a3813ee07f",
+        "scatter": "07479cb6e5194a01b2a8a9029f3646060f0dbb673f2737d2132738af2eb379e5",
+        "score": "7dea2c3728b85122b04515aa06ab198657529e7cd101b9ab34d4ecb2905ce94e",
+        "seq": "12ef6a11055407f5cddc40154a49cf2737b0786429fe0fcc94ee1d8245597b40",
+        "shape": "76bdb63c3e5e14fbb4816bc9f235490817bb5d7be990a826f5077aa08226702c",
+        "sweep": "038f9d32c89c8212ab25d6e3180023b6fe024a53053ab2ef1443ecab92e3ce43",
+        "syntax": "dea36cd7010991a572ef394ee32b5e17564aeff09d3ec4ed3820d7e43c9a58be",
+        "tape": "aac2f8a23cb1b606e9635061cb288f006588c80a7258540cae846ae677f55ff5",
+        "timeline": "b28d136dffb03a3e855b2ff959712a143da9a84c3a4fd13a1126d7711083a2d6",
+        "timer": "bc1e2a02c959ac203819d03c0d25b3776a6a9a4290aae860b26cbbe3d29e876d",
+        "trace": "45cea6c1abfb3467e3e3dbe7fec58647716999a0c39cf7163531ae389f898d29",
+        "tree": "82ffee434e7f2213031190f832f3a75a8cdf59554fdbc092c0b079d6b0753cad",
+        "vector": "0e9e92df8d70eb6d9fcf10916c361769c7cd37baacece8d7eb96bbbc7fbcf942",
+        "venn": "218d88998b70f0732c18d91ccc238b2d63f6b0aaa483883b83685a25468f214a"
       }
     },
     "2.2.0": {
@@ -3197,6 +3342,15 @@
           "base": "1.3.0"
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "2ef9f37406666f1d519bc17648234e54ae4a215ec0edf6c5c255fa57ea7304b4",
+        "kind": "element",
+        "tag": "m-callout",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
       }
     },
     "cards": {
@@ -3483,6 +3637,16 @@
           "codetree-core": "1.0.0"
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "024efb2c2ec69bb19921a321788f2c5406b46403420dfaeb4614ef2a41a1adbe",
+        "kind": "element",
+        "tag": "m-codetree",
+        "requires": {
+          "base": "1.3.0",
+          "codetree-core": "1.0.0"
+        },
+        "license": "MIT"
       }
     },
     "codetree-core": {
@@ -3596,6 +3760,26 @@
       },
       "2.0.5": {
         "sha256": "1d078ba239a569c7fc546cb6658613937c18525847e251fd9848993ac2e56d06",
+        "kind": "element",
+        "tag": "m-collect",
+        "requires": {
+          "base": "1.3.0",
+          "markup-reader": "1.0.3"
+        },
+        "build": {
+          "fields": {
+            "targets[].tex": "katex"
+          },
+          "options": {
+            "katex": {
+              "output": "html"
+            }
+          }
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "94ed4676e3836abdcd686c821d28f858a17a05a7a15c6c9c311d5702a8190f27",
         "kind": "element",
         "tag": "m-collect",
         "requires": {
@@ -4390,6 +4574,15 @@
           "base": "1.3.0"
         },
         "license": "MIT"
+      },
+      "2.1.2": {
+        "sha256": "f452bdca0957c096ea67b563af8ba94f53ab991c42b40f2313b4fde387110c76",
+        "kind": "element",
+        "tag": "m-folds",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
       }
     },
     "gendai": {
@@ -4769,6 +4962,28 @@
         },
         "glyphs": "0123456789とめはねらい",
         "license": "MIT AND OFL-1.1"
+      },
+      "2.1.0": {
+        "sha256": "660f6f8afca1ebbd5b5dfbf623092376300f2a85c89984b0828b94275a4b965b",
+        "kind": "element",
+        "tag": "m-kakijun",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "build": {
+          "subset": [
+            {
+              "data": "block:strokes",
+              "key": "char"
+            },
+            {
+              "data": "block:stroke-meta",
+              "key": "char"
+            }
+          ]
+        },
+        "glyphs": "0123456789とめはねらい",
+        "license": "MIT AND OFL-1.1"
       }
     },
     "kanbun": {
@@ -5085,6 +5300,16 @@
         },
         "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
         "license": "MIT"
+      },
+      "2.3.0": {
+        "sha256": "bbf779a19eeaa3a17ce4322fe898cde1f136c0625995d016703eac1cfcee7deb",
+        "kind": "element",
+        "tag": "m-map-japan",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
+        "license": "MIT"
       }
     },
     "map-world": {
@@ -5147,6 +5372,16 @@
       },
       "2.2.1": {
         "sha256": "e297bd21cd95628982fb3cbfa4adb83abbaeca3277c532365b0bb07dd2cc78e5",
+        "kind": "element",
+        "tag": "m-map-world",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,°×−、。〜あいかがきくけごしすただつてでとにのはばべまらりるれろをァアィイウェエォオカガキギクグケコゴサザシジスズセゼソタダチッツテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュユョヨラリルレロワン・ー上下世中丹主京人以位例値入六共凡出分列前動北千南単口台号合名和図国土地域基塗大太央字定小尖属島州帰度後択捉数文方既日書有朝未本東桁極樺歯民沖洋湾満界目礁秒竹符米級経線緯群舞色衆西見語諸赤足軍連道邦長閣限陸階離韓項領首鮮鳥（）：；",
+        "license": "MIT"
+      },
+      "2.3.0": {
+        "sha256": "631fe1da30dea2462b307d5e13d3e59bced1348078afd5fe1683fe2be87c5575",
         "kind": "element",
         "tag": "m-map-world",
         "requires": {
@@ -5242,6 +5477,15 @@
       },
       "2.0.5": {
         "sha256": "ed7c2379b9e6767793ed08b2cb5abe57846a24a2e11d610b45c99512f7c673e7",
+        "kind": "element",
+        "tag": "m-market",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "d326483b17143ec421d6c39c1316d7a86cf25ef999b556896254b08717e18cc7",
         "kind": "element",
         "tag": "m-market",
         "requires": {
@@ -5443,6 +5687,15 @@
           "base": "1.3.0"
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "be36c979fd81ac83b2e8e06c99fb180d0838bafb7f81930ddfcfe9fe7ba394cf",
+        "kind": "element",
+        "tag": "m-numberline",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
       }
     },
     "orbit": {
@@ -5596,6 +5849,15 @@
       },
       "2.0.4": {
         "sha256": "c8a377ce240e46c7b6239cb555536dbde045b28370c0975cd8b02eb10eca1bb3",
+        "kind": "element",
+        "tag": "m-pie",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "55a538f249327ade1bcdc116251d504055c8500d1d710338af75d8ff38dfd71d",
         "kind": "element",
         "tag": "m-pie",
         "requires": {
@@ -5904,6 +6166,16 @@
           "plot": "1.1.3"
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "de567bb285f54b6bd990b06d1d0790aaca6fdfaeac0f82fe4b5758503d45e87a",
+        "kind": "element",
+        "tag": "m-scatter",
+        "requires": {
+          "base": "1.3.0",
+          "plot": "1.1.3"
+        },
+        "license": "MIT"
       }
     },
     "score": {
@@ -6071,6 +6343,16 @@
       },
       "2.1.0": {
         "sha256": "3b0ae8f1da93243ec5be079509ba80946bd327547373de2bff5b11e27cb8cc45",
+        "kind": "element",
+        "tag": "m-seq",
+        "requires": {
+          "base": "1.3.0",
+          "plot": "1.1.3"
+        },
+        "license": "MIT"
+      },
+      "2.2.0": {
+        "sha256": "a01c7995bde0c75fd309ee1c1ad0d7025b7e64076b15b92637c2a5a38f22ca2f",
         "kind": "element",
         "tag": "m-seq",
         "requires": {
@@ -6273,6 +6555,15 @@
       },
       "2.0.5": {
         "sha256": "5351a0a268f9bf88c5d2605276040b1083a053ebd4b86d8ef0fd813d5d38b23c",
+        "kind": "element",
+        "tag": "m-tape",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "2f3ef41b89018f54f6e75643db588d62351a88d3abce4046141259e1502c24d8",
         "kind": "element",
         "tag": "m-tape",
         "requires": {
@@ -6699,6 +6990,15 @@
           "base": "1.3.0"
         },
         "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "c9d57068ec971bca576931b0de6d501af94714d89e7fe50950fdca0a87bc47ad",
+        "kind": "element",
+        "tag": "m-vector",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
       }
     },
     "venn": {
@@ -6740,6 +7040,15 @@
       },
       "2.0.4": {
         "sha256": "4f212542110cd07d3ce7b6156a2ce4a3b1f3fd50eba57bf563bba9b479a2319f",
+        "kind": "element",
+        "tag": "m-venn",
+        "requires": {
+          "base": "1.3.0"
+        },
+        "license": "MIT"
+      },
+      "2.1.0": {
+        "sha256": "4d4ae8a02127f81a32c2e12ba34f85cd66a690fcfc7e42c1e6612aa77cee45d8",
         "kind": "element",
         "tag": "m-venn",
         "requires": {

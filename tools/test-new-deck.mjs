@@ -411,8 +411,8 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
   assert.ok(componentsOff(['compare'], P).includes('m-rankonly') && !componentsOff(['change'], P).includes('m-rankonly'));
   assert.ok(componentsOff(['compare'], PURPOSES).includes('m-compare'));
   assert.ok(!named(packWithRequest({ lang: 'en', plan: 'paid', exclude: componentsOff(['compare'], PURPOSES), off: ['compare'] }), 'm-compare'), 'paid, compare off: m-compare is gone');
-  // m-vector（束 univ、受け皿なし：有料のプランだけ）の札は spatial と model
-  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan', 'm-map-world', 'm-vector']);
+  // m-vector は 2.1.0（パーツ集 2.16.0）から model だけ（spatial を外した）。spatial の札は地図の 2 つだけ
+  assert.deepEqual(componentsOff(['spatial'], PURPOSES), ['m-map-japan', 'm-map-world']);
   for (const lang of ['en', 'ja']) {
     for (const [what, opts] of [['free+maps', { sets: ['maps'], plan: 'free' }], ['free+maps+kokugo', { sets: ['maps', 'kokugo'], plan: 'free' }], ['paid+maps', { sets: ['maps'], plan: 'paid' }]]) {
       const on = packWithRequest({ ...opts, lang });
@@ -422,7 +422,7 @@ ok('purposes: a tile turns off its "into" ids too (ranking via compare); spatial
       assert.ok(!off.includes(PURPOSES.list.find((p) => p.id === 'spatial').name[lang] + ' |'), `${lang} ${what}: spatial off → no spatial row`);
     }
     // maps が入っていない：場所・地図の行は出さない（d5 2026-11-15：パーツのない言いたいことは載せない）、地図の名前も出さない
-    // （有料のプランでは m-vector が場所・地図の行を持つので、それを外して比べる）
+    // （パーツ集 2.15.0 までは、有料のプランで m-vector が場所・地図の行を持っていたので外して比べた。2.16.0 からは外さなくても同じ）
     const name = PURPOSES.list.find((p) => p.id === 'spatial').name[lang];
     for (const opts of [{ sets: [] }, { sets: ['stats', 'kokugo'] }, { sets: [], plan: 'paid', exclude: ['m-vector'] }]) {
       const t = packWithRequest({ ...opts, lang });

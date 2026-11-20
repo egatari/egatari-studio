@@ -25,7 +25,7 @@ This file and the part set packs together are the **full pack**: the standards, 
 | Pack | Size | Cap | Paste length | Cap |
 |---|---:|---:|---:|---:|
 | Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 29.6 KB | 45 KB | 30,353 | 31,000 |
-| Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 32.2 KB | 45 KB | 30,478 | 31,000 |
+| Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 32.2 KB | 45 KB | 30,485 | 31,000 |
 | Light instructions: standard + data (the core four shortened too) | 30.1 KB | 45 KB | 30,800 | 31,000 |
 | Light instructions: standard + algo (the core four shortened too) | 27.3 KB | 45 KB | 27,915 | 31,000 |
 | Light instructions: standard + ml (the core four shortened too) | 28.9 KB | 45 KB | 29,649 | 31,000 |
@@ -36,7 +36,7 @@ This file and the part set packs together are the **full pack**: the standards, 
 | Light instructions: standard + music (the core four shortened too) | 28.8 KB | 45 KB | 28,584 | 31,000 |
 | Light instructions: standard + business (the core four shortened too) | 31.5 KB | 45 KB | 30,923 | 31,000 |
 | Light instructions: standard + tools (the core four shortened too) | 29.9 KB | 45 KB | 29,999 | 31,000 |
-| Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn left out) | 35.9 KB | 45 KB | 30,867 | 31,000 |
+| Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn left out) | 35.9 KB | 45 KB | 30,873 | 31,000 |
 | Detailed instructions: every standard part | 49.9 KB | 150 KB | — | — |
 | Detailed instructions: every part set (this file and every set pack) | 122.8 KB | 150 KB | — | — |
 
@@ -48,7 +48,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `ac7fb486`
+Pack version: `373f1edf`
 
 You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -143,11 +143,11 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 | Two quantities | `m-scatter` | Points, then the trend |
 | Contents | `m-menu` | Whole at once |
 | Predict, then check | `m-predict` | The question and choices, then the answer |
-| Place / map | `m-vector` | The map, then regions, points and arrows one at a time |
+| other parts | `m-vector` | as described |
 
 Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new file).
 
-Each part's description (pinned version): https://github.com/egatari/components/blob/v2.15.0/components/<name>/README.md (the name without `m-`)
+Each part's description (pinned version): https://github.com/egatari/components/blob/v2.16.0/components/<name>/README.md (the name without `m-`)
 
 - **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).
 

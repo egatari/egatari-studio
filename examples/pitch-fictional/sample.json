@@ -3,6 +3,9 @@
   "request": "架空の会社「レポミル」（社内のデータから報告書の下書きを作るサービス）の投資家向けピッチを 10 枚で作ってください。課題・解決・市場・お金の流れ・売上の計画・お願いの順に、数字は架空と明記してください。",
   "category": "business",
   "subcategory": "pitch",
+  "purposes": ["key-number", "change", "position"],
+  "subjects": ["business"],
+  "audiences": ["working-adult"],
   "theme": "sumi",
   "parts": ["m-bars", "m-flow", "m-kpi", "m-market", "m-quad"],
   "structure": [

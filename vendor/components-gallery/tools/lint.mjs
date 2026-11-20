@@ -65,6 +65,69 @@ export function purposeIds(root) {
   return new Map(j.purposes.map((p) => [p.id, p]));
 }
 
+// subjects.json / audiences.json (docs/conventions.md §4.3): id → entry
+export const LABEL_KINDS = { subjects: 'subjects.json', audiences: 'audiences.json' };
+export function labelIds(root, kind) {
+  const j = JSON.parse(fs.readFileSync(path.join(root, LABEL_KINDS[kind]), 'utf8'));
+  return new Map((j[kind] || []).map((x) => [x.id, x]));
+}
+// the list files themselves: unique lower-case ids, ja and en
+export function labelListErrors(kind, j) {
+  const errs = [], seen = new Set(), file = LABEL_KINDS[kind];
+  if (!j || !Array.isArray(j[kind])) return [`${file}: needs a "${kind}" array`];
+  for (const x of j[kind]) {
+    if (!/^[a-z][a-z-]*$/.test(x.id || '') || seen.has(x.id)) errs.push(`${file}: id ${JSON.stringify(x.id)} is not a unique lower-case id`);
+    seen.add(x.id);
+    if (!x.ja || !x.en) errs.push(`${file}: ${x.id} needs ja and en`);
+  }
+  return errs;
+}
+// a part's subjects: / audiences: (optional; none written = fits every one): ids from the lists, not reserved, not repeated
+// origin: in a README frontmatter (docs/conventions.md §4.4): where a part came from, as indented lines under "origin:".
+// kind is required; from and ref are optional; no names of people (a contributor's GitHub handle only); left out when not known
+export const ORIGIN_KINDS = ['maintainer', 'colleague', 'student', 'contributor', 'library'];
+export const ORIGIN_FROM = ['lesson', 'research', 'talk', 'library'];
+export function originOf(text) {
+  const m = text.replace(/\r\n?/g, '\n').match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return null;
+  let o = null;
+  for (const line of m[1].split('\n')) {
+    const x = line.match(/^([\w-]+):\s*(.*)$/), sub = line.match(/^ {2}([\w-]+):\s*(.*)$/);
+    if (x) { if (o) break; if (x[1] === 'origin') o = x[2].trim() === '' ? {} : { '': x[2].trim() }; }
+    else if (sub && o) o[sub[1]] = sub[2].trim().replace(/^"(.*)"$/, '$1');
+  }
+  return o;
+}
+export function originErrors(name, o) {
+  if (o === null) return [];
+  const at = `components/${name}/README.md: origin`, errs = [];
+  if ('' in o) return [`${at}: write kind (and from, ref) on indented lines under "origin:", not on its line`];
+  for (const k of Object.keys(o)) if (!['kind', 'from', 'ref'].includes(k)) errs.push(`${at}: ${k} is not a field (kind, from, ref)`);
+  if (!o.kind) errs.push(`${at}: kind is missing (leave origin: out when it is not known)`);
+  else if (!ORIGIN_KINDS.includes(o.kind)) errs.push(`${at}: kind ${o.kind} is not one of ${ORIGIN_KINDS.join(', ')}`);
+  if ('from' in o && !ORIGIN_FROM.includes(o.from)) errs.push(`${at}: from ${o.from} is not one of ${ORIGIN_FROM.join(', ')}`);
+  if ('ref' in o) {
+    if (o.kind === 'contributor') { if (!/^@[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(o.ref)) errs.push(`${at}: ref for a contributor is their GitHub handle (@name)`); }
+    else if (o.kind === 'library') { if (!/https:\/\/\S+/.test(o.ref) || !/\S\s*[,;]\s*\S|\s\(\S/.test(o.ref)) errs.push(`${at}: ref for a library is the source repository URL and its licence ("https://… , MIT")`); }
+    else errs.push(`${at}: ref is only for a contributor (GitHub handle) or a library (URL and licence); no names of people`);
+  }
+  return errs;
+}
+export function labelErrors(name, f, lists) {
+  const errs = [];
+  for (const kind of Object.keys(LABEL_KINDS)) {
+    if (!(kind in f)) continue;
+    const got = list(f[kind]), ids = lists[kind];
+    if (!got.length) errs.push(`components/${name}/README.md: ${kind}: is empty (leave it out when the part fits every one)`);
+    if (new Set(got).size !== got.length) errs.push(`components/${name}/README.md: ${kind}: repeats an id`);
+    for (const x of got) {
+      if (!ids.has(x)) errs.push(`components/${name}/README.md: ${kind.slice(0, -1)} ${x} is not in ${LABEL_KINDS[kind]}`);
+      else if (ids.get(x).reserved) errs.push(`components/${name}/README.md: ${kind.slice(0, -1)} ${x} is reserved in ${LABEL_KINDS[kind]} (remove "reserved" there when a component has it)`);
+    }
+  }
+  return errs;
+}
+
 export function frontmatter(text) {
   const m = text.replace(/\r\n?/g, '\n').match(/^---\n([\s\S]*?)\n---/);
   if (!m) return null;
@@ -257,7 +320,7 @@ export function lintLibrary(name, dir, meta) {
   if (f.version && f.version !== meta.version) errs.push(`components/${name}/README.md: version ${f.version} differs from the define meta's ${meta.version}`);
   const req = Object.entries(meta.requires || {}).map(([n, v]) => `${n}@${v}`).join(', ');
   if ((f.requires || '') !== req) errs.push(`components/${name}/README.md: requires "${f.requires || ''}" differs from the define meta's "${req}"`);
-  for (const k of ['series', 'purposes', 'steps', 'props', 'variants', 'tier', 'set', 'display']) if (k in f) errs.push(`components/${name}/README.md: ${k} is for element parts, not a library part`);
+  for (const k of ['series', 'purposes', 'subjects', 'audiences', 'steps', 'props', 'variants', 'tier', 'set', 'display']) if (k in f) errs.push(`components/${name}/README.md: ${k} is for element parts, not a library part`);
   if (fs.existsSync(path.join(dir, 'demo.html'))) errs.push(`components/${name}: a library part has no demo.html (it is tested by tools/test-*.mjs)`);
   if ('license' in f) {
     const ids = f.license.split(/\s+AND\s+/);
@@ -284,6 +347,11 @@ export function lint(root, warns = []) {
     else if (tile === 'own') { if (!p.label || !p.label.ja || !p.label.en || !p.examples || !p.examples.ja || !p.examples.en) errs.push(`purposes.json: ${p.id} has its own tile and needs label.{ja,en} and examples.{ja,en}`); }
     else if (tile !== 'none' && !(tile && typeof tile === 'object' && owns.has(tile.into))) errs.push(`purposes.json: ${p.id}: tile must be "own", "none" or {"into": <an id with its own tile>}`);
     if (!p.reserved && (typeof p.icon !== 'string' || !/^[a-z][a-z0-9-]*$/.test(p.icon))) errs.push(`purposes.json: ${p.id} needs an icon key`);
+  }
+  const labelLists = {};
+  for (const kind of Object.keys(LABEL_KINDS)) {
+    errs.push(...labelListErrors(kind, JSON.parse(fs.readFileSync(path.join(root, LABEL_KINDS[kind]), 'utf8'))));
+    labelLists[kind] = labelIds(root, kind);
   }
   for (const d of fs.readdirSync(base, { withFileTypes: true })) {
     const name = d.name, dir = path.join(base, name);
@@ -354,6 +422,8 @@ export function lint(root, warns = []) {
       if (!ids.has(p)) errs.push(`components/${name}/README.md: purpose ${p} is not in purposes.json`);
       else if (ids.get(p).reserved) errs.push(`components/${name}/README.md: purpose ${p} is reserved in purposes.json (remove "reserved" there when a component serves it)`);
     }
+    errs.push(...labelErrors(name, f, labelLists));
+    errs.push(...originErrors(name, originOf(rtext)));
     const fl = flags(js);
     if (fl.operable && !fl.interactive) errs.push(`components/${name}/index.js: the viewer can operate it (an input() method, a click/pointer/key/input/change listener, a link or control, or links as data): declare static interactive = true;`);
     // groups of parts the user chooses (docs/conventions.md §7): today only "tool"; a tool needs its own new-deck tile

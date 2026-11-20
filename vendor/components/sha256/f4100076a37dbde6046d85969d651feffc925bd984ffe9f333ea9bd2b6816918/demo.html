@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-diverge の見本</title>
+<!-- 組み方：node kit/build.mjs components/diverge/demo.html -o components/diverge/out/demo.html（数値はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>今年の利益が増えた内訳（A 食品、架空）</h2>
+  <div class="body">
+    <m-diverge unit="億円" style="height:440px">
+      <script type="application/json">{
+        "items": [
+          {"label": "前年の利益", "value": 120, "total": true},
+          {"label": "売上の増加", "value": 45},
+          {"label": "原価の増加", "value": -30},
+          {"label": "広告費の削減", "value": 12},
+          {"label": "為替", "value": -8},
+          {"label": "今年の利益", "value": 139, "total": true}
+        ]
+      }</script>
+    </m-diverge>
+  </div>
+  <div class="concl"><span>→ 売上の増加が原価の増加を上回った</span></div>
+</section>
+
+<section class="slide">
+  <h2>A 市の人口の増減（1 年、架空）</h2>
+  <div class="body">
+    <m-diverge unit="人" min="50000" style="height:440px">
+      <script type="application/json">{
+        "items": [
+          {"label": "1 月 1 日", "value": 52300, "total": true},
+          {"label": "生まれた", "value": 310},
+          {"label": "亡くなった", "value": -720},
+          {"label": "転入", "value": 1450},
+          {"label": "転出", "value": -1620},
+          {"label": "12 月 31 日", "total": true}
+        ]
+      }</script>
+    </m-diverge>
+  </div>
+  <div class="concl"><span>→ 亡くなった人と転出が多く、580 人減った</span></div>
+</section>
+
+<section class="slide noconcl">
+  <h2>途中の小計と、まとめて出す（per-step="2"）</h2>
+  <div class="body">
+    <m-diverge unit="万円" per-step="2" style="height:440px">
+      <script type="application/json">{
+        "items": [
+          {"label": "予算", "value": 800, "total": true},
+          {"label": "会場費", "value": -120},
+          {"label": "講師の謝金", "value": -90},
+          {"label": "残り\n（前期）", "total": true},
+          {"label": "協賛金", "value": 60},
+          {"label": "印刷費", "value": -40},
+          {"label": "残り\n（年度末）", "value": 610, "total": true, "tone": "emph"}
+        ]
+      }</script>
+    </m-diverge>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

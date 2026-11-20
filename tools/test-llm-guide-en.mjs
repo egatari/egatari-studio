@@ -88,8 +88,8 @@ ok('EN_EDITS: the m-menu import note and the m-predict no-live-counts lines are 
   assert.ok(!predict.includes('live poll totals'), 'm-predict: the README.en.md wording is replaced');
   // EN_EDITS の find が README.en.md になくなれば失敗する
   throwsWith(() => generate({ readmeEn: { 'm-predict': readmeEn('m-predict').replace('  poll: live poll id', '  poll: poll id') } }), /EN_EDITS m-predict: "\| live poll id \|" is not in the README\.en\.md entry any more/);
-  // m-bars だけは PACK_EDITS があって EN_EDITS がない（大きさだけの言い換え）：知らせだけ
-  assert.deepEqual(base.warnings.filter((w) => /README\.en\.md is used for the en pack/.test(w)), ['m-bars: README.en.md is used for the en pack; PACK_EDITS (1) are not applied to it and there are no EN_EDITS']);
+  // m-bars は PACK_EDITS があり、EN_EDITS は空（英語の字はもう短く、言い換えが要らない。パーツ集 2.16.0 で確かめた）：知らせは出ない
+  assert.deepEqual(base.warnings.filter((w) => /README\.en\.md is used for the en pack/.test(w)), []);
 });
 
 ok('no Japanese in the 16 standard and 6 data parts\' en sections (components 2.5.0: the shape.note of m-fishbone and m-tree is {en, ja} now)', () => {
@@ -137,7 +137,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     // 部品庫 2.7.0 から部品の説明の言葉が用語集にそろった（45 の部品）。この比べは指示を組む側の変化を見るので、部品庫は 2.6.2 のまま組んで比べる
     const P262 = generate({ catalogue: '2.6.2' }).data;
     assert.match(P262.partsSrc, /\/v2\.6\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.15\.0\//);
+    assert.match(PACK.partsSrc, /\/v2\.16\.0\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(P262);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];

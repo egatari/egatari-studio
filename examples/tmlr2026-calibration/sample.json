@@ -3,6 +3,9 @@
   "request": "Make the slides for a 15-minute conference talk on our TMLR 2026 paper on Bayes-optimal calibration under a logit-noise model. Build the main theorem up step by step, show that it reduces to temperature scaling and Platt scaling, and end with when it helps and when it breaks.",
   "category": "research",
   "subcategory": "conference",
+  "purposes": ["model"],
+  "subjects": ["statistics", "informatics"],
+  "audiences": ["university"],
   "theme": "default",
   "parts": ["m-bars", "m-flow"],
   "structure": [

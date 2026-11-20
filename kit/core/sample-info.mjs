@@ -12,21 +12,24 @@
 //   book          本があるか
 //   lang          サンプルの言語（'ja' | 'en'）
 //   rights        {license, attribution}（ライセンスの SPDX の名前（CC-BY-4.0 が基本）と、作った人の表示）
+//   purposes      伝えたいことの id（なくてもよい。空の配列も可）。subjects 題材の id、audiences 読み手の id（同じ。空＝どれにも合う）。
+//                 id の一覧はパーツ集の manifest のもの（Studio に書かない。handoff #43）
 //
-//   validateSample(obj, {categories, parts}) → 誤りの一覧（[{path, code}]。空なら正しい）。categories・parts は確かめる相手（なければ形だけ）
+//   validateSample(obj, {categories, parts, labels}) → 誤りの一覧（[{path, code}]。空なら正しい）。categories・parts・labels（{purposes, subjects, audiences} の id の配列）は確かめる相手（なければ形だけ）
 //   sampleStructureRequest(sample, title, lang) → 指示の「頼みたいこと」の後ろに添える節（構成と見せ方に倣う。lang は画面の言語、見出しと言いたいことはサンプルの言語のまま）
 //   SAMPLE_LIMITS                            構成の行の数と字数の上限（指示を約 300 トークンに収める。無料のプランの上限のため）
 
 export const SAMPLE_VERSION = 1;
 export const SAMPLE_LANGS = ['ja', 'en'];
 export const SAMPLE_LIMITS = Object.freeze({ rows: 16, heading: 80, point: 100, structureChars: 1100, request: 600, attribution: 200 });
-const KEYS = ['v', 'request', 'category', 'subcategory', 'theme', 'parts', 'structure', 'book', 'lang', 'rights'];
+export const LABEL_KEYS = ['purposes', 'subjects', 'audiences'];
+const KEYS = ['v', 'request', 'category', 'subcategory', ...LABEL_KEYS, 'theme', 'parts', 'structure', 'book', 'lang', 'rights'];
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
 const str = (v) => typeof v === 'string' && v.trim() !== '' && v === v.trim() && !/[\u0000-\u001f\u007f]/.test(v);
 const len = (s) => [...s].length;
 
-export function validateSample(obj, { categories = null, parts = null } = {}) {
+export function validateSample(obj, { categories = null, parts = null, labels = null } = {}) {
   const errs = [];
   const bad = (path, code) => errs.push({ path, code });
   if (!isObj(obj)) { bad('', 'not-object'); return errs; }
@@ -43,6 +46,17 @@ export function validateSample(obj, { categories = null, parts = null } = {}) {
   }
   if (!('subcategory' in obj)) bad('subcategory', 'missing');
   else if (obj.subcategory !== null && !str(obj.subcategory)) bad('subcategory', 'not-text');
+  for (const key of LABEL_KEYS) {
+    if (!(key in obj)) continue;
+    if (!Array.isArray(obj[key])) { bad(key, 'not-array'); continue; }
+    const seen = new Set(), known = labels && labels[key];
+    obj[key].forEach((id, i) => {
+      if (typeof id !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(id)) bad(`${key}[${i}]`, 'not-id');
+      else if (seen.has(id)) bad(`${key}[${i}]`, 'duplicate');
+      else if (known && !known.includes(id)) bad(`${key}[${i}]`, 'unknown');
+      seen.add(id);
+    });
+  }
   if (!str(obj.theme) || !/^[a-z0-9][a-z0-9-]*$/.test(obj.theme)) bad('theme', 'not-name');
   if (!Array.isArray(obj.parts)) bad('parts', 'not-array');
   else {

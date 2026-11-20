@@ -1,16 +1,16 @@
 <!-- generated; do not edit by hand -->
 # extra parts
 
-Instruction version: ac7fb486
+Instruction version: 373f1edf
 
 ### `<m-codetree>`
 
-[README](https://github.com/egatari/components/blob/v2.15.0/components/codetree/README.md)
+[README](https://github.com/egatari/components/blob/v2.16.0/components/codetree/README.md)
 
 ### `<m-collect>`
 
-[README](https://github.com/egatari/components/blob/v2.15.0/components/collect/README.md)
+[README](https://github.com/egatari/components/blob/v2.16.0/components/collect/README.md)
 
 ### `<m-kakijun>`
 
-[README](https://github.com/egatari/components/blob/v2.15.0/components/kakijun/README.md)
+[README](https://github.com/egatari/components/blob/v2.16.0/components/kakijun/README.md)

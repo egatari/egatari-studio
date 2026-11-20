@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-particles の見本</title>
+</head>
+<body>
+<div id="stage">
+<section class="slide">
+  <h2>水の状態変化</h2>
+  <div class="body"><m-particles style="height:440px"><script type="application/json">{"substance":"水"}</script></m-particles></div>
+  <div class="concl"><span>粒子の数と大きさは同じ。並び方と間隔が変わる</span></div>
+</section>
+<section class="slide">
+  <h2>水素の燃焼</h2>
+  <div class="body"><m-particles mode="reaction" style="height:440px"><script type="application/json">{"reactants":[{"formula":"H2","n":2},{"formula":"O2","n":1}],"products":[{"formula":"H2O","n":2}]}</script></m-particles></div>
+  <div class="concl"><span>水素と酸素から水ができても、原子の数は変わらない</span></div>
+</section>
+<section class="slide">
+  <h2>鉄と硫黄の化合</h2>
+  <div class="body"><m-particles mode="reaction" style="height:440px"><script type="application/json">{"reactants":[{"formula":"Fe","n":1},{"formula":"S","n":1}],"products":[{"formula":"FeS","n":1}]}</script></m-particles></div>
+  <div class="concl"><span>鉄と硫黄の原子が結び付き、硫化鉄ができる</span></div>
+</section>
+<section class="slide">
+  <h2>炭素の燃焼</h2>
+  <div class="body"><m-particles mode="reaction" style="height:440px"><script type="application/json">{"reactants":[{"formula":"C","n":1},{"formula":"O2","n":1}],"products":[{"formula":"CO2","n":1}]}</script></m-particles></div>
+  <div class="concl"><span>炭素と酸素から二酸化炭素ができる</span></div>
+</section>
+</div>
+</body>
+</html>
