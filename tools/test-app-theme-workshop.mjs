@@ -111,17 +111,28 @@ try {
     ok(s.previewW > 250 && s.previewW < 440 && Math.abs(s.stageW - s.previewW) <= 2, 'ja 1280: the two previews sit side by side and the 1280 px slide is scaled to fit ' + JSON.stringify([s.previewW, s.stageW]));
     ok(s.start === 'default' && s.background === 'white' && s.look.heading === 'default', 'ja: starting theme and default styles are selected');
     ok((await page.$$eval('#shop-start option', (opts) => opts.map((o) => o.value))).join() === CHOOSABLE.map((t) => t.name).join(), 'ja: every currently choosable bundled theme is offered');
+    // 撮る前に、字の読み込みが終わり、続けて 2 回撮っても同じになるまで待つ（テーマを替えた直後は字が替わる途中のことがある。CI の macOS で 2 回続けて落ちた）
+    const settled = async (loc) => {
+      let prev = null;
+      for (let i = 0; i < 20; i++) {
+        await page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+        const shot = await loc.screenshot({ animations: 'disabled', caret: 'hide' });
+        if (prev && prev.equals(shot)) return shot;
+        prev = shot;
+      }
+      return prev;
+    };
     for (const theme of CHOOSABLE) {
       await page.selectOption('#shop-start', theme.name);
       const preview = page.locator('.shop-preview');
-      const generated = await preview.screenshot({ animations: 'disabled', caret: 'hide' });
+      const generated = await settled(preview);
       const css = fs.readFileSync(path.join(ROOT, 'themes', theme.name, 'tokens.css'), 'utf8');
       const styles = await page.evaluate((css) => [...document.querySelectorAll('.shop-slide')].map((host) => {
         const style = host.shadowRoot.querySelector('style'), original = style.textContent;
         style.textContent = original.slice(0, original.indexOf('/* preview: made with')) + css.replace(/:root\b/g, ':host');
         return original;
       }), css);
-      const bundled = await preview.screenshot({ animations: 'disabled', caret: 'hide' });
+      const bundled = await settled(preview);
       ok(generated.equals(bundled), `ja: ${theme.name} starts with pixel-identical cover and body previews`);
       await page.evaluate((styles) => [...document.querySelectorAll('.shop-slide')].forEach((host, i) => { host.shadowRoot.querySelector('style').textContent = styles[i]; }), styles);
     }
