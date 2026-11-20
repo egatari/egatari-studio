@@ -41,7 +41,7 @@ ok('frontmatterEn: top-level keys, the indented props map, CRLF; no frontmatter 
 });
 
 // 部品庫 2.12.0・2.13.0 の新しい 6 つ（algo の m-network、ml の 3 つ、受け皿のない univ の 2 つ）も README.en.md を持つ
-const NEW6 = { 'm-network': 'algo', 'm-nnet': 'ml', 'm-classify2d': 'ml', 'm-contour': 'ml', 'm-ctable': 'standard', 'm-vector': 'standard' };
+const NEW6 = { 'm-network': 'algo', 'm-nnet': 'ml', 'm-classify2d': 'ml', 'm-contour': 'ml', 'm-ctable': 'standard', 'm-vector': 'standard', 'm-matrix': 'standard', 'm-scroll': 'tools' };   // m-matrix：パーツ集 2.17.0（univ、受け皿なし）
 ok('the 16 standard parts, the 6 data parts, the 3 parts of 2.9.0 and the 6 of 2.12.0–2.13.0 with README.en.md are the ones read for the en pack, and each has summary and steps', () => {
   assert.deepEqual([...base.enParts].sort(), [...EN16, ...DATA6, ...SPEC3, ...Object.keys(NEW6)].sort());
   for (const [t, set] of Object.entries(NEW6)) { const fm = frontmatterEn(readmeEn(t)); assert.ok(fm && fm.summary && fm.steps, `${t}: summary and steps`); assert.equal(PACK.en.components[t].set, set, `${t} is in ${set}`); }
@@ -137,7 +137,7 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     // 部品庫 2.7.0 から部品の説明の言葉が用語集にそろった（45 の部品）。この比べは指示を組む側の変化を見るので、部品庫は 2.6.2 のまま組んで比べる
     const P262 = generate({ catalogue: '2.6.2' }).data;
     assert.match(P262.partsSrc, /\/v2\.6\.2\//);
-    assert.match(PACK.partsSrc, /\/v2\.16\.0\//);
+    assert.match(PACK.partsSrc, /\/v2\.17\.0\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(P262);
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
@@ -213,6 +213,8 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
       ["このチャットで渡した資料と、ここまでの話し合いの内容で、教材を作ってください。", "このチャットで渡した資料と、ここまでの話し合いの内容で、スライドと台本を作ってください。"],
       ["データを見せる教材・発表向け。分布、箱ひげ図、ヒートマップ、観測が 1 つずつ加わって変わる分布を見せる。テーマは `default`。データの出どころと数（何人・何件）をスライドか台本に書き、本物らしく見えるデータを作らない（R-components）。", "データを見せる授業・発表向け。分布、箱ひげ図、ヒートマップ、観測が 1 つずつ加わって変わる分布を見せる。テーマは `default`。データの出どころと数（何人・何件）をスライドか台本に書き、本物らしく見えるデータを作らない（R-components）。"],
       ["地図を使う教材・案内向け（地理・歴史・地域の案内）。日本地図か世界地図を使う。テーマは `default`。数字（人口・面積・生産量など）には、何年の・どこの数字かをスライドか台本に書く。", "地図を使う授業・案内向け（地理・歴史・地域の案内）。日本地図か世界地図を使う。テーマは `default`。数字（人口・面積・生産量など）には、何年の・どこの数字かをスライドか台本に書く。"],
+      // v0.6.18：R-steps に表の見せ方（#65、パーツの名前は書かない）
+      ["1 枚のステップの数は 5 前後まで\n", "1 枚のステップの数は 5 前後まで。表は、比べ方で見せ方を選ぶ。項目を 1 つずつ説明するなら行を話す順に出す。行列（縦に比べるもの、横に評価基準）や 2 本の軸の交差の表は、全体を見せてから注目する列・マスに印を付けるか、軸の列ごとに埋める。研究の位置づけの表では、本研究のマスに字で「本研究」と書く（色や太字だけで区別しない）。\n"],
       ["授業・研修を進めるためのツール（演習やグループワークのタイマーなど）。頼みに演習の時間やワークショップがあるときだけ、その活動をするスライドに使う。", "授業・研修を進めるためのツール（演習やグループワークのタイマーなど）。依頼に演習の時間やワークショップがあるときだけ、その活動をするスライドに使う。"],
     ];
     const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);

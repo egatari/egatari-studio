@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-scroll の見本</title>
+<!-- 組み方：node kit/build.mjs components/scroll/demo.html -o components/scroll/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>A 町のあゆみ（架空）</h2>
+  <div class="body">
+    <p class="ia-badge" style="margin:0 0 10px;line-height:1.3"><span style="display:inline-block;font-size:27px;font-weight:700;color:var(--fg);border:2px dashed var(--accent2);border-radius:8px;padding:0 12px">操作できる</span></p>
+    <m-scroll style="height:380px" aria-label="A 町の年表（架空）">
+        <svg viewBox="0 0 1000 1310" width="1000" height="1310" role="img" aria-label="A 町の年表（架空）：1890 年から 2024 年までの 10 の出来事">
+          <line x1="200" y1="30" x2="200" y2="1280" stroke="var(--line)" stroke-width="4"/>
+          <g><circle cx="200" cy="60" r="10" fill="var(--term)"/><text x="170" y="70" font-size="30" text-anchor="end" fill="var(--fg)">1890</text><text x="236" y="70" font-size="30" fill="var(--fg)">A 村ができる</text></g>
+          <g><circle cx="200" cy="190" r="10" fill="var(--term)"/><text x="170" y="200" font-size="30" text-anchor="end" fill="var(--fg)">1905</text><text x="236" y="200" font-size="30" fill="var(--fg)">鉄道の駅が開く</text></g>
+          <g data-scroll-step="1"><circle cx="200" cy="320" r="10" fill="var(--term)"/><text x="170" y="330" font-size="30" text-anchor="end" fill="var(--fg)">1923</text><text x="236" y="330" font-size="30" fill="var(--fg)">大きな火事で中心部が焼ける</text></g>
+          <g><circle cx="200" cy="450" r="10" fill="var(--term)"/><text x="170" y="460" font-size="30" text-anchor="end" fill="var(--fg)">1931</text><text x="236" y="460" font-size="30" fill="var(--fg)">川に橋がかかる</text></g>
+          <g data-scroll-step="2"><circle cx="200" cy="580" r="10" fill="var(--emph)"/><text x="170" y="590" font-size="30" text-anchor="end" fill="var(--fg)">1955</text><text x="236" y="590" font-size="30" fill="var(--fg)">B 町と合わせて A 町になる</text></g>
+          <g><circle cx="200" cy="710" r="10" fill="var(--term)"/><text x="170" y="720" font-size="30" text-anchor="end" fill="var(--fg)">1964</text><text x="236" y="720" font-size="30" fill="var(--fg)">中学校が新しくなる</text></g>
+          <g data-scroll-step="3"><circle cx="200" cy="840" r="10" fill="var(--term)"/><text x="170" y="850" font-size="30" text-anchor="end" fill="var(--fg)">1978</text><text x="236" y="850" font-size="30" fill="var(--fg)">工業団地ができる</text></g>
+          <g><circle cx="200" cy="970" r="10" fill="var(--term)"/><text x="170" y="980" font-size="30" text-anchor="end" fill="var(--fg)">1995</text><text x="236" y="980" font-size="30" fill="var(--fg)">人口が 3 万人を超える</text></g>
+          <g data-scroll-step="4"><circle cx="200" cy="1100" r="10" fill="var(--emph)"/><text x="170" y="1110" font-size="30" text-anchor="end" fill="var(--fg)">2008</text><text x="236" y="1110" font-size="30" fill="var(--fg)">C 市と合わせて C 市 A 区になる</text></g>
+          <g><circle cx="200" cy="1230" r="10" fill="var(--term)"/><text x="170" y="1240" font-size="30" text-anchor="end" fill="var(--fg)">2024</text><text x="236" y="1240" font-size="30" fill="var(--fg)">駅前の再開発が終わる</text></g>
+        </svg>
+    </m-scroll>
+  </div>
+  <div class="concl"><span>→ 町の形は、2 度の合併で変わった</span></div>
+</section>
+
+<section class="slide noconcl">
+  <h2>点数の集計（架空のデータ）</h2>
+  <div class="body">
+    <m-scroll style="height:530px" aria-label="点数を集計する Python のコード">
+      <pre style="margin:0;padding:12px 20px;font:27px/1.45 ui-monospace, &quot;SFMono-Regular&quot;, Menlo, Consolas, monospace;color:var(--fg)"><span>import csv</span>
+<span>from statistics import mean</span>
+<span></span>
+<span></span>
+<span>def read_rows(path):</span>
+<span>    &quot;&quot;&quot;CSV を読み、1 行を 1 つの辞書にする&quot;&quot;&quot;</span>
+<span>    with open(path, encoding=&quot;utf-8&quot;) as f:</span>
+<span>        return list(csv.DictReader(f))</span>
+<span></span>
+<span></span>
+<span data-scroll-step="1">def clean(rows):</span>
+<span>    &quot;&quot;&quot;空の値と数でない値を除く&quot;&quot;&quot;</span>
+<span>    out = []</span>
+<span>    for r in rows:</span>
+<span>        try:</span>
+<span>            r[&quot;score&quot;] = float(r[&quot;score&quot;])</span>
+<span>        except ValueError:</span>
+<span>            continue</span>
+<span>        out.append(r)</span>
+<span>    return out</span>
+<span></span>
+<span></span>
+<span data-scroll-step="2">def by_class(rows):</span>
+<span>    &quot;&quot;&quot;組ごとに点数を集める&quot;&quot;&quot;</span>
+<span>    groups = {}</span>
+<span>    for r in rows:</span>
+<span>        groups.setdefault(r[&quot;class&quot;], []).append(r[&quot;score&quot;])</span>
+<span>    return groups</span>
+<span></span>
+<span></span>
+<span data-scroll-step="3">def report(groups):</span>
+<span>    &quot;&quot;&quot;組ごとの平均を、高い順に書く&quot;&quot;&quot;</span>
+<span>    pairs = [(c, mean(v)) for c, v in groups.items()]</span>
+<span>    for c, m in sorted(pairs, key=lambda p: -p[1]):</span>
+<span>        print(f&quot;{c}: {m:.1f}&quot;)</span>
+<span></span>
+<span></span>
+<span data-scroll-step="4">rows = clean(read_rows(&quot;scores.csv&quot;))</span>
+<span>report(by_class(rows))</span></pre>
+    </m-scroll>
+  </div>
+</section>
+
+</div>
+</body>
+</html>

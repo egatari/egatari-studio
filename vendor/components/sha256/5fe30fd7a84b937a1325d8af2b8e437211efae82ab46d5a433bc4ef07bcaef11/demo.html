@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-matrix の見本</title>
+<!-- 組み方：node kit/build.mjs components/matrix/demo.html -o components/matrix/out/demo.html -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>系列予測の研究の位置づけ（架空）</h2>
+  <div class="body">
+    <m-matrix style="height:430px">
+      <script type="application/json">{
+        "kind": "cross",
+        "rows": {"axis": "評価基準", "values": ["予測誤差", "ベイズリスク"]},
+        "cols": {"axis": "予測の形", "values": ["点予測", "区間予測", "分布予測"]},
+        "cells": [
+          [["[1]", "[2]†"], ["[3]"], ["[4]", "[5]"]],
+          [{"none": "点予測では予測誤差と同じになる（自明）"}, {"none": "未着手"}, {"self": true}]
+        ],
+        "marks": [{"mark": "†", "text": "逐次に更新する方法"}]
+      }</script>
+    </m-matrix>
+  </div>
+  <div class="concl"><span>→ 分布予測をベイズリスクで評価する研究はまだない</span></div>
+</section>
+
+<section class="slide noconcl">
+  <h2>同じ研究を要素で並べる（架空）</h2>
+  <div class="body">
+    <m-matrix order="col" style="height:520px">
+      <script type="application/json">{
+        "kind": "attributes",
+        "cols": ["予測の形", "評価基準", "逐次の更新", "データ"],
+        "rows": [
+          {"label": "本研究", "self": true, "cells": ["分布", "ベイズリスク", "✓", "架空の売上"]},
+          {"label": "[1]", "cells": ["点", "予測誤差", "×", "電力"]},
+          {"label": "[2]", "cells": ["点", "予測誤差", "✓", "電力"]},
+          {"label": "[3]", "cells": ["区間", "予測誤差", "×", "気温"]},
+          {"label": "[4]", "cells": ["分布", "予測誤差", "×", "株価"]},
+          {"label": "[5]", "cells": ["分布", "予測誤差", "△", ""]}
+        ]
+      }</script>
+    </m-matrix>
+  </div>
+</section>
+
+<section class="slide noconcl">
+  <h2>会議の道具を比べる（架空の製品）</h2>
+  <div class="body">
+    <m-matrix order="row" style="height:440px">
+      <script type="application/json">{
+        "kind": "attributes",
+        "cols": ["月の料金", "録画", "字幕", "100 人以上"],
+        "rows": [
+          {"label": "製品 A", "cells": ["無料", "✓", "×", "×"]},
+          {"label": "製品 B", "cells": ["1,200 円", "✓", "△", "✓"]},
+          {"label": "製品 C", "cells": ["2,000 円", "✓", "✓", "✓"]},
+          {"label": "いまの方法", "self": true, "cells": ["0 円", "×", "×", "✓"]}
+        ]
+      }</script>
+    </m-matrix>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
