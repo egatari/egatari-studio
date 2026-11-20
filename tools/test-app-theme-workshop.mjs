@@ -153,7 +153,7 @@ try {
     await setHex(page, '#F5C000');
     s = await state(page);
     ok(s.checksShown && s.ids.includes('term-contrast') && s.ids.includes('sec-contrast') && s.ids.includes('washout')
-      && s.msgs[0] === '基調色の文字が白い地の上で読みにくい色です（コントラスト比 1.6:1。4.5:1 以上が必要です）。基調色を濃くしてください',
+      && s.msgs[0] === '基調色の文字が白い背景の上で薄く、投影したときや教室の後ろの席から読みにくくなります。基調色を濃くしてください（コントラスト比 1.6:1。目安は 4.5:1 以上）',
     'ja #F5C000: the check area lists what fails, how much, and how to fix it ' + JSON.stringify(s.msgs));
     const fx = s.fixes[0];
     ok(fx && /^#[0-9A-F]{6}$/.test(fx.hex) && fx.text === `${fx.hex} にする` && fx.label === `基調色を ${fx.hex} にする`, 'ja: each failure offers the nearest passing colour 「#…… にする」 ' + JSON.stringify(fx));
@@ -278,7 +278,7 @@ try {
     await setHex(page, '#F5C000');
     const s = await state(page);
     ok(s.ids.includes('heading-band') && s.msgs.some((m) => m.startsWith('White heading text')), 'en: heading band contrast message is translated');
-    ok(s.msgs[0] === 'Text in the main colour is hard to read on white (contrast ratio 1.6:1; 4.5:1 or more is needed). Make the main colour darker' && s.fixes[0].text === `Use ${s.fixes[0].hex}`, 'en: the message and 「Use #……」 ' + JSON.stringify([s.msgs[0], s.fixes[0]]));
+    ok(s.msgs[0] === 'Text in the main colour is faint on white and hard to read when projected or from the back of the classroom. Make the main colour darker (contrast ratio 1.6:1; guide: 4.5:1 or more)' && s.fixes[0].text === `Use ${s.fixes[0].hex}`, 'en: the message and 「Use #……」 ' + JSON.stringify([s.msgs[0], s.fixes[0]]));
     await clickDlg(page, '#dlg-cancel');
   });
 
