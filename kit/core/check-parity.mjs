@@ -15,6 +15,8 @@ export const IN_EDITOR = Object.freeze([
   'cautionEmpty', 'cautionLabel',
   // しおり（kit/core/bookmark.mjs）
   'bookmarkDup', 'bookmarkLong',
+  // 縦と横の入れ替わり（kit/core/tate-mix.mjs）
+  'tateMixed',
   // 組み立てた文書の埋め込み画像から（kit/core/image-size.mjs）
   'imgTooLarge', 'imgTotal',
   'narrNote', 'narrFormula', 'turnLong', 'narrLang', 'predictAnswerWithCount', 'predictAnswerNeverShown',

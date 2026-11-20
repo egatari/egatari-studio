@@ -199,7 +199,8 @@ export function analyzeSlideIds(src) {
       // headingKey：見出しから作る旧来の鍵（id のあるスライドでも。書き出しが {#id} のない「## 見出し」をそのスライドに結ぶため）
       slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || dk || hk || `s${slides.length + 1}`, rule,
         heading: h ? headingText(inner(src, h)) : '', headingKey: hk, dataKey: dk || null, dataArticle: attr(n, 'data-article') || null, line: lineOf(off), start: off,
-        bookmark: attr(n, 'data-bookmark') ?? null });   // dataArticle：本文の節（§9C.5）。bookmark：しおりの名前（§8.0、属性の値のまま）
+        bookmark: attr(n, 'data-bookmark') ?? null,   // dataArticle：本文の節（§9C.5）。bookmark：しおりの名前（§8.0、属性の値のまま）
+        tate: hasClass(n, 'layout-tate'), cover: hasClass(n, 'cover') || hasClass(n, 'sec') });   // tate：縦書きのスライド。cover：表紙か扉（縦と横の入れ替わりを数えない。kit/core/tate-mix.mjs）
       return;
     }
     const id = attr(n, 'id');

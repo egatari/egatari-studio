@@ -51,7 +51,7 @@ export const RULES = Object.freeze([
   { id: 'R-headings', kind: 'authoring', phase: 'A 体裁', codes: ['secHeading', 'narrHeadingDiffers', 'kickerLong', 'kickerPlace', 'kickerSlide'] },
   // 注意・警告の枠（kit/core/caution.mjs）：指示の 1 行そのものが決まり（d5 2026-11-15。修正依頼が AI に書き方の行を指す）
   { id: 'R-caution', kind: 'authoring', phase: 'A 体裁', codes: ['cautionEmpty', 'cautionLabel'] },
-  { id: 'R-style', kind: 'authoring', phase: 'A 体裁', codes: ['desuMasu', 'punctMixed'], applies: (f) => (f.lang === 'ja' ? null : 'lang') },
+  { id: 'R-style', kind: 'authoring', phase: 'A 体裁', codes: ['desuMasu', 'punctMixed', 'tateMixed'], applies: (f) => (f.lang === 'ja' ? null : 'lang') },
   { id: 'R-math', kind: 'authoring', phase: 'A 体裁', codes: ['rawMath', 'katexError'] },
   { id: 'R-purpose', kind: 'authoring', phase: 'A 体裁', codes: ['cardsHint'] },
   // 描いた図の形（kit/core/geometry-check.mjs、backlog #201）：パーツが付けた印（data-part）と、インラインの SVG の線が図の端で欠けるか（geoClippedStroke、handoff #52）を測る。
