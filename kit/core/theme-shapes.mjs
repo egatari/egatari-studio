@@ -1,4 +1,4 @@
-// テーマの形（見出し・表紙・結論の行）の決まった CSS の断片（#129、テーマを作る画面 #58 第 2 版 handoff/theme-builder-v2-2026-10-27.md）。
+// テーマの形（見出し・表紙・結論の行）の決まった CSS の断片（backlog #58 stage 2）。
 // 同梱のテーマはこの断片をそのまま tokens.css に写し、どれを選んだかを theme.json の look に書く（{"heading": "band", "cover": "left-bar", "concl": "left-rule"}）。
 // テーマを作る画面は同じ断片を並べるだけで、選んだ形のテーマを書き出せる。tools/test-themes.mjs が、tokens.css の中の断片がここと同じかを確かめる。
 // 断片はテーマのファイルに写す（組み立てはここを読まない）ので、ここを変えても出したテーマの見た目と hash は変わらない（変えたら写したテーマの版を上げる）。
@@ -15,6 +15,7 @@ const H = '.slide:not(.cover):not(.sec):not(.layout-tate) > h2';
 
 export const SHAPES = Object.freeze({
   heading: Object.freeze({
+    default: '',
     // 下線（既定。kit/layouts.css のまま）
     underline: '',
     // 太い下線と、題の前の四角（常盤）
@@ -29,6 +30,7 @@ export const SHAPES = Object.freeze({
     band: `${H}{left:0;right:0;top:0;padding:26px 48px 18px;background:var(--base);color:var(--sec-fg,#fff);border-bottom:4px solid var(--rule)}\n.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker{--kicker-color:var(--sec-fg,#fff);z-index:1}\n.slide:not(.cover):not(.sec):not(.layout-tate) > .kicker + h2{padding-top:48px;padding-bottom:4px}`,
   }),
   cover: Object.freeze({
+    default: '',
     // 中央・上に細い帯（既定。kit/layouts.css のまま）
     'top-band': '',
     // 中央・上に太い帯（常盤）
@@ -50,6 +52,7 @@ export const SHAPES = Object.freeze({
     circle: '.slide.cover::before{left:auto;right:-80px;top:-80px;width:300px;height:300px;border-radius:50%;background:var(--base-tint)}',
   }),
   concl: Object.freeze({
+    default: '',
     // 左の縦線（既定。themes/default/tokens.css 1.2.0）
     'left-rule': '',
     // 角丸の枠（浅葱）
@@ -78,3 +81,14 @@ export function lookIn(tokensCss) {
   for (const m of String(tokensCss).replace(/\r\n?/g, '\n').matchAll(/\/\* look (\w+): ([\w-]+) \*\/\n([\s\S]*?)\n\/\* \/look \*\//g)) out[m[1]] = { id: m[2], css: m[3] };
   return out;
 }
+
+// Background choices are tokens; the starting theme retains its exact paper colour until changed.
+export const BACKGROUNDS = Object.freeze({ white: '#FFFFFF', 'off-white': '#FFFDF8', 'base-wash': 'var(--base-wash)' });
+export const FONT_KINDS = Object.freeze({ gothic: 'BIZ UDPGothic', mincho: 'BIZ UDPMincho', 'maru-gothic': 'Zen Maru Gothic' });
+export const fontKindOf = (font) => /Maru/.test(font) ? 'maru-gothic' : /Mincho|Serif|Fraunces/.test(font) ? 'mincho' : 'gothic';
+export const cleanLook = (look) => Object.fromEntries(Object.keys(DEFAULT_LOOK).map((key) => [key, Object.hasOwn(SHAPES[key], look?.[key]) ? look[key] : 'default']));
+export const withoutLooks = (css) => String(css || '').replace(/\r\n?/g, '\n').replace(/\/\* look \w+: [\w-]+ \*\/\n[\s\S]*?\n\/\* \/look \*\//g, '');
+
+// These bands sit outside all cover text boxes (venue, title and author).
+// Keep this list explicit: a future band behind text must declare the foreground token here.
+export const COVER_BAND_TEXT = Object.freeze({ default: null, 'top-band': null, 'top-band-wide': null, 'bottom-band': null, 'left-bar': null, frame: null, circle: null });

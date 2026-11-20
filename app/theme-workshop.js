@@ -1,5 +1,5 @@
-// テーマを作る画面（新規作成の ③ で「オリジナル」を選ぶと開く。#58・handoff/theme-builder-v2-2026-10-27.md の第 1 段：表示の試作）。
-// 既定の入力は基調色 1 つ（ロゴの画像から拾うこともできる）とフォントだけ。ほかの色は基調色から導く（kit/core/theme-derive.mjs）。
+// テーマを作る表示（backlog #58 stage 2）。
+// 始めるテーマ・基調色・フォント・背景・見出しと表紙と結論の行の形を選択する。ほかの色は基調色から導く（kit/core/theme-derive.mjs）。
 // 色は裏で確かめ、通らないものがあるときだけ、何が・どれだけ・どう直すかと「#…… にする」（通るいちばん近い色）を出す。
 // 「詳しく」（たたむ）：導いた色を替える・基調色から決め直す・表紙の背景画像（data: URI で tokens.css に入る。テーマの hash と 1 ファイルに入る。#171(b)）。
 // プレビュー：表紙と本文の 2 枚。組み込みの体裁（kit/layouts.css）と default の tokens.css に、作ったテーマの tokens.css を重ねて、影の木（shadow DOM）の中に描く
@@ -8,7 +8,9 @@
 //
 //   createThemeWorkshop({el, lang, bundled(path) → 文字列 | null, myThemeFiles(name) → Map | null, save(name, files) → Promise<{replaced}>,
 //                        toast(msg, bad), download(name, bytes, type), onSaved(name)}) → {node, open(fromTheme), close(), isOpen(), saved, words}
-import { deriveTheme, checkInput, fixFor, pickColours, themeFiles, readBuilder, startFrom, fontStack, FONT_CHOICES, EDITABLE, isHex, normHex } from '../kit/core/theme-derive.mjs';
+import { checkInput, fixFor, pickColours, themeFiles, readBuilder, startFrom, builderTokens, FONT_CHOICES, EDITABLE, isHex, normHex } from '../kit/core/theme-derive.mjs';
+import { SHAPES, BACKGROUNDS, FONT_KINDS, fontKindOf, cleanLook, withoutLooks } from '../kit/core/theme-shapes.mjs';
+import { CHOOSABLE, themeLabel } from '../kit/core/themes-list.mjs';
 import { writeZip } from '../kit/core/zip-write.mjs';
 import { readFileBounded } from './bounded-read.js';
 
@@ -21,13 +23,20 @@ const TX = {
   ja: {
     original: 'オリジナル',
     head: 'オリジナルのテーマ',
-    lead: '基調色とフォントを選びます。ほかの色は、基調色から自動で作ります',
+    lead: '始めるテーマを選び、色・フォント・形を選択します。ほかの色は、基調色から自動で作ります',
     base: '基調色', baseHex: '基調色（16 進数）',
     logo: 'ロゴから色を取得…', logoColours: 'ロゴの色（押すと基調色にします）', logoUse: (h) => `${h} を基調色にする`,
     logoNone: 'ロゴから色を拾えませんでした（白・黒・灰色だけの画像です）。基調色を選んでください',
     imageBroken: (n) => `画像を読めませんでした：${n}。PNG・JPEG・WebP・SVG の画像を選んでください`,
     logoTooLarge: (sz) => `画像が大きすぎます（${sz}。4 MB まで）。小さくしてから選んでください`,
-    font: 'フォント', fontGroup: { ja: '日本語', en: '欧文' },
+    start: '始めるテーマ', font: 'フォント', background: '背景', heading: '見出しの形', coverStyle: '表紙の形', concl: '結論の行の形',
+    fonts: { gothic: 'ゴシック', mincho: '明朝', 'maru-gothic': '丸ゴシック' },
+    backgrounds: { white: '白', 'off-white': 'オフホワイト', 'base-wash': '淡い基調色' },
+    shapes: {
+      heading: { default: '下線', underline: '下線', 'thick-square': '太い下線と四角', 'left-bar': '左の縦線', double: '二重線', soft: '淡い背景の角丸', band: '色の背景に白抜き' },
+      cover: { default: '中央', 'top-band': '中央', 'top-band-wide': '中央と上に太い線', 'left-bar': '左寄せと縦線', 'bottom-band': '下に色の面', frame: '細い枠', circle: '角に大きな丸' },
+      concl: { default: '左の縦線', 'left-rule': '左の縦線', rounded: '角丸の枠', rule: '上の線' },
+    },
     previewCover: 'プレビュー：表紙', previewBody: 'プレビュー：本文', previewNote: 'プレビューは、この端末にあるフォントで出します',
     checksHead: (n) => `色を直したほうがよい所があります（${n} 件）`,
     use: (h) => `${h} にする`, useLabel: (name, h) => `${name}を ${h} にする`,
@@ -35,6 +44,7 @@ const TX = {
     who: { normal: 'だれにとっても', protan: '1 型色覚の人には', deutan: '2 型色覚の人には', tritan: '3 型色覚の人には' },
     msg: {
       text: (n, v) => `${n}の文字が白い地の上で読みにくい色です（コントラスト比 ${v}:1。4.5:1 以上が必要です）。${n}を濃くしてください`,
+      headingBand: (v) => `見出しの白い文字が読みにくくなります（コントラスト比 ${v}:1。4.5:1 以上が必要です）。基調色を濃くしてください`,
       sec: (v) => `章の扉の白い文字が、基調色の地の上で読みにくくなります（コントラスト比 ${v}:1。4.5:1 以上が必要です）。基調色を濃くしてください`,
       concl: (v) => `結論の行の文字が、灰色の地の上で読みにくくなります（コントラスト比 ${v}:1。4.5:1 以上が必要です）。結論の色を濃くしてください`,
       cover: (v) => `表紙のタイトルが背景画像の上で読みにくくなります（コントラスト比 ${v}:1。4.5:1 以上が必要です）。明るい画像にするか、画像を外してください`,
@@ -55,13 +65,20 @@ const TX = {
   en: {
     original: 'Custom',
     head: 'Custom theme',
-    lead: 'Choose a main colour and a font. The other colours are made from the main colour automatically',
+    lead: 'Choose a starting theme, then colours, a font and styles. The other colours are made from the main colour automatically',
     base: 'Main colour', baseHex: 'Main colour (hex)',
     logo: 'Pick colours from a logo…', logoColours: 'Colours in the logo (press one to use it as the main colour)', logoUse: (h) => `Use ${h} as the main colour`,
     logoNone: 'No colours could be picked from the logo (it has only white, black or grey). Choose the main colour yourself',
     imageBroken: (n) => `Could not read the image: ${n}. Choose a PNG, JPEG, WebP or SVG image`,
     logoTooLarge: (sz) => `The image is too large (${sz}; up to 4 MB). Make it smaller and choose it again`,
-    font: 'Font', fontGroup: { ja: 'Japanese', en: 'Latin script' },
+    start: 'Starting theme', font: 'Font', background: 'Background', heading: 'Heading style', coverStyle: 'Cover style', concl: 'Conclusion line style',
+    fonts: { gothic: 'Gothic', mincho: 'Mincho', 'maru-gothic': 'Maru Gothic' },
+    backgrounds: { white: 'White', 'off-white': 'Off-white', 'base-wash': 'Pale main colour' },
+    shapes: {
+      heading: { default: 'Underline', underline: 'Underline', 'thick-square': 'Thick underline and square', 'left-bar': 'Left bar', double: 'Double line', soft: 'Pale rounded background', band: 'White text on colour' },
+      cover: { default: 'Centred', 'top-band': 'Centred', 'top-band-wide': 'Centred with a thick top line', 'left-bar': 'Left aligned with a line', 'bottom-band': 'Colour block at the bottom', frame: 'Thin frame', circle: 'Large corner circle' },
+      concl: { default: 'Left rule', 'left-rule': 'Left rule', rounded: 'Rounded frame', rule: 'Top rule' },
+    },
     previewCover: 'Preview: cover', previewBody: 'Preview: body', previewNote: 'The preview uses the fonts on this device',
     checksHead: (n) => `Some colours should be changed (${n})`,
     use: (h) => `Use ${h}`, useLabel: (name, h) => `Set the ${name} to ${h}`,
@@ -69,6 +86,7 @@ const TX = {
     who: { normal: 'for anyone', protan: 'for people with protan colour vision', deutan: 'for people with deutan colour vision', tritan: 'for people with tritan colour vision' },
     msg: {
       text: (n, v) => `Text in the ${n} is hard to read on white (contrast ratio ${v}:1; 4.5:1 or more is needed). Make the ${n} darker`,
+      headingBand: (v) => `White heading text is hard to read (contrast ratio ${v}:1; 4.5:1 or more is needed). Make the main colour darker`,
       sec: (v) => `White text on section dividers is hard to read on the main colour (contrast ratio ${v}:1; 4.5:1 or more is needed). Make the main colour darker`,
       concl: (v) => `The conclusion line is hard to read on its grey background (contrast ratio ${v}:1; 4.5:1 or more is needed). Make the conclusion colour darker`,
       cover: (v) => `The title on the cover is hard to read over the background image (contrast ratio ${v}:1; 4.5:1 or more is needed). Use a lighter image or remove it`,
@@ -142,8 +160,8 @@ export function createThemeWorkshop(app) {
   const L = app.lang === 'en' ? 'en' : 'ja';
   const X = TX[L];
   const fallbackFont = FONT_CHOICES.find((f) => f.group === L && f.default) || FONT_CHOICES[0];
-  const S = { base: '#1D4F91', font: fallbackFont.family, overrides: {}, cover: '', coverBg: null, logo: null, open: false };
-  const input = () => ({ base: S.base, font: S.font, overrides: { ...S.overrides } });
+  const S = { base: '#1D4F91', font: fallbackFont.family, fontKind: 'gothic', background: 'white', look: cleanLook(), start: 'default', source: null, overrides: {}, cover: '', coverBg: null, logo: null, open: false };
+  const input = () => ({ base: S.base, font: S.font, fontKind: S.fontKind, background: S.background, look: { ...S.look }, start: S.start, source: S.source, overrides: { ...S.overrides } });
 
   // ---------------------------------------------------------------- 基調色・ロゴ・フォント
   const baseIn = el('input', { type: 'color', id: 'shop-base', value: S.base.toLowerCase() });
@@ -167,9 +185,20 @@ export function createThemeWorkshop(app) {
     logoNote.textContent = cols.length ? '' : X.logoNone;
     logoNote.hidden = !!cols.length;
   });
-  const fontSel = el('select', { id: 'shop-font' }, ['ja', 'en'].map((g) => el('optgroup', { label: X.fontGroup[g] },
-    FONT_CHOICES.filter((f) => f.group === g).map((f) => el('option', { value: f.family, text: f.family })))));
-  fontSel.addEventListener('change', () => { S.font = fontSel.value; render(); });
+  const select = (id, choices, labels, change) => {
+    const sel = el('select', { id }, choices.map((value) => el('option', { value, text: labels[value] })));
+    sel.addEventListener('change', () => { change(sel.value); render(); });
+    return sel;
+  };
+  const startSel = select('shop-start', CHOOSABLE.map((t) => t.name), Object.fromEntries(CHOOSABLE.map((t) => [t.name, t.label[L]])), (value) => startWith(value));
+  const fontSel = select('shop-font', Object.keys(FONT_KINDS), X.fonts, (kind) => {
+    S.fontKind = kind;
+    S.font = kind === 'gothic' && L === 'en' ? 'Source Sans 3' : FONT_KINDS[kind];
+  });
+  const backgroundSel = select('shop-background', Object.keys(BACKGROUNDS), X.backgrounds, (value) => { S.background = value; });
+  const shapeSels = Object.fromEntries(Object.keys(SHAPES).map((key) => [key,
+    select(`shop-${key}`, Object.keys(SHAPES[key]).filter((id) => id === 'default' || SHAPES[key][id] !== ''), X.shapes[key], (value) => { S.look[key] = value; })]));
+
 
   // ---------------------------------------------------------------- プレビュー（影の木）
   const slideHost = (label) => {
@@ -207,6 +236,8 @@ export function createThemeWorkshop(app) {
       case 'accent2-contrast': return M.text(c.token === 'base' ? X.name.base : X.name.accent2, ratio(c.value));
       case 'emph-contrast': return M.text(X.name.emph, ratio(c.value));
       case 'concl-contrast': return M.concl(ratio(c.value));
+      case 'cover-band':
+      case 'heading-band': return M.headingBand(ratio(c.value));
       case 'sec-contrast': return M.sec(ratio(c.value));
       case 'cover-title': return M.cover(ratio(c.value));
       case 'cvd': return M.cvd(X.who[c.kind], whole(c.value), c.need, n);
@@ -278,7 +309,7 @@ export function createThemeWorkshop(app) {
   nameIn.addEventListener('input', showSave);
   const filesOf = () => {
     const title = named(), name = themeNameOf(title);
-    return { title, name, files: themeFiles(input(), { name, title, coverImage: S.cover, results: checkInput(input(), { coverBg: S.coverBg }) }) };
+    return { title, name, files: themeFiles(input(), { name, title, coverImage: S.cover, coverBg: S.coverBg, results: checkInput(input(), { coverBg: S.coverBg }) }) };
   };
   saveBtn.addEventListener('click', async () => {
     if (!named()) return;
@@ -301,8 +332,11 @@ export function createThemeWorkshop(app) {
     el('h4', { id: 'theme-shop-h', text: X.head }),
     el('p', { cls: 'hint', text: X.lead }),
     el('div', { cls: 'shop-inputs' }, [
+      el('div', { cls: 'shop-field' }, [el('label', { for: 'shop-start', text: X.start }), startSel]),
       el('div', { cls: 'shop-field' }, [el('label', { for: 'shop-base', text: X.base }), el('div', { cls: 'shop-row' }, [baseIn, baseHex, logoBtn, logoFile])]),
       el('div', { cls: 'shop-field' }, [el('label', { for: 'shop-font', text: X.font }), fontSel]),
+      el('div', { cls: 'shop-field' }, [el('label', { for: 'shop-background', text: X.background }), backgroundSel]),
+      ...Object.entries(shapeSels).map(([key, sel]) => el('div', { cls: 'shop-field' }, [el('label', { for: sel.id, text: key === 'cover' ? X.coverStyle : X[key] }), sel])),
     ]),
     logoOut, logoNote,
     el('div', { cls: 'shop-preview' }, [pvCover.host, pvBody.host]),
@@ -318,14 +352,17 @@ export function createThemeWorkshop(app) {
   }
   // 入力を今の値にそろえ、プレビューと確かめた結果を描き直す（keep：打っている途中の欄は書き換えない）
   function render({ keep = null } = {}) {
-    const t = deriveTheme(S.base, S.overrides);
+    const t = builderTokens(input());
     baseIn.value = S.base.toLowerCase();
     if (keep !== baseHex) { baseHex.value = S.base; baseHex.removeAttribute('aria-invalid'); }
-    fontSel.value = S.font;
+    fontSel.value = S.fontKind;
+    if (![...startSel.options].some((o) => o.value === S.start)) startSel.append(el('option', { value: S.start, text: themeLabel(S.start, L) }));
+    startSel.value = S.start; backgroundSel.value = S.background;
+    for (const [key, sel] of Object.entries(shapeSels)) sel.value = SHAPES[key][S.look[key]] === '' ? 'default' : S.look[key];
     for (const k of EDITABLE) { rows[k].c.value = t[k].toLowerCase(); if (keep !== rows[k].h) rows[k].h.value = t[k]; rows[k].c.closest('.shop-colour').toggleAttribute('data-changed', !!S.overrides[k]); }
     reset.disabled = !Object.keys(S.overrides).length;
-    const css = themeFiles(input(), { name: 'preview', coverImage: S.cover, results: [] })['tokens.css'];
-    const all = FRAME + baseCss() + '\n' + host(css) + `\n:host{--font-sans:${fontStack(S.font)}}`;
+    const css = themeFiles(input(), { name: 'preview', coverImage: S.cover, coverBg: S.coverBg, results: [] })['tokens.css'];
+    const all = FRAME + baseCss() + '\n' + host(css);
     pvCover.style.textContent = all; pvBody.style.textContent = all;
     for (const p of [pvCover, pvBody]) scaleTo(p.host, p.host.clientWidth);
     showChecks(checkInput(input(), { coverBg: S.coverBg }));
@@ -337,20 +374,34 @@ export function createThemeWorkshop(app) {
     let st = null;
     const mine = from && app.myThemeFiles ? app.myThemeFiles(from) : null;
     if (mine && mine.get('theme.json')) st = readBuilder(new TextDecoder().decode(mine.get('theme.json')));
-    if (!st && from) {
-      const tok = bundled(`/repo/themes/${from}/tokens.css`), cfg = bundled(`/repo/themes/${from}/theme.json`);
+    if (!st) {
+      const name = from || 'default';
+      const tok = bundled(`/repo/themes/${name}/tokens.css`), cfg = bundled(`/repo/themes/${name}/theme.json`);
       if (tok) {
-        const s = startFrom(tok);
-        let body = '';
-        try { body = (JSON.parse(cfg || '{}').fonts || {}).body || ''; } catch { body = ''; }
-        if (!s.font && /var\(--font-mincho\)/.test(tok)) s.font = 'BIZ UDPMincho';
-        st = { base: s.base, font: FONT_CHOICES.some((f) => f.family === body) ? body : s.font, overrides: {} };
+        const s = startFrom(tok, cfg || '{}');
+        let fonts = {};
+        try { fonts = JSON.parse(cfg || '{}').fonts || {}; } catch { /* use the default font */ }
+        const font = s.font || fallbackFont.family;
+        st = { ...s, base: s.base || '#1D4F91', font, start: name, overrides: {},
+          source: { css: name === 'default' ? '' : withoutLooks(tok), fonts, base: s.base || '#1D4F91', font, background: s.background } };
       }
     }
-    S.base = st && st.base ? st.base : '#1D4F91';
-    S.font = st && st.font ? st.font : fallbackFont.family;
-    S.overrides = st ? { ...st.overrides } : {};
+    S.base = st?.base || '#1D4F91';
+    S.font = st?.font || fallbackFont.family;
+    S.fontKind = st?.fontKind || fontKindOf(S.font);
+    S.background = st?.background || 'white';
+    S.look = cleanLook(st?.look);
+    S.start = st?.start || 'default'; S.source = st?.source || null;
+    S.overrides = { ...st?.overrides };
+    S.cover = ''; S.coverBg = st?.coverBg || null;
+    if (mine?.get('tokens.css')) {
+      const css = new TextDecoder().decode(mine.get('tokens.css'));
+      S.cover = css.match(/--cover-bg: url\("(data:image\/[^"\n]+)"\)/)?.[1] || '';
+    }
+    coverNow.textContent = S.cover ? X.cover : X.coverNone;
+    coverRemove.hidden = !S.cover;
   }
+
   // saved：最後に保存したテーマの名前（新規作成の ③ は、そのテーマを選んでいる間は開いたままにする）
   const api = {
     node, saved: null,
