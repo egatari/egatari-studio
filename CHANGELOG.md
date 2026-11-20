@@ -8,6 +8,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.16] - 2026-11-20
+
+### Added
+
+- Editor: **Copy slide image and check request** in the quality check panel puts a PNG of the current slide at its last step and a short request for an AI chatbot (check that the figure and the conclusion line agree, that the figure is not squashed or cut off, and what to change in the slides HTML) on the clipboard in one go. The picture is drawn inside the preview and nothing is uploaded; browsers that cannot copy images get **Save image** and **Copy request** instead (backlog #227, handoff Issue #44)
+- Quality check: a shape marked `data-within="name"` must stay inside the frame marked `data-frame="name"`. Only declared shapes are measured, by their rendered outline at every step of the slide, so a shape that sticks out only at a middle step is found too. The new R-geometry warning `geoOutsideFrame` (command line and editor) names the shape, the step, by how many px it sticks out, and the other steps where it is outside; the AI fix request carries the same. The value is one name (`[a-z][a-z0-9-]*`); any other value is not measured and gets the R-geometry warning `geoBadMarkName` (command line, editor and AI fix request), once per element, naming the element and the value, so a typo does not silently turn the check off (handoff Issue #46)
+- Logo: a looping stroke-drawing version, `assets/logo/egatari-draw-loop-{light,dark}.svg` (draw 2.5 s → hold about 1 s → fade about 0.4 s, repeated; final state with reduced motion), for waits of unknown length, as self-contained SVG files that can be used as they are (owner 2026-11-19, handoff #56). The editor's waiting logo (waits over about 1 s: opening, building, creating from the pasted output) now uses it, so it no longer stops after one drawing while still waiting. The draw-once version stays for splashes
+- Quality check: a shape's stroke cut off at the edge of an inline SVG is reported. Every stroked shape in a clipping SVG (author figures and part figures; not `overflow="visible"`) is measured at the end of every step, by its bounding box grown by half the stroke width, in the same pass as `geoOutsideFrame`. Only the accident shape is reported: more than 1px cut on some edge while at least 90% of it is inside; `data-overlap="ok"` and `data-clip` leave a shape out. The new R-geometry warning `geoClippedStroke` (command line and editor) names the shape, the edge and px, and the step; the AI fix request carries the same. A lesson with inline SVGs and no parts now runs R-geometry (handoff Issue #52)
+- New…, step ③: **Custom** opens a theme builder (display prototype, backlog #58). Pick one main colour (or colours from a logo image) and a font; the other colours are derived from it, a cover and a body slide preview the result, and background checks (contrast, colour vision, greyscale, washed-out projection, cover title over the background image) speak up only when something fails, with the nearest passing colour. **More** edits the derived colours and adds a cover background image, stored in `tokens.css` as a `data:` URI (so it is in the theme hash and the file). **Save theme** puts it into My themes; **Download as ZIP file** gives the theme folder (`kit/core/theme-derive.mjs`, `app/theme-workshop.js`).
+- Egatari Viewer: handwriting. 「手書き」 makes the slide and a memo area below it one surface for Apple Pencil or a mouse, with three fixed pen colours, an eraser and undo; the memo area takes the slide's background. Strokes stay on this device, per lesson and slide, and are not kept on a shared device. Handwriting works in the slides view only: turning it on asks the player for that view, and choosing the book or slides-and-book view closes it (the strokes are kept). New test `tools/test-viewer-ink.mjs` (Chromium and WebKit).
+
+### Changed
+
+- Bundled samples synced to egatari/examples 4a02065: the samples use the same words as Studio (Egatari ファイル, 対話型の生成AI, AI への指示; handoff #36), and two steps of egatari-intro have their narration audio made again
+- Quality check: R-geometry measures `<circle>` boxes by their shape; an edge may name a point (`data-part="mark"`) as an end, and is then not checked against that point's label or the box that holds the point; `data-overlap="ok"` on a marked element or an ancestor `<g>` leaves its overlap findings out (`geoEdgeThroughBox`, `geoLineOverLabel`, `geoLabelOverlap`) (handoff Issue #45); `geoLabelOutsideBox` compares a label with the shape of a `<circle>`, `<ellipse>`, `<polygon>` or `<path>` box, not its bounding box (handoff Issue #46)
+- Egatari Player 1.9.1 (the bundled player that files carry, `player` in the index and `deck-meta`): patch release. The words the player shows (the Live panel, the sound and key help, the presenter view) follow the Studio glossary of 0.6.16 (handoff #36); a lesson shown and hidden again while its fonts were loading no longer mounts its parts at zero size (which made m-folds write a negative `rx`). Slides look the same; playback, steps and timing are unchanged
+- Wording (handoff #36 and the Japanese UI audit of 2026-11-19): what people make and share is an **Egatari file** (“file” where the context is clear) instead of a lesson / 教材; ChatGPT, Gemini and Claude are an **AI chatbot** (対話型の生成AI → 対話型AI), Claude Code and Codex are **AI agents** (AIエージェント), both together **generative AI** (生成AI). Studio, Egatari Viewer, quality-check findings, the player's own text, the AI instructions, docs and skills follow. The instructions version changes with the text only; no rule (R-…) changes.
+- Japanese UI: established terms instead of softened native verbs (修正・編集・確認・削除・破棄・追加・挿入・送信・依頼・配布・録音), スタート画面, 一時保存 for the unsaved changes kept in the browser, 読み取り専用, and the recording-mode buttons 連続録音・確定して次へ・再録音・タイミング設定. The glossary (`docs/terms.json`) gains egatari-file, ai-chatbot, ai-agent, generative-ai, subject (題材), reader (読み手), discard, delete, read-only, start-screen, send and draft-autosave; lesson and chat-ai are retired. A file saved without a title is named `untitled.ega.html`.
+- Reading dictionary (`tts/yomi.yaml`, used by local audio and the editor's browser TTS; handoff #48): “Egatari” is read as 絵語り (the kana reading gave an unnatural intonation; the reading is placed as written, so kanji works), and SCORM → スコーム, LMS → エルエムエス, CSS → シーエスエス and HTML → エイチティーエムエル (PDF and URL are left as written: they sound more natural without a reading). As before, English-only lines and longer English words that contain them are left alone
+
+### Fixed
+
+- Player: a lesson whose frame is shown and then hidden again while its fonts are still loading (a window opened and closed at once, a replaced preview) no longer mounts its parts at zero size; it waits until it is shown again. Before, m-folds drew its cells with a negative corner radius and the console logged `<rect> attribute rx: A negative value is not valid`.
+- Editor app and dev server: after saving a script, 「保存しました」 (with 「ほかのステップの N か所にも読み方を付けました」 for a reading
+  applied to every step) stayed for only about 50 ms: the reload of the preview after the save rebuilt the script panel. It now stays until the next edit
+- Viewer: in Chrome on iPad, turning to landscape no longer leaves a dark band above the slide with its bottom cut off and a page that scrolls back to the top; the page and the lesson's frame now take the visible height (visualViewport) instead of 100dvh. test-viewer-webkit checks it with a visible height shorter than the layout viewport.
+
 ## [0.6.15] - 2026-11-19
 
 ### Added
@@ -1620,7 +1647,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.15...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.16...HEAD
+[0.6.16]: https://github.com/egatari/egatari-studio/compare/v0.6.15...v0.6.16
 [0.6.15]: https://github.com/egatari/egatari-studio/compare/v0.6.14...v0.6.15
 [0.6.14]: https://github.com/egatari/egatari-studio/compare/v0.6.13...v0.6.14
 [0.6.13]: https://github.com/egatari/egatari-studio/compare/v0.6.12...v0.6.13
