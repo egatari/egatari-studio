@@ -3,6 +3,18 @@
   "request": "架空の食品会社の第 3 四半期の業績報告を、経営会議向けに 8 枚で作ってください。今期の 3 つの数字、8 四半期の売上の推移、増減の内訳、売上の使い道、原材料が上がったときの利益の試算、来期の打ち手と予定、最後に決めてほしいこと（価格改定 3 %）の順で。数字は架空と明記してください。",
   "category": "business",
   "subcategory": "report",
+  "purposes": [
+    "key-number",
+    "change",
+    "part-whole",
+    "parameter"
+  ],
+  "subjects": [
+    "business"
+  ],
+  "audiences": [
+    "working-adult"
+  ],
   "theme": "kogecha",
   "parts": [
     "m-bars",

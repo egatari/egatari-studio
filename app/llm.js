@@ -3,12 +3,12 @@
 //     ① どんな場面で使いますか（大分類・小分類。どちらも答える。あてはまらなければ「その他」「この中にない」。kit/core/new-deck.mjs）→
 //     ② 何について、だれに向けて作りますか（タイトルは必須。だれ向け・長さ・内容は「AI に任せる」か書く。詳しく：言語・話す人・そのほかの希望。
 //        「チャットの AI と、もう内容を話し合ってある」の切り替えで、タイトルのほかを隠す。kit/core/llm-request.mjs の記入欄）→
-//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（AI に渡す指示：軽量か詳細か → パーツの一覧（伝えたいことごと、教科の形は最後。
-//        標準は全部、専門は ① の小分類と ② の言葉から推した束に印。kit/core/new-deck.mjs の partsList・recommend）→ 指示の大きさのメーター（軽量・詳細の目安）→［指示をコピー］）→
+//     ③ どんな見た目にしますか（テーマ）→ ④ チャットの AI に指示を送ります（何を伝えたいか（札）→ 題材（② の言葉から推して印）→ 学校（授業（小・中・高）だけ）→
+//        どの AI に貼るか（軽量・詳細）→［指示をコピー］。指示はパーツの順位で組む：kit/core/new-deck.mjs の rankParts、kit/core/new-deck-pack.mjs の newDeckPack。handoff #43）→
 //     ⑤ AI の出力を貼り付けます：欄 2 つ（スライド＝deck.html・台本＝narration.md。どちらに出力の全体を貼っても分け、違う欄に貼ったものは移す。kit/core/llm-import.mjs の pastePart）→
 //        ［作成］：スライドに id を付け（kit/core/slide-ids.mjs）、メモリの上の原稿を Worker で 1 ファイル（.ega.html）にして（app/build-worker.js の exportHtml）、
 //        ほかの 1 ファイルと同じ道（openPortable：中身からコードを探し、あれば動かす前に確かめる）で開き、品質チェックをかける。
-//        作るときに、写したときの選び方（プラン・場面・パーツ）を
+//        作るときに、写したときの選び方（プラン・場面・伝えたいこと・題材・読み手）を
 //        egatari.json の studio.newDeck に残す（「その他」「この中にない」は subcategory: null）。シード値は書かない（format spec §8.4：見せ方は variant の名前だけ）。
 //        長さが 9 枚から（分は 1 分 ≒ 1 枚）は 2 回に分けて頼む：⑤ がはじめに構成案の欄になり、受け取ったら 1〜6 枚目を頼む指示と 2 つの欄（kit/core/llm-outline.mjs）
 //   「スライドの挿入…」→「チャットの AI に書いてもらう」（mode 'insert'）：① 足すスライド → ② 短い指示（見出しの一覧と挿入する場所の前のスライドだけ。
@@ -18,10 +18,8 @@
 //     ① と開いているメモ（comments.json））→ ③ 同じ 2 つの欄 →［置き換える］：今の docId・設定・音声を残して原稿だけを入れ替える（直したスライドだけの出力は id で戻す。片方だけでもよい）
 //   品質チェックの板の「AI への修正依頼をコピー」も、出力は「修正…」の ③ に貼る
 // 貼り付けた文字列は信頼しない：このページでは解析と文字列の書き換えだけをし、組み立ては Worker で、表示は sandbox のプレビューで
-import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, fitSize, setPart, TIERS, FREE_CORE } from '../kit/core/llm-pack.mjs';
-import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, capKb, partsList, partsOfSet, recommend, initialParts, fitPlan, withChoice, paidOnly } from '../kit/core/new-deck.mjs';
-import { partLabel, partIcon, partDesc } from '../kit/core/part-labels.mjs';
-import { THUMBS } from './part-thumbs.js';
+import { SETS, membersOfSet, setsForDeck, packSize, packKb, kbOf, setPart, TIERS } from '../kit/core/llm-pack.mjs';
+import { CATEGORIES, SET_LABELS, AI_PLANS, DEFAULT_PLAN, withChoice, purposeTiles, subjectChoices, guessSubjects, SCHOOL_AUDIENCES, asksSchool, audienceOf, rankParts } from '../kit/core/new-deck.mjs';
 import { PARTS_GALLERY } from './parts-gallery.js';
 import { pastePart, isPatch, mergeSlides, mergeNarration, sectionsOf, narrSections } from '../kit/core/llm-import.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
@@ -41,7 +39,7 @@ import { withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE } from '../kit/core/parts2.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
 import { memoryWorkspace } from './workspace.js';
-import { REQUEST_WORDS, newDeckRequest, sampleTicks, packText, longOf, samplePackFit, fromSampleStart } from '../kit/core/new-deck-pack.mjs';
+import { REQUEST_WORDS, newDeckRequest, newDeckPack, longOf, fromSampleStart, sampleChoice } from '../kit/core/new-deck-pack.mjs';
 import { readFileBoundedText } from './bounded-read.js';
 
 
@@ -103,39 +101,31 @@ const TX = {
     themeSampleAlt: { cover: (n) => `${n} のサンプル：表紙`, body: (n) => `${n} のサンプル：本文` }, themeSampleClose: '閉じる',
     themeLine: REQUEST_WORDS.ja.themeLine,
     // ④ AI に送る
-    // 指示の詳しさ（内部の名前は plan：free = 軽量・paid = 詳細。作者の決定 2026-11-07）
-    planLegend: 'AI に渡す指示を選んでください',
-    plan: { free: '軽量（どの AI でも）', paid: '詳細（有料の AI 向け）' },
+    // どの AI に貼るか（内部の名前は plan：free = 軽量の指示・paid = 詳細の指示。handoff #43 ④、作者の決定 2026-11-19。上限の大きさは見せない）
+    planLegend: 'どの AI に貼りますか',
+    plan: { free: '無料の AI・わからない', paid: '有料の AI・ファイルで渡す' },
     planBadge: '迷ったらこちら',
     planDesc: {
-      free: '約 3 万字までの短い指示です。無料の ChatGPT や Gemini にも、そのまま貼り付けられます。選んだ分野によっては、パーツの説明を短くしたり、一部を省いたりします。',
-      paid: 'パーツの説明を省かない、長い指示です。ChatGPT・Gemini・Claude の有料プランのように、長い文章を読める AI に向いています。Gemini は、コピーして貼り付けると約 3 万字で切れることがあります。ファイルに保存して添付してください。使う分野だけを選ぶと、指示が短くなり、AI が使う量（トークン）も減り、パーツも選びやすくなります。',
+      free: '短い指示です。無料の ChatGPT や Gemini にも、そのまま貼り付けられます',
+      paid: 'パーツの説明を省かない、長い指示です。長い文章を読める有料の AI 向けです。ファイルに保存して添付できます',
     },
-    planHint: (free, paid) => `選んだ指示で、大きさの目安が変わります（軽量は ${free} KB、詳細は ${paid} KB まで）。長すぎる指示は、対話型 AI が最後まで読めないことがあります`,
     // スライドの挿入の「指示の全体も付ける」の分野
     seriesLegend: 'スライドに出てくるものはありますか（内容の分野）',
     seriesHint: (name) => `データの分布の図（ヒストグラム・箱ひげ図）を使うなら「${name}」を選ぶ。棒・折れ線・円などのグラフはいつも入る`,
-    // 新規作成 ④ のパーツの一覧（kit/core/new-deck.mjs の partsList・recommend）
-    partsLegend: 'AI にどのパーツを使わせますか',
-    partsGallery: 'すべてのパーツのサンプルを見る',
-    // 畳んだパーツの一覧の 1 行（backlog #211。軽量・詳細のどちらでも畳む。「詳細」の語は使わない：有料のプランの名前）
-    partsFold: (n) => `AI が使うパーツ：${n} 種類`, partsFoldAct: '選び直す',
-    partsHint: '伝えたいことごとに並べています。標準パーツは全部選んであります。外したパーツは AI が使わず、要るときは近い形を HTML で描きます。表・画像・数式・図形は、選ばなくてもいつも使えます',
-    whySub: (sub, names) => `① の使う場面が${sub}なので、${names}も選びました`,
-    whyWord: (word, names) => `② に${word}とあるので、${names}も選びました`,
+    // 新規作成 ④ のラベル（伝えたいこと・題材・学校。kit/core/new-deck.mjs の purposeTiles・subjectChoices・guessSubjects。名前は manifest から）
+    purposesLegend: '何を伝えたいですか（いくつでも選べます。選ばなくてもかまいません）',
+    purposesNote: '選んだものに合うパーツを、指示の先に詳しく載せます',
+    subjectsLegend: '題材（任意）',
+    whySubject: (word, subject) => `②に「${word}」とあるので、${subject}を選びました`,
     whySep: '。',
-    suggested: 'おすすめ',
+    schoolLegend: 'どの学校向けですか',
+    partsGallery: 'すべてのパーツのサンプルを見る',
+    // 畳める 1 行（指示に入るパーツの数。順位で組んだ指示の、説明つきと名前だけ）
+    partsFold: (n, m) => `指示に入るパーツ：説明つき ${n} 種類、名前だけ ${m} 種類`, partsFoldAct: '変更',
     // サンプルから始めた新規作成（backlog #130。app/main.js の「このサンプルを参考に作る」と ?from-sample=）
     fromSample: 'サンプルから',
     fromSampleLead: (t) => `サンプル${quoteJa(t)}から始めます。使う場面・見た目・パーツはサンプルと同じにしてあり、変えられます。② に、作るものの内容を書いてください。`,
     useStructure: (t, n) => `サンプル${quoteJa(t)}の構成（${n} 枚の見出しと要点）を指示に添える`,
-    thumbAlt: (name, title) => `${name}のサンプル${title ? '：' + title : ''}`,
-    partsCount: (n, all) => `選んだパーツ：${n} 種類（全 ${all} 種類）`,
-    partsShort: (n) => `パーツ ${n} 種類`,
-    packMeter: (kb, cap) => `指示の大きさ：${kb} KB（目安は ${cap} KB まで）`,
-    overCap: (kb, names) => `目安より ${kb} KB 大きいので、対話型 AI が最後まで読めないことがあります。${names ? `外す候補：${names}` : '外すパーツを選んでください'}`,
-    trim: '候補を外す',
-    shortened: (names) => `軽量の指示に収めるため、${names}の説明を短くしました`,
     packTotal: (kb) => `指示の大きさ：${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: '指示をコピー',
     copied: (kb) => `コピーしました（${kb} KB）。対話型 AI のタブに貼り付けて送信してください。長いので、貼り付けるとファイルの添付の形になることがありますが、そのまま送信できます。AI が書き終えたら ⑤ へ`,
@@ -282,34 +272,26 @@ const TX = {
     themeHint: 'The colours and fonts of the slides. You can change it later with “Change theme…”.', themeLabel: 'Theme', themeLoad: 'Load theme…', themeMine: 'My themes',
     themeSampleAlt: { cover: (n) => `${n} sample: cover`, body: (n) => `${n} sample: body` }, themeSampleClose: 'Close',
     themeLine: REQUEST_WORDS.en.themeLine,
-    planLegend: 'Choose the instructions for the AI',
-    plan: { free: 'Light (any AI)', paid: 'Detailed (for paid AI plans)' },
+    planLegend: 'Which AI will you paste it into?',
+    plan: { free: 'A free AI, or not sure', paid: 'A paid AI, or as a file' },
     planBadge: 'If unsure',
     planDesc: {
-      free: 'Short instructions of up to about 30,000 characters. You can paste them as they are into the free ChatGPT or Gemini too. Depending on the subjects you choose, some part descriptions are shortened or a few parts are left out.',
-      paid: 'Long instructions that describe every part in full. They suit AIs that can read long text, such as the paid versions of ChatGPT, Gemini and Claude. Gemini may cut a copy-and-paste at about 30,000 characters, so save the instructions as a file and attach it. Choosing only the subjects you use makes the instructions shorter, so the AI uses fewer tokens and chooses parts more easily.',
+      free: 'Short instructions. You can paste them into free ChatGPT or Gemini as they are',
+      paid: 'Long instructions with every part described, for a paid AI that reads long text. You can save them as a file and attach it.',
     },
-    planHint: (free, paid) => `Your choice sets the suggested size limit for the instructions (light ${free} KB, detailed ${paid} KB). An AI chatbot may not read instructions that are too long to the end.`,
     seriesLegend: 'Will the slides need any of these? (subjects)',
     seriesHint: (name) => `Showing data distributions (histograms, box plots)? Choose “${name}”. Bar, line and pie charts are always included.`,
-    partsLegend: 'Which parts may the AI use?',
+    purposesLegend: 'What do you want to show? (Any number, or none)',
+    purposesNote: 'Parts that fit your choice come first in the instructions, with full descriptions',
+    subjectsLegend: 'Subject (optional)',
+    whySubject: (word, subject) => `Step 2 mentions “${word}”, so ${subject} is selected`,
+    whySep: '. ',
+    schoolLegend: 'School level',
     partsGallery: 'See samples of all parts',
-    partsFold: (n) => `Parts the AI may use: ${n}`, partsFoldAct: 'Change',
-    partsHint: 'Grouped by what to convey. All standard parts are chosen. The AI won’t use a part you untick; if it needs one, it draws something close in HTML. Tables, images, equations and shapes are always available.',
-    whySub: (sub, names) => `Also chose ${names}, because the setting in step 1 is ${sub}.`,
-    whyWord: (word, names) => `Also chose ${names}, because step 2 mentions ${word}.`,
-    whySep: ' ',
-    suggested: 'Suggested',
+    partsFold: (n, m) => `Parts in the instructions: ${n} described, ${m} by name only`, partsFoldAct: 'Change',
     fromSample: 'From the sample',
     fromSampleLead: (t) => `Starting from the sample “${t}”. The setting, look and parts are the same as the sample’s, and you can change them. Fill in step 2 with your own content.`,
     useStructure: (t, n) => `Add the structure of the sample “${t}” (the heading and point of each of its ${n} ${plural(n, 'slide')}) to the instructions`,
-    thumbAlt: (name) => `Example: ${name}`,
-    partsCount: (n, all) => `Parts chosen: ${n} of ${all}`,
-    partsShort: (n) => `${n} ${plural(n, 'part')}`,
-    packMeter: (kb, cap) => `Instructions: ${kb} KB (suggested limit ${cap} KB)`,
-    overCap: (kb, names) => `${kb} KB over the suggested limit, so your AI chatbot may not read it to the end. ${names ? `Parts you could untick: ${names}` : 'Untick some parts.'}`,
-    trim: 'Untick these',
-    shortened: (names) => `To fit the light instructions, the descriptions of ${names} are shortened.`,
     packTotal: (kb) => `Instructions: ${kb} KB`, plusKb: (kb) => `+${kb} KB`,
     copyGuide: 'Copy the instructions',
     copied: (kb) => `Copied (${kb} KB). Paste it into your AI chatbot’s tab and send. It is long, so it may turn into an attached file; just send it. When the AI has finished, go to step 5.`,
@@ -511,7 +493,8 @@ export function setupLlm(app) {
     category: null, sub: undefined,   // sub：undefined まだ答えていない | null この中にない | 小分類の id
     title: '', audMode: 'ai', audience: '', lenMode: 'ai', lenN: '', lenUnit: 'slides', conMode: 'ai', content: '',   // conMode：'ai' | 'give'（ここに書く・貼る）| 'given'（チャットの AI に渡してある）
     language: LANG, languageOther: '', speakers: 1, wishes: '', plan: DEFAULT_PLAN,
-    from: null, useStructure: true,   // from：始めたサンプル（{name, title, category, subcategory, theme, parts, structure, …}）。新規作成を開くたびに決め直す
+    from: null, useStructure: true,   // from：始めたサンプル（{name, title, category, subcategory, theme, parts, purposes, subjects, audiences, structure, …}）。新規作成を開くたびに決め直す
+    purposes: [], subjects: [], subjectsTouched: [], school: null,   // ④ のラベル（伝えたいこと・題材・自分で替えた題材・学校（授業（小・中・高）だけ））
   };
   // サンプルと同じ答えか（「サンプルから」の札。変えたら札は消える）
   const sameKind = () => !!draft.from && draft.category === draft.from.category && (draft.sub ?? null) === draft.from.subcategory;
@@ -798,150 +781,94 @@ export function setupLlm(app) {
     return setsForDeck(deck);
   }
 
-  // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る（handoff/parts-tiers-2026-10-27.md §2）
-  // 問い「AI に渡す指示を選んでください」（軽量・詳細。内部の名前は plan の free・paid）→「AI にどのパーツを使わせますか」（パーツの一覧：伝えたいことごとのまとまり、教科の形は最後。
-  // kit/core/new-deck.mjs の partsList）→ 指示の大きさ（軽量・詳細の目安と比べるメーター）→［指示をコピー］。
-  // 初めの選び方：標準のパーツは全部、専門のパーツは ① の小分類と ② の言葉から決めた束だけ（recommend。理由を一覧の上に出し、パーツに「おすすめ」）。
-  // 特殊（extra）のパーツは出さない。軽量・詳細が変えるのは目安と詳しさだけ（選べる数は限らない）：越えたら、軽量の指示はまず中核の 4 つの説明を短くし（fitPlan）、それでも越えれば越えた分と外す候補（専門のパーツだけ）と［候補を外す］。
-  // 自分で替えた印は、推し直しで上書きしない。新規作成はいつも初めの選び方から（開いている教材の studio.newDeck は読まない）
-  // パーツの見本の小さな絵（app/part-thumbs.js。tools/part-thumbs.mjs がパーツの見本 demo.html から作る）：明るい画面と暗い画面の 2 枚を <picture> で。
-  // alt は何の絵か（パーツの名前と、日本語の画面では見本の見出し）。絵のないパーツは線画（ICONS）
-  function thumb(t) {
-    const th = THUMBS[t];
-    if (!th) return el('span', { cls: 'pick-thumb none' }, [icon(partIcon(t))]);
-    const img = el('img', { src: th.light, alt: X.thumbAlt(partLabel(t, LANG), th.title || ''), width: '96', height: '60', loading: 'lazy', decoding: 'async' });
-    return el('picture', { cls: 'pick-thumb' }, [el('source', { srcset: th.dark, media: '(prefers-color-scheme: dark)' }), img]);
-  }
+  // ---------------------------------------------------------------- ④ 新規作成：チャットの AI に指示を送る（handoff #43 ④、作者の決定 2026-11-19）
+  // パーツに印を付けず、ラベルを選ぶ：「何を伝えたいですか」（伝えたいことの札。いくつでも・なしでも）→「題材（任意）」（② のタイトル・内容・そのほかの希望の言葉から
+  // 推して先に印。理由を 1 行）→「どの学校向けですか」（① が授業（小・中・高）のときだけ。ほかの読み手は ① から：kit/core/new-deck.mjs の audienceOf）→
+  // 「どの AI に貼りますか」（無料の AI・わからない＝軽量の指示、有料の AI・ファイルで渡す＝詳細の指示）→［指示をコピー］。
+  // 指示はパーツの順位で組む（kit/core/new-deck.mjs の rankParts → kit/core/new-deck-pack.mjs の newDeckPack）：上から説明を載せ、上限を越える手前で止め、
+  // 残りは言いたいことの表に名前だけ。大きさと上限は見せない。ラベルの 3 つの問いは畳める（1 行：説明つきと名前だけのパーツの数）
+  // 自分で替えた題材は、推し直しで上書きしない。サンプルから始めたときは、サンプルの伝えたいこと・題材・読み手を選んでおき、サンプルのパーツを順位の一番上に
   function sendStep(title, copyMsg, { request, missing, onCopied, onChange }) {
-    const listed = partsList(null).flatMap((g) => g.parts);
-    // サンプルから始めたとき：サンプルのパーツ（一覧にあるもの）に印を付けて「サンプルから」の札。推し直しで外さず、目安に収めるときも外す候補にしない
-    const fromParts = draft.from ? draft.from.parts.filter((t) => listed.includes(t)) : [];
-    const ticked = new Set(sampleTicks(draft.from, []));   // 推し直し（guessNow）の前の印（kit/core/new-deck-pack.mjs。コマンドと同じ）
-    const touched = new Set(fromParts);   // 自分で印を替えたパーツ（推し直しで上書きしない）
-    let rec = [];                // おすすめの束と理由（recommend）
-    const recSets = () => new Set(rec.map((r) => r.set));
-    const isRec = (t) => recSets().has(TIERS.parts[t].set);
-    // 有料のプランの指示にだけ入るパーツ（paidOnly。受け皿のない束のパーツ）は、軽量の指示では一覧に出さず、選んだことにもしない（印を付けても指示に入らないので）
-    const offered = (t) => !(draft.plan === 'free' && paidOnly(t));
-    const chosen = () => listed.filter((t) => ticked.has(t) && offered(t));
-    const quote = (s) => (LANG === 'ja' ? `「${s}」` : `“${s}”`);
-    const names = (tags) => tags.map((t) => partLabel(t, LANG)).join(LANG === 'ja' ? '・' : ', ');
-    // パーツ 1 つ：チェックボックスと絵・名前・1 行の説明（label で全体を押せる）。おすすめには小さな札
-    const boxes = new Map();
-    const pick = (t) => {
-      const cb = el('input', { type: 'checkbox', id: 'paste-part-' + t.replace(/^m-/, ''), value: t, 'aria-describedby': 'paste-part-' + t.replace(/^m-/, '') + '-d' });
-      cb.addEventListener('change', () => { if (cb.checked) ticked.add(t); else ticked.delete(t); touched.add(t); fold.open = true; update(); });
-      boxes.set(t, cb);
-      const badge = el('span', { cls: 'pick-badge', text: X.suggested, hidden: '' });
-      const fromBadge = el('span', { cls: 'pick-badge from-sample', text: X.fromSample, hidden: '' });
-      const node = el('label', { cls: 'pick', 'data-part': t, title: '<' + t + '>' }, [cb, thumb(t),
-        el('span', { cls: 'pick-text' }, [el('span', { cls: 'tile-label', text: partLabel(t, LANG) }), el('small', { id: cb.id + '-d', text: partDesc(t, LANG) })]), badge, fromBadge]);
-      node.badge = badge; node.fromBadge = fromBadge;
-      return node;
-    };
-    const picks = new Map(listed.map((t) => [t, pick(t)]));
-    const groupNodes = new Map(partsList(null).map((g) => [g.id, el('div', { id: 'paste-pgroup-' + g.id, cls: 'pgroup', role: 'group', 'aria-labelledby': 'paste-pgroup-' + g.id + '-h' }, [
-      el('h4', { id: 'paste-pgroup-' + g.id + '-h', text: g.label[LANG] }), el('div', { cls: 'picks' }, g.parts.map((t) => picks.get(t)))])]));
-    const groups = el('div', { id: 'paste-pgroups', cls: 'pgroups' });
-    const why = el('p', { id: 'paste-parts-why', cls: 'hint paste-why', role: 'status', hidden: '' });
-    const count = el('p', { id: 'paste-parts-count', cls: 'hint', 'aria-live': 'polite' });
-    // 指示の詳しさ（軽量・詳細）：選択肢ごとに名前と説明。軽量に「迷ったらこちら」の札（内部の名前は plan の free・paid のまま）
+    const fromParts = draft.from && Array.isArray(draft.from.parts) ? draft.from.parts : [];
+    const touched = new Set(draft.subjectsTouched);   // 自分で替えた題材（推し直しで上書きしない）
+    let guessed = [];   // ② の言葉から推した題材（guessSubjects：[{subject, word}]）
+    const labelOf = (x) => (x.label && x.label[LANG]) || x.id;
+    const tileBox = (kind, x, checked) => el('label', { cls: 'tile-opt' }, [el('input', { type: 'checkbox', name: 'paste-' + kind, value: x.id, id: `paste-${kind}-${x.id}`, ...(checked ? { checked: '' } : {}) }), el('span', { text: labelOf(x) })]);
+    // 伝えたいこと（札は manifest の tile が own で reserved でないもの。名前も manifest から）
+    const purposeSet = el('fieldset', { id: 'paste-purposes', cls: 'paste-kind paste-tiles', 'aria-describedby': 'paste-purposes-note' }, [el('legend', { text: X.purposesLegend }),
+      el('p', { id: 'paste-purposes-note', cls: 'hint', text: X.purposesNote }),
+      el('div', { cls: 'tile-opts' }, purposeTiles().map((x) => tileBox('purpose', x, draft.purposes.includes(x.id))))]);
+    purposeSet.addEventListener('change', (e) => {
+      if (e.target.name !== 'paste-purpose') return;
+      // 札のない伝えたいこと（サンプルの text-structure など）はそのまま残す（順位に効く。サンプルから始めた指示をコマンドと同じに）
+      const tileIds = purposeTiles().map((x) => x.id);
+      draft.purposes = [...draft.purposes.filter((id) => !tileIds.includes(id)), ...tileIds.filter((id) => purposeSet.querySelector(`#paste-purpose-${id}`).checked)];
+      update();
+    });
+    // 題材（reserved でないもの）。推した理由は 1 行
+    const why = el('p', { id: 'paste-subjects-why', cls: 'hint paste-why', role: 'status', hidden: '' });
+    const subjectSet = el('fieldset', { id: 'paste-subjects', cls: 'paste-kind paste-tiles', 'aria-describedby': 'paste-subjects-why' }, [el('legend', { text: X.subjectsLegend }),
+      el('div', { cls: 'tile-opts' }, subjectChoices().map((x) => tileBox('subject', x, draft.subjects.includes(x.id)))), why]);
+    subjectSet.addEventListener('change', (e) => {
+      if (e.target.name !== 'paste-subject') return;
+      touched.add(e.target.value); draft.subjectsTouched = [...touched];
+      draft.subjects = subjectChoices().map((x) => x.id).filter((id) => subjectSet.querySelector(`#paste-subject-${id}`).checked);
+      showWhy(); update();
+    });
+    // 学校（① が授業（小・中・高）のときだけ）
+    const audLabel = (id) => { const a = (TIERS.audiences || []).find((x) => x.id === id); return a ? labelOf(a) : id; };
+    const schoolSet = el('fieldset', { id: 'paste-school', cls: 'paste-kind paste-school', hidden: '' }, [el('legend', { text: X.schoolLegend }),
+      ...SCHOOL_AUDIENCES.filter((id) => (TIERS.audiences || []).some((x) => x.id === id)).map((id) => radio('paste-school', id, audLabel(id), draft.school === id))]);
+    schoolSet.addEventListener('change', (e) => { if (e.target.name === 'paste-school') { draft.school = e.target.value; update(); } });
+    const audience = () => audienceOf(draft.category, draft.sub ?? null, draft.school);
+    // ラベルの 3 つの問いは畳める（初めは開いておく）：1 行に、指示に入るパーツの数（説明つき・名前だけ）と［変更］（畳んだときだけ）
+    const foldText = el('span', { id: 'paste-parts-sum-text' });
+    const foldAct = el('span', { cls: 'parts-fold-act', text: X.partsFoldAct });   // 開いているあいだは出さない（app/app.css）
+    const fold = el('details', { id: 'paste-parts-fold', cls: 'parts-fold', open: '' }, [el('summary', { id: 'paste-parts-summary' }, [foldText, foldAct]),
+      el('div', { id: 'paste-parts', cls: 'paste-parts' }, [purposeSet, subjectSet, schoolSet,
+        // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
+        el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })])])]);
+    // どの AI に貼るか：選択肢ごとに名前と説明。「無料の AI・わからない」に「迷ったらこちら」の札（内部の名前は plan の free・paid のまま）
     const planOpt = (p) => el('label', { cls: 'plan-opt' }, [
       el('input', { type: 'radio', name: 'paste-plan', value: p, id: 'paste-plan-' + p, 'aria-describedby': 'paste-plan-' + p + '-d', ...(draft.plan === p ? { checked: '' } : {}) }),
       el('span', { cls: 'plan-text' }, [el('span', { cls: 'plan-name' }, [el('span', { text: X.plan[p] }), ...(p === DEFAULT_PLAN ? [el('span', { cls: 'plan-badge', text: X.planBadge })] : [])]),
         el('small', { id: 'paste-plan-' + p + '-d', text: X.planDesc[p] })])]);
-    const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan', 'aria-describedby': 'paste-plan-hint' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map(planOpt)]);
-    const planHint = el('p', { id: 'paste-plan-hint', cls: 'hint', text: X.planHint(capKb('free'), capKb('paid')) });
-    const partsSet = el('fieldset', { id: 'paste-parts', cls: 'paste-parts', 'aria-describedby': 'paste-parts-hint paste-parts-why' }, [el('legend', { text: X.partsLegend }),
-      el('p', { id: 'paste-parts-hint', cls: 'hint', text: X.partsHint }),
-      // すべてのパーツの動くサンプル（studio.egatari.org/parts/v<版>/。新しいタブ。backlog #158）
-      el('p', { cls: 'hint' }, [el('a', { id: 'paste-parts-gallery', href: PARTS_GALLERY, target: '_blank', rel: 'noopener', text: X.partsGallery })]), groups, count]);
-    // 一覧は初めは畳む（backlog #211、作者 11/15・設計 d5）：1 行「AI が使うパーツ：N 種類　選び直す」。推した理由（why）と大きさの目盛りは畳む範囲の外でいつも見せる。
-    // 外す候補が出たら自動で開き、作成者がチェックを替えたら、この新規作成のあいだは開いたまま（閉じるのは作成者だけ）
-    const foldText = el('span', { id: 'paste-parts-sum-text' });
-    const fold = el('details', { id: 'paste-parts-fold', cls: 'parts-fold' }, [el('summary', { id: 'paste-parts-summary' }, [foldText, el('span', { cls: 'parts-fold-act', text: X.partsFoldAct })]), partsSet]);
-    // 指示の大きさ：軽量・詳細の目安と比べるメーター（role="meter"）。越えたら、越えた分・外す候補・［候補を外す］
-    const total = el('span', { id: 'paste-pack-size', cls: 'hint', tabindex: '-1' });
-    const fill = el('span', { cls: 'meter-fill' });
-    const bar = el('span', { id: 'paste-meter', cls: 'meter-bar', role: 'meter', 'aria-valuemin': '0', 'aria-labelledby': 'paste-pack-size' }, [fill]);
-    const overText = el('span', { id: 'paste-over-text' });
-    const trim = el('button', { type: 'button', id: 'paste-trim', text: X.trim });
-    const over = el('p', { id: 'paste-over', cls: 'paste-over', role: 'status', hidden: '' }, [overText, ' ', trim]);
-    const meter = el('div', { id: 'paste-size', cls: 'paste-size' }, [total, bar]);
-    const shortened = el('p', { id: 'paste-shortened', cls: 'hint', role: 'status', hidden: '', text: X.shortened(names(FREE_CORE)) });
+    const planSet = el('fieldset', { id: 'paste-plan', cls: 'paste-kind paste-plan' }, [el('legend', { text: X.planLegend }), ...AI_PLANS.map(planOpt)]);
     const phase = el('p', { id: 'paste-phase', cls: 'note paste-phase', role: 'status', hidden: '' });
-    // サンプルの構成を指示に添えるか（既定は添える。外すと指示が小さくなる。メーターも変わる）
+    // サンプルの構成を指示に添えるか（既定は添える。外すと指示が小さくなる）
     const structCb = el('input', { type: 'checkbox', id: 'paste-use-structure' });
     structCb.checked = draft.useStructure;
     structCb.addEventListener('change', () => { draft.useStructure = structCb.checked; update(); });
     const structRow = draft.from ? el('label', { id: 'paste-structure-row', cls: 'paste-with-pack', for: 'paste-use-structure' }, [structCb, el('span', { text: X.useStructure(draft.from.title, draft.from.structure.length) })]) : null;
-    // 軽量・詳細は上限と詳しさを変える（軽量の指示は、中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
-    // 軽量の指示で目安を越えたら、中核の 4 つの説明も短くする（shortNow。fitPlan が決める）
-    // サンプルから始めたとき（draft.from）は、サンプルのパーツを詳しく書く（fullNow。kit/core/new-deck-pack.mjs の samplePackFit がコマンドと同じに決める）
-    let shortNow = false, fullNow = null;
-    const textNow = (tags = chosen(), short = shortNow, full = fullNow) => packText({ tags, plan: draft.plan, lang: LANG, request: request(), short, full });
-    // 推した印：① の小分類と ② のタイトル・内容・そのほかの希望の言葉（recommend）。自分で替えたパーツはそのまま。標準のパーツは、替えていなければいつも印
-    const guessNow = () => {
-      rec = recommend({ sub: draft.sub || null, text: [draft.title, givenContent(), draft.wishes].join('\n'), lang: LANG });
-      const want = new Set(initialParts(rec));
-      for (const t of listed) if (!touched.has(t)) { if (want.has(t)) ticked.add(t); else ticked.delete(t); }
-      // 理由：束ごとに 1 文（その束で、推して印が付いたパーツの名前）。小分類の理由が先
-      const lines = rec.map((r) => {
-        const tags = partsOfSet(r.set).filter((t) => ticked.has(t) && !touched.has(t));
-        if (!tags.length) return '';
-        const sub = r.sub ? (catOf(draft.category) || { subs: [] }).subs.find((x) => x.id === r.sub) : null;
-        return r.sub ? X.whySub(quote(sub ? sub.label[LANG] : r.sub), names(tags)) : X.whyWord(quote(r.word), names(tags));
-      }).filter(Boolean);
+    // 写す指示：順位で組む（kit/core/new-deck-pack.mjs の newDeckPack。コマンドの --from-sample と同じ）
+    const order = () => rankParts({ purposes: draft.purposes, subjects: draft.subjects, audience: audience(), first: fromParts });
+    const packNow = () => newDeckPack({ order: order(), plan: draft.plan, lang: LANG, request: request() });
+    const showWhy = () => {
+      const lines = guessed.filter((g) => draft.subjects.includes(g.subject) && !touched.has(g.subject))
+        .map((g) => X.whySubject(g.word, labelOf(subjectChoices().find((x) => x.id === g.subject) || { id: g.subject })));
       why.textContent = lines.join(X.whySep);
       why.hidden = !why.textContent;
-      // 授業（小・中・高）は教科の形を一番上に
-      groups.replaceChildren(...partsList(draft.sub || null).map((g) => groupNodes.get(g.id)));
     };
-    let candidates = [];
-    // 目安に照らす大きさ（fitSize）：軽量の指示は 45 KB と貼り付けの長さ 31,000（UTF-16 の単位の数＋改行の数）の近いほう。コマンド（kit/llm-pack.mjs）と同じ
-    const sizeOf = (tags, short) => fitSize(textNow(tags, short), draft.plan);
+    // 推した題材：② のタイトル・内容・そのほかの希望の言葉（guessSubjects）。自分で替えた題材はそのまま
+    const guessNow = () => {
+      guessed = guessSubjects({ text: [draft.title, givenContent(), draft.wishes].join('\n'), lang: LANG });
+      const want = new Set(guessed.map((g) => g.subject));
+      const next = new Set(draft.subjects);
+      for (const x of subjectChoices()) if (!touched.has(x.id)) { if (want.has(x.id)) next.add(x.id); else next.delete(x.id); }
+      draft.subjects = subjectChoices().map((x) => x.id).filter((id) => next.has(id));
+      for (const x of subjectChoices()) subjectSet.querySelector(`#paste-subject-${x.id}`).checked = next.has(x.id);
+      showWhy();
+    };
     const update = () => {
-      for (const [t, cb] of boxes) {
-        const fromIt = fromParts.includes(t) && ticked.has(t);
-        picks.get(t).hidden = !offered(t);
-        cb.checked = ticked.has(t); picks.get(t).fromBadge.hidden = !fromIt; picks.get(t).badge.hidden = fromIt || !(isRec(t) && TIERS.parts[t].tier !== 'standard');
-      }
       setRadios(planSet, 'paste-plan', draft.plan);
-      for (const g of partsList(null)) groupNodes.get(g.id).hidden = !g.parts.some(offered);
-      count.textContent = X.partsCount(chosen().length, listed.filter(offered).length);
-      foldText.textContent = X.partsFold(chosen().length);
+      for (const x of purposeTiles()) purposeSet.querySelector(`#paste-purpose-${x.id}`).checked = draft.purposes.includes(x.id);
+      schoolSet.hidden = !asksSchool(draft.category, draft.sub ?? null);
+      setRadios(schoolSet, 'paste-school', draft.school);
       const n = longN();
       phase.hidden = !n; phase.textContent = n ? X.phase(n) : '';
-      const cap = capKb(draft.plan), capBytes = cap * 1024;
-      // 目安に収める（kit/core/new-deck.mjs の fitPlan）：軽量の指示で越えたら、まず中核の 4 つの説明を短くし、それでも越えれば専門のパーツだけを外す候補に（束が 1 つなら標準のパーツを決まった順に）。
-      // サンプルから始めたとき（samplePackFit）：サンプルのパーツは詳しいまま、① サンプルにない中核の 4 つを短く → ② サンプルにない専門のパーツを外す候補に →
-      // ③ 外す候補がなくなっても越えるときだけサンプルのパーツを短く。候補を見せている間の指示は ① の後のもの（［候補を外す］の後はコマンドと同じ指示）
-      let fit, cut;
-      if (draft.from) {
-        const f = samplePackFit({ tags: chosen(), plan: draft.plan, lang: LANG, request: request(), own: fromParts });
-        fit = { candidates: f.dropped };
-        shortNow = false; fullNow = f.dropped.length ? f.step1Full : f.full;
-        cut = f.dropped.length ? f.step1Shortened : [...f.shortened, ...f.ownShortened];
-      } else {
-        fullNow = null;
-        fit = fitPlan(chosen(), draft.plan, { sizeOf, capBytes, keep: fromParts });
-        shortNow = fit.short;
-        cut = shortNow ? FREE_CORE : [];
-      }
-      shortened.hidden = !cut.length;
-      shortened.textContent = X.shortened(names(cut.length ? cut : FREE_CORE));
-      const t = textNow(), bytes = packSize(t), size = fitSize(t, draft.plan);
-      total.textContent = X.packMeter(kb(t), cap); total.dataset.bytes = String(bytes);
-      bar.setAttribute('aria-valuemax', String(cap)); bar.setAttribute('aria-valuenow', kb(t)); bar.setAttribute('aria-valuetext', X.packMeter(kb(t), cap));
-      // 棒と越えた分は、2 つの目安の近いほう（size）で。越えた分の KB は、その割合を実際のバイト数に掛けたもの
-      fill.style.width = Math.min(100, (size / capBytes) * 100).toFixed(1) + '%';
-      const isOver = size > capBytes;
-      meter.classList.toggle('over', isOver);
-      candidates = isOver ? fit.candidates : [];
-      over.hidden = !isOver;
-      overText.textContent = isOver ? X.overCap(kbOf(Math.ceil(bytes * (size - capBytes) / size)), candidates.length ? names(candidates) : '') : '';
-      trim.hidden = !candidates.length;
-      if (candidates.length) fold.open = true;   // 外す候補は一覧で確かめる
+      const r = packNow();
+      foldText.textContent = X.partsFold(r.described.length, r.named.length);
+      foldText.dataset.described = r.described.join(' ');
       // 詳細の指示：ファイルに保存するのが主、コピーは従（長い指示は Gemini で貼り付けが切れる。owner の確認、2026-11-05）
       const paid = draft.plan === 'paid';
       save.hidden = !paid;
@@ -949,14 +876,14 @@ export function setupLlm(app) {
       copy.classList.toggle('pri', !paid);
       fileHint.hidden = !paid;
     };
-    trim.addEventListener('click', () => { for (const t of candidates) { ticked.delete(t); touched.add(t); } update(); total.focus(); });
     planSet.addEventListener('change', (e) => { if (e.target.name === 'paste-plan') { draft.plan = e.target.value === 'paid' ? 'paid' : 'free'; update(); } });
     let copied = null;   // egatari.json に残すのは、最後に写したときの選び方（写した後に変えたものは、AI に送っていない）
-    const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, parts: chosen(), ...(draft.from ? { fromSample: draft.from.name } : {}) });
+    const choiceNow = () => ({ plan: draft.plan, category: draft.category, subcategory: draft.sub || null, purposes: [...draft.purposes], subjects: [...draft.subjects], audience: audience(),
+      ...(draft.from ? { fromSample: draft.from.name } : {}) });
     const copy = el('button', { type: 'button', id: 'paste-copy-guide', cls: 'pri', text: X.copyGuide, onclick: async () => {
       const miss = missing();
       if (miss) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
-      const text = textNow();
+      const text = packNow().text;
       copied = choiceNow();
       const ok = await copyInStep(text, copyMsg, title);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false;
@@ -966,7 +893,7 @@ export function setupLlm(app) {
     const save = el('button', { type: 'button', id: 'paste-save-guide', cls: 'pri', text: X.saveGuide, hidden: '', onclick: () => {
       const miss = missing();
       if (miss) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = miss.text; miss.focus(); return; }
-      const text = textNow();
+      const text = packNow().text;
       copied = choiceNow();
       saveGuideFile(text);
       copyMsg.box.hidden = true; copyMsg.classList.remove('bad'); copyMsg.hidden = false;
@@ -974,13 +901,13 @@ export function setupLlm(app) {
       if (onCopied) onCopied();   // ⑤ を開く（チャットのタブから戻ったら、貼る欄がある）
     } });
     const fileHint = el('p', { id: 'paste-attach-hint', cls: 'hint', hidden: '', text: X.fileHint });
-    // 答えた 1 行：指示の詳しさ（軽量・詳細）と選んだパーツの数と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
-    const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.partsShort(chosen().length), X.copiedShort].join(X.listSep), onChange);
+    // 答えた 1 行：どの AI に貼るか（軽量・詳細）と、コピーしたこと。コピーの知らせは本体の外（たたんでも見える）
+    const summary = summaryLine('paste-step-send', X.sendQ, () => [X.planShort[draft.plan], X.copiedShort].join(X.listSep), onChange);
     // AI のスキル（#126）：指示書をコピーする代わりに、チャットの AI に入れておく ZIP。［指示書をコピー］の隣
     const skill = el('button', { type: 'button', id: 'paste-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'paste-download-skill-hint', onclick: app.downloadAiSkill });
     const skillHint = el('p', { id: 'paste-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint });
     guessNow();
-    const node = step('paste-step-send', title, [planSet, planHint, fold, why, structRow, phase, meter, shortened, over, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint].filter(Boolean), [summary, copyMsg, copyMsg.box]);
+    const node = step('paste-step-send', title, [fold, planSet, structRow, phase, el('div', { cls: 'paste-guide' }, [save, copy, skill]), fileHint, skillHint].filter(Boolean), [summary, copyMsg, copyMsg.box]);
     return { node, summary, update, guessNow, current: choiceNow, choice: () => copied || choiceNow() };
   }
 
@@ -1179,6 +1106,8 @@ export function setupLlm(app) {
       draft.from = smp; draft.useStructure = true;
       // テーマは同梱の選べるテーマだけを引き継ぐ（ほかは default。サンプルの教材の中だけのテーマを利用者の教材に渡さない。kit/core/new-deck-pack.mjs の sampleTheme）
       if (smp) { const st = fromSampleStart(smp); draft.category = st.category; draft.sub = st.subcategory; newTheme = st.theme; }
+      // ④ のラベル：サンプルの伝えたいこと・題材・学校（サンプルから始めるたびに決め直す。サンプルの題材は自分で選んだものと同じに扱う）
+      if (smp) { const c = sampleChoice(smp, { lang: LANG }); draft.purposes = c.purposes; const offered = subjectChoices().map((x) => x.id); draft.subjects = (Array.isArray(smp.subjects) ? smp.subjects : []).filter((x) => offered.includes(x)); draft.subjectsTouched = [...draft.subjects]; draft.school = c.school; }
     }
     const msg = el('p', { id: 'paste-msg', cls: 'note bad', role: 'alert', hidden: '' });
     const copyMsg = withCopyBox(el('p', { id: 'paste-copied', cls: 'hint', role: 'status', hidden: '' }), 'paste-copy-text', X.sendQ);

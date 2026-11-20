@@ -4,20 +4,18 @@
 //   REQUEST_WORDS[lang]                 頼みたいことの欄に入れる言葉（長さ・言語・話す人・テーマの行・内容の見出し）。画面の言葉（app/llm.js の X）もこれを使う
 //   newDeckRequest({kind, values, theme, category, subcategory, sample, useStructure, content, outlineN, lang})
 //                                       → 頼みたいことの節（記入欄 → テーマの行 → 場面・構成の型・見せ方 → サンプルに本があれば 1 行 → サンプルの構成 → 内容 → 2 回に分けて頼む節）
-//   sampleTicks(sample, rec)            → 初めの印（標準のパーツと、おすすめの束と、サンプルのパーツ。④ の一覧の順）
-//   packText({tags, plan, lang, request, short, full}) → 写す指示の全文（full：無料のプランで詳しく書く標準のパーツ。kit/core/llm-pack-assemble.mjs）
-//   newDeckPack({tags, plan, lang, request, keep, trim}) → {text, bytes, short, candidates, dropped, over}
-//                                       目安に収める：trim なしは ④ を開いたとき（無料のプランで越えたら中核の 4 つを短くし、外す候補を出すだけ）、
-//                                       trim は［候補を外す］を押した後（fitPack。コマンドの指示と同じ）
-//   sampleProblems(obj)                 → sample.json の誤り（validateSample に、分類・④ のパーツを照らしたもの。テーマは誤りにしない）
-//   sampleTheme(theme)・fromSampleStart(sample) → 引き継ぐテーマ（同梱の選べるテーマだけ。ほかは default）・① ③ の答え
-//   samplePackFit({tags, plan, lang, request, own}) → fitSample の結果 ＋ {text：収めた後の指示, sizeOf}。「このサンプルを参考に作る」の収め方：
-//                                       サンプルのパーツ（own）は詳しいまま、越えたら ① ほかの中核の 4 つを短く → ② サンプルにない専門のパーツを外す → ③ 最後にサンプルのパーツを短く
-//   fromSamplePack({sample, title, lang, plan, second, useStructure}) → {text, bytes, short, shortened, dropped, ownShortened, over, tags, full, candidates, request}。
-//                                       「このサンプルを参考に作る」で ② だけを書いて（second：{title, content}）④ で写すもの（無料のプランも有料のプランも［候補を外す］の後）
+//   packText({described, named, plan, lang, request}) → 写す指示の全文（順位で組む指示。kit/core/llm-pack-assemble.mjs の rankedOpts）
+//   newDeckPack({order, plan, lang, request}) → {text, bytes, described, named, over}（handoff #43 ④：順位 order の上から説明を載せ、上限を越える手前で止め、
+//                                       残りは言いたいことの表に名前だけ。軽量（free）も詳細（paid）も同じ。上限は capKb、大きさは fitSize）
+//   sampleProblems(obj)                 → sample.json の誤り（validateSample に、分類・パーツ・ラベルを照らしたもの。テーマは誤りにしない）
+//   sampleTheme(theme)・fromSampleStart(sample) → 引き継ぐテーマ（同梱の選べるテーマだけ。ほかは default）・① ③ ④ の答え
+//   sampleChoice(sample, {title, content, lang}) → {purposes, subjects, school, audience, order}：サンプルから始めたときの ④（サンプルの伝えたいこと・題材・読み手、
+//                                       ② の言葉から推した題材を足す。順位はサンプルのパーツが先）
+//   fromSamplePack({sample, lang, plan, second, useStructure}) → {text, bytes, described, named, over, request}。
+//                                       「このサンプルを参考に作る」で ② だけを書いて（second：{title, content}）④ で写すもの（コマンドの --from-sample と同じバイト）
 import { filledRequest, packWithRequest } from './llm-request.mjs';
-import { CATEGORIES, partsList, recommend, initialParts, choiceRequest, capKb, fitPlan } from './new-deck.mjs';
-import { partsPackOpts, fitPack, fitSample, packSize, fitSize } from './llm-pack.mjs';
+import { CATEGORIES, partsList, choiceRequest, capKb, rankParts, guessSubjects, asksSchool, audienceOf, SCHOOL_AUDIENCES, subjectChoices } from './new-deck.mjs';
+import { rankedOpts, rankedPack, packSize } from './llm-pack.mjs';
 import { sampleStructureRequest, validateSample } from './sample-info.mjs';
 import { outlineRequest, slideCountOf, OUTLINE_OVER } from './llm-outline.mjs';
 import { CHOOSABLE } from './themes-list.mjs';
@@ -62,26 +60,11 @@ export function newDeckRequest({ kind = 'A', values = {}, theme, category = null
 }
 
 const LISTED = () => partsList(null).flatMap((g) => g.parts);
-export function sampleTicks(sample, rec = []) {
-  const want = new Set([...initialParts(rec), ...(sample ? sample.parts : [])]);
-  return LISTED().filter((t) => want.has(t));
-}
 
-export const packText = ({ tags, plan = 'free', lang = 'en', request, short = false, full = null }) => packWithRequest({ ...partsPackOpts(tags, plan, { short, full }), lang, request });
-
-export function newDeckPack({ tags, plan = 'free', lang = 'en', request, keep = [], trim = false }) {
-  // 目安に照らす大きさは fitSize（無料のプランは 45 KB と貼り付けの長さ 31,000 の近いほう。編集アプリの ④ の棒と同じ）
-  const sizeOf = (t, short) => fitSize(packText({ tags: t, plan, lang, request, short }), plan);
-  const capBytes = capKb(plan) * 1024;
-  if (trim) {
-    const f = fitPack(tags, plan, { sizeOf, capBytes, keep });
-    const text = packText({ tags: f.tags, plan, lang, request, short: f.short });
-    return { text, bytes: packSize(text), short: f.short, candidates: [], dropped: f.dropped, over: f.over, tags: f.tags };
-  }
-  const f = fitPlan(tags, plan, { sizeOf, capBytes, keep });
-  const text = packText({ tags, plan, lang, request, short: f.short });
-  const bytes = packSize(text), over = fitSize(text, plan) > capBytes;
-  return { text, bytes, short: f.short, candidates: over ? f.candidates : [], dropped: [], over, tags };
+export const packText = ({ described, named, plan = 'free', lang = 'en', request }) => packWithRequest({ ...rankedOpts(described, named, plan), lang, request });
+export function newDeckPack({ order, plan = 'free', lang = 'en', request }) {
+  const f = rankedPack(order, plan, { textOf: (opts) => packWithRequest({ ...opts, lang, request }), capBytes: capKb(plan) * 1024 });
+  return { text: f.text, bytes: packSize(f.text), described: f.described, named: f.named, over: f.over };
 }
 
 // サンプルのラベルの id（伝えたいこと・題材・読み手）：同梱のパーツ集の manifest から作った材料（PACK.tiers）のもの。一覧のない古い材料では形だけ確かめる
@@ -101,6 +84,19 @@ export function sampleProblems(obj) {
 export const sampleTheme = (theme) => (CHOOSABLE.some((t) => t.name === theme) ? theme : 'default');
 // サンプルから新規作成を始めるときの ① ③ の答え（編集アプリの app/llm.js が使う）：{category, subcategory, theme}
 export const fromSampleStart = (sample) => ({ category: sample.category, subcategory: sample.subcategory ?? null, theme: sampleTheme(sample.theme) });
+// サンプルから始めたときの ④：サンプルの伝えたいこと・題材（と、② の言葉に当たった題材）・読み手（授業（小・中・高）はサンプルの読み手のうち学校のもの）。
+// 順位はサンプルのパーツが一番上（handoff #43 ④）
+export function sampleChoice(sample, { title = '', content = '', lang = 'en' } = {}) {
+  // 題材は ④ で選べるもの（reserved でない題材）だけ：まだ選べない題材（医療など）は順位に入れない（編集アプリの印と同じ）
+  const offered = subjectChoices().map((x) => x.id);
+  const own = (Array.isArray(sample.subjects) ? sample.subjects : []).filter((x) => offered.includes(x));
+  const guessed = guessSubjects({ text: [title, content, ''].join('\n'), lang }).map((g) => g.subject);
+  const subjects = offered.filter((x) => own.includes(x) || guessed.includes(x));
+  const purposes = Array.isArray(sample.purposes) ? [...sample.purposes] : [];
+  const school = asksSchool(sample.category, sample.subcategory ?? null) ? (Array.isArray(sample.audiences) ? sample.audiences : []).find((a) => SCHOOL_AUDIENCES.includes(a)) || null : null;
+  const audience = audienceOf(sample.category, sample.subcategory ?? null, school);
+  return { purposes, subjects, school, audience, order: rankParts({ purposes, subjects, audience, first: Array.isArray(sample.parts) ? sample.parts : [] }) };
+}
 
 // 「このサンプルを参考に作る」：① ③ ④ はサンプルから、② は second（タイトルと内容。ほかの項目は AI に任せる。言語は画面の言語、話す人は 1 人）。
 // sample には title（サンプルの題名）も入れる
@@ -109,15 +105,6 @@ export function fromSamplePack({ sample, lang = 'en', plan = 'free', second = {}
   const title = String(second.title || ''), content = String(second.content || '').trim();
   const values = { title, audience: '', length: '', language: w.langReq[lang] || '', speakers: w.speakersReq[1], wishes: '' };
   const request = newDeckRequest({ kind: 'A', values, theme: sampleTheme(sample.theme), category: sample.category, subcategory: sample.subcategory, sample, useStructure, content, outlineN: longOf(values.length), lang });
-  const rec = recommend({ sub: sample.subcategory || null, text: [title, content, ''].join('\n'), lang });
-  const tags = sampleTicks(sample, rec);
-  const f = samplePackFit({ tags, plan, lang, request, own: sample.parts });
-  return { text: f.text, bytes: packSize(f.text), short: f.short, shortened: f.shortened, dropped: f.dropped, ownShortened: f.ownShortened, over: f.over, tags: f.tags, full: f.full, candidates: [], request };
-}
-
-export function samplePackFit({ tags, plan = 'free', lang = 'en', request, own = [] }) {
-  // 目安に照らす大きさは fitSize（無料のプランは 45 KB と貼り付けの長さ 31,000 の近いほう）
-  const sizeOf = (t, full) => fitSize(packText({ tags: t, plan, lang, request, full }), plan);
-  const f = fitSample(tags, plan, { sizeOf, capBytes: capKb(plan) * 1024, own });
-  return { ...f, sizeOf, text: packText({ tags: f.tags, plan, lang, request, full: f.full }) };
+  const { order } = sampleChoice(sample, { title, content, lang });
+  return { ...newDeckPack({ order, plan, lang, request }), request };
 }

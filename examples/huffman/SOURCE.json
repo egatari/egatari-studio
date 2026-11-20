@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/huffman",
   "files": {
     "SOURCE.md": "e986dfd512aebf9bb13605e96ec67b14b91dc10c5b11fbaacbcbf36aba2e4c4e",
@@ -10,7 +10,7 @@
     "deck.html": "21551d27720adf107086f9d9e0e7a55b8bd944c47b115c4e083fbd150d113614",
     "egatari.json": "ebb998fc1664f230e39312bc22017e163e932d3a5074edb13a7085670dcd494f",
     "narration.md": "11b437d9279f452e4c96746f3b46dd963aee6013932bbcd0ba0285afd0f3a364",
-    "sample.json": "52f3cce9c016b4dc008fa7473c9e8a37e05bfc0dda8f771dc37b38fc4e54e229",
+    "sample.json": "083a97e087a826eadec3f8a8a26769a79b17c2242c351bacf92e7f13b273913c",
     "scripts/make_codes.py": "2c787ad0041f82c88055782e66cb9aa52b78e7a77702cade57daffcf040684e7"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."

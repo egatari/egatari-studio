@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/city-budget/ja",
   "files": {
     "data/delta.json": "aba138ba248081465807e6f6a4d52327fe4d062298be9bf03f7ca402bdd4374a",
@@ -11,7 +11,7 @@
     "deck.html": "48b380a4d9242d3e349cf1c1d01afe6a0cd40a43c7bafa1791d8a497c4187439",
     "egatari.json": "a128126071d697f62ee58b20bc7da5b0457543b3f007ed186f66df8c554b3c02",
     "narration.md": "81d229ec85bdb44349110e3d10501ba9b07f4a21229db8750a52bffac085c07c",
-    "sample.json": "0c216309005b7070d684d8bb5dfbf2b8d58494d7ba4e14cd096257ded93c8a43"
+    "sample.json": "a0af16656f29ccd4f8028ebfd09f9e8b54b160e55fb39d33dc61306aeddc60ff"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
 }

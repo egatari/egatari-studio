@@ -65,7 +65,7 @@
     }
   },
   "buildPack": {
-    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { series = [], tools = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null } = {}",
+    "assembleParams": "data, { series = [], lang = 'en' } = {}|data, { series = [], lang = 'en', exclude = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [] } = {}|data, { series = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { series = [], tools = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free' } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null } = {}|data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null, named = null } = {}",
     "params": "opts",
     "returns": "string"
   },

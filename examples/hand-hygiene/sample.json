@@ -3,6 +3,17 @@
   "request": "介護施設の職員研修で、手指衛生の 5 つのタイミングを教えるスライドを作ってください。WHO の考え方に基づき、独自の言葉で書いてください。5 つのタイミング、前の 2 つと後の 3 つの違い、場面を見せて「どのタイミング？」と聞くクイズ、ポケットの注意、手のふき方と消毒薬の置き場所を。診断・治療・薬には触れないでください。",
   "category": "teaching",
   "subcategory": "training",
+  "purposes": [
+    "process",
+    "predict",
+    "compare"
+  ],
+  "subjects": [
+    "medicine"
+  ],
+  "audiences": [
+    "working-adult"
+  ],
   "theme": "tokiwa",
   "parts": [
     "m-cards",

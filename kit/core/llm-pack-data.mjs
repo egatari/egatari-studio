@@ -2154,7 +2154,8 @@ export const PACK = {
     "label": {
      "ja": "比べる（量・特徴）",
      "en": "Compare (amounts, features)"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "ranking",
@@ -2169,161 +2170,184 @@ export const PACK = {
     "label": {
      "ja": "変化",
      "en": "Change"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "part-whole",
     "label": {
      "ja": "内訳",
      "en": "Part of a whole"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "key-number",
     "label": {
      "ja": "数字を見せる",
      "en": "Key number"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "process",
     "label": {
      "ja": "手順",
      "en": "Steps"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "timeline",
     "label": {
      "ja": "年表・予定",
      "en": "Timeline"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "cause-effect",
     "label": {
      "ja": "原因と結果",
      "en": "Cause and effect"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "cycle",
     "label": {
      "ja": "循環",
      "en": "Cycle"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "hierarchy",
     "label": {
      "ja": "階層・分類",
      "en": "Hierarchy"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "position",
     "label": {
      "ja": "位置づけ",
      "en": "Position"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "overlap",
     "label": {
      "ja": "重なり",
      "en": "Overlap"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "correlation",
     "label": {
      "ja": "2 つの量の関係",
      "en": "Two quantities"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "spread",
     "label": {
      "ja": "ばらつき",
      "en": "Spread"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "grouping",
     "label": {
      "ja": "まとめる・分ける",
      "en": "Grouping"
-    }
+    },
+    "tile": "none"
    },
    {
     "id": "text-structure",
     "label": {
      "ja": "文章の構造",
      "en": "Structure of a text"
-    }
+    },
+    "tile": "none"
    },
    {
     "id": "contents",
     "label": {
      "ja": "目次",
      "en": "Contents"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "parameter",
     "label": {
      "ja": "パラメータを動かす",
      "en": "Varying a parameter"
-    }
+    },
+    "tile": "none"
    },
    {
     "id": "predict",
     "label": {
      "ja": "予想して確かめる",
      "en": "Predict, then check"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "timebox",
     "label": {
      "ja": "時間を区切る",
      "en": "Time-boxing"
-    }
+    },
+    "tile": "none"
    },
    {
     "id": "spatial",
     "label": {
      "ja": "場所・地図",
      "en": "Place / map"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "music",
     "label": {
      "ja": "音楽（音の高さ・和音・リズム）",
      "en": "Music (pitch, chords, rhythm)"
-    }
+    },
+    "tile": "none"
    },
    {
     "id": "model",
     "label": {
      "ja": "仕組みをモデルで見る",
      "en": "How it works (a model)"
-    }
+    },
+    "tile": "none"
    },
    {
     "id": "deviation",
     "label": {
      "ja": "差・増減",
      "en": "Increase / decrease"
-    }
+    },
+    "tile": "own"
    },
    {
     "id": "concept-links",
     "label": {
      "ja": "概念のつながり",
      "en": "Concept links"
-    }
+    },
+    "reserved": true
    }
   ],
   "subjects": [
@@ -2395,14 +2419,16 @@ export const PACK = {
     "label": {
      "ja": "医療",
      "en": "Medicine"
-    }
+    },
+    "reserved": true
    },
    {
     "id": "disaster",
     "label": {
      "ja": "防災",
      "en": "Disaster preparedness"
-    }
+    },
+    "reserved": true
    }
   ],
   "audiences": [
@@ -2441,6 +2467,34 @@ export const PACK = {
      "en": "General public"
     }
    }
-  ]
+  ],
+  "usage": {
+   "m-bars": 12,
+   "m-cards": 11,
+   "m-classify2d": 1,
+   "m-compare": 3,
+   "m-contour": 1,
+   "m-curves": 3,
+   "m-flow": 9,
+   "m-folds": 1,
+   "m-gendai": 2,
+   "m-kanbun": 1,
+   "m-keyboard": 1,
+   "m-kobun": 1,
+   "m-kpi": 6,
+   "m-map-japan": 1,
+   "m-market": 1,
+   "m-menu": 1,
+   "m-orbit": 1,
+   "m-pie": 3,
+   "m-predict": 7,
+   "m-quad": 1,
+   "m-score": 1,
+   "m-sweep": 3,
+   "m-syntax": 1,
+   "m-timeline": 1,
+   "m-tree": 1,
+   "m-vector": 1
+  }
  }
 };

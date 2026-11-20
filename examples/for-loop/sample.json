@@ -3,6 +3,9 @@
   "request": "高校の情報 I で、for 文で合計と平均を求める授業のスライドを作ってください。小テスト 3 回の点数の合計と平均、total = 0 を for の中に書いてしまう誤り、辞書で文化祭の出し物の票を数える例を、コードを 1 行ずつ実行した記録（変数と出力）で見せ、最後に繰り返しの前・中・後に書くものをまとめます。実行の記録はトレーサーで作ってください。",
   "category": "teaching",
   "subcategory": "class",
+  "purposes": ["process"],
+  "subjects": ["informatics"],
+  "audiences": ["high-school"],
   "theme": "default",
   "parts": [
     "m-cards"

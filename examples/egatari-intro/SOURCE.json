@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/egatari-intro",
   "files": {
     "article/01.md": "7642db907c640ccda7561385dec207a9579363dd4ca45093bfa37aca59d9d1f8",
@@ -37,7 +37,7 @@
     "deck.html": "9708045fa8b8e9b658f0bd2d0b2ca818af209c5a058eff8d4b3b353ba2482185",
     "egatari.json": "a7b1bdfdccafe1f2790176466ef5331665982354eef3f7107ab00f5a74ae95bd",
     "narration.md": "03f22571ae18116887c50291b412ea9fbc9a151a7e5adffcb32e890f15a744d1",
-    "sample.json": "7556df65f2d8e2224c687d4ee5a3c675451f2cbe39e09e63701406e475cecdaa",
+    "sample.json": "33ad6ffbc2700bfae2eaebcff2e0ffe957358b4d6db95c88b5d7547209117659",
     "scripts/asr_check.py": "467bda5f6b58cfab58e41dba2808f5cd5488435098d3fa1917f07d8599e28775",
     "scripts/make_data.py": "6d934820dd8e29deb028634f908514fb281d507e58493592c87f2fa0da9b0824"
   },

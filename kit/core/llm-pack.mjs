@@ -27,12 +27,12 @@
 //   TIERS                                       パーツの段と束（パーツライブラリ 2.0 の manifest から。{catalogue, parts: {タグ: {tier, set?, purposes}}, purposes}。
 //                                                新規作成 ④ のパーツの一覧：kit/core/new-deck.mjs）
 //   loadedParts(sets, plan)                      その束で組み立てに入る部品（標準と、選んだ束の部品。有料のプランでは paidOnly の部品も）
-//   trimCandidates・fitPlan・fitPack             無料のプランの目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。fitSample は「このサンプルを参考に作る」の収め方。編集アプリ（kit/core/new-deck.mjs が出し直す）と
-//                                                コマンド（kit/llm-pack.mjs）が同じ関数を使う
+//   trimCandidates・fitPlan・fitPack             無料のプランの束の指示を目安に収める（中核の 4 つを短く → 専門のパーツを外す候補に）。コマンド（kit/llm-pack.mjs）が使う
+//   rankedOpts(described, named, plan)・rankedPack(order, plan, {textOf, capBytes})  順位で組む指示（新規作成 ④）：上から説明を載せ、上限を越える手前で止め、残りは表に名前だけ
 //   partsPackOpts(tags, plan, {short, full})     選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?, full?}（buildPack・packWithRequest に渡す。
 //                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, SINGLE_SET_DROP_ORDER, fitPlan as fitPlanOf, fitPack as fitPackOf, fitSample as fitSampleOf, packOptsOf } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, SINGLE_SET_DROP_ORDER, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf, rankedOpts as rankedOptsOf, rankedPack as rankedPackOf } from './llm-pack-assemble.mjs';
 
 export { assemble, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, SINGLE_SET_DROP_ORDER };
 export const BRIEF = briefParts(PACK, 'free');   // 無料のプランで一覧の 1 行だけの標準の部品
@@ -45,11 +45,13 @@ export function loadedParts(sets = [], plan = 'free') {
   return Object.keys(PACK.en.components).sort().filter((t) => { const c = PACK.en.components[t]; return (c.set === STANDARD && (!c.paidOnly || plan === 'paid')) || ss.includes(c.set); });
 }
 export const partsPackOpts = (tags, plan = 'free', opts = {}) => packOptsOf(PACK, tags, plan, opts);
+// 順位で組む指示（新規作成 ④。本体は kit/core/llm-pack-assemble.mjs の rankedOpts・rankedPack。材料はこの指示の PACK）
+export const rankedOpts = (described, named, plan = 'free') => rankedOptsOf(PACK, described, named, plan);
+export const rankedPack = (order, plan, opts) => rankedPackOf(PACK, order, plan, opts);
 // 目安に収める（本体は kit/core/llm-pack-assemble.mjs。材料はこの指示の PACK）
 export const trimCandidates = trimCandidatesOf;
 export const fitPlan = (ticked, plan, opts) => fitPlanOf(PACK, ticked, plan, opts);
 export const fitPack = (ticked, plan, opts) => fitPackOf(PACK, ticked, plan, opts);
-export const fitSample = (ticked, plan, opts) => fitSampleOf(PACK, ticked, plan, opts);
 
 export const PACK_VERSION = PACK.version;   // 指示のバージョン（指示のはじめの「Pack version」の行と同じ。tools/make-llm-guide.mjs が材料から決める）
 

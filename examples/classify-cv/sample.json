@@ -3,6 +3,9 @@
   "request": "大学の機械学習入門の講義で、分類の境界と交差検証のスライドを作ってください。架空の部品 40 個の 2 つの測定値（良品と不良品）に、ロジスティック回帰と線形 SVM を当てはめて境界・確率の等高線・マージンとサポートベクトルを見せ、損失の等高線の上で勾配降下法が進む様子、4 分割の層化交差検証で誤り率を見積もるところまで。図の値は scikit-learn とスクリプトで計算してください。",
   "category": "teaching",
   "subcategory": "lecture",
+  "purposes": ["grouping", "model"],
+  "subjects": ["informatics", "statistics"],
+  "audiences": ["university"],
   "theme": "default",
   "parts": [
     "m-classify2d",

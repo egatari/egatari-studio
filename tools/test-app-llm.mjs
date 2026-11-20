@@ -12,9 +12,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { packWithRequest } from '../kit/core/llm-request.mjs';
-import { packKb, partsPackOpts } from '../kit/core/llm-pack.mjs';
-import { initialParts } from '../kit/core/new-deck.mjs';
+import { packKb } from '../kit/core/llm-pack.mjs';
+import { rankParts } from '../kit/core/new-deck.mjs';
+import { newDeckPack } from '../kit/core/new-deck-pack.mjs';
 import { PARTS_GALLERY } from '../app/parts-gallery.js';
 import { clickUntil, clickDlg, clickCommand, clickShows } from './click-retry.mjs';
 import { scaled } from './wait-scale.mjs';
@@ -97,8 +97,12 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.click('#paste-copy-guide');
   await page.waitForFunction(() => window.__APP_TEST.lastCopy);
   const c0 = await page.evaluate(() => window.__APP_TEST.lastCopy);
-  ok((await page.textContent('#paste-pack-size')) === `Instructions: ${packKb(c0)} KB (suggested limit 45 KB)` && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.') && c0 === packWithRequest({ ...partsPackOpts(initialParts([])), lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }),
-    'llm: the size shown is that of the copied text, which starts at “Instructions for the AI”');
+  await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+  const want0 = newDeckPack({ order: rankParts({}), plan: 'free', lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }).text;
+  if (c0 !== want0) { let i = 0; while (i < c0.length && c0[i] === want0[i]) i++; console.log('    first difference at ' + i + ': ' + JSON.stringify(c0.slice(Math.max(0, i - 80), i + 80)) + ' vs ' + JSON.stringify(want0.slice(Math.max(0, i - 80), i + 80))); }
+  ok(!(await page.$('#paste-pack-size')) && (await page.textContent('#paste-copied')).startsWith(`Copied (${packKb(c0)} KB).`) && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.')
+    && c0 === want0,
+    'llm: no size meter; the copied text, ranked with nothing chosen, starts at “Instructions for the AI” and the copy message gives its size');
   ok((await clip()) === c0, 'llm: the instructions are on the clipboard');
   await refusedCopy(page, ok, { want: c0, change: '#paste-change-send', stepBtn: '#paste-step-send-btn', what: 'llm new step 4', shot: shotDir && path.join(shotDir, 'copy-refused-new.png') });
   await clickShows(page, '#paste-step-paste-btn', '#paste-deck');
@@ -242,42 +246,32 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.click('#w-new');
     await answerNew(pk, { cat: 'research', sub: 'conference', title: '研究の進め方' });
     const copy = async () => { await pk.evaluate(() => { window.__copied = null; }); await pk.click('#paste-copy-guide'); await pk.waitForFunction(() => window.__copied !== null); return pk.evaluate(() => window.__copied); };
-    const stats = ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq'];
-    const ticks = () => pk.$$eval('#paste-parts input[type=checkbox]:checked', (xs) => xs.map((x) => x.value).sort());
-    ok(JSON.stringify(await ticks()) === JSON.stringify([...initialParts([]), ...stats].sort()) && (await pk.textContent('#paste-parts-why')) === '① の使う場面が「学会の口頭発表」なので、ヒートマップ・ヒストグラム・箱ひげ図・分布の更新も選びました'
-      && (await pk.textContent('#paste-parts-hint')).endsWith('表・画像・数式・図形は、選ばなくてもいつも使えます'),
-      'new parts: a conference talk ticks every standard part and the statistics set, says why, and says tables, images, equations and shapes are always available');
+    // ④ のラベル（handoff #43）：学会の口頭発表は学校を聞かない（読み手は大学）。何も選ばなくても写せる
+    ok(await pk.isHidden('#paste-school') && !(await pk.$('#paste-parts-why')) && !(await pk.$('#paste-parts-hint')) && !(await pk.$('#paste-parts-count')),
+      'new labels: a conference talk asks no school level; no reason, hint or count of ticked parts');
     const gl = await pk.$eval('#paste-parts-gallery', (a) => ({ href: a.getAttribute('href'), target: a.target, rel: a.rel, text: a.textContent }));
     ok(gl.href === PARTS_GALLERY && gl.target === '_blank' && /noopener/.test(gl.rel) && gl.text === 'すべてのパーツのサンプルを見る',
-      'new parts: links to the samples of all parts on studio.egatari.org (absolute, new tab) ' + JSON.stringify(gl));
+      'new labels: links to the samples of all parts on studio.egatari.org (absolute, new tab) ' + JSON.stringify(gl));
+    await pk.check('#paste-purpose-spread');
+    await pk.check('#paste-subject-statistics');
     const c1 = await copy();
-    // 標準と統計の図で無料のプランの目安を越えるので、中核の 4 つの説明も短くなる（一覧の 1 行は残る。backlog #125）
-    ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1.includes('| `<m-flow>` |') && !c1.includes('### `<m-flow>`') && c1.includes('### `<m-hist>`') && !c1.includes('使わない言いたいこと')
-      && !(await pk.$eval('#paste-shortened', (x) => x.hidden)), 'new copy: the request has the setting and its structure; the statistics parts are described, and over the free limit the core four are shortened (the meter says so)');
-    const size1 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
+    const tail = (c) => c.slice(c.indexOf('# 頼みたいこと'));
+    const r1 = newDeckPack({ order: rankParts({ purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'free', lang: 'ja', request: tail(c1) });
+    ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1 === r1.text && c1.includes('### `<m-seq>`') && !c1.includes('使わない言いたいこと'),
+      `new copy: the request has the setting and its structure; the instructions are ranked by spread, statistics and university (${r1.described.join(', ')} described)`);
     // コピーすると ⑤ が開く。④ は［変更］で開き直す
     ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer'), 'new copy: copying opens ⑤ and folds ④ to its answer');
     await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
-    if (!(await pk.$eval('#paste-parts-fold', (d) => d.open))) await pk.click('#paste-parts-summary');   // #211：畳んだ一覧を開く
-    await pk.uncheck('#paste-part-flow');
-    await pk.uncheck('#paste-part-menu');
-    const offStyle = await pk.$eval('#paste-part-flow', (x) => +getComputedStyle(x.closest('label').querySelector('.pick-text')).opacity);
-    ok(offStyle < 1 && (await pk.textContent('#paste-parts-count')).startsWith(`選んだパーツ：${initialParts([]).length + stats.length - 2} 種類`), 'new parts: an unticked part is faded (and its checkbox is clear); the count follows');
-    const c2 = await copy();
-    const size2 = +(await pk.getAttribute('#paste-pack-size', 'data-bytes'));
-    // 外したぶん目安に収まれば、残る中核のパーツの説明は短くしない（大きさはかえって増えることがある）
-    ok(!/m-flow(?![a-z-])/.test(c2) && !/m-menu(?![a-z-])/.test(c2) && size2 <= 45 * 1024 && c2.includes('### `<m-bars>`'), `new copy: the unticked parts leave the copied pack, named nowhere, and back within the limit the remaining core parts are described in full (${size1} → ${size2} bytes)`);
     if (shotDir) { await pk.evaluate(() => document.getElementById('paste-parts').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-parts-ja.png') }); }
-    await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
-    // 有料のプランは同じパーツを、どれも詳しく（無料のプランは中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。backlog #125）
-    const rowsIn = (t) => [...t.matchAll(/^\| `<(m-[a-z0-9]+(?:-[a-z0-9]+)*)>` \|/gm)].map((m) => m[1]).sort().join();
-    ok(rowsIn(c3) === rowsIn(c2) && !c2.includes('### `<m-timeline>`') && c3.includes('### `<m-timeline>`') && c3.length > c2.length,
-      'new plan: the paid plan copies the same parts, each described in full (the free plan gives the standard parts other than the core four one catalogue line)');
+    // 詳細の指示：同じ順位で、上限 150 KB まで説明を載せる（軽量より多い）
+    const r3 = newDeckPack({ order: rankParts({ purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'paid', lang: 'ja', request: tail(c3) });
+    ok(c3 === r3.text && r3.described.length > r1.described.length && r3.described.slice(0, r1.described.length).join() === r1.described.join() && c3.length > c1.length,
+      `new plan: the paid AI copies the same order with more parts described (${r1.described.length} → ${r3.described.length})`);
     // 写した後に印を変えても、egatari.json に残すのは写したときの選び方
     await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
-    await pk.uncheck('#paste-part-timeline');
+    await pk.uncheck('#paste-purpose-spread');
     await clickShows(pk, '#paste-step-paste-btn', '#paste-narr');
     await pk.fill('#paste-narr', replyOf(worked('kokugo', 'deck.html').replace('<html ', '<html data-egatari-seed="42" '), worked('kokugo', 'narration.md')));
     await clickDlg(pk, '#dlg-import');
@@ -286,8 +280,8 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const F1 = await filesOf();
     const seedAttrs = (t) => (t.match(/data-egatari-seed="[^"]*"/g) || []).join(',');
     const nd = JSON.parse(F1['egatari.json'] || '{}').studio?.newDeck;
-    ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', parts: [...initialParts([]), ...stats].filter((t) => t !== 'm-flow' && t !== 'm-menu').sort() }),
-      `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the tick changed after copying)`);
+    ok(seedAttrs(F1['deck.html']) === 'data-egatari-seed="42"' && JSON.stringify(nd) === JSON.stringify({ v: 1, plan: 'paid', category: 'research', subcategory: 'conference', purposes: ['spread'], subjects: ['statistics'], audience: 'university' }),
+      `new create: no seed is written (the output's data-egatari-seed="42" is left as it is: ${seedAttrs(F1['deck.html'])}) and the choices copied are kept in studio.newDeck (not the purpose unticked after copying)`);
     // 新しい教材はパーツライブラリ 2 で組む（指示のカタログと同じ。kit/core/config-file.mjs の NEW_LESSON_CATALOGUE）。
     // 新規作成は 1 ファイルとして開くので、索引は組んだカタログの版（components2.lock.json の既定）を記録し、取り出した egatari.json もその版になる
     const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));

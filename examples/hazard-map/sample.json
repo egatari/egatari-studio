@@ -3,6 +3,16 @@
   "request": "住民向けに、大雨のときにどこへ逃げるかをハザードマップで考えるスライドを作ってください。架空の A 町の略図を使い、地図を読む順番、警戒レベル、逃げるか家にいるかの予想、家にいてよい 3 つの条件を示し、最後に自分の町のハザードマップで確かめるよう促してください。",
   "category": "guides",
   "subcategory": "info",
+  "purposes": [
+    "process",
+    "predict"
+  ],
+  "subjects": [
+    "disaster"
+  ],
+  "audiences": [
+    "general"
+  ],
   "theme": "asagi",
   "parts": [
     "m-cards",

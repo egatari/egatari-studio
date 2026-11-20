@@ -2,8 +2,8 @@
 //   node tools/test-app-from-sample.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // 編集アプリを tools/build-app.mjs で組み（サンプルの Egatari ファイルと sample.json の一覧も）、127.0.0.1 で配って：
 // F1 高校の国語の先生（ja）：はじめの画面のサンプルは「再生」→ 大きく再生する窓（sandbox の枠でファイルそのものが動く・頼み方・権利・ボタン 3 つ）→
-//    「このサンプルを参考に作る」→ 新規作成：① ③ は答えた形で「サンプルから」の札、② だけが空で開いて字を待つ、④ はサンプルのパーツに印と札、
-//    構成を添える印 → 写した指示にサンプルの構成（見出しと言いたいこと）・テーマ・場面。印を外すと指示が小さくなり構成が消える。
+//    「このサンプルを参考に作る」→ 新規作成：① ③ は答えた形で「サンプルから」の札、② だけが空で開いて字を待つ、④ はサンプルの伝えたいこと・題材・学校を選んでおき、
+//    サンプルのパーツを順位の一番上に（handoff #43）。構成を添える印 → 写した指示にサンプルの構成（見出しと言いたいこと）・テーマ・場面。印を外すと構成が消える。
 //    ① を変えると札が消える。［作成］→ egatari.json の studio.newDeck に fromSample、componentsCatalogue は 2.x の既定のカタログ
 // F2 同じ人が、ふつうの新規作成…：サンプルの知らせ・構成の印・札は出ない
 // F3 会社員（en）：egatari.org の「Studio でこのサンプルを参考に作る」（?from-sample=pitch-fictional）→ 同じ流れがすぐ開き、URL から引数が消える。
@@ -11,7 +11,7 @@
 // F7 高校の国語の先生（ja、v0.6.7）：新規作成のはじめの画面の 3 つめの入口「このサンプルを参考に作る」→ サンプルを選ぶ画面（はじめの画面と同じ一覧）→
 //    選ぶと、サンプルのカードのボタンと同じ、サンプルから始めた新規作成。「問いに答えて作る」で戻れる
 // F6 コマンドの kit/llm-pack.mjs --from-sample（規格の評価 B が使う）は、画面で写す指示とバイトまで同じ：4 つのサンプル × 無料・有料 × ja・en
-//    （② にタイトルを書き、［候補を外す］があれば押してから写す）。内容も書いたもの（--request のファイルの 2 行目から）も 1 つ
+//    （② にタイトルを書いてから写す）。内容も書いたもの（--request のファイルの 2 行目から）も 1 つ
 // F4 「コピーを開いて編集」：ふつうのファイルと同じ道で開く（minimal）。一覧と sha256 の合わないファイルは再生しない
 import fs from 'node:fs';
 import os from 'node:os';
@@ -20,8 +20,8 @@ import http from 'node:http';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
-import { initialParts } from '../kit/core/new-deck.mjs';
-import { PACK_CAP_KB } from '../kit/core/llm-pack.mjs';
+import { rankParts, audienceOf, purposeTiles } from '../kit/core/new-deck.mjs';
+import { newDeckPack } from '../kit/core/new-deck-pack.mjs';
 import { replyOf } from './test-app-llm.mjs';
 import { clickDlg, clickMenuOpen } from './click-retry.mjs';
 import { EXAMPLES, FROM_SAMPLE, sectionOf } from './examples-portable.mjs';
@@ -81,9 +81,9 @@ const shot = async (p, name) => { if (SHOTS) await p.screenshot({ path: path.joi
 const text = (p, sel) => p.textContent(sel);
 const answer = (p, k) => p.textContent(`#paste-step-${k}-answer .paste-answer-text`);
 const badgeOn = (p, k) => p.isVisible(`#paste-step-${k}-answer .pick-badge.from-sample`);
-const ticks = (p) => p.$$eval('#paste-parts input[type=checkbox]:checked', (xs) => xs.map((x) => x.value).sort().join());
-const fromBadges = (p) => p.$$eval('#paste-parts .pick', (xs) => xs.filter((x) => !x.querySelector('.pick-badge.from-sample').hidden).map((x) => x.dataset.part).sort().join());
-const meterBytes = (p) => p.evaluate(() => Number(document.getElementById('paste-pack-size').dataset.bytes));
+// ④ のラベル（handoff #43）：選んだ伝えたいこと（札）・題材・学校
+const labels = (p) => p.evaluate(() => ({ purposes: [...document.querySelectorAll('#paste-purposes input:checked')].map((x) => x.value).join(), subjects: [...document.querySelectorAll('#paste-subjects input:checked')].map((x) => x.value).join(),
+  school: (document.querySelector('#paste-school input:checked') || {}).value || '', sum: document.getElementById('paste-parts-sum-text').textContent }));
 const copy = async (p) => {
   if (!(await p.isVisible('#paste-copy-guide'))) await p.evaluate(() => document.getElementById('paste-copy-guide').closest('section.paste-step').querySelector('.paste-step-h').click());
   await p.evaluate(() => { window.__APP_TEST.lastCopy = null; const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
@@ -147,26 +147,27 @@ try {
   await p1.waitForSelector('#paste-step-send.current');
   await p1.evaluate(() => document.getElementById('paste-structure-row').scrollIntoView({ block: 'center' }));
   await shot(p1, 'from-sample-send.png');
-  const want = [...new Set([...initialParts([]), ...KS.parts])].sort().join();
-  ok((await ticks(p1)) === want && (await fromBadges(p1)) === [...KS.parts].sort().join(), 'F1 ④: the sample’s parts are ticked with 「サンプルから」 (' + KS.parts.join(', ') + ')');
+  const l1 = await labels(p1);
+  const school1 = KS.audiences.find((x) => ['primary-junior', 'high-school'].includes(x)) || '';
+  ok(l1.purposes === purposeTiles().map((x) => x.id).filter((id) => KS.purposes.includes(id)).join() && l1.subjects === KS.subjects.join() && l1.school === school1,
+    'F1 ④: the sample’s purposes (the tiles among them), subjects and school level are chosen: ' + JSON.stringify(l1));
   ok(await p1.isChecked('#paste-use-structure') && (await text(p1, '#paste-structure-row')) === `サンプル「漢文を読む――返り点から書き下し文へ」の構成（${KS.structure.length} 枚の見出しと要点）を指示に添える`,
     'F1 ④: 「…の構成…を指示に添える」 is ticked');
-  const withBytes = await meterBytes(p1);
-  ok(withBytes <= PACK_CAP_KB.free * 1024 || (await p1.isVisible('#paste-trim')), `F1 ④: the light instructions fit ${PACK_CAP_KB.free} KB after fitting (${(withBytes / 1024).toFixed(1)} KB)`);
   const c1 = await copy(p1);
+  const r1 = newDeckPack({ order: rankParts({ purposes: KS.purposes, subjects: KS.subjects, audience: audienceOf(KS.category, KS.subcategory, school1), first: KS.parts }), plan: 'free', lang: 'ja', request: c1.slice(c1.indexOf('# 頼みたいこと')) });
+  ok(c1 === r1.text && KS.parts.every((t) => r1.described.includes(t)), `F1 ④: the copied instructions put the sample’s parts first, described (${r1.described.join(', ')})`);
   const tail = c1.slice(c1.indexOf('# 頼みたいこと'));
   ok(tail.includes('- タイトル（表紙にそのまま使う）：論語を読む') && tail.includes('- テーマ：kokugo') && tail.includes('- 場面：授業・研修／授業（小・中・高）') && tail.includes('## 倣うサンプルの構成')
     && tail.includes('サンプル「漢文を読む――返り点から書き下し文へ」の構成と見せ方に倣って') && KS.structure.every((r, i) => tail.includes(`${i + 1}. ${r.heading} — ${r.point}`))
     && !c1.includes(KS.request), 'F1 ④: the copied instructions carry the sample’s structure (every heading and point), its theme and setting, and not the sample’s own text');
   await p1.evaluate(() => document.getElementById('paste-step-send').querySelector('.paste-step-h').click());
-  const shortWith = await p1.$eval('#paste-shortened', (x) => (x.hidden ? '' : x.textContent));
+  const sumWith = (await labels(p1)).sum;
   await p1.uncheck('#paste-use-structure');
-  const withoutBytes = await meterBytes(p1);
-  const shortWithout = await p1.$eval('#paste-shortened', (x) => (x.hidden ? '' : x.textContent));
+  const sumWithout = (await labels(p1)).sum;
   const c1b = await copy(p1);
-  // 構成を外すと小さくなる。ただし目安のぎりぎりでは、構成があるときだけ短くしたパーツの説明が、外すと詳しく戻って大きくなることがある（それも正しい。短くした名前が変わる）
-  ok(!c1b.includes('## 倣うサンプルの構成') && (withoutBytes < withBytes || shortWith !== shortWithout),
-    `F1 ④: unticking drops the structure; the instructions shrink by ${((withBytes - withoutBytes) / 1024).toFixed(2)} KB, or fewer parts are shortened (${shortWith} → ${shortWithout})`);
+  // 構成を外すと小さくなる。ただし上限の際では、外した分だけ説明つきのパーツが増えて大きくなることがある（それも正しい。1 行の数が変わる）
+  ok(!c1b.includes('## 倣うサンプルの構成') && (c1b.length < c1.length || sumWith !== sumWithout),
+    `F1 ④: unticking drops the structure; the instructions shrink by ${c1.length - c1b.length} characters, or more parts are described (${sumWith} → ${sumWithout})`);
   await p1.evaluate(() => document.getElementById('paste-step-send').querySelector('.paste-step-h').click());
   await p1.check('#paste-use-structure');
   // ① を変えると「サンプルから」の札は消える（戻すと付く）
@@ -187,7 +188,8 @@ try {
   const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
   const cat1 = JSON.parse(F1['egatari.json'] || '{}').componentsCatalogue;
   ok(cat1 === lock2.default, `F1: the lesson made from the sample is built with parts library 2, the catalogue the instructions describe (egatari.json componentsCatalogue ${JSON.stringify(cat1)}, the default 2.x catalogue ${lock2.default})`);
-  ok(nd.fromSample === 'kokugo-kanbun' && nd.category === 'teaching' && nd.subcategory === 'class' && KS.parts.every((t) => nd.parts.includes(t)), 'F1: 「作成」 keeps fromSample in studio.newDeck: ' + JSON.stringify(nd));
+  ok(nd.fromSample === 'kokugo-kanbun' && nd.category === 'teaching' && nd.subcategory === 'class' && [...nd.purposes].sort().join() === [...KS.purposes].sort().join() && [...nd.subjects].sort().join() === [...KS.subjects].sort().join() && nd.audience === (school1 || null) && !('parts' in nd),
+    'F1: 「作成」 keeps fromSample and the labels in studio.newDeck: ' + JSON.stringify(nd));
 
   // ================================================================ F2 ふつうの新規作成…：サンプルのものは出ない
   // 窓が開いたか確かめ、開かなければ一覧を開き直して押し直す（macOS の CI で、作成の直後に押した「新規作成…」がプレビューの iframe に届いて窓が開かなかった。
@@ -215,8 +217,9 @@ try {
   await p3.click('#paste-next-content');
   await p3.waitForSelector('#paste-step-send.current');
   const c3 = await copy(p3);
-  ok(c3.includes('## Structure of the sample to follow') && c3.includes(`1. ${PS.structure[0].heading} — ${PS.structure[0].point}`) && (await fromBadges(p3)) === [...PS.parts].sort().join(),
-    'F3: English instructions carry the Japanese sample’s headings as they are, under an English lead');
+  ok(c3.includes('## Structure of the sample to follow') && c3.includes(`1. ${PS.structure[0].heading} — ${PS.structure[0].point}`) && (await labels(p3)).purposes === purposeTiles().map((x) => x.id).filter((id) => PS.purposes.includes(id)).join()
+    && (await labels(p3)).subjects === PS.subjects.join() && PS.parts.every((t) => c3.includes('### `<' + t + '>`')),
+    'F3: English instructions carry the Japanese sample’s headings as they are, under an English lead; the sample’s labels are chosen and its parts described');
   await shot(p3, 'from-sample-en-send.png');
   await p3.context().close();
   // 知らない名前：ふつうの新規作成（① から。サンプルの知らせ・札はない）を開き、上に 1 行で知らせる（en と ja）
@@ -283,7 +286,7 @@ try {
   await p7.fill('#paste-title', '論語を読む');
   await p7.click('#paste-next-content');
   await p7.waitForSelector('#paste-step-send.current');
-  ok((await fromBadges(p7)) === [...KS.parts].sort().join() && await p7.isChecked('#paste-use-structure'), 'F7 ④: the sample’s parts are ticked with 「サンプルから」 and its structure is added, as from the card');
+  ok(JSON.stringify(await labels(p7)) === JSON.stringify(l1) && await p7.isChecked('#paste-use-structure'), 'F7 ④: the sample’s labels are chosen and its structure is added, as from the card');
   const c7 = await copy(p7);
   const p7c = await open('ja', 'f7c', '&from-sample=kokugo-kanbun');
   await p7c.waitForSelector('#paste-step-content.current');
@@ -330,11 +333,9 @@ try {
       await p6.click('#paste-next-content');
       await p6.waitForSelector('#paste-step-send.current');
       await p6.check('#paste-plan-' + c.plan);
-      const trimmed = await p6.isVisible('#paste-trim');
-      if (trimmed) await p6.click('#paste-trim');
       const ui = await copy(p6);
       const out = cli(c.name, lang, c.plan, c.file || c.title);
-      ok(ui === out, `F6 ${lang} ${c.plan} ${c.name}${c.content ? ' (with content)' : ''}: kit/llm-pack.mjs --from-sample prints exactly the copied instructions (${(Buffer.byteLength(out) / 1024).toFixed(2)} KB${trimmed ? ', after Untick these' : ''})`);
+      ok(ui === out, `F6 ${lang} ${c.plan} ${c.name}${c.content ? ' (with content)' : ''}: kit/llm-pack.mjs --from-sample prints exactly the copied instructions (${(Buffer.byteLength(out) / 1024).toFixed(2)} KB)`);
       if (ui !== out) { let i = 0; while (i < ui.length && ui[i] === out[i]) i++; console.log('    first difference at ' + i + ': ' + JSON.stringify(ui.slice(Math.max(0, i - 60), i + 60)) + ' vs ' + JSON.stringify(out.slice(Math.max(0, i - 60), i + 60))); }
     }
     await p6.context().close();

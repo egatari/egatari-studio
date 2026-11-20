@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/genai-guideline",
   "files": {
     "article/00-hajimeni.md": "4e0d747cc401041eb501bbddb0922bfa34f6d011ba9d138a3233f064ec644f1a",
@@ -11,7 +11,7 @@
     "deck.html": "7e64235d028e0dfbe0b6e2f6692d5b1058e1d34d23282c4b33cef2b719ad6990",
     "egatari.json": "a472dcee7ea199b1513ae67d64418dfbb96ac70013c5f6a9d3b79132601b8078",
     "narration.md": "4e6bb484c30bdada2da3849fb312d08adf330627c8812ad0e0b3242b6ec638d0",
-    "sample.json": "d518bfdb3e1e8a8f3098c2c6ebad7fd129b9af6626dca7c2f5c0c69fcfb07c3b"
+    "sample.json": "5faa82c42e28477a1c1347b942da39bb11938cd8e569eeadf3b34afb348a92ff"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
 }

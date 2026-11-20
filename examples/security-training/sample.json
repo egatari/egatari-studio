@@ -3,6 +3,15 @@
   "request": "社員向けの 10 分の情報セキュリティ研修のスライドを作ってください。被害の入り口がふだんの仕事にあること、怪しいメールを見せて「どうする？」と聞き、手がかりを示し、パスワードと多要素認証、持ち出しと置き忘れ、おかしいと思ったときの報告の流れ、確認テスト、最後に 3 つの約束を。会社や事例は架空にしてください。",
   "category": "teaching",
   "subcategory": "training",
+  "purposes": [
+    "process",
+    "predict",
+    "compare"
+  ],
+  "subjects": [],
+  "audiences": [
+    "working-adult"
+  ],
   "theme": "sumi",
   "parts": [
     "m-cards",

@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/examples",
-  "commit": "00addf802ad2e2b33b0e3911612d39efd4ef7c5b",
+  "commit": "a3ddee5573ad223ad8b1f4cb5eb1bbab55574c7e",
   "path": "lessons/population",
   "files": {
     "SOURCE.md": "d5a0ae9ab0e624f585b9f303fa3f0a714cad83c5050a31cc3abe940035aa0182",
@@ -13,7 +13,7 @@
     "narration.md": "427cdd96e350bd6706ad46ddc6fa9810bdb6464900af5bd16810bfd2d4eb8082",
     "raw/census2020_t1-1.xlsx": "91ba30c83013cf2f6efb9fcec8c3496be99b77ab0b800f97441648e9108215ab",
     "raw/pop_1920_2015.csv": "3f29c42b40620adfecb1bdf7f5b2411b94b7ae6c59352c2fa46d41e88bae1750",
-    "sample.json": "78687b7a174da1f2696bb55c9769864425c91c7d772f2043261877545c919b0a",
+    "sample.json": "f5b97df4ca2a660c72081e7102cccd1035420ddab295b4815a0be1fead21bd8d",
     "scripts/make_data.py": "5a09d89402883c4dbfdf616d03c1bed61e3f694066cec0ec13e3a423d7da3df7"
   },
   "note": "Copied unmodified from that commit of egatari/examples (every tracked file of the path except .gitignore; the .ega.html is not tracked there and is built here by tools/examples-portable.mjs). Do not edit; change the examples repository and copy again (tools/examples-sync.mjs)."
