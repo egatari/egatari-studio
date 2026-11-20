@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.17] - 2026-11-20
+
+### Fixed
+
+- Editor app: a font file the build fetches from the site (a subset of a theme's font) is fetched again up to twice (after 0.5 s and 1.5 s) when the request fails, the server answers 5xx, 408 or 429, or the body breaks off; one passing network or CDN failure among the files fetched at once no longer stops the build, and at most four are fetched at once (the 国語 theme, whose body text is in mincho, fetches about 144 files, twice as many as 藍; handoff #68). If it still fails, the message names the font file and says to check the connection and try again, instead of “font not found: /repo/fonts/…”. `tools/test-lazy-fetch.mjs`
+
 ## [0.6.16] - 2026-11-20
 
 ### Added
@@ -1647,7 +1653,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.16...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.17...HEAD
+[0.6.17]: https://github.com/egatari/egatari-studio/compare/v0.6.16...v0.6.17
 [0.6.16]: https://github.com/egatari/egatari-studio/compare/v0.6.15...v0.6.16
 [0.6.15]: https://github.com/egatari/egatari-studio/compare/v0.6.14...v0.6.15
 [0.6.14]: https://github.com/egatari/egatari-studio/compare/v0.6.13...v0.6.14
