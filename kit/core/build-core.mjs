@@ -156,7 +156,7 @@ export function annotate(src, dev, warn = []) {
     const key = keyOf[i], loc = n.sourceCodeLocation;
     // id：section の id（鍵がその id のとき）。heading：見出しの 1 行の文字列（narration.md の新しい節の見出しに使う）
     const id = attr(n, 'id') || null;
-    slides.push({ key, id: id && id === key ? id : null, title: h ? inner(src, h) : key, heading: h ? headingText(inner(src, h)) : '', start: loc.startOffset });
+    slides.push({ key, id: id && id === key ? id : null, title: h ? inner(src, h) : key, heading: h ? headingText(inner(src, h)) : '', start: loc.startOffset, bookmark: attr(n, 'data-bookmark') ?? null });
     const dk = loc.startTag.attrs && loc.startTag.attrs['data-key'];
     if (attr(n, 'data-key') === undefined) ins.push([loc.startTag.endOffset - 1, ` data-key="${escAttr(key)}"`, 0]);
     else if (attr(n, 'data-key') !== key && dk) ins.push([dk.startOffset, `data-key="${escAttr(key)}"`, dk.endOffset - dk.startOffset]);
@@ -198,7 +198,8 @@ export function analyzeSlideIds(src) {
       const rule = id ? 'id' : dk ? 'data-key' : hk ? 'heading' : 'index';
       // headingKey：見出しから作る旧来の鍵（id のあるスライドでも。書き出しが {#id} のない「## 見出し」をそのスライドに結ぶため）
       slides.push({ index: slides.length, id: id === undefined ? null : id, key: id || dk || hk || `s${slides.length + 1}`, rule,
-        heading: h ? headingText(inner(src, h)) : '', headingKey: hk, dataKey: dk || null, dataArticle: attr(n, 'data-article') || null, line: lineOf(off), start: off });   // dataArticle：本文の節（§9C.5）
+        heading: h ? headingText(inner(src, h)) : '', headingKey: hk, dataKey: dk || null, dataArticle: attr(n, 'data-article') || null, line: lineOf(off), start: off,
+        bookmark: attr(n, 'data-bookmark') ?? null });   // dataArticle：本文の節（§9C.5）。bookmark：しおりの名前（§8.0、属性の値のまま）
       return;
     }
     const id = attr(n, 'id');

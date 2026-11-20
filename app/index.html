@@ -57,6 +57,9 @@
         <button type="button" id="b-insert" role="menuitem" data-t="insertCmd"></button>
         <button type="button" id="b-dup" role="menuitem" data-t="dupCmd"></button>
         <button type="button" id="b-del" role="menuitem" data-t="delCmd"></button>
+        <!-- しおり（format spec §8.0）：開くたびに、対象のスライドにしおりがあるかで言葉と「しおりを外す」の有無を変える（app/main.js の syncBookmarkItems） -->
+        <button type="button" id="b-bookmark" role="menuitem" data-t="bmAddCmd"></button>
+        <button type="button" id="b-bookmark-del" role="menuitem" data-t="bmRemoveCmd" hidden></button>
         <!-- 整理…（#97。後の版）：全スライドの縮図の格子 -->
         <button type="button" id="b-organize" role="menuitem" data-t="organizeCmd" hidden></button>
         <div role="separator" class="menu-sep"></div>

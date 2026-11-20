@@ -12,6 +12,7 @@
 //   narration：sectionsOf(text)・insertSection(text, order, key, lines)・copySections(text, fromKey, slide)・removeSections(text, key)・reorderSections(text, order)
 //   manifest：removeAudio(text, slideKey) → {out, removed: {鍵: 記録}, files: [もう使われない audio/ の下のファイル]}
 //   newIdFor(src, rand?)                     → 文書のどの id・スライドの鍵とも重ならない s-xxxxxx
+//   setBookmark(src, index, name)            → 文字列     index 番目の <section> の data-bookmark（しおり、format spec §8.0）を name に。name が空・null なら外す
 import { parse } from 'parse5';
 import { analyzeSlideIds } from './build-core.mjs';
 import { newSlideId, headingLine, parseHeading, splitKey } from './narration-core.mjs';
@@ -151,6 +152,27 @@ export function moveSlide(src, from, to) {
   const [c] = chunks.splice(from, 1);
   chunks.splice(to, 0, c);
   return assemble(gaps, chunks, tail);
+}
+
+// しおり（format spec §8.0）：<section> の開始タグの data-bookmark だけを書き換える（ほかのバイトは変えない）
+const escAttr = (v) => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+export function setBookmark(src, index, name) {
+  need(src);
+  const doc = parse(src, { sourceCodeLocationInfo: true });
+  let node = null, n = 0;
+  walk(doc, (x) => { if (x.tagName && isSlide(x)) { if (n === index) node = x; n++; } });
+  if (!node) throw Object.assign(new Error(`no slide ${index + 1}`), { code: 'no-slide' });
+  const tag = node.sourceCodeLocation.startTag, at = tag.attrs && tag.attrs['data-bookmark'];
+  const v = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+  if (at) {
+    if (v) return src.slice(0, at.startOffset) + `data-bookmark="${escAttr(v)}"` + src.slice(at.endOffset);
+    let b = at.startOffset; while (b > tag.startOffset && /\s/.test(src[b - 1])) b--;   // 前の空白ごと外す
+    return src.slice(0, b) + src.slice(at.endOffset);
+  }
+  if (!v) return src;
+  let e = tag.endOffset - 1; if (src[e - 1] === '/') e--;
+  while (e > tag.startOffset && /\s/.test(src[e - 1])) e--;
+  return src.slice(0, e) + ` data-bookmark="${escAttr(v)}"` + src.slice(e);
 }
 
 export function newIdFor(src, rand) {
