@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-mapping の見本</title>
+</head>
+<body>
+<div id="stage">
+<section class="slide">
+  <h2>硬貨を 2 回投げる</h2>
+  <div class="body"><m-mapping style="height:440px"><script type="application/json">{"outcomes":[{"label":"表表","x":2},{"label":"表裏","x":1},{"label":"裏表","x":1},{"label":"裏裏","x":0}],"picture":"coins","name":"X"}</script></m-mapping></div>
+  <div class="concl"><span>X は表の数。同じ値になる結果の確率を足す</span></div>
+</section>
+<section class="slide">
+  <h2>さいころ：5 以上なら当たり（X = 1）</h2>
+  <div class="body"><m-mapping style="height:440px"><script type="application/json">{"outcomes":[{"label":"1","x":0},{"label":"2","x":0},{"label":"3","x":0},{"label":"4","x":0},{"label":"5","x":1},{"label":"6","x":1}],"name":"X","picture":"dice"}</script></m-mapping></div>
+  <div class="concl"><span>当たりは 6 通りのうち 2 通り。P(X = 1) = 1/3</span></div>
+</section>
+<section class="slide">
+  <h2>ぶどうの粒の数を X にする（架空）</h2>
+  <div class="body"><m-mapping style="height:440px"><script type="application/json">{"outcomes":[{"label":"房 A","x":3},{"label":"房 B","x":5},{"label":"房 C","x":3},{"label":"房 D","x":4}],"name":"X","picture":"grapes"}</script></m-mapping></div>
+  <div class="concl"><span>粒の数を数えると X の値になる</span></div>
+</section>
+<section class="slide">
+  <h2>袋から玉を 2 個取り出す（戻さない）</h2>
+  <div class="body"><m-mapping style="height:440px"><script type="application/json">{"outcomes":[{"label":"赤赤","x":2},{"label":"赤青","x":1},{"label":"青赤","x":1}],"name":"X","picture":"balls"}</script></m-mapping></div>
+  <div class="concl"><span>赤 2 個・青 1 個から 2 個。X は赤の数</span></div>
+</section>
+
+</div>
+</body>
+</html>

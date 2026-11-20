@@ -238,7 +238,7 @@ function packGallery(){
     const f = frontmatter(text(`${name}/README.md`)) || {};
     const own = (c.purposes || []).map(tileOf).find(Boolean);
     const key = own || `set:${c.set || ''}`;
-    if (!groups.has(key)) groups.set(key, { title: own ? label(own) : c.set ? `${SET_LABEL[c.set] || c.set}（束）` : 'そのほか', parts: [] });
+    if (!groups.has(key)) groups.set(key, { title: own ? label(own) : c.set ? `${SET_LABEL[c.set] || c.set}のセット` : 'そのほか', parts: [] });
     groups.get(key).parts.push({ name, c, f, mark: statusOf(name, c) });
   }
   const rank = { '新しい': 0, '変わった': 1, 'サンプルが変わった': 2, '': 3 };
