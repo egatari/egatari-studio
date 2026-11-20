@@ -460,8 +460,7 @@ main{flex:1;min-height:0;display:flex}
 /* 新規作成 ① 場面（大分類・小分類）（app/llm.js の kindStep） */
 #dlg .paste-sub[hidden],#dlg .paste-structure[hidden]{display:none}
 #dlg .paste-structure{margin:4px 0 0;padding:4px 10px;border-left:3px solid var(--accent);font-size:13.5px}
-/* 新規作成 ④ AI に渡す指示（軽量・詳細。内部の名前は plan の free・paid）とパーツの一覧（app/llm.js の sendStep）。まとまり（伝えたいこと）ごとに見出しと、パーツのチェックボックス。
-   選んだパーツはチェックと枠の色、外したパーツは薄く（チェックボックスが状態を示すので、色だけで分けない） */
+/* 新規作成 ④（app/llm.js の sendStep。handoff #43）：伝えたいこと・題材・学校のラベルと、どの AI に貼るか（軽量・詳細。内部の名前は plan の free・paid） */
 #dlg .paste-plan{margin:0 0 4px;flex-direction:column;gap:8px;padding:6px 10px 8px}
 #dlg .paste-plan > legend{font-weight:600}
 #dlg .paste-plan .plan-opt{align-items:flex-start;max-width:72em}
@@ -470,45 +469,27 @@ main{flex:1;min-height:0;display:flex}
 #dlg .plan-name{font-weight:600}
 #dlg .plan-text small{color:var(--muted);font-size:12.5px;line-height:1.55}
 #dlg .plan-badge{display:inline-block;margin:0 8px;padding:0 6px;border-radius:999px;font-size:10.5px;line-height:1.5;font-weight:400;vertical-align:1px;background:var(--accent);color:var(--accent-fg)}
-/* パーツの一覧を畳む（backlog #211）：1 行の要約を押すと開く */
+/* ラベルの問いを畳む：1 行（指示に入るパーツの数）を押すと開く・畳む */
 #dlg .parts-fold{flex-basis:100%;margin:10px 0 4px;min-width:0}
 #dlg .parts-fold > summary{cursor:pointer;padding:4px 2px;font-weight:600}
 #dlg .parts-fold > summary .parts-fold-act{margin-inline-start:10px;font-weight:400;color:var(--accent);text-decoration:underline}
 #dlg .parts-fold[open] > summary .parts-fold-act{display:none}
 #dlg .parts-fold > .paste-parts{margin-top:6px}
 #dlg .paste-parts{flex-basis:100%;margin:10px 0 4px;padding:6px 10px 8px;border:1px solid var(--line);border-radius:6px;min-width:0}
-#dlg .paste-parts > legend{padding:0 4px;font-weight:600}
 #dlg .paste-parts > .hint{margin:0 0 6px}
+#dlg .paste-tiles,#dlg .paste-school{flex-direction:column;align-items:stretch;gap:6px;margin:0 0 8px}
+#dlg .paste-tiles > legend,#dlg .paste-school > legend{font-weight:600}
+#dlg .paste-tiles > .hint{margin:0}
+#dlg .paste-school[hidden]{display:none}
+#dlg .tile-opts{display:flex;flex-wrap:wrap;gap:6px}
+#dlg .tile-opt{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);cursor:pointer;font-size:13px}
+#dlg .tile-opt:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+#dlg .tile-opt:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+#dlg .tile-opt input{margin:0;accent-color:var(--accent)}
 #dlg .paste-why{margin:0 0 6px;padding:4px 10px;border-left:3px solid var(--accent);color:var(--fg)}
-#dlg .pgroups{columns:3 250px;column-gap:14px}
-#dlg .pgroup{break-inside:avoid;padding:0 0 10px}
-#dlg .pgroup h4{margin:0 0 4px;font-size:13px;font-weight:600}
-#dlg .picks{display:flex;flex-direction:column;gap:6px}
-#dlg .pick{position:relative;display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);cursor:pointer;font-size:13px;line-height:1.3}
-#dlg .pick:has(input:checked){border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
-#dlg .pick:not(:has(input:checked)) .pick-thumb,#dlg .pick:not(:has(input:checked)) .pick-text{opacity:.6}
-#dlg .pick:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
-#dlg .pick input{flex:none;margin:0;width:16px;height:16px;accent-color:var(--accent)}
-#dlg .pick svg{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
-/* 見本の絵（96×60。明るい画面と暗い画面の 2 枚）。絵のないパーツは同じ大きさの枠に線画 */
-#dlg .pick-thumb{flex:none;display:flex;align-items:center;justify-content:center;width:96px;height:60px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--panel)}
-#dlg .pick-thumb img{display:block;width:96px;height:60px}
-#dlg .pick-thumb.none svg{width:30px;height:30px;color:var(--muted)}
-#dlg .pick-text{display:flex;flex-direction:column;min-width:0}
-#dlg .pick .tile-label{font-weight:600}
-#dlg .pick small{font-size:11.5px;color:var(--muted);line-height:1.25}
+#dlg .paste-why[hidden]{display:none}
 #dlg .pick-badge{position:absolute;top:-7px;right:6px;padding:0 6px;border-radius:999px;font-size:10.5px;line-height:1.5;background:var(--accent);color:var(--accent-fg)}
 #dlg .pick-badge[hidden]{display:none}
-/* 指示の大きさのメーター（プランの目安と比べる）：越えたら縞と、越えた分・外す候補の知らせ（色だけで分けない） */
-#dlg .paste-size{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;margin:8px 0 4px}
-#dlg .paste-size .hint{flex:0 1 auto}
-#dlg .meter-bar{flex:1 1 180px;max-width:320px;height:10px;border:1px solid var(--line);border-radius:5px;overflow:hidden;background:var(--bg)}
-#dlg .meter-fill{display:block;height:100%;background:var(--accent)}
-#dlg .paste-size.over .meter-fill{background:repeating-linear-gradient(135deg,var(--bad-fg) 0 6px,transparent 6px 10px),var(--bad-bg)}
-#dlg .paste-size.over .hint{color:var(--bad-fg);font-weight:600}
-#dlg .paste-over{margin:2px 0 6px;padding:6px 10px;border-radius:6px;background:var(--warn-bg);color:var(--warn-fg);font-size:13px}
-#dlg .paste-over button{margin-left:6px;padding:2px 10px;font-size:13px}
-#dlg .paste-over button[hidden]{display:none}
 /* 新規作成の問い（app/llm.js）：答えた問いの 1 行と［変更］、「AI に任せる」か書くかの組、貼り付けの 2 つの欄の状態、作成のボタンの横の言葉 */
 #dlg .paste-answered{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin:0;font-size:14px}
 #dlg .paste-answered[hidden],#dlg .paste-q-body[hidden],#dlg #paste-content-rest[hidden],#dlg .paste-pair-field[hidden],#dlg .paste-step[hidden],#dlg .paste-info[hidden]{display:none}

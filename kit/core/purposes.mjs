@@ -148,12 +148,14 @@ export function componentsOff(off, P) {
 
 const cell = (s) => String(s).replace(/\|/g, '\\|');
 // parts：材料の部品 [{tag, set}]（set は 'standard' か束の名前）。sets：入っている束（null ならすべて）
-export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, off = [] } = {}) {
+export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, off = [], named = null } = {}) {
   const L = lang === 'ja' ? 'ja' : 'en';
   const ex = new Set(exclude), offs = new Set(off);
   const inPack = (c) => c.set === 'standard' || !sets || sets.includes(c.set);
   const usable = parts.filter((c) => !ex.has(c.tag));
-  const here = new Set(usable.filter(inPack).map((c) => c.tag));
+  // named：名前だけ載せる部品（順位で組む指示。説明はない。表の下の 1 文が「使わない」と言う）
+  const byName = new Set((named || []).filter((t) => parts.some((c) => c.tag === t)));
+  const here = new Set([...usable.filter(inPack).map((c) => c.tag), ...byName]);
   const elsewhere = usable.filter((c) => !inPack(c));
   const part = (id, t) => {
     const note = NOTES[`${id}:${t}`];
@@ -179,6 +181,10 @@ export function purposesTable(P, parts, lang, src, { exclude = [], sets = null, 
   const other = elsewhere.length ? '\n\n' + (L === 'ja'
     ? `この指示に入っていないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作成者が新規作成でパーツを追加できる）`
     : `Some parts are not included in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can add parts when making a new file).`) : '';
+  // 名前だけの部品（今の「入っていないパーツ」の決まりと同じ：使わない。合いそうなら 1 行のメモで。作者の決定 2026-11-19）
+  const nameOnly = byName.size ? '\n\n' + (L === 'ja'
+    ? `この表には、名前だけで説明のないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える（作成者が新規作成で選び直すと、説明が入る）`
+    : `Some parts in this table have only their name and no description in these instructions. Do not use them; if one would fit, say in a one-line note what you would show (the author can choose differently when making a new file to get its description).`) : '';
   const url = src ? '\n\n' + (L === 'ja' ? `各パーツの説明（バージョンを固定）：${src}<名前>/README.md（名前は \`m-\` を除いたもの）` : `Each part's description (pinned version): ${src}<name>/README.md (the name without \`m-\`)`) : '';
-  return head + '\n' + rows.join('\n') + other + url;
+  return head + '\n' + rows.join('\n') + other + nameOnly + url;
 }

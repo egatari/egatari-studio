@@ -27,6 +27,7 @@ import { buildFixRequest, guideRules, rulesFor, amountOf, cutOffRequest } from '
 import { buildPack, commonBody, setPart, requestBody, SETS, setOf, setsForDeck, componentsIn, packSize, packKb, FREE_CORE, partsPackOpts, fitSize, pasteUnits, FREE_PASTE_UNITS } from '../kit/core/llm-pack.mjs';
 import { initialParts, fitPlan, capKb } from '../kit/core/new-deck.mjs';
 import { partOf } from '../kit/core/llm-pack-assemble.mjs';
+import { fromSamplePack } from '../kit/core/new-deck-pack.mjs';
 import { PACK } from '../kit/core/llm-pack-data.mjs';
 import { readingProblems, orphanSteps } from '../kit/core/narration-lint.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
@@ -548,6 +549,18 @@ ok('fix request: the ask forbids Canvas, slide-making and file features and want
   const ja = buildFixRequest({ problems: p, deck: '<section class="slide" id="s1"><h2>a</h2></section>', lang: 'ja' });
   assert.match(en.text, /Do not use Canvas, slide-making or file features: reply in the body of your chat message with exactly two fenced code blocks/);
   assert.match(ja.text, /Canvas・スライド作成・ファイルの機能は使わず、チャットの本文に、ちょうど 2 つの灰色の枠（コードブロック）/);
+});
+
+ok('--from-sample (handoff #43 ④): the same bytes as the editor (fromSamplePack, ranked by labels with the sample\'s parts first); stderr counts the described and name-only parts', () => {
+  const sample = JSON.parse(fs.readFileSync(path.join(ROOT, 'examples', 'kokugo-kanbun', 'sample.json'), 'utf8'));
+  const title = (fs.readFileSync(path.join(ROOT, 'examples', 'kokugo-kanbun', 'deck.html'), 'utf8').match(/<title>([^<]*)<\/title>/) || [])[1].trim();
+  for (const [lang, plan] of [['ja', 'free'], ['en', 'paid']]) {
+    const r = node('kit/llm-pack.mjs', '--from-sample', 'kokugo-kanbun', '--lang', lang, '--plan', plan, '--request', 'X\nY');
+    const e = fromSamplePack({ sample: { ...sample, title, name: 'kokugo-kanbun' }, lang, plan, second: { title: 'X', content: 'Y' } });
+    assert.ok(r.status === 0 && r.stdout === e.text, `${lang} ${plan}: the CLI prints the editor's instructions`);
+    assert.ok(r.stderr.includes(`note: ${plan} plan: ${e.described.length} parts described (${e.described.join(', ')}), ${e.named.length} by name only`), r.stderr);
+    assert.ok(sample.parts.every((t) => e.described.includes(t)), `${lang} ${plan}: the sample's parts are described`);
+  }
 });
 
 console.log(`llm: ${n} ok (${work})`);

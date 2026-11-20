@@ -1,37 +1,40 @@
-// 新規作成の選び方（backlog #99・#124、handoff/parts-map-2026-10-24.html の 7・9、handoff/parts-tiers-2026-10-27.md §2）と、教材のシード値（format spec §8.4、backlog #104）。
+// 新規作成の選び方（backlog #99・#124、handoff/parts-map-2026-10-24.html の 7・9、handoff/parts-tiers-2026-10-27.md §2、handoff #43 ④）と、教材のシード値（format spec §8.4、backlog #104）。
 // Node にもブラウザにも依存しない（純粋な ESM）。画面は app/llm.js
 //
-// 大分類（構成を決める場面）→ 小分類（構成の型）。④ はパーツの一覧：パーツを「伝えたいこと」でまとめて並べ、教科にしかない形（地図・国語・英語・音楽）は
-// 最後の「教科の形」に（授業（小・中・高）では一番上に）。パーツの段（標準・専門・特殊）と束はパーツライブラリ 2.0 の manifest の tier・set
-// （kit/core/llm-pack.mjs の TIERS。tools/make-llm-guide.mjs が写す）。特殊（extra）のパーツは一覧に出さない。
-// 初めの選び方：標準のパーツは全部、専門のパーツは、場面の小分類の表（SUB_SETS）か ② の言葉の表（WORDS）に当たった束だけ（理由を添える）。
-// プランが変えるのは指示の大きさの上限（capKb）と詳しさ（無料のプランは中核の 4 つのほかの標準のパーツを一覧の 1 行だけに。kit/core/llm-pack.mjs の partsPackOpts）。
-// 選べる数は限らない。越えたら外す候補を出す：trimCandidates。
+// ④（handoff #43、作者の決定 2026-11-19）：パーツに印を付けず、ラベルを選ぶ。伝えたいこと（札。いくつでも・なしでも）→ 題材（任意。② の言葉から推して先に印）→
+// 学校（① が授業（小・中・高）のときだけ。ほかは ① から読み手を決める：audienceOf）→ どの AI に貼るか（軽量・詳細）。
+// ラベルの id と名前はパーツ集の manifest から（PACK.tiers の purposes・subjects・audiences。Studio に一覧を書かない）。
+// 指示はパーツの順位（rankParts）で組む：上から説明を載せ、上限を越える手前で止め、残りは言いたいことの表に名前だけ（kit/core/new-deck-pack.mjs の newDeckPack）
 //
 //   CATEGORIES                         [{id, label: {en, ja}, subs: [{id, label, structure, show}], structure?, show?}]
 //   SET_LABELS                         [{set, label: {en, ja}, inside: {en, ja}}]（スライドの挿入の「指示の全体も付ける」の束の名前。新規作成では使わない）
-//   SUBJECT_SETS                       教科の形の束（この順に並べる）
-//   SUB_SETS                           小分類 → おすすめの束（§2.3）
-//   WORDS                              {ja|en: {束: [言葉]}}（§2.4。英語の画面では英語の表）
-//   partsList(sub, plan)               → [{id, label: {ja, en}, parts: [タグ]}]（④ の並び。id は伝えたいことの id か 'subject'）。
-//                                        plan が 'free' なら、有料のプランの指示にだけ入るパーツ（paidOnly）を出さない（plan なしは全部）
-//   paidOnly(tag)                      → 有料のプランの指示にだけ入るパーツか（受け皿のない束のパーツ。tools/make-llm-guide.mjs の hasReceiver）
-//   recommend({sub, text, lang})       → [{set, sub?, word?}]（おすすめの束と理由。小分類が先、それから言葉。束ごとに 1 つ）
-//   initialParts(rec)                  → 初めに選んでおくパーツ（標準の全部とおすすめの束のパーツ。一覧の順）
+//   SUBJECT_SETS                       教科の形の束（partsList の並び）
+//   partsList(sub, plan)               → [{id, label: {ja, en}, parts: [タグ]}]（パーツを伝えたいことでまとめた一覧。サンプルの確かめとパーツの絵が使う。④ には出さない）
+//   paidOnly(tag)                      → 受け皿のない束のパーツか（tools/make-llm-guide.mjs の hasReceiver。順位で組む指示では、どちらのプランでも順位どおり）
+//   initialParts(rec)                  → 標準のパーツ全部と、rec（[{set}]）の束のパーツ（コマンドの束の指示と比べる試験が使う）
 //   partsOfSet(set)                    → 束のパーツ（一覧に出るものだけ）
-//   AI_PLANS・DEFAULT_PLAN             お使いの AI：'free'（無料のプラン。既定）| 'paid'（有料のプラン）
+//   purposeTiles()                     → ④ の札：tile が 'own' で reserved でない伝えたいこと [{id, label}]（manifest の順）
+//   subjectChoices()                   → ④ の題材：reserved でない題材 [{id, label}]
+//   SUBJECT_WORDS                      {ja|en: {題材の id: [言葉]}}（② の言葉から題材を推す表。日本語は字の並び、英語は語の切れ目。PACK.tiers にない id は使わない）
+//   guessSubjects({text, lang})        → [{subject, word}]（② の言葉に当たった題材と、当たった言葉。題材の順）
+//   SCHOOL_AUDIENCES・asksSchool(category, sub)  授業（小・中・高）だけ「どの学校向けですか」（小中・高校）
+//   audienceOf(category, sub, school)  → 読み手の id | null（授業（小・中・高）は school、大学の講義・研究発表は大学、研修・ビジネスは社会人、手引きは一般、その他はなし）
+//   rankParts({purposes, subjects, audience, usage, first})  → パーツの順位 [タグ]（特殊の段を除くすべて）。
+//                                        ① 伝えたいことが合うか（2 値。札の into も含む）② 題材が合うか ③ 読み手が合うか ④ サンプルで使う数（usage。既定は PACK.tiers.usage）、名前の順。
+//                                        題材か読み手のラベルがあって選んだものを含まないパーツは、合わないパーツとして、ほかのパーツの後ろ（伝えたいことが合っても）。
+//                                        first（サンプルから始めたときのサンプルのパーツ）は、この順のまま一番上に
+//   usageOf(samples)                   → {タグ: サンプルの数}（sample.json の parts から。PACK.tiers.usage と同じ数え方）
+//   AI_PLANS・DEFAULT_PLAN             どの AI に貼るか：'free'（無料の AI・わからない＝軽量の指示。既定）| 'paid'（有料の AI・ファイルで渡す＝詳細の指示）
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
-//   capKb(plan)                        指示の大きさの上限（KB。kit/core/llm-pack.mjs の PACK_CAP_KB：無料 free、有料 paid）
-//   trimCandidates(ticked, {sizeOf, capBytes, keep})  上限を越えたときの外す候補（keep を除き、大きい順に、越えた分に届くまで）
-//   fitPlan(ticked, plan, {sizeOf, capBytes})  → {short, candidates}：無料のプランで越えたら、まず中核の 4 つの説明を短くし（short）、
-//                                      それでも越えれば専門のパーツだけを外す候補に（標準のパーツは外さない）。kit/core/llm-pack.mjs から出し直す
+//   capKb(plan)                        指示の大きさの上限（KB。kit/core/llm-pack.mjs の PACK_CAP_KB。画面には出さない）
+//   trimCandidates・fitPlan            コマンドの束の指示を目安に収める（kit/core/llm-pack.mjs）
 //   choiceRequest(choice, P, lang)     頼みたいことの後ろに付ける節（場面・構成の型・見せ方と、choice.purposesOff があれば外した伝えたいこと。P は PURPOSES）。何もなければ ''。
 //                                      外した伝えたいことの行が名前を出す部品は choice.parts（指示に入るパーツ）にあるものだけ
 //                                      「その他」は何も書かず、小分類の「この中にない」（subcategory: null）は場面の行だけ（構成の型・見せ方は書かない）
 //   withChoice(configText, choice)     egatari.json の studio.newDeck に選んだものを書く（kit/core/config-file.mjs の updateConfig。ほかの項目はバイトのまま）
-//   choiceOf(configText)               → studio.newDeck | null
-//   choice の形：{plan, category, subcategory, parts: [タグ], fromSample?}（category・subcategory は id か null。parts は選んだパーツ。fromSample は始めたサンプルの名前。
-//   前の記録（subjects・tools・purposesOff）は読むだけで、新しく書くものには入れない）
+//   choiceOf(configText)               → studio.newDeck | null（前の記録の parts は読まない）
+//   choice の形：{plan, category, subcategory, purposes: [id], subjects: [id], audience: id | null, fromSample?}（category・subcategory は id か null。
+//   fromSample は始めたサンプルの名前。前の記録（parts・subjects・tools・purposesOff）は読むだけで、新しく書くものには入れない）
 //
 // 見せ方（variant。format spec §8.4）は名前だけで選ぶ。教材のシード値（data-egatari-seed）はなくなった：書かない。前の原稿にあれば、そのまま残す（誰も読まない）
 import { updateConfig, merge, configObject } from './config-file.mjs';
@@ -115,43 +118,41 @@ export const SET_LABELS = [
 export const SUBJECT_SETS = ['maps', 'kokugo', 'english', 'music'];
 const SUBJECT_GROUP = { id: 'subject', label: { ja: '教科の形', en: 'For specific subjects' } };
 const OTHER_GROUP = { id: 'other', label: { ja: 'その他', en: 'Other' } };
-// 小分類 → おすすめの束（§2.3。ない小分類はなし）。授業（小・中・高）は束を決めず、教科の形を一覧の一番上に出す（SUBJECT_FIRST）
-export const SUB_SETS = Object.freeze({
-  lecture: ['stats'], training: ['tools'], conference: ['stats'], seminar: ['stats'],
-  report: ['business'], proposal: ['business'], pitch: ['business'], info: ['maps'],
-});
+// 授業（小・中・高）は partsList で教科の形を一番上に
 const SUBJECT_FIRST = ['class'];
-// 言葉の表（§2.4）。日本語は字の並びで、英語は語の切れ目で探す（大文字・小文字は区別しない）。
-// 1 字の言葉は、ほかの語の一部に当たりやすいので除く並びを添える（{w, not}：not は前後にあればその所は当たりにしない）。毎晩の評価で当たり外れを測って直す
-export const WORDS = Object.freeze({
+// 題材を推す言葉の表（handoff #43 ④。前の束の言葉の表 §2.4 を題材に分けたもの）。日本語は字の並びで、英語は語の切れ目で探す（大文字・小文字は区別しない）。
+// 1 字の言葉は、ほかの語の一部に当たりやすいので除く並びを添える（{w, not}：not は前後にあればその所は当たりにしない）。
+// キーは manifest の題材の id。PACK.tiers.subjects にない id・reserved の id は使わない（表は言葉だけを持ち、題材の名前は manifest から）
+export const SUBJECT_WORDS = Object.freeze({
   ja: {
-    stats: ['分布', '統計', 'データ', 'ヒストグラム', '箱ひげ', '相関', 'ベイズ', '推定', '検定'],
-    data: ['データサイエンス', '情報I', '情報Ⅰ', 'プログラミング', '交差検証', '信頼区間', '標本抽出', '確率変数', '期待値'],
-    math: ['筆算', 'わり算', '割り算', 'かけ算', '掛け算', '分数', '割合', '数直線', 'テープ図', '関数'],
-    maps: ['地図', '都道府県', '地方', '世界', { w: '国', not: ['国語'] }, '人口', '地域'],
-    kokugo: ['国語', '漢文', '漢詩', '古文', '現代文', '評論', '小説', '書き順', 'ひらがな'],
+    statistics: ['分布', '統計', 'データ', 'ヒストグラム', '箱ひげ', '相関', 'ベイズ', '推定', '検定', '交差検証', '信頼区間', '標本抽出', '確率変数', '期待値',
+      'グラフィカルモデル', 'パス図', '構造方程式', 'ベイジアンネットワーク', '隠れマルコフ', 'マルコフ連鎖', '因果ダイアグラム'],
+    mathematics: ['数学', '算数', '筆算', 'わり算', '割り算', 'かけ算', '掛け算', '分数', '割合', '数直線', 'テープ図', '関数', 'ベクトル', '行列'],
+    informatics: ['情報I', '情報Ⅰ', 'プログラミング', 'アルゴリズム', '最短経路', '巡回セールスマン', 'グラフ理論', 'グラフの探索', '幅優先', 'ダイクストラ',
+      '機械学習', 'ニューラルネット', 'パーセプトロン', '深層学習', 'ディープラーニング', '活性化関数', '勾配降下', 'ロジスティック回帰', 'サポートベクター', 'SVM', '決定木',
+      'k 平均', 'k平均', 'k-means', '近傍法', '損失関数', '分類器', 'scikit-learn'],
+    science: ['理科', '月の満ち欠け', '天体', '惑星', '粒子', '物理', '化学'],
+    'social-studies': ['地図', '都道府県', '地方', '世界', { w: '国', not: ['国語'] }, '人口', '地域', '地理', '歴史'],
+    japanese: ['国語', '漢文', '漢詩', '古文', '現代文', '評論', '小説', '書き順', 'ひらがな'],
     english: ['英文', '文型', '英語', { w: '句', not: ['俳句', '語句', '文句', '句読点'] }, { w: '節', not: ['季節', '関節', '節約', '節分', '調節'] }, '関係詞'],
-    music: ['音階', '和音', { w: 'コード', not: ['ソースコード', 'バーコード', 'QRコード', 'コーディング'] }, '鍵盤', '楽譜'],
-    business: ['市場', 'KPI', '売上', '事業', 'ピッチ'],
-    tools: ['タイマー', 'ワークショップ', '演習時間', 'グループワーク'],
-    // 束 algo（部品庫 2.10.0、d5 11/15）：「グラフ」単独は棒グラフ・円グラフに当たるので入れない。小分類からは推さない（SUB_SETS にない）
-    // 部品庫 2.12 の m-network 2.1.0（グラフィカルモデル・パス図・HMM のトレリス）も束 algo。統計・機械学習の授業でも言葉ですすめる（d5 11/15）
-    algo: ['探索', '最短経路', '巡回セールスマン', 'グラフ理論', 'グラフの探索', 'アルゴリズム', '幅優先', 'ダイクストラ', 'グラフィカルモデル', 'パス図', '構造方程式', 'ベイジアンネットワーク', '隠れマルコフ', 'HMM', 'マルコフ連鎖', '因果ダイアグラム'],
-    // 束 ml（部品庫 2.12・2.13：m-nnet・m-classify2d・m-contour、backlog #219）。小分類からは推さない。「等高線」は地図にも当たるので入れない
-    ml: ['機械学習', 'ニューラルネット', 'パーセプトロン', '深層学習', 'ディープラーニング', '活性化関数', '勾配降下', 'ロジスティック回帰', 'サポートベクター', 'SVM', '決定木', 'k 平均', 'k平均', 'k-means', '近傍法', '損失関数', '分類器', 'scikit-learn'],
+    music: ['音楽', '音階', '和音', { w: 'コード', not: ['ソースコード', 'バーコード', 'QRコード', 'コーディング'] }, '鍵盤', '楽譜'],
+    business: ['市場', 'KPI', '売上', '事業', 'ピッチ', '経営'],
   },
   en: {
-    stats: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian', 'estimation', 'hypothesis test', 'hypothesis testing'],
-    data: ['data science', 'programming', 'cross-validation', 'confidence interval', 'confidence intervals', 'sampling', 'random variable', 'random variables', 'expected value'],
-    math: ['long division', 'column addition', 'multiplication', 'division', 'fraction', 'fractions', 'ratio', 'ratios', 'percentage', 'percentages', 'number line', 'tape diagram', 'function', 'functions'],
-    maps: ['map', 'maps', 'prefecture', 'prefectures', 'region', 'regions', 'world', 'country', 'countries', 'population'],
-    kokugo: ['kanbun', 'kobun', 'kanshi', 'classical Japanese', 'classical Chinese', 'stroke order', 'hiragana', 'katakana', 'kanji'],
+    statistics: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian',
+      'estimation', 'hypothesis test', 'hypothesis testing', 'cross-validation', 'confidence interval', 'confidence intervals', 'sampling', 'random variable', 'random variables',
+      'expected value', 'graphical model', 'path diagram', 'structural equation', 'Bayesian network', 'hidden Markov', 'Markov chain', 'causal diagram'],
+    mathematics: ['mathematics', 'math', 'maths', 'arithmetic', 'long division', 'column addition', 'multiplication', 'division', 'fraction', 'fractions', 'ratio', 'ratios',
+      'percentage', 'percentages', 'number line', 'tape diagram', 'function', 'functions', 'vector', 'vectors', 'matrix', 'matrices'],
+    informatics: ['programming', 'computer science', 'algorithm', 'algorithms', 'graph search', 'graph theory', 'breadth-first search', 'BFS', 'shortest path', 'traveling salesman',
+      'TSP', 'Dijkstra', 'machine learning', 'neural network', 'neural networks', 'perceptron', 'deep learning', 'activation function', 'gradient descent', 'logistic regression',
+      'support vector', 'SVM', 'decision tree', 'decision trees', 'k-means', 'nearest neighbor', 'nearest neighbors', 'loss function', 'classifier', 'classifiers', 'scikit-learn'],
+    science: ['science', 'physics', 'chemistry', 'phases of the moon', 'moon phases', 'planet', 'planets', 'particle', 'particles'],
+    'social-studies': ['map', 'maps', 'prefecture', 'prefectures', 'region', 'regions', 'world', 'country', 'countries', 'population', 'geography', 'history'],
+    japanese: ['kanbun', 'kobun', 'kanshi', 'classical Japanese', 'classical Chinese', 'stroke order', 'hiragana', 'katakana', 'kanji'],
     english: ['English grammar', 'sentence structure', 'sentence pattern', 'sentence patterns', 'phrase', 'phrases', 'clause', 'clauses', 'relative pronoun', 'relative pronouns'],
-    music: ['musical scale', 'major scale', 'minor scale', 'chord', 'chords', 'keyboard', 'piano', 'sheet music', 'musical score'],
+    music: ['music', 'musical scale', 'major scale', 'minor scale', 'chord', 'chords', 'keyboard', 'piano', 'sheet music', 'musical score'],
     business: ['market', 'markets', 'KPI', 'KPIs', 'sales', 'revenue', 'business', 'pitch'],
-    tools: ['timer', 'workshop', 'exercise time', 'group work'],
-    algo: ['graph search', 'graph theory', 'breadth-first search', 'BFS', 'shortest path', 'traveling salesman', 'TSP', 'algorithm', 'algorithms', 'Dijkstra', 'graphical model', 'path diagram', 'structural equation', 'Bayesian network', 'hidden Markov', 'HMM', 'Markov chain', 'causal diagram'],
-    ml: ['machine learning', 'neural network', 'neural networks', 'perceptron', 'deep learning', 'activation function', 'gradient descent', 'logistic regression', 'support vector', 'SVM', 'decision tree', 'decision trees', 'k-means', 'nearest neighbor', 'nearest neighbors', 'loss function', 'classifier', 'classifiers', 'scikit-learn'],
   },
 });
 
@@ -179,7 +180,6 @@ export function partsList(sub, plan) {
 }
 const LISTED = () => partsList(null).flatMap((g) => g.parts);
 export const partsOfSet = (set) => LISTED().filter((t) => PARTS[t].set === set);
-const SETS = () => [...new Set(LISTED().map((t) => PARTS[t].set).filter(Boolean))];
 
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // 言葉が text のどこかに（除く並びの中でなく）あれば、その言葉を返す
@@ -193,27 +193,65 @@ function findWord(text, word, lang) {
   }
   return null;
 }
-export function recommend({ sub = null, text = '', lang = 'ja' } = {}) {
-  const L = lang === 'en' ? 'en' : 'ja', t = String(text || ''), have = SETS(), out = [];
-  for (const set of SUB_SETS[sub] || []) if (have.includes(set)) out.push({ set, sub });
-  for (const [set, words] of Object.entries(WORDS[L])) {
-    if (!have.includes(set) || out.some((r) => r.set === set)) continue;
-    for (const w of words) { const hit = findWord(t, w, L); if (hit) { out.push({ set, word: hit }); break; } }
-  }
-  return out;
-}
 export function initialParts(rec = []) {
   const sets = new Set(rec.map((r) => r.set));
   return LISTED().filter((t) => PARTS[t].tier === 'standard' || sets.has(PARTS[t].set));
 }
 
-// お使いの AI（無料のプラン・有料のプラン）。変えるのは指示の大きさの上限と詳しさ
+// どの AI に貼るか（無料の AI・わからない＝軽量の指示、有料の AI・ファイルで渡す＝詳細の指示）。変えるのは指示の大きさの上限だけ（順位で組む。画面に上限は出さない）
 export const AI_PLANS = ['free', 'paid'];
 export const DEFAULT_PLAN = 'free';
 export const planOf = (choice) => (choice && choice.plan === 'paid' ? 'paid' : DEFAULT_PLAN);
 export const capKb = (plan) => (plan === 'paid' ? PACK_CAP_KB.paid : PACK_CAP_KB.free);
 // 外す候補（trimCandidates）と目安に収める決め方（fitPlan）は kit/core/llm-pack.mjs にある（コマンドの kit/llm-pack.mjs と同じ関数）
 export { trimCandidates, fitPlan } from './llm-pack.mjs';
+
+// ---------------------------------------------------------------- ④ ラベル（handoff #43、作者の決定 2026-11-19）
+const known = (xs) => (Array.isArray(xs) ? xs : []);
+export const purposeTiles = () => known(TIERS.purposes).filter((p) => p.tile === 'own' && !p.reserved).map((p) => ({ id: p.id, label: p.label }));
+export const subjectChoices = () => known(TIERS.subjects).filter((x) => !x.reserved).map((x) => ({ id: x.id, label: x.label }));
+const audienceIds = () => known(TIERS.audiences).filter((x) => !x.reserved).map((x) => x.id);
+export function guessSubjects({ text = '', lang = 'ja' } = {}) {
+  const L = lang === 'en' ? 'en' : 'ja', t = String(text || ''), out = [];
+  for (const s of subjectChoices()) {
+    for (const w of (SUBJECT_WORDS[L][s.id] || [])) { const hit = findWord(t, w, L); if (hit) { out.push({ subject: s.id, word: hit }); break; } }
+  }
+  return out;
+}
+// 読み手：授業（小・中・高）だけ学校を聞く（小中・高校）。ほかは ① から（その他・この中にないはなし）。PACK.tiers.audiences にない id は使わない
+export const SCHOOL_AUDIENCES = Object.freeze(['primary-junior', 'high-school']);
+export const asksSchool = (category, sub) => category === 'teaching' && sub === 'class';
+const AUDIENCE_OF_SUB = Object.freeze({ lecture: 'university', training: 'working-adult' });
+const AUDIENCE_OF_CAT = Object.freeze({ research: 'university', business: 'working-adult', guides: 'general' });
+export function audienceOf(category, sub, school = null) {
+  const ids = audienceIds();
+  const id = asksSchool(category, sub) ? (SCHOOL_AUDIENCES.includes(school) ? school : null)
+    : category === 'teaching' ? AUDIENCE_OF_SUB[sub] || null : AUDIENCE_OF_CAT[category] || null;
+  return id && ids.includes(id) ? id : null;
+}
+export function usageOf(samples = []) {
+  const n = {};
+  for (const s of samples) for (const t of new Set((s && Array.isArray(s.parts) ? s.parts : []).filter((x) => typeof x === 'string'))) n[t] = (n[t] || 0) + 1;
+  return n;
+}
+// 順位（作者の決定 2026-11-19）：合わない（題材か読み手のラベルがあり、選んだものを含まない）パーツは後ろ。その中と外で、伝えたいこと → 題材 → 読み手 → サンプルで使う数 → 名前
+export function rankParts({ purposes = [], subjects = [], audience = null, usage = TIERS.usage || {}, first = [] } = {}) {
+  const want = new Set(purposes);
+  for (const p of known(TIERS.purposes)) if (p.into && want.has(p.into)) want.add(p.id);   // 札に入る id（順位 → 比べる）
+  const subs = new Set(subjects);
+  const tags = Object.keys(PARTS).filter((t) => PARTS[t].tier !== 'extra' && PACK.en.components[t]);
+  const key = (t) => {
+    const c = PARTS[t], ps = c.purposes || [], ss = c.subjects || [], as = c.audiences || [];
+    const subHit = ss.some((x) => subs.has(x)), audHit = !!audience && as.includes(audience);
+    const conflict = (subs.size > 0 && ss.length > 0 && !subHit) || (!!audience && as.length > 0 && !audHit);
+    return [conflict ? 1 : 0, ps.some((x) => want.has(x)) ? 0 : 1, subHit ? 0 : 1, audHit ? 0 : 1, -(usage[t] || 0)];
+  };
+  const keys = Object.fromEntries(tags.map((t) => [t, key(t)]));
+  const cmp = (a, b) => { for (let i = 0; i < 5; i++) if (keys[a][i] !== keys[b][i]) return keys[a][i] - keys[b][i]; return a < b ? -1 : a > b ? 1 : 0; };
+  const order = tags.sort(cmp);
+  const top = new Set(first);
+  return [...order.filter((t) => top.has(t)), ...order.filter((t) => !top.has(t))];
+}
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;
 export function subOf(category, sub) { const c = catOf(category); return (c && c.subs.find((s) => s.id === sub)) || null; }
@@ -245,12 +283,16 @@ export function choiceRequest(choice, P, lang) {
 }
 
 const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+const ids = (xs, list) => list.map((x) => x.id).filter((id) => known(xs).includes(id));
 const clean = (choice) => ({
   v: 1,
   plan: planOf(choice),
   category: catOf(choice.category) ? choice.category : null,
   subcategory: subOf(choice.category, choice.subcategory) ? choice.subcategory : null,
-  parts: Object.keys(PARTS).filter((t) => (choice.parts || []).includes(t)).sort(),
+  // ④ のラベル（manifest の順。知らない id は書かない）。読み手は ① と学校から決めたもの
+  purposes: ids(choice.purposes, known(TIERS.purposes)),
+  subjects: ids(choice.subjects, known(TIERS.subjects)),
+  audience: audienceIds().includes(choice.audience) ? choice.audience : null,
   // サンプルから始めたなら、そのサンプルの名前（examples/<名前>。backlog #130）
   ...(typeof choice.fromSample === 'string' && /^[a-z0-9][a-z0-9-]{0,63}$/.test(choice.fromSample) ? { fromSample: choice.fromSample } : {}),
 });
@@ -262,5 +304,6 @@ export function choiceOf(configText) {
   try { c = configObject(configText); } catch { return null; }
   const n = isObj(c.studio) ? c.studio.newDeck : null;
   if (!isObj(n) || n.v !== 1) return null;
-  return { ...n, plan: planOf(n) };   // plan のない前の記録は無料のプラン
+  const { parts, ...rest } = n;   // 前の記録のパーツの一覧（④ が印だったころ）は読まない
+  return { ...rest, plan: planOf(n) };   // plan のない前の記録は無料のプラン
 }

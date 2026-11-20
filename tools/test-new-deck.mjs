@@ -15,14 +15,18 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, recommend, initialParts, SUBJECT_SETS, SUB_SETS, WORDS, capKb, trimCandidates, fitPlan, paidOnly } from '../kit/core/new-deck.mjs';
+import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, initialParts, SUBJECT_SETS, capKb, trimCandidates, fitPlan, paidOnly,
+  purposeTiles, subjectChoices, SUBJECT_WORDS, guessSubjects, SCHOOL_AUDIENCES, asksSchool, audienceOf, rankParts, usageOf } from '../kit/core/new-deck.mjs';
+import { newDeckPack, packText } from '../kit/core/new-deck-pack.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
 import { NEW_LESSON_CATALOGUE, withNewLessonCatalogue } from '../kit/core/config-file.mjs';
 import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, overMessage, sizeReport, pairsOf } from './make-llm-guide.mjs';
-import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, SINGLE_SET_DROP_ORDER, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack } from '../kit/core/llm-pack.mjs';
+import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, SINGLE_SET_DROP_ORDER, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack, rankedOpts } from '../kit/core/llm-pack.mjs';
+import { rankedPack as rankedPackOf } from '../kit/core/llm-pack-assemble.mjs';
+import { sampleUsage } from './make-llm-guide.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
 import { PART_LABELS, partLabel, partDesc, partOrder, standardParts } from '../kit/core/part-labels.mjs';
 import { PACK as PACK_DATA } from '../kit/core/llm-pack-data.mjs';
@@ -111,20 +115,6 @@ ok('parts list (#124): grouped by what to convey, the subject forms last (first 
   for (const t of all) assert.ok(partDesc(t, 'ja') && partDesc(t, 'en'), t + ': a one-line description');
   assert.deepEqual(partsOfSet('stats').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
 });
-ok('words for the algo set (#214): search and graph-model words recommend algo; a bar graph does not', () => {
-  assert.deepEqual(recommend({ sub: null, text: 'ダイクストラ法で最短経路を探す', lang: 'ja' }).map((r) => r.set), ['algo']);
-  assert.deepEqual(recommend({ sub: null, text: '隠れマルコフモデルで品詞を推定する', lang: 'ja' }).map((r) => r.set).includes('algo'), true);
-  assert.deepEqual(recommend({ sub: null, text: 'A path diagram for the structural equation model', lang: 'en' }).map((r) => r.set), ['algo']);
-  assert.ok(!recommend({ sub: null, text: '棒グラフで売上を比べる', lang: 'ja' }).some((r) => r.set === 'algo'), 'a bar graph is not a graph algorithm');
-  assert.ok(!recommend({ sub: null, text: 'a bar graph of sales', lang: 'en' }).some((r) => r.set === 'algo'));
-});
-ok('words for the ml set (#219): neural networks, classifiers and gradient descent recommend ml; contour lines on a map do not', () => {
-  assert.deepEqual(partsOfSet('ml').sort(), ['m-classify2d', 'm-contour', 'm-nnet']);
-  assert.deepEqual(recommend({ sub: null, text: 'ニューラルネットの順伝播を 1 層ずつ', lang: 'ja' }).map((r) => r.set), ['ml']);
-  assert.deepEqual(recommend({ sub: null, text: 'SVM のマージンとサポートベクター', lang: 'ja' }).map((r) => r.set), ['ml']);
-  assert.deepEqual(recommend({ sub: null, text: 'Gradient descent on a loss surface', lang: 'en' }).map((r) => r.set), ['ml']);
-  assert.ok(!recommend({ sub: null, text: '等高線で山の高さを読む', lang: 'ja' }).some((r) => r.set === 'ml'));
-});
 ok('a part set without a receiver (univ, owner 11/17): its parts are in the parts list without a set name and not ticked at first; only the paid plan describes them', () => {
   assert.deepEqual(PAID_ONLY, ['m-ctable', 'm-vector']);
   for (const t of PAID_ONLY) { assert.equal(TIERS.parts[t].tier, 'specialized', t); assert.equal(TIERS.parts[t].set, undefined, t); assert.ok(partsList(null).some((g) => g.parts.includes(t)), t); }
@@ -140,34 +130,130 @@ ok('a part set without a receiver (univ, owner 11/17): its parts are in the part
     assert.ok(paid.includes('### `<m-ctable>`') && paid.includes('### `<m-vector>`'), lang + ': described on the paid plan');
   }
 });
-ok('initial ticks (#124 §2.2): every standard part; a specialized set from the subcategory table or the words of step 2 (with the reason); English words on the English screen', () => {
+ok('initial ticks: every standard part, and the parts of the given sets (the command\'s part-set instructions)', () => {
   const std = Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard');
   assert.deepEqual(initialParts([]).sort(), std.sort());
-  assert.deepEqual(recommend({ sub: 'seminar', text: '', lang: 'ja' }), [{ set: 'stats', sub: 'seminar' }]);
-  assert.deepEqual(recommend({ sub: 'pitch', lang: 'en' }), [{ set: 'business', sub: 'pitch' }]);
-  assert.deepEqual(recommend({ sub: 'info' }), [{ set: 'maps', sub: 'info' }]);
-  assert.deepEqual(recommend({ sub: 'training' }), [{ set: 'tools', sub: 'training' }]);
-  for (const sub of ['class', 'talk', 'intro', 'manual', 'rules', null]) assert.deepEqual(recommend({ sub }), [], String(sub));
-  assert.deepEqual(recommend({ sub: null, text: '孟浩然の漢詩「春暁」', lang: 'ja' }), [{ set: 'kokugo', word: '漢詩' }]);
-  assert.deepEqual(recommend({ sub: 'seminar', text: '漢詩とデータ', lang: 'ja' }), [{ set: 'stats', sub: 'seminar' }, { set: 'kokugo', word: '漢詩' }], 'one reason per set, the subcategory first');
-  assert.deepEqual(recommend({ text: 'わり算の筆算', lang: 'ja' }).map((r) => r.set), ['math']);
-  assert.deepEqual(recommend({ text: 'グループワーク 15 分', lang: 'ja' }), [{ set: 'tools', word: 'グループワーク' }]);
-  // 1 字の言葉は、ほかの語の一部では当たらない
-  assert.deepEqual(recommend({ text: '俳句と季節の言葉', lang: 'ja' }), []);
-  assert.deepEqual(recommend({ text: '国語の時間', lang: 'ja' }).map((r) => r.set), ['kokugo'], '国 in 国語 is not a map word');
-  assert.deepEqual(recommend({ text: 'ソースコードの読み方', lang: 'ja' }), []);
-  assert.deepEqual(recommend({ text: '関係詞の節', lang: 'ja' }).map((r) => r.set), ['english']);
-  assert.deepEqual(recommend({ text: 'てこのはたらき', lang: 'ja' }), []);
-  // 束 data（部品庫 2.6.0）：情報・データサイエンス・プログラミングの言葉
-  assert.deepEqual(recommend({ text: '情報Iのプログラミング', lang: 'ja' }), [{ set: 'data', word: '情報I' }]);
-  assert.deepEqual(recommend({ text: 'Cross-validation in Python', lang: 'en' }), [{ set: 'data', word: 'Cross-validation' }]);
-  // 英語の画面は英語の表
-  assert.deepEqual(recommend({ text: 'Chords on the piano', lang: 'en' }), [{ set: 'music', word: 'Chords' }]);
-  assert.deepEqual(recommend({ text: '漢詩', lang: 'en' }), []);
-  assert.deepEqual(recommend({ text: 'Mapping the database', lang: 'en' }), [], 'whole words only');
-  assert.deepEqual(initialParts([{ set: 'stats', sub: 'seminar' }]).filter((t) => TIERS.parts[t].tier !== 'standard').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
-  for (const [lang, sets] of Object.entries(WORDS)) for (const set of Object.keys(sets)) assert.ok(partsOfSet(set).length, `${lang} ${set}: a set with parts`);
-  for (const sets of Object.values(SUB_SETS)) for (const set of sets) assert.ok(partsOfSet(set).length, set);
+  assert.deepEqual(initialParts([{ set: 'stats' }]).filter((t) => TIERS.parts[t].tier !== 'standard').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
+});
+// ---------------------------------------------------------------- ④ ラベル（handoff #43、作者の決定 2026-11-19）
+ok('step 4 labels come from the manifest (PACK.tiers): tiles are the purposes with tile "own" and not reserved; subjects without the reserved ones; tile and reserved copied by gen', () => {
+  const m = MANIFEST2();
+  assert.deepEqual(purposeTiles().map((p) => p.id), m.purposes.filter((p) => p.tile === 'own' && !p.reserved).map((p) => p.id));
+  for (const p of purposeTiles()) assert.ok(p.label.ja && p.label.en, p.id);
+  assert.ok(!purposeTiles().some((p) => p.id === 'ranking' || p.id === 'model' || p.id === 'concept-links'), 'into, none and reserved purposes are not tiles');
+  assert.deepEqual(subjectChoices().map((x) => x.id), m.subjects.filter((x) => !x.reserved).map((x) => x.id));
+  assert.ok(!subjectChoices().some((x) => x.id === 'medicine' || x.id === 'disaster'), 'reserved subjects are not offered');
+  for (const p of TIERS.purposes) { const mp = m.purposes.find((x) => x.id === p.id); assert.equal(p.reserved || false, !!mp.reserved, p.id); assert.equal(p.tile, typeof mp.tile === 'string' ? mp.tile : undefined, p.id); }
+  for (const x of TIERS.subjects) assert.equal(x.reserved || false, !!m.subjects.find((y) => y.id === x.id).reserved, x.id);
+  // 題材の言葉の表のキーは manifest の題材（reserved でない）だけ
+  for (const L of ['ja', 'en']) for (const id of Object.keys(SUBJECT_WORDS[L])) assert.ok(subjectChoices().some((x) => x.id === id), `${L} ${id}: a subject of the manifest`);
+  // サンプルで使う数（usage）は examples/*/sample.json の parts から（gen が写す）
+  assert.deepEqual(TIERS.usage, sampleUsage());
+  assert.ok(TIERS.usage['m-bars'] > TIERS.usage['m-quad'] && !TIERS.usage['m-hist']);
+});
+ok('subjects guessed from the words of step 2 (one word per subject, subject order); one-character words only on their own; English words on the English screen', () => {
+  assert.deepEqual(guessSubjects({ text: '孟浩然の漢詩「春暁」', lang: 'ja' }), [{ subject: 'japanese', word: '漢詩' }]);
+  assert.deepEqual(guessSubjects({ text: 'ダイクストラ法で最短経路を探す', lang: 'ja' }).map((g) => g.subject), ['informatics']);
+  assert.deepEqual(guessSubjects({ text: '統計：わり算と分布', lang: 'ja' }).map((g) => g.subject), ['statistics', 'mathematics']);
+  assert.deepEqual(guessSubjects({ text: '俳句と季節の言葉', lang: 'ja' }), []);
+  assert.deepEqual(guessSubjects({ text: '国語の時間', lang: 'ja' }).map((g) => g.subject), ['japanese'], '国 in 国語 is not a map word');
+  assert.deepEqual(guessSubjects({ text: 'ソースコードの読み方', lang: 'ja' }), []);
+  assert.deepEqual(guessSubjects({ text: 'Chords on the piano', lang: 'en' }), [{ subject: 'music', word: 'Chords' }]);
+  assert.deepEqual(guessSubjects({ text: '漢詩', lang: 'en' }), []);
+  assert.deepEqual(guessSubjects({ text: 'Mapping the database', lang: 'en' }), [], 'whole words only');
+  assert.deepEqual(guessSubjects({ text: '', lang: 'ja' }), []);
+});
+ok('audience from step 1: only a school lesson asks (primary-junior or high-school); lecture and research → university, training and business → working-adult, guides → general, other → none', () => {
+  assert.deepEqual([...SCHOOL_AUDIENCES], ['primary-junior', 'high-school']);
+  assert.ok(asksSchool('teaching', 'class') && !asksSchool('teaching', 'lecture') && !asksSchool('teaching', null));
+  assert.equal(audienceOf('teaching', 'class', 'high-school'), 'high-school');
+  assert.equal(audienceOf('teaching', 'class', null), null);
+  assert.equal(audienceOf('teaching', 'class', 'university'), null, 'a school lesson takes only a school level');
+  assert.equal(audienceOf('teaching', 'lecture', 'primary-junior'), 'university', 'the school answer counts only for a school lesson');
+  assert.equal(audienceOf('teaching', 'training'), 'working-adult');
+  assert.equal(audienceOf('teaching', null), null);
+  for (const sub of ['conference', 'seminar', 'talk', null]) assert.equal(audienceOf('research', sub), 'university', String(sub));
+  for (const sub of ['report', 'pitch', null]) assert.equal(audienceOf('business', sub), 'working-adult', String(sub));
+  for (const sub of ['manual', 'info', null]) assert.equal(audienceOf('guides', sub), 'general', String(sub));
+  assert.equal(audienceOf('other', null), null); assert.equal(audienceOf(null, undefined), null);
+});
+// 順位のための作ったラベル（実在のパーツの名前で、ラベルとサンプルの数を差し替える）
+const withParts = (fake, fn) => { const keep = { ...TIERS.parts }; try { for (const k of Object.keys(TIERS.parts)) delete TIERS.parts[k]; Object.assign(TIERS.parts, fake); return fn(); } finally { for (const k of Object.keys(TIERS.parts)) delete TIERS.parts[k]; Object.assign(TIERS.parts, keep); } };
+ok('ranking: purpose (binary), then subject, then audience, then use in samples, then name; a part whose subject or audience labels exclude the choice goes after the others, even with its purpose', () => {
+  const F = {
+    'm-bars': { tier: 'standard', purposes: ['compare'] },                                                       // 汎用・伝えたいことが合う
+    'm-flow': { tier: 'standard', purposes: ['process'] },                                                       // 汎用・合わない
+    'm-cards': { tier: 'standard', purposes: ['process'] },                                                      // 汎用・合わない（サンプルで多く使う）
+    'm-hist': { tier: 'specialized', set: 'stats', purposes: ['spread'], subjects: ['statistics'], audiences: ['high-school'] },   // 題材と読み手が合う
+    'm-boxplot': { tier: 'specialized', set: 'stats', purposes: ['compare'], subjects: ['statistics'] },                            // 伝えたいことと題材が合う
+    'm-heatmap': { tier: 'specialized', set: 'stats', purposes: ['compare'], subjects: ['statistics'], audiences: ['university'] }, // 伝えたいことが合うが、読み手が外れる
+    'm-kanbun': { tier: 'specialized', set: 'kokugo', purposes: ['compare'], subjects: ['japanese'] },                               // 伝えたいことが合うが、題材が外れる
+    'm-kpi': { tier: 'standard', purposes: ['ranking'] },                                                        // 札に入る id（ranking → compare）
+    'm-collect': { tier: 'extra', purposes: ['compare'] },                                                       // 特殊：順位に入らない
+  };
+  const usage = { 'm-cards': 5, 'm-flow': 1 };
+  withParts(F, () => {
+    const r = rankParts({ purposes: ['compare'], subjects: ['statistics'], audience: 'high-school', usage });
+    // ① 伝えたいことが合い、外れないもの：題材も合う boxplot が先、それから汎用の bars・kpi（名前の順）→ ② 題材と読み手が合う hist → ③ 汎用で合わないもの（使う数の順）→ 外れるもの
+    assert.deepEqual(r, ['m-boxplot', 'm-bars', 'm-kpi', 'm-hist', 'm-cards', 'm-flow', 'm-heatmap', 'm-kanbun']);
+    assert.ok(!r.includes('m-collect'), 'no extra part');
+    // 題材が合えば、伝えたいことが合わなくても、伝えたいことの合わない汎用のパーツより先
+    assert.ok(r.indexOf('m-hist') < r.indexOf('m-cards') && r.indexOf('m-hist') < r.indexOf('m-flow'));
+    // 外れるパーツは伝えたいことが合っても後ろ（外れるものどうしは同じ決まり）
+    assert.ok(r.indexOf('m-heatmap') > r.indexOf('m-flow') && r.indexOf('m-kanbun') > r.indexOf('m-flow'));
+    // 伝えたいことを選ばない：使う数（とラベル）だけ。題材も読み手もなければ、使う数 → 名前
+    assert.deepEqual(rankParts({ usage }), ['m-cards', 'm-flow', 'm-bars', 'm-boxplot', 'm-heatmap', 'm-hist', 'm-kanbun', 'm-kpi']);
+    assert.deepEqual(rankParts({ subjects: ['japanese'], usage }), ['m-kanbun', 'm-cards', 'm-flow', 'm-bars', 'm-kpi', 'm-boxplot', 'm-heatmap', 'm-hist'], 'no purpose: the subject first, the other subjects last');
+    assert.deepEqual(rankParts({ audience: 'university', usage }).slice(0, 2), ['m-heatmap', 'm-cards'], 'no purpose: the audience, then use in samples');
+    assert.equal(rankParts({ audience: 'university', usage }).at(-1), 'm-hist', 'no purpose: an excluded audience goes last');
+    // 同じ点はサンプルで使う数、それも同じなら名前
+    assert.deepEqual(rankParts({ purposes: ['process'], usage: {} }).slice(0, 2), ['m-cards', 'm-flow']);
+    assert.deepEqual(rankParts({ purposes: ['process'], usage: { 'm-flow': 2 } }).slice(0, 2), ['m-flow', 'm-cards']);
+    // サンプルから：サンプルのパーツが一番上（その中の順はこの順位のまま）
+    assert.deepEqual(rankParts({ purposes: ['compare'], usage, first: ['m-flow', 'm-kanbun'] }).slice(0, 2), ['m-kanbun', 'm-flow']);
+  });
+  // 本物の材料：特殊を除くどのパーツも 1 回ずつ、指示の材料にあるものだけ
+  const all = rankParts({});
+  assert.deepEqual([...all].sort(), Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier !== 'extra').sort());
+  assert.deepEqual(all.slice(0, 3), ['m-bars', 'm-cards', 'm-flow'], 'no choice: the parts the samples use most come first');
+  assert.deepEqual(usageOf([{ parts: ['m-bars', 'm-bars', 'm-flow'] }, { parts: ['m-bars'] }, {}]), { 'm-bars': 2, 'm-flow': 1 });
+});
+ok('instructions by ranking: free and paid use the same order; the top parts are described up to the cap (45 KB and a paste length of 31,000 / 150 KB), the rest only by name in the purposes table', () => {
+  const choices = [{}, { purposes: ['compare'], subjects: ['statistics'], audience: 'high-school' }, { purposes: ['model'], subjects: ['statistics'], audience: 'university' },
+    { subjects: ['japanese'], audience: 'high-school' }, { purposes: ['key-number', 'change'], audience: 'working-adult' }];
+  for (const lang of ['en', 'ja']) for (const c of choices) {
+    const order = rankParts(c);
+    const what = `${lang} ${JSON.stringify(c)}`;
+    const free = newDeckPack({ order, plan: 'free', lang }), paid = newDeckPack({ order, plan: 'paid', lang });
+    for (const [plan, r] of [['free', free], ['paid', paid]]) {
+      // 上から k 個を詳しく、残りは名前だけ（順位のまま）。上限の中で、もう 1 つ足すと越える
+      assert.deepEqual([...r.described, ...r.named], order, `${what} ${plan}: the same order`);
+      assert.ok(!r.over && fitSize(r.text, plan) <= capKb(plan) * 1024, `${what} ${plan}: within the cap`);
+      if (r.named.length) {
+        const more = packText({ described: [...r.described, r.named[0]], named: r.named.slice(1), plan, lang });
+        assert.ok(fitSize(more, plan) > capKb(plan) * 1024, `${what} ${plan}: one more description would go over`);
+      }
+      assert.deepEqual(described(r.text), [...r.described].sort(), `${what} ${plan}: the described parts have their section`);
+      assert.deepEqual(rowsOf(r.text), [...r.described].sort(), `${what} ${plan}: only the described parts have a catalogue line`);
+      // 名前だけのパーツは言いたいことの表に名前だけ（説明・一覧の行はない）。表の下に「使わない」の 1 文
+      const table = r.text.slice(r.text.indexOf(lang === 'ja' ? '| 言いたいこと | パーツ | ステップ |' : '| purpose | parts | steps |'));
+      for (const t of r.named) assert.ok(table.includes('`' + t + '`') && !r.text.includes('### `<' + t + '>`') && !r.text.includes('| `<' + t + '>` |'), `${what} ${plan}: ${t} by name only`);
+      assert.equal(r.text.includes(lang === 'ja' ? 'この表には、名前だけで説明のないパーツもある。使わない。合いそうなら、何を見せたいかを 1 行のメモで伝える' : 'Some parts in this table have only their name and no description in these instructions. Do not use them; if one would fit, say in a one-line note what you would show'), r.named.length > 0, `${what} ${plan}: the rule for name-only parts`);
+      for (const t of EXTRA) assert.ok(!named(r.text, t), `${what} ${plan}: extra ${t}`);
+    }
+    // 詳細の指示は軽量より多くを詳しく（同じ順の先頭）
+    assert.ok(paid.described.length >= free.described.length && free.described.every((t, i) => paid.described[i] === t), `${what}: paid describes a longer prefix`);
+    assert.ok(free.described.length >= 1, `${what}: the free plan describes at least one part`);
+  }
+  // 受け皿のない束のパーツ（m-ctable・m-vector）も、順位が来れば軽量の指示で詳しく
+  const ct = newDeckPack({ order: rankParts({ purposes: ['part-whole'], subjects: ['statistics'], audience: 'university' }), plan: 'free', lang: 'ja' });
+  assert.ok(ct.described.includes('m-ctable') && ct.text.includes('### `<m-ctable>`'), 'm-ctable is described in the light instructions when it ranks high');
+  // 上限に届かない作った材料：二分探索が順位の上から詰める
+  const data = { sets: [], en: { components: { a: { set: 'standard' }, b: { set: 'standard' }, c: { set: 'standard' }, d: { set: 'standard' } } } };
+  const sizes = { a: 40, b: 30, c: 20, d: 10 };
+  const f = rankedPackOf(data, ['a', 'b', 'c', 'd', 'x'], 'paid', { textOf: (o) => 'y'.repeat(['a', 'b', 'c', 'd'].filter((t) => !o.exclude.includes(t)).reduce((n, t) => n + sizes[t], 0)), capBytes: 75 });
+  assert.deepEqual([f.described, f.named, f.over], [['a', 'b'], ['c', 'd'], false], 'a and b fit (70), c would go over; the unknown x is left out');
+  assert.deepEqual(rankedOpts(['m-hist'], ['m-bars', 'm-nope'], 'free'), { sets: ['stats'], exclude: Object.keys(PACK_DATA.en.components).filter((t) => t !== 'm-hist').sort(), plan: 'free', named: ['m-bars'] });
 });
 ok('AI plan: free (default) and paid change the suggested size limit and how much the pack says; the ticked parts make the pack; over the limit, candidates to untick', () => {
   assert.deepEqual(AI_PLANS, ['free', 'paid']);
@@ -671,20 +757,24 @@ ok('no lesson seed (format spec §8.4: variants by name only): npm run new write
 });
 ok('choices: egatari.json studio.newDeck through updateConfig (other members byte for byte); with the outline in the same studio member', () => {
   const raw = '{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}}';
-  const t = withChoice(raw, { category: 'teaching', subcategory: 'class', parts: ['m-kanbun', 'm-nope', 'm-bars'], subjects: ['kokugo'], purposesOff: ['spread'] });
+  const t = withChoice(raw, { category: 'teaching', subcategory: 'class', purposes: ['spread', 'nope', 'compare'], subjects: ['japanese', 'bogus'], audience: 'high-school', parts: ['m-kanbun'], purposesOff: ['spread'] });
   assert.ok(t.startsWith('{"docId": "x",  "big": 12345678901234567890, "acme": {"k": 1e400}'));
-  assert.deepEqual(choiceOf(t), { v: 1, plan: 'free', category: 'teaching', subcategory: 'class', parts: ['m-bars', 'm-kanbun'] }, 'the chosen parts (unknown ones dropped); the earlier subjects, tools and purposesOff are not written');
+  assert.deepEqual(choiceOf(t), { v: 1, plan: 'free', category: 'teaching', subcategory: 'class', purposes: ['compare', 'spread'], subjects: ['japanese'], audience: 'high-school' },
+    'the chosen labels in manifest order (unknown ones dropped); parts and purposesOff are not written');
   const both = withOutline(t, { rows: [{ heading: 'a', point: '' }, { heading: 'b', point: '' }], next: 3 });
   assert.equal(outlineOf(both).next, 3);
   assert.equal(choiceOf(both).category, 'teaching');
-  assert.deepEqual(choiceOf(withChoice(null, { category: 'bogus', subcategory: 'class' })), { v: 1, plan: 'free', category: null, subcategory: null, parts: [] });
-  // お使いの AI：有料のプランを書いて読み戻す。知らない値は無料、plan のない前の記録も無料
-  const paid = withChoice(raw, { plan: 'paid', category: 'business', subcategory: 'pitch', parts: ['m-market', 'm-timer'] });
-  assert.deepEqual(choiceOf(paid), { v: 1, plan: 'paid', category: 'business', subcategory: 'pitch', parts: ['m-market', 'm-timer'] });
+  assert.deepEqual(choiceOf(withChoice(null, { category: 'bogus', subcategory: 'class', audience: 'aliens' })), { v: 1, plan: 'free', category: null, subcategory: null, purposes: [], subjects: [], audience: null });
+  // どの AI に貼るか：詳細を書いて読み戻す。知らない値は軽量、plan のない前の記録も軽量
+  const paid = withChoice(raw, { plan: 'paid', category: 'business', subcategory: 'pitch', purposes: ['key-number'], subjects: [], audience: 'working-adult' });
+  assert.deepEqual(choiceOf(paid), { v: 1, plan: 'paid', category: 'business', subcategory: 'pitch', purposes: ['key-number'], subjects: [], audience: 'working-adult' });
   assert.deepEqual(choiceOf(withChoice(paid, { ...choiceOf(paid), plan: 'free' })), { ...choiceOf(paid), plan: 'free' }, 'switching back to free round-trips too');
   assert.equal(choiceOf(withChoice(null, { plan: 'gold' })).plan, 'free');
   assert.equal(choiceOf('{"studio": {"newDeck": {"v": 1, "category": null, "subcategory": null, "subjects": [], "purposesOff": []}}}').plan, 'free', 'an earlier record without plan reads as free');
   assert.deepEqual(choiceOf('{"studio": {"newDeck": {"v": 1, "plan": "free", "subjects": ["math", "kokugo", "info"]}}}').subjects, ['math', 'kokugo', 'info'], 'an earlier record is read as it is');
+  // ④ がパーツの印だったころの記録（parts）は読まない（落ちない）
+  const old = choiceOf('{"studio": {"newDeck": {"v": 1, "plan": "paid", "category": "research", "subcategory": "conference", "parts": ["m-bars", "m-hist"]}}}');
+  assert.deepEqual(old, { v: 1, plan: 'paid', category: 'research', subcategory: 'conference' }, 'an old record with parts reads without them');
   assert.equal(choiceOf('not json'), null);
 });
 // 前の原稿の data-egatari-seed（誰も読まない属性）と、パーツの variant は、バイトのまま残す（段 A がバイトを保つため、保存で消さない）

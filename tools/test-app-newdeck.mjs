@@ -10,10 +10,10 @@
 // S3 会社員（en・有料のプラン）：長さを 20 分 → 2 回に分けて頼む（1 分 ≒ 1 枚）・① の場面から推した分野・⑤ は構成案の欄から → 1〜6 枚目 →［作成］
 // S4 国語の先生（ja）：② のタイトルと内容から国語に印・詳しくの要約（言語・話す人・そのほかの希望）・［変更］で直す・自分で替えた印は上書きしない・コードブロックを 1 つずつ
 // S5 大学の教員（ja・有料のプラン）：内容は「チャットの AI に渡してある」→ B の頼み方。詳しくも出し、A と同じ形でタイトル・だれ向け・長さ・言語・話者・希望
-// S8 高校の先生（ja・無料のプラン）：④ のパーツの一覧（#124）。教科の形が一番上、② の言葉から 2 つの束を推して理由を出す、おすすめの札、
-//    指示の大きさのメーター（目安を越えたら越えた分と外す候補、［候補を外す］）、外した印は推し直しで戻さない、有料のプランは目安だけが変わる、キーボードで選ぶ
-// S9 前に分野を選んだ教材を開いたまま新規作成：前の選び方は読まず、いつも初めの選び方から（egatari.json は書き換えない）
-// S10 研修（ja）：小分類「研修・使い方の説明」でタイマーを推し、外せば指示に入らない
+// S8 高校の先生（ja・無料のプラン）：④ のラベル（handoff #43）。② の言葉から 2 つの題材を推して理由を出す、伝えたいことの札をキーボードで選ぶ、学校を選ぶ、
+//    写す指示は順位で組んだもの（説明つき・名前だけの数の 1 行）、自分で外した題材は推し直しで戻さない、有料の AI は説明つきが増えるだけ
+// S9 前に選んだ教材を開いたまま新規作成：前の選び方は読まず、いつも初めの選び方から（egatari.json は書き換えない）
+// S10 研修（en）：学校は聞かない（読み手は社会人）。手順を選ぶと画面の手順・確かめる一覧が説明つきで入る
 // S11 チャットの AI のスキルで作った出力を持っている先生（ja）：「AI の出力を貼り付ける」→ 貼り付けだけの画面（① 〜 ④ は要らない）・戻る・
 //     ファイルから読む（種類の違うファイル・大きすぎるファイルは断る）→［作成］：名前は教材の <title>、テーマは教材のまま、studio.newDeck は書かない
 // S12 前に作った出力に誤りがある（ja）：貼り付けだけの画面から作成 → 品質チェックのエラーと「AI への修正依頼をコピー」（⑤ と同じ）
@@ -24,10 +24,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { packWithRequest } from '../kit/core/llm-request.mjs';
-import { CATEGORIES, initialParts, partsList } from '../kit/core/new-deck.mjs';
-import { partsPackOpts, PACK_CAP_KB } from '../kit/core/llm-pack.mjs';
-import { PART_LABELS } from '../kit/core/part-labels.mjs';
+import { CATEGORIES, purposeTiles, subjectChoices, rankParts } from '../kit/core/new-deck.mjs';
+import { newDeckPack } from '../kit/core/new-deck-pack.mjs';
+import { TIERS } from '../kit/core/llm-pack.mjs';
 import { replyOf, answerNew } from './test-app-llm.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { exportName } from '../kit/core/export-name.mjs';
@@ -40,9 +39,9 @@ import { scaled } from './wait-scale.mjs';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const worked = (n, f) => fs.readFileSync(path.join(ROOT, 'tools', 'llm-guide', 'worked', n, f), 'utf8').replace(/\r\n/g, '\n');
 const sub = (c, s) => CATEGORIES.find((x) => x.id === c).subs.find((x) => x.id === s);
-const STD = initialParts([]);
-const label = (t, lang) => PART_LABELS[t][lang];
-const sorted = (xs) => [...xs].sort().join();
+// 順位で組む指示（kit/core/new-deck-pack.mjs の newDeckPack）：写した指示の頼みたいこと（tail）で組み直したもの
+const ranked = (choice, plan, lang, tail) => newDeckPack({ order: rankParts(choice), plan, lang, request: tail });
+const audLabel = (id, lang) => TIERS.audiences.find((x) => x.id === id).label[lang];
 
 // New と Help は同じ ZIP を渡す。キーでも押せて、同じサイトの現在のパス（凍結版を含む）から取る。
 export async function checkSkillDownload(p, { lang, selector, ok, base }) {
@@ -117,10 +116,17 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     return files(p);
   };
   const newDeckOf = (F) => (JSON.parse(F['egatari.json'] || '{}').studio || {}).newDeck;
-  // ④ のパーツの一覧：印の付いたパーツ（名前の順）・おすすめの札の付いたパーツ・まとまりの順
-  const ticks = (p) => p.$$eval('#paste-parts input[type=checkbox]:checked', (xs) => xs.map((x) => x.value).sort().join());
-  const badges = (p) => p.$$eval('#paste-parts .pick', (xs) => xs.filter((x) => !x.querySelector('.pick-badge').hidden).map((x) => x.dataset.part).sort().join());
-  const groupIds = (p) => p.$$eval('#paste-pgroups > .pgroup', (xs) => xs.map((x) => x.id.replace('paste-pgroup-', '')).join());
+  // ④ のラベル：選んだ伝えたいこと・題材・学校、推した理由、畳める 1 行（指示に入るパーツの数）
+  const labels = (p) => p.evaluate(() => ({
+    purposes: [...document.querySelectorAll('#paste-purposes input:checked')].map((x) => x.value).join(),
+    subjects: [...document.querySelectorAll('#paste-subjects input:checked')].map((x) => x.value).join(),
+    school: (document.querySelector('#paste-school input:checked') || {}).value || '', schoolShown: !document.getElementById('paste-school').hidden,
+    why: document.getElementById('paste-subjects-why').hidden ? '' : document.getElementById('paste-subjects-why').textContent,
+    sum: document.getElementById('paste-parts-sum-text').textContent }));
+  const sumOf = (r, lang) => (lang === 'ja' ? `指示に入るパーツ：説明つき ${r.described.length} 種類、名前だけ ${r.named.length} 種類` : `Parts in the instructions: ${r.described.length} described, ${r.named.length} by name only`);
+  // 大きさ・上限・パーツの印の一覧はもう出さない
+  const noOldParts = (p) => p.evaluate(() => ['paste-pack-size', 'paste-meter', 'paste-over', 'paste-trim', 'paste-shortened', 'paste-parts-count', 'paste-plan-hint', 'paste-pgroups', 'paste-parts-why', 'paste-parts-hint'].every((id) => !document.getElementById(id))
+    && !document.querySelector('#paste-step-send .pick') && !/KB|目安|suggested limit/.test(document.querySelector('#paste-step-send .paste-step-body').innerText));
 
   try {
     // ================================================================ S1 小学校の先生：明日の理科「てこのはたらき」を 6 枚で（無料の ChatGPT、出力の全体を貼る）
@@ -176,49 +182,56 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok((await p1.inputValue('#paste-theme')) === 'default' && (await text(p1, '#paste-step-theme .hint')) === 'スライドの色と書体です。あとで「テーマを変更…」で変えられます', 'S1 ③: the default theme and the hint about 「テーマを変更…」');
     await p1.click('#paste-next-theme');
     ok((await answer(p1, 'theme')) === 'テーマ：藍' && (await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:open:step:-:body:- paste:shut:-:pending:nobody:-'
-      && await p1.isHidden('#paste-deck') && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-plan-free'),
+      && await p1.isHidden('#paste-deck') && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-purpose-' + document.querySelector('#paste-purposes input').value),
       'S1 ③: collapses to 「テーマ：藍」; ④ opens with the focus on its first control, and ⑤ is only a heading (no paste fields yet): ' + await flowState(p1));
     await shot(p1, 'flow-s1-answered.png', 'paste-step-kind');
-    // ④ AI に渡す指示の問い（軽量が既定。v0.6.7 で AI のプランの問いから替えた。作者の決定 2026-11-07）：選択肢ごとに名前・札・説明
+    // ④ どの AI に貼るか（無料の AI・わからないが既定。handoff #43、作者の決定 2026-11-19）：選択肢ごとに名前・札・説明。上限の大きさは出さない
     const PLAN_JA = {
-      free: ['軽量（どの AI でも）迷ったらこちら', '約 3 万字までの短い指示です。無料の ChatGPT や Gemini にも、そのまま貼り付けられます。選んだ分野によっては、パーツの説明を短くしたり、一部を省いたりします。'],
-      paid: ['詳細（有料の AI 向け）', 'パーツの説明を省かない、長い指示です。ChatGPT・Gemini・Claude の有料プランのように、長い文章を読める AI に向いています。Gemini は、コピーして貼り付けると約 3 万字で切れることがあります。ファイルに保存して添付してください。使う分野だけを選ぶと、指示が短くなり、AI が使う量（トークン）も減り、パーツも選びやすくなります。'],
+      free: ['無料の AI・わからない迷ったらこちら', '短い指示です。無料の ChatGPT や Gemini にも、そのまま貼り付けられます'],
+      paid: ['有料の AI・ファイルで渡す', 'パーツの説明を省かない、長い指示です。長い文章を読める有料の AI 向けです。ファイルに保存して添付できます'],
     };
     const planOpts = (p) => p.$$eval('#paste-plan label.plan-opt', (ls) => ls.map((l) => { const r = l.querySelector('input'); const d = document.getElementById(r.getAttribute('aria-describedby'));
       return [r.value, l.querySelector('.plan-name').textContent, d && d.textContent, !!d && l.contains(d), (l.querySelector('.plan-badge') || {}).textContent || ''];
     }));
     const opts1 = await planOpts(p1);
     ok(JSON.stringify(opts1) === JSON.stringify([['free', PLAN_JA.free[0], PLAN_JA.free[1], true, '迷ったらこちら'], ['paid', PLAN_JA.paid[0], PLAN_JA.paid[1], true, '']])
-      && !(await p1.$('#paste-plan-note')) && !(await p1.evaluate(() => /無料のプラン|有料のプラン|Egatari は無料です/.test(document.getElementById('paste-step-send').innerText))),
-      'S1 ④: both options show the new wording (name, 「迷ったらこちら」 on 軽量, and the note under each, which describes its radio); no plan question or 「Egatari は無料です」 line is left: ' + JSON.stringify(opts1));
-    // ④ 指示の問い（軽量が既定）→ パーツの一覧（標準は全部。てこからは専門の束を推さない：理由なし。授業（小・中・高）は教科の形が一番上）→ メーター → コピー
-    ok(await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'AI に渡す指示を選んでください'
-      && (await text(p1, '#paste-plan-hint')) === '選んだ指示で、大きさの目安が変わります（軽量は 45 KB、詳細は 150 KB まで）。長すぎる指示は、対話型 AI が最後まで読めないことがあります'
-      && (await text(p1, '#paste-parts legend')) === 'AI にどのパーツを使わせますか' && (await ticks(p1)) === sorted(STD) && await p1.isHidden('#paste-parts-why') && (await badges(p1)) === ''
-      && (await groupIds(p1)).startsWith('subject,compare,') && (await text(p1, '#paste-parts-count')) === `選んだパーツ：${STD.length} 種類（全 ${partsList(null, 'free').flatMap((g) => g.parts).length} 種類）`
-      && /^指示の大きさ：[\d.]+ KB（目安は 45 KB まで）$/.test(await text(p1, '#paste-pack-size')),
-      'S1 ④: the instructions question (light by default), the parts list with every standard part ticked and no reason line, the subject forms first for a school lesson, the count and the meter: ' + await groupIds(p1));
-    // パーツの一覧は初めは畳む（backlog #211）：1 行「AI が使うパーツ：N 種類　選び直す」。開くと今の見出しと一覧。目盛りは畳む範囲の外で見えたまま
-    ok(!(await p1.$eval('#paste-parts-fold', (d) => d.open)) && (await text(p1, '#paste-parts-summary')) === `AI が使うパーツ：${STD.length} 種類選び直す` && await p1.isHidden('#paste-parts legend') && await p1.isVisible('#paste-pack-size')
-      && !(await p1.evaluate(() => /詳細/.test(document.getElementById('paste-parts-summary').textContent))),
-      'S1 ④ (#211): the parts list starts folded to one line with the count and 「選び直す」 (not 詳細); the meter stays visible');
+      && await p1.isChecked('#paste-plan-free') && (await text(p1, '#paste-plan legend')) === 'どの AI に貼りますか' && await noOldParts(p1),
+      'S1 ④: 「どの AI に貼りますか」 with its two choices (name, 「迷ったらこちら」 on the free one, the note under each); no size, limit, meter or parts list: ' + JSON.stringify(opts1));
+    // ④ のラベル：伝えたいこと（manifest の札。初めは何も選ばない）→ 題材（任意。てこからは推さない）→ 学校（授業（小・中・高）だけ）
+    const tiles1 = await p1.$$eval('#paste-purposes label', (xs) => xs.map((x) => x.textContent));
+    const subj1 = await p1.$$eval('#paste-subjects label', (xs) => xs.map((x) => x.textContent));
+    const school1 = await p1.$$eval('#paste-school label', (xs) => xs.map((x) => x.textContent));
+    let l1 = await labels(p1);
+    ok((await text(p1, '#paste-purposes legend')) === '何を伝えたいですか（いくつでも選べます。選ばなくてもかまいません）' && (await text(p1, '#paste-purposes-note')) === '選んだものに合うパーツを、指示の先に詳しく載せます'
+      && JSON.stringify(tiles1) === JSON.stringify(purposeTiles().map((x) => x.label.ja)) && (await text(p1, '#paste-subjects legend')) === '題材（任意）'
+      && JSON.stringify(subj1) === JSON.stringify(subjectChoices().map((x) => x.label.ja)) && !subj1.includes('医療') && !subj1.includes('防災')
+      && (await text(p1, '#paste-school legend')) === 'どの学校向けですか' && JSON.stringify(school1) === JSON.stringify([audLabel('primary-junior', 'ja'), audLabel('high-school', 'ja')])
+      && l1.purposes === '' && l1.subjects === '' && l1.school === '' && l1.schoolShown && l1.why === '' && /^指示に入るパーツ：説明つき \d+ 種類、名前だけ \d+ 種類$/.test(l1.sum)
+      && (await text(p1, '#paste-parts-gallery')) === 'すべてのパーツのサンプルを見る',
+      'S1 ④: the labels come from the parts catalogue (tiles, subjects without the reserved ones, the school levels for a school lesson); nothing is chosen at first; the line counts the parts: ' + l1.sum);
+    // 3 つの問いは畳める：初めは開いていて、1 行を押すと畳み、［変更］が出る
+    ok(await p1.$eval('#paste-parts-fold', (d) => d.open) && await p1.isHidden('#paste-parts-summary .parts-fold-act'), 'S1 ④: the label questions start open, without 「変更」');
     await p1.click('#paste-parts-summary');
-    ok(await p1.$eval('#paste-parts-fold', (d) => d.open) && await p1.isVisible('#paste-parts legend') && await p1.isVisible('#paste-part-flow'), 'S1 ④ (#211): pressing the line opens the question and the list');
+    ok(!(await p1.$eval('#paste-parts-fold', (d) => d.open)) && (await text(p1, '#paste-parts-summary')) === l1.sum + '変更' && await p1.isVisible('#paste-parts-summary .parts-fold-act') && await p1.isHidden('#paste-purposes'),
+      'S1 ④: pressing the line folds them to 「指示に入るパーツ：説明つき N 種類、名前だけ M 種類　変更」');
     await p1.click('#paste-parts-summary');
-    ok(!(await p1.$eval('#paste-parts-fold', (d) => d.open)), 'S1 ④ (#211): pressing it again folds the list');
-    // 標準のパーツを全部選んだ無料のプランの指示は目安の中から始まる（中核の 4 つのほかは一覧の 1 行だけ。backlog #125）
-    const bytes1 = +(await p1.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(bytes1 > 0 && bytes1 <= PACK_CAP_KB.free * 1024 && await p1.isHidden('#paste-over') && await p1.isHidden('#paste-shortened') && !(await p1.$eval('#paste-size', (x) => x.classList.contains('over'))),
-      `S1 ④: with every standard part ticked, the free plan's meter starts within the 45 KB limit (${bytes1} B), not striped`);
+    ok(await p1.$eval('#paste-parts-fold', (d) => d.open) && await p1.isVisible('#paste-purposes'), 'S1 ④: pressing it again opens them');
+    // 理科の授業：原因と結果・理科・小中を選ぶ
+    await p1.check('#paste-purpose-cause-effect');
+    await p1.check('#paste-subject-science');
+    await p1.check('#paste-school-primary-junior');
+    l1 = await labels(p1);
+    ok(l1.purposes === 'cause-effect' && l1.subjects === 'science' && l1.school === 'primary-junior', 'S1 ④: a purpose, a subject and the school level are chosen: ' + JSON.stringify(l1));
     await checkSkillDownload(p1, { lang: 'ja', selector: '#paste-download-skill', ok, base: BASE });
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
+    const r1 = ranked({ purposes: ['cause-effect'], subjects: ['science'], audience: 'primary-junior' }, 'free', 'ja', t1);
     ok(t1 === `# 頼みたいこと\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：てこのはたらき\n- 長さ（枚数か分）：6 枚\n- 言語：日本語\n- 話者：1 人\n- テーマ：default（<html data-theme="default">）\n- 場面：授業・研修／授業（小・中・高）\n- 構成の型：${cls.structure.ja}\n- 見せ方：${cls.show.ja}\n`
-      && c1 === packWithRequest({ ...partsPackOpts(STD), lang: 'ja', request: t1 }),
-      'S1 ④: the copied instructions describe the ticked parts, with the request at the end; the fields left to the AI (だれ向け, 内容, そのほかの希望) are not written');
+      && c1 === r1.text && r1.described.slice(0, 3).includes('m-fishbone') && r1.described.includes('m-orbit') && (await labels(p1)).sum === sumOf(r1, 'ja'),
+      `S1 ④: the copied instructions are ranked by the labels (${r1.described.join(', ')} described, ${r1.named.length} by name only), with the request at the end; the fields left to the AI are not written; the line counts them`);
     ok((await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:shut:-:-:nobody:answer paste:open:step:-:body:-'
-      && (await answer(p1, 'send')) === `指示：軽量・パーツ ${STD.length} 種類・コピーしました` && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-deck'),
-      'S1 ④: 「指示をコピー」 opens ⑤ (focus in the slides field) and folds ④ to 「指示：軽量・パーツ 15 種類・コピーしました」: ' + await flowState(p1));
+      && (await answer(p1, 'send')) === '指示：軽量・コピーしました' && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-deck'),
+      'S1 ④: 「指示をコピー」 opens ⑤ (focus in the slides field) and folds ④ to 「指示：軽量・コピーしました」: ' + await flowState(p1));
     ok(/^コピーしました（[\d.]+ KB）。対話型 AI のタブに貼り付けて送信してください。長いので、貼り付けるとファイルの添付の形になることがありますが、そのまま送信できます。AI が書き終えたら ⑤ へ$/.test(await text(p1, '#paste-copied')), 'S1 ④: the copied message says to send it even as an attachment, then go to ⑤');
     // ⑤ 欄 2 つ。出力の全体をスライドの欄に貼る → 分ける
     ok((await text(p1, '#paste-step3-hint')).startsWith('AI の出力には、灰色の枠（コードブロック）が 2 つあります。') && (await text(p1, 'label[for=paste-deck]')) === 'スライド（deck.html）' && (await text(p1, 'label[for=paste-narr]')) === '台本（narration.md）'
@@ -233,7 +246,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p1, 'flow-s1-paste.png', 'paste-step-paste');
     const F1 = await create(p1);
     const nd1 = newDeckOf(F1);
-    ok(JSON.stringify(nd1) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', parts: [...STD].sort() }) && !F1['deck.html'].includes('data-egatari-seed') && F1['narration.md'].includes('{#s-'),
+    ok(JSON.stringify(nd1) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', purposes: ['cause-effect'], subjects: ['science'], audience: 'primary-junior' }) && !F1['deck.html'].includes('data-egatari-seed') && F1['narration.md'].includes('{#s-'),
       'S1: 「作成」 opens the new deck (no seed written) and keeps the choices in studio.newDeck: ' + JSON.stringify(nd1));
     ok(/^作成しました：スライド 3 枚 · 保存するまでファイルには書いていません/.test(await text(p1, '#toast')), 'S1: the toast says 「作成しました：スライド 3 枚」');
 
@@ -318,7 +331,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     st = await status(p2);
     ok(st.deck === '✓ 3 slides' && st.narr === '✓ Script, 3 sections' && st.note === '' && !st.goOff, 'S2 ⑤: both fields are filled; no note beside “Create”');
     const F2 = await create(p2);
-    ok(JSON.stringify(newDeckOf(F2)) === JSON.stringify({ v: 1, plan: 'free', category: 'guides', subcategory: null, parts: [...STD].sort() }), 'S2: “None of these” is stored as subcategory: null in studio.newDeck: ' + JSON.stringify(newDeckOf(F2)));
+    ok(JSON.stringify(newDeckOf(F2)) === JSON.stringify({ v: 1, plan: 'free', category: 'guides', subcategory: null, purposes: [], subjects: [], audience: 'general' }), 'S2: “None of these” is stored as subcategory: null in studio.newDeck, with the audience of guides (general): ' + JSON.stringify(newDeckOf(F2)));
 
     // ================================================================ S7 S2 のデッキを修正：直したスライドだけが返る
     await clickCommand(p2, '#b-revise-cmd');
@@ -362,22 +375,28 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.click('#paste-next-theme');
     ok((await text(p3, '#paste-phase')) === '20 slides, so you ask in two rounds: first an outline (a list of headings), then 6 slides at a time.' && await p3.isVisible('#paste-phase'),
       'S3 ④: 20 minutes counts as 20 slides (1 min ≈ 1 slide), so it is asked in two rounds');
-    // 部品庫 2.9.0 から束 business は m-market と m-diverge（ウォーターフォール）
-    ok(await p3.isChecked('#paste-part-market') && await p3.isChecked('#paste-part-diverge') && (await badges(p3)) === 'm-diverge,m-market' && (await text(p3, '#paste-parts-why')) === 'Also chose Market size circles, Waterfall, because the setting in step 1 is “Report”.',
-      'S3 ④: Business / Report recommends the business set (Market size circles, Waterfall), with the reason and a Suggested badge');
+    // ビジネス：学校は聞かない（読み手は社会人）。報告の題名からは題材を推さない
+    const l3 = await labels(p3);
+    ok(!l3.schoolShown && l3.subjects === '' && l3.why === '' && (await text(p3, '#paste-purposes legend')) === 'What do you want to show? (Any number, or none)' && (await text(p3, '#paste-subjects legend')) === 'Subject (optional)'
+      && (await text(p3, '#paste-purposes-note')) === 'Parts that fit your choice come first in the instructions, with full descriptions' && /^Parts in the instructions: \d+ described, \d+ by name only$/.test(l3.sum),
+      'S3 ④: Business asks no school level; the English labels and the counting line: ' + l3.sum);
     // 英語の画面の 2 つの選択肢
     const opts3 = await planOpts(p3);
     ok(JSON.stringify(opts3) === JSON.stringify([
-      ['free', 'Light (any AI)If unsure', 'Short instructions of up to about 30,000 characters. You can paste them as they are into the free ChatGPT or Gemini too. Depending on the subjects you choose, some part descriptions are shortened or a few parts are left out.', true, 'If unsure'],
-      ['paid', 'Detailed (for paid AI plans)', 'Long instructions that describe every part in full. They suit AIs that can read long text, such as the paid versions of ChatGPT, Gemini and Claude. Gemini may cut a copy-and-paste at about 30,000 characters, so save the instructions as a file and attach it. Choosing only the subjects you use makes the instructions shorter, so the AI uses fewer tokens and chooses parts more easily.', true, '']])
-      && (await text(p3, '#paste-plan legend')) === 'Choose the instructions for the AI' && !(await p3.evaluate(() => /free plan|paid plan|Egatari is free/i.test(document.getElementById('paste-step-send').innerText))),
-      'S3 ④: both options show the new English wording (name, “If unsure” on Light, and the note under each); no plan question is left: ' + JSON.stringify(opts3));
+      ['free', 'A free AI, or not sureIf unsure', 'Short instructions. You can paste them into free ChatGPT or Gemini as they are', true, 'If unsure'],
+      ['paid', 'A paid AI, or as a file', 'Long instructions with every part described, for a paid AI that reads long text. You can save them as a file and attach it.', true, '']])
+      && (await text(p3, '#paste-plan legend')) === 'Which AI will you paste it into?' && await noOldParts(p3),
+      'S3 ④: both options show the English wording (name, “If unsure” on the free one, and the note under each); no size or limit: ' + JSON.stringify(opts3));
+    await p3.check('#paste-purpose-key-number');
+    await p3.check('#paste-purpose-change');
+    const free3 = (await labels(p3)).sum;
     await p3.check('#paste-plan-paid');
-    ok((await ticks(p3)) === sorted([...STD, 'm-market', 'm-diverge']) && /^Instructions: [\d.]+ KB \(suggested limit 150 KB\)$/.test(await text(p3, '#paste-pack-size')) && await p3.isHidden('#paste-over'),
-      'S3 ④: the paid plan keeps the ticks and changes only the suggested limit (150 KB, not over): ' + await text(p3, '#paste-pack-size'));
     const c3 = await copy(p3);
-    ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3.includes('## Part set: business') && c3.includes('### `<m-market>`') && !c3.includes('## Part set: kokugo') && c3.includes('### `<m-timeline>`') && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
-      'S3 ④: the pack is every ticked part (the standard ones, m-timeline too, and m-market; no kokugo) and the outline request; the message says to go to step 5 when the outline is out');
+    const r3 = ranked({ purposes: ['change', 'key-number'], audience: 'working-adult' }, 'paid', 'en', tailOf(c3, 'en'));
+    ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3 === r3.text && r3.described.slice(0, 3).sort().join() === 'm-bars,m-curves,m-kpi' && c3.includes('### `<m-curves>`')
+      && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
+      `S3 ④: the paid instructions are ranked by the labels (key number and change first: ${r3.described.slice(0, 4).join(', ')}…) with the outline request; the message says to go to step 5 when the outline is out`);
+    ok(free3 !== (await labels(p3)).sum && (await labels(p3)).sum === sumOf(r3, 'en'), `S3 ④: the paid AI describes more parts in the same order (${free3} → ${(await labels(p3)).sum})`);
     // 有料のプラン（en）、長い教材（構成案から）：「Save the instructions as a file」が主、「Copy the instructions」が従
     await p3.click('#paste-change-send');
     await p3.waitForSelector('#paste-copy-guide:visible');
@@ -389,7 +408,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const file3 = await dl3.path();
     ok(!!file3 && fs.readFileSync(file3, 'utf8') === c3, 'S3 ④: the saved file has exactly the bytes “Copy the instructions” would put on the clipboard (UTF-8, no BOM)');
     ok(/^Saved \([\d.]+ KB\)\. Attach the downloaded file to your AI chatbot and send it\. When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')), 'S3 ④: saving a long lesson’s pack says “Saved (N KB)…” and still says to go to step 5 once the outline is out');
-    ok((await answer(p3, 'send')) === `Instructions: Detailed · ${STD.length + 2} parts · copied`, 'S3 ④: the answered line names the instructions (Detailed) and the number of parts: ' + await answer(p3, 'send'));
+    ok((await answer(p3, 'send')) === 'Instructions: Detailed · copied', 'S3 ④: the answered line names the instructions (Detailed): ' + await answer(p3, 'send'));
     ok((await text(p3, '#paste-step-paste-h')) === '5. Paste the AI’s outline' && (await status(p3).catch(() => ({ goOff: true }))).goOff !== false && await p3.isDisabled('#dlg-import') && /press Next/.test(await text(p3, '#paste-step-paste .hint')) && (await text(p3, '#paste-go-note')) === 'Paste the outline in step 5',
       'S3 ⑤: step 5 first asks for the outline; “Create” is disabled meanwhile and says “Paste the outline in step 5”');
     await p3.fill('#paste-outline-text', '```outline\n| 1 | A | x |\n');
@@ -408,7 +427,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p3.fill('#paste-deck', replyOf(b1.deck, b1.narr));
     const F3 = await create(p3);
     const o3 = (JSON.parse(F3['egatari.json']).studio || {}).outline;
-    ok(o3 && o3.next === 7 && o3.rows.length === 20 && JSON.stringify(newDeckOf(F3)) === JSON.stringify({ v: 1, plan: 'paid', category: 'business', subcategory: 'report', parts: [...STD, 'm-market', 'm-diverge'].sort() }),
+    ok(o3 && o3.next === 7 && o3.rows.length === 20 && JSON.stringify(newDeckOf(F3)) === JSON.stringify({ v: 1, plan: 'paid', category: 'business', subcategory: 'report', purposes: ['change', 'key-number'], subjects: [], audience: 'working-adult' }),
       'S3: “Create” opens slides 1–6 with the outline (next: 7) and the paid plan in studio.newDeck');
 
     // ================================================================ S4 高校の国語の先生（ja・無料の Gemini）：漢文「臥薪嘗胆」
@@ -435,8 +454,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await shot(p4, 'flow-s4-more.png', 'paste-step-content');
     await p4.click('#paste-next-content');
     await p4.click('#paste-next-theme');
-    ok((await ticks(p4)) === sorted([...STD, ...['m-gendai', 'm-kanbun', 'm-kobun']]) && (await text(p4, '#paste-parts-why')) === '② に「漢文」とあるので、漢文・古文・現代文の読解も選びました' && (await badges(p4)) === sorted(['m-gendai', 'm-kanbun', 'm-kobun']),
-      'S4 ④: 漢文 in step 2 ticks the kokugo set, and says why: ' + await text(p4, '#paste-parts-why'));
+    const l4 = await labels(p4);
+    ok(l4.subjects === 'japanese' && l4.why === '②に「漢文」とあるので、国語を選びました' && l4.purposes === '',
+      'S4 ④: 漢文 in step 2 ticks the subject 国語, and says why: ' + l4.why);
     // ［変更］で ② を直す：④ ⑤ は出たまま。答えの 1 行も新しくなる
     await p4.click('#paste-change-content');
     ok(await p4.isVisible('#paste-title') && (await flowState(p4)) === 'kind:shut:-:-:body:answer content:open:step:-:body:- theme:shut:-:-:body:answer send:shut:-:-:nobody:- paste:shut:-:pending:nobody:-'
@@ -445,19 +465,20 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p4.fill('#paste-title', '臥薪嘗胆（十八史略）');
     await p4.click('#paste-next-content');
     ok((await answer(p4, 'content')) === 'タイトル：臥薪嘗胆（十八史略）', 'S4 ②: the answered line follows the change');
-    // 自分で外した印は、推し直しで戻さない
-    if (!(await p4.$eval('#paste-parts-fold', (d) => d.open))) await p4.click('#paste-parts-summary');   // #211：畳んだ一覧を開く
-    await p4.uncheck('#paste-part-kanbun');
+    // 自分で外した題材は、推し直しで戻さない
+    await p4.uncheck('#paste-subject-japanese');
     await p4.click('#paste-change-content');
     await p4.fill('#paste-title', '臥薪嘗胆（漢文）');
     await p4.click('#paste-next-content');
-    ok(!(await p4.isChecked('#paste-part-kanbun')) && await p4.isChecked('#paste-part-kobun') && !(await text(p4, '#paste-parts-why')).includes('漢文・'), 'S4 ④: a part the author unticked is not ticked again by the guess, and the reason no longer names it');
-    if (!(await p4.$eval('#paste-parts-fold', (d) => d.open))) await p4.click('#paste-parts-summary');
-    await p4.check('#paste-part-kanbun');
+    ok(!(await p4.isChecked('#paste-subject-japanese')) && (await labels(p4)).why === '', 'S4 ④: a subject the author unticked is not ticked again by the guess, and the reason line is gone');
+    await p4.check('#paste-subject-japanese');
+    await p4.check('#paste-school-high-school');
     const c4 = await copy(p4);
     const t4 = tailOf(c4, 'ja');
-    ok(t4.startsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：臥薪嘗胆（漢文）\n- 言語：日本語\n- 話者：2 人（Expert と Novice の掛け合い）\n- そのほかの希望：書き下し文を先に\n- テーマ：default') && t4.includes('\n## 内容（要点・メモ・元の資料）\n\n漢文「臥薪嘗胆」の書き下し文と現代語訳\n') && c4.includes('`<m-kanbun>`'),
-      'S4 ④: the request has the title, language, two speakers and the wishes; the content goes after it; the kokugo parts are in');
+    const r4 = ranked({ subjects: ['japanese'], audience: 'high-school' }, 'free', 'ja', t4);
+    ok(t4.startsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：臥薪嘗胆（漢文）\n- 言語：日本語\n- 話者：2 人（Expert と Novice の掛け合い）\n- そのほかの希望：書き下し文を先に\n- テーマ：default') && t4.includes('\n## 内容（要点・メモ・元の資料）\n\n漢文「臥薪嘗胆」の書き下し文と現代語訳\n')
+      && c4 === r4.text && c4.includes('### `<m-kanbun>`') && r4.described.slice(0, 3).sort().join() === 'm-gendai,m-kanbun,m-kobun',
+      'S4 ④: the request has the title, language, two speakers and the wishes; the content goes after it; with no purpose, the Japanese parts come first and are described');
     // ⑤ コードブロックを 1 つずつ（それぞれ正しい欄へ）
     const kdeck = worked('kokugo', 'deck.html'), knarr = worked('kokugo', 'narration.md');
     await p4.fill('#paste-deck', '```deck.html\n' + kdeck.trim() + '\n```');
@@ -468,7 +489,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     st = await status(p4);
     ok(st.narr === '✓ 台本 2 節' && st.note === '', 'S4 ⑤: then the script code block');
     const F4 = await create(p4);
-    ok(newDeckOf(F4).parts.includes('m-kanbun') && newDeckOf(F4).plan === 'free', 'S4: studio.newDeck has the kokugo parts');
+    ok(JSON.stringify(newDeckOf(F4)) === JSON.stringify({ v: 1, plan: 'free', category: 'teaching', subcategory: 'class', purposes: [], subjects: ['japanese'], audience: 'high-school' }), 'S4: studio.newDeck has the subject and the school level: ' + JSON.stringify(newDeckOf(F4)));
 
     // ================================================================ S5 大学の教員（ja・有料の ChatGPT）：前にチャットの AI と話し合った内容（と添付した資料）でゼミ資料
     const p5 = await open('ja', 's5');
@@ -530,61 +551,43 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p8.fill('#paste-title', 'わり算の筆算とデータの分布');
     await p8.click('#paste-next-content');
     await p8.click('#paste-next-theme');
-    const math = ['m-hissan', 'm-numberline', 'm-sweep', 'm-tape'], stats = ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq'];
-    ok((await ticks(p8)) === sorted([...STD, ...math, ...stats]) && (await badges(p8)) === sorted([...math, ...stats])
-      && (await text(p8, '#paste-parts-why')) === `② に「分布」とあるので、${['m-heatmap', 'm-hist', 'm-boxplot', 'm-seq'].map((t) => label(t, 'ja')).join('・')}も選びました。② に「筆算」とあるので、${['m-numberline', 'm-tape', 'm-hissan', 'm-sweep'].map((t) => label(t, 'ja')).join('・')}も選びました`,
-      'S8 ④: two sets from the words of step 2 (stats, math), one reason each, and a Suggested badge on each: ' + await text(p8, '#paste-parts-why'));
-    ok((await groupIds(p8)).split(',')[0] === 'subject' && (await p8.$$eval('#paste-pgroup-subject .pick', (xs) => xs.map((x) => x.dataset.part))).slice(0, 2).join() === 'm-map-japan,m-map-world'
-      && (await p8.getAttribute('#paste-pgroup-subject', 'role')) === 'group' && (await text(p8, '#paste-pgroup-subject-h')) === '教科の形'
-      && !(await p8.$('#paste-part-codetree')) && !(await p8.$('#paste-part-collect')),
-      'S8 ④: the subject forms come first (maps, then kokugo, english, music), each group is a labelled group, and the extra parts are not listed');
-    // 一つずつの札：チェックボックス・絵・名前・1 行の説明（説明は aria-describedby）
-    // 絵は loading="lazy"：画面に入れて読み終わるのを待つ（macOS の CI で、まだ読んでいない絵を確かめて落ちた）
-    await p8.$eval('#paste-part-bars', (x) => x.closest('label.pick').scrollIntoView({ block: 'center' }));
-    await p8.waitForFunction(() => { const i = document.querySelector('#paste-part-bars')?.closest('label.pick')?.querySelector('picture.pick-thumb img'); return !!i && i.complete && i.naturalWidth > 0; }, null, { timeout: scaled(10000) }).catch(() => {});
-    const thumb8 =await p8.$eval('#paste-part-bars', (x) => { const l = x.closest('label.pick'), img = l && l.querySelector('picture.pick-thumb img'), src = l && l.querySelector('picture.pick-thumb source');
-      return { ok: !!img && img.src.startsWith('data:image/webp') && img.complete && img.naturalWidth > 0 && src.media === '(prefers-color-scheme: dark)' && src.srcset.startsWith('data:image/webp') && l.querySelector('.tile-label').textContent === '棒グラフ'
-        && document.getElementById(x.getAttribute('aria-describedby')).textContent === '棒の長さで量を比べる', alt: img && img.alt }; });
-    ok(thumb8.ok && thumb8.alt === '棒グラフのサンプル：年ごとの売上（架空）' && (await p8.$$eval('#paste-parts .pick', (xs) => xs.filter((x) => !x.querySelector('picture.pick-thumb img[alt]')).length)) === 0,
-      'S8 ④: a part is a checkbox in its label with a thumbnail made from its demo (light and dark), alt text naming the picture, the name and a one-line description: ' + thumb8.alt);
-    // 目安を越える：越えた分と外す候補（おすすめは候補にしない）と［候補を外す］
-    const over8 = await text(p8, '#paste-over-text');
-    // 無料のプランで越えたら、まず中核の 4 つの説明を短くし（知らせる）、それでも越えれば専門のパーツだけを外す候補に（標準のパーツは外さない。backlog #125）
-    ok(await p8.isVisible('#paste-shortened') && (await text(p8, '#paste-shortened')) === '軽量の指示に収めるため、棒グラフ・流れ図・目次・予想と答えの説明を短くしました',
-      'S8 ④: over the free limit, the core four are shortened first, and the meter says so: ' + await text(p8, '#paste-shortened'));
-    ok(await p8.isVisible('#paste-over') && /^目安より [\d.]+ KB 大きいので、対話型 AI が最後まで読めないことがあります。外す候補：/.test(over8) && !['棒グラフ', '流れ図', '目次', '予想と答え', '折れ線'].some((w) => over8.includes(w))
-      && (await p8.$eval('#paste-size', (x) => x.classList.contains('over'))) && (await p8.getAttribute('#paste-meter', 'role')) === 'meter' && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '45'
-      && (await text(p8, '#paste-trim')) === '候補を外す',
-      'S8 ④: still over the free plan’s 45 KB the meter is striped, says by how much and lists only specialized parts as candidates, with 「候補を外す」: ' + over8);
-    await p8.click('#paste-trim');
-    const ticks8 = await ticks(p8);
-    const bytes8 = +(await p8.getAttribute('#paste-pack-size', 'data-bytes'));
-    ok(bytes8 <= PACK_CAP_KB.free * 1024 && await p8.isHidden('#paste-over') && STD.every((t) => (ticks8).split(',').includes(t)) && (ticks8).includes('m-hissan') && await p8.evaluate(() => document.activeElement && document.activeElement.id === 'paste-pack-size'),
-      `S8 ④: 「候補を外す」 unticks the candidates; the instructions fit (${bytes8} B), every standard part stays ticked, and the focus moves to the size`);
-    const after8 = await ticks(p8);
-    // 推し直しても、外した印は戻らない
+    const subjName = (id) => subjectChoices().find((x) => x.id === id).label.ja;
+    let l8 = await labels(p8);
+    ok(l8.subjects === 'statistics,mathematics' && l8.why === `②に「分布」とあるので、${subjName('statistics')}を選びました。②に「筆算」とあるので、${subjName('mathematics')}を選びました`,
+      'S8 ④: two subjects from the words of step 2, one reason each: ' + l8.why);
+    ok((await p8.getAttribute('#paste-purposes', 'aria-describedby')) === 'paste-purposes-note' && (await p8.$$eval('#paste-purposes input', (xs) => xs.every((x) => x.type === 'checkbox' && x.closest('label'))))
+      && (await p8.$$eval('#paste-school input', (xs) => xs.every((x) => x.type === 'radio'))),
+      'S8 ④: the purposes are checkboxes in their labels (the note describes the group); the school level is a radio group');
+    // キーボード：札にフォーカスしてスペースで選ぶ・外す
+    await p8.focus('#paste-purpose-spread');
+    await p8.keyboard.press('Space');
+    ok(await p8.isChecked('#paste-purpose-spread'), 'S8 ④: Space on a focused tile chooses it');
+    await p8.focus('#paste-purpose-compare');
+    await p8.keyboard.press('Space'); await p8.keyboard.press('Space');
+    ok(!(await p8.isChecked('#paste-purpose-compare')), 'S8 ④: Space twice leaves it off');
+    await p8.check('#paste-school-high-school');
+    const c8 = await copy(p8);
+    const r8 = ranked({ purposes: ['spread'], subjects: ['statistics', 'mathematics'], audience: 'high-school' }, 'free', 'ja', tailOf(c8, 'ja'));
+    l8 = await labels(p8);
+    ok(c8 === r8.text && r8.described[0] === 'm-boxplot' && r8.described.includes('m-hist') && l8.sum === sumOf(r8, 'ja') && r8.named.every((t) => c8.includes('`' + t + '`') && !c8.includes('### `<' + t + '>`'))
+      && c8.includes('この表には、名前だけで説明のないパーツもある。使わない。'),
+      `S8 ④: the copied instructions describe the top of the ranking (${r8.described.join(', ')}); the rest are only named in the purposes table, with the rule not to use them: ${l8.sum}`);
+    // 自分で外した題材は、推し直しで戻さない
+    await p8.click('#paste-change-send');
+    await p8.uncheck('#paste-subject-statistics');
     await p8.click('#paste-change-content');
     await p8.fill('#paste-title', 'わり算の筆算とデータの分布（2）');
     await p8.click('#paste-next-content');
-    ok((await ticks(p8)) === after8, 'S8 ④: a new guess does not tick again what was unticked');
-    // 有料のプランの指示にだけ入るパーツ（paidOnly：受け皿のない束 univ の m-ctable・m-vector）は、軽量の指示では一覧に出ない（印を付けても指示に入らないので）
-    const hiddenPick = (pg, id) => pg.$eval(id, (x) => x.closest('label.pick').hidden);
-    ok(await hiddenPick(p8, '#paste-part-ctable') && await hiddenPick(p8, '#paste-part-vector') && !(await p8.isChecked('#paste-part-ctable')) && !(await p8.isChecked('#paste-part-vector')),
-      'S8 ④: on the free plan the paid-only parts (m-ctable, m-vector) are not listed');
-    // 有料のプランは目安だけが変わる（印はそのまま）
+    l8 = await labels(p8);
+    ok(l8.subjects === 'mathematics' && l8.why === `②に「筆算」とあるので、${subjName('mathematics')}を選びました`, 'S8 ④: a new guess does not tick again the subject the author unticked: ' + JSON.stringify(l8));
+    // 有料の AI：同じ順で、説明つきが増える（受け皿のない束の m-ctable も、順位が来れば説明つき）
+    const free8 = l8.sum;
     await p8.check('#paste-plan-paid');
-    ok(!(await hiddenPick(p8, '#paste-part-ctable')) && !(await hiddenPick(p8, '#paste-part-vector')) && !(await p8.isChecked('#paste-part-ctable')),
-      'S8 ④: on the paid plan the paid-only parts are listed, without a tick');
-    ok((await ticks(p8)) === after8 && (await p8.getAttribute('#paste-meter', 'aria-valuemax')) === '150' && /（目安は 150 KB まで）$/.test(await text(p8, '#paste-pack-size')), 'S8 ④: the paid plan changes only the limit');
-    // キーボード：チェックボックスにフォーカスしてスペースで外す・付ける。写す指示はいつも印のとおり
-    await p8.focus('#paste-part-tape');
-    await p8.keyboard.press('Space');
-    ok(!(await p8.isChecked('#paste-part-tape')), 'S8 ④: Space on a focused part unticks it');
-    await p8.check('#paste-part-ctable');
-    const c8 = await copy(p8);
-    const want8 = (await ticks(p8)).split(',');
-    ok(c8 === packWithRequest({ ...partsPackOpts(want8, 'paid'), lang: 'ja', request: tailOf(c8, 'ja') }) && !/m-tape(?![a-z-])/.test(c8) && c8.includes('### `<m-hissan>`'), 'S8 ④: the copied instructions describe exactly the ticked parts');
-    ok(want8.includes('m-ctable') && c8.includes('### `<m-ctable>`'), 'S8 ④: a paid-only part ticked on the paid plan is described in the copied instructions');
+    const c8p = await copy(p8);
+    const r8p = ranked({ purposes: ['spread'], subjects: ['mathematics'], audience: 'high-school' }, 'paid', 'ja', tailOf(c8p, 'ja'));
+    ok(c8p === r8p.text && (await labels(p8)).sum === sumOf(r8p, 'ja') && free8 !== sumOf(r8p, 'ja') && r8p.described.length > r8.described.length,
+      `S8 ④: the paid AI keeps the order and describes more parts (${free8} → ${sumOf(r8p, 'ja')})`);
+    await p8.click('#paste-change-send');
     await shot(p8, 'flow-s8-parts.png', 'paste-step-send');
 
     // ================================================================ S9 前に分野を選んだ教材（egatari.json の studio.newDeck）を開いたまま新規作成：前の選び方は読まず、いつも初めの選び方から。記録は書き換えない
@@ -607,8 +610,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p9.fill('#paste-title', 'てこのはたらき');
     await p9.click('#paste-next-content');
     await p9.click('#paste-next-theme');
-    ok((await ticks(p9)) === sorted(STD) && (await cfgNow()) === cfg9,
-      'S9 ④: New… starts from the standard parts even when the open lesson recorded three subjects; the record is not touched');
+    const l9 = await labels(p9);
+    ok(l9.purposes === '' && l9.subjects === '' && l9.school === '' && (await cfgNow()) === cfg9,
+      'S9 ④: New… starts with nothing chosen even when the open lesson recorded three subjects; the record is not touched');
     await p9.click('#dlg-cancel');
     ok((await cfgNow()) === cfg9, 'S9: the record is still unchanged after closing');
 
@@ -621,16 +625,14 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p10.fill('#paste-title', 'Using the new booking system');
     await p10.click('#paste-next-content');
     await p10.click('#paste-next-theme');
-    // 部品庫 2.9.0 から束 tools は m-callout・m-checklist・m-timer
-    ok(await p10.isChecked('#paste-part-timer') && (await text(p10, '#paste-parts-why')) === 'Also chose Screen steps, Checklist, Timer, because the setting in step 1 is “Training and how-to”.' && (await text(p10, '#paste-pgroup-timebox-h')) === 'Time-boxing',
-      'S10 ④: Training and how-to recommends the timer, under Time-boxing, and says why');
+    // 研修：学校は聞かない（読み手は社会人）。手順を選ぶと、社会人向けの手順のパーツ（画面の手順・確かめる一覧）が先に説明つきで入る
+    ok(!(await labels(p10)).schoolShown, 'S10 ④: Training and how-to asks no school level');
+    await p10.check('#paste-purpose-process');
     const c10 = await copy(p10);
-    ok(c10.includes('### `<m-timer>`'), 'S10 ④: the ticked timer is in the instructions');
-    await p10.click('#paste-change-send');
-    if (!(await p10.$eval('#paste-parts-fold', (d) => d.open))) await p10.click('#paste-parts-summary');   // #211：畳んだ一覧を開く
-    await p10.uncheck('#paste-part-timer');
-    const c10b = await copy(p10);
-    ok(!c10b.includes('m-timer') && (await answer(p10, 'send')) === `Instructions: Light · ${STD.length + 2} parts · copied`, 'S10 ④: unticked, the timer is not named anywhere in the instructions');
+    const r10 = ranked({ purposes: ['process'], audience: 'working-adult' }, 'free', 'en', tailOf(c10, 'en'));
+    ok(c10 === r10.text && r10.described.slice(0, 2).sort().join() === 'm-callout,m-checklist' && c10.includes('### `<m-callout>`') && c10.includes('### `<m-flow>`'),
+      'S10 ④: the process parts for working adults come first and are described: ' + r10.described.join(', '));
+    ok((await answer(p10, 'send')) === 'Instructions: Light · copied', 'S10 ④: the answered line');
 
     // ================================================================ S11 スキル（チャットの AI の egatari:make）の出力を持っている先生（ja）：問いに答えずに貼る
     const cdeck11 = worked('common', 'deck.html'), cnarr11 = worked('common', 'narration.md');
@@ -712,7 +714,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(st13.deck === '✓ 3 slides' && st13.narr === '✓ Script, 3 sections' && st13.info === 'That was the whole output; it was split into slides and script.' && !st13.goOff,
       'S13 ⑤: the chosen .md goes through the same split as pasted text: ' + JSON.stringify(st13));
     const F13 = await create(p13);
-    ok(JSON.stringify(newDeckOf(F13)) === JSON.stringify({ v: 1, plan: 'free', category: 'other', subcategory: null, parts: [...STD].sort() }), 'S13: the normal flow still records its choices in studio.newDeck: ' + JSON.stringify(newDeckOf(F13)));
+    ok(JSON.stringify(newDeckOf(F13)) === JSON.stringify({ v: 1, plan: 'free', category: 'other', subcategory: null, purposes: [], subjects: [], audience: null }), 'S13: the normal flow still records its choices in studio.newDeck: ' + JSON.stringify(newDeckOf(F13)));
 
     // ================================================================ S14 貼り付けだけの画面（en）：<title> も data-theme もない出力の .txt を台本の欄に落とす
     const p14 = await open('en', 's14');

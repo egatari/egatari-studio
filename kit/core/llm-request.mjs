@@ -48,8 +48,8 @@ export function filledRequest({ kind = 'A', values = {} } = {}, lang = 'en') {
   return [`# ${F.title}`, `**${s.head}**`, s.text, rows.join('\n')].filter(Boolean).join('\n\n') + '\n';
 }
 
-export function packWithRequest({ sets = [], lang = 'en', request = null, exclude = [], off = [], plan = 'free', short = false, full = null } = {}) {
+export function packWithRequest({ sets = [], lang = 'en', request = null, exclude = [], off = [], plan = 'free', short = false, full = null, named = null } = {}) {
   const tail = request ? String(request).trim() : requestOf(PACK, lang);
-  const parts = [...packParts(PACK, { sets, lang, exclude, off, plan, short, full }), tail].filter(Boolean);
+  const parts = [...packParts(PACK, { sets, lang, exclude, off, plan, short, full, named }), tail].filter(Boolean);
   return parts.join('\n\n') + '\n';
 }
