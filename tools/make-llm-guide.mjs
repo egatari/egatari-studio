@@ -427,7 +427,7 @@ function components(cat, sets, readmeEn = {}) {
       en = { fm: efm, body: eblocks.own, ext: eblocks.ext };
     }
     // 受け皿のない束のパーツ（univ）：標準として有料のプランの指示にだけ（paidOnly）
-    out.push({ fm, set, ...(c.tier === 'specialized' && set === STANDARD ? { paidOnly: true } : {}), build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: cls && cls.shape, rawProps: (cls && cls.props) || {}, ...(en ? { en } : {}) });
+    out.push({ fm, set, ...(c.tier === 'specialized' && set === STANDARD ? { paidOnly: true } : {}), build: c.build, body: blocks.own, ext: blocks.ext, props: propDocs(js), shape: staticShape(cls, fm.name || c.tag), rawProps: (cls && cls.props) || {}, ...(en ? { en } : {}) });
   }
   return out;
 }
@@ -472,6 +472,14 @@ function shapeBrief(c, lang) {
   // note は {en, ja} か、1 つの言語の字（部品庫 v1.2.0 の m-tree など）
   const note = !sh.note ? '' : typeof sh.note === 'string' ? sh.note : sh.note[lang] || sh.note.en || sh.note.ja || '';
   return '`' + SH.brief(withoutBuilt(sh.schema, c.build), SHAPE_CONV) + '`' + (note ? ' — ' + note : '');
+}
+// パーツの static shape（データの形と例）。vm で読んだクラスにないとき、仮の物（Proxy の関数）が返ることがあるので、
+// ふつうのオブジェクトでなければ「no static shape」と言って止める（パーツ集 2.17 の候補の m-scroll で .replace の中で落ちた。handoff #64）
+export function staticShape(cls, name) {
+  const sh = cls ? cls.shape : undefined;
+  if (sh === undefined || sh === null) return sh;
+  if (typeof sh !== 'object' || Array.isArray(sh)) throw new Error(`${name}: no static shape (the class gives a ${typeof sh}; give the part a static shape = {schema, example})`);
+  return sh;
 }
 function shapeExample(c, lang) {
   const sh = c.shape;
