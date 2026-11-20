@@ -16,7 +16,9 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { readZip, crc32 } from '../kit/core/zip-read.mjs';
-import { deriveTheme } from '../kit/core/theme-derive.mjs';
+import { SHAPES, BACKGROUNDS } from '../kit/core/theme-shapes.mjs';
+import { CHOOSABLE } from '../kit/core/themes-list.mjs';
+import { deriveTheme, themeFiles } from '../kit/core/theme-derive.mjs';
 import { clickDlg } from './click-retry.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -70,6 +72,8 @@ const state = (page) => page.evaluate(() => {
   const checks = document.getElementById('shop-checks');
   return {
     open: !sh.hidden && sh.getBoundingClientRect().height > 0, base: sh.dataset.base, hex: document.getElementById('shop-base-hex').value, font: document.getElementById('shop-font').value,
+    start: document.getElementById('shop-start').value, background: document.getElementById('shop-background').value,
+    look: Object.fromEntries(['heading', 'cover', 'concl'].map((key) => [key, document.getElementById('shop-' + key).value])),
     h1: cs(slides[0], '.cover h1', 'color'), band: cs(slides[0], '.cover', 'backgroundImage'), term: cs(slides[1], '.term', 'color'), rule: cs(slides[1], 'h2', 'borderBottomColor'),
     previewW: Math.round(slides[0].host.getBoundingClientRect().width), stageW: Math.round(slides[0].querySelector('.stage').getBoundingClientRect().width),
     checksShown: !checks.hidden, ids: [...checks.querySelectorAll('.shop-check')].map((x) => x.dataset.id), msgs: [...checks.querySelectorAll('.shop-check-msg')].map((x) => x.textContent),
@@ -100,11 +104,58 @@ try {
     await page.waitForSelector('#theme-shop:not([hidden])');
     let s = await state(page);
     const d0 = deriveTheme('#1D4F91');
-    ok(s.open && s.base === '#1D4F91' && s.hex === '#1D4F91' && s.font === 'BIZ UDPGothic', 'ja: opens from the theme chosen before (藍: #1D4F91, BIZ UDPGothic) ' + JSON.stringify([s.base, s.font]));
+    ok(s.open && s.base === '#1D4F91' && s.hex === '#1D4F91' && s.font === 'gothic', 'ja: opens from the theme chosen before (藍: #1D4F91, BIZ UDPGothic) ' + JSON.stringify([s.base, s.font]));
     ok(!s.checksShown && !s.ids.length, 'ja: all checks pass, so the check area stays empty and hidden');
     ok(s.next, 'ja: Next is disabled until the theme is saved');
-    ok(s.h1 === rgb(d0.title) && s.term === rgb(d0.term) && s.rule === rgb(d0.base), 'ja: the preview uses the derived colours (title, term, heading rule) ' + JSON.stringify([s.h1, s.term, s.rule]));
+    ok(s.h1 && s.term === rgb(d0.term) && s.rule === rgb(d0.base), 'ja: the preview uses the starting theme colours (title, term, heading rule) ' + JSON.stringify([s.h1, s.term, s.rule]));
     ok(s.previewW > 250 && s.previewW < 440 && Math.abs(s.stageW - s.previewW) <= 2, 'ja 1280: the two previews sit side by side and the 1280 px slide is scaled to fit ' + JSON.stringify([s.previewW, s.stageW]));
+    ok(s.start === 'default' && s.background === 'white' && s.look.heading === 'default', 'ja: starting theme and default styles are selected');
+    ok((await page.$$eval('#shop-start option', (opts) => opts.map((o) => o.value))).join() === CHOOSABLE.map((t) => t.name).join(), 'ja: every currently choosable bundled theme is offered');
+    // 撮る前に、字の読み込みが終わり、続けて 2 回撮っても同じになるまで待つ（テーマを替えた直後は字が替わる途中のことがある。CI の macOS で 2 回続けて落ちた）
+    const settled = async (loc) => {
+      let prev = null;
+      for (let i = 0; i < 20; i++) {
+        await page.evaluate(() => document.fonts.ready.then(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))));
+        const shot = await loc.screenshot({ animations: 'disabled', caret: 'hide' });
+        if (prev && prev.equals(shot)) return shot;
+        prev = shot;
+      }
+      return prev;
+    };
+    for (const theme of CHOOSABLE) {
+      await page.selectOption('#shop-start', theme.name);
+      const preview = page.locator('.shop-preview');
+      const generated = await settled(preview);
+      const css = fs.readFileSync(path.join(ROOT, 'themes', theme.name, 'tokens.css'), 'utf8');
+      const styles = await page.evaluate((css) => [...document.querySelectorAll('.shop-slide')].map((host) => {
+        const style = host.shadowRoot.querySelector('style'), original = style.textContent;
+        style.textContent = original.slice(0, original.indexOf('/* preview: made with')) + css.replace(/:root\b/g, ':host');
+        return original;
+      }), css);
+      const bundled = await settled(preview);
+      ok(generated.equals(bundled), `ja: ${theme.name} starts with pixel-identical cover and body previews`);
+      await page.evaluate((styles) => [...document.querySelectorAll('.shop-slide')].forEach((host, i) => { host.shadowRoot.querySelector('style').textContent = styles[i]; }), styles);
+    }
+    await page.selectOption('#shop-start', 'default');
+    await page.selectOption('#shop-font', 'mincho');
+    await page.selectOption('#shop-background', 'off-white');
+    await page.selectOption('#shop-heading', 'soft');
+    await page.selectOption('#shop-cover', 'circle');
+    await page.selectOption('#shop-concl', 'rounded');
+    const styled = await page.evaluate(() => {
+      const [cover, body] = [...document.querySelectorAll('.shop-slide')].map((h) => h.shadowRoot);
+      return [getComputedStyle(body.querySelector('.stage')).fontFamily, getComputedStyle(body.querySelector('.slide')).backgroundColor,
+        getComputedStyle(body.querySelector('h2')).borderRadius, getComputedStyle(cover.querySelector('.cover'), '::before').borderRadius,
+        getComputedStyle(body.querySelector('.concl')).borderRadius];
+    });
+    ok(styled[0].includes('BIZ UDPMincho') && styled[1] === rgb('#FFFDF8') && styled.slice(2).join() === '16px,50%,36px', 'ja: font, background and all three styles immediately update the shadow previews ' + JSON.stringify(styled));
+    await page.selectOption('#shop-heading', 'band');
+    await setHex(page, '#F5C000');
+    s = await state(page);
+    ok(s.ids.includes('heading-band') && s.msgs.some((m) => m.startsWith('見出しの白い文字')), 'ja: heading band contrast has a Japanese failure message');
+    await page.click('#shop-checks .shop-fix');
+    ok((await state(page)).ids.length === 0, 'ja: the offered fix clears band and background failures together');
+    await page.selectOption('#shop-start', 'default');
     // 基調色を変える → プレビューが変わる（通る色）
     await setHex(page, '#0A5753');
     s = await state(page);
@@ -113,7 +164,7 @@ try {
     await setHex(page, '#F5C000');
     s = await state(page);
     ok(s.checksShown && s.ids.includes('term-contrast') && s.ids.includes('sec-contrast') && s.ids.includes('washout')
-      && s.msgs[0] === '基調色の文字が白い地の上で読みにくい色です（コントラスト比 1.6:1。4.5:1 以上が必要です）。基調色を濃くしてください',
+      && s.msgs[0] === '基調色の文字が白い背景の上で薄く、投影したときや教室の後ろの席から読みにくくなります。基調色を濃くしてください（コントラスト比 1.6:1。目安は 4.5:1 以上）',
     'ja #F5C000: the check area lists what fails, how much, and how to fix it ' + JSON.stringify(s.msgs));
     const fx = s.fixes[0];
     ok(fx && /^#[0-9A-F]{6}$/.test(fx.hex) && fx.text === `${fx.hex} にする` && fx.label === `基調色を ${fx.hex} にする`, 'ja: each failure offers the nearest passing colour 「#…… にする」 ' + JSON.stringify(fx));
@@ -147,18 +198,80 @@ try {
     ok(s.ids.join() === 'cover-title' && /url\("data:image\/png;base64,/.test(s.band) && s.msgs[0].startsWith('表紙のタイトルが背景画像の上で読みにくくなります'), 'ja cover image: shown on the preview cover; a dark image fails the cover title check ' + JSON.stringify(s.msgs));
     await page.click('#shop-cover-remove');
     await page.waitForFunction(() => document.getElementById('shop-checks').hidden);
+    // Exercise the generated CSS, with and without a kicker, in actual slide boxes.
+    const combinations = [];
+    for (const heading of Object.keys(SHAPES.heading)) for (const cover of Object.keys(SHAPES.cover)) {
+      for (const concl of Object.keys(SHAPES.concl)) for (const background of Object.keys(BACKGROUNDS)) {
+        const input = { base: '#1D4F91', font: 'BIZ UDPGothic', background, look: { heading, cover, concl } };
+        combinations.push({ ...input, css: themeFiles(input, { name: 'geometry', results: [] })['tokens.css'] });
+      }
+    }
+    const geometry = await page.evaluate((combinations) => {
+      const root = document.querySelector('.shop-slide').shadowRoot;
+      const style = document.createElement('style'), stage = document.createElement('div');
+      stage.className = 'stage'; stage.style.transform = 'none';
+      stage.innerHTML = '<section class="slide"><h2>Heading</h2><div class="body"><p>Body text</p></div><div class="concl"><span>Conclusion</span></div></section>'
+        + '<section class="slide"><p class="kicker">Kicker</p><h2>Heading</h2><div class="body"><p>Body text</p></div><div class="concl"><span>Conclusion</span></div></section>'
+        + '<section class="slide cover"><p class="venue">Venue</p><h1>Title</h1><p class="au">Author</p></section>';
+      root.append(style, stage);
+      const errors = [], bands = [];
+      const base = root.querySelector('style').textContent.split('/* preview: made with')[0];
+      for (const input of combinations) {
+        style.textContent = base + input.css.replace(/:root\b/g, ':host');
+        for (const slide of stage.querySelectorAll('.slide:not(.cover)')) {
+          const heading = slide.querySelector('h2'), body = slide.querySelector('.body'), concl = slide.querySelector('.concl');
+          // Decorative heading borders may extend into the reserved top margin. The body and conclusion allocations stay fixed.
+          if (body.offsetLeft !== 48 || body.offsetTop !== 122 || body.offsetWidth !== 1184 || body.offsetHeight !== 438
+            || concl.offsetTop !== 571 || concl.offsetHeight !== 72 || heading.offsetTop < 0 || heading.offsetTop + heading.offsetHeight > 122
+            || heading.scrollWidth > heading.clientWidth || body.scrollHeight > body.clientHeight || concl.scrollWidth > concl.clientWidth) errors.push(input.look);
+        }
+        const cover = stage.querySelector('.cover'), deco = getComputedStyle(cover, '::before');
+        if (['default', 'top-band', 'top-band-wide', 'bottom-band', 'left-bar'].includes(input.look.cover)) {
+          const top = deco.top === 'auto' ? 720 - parseFloat(deco.bottom) - parseFloat(deco.height) : parseFloat(deco.top);
+          const left = parseFloat(deco.left), width = parseFloat(deco.width), height = parseFloat(deco.height);
+          for (const text of cover.querySelectorAll('.venue,h1,.au')) {
+            if (text.offsetLeft < left + width && text.offsetLeft + text.offsetWidth > left && text.offsetTop < top + height && text.offsetTop + text.offsetHeight > top) bands.push(input.look.cover);
+          }
+        }
+      }
+      style.remove(); stage.remove();
+      return { count: combinations.length, errors: errors.slice(0, 5), bands: bands.slice(0, 5) };
+    }, combinations);
+    ok(geometry.count === 588 && !geometry.errors.length, '588 shape × background combinations keep content allocations and fit without overflow ' + JSON.stringify(geometry));
+    ok(!geometry.bands.length, 'current cover bands are decorative and do not intersect cover text');
+    await page.selectOption('#shop-background', 'base-wash');
+    await page.selectOption('#shop-font', 'maru-gothic');
+    await page.selectOption('#shop-heading', 'double');
+    await page.selectOption('#shop-cover', 'frame');
+    await page.selectOption('#shop-concl', 'rule');
     // 保存（ZIP・自分のテーマ）
     ok(await page.isDisabled('#shop-save') && (await page.textContent('#shop-save-note')) === 'テーマの名前を入力してください', 'ja save: needs a name first');
     await page.fill('#shop-name', 'Science classes');
     const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#shop-zip')]);
     const z = await readZip(new Uint8Array(fs.readFileSync(await dl.path())), { maxMembers: 10, maxMemberBytes: () => 1 << 22, maxTotalBytes: 1 << 23 });
     const tok = new TextDecoder().decode(z.files.get('science-classes/tokens.css') || new Uint8Array()), tj = JSON.parse(new TextDecoder().decode(z.files.get('science-classes/theme.json') || new Uint8Array()) || '{}');
-    ok(dl.suggestedFilename() === 'science-classes.zip' && /--base: #0A5753;/.test(tok) && tj.extends === 'default' && tj.title === 'Science classes' && tj.builder && tj.builder.base === '#0A5753',
+    ok(dl.suggestedFilename() === 'science-classes.zip' && /--base: #0A5753;/.test(tok) && tj.extends === 'default' && tj.title === 'Science classes' && tj.builder && tj.builder.base === '#0A5753' && tj.background === 'base-wash' && tj.fontKind === 'maru-gothic'
+      && tj.look.heading === 'double' && tj.look.cover === 'frame' && tj.look.concl === 'rule' && tok.includes('/* look heading: double */'),
       'ja ZIP: science-classes/tokens.css and theme.json (extends default, builder.base) ' + JSON.stringify(tj));
     await page.click('#shop-save');
     await page.waitForFunction(() => document.getElementById('paste-theme').value === 'science-classes');
     s = await state(page);
     ok(!s.next && s.open && s.sel === 'science-classes', 'ja save: the theme goes into My themes, is selected, the workshop stays open and Next works');
+    // 保存したテーマを開き直したときの比べは、プレビューに入る CSS（影の木の style）で見る
+    // （画素で比べると、開き直した後のスクロールの位置で字の並びが 1 画素ずれることがある）
+    const previewCss = () => page.$$eval('.shop-slide', (hs) => hs.map((h) => h.shadowRoot.querySelector('style').textContent));
+    const beforeReopen = await previewCss();
+    await page.selectOption('#paste-theme', 'default');
+    await page.selectOption('#paste-theme', 'science-classes');
+    await page.selectOption('#paste-theme', ORIGINAL);
+    await page.waitForSelector('#theme-shop:not([hidden])');
+    s = await state(page);
+    ok(s.start === 'default' && s.font === 'maru-gothic' && s.background === 'base-wash'
+      && s.look.heading === 'double' && s.look.cover === 'frame' && s.look.concl === 'rule', 'ja: reopening a saved theme restores every choice');
+    const afterReopen = await previewCss();
+    ok(afterReopen.length === 2 && afterReopen.every((c, i) => c === beforeReopen[i]), 'ja: saved and reopened previews use the same CSS');
+    await page.click('#shop-save');
+    await page.waitForFunction(() => document.getElementById('paste-theme').value === 'science-classes');
     await page.click('#paste-next-theme');
     ok((await page.textContent('#paste-step-theme-answer .paste-answer-text')) === 'テーマ：Science classes', 'ja: ③ collapses to 「テーマ：Science classes」');
     await clickDlg(page, '#dlg-cancel');
@@ -170,9 +283,13 @@ try {
     await page.selectOption('#paste-theme', ORIGINAL);
     await page.waitForSelector('#theme-shop:not([hidden])');
     ok(await page.$eval('#paste-theme', (s) => s.selectedOptions[0].textContent) === 'Custom' && (await page.textContent('#theme-shop-h')) === 'Custom theme', 'en: 「Custom」 and 「Custom theme」');
+    const labels = await page.$$eval('#theme-shop .shop-inputs label', (nodes) => nodes.map((n) => n.textContent));
+    ok(labels.join('|') === 'Starting theme|Main colour|Font|Background|Heading style|Cover style|Conclusion line style', 'en: every workshop field uses its English label');
+    await page.selectOption('#shop-heading', 'band');
     await setHex(page, '#F5C000');
     const s = await state(page);
-    ok(s.msgs[0] === 'Text in the main colour is hard to read on white (contrast ratio 1.6:1; 4.5:1 or more is needed). Make the main colour darker' && s.fixes[0].text === `Use ${s.fixes[0].hex}`, 'en: the message and 「Use #……」 ' + JSON.stringify([s.msgs[0], s.fixes[0]]));
+    ok(s.ids.includes('heading-band') && s.msgs.some((m) => m.startsWith('White heading text')), 'en: heading band contrast message is translated');
+    ok(s.msgs[0] === 'Text in the main colour is faint on white and hard to read when projected or from the back of the classroom. Make the main colour darker (contrast ratio 1.6:1; guide: 4.5:1 or more)' && s.fixes[0].text === `Use ${s.fixes[0].hex}`, 'en: the message and 「Use #……」 ' + JSON.stringify([s.msgs[0], s.fixes[0]]));
     await clickDlg(page, '#dlg-cancel');
   });
 

@@ -8,7 +8,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { deriveTheme, checkInput, fixFor, pickColours, themeFiles, readBuilder, startFrom, oklch } from '../kit/core/theme-derive.mjs';
+import { deriveTheme, checkInput, fixFor, pickColours, themeFiles, readBuilder, startFrom, builderTokens, checkTheme, FONT_CHOICES, oklch } from '../kit/core/theme-derive.mjs';
+import { SHAPES, BACKGROUNDS, FONT_KINDS, COVER_BAND_TEXT, lookIn, lookCss, withoutLooks, cleanLook } from '../kit/core/theme-shapes.mjs';
 import { CHOOSABLE } from '../kit/core/themes-list.mjs';
 import { contrast } from '../kit/core/color-check.mjs';
 
@@ -66,8 +67,91 @@ t('themeFiles and readBuilder', () => {
   assert.match(f['tokens.css'], /print-color-adjust:exact/);
   const j = JSON.parse(f['theme.json']);
   assert.deepEqual([j.name, j.title, j.extends, j.fonts.body], ['science', '理科', 'default', 'Zen Maru Gothic']);
-  assert.deepEqual(readBuilder(f['theme.json']), { base: '#0A5753', font: 'Zen Maru Gothic', overrides: { emph: '#B02020' } });
+  assert.deepEqual(readBuilder(f['theme.json']), { base: '#0A5753', font: 'Zen Maru Gothic', overrides: { emph: '#B02020' }, look: { heading: 'default', cover: 'default', concl: 'default' }, background: 'white', fontKind: 'maru-gothic', start: 'default' });
   assert.equal(readBuilder('{"name":"x"}'), null);
   assert.equal(JSON.parse(themeFiles({ base: '#0A5753', font: 'BIZ UDPGothic' }, { name: 'x' })['theme.json']).fonts, undefined);
+});
+t('shape fragments are the bundled fragments; default choices add no CSS', () => {
+  for (const key of Object.keys(SHAPES)) assert.equal(SHAPES[key].default, '');
+  assert.equal(lookCss(cleanLook()), '');
+  for (const theme of CHOOSABLE) {
+    const dir = path.join(ROOT, 'themes', theme.name);
+    const css = fs.readFileSync(path.join(dir, 'tokens.css'), 'utf8');
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'theme.json'), 'utf8'));
+    const start = startFrom(css, cfg);
+    assert.deepEqual(start.look, cleanLook(cfg.look), theme.name);
+    for (const [key, fragment] of Object.entries(lookIn(css))) {
+      assert.equal(fragment.css, SHAPES[key][fragment.id], `${theme.name}: ${key}`);
+    }
+    assert.deepEqual(lookIn(withoutLooks(css.replace(/\n/g, '\r\n'))), {});
+  }
+  for (const family of Object.values(FONT_KINDS)) assert.ok(FONT_CHOICES.some((f) => f.family === family), family);
+});
+t('every shape × background combination passes derived colour checks for #1D4F91', () => {
+  let count = 0;
+  for (const heading of Object.keys(SHAPES.heading)) for (const cover of Object.keys(SHAPES.cover)) {
+    for (const concl of Object.keys(SHAPES.concl)) for (const background of Object.keys(BACKGROUNDS)) {
+      const look = { heading, cover, concl };
+      const input = { base: '#1D4F91', look, background };
+      assert.deepEqual(checkTheme(builderTokens(input), { look }).filter((r) => r.level === 'fail'), [], JSON.stringify(input));
+      const files = themeFiles(input, { name: 'combinations' });
+      assert.deepEqual(readBuilder(files['theme.json']).look, look);
+      for (const [key, id] of Object.entries(look)) {
+        const got = lookIn(files['tokens.css'])[key];
+        assert.equal(got?.css || '', SHAPES[key][id]);
+      }
+      count++;
+    }
+  }
+  assert.equal(count, 588);
+});
+t('band checks use their actual foreground and background and offer a passing fix', () => {
+  const input = { base: '#F5C000', look: { heading: 'band' }, background: 'base-wash' };
+  assert.ok(fails(input).some((f) => f.id === 'heading-band' && f.need === 4.5 && f.token === 'base'));
+  const fix = fixFor(input, 'base');
+  assert.ok(fix && !fails({ ...input, base: fix }).length);
+  const palette = deriveTheme('#1D4F91');
+  // Section and heading bands are independently checked, including non-white band text.
+  assert.ok(checkTheme({ ...palette, 'sec-bg': '#FFFFDD' }).some((r) => r.id === 'sec-contrast'));
+  assert.ok(checkTheme({ ...palette, 'sec-fg': '#222222' }, { look: { heading: 'band' } }).some((r) => r.id === 'heading-band'));
+  assert.deepEqual(Object.keys(COVER_BAND_TEXT).sort(), Object.keys(SHAPES.cover).sort());
+  assert.ok(Object.values(COVER_BAND_TEXT).every((token) => token === null)); // geometry verified in browser test
+});
+t('all choices and starting-theme CSS survive save/reopen without inherited shapes', () => {
+  for (const theme of CHOOSABLE) {
+    const dir = path.join(ROOT, 'themes', theme.name);
+    const css = fs.readFileSync(path.join(dir, 'tokens.css'), 'utf8');
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir, 'theme.json'), 'utf8'));
+    const start = startFrom(css, cfg);
+    const input = { ...start, base: start.base || '#1D4F91', font: start.font || 'BIZ UDPGothic', start: theme.name, overrides: {} };
+    input.source = { css: theme.name === 'default' ? '' : withoutLooks(css), fonts: cfg.fonts || {}, base: input.base, font: input.font, background: start.background };
+    const files = themeFiles(input, { name: 'saved' });
+    assert.ok(files['tokens.css'].includes(input.source.css));
+    assert.deepEqual(readBuilder(files['theme.json']), input, theme.name);
+    assert.deepEqual(themeFiles(readBuilder(files['theme.json']), { name: 'saved' }), files, theme.name);
+    const changed = { ...input, look: cleanLook(), background: 'base-wash', fontKind: 'maru-gothic', font: FONT_KINDS['maru-gothic'] };
+    const result = themeFiles(changed, { name: 'changed' });
+    assert.deepEqual(lookIn(result['tokens.css']), {}, theme.name);
+    assert.match(result['tokens.css'], /--bg: var\(--base-wash\);/);
+    assert.deepEqual(readBuilder(result['theme.json']), changed, theme.name);
+  }
+});
+t('font kinds select existing families even without a family input', () => {
+  for (const [fontKind, family] of Object.entries(FONT_KINDS)) {
+    const files = themeFiles({ base: '#1D4F91', fontKind }, { name: 'font-kind' });
+    assert.ok(files['tokens.css'].includes(`--font-sans: "${family}"`));
+    const restored = readBuilder(files['theme.json']);
+    assert.equal(restored.fontKind, fontKind); assert.equal(restored.font, family);
+  }
+});
+t('old builder files and invalid choices fall back safely', () => {
+  const input = readBuilder({ builder: { base: '#1d4f91', font: 'Unknown', overrides: { bad: '#fff000' } }, look: { heading: 'bad' }, background: 'bad', fontKind: 'bad' });
+  assert.deepEqual(input.look, cleanLook());
+  assert.equal(input.background, 'white'); assert.equal(input.font, ''); assert.equal(input.fontKind, 'gothic');
+  assert.deepEqual(input.overrides, {});
+  assert.deepEqual(cleanLook(null), cleanLook());
+  const files = themeFiles({ base: '#1D4F91' }, { name: 'cover', coverImage: 'data:image/png;base64,AA', coverBg: '#101010' });
+  assert.equal(readBuilder(files['theme.json']).coverBg, '#101010');
+  assert.match(files['tokens.css'], /fail cover-title/);
 });
 console.log(`\n${n} ok`);

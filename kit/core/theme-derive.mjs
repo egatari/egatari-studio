@@ -1,4 +1,4 @@
-// テーマを作る画面（新規作成の ③ の「オリジナル」。#58・handoff/theme-builder-v2-2026-10-27.md）の計算：
+// テーマを作る画面（backlog #58 stage 2）の計算：
 // 基調色 1 つからほかの色を導き、裏で色を確かめ、通らないときは通るいちばん近い色を探し、テーマのファイル（tokens.css・theme.json）を書く。
 // 外の名前を使わない（ブラウザでも Node でも動く。app/theme-workshop.js と tools/test-theme-derive.mjs が使う）。色の計算は kit/core/color-check.mjs
 //
@@ -20,6 +20,7 @@
 //   白飛び（明るい部屋の投影。周りの光 15%）：用語の色と地のコントラスト 3:1 以上（fail）
 //   印刷：書き出す tokens.css が章の扉と表紙に print-color-adjust:exact を書くので、背景のグラフィックを印刷しない設定でも地が消えない（検査は要らない）
 import { contrast, de76, de2000, simulate, hex2rgb, rgb2hex, relLum } from './color-check.mjs';
+import { BACKGROUNDS, FONT_KINDS, fontKindOf, cleanLook, COVER_BAND_TEXT, lookCss, lookIn, withoutLooks } from './theme-shapes.mjs';
 import { FONT_LIST } from './build-core.mjs';
 
 // ---------------------------------------------------------------- OKLab / OKLCH（Björn Ottosson 2020）
@@ -85,7 +86,7 @@ export function deriveTheme(base, overrides = {}) {
 // ---------------------------------------------------------------- 確かめる
 export const NEED = Object.freeze({ text: 4.5, washout: 3, de76: 35, de2000: 20, grey: 8, greyFail: 4, redHue: 25 });
 // input：{base, overrides}。返すのは通らなかったものだけ
-export function checkTheme(t, { coverBg = null, overrides = {} } = {}) {
+export function checkTheme(t, { coverBg = null, overrides = {}, look = {} } = {}) {
   const out = [];
   const who = (k) => (overrides && overrides[k] ? k : 'base');   // 直すときに替える入力
   const text = (id, fg, bg, token) => { const v = contrast(fg, bg); if (v < NEED.text) out.push({ id, level: 'fail', token, value: v, need: NEED.text }); };
@@ -93,8 +94,11 @@ export function checkTheme(t, { coverBg = null, overrides = {} } = {}) {
   text('title-contrast', t.title, t.bg, who('title'));
   text('accent2-contrast', t.accent2, t.bg, who('accent2'));
   text('sec-contrast', t['sec-fg'], t['sec-bg'], 'base');
+  if (look.heading === 'band') text('heading-band', t['sec-fg'], t.base, 'base');
+  const bandText = COVER_BAND_TEXT[look.cover];
+  if (bandText) text('cover-band', t[bandText], t.base, 'base');
   if (overrides && overrides.emph) { text('emph-contrast', t.emph, t.bg, 'emph'); text('concl-contrast', t.emph, t['concl-bg'], 'emph'); }
-  if (coverBg) text('cover-title', t.title, coverBg, 'cover');
+  if (coverBg) text('cover-title', look.cover === 'left-bar' ? t.fg : t.title, coverBg, 'cover');
   // 色覚：結論の色と用語の色
   const ct = overrides && overrides.term ? 'term' : overrides && overrides.emph ? 'emph' : 'base';
   let worst = null;
@@ -115,7 +119,7 @@ export function checkTheme(t, { coverBg = null, overrides = {} } = {}) {
   if (w < NEED.washout) out.push({ id: 'washout', level: 'fail', token: who('term'), value: w, need: NEED.washout });
   return out;
 }
-export const checkInput = (input, opts = {}) => checkTheme(deriveTheme(input.base, input.overrides), { ...opts, overrides: input.overrides || {} });
+export const checkInput = (input, opts = {}) => checkTheme(builderTokens(input), { ...opts, look: input.look || {}, overrides: input.overrides || {} });
 
 // ---------------------------------------------------------------- 直す色を探す
 // token の fail がなくなる色のうち、元の色にいちばん近いもの（CIEDE2000）。OKLCH の明るさを動かし、色相も ±90° まで回して探す
@@ -170,24 +174,31 @@ export const fontStack = (family) => {
   const f = FONT_CHOICES.find((x) => x.family === family) || FONT_CHOICES[0];
   return `"${f.family}", ${SERIF.test(f.family) ? (f.group === 'ja' ? '"Hiragino Mincho ProN", "Yu Mincho", serif' : 'Georgia, serif') : FALLBACK[f.group] || 'sans-serif'}`;
 };
-const TOKEN_ORDER = ['base', 'title', 'complement', 'accent2', 'base-tint', 'base-wash', 'comp-tint', 'term', 'emph', 'ramp-1', 'ramp-2', 'ramp-3', 'ramp-4', 'ramp-5'];
+const TOKEN_ORDER = ['base', 'rule', 'title', 'complement', 'accent2', 'base-tint', 'base-wash', 'comp-tint', 'term', 'emph', 'ramp-1', 'ramp-2', 'ramp-3', 'ramp-4', 'ramp-5'];
 // input：{base, overrides, font}。coverImage：'data:image/…;base64,…'（そのまま tokens.css に入る。テーマの hash と 1 ファイルに入る。#171(b)）
-export function themeFiles(input, { name, title = '', coverImage = '', results = null } = {}) {
-  const t = deriveTheme(input.base, input.overrides);
-  const res = results || checkInput(input);
+export function themeFiles(input, { name, title = '', coverImage = '', coverBg = null, results = null } = {}) {
+  const t = builderTokens(input);
+  const source = input.source;
+  const family = FONT_CHOICES.some((f) => f.family === input.font) ? input.font : FONT_KINDS[input.fontKind] || FONT_CHOICES[0].family;
+  const look = cleanLook(input.look);
+  const res = results || checkInput(input, { coverBg });
   const head = [`/* ${title || name}: made with the theme builder in Egatari Studio (New…, step 3, Custom).`,
     `   Main colour ${t.base}. The other colours are worked out from it${Object.keys(input.overrides || {}).length ? '; changed by hand: ' + Object.keys(input.overrides).join(', ') : ''}.`,
     `   Checks: ${res.length ? res.map((x) => `${x.level} ${x.id}`).join(', ') : 'all passed'}. */`];
-  const lines = TOKEN_ORDER.map((k) => `  --${k}: ${t[k]};`);
-  lines.push(`  --font-sans: ${fontStack(input.font)};`);
+  const recolour = !source || normHex(input.base) !== source.base;
+  const lines = (recolour ? [...TOKEN_ORDER, 'fg', 'muted', 'concl-bg', 'sec-bg', 'sec-fg'] : EDITABLE.filter((k) => isHex(input.overrides?.[k]))).map((k) => `  --${k}: ${t[k]};`);
+  if (!source || family !== source.font) lines.push(`  --font-sans: ${fontStack(family)};`);
+  if (!source || input.background !== source.background) lines.push(`  --bg: ${BACKGROUNDS[input.background] || BACKGROUNDS.white};`, '  --cover-bg: var(--bg);');
   if (coverImage) lines.push(`  --cover-bg: url("${coverImage}") center / cover no-repeat var(--bg);`);
-  const css = [...head, ':root{', ...lines, '}',
+  const css = [...head, source ? withoutLooks(source.css) : '', ':root{', ...lines, '}', lookCss(look),
+    source && family !== source.font ? `.slide h2,.slide.cover h1,.slide.sec h1,.slide.sec h2{font-family:var(--font-sans)}` : '',
     '/* print the section divider and cover backgrounds even when the browser does not print background graphics */',
     '@media print{.slide.sec,.slide.cover{-webkit-print-color-adjust:exact;print-color-adjust:exact}}', ''].join('\n');
-  const f = FONT_CHOICES.find((x) => x.family === input.font);
+  const f = FONT_CHOICES.find((x) => x.family === family);
   const json = { name, ...(title ? { title } : {}), extends: 'default', version: '1.0.0',
-    ...(f && !f.default ? { fonts: { body: f.family } } : {}),
-    builder: { base: t.base, font: input.font || '', ...(Object.keys(input.overrides || {}).length ? { overrides: input.overrides } : {}) } };
+    ...((source && family === source.font) ? { fonts: source.fonts || {} } : f && !f.default ? { fonts: { body: f.family } } : {}),
+    look, background: input.background || 'white', fontKind: input.fontKind || fontKindOf(family),
+    builder: { ...(coverImage && isHex(coverBg) ? { coverBg: normHex(coverBg) } : {}), base: t.base, font: family, start: input.start || 'default', ...(source ? { source: { ...source, css: withoutLooks(source.css) } } : {}), ...(Object.keys(input.overrides || {}).length ? { overrides: input.overrides } : {}) } };
   return { 'tokens.css': css, 'theme.json': JSON.stringify(json, null, 2) + '\n' };
 }
 export function readBuilder(themeJson) {
@@ -197,13 +208,41 @@ export function readBuilder(themeJson) {
   if (!b || !isHex(b.base)) return null;
   const overrides = {};
   for (const [k, v] of Object.entries(b.overrides || {})) if (EDITABLE.includes(k) && isHex(v)) overrides[k] = normHex(v);
-  return { base: normHex(b.base), font: FONT_CHOICES.some((f) => f.family === b.font) ? b.font : '', overrides };
+  return { ...(isHex(b.coverBg) ? { coverBg: normHex(b.coverBg) } : {}), base: normHex(b.base), font: FONT_CHOICES.some((f) => f.family === b.font) ? b.font : '', overrides,
+    look: cleanLook(j.look), background: Object.hasOwn(BACKGROUNDS, j.background) ? j.background : 'white',
+    fontKind: Object.hasOwn(FONT_KINDS, j.fontKind) ? j.fontKind : fontKindOf(b.font || ''), start: b.start || 'default',
+    ...(b.source && typeof b.source.css === 'string' && isHex(b.source.base) ? { source: { ...b.source, base: normHex(b.source.base) } } : {}) };
 }
 // 同梱のテーマの tokens.css から始める値（最後の --base と --font-sans の最初の名前）
-export function startFrom(tokensCss) {
+export function startFrom(tokensCss, config = {}) {
+  try { if (typeof config === 'string') config = JSON.parse(config); } catch { config = {}; }
   const c = String(tokensCss || '').replace(/\/\*[\s\S]*?\*\//g, '');
   const b = [...c.matchAll(/--base\s*:\s*(#[0-9a-fA-F]{6})\b/g)].pop();
   const f = [...c.matchAll(/--font-sans\s*:\s*([^;}]+)/g)].pop();
   const fam = f ? f[1].split(',')[0].trim().replace(/^["']|["']$/g, '') : '';
-  return { base: b ? normHex(b[1]) : null, font: FONT_CHOICES.some((x) => x.family === fam) ? fam : '' };
+  const font = config?.fonts?.body || (FONT_CHOICES.some((x) => x.family === fam) ? fam : /var\(--font-mincho\)/.test(c) ? 'BIZ UDPMincho' : '');
+  const bg = [...c.matchAll(/--bg\s*:\s*(#[0-9a-fA-F]{6})\b/g)].pop();
+  return { base: b ? normHex(b[1]) : null, font, fontKind: fontKindOf(font),
+    background: bg && normHex(bg[1]) !== '#FFFFFF' ? 'off-white' : 'white',
+    look: cleanLook(config?.look || Object.fromEntries(Object.entries(lookIn(tokensCss)).map(([k, v]) => [k, v.id]))) };
+}
+
+// Keep the starting theme's CSS intact; regenerate its palette only after changing the base.
+export function builderTokens(input) {
+  const t = deriveTheme(input.base, input.overrides);
+  const source = input.source;
+  if (source && normHex(input.base) === source.base) {
+    const css = source.css.replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const m of css.matchAll(/--([\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\b/g)) t[m[1]] = normHex(m[2]);
+    for (const m of css.matchAll(/--([\w-]+)\s*:\s*var\(--([\w-]+)\)/g)) if (t[m[2]]) t[m[1]] = t[m[2]];
+    for (const [k, v] of Object.entries(input.overrides || {})) if (EDITABLE.includes(k) && isHex(v)) t[k] = normHex(v);
+  }
+  if (source && input.background === source.background) {
+    const bg = [...source.css.matchAll(/--bg\s*:\s*(#[0-9a-fA-F]{6})\b/g)].pop();
+    if (bg) t.bg = normHex(bg[1]);
+  } else {
+    const bg = BACKGROUNDS[input.background] || BACKGROUNDS.white;
+    t.bg = bg === 'var(--base-wash)' ? t['base-wash'] : bg;
+  }
+  return t;
 }
