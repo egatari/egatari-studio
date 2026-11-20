@@ -73,7 +73,7 @@ const ALLOW = [
   ['server/dev.mjs', 'fs.createReadStream(file).pipe(res);', '外枠の部品（server/ の中の決まったファイル）を流す（serveFile。原稿のフォルダのファイルではない）'],
   ['server/dev.mjs', 'fs.createReadStream(file, { start: 0, end: st.size - 1 })', '原稿のフォルダのファイルを stat の大きさまで流す（中身をメモリに貯めない。通常のファイルだけ）'],
   ['server/shell.js', 'r.json()', '開発サーバー自身の API の答え（同じ origin・合言葉つき）'],
-  ['app/main.js', 'await r.arrayBuffer()', 'アプリに同梱した字の分割ファイルを、アプリ自身の配信元から fetch する'],
+  ['app/lazy-fetch.js', 'await r.arrayBuffer()', 'アプリに同梱した字の分割ファイルを、アプリ自身の配信元から fetch する（取り直しつき。#68）'],
   ['tools/lint-terms.mjs', "fs.readFileSync(path.join(root, 'docs/terms.json'), 'utf8')", '画面の言葉の検査：リポジトリの用語集（docs/terms.json）を読む（開発者の道具）'],
   ['tools/lint-terms.mjs', "fs.readFileSync(extraAllow, 'utf8')", '画面の言葉の検査：--allow で渡したほかのリポジトリの許しの JSON を読む（開発者の道具。サイトの CI が渡す）'],
   ['tools/lint-terms.mjs', "fs.readFileSync(allowFile, 'utf8')", '画面の言葉の検査：リポジトリの docs/terms-allow.json を読む（開発者の道具）'],

@@ -1,0 +1,3 @@
+### Fixed
+
+- Editor app: a font file the build fetches from the site (a subset of a theme's font) is fetched again up to twice (after 0.5 s and 1.5 s) when the request fails, the server answers 5xx, 408 or 429, or the body breaks off; one passing network or CDN failure among the files fetched at once no longer stops the build, and at most four are fetched at once (the 国語 theme, whose body text is in mincho, fetches about 144 files, twice as many as 藍; handoff #68). If it still fails, the message names the font file and says to check the connection and try again, instead of “font not found: /repo/fonts/…”. `tools/test-lazy-fetch.mjs`

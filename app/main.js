@@ -65,6 +65,7 @@ import { readThemeZip, themeZipErrorKind, pickZipFile, THEME_ZIP_LIMITS } from '
 import { createThemeWorkshop } from './theme-workshop.js';
 import { mergedThemeWorkspace, themeNamesOf, themeLabelOf, loadMyThemes, putMyTheme, deleteMyTheme } from './my-themes.js';
 import { createArticleLoader } from './article-loader.js';
+import { fetchLazy, limiter, LAZY_PARALLEL } from './lazy-fetch.js';
 import { createBook } from './book.js';
 // プレビューの中の仲立ち：品質チェックの体裁の検査（kit/core/layout-scan.mjs。コマンド版と同じ関数）を渡す形に包む
 const SHIM = withLayoutScan(SHIM_SRC);
@@ -76,11 +77,11 @@ const SUPPORTED = typeof window.showDirectoryPicker === 'function';
 const wait = createWaitOverlay($('wait'));
 
 // ---------------------------------------------------------------- 状態
+// 字の分割ファイル：1 ファイル版は同梱、配信版は取りに行く（一時の失敗は取り直す。app/lazy-fetch.js、handoff #68）
+const lazyLimit = limiter(LAZY_PARALLEL);
 const loadLazy = async (p) => {
   if (window.__FONTPACK && window.__FONTPACK[p]) return window.__FONTPACK[p];
-  const r = await fetch(new URL(p.replace(/^\/repo\//, ''), document.baseURI));
-  if (!r.ok) throw new Error('font not found: ' + p);
-  return bytesToBase64(new Uint8Array(await r.arrayBuffer()));
+  return bytesToBase64(await lazyLimit(() => fetchLazy(p, { fetch: (u) => fetch(u), base: document.baseURI, failed: T.fontFetchFailed })));
 };
 // 本（format spec §9C。app/book.js）：本のある教材を開いたときにだけ、本の道具を読み込む（app/article-loader.js）
 const articleLoader = createArticleLoader(RES);
