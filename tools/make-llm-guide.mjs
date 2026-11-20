@@ -275,9 +275,9 @@ const PACK_EDITS = {
 // 無料のプランだけで外す行（d5 2026-11-15）：中核の 4 つの説明のうち、無料のプランの大きさ（貼り付けの長さ）に見合わない詳しい行。
 // データの形の欄（err?・sig? など）は残し、有料のプランは全部を書く。find は節の 1 行そのまま（なければ失敗）
 const FREE_EDITS = {
-  // m-bars 2.1.0（部品庫 2.9.0）：誤差棒と有意差の括弧の注記。統計の詳しさなので無料のプランでは書かない
+  // m-bars 2.1.0（部品庫 2.9.0）：誤差棒と有意差の括弧の注記。統計の詳しさなので無料のプランでは書かない。2.1.1（部品庫 2.16.0 の README）でも同じ行のままと確かめた
   'm-bars': {
-    version: '2.1.0',   // この版のための行。古い版（行がない）には掛けない。新しい版では警告して見直す
+    version: '2.1.1',   // この版のための行。古い版（行がない）には掛けない。新しい版では警告して見直す
     en: ['- err: ± number or `[low, high]`; per series for `values`',
       '- sig: `[{"from": 0, "to": 2, "label": "**"}]` brackets groups 0 and 2 (`group`: series in a group); vertical, unstacked only'],
     ja: ['- `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか脚注に書く',
@@ -303,6 +303,8 @@ function freeEntryOf(name, src, entry, version, warnings) {
 // README.en.md を使う部品の英語の節の言い換え。PACK_EDITS は README.md の日本語に向けたものなので、同じ直しを英語の字に向けて書く
 // （決まりは同じ：find が英語の節になければ失敗）。m-bars の言い換えは大きさだけのもので、英語の字はもう短いので要らない
 const EN_EDITS = {
+  // m-bars：README.en.md の積み上げ棒は 1 行の短い書き方（パーツ集 2.16.0 で確かめた）。言い換えは要らないことを書いておく（警告を出さない）
+  'm-bars': [],
   'm-predict': [
     { find: '| live poll id |', to: '| poll id (no live counts yet) |' },
     { find: '- `poll="p1"`: live poll totals', to: '- `poll="p1"`: reserved; no live reveals yet (`ctx.live.poll(id)` is null), so viewer/author counts are used' },
