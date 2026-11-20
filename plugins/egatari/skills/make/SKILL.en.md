@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: b70f88c1**
+**Instruction version: 1dc687bc**
 **Skill version: 0.6.16**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -80,7 +80,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `b70f88c1`
+Pack version: `1dc687bc`
 
 You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -136,7 +136,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 
 ### 2.3 Steps (reveal order = speaking order)
 
-- **R-steps** Step 0 is the slide as it first appears: context only (heading, sub-heading, one framing sentence). An element with `data-step="k"` (k = 1, 2, …) appears at step k; material (list items, equations, table rows, figure parts) appears in the order you talk about it. An equation and the sentence that introduces it share one step (wrap both in `<div data-step="k">`). About 5 steps per slide at most.
+- **R-steps** Step 0 is the slide as it first appears: context only (heading, sub-heading, one framing sentence). An element with `data-step="k"` (k = 1, 2, …) appears at step k; material (list items, equations, table rows, figure parts) appears in the order you talk about it. An equation and the sentence that introduces it share one step (wrap both in `<div data-step="k">`). About 5 steps per slide at most. Choose how a table appears by how it compares. When the script takes items one at a time, show rows in the order spoken. For a matrix (things compared down the side, criteria across) or a table crossing two axes, show the whole table and then mark the column or cell under discussion, or fill it one axis value at a time. In a research-positioning table, write "This work" in your own cell (do not mark it by colour or bold alone).
 - The conclusion line automatically becomes the **last step**, `concl`; never put `data-step` on it.
 - If a slide has **no** `data-step` anywhere, its top-level list items (`.body > ul > li`, `.body > ol > li`) are numbered 1, 2, … automatically. As soon as any element has `data-step`, nothing is automatic: give every revealed element its `data-step`.
 - A part adds its own steps (§3), starting at its `data-from` (default 1).

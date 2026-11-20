@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # ml のパーツ
 
-指示のバージョン：b70f88c1
+指示のバージョン：1dc687bc
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

@@ -47,11 +47,12 @@ const SINGLE_SET_EXPECTED = {
   // v0.6.13：言いたいことの表がこの指示にパーツのある行だけになり（d5 11/15）、短くなった。math は m-compare・m-cards・m-pie、kokugo は m-cycle、
   // science は m-tree を外さずに収まる（部品庫 2.9.0 の m-bars の誤差棒・有意差の注記は無料のプランでは書かない）
   // 注意の枠の 1 行（R-caution）を足しても、この並びのまま（v0.6.13 の統合で計り直した）
-  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi'],
-    maps: ['m-fishbone'], kokugo: ['m-fishbone', 'm-quad'],
-    // 部品庫 2.4.0 で science に m-particles が入り、英語は貼り付けの長さで越えるようになった
-    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'],
-    // v0.6.15：束 algo（m-network）と ml（m-nnet・m-classify2d・m-contour）は、中核の 4 つを短くすれば何も外さずに収まる（部品庫 2.13.0）
+  // v0.6.18：R-steps に表の見せ方の文（#65）を足して計り直した。data・business・tools は m-fishbone、maps は m-quad、math は m-compare・m-cards、
+  // kokugo は m-cycle、science は m-tree を 1 つ多く外す
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], data: ['m-fishbone'],
+    math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards'],
+    maps: ['m-fishbone', 'm-quad'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle'], business: ['m-fishbone'], tools: ['m-fishbone'],
+    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'],
     algo: [], ml: [] },
   ja: { algo: [], ml: [] },
 };
