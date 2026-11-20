@@ -218,8 +218,10 @@ try {
   await p3.waitForSelector('#paste-step-send.current');
   const c3 = await copy(p3);
   ok(c3.includes('## Structure of the sample to follow') && c3.includes(`1. ${PS.structure[0].heading} — ${PS.structure[0].point}`) && (await labels(p3)).purposes === purposeTiles().map((x) => x.id).filter((id) => PS.purposes.includes(id)).join()
-    && (await labels(p3)).subjects === PS.subjects.join() && PS.parts.every((t) => c3.includes('### `<' + t + '>`')),
-    'F3: English instructions carry the Japanese sample’s headings as they are, under an English lead; the sample’s labels are chosen and its parts described');
+    && (await labels(p3)).subjects === PS.subjects.join()
+    // サンプルのパーツは順位の先頭。上限は守るので、入りきらないものは伝えたいことの表に名前だけ載る（#43 ④。v0.6.18 で無料の英語は 5 つのうち 4 つが説明付き）
+    && PS.parts.filter((t) => c3.includes('### `<' + t + '>`')).length >= 4 && PS.parts.every((t) => c3.includes('`' + t + '`')),
+    'F3: English instructions carry the Japanese sample’s headings as they are, under an English lead; the sample’s labels are chosen, its parts come first (described while they fit, the rest named)');
   await shot(p3, 'from-sample-en-send.png');
   await p3.context().close();
   // 知らない名前：ふつうの新規作成（① から。サンプルの知らせ・札はない）を開き、上に 1 行で知らせる（en と ja）
