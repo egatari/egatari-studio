@@ -74,7 +74,7 @@ const LOCAL = {
   'm-ctable': { icon: 'compare', desc: { ja: '分散分析表・分割表を計算のステップごとに埋める', en: 'ANOVA and contingency tables, filled in step by step' } },
   'm-vector': { icon: 'matrix', desc: { ja: '平面のベクトルと 2 × 2 の行列の変換を 1 ステップずつ', en: 'Plane vectors and 2 × 2 matrix maps, one step at a time' } },
   'm-matrix': { icon: 'compare', desc: { ja: '研究の位置づけを、2 本の軸の表か研究 × 要素の表でステップごとに埋める', en: 'Positions studies in a two-axis table or a studies × elements table, filled step by step' } },
-  'm-scroll': { icon: 'timeline', desc: { ja: '縦に長い図を枠に入れ、ステップごとに決めた所まで送る', en: 'A tall figure in a fixed frame, scrolled to set places step by step' } },
+  'm-scroll': { icon: 'timeline', desc: { ja: '縦に長い図を枠に入れ、ステップごとに決めた所までスクロールする', en: 'A tall figure in a fixed frame, scrolled to set places step by step' } },
 };
 // 名前は manifest の display を先に。display だけあって表にない部品も名前を出す（絵は汎用）
 export const PART_LABELS = Object.freeze(Object.fromEntries([...Object.keys(LOCAL), ...Object.keys(MANIFEST_NAMES).filter((t) => !LOCAL[t])]

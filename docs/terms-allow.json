@@ -705,6 +705,12 @@
       "pattern": "「教材を作って」",
       "term": "egatari-file",
       "reason": "A trigger phrase people type to call the skill; kept on purpose (#36 inventory §4.4)."
+    },
+    {
+      "file": "app/part-thumbs.js",
+      "pattern": "系列予測",
+      "term": "subjects",
+      "reason": "The title of m-matrix's demo in the parts library (2.17.0), copied into the part picture's caption: 系列予測 is time-series forecasting, not the content-area sense."
     }
   ]
 }
