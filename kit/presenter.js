@@ -164,17 +164,17 @@ DECK.presenterView = function(){
   }
   // しおり（format spec §8.0、Player P4.3）：本体の帯と同じボタン。名前のボタンは本体の位置の知らせ（bookmarks）から作り、
   // しおりで来ている間（bm）だけ「元の位置に戻る」
-  var bmSig = null;
+  var bmSig = null, bmButtons = [];
   function syncBookmarks(){
     var g = document.getElementById("pv-bm"), BL = pos.bookmarks || [], sig = JSON.stringify(BL);
     if (sig !== bmSig){
-      bmSig = sig; g.textContent = "";
+      bmSig = sig; g.textContent = ""; bmButtons = [];
       BL.forEach(function(x, n){
         var b = document.createElement("button"); b.type = "button"; b.setAttribute("data-bm", n);
         b.textContent = x.name; b.title = L.bm + x.name; b.setAttribute("aria-label", L.bm + x.name);
         b.addEventListener("mousedown", function(e){ e.preventDefault(); });
         b.onclick = function(e){ send("bookmark", {n: n}); if (e.detail !== 0) b.blur(); };
-        g.appendChild(b);
+        g.appendChild(b); bmButtons.push(b);
       });
       var r = document.createElement("button"); r.type = "button"; r.id = "pv-bmback"; r.hidden = true;
       r.textContent = "↩ " + L.bmBack; r.title = L.bmBack + (DECK.ja === false ? " (Backspace)" : "（Backspace）"); r.setAttribute("aria-label", L.bmBack);
@@ -184,7 +184,7 @@ DECK.presenterView = function(){
     }
     g.hidden = !BL.length;
     var rb = document.getElementById("pv-bmback"); if (rb) rb.hidden = !pos.bm;
-    [].forEach.call(g.querySelectorAll("[data-bm]"), function(b){
+    bmButtons.forEach(function(b){
       var x = BL[+b.getAttribute("data-bm")];
       if (pos.bm && x && x.i === pos.i) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
     });
