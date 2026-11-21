@@ -1,11 +1,13 @@
 // 品質チェックの「スライドの画像と確認の依頼をコピー」（backlog #227、handoff Issue #44）
-//   node tools/test-app-copyshot.mjs [作業用のフォルダ]
+//   node tools/test-app-copyshot.mjs [作業用のフォルダ] [--shots <フォルダ>]
 // examples/population の写しを 1 ファイルにして編集アプリで開き、3 枚目（地図と結論の行）で品質チェックの板を開いて押す：
 //   C1（ja、クリップボードの許可あり）：1 回の書き込みに image/png（1280×720・中身のある絵）と text/plain（依頼の文）が入る。知らせは「コピーしました…」。
 //      プレビューの位置は押す前のまま（最後のステップにして写しても、見ている位置は動かない）
 //   C2（en、ClipboardItem のないブラウザ）：窓に代わる。「Save image」で PNG を保存、「Copy request」で文だけをコピー
 //   C3（ja、書き込みが断られる＝許可がない）：同じ窓（日本語）
 // 画像は作業用のフォルダの copyshot-*.png に残す（目で見る）
+// --shots <フォルダ> があれば（手引きの画像。日本語・幅 1280）：examples/minimal の写しの 1 か所の {θ|シータ} を θ にして（読みのない語）開き、
+//   品質チェックの板の R-reading の警告「「θ」に読みがない」を撮る（check-reading-1280.png）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,7 +19,11 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-copyshot-')));
+const argv = process.argv.slice(2);
+const si = argv.indexOf('--shots');
+const SHOTS = si >= 0 ? path.resolve(argv.splice(si, 2)[1]) : null;
+if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
+const work = path.resolve(argv[0] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-copyshot-')));
 fs.mkdirSync(work, { recursive: true });
 const DIST = path.join(work, 'dist');
 let fails = 0;
@@ -167,6 +173,41 @@ try {
     await page.waitForSelector('#dlg[open] #copyshot-lead', { timeout: scaled(30000) });
     ok((await page.textContent('#dlg-title')) === T.failTitle && (await page.textContent('#copyshot-save')) === T.save, `ja: a refused write → the dialog “${T.failTitle}”`);
     ok(/^画像：スライド 3「.+」（id：s-[a-z0-9]+）の最後のステップ（ステップ \d+）$/m.test(await page.inputValue('#copyshot-text')), 'ja: the dialog shows the request text');
+    await ctx.close();
+  }
+
+  // ---------------------------------------------------------------- 手引きの画像（--shots のときだけ）：読みのない語の警告
+  if (SHOTS) {
+    const rsrc = path.join(work, 'reading');
+    fs.rmSync(rsrc, { recursive: true, force: true });
+    fs.mkdirSync(rsrc, { recursive: true });
+    fs.copyFileSync(path.join(ROOT, 'examples', 'minimal', 'deck.html'), path.join(rsrc, 'deck.html'));
+    const narr = fs.readFileSync(path.join(ROOT, 'examples', 'minimal', 'narration.md'), 'utf8');
+    const gap = narr.replace('1 歩ごとに {θ|シータ} が', '1 歩ごとに θ が');
+    if (gap === narr) throw new Error('shots: the reading to drop was not found in examples/minimal/narration.md');
+    fs.writeFileSync(path.join(rsrc, 'narration.md'), gap);
+    const rpacked = path.join(work, 'reading' + FORMAT.FILE_EXT);
+    execFileSync(process.execPath, [path.join(ROOT, 'tools', 'portable.mjs'), 'pack', rsrc, '-o', rpacked], { stdio: 'pipe' });
+    const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errs.push(`shots pageerror: ${e.message}`));
+    await page.goto(`${HOST}?lang=ja`);
+    await page.waitForFunction(() => !!window.__APP_TEST);
+    const n0 = (await page.evaluate(() => window.__APP_TEST.state())).loads;
+    await page.evaluate(([data, name]) => {
+      const bin = atob(data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      return window.__APP_TEST.openFile({ bytes: u, name });
+    }, [fs.readFileSync(rpacked).toString('base64'), 'lesson' + FORMAT.FILE_EXT]);
+    await waitLoads(page, n0);
+    // 4 枚目（二次関数で確かめる）のステップ 2：読みを外した行
+    await page.evaluate(() => document.getElementById('preview').contentWindow.postMessage({ type: 'app-go', i: 3, k: 2 }, '*'));
+    await page.waitForFunction(() => { const p = window.__APP_TEST.state().pos; return p && p.i === 3 && p.k === 2; }, null, { timeout: scaled(20000) });
+    await page.click('#b-check');
+    await page.waitForFunction(() => [...document.querySelectorAll('#panel-body .res')].some((x) => x.textContent.includes('に読みがない')), null, { timeout: scaled(60000) });
+    await page.evaluate(() => [...document.querySelectorAll('#panel-body .res')].find((x) => x.textContent.includes('に読みがない')).scrollIntoView({ block: 'center' }));
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: path.join(SHOTS, 'check-reading-1280.png') });
     await ctx.close();
   }
 } catch (e) {
