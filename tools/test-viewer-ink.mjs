@@ -223,8 +223,12 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   // 描く前に手書きが入っていることを待ち、描いた後は線が記録されるまで待つ（遅い macOS の CI では、すぐ見ると線がまだなく、
   // 下の「2 枚のスライド」も 1 枚になって落ちた）
   await until(() => p.evaluate(() => document.getElementById('b-ink').getAttribute('aria-pressed') === 'true'));
-  await draw(p, [[200, 1000], [400, 1000]]);
-  await until(async () => (await strokes(p)) === 1);
+  // 別のファイルを開いた直後は、手書きの面がまだ受け付けず、線が残らないことがある（macOS の CI で 3 回中 2 回。handoff #72）。
+  // 線が記録されるまで、3 回まで描き直す
+  for (let k = 0; k < 3 && (await strokes(p)) === 0; k++) {
+    await draw(p, [[200, 1000], [400, 1000]]);
+    if (await until(async () => (await strokes(p)) === 1, 3000)) break;
+  }
   await until(async () => near(await inkAt(p, 300, 1000, [16, 20, 24]), [0xff, 0x7b, 0x88], 40));
   ok(near(await inkAt(p, 300, 1000, [16, 20, 24]), [0xff, 0x7b, 0x88], 40), 'red on a dark slide is the light red ' + JSON.stringify(await inkAt(p, 300, 1000, [16, 20, 24])));
   await shot(p, 'ink-dark');
