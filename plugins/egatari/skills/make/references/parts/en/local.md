@@ -11,4 +11,4 @@ Demo: `demo.html` (a for-loop sum, counting words in a dict, bubble sort with by
 
 `trace.py`, `trace-demo` are in the tools folder of the parts library repository (egatari/components). Get them from there.
 
-[README](https://github.com/egatari/components/blob/v2.17.0/components/trace/README.en.md)
+[README](https://github.com/egatari/components/blob/v2.18.0/components/trace/README.en.md)

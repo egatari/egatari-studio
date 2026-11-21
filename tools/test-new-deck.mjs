@@ -16,7 +16,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { CATEGORIES, SET_LABELS, choiceRequest as choiceRequestOf, withChoice, choiceOf, AI_PLANS, DEFAULT_PLAN, planOf, partsList, partsOfSet, initialParts, SUBJECT_SETS, capKb, trimCandidates, fitPlan, paidOnly,
-  purposeTiles, subjectChoices, SUBJECT_WORDS, guessSubjects, SCHOOL_AUDIENCES, asksSchool, audienceOf, rankParts, usageOf } from '../kit/core/new-deck.mjs';
+  purposeTiles, subjectChoices, guessSubjects, SCHOOL_AUDIENCES, asksSchool, audienceOf, rankParts, usageOf } from '../kit/core/new-deck.mjs';
 import { newDeckPack, packText } from '../kit/core/new-deck-pack.mjs';
 import * as NEW_DECK from '../kit/core/new-deck.mjs';
 import { NEW_LESSON_CATALOGUE, withNewLessonCatalogue } from '../kit/core/config-file.mjs';
@@ -146,8 +146,8 @@ ok('step 4 labels come from the manifest (PACK.tiers): tiles are the purposes wi
   assert.ok(!subjectChoices().some((x) => x.id === 'medicine' || x.id === 'disaster'), 'reserved subjects are not offered');
   for (const p of TIERS.purposes) { const mp = m.purposes.find((x) => x.id === p.id); assert.equal(p.reserved || false, !!mp.reserved, p.id); assert.equal(p.tile, typeof mp.tile === 'string' ? mp.tile : undefined, p.id); }
   for (const x of TIERS.subjects) assert.equal(x.reserved || false, !!m.subjects.find((y) => y.id === x.id).reserved, x.id);
-  // 題材の言葉の表のキーは manifest の題材（reserved でない）だけ
-  for (const L of ['ja', 'en']) for (const id of Object.keys(SUBJECT_WORDS[L])) assert.ok(subjectChoices().some((x) => x.id === id), `${L} ${id}: a subject of the manifest`);
+  // 題材を推す語は manifest の subjects[].keywords のまま（Studio に表を持たない。handoff #69）
+  for (const x of TIERS.subjects) assert.deepEqual(x.keywords, m.subjects.find((y) => y.id === x.id).keywords, x.id + ': keywords as in the manifest');
   // サンプルで使う数（usage）は examples/*/sample.json の parts から（gen が写す）
   assert.deepEqual(TIERS.usage, sampleUsage());
   assert.ok(TIERS.usage['m-bars'] > TIERS.usage['m-quad'] && !TIERS.usage['m-hist']);
@@ -826,10 +826,9 @@ ok('new lessons select parts library 2: npm run new writes egatari.json with "co
     assert.equal(withNewLessonCatalogue('{"docId": "x",  "studio": {"a": 1}}'), '{"docId": "x",  "studio": {"a": 1}, "componentsCatalogue": "2"}');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
-ok('the id-keyed tables (subject words, audience from step 1) only name ids of the vendored manifest (standards 11/20: allowed on that condition)', () => {
+ok('the id-keyed table (audience from step 1) only names ids of the vendored manifest (standards 11/20: allowed on that condition; subject words come from the manifest since parts library 2.18.0)', () => {
   const m = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'components-2', `manifest-${TIERS.catalogue}.json`), 'utf8'));
   const subjects = new Set(m.subjects.filter((x) => !x.reserved).map((x) => x.id)), audiences = new Set(m.audiences.map((x) => x.id));
-  for (const L of ['ja', 'en']) for (const id of Object.keys(NEW_DECK.SUBJECT_WORDS[L])) assert.ok(subjects.has(id), `SUBJECT_WORDS.${L}.${id} is a subject of manifest-${TIERS.catalogue}.json`);
   for (const c of NEW_DECK.CATEGORIES) for (const s of [{ id: null }, ...(c.subs || [])]) {
     const a = NEW_DECK.audienceOf(c.id, s.id, null);
     assert.ok(a === null || audiences.has(a), `audienceOf(${c.id}, ${s.id}) = ${a} is an audience of the manifest`);

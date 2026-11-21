@@ -3911,13 +3911,16 @@
     "matrix": {
       "default": "2.0.0",
       "versions": [
-        "2.0.0"
+        "2.0.0",
+        "2.1.0"
       ],
       "sha256": {
-        "2.0.0": "5a053ae6df1f13777a5543aa46c5f9929a6078fe93d2f37e28fd1a33a3bee477"
+        "2.0.0": "5a053ae6df1f13777a5543aa46c5f9929a6078fe93d2f37e28fd1a33a3bee477",
+        "2.1.0": "7ec50f5c587c48eb51822d8abdbe0276ee1c29a7826edc2a71af7c7e9aa5b511"
       },
       "content": {
-        "2.0.0": "5fe30fd7a84b937a1325d8af2b8e437211efae82ab46d5a433bc4ef07bcaef11"
+        "2.0.0": "5fe30fd7a84b937a1325d8af2b8e437211efae82ab46d5a433bc4ef07bcaef11",
+        "2.1.0": "73edc74a2dc4a63b717106c1c1572967b6d306270574e9635d032de16c8ada72"
       },
       "catalogue": "2"
     },

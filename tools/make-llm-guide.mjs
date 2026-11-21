@@ -119,7 +119,8 @@ export function tiersFrom(cat = catalogue()) {
   const purposes = (m.purposes || []).map((p) => ({ id: p.id, label: p.label || { ja: p.ja, en: p.en }, ...(p.tile && p.tile.into ? { into: p.tile.into } : {}),
     ...(p.tile === 'own' || p.tile === 'none' ? { tile: p.tile } : {}), ...(p.reserved ? { reserved: true } : {}) }));
   // 題材・読み手の一覧も manifest のまま（Studio に一覧を書かない。handoff #43、規格化 11/20）。古いカタログ（欄がない）では書かない。reserved（まだ使うパーツがない）も写す
-  const list = (xs) => xs.map((x) => ({ id: x.id, label: x.label || { ja: x.ja, en: x.en }, ...(x.reserved ? { reserved: true } : {}) }));
+  // keywords：題材を ② の言葉から推す語（パーツ集 2.18.0 から。{ja, en}、1 字の語は {w, not}。handoff #69）
+  const list = (xs) => xs.map((x) => ({ id: x.id, label: x.label || { ja: x.ja, en: x.en }, ...(x.reserved ? { reserved: true } : {}), ...(x.keywords ? { keywords: x.keywords } : {}) }));
   return { catalogue: cat.version, parts, purposes, ...(m.subjects ? { subjects: list(m.subjects) } : {}), ...(m.audiences ? { audiences: list(m.audiences) } : {}) };
 }
 

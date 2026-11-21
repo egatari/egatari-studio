@@ -902,9 +902,9 @@ export const PACK = {
   "m-collect",
   "m-kakijun"
  ],
- "partsSrc": "https://github.com/egatari/components/blob/v2.17.0/components/",
+ "partsSrc": "https://github.com/egatari/components/blob/v2.18.0/components/",
  "en": {
-  "common": "# Instructions for the AI\n\nPack version: `1100b582`\n\nYou will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.\n\n**Before you start (the most common failures):**\n\n- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep it short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).\n- **Sizes on the 1280×720 slide** (the quality checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and parts, is at least 24 px.**\n- **Charts and figures:** parts draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the part, not the text. A part of 380 px leaves room for one short line; with two lines, use 330 px.\n- **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox=\"0 0 560 320\" width=\"560\" height=\"320\">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a part when one fits.\n\n## 1. Output format\n\n- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. No files, canvas or attachments: write both blocks in your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the lesson would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).\n- **R-outline** When the request asks for an **outline only** (a long file made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.\n- **R-noids** Do **not** write slide ids. Write `<section class=\"slide\">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given slides that already have ids (a fix request), keep every existing `id=\"…\"` and `{#…}` exactly as it is.\n\n## 2. deck.html\n\n### 2.1 Skeleton\n\n```html\n<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Title</title>\n</head>\n<body>\n<div id=\"stage\">\n  <section class=\"slide cover noconcl static\"> … </section>\n  <section class=\"slide\"> … </section>\n</div>\n</body>\n</html>\n```\n\n- `lang`: `en`, `ja`, … (the language of the slides and script). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.\n- No `<script>` except part data (§2.6), no `<link>`. A `<style>` block is allowed only for layout (sizes, gaps), never colors.\n\n### 2.2 Slides\n\n- Normal slide: `<h2>` heading, `<div class=\"body\">…</div>`, then `<div class=\"concl\"><span>…</span></div>` (the conclusion line: one short sentence).\n- Optional kicker (a short line above the heading): one `<p class=\"kicker\">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).\n- Cover: `<section class=\"slide cover noconcl static\">` with optional `<div class=\"venue\">…</div>`, `<h1>title</h1>`, optional `<div class=\"au\">…</div>`.\n- Chapter divider: `<section class=\"slide sec noconcl static\"><h1>chapter title</h1></section>`.\n- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).\n- Inside `.body`: `<p class=\"sub\">` sub-heading, `<div class=\"big\">` main equation, `<p class=\"note\">` note, `<div class=\"thm\">` theorem box, `<div class=\"cols\">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.\n- **R-caution** In `.body`: `<div class=\"caution\">…</div>` for caution; add `warn` for warning. Labels are automatic.\n- Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).\n- **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the script section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).\n- **R-colors** Colors only through the theme: the classes above and the math macros `\\hlE` `\\hlT` `\\hlM`; no hex, `rgb()`, named colors, `\\color` or `\\textcolor`. In a part or inline SVG: **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style=\"stroke:var(--emph)\"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)\n\n### 2.3 Steps (reveal order = speaking order)\n\n- **R-steps** Step 0 is the slide as it first appears: context only (heading, sub-heading, one framing sentence). An element with `data-step=\"k\"` (k = 1, 2, …) appears at step k; material (list items, equations, table rows, figure parts) appears in the order you talk about it. An equation and the sentence that introduces it share one step (wrap both in `<div data-step=\"k\">`). About 5 steps per slide at most. Choose how a table appears by how it compares. When the script takes items one at a time, show rows in the order spoken. For a matrix (things compared down the side, criteria across) or a table crossing two axes, show the whole table and then mark the column or cell under discussion, or fill it one axis value at a time. In a research-positioning table, write \"This work\" in your own cell (do not mark it by colour or bold alone).\n- The conclusion line automatically becomes the **last step**, `concl`; never put `data-step` on it.\n- If a slide has **no** `data-step` anywhere, its top-level list items (`.body > ul > li`, `.body > ol > li`) are numbered 1, 2, … automatically. As soon as any element has `data-step`, nothing is automatic: give every revealed element its `data-step`.\n- A part adds its own steps (§3), starting at its `data-from` (default 1).\n- So the steps of a slide are `0 … max` plus `concl` if it has a conclusion line. A `static` slide has only step 0.\n\n### 2.4 Math (KaTeX, rendered at build time)\n\n- **R-math** Inline `\\( … \\)`, display `\\[ … \\]`. Write `<` as `\\lt` and `>` as `\\gt` inside math. Allowed macros besides standard KaTeX: `\\hlE{…}` (emph) `\\hlT{…}` (term) `\\hlM{…}` (muted), `\\htmlId{ID}{…}`, `\\htmlData{mark=ID}{…}`, `\\htmlClass{…}{…}`, `\\morph{ID}{…}`. No `\\newcommand`, no `\\color`. To label a term, use `\\underbrace{…}_{\\text{…}}` or `\\overbrace{…}^{…}`. Never `$$`. Define each symbol where it is first used (`\\(\\mu\\)`: the mean).\n\n### 2.5 Attention marks and morphs\n\n- **R-marks** The script’s `{mark:ID}` (§4) marks a target on the **same slide**. Targets: an element in the slide with `id=\"ID\"` or `data-mark=\"ID\"`. For part of an equation, KaTeX's `\\htmlId{ID}{…}` / `\\htmlData{mark=ID}{…}` (the build allows only these two and `\\htmlClass`). If the same ID is used on several slides, use `data-mark` (ids must be unique in the document)\n- Morph (optional): `<section class=\"slide\" data-morph>` slides elements from the previous slide into place; pair elements with the same `data-id=\"…\"` on both slides, or equation parts with `\\morph{ID}{…}` on both. Only elements visible at step 0 move.\n\n### 2.6 Parts\n\n- **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style=\"height:380px\"`) and an `aria-label`. Data goes in **one** child `<script type=\"application/json\">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Formulas are arithmetic only (`Math.exp(x)`, `x**2`), never run as code. Use parts only where motion explains something; most slides need none.\n\n### 2.7 Choosing a representation\n\n- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table names every part, but use only those described here (§3 and the included part sets). If a part that is not included would fit better, say so in a one-line note.\n\n{{PURPOSES}}\n\n- **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).\n\n### 2.8 Fitting the slide (1280×720; the quality checker reports errors)\n\n- **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.\n- **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.\n- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a part of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes.\n- **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole file (`、。` or `，．`). English slides: short phrases, sentence case.\n\n## 3. Part catalog\n\nStandard parts fit any file; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values=\"[0.1,0.5]\"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.\n\n{{CATALOG}}\n\n## 4. narration.md\n\n```markdown\n# Script: <title>\n\n## The decay law\n[0] Here is the decay law. We follow how many atoms are left.\n[1] The number left is the starting number times a shrinking exponential.\n[2] {mark:n0|circle}{N₀|N naught} is the number at the start, at time zero.\n[concl] The half-life depends only on the decay constant.\n```\n\n- One section per slide, **in slide order, for every slide (cover included)**: `## <slide heading>` (R-headings), no `{#id}` (R-noids).\n- **R-narr-steps** Step labels `[0]`, `[1]`, … and `[concl]`. **Every step of every slide has script lines** (step 0 to max, and `[concl]` if the slide has a conclusion line), and there are **no labels for steps that do not exist** (a `static` cover has only `[0]`; a slide without a conclusion line has no `[concl]`; never `[01]`). Within a step, talk only about what appears at that step.\n- **R-dialogue** **One narrator by default**: write no speaker names. Write a dialogue only when asked (if asked for three or more speakers, keep two roles and say so first): lines start with `Expert:` or `Novice:` (continuation lines indented; a line without a speaker is Expert), shaped as a cognitive apprenticeship:\n  - Novice is never a mere backchannel: Novice voices the question a learner is likely to have, or paraphrases (“So …, is that right?”)\n  - Expert answers and adds one example or analogy, or confirms (or corrects) the paraphrase and takes one step further\n  - Only at a comprehension fork (where learners tend to misunderstand, or a “why” remains): at most one exchange per slide, 2–3 turns. Elsewhere Expert alone\n  - Never a turn that is only “I see”, or that repeats the previous turn. Example: `Novice: So a larger rate always gets there faster?` `Expert: Not always. Too large, and each step jumps across the valley, like striding downhill onto the opposite slope.`\n- `{note:…}`: presenter directions.\n- `{cue}`: a sync point inside a step, one per entry of the part’s `cues(k)` (only where a part’s README asks for it; otherwise omit).\n- `{mark:ID}`, `{mark:ID|effect}`, `{mark:ID|effect|hold=seconds}`, `{mark:clear}`: placed **right before** the words about the target; at most 1–2 per step; still say the thing in words. Effects: `underline` (default; a hand-drawn underline from left to right), `circle` (a hand-drawn circle), `box` (a rounded frame), `spot` (dims everything except the area around the target with the background color), `laser` (a dot of light slides to below the target and stays briefly)\n- **R-reading** `{display|reading}` gives the reading of **one symbol or one term**: `{θ|theta}`, `{N₀|N naught}`, `{x̄|x bar}`, `{論語|ろんご}`. One symbol may carry a star, a prime, a subscript or superscript, or a hat/bar/tilde (`{Q*|Q star}`, `{x′|x prime}`, `{θ̂|theta hat}`). Write the display part in plain Unicode, not LaTeX, and never as an expression or several symbols (`{1-η|…}`, `{a*b|…}` and `{θとη|…}` are wrong: give each symbol its own reading and say the relation in words). Give a reading only to a term misread without one, and then everywhere it appears.\n- **R-formula** **Never read an equation aloud**: no LaTeX, no `\\`, `^`, `_`, and no strings such as `a + b = c` in the narration. Say what the equation means (“the number left is the starting number times a shrinking exponential”).\n- Japanese script is polite spoken Japanese (です・ます); English script is plain spoken English. About 5 Japanese characters or 2.5 English words per second; 1–3 sentences per turn.\n\n## 5. Fix requests\n\nWhen the user pastes a **fix request** (a list of findings with the ids of the standards, followed by the current files), fix exactly those findings, keep everything else, keep every `id=\"…\"` and `{#…}` unchanged (R-noids), and reply again with the two blocks (R-output). If the request contains only some slides, return only those `<section>` elements in the `deck.html` block (no `<html>`) and only their sections in the `narration.md` block; the editor puts them back in place by id.\n\n## 6. Worked example\n\nA small example, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Some part sets end with an example of their own.\n\n### Common (English, default theme, marks<!--part:m-flow-->, m-flow<!--/part-->)\n\n```deck.html\n<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>How a web page arrives</title>\n</head>\n<body>\n<div id=\"stage\">\n\n<section class=\"slide cover noconcl static\">\n  <div class=\"venue\">Computing basics, lesson 1 (a fictional course)</div>\n  <h1>How a web page arrives</h1>\n</section>\n\n<section class=\"slide\">\n  <h2>Two programs take part</h2>\n  <div class=\"body\">\n    <p>Opening a page is a conversation between two programs.</p>\n    <ul>\n      <li id=\"browser\">The <span class=\"term\">browser</span> asks for the page and draws it</li>\n      <li id=\"server\">The <span class=\"term\">server</span> keeps the page and sends it back</li>\n    </ul>\n  </div>\n  <div class=\"concl\"><span>Every page load is a request and a reply</span></div>\n</section><!--part:m-flow-->\n\n<section class=\"slide\">\n  <h2>From the address to the screen</h2>\n  <div class=\"body\">\n    <m-flow style=\"height:300px\" aria-label=\"Four stages: type the address, send a request, send the page back, draw the page\">\n      <script type=\"application/json\">{\"nodes\": [\n        {\"id\": \"a\", \"label\": \"Type the\\naddress\", \"x\": 10, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 1},\n        {\"id\": \"b\", \"label\": \"Send a\\nrequest\", \"x\": 315, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 2},\n        {\"id\": \"c\", \"label\": \"Send the\\npage back\", \"x\": 620, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 3, \"tone\": \"term\"},\n        {\"id\": \"d\", \"label\": \"Draw the\\npage\", \"x\": 925, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 4, \"tone\": \"emph\"}\n      ], \"edges\": [\n        {\"from\": \"a\", \"to\": \"b\"}, {\"from\": \"b\", \"to\": \"c\"}, {\"from\": \"c\", \"to\": \"d\"}\n      ]}</script>\n    </m-flow>\n  </div>\n  <div class=\"concl\"><span>A slow page is slow in one of these four stages</span></div>\n</section><!--/part-->\n\n</div>\n</body>\n</html>\n```\n\n```narration.md\n# Narration: How a web page arrives\n\n## How a web page arrives\n[0] Today we follow a web page on its way from a server to your screen.\n\n## Two programs take part\n[0] Opening a page is a conversation between two programs.\n[1] {mark:browser}The browser is the program you look at. It asks for the page and then draws it.\n[2] {mark:server}The server is a program on another computer. It keeps the page and sends it back when asked.\n[concl] Every page load is a request and a reply.<!--part:m-flow-->\n\n## From the address to the screen\n[0] Let us put the steps in order.\n[1] First you type the address of the page.\n[2] The browser turns it into a request and sends it to the server.\n[3] The server finds the page and sends it back.\n[4] The browser draws the page on the screen.\n[concl] When a page is slow, one of these four stages is taking the time.<!--/part-->\n```",
+  "common": "# Instructions for the AI\n\nPack version: `18a79335`\n\nYou will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.\n\n**Before you start (the most common failures):**\n\n- **Both code blocks must be complete and closed.** Never stop in the middle of a block (R-output). Without an outline, keep it short (5–8 slides). Given an outline and a range of its slides, write exactly that range (at most 6 slides, so they fit).\n- **Sizes on the 1280×720 slide** (the quality checker measures them, R-fit): the body area is 1184 × 443 px (to 565 px; 1184 × 558 with `noconcl`). Body text is 32 px with 46 px per line, so about **8 lines** fit; every overflowing 46 px is one line to cut. **All text, also inside figures and parts, is at least 24 px.**\n- **Charts and figures:** parts draw their labels at 24–28 px whatever their size (their SVG uses their own pixels), so size the part, not the text. A part of 380 px leaves room for one short line; with two lines, use 330 px.\n- **Inline `<svg>`:** its text is scaled by displayed width ÷ viewBox width, so write the viewBox in the pixels it is shown at, e.g. `<svg viewBox=\"0 0 560 320\" width=\"560\" height=\"320\">`, with `font-size` ≥ 24. Never combine `width:100%` with another viewBox width (a 600-wide viewBox shown 580 px wide turns 24 into 23.2 px). Prefer a part when one fits.\n\n## 1. Output format\n\n- **R-output** Reply with **exactly two fenced code blocks**, in this order, labelled `deck.html` and `narration.md` (the opening lines are ```` ```deck.html ```` and ```` ```narration.md ````). Put nothing between them; a one-line note before or after is fine. Never split a file over several blocks. No files, canvas or attachments: write both blocks in your chat message. Do not reference other files (no images, no `{{FIG:…}}`, no `{{JSON:…}}`, no external URLs, no `<link>`), and never stop in the middle of a block: if the lesson would be too long, make fewer slides (but for a range of an outline, write exactly the requested slides).\n- **R-outline** When the request asks for an **outline only** (a long file made in two passes), reply with exactly one fenced code block labelled `outline` (the opening line is ```` ```outline ````) and no `deck.html` or `narration.md`: a Markdown table (columns `#`, heading, one-line point), one row per slide, all slides in order. Each later request names a range (“slides 7–12 of the outline”): write exactly those slides, following their headings and points.\n- **R-noids** Do **not** write slide ids. Write `<section class=\"slide\">` without `id`, and script headings without `{#…}`. The editor adds ids after import. When you are given slides that already have ids (a fix request), keep every existing `id=\"…\"` and `{#…}` exactly as it is.\n\n## 2. deck.html\n\n### 2.1 Skeleton\n\n```html\n<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Title</title>\n</head>\n<body>\n<div id=\"stage\">\n  <section class=\"slide cover noconcl static\"> … </section>\n  <section class=\"slide\"> … </section>\n</div>\n</body>\n</html>\n```\n\n- `lang`: `en`, `ja`, … (the language of the slides and script). `data-theme`: `sumi` for business and pitch decks, `kokugo` for Japanese language arts, otherwise `default`.\n- No `<script>` except part data (§2.6), no `<link>`. A `<style>` block is allowed only for layout (sizes, gaps), never colors.\n\n### 2.2 Slides\n\n- Normal slide: `<h2>` heading, `<div class=\"body\">…</div>`, then `<div class=\"concl\"><span>…</span></div>` (the conclusion line: one short sentence).\n- Optional kicker (a short line above the heading): one `<p class=\"kicker\">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).\n- Cover: `<section class=\"slide cover noconcl static\">` with optional `<div class=\"venue\">…</div>`, `<h1>title</h1>`, optional `<div class=\"au\">…</div>`.\n- Chapter divider: `<section class=\"slide sec noconcl static\"><h1>chapter title</h1></section>`.\n- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).\n- Inside `.body`: `<p class=\"sub\">` sub-heading, `<div class=\"big\">` main equation, `<p class=\"note\">` note, `<div class=\"thm\">` theorem box, `<div class=\"cols\">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.\n- **R-caution** In `.body`: `<div class=\"caution\">…</div>` for caution; add `warn` for warning. Labels are automatic.\n- Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).\n- **R-headings** Every slide heading (`h1` on the cover and dividers, `h2` elsewhere) is **different** from all the others (add a word if two would be the same), and the script section of that slide starts with `## ` followed by **exactly the same heading text** (tags such as `<br>` dropped).\n- **R-colors** Colors only through the theme: the classes above and the math macros `\\hlE` `\\hlT` `\\hlM`; no hex, `rgb()`, named colors, `\\color` or `\\textcolor`. In a part or inline SVG: **Use only the theme's CSS variables for colors**: `var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`. In SVG write `style=\"stroke:var(--emph)\"` rather than an attribute (`DECK.el` moves `fill` and `stroke` into style automatically when they contain `var(`)\n\n### 2.3 Steps (reveal order = speaking order)\n\n- **R-steps** Step 0 is the slide as it first appears: context only (heading, sub-heading, one framing sentence). An element with `data-step=\"k\"` (k = 1, 2, …) appears at step k; material (list items, equations, table rows, figure parts) appears in the order you talk about it. An equation and the sentence that introduces it share one step (wrap both in `<div data-step=\"k\">`). About 5 steps per slide at most. Choose how a table appears by how it compares. When the script takes items one at a time, show rows in the order spoken. For a matrix (things compared down the side, criteria across) or a table crossing two axes, show the whole table and then mark the column or cell under discussion, or fill it one axis value at a time. In a research-positioning table, write \"This work\" in your own cell (do not mark it by colour or bold alone).\n- The conclusion line automatically becomes the **last step**, `concl`; never put `data-step` on it.\n- If a slide has **no** `data-step` anywhere, its top-level list items (`.body > ul > li`, `.body > ol > li`) are numbered 1, 2, … automatically. As soon as any element has `data-step`, nothing is automatic: give every revealed element its `data-step`.\n- A part adds its own steps (§3), starting at its `data-from` (default 1).\n- So the steps of a slide are `0 … max` plus `concl` if it has a conclusion line. A `static` slide has only step 0.\n\n### 2.4 Math (KaTeX, rendered at build time)\n\n- **R-math** Inline `\\( … \\)`, display `\\[ … \\]`. Write `<` as `\\lt` and `>` as `\\gt` inside math. Allowed macros besides standard KaTeX: `\\hlE{…}` (emph) `\\hlT{…}` (term) `\\hlM{…}` (muted), `\\htmlId{ID}{…}`, `\\htmlData{mark=ID}{…}`, `\\htmlClass{…}{…}`, `\\morph{ID}{…}`. No `\\newcommand`, no `\\color`. To label a term, use `\\underbrace{…}_{\\text{…}}` or `\\overbrace{…}^{…}`. Never `$$`. Define each symbol where it is first used (`\\(\\mu\\)`: the mean).\n\n### 2.5 Attention marks and morphs\n\n- **R-marks** The script’s `{mark:ID}` (§4) marks a target on the **same slide**. Targets: an element in the slide with `id=\"ID\"` or `data-mark=\"ID\"`. For part of an equation, KaTeX's `\\htmlId{ID}{…}` / `\\htmlData{mark=ID}{…}` (the build allows only these two and `\\htmlClass`). If the same ID is used on several slides, use `data-mark` (ids must be unique in the document)\n- Morph (optional): `<section class=\"slide\" data-morph>` slides elements from the previous slide into place; pair elements with the same `data-id=\"…\"` on both slides, or equation parts with `\\morph{ID}{…}` on both. Only elements visible at step 0 move.\n\n### 2.6 Parts\n\n- **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style=\"height:380px\"`) and an `aria-label`. Data goes in **one** child `<script type=\"application/json\">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Formulas are arithmetic only (`Math.exp(x)`, `x**2`), never run as code. Use parts only where motion explains something; most slides need none.\n\n### 2.7 Choosing a representation\n\n- **R-purpose** Choose the representation from what the slide must say, not from habit. If the author names a chart type, use it. The table names every part, but use only those described here (§3 and the included part sets). If a part that is not included would fit better, say so in a one-line note.\n\n{{PURPOSES}}\n\n- **R-whole** Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn (for a list, give it one `data-step` or put `nostep` on the slide).\n\n### 2.8 Fitting the slide (1280×720; the quality checker reports errors)\n\n- **R-title** Heading: Japanese at most 26 units (full-width character = 1, ASCII = 0.5); English at most 60 characters. Never ends with a colon.\n- **R-concl** Conclusion line: Japanese at most 35 units; English at most 70 characters. One line.\n- **R-fit** The body must end above 565 px (680 px with `noconcl`): about 8 lines / 100 Japanese characters / 60 English words per slide, or one `big` equation and 3 short bullets, or a part of height ≤ 380 px and one short line (≤ 330 px with two). If it does not fit, split the slide; never shrink text and never set font sizes.\n- **R-style** Japanese slides: plain style (だ・である, 体言止め), no です・ます on slides, one punctuation style in the whole file (`、。` or `，．`). English slides: short phrases, sentence case.\n\n## 3. Part catalog\n\nStandard parts fit any file; a part set after §6 adds the parts for its material. “steps” is how many slide steps a part uses (from `data-from`, default 1). Timing attributes (durations, delays) are not listed; their defaults fit the narration. Attribute values of type json are written as JSON in the attribute (`values=\"[0.1,0.5]\"`). In “data shape”, `?` marks an optional field; where no type is written, label, tex, note and tone are str, step is int and at is num. In a name or label, `*…*` is italic and `_` `^` make only the next character a subscript or superscript; to show the symbol itself, write the full-width ＿ ＾ ＊.\n\n{{CATALOG}}\n\n## 4. narration.md\n\n```markdown\n# Script: <title>\n\n## The decay law\n[0] Here is the decay law. We follow how many atoms are left.\n[1] The number left is the starting number times a shrinking exponential.\n[2] {mark:n0|circle}{N₀|N naught} is the number at the start, at time zero.\n[concl] The half-life depends only on the decay constant.\n```\n\n- One section per slide, **in slide order, for every slide (cover included)**: `## <slide heading>` (R-headings), no `{#id}` (R-noids).\n- **R-narr-steps** Step labels `[0]`, `[1]`, … and `[concl]`. **Every step of every slide has script lines** (step 0 to max, and `[concl]` if the slide has a conclusion line), and there are **no labels for steps that do not exist** (a `static` cover has only `[0]`; a slide without a conclusion line has no `[concl]`; never `[01]`). Within a step, talk only about what appears at that step.\n- **R-dialogue** **One narrator by default**: write no speaker names. Write a dialogue only when asked (if asked for three or more speakers, keep two roles and say so first): lines start with `Expert:` or `Novice:` (continuation lines indented; a line without a speaker is Expert), shaped as a cognitive apprenticeship:\n  - Novice is never a mere backchannel: Novice voices the question a learner is likely to have, or paraphrases (“So …, is that right?”)\n  - Expert answers and adds one example or analogy, or confirms (or corrects) the paraphrase and takes one step further\n  - Only at a comprehension fork (where learners tend to misunderstand, or a “why” remains): at most one exchange per slide, 2–3 turns. Elsewhere Expert alone\n  - Never a turn that is only “I see”, or that repeats the previous turn. Example: `Novice: So a larger rate always gets there faster?` `Expert: Not always. Too large, and each step jumps across the valley, like striding downhill onto the opposite slope.`\n- `{note:…}`: presenter directions.\n- `{cue}`: a sync point inside a step, one per entry of the part’s `cues(k)` (only where a part’s README asks for it; otherwise omit).\n- `{mark:ID}`, `{mark:ID|effect}`, `{mark:ID|effect|hold=seconds}`, `{mark:clear}`: placed **right before** the words about the target; at most 1–2 per step; still say the thing in words. Effects: `underline` (default; a hand-drawn underline from left to right), `circle` (a hand-drawn circle), `box` (a rounded frame), `spot` (dims everything except the area around the target with the background color), `laser` (a dot of light slides to below the target and stays briefly)\n- **R-reading** `{display|reading}` gives the reading of **one symbol or one term**: `{θ|theta}`, `{N₀|N naught}`, `{x̄|x bar}`, `{論語|ろんご}`. One symbol may carry a star, a prime, a subscript or superscript, or a hat/bar/tilde (`{Q*|Q star}`, `{x′|x prime}`, `{θ̂|theta hat}`). Write the display part in plain Unicode, not LaTeX, and never as an expression or several symbols (`{1-η|…}`, `{a*b|…}` and `{θとη|…}` are wrong: give each symbol its own reading and say the relation in words). Give a reading only to a term misread without one, and then everywhere it appears.\n- **R-formula** **Never read an equation aloud**: no LaTeX, no `\\`, `^`, `_`, and no strings such as `a + b = c` in the narration. Say what the equation means (“the number left is the starting number times a shrinking exponential”).\n- Japanese script is polite spoken Japanese (です・ます); English script is plain spoken English. About 5 Japanese characters or 2.5 English words per second; 1–3 sentences per turn.\n\n## 5. Fix requests\n\nWhen the user pastes a **fix request** (a list of findings with the ids of the standards, followed by the current files), fix exactly those findings, keep everything else, keep every `id=\"…\"` and `{#…}` unchanged (R-noids), and reply again with the two blocks (R-output). If the request contains only some slides, return only those `<section>` elements in the `deck.html` block (no `<html>`) and only their sections in the `narration.md` block; the editor puts them back in place by id.\n\n## 6. Worked example\n\nA small example, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Some part sets end with an example of their own.\n\n### Common (English, default theme, marks<!--part:m-flow-->, m-flow<!--/part-->)\n\n```deck.html\n<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>How a web page arrives</title>\n</head>\n<body>\n<div id=\"stage\">\n\n<section class=\"slide cover noconcl static\">\n  <div class=\"venue\">Computing basics, lesson 1 (a fictional course)</div>\n  <h1>How a web page arrives</h1>\n</section>\n\n<section class=\"slide\">\n  <h2>Two programs take part</h2>\n  <div class=\"body\">\n    <p>Opening a page is a conversation between two programs.</p>\n    <ul>\n      <li id=\"browser\">The <span class=\"term\">browser</span> asks for the page and draws it</li>\n      <li id=\"server\">The <span class=\"term\">server</span> keeps the page and sends it back</li>\n    </ul>\n  </div>\n  <div class=\"concl\"><span>Every page load is a request and a reply</span></div>\n</section><!--part:m-flow-->\n\n<section class=\"slide\">\n  <h2>From the address to the screen</h2>\n  <div class=\"body\">\n    <m-flow style=\"height:300px\" aria-label=\"Four stages: type the address, send a request, send the page back, draw the page\">\n      <script type=\"application/json\">{\"nodes\": [\n        {\"id\": \"a\", \"label\": \"Type the\\naddress\", \"x\": 10, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 1},\n        {\"id\": \"b\", \"label\": \"Send a\\nrequest\", \"x\": 315, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 2},\n        {\"id\": \"c\", \"label\": \"Send the\\npage back\", \"x\": 620, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 3, \"tone\": \"term\"},\n        {\"id\": \"d\", \"label\": \"Draw the\\npage\", \"x\": 925, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 4, \"tone\": \"emph\"}\n      ], \"edges\": [\n        {\"from\": \"a\", \"to\": \"b\"}, {\"from\": \"b\", \"to\": \"c\"}, {\"from\": \"c\", \"to\": \"d\"}\n      ]}</script>\n    </m-flow>\n  </div>\n  <div class=\"concl\"><span>A slow page is slow in one of these four stages</span></div>\n</section><!--/part-->\n\n</div>\n</body>\n</html>\n```\n\n```narration.md\n# Narration: How a web page arrives\n\n## How a web page arrives\n[0] Today we follow a web page on its way from a server to your screen.\n\n## Two programs take part\n[0] Opening a page is a conversation between two programs.\n[1] {mark:browser}The browser is the program you look at. It asks for the page and then draws it.\n[2] {mark:server}The server is a program on another computer. It keeps the page and sends it back when asked.\n[concl] Every page load is a request and a reply.<!--part:m-flow-->\n\n## From the address to the screen\n[0] Let us put the steps in order.\n[1] First you type the address of the page.\n[2] The browser turns it into a request and sends it to the server.\n[3] The server finds the page and sends it back.\n[4] The browser draws the page on the screen.\n[concl] When a page is slow, one of these four stages is taking the time.<!--/part-->\n```",
   "request": "# What I want\n\n*(Fill in A or B and delete the other; delete fields you leave empty.)*\n\n**A. Make a new file**\n\n- Title (used as is on the cover):\n- Audience:\n- Length (slides or minutes):\n- Language:\n- Speakers: one narrator\n- Other wishes:\n\n**B. From the material and discussion in this chat**\n\nMake the slides and script from the material given in this chat and what we have discussed so far.\n\n- Title (used as is on the cover):\n- Audience:\n- Length (slides or minutes):\n- Language:\n- Speakers: one narrator\n- Other wishes:",
   "sets": {
    "stats": "## Part set: stats (statistics charts)\n\nFor classes and talks with data: distributions, box plots, heatmaps, and a distribution updated one observation at a time. Use the `default` theme. Give the source and the size of every data set on the slide or in the script, and never invent data that looks real (R-components).\n\n- **Axis charts** (<!--part:m-hist-->`m-hist`, <!--/part--><!--part:m-boxplot-->`m-boxplot`, <!--/part--><!--part:m-seq-->`m-seq`, <!--/part-->and the like) reserve 86 px at the left and 80 px in all at the top and bottom for ticks and axis names: give them a height of **300–380 px** and a width of **at least 560 px** (in `<div class=\"cols\">`, give the chart column at least 55%).\n- Make the axis ranges contain every plotted value (computed as R-components says).\n\nParts of this set, in addition to those of §3:\n\n{{CATALOG}}\n\n{{EXTENSIONS}}",
@@ -1080,7 +1080,7 @@ export const PACK = {
    },
    "m-matrix": {
     "set": "standard",
-    "row": "| `<m-matrix>` | A positioning table: the cross of two axes (studies in cells, this work framed, empty cells — with a note) or studies × elements (✓ △ × or short text), filled by step | cross: axes → studies → this work → notes (order=\"whole\": 1). attributes: per column or row (order) + frame | `{kind?:\"cross\"\\|\"attributes\",rows?:object\\|any[],cols?:object\\|any[],cells?:(any[]\\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross: rows and cols are {\"axis\", \"values\"}; cells[r][c] is a list of study names, {\"self\": true} or {\"none\": \"why it is empty\"}. attributes: cols is a list of names, rows a list of {\"label\", \"cells\", \"self\"?} |",
+    "row": "| `<m-matrix>` | A positioning table: the cross of two axes (studies in cells, this work framed, empty cells — with a note) or studies × elements (✓ △ × or short text), filled by step | cross: axes → studies → this work → notes (order=\"whole\": 1). attributes: per column or row (order) + frame | `{kind?:\"cross\"\\|\"attributes\",rows?:object\\|any[],cols?:object\\|any[],cells?:(any[]\\|object)[][],marks?:{mark:str,text:str}[],design?:{cols:str[],rows:{label?,self?:bool,cells:str[]}[]},self?:str}` — cross: rows, cols {\"axis\", \"values\"}; cells[r][c] study names, {\"self\": true or \"finding\"} or {\"none\": \"why\"}; design {\"cols\", \"rows\"}. attributes: cols names or {\"name\", \"source\"}, rows {\"label\", \"cells\", \"self\"?} |",
     "entry": "### `<m-matrix>`\n\nData example (child `<script type=\"application/json\">`): `{\"kind\":\"cross\",\"rows\":{\"axis\":\"Criterion\",\"values\":[\"Error\",\"Bayes risk\"]},\"cols\":{\"axis\":\"Output\",\"values\":[\"Point\",\"Distribution\"]},\"cells\":[[[\"[1]\",\"[2]\"],[\"[3]\"]],[{\"none\":\"Trivial\"},{\"self\":true}]]}`\n\n| prop | type | default | meaning |\n|---|---|---|---|\n| `order` | string | `\"\"` | cross build\\|whole; attributes whole\\|col\\|row |\n| `size` | number | `28` | text px (≥ 24) |\n\n`kind`: `cross` (default) or `attributes`.\n\n- cross: `rows`, `cols` = `{\"axis\", \"values\"}` (2–4 each). `cells[r][c]`: study names (1–3), `{\"self\": true}` or `{\"none\": \"why\"}` (— and a note). `marks`: `[{\"mark\": \"†\", \"text\"}]`\n- attributes: `cols` names; `rows` `{\"label\", \"cells\", \"self\"}`, this work first\n- This work is written out and framed in `--emph`",
     "paidOnly": true
    },
@@ -1204,7 +1204,7 @@ export const PACK = {
   "extHead": "### `<{name}>`: extension for this part set (the part is described in §3)"
  },
  "ja": {
-  "common": "# AI への指示\n\n指示のバージョン：`1100b582`\n\n短い **Egatari のスライドと台本**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。スライドと台本は依頼された言語で書きます（どちらも同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。\n\n**よくある失敗：**\n\n- **2 つの灰色の枠（コードブロック）はどちらも最後まで書いて閉じる。**コードブロックの途中で終わらない（R-output）。構成案がなければ、スライドは短くする（5〜8 枚）。指示に構成案とその範囲があれば、その範囲のスライドをちょうどその枚数だけ書く（エディタは 1 回に 6 枚までしか依頼しないので、収まる）\n- **1280×720 のスライドの大きさ**（品質チェックが測る。R-fit）：本文の場所は 1184 × 443 px（565 px まで。`noconcl` なら 1184 × 558）。字は 32 px・1 行 46 px で、入るのは**およそ 8 行**。はみ出す 46 px ごとに 1 行を削る。**図やパーツの中もテキストはすべて 24 px 以上**\n- **グラフと図：**パーツは大きさによらずテキストを 24〜28 px で描くので、決めるのはパーツの大きさ（R-fit）\n- **その場で書く `<svg>`：**字は「表示の幅 ÷ viewBox の幅」で縮むので、viewBox を表示の画素で書く（`<svg viewBox=\"0 0 560 320\" width=\"560\" height=\"320\">`）。`font-size` は 24 以上。`width:100%` と別の幅の viewBox を組み合わせない。合うパーツがあればパーツを使う\n\n## 1. 出力の形\n\n- **R-output** 出力は**ちょうど 2 つのコードブロック**にし、この順で、名前を `deck.html` と `narration.md` にする（始まりの行は ```` ```deck.html ```` と ```` ```narration.md ````）。間には何も書かない（前後に 1 行の添え書きはよい）。1 つのファイルを複数のコードブロックに分けない。ファイル・キャンバス・添付にせず、本文に書く。ほかのファイルを参照しない（画像・`{{FIG:…}}`・`{{JSON:…}}`・外の URL・`<link>` は使わない）。コードブロックの途中で終わらない（長すぎるなら枚数を減らす。ただし構成案の範囲を頼まれたら、ちょうどその枚数）\n- **R-outline** **構成案だけ**を依頼されたら（長いものを 2 回に分けて作るとき）、`outline` という名前のコードブロック 1 つ（始まりの行は ```` ```outline ````）だけで返し、`deck.html` と `narration.md` は書かない：列が「番号」「見出し」「要点（1 行）」の Markdown の表で、スライドごとに 1 行、全スライドを順に。その後の指示は範囲を示す（「構成案の 7〜12 枚目」）ので、その見出しと要点のとおりに、ちょうどそのスライドを書く\n- **R-noids** スライドの id を**書かない**。`<section class=\"slide\">` に `id` を付けず、台本の見出しにも `{#…}` を付けない。id は取り込みでエディタが付ける。id のあるスライドを渡されたとき（修正依頼）は、今ある `id=\"…\"` と `{#…}` を変えない\n\n## 2. deck.html\n\n### 2.1 骨組み\n\n```html\n<!DOCTYPE html>\n<html lang=\"ja\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>題名</title>\n</head>\n<body>\n<div id=\"stage\">\n  <section class=\"slide cover noconcl static\"> … </section>\n  <section class=\"slide\"> … </section>\n</div>\n</body>\n</html>\n```\n\n- `lang`：`ja`・`en` など（スライドと台本の言語）。`data-theme`：ビジネス・ピッチは `sumi`、国語は `kokugo`、ほかは `default`\n- `<script>` はパーツのデータ（§2.6）だけ。`<style>` は配置（大きさ・間隔）だけに使い、色は書かない\n\n### 2.2 スライド\n\n- 普通のスライド：`<h2>` の見出し、`<div class=\"body\">…</div>`、`<div class=\"concl\"><span>…</span></div>`（結論の行。短い 1 文）\n- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class=\"kicker\">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。\n- 表紙：`<section class=\"slide cover noconcl static\">` に、あれば `<div class=\"venue\">…</div>`、`<h1>題名</h1>`、あれば `<div class=\"au\">…</div>`\n- 章の扉：`<section class=\"slide sec noconcl static\"><h1>章の題</h1></section>`\n- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo のセットがあるときだけ）、属性 `data-morph`（§2.5）\n- `.body` の中：`<p class=\"sub\">` 小見出し、`<div class=\"big\">` 主要な式、`<p class=\"note\">` 補足、`<div class=\"thm\">` 定理の枠、`<div class=\"cols\">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`\n- **R-caution** `.body` に注意は `<div class=\"caution\">…</div>`、警告は `class=\"caution warn\"`。ラベルは自動で付く。\n- 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）\n- **R-headings** スライドの見出し（表紙と扉は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を追加する）。そのスライドの台本の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）\n- **R-colors** 色はテーマだけで：上の class と式のマクロ `\\hlE` `\\hlT` `\\hlM`。16 進・`rgb()`・色の名前・`\\color`・`\\textcolor` は使わない。パーツや SVG の中では：**色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style=\"stroke:var(--emph)\"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）\n\n### 2.3 ステップ（出す順 = 話す順）\n\n- **R-steps** ステップ 0 は現れたときの姿で、文脈だけ（見出し・小見出し・導入の 1 文）。`data-step=\"k\"`（k = 1, 2, …）の要素はステップ k で現れる。材料（箇条書きの項目・式・表の行・図の部分）は話す順に出す。式とそれを導く 1 文は同じステップ（`<div data-step=\"k\">` で一緒に囲む）。1 枚のステップの数は 5 前後まで。表は、比べ方で見せ方を選ぶ。項目を 1 つずつ説明するなら行を話す順に出す。行列（縦に比べるもの、横に評価基準）や 2 本の軸の交差の表は、全体を見せてから注目する列・マスに印を付けるか、軸の列ごとに埋める。研究の位置づけの表では、本研究のマスに字で「本研究」と書く（色や太字だけで区別しない）。\n- 結論の行は自動で**最後のステップ** `concl` になる（`data-step` を付けない）\n- `data-step` が 1 つもないスライドでは、上の階層の箇条書きの項目（`.body > ul > li`・`.body > ol > li`）に 1, 2, … が自動で付く。1 つでもあれば自動にならないので、出すものすべてに付ける\n- パーツは自分のステップを追加する（§3）。`data-from`（既定 1）から始まる\n- つまりステップは `0 … max` と、結論の行があれば `concl`。`static` のスライドはステップ 0 だけ\n\n### 2.4 数式（KaTeX）\n\n- **R-math** 行内は `\\( … \\)`、別行は `\\[ … \\]`。式の中の `<` は `\\lt`、`>` は `\\gt`。標準のほかに使えるマクロ：`\\hlE{…}`（emph）`\\hlT{…}`（term）`\\hlM{…}`（muted）、`\\htmlId{ID}{…}`、`\\htmlData{mark=ID}{…}`、`\\htmlClass{…}{…}`、`\\morph{ID}{…}`。`\\newcommand` と `\\color` は使わない。項の説明は `\\underbrace{…}_{\\text{…}}`・`\\overbrace{…}^{…}`。`$$` は使わない。記号は最初に使う所で定義する（`\\(\\mu\\)`：母平均）\n\n### 2.5 強調とモーフ\n\n- **R-marks** 台本の `{mark:ID}`（§4）は、**同じスライド**の目印に印を付ける。目印：スライドの中の `id=\"ID\"` か `data-mark=\"ID\"` の要素。式の一部は KaTeX の `\\htmlId{ID}{…}` / `\\htmlData{mark=ID}{…}`（build はこの 2 つと `\\htmlClass` だけを許す）。同じ ID を何枚かで使うなら `data-mark` にする（id は文書の中で一意に）\n- モーフ（なくてよい）：`<section class=\"slide\" data-morph>` は前のスライドの要素を今の位置へ滑らせる。両方のスライドの要素に同じ `data-id=\"…\"`、式の一部は両方に `\\morph{ID}{…}`。ステップ 0 で見えている要素だけが動く\n\n### 2.6 パーツ\n\n- **R-components** パーツは一覧（§3）の Web Components `<m-…>` で、`.body` の中に置く。どれにも高さ（`style=\"height:380px\"`）と `aria-label` を付ける。データは子の `<script type=\"application/json\">…</script>` **1 つ**にその場で書く。**図の数字は正しく**（計算する。見た目のために値を作らない。架空の数字は架空と書く）。関数の式は算術の式だけで、コードとしては実行されない（`Math.exp(x)`・`x**2`）。動きが説明になる所だけに使う（たいていのスライドには要らない）\n\n### 2.7 表し方を選ぶ\n\n- **R-purpose** 表し方は習慣でなく、そのスライドで言いたいことから選ぶ。作者がグラフの種類を言っていればそれに従う。表は全パーツの一覧を兼ねる。使うのは渡された文章にあるパーツだけ（§3 と、入っているセット）。入っていないパーツの方が合うときは、1 行のメモでそう伝える\n\n{{PURPOSES}}\n\n- **R-whole** 箇条書き・数字のカード・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）\n\n### 2.8 スライドに収める（品質チェックのエラー）\n\n- **R-title** 見出し：日本語は 26 字まで（全角 1・半角 0.5）、英語は 60 文字まで。コロンで終えない\n- **R-concl** 結論の行：日本語は 35 字まで、英語は 70 文字まで。1 行\n- **R-fit** 本文は 565 px（`noconcl` なら 680 px）より上で終える：1 枚におよそ 8 行・100 字・英語 60 語、または `big` の式 1 つと短い箇条書き 3 つ、または高さ 380 px までのパーツと短い 1 行（2 行なら 330 px まで）。入らなければスライドを分ける。字を縮めず、字の大きさを書かない\n- **R-style** 日本語のスライドは常体（だ・である、体言止め）で、です・ます を使わない。句読点はファイル全体で 1 つの組（`、。` か `，．`）。英語のスライドは短い句で\n\n## 3. パーツの一覧\n\nどのファイルでも使える標準のパーツ。§6 の後にセットの指示があれば、その種類の材料のパーツが追加される。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values=\"[0.1,0.5]\"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。名前やラベルの `*…*` は斜体、`_` `^` は次の 1 字だけ下付き・上付き。記号のまま出すなら全角の ＿ ＾ ＊。\n\n{{CATALOG}}\n\n## 4. narration.md\n\n```markdown\n# 台本：<題名>\n\n## 減衰の式\n[0] 減衰の式です。時刻ごとに残っている原子の数を考えます。\n[1] 残る数は、はじめの数に、時間とともに小さくなる指数関数を掛けたものです。\n[2] {mark:n0|circle}{N₀|エヌゼロ} は、時刻ゼロのときの、はじめの数です。\n[concl] 半分になるまでの時間は、崩壊定数だけで決まります。\n```\n\n- スライドごとに 1 つの節を、**スライドの順に、すべてのスライド（表紙も）について**：`## <スライドの見出し>`（R-headings）。`{#id}` は付けない（R-noids）\n- **R-narr-steps** ステップの指定は `[0]` `[1]` … と `[concl]`。**どのスライドのどのステップにも台本を書き**（ステップ 0 から max まで、結論の行があれば `[concl]`）、**ないステップの指定は書かない**（`static` の表紙は `[0]` だけ。結論の行がなければ `[concl]` もない。`[01]` とは書かない）。ステップの中では、そのステップで現れるものだけを話す\n- **R-dialogue** **既定は話者 1 人**で、話者名を書かない。掛け合いは依頼されたときだけ（3 人以上を依頼されても 2 役にし、最初にそう書く）：行を `Expert:` か `Novice:` で始め（続きの行は字下げ。話者なしは Expert）、認知的徒弟制の形にする：\n  - Novice は相づち役にせず、学習者の疑問を代弁するか、「つまり〜ということですか」と言い換える\n  - Expert は答えて具体例か比喩を 1 つ追加するか、言い換えを確認して（違えば修正して）1 歩進める\n  - 理解の分かれ目（誤解しやすい所、「なぜ」が残る所）にだけ、1 枚に 1 回・2〜3 発言まで。ほかは Expert 1 人\n  - 「なるほど」だけの発言、前の発言のくり返しは書かない。例：`Novice: つまり、大きいほど早く着くのですか。` `Expert: いつもではありません。大きすぎると谷を飛び越えます。大股で坂を下りすぎて、向こうの斜面に足が着くように。`\n- `{note:…}` 発表者用\n- `{cue}`：ステップの中の同期点。パーツの `cues(k)` の 1 つに 1 つ（パーツの説明が求めるときだけ）\n- `{mark:ID}`・`{mark:ID|効果}`・`{mark:ID|効果|hold=秒}`・`{mark:clear}`：目印のことを言う言葉の**すぐ前**に置く。1 ステップに 1〜2 個まで。言葉でも言う。効果：`underline`（既定。手描きの下線を左から右へ）、`circle`（手描きの囲み）、`box`（角丸の枠）、`spot`（対象のまわり以外を背景色で薄くする）、`laser`（光の点が対象の下へ滑ってきて少し留まる）\n- **R-reading** `{表示|読み}` は **1 つの記号か 1 つの用語**の読み：`{θ|シータ}`、`{N₀|エヌゼロ}`、`{論語|ろんご}`。1 つの記号に星・プライム・添え字・ハットやバーが付いていてもよい（`{Q*|キュースター}`、`{θ̂|シータハット}`）。表示は普通の文字で書き、LaTeX にせず、式やいくつもの記号にしない（`{1-η|…}`・`{θとη|…}` は誤り：記号ごとに読みを付け、関係は言葉で言う）。読みは読みなしで読み違える語にだけ付ける（かなの読みは抑揚を崩しやすい）。読みは書いた所にだけ当たるので、付けた語がまた出てくるなら、出てくる所ごとに付ける\n- **R-formula** **式を読み上げない**：台本に LaTeX・`\\`・`^`・`_`・`a + b = c` のような文字列を書かない。式の意味を言葉で言う（§4 の例の [1]）\n- 日本語の台本は話し言葉の です・ます。英語は話し言葉の英語。目安は 1 秒に日本語 5 字・英語 2.5 語。1 回の発言は 1〜3 文\n\n## 5. 修正依頼\n\n利用者が**修正依頼**（規格の名前の付いた指摘の一覧と、今のファイル）を貼り付けたら、その指摘だけを修正し、ほかは変えず、`id=\"…\"` と `{#…}` をすべて変えず（R-noids）、また 2 つのコードブロックで返す（R-output）。依頼に一部のスライドしかなければ、そのスライドの `<section>` だけ（`<html>` なし）とその節だけを 2 つのコードブロックで返す（エディタが id で元の場所に戻す）。\n\n## 6. 例\n\n小さな例（架空。形を見るためで、中身はコピーしない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`<!--part:m-flow-->、箱が 4 つの `m-flow` はステップ 1〜4<!--/part-->。いくつかのセットの指示の最後にも例がある。\n\n### 共通（英語・default テーマ・強調<!--part:m-flow-->・m-flow<!--/part-->）\n\n```deck.html\n<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>How a web page arrives</title>\n</head>\n<body>\n<div id=\"stage\">\n\n<section class=\"slide cover noconcl static\">\n  <div class=\"venue\">Computing basics, lesson 1 (a fictional course)</div>\n  <h1>How a web page arrives</h1>\n</section>\n\n<section class=\"slide\">\n  <h2>Two programs take part</h2>\n  <div class=\"body\">\n    <p>Opening a page is a conversation between two programs.</p>\n    <ul>\n      <li id=\"browser\">The <span class=\"term\">browser</span> asks for the page and draws it</li>\n      <li id=\"server\">The <span class=\"term\">server</span> keeps the page and sends it back</li>\n    </ul>\n  </div>\n  <div class=\"concl\"><span>Every page load is a request and a reply</span></div>\n</section><!--part:m-flow-->\n\n<section class=\"slide\">\n  <h2>From the address to the screen</h2>\n  <div class=\"body\">\n    <m-flow style=\"height:300px\" aria-label=\"Four stages: type the address, send a request, send the page back, draw the page\">\n      <script type=\"application/json\">{\"nodes\": [\n        {\"id\": \"a\", \"label\": \"Type the\\naddress\", \"x\": 10, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 1},\n        {\"id\": \"b\", \"label\": \"Send a\\nrequest\", \"x\": 315, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 2},\n        {\"id\": \"c\", \"label\": \"Send the\\npage back\", \"x\": 620, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 3, \"tone\": \"term\"},\n        {\"id\": \"d\", \"label\": \"Draw the\\npage\", \"x\": 925, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 4, \"tone\": \"emph\"}\n      ], \"edges\": [\n        {\"from\": \"a\", \"to\": \"b\"}, {\"from\": \"b\", \"to\": \"c\"}, {\"from\": \"c\", \"to\": \"d\"}\n      ]}</script>\n    </m-flow>\n  </div>\n  <div class=\"concl\"><span>A slow page is slow in one of these four stages</span></div>\n</section><!--/part-->\n\n</div>\n</body>\n</html>\n```\n\n```narration.md\n# Narration: How a web page arrives\n\n## How a web page arrives\n[0] Today we follow a web page on its way from a server to your screen.\n\n## Two programs take part\n[0] Opening a page is a conversation between two programs.\n[1] {mark:browser}The browser is the program you look at. It asks for the page and then draws it.\n[2] {mark:server}The server is a program on another computer. It keeps the page and sends it back when asked.\n[concl] Every page load is a request and a reply.<!--part:m-flow-->\n\n## From the address to the screen\n[0] Let us put the steps in order.\n[1] First you type the address of the page.\n[2] The browser turns it into a request and sends it to the server.\n[3] The server finds the page and sends it back.\n[4] The browser draws the page on the screen.\n[concl] When a page is slow, one of these four stages is taking the time.<!--/part-->\n```",
+  "common": "# AI への指示\n\n指示のバージョン：`18a79335`\n\n短い **Egatari のスライドと台本**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。スライドと台本は依頼された言語で書きます（どちらも同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。\n\n**よくある失敗：**\n\n- **2 つの灰色の枠（コードブロック）はどちらも最後まで書いて閉じる。**コードブロックの途中で終わらない（R-output）。構成案がなければ、スライドは短くする（5〜8 枚）。指示に構成案とその範囲があれば、その範囲のスライドをちょうどその枚数だけ書く（エディタは 1 回に 6 枚までしか依頼しないので、収まる）\n- **1280×720 のスライドの大きさ**（品質チェックが測る。R-fit）：本文の場所は 1184 × 443 px（565 px まで。`noconcl` なら 1184 × 558）。字は 32 px・1 行 46 px で、入るのは**およそ 8 行**。はみ出す 46 px ごとに 1 行を削る。**図やパーツの中もテキストはすべて 24 px 以上**\n- **グラフと図：**パーツは大きさによらずテキストを 24〜28 px で描くので、決めるのはパーツの大きさ（R-fit）\n- **その場で書く `<svg>`：**字は「表示の幅 ÷ viewBox の幅」で縮むので、viewBox を表示の画素で書く（`<svg viewBox=\"0 0 560 320\" width=\"560\" height=\"320\">`）。`font-size` は 24 以上。`width:100%` と別の幅の viewBox を組み合わせない。合うパーツがあればパーツを使う\n\n## 1. 出力の形\n\n- **R-output** 出力は**ちょうど 2 つのコードブロック**にし、この順で、名前を `deck.html` と `narration.md` にする（始まりの行は ```` ```deck.html ```` と ```` ```narration.md ````）。間には何も書かない（前後に 1 行の添え書きはよい）。1 つのファイルを複数のコードブロックに分けない。ファイル・キャンバス・添付にせず、本文に書く。ほかのファイルを参照しない（画像・`{{FIG:…}}`・`{{JSON:…}}`・外の URL・`<link>` は使わない）。コードブロックの途中で終わらない（長すぎるなら枚数を減らす。ただし構成案の範囲を頼まれたら、ちょうどその枚数）\n- **R-outline** **構成案だけ**を依頼されたら（長いものを 2 回に分けて作るとき）、`outline` という名前のコードブロック 1 つ（始まりの行は ```` ```outline ````）だけで返し、`deck.html` と `narration.md` は書かない：列が「番号」「見出し」「要点（1 行）」の Markdown の表で、スライドごとに 1 行、全スライドを順に。その後の指示は範囲を示す（「構成案の 7〜12 枚目」）ので、その見出しと要点のとおりに、ちょうどそのスライドを書く\n- **R-noids** スライドの id を**書かない**。`<section class=\"slide\">` に `id` を付けず、台本の見出しにも `{#…}` を付けない。id は取り込みでエディタが付ける。id のあるスライドを渡されたとき（修正依頼）は、今ある `id=\"…\"` と `{#…}` を変えない\n\n## 2. deck.html\n\n### 2.1 骨組み\n\n```html\n<!DOCTYPE html>\n<html lang=\"ja\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>題名</title>\n</head>\n<body>\n<div id=\"stage\">\n  <section class=\"slide cover noconcl static\"> … </section>\n  <section class=\"slide\"> … </section>\n</div>\n</body>\n</html>\n```\n\n- `lang`：`ja`・`en` など（スライドと台本の言語）。`data-theme`：ビジネス・ピッチは `sumi`、国語は `kokugo`、ほかは `default`\n- `<script>` はパーツのデータ（§2.6）だけ。`<style>` は配置（大きさ・間隔）だけに使い、色は書かない\n\n### 2.2 スライド\n\n- 普通のスライド：`<h2>` の見出し、`<div class=\"body\">…</div>`、`<div class=\"concl\"><span>…</span></div>`（結論の行。短い 1 文）\n- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class=\"kicker\">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。\n- 表紙：`<section class=\"slide cover noconcl static\">` に、あれば `<div class=\"venue\">…</div>`、`<h1>題名</h1>`、あれば `<div class=\"au\">…</div>`\n- 章の扉：`<section class=\"slide sec noconcl static\"><h1>章の題</h1></section>`\n- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo のセットがあるときだけ）、属性 `data-morph`（§2.5）\n- `.body` の中：`<p class=\"sub\">` 小見出し、`<div class=\"big\">` 主要な式、`<p class=\"note\">` 補足、`<div class=\"thm\">` 定理の枠、`<div class=\"cols\">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`\n- **R-caution** `.body` に注意は `<div class=\"caution\">…</div>`、警告は `class=\"caution warn\"`。ラベルは自動で付く。\n- 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）\n- **R-headings** スライドの見出し（表紙と扉は `h1`、ほかは `h2`）は**すべて違う**ものにする（同じなら語を追加する）。そのスライドの台本の節は `## ` に続けて**見出しとまったく同じ文字列**で始める（`<br>` などのタグは除く）\n- **R-colors** 色はテーマだけで：上の class と式のマクロ `\\hlE` `\\hlT` `\\hlM`。16 進・`rgb()`・色の名前・`\\color`・`\\textcolor` は使わない。パーツや SVG の中では：**色はテーマの CSS 変数だけ**を使う：`var(--fg)` `var(--term)` `var(--emph)` `var(--muted)` `var(--accent2)` `var(--line)`。SVG では属性ではなく `style=\"stroke:var(--emph)\"` で書く（`DECK.el` は `fill` `stroke` に `var(` があれば自動で style に回す）\n\n### 2.3 ステップ（出す順 = 話す順）\n\n- **R-steps** ステップ 0 は現れたときの姿で、文脈だけ（見出し・小見出し・導入の 1 文）。`data-step=\"k\"`（k = 1, 2, …）の要素はステップ k で現れる。材料（箇条書きの項目・式・表の行・図の部分）は話す順に出す。式とそれを導く 1 文は同じステップ（`<div data-step=\"k\">` で一緒に囲む）。1 枚のステップの数は 5 前後まで。表は、比べ方で見せ方を選ぶ。項目を 1 つずつ説明するなら行を話す順に出す。行列（縦に比べるもの、横に評価基準）や 2 本の軸の交差の表は、全体を見せてから注目する列・マスに印を付けるか、軸の列ごとに埋める。研究の位置づけの表では、本研究のマスに字で「本研究」と書く（色や太字だけで区別しない）。\n- 結論の行は自動で**最後のステップ** `concl` になる（`data-step` を付けない）\n- `data-step` が 1 つもないスライドでは、上の階層の箇条書きの項目（`.body > ul > li`・`.body > ol > li`）に 1, 2, … が自動で付く。1 つでもあれば自動にならないので、出すものすべてに付ける\n- パーツは自分のステップを追加する（§3）。`data-from`（既定 1）から始まる\n- つまりステップは `0 … max` と、結論の行があれば `concl`。`static` のスライドはステップ 0 だけ\n\n### 2.4 数式（KaTeX）\n\n- **R-math** 行内は `\\( … \\)`、別行は `\\[ … \\]`。式の中の `<` は `\\lt`、`>` は `\\gt`。標準のほかに使えるマクロ：`\\hlE{…}`（emph）`\\hlT{…}`（term）`\\hlM{…}`（muted）、`\\htmlId{ID}{…}`、`\\htmlData{mark=ID}{…}`、`\\htmlClass{…}{…}`、`\\morph{ID}{…}`。`\\newcommand` と `\\color` は使わない。項の説明は `\\underbrace{…}_{\\text{…}}`・`\\overbrace{…}^{…}`。`$$` は使わない。記号は最初に使う所で定義する（`\\(\\mu\\)`：母平均）\n\n### 2.5 強調とモーフ\n\n- **R-marks** 台本の `{mark:ID}`（§4）は、**同じスライド**の目印に印を付ける。目印：スライドの中の `id=\"ID\"` か `data-mark=\"ID\"` の要素。式の一部は KaTeX の `\\htmlId{ID}{…}` / `\\htmlData{mark=ID}{…}`（build はこの 2 つと `\\htmlClass` だけを許す）。同じ ID を何枚かで使うなら `data-mark` にする（id は文書の中で一意に）\n- モーフ（なくてよい）：`<section class=\"slide\" data-morph>` は前のスライドの要素を今の位置へ滑らせる。両方のスライドの要素に同じ `data-id=\"…\"`、式の一部は両方に `\\morph{ID}{…}`。ステップ 0 で見えている要素だけが動く\n\n### 2.6 パーツ\n\n- **R-components** パーツは一覧（§3）の Web Components `<m-…>` で、`.body` の中に置く。どれにも高さ（`style=\"height:380px\"`）と `aria-label` を付ける。データは子の `<script type=\"application/json\">…</script>` **1 つ**にその場で書く。**図の数字は正しく**（計算する。見た目のために値を作らない。架空の数字は架空と書く）。関数の式は算術の式だけで、コードとしては実行されない（`Math.exp(x)`・`x**2`）。動きが説明になる所だけに使う（たいていのスライドには要らない）\n\n### 2.7 表し方を選ぶ\n\n- **R-purpose** 表し方は習慣でなく、そのスライドで言いたいことから選ぶ。作者がグラフの種類を言っていればそれに従う。表は全パーツの一覧を兼ねる。使うのは渡された文章にあるパーツだけ（§3 と、入っているセット）。入っていないパーツの方が合うときは、1 行のメモでそう伝える\n\n{{PURPOSES}}\n\n- **R-whole** 箇条書き・数字のカード・円グラフは全体を一度に見せる。台本が 1 つずつ取り上げるときだけ 1 行ずつ出す（箇条書きなら全体に 1 つの `data-step` を付けるか、スライドに `nostep`）\n\n### 2.8 スライドに収める（品質チェックのエラー）\n\n- **R-title** 見出し：日本語は 26 字まで（全角 1・半角 0.5）、英語は 60 文字まで。コロンで終えない\n- **R-concl** 結論の行：日本語は 35 字まで、英語は 70 文字まで。1 行\n- **R-fit** 本文は 565 px（`noconcl` なら 680 px）より上で終える：1 枚におよそ 8 行・100 字・英語 60 語、または `big` の式 1 つと短い箇条書き 3 つ、または高さ 380 px までのパーツと短い 1 行（2 行なら 330 px まで）。入らなければスライドを分ける。字を縮めず、字の大きさを書かない\n- **R-style** 日本語のスライドは常体（だ・である、体言止め）で、です・ます を使わない。句読点はファイル全体で 1 つの組（`、。` か `，．`）。英語のスライドは短い句で\n\n## 3. パーツの一覧\n\nどのファイルでも使える標準のパーツ。§6 の後にセットの指示があれば、その種類の材料のパーツが追加される。「steps」はパーツが使うスライドのステップの数（`data-from` から。既定 1）。秒で測る属性（動きの長さ・ずれ）は載せない（既定で台本に合う）。型が json の属性は、値に JSON を書く（`values=\"[0.1,0.5]\"`）。「データの形」の `?` は省略できる欄。型を書いていない label・tex・note・tone は str、step は int、at は num。名前やラベルの `*…*` は斜体、`_` `^` は次の 1 字だけ下付き・上付き。記号のまま出すなら全角の ＿ ＾ ＊。\n\n{{CATALOG}}\n\n## 4. narration.md\n\n```markdown\n# 台本：<題名>\n\n## 減衰の式\n[0] 減衰の式です。時刻ごとに残っている原子の数を考えます。\n[1] 残る数は、はじめの数に、時間とともに小さくなる指数関数を掛けたものです。\n[2] {mark:n0|circle}{N₀|エヌゼロ} は、時刻ゼロのときの、はじめの数です。\n[concl] 半分になるまでの時間は、崩壊定数だけで決まります。\n```\n\n- スライドごとに 1 つの節を、**スライドの順に、すべてのスライド（表紙も）について**：`## <スライドの見出し>`（R-headings）。`{#id}` は付けない（R-noids）\n- **R-narr-steps** ステップの指定は `[0]` `[1]` … と `[concl]`。**どのスライドのどのステップにも台本を書き**（ステップ 0 から max まで、結論の行があれば `[concl]`）、**ないステップの指定は書かない**（`static` の表紙は `[0]` だけ。結論の行がなければ `[concl]` もない。`[01]` とは書かない）。ステップの中では、そのステップで現れるものだけを話す\n- **R-dialogue** **既定は話者 1 人**で、話者名を書かない。掛け合いは依頼されたときだけ（3 人以上を依頼されても 2 役にし、最初にそう書く）：行を `Expert:` か `Novice:` で始め（続きの行は字下げ。話者なしは Expert）、認知的徒弟制の形にする：\n  - Novice は相づち役にせず、学習者の疑問を代弁するか、「つまり〜ということですか」と言い換える\n  - Expert は答えて具体例か比喩を 1 つ追加するか、言い換えを確認して（違えば修正して）1 歩進める\n  - 理解の分かれ目（誤解しやすい所、「なぜ」が残る所）にだけ、1 枚に 1 回・2〜3 発言まで。ほかは Expert 1 人\n  - 「なるほど」だけの発言、前の発言のくり返しは書かない。例：`Novice: つまり、大きいほど早く着くのですか。` `Expert: いつもではありません。大きすぎると谷を飛び越えます。大股で坂を下りすぎて、向こうの斜面に足が着くように。`\n- `{note:…}` 発表者用\n- `{cue}`：ステップの中の同期点。パーツの `cues(k)` の 1 つに 1 つ（パーツの説明が求めるときだけ）\n- `{mark:ID}`・`{mark:ID|効果}`・`{mark:ID|効果|hold=秒}`・`{mark:clear}`：目印のことを言う言葉の**すぐ前**に置く。1 ステップに 1〜2 個まで。言葉でも言う。効果：`underline`（既定。手描きの下線を左から右へ）、`circle`（手描きの囲み）、`box`（角丸の枠）、`spot`（対象のまわり以外を背景色で薄くする）、`laser`（光の点が対象の下へ滑ってきて少し留まる）\n- **R-reading** `{表示|読み}` は **1 つの記号か 1 つの用語**の読み：`{θ|シータ}`、`{N₀|エヌゼロ}`、`{論語|ろんご}`。1 つの記号に星・プライム・添え字・ハットやバーが付いていてもよい（`{Q*|キュースター}`、`{θ̂|シータハット}`）。表示は普通の文字で書き、LaTeX にせず、式やいくつもの記号にしない（`{1-η|…}`・`{θとη|…}` は誤り：記号ごとに読みを付け、関係は言葉で言う）。読みは読みなしで読み違える語にだけ付ける（かなの読みは抑揚を崩しやすい）。読みは書いた所にだけ当たるので、付けた語がまた出てくるなら、出てくる所ごとに付ける\n- **R-formula** **式を読み上げない**：台本に LaTeX・`\\`・`^`・`_`・`a + b = c` のような文字列を書かない。式の意味を言葉で言う（§4 の例の [1]）\n- 日本語の台本は話し言葉の です・ます。英語は話し言葉の英語。目安は 1 秒に日本語 5 字・英語 2.5 語。1 回の発言は 1〜3 文\n\n## 5. 修正依頼\n\n利用者が**修正依頼**（規格の名前の付いた指摘の一覧と、今のファイル）を貼り付けたら、その指摘だけを修正し、ほかは変えず、`id=\"…\"` と `{#…}` をすべて変えず（R-noids）、また 2 つのコードブロックで返す（R-output）。依頼に一部のスライドしかなければ、そのスライドの `<section>` だけ（`<html>` なし）とその節だけを 2 つのコードブロックで返す（エディタが id で元の場所に戻す）。\n\n## 6. 例\n\n小さな例（架空。形を見るためで、中身はコピーしない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`<!--part:m-flow-->、箱が 4 つの `m-flow` はステップ 1〜4<!--/part-->。いくつかのセットの指示の最後にも例がある。\n\n### 共通（英語・default テーマ・強調<!--part:m-flow-->・m-flow<!--/part-->）\n\n```deck.html\n<!DOCTYPE html>\n<html lang=\"en\" data-theme=\"default\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>How a web page arrives</title>\n</head>\n<body>\n<div id=\"stage\">\n\n<section class=\"slide cover noconcl static\">\n  <div class=\"venue\">Computing basics, lesson 1 (a fictional course)</div>\n  <h1>How a web page arrives</h1>\n</section>\n\n<section class=\"slide\">\n  <h2>Two programs take part</h2>\n  <div class=\"body\">\n    <p>Opening a page is a conversation between two programs.</p>\n    <ul>\n      <li id=\"browser\">The <span class=\"term\">browser</span> asks for the page and draws it</li>\n      <li id=\"server\">The <span class=\"term\">server</span> keeps the page and sends it back</li>\n    </ul>\n  </div>\n  <div class=\"concl\"><span>Every page load is a request and a reply</span></div>\n</section><!--part:m-flow-->\n\n<section class=\"slide\">\n  <h2>From the address to the screen</h2>\n  <div class=\"body\">\n    <m-flow style=\"height:300px\" aria-label=\"Four stages: type the address, send a request, send the page back, draw the page\">\n      <script type=\"application/json\">{\"nodes\": [\n        {\"id\": \"a\", \"label\": \"Type the\\naddress\", \"x\": 10, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 1},\n        {\"id\": \"b\", \"label\": \"Send a\\nrequest\", \"x\": 315, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 2},\n        {\"id\": \"c\", \"label\": \"Send the\\npage back\", \"x\": 620, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 3, \"tone\": \"term\"},\n        {\"id\": \"d\", \"label\": \"Draw the\\npage\", \"x\": 925, \"y\": 100, \"w\": 250, \"h\": 110, \"step\": 4, \"tone\": \"emph\"}\n      ], \"edges\": [\n        {\"from\": \"a\", \"to\": \"b\"}, {\"from\": \"b\", \"to\": \"c\"}, {\"from\": \"c\", \"to\": \"d\"}\n      ]}</script>\n    </m-flow>\n  </div>\n  <div class=\"concl\"><span>A slow page is slow in one of these four stages</span></div>\n</section><!--/part-->\n\n</div>\n</body>\n</html>\n```\n\n```narration.md\n# Narration: How a web page arrives\n\n## How a web page arrives\n[0] Today we follow a web page on its way from a server to your screen.\n\n## Two programs take part\n[0] Opening a page is a conversation between two programs.\n[1] {mark:browser}The browser is the program you look at. It asks for the page and then draws it.\n[2] {mark:server}The server is a program on another computer. It keeps the page and sends it back when asked.\n[concl] Every page load is a request and a reply.<!--part:m-flow-->\n\n## From the address to the screen\n[0] Let us put the steps in order.\n[1] First you type the address of the page.\n[2] The browser turns it into a request and sends it to the server.\n[3] The server finds the page and sends it back.\n[4] The browser draws the page on the screen.\n[concl] When a page is slow, one of these four stages is taking the time.<!--/part-->\n```",
   "request": "# 頼みたいこと\n\n*（A か B を埋め、もう一方は削除します。書かない項目は削除してかまいません）*\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：\n- 対象（だれ向け）：\n- 長さ（枚数か分）：\n- 言語：\n- 話者：1 人\n- そのほかの希望：\n\n**B. 渡した資料と話し合いの内容で作る**\n\nこのチャットで渡した資料と、ここまでの話し合いの内容で、スライドと台本を作ってください。\n\n- タイトル（表紙にそのまま使う）：\n- 対象（だれ向け）：\n- 長さ（枚数か分）：\n- 言語：\n- 話者：1 人\n- そのほかの希望：",
   "sets": {
    "stats": "## パーツのセット：stats（統計の図）\n\nデータを見せる授業・発表向け。分布、箱ひげ図、ヒートマップ、観測が 1 つずつ加わって変わる分布を見せる。テーマは `default`。データの出どころと数（何人・何件）をスライドか台本に書き、本物らしく見えるデータを作らない（R-components）。\n\n- **軸のある図**（<!--part:m-hist-->`m-hist`・<!--/part--><!--part:m-boxplot-->`m-boxplot`・<!--/part--><!--part:m-seq-->`m-seq`・<!--/part-->など）は目盛りと軸の名前に左 86 px、上下合わせて 80 px を使うので、高さ **300〜380 px**、幅 **560 px 以上**にする（`<div class=\"cols\">` なら図の列を 55% 以上に）\n- 軸の範囲には、図の値（R-components のとおり計算したもの）がすべて入るようにする\n\nこのセットのパーツ（§3 のパーツに加えて）：\n\n{{CATALOG}}\n\n{{EXTENSIONS}}",
@@ -1381,8 +1381,8 @@ export const PACK = {
    },
    "m-matrix": {
     "set": "standard",
-    "row": "| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で、空きマスは — と注）か、研究 × 要素の表（✓ △ × や短い字）を、ステップで埋める | cross は 軸と空の表 → 従来の研究 → 本研究 → 注（order=\"whole\" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:\"cross\"\\|\"attributes\",rows?:object\\|any[],cols?:object\\|any[],cells?:(any[]\\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross：rows と cols は {\"axis\", \"values\"}、cells[r][c] は研究の名前の並び、{\"self\": true}、{\"none\": \"空きの理由\"} のどれか。attributes：cols は名前の並び、rows は {\"label\", \"cells\", \"self\"?} の並び |",
-    "entry": "### `<m-matrix>`\n\nデータ（子の `<script type=\"application/json\">`）の例: `{\"kind\":\"cross\",\"rows\":{\"axis\":\"評価基準\",\"values\":[\"予測誤差\",\"ベイズリスク\"]},\"cols\":{\"axis\":\"予測の形\",\"values\":[\"点予測\",\"分布予測\"]},\"cells\":[[[\"[1]\",\"[2]\"],[\"[3]\"]],[{\"none\":\"自明\"},{\"self\":true}]]}`\n\n| 値 | 型 | 既定 | 意味 |\n|---|---|---|---|\n| `order` | string | `\"\"` | 出し方：cross は build（既定）・whole、attributes は whole（既定）・col・row |\n| `size` | number | `28` | 字の大きさ（px、24 以上。入らなければ 24 まで縮める） |\n\n`kind`：`cross`（既定、2 本の軸の交差の表）・`attributes`（行に研究、列に要素の表）。子の JSON に書く。\n\n- cross：`rows`・`cols` は `{\"axis\": \"軸の名前\", \"values\": [値, …]}`（どちらも 2〜4 個）。`cells[r][c]` は研究の名前の並び（引用番号か「著者（年）」、1〜3 本）、本研究のマスは `{\"self\": true}`、空きマスは `{\"none\": \"空きの理由\"}`（「—」と注の番号、表の下に注）。3 本目の軸は名前に印（† など）を付け、`marks: [{\"mark\": \"†\", \"text\": \"意味\"}]`\n- attributes：`cols` は要素の名前、`rows` は `{\"label\", \"cells\", \"self\"}`（本研究を先頭に）。空のマスは「—」\n- 本研究は「本研究」と字で書いて `--emph` の枠で囲む（色だけで分けない）\n\n注意\n\n- 交差の表の軸は 2〜4 個ずつ。それより多いときは軸の値をまとめるか、attributes の表にする\n- マスの研究は主なものを 3 本まで。全部の文献の一覧は参考文献のスライドに置く",
+    "row": "| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で結論の 1 文と、空きマスは — と注、下に設計の行）か、研究 × 要素の表（✓ △ × や短い字、列の上に要件の出どころ）を、ステップで埋める | cross は 軸と空の表 → 従来の研究（と設計の行の従来）→ 本研究（と設計の行の本研究）→ 注（order=\"whole\" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:\"cross\"\\|\"attributes\",rows?:object\\|any[],cols?:object\\|any[],cells?:(any[]\\|object)[][],marks?:{mark:str,text:str}[],design?:{cols:str[],rows:{label?,self?:bool,cells:str[]}[]},self?:str}` — cross：rows・cols は {\"axis\", \"values\"}、cells[r][c] は研究の名前の並び・{\"self\": true か \"結論\"}・{\"none\": \"理由\"}、design は {\"cols\", \"rows\"}。attributes：cols は名前か {\"name\", \"source\"}、rows は {\"label\", \"cells\", \"self\"?} |",
+    "entry": "### `<m-matrix>`\n\nデータ（子の `<script type=\"application/json\">`）の例: `{\"kind\":\"cross\",\"rows\":{\"axis\":\"評価基準\",\"values\":[\"予測誤差\",\"ベイズリスク\"]},\"cols\":{\"axis\":\"予測の形\",\"values\":[\"点予測\",\"分布予測\"]},\"cells\":[[[\"[1]\",\"[2]\"],[\"[3]\"]],[{\"none\":\"自明\"},{\"self\":true}]]}`\n\n| 値 | 型 | 既定 | 意味 |\n|---|---|---|---|\n| `order` | string | `\"\"` | 出し方：cross は build（既定）・whole、attributes は whole（既定）・col・row |\n| `size` | number | `28` | 字の大きさ（px、24 以上。入らなければ 24 まで縮める） |\n\n`kind`：`cross`（既定、2 本の軸の交差の表）・`attributes`（行に研究、列に要素の表）。子の JSON に書く。\n\n- cross：`rows`・`cols` は `{\"axis\": \"軸の名前\", \"values\": [値, …]}`（どちらも 2〜4 個）。`cells[r][c]` は研究の名前の並び（引用番号か「著者（年）」、1〜3 本）、本研究のマスは `{\"self\": true}`、空きマスは `{\"none\": \"空きの理由\"}`（「—」と注の番号、表の下に注）。3 本目の軸は名前に印（† など）を付け、`marks: [{\"mark\": \"†\", \"text\": \"意味\"}]`\n  - `{\"self\": \"分かったことの 1 文\"}` で本研究のマスに結論も書く（40 字まで）\n  - `design: {\"cols\": [2〜3 個], \"rows\": [{\"label\", \"cells\"}, {\"self\": true, \"cells\"}]}`：表の下の設計の行（従来と本研究のデータ・識別の設計と、比べられるようになったこと）\n- attributes：`cols` は要素の名前か `{\"name\", \"source\"}`（要件が来た応用の必要）、`rows` は `{\"label\", \"cells\", \"self\"}`（本研究を先頭に）。空のマスは「—」。記号の意味は `marks`（● 満たす・× 満たさない・— 記載なし）\n- 本研究は「本研究」と字で書いて `--emph` の枠で囲む（色だけで分けない）\n\n型の選び方（新しさの在りか）：問題の記述（目的・設定・入力・出力・評価基準）なら cross（問いと対象なら結論の 1 文、観測・識別なら design も）、応用の要件を満たす手法なら attributes に出どころと ● × —。答えの値や見方が新しいなら、この表にしない。どれも最も近い従来研究 1〜2 件を表の中で名指しする\n\n注意\n\n- 交差の表の軸は 2〜4 個ずつ。それより多いときは軸の値をまとめるか、attributes の表にする\n- マスの研究は主なものを 3 本まで。全部の文献の一覧は参考文献のスライドに置く\n- 要件を本研究に有利な語で作らない（本研究だけが全部 ● の表は、選び方しだいで必ず作れる）",
     "paidOnly": true
    },
    "m-menu": {
@@ -1505,9 +1505,9 @@ export const PACK = {
   "briefNote": "下に説明の節がないパーツは、表の「データの形」のとおりに子の JSON か属性を書き、ほかの属性は既定のままにする。",
   "extHead": "### `<{name}>`：このセットの拡張（パーツの説明は §3）"
  },
- "version": "1100b582",
+ "version": "18a79335",
  "tiers": {
-  "catalogue": "2.17.0",
+  "catalogue": "2.18.0",
   "parts": {
    "m-balance": {
     "tier": "specialized",
@@ -2423,6 +2423,62 @@ export const PACK = {
     "label": {
      "ja": "統計",
      "en": "Statistics"
+    },
+    "keywords": {
+     "ja": [
+      "分布",
+      "統計",
+      "データ",
+      "ヒストグラム",
+      "箱ひげ",
+      "相関",
+      "ベイズ",
+      "推定",
+      "検定",
+      "交差検証",
+      "信頼区間",
+      "標本抽出",
+      "確率変数",
+      "期待値",
+      "グラフィカルモデル",
+      "パス図",
+      "構造方程式",
+      "ベイジアンネットワーク",
+      "隠れマルコフ",
+      "マルコフ連鎖",
+      "因果ダイアグラム"
+     ],
+     "en": [
+      "distribution",
+      "distributions",
+      "statistics",
+      "statistical",
+      "data",
+      "histogram",
+      "histograms",
+      "box plot",
+      "box plots",
+      "correlation",
+      "Bayes",
+      "Bayesian",
+      "estimation",
+      "hypothesis test",
+      "hypothesis testing",
+      "cross-validation",
+      "confidence interval",
+      "confidence intervals",
+      "sampling",
+      "random variable",
+      "random variables",
+      "expected value",
+      "graphical model",
+      "path diagram",
+      "structural equation",
+      "Bayesian network",
+      "hidden Markov",
+      "Markov chain",
+      "causal diagram"
+     ]
     }
    },
    {
@@ -2430,6 +2486,48 @@ export const PACK = {
     "label": {
      "ja": "数学",
      "en": "Mathematics"
+    },
+    "keywords": {
+     "ja": [
+      "数学",
+      "算数",
+      "筆算",
+      "わり算",
+      "割り算",
+      "かけ算",
+      "掛け算",
+      "分数",
+      "割合",
+      "数直線",
+      "テープ図",
+      "関数",
+      "ベクトル",
+      "行列"
+     ],
+     "en": [
+      "mathematics",
+      "math",
+      "maths",
+      "arithmetic",
+      "long division",
+      "column addition",
+      "multiplication",
+      "division",
+      "fraction",
+      "fractions",
+      "ratio",
+      "ratios",
+      "percentage",
+      "percentages",
+      "number line",
+      "tape diagram",
+      "function",
+      "functions",
+      "vector",
+      "vectors",
+      "matrix",
+      "matrices"
+     ]
     }
    },
    {
@@ -2437,6 +2535,71 @@ export const PACK = {
     "label": {
      "ja": "情報",
      "en": "Informatics"
+    },
+    "keywords": {
+     "ja": [
+      "情報I",
+      "情報Ⅰ",
+      "プログラミング",
+      "アルゴリズム",
+      "最短経路",
+      "巡回セールスマン",
+      "グラフ理論",
+      "グラフの探索",
+      "幅優先",
+      "ダイクストラ",
+      "機械学習",
+      "ニューラルネット",
+      "パーセプトロン",
+      "深層学習",
+      "ディープラーニング",
+      "活性化関数",
+      "勾配降下",
+      "ロジスティック回帰",
+      "サポートベクター",
+      "SVM",
+      "決定木",
+      "k 平均",
+      "k平均",
+      "k-means",
+      "近傍法",
+      "損失関数",
+      "分類器",
+      "scikit-learn"
+     ],
+     "en": [
+      "programming",
+      "computer science",
+      "algorithm",
+      "algorithms",
+      "graph search",
+      "graph theory",
+      "breadth-first search",
+      "BFS",
+      "shortest path",
+      "traveling salesman",
+      "TSP",
+      "Dijkstra",
+      "machine learning",
+      "neural network",
+      "neural networks",
+      "perceptron",
+      "deep learning",
+      "activation function",
+      "gradient descent",
+      "logistic regression",
+      "support vector",
+      "SVM",
+      "decision tree",
+      "decision trees",
+      "k-means",
+      "nearest neighbor",
+      "nearest neighbors",
+      "loss function",
+      "classifier",
+      "classifiers",
+      "scikit-learn"
+     ]
     }
    },
    {
@@ -2444,6 +2607,28 @@ export const PACK = {
     "label": {
      "ja": "理科",
      "en": "Science"
+    },
+    "keywords": {
+     "ja": [
+      "理科",
+      "月の満ち欠け",
+      "天体",
+      "惑星",
+      "粒子",
+      "物理",
+      "化学"
+     ],
+     "en": [
+      "science",
+      "physics",
+      "chemistry",
+      "phases of the moon",
+      "moon phases",
+      "planet",
+      "planets",
+      "particle",
+      "particles"
+     ]
     }
    },
    {
@@ -2451,6 +2636,38 @@ export const PACK = {
     "label": {
      "ja": "社会",
      "en": "Social studies"
+    },
+    "keywords": {
+     "ja": [
+      "地図",
+      "都道府県",
+      "地方",
+      "世界",
+      {
+       "w": "国",
+       "not": [
+        "国語"
+       ]
+      },
+      "人口",
+      "地域",
+      "地理",
+      "歴史"
+     ],
+     "en": [
+      "map",
+      "maps",
+      "prefecture",
+      "prefectures",
+      "region",
+      "regions",
+      "world",
+      "country",
+      "countries",
+      "population",
+      "geography",
+      "history"
+     ]
     }
    },
    {
@@ -2458,6 +2675,30 @@ export const PACK = {
     "label": {
      "ja": "国語",
      "en": "Japanese"
+    },
+    "keywords": {
+     "ja": [
+      "国語",
+      "漢文",
+      "漢詩",
+      "古文",
+      "現代文",
+      "評論",
+      "小説",
+      "書き順",
+      "ひらがな"
+     ],
+     "en": [
+      "kanbun",
+      "kobun",
+      "kanshi",
+      "classical Japanese",
+      "classical Chinese",
+      "stroke order",
+      "hiragana",
+      "katakana",
+      "kanji"
+     ]
     }
    },
    {
@@ -2465,6 +2706,45 @@ export const PACK = {
     "label": {
      "ja": "英語",
      "en": "English"
+    },
+    "keywords": {
+     "ja": [
+      "英文",
+      "文型",
+      "英語",
+      {
+       "w": "句",
+       "not": [
+        "俳句",
+        "語句",
+        "文句",
+        "句読点"
+       ]
+      },
+      {
+       "w": "節",
+       "not": [
+        "季節",
+        "関節",
+        "節約",
+        "節分",
+        "調節"
+       ]
+      },
+      "関係詞"
+     ],
+     "en": [
+      "English grammar",
+      "sentence structure",
+      "sentence pattern",
+      "sentence patterns",
+      "phrase",
+      "phrases",
+      "clause",
+      "clauses",
+      "relative pronoun",
+      "relative pronouns"
+     ]
     }
    },
    {
@@ -2472,6 +2752,36 @@ export const PACK = {
     "label": {
      "ja": "音楽",
      "en": "Music"
+    },
+    "keywords": {
+     "ja": [
+      "音楽",
+      "音階",
+      "和音",
+      {
+       "w": "コード",
+       "not": [
+        "ソースコード",
+        "バーコード",
+        "QRコード",
+        "コーディング"
+       ]
+      },
+      "鍵盤",
+      "楽譜"
+     ],
+     "en": [
+      "music",
+      "musical scale",
+      "major scale",
+      "minor scale",
+      "chord",
+      "chords",
+      "keyboard",
+      "piano",
+      "sheet music",
+      "musical score"
+     ]
     }
    },
    {
@@ -2479,6 +2789,26 @@ export const PACK = {
     "label": {
      "ja": "経営",
      "en": "Business"
+    },
+    "keywords": {
+     "ja": [
+      "市場",
+      "KPI",
+      "売上",
+      "事業",
+      "ピッチ",
+      "経営"
+     ],
+     "en": [
+      "market",
+      "markets",
+      "KPI",
+      "KPIs",
+      "sales",
+      "revenue",
+      "business",
+      "pitch"
+     ]
     }
    },
    {

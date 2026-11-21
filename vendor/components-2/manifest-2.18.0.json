@@ -1,0 +1,3182 @@
+{
+  "name": "egatari-components",
+  "version": "2.18.0",
+  "tag": "v2.18.0",
+  "repository": "https://github.com/egatari/components",
+  "license": "MIT",
+  "tarball": {
+    "file": "egatari-components-v2.18.0.tar.gz",
+    "sha256": "d4568b357557b99d33512b5d94e720c00b90b80968d1d1bbec3cdf86a913512a",
+    "bytes": 1299873
+  },
+  "purposes": [
+    {
+      "id": "compare",
+      "ja": "比べる（量・特徴）",
+      "en": "Compare (amounts or features)",
+      "steps": {
+        "ja": "一方を出し、それから違い",
+        "en": "One side, then the difference"
+      },
+      "tile": "own",
+      "icon": "compare",
+      "label": {
+        "ja": "比べる（量・特徴）",
+        "en": "Compare (amounts, features)"
+      },
+      "examples": {
+        "ja": "棒・並べた棒・比べる図",
+        "en": "bars, sorted bars, comparison"
+      }
+    },
+    {
+      "id": "ranking",
+      "ja": "順位",
+      "en": "Ranking",
+      "steps": {
+        "ja": "並べ替えた棒を 1 本ずつ",
+        "en": "Sorted bars one at a time"
+      },
+      "tile": {
+        "into": "compare"
+      },
+      "icon": "bars"
+    },
+    {
+      "id": "change",
+      "ja": "時間での変化",
+      "en": "Change over time",
+      "steps": {
+        "ja": "線を 1 本ずつ",
+        "en": "One line at a time"
+      },
+      "tile": "own",
+      "icon": "line",
+      "label": {
+        "ja": "変化",
+        "en": "Change"
+      },
+      "examples": {
+        "ja": "折れ線・縦棒",
+        "en": "line, columns"
+      }
+    },
+    {
+      "id": "part-whole",
+      "ja": "全体と内訳",
+      "en": "Part of a whole",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "part",
+      "label": {
+        "ja": "内訳",
+        "en": "Part of a whole"
+      },
+      "examples": {
+        "ja": "積み上げ棒・円・入れ子の円",
+        "en": "stacked bars, pie, nested circles"
+      }
+    },
+    {
+      "id": "key-number",
+      "ja": "1 つの大事な数字",
+      "en": "One key number",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "kpi",
+      "label": {
+        "ja": "数字を見せる",
+        "en": "Key number"
+      },
+      "examples": {
+        "ja": "大きな数字",
+        "en": "big number"
+      }
+    },
+    {
+      "id": "process",
+      "ja": "手順・工程",
+      "en": "Steps of a process",
+      "steps": {
+        "ja": "1 つの手順ずつ",
+        "en": "One step at a time"
+      },
+      "tile": "own",
+      "icon": "flow",
+      "label": {
+        "ja": "手順",
+        "en": "Steps"
+      },
+      "examples": {
+        "ja": "流れ図",
+        "en": "flow chart"
+      }
+    },
+    {
+      "id": "timeline",
+      "ja": "年表・予定",
+      "en": "Timeline, schedule",
+      "steps": {
+        "ja": "1 つの出来事ずつ",
+        "en": "One event at a time"
+      },
+      "tile": "own",
+      "icon": "timeline",
+      "label": {
+        "ja": "年表・予定",
+        "en": "Timeline"
+      },
+      "examples": {
+        "ja": "年表",
+        "en": "timeline"
+      }
+    },
+    {
+      "id": "cause-effect",
+      "ja": "原因と結果",
+      "en": "Cause and effect",
+      "steps": {
+        "ja": "原因、それから結果",
+        "en": "Causes, then the effect"
+      },
+      "tile": "own",
+      "icon": "cause",
+      "label": {
+        "ja": "原因と結果",
+        "en": "Cause and effect"
+      },
+      "examples": {
+        "ja": "特性要因図",
+        "en": "fishbone"
+      }
+    },
+    {
+      "id": "cycle",
+      "ja": "循環",
+      "en": "Cycle",
+      "steps": {
+        "ja": "順を追って 1 つずつ",
+        "en": "One stage at a time"
+      },
+      "tile": "own",
+      "icon": "cycle",
+      "label": {
+        "ja": "循環",
+        "en": "Cycle"
+      },
+      "examples": {
+        "ja": "サイクル",
+        "en": "cycle"
+      }
+    },
+    {
+      "id": "hierarchy",
+      "ja": "階層・分類",
+      "en": "Hierarchy, classification",
+      "steps": {
+        "ja": "上から",
+        "en": "Top down"
+      },
+      "tile": "own",
+      "icon": "tree",
+      "label": {
+        "ja": "階層・分類",
+        "en": "Hierarchy"
+      },
+      "examples": {
+        "ja": "木",
+        "en": "tree"
+      }
+    },
+    {
+      "id": "position",
+      "ja": "位置づけ（2 軸）",
+      "en": "Position on 2 axes",
+      "steps": {
+        "ja": "軸、それから項目",
+        "en": "Axes, then items"
+      },
+      "tile": "own",
+      "icon": "matrix",
+      "label": {
+        "ja": "位置づけ",
+        "en": "Position"
+      },
+      "examples": {
+        "ja": "4 象限・2 軸の地図",
+        "en": "4 quadrants, 2-axis map"
+      }
+    },
+    {
+      "id": "overlap",
+      "ja": "重なり",
+      "en": "Overlap",
+      "steps": {
+        "ja": "集合、それから重なり",
+        "en": "Sets, then the overlap"
+      },
+      "tile": "own",
+      "icon": "venn",
+      "label": {
+        "ja": "重なり",
+        "en": "Overlap"
+      },
+      "examples": {
+        "ja": "ベン図",
+        "en": "Venn diagram"
+      }
+    },
+    {
+      "id": "correlation",
+      "ja": "2 つの量の関係",
+      "en": "Two quantities",
+      "steps": {
+        "ja": "点、それから傾向",
+        "en": "Points, then the trend"
+      },
+      "tile": "own",
+      "icon": "scatter",
+      "label": {
+        "ja": "2 つの量の関係",
+        "en": "Two quantities"
+      },
+      "examples": {
+        "ja": "散布図",
+        "en": "scatter plot"
+      }
+    },
+    {
+      "id": "spread",
+      "ja": "ばらつき",
+      "en": "Spread",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "dist",
+      "label": {
+        "ja": "ばらつき",
+        "en": "Spread"
+      },
+      "examples": {
+        "ja": "ヒストグラム・箱ひげ図・ドットプロット",
+        "en": "histogram, box plot, dot plot"
+      }
+    },
+    {
+      "id": "grouping",
+      "ja": "まとめる・分ける",
+      "en": "Grouping",
+      "steps": {
+        "ja": "まとまる動き",
+        "en": "The grouping motion"
+      },
+      "tile": "none",
+      "icon": "collect"
+    },
+    {
+      "id": "text-structure",
+      "ja": "文章の構造",
+      "en": "Structure of a text",
+      "steps": {
+        "ja": "読む順",
+        "en": "Reading order"
+      },
+      "tile": "none",
+      "icon": "gendai"
+    },
+    {
+      "id": "contents",
+      "ja": "目次",
+      "en": "Contents",
+      "steps": {
+        "ja": "一度に全部",
+        "en": "Whole at once"
+      },
+      "tile": "own",
+      "icon": "menu",
+      "label": {
+        "ja": "目次",
+        "en": "Contents"
+      },
+      "examples": {
+        "ja": "札の格子",
+        "en": "grid of cards"
+      }
+    },
+    {
+      "id": "parameter",
+      "ja": "パラメータを動かす",
+      "en": "Varying a parameter",
+      "steps": {
+        "ja": "値を 1 つずつ",
+        "en": "One value at a time"
+      },
+      "tile": "none",
+      "icon": "sweep"
+    },
+    {
+      "id": "predict",
+      "ja": "予想してから確かめる",
+      "en": "Predict, then check",
+      "steps": {
+        "ja": "問いと選択肢、それから答え",
+        "en": "The question and choices, then the answer"
+      },
+      "tile": "own",
+      "icon": "predict",
+      "label": {
+        "ja": "予想して確かめる",
+        "en": "Predict, then check"
+      },
+      "examples": {
+        "ja": "手を挙げて数える・答えを開く",
+        "en": "show of hands, then the answer"
+      }
+    },
+    {
+      "id": "timebox",
+      "ja": "時間を区切る",
+      "en": "Time-boxing",
+      "steps": {
+        "ja": "区切りを 1 つずつ（残り時間）",
+        "en": "One phase at a time (time remaining)"
+      },
+      "tile": "none",
+      "icon": "timer"
+    },
+    {
+      "id": "spatial",
+      "ja": "場所・地図",
+      "en": "Place / map",
+      "steps": {
+        "ja": "地図、それから地域・点・矢印を 1 つずつ",
+        "en": "The map, then regions, points and arrows one at a time"
+      },
+      "tile": "own",
+      "icon": "map",
+      "label": {
+        "ja": "場所・地図",
+        "en": "Place / map"
+      },
+      "examples": {
+        "ja": "日本地図・塗り分け・地点と矢印",
+        "en": "map of Japan, choropleth, points and arrows"
+      }
+    },
+    {
+      "id": "music",
+      "ja": "音楽（音の高さ・和音・リズム）",
+      "en": "Music (pitch, chords, rhythm)",
+      "steps": {
+        "ja": "音・和音を 1 つずつ",
+        "en": "One note or chord at a time"
+      },
+      "tile": "none",
+      "icon": "music"
+    },
+    {
+      "id": "model",
+      "ja": "仕組みをモデルで見る",
+      "en": "How it works (a model)",
+      "steps": {
+        "ja": "全体、それから動きを 1 つずつ",
+        "en": "The whole, then the motion one stage at a time"
+      },
+      "tile": "none",
+      "icon": "cycle"
+    },
+    {
+      "id": "deviation",
+      "ja": "差・増減",
+      "en": "Deviation, increase and decrease",
+      "steps": {
+        "ja": "基準、それから差",
+        "en": "The baseline, then the differences"
+      },
+      "tile": "own",
+      "icon": "waterfall",
+      "label": {
+        "ja": "差・増減",
+        "en": "Increase / decrease"
+      },
+      "examples": {
+        "ja": "ウォーターフォール",
+        "en": "waterfall"
+      }
+    },
+    {
+      "id": "concept-links",
+      "ja": "概念のつながり",
+      "en": "Concept links",
+      "steps": {
+        "ja": "中心から外へ",
+        "en": "From the centre outwards"
+      },
+      "reserved": true
+    }
+  ],
+  "subjects": [
+    {
+      "id": "statistics",
+      "ja": "統計",
+      "en": "Statistics",
+      "keywords": {
+        "ja": [
+          "分布",
+          "統計",
+          "データ",
+          "ヒストグラム",
+          "箱ひげ",
+          "相関",
+          "ベイズ",
+          "推定",
+          "検定",
+          "交差検証",
+          "信頼区間",
+          "標本抽出",
+          "確率変数",
+          "期待値",
+          "グラフィカルモデル",
+          "パス図",
+          "構造方程式",
+          "ベイジアンネットワーク",
+          "隠れマルコフ",
+          "マルコフ連鎖",
+          "因果ダイアグラム"
+        ],
+        "en": [
+          "distribution",
+          "distributions",
+          "statistics",
+          "statistical",
+          "data",
+          "histogram",
+          "histograms",
+          "box plot",
+          "box plots",
+          "correlation",
+          "Bayes",
+          "Bayesian",
+          "estimation",
+          "hypothesis test",
+          "hypothesis testing",
+          "cross-validation",
+          "confidence interval",
+          "confidence intervals",
+          "sampling",
+          "random variable",
+          "random variables",
+          "expected value",
+          "graphical model",
+          "path diagram",
+          "structural equation",
+          "Bayesian network",
+          "hidden Markov",
+          "Markov chain",
+          "causal diagram"
+        ]
+      }
+    },
+    {
+      "id": "mathematics",
+      "ja": "数学",
+      "en": "Mathematics",
+      "keywords": {
+        "ja": [
+          "数学",
+          "算数",
+          "筆算",
+          "わり算",
+          "割り算",
+          "かけ算",
+          "掛け算",
+          "分数",
+          "割合",
+          "数直線",
+          "テープ図",
+          "関数",
+          "ベクトル",
+          "行列"
+        ],
+        "en": [
+          "mathematics",
+          "math",
+          "maths",
+          "arithmetic",
+          "long division",
+          "column addition",
+          "multiplication",
+          "division",
+          "fraction",
+          "fractions",
+          "ratio",
+          "ratios",
+          "percentage",
+          "percentages",
+          "number line",
+          "tape diagram",
+          "function",
+          "functions",
+          "vector",
+          "vectors",
+          "matrix",
+          "matrices"
+        ]
+      }
+    },
+    {
+      "id": "informatics",
+      "ja": "情報",
+      "en": "Informatics",
+      "keywords": {
+        "ja": [
+          "情報I",
+          "情報Ⅰ",
+          "プログラミング",
+          "アルゴリズム",
+          "最短経路",
+          "巡回セールスマン",
+          "グラフ理論",
+          "グラフの探索",
+          "幅優先",
+          "ダイクストラ",
+          "機械学習",
+          "ニューラルネット",
+          "パーセプトロン",
+          "深層学習",
+          "ディープラーニング",
+          "活性化関数",
+          "勾配降下",
+          "ロジスティック回帰",
+          "サポートベクター",
+          "SVM",
+          "決定木",
+          "k 平均",
+          "k平均",
+          "k-means",
+          "近傍法",
+          "損失関数",
+          "分類器",
+          "scikit-learn"
+        ],
+        "en": [
+          "programming",
+          "computer science",
+          "algorithm",
+          "algorithms",
+          "graph search",
+          "graph theory",
+          "breadth-first search",
+          "BFS",
+          "shortest path",
+          "traveling salesman",
+          "TSP",
+          "Dijkstra",
+          "machine learning",
+          "neural network",
+          "neural networks",
+          "perceptron",
+          "deep learning",
+          "activation function",
+          "gradient descent",
+          "logistic regression",
+          "support vector",
+          "SVM",
+          "decision tree",
+          "decision trees",
+          "k-means",
+          "nearest neighbor",
+          "nearest neighbors",
+          "loss function",
+          "classifier",
+          "classifiers",
+          "scikit-learn"
+        ]
+      }
+    },
+    {
+      "id": "science",
+      "ja": "理科",
+      "en": "Science",
+      "keywords": {
+        "ja": [
+          "理科",
+          "月の満ち欠け",
+          "天体",
+          "惑星",
+          "粒子",
+          "物理",
+          "化学"
+        ],
+        "en": [
+          "science",
+          "physics",
+          "chemistry",
+          "phases of the moon",
+          "moon phases",
+          "planet",
+          "planets",
+          "particle",
+          "particles"
+        ]
+      }
+    },
+    {
+      "id": "social-studies",
+      "ja": "社会",
+      "en": "Social studies",
+      "keywords": {
+        "ja": [
+          "地図",
+          "都道府県",
+          "地方",
+          "世界",
+          {
+            "w": "国",
+            "not": [
+              "国語"
+            ]
+          },
+          "人口",
+          "地域",
+          "地理",
+          "歴史"
+        ],
+        "en": [
+          "map",
+          "maps",
+          "prefecture",
+          "prefectures",
+          "region",
+          "regions",
+          "world",
+          "country",
+          "countries",
+          "population",
+          "geography",
+          "history"
+        ]
+      }
+    },
+    {
+      "id": "japanese",
+      "ja": "国語",
+      "en": "Japanese",
+      "keywords": {
+        "ja": [
+          "国語",
+          "漢文",
+          "漢詩",
+          "古文",
+          "現代文",
+          "評論",
+          "小説",
+          "書き順",
+          "ひらがな"
+        ],
+        "en": [
+          "kanbun",
+          "kobun",
+          "kanshi",
+          "classical Japanese",
+          "classical Chinese",
+          "stroke order",
+          "hiragana",
+          "katakana",
+          "kanji"
+        ]
+      }
+    },
+    {
+      "id": "english",
+      "ja": "英語",
+      "en": "English",
+      "keywords": {
+        "ja": [
+          "英文",
+          "文型",
+          "英語",
+          {
+            "w": "句",
+            "not": [
+              "俳句",
+              "語句",
+              "文句",
+              "句読点"
+            ]
+          },
+          {
+            "w": "節",
+            "not": [
+              "季節",
+              "関節",
+              "節約",
+              "節分",
+              "調節"
+            ]
+          },
+          "関係詞"
+        ],
+        "en": [
+          "English grammar",
+          "sentence structure",
+          "sentence pattern",
+          "sentence patterns",
+          "phrase",
+          "phrases",
+          "clause",
+          "clauses",
+          "relative pronoun",
+          "relative pronouns"
+        ]
+      }
+    },
+    {
+      "id": "music",
+      "ja": "音楽",
+      "en": "Music",
+      "keywords": {
+        "ja": [
+          "音楽",
+          "音階",
+          "和音",
+          {
+            "w": "コード",
+            "not": [
+              "ソースコード",
+              "バーコード",
+              "QRコード",
+              "コーディング"
+            ]
+          },
+          "鍵盤",
+          "楽譜"
+        ],
+        "en": [
+          "music",
+          "musical scale",
+          "major scale",
+          "minor scale",
+          "chord",
+          "chords",
+          "keyboard",
+          "piano",
+          "sheet music",
+          "musical score"
+        ]
+      }
+    },
+    {
+      "id": "business",
+      "ja": "経営",
+      "en": "Business",
+      "keywords": {
+        "ja": [
+          "市場",
+          "KPI",
+          "売上",
+          "事業",
+          "ピッチ",
+          "経営"
+        ],
+        "en": [
+          "market",
+          "markets",
+          "KPI",
+          "KPIs",
+          "sales",
+          "revenue",
+          "business",
+          "pitch"
+        ]
+      }
+    },
+    {
+      "id": "medicine",
+      "ja": "医療",
+      "en": "Medicine",
+      "reserved": true
+    },
+    {
+      "id": "disaster",
+      "ja": "防災",
+      "en": "Disaster preparedness",
+      "reserved": true
+    }
+  ],
+  "audiences": [
+    {
+      "id": "primary-junior",
+      "ja": "小中",
+      "en": "Primary and junior high"
+    },
+    {
+      "id": "high-school",
+      "ja": "高校",
+      "en": "High school"
+    },
+    {
+      "id": "university",
+      "ja": "大学",
+      "en": "University"
+    },
+    {
+      "id": "working-adult",
+      "ja": "社会人",
+      "en": "Working adults"
+    },
+    {
+      "id": "general",
+      "ja": "一般",
+      "en": "General public"
+    }
+  ],
+  "components": {
+    "balance": {
+      "kind": "element",
+      "tag": "m-balance",
+      "version": "2.0.2",
+      "tier": "specialized",
+      "set": "data",
+      "display": "期待値はつり合いの位置 / Expectation as a balance point",
+      "requires": {
+        "base": "1.3.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model"
+      ],
+      "subjects": [
+        "statistics",
+        "mathematics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "35c4a82759cebb2f8e409a1888664436f40ddd26b0ea6f4958291ce82e505d1c",
+      "files": {
+        "CHANGELOG.md": "d84268e66a55a86f978e952d7bb90cef4eed53dabe678b210fb0283bc8f85c2f",
+        "README.en.md": "b0aa8cc57b3a15a2a0adfca65d3ac87442f02364200a4e3b7d07ece33859ce00",
+        "README.md": "485c51f451aeed6479944432fbe6ecc20e4307b3d810d83b42874eac43026d95",
+        "demo.html": "5a8f53b540ee781d765f1232e6a2674c4f850eb68a1cdc81e019f876de2b77c4",
+        "index.js": "35c4a82759cebb2f8e409a1888664436f40ddd26b0ea6f4958291ce82e505d1c"
+      }
+    },
+    "bars": {
+      "kind": "element",
+      "tag": "m-bars",
+      "version": "2.1.1",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "compare",
+        "ranking",
+        "change",
+        "part-whole"
+      ],
+      "variants": [],
+      "sha256": "987443368820f43c9ff70b2a172e6f7c75294ebc03ff3484614b48ca5e4f7f75",
+      "files": {
+        "CHANGELOG.md": "a2fca5b8193bdb771f6e4017adbfb716638427f8dabe9f24103e83d03df5c17f",
+        "README.en.md": "e6c849229de3d98abfed7bddc2c4c9a286bb11fb0937fbc1c26a3ddd62ff0332",
+        "README.md": "52e46ecc0949873f3e2cf8bba62b8fc370f1449ac5bf5936d4c585569c272808",
+        "demo.html": "4ee2a7051f4ddbff4564ff60e5d1a9615db8fdf65b548db07aac0d24b66bd114",
+        "index.js": "987443368820f43c9ff70b2a172e6f7c75294ebc03ff3484614b48ca5e4f7f75"
+      }
+    },
+    "base": {
+      "kind": "library",
+      "version": "1.3.0",
+      "requires": {
+        "shape": "1.0.0"
+      },
+      "license": "MIT",
+      "sha256": "13a850ee5c5ad1a2fe2f1d9fce73e043153c4c944a3d8e2532d8ad59e457584b",
+      "files": {
+        "README.md": "3b4a7c20c695998d60934286d5590555acb80737415b70c420991f238722661c",
+        "index.js": "13a850ee5c5ad1a2fe2f1d9fce73e043153c4c944a3d8e2532d8ad59e457584b"
+      }
+    },
+    "boxplot": {
+      "kind": "element",
+      "tag": "m-boxplot",
+      "version": "2.0.7",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.3.0",
+        "boxplot-core": "1.0.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "spread",
+        "compare"
+      ],
+      "subjects": [
+        "statistics",
+        "mathematics"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "032aa020e6b9f7da8e70715aaf5cabf00bbe14581027d29bf42d05b2c9754642",
+      "files": {
+        "CHANGELOG.md": "2ffc6d393c404bdcfd0ff66805e42b16e9546764759af3c0725d15c06b19ed67",
+        "README.md": "8f75b805dd3bdef053b411d4dc2edea007e1a2af25d2e7c0778c6b31c386d6a3",
+        "demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
+        "index.js": "032aa020e6b9f7da8e70715aaf5cabf00bbe14581027d29bf42d05b2c9754642"
+      }
+    },
+    "boxplot-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "998759cbe88393082f20060d54265d87b86523f6800f7db5fa6a9670c9566b7a",
+      "files": {
+        "README.md": "5761713af28d621f732458a1c8831b55fa74870eb04d1fb14b393776a86c9a18",
+        "index.js": "998759cbe88393082f20060d54265d87b86523f6800f7db5fa6a9670c9566b7a"
+      }
+    },
+    "callout": {
+      "kind": "element",
+      "tag": "m-callout",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "tools",
+      "display": "画面の手順 / Screen steps",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process"
+      ],
+      "audiences": [
+        "working-adult",
+        "general"
+      ],
+      "variants": [],
+      "sha256": "2ef9f37406666f1d519bc17648234e54ae4a215ec0edf6c5c255fa57ea7304b4",
+      "files": {
+        "CHANGELOG.md": "5840f7e9360333bf85cfb0addcb8706268ac62d6ddfa3ed97814dc2359ad0ff7",
+        "README.en.md": "4e746f05a46cfd5e5f71cad05bf60cede9ad5bb1edf6474c257268f3795d5882",
+        "README.md": "b66756c7116684a9a76a0733317bff0e5b555ac4d3250c6cabb89f9c012297c3",
+        "demo.html": "591814d80cb6d282e954e6fec97857bdd90c70a55eed34ad8f42f4623db78fed",
+        "index.js": "2ef9f37406666f1d519bc17648234e54ae4a215ec0edf6c5c255fa57ea7304b4"
+      }
+    },
+    "cards": {
+      "kind": "element",
+      "tag": "m-cards",
+      "version": "2.1.0",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0",
+        "icons": "1.0.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "grouping"
+      ],
+      "variants": [
+        "rise",
+        "fade",
+        "draw"
+      ],
+      "sha256": "f216c7d4888e5395e64dd44de6d54d800caaf59a7a0de70ab923fde85643a35c",
+      "files": {
+        "CHANGELOG.md": "530d94ae07c6a8393a19633e9a209b19f9d98db26654f90464d783cac3542ced",
+        "README.en.md": "5a5409a2370b8435421c93c3cc7f8a55f657cc4217c0811ce9c5d4c969774cad",
+        "README.md": "dec49de56cd9ccb96670cb8ca8571ec466f2d185e8d697300586595d09dbc35c",
+        "demo.html": "0b4439c806dc96230314d5f4bfa50922d53a185aeefd21f81b20d681ed04a4a3",
+        "index.js": "f216c7d4888e5395e64dd44de6d54d800caaf59a7a0de70ab923fde85643a35c"
+      }
+    },
+    "checklist": {
+      "kind": "element",
+      "tag": "m-checklist",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "tools",
+      "display": "確かめる一覧 / Checklist",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process"
+      ],
+      "audiences": [
+        "working-adult",
+        "general"
+      ],
+      "variants": [],
+      "sha256": "0a68bea037a70303433dc6fa07e6e6a360f3b73e81d390eec386a0f76d5e2fb5",
+      "files": {
+        "CHANGELOG.md": "75e26262f90d14dbc372666e1fdc355f1e5e7485764e7ae02bbc3c2b8edd1bf1",
+        "README.en.md": "24d081c0389c46ad373f65dec5c38e598c9fbf21421340feeb8c7ad1e7934627",
+        "README.md": "d7e716edfa4da7a14d2313fd224cdb040c18c0cabdf3fa5543f0c66e61878063",
+        "demo.html": "d1b488c4d90fafdc00b680fabfabc9991a48fd78b38a4e11deee23985b02850d",
+        "index.js": "0a68bea037a70303433dc6fa07e6e6a360f3b73e81d390eec386a0f76d5e2fb5"
+      }
+    },
+    "ci": {
+      "kind": "element",
+      "tag": "m-ci",
+      "version": "2.0.2",
+      "tier": "specialized",
+      "set": "data",
+      "display": "信頼区間の意味 / Confidence intervals",
+      "requires": {
+        "base": "1.3.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "spread"
+      ],
+      "subjects": [
+        "statistics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "46fcc2aae05a8ad900d5e59e80e4c6d459d3b58fcc5e3e5aee251d27662e5c83",
+      "files": {
+        "CHANGELOG.md": "15de6209eb45fe7717ca3e5f19e7c1c231022ecdc34604d00e3ee0bd6c533b3f",
+        "README.en.md": "6e2ae8fbf7876698fa4b9b8c48633a5431223ca7eefa200c7313eec72ba2edf2",
+        "README.md": "b9824846592dbc76720d45dae53021d668daacb6db4967836646674bd0a53400",
+        "demo.html": "fa5be1bdaf231de31b04b8a929f722722c88c56df04b01708bc8302dfc9b82fd",
+        "index.js": "46fcc2aae05a8ad900d5e59e80e4c6d459d3b58fcc5e3e5aee251d27662e5c83"
+      }
+    },
+    "classify2d": {
+      "kind": "element",
+      "tag": "m-classify2d",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "ml",
+      "display": "2 次元の分類 / 2-D classification",
+      "requires": {
+        "base": "1.3.0",
+        "contour-core": "1.0.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "grouping",
+        "model"
+      ],
+      "subjects": [
+        "informatics",
+        "statistics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "0c84222947ca44e2a0bb882f98c14ae4cc6e813e2114396ff93f4da89a1894a0",
+      "files": {
+        "CHANGELOG.md": "c14fbbcd08d3e70564ede8768900d1543b1d6c6faae352683617f1de5f7f150d",
+        "README.en.md": "ca81d76d6eae1ce114e949c100380063d6b664bddad834496783d75e39a1c3e0",
+        "README.md": "2e0d2ebbda2e9cd6061435bd49fbd4f8411e26cb0ca63a055119b7f40f806a6f",
+        "demo.html": "370a2ce8108505bdd01bfa669c6067a026335b2859f7fc12246478fe17e9ab26",
+        "index.js": "0c84222947ca44e2a0bb882f98c14ae4cc6e813e2114396ff93f4da89a1894a0"
+      }
+    },
+    "code": {
+      "kind": "element",
+      "tag": "m-code",
+      "version": "2.2.1",
+      "tier": "specialized",
+      "set": "data",
+      "display": "コードの解説 / Code walkthrough",
+      "requires": {
+        "base": "1.3.0",
+        "code-core": "1.0.1"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "model"
+      ],
+      "subjects": [
+        "informatics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [],
+      "sha256": "c6456e4f28337217c641eff87e16637303c750320836d4f6b244cab14d182a88",
+      "files": {
+        "CHANGELOG.md": "08498861894aa69399de1560f7c935803d4121484c5b7cbe6e15f233ad73271e",
+        "README.en.md": "939831c76a62cb62f3979ad3a65d3b5ff23e9be75e64d1b3b5f0a13e2018ddce",
+        "README.md": "96df138df82326e790ea56c9a5e21ca720c0b6bb71963845b64af3e760e5410b",
+        "demo.html": "98156cb82f77e653d3cc4f777019ab05454de4ac0274d02f6c27f97091d34b7e",
+        "index.js": "c6456e4f28337217c641eff87e16637303c750320836d4f6b244cab14d182a88"
+      }
+    },
+    "code-core": {
+      "kind": "library",
+      "version": "1.0.1",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "license": "MIT",
+      "sha256": "6f22de6b2e00c774bc01f306ecf96878c569abc1b1e29c8e8bcdc9942e00c26d",
+      "files": {
+        "README.md": "0714245a1381046dc50e02624b976928e2a10a0544b2c789d6f18626e7dfda94",
+        "index.js": "6f22de6b2e00c774bc01f306ecf96878c569abc1b1e29c8e8bcdc9942e00c26d"
+      }
+    },
+    "codetree": {
+      "kind": "element",
+      "tag": "m-codetree",
+      "version": "2.1.0",
+      "tier": "extra",
+      "display": "ハフマン木 / Huffman tree",
+      "requires": {
+        "base": "1.3.0",
+        "codetree-core": "1.0.0"
+      },
+      "series": "info",
+      "license": "MIT",
+      "purposes": [
+        "hierarchy",
+        "process"
+      ],
+      "subjects": [
+        "informatics"
+      ],
+      "audiences": [
+        "high-school"
+      ],
+      "variants": [],
+      "sha256": "024efb2c2ec69bb19921a321788f2c5406b46403420dfaeb4614ef2a41a1adbe",
+      "files": {
+        "CHANGELOG.md": "cb6c864324549cf759e884a2bc7f7773585640169fa9c4da538704e117467333",
+        "README.md": "64c7f858dc7350041bf8f6419de7b7daaaf23efbca01779f711d8382f6b3601c",
+        "demo.html": "094b81bdc9e088fb2ddffb552818e4c370bff138497a492767d0b71377ee8be6",
+        "index.js": "024efb2c2ec69bb19921a321788f2c5406b46403420dfaeb4614ef2a41a1adbe"
+      }
+    },
+    "codetree-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
+      "files": {
+        "README.md": "9e6185fd5006cbf55d781498003a29507821130ab8823e1939b545b9bb614a56",
+        "index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d"
+      }
+    },
+    "collect": {
+      "kind": "element",
+      "tag": "m-collect",
+      "version": "2.1.0",
+      "tier": "extra",
+      "build": {
+        "fields": {
+          "targets[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "grouping"
+      ],
+      "variants": [],
+      "sha256": "94ed4676e3836abdcd686c821d28f858a17a05a7a15c6c9c311d5702a8190f27",
+      "files": {
+        "CHANGELOG.md": "f6aa55cf7ab7f731e9fd2d88d9bbe79d839cb8f7278c76fe985bfa8807bf34b4",
+        "README.md": "1efae74ac167531177bce870583e78621caa0a7d4ae25e8f8aff9201a706e87f",
+        "demo.html": "bc503695034d43678c2c30ded24e90f43056b0fdcb5eefc51b688ac504313685",
+        "index.js": "94ed4676e3836abdcd686c821d28f858a17a05a7a15c6c9c311d5702a8190f27"
+      }
+    },
+    "compare": {
+      "kind": "element",
+      "tag": "m-compare",
+      "version": "2.0.5",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "compare"
+      ],
+      "variants": [
+        "fade",
+        "slide",
+        "reveal"
+      ],
+      "sha256": "57bce81e6905f28c767d28ba48508c16c9f13ae35bbfb4950610178a9bd5ed66",
+      "files": {
+        "CHANGELOG.md": "fa039a12fb7f79f04792510b320362e0b70ba11c72fce514b8a919396d45a821",
+        "README.en.md": "a52a51dc480340e1ddcec3ff62b5793eb99c8d2cce7b014bbb3c3726ddcf49c2",
+        "README.md": "7bce8818a33ffebf01f96df6e9787fb5c507f1964003a5405156b2eec4ad220e",
+        "demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
+        "index.js": "57bce81e6905f28c767d28ba48508c16c9f13ae35bbfb4950610178a9bd5ed66"
+      }
+    },
+    "contour": {
+      "kind": "element",
+      "tag": "m-contour",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "ml",
+      "display": "等高線 / Contour plot",
+      "requires": {
+        "base": "1.3.0",
+        "expr": "1.0.0",
+        "contour-core": "1.0.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "change"
+      ],
+      "subjects": [
+        "mathematics",
+        "informatics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "71c213d5538a4d4b90784ef3298df1533d26c49845a9047faf7a6b479d63558d",
+      "files": {
+        "CHANGELOG.md": "ad7721f100ecc831eb16b5381852db7d67fa9dcb513a4f310211a27ac52f9bd1",
+        "README.en.md": "cd821920081d04694dced56da8ffc4c36c28b768559c8779d7045cec8eb48572",
+        "README.md": "fd6bbc1ddfdd5ba4a838f93c8a76c5a2413b2e0896e507fdd2b8c51a12f5bf5d",
+        "demo.html": "e534b19859fc5ceb89250fb7cc1431e6818512d8d19466e3e0c38b994a03b3c9",
+        "index.js": "71c213d5538a4d4b90784ef3298df1533d26c49845a9047faf7a6b479d63558d"
+      }
+    },
+    "contour-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "0935abe547ca44523e5c56f0c568270ffc424da43a315fd2de193a01d9bd4a60",
+      "files": {
+        "README.md": "5d99efafe668a598e53a518f637defb6b94f00730043688dff09cd4d8939da92",
+        "index.js": "0935abe547ca44523e5c56f0c568270ffc424da43a315fd2de193a01d9bd4a60"
+      }
+    },
+    "ctable": {
+      "kind": "element",
+      "tag": "m-ctable",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "univ",
+      "display": "計算して埋まる表 / Computed table",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "part-whole",
+        "cause-effect"
+      ],
+      "subjects": [
+        "statistics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "06814e5785cf457449bf9db0f3c8eb7031e04eb6c36c0ee798149c3028370675",
+      "files": {
+        "CHANGELOG.md": "d2f6639c7377b73f887b30391e501ff1bd0989616caa9cc584fde6b7f964fe98",
+        "README.en.md": "261111420e1e924001b7d2f41e88dccb311c2be9bb9ff6e0856106193294bd21",
+        "README.md": "ce4272915124bc1a33ac3200880626bfff69977dd7947280e4b29f1a488c1dcd",
+        "demo.html": "7d64d326d2334f2715995f5830573e0158e9db693b76058598fd0dc960634dd3",
+        "index.js": "06814e5785cf457449bf9db0f3c8eb7031e04eb6c36c0ee798149c3028370675"
+      }
+    },
+    "curves": {
+      "kind": "element",
+      "tag": "m-curves",
+      "version": "2.3.1",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0",
+        "expr": "1.0.0",
+        "plot": "1.1.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "change"
+      ],
+      "variants": [],
+      "sha256": "a0ea0cc418325f42295f989047098bff3b48f64ea5f06921ccd7e65f889220d8",
+      "files": {
+        "CHANGELOG.md": "7429dec7ae71e82d3b6a29d41ccf32085523b5fc857a45682e828ed5d81ccdf0",
+        "README.en.md": "5894e3e908bce417329f7fdf6b0a972ec7737e6e3d621162f1a1f20f8af0232f",
+        "README.md": "5ea7ded681c3c400c89ddac29f63ab416e0a5f875a32a87c52d02d208e7bad56",
+        "demo.html": "d492067c080f928e4b5fc73f9767fb59786f1808484b7288aa60684399be383d",
+        "index.js": "a0ea0cc418325f42295f989047098bff3b48f64ea5f06921ccd7e65f889220d8"
+      }
+    },
+    "cycle": {
+      "kind": "element",
+      "tag": "m-cycle",
+      "version": "2.1.0",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex",
+          "center.tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "cycle"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "4a0c467cbdd3931514d9c993d8942715760546dac7fcb311b58c48fa37c0bdcd",
+      "files": {
+        "CHANGELOG.md": "42e1c1add486d01ebfaad51d9dd4ce0bf3f9f198dac0ef2e172819d40cc0ba1c",
+        "README.en.md": "847b9a9c2b660a2fb11ffa7aee14c7401b38db2f47f54ed83288551739e4db81",
+        "README.md": "fe1db92deac83dd602e52dbab0e4ad24d347545212aad1e753bc5396e6252cde",
+        "demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
+        "index.js": "4a0c467cbdd3931514d9c993d8942715760546dac7fcb311b58c48fa37c0bdcd"
+      }
+    },
+    "diverge": {
+      "kind": "element",
+      "tag": "m-diverge",
+      "version": "2.0.1",
+      "tier": "specialized",
+      "set": "business",
+      "display": "ウォーターフォール / Waterfall",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "business",
+      "license": "MIT",
+      "purposes": [
+        "deviation",
+        "compare"
+      ],
+      "subjects": [
+        "business",
+        "social-studies"
+      ],
+      "variants": [],
+      "sha256": "22c2552bf3a09d665f2f516d5632f28130e6f62f91a377435bfb7fb20700b8e2",
+      "files": {
+        "CHANGELOG.md": "47254a150f66d967d837fda0800bf615444f88c4daebc4a8bc32927390f00eed",
+        "README.en.md": "9d4b174cc423b8822b57a3de9a81d4368dfdddf6965c3b0398590e6ce1baf101",
+        "README.md": "a1e1f531f35e73e5198625e5edc371237bfab66ee3518174c005c731b695f8eb",
+        "demo.html": "24c65008cf0c7d5c6c4f353794cf1c25770861b6f70349ffae0f683973fef11a",
+        "index.js": "22c2552bf3a09d665f2f516d5632f28130e6f62f91a377435bfb7fb20700b8e2"
+      }
+    },
+    "expr": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "93d6f8f2ea262ff6272fd04c9f894b22c03eac0e5905aee4e4ce7cab36ed7b90",
+      "files": {
+        "README.md": "4b62ce33eb2026d6f7b6788364242333397470ecbbfc421d9755cb6a0c0e07eb",
+        "index.js": "93d6f8f2ea262ff6272fd04c9f894b22c03eac0e5905aee4e4ce7cab36ed7b90"
+      }
+    },
+    "fishbone": {
+      "kind": "element",
+      "tag": "m-fishbone",
+      "version": "2.1.2",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "effect.tex": "katex",
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "cause-effect"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "d020725a41e9e2ca9ee4263a341cd0e5fd492f99b1cd5dc3ba1eda936db715f0",
+      "files": {
+        "CHANGELOG.md": "3ebe005e17b4cc9e537f1783549411d00e66d0134292c0ec9505ebb1f3816a79",
+        "README.en.md": "c1b6e47307a6d85eef22fa59851d43a9f34f961c737a38a4920ebd88bf09e592",
+        "README.md": "05a29894259a63d6a2bf3dee58ea831ed2792be9a9d001f86a196a1947bdbb01",
+        "demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
+        "index.js": "d020725a41e9e2ca9ee4263a341cd0e5fd492f99b1cd5dc3ba1eda936db715f0"
+      }
+    },
+    "flow": {
+      "kind": "element",
+      "tag": "m-flow",
+      "version": "2.1.1",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process"
+      ],
+      "variants": [],
+      "sha256": "44a290445e562b6742cf28db9ad3ec9d9c7cbd9ccbc02a2fd6795180e3086eb8",
+      "files": {
+        "CHANGELOG.md": "c6094a58309113dee686484b8f606b49ba8ca6bcfa11a95514508bd9b46e95a3",
+        "README.en.md": "54c5e117eb4228b18a2b22abf2bf74e60d974a87db11e7a9ba1394f50904126f",
+        "README.md": "18a1bf2d5c6e9d1b3e534e002175f38d6795bf9ea1fda4c415870ec23ff62324",
+        "demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+        "index.js": "44a290445e562b6742cf28db9ad3ec9d9c7cbd9ccbc02a2fd6795180e3086eb8"
+      }
+    },
+    "folds": {
+      "kind": "element",
+      "tag": "m-folds",
+      "version": "2.1.2",
+      "tier": "specialized",
+      "set": "data",
+      "display": "交差検証 / Cross-validation",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "compare"
+      ],
+      "subjects": [
+        "informatics",
+        "statistics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "f452bdca0957c096ea67b563af8ba94f53ab991c42b40f2313b4fde387110c76",
+      "files": {
+        "CHANGELOG.md": "c3b39f1588d257c41c46a841893bc7e40d778c182679875856a9dd940e0083d7",
+        "README.en.md": "f7090d9d0535555328d98844772f0551081c7e609aece4800db11508b12ff402",
+        "README.md": "b72d89e009def779c327593087962dc7e1beb4ba90e0ec979b30223bb2cdae59",
+        "demo.html": "058a98f824e1e8c7a4bac12ebe87a4f2862c15c3c5a53fd7cf7318d9f1a6bd9f",
+        "index.js": "f452bdca0957c096ea67b563af8ba94f53ab991c42b40f2313b4fde387110c76"
+      }
+    },
+    "gendai": {
+      "kind": "element",
+      "tag": "m-gendai",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "kokugo",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "kokugo",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "subjects": [
+        "japanese"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [],
+      "sha256": "142e442b328fa20d655aed91d39f4ef8fb0b6089a6b914b14794d71182965c85",
+      "files": {
+        "CHANGELOG.md": "30f8ff25b4db11375cae09248688c4b9080e46077f8ab434b6e5466e01fa4233",
+        "README.md": "136959c8ef479c0e058d1e2c50a8ba3bb3678565c966467326f0f2978fab3eb3",
+        "demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
+        "index.js": "142e442b328fa20d655aed91d39f4ef8fb0b6089a6b914b14794d71182965c85"
+      }
+    },
+    "heatmap": {
+      "kind": "element",
+      "tag": "m-heatmap",
+      "version": "2.1.3",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.3.0",
+        "heatmap-core": "1.0.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "compare",
+        "correlation"
+      ],
+      "subjects": [
+        "statistics",
+        "informatics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [
+        "fade",
+        "sweep"
+      ],
+      "sha256": "231ab0799a21f8bfeaab8c00f14ece9da08b8d97c12046780d44fd9a3bd97813",
+      "files": {
+        "CHANGELOG.md": "8c22a748a0e6327c8c928fdf1474dac7d302a7862750c213aa7709c61b365476",
+        "README.md": "1539aae665e91680485745dfbbc88d8458f173f58090a3a12a96667053b5dbbd",
+        "demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+        "index.js": "231ab0799a21f8bfeaab8c00f14ece9da08b8d97c12046780d44fd9a3bd97813"
+      }
+    },
+    "heatmap-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "fb2662b77e9c6e74443f8f4168400c72a9d0f55349e5cb5bd06bad487cd9311e",
+      "files": {
+        "README.md": "d80c75d4ec1bb0485529727f980ea292bdcf0048aef99490f2ee7f77b520cd41",
+        "index.js": "fb2662b77e9c6e74443f8f4168400c72a9d0f55349e5cb5bd06bad487cd9311e"
+      }
+    },
+    "hissan": {
+      "kind": "element",
+      "tag": "m-hissan",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "process"
+      ],
+      "subjects": [
+        "mathematics"
+      ],
+      "audiences": [
+        "primary-junior"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "preview": "none",
+      "sha256": "14da4f69e4b04d8f79712c271f6fbc8cc78ebafb11bb719af083a0b8b9efeb34",
+      "files": {
+        "CHANGELOG.md": "ea11df1282bbedf029a65b03947691789e30c29919a61f3c223060a717e7f407",
+        "README.md": "206bbb294f4abf74711940ded8490ec4c94d176830b2f270c39fdc7ebb0dea9a",
+        "demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
+        "index.js": "14da4f69e4b04d8f79712c271f6fbc8cc78ebafb11bb719af083a0b8b9efeb34"
+      }
+    },
+    "hist": {
+      "kind": "element",
+      "tag": "m-hist",
+      "version": "2.0.7",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.3.0",
+        "hist-core": "1.0.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "spread"
+      ],
+      "subjects": [
+        "statistics",
+        "mathematics"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "b0170308076d107e288d655b2c8789ff3cb79492f05366220da84ddf13620d3c",
+      "files": {
+        "CHANGELOG.md": "0455cff8ef390d1d55259087e0d4fea476af51a93979efe78c08461a228fd1a3",
+        "README.md": "87cad14879a7e08694bb19dab38a70fce0090ddf85c796fe8b0b3697456df310",
+        "demo.html": "7c404351983e5fac261f34f348b72af9a64ad81e59c90eda6adb2099b57fdd05",
+        "index.js": "b0170308076d107e288d655b2c8789ff3cb79492f05366220da84ddf13620d3c"
+      }
+    },
+    "hist-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "a7ab089d563b6f3e8c632aff2aaa6b709984ffd045656aa6d463d3fc62be4315",
+      "files": {
+        "README.md": "eae0e43710ca30690e06bde96be77665839656c87a0c40b06ec89748eb362369",
+        "index.js": "a7ab089d563b6f3e8c632aff2aaa6b709984ffd045656aa6d463d3fc62be4315"
+      }
+    },
+    "icons": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "build": {
+        "subset": [
+          {
+            "data": "block:icons",
+            "key": "name",
+            "match": "name"
+          }
+        ]
+      },
+      "license": "MIT",
+      "sha256": "af56a1b77a4ff995906e56b7f6ec91dd9e7b3fb2ef792050f388b300c14fcc72",
+      "files": {
+        "LICENSE-tabler.txt": "b740a1d46122672da62833e97f7e7c8a13fa85cbc7445b584b297cc00dde93db",
+        "README.md": "d5a8fed1c4d8f0dd2b2b74e09641f5115103017abf3cce59ec81b688f2cf03c4",
+        "en.json": "14b6877493192776ce4f6718e9d15901255017a8f745de95a6d4157ab4389429",
+        "index.js": "af56a1b77a4ff995906e56b7f6ec91dd9e7b3fb2ef792050f388b300c14fcc72",
+        "ja.json": "f22a9d72a879389aa7f585ec25f15d5697ab68be636a48854cbf5a84925875bc",
+        "names.txt": "9b2833c8fcf085f4b77c7c8e2dd81f388746ed49d20c2b85bf5f044c1ec2fb7c"
+      }
+    },
+    "kakijun": {
+      "kind": "element",
+      "tag": "m-kakijun",
+      "version": "2.1.0",
+      "tier": "extra",
+      "build": {
+        "subset": [
+          {
+            "data": "block:strokes",
+            "key": "char"
+          },
+          {
+            "data": "block:stroke-meta",
+            "key": "char"
+          }
+        ]
+      },
+      "glyphs": "0123456789とめはねらい",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "kokugo",
+      "license": "MIT AND OFL-1.1",
+      "purposes": [
+        "process"
+      ],
+      "subjects": [
+        "japanese"
+      ],
+      "audiences": [
+        "primary-junior"
+      ],
+      "variants": [
+        "draw",
+        "pen"
+      ],
+      "sha256": "660f6f8afca1ebbd5b5dfbf623092376300f2a85c89984b0828b94275a4b965b",
+      "files": {
+        "CHANGELOG.md": "4bc401e95a9230579af5e7da83f010ec7d3dffd2e08fa695aa319f86fc8eb7df",
+        "LICENSE-strokesvg.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
+        "OFL.txt": "f5f4f05e005b6495a0d1f5bd49d37f5ac3e369883e2b7e3e48cd5aefded912f4",
+        "README.md": "bc52622984275a6a8c62af3ecd49af6ebc6ac6b307dcbf698d641b21713b380b",
+        "demo.html": "ba581e1293b5fcd6cb34a85cf594c3b393e2a18d7d4ef4f74b86568e163a76a0",
+        "index.js": "660f6f8afca1ebbd5b5dfbf623092376300f2a85c89984b0828b94275a4b965b",
+        "strokes-CHANGES.md": "cbe49676be0e2cf340153650e09951ec378b49ce110019ebd4c78a6ec122107c"
+      }
+    },
+    "kanbun": {
+      "kind": "element",
+      "tag": "m-kanbun",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "kokugo",
+      "requires": {
+        "base": "1.3.0",
+        "kanbun-core": "1.0.0"
+      },
+      "series": "kokugo",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "subjects": [
+        "japanese"
+      ],
+      "audiences": [
+        "high-school"
+      ],
+      "variants": [],
+      "sha256": "844c2fb2cc4e101e52f29b999181a1cd9e2a437e3b0ea8dc90e1b59d11e97895",
+      "files": {
+        "CHANGELOG.md": "4c6ff630fdfd1c4250ceb5c609bbbcee4bc1f80a44770a6f54f584497643a615",
+        "README.md": "6fee9842ac6854f63c7e0a46069d0909e0222239e34b5e28b19257bc2238b0a0",
+        "demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
+        "index.js": "844c2fb2cc4e101e52f29b999181a1cd9e2a437e3b0ea8dc90e1b59d11e97895"
+      }
+    },
+    "kanbun-core": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "1bc1a2136b8c480d2d3ed2c685d3f1f7cee568d1bee5191a3a13682ce87f2a31",
+      "files": {
+        "README.md": "d023f02ab41f017394582bb3a873e2cb4af53d7238bc7f60e0038b42564d371b",
+        "index.js": "1bc1a2136b8c480d2d3ed2c685d3f1f7cee568d1bee5191a3a13682ce87f2a31"
+      }
+    },
+    "keyboard": {
+      "kind": "element",
+      "tag": "m-keyboard",
+      "version": "2.0.6",
+      "tier": "specialized",
+      "set": "music",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "music",
+      "license": "MIT",
+      "purposes": [
+        "music"
+      ],
+      "subjects": [
+        "music"
+      ],
+      "audiences": [
+        "primary-junior"
+      ],
+      "variants": [
+        "light",
+        "press",
+        "rise"
+      ],
+      "sha256": "53e2eafe692e0082e9bebaa92d86b3a2d7c888fcbdd356c5fde4f8295a91e08c",
+      "files": {
+        "CHANGELOG.md": "9eab059b7d661c9f377383ff4829c28a4d8b58581ec3e035e4e909ae12bbdb40",
+        "README.md": "1f4286590efe57fe9fd22cc1833112bfea38a2d11a513ae536c1310dfbc426fa",
+        "demo.html": "b6baa3e89ad4a3d2177d2b8ac3ae7cbae210e667ea2e2b3c04ca9f565c12ff6f",
+        "index.js": "53e2eafe692e0082e9bebaa92d86b3a2d7c888fcbdd356c5fde4f8295a91e08c"
+      }
+    },
+    "kobun": {
+      "kind": "element",
+      "tag": "m-kobun",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "kokugo",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "kokugo",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "subjects": [
+        "japanese"
+      ],
+      "audiences": [
+        "high-school"
+      ],
+      "variants": [],
+      "interactive": true,
+      "sha256": "fe656f203723a8e2eb8612d1552d0ac43c3afc0549b7c08d693adf2ce816f46e",
+      "files": {
+        "CHANGELOG.md": "a800de5d7fd6ddd8756770545ce7141279680c06f26f027e8ae383d3516578dd",
+        "README.md": "76e84edcac5c7fd67bae6b7672cc3b08fc9240df05d515853fc00c0d3ec512ec",
+        "demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+        "index.js": "fe656f203723a8e2eb8612d1552d0ac43c3afc0549b7c08d693adf2ce816f46e"
+      }
+    },
+    "kpi": {
+      "kind": "element",
+      "tag": "m-kpi",
+      "version": "2.0.6",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "key-number"
+      ],
+      "variants": [
+        "count",
+        "rise",
+        "flip",
+        "underline"
+      ],
+      "sha256": "2bb8e861126fa6f68c2ec02138735a4ec906c0c7105a8c65f1d70257461cdf20",
+      "files": {
+        "CHANGELOG.md": "72aadf34617e7b7d7f5f498463ce993ec5a0a1717d163727b6db998dd4a062e4",
+        "README.en.md": "66cd2f5a60ed8345442ef208315266ecfe5e34acc9bf416aaf68db7ec0f7992e",
+        "README.md": "1aeb6a250b05502a61b21c46927366344053b0c104655a8882d6bf4b0eeeff86",
+        "demo.html": "ca18debecd55627a0c0e3b409f4f4e8503453427bbb42ac6e4f1c7acb38af749",
+        "index.js": "2bb8e861126fa6f68c2ec02138735a4ec906c0c7105a8c65f1d70257461cdf20"
+      }
+    },
+    "map-japan": {
+      "kind": "element",
+      "tag": "m-map-japan",
+      "version": "2.3.0",
+      "tier": "specialized",
+      "set": "maps",
+      "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,×–−、。〜あいかがきくけさしすただつてでとなにのはばべまもりるれろをェオクジトノブ・三上下中丹九井京人以位佐例値児入八兵凡出分前動北区千南単原取口可号名和四図国土地城域埼塗大奈媛定宮富小尖尺山岐岡岩島崎川州広府度庫当形後徳愛手択捉描数新方既日書木未本東枠栃根桁梨森歌歯沖海満滋潟熊父玉田番異畿目県知石硫神福秋秒竹笠級経緯縄縮置群舞良色茨葉西見諸賀足近道部都重野釣長関閣阜阪限階青静項領香馬高魚鳥鹿黄（）：；",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "social",
+      "license": "MIT",
+      "purposes": [
+        "spatial"
+      ],
+      "subjects": [
+        "social-studies"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "bbf779a19eeaa3a17ce4322fe898cde1f136c0625995d016703eac1cfcee7deb",
+      "files": {
+        "CHANGELOG.md": "e1ab02b4b0600e22b93bba09c39bbf8c4bc2e7418b60cd43ffd006c09c4f0bcb",
+        "README.md": "fcf08138006c6a50f70d72de4715df8e698543a782c2552cce5a7105fdc7f2a1",
+        "demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
+        "index.js": "bbf779a19eeaa3a17ce4322fe898cde1f136c0625995d016703eac1cfcee7deb"
+      }
+    },
+    "map-world": {
+      "kind": "element",
+      "tag": "m-map-world",
+      "version": "2.3.0",
+      "tier": "specialized",
+      "set": "maps",
+      "glyphs": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789()-.,°×−、。〜あいかがきくけごしすただつてでとにのはばべまらりるれろをァアィイウェエォオカガキギクグケコゴサザシジスズセゼソタダチッツテデトドナニヌネノハバパヒビピフブプヘベペホボポマミムメモャュユョヨラリルレロワン・ー上下世中丹主京人以位例値入六共凡出分列前動北千南単口台号合名和図国土地域基塗大太央字定小尖属島州帰度後択捉数文方既日書有朝未本東桁極樺歯民沖洋湾満界目礁秒竹符米級経線緯群舞色衆西見語諸赤足軍連道邦長閣限陸階離韓項領首鮮鳥（）：；",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "social",
+      "license": "MIT",
+      "purposes": [
+        "spatial"
+      ],
+      "subjects": [
+        "social-studies"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "draw"
+      ],
+      "sha256": "631fe1da30dea2462b307d5e13d3e59bced1348078afd5fe1683fe2be87c5575",
+      "files": {
+        "CHANGELOG.md": "5e846ee59a0132fc3e0677acb4520896a4455015bced1ec70af491c33d8a0d36",
+        "README.md": "0c08aadb3ff10a46cb52d82e1903a4e25393a6576f21f2018a0c66a15b6e7674",
+        "demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+        "index.js": "631fe1da30dea2462b307d5e13d3e59bced1348078afd5fe1683fe2be87c5575"
+      }
+    },
+    "mapping": {
+      "kind": "element",
+      "tag": "m-mapping",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "data",
+      "display": "確率変数の対応 / Random variable mapping",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "grouping"
+      ],
+      "subjects": [
+        "statistics",
+        "mathematics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "d83a06ba1ccb2f1695d144c5865da8041259cf943008fedf7d814903c86d6304",
+      "files": {
+        "CHANGELOG.md": "be83facd913411d1e70ea75fa0d2184d6d597bd664bc9d78f8b66a60bdb99f61",
+        "README.en.md": "4b90bcd1573f4be63a7d6896833f462c0096a6013551e04ce7b28e657376fb05",
+        "README.md": "d349c518542022fae1e94419934a0f7d1faa8d08bc064f8216ae25aa389b03e4",
+        "demo.html": "8cdc0670d29959d7c9d3c200d7c65325f3d67b4fd262c106ee8888ba62e776f4",
+        "index.js": "d83a06ba1ccb2f1695d144c5865da8041259cf943008fedf7d814903c86d6304"
+      }
+    },
+    "market": {
+      "kind": "element",
+      "tag": "m-market",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "business",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "business",
+      "license": "MIT",
+      "purposes": [
+        "part-whole"
+      ],
+      "subjects": [
+        "business"
+      ],
+      "audiences": [
+        "working-adult"
+      ],
+      "variants": [],
+      "sha256": "d326483b17143ec421d6c39c1316d7a86cf25ef999b556896254b08717e18cc7",
+      "files": {
+        "CHANGELOG.md": "f4a0e3eeeb7d4def70e326d376d3397bc6d4a22e08332ea4a166a76d3eb84ebe",
+        "README.md": "b4dd5ab81185e4a8d3fd5421d6ce8b8c1e83ba784234fad94efe32ce67082d3e",
+        "demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
+        "index.js": "d326483b17143ec421d6c39c1316d7a86cf25ef999b556896254b08717e18cc7"
+      }
+    },
+    "markup-reader": {
+      "kind": "library",
+      "version": "1.0.3",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "license": "MIT",
+      "sha256": "694fa4030bd1c3a1273ad9705076f54df91d5c3a276e8653ecb70900a1174e59",
+      "files": {
+        "README.md": "4e92ae470643cc46be4876bea68f7335680197b0fea17c73eacc1631de5b5ef6",
+        "index.js": "694fa4030bd1c3a1273ad9705076f54df91d5c3a276e8653ecb70900a1174e59"
+      }
+    },
+    "matrix": {
+      "kind": "element",
+      "tag": "m-matrix",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "univ",
+      "display": "比較の行列 / Comparison matrix",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "compare",
+        "position"
+      ],
+      "audiences": [
+        "university",
+        "working-adult"
+      ],
+      "variants": [],
+      "sha256": "7ec50f5c587c48eb51822d8abdbe0276ee1c29a7826edc2a71af7c7e9aa5b511",
+      "files": {
+        "CHANGELOG.md": "4ed3491696f5810ed255dd641f1f636bd748b6f1ccc6937c439a80168842b0ef",
+        "README.en.md": "eced60047153dea74ac2058ae5ad6faa090b7f008a05515e54aaf88634dd5d18",
+        "README.md": "d89f29b4794e82e7836772d48d31a02089e3e992b22f3a11bfe859e187f67d5e",
+        "demo.html": "334602131bf1dd754cb0019e7bc750770771233ea22c9e91a95e2c83615e6954",
+        "index.js": "7ec50f5c587c48eb51822d8abdbe0276ee1c29a7826edc2a71af7c7e9aa5b511"
+      }
+    },
+    "menu": {
+      "kind": "element",
+      "tag": "m-menu",
+      "version": "2.0.5",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "contents"
+      ],
+      "variants": [],
+      "interactive": true,
+      "sha256": "000bcc674c2ae45a5e419b5b7c7560237a3226ce7fe093a599a41b1d4a9d8ee9",
+      "files": {
+        "CHANGELOG.md": "9e7416ed1f5f6ed859d444026efdbfa612cd1ff65af2f84daf845e15a845eb9b",
+        "README.en.md": "a14f0121454be74a8ec4cf4e1d8f9fb3903dd46adf155497498e67cad68f7eb9",
+        "README.md": "5b1f73c8500d219a82b2fc4eddf7860f52c478fe67478a3f647cc86077eb00ed",
+        "demo.html": "dd2ecfcbcb021ed0f51827f263abd84f94bb04ec19e8810bb9155ec6fa65c78b",
+        "index.js": "000bcc674c2ae45a5e419b5b7c7560237a3226ce7fe093a599a41b1d4a9d8ee9"
+      }
+    },
+    "network": {
+      "kind": "element",
+      "tag": "m-network",
+      "version": "2.2.0",
+      "tier": "specialized",
+      "set": "algo",
+      "display": "グラフの探索 / Graph search",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "info",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "model"
+      ],
+      "subjects": [
+        "informatics",
+        "statistics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "d7a7f09a0e71ff8336ba6c33debf60e187cd94f3a457e907d802c32e9ce987d8",
+      "files": {
+        "CHANGELOG.md": "60788a5a583b7275732b4d71c336156817cae48e4abc126d7a4075ae2ee4a056",
+        "README.en.md": "ef18507e15ba42ad5ed197ec5f2592dd0f85ba0c5cf037ab48c27d15b1b07909",
+        "README.md": "7bb144fcdfa435bc1b99feb95e3f4dc19457dfaea6eb7e90343e0a85a136984d",
+        "demo.html": "5e9d18edd1a3a4db101018fc42a5141fe5333a9b8745c86b86c06df85e73b024",
+        "index.js": "d7a7f09a0e71ff8336ba6c33debf60e187cd94f3a457e907d802c32e9ce987d8"
+      }
+    },
+    "nnet": {
+      "kind": "element",
+      "tag": "m-nnet",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "ml",
+      "display": "ニューラルネット / Neural network",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "info",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "process"
+      ],
+      "subjects": [
+        "informatics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "f3831e8adb237c8947f88c8ff0d84c69b27082862f30e956dd06d5779bdcf9ab",
+      "files": {
+        "CHANGELOG.md": "77b1a6457a0d0951cfe291a23c30045e0388bdbe33e9912cff65347adf098ada",
+        "README.en.md": "500fd98f7e21f2887a92aeda17cf9a3a6988bb77ea6023257d25540efd1a1dd1",
+        "README.md": "c1811389a4f8443515367fdb3c7b30fa1a01df24e1b6fd474fb4543d91ff63f6",
+        "demo.html": "d3af3768dac613d244882fcd3248dccf4d126446b8ba4d1291fe61503647ca0b",
+        "index.js": "f3831e8adb237c8947f88c8ff0d84c69b27082862f30e956dd06d5779bdcf9ab"
+      }
+    },
+    "numberline": {
+      "kind": "element",
+      "tag": "m-numberline",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "compare"
+      ],
+      "subjects": [
+        "mathematics"
+      ],
+      "audiences": [
+        "primary-junior"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "be36c979fd81ac83b2e8e06c99fb180d0838bafb7f81930ddfcfe9fe7ba394cf",
+      "files": {
+        "CHANGELOG.md": "4e50071a2360257014c00e1467bb364e681d3e97ec610bafde149aac24260ab5",
+        "README.md": "ab3ff8445e0fcab27520ac818f3649fab993438bb94eec4d65d2d0d1f8df3ed3",
+        "demo.html": "c816a713662f13e5f9bda5dfc10ee807290ce4c1030b999f0934812a6c1e5721",
+        "index.js": "be36c979fd81ac83b2e8e06c99fb180d0838bafb7f81930ddfcfe9fe7ba394cf"
+      }
+    },
+    "orbit": {
+      "kind": "element",
+      "tag": "m-orbit",
+      "version": "2.0.7",
+      "tier": "specialized",
+      "set": "science",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "cycle"
+      ],
+      "subjects": [
+        "science"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "c5f84b041376de96b2f6074d449ee19092863ed3f5f50a0d0df226b8a1b116bd",
+      "files": {
+        "CHANGELOG.md": "7d7df0f9fbd159d87762c9efef7a9e17c9e1a16567850d6b91cbaa8e50e1bd62",
+        "README.md": "064f952dfa621d0db826b993a694416ced504d3bd58c8fdac860985313a8cb23",
+        "demo.html": "3ea0c774a5eeb23cd91dd76ca54ba7849a08cf168278bb9c5e2c1007f95c71e8",
+        "index.js": "c5f84b041376de96b2f6074d449ee19092863ed3f5f50a0d0df226b8a1b116bd"
+      }
+    },
+    "particles": {
+      "kind": "element",
+      "tag": "m-particles",
+      "version": "2.0.3",
+      "tier": "specialized",
+      "set": "science",
+      "display": "粒子のモデル / Particle model",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "process",
+        "compare"
+      ],
+      "subjects": [
+        "science"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "38243f6bbb66883b3ebedc79e3d044caa4af99db6b52039e73c1f83002eabaec",
+      "files": {
+        "CHANGELOG.md": "287818ab7f8f5d360ee6f1255fd3bfa6c8df5b671cb7186cd2fe117cc48417f7",
+        "README.md": "33cf9daed2c5743f88a4558e83b820b94a621241b0d4e1f6423ab882bbe29be0",
+        "demo.html": "f79442e0b8cc5de16d131f4146079bc0c8095049459bb41800c46a27efe24cd7",
+        "index.js": "38243f6bbb66883b3ebedc79e3d044caa4af99db6b52039e73c1f83002eabaec"
+      }
+    },
+    "pie": {
+      "kind": "element",
+      "tag": "m-pie",
+      "version": "2.1.0",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "part-whole"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "55a538f249327ade1bcdc116251d504055c8500d1d710338af75d8ff38dfd71d",
+      "files": {
+        "CHANGELOG.md": "26f616b512124f3c113aba7e9b5a158f10c72cf27a62a53f27cab9014767fbbd",
+        "README.en.md": "0cb174043d57fee4ad87b3f2c05573e65869351f70633085d4860c906925211e",
+        "README.md": "c3ce31dd0e73b332306b5966f11be98f6451cbc9a8c29d1310fdf75fda4d398c",
+        "demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
+        "index.js": "55a538f249327ade1bcdc116251d504055c8500d1d710338af75d8ff38dfd71d"
+      }
+    },
+    "plot": {
+      "kind": "library",
+      "version": "1.1.3",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "license": "MIT",
+      "sha256": "b2ce2b3c63d02e5ac61d3c3e287a40a7749ec02ae12977c46329bc485e368c4a",
+      "files": {
+        "README.md": "303d77c1cedbb98da23bc1370e57622f91c3a6837e637c0802071f5a570ad721",
+        "index.js": "b2ce2b3c63d02e5ac61d3c3e287a40a7749ec02ae12977c46329bc485e368c4a"
+      }
+    },
+    "predict": {
+      "kind": "element",
+      "tag": "m-predict",
+      "version": "2.1.2",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "predict"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "preview": "none",
+      "sha256": "1e616adcb32c60206acddc3c82563f23177efab5dd72b41ee67e23e57f7a9351",
+      "files": {
+        "CHANGELOG.md": "4a7ae2c80a48fa6729a3510f8a254e71305e475c3a3e1d6faaaefbd8e9b5be6c",
+        "README.en.md": "a26f4e90b44a9ed32401382ec11a5da198d76c4b141a6c19a7a4f47f077fd88e",
+        "README.md": "169f2f79c280d568d28c6f35a16658945081b01625facd82ce7338a90fd97f8d",
+        "demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
+        "index.js": "1e616adcb32c60206acddc3c82563f23177efab5dd72b41ee67e23e57f7a9351"
+      }
+    },
+    "quad": {
+      "kind": "element",
+      "tag": "m-quad",
+      "version": "2.1.2",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "position"
+      ],
+      "variants": [],
+      "sha256": "52d025cef4b753741925916b9de09d07cf7e137c0fccde1f452a4aedac17f065",
+      "files": {
+        "CHANGELOG.md": "eba2d35ff1d2234a66b96d72b19865dbfe35a0eab9830963ac0d775ce68f0584",
+        "README.en.md": "fc710f99554c38b6fa32464fb2ffe80f6ebfd5c18200487cc470922c23ffaca7",
+        "README.md": "54e6d6c9f523e834048eb54ec548890611cd61e24f50369818341401f4b3fa88",
+        "demo.html": "31b379a52d5faad418c47784905cb3e6fc63582ccf49f93ddf6c48363ecb6022",
+        "index.js": "52d025cef4b753741925916b9de09d07cf7e137c0fccde1f452a4aedac17f065"
+      }
+    },
+    "sampling": {
+      "kind": "element",
+      "tag": "m-sampling",
+      "version": "2.0.2",
+      "tier": "specialized",
+      "set": "data",
+      "display": "標本抽出 / Sampling",
+      "requires": {
+        "base": "1.3.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model",
+        "spread"
+      ],
+      "subjects": [
+        "statistics",
+        "mathematics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "e91efbf6dc99f2d84c076b582a9896aa31d1399044fbbeb87d04a63f8fbbb614",
+      "files": {
+        "CHANGELOG.md": "281f3c974b75cab1095948577acd99b0d34dc612e5db7c2ec57400d9252121db",
+        "README.en.md": "2a1b3771adacd538be05e7df000dd6e3523d65a1db02a32e5e641b6b20480de0",
+        "README.md": "a29d87f5197c261d4dfa29f2f608ce58ef44fa0e9e5f4f5d17046de19023e10a",
+        "demo.html": "fc4e2d92ed4489ae17cfebdaba5a9a85ff03731f4f51cfc167de13e468a93d85",
+        "index.js": "e91efbf6dc99f2d84c076b582a9896aa31d1399044fbbeb87d04a63f8fbbb614"
+      }
+    },
+    "scatter": {
+      "kind": "element",
+      "tag": "m-scatter",
+      "version": "2.1.0",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0",
+        "plot": "1.1.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "correlation"
+      ],
+      "variants": [
+        "fade",
+        "sweep",
+        "grow"
+      ],
+      "sha256": "de567bb285f54b6bd990b06d1d0790aaca6fdfaeac0f82fe4b5758503d45e87a",
+      "files": {
+        "CHANGELOG.md": "5fafb4f33518fdb0d2949c09083fcc54b9110cd7cc5e639998628da6f7f7a757",
+        "README.en.md": "9f431243e1f8564bbca127864471eab8cceee2aea65cf163c090a8c46717b934",
+        "README.md": "8d8f9d9ecd822bef2346fa4ffc3f14fb8fd8685ba27d55ec78caeb742d80bfcc",
+        "demo.html": "7c8be709a8134919cf8af631a1fa92a99884ff1f97b9cf5cc32fe6353d645944",
+        "index.js": "de567bb285f54b6bd990b06d1d0790aaca6fdfaeac0f82fe4b5758503d45e87a"
+      }
+    },
+    "score": {
+      "kind": "element",
+      "tag": "m-score",
+      "version": "2.1.3",
+      "tier": "specialized",
+      "set": "music",
+      "build": {
+        "fields": {
+          "abc": "abcjs"
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "music",
+      "license": "MIT",
+      "purposes": [
+        "music"
+      ],
+      "subjects": [
+        "music"
+      ],
+      "audiences": [
+        "primary-junior"
+      ],
+      "variants": [
+        "light"
+      ],
+      "sha256": "6dba5f0e8ad6bef02645c04ebda83ff58726f07c47ec6dbfdc4d0b68145c9664",
+      "files": {
+        "CHANGELOG.md": "a90274d87f9448a488cadbd7cb30e06aa5c651c9a8141c4aa6ff187e9e63a266",
+        "README.md": "16137f7b5208d620b24eff1ff902097509705c53afd7cd9ec540dc9440be5ba6",
+        "demo.html": "c37683a05d361a811b8d5de0e8a2f169fb3a296a801a59abf1d765f0d229371f",
+        "fixtures/ABCJS-ADAPTER.md": "fb34bf0c7dc1836151f7758c4c17566460a438262991a3bf03cd54795a3e62db",
+        "fixtures/LICENSE-abcjs.txt": "d7bdcd152b978adee22a2f9b92a4d72c4ec2c20a86512766c7c210b462b54702",
+        "fixtures/chords.json": "544fe9fb432ae5e4ec6f3443a83f2632e0fcad33f829f200933e389b58b69e6e",
+        "fixtures/doremi.json": "cfad521f15342198055a4512884af0eab046a69923feedbf1e405cb86fe1b528",
+        "fixtures/extras.json": "08dae18aa14cd5bea1550a03496cbc221a81e42c5363ef1d47effb929a9ce234",
+        "fixtures/kaeru.json": "05927268b954747701763448d22c0a7505a046077596ed1602e3db701df08dbd",
+        "fixtures/rhythm.json": "a7a4ec18ba80a180646a9186bae30633332a5e7c98fe1b375944b54f22fecef7",
+        "fixtures/ties.json": "20fdec4beef0c137ada57b98248db48f58aa20820e2c17a66b066e921de99f16",
+        "index.js": "6dba5f0e8ad6bef02645c04ebda83ff58726f07c47ec6dbfdc4d0b68145c9664"
+      }
+    },
+    "scroll": {
+      "kind": "element",
+      "tag": "m-scroll",
+      "version": "2.0.0",
+      "tier": "specialized",
+      "set": "tools",
+      "display": "縦に送る図 / Scrolling figure",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "timeline"
+      ],
+      "variants": [],
+      "interactive": true,
+      "viewerInput": true,
+      "preview": "none",
+      "sha256": "352cf1c966a3ef6c7368a5d0908f97d95387559dc731608feb7fcd0b649088d9",
+      "files": {
+        "CHANGELOG.md": "31e28dabfae25afb1ab85ce9ac18be28e55c9515b499ab3354e5335ca6c3feb1",
+        "README.en.md": "802a04ff712aefdeb563337b93049547717fe5114a9e4561edbf5b0419d013aa",
+        "README.md": "a4af43f81838ba8f61a697b4c3858f1d0997c87e3624eba065ed56b070a58a0d",
+        "demo.html": "428ac062cbbdd8f06c81bfa60902debd4bcacac0676420099f04003244d6c799",
+        "index.js": "352cf1c966a3ef6c7368a5d0908f97d95387559dc731608feb7fcd0b649088d9"
+      }
+    },
+    "seq": {
+      "kind": "element",
+      "tag": "m-seq",
+      "version": "2.2.0",
+      "tier": "specialized",
+      "set": "stats",
+      "requires": {
+        "base": "1.3.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "spread"
+      ],
+      "subjects": [
+        "statistics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "sha256": "a01c7995bde0c75fd309ee1c1ad0d7025b7e64076b15b92637c2a5a38f22ca2f",
+      "files": {
+        "CHANGELOG.md": "fe4cfd15d3daf31790e14b92ac06e262ed0dac8a01b79ab81e570c57cb82bf66",
+        "README.md": "735196e1753f61fff627ea2f0c2d1e21575b7a123c9f6acc85509ed7e60188db",
+        "demo.html": "7ac4d72c5277a9892277841b18ce4e8ee9a3c04b70eb4522f3ffcbdccdc508db",
+        "index.js": "a01c7995bde0c75fd309ee1c1ad0d7025b7e64076b15b92637c2a5a38f22ca2f"
+      }
+    },
+    "shape": {
+      "kind": "library",
+      "version": "1.0.0",
+      "requires": {},
+      "license": "MIT",
+      "sha256": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911",
+      "files": {
+        "README.md": "c2f43dfa5f69a680c012773914cec7ea7f39a23363cad681c2080ffd136d1444",
+        "index.js": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911"
+      }
+    },
+    "sweep": {
+      "kind": "element",
+      "tag": "m-sweep",
+      "version": "2.2.0",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.3.0",
+        "expr": "1.0.0",
+        "plot": "1.1.3"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "parameter"
+      ],
+      "subjects": [
+        "mathematics"
+      ],
+      "variants": [],
+      "sha256": "5389b838feb942403f10a8fc678323009862d99d0b607ec0758d0f36c9bfd361",
+      "files": {
+        "CHANGELOG.md": "66eff99dcbdf1b4bd6050db6cfa83bb6c74a967c8a0bda8fbb06db28e9edcdc5",
+        "README.md": "c2363ec5c65dc7af126fb62f1738d9f805d193e9a3b06c2ba31d6ee81fb86626",
+        "demo.html": "19d6152d6a78b550b9e18b090fd57a6f0f8a3fd4bd05e4857181a85584ea130b",
+        "index.js": "5389b838feb942403f10a8fc678323009862d99d0b607ec0758d0f36c9bfd361"
+      }
+    },
+    "syntax": {
+      "kind": "element",
+      "tag": "m-syntax",
+      "version": "2.0.4",
+      "tier": "specialized",
+      "set": "english",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "english",
+      "license": "MIT",
+      "purposes": [
+        "text-structure"
+      ],
+      "subjects": [
+        "english"
+      ],
+      "audiences": [
+        "primary-junior",
+        "high-school"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "3426c4370e0e3028e5ca10072704fe6aef90ad82d980282660e0d2824bd2820f",
+      "files": {
+        "CHANGELOG.md": "519890b2f555f23450a8cb4b2f8215c4e7738e469492967a4621bbd947e2bfa2",
+        "README.md": "d876df24243f9ba336b2eecc1955b5dd78eb45f47c0c2af8c7670652e19d2e3d",
+        "demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+        "index.js": "3426c4370e0e3028e5ca10072704fe6aef90ad82d980282660e0d2824bd2820f"
+      }
+    },
+    "tape": {
+      "kind": "element",
+      "tag": "m-tape",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "math",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "part-whole",
+        "compare"
+      ],
+      "subjects": [
+        "mathematics"
+      ],
+      "audiences": [
+        "primary-junior"
+      ],
+      "variants": [
+        "fade",
+        "grow"
+      ],
+      "sha256": "2f3ef41b89018f54f6e75643db588d62351a88d3abce4046141259e1502c24d8",
+      "files": {
+        "CHANGELOG.md": "e03895a99e67a9c35292fcd88a1f06d76146dda97bc1f78c0989a57b03be41cc",
+        "README.md": "35b80547665d74057a8bd9a4cd36b0e3b8df1bedc8f9cdef0f9e8b91cb234f6f",
+        "demo.html": "3352a6c17b7020c1e79b4c163c39f22fb2a353a1d47e52b4e7d4f6c0a5385863",
+        "index.js": "2f3ef41b89018f54f6e75643db588d62351a88d3abce4046141259e1502c24d8"
+      }
+    },
+    "timeline": {
+      "kind": "element",
+      "tag": "m-timeline",
+      "version": "2.1.0",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "timeline"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "ea38759785ec1b6880642d40252f9a13e1f81a41c92d5588294c5aa10dcaaff0",
+      "files": {
+        "CHANGELOG.md": "a5a3f095bf1bd8e22c8ba064c9d74aba5c9843203665d69e041103e090d04dac",
+        "README.en.md": "1d36752bea451e37f6477e3d5cd557ae63583685ad8e32e65af1354bcf017d77",
+        "README.md": "bc80994537b3f02d9f1aa3ea3b65e77f1d22e3dec4e83a68dbc0377b83449793",
+        "demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
+        "index.js": "ea38759785ec1b6880642d40252f9a13e1f81a41c92d5588294c5aa10dcaaff0"
+      }
+    },
+    "timer": {
+      "kind": "element",
+      "tag": "m-timer",
+      "version": "2.0.7",
+      "tier": "specialized",
+      "set": "tools",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "timebox"
+      ],
+      "variants": [
+        "fade"
+      ],
+      "interactive": true,
+      "viewerInput": true,
+      "clock": true,
+      "group": "tool",
+      "preview": "none",
+      "tile": {
+        "label": {
+          "ja": "タイマー",
+          "en": "Timer"
+        },
+        "examples": {
+          "ja": "グループワークの時間・残り時間・ベル",
+          "en": "Group-work time, time left, bells"
+        },
+        "icon": "timer"
+      },
+      "sha256": "506248c775a91363631dd4b566a29acf49f46a34d8ec272732a6ce0570ddfdeb",
+      "files": {
+        "CHANGELOG.md": "dbf07caff6d63ffa8a9dd90bd0d6feb10105b53a804e2437780d0a439c3c77cb",
+        "README.md": "fee772ba9ce6f5d5147e91274c87e3415a106144722e0cfcdb0458c89afbe07b",
+        "demo.html": "ffd147940c9f6a22566df70b4daf51a18f9fe24fdaf7af8117af1cca9892fb35",
+        "index.js": "506248c775a91363631dd4b566a29acf49f46a34d8ec272732a6ce0570ddfdeb"
+      }
+    },
+    "trace": {
+      "kind": "element",
+      "tag": "m-trace",
+      "version": "2.0.1",
+      "tier": "local",
+      "display": "コードの実行を追う / Code trace",
+      "requires": {
+        "base": "1.3.0",
+        "code-core": "1.0.1"
+      },
+      "series": "info",
+      "license": "MIT",
+      "purposes": [
+        "process",
+        "model"
+      ],
+      "subjects": [
+        "informatics"
+      ],
+      "audiences": [
+        "high-school",
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "92798e9accdb14c525ab523f305272c006cb65cd97283459c6c6314f47c38dcc",
+      "files": {
+        "CHANGELOG.md": "8e075045378d98a3134264893b02a20e0e3670acfc9117dd1b37660796ee2b0c",
+        "README.en.md": "a1e210636cd95da4b44245e64d99fb1ccff0df59b0e53962e75388cc703657a9",
+        "README.md": "b9efb69f341dd4698635f9aa8d91561aeb485949d89be356a9700e6b579b8d71",
+        "demo.html": "5d19d4eeafc5cc5a9d76887fa8cc2f2d6f2dae05355abd219bc43aeaf4236798",
+        "index.js": "92798e9accdb14c525ab523f305272c006cb65cd97283459c6c6314f47c38dcc"
+      }
+    },
+    "tree": {
+      "kind": "element",
+      "tag": "m-tree",
+      "version": "2.1.2",
+      "tier": "standard",
+      "build": {
+        "fields": {
+          "nodes[].tex": "katex"
+        },
+        "options": {
+          "katex": {
+            "output": "html"
+          }
+        }
+      },
+      "requires": {
+        "base": "1.3.0",
+        "markup-reader": "1.0.3"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "hierarchy"
+      ],
+      "variants": [
+        "fade",
+        "draw",
+        "grow"
+      ],
+      "sha256": "38f883f333e4f231ef6aa15e442cb44dd76f4d3360560ec7af3401b67cd8182c",
+      "files": {
+        "CHANGELOG.md": "f7fb872c36bd3e6255f0e79d995f00da37cf8d7c3a8cd0f9ebb8517ed7b0afcd",
+        "README.en.md": "d4f11586eb1dd20264de81a773f93f0f7af83f5d2e433ca4b2aa22b14becd9b4",
+        "README.md": "e513d600e6f296384cf9ddc683fbaab5f29ee98eb4e637487de192cb306e90f0",
+        "demo.html": "0812d7eea579021a046044e58c71584001a5f8ec8409ee146072c0d02358e3eb",
+        "index.js": "38f883f333e4f231ef6aa15e442cb44dd76f4d3360560ec7af3401b67cd8182c"
+      }
+    },
+    "vector": {
+      "kind": "element",
+      "tag": "m-vector",
+      "version": "2.1.0",
+      "tier": "specialized",
+      "set": "univ",
+      "display": "ベクトルと行列 / Vectors and matrices",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "academic",
+      "license": "MIT",
+      "purposes": [
+        "model"
+      ],
+      "subjects": [
+        "mathematics"
+      ],
+      "audiences": [
+        "university"
+      ],
+      "variants": [],
+      "preview": "none",
+      "sha256": "c9d57068ec971bca576931b0de6d501af94714d89e7fe50950fdca0a87bc47ad",
+      "files": {
+        "CHANGELOG.md": "4954a243ea3eeb4c94e5e2c9a41c4b99a3abd0bf63bdc4e38bb342e29c705159",
+        "README.en.md": "9ff72255b93e857518c1d999b80288cc867ddc71948dc78752faff7320375aeb",
+        "README.md": "0591d4741e7dddf3b9405af6be39fcf053ea49688520ede159c9b129c4184b89",
+        "demo.html": "9ea7c064ecf6f6dd8c820c472e61ce9ac883b44f008e685356f0c0167113267c",
+        "index.js": "c9d57068ec971bca576931b0de6d501af94714d89e7fe50950fdca0a87bc47ad"
+      }
+    },
+    "venn": {
+      "kind": "element",
+      "tag": "m-venn",
+      "version": "2.1.0",
+      "tier": "standard",
+      "requires": {
+        "base": "1.3.0"
+      },
+      "series": "common",
+      "license": "MIT",
+      "purposes": [
+        "overlap"
+      ],
+      "variants": [
+        "fade",
+        "draw"
+      ],
+      "sha256": "4d4ae8a02127f81a32c2e12ba34f85cd66a690fcfc7e42c1e6612aa77cee45d8",
+      "files": {
+        "CHANGELOG.md": "7694cc9c30a61b83f1f730d966a75aac4bd90bdf4a7731b66a21d657871f46e6",
+        "README.en.md": "ba10e6e0a67599bf2e12b8f827d9dac73795af98ad0bea1b20ad87f2edd687c5",
+        "README.md": "3f8f3da34226c716db73c048ba47a4bb28270069561a83ffd764ff2dc2ac07e4",
+        "demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
+        "index.js": "4d4ae8a02127f81a32c2e12ba34f85cd66a690fcfc7e42c1e6612aa77cee45d8"
+      }
+    }
+  },
+  "yanked": {
+    "1.0.0": {
+      "replacement": "1.0.2",
+      "reason": "m-sweep and m-curves ran expressions from the lesson as JavaScript (new Function); see SECURITY.md",
+      "date": "2026-10-20"
+    },
+    "1.0.1": {
+      "replacement": "1.0.2",
+      "reason": "m-sweep and m-curves ran expressions from the lesson as JavaScript (new Function); see SECURITY.md",
+      "date": "2026-10-20"
+    }
+  },
+  "files": {
+    "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
+    "balance/CHANGELOG.md": "d84268e66a55a86f978e952d7bb90cef4eed53dabe678b210fb0283bc8f85c2f",
+    "balance/README.en.md": "b0aa8cc57b3a15a2a0adfca65d3ac87442f02364200a4e3b7d07ece33859ce00",
+    "balance/README.md": "485c51f451aeed6479944432fbe6ecc20e4307b3d810d83b42874eac43026d95",
+    "balance/demo.html": "5a8f53b540ee781d765f1232e6a2674c4f850eb68a1cdc81e019f876de2b77c4",
+    "balance/index.js": "35c4a82759cebb2f8e409a1888664436f40ddd26b0ea6f4958291ce82e505d1c",
+    "bars/CHANGELOG.md": "a2fca5b8193bdb771f6e4017adbfb716638427f8dabe9f24103e83d03df5c17f",
+    "bars/README.en.md": "e6c849229de3d98abfed7bddc2c4c9a286bb11fb0937fbc1c26a3ddd62ff0332",
+    "bars/README.md": "52e46ecc0949873f3e2cf8bba62b8fc370f1449ac5bf5936d4c585569c272808",
+    "bars/demo.html": "4ee2a7051f4ddbff4564ff60e5d1a9615db8fdf65b548db07aac0d24b66bd114",
+    "bars/index.js": "987443368820f43c9ff70b2a172e6f7c75294ebc03ff3484614b48ca5e4f7f75",
+    "base/README.md": "3b4a7c20c695998d60934286d5590555acb80737415b70c420991f238722661c",
+    "base/index.js": "13a850ee5c5ad1a2fe2f1d9fce73e043153c4c944a3d8e2532d8ad59e457584b",
+    "boxplot-core/README.md": "5761713af28d621f732458a1c8831b55fa74870eb04d1fb14b393776a86c9a18",
+    "boxplot-core/index.js": "998759cbe88393082f20060d54265d87b86523f6800f7db5fa6a9670c9566b7a",
+    "boxplot/CHANGELOG.md": "2ffc6d393c404bdcfd0ff66805e42b16e9546764759af3c0725d15c06b19ed67",
+    "boxplot/README.md": "8f75b805dd3bdef053b411d4dc2edea007e1a2af25d2e7c0778c6b31c386d6a3",
+    "boxplot/demo.html": "fc1a454800a4f83752c0308237a4f07f9d5e11005f691d25081d5982da401bea",
+    "boxplot/index.js": "032aa020e6b9f7da8e70715aaf5cabf00bbe14581027d29bf42d05b2c9754642",
+    "callout/CHANGELOG.md": "5840f7e9360333bf85cfb0addcb8706268ac62d6ddfa3ed97814dc2359ad0ff7",
+    "callout/README.en.md": "4e746f05a46cfd5e5f71cad05bf60cede9ad5bb1edf6474c257268f3795d5882",
+    "callout/README.md": "b66756c7116684a9a76a0733317bff0e5b555ac4d3250c6cabb89f9c012297c3",
+    "callout/demo.html": "591814d80cb6d282e954e6fec97857bdd90c70a55eed34ad8f42f4623db78fed",
+    "callout/index.js": "2ef9f37406666f1d519bc17648234e54ae4a215ec0edf6c5c255fa57ea7304b4",
+    "cards/CHANGELOG.md": "530d94ae07c6a8393a19633e9a209b19f9d98db26654f90464d783cac3542ced",
+    "cards/README.en.md": "5a5409a2370b8435421c93c3cc7f8a55f657cc4217c0811ce9c5d4c969774cad",
+    "cards/README.md": "dec49de56cd9ccb96670cb8ca8571ec466f2d185e8d697300586595d09dbc35c",
+    "cards/demo.html": "0b4439c806dc96230314d5f4bfa50922d53a185aeefd21f81b20d681ed04a4a3",
+    "cards/index.js": "f216c7d4888e5395e64dd44de6d54d800caaf59a7a0de70ab923fde85643a35c",
+    "checklist/CHANGELOG.md": "75e26262f90d14dbc372666e1fdc355f1e5e7485764e7ae02bbc3c2b8edd1bf1",
+    "checklist/README.en.md": "24d081c0389c46ad373f65dec5c38e598c9fbf21421340feeb8c7ad1e7934627",
+    "checklist/README.md": "d7e716edfa4da7a14d2313fd224cdb040c18c0cabdf3fa5543f0c66e61878063",
+    "checklist/demo.html": "d1b488c4d90fafdc00b680fabfabc9991a48fd78b38a4e11deee23985b02850d",
+    "checklist/index.js": "0a68bea037a70303433dc6fa07e6e6a360f3b73e81d390eec386a0f76d5e2fb5",
+    "ci/CHANGELOG.md": "15de6209eb45fe7717ca3e5f19e7c1c231022ecdc34604d00e3ee0bd6c533b3f",
+    "ci/README.en.md": "6e2ae8fbf7876698fa4b9b8c48633a5431223ca7eefa200c7313eec72ba2edf2",
+    "ci/README.md": "b9824846592dbc76720d45dae53021d668daacb6db4967836646674bd0a53400",
+    "ci/demo.html": "fa5be1bdaf231de31b04b8a929f722722c88c56df04b01708bc8302dfc9b82fd",
+    "ci/index.js": "46fcc2aae05a8ad900d5e59e80e4c6d459d3b58fcc5e3e5aee251d27662e5c83",
+    "classify2d/CHANGELOG.md": "c14fbbcd08d3e70564ede8768900d1543b1d6c6faae352683617f1de5f7f150d",
+    "classify2d/README.en.md": "ca81d76d6eae1ce114e949c100380063d6b664bddad834496783d75e39a1c3e0",
+    "classify2d/README.md": "2e0d2ebbda2e9cd6061435bd49fbd4f8411e26cb0ca63a055119b7f40f806a6f",
+    "classify2d/demo.html": "370a2ce8108505bdd01bfa669c6067a026335b2859f7fc12246478fe17e9ab26",
+    "classify2d/index.js": "0c84222947ca44e2a0bb882f98c14ae4cc6e813e2114396ff93f4da89a1894a0",
+    "code-core/README.md": "0714245a1381046dc50e02624b976928e2a10a0544b2c789d6f18626e7dfda94",
+    "code-core/index.js": "6f22de6b2e00c774bc01f306ecf96878c569abc1b1e29c8e8bcdc9942e00c26d",
+    "code/CHANGELOG.md": "08498861894aa69399de1560f7c935803d4121484c5b7cbe6e15f233ad73271e",
+    "code/README.en.md": "939831c76a62cb62f3979ad3a65d3b5ff23e9be75e64d1b3b5f0a13e2018ddce",
+    "code/README.md": "96df138df82326e790ea56c9a5e21ca720c0b6bb71963845b64af3e760e5410b",
+    "code/demo.html": "98156cb82f77e653d3cc4f777019ab05454de4ac0274d02f6c27f97091d34b7e",
+    "code/index.js": "c6456e4f28337217c641eff87e16637303c750320836d4f6b244cab14d182a88",
+    "codetree-core/README.md": "9e6185fd5006cbf55d781498003a29507821130ab8823e1939b545b9bb614a56",
+    "codetree-core/index.js": "197cb2e38c220765188a94ee1915662273720d7a3c4aeb00b224fd5303ff964d",
+    "codetree/CHANGELOG.md": "cb6c864324549cf759e884a2bc7f7773585640169fa9c4da538704e117467333",
+    "codetree/README.md": "64c7f858dc7350041bf8f6419de7b7daaaf23efbca01779f711d8382f6b3601c",
+    "codetree/demo.html": "094b81bdc9e088fb2ddffb552818e4c370bff138497a492767d0b71377ee8be6",
+    "codetree/index.js": "024efb2c2ec69bb19921a321788f2c5406b46403420dfaeb4614ef2a41a1adbe",
+    "collect/CHANGELOG.md": "f6aa55cf7ab7f731e9fd2d88d9bbe79d839cb8f7278c76fe985bfa8807bf34b4",
+    "collect/README.md": "1efae74ac167531177bce870583e78621caa0a7d4ae25e8f8aff9201a706e87f",
+    "collect/demo.html": "bc503695034d43678c2c30ded24e90f43056b0fdcb5eefc51b688ac504313685",
+    "collect/index.js": "94ed4676e3836abdcd686c821d28f858a17a05a7a15c6c9c311d5702a8190f27",
+    "compare/CHANGELOG.md": "fa039a12fb7f79f04792510b320362e0b70ba11c72fce514b8a919396d45a821",
+    "compare/README.en.md": "a52a51dc480340e1ddcec3ff62b5793eb99c8d2cce7b014bbb3c3726ddcf49c2",
+    "compare/README.md": "7bce8818a33ffebf01f96df6e9787fb5c507f1964003a5405156b2eec4ad220e",
+    "compare/demo.html": "68c949de4cc6e6209c0b0eadfb3f11a5dbd512fe034320d031539e08264197ef",
+    "compare/index.js": "57bce81e6905f28c767d28ba48508c16c9f13ae35bbfb4950610178a9bd5ed66",
+    "contour-core/README.md": "5d99efafe668a598e53a518f637defb6b94f00730043688dff09cd4d8939da92",
+    "contour-core/index.js": "0935abe547ca44523e5c56f0c568270ffc424da43a315fd2de193a01d9bd4a60",
+    "contour/CHANGELOG.md": "ad7721f100ecc831eb16b5381852db7d67fa9dcb513a4f310211a27ac52f9bd1",
+    "contour/README.en.md": "cd821920081d04694dced56da8ffc4c36c28b768559c8779d7045cec8eb48572",
+    "contour/README.md": "fd6bbc1ddfdd5ba4a838f93c8a76c5a2413b2e0896e507fdd2b8c51a12f5bf5d",
+    "contour/demo.html": "e534b19859fc5ceb89250fb7cc1431e6818512d8d19466e3e0c38b994a03b3c9",
+    "contour/index.js": "71c213d5538a4d4b90784ef3298df1533d26c49845a9047faf7a6b479d63558d",
+    "ctable/CHANGELOG.md": "d2f6639c7377b73f887b30391e501ff1bd0989616caa9cc584fde6b7f964fe98",
+    "ctable/README.en.md": "261111420e1e924001b7d2f41e88dccb311c2be9bb9ff6e0856106193294bd21",
+    "ctable/README.md": "ce4272915124bc1a33ac3200880626bfff69977dd7947280e4b29f1a488c1dcd",
+    "ctable/demo.html": "7d64d326d2334f2715995f5830573e0158e9db693b76058598fd0dc960634dd3",
+    "ctable/index.js": "06814e5785cf457449bf9db0f3c8eb7031e04eb6c36c0ee798149c3028370675",
+    "curves/CHANGELOG.md": "7429dec7ae71e82d3b6a29d41ccf32085523b5fc857a45682e828ed5d81ccdf0",
+    "curves/README.en.md": "5894e3e908bce417329f7fdf6b0a972ec7737e6e3d621162f1a1f20f8af0232f",
+    "curves/README.md": "5ea7ded681c3c400c89ddac29f63ab416e0a5f875a32a87c52d02d208e7bad56",
+    "curves/demo.html": "d492067c080f928e4b5fc73f9767fb59786f1808484b7288aa60684399be383d",
+    "curves/index.js": "a0ea0cc418325f42295f989047098bff3b48f64ea5f06921ccd7e65f889220d8",
+    "cycle/CHANGELOG.md": "42e1c1add486d01ebfaad51d9dd4ce0bf3f9f198dac0ef2e172819d40cc0ba1c",
+    "cycle/README.en.md": "847b9a9c2b660a2fb11ffa7aee14c7401b38db2f47f54ed83288551739e4db81",
+    "cycle/README.md": "fe1db92deac83dd602e52dbab0e4ad24d347545212aad1e753bc5396e6252cde",
+    "cycle/demo.html": "ddfdae4f0c90217f04acdb18f32132254483a23ebaabd946cb9274125352a707",
+    "cycle/index.js": "4a0c467cbdd3931514d9c993d8942715760546dac7fcb311b58c48fa37c0bdcd",
+    "diverge/CHANGELOG.md": "47254a150f66d967d837fda0800bf615444f88c4daebc4a8bc32927390f00eed",
+    "diverge/README.en.md": "9d4b174cc423b8822b57a3de9a81d4368dfdddf6965c3b0398590e6ce1baf101",
+    "diverge/README.md": "a1e1f531f35e73e5198625e5edc371237bfab66ee3518174c005c731b695f8eb",
+    "diverge/demo.html": "24c65008cf0c7d5c6c4f353794cf1c25770861b6f70349ffae0f683973fef11a",
+    "diverge/index.js": "22c2552bf3a09d665f2f516d5632f28130e6f62f91a377435bfb7fb20700b8e2",
+    "expr/README.md": "4b62ce33eb2026d6f7b6788364242333397470ecbbfc421d9755cb6a0c0e07eb",
+    "expr/index.js": "93d6f8f2ea262ff6272fd04c9f894b22c03eac0e5905aee4e4ce7cab36ed7b90",
+    "fishbone/CHANGELOG.md": "3ebe005e17b4cc9e537f1783549411d00e66d0134292c0ec9505ebb1f3816a79",
+    "fishbone/README.en.md": "c1b6e47307a6d85eef22fa59851d43a9f34f961c737a38a4920ebd88bf09e592",
+    "fishbone/README.md": "05a29894259a63d6a2bf3dee58ea831ed2792be9a9d001f86a196a1947bdbb01",
+    "fishbone/demo.html": "fab2a7daecb65f5e1d7d356a3e89f9704cb5154e9698ab8e4a37ffb8b8833dad",
+    "fishbone/index.js": "d020725a41e9e2ca9ee4263a341cd0e5fd492f99b1cd5dc3ba1eda936db715f0",
+    "flow/CHANGELOG.md": "c6094a58309113dee686484b8f606b49ba8ca6bcfa11a95514508bd9b46e95a3",
+    "flow/README.en.md": "54c5e117eb4228b18a2b22abf2bf74e60d974a87db11e7a9ba1394f50904126f",
+    "flow/README.md": "18a1bf2d5c6e9d1b3e534e002175f38d6795bf9ea1fda4c415870ec23ff62324",
+    "flow/demo.html": "c1f1b9e6eb9f1b95466678a0c28ea4bd9b293d207a922e5d1144fd1e3c037ea8",
+    "flow/index.js": "44a290445e562b6742cf28db9ad3ec9d9c7cbd9ccbc02a2fd6795180e3086eb8",
+    "folds/CHANGELOG.md": "c3b39f1588d257c41c46a841893bc7e40d778c182679875856a9dd940e0083d7",
+    "folds/README.en.md": "f7090d9d0535555328d98844772f0551081c7e609aece4800db11508b12ff402",
+    "folds/README.md": "b72d89e009def779c327593087962dc7e1beb4ba90e0ec979b30223bb2cdae59",
+    "folds/demo.html": "058a98f824e1e8c7a4bac12ebe87a4f2862c15c3c5a53fd7cf7318d9f1a6bd9f",
+    "folds/index.js": "f452bdca0957c096ea67b563af8ba94f53ab991c42b40f2313b4fde387110c76",
+    "gendai/CHANGELOG.md": "30f8ff25b4db11375cae09248688c4b9080e46077f8ab434b6e5466e01fa4233",
+    "gendai/README.md": "136959c8ef479c0e058d1e2c50a8ba3bb3678565c966467326f0f2978fab3eb3",
+    "gendai/demo.html": "4d2241a9ce545f0be374f8ca4f65c36fbdda6890fb9125de1ff0679b34c96a78",
+    "gendai/index.js": "142e442b328fa20d655aed91d39f4ef8fb0b6089a6b914b14794d71182965c85",
+    "heatmap-core/README.md": "d80c75d4ec1bb0485529727f980ea292bdcf0048aef99490f2ee7f77b520cd41",
+    "heatmap-core/index.js": "fb2662b77e9c6e74443f8f4168400c72a9d0f55349e5cb5bd06bad487cd9311e",
+    "heatmap/CHANGELOG.md": "8c22a748a0e6327c8c928fdf1474dac7d302a7862750c213aa7709c61b365476",
+    "heatmap/README.md": "1539aae665e91680485745dfbbc88d8458f173f58090a3a12a96667053b5dbbd",
+    "heatmap/demo.html": "a9a1d4b9d8f596a9789766b70f69587336074328678d6bb3fad1528465483eb3",
+    "heatmap/index.js": "231ab0799a21f8bfeaab8c00f14ece9da08b8d97c12046780d44fd9a3bd97813",
+    "hissan/CHANGELOG.md": "ea11df1282bbedf029a65b03947691789e30c29919a61f3c223060a717e7f407",
+    "hissan/README.md": "206bbb294f4abf74711940ded8490ec4c94d176830b2f270c39fdc7ebb0dea9a",
+    "hissan/demo.html": "ab454fe6c3f781f852c203652ddb243bc1e453c3de1bf78795aa684840ffb63b",
+    "hissan/index.js": "14da4f69e4b04d8f79712c271f6fbc8cc78ebafb11bb719af083a0b8b9efeb34",
+    "hist-core/README.md": "eae0e43710ca30690e06bde96be77665839656c87a0c40b06ec89748eb362369",
+    "hist-core/index.js": "a7ab089d563b6f3e8c632aff2aaa6b709984ffd045656aa6d463d3fc62be4315",
+    "hist/CHANGELOG.md": "0455cff8ef390d1d55259087e0d4fea476af51a93979efe78c08461a228fd1a3",
+    "hist/README.md": "87cad14879a7e08694bb19dab38a70fce0090ddf85c796fe8b0b3697456df310",
+    "hist/demo.html": "7c404351983e5fac261f34f348b72af9a64ad81e59c90eda6adb2099b57fdd05",
+    "hist/index.js": "b0170308076d107e288d655b2c8789ff3cb79492f05366220da84ddf13620d3c",
+    "icons/LICENSE-tabler.txt": "b740a1d46122672da62833e97f7e7c8a13fa85cbc7445b584b297cc00dde93db",
+    "icons/README.md": "d5a8fed1c4d8f0dd2b2b74e09641f5115103017abf3cce59ec81b688f2cf03c4",
+    "icons/en.json": "14b6877493192776ce4f6718e9d15901255017a8f745de95a6d4157ab4389429",
+    "icons/index.js": "af56a1b77a4ff995906e56b7f6ec91dd9e7b3fb2ef792050f388b300c14fcc72",
+    "icons/ja.json": "f22a9d72a879389aa7f585ec25f15d5697ab68be636a48854cbf5a84925875bc",
+    "icons/names.txt": "9b2833c8fcf085f4b77c7c8e2dd81f388746ed49d20c2b85bf5f044c1ec2fb7c",
+    "kakijun/CHANGELOG.md": "4bc401e95a9230579af5e7da83f010ec7d3dffd2e08fa695aa319f86fc8eb7df",
+    "kakijun/LICENSE-strokesvg.txt": "034fbffd797849ae2717ae2f167315a59b0fc65b5c8339771e100341223fb881",
+    "kakijun/OFL.txt": "f5f4f05e005b6495a0d1f5bd49d37f5ac3e369883e2b7e3e48cd5aefded912f4",
+    "kakijun/README.md": "bc52622984275a6a8c62af3ecd49af6ebc6ac6b307dcbf698d641b21713b380b",
+    "kakijun/demo.html": "ba581e1293b5fcd6cb34a85cf594c3b393e2a18d7d4ef4f74b86568e163a76a0",
+    "kakijun/index.js": "660f6f8afca1ebbd5b5dfbf623092376300f2a85c89984b0828b94275a4b965b",
+    "kakijun/strokes-CHANGES.md": "cbe49676be0e2cf340153650e09951ec378b49ce110019ebd4c78a6ec122107c",
+    "kanbun-core/README.md": "d023f02ab41f017394582bb3a873e2cb4af53d7238bc7f60e0038b42564d371b",
+    "kanbun-core/index.js": "1bc1a2136b8c480d2d3ed2c685d3f1f7cee568d1bee5191a3a13682ce87f2a31",
+    "kanbun/CHANGELOG.md": "4c6ff630fdfd1c4250ceb5c609bbbcee4bc1f80a44770a6f54f584497643a615",
+    "kanbun/README.md": "6fee9842ac6854f63c7e0a46069d0909e0222239e34b5e28b19257bc2238b0a0",
+    "kanbun/demo.html": "bff03dd7c814041cd5cd31fea63989fa85dc738723c4df4129468e920bf68422",
+    "kanbun/index.js": "844c2fb2cc4e101e52f29b999181a1cd9e2a437e3b0ea8dc90e1b59d11e97895",
+    "keyboard/CHANGELOG.md": "9eab059b7d661c9f377383ff4829c28a4d8b58581ec3e035e4e909ae12bbdb40",
+    "keyboard/README.md": "1f4286590efe57fe9fd22cc1833112bfea38a2d11a513ae536c1310dfbc426fa",
+    "keyboard/demo.html": "b6baa3e89ad4a3d2177d2b8ac3ae7cbae210e667ea2e2b3c04ca9f565c12ff6f",
+    "keyboard/index.js": "53e2eafe692e0082e9bebaa92d86b3a2d7c888fcbdd356c5fde4f8295a91e08c",
+    "kobun/CHANGELOG.md": "a800de5d7fd6ddd8756770545ce7141279680c06f26f027e8ae383d3516578dd",
+    "kobun/README.md": "76e84edcac5c7fd67bae6b7672cc3b08fc9240df05d515853fc00c0d3ec512ec",
+    "kobun/demo.html": "cf8c3de9694bc9ee1a1d979c25168a2573d67bb775c31f8a0d32b42a1ba2cffa",
+    "kobun/index.js": "fe656f203723a8e2eb8612d1552d0ac43c3afc0549b7c08d693adf2ce816f46e",
+    "kpi/CHANGELOG.md": "72aadf34617e7b7d7f5f498463ce993ec5a0a1717d163727b6db998dd4a062e4",
+    "kpi/README.en.md": "66cd2f5a60ed8345442ef208315266ecfe5e34acc9bf416aaf68db7ec0f7992e",
+    "kpi/README.md": "1aeb6a250b05502a61b21c46927366344053b0c104655a8882d6bf4b0eeeff86",
+    "kpi/demo.html": "ca18debecd55627a0c0e3b409f4f4e8503453427bbb42ac6e4f1c7acb38af749",
+    "kpi/index.js": "2bb8e861126fa6f68c2ec02138735a4ec906c0c7105a8c65f1d70257461cdf20",
+    "map-japan/CHANGELOG.md": "e1ab02b4b0600e22b93bba09c39bbf8c4bc2e7418b60cd43ffd006c09c4f0bcb",
+    "map-japan/README.md": "fcf08138006c6a50f70d72de4715df8e698543a782c2552cce5a7105fdc7f2a1",
+    "map-japan/demo.html": "34523a8606c9171772fb389f77ffd867eefb618d8d34514533892cc67c48e2ac",
+    "map-japan/index.js": "bbf779a19eeaa3a17ce4322fe898cde1f136c0625995d016703eac1cfcee7deb",
+    "map-world/CHANGELOG.md": "5e846ee59a0132fc3e0677acb4520896a4455015bced1ec70af491c33d8a0d36",
+    "map-world/README.md": "0c08aadb3ff10a46cb52d82e1903a4e25393a6576f21f2018a0c66a15b6e7674",
+    "map-world/demo.html": "24a3975aff3fdd0895ff3240e0b6eaa0a110243514bf9115cd35b3a5788069cc",
+    "map-world/index.js": "631fe1da30dea2462b307d5e13d3e59bced1348078afd5fe1683fe2be87c5575",
+    "mapping/CHANGELOG.md": "be83facd913411d1e70ea75fa0d2184d6d597bd664bc9d78f8b66a60bdb99f61",
+    "mapping/README.en.md": "4b90bcd1573f4be63a7d6896833f462c0096a6013551e04ce7b28e657376fb05",
+    "mapping/README.md": "d349c518542022fae1e94419934a0f7d1faa8d08bc064f8216ae25aa389b03e4",
+    "mapping/demo.html": "8cdc0670d29959d7c9d3c200d7c65325f3d67b4fd262c106ee8888ba62e776f4",
+    "mapping/index.js": "d83a06ba1ccb2f1695d144c5865da8041259cf943008fedf7d814903c86d6304",
+    "market/CHANGELOG.md": "f4a0e3eeeb7d4def70e326d376d3397bc6d4a22e08332ea4a166a76d3eb84ebe",
+    "market/README.md": "b4dd5ab81185e4a8d3fd5421d6ce8b8c1e83ba784234fad94efe32ce67082d3e",
+    "market/demo.html": "cd65cf4072a089eb182a5a5b7b02dbc1b59a5cc90b80bc828a70da6796032012",
+    "market/index.js": "d326483b17143ec421d6c39c1316d7a86cf25ef999b556896254b08717e18cc7",
+    "markup-reader/README.md": "4e92ae470643cc46be4876bea68f7335680197b0fea17c73eacc1631de5b5ef6",
+    "markup-reader/index.js": "694fa4030bd1c3a1273ad9705076f54df91d5c3a276e8653ecb70900a1174e59",
+    "matrix/CHANGELOG.md": "4ed3491696f5810ed255dd641f1f636bd748b6f1ccc6937c439a80168842b0ef",
+    "matrix/README.en.md": "eced60047153dea74ac2058ae5ad6faa090b7f008a05515e54aaf88634dd5d18",
+    "matrix/README.md": "d89f29b4794e82e7836772d48d31a02089e3e992b22f3a11bfe859e187f67d5e",
+    "matrix/demo.html": "334602131bf1dd754cb0019e7bc750770771233ea22c9e91a95e2c83615e6954",
+    "matrix/index.js": "7ec50f5c587c48eb51822d8abdbe0276ee1c29a7826edc2a71af7c7e9aa5b511",
+    "menu/CHANGELOG.md": "9e7416ed1f5f6ed859d444026efdbfa612cd1ff65af2f84daf845e15a845eb9b",
+    "menu/README.en.md": "a14f0121454be74a8ec4cf4e1d8f9fb3903dd46adf155497498e67cad68f7eb9",
+    "menu/README.md": "5b1f73c8500d219a82b2fc4eddf7860f52c478fe67478a3f647cc86077eb00ed",
+    "menu/demo.html": "dd2ecfcbcb021ed0f51827f263abd84f94bb04ec19e8810bb9155ec6fa65c78b",
+    "menu/index.js": "000bcc674c2ae45a5e419b5b7c7560237a3226ce7fe093a599a41b1d4a9d8ee9",
+    "network/CHANGELOG.md": "60788a5a583b7275732b4d71c336156817cae48e4abc126d7a4075ae2ee4a056",
+    "network/README.en.md": "ef18507e15ba42ad5ed197ec5f2592dd0f85ba0c5cf037ab48c27d15b1b07909",
+    "network/README.md": "7bb144fcdfa435bc1b99feb95e3f4dc19457dfaea6eb7e90343e0a85a136984d",
+    "network/demo.html": "5e9d18edd1a3a4db101018fc42a5141fe5333a9b8745c86b86c06df85e73b024",
+    "network/index.js": "d7a7f09a0e71ff8336ba6c33debf60e187cd94f3a457e907d802c32e9ce987d8",
+    "nnet/CHANGELOG.md": "77b1a6457a0d0951cfe291a23c30045e0388bdbe33e9912cff65347adf098ada",
+    "nnet/README.en.md": "500fd98f7e21f2887a92aeda17cf9a3a6988bb77ea6023257d25540efd1a1dd1",
+    "nnet/README.md": "c1811389a4f8443515367fdb3c7b30fa1a01df24e1b6fd474fb4543d91ff63f6",
+    "nnet/demo.html": "d3af3768dac613d244882fcd3248dccf4d126446b8ba4d1291fe61503647ca0b",
+    "nnet/index.js": "f3831e8adb237c8947f88c8ff0d84c69b27082862f30e956dd06d5779bdcf9ab",
+    "numberline/CHANGELOG.md": "4e50071a2360257014c00e1467bb364e681d3e97ec610bafde149aac24260ab5",
+    "numberline/README.md": "ab3ff8445e0fcab27520ac818f3649fab993438bb94eec4d65d2d0d1f8df3ed3",
+    "numberline/demo.html": "c816a713662f13e5f9bda5dfc10ee807290ce4c1030b999f0934812a6c1e5721",
+    "numberline/index.js": "be36c979fd81ac83b2e8e06c99fb180d0838bafb7f81930ddfcfe9fe7ba394cf",
+    "orbit/CHANGELOG.md": "7d7df0f9fbd159d87762c9efef7a9e17c9e1a16567850d6b91cbaa8e50e1bd62",
+    "orbit/README.md": "064f952dfa621d0db826b993a694416ced504d3bd58c8fdac860985313a8cb23",
+    "orbit/demo.html": "3ea0c774a5eeb23cd91dd76ca54ba7849a08cf168278bb9c5e2c1007f95c71e8",
+    "orbit/index.js": "c5f84b041376de96b2f6074d449ee19092863ed3f5f50a0d0df226b8a1b116bd",
+    "particles/CHANGELOG.md": "287818ab7f8f5d360ee6f1255fd3bfa6c8df5b671cb7186cd2fe117cc48417f7",
+    "particles/README.md": "33cf9daed2c5743f88a4558e83b820b94a621241b0d4e1f6423ab882bbe29be0",
+    "particles/demo.html": "f79442e0b8cc5de16d131f4146079bc0c8095049459bb41800c46a27efe24cd7",
+    "particles/index.js": "38243f6bbb66883b3ebedc79e3d044caa4af99db6b52039e73c1f83002eabaec",
+    "pie/CHANGELOG.md": "26f616b512124f3c113aba7e9b5a158f10c72cf27a62a53f27cab9014767fbbd",
+    "pie/README.en.md": "0cb174043d57fee4ad87b3f2c05573e65869351f70633085d4860c906925211e",
+    "pie/README.md": "c3ce31dd0e73b332306b5966f11be98f6451cbc9a8c29d1310fdf75fda4d398c",
+    "pie/demo.html": "588bbd527edb01fe91268554ba4ad35cd946b5e8e65b492a65717cb16b42468f",
+    "pie/index.js": "55a538f249327ade1bcdc116251d504055c8500d1d710338af75d8ff38dfd71d",
+    "plot/README.md": "303d77c1cedbb98da23bc1370e57622f91c3a6837e637c0802071f5a570ad721",
+    "plot/index.js": "b2ce2b3c63d02e5ac61d3c3e287a40a7749ec02ae12977c46329bc485e368c4a",
+    "predict/CHANGELOG.md": "4a7ae2c80a48fa6729a3510f8a254e71305e475c3a3e1d6faaaefbd8e9b5be6c",
+    "predict/README.en.md": "a26f4e90b44a9ed32401382ec11a5da198d76c4b141a6c19a7a4f47f077fd88e",
+    "predict/README.md": "169f2f79c280d568d28c6f35a16658945081b01625facd82ce7338a90fd97f8d",
+    "predict/demo.html": "da7285e578b52aed890f4be16cbed038480c0e81e209f0fa253078b5341fe619",
+    "predict/index.js": "1e616adcb32c60206acddc3c82563f23177efab5dd72b41ee67e23e57f7a9351",
+    "quad/CHANGELOG.md": "eba2d35ff1d2234a66b96d72b19865dbfe35a0eab9830963ac0d775ce68f0584",
+    "quad/README.en.md": "fc710f99554c38b6fa32464fb2ffe80f6ebfd5c18200487cc470922c23ffaca7",
+    "quad/README.md": "54e6d6c9f523e834048eb54ec548890611cd61e24f50369818341401f4b3fa88",
+    "quad/demo.html": "31b379a52d5faad418c47784905cb3e6fc63582ccf49f93ddf6c48363ecb6022",
+    "quad/index.js": "52d025cef4b753741925916b9de09d07cf7e137c0fccde1f452a4aedac17f065",
+    "sampling/CHANGELOG.md": "281f3c974b75cab1095948577acd99b0d34dc612e5db7c2ec57400d9252121db",
+    "sampling/README.en.md": "2a1b3771adacd538be05e7df000dd6e3523d65a1db02a32e5e641b6b20480de0",
+    "sampling/README.md": "a29d87f5197c261d4dfa29f2f608ce58ef44fa0e9e5f4f5d17046de19023e10a",
+    "sampling/demo.html": "fc4e2d92ed4489ae17cfebdaba5a9a85ff03731f4f51cfc167de13e468a93d85",
+    "sampling/index.js": "e91efbf6dc99f2d84c076b582a9896aa31d1399044fbbeb87d04a63f8fbbb614",
+    "scatter/CHANGELOG.md": "5fafb4f33518fdb0d2949c09083fcc54b9110cd7cc5e639998628da6f7f7a757",
+    "scatter/README.en.md": "9f431243e1f8564bbca127864471eab8cceee2aea65cf163c090a8c46717b934",
+    "scatter/README.md": "8d8f9d9ecd822bef2346fa4ffc3f14fb8fd8685ba27d55ec78caeb742d80bfcc",
+    "scatter/demo.html": "7c8be709a8134919cf8af631a1fa92a99884ff1f97b9cf5cc32fe6353d645944",
+    "scatter/index.js": "de567bb285f54b6bd990b06d1d0790aaca6fdfaeac0f82fe4b5758503d45e87a",
+    "score/CHANGELOG.md": "a90274d87f9448a488cadbd7cb30e06aa5c651c9a8141c4aa6ff187e9e63a266",
+    "score/README.md": "16137f7b5208d620b24eff1ff902097509705c53afd7cd9ec540dc9440be5ba6",
+    "score/demo.html": "c37683a05d361a811b8d5de0e8a2f169fb3a296a801a59abf1d765f0d229371f",
+    "score/fixtures/ABCJS-ADAPTER.md": "fb34bf0c7dc1836151f7758c4c17566460a438262991a3bf03cd54795a3e62db",
+    "score/fixtures/LICENSE-abcjs.txt": "d7bdcd152b978adee22a2f9b92a4d72c4ec2c20a86512766c7c210b462b54702",
+    "score/fixtures/chords.json": "544fe9fb432ae5e4ec6f3443a83f2632e0fcad33f829f200933e389b58b69e6e",
+    "score/fixtures/doremi.json": "cfad521f15342198055a4512884af0eab046a69923feedbf1e405cb86fe1b528",
+    "score/fixtures/extras.json": "08dae18aa14cd5bea1550a03496cbc221a81e42c5363ef1d47effb929a9ce234",
+    "score/fixtures/kaeru.json": "05927268b954747701763448d22c0a7505a046077596ed1602e3db701df08dbd",
+    "score/fixtures/rhythm.json": "a7a4ec18ba80a180646a9186bae30633332a5e7c98fe1b375944b54f22fecef7",
+    "score/fixtures/ties.json": "20fdec4beef0c137ada57b98248db48f58aa20820e2c17a66b066e921de99f16",
+    "score/index.js": "6dba5f0e8ad6bef02645c04ebda83ff58726f07c47ec6dbfdc4d0b68145c9664",
+    "scroll/CHANGELOG.md": "31e28dabfae25afb1ab85ce9ac18be28e55c9515b499ab3354e5335ca6c3feb1",
+    "scroll/README.en.md": "802a04ff712aefdeb563337b93049547717fe5114a9e4561edbf5b0419d013aa",
+    "scroll/README.md": "a4af43f81838ba8f61a697b4c3858f1d0997c87e3624eba065ed56b070a58a0d",
+    "scroll/demo.html": "428ac062cbbdd8f06c81bfa60902debd4bcacac0676420099f04003244d6c799",
+    "scroll/index.js": "352cf1c966a3ef6c7368a5d0908f97d95387559dc731608feb7fcd0b649088d9",
+    "seq/CHANGELOG.md": "fe4cfd15d3daf31790e14b92ac06e262ed0dac8a01b79ab81e570c57cb82bf66",
+    "seq/README.md": "735196e1753f61fff627ea2f0c2d1e21575b7a123c9f6acc85509ed7e60188db",
+    "seq/demo.html": "7ac4d72c5277a9892277841b18ce4e8ee9a3c04b70eb4522f3ffcbdccdc508db",
+    "seq/index.js": "a01c7995bde0c75fd309ee1c1ad0d7025b7e64076b15b92637c2a5a38f22ca2f",
+    "shape/README.md": "c2f43dfa5f69a680c012773914cec7ea7f39a23363cad681c2080ffd136d1444",
+    "shape/index.js": "27ffba8c236317568dbfd14a1a3cdabd6fe59f933d1f9e5ce6c8c7de6405a911",
+    "sweep/CHANGELOG.md": "66eff99dcbdf1b4bd6050db6cfa83bb6c74a967c8a0bda8fbb06db28e9edcdc5",
+    "sweep/README.md": "c2363ec5c65dc7af126fb62f1738d9f805d193e9a3b06c2ba31d6ee81fb86626",
+    "sweep/demo.html": "19d6152d6a78b550b9e18b090fd57a6f0f8a3fd4bd05e4857181a85584ea130b",
+    "sweep/index.js": "5389b838feb942403f10a8fc678323009862d99d0b607ec0758d0f36c9bfd361",
+    "syntax/CHANGELOG.md": "519890b2f555f23450a8cb4b2f8215c4e7738e469492967a4621bbd947e2bfa2",
+    "syntax/README.md": "d876df24243f9ba336b2eecc1955b5dd78eb45f47c0c2af8c7670652e19d2e3d",
+    "syntax/demo.html": "4a874677d10d216306ee35789b777fdbc0630fea1c23a137cf80b743e7d8ea0d",
+    "syntax/index.js": "3426c4370e0e3028e5ca10072704fe6aef90ad82d980282660e0d2824bd2820f",
+    "tape/CHANGELOG.md": "e03895a99e67a9c35292fcd88a1f06d76146dda97bc1f78c0989a57b03be41cc",
+    "tape/README.md": "35b80547665d74057a8bd9a4cd36b0e3b8df1bedc8f9cdef0f9e8b91cb234f6f",
+    "tape/demo.html": "3352a6c17b7020c1e79b4c163c39f22fb2a353a1d47e52b4e7d4f6c0a5385863",
+    "tape/index.js": "2f3ef41b89018f54f6e75643db588d62351a88d3abce4046141259e1502c24d8",
+    "timeline/CHANGELOG.md": "a5a3f095bf1bd8e22c8ba064c9d74aba5c9843203665d69e041103e090d04dac",
+    "timeline/README.en.md": "1d36752bea451e37f6477e3d5cd557ae63583685ad8e32e65af1354bcf017d77",
+    "timeline/README.md": "bc80994537b3f02d9f1aa3ea3b65e77f1d22e3dec4e83a68dbc0377b83449793",
+    "timeline/demo.html": "dce1e0c7457a5695b274b2cde562f3c09d6fb9716eb6993435432efb86e850ad",
+    "timeline/index.js": "ea38759785ec1b6880642d40252f9a13e1f81a41c92d5588294c5aa10dcaaff0",
+    "timer/CHANGELOG.md": "dbf07caff6d63ffa8a9dd90bd0d6feb10105b53a804e2437780d0a439c3c77cb",
+    "timer/README.md": "fee772ba9ce6f5d5147e91274c87e3415a106144722e0cfcdb0458c89afbe07b",
+    "timer/demo.html": "ffd147940c9f6a22566df70b4daf51a18f9fe24fdaf7af8117af1cca9892fb35",
+    "timer/index.js": "506248c775a91363631dd4b566a29acf49f46a34d8ec272732a6ce0570ddfdeb",
+    "trace/CHANGELOG.md": "8e075045378d98a3134264893b02a20e0e3670acfc9117dd1b37660796ee2b0c",
+    "trace/README.en.md": "a1e210636cd95da4b44245e64d99fb1ccff0df59b0e53962e75388cc703657a9",
+    "trace/README.md": "b9efb69f341dd4698635f9aa8d91561aeb485949d89be356a9700e6b579b8d71",
+    "trace/demo.html": "5d19d4eeafc5cc5a9d76887fa8cc2f2d6f2dae05355abd219bc43aeaf4236798",
+    "trace/index.js": "92798e9accdb14c525ab523f305272c006cb65cd97283459c6c6314f47c38dcc",
+    "tree/CHANGELOG.md": "f7fb872c36bd3e6255f0e79d995f00da37cf8d7c3a8cd0f9ebb8517ed7b0afcd",
+    "tree/README.en.md": "d4f11586eb1dd20264de81a773f93f0f7af83f5d2e433ca4b2aa22b14becd9b4",
+    "tree/README.md": "e513d600e6f296384cf9ddc683fbaab5f29ee98eb4e637487de192cb306e90f0",
+    "tree/demo.html": "0812d7eea579021a046044e58c71584001a5f8ec8409ee146072c0d02358e3eb",
+    "tree/index.js": "38f883f333e4f231ef6aa15e442cb44dd76f4d3360560ec7af3401b67cd8182c",
+    "vector/CHANGELOG.md": "4954a243ea3eeb4c94e5e2c9a41c4b99a3abd0bf63bdc4e38bb342e29c705159",
+    "vector/README.en.md": "9ff72255b93e857518c1d999b80288cc867ddc71948dc78752faff7320375aeb",
+    "vector/README.md": "0591d4741e7dddf3b9405af6be39fcf053ea49688520ede159c9b129c4184b89",
+    "vector/demo.html": "9ea7c064ecf6f6dd8c820c472e61ce9ac883b44f008e685356f0c0167113267c",
+    "vector/index.js": "c9d57068ec971bca576931b0de6d501af94714d89e7fe50950fdca0a87bc47ad",
+    "venn/CHANGELOG.md": "7694cc9c30a61b83f1f730d966a75aac4bd90bdf4a7731b66a21d657871f46e6",
+    "venn/README.en.md": "ba10e6e0a67599bf2e12b8f827d9dac73795af98ad0bea1b20ad87f2edd687c5",
+    "venn/README.md": "3f8f3da34226c716db73c048ba47a4bb28270069561a83ffd764ff2dc2ac07e4",
+    "venn/demo.html": "59a70cbdc8ae898d9d3f37072b4779f9b5b488b118a1a6b7bbf8b30f6efe0603",
+    "venn/index.js": "4d4ae8a02127f81a32c2e12ba34f85cd66a690fcfc7e42c1e6612aa77cee45d8"
+  }
+}

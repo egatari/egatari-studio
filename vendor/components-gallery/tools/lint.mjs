@@ -79,6 +79,31 @@ export function labelListErrors(kind, j) {
     if (!/^[a-z][a-z-]*$/.test(x.id || '') || seen.has(x.id)) errs.push(`${file}: id ${JSON.stringify(x.id)} is not a unique lower-case id`);
     seen.add(x.id);
     if (!x.ja || !x.en) errs.push(`${file}: ${x.id} needs ja and en`);
+    if ('keywords' in x) errs.push(...keywordErrors(file, kind, x));
+  }
+  return errs;
+}
+// keywords of a subject (handoff #69; Studio's new-deck flow suggests the subject from words in the request):
+// {ja: [...], en: [...]}, each a non-empty string or {w, not: [words around it that do not count, such as 国語 for 国]}; no repeats
+export function keywordErrors(file, kind, x) {
+  const errs = [], at = `${file}: ${x.id} keywords`, k = x.keywords;
+  if (kind !== 'subjects') return [`${at}: only subjects have keywords`];
+  if (!k || typeof k !== 'object' || Array.isArray(k)) return [`${at}: must be {"ja": [...], "en": [...]}`];
+  for (const key of Object.keys(k)) if (key !== 'ja' && key !== 'en') errs.push(`${at}: ${key} is not a language (ja, en)`);
+  for (const lang of ['ja', 'en']) {
+    const list = k[lang];
+    if (!Array.isArray(list) || !list.length) { errs.push(`${at}.${lang}: a non-empty list`); continue; }
+    const seen = new Set();
+    for (const w of list) {
+      const word = typeof w === 'string' ? w : w && typeof w === 'object' ? w.w : null;
+      if (typeof word !== 'string' || !word.trim()) { errs.push(`${at}.${lang}: ${JSON.stringify(w)} is not a word or {"w", "not"}`); continue; }
+      if (typeof w === 'object') {
+        for (const f of Object.keys(w)) if (f !== 'w' && f !== 'not') errs.push(`${at}.${lang}: ${word}: ${f} is not a field (w, not)`);
+        if (!Array.isArray(w.not) || !w.not.length || !w.not.every((n) => typeof n === 'string' && n.trim())) errs.push(`${at}.${lang}: ${word}: not must be a non-empty list of words`);
+      }
+      if (seen.has(word)) errs.push(`${at}.${lang}: ${word} is repeated`);
+      seen.add(word);
+    }
   }
   return errs;
 }
