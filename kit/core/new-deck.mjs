@@ -15,7 +15,6 @@
 //   partsOfSet(set)                    → 束のパーツ（一覧に出るものだけ）
 //   purposeTiles()                     → ④ の札：tile が 'own' で reserved でない伝えたいこと [{id, label}]（manifest の順）
 //   subjectChoices()                   → ④ の題材：reserved でない題材 [{id, label}]
-//   SUBJECT_WORDS                      {ja|en: {題材の id: [言葉]}}（② の言葉から題材を推す表。日本語は字の並び、英語は語の切れ目。PACK.tiers にない id は使わない）
 //   guessSubjects({text, lang})        → [{subject, word}]（② の言葉に当たった題材と、当たった言葉。題材の順）
 //   SCHOOL_AUDIENCES・asksSchool(category, sub)  授業（小・中・高）だけ「どの学校向けですか」（小中・高校）
 //   audienceOf(category, sub, school)  → 読み手の id | null（授業（小・中・高）は school、大学の講義・研究発表は大学、研修・ビジネスは社会人、手引きは一般、その他はなし）
@@ -120,41 +119,6 @@ const SUBJECT_GROUP = { id: 'subject', label: { ja: '教科の形', en: 'For spe
 const OTHER_GROUP = { id: 'other', label: { ja: 'その他', en: 'Other' } };
 // 授業（小・中・高）は partsList で教科の形を一番上に
 const SUBJECT_FIRST = ['class'];
-// 題材を推す言葉の表（handoff #43 ④。前の束の言葉の表 §2.4 を題材に分けたもの）。日本語は字の並びで、英語は語の切れ目で探す（大文字・小文字は区別しない）。
-// 1 字の言葉は、ほかの語の一部に当たりやすいので除く並びを添える（{w, not}：not は前後にあればその所は当たりにしない）。
-// キーは manifest の題材の id。PACK.tiers.subjects にない id・reserved の id は使わない（表は言葉だけを持ち、題材の名前は manifest から）
-export const SUBJECT_WORDS = Object.freeze({
-  ja: {
-    statistics: ['分布', '統計', 'データ', 'ヒストグラム', '箱ひげ', '相関', 'ベイズ', '推定', '検定', '交差検証', '信頼区間', '標本抽出', '確率変数', '期待値',
-      'グラフィカルモデル', 'パス図', '構造方程式', 'ベイジアンネットワーク', '隠れマルコフ', 'マルコフ連鎖', '因果ダイアグラム'],
-    mathematics: ['数学', '算数', '筆算', 'わり算', '割り算', 'かけ算', '掛け算', '分数', '割合', '数直線', 'テープ図', '関数', 'ベクトル', '行列'],
-    informatics: ['情報I', '情報Ⅰ', 'プログラミング', 'アルゴリズム', '最短経路', '巡回セールスマン', 'グラフ理論', 'グラフの探索', '幅優先', 'ダイクストラ',
-      '機械学習', 'ニューラルネット', 'パーセプトロン', '深層学習', 'ディープラーニング', '活性化関数', '勾配降下', 'ロジスティック回帰', 'サポートベクター', 'SVM', '決定木',
-      'k 平均', 'k平均', 'k-means', '近傍法', '損失関数', '分類器', 'scikit-learn'],
-    science: ['理科', '月の満ち欠け', '天体', '惑星', '粒子', '物理', '化学'],
-    'social-studies': ['地図', '都道府県', '地方', '世界', { w: '国', not: ['国語'] }, '人口', '地域', '地理', '歴史'],
-    japanese: ['国語', '漢文', '漢詩', '古文', '現代文', '評論', '小説', '書き順', 'ひらがな'],
-    english: ['英文', '文型', '英語', { w: '句', not: ['俳句', '語句', '文句', '句読点'] }, { w: '節', not: ['季節', '関節', '節約', '節分', '調節'] }, '関係詞'],
-    music: ['音楽', '音階', '和音', { w: 'コード', not: ['ソースコード', 'バーコード', 'QRコード', 'コーディング'] }, '鍵盤', '楽譜'],
-    business: ['市場', 'KPI', '売上', '事業', 'ピッチ', '経営'],
-  },
-  en: {
-    statistics: ['distribution', 'distributions', 'statistics', 'statistical', 'data', 'histogram', 'histograms', 'box plot', 'box plots', 'correlation', 'Bayes', 'Bayesian',
-      'estimation', 'hypothesis test', 'hypothesis testing', 'cross-validation', 'confidence interval', 'confidence intervals', 'sampling', 'random variable', 'random variables',
-      'expected value', 'graphical model', 'path diagram', 'structural equation', 'Bayesian network', 'hidden Markov', 'Markov chain', 'causal diagram'],
-    mathematics: ['mathematics', 'math', 'maths', 'arithmetic', 'long division', 'column addition', 'multiplication', 'division', 'fraction', 'fractions', 'ratio', 'ratios',
-      'percentage', 'percentages', 'number line', 'tape diagram', 'function', 'functions', 'vector', 'vectors', 'matrix', 'matrices'],
-    informatics: ['programming', 'computer science', 'algorithm', 'algorithms', 'graph search', 'graph theory', 'breadth-first search', 'BFS', 'shortest path', 'traveling salesman',
-      'TSP', 'Dijkstra', 'machine learning', 'neural network', 'neural networks', 'perceptron', 'deep learning', 'activation function', 'gradient descent', 'logistic regression',
-      'support vector', 'SVM', 'decision tree', 'decision trees', 'k-means', 'nearest neighbor', 'nearest neighbors', 'loss function', 'classifier', 'classifiers', 'scikit-learn'],
-    science: ['science', 'physics', 'chemistry', 'phases of the moon', 'moon phases', 'planet', 'planets', 'particle', 'particles'],
-    'social-studies': ['map', 'maps', 'prefecture', 'prefectures', 'region', 'regions', 'world', 'country', 'countries', 'population', 'geography', 'history'],
-    japanese: ['kanbun', 'kobun', 'kanshi', 'classical Japanese', 'classical Chinese', 'stroke order', 'hiragana', 'katakana', 'kanji'],
-    english: ['English grammar', 'sentence structure', 'sentence pattern', 'sentence patterns', 'phrase', 'phrases', 'clause', 'clauses', 'relative pronoun', 'relative pronouns'],
-    music: ['music', 'musical scale', 'major scale', 'minor scale', 'chord', 'chords', 'keyboard', 'piano', 'sheet music', 'musical score'],
-    business: ['market', 'markets', 'KPI', 'KPIs', 'sales', 'revenue', 'business', 'pitch'],
-  },
-});
 
 const PARTS = TIERS.parts;
 const shown = (t) => PARTS[t] && PARTS[t].tier !== 'extra';
@@ -209,12 +173,13 @@ export { trimCandidates, fitPlan } from './llm-pack.mjs';
 // ---------------------------------------------------------------- ④ ラベル（handoff #43、作者の決定 2026-11-19）
 const known = (xs) => (Array.isArray(xs) ? xs : []);
 export const purposeTiles = () => known(TIERS.purposes).filter((p) => p.tile === 'own' && !p.reserved).map((p) => ({ id: p.id, label: p.label }));
-export const subjectChoices = () => known(TIERS.subjects).filter((x) => !x.reserved).map((x) => ({ id: x.id, label: x.label }));
+export const subjectChoices = () => known(TIERS.subjects).filter((x) => !x.reserved).map((x) => ({ id: x.id, label: x.label, ...(x.keywords ? { keywords: x.keywords } : {}) }));
 const audienceIds = () => known(TIERS.audiences).filter((x) => !x.reserved).map((x) => x.id);
 export function guessSubjects({ text = '', lang = 'ja' } = {}) {
   const L = lang === 'en' ? 'en' : 'ja', t = String(text || ''), out = [];
   for (const s of subjectChoices()) {
-    for (const w of (SUBJECT_WORDS[L][s.id] || [])) { const hit = findWord(t, w, L); if (hit) { out.push({ subject: s.id, word: hit }); break; } }
+    // 推す語はパーツ集の manifest の subjects[].keywords（PACK.tiers.subjects。日本語は字の並び、英語は語の切れ目、1 字の語は {w, not}。handoff #69）
+    for (const w of ((s.keywords && s.keywords[L]) || [])) { const hit = findWord(t, w, L); if (hit) { out.push({ subject: s.id, word: hit }); break; } }
   }
   return out;
 }

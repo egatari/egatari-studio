@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示のバージョン：1100b582
+指示のバージョン：18a79335
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
@@ -14,7 +14,7 @@
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | 大きな数字のカード（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
-| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で、空きマスは — と注）か、研究 × 要素の表（✓ △ × や短い字）を、ステップで埋める | cross は 軸と空の表 → 従来の研究 → 本研究 → 注（order="whole" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],self?:str}` — cross：rows と cols は {"axis", "values"}、cells[r][c] は研究の名前の並び、{"self": true}、{"none": "空きの理由"} のどれか。attributes：cols は名前の並び、rows は {"label", "cells", "self"?} の並び |
+| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で結論の 1 文と、空きマスは — と注、下に設計の行）か、研究 × 要素の表（✓ △ × や短い字、列の上に要件の出どころ）を、ステップで埋める | cross は 軸と空の表 → 従来の研究（と設計の行の従来）→ 本研究（と設計の行の本研究）→ 注（order="whole" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],design?:{cols:str[],rows:{label?,self?:bool,cells:str[]}[]},self?:str}` — cross：rows・cols は {"axis", "values"}、cells[r][c] は研究の名前の並び・{"self": true か "結論"}・{"none": "理由"}、design は {"cols", "rows"}。attributes：cols は名前か {"name", "source"}、rows は {"label", "cells", "self"?} |
 | `<m-menu>` | スライドへのリンクのカードを格子に並べる（目次・単元の選び方）。カードは <a href="#<スライドの id>">、行ったスライドに「見た」の印 | ceil(カードの数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
 | `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
@@ -279,13 +279,18 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 `kind`：`cross`（既定、2 本の軸の交差の表）・`attributes`（行に研究、列に要素の表）。子の JSON に書く。
 
 - cross：`rows`・`cols` は `{"axis": "軸の名前", "values": [値, …]}`（どちらも 2〜4 個）。`cells[r][c]` は研究の名前の並び（引用番号か「著者（年）」、1〜3 本）、本研究のマスは `{"self": true}`、空きマスは `{"none": "空きの理由"}`（「—」と注の番号、表の下に注）。3 本目の軸は名前に印（† など）を付け、`marks: [{"mark": "†", "text": "意味"}]`
-- attributes：`cols` は要素の名前、`rows` は `{"label", "cells", "self"}`（本研究を先頭に）。空のマスは「—」
+  - `{"self": "分かったことの 1 文"}` で本研究のマスに結論も書く（40 字まで）
+  - `design: {"cols": [2〜3 個], "rows": [{"label", "cells"}, {"self": true, "cells"}]}`：表の下の設計の行（従来と本研究のデータ・識別の設計と、比べられるようになったこと）
+- attributes：`cols` は要素の名前か `{"name", "source"}`（要件が来た応用の必要）、`rows` は `{"label", "cells", "self"}`（本研究を先頭に）。空のマスは「—」。記号の意味は `marks`（● 満たす・× 満たさない・— 記載なし）
 - 本研究は「本研究」と字で書いて `--emph` の枠で囲む（色だけで分けない）
+
+型の選び方（新しさの在りか）：問題の記述（目的・設定・入力・出力・評価基準）なら cross（問いと対象なら結論の 1 文、観測・識別なら design も）、応用の要件を満たす手法なら attributes に出どころと ● × —。答えの値や見方が新しいなら、この表にしない。どれも最も近い従来研究 1〜2 件を表の中で名指しする
 
 注意
 
 - 交差の表の軸は 2〜4 個ずつ。それより多いときは軸の値をまとめるか、attributes の表にする
 - マスの研究は主なものを 3 本まで。全部の文献の一覧は参考文献のスライドに置く
+- 要件を本研究に有利な語で作らない（本研究だけが全部 ● の表は、選び方しだいで必ず作れる）
 
 ### `<m-menu>`
 

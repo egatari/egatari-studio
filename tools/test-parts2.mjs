@@ -718,9 +718,14 @@ for (const [code, what] of [
   ok(Object.keys(v2150.parts).every((n) => n in v2160.parts), '2.16.0: nothing removed since 2.15.0');
   // 2.17.0：m-matrix（比較の行列、#64）・m-scroll（縦に送る図）。既定（v0.6.18 から）
   const v2170 = lock2.catalogues['2.17.0'];
-  ok(lock2.default === '2.17.0' && v2170 && v2170.tag === 'v2.17.0' && v2170.tarballSha256 === '7bbfc09cc993dfffdfa0cb33003c5c525b03632849854d398d3b6ac198aad8f5' && v2170.manifestSha256 === 'aba30c356fded336ffe0d2607c5474160e557b79f711ccb9e41a3589f49c3b0c',
-    '2.17.0: the default; pinned to the released tarball and manifest (v2.17.0)');
+  ok(v2170 && v2170.tag === 'v2.17.0' && v2170.tarballSha256 === '7bbfc09cc993dfffdfa0cb33003c5c525b03632849854d398d3b6ac198aad8f5' && v2170.manifestSha256 === 'aba30c356fded336ffe0d2607c5474160e557b79f711ccb9e41a3589f49c3b0c',
+    '2.17.0: pinned to the released tarball and manifest (v2.17.0)');
   ok(Object.keys(v2160.parts).every((n) => n in v2170.parts) && 'matrix' in v2170.parts && 'scroll' in v2170.parts, '2.17.0: nothing removed since 2.16.0; m-matrix and m-scroll are new');
+  // 2.18.0：題材の推す語（subjects[].keywords、#69）、m-matrix 2.1.0。既定（v0.6.18-rc.2 から）
+  const v2180 = lock2.catalogues['2.18.0'];
+  ok(lock2.default === '2.18.0' && v2180 && v2180.tag === 'v2.18.0' && v2180.tarballSha256 === 'd4568b357557b99d33512b5d94e720c00b90b80968d1d1bbec3cdf86a913512a' && v2180.manifestSha256 === '51fb3abbccd5b6aa75a2ec0e787edc2cf7492cc8278d1fa0de60fc814ecea3b4',
+    '2.18.0: the default; pinned to the released tarball and manifest (v2.18.0)');
+  ok(Object.keys(v2170.parts).every((n) => n in v2180.parts), '2.18.0: nothing removed since 2.17.0');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
