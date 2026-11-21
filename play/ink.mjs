@@ -158,7 +158,8 @@ export function ink({ root, words, shared, send }) {
   const push = (s, q) => { if (s.p.length < MAX_PTS * 3) s.p.push(round(q[0]), round(q[1]), Math.round(q[2] * 100) / 100); };
   const drawsWith = (e) => e.pointerType === 'pen' || e.pointerType === 'mouse' || (e.pointerType === 'touch' && fingerDraws);
   function down(e) {
-    if (!key) return;
+    // before the first slide key arrives (just after opening a lesson) the strokes are drawn all the same; setPage carries them
+    // onto the first slide's page (handoff #73: they used to be dropped, so a line drawn at once did not appear and was not kept)
     if (!drawsWith(e)) { if (e.isPrimary) swipe = { id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp }; return; }
     if (cur) return;   // one stroke at a time (a second contact is the palm)
     e.preventDefault(); try { surf.setPointerCapture(e.pointerId); } catch { /* gone */ }
@@ -232,11 +233,16 @@ export function ink({ root, words, shared, send }) {
     const k = `${docId}|${slideKey}`;
     if (k === key) return;
     await flush();
-    cur = null; erasing = false; key = k; undoStack = []; strokes = []; syncUndo();
+    // the strokes drawn with no key yet belong to the first slide that arrives (handoff #73), and so do the strokes drawn while
+    // its page is being read: both go after the kept ones and are saved with them
+    const carry = key ? [] : strokes;
+    cur = null; erasing = false; key = k; strokes = carry.slice(); undoStack = carry.map((s) => ({ add: s })); syncUndo();
     if (!shared()) {
-      try { const v = await getPage(k); if (key === k && v && Array.isArray(v.strokes)) strokes = v.strokes.filter(strokeOk).slice(0, MAX_STROKES); } catch { /* none */ }
+      try { const v = await getPage(k); if (key === k && v && Array.isArray(v.strokes)) strokes = v.strokes.filter(strokeOk).concat(strokes).slice(0, MAX_STROKES); } catch { /* none */ }
     }
-    if (key === k) redraw();
+    if (key !== k) return;
+    redraw(); labelSurface(); syncUndo();
+    if (undoStack.length) save();
   }
   setTool('pen'); relabel();
   return {

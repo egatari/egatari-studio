@@ -9,6 +9,7 @@
 //  - 指（pointerType touch）は書かず、横にはらうとステップを移る。「指でも書く」で書ける
 //  - 共有の端末をオンにすると、手書きも消すか聞いてから消す。共有の端末では保存しない
 //  - 枠の中から来た形の違う ink-bg は無視する
+//  - 開いた直後、スライドの鍵が届く前に描いた線も残り、届いたスライドに保存される（handoff #73）
 //  - スライドだけの表示でだけ：教材で「スライドと本」にすると手書きを閉じ（線は残る）、手書きを押すとスライドだけに戻す（11/20 の作者の iPad の確かめ）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -114,6 +115,9 @@ async function finger(p, from, to) {
   }, [from, to]);
 }
 const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
+// two painted frames: in Chromium the lesson frame runs in its own process, and for a frame or so after the surface appears over
+// it the mouse still goes to the lesson (a person cannot draw that fast; the test can)
+const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
 
 {
   const p = await newPage();
@@ -223,8 +227,10 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   // 描く前に手書きが入っていることを待ち、描いた後は線が記録されるまで待つ（遅い macOS の CI では、すぐ見ると線がまだなく、
   // 下の「2 枚のスライド」も 1 枚になって落ちた）
   await until(() => p.evaluate(() => document.getElementById('b-ink').getAttribute('aria-pressed') === 'true'));
+  // 描き直しはしない：開いた直後、スライドの鍵が届く前に描いた線も残る（handoff #73。下の「鍵より前に描く」で確かめる）
+  await painted(p);
   await draw(p, [[200, 1000], [400, 1000]]);
-  await until(async () => (await strokes(p)) === 1);
+  ok(await until(async () => (await strokes(p)) === 1), 'a dark slide: the stroke is drawn');
   await until(async () => near(await inkAt(p, 300, 1000, [16, 20, 24]), [0xff, 0x7b, 0x88], 40));
   ok(near(await inkAt(p, 300, 1000, [16, 20, 24]), [0xff, 0x7b, 0x88], 40), 'red on a dark slide is the light red ' + JSON.stringify(await inkAt(p, 300, 1000, [16, 20, 24])));
   await shot(p, 'ink-dark');
@@ -251,6 +257,45 @@ const press = (p, k) => p.click(`.ink-bar button[data-k="${k}"]`);
   await sleep(600);
   ok(await strokes(p) === 0, 'on a shared device nothing is saved');
   await p.close();
+}
+{
+  // drawn before the slide key arrives (handoff #73): just after opening, the player may not yet have said which slide it shows.
+  // The page holds the player's position messages back, draws, then lets them through: the stroke stays, goes onto that slide's
+  // page and is kept on this device (it used to be dropped: the dark slide above failed 2 times in 3 on the macOS CI)
+  const c = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+  await c.route((u) => !u.href.startsWith(URL0), (r) => r.abort());
+  // registered before the page's own scripts, so that it runs before the page's message listener
+  await c.addInitScript(() => {
+    if (window !== window.top) return;
+    window.__held = []; window.__hold = true;
+    window.addEventListener('message', (e) => {
+      const m = e.data;
+      if (window.__hold && m && (m.egatari === 'position' || m.type === 'deck-pos')) { window.__held.push(m); e.stopImmediatePropagation(); }
+    }, true);
+  });
+  const p = await c.newPage(); p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(URL0); await p.waitForSelector('html[data-ready]');
+  await open(p, LIGHT);
+  await p.click('#b-ink');
+  ok(await until(() => p.evaluate(() => !!document.querySelector('.ink-surf'))), 'before the key: the surface is up');
+  await painted(p);
+  ok(await p.evaluate(() => window.__held.length > 0), 'before the key: the player\'s position is held back ' + await p.evaluate(() => window.__held.length));
+  await draw(p, [[200, 1000], [400, 1000]]);
+  ok(await until(async () => (await strokes(p)) === 1), 'before the key: the stroke is drawn');
+  await p.evaluate(() => {
+    window.__hold = false;
+    const f = document.getElementById('lesson').contentWindow;
+    for (const m of window.__held) window.dispatchEvent(new MessageEvent('message', { data: m, origin: 'null', source: f }));
+  });
+  await sleep(600);
+  ok(await strokes(p) === 1, 'the key arrives: the stroke is still there');
+  ok(near(await inkAt(p, 300, 1000, [255, 255, 255]), [0xd2, 0x2a, 0x3a], 40), 'the key arrives: still drawn ' + JSON.stringify(await inkAt(p, 300, 1000, [255, 255, 255])));
+  await p.click('#b-close');
+  await sleep(300);
+  await open(p, LIGHT);
+  if (await p.evaluate(() => document.getElementById('b-ink').getAttribute('aria-pressed') !== 'true')) await p.click('#b-ink');
+  ok(await until(async () => (await strokes(p)) === 1), 'opened again: the stroke drawn before the key was kept on that slide');
+  await c.close();
 }
 {
   // a phone: no 手書き button
