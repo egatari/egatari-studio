@@ -1,8 +1,10 @@
 // 編集アプリ（app/）のプレビューで音声が鳴ること（backlog #49）：test-app から分けた音声の確かめ（backlog #156）
-//   node tools/test-app-audio.mjs [作業用のフォルダ]
+//   node tools/test-app-audio.mjs [作業用のフォルダ] [--shots <フォルダ>]
 // 時間に敏感（自動再生で currentTime が進むこと）なので、ほかの段と同時に走らせない。test-app はほかの段と同時に走らせてよい
 // 1. examples/minimal ＋ dry-run の音声の 1 ファイル（test-app と同じ作り方）と、それを npm run portable -- unpack で展開したフォルダを作る
 // 2. tools/build-app.mjs で組んだ dist/ を 127.0.0.1 で配り、1 ファイル（メモリの作業場所）・発表者ビュー・展開したフォルダで鳴ることを確かめる。コンソールのエラーが無いこと
+// 3. --shots <フォルダ> があれば（手引きの画像。日本語・幅 1280）：1 ステップの音声を古くした 1 ファイルを開き、音声のパネルを撮る
+//    audio-panel-1280.png（「音声をどう付けますか」の録音・クラウド（Google Colab）・この PC で作る）・audio-stale-1280.png（そのステップの「更新が必要」）
 // test-all: serial
 import fs from 'node:fs';
 import os from 'node:os';
@@ -17,12 +19,15 @@ import { parseNarration } from '../kit/core/narration-core.mjs';
 import { assignIds } from '../kit/core/slide-ids.mjs';
 import { unpack } from './portable.mjs';
 import { silentWav } from './portable-fixtures.mjs';
-import { clickCommand } from './click-retry.mjs';
+import { clickCommand, clickDlg } from './click-retry.mjs';
 import { exampleRand } from './examples-portable.mjs';
 import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
+const si = args.indexOf('--shots');
+const SHOTS = si >= 0 ? path.resolve(args.splice(si, 2)[1]) : null;
+if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
 const work = path.resolve(args.find((a) => !a.startsWith('--')) || fs.mkdtempSync(path.join(os.tmpdir(), 'motion-app-audio-')));
 fs.mkdirSync(work, { recursive: true });
 const DIST = path.join(work, 'dist');
@@ -164,6 +169,44 @@ async function presenterAudioPlays(html, tag) {
   } finally { await cx.close(); }
 }
 
+// 3. 手引きの画像（--shots のときだけ）：1 つ目のステップの音声を古くした（inputHash が null）1 ファイルで、音声のパネル
+async function audioShots() {
+  const dir = path.join(PW, 'shots');
+  const deck = prepareDeck(dir, { license: 'CC-BY-4.0', copyright: '© 2026 Test Author', attribution: 'Test Author, Minimal lesson', creators: ['Test Author'] });
+  const mf = path.join(dir, 'audio', 'manifest.json'), man = JSON.parse(fs.readFileSync(mf, 'utf8'));
+  const keys = Object.keys(man.segments);
+  man.segments[keys[0]].inputHash = null;
+  fs.writeFileSync(mf, JSON.stringify(man, null, 1));
+  const p = await buildPortable(deck, { out: path.join(PW, 'shots' + FORMAT.FILE_EXT) });
+  const cx = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'ja-JP' });
+  const pg = await cx.newPage();
+  watch(pg, 'shots');
+  try {
+    await pg.goto(BASE);
+    await pg.waitForSelector('#drop');
+    const l0 = await pg.evaluate(() => window.__APP_TEST.state().loads);
+    await pg.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'shots' + ext }); }, [Buffer.from(p.html).toString('base64'), FORMAT.FILE_EXT]);
+    await pg.waitForFunction((n) => { const s = window.__APP_TEST.state(); return s.loads > n && s.frameLoaded === s.loads; }, l0, { timeout: scaled(30000) });
+    await pg.click('#b-audio');
+    // 初めの編集では権利の確認に「編集を有効にする」
+    const rights = await pg.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(3000) }).catch(() => null);
+    if (rights) await clickDlg(pg, '#dlg-ok');
+    await pg.waitForSelector('#dev-audio #dev-audio-how', { timeout: scaled(30000) });
+    const goStep = async (i, k) => {
+      await pg.evaluate(([i, k]) => document.getElementById('preview').contentWindow.postMessage({ type: 'app-go', i, k }, '*'), [i, k]);
+      await pg.waitForFunction(([i, k]) => { const s = window.__APP_TEST.state().pos; return s && s.i === i && s.k === k; }, [i, k], { timeout: scaled(20000) });
+      await pg.waitForFunction(() => { const a = window.__APP_TEST.audio(), p = window.__APP_TEST.state().pos; return a && p && a.key === p.key; }, null, { timeout: scaled(20000) }).catch(() => {});
+      await pg.mouse.move(0, 0);
+      await pg.waitForTimeout(600);
+    };
+    await goStep(1, 1);
+    await pg.screenshot({ path: path.join(SHOTS, 'audio-panel-1280.png') });
+    await goStep(0, 0);
+    await pg.waitForSelector('#dev-audio-stale', { timeout: scaled(10000) });
+    await pg.screenshot({ path: path.join(SHOTS, 'audio-stale-1280.png') });
+  } finally { await cx.close(); }
+}
+
 try {
   await page.goto(BASE);
   await page.waitForSelector('#drop');
@@ -201,6 +244,7 @@ try {
   n = await loads();
   ok(await page.evaluate(() => window.__APP_TEST_OPEN(window.__dirs.unpacked)) === true, `export folder: the unpacked folder opens as a folder (${u.written.length} files)`);
   await previewAudioPlays(await waitLoads(n), 'preview audio (folder)');
+  if (SHOTS) await audioShots();
 } catch (e) {
   console.error(e);
   fails++;

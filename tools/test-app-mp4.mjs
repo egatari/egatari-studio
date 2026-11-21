@@ -1,5 +1,5 @@
 // 「ファイル ▾」→「エクスポート ▸」→「動画（MP4）にする…」（#131、app/main.js の mp4Dialog）
-//   node tools/test-app-mp4.mjs [作業用のフォルダ]
+//   node tools/test-app-mp4.mjs [作業用のフォルダ] [--shots <フォルダ>]
 // 動画はブラウザの中では作らず、Google Colab のノート（colab/egatari-video.ipynb）に .ega.html を上げてもらう。この窓は案内と、
 // 保存・エクスポートの後に Colab を新しいタブで開くだけ。examples/minimal の写し（1 ステップに台本と合わない音声＝更新が必要）で：
 //   1. 1 ファイル（保存済み）：項目がある・窓の文にファイルの名前・音声の更新が必要なステップの 1 行・主のボタンは「Colab を開く」・新しいタブで Colab の動画のノート
@@ -9,6 +9,8 @@
 //   4. 新しいタブを開けなかった（ポップアップが止められた）：リンクを押してもらう窓
 //   5. 作業フォルダでエクスポートの後に原稿を変えた：もう一度「Egatari ファイルに保存して Colab を開く」
 //   6. 英語の画面：同じ窓の英語
+// --shots <フォルダ> があれば（手引きの画像。日本語・幅 1280）：1. の窓（案内・音声の更新が必要な 1 行・「Colab を開く」）を撮る（mp4-dialog-1280.png。
+//   動画はブラウザの中で作らないので、進み具合の表示はない）
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -25,7 +27,11 @@ import { clickDlg, clickCommand } from './click-retry.mjs';
 import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-mp4-')));
+const argv = process.argv.slice(2);
+const si = argv.indexOf('--shots');
+const SHOTS = si >= 0 ? path.resolve(argv.splice(si, 2)[1]) : null;
+if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
+const work = path.resolve(argv[0] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-mp4-')));
 fs.mkdirSync(work, { recursive: true });
 const DIST = path.join(work, 'dist');
 let fails = 0;
@@ -111,6 +117,15 @@ try {
     ok(d.lead === T.lead(name) && name === 'lesson' + FORMAT.FILE_EXT, `${lang} file: the dialog names this lesson's file (${d.lead})`);
     ok(d.stale === T.stale, `${lang} file: one line for the step whose audio needs updating (${d.stale})`);
     ok(d.go === T.open && d.pri && d.cancel, `${lang} file, saved: the main button is “${T.open}” (${d.go})`);
+    if (SHOTS && lang === 'ja') {
+      const vp = page.viewportSize();
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await page.mouse.move(0, 0);
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: path.join(SHOTS, 'mp4-dialog-1280.png') });
+      await page.setViewportSize(vp);
+      await page.waitForTimeout(300);
+    }
     await clickDlg(page, '#dlg-go');
     let o = await opened(page);
     ok(o.length === 1 && o[0][0] === URL_ && o[0][1] === '_blank' && URL_.endsWith('/colab/egatari-video.ipynb'), `${lang} file: opens the video notebook in a new tab (${JSON.stringify(o)})`);

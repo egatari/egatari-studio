@@ -1,5 +1,5 @@
 // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5。app/book.js）
-//   node tools/test-app-book.mjs [作業用のフォルダ]
+//   node tools/test-app-book.mjs [作業用のフォルダ] [--shots <フォルダ>]
 // 本のある見本（tools/fixtures/article-book：章・付録・前書き・文献）を 1 ファイルに詰め、編集アプリ（tools/build-app.mjs で組んで 127.0.0.1 で配る）で：
 //   本の道具は app.js に入らず、本のある教材を開いたときだけ読み込む（article-tools.js・citeproc）。本のない教材では読み込まない
 //   開ける（前は article-unsupported で断っていた）・プレビューの「本」・citeproc の帰属の 1 行
@@ -9,6 +9,7 @@
 //   「本を印刷」：ステップへのリンクの後ろに教材の言葉で「→ スライド N・ステップ K」（ステップ 0 は「→ スライド N」。§9C.13）。本のない教材は「台本を印刷」（小さなスライドと台本）
 //   作業フォルダ：本文の欄の保存はフォルダのファイルに書き、前の中身を .cache/edits/ に控える
 //   人から届いた本（tools/hostile-book.mjs）：安全に読めない段落（kit/core/article-text.mjs の ARTICLE_LIMITS）は、配信版でも 1 ファイル版でも読まずに断り、章・行・節を名指しする
+// --shots <フォルダ> があれば（手引きの画像。日本語・幅 1280）：プレビューの「スライドと本」（スライドの横に本の本文）を撮る（book-reader-1280.png）
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import os from 'node:os';
@@ -25,7 +26,11 @@ import { scaled } from './wait-scale.mjs';
 import { hostilePortable } from './hostile-book.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-book-')));
+const argv = process.argv.slice(2);
+const si = argv.indexOf('--shots');
+const SHOTS = si >= 0 ? path.resolve(argv.splice(si, 2)[1]) : null;
+if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
+const work = path.resolve(argv[0] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-book-')));
 fs.mkdirSync(work, { recursive: true });
 const DIST = path.join(work, 'dist');
 let fails = 0;
@@ -161,6 +166,15 @@ try {
   ok(await inBook(page, () => window.DECK && DECK.panes && DECK.panes.state().layout === 'book' && DECK.panes.state().article), 'view: 本 shows the player’s book pane (kit/panes.js) with the article');
   await page.evaluate(() => window.__APP_TEST.setView('split'));
   ok(await inBook(page, () => DECK.panes.state().layout === 'split') && (await page.getAttribute('#b-view-split', 'aria-checked')) === 'true', 'view: スライドと本 puts the slides and the book side by side');
+  if (SHOTS) {
+    const vp = page.viewportSize();
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.mouse.move(0, 0);
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: path.join(SHOTS, 'book-reader-1280.png') });
+    await page.setViewportSize(vp);
+    await page.waitForTimeout(400);
+  }
   await inBook(page, () => { DECK.panes.layout('book'); return true; });
   await page.waitForFunction(() => document.getElementById('b-view-book').getAttribute('aria-checked') === 'true', null, { timeout: scaled(10000) }).catch(() => {});
   ok((await page.getAttribute('#b-view-book', 'aria-checked')) === 'true', 'view: a layout chosen inside the player updates Preview ▾ → View');

@@ -1,10 +1,12 @@
 // しおり（format spec §8.0）の編集：スライド ▾ の「しおりを付ける…」・「しおりの名前を変更…」・「しおりを外す」の試験
-//   node tools/test-app-bookmark.mjs [作業用のフォルダ]
+//   node tools/test-app-bookmark.mjs [作業用のフォルダ] [--shots <フォルダ>]
 // 1. 文字列の操作（ブラウザなし）：setBookmark は <section> の開始タグの data-bookmark だけを書き、外すときは前の空白ごと。ほかのバイトは変えない
 // 2. 開いた 1 ファイル（examples/minimal）：しおりのないスライドでは「しおりを付ける…」だけ（「しおりを外す」はない）。窓の題・欄の名前・既定の「質疑用」・説明・ボタン。
 //    「付ける」で deck.html の 2 枚目の <section> に data-bookmark="質疑用" が付き、プレビューの帯にボタンが出る。開き直すと「しおりの名前を変更…」と「しおりを外す」、
 //    窓には今の名前。21 字の名前では閉じない。名前を変えると属性の値だけが変わる。「しおりを外す」で元の原稿にバイトまで戻る。元に戻すも効く
 // 3. 英語の画面：項目と窓の言葉、既定の「Q&A」
+// --shots <フォルダ> があれば（手引きの画像。日本語・幅 1280）：2. でしおりを付けた後、プレビューの 4 枚目でツールバーにしおりの名前のボタン（bookmark-bar-1280.png）、
+//   押して飛んだ後の「元の位置に戻る」（bookmark-back-1280.png）。撮った後はプレビューを 2 枚目に戻す
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -21,7 +23,11 @@ import { clickCommand, clickDlg, clickMenuOpen } from './click-retry.mjs';
 import { scaled } from './wait-scale.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const work = path.resolve(process.argv[2] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-bookmark-')));
+const argv = process.argv.slice(2);
+const si = argv.indexOf('--shots');
+const SHOTS = si >= 0 ? path.resolve(argv.splice(si, 2)[1]) : null;
+if (SHOTS) fs.mkdirSync(SHOTS, { recursive: true });
+const work = path.resolve(argv[0] || fs.mkdtempSync(path.join(os.tmpdir(), 'egatari-app-bookmark-')));
 fs.rmSync(work, { recursive: true, force: true });
 fs.mkdirSync(work, { recursive: true });
 let fails = 0;
@@ -119,6 +125,26 @@ try {
     const deck1 = await memFile(page, 'deck.html');
     ok(deck1 === setBookmark(deck0, 1, '質疑用') && slideTag(deck1, 1).includes('data-bookmark="質疑用"'), 'ja: 「付ける」 writes data-bookmark on the second <section> and nothing else');
     ok(await frame(page).evaluate(() => [...document.querySelectorAll('#dt-cb [data-bm]')].map((b) => b.textContent).join()) === '質疑用', 'ja: the preview control bar has the bookmark button');
+    if (SHOTS) {
+      const vp = page.viewportSize();
+      await page.setViewportSize({ width: 1280, height: 800 });
+      await goSlide(page, 3);
+      const bar = async (name) => {
+        await page.mouse.move(0, 0);
+        await frame(page).evaluate(() => document.getElementById('dt-cb').classList.add('show'));
+        await page.waitForTimeout(500);
+        await page.screenshot({ path: path.join(SHOTS, name) });
+      };
+      await bar('bookmark-bar-1280.png');
+      await frame(page).evaluate(() => document.querySelector('#dt-cb [data-bm="0"]').click());
+      await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.pos && s.pos.i === 1; }, null, { timeout: scaled(5000) }).catch(() => {});
+      await frame(page).waitForFunction(() => { const e = document.querySelector('#dt-cb [data-b="bmback"]'); return !!e && !e.hidden; }, null, { timeout: scaled(5000) }).catch(() => {});
+      await bar('bookmark-back-1280.png');
+      await frame(page).evaluate(() => document.getElementById('dt-cb').classList.remove('show'));
+      await goSlide(page, 1);
+      await page.setViewportSize(vp);
+      await page.waitForTimeout(400);
+    }
     const m1 = await menuItems(page);
     ok(m1.add === 'しおりの名前を変更…' && m1.del === 'しおりを外す', `ja: with a bookmark the menu has 「しおりの名前を変更…」 and 「しおりを外す」 ${JSON.stringify(m1)}`);
     // 21 字では閉じない
