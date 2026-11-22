@@ -168,7 +168,7 @@ ok('template text: a fresh slide from each template is found (text and placehold
     const L = draftLeftovers(deck, narr);
     assert.deepEqual(L.slides.map((x) => x.key), ids, lang);
     assert.deepEqual([...new Set(L.steps.map((x) => x.slideKey))], ids, lang);
-    assert.equal(L.steps.length, 4 + 2 + 2 + 1 + 1);
+    assert.equal(L.steps.length, 4 + 2 + 2 + 1 + 1 + 3);
     let d2 = deck;
     for (const t of TEMPLATE_DEFAULTS) d2 = d2.split(t).join('own ' + t.length);
     const n2 = narr.replace(/✎ [^\n]*/g, 'own words');
@@ -188,13 +188,13 @@ ok('template text: TTS (narration-json) and --portable / --play-only warn first 
     const nj = spawnSync(process.execPath, [path.join(ROOT, 'tools/narration-json.mjs'), path.join(dir, 'narration.md')], { encoding: 'utf8' });
     assert.equal(nj.status, 0);
     const w = JSON.parse(nj.stdout).warnings.filter((x) => /✎/.test(x));
-    assert.equal(w.length, 10, nj.stderr);
+    assert.equal(w.length, 13, nj.stderr);
     assert.match(nj.stderr, /テンプレートの仮の行（✎）のまま/);
     for (const flag of ['--portable', '--play-only']) {
       const out = path.join(dir, 'x' + flag.slice(2) + '.html');
       const b = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html'), flag, '-o', out], { encoding: 'utf8' });
       assert.equal(b.status, 0, b.stderr);
-      assert.match(b.stderr, /15 template leftovers/, flag);
+      assert.match(b.stderr, /19 template leftovers/, flag);
       assert.match(b.stderr, /template placeholder \(✎\) left/);
       assert.ok(fs.existsSync(out));
       // stderr の知らせは書き出しの前（書き出しの行は stdout）

@@ -18,7 +18,7 @@ import { analyzeSlideIds } from './build-core.mjs';
 import { newSlideId, headingLine, parseHeading, splitKey } from './narration-core.mjs';
 import { TEMPLATE_TEXT, placeholderLine } from './template-text.mjs';
 
-export const TEMPLATES = ['title-body', 'two-cols', 'figure', 'section', 'quote'];
+export const TEMPLATES = ['title-body', 'two-cols', 'figure', 'section', 'quote', 'source'];
 
 function walk(node, fn) {
   fn(node);
@@ -199,6 +199,10 @@ export function slideTemplate(kind, { lang = 'ja', id }) {
   } else if (kind === 'figure') {
     html = `<section class="slide"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <div class="fig"><svg viewBox="0 0 1184 360" role="img" aria-label="${t.fig}"><rect x="2" y="2" width="1180" height="356" rx="12" style="fill:none;stroke:var(--line);stroke-width:3;stroke-dasharray:12 8"/><text x="592" y="190" text-anchor="middle" style="fill:var(--muted);font-size:32px">${t.fig}</text></svg></div>\n    <p class="figcap">${t.cap}</p>\n  </div>\n  <div class="concl"><span>${t.concl}</span></div>\n</section>`;
     steps = [['0', P(t.n)], ['concl', P(t.nc)]];
+  } else if (kind === 'source') {
+    // 出典の行（handoff #86）：結論の行の上に <p class="source">（kit/layouts.css。小さく灰色）。数字・図・引用の出どころを書く
+    html = `<section class="slide"${sid}>\n  <h2>${t.h}</h2>\n  <div class="body">\n    <ul>\n      <li>${t.li[0]}</li>\n    </ul>\n  </div>\n  <p class="source">${t.src}</p>\n  <div class="concl"><span>${t.concl}</span></div>\n</section>`;
+    steps = [['0', P(t.n)], ['1', P(t.ni[0])], ['concl', P(t.nc)]];
   } else if (kind === 'section') {
     html = `<section class="slide sec noconcl static"${sid}>\n  <h1>${t.h}</h1>\n  <div class="lead">${t.lead}</div>\n</section>`;
     steps = [['0', P(t.n)]];

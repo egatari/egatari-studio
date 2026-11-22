@@ -25,7 +25,10 @@ export const AI_VOICE_LABELS = {
 document.documentElement.lang = EN ? 'en' : 'ja';
 // クラウドで作る（音声の板の「音声をどう付けますか」の Google Colab。手順は COLAB_STEPS）。確認した範囲の記しは kit/core/colab-core.mjs の COLAB_VERIFIED（1 か所）
 const ver = (l) => COLAB_VERIFIED[l];
-const MOD = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '') ? '⌥ option' : 'Alt';
+const IS_MAC = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+const MOD = IS_MAC ? '⌥ option' : 'Alt';
+// 元に戻す・やり直し・検索と置換のキー（handoff #86）：Mac は ⌘、Windows・Linux は Ctrl（やり直しは Ctrl+Y も。ツールチップには Ctrl+Y を出す）
+const KEY_UNDO = IS_MAC ? '⌘Z' : 'Ctrl+Z', KEY_REDO = IS_MAC ? '⇧⌘Z' : 'Ctrl+Y', KEY_FIND = IS_MAC ? '⌘F' : 'Ctrl+F';
 
 const ja = {
   brand: 'Egatari Studio', open: 'ほかのフォルダ', edit: '編集 (e)', narr: '台本 (n)', comments: 'コメント (c)', audio: '音声', recTip: 'このステップで録音モードを開く：台本を大きく表示して録音する。Space で録音と停止、Esc でこのパネルに戻る（r）',
@@ -355,6 +358,17 @@ const ja = {
   // しおり（format spec §8.0。スライド ▾）
   bmAddCmd: 'しおりを付ける…', bmRenameCmd: 'しおりの名前を変更…', bmRemoveCmd: 'しおりを外す', bmTitle: 'しおりを付ける', bmField: 'しおりの名前（20 字まで）', bmDefault: '質疑用',
   bmDesc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときはツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', bmGo: '付ける', bmUndo: 'しおりの変更',
+  // 元に戻す・やり直し・検索と置換（handoff #86）：道具の列の矢印と虫眼鏡のボタン、ファイル ▾ の「最後に保存した状態に戻す…」
+  undoBtn: `元に戻す（${KEY_UNDO}）`, redoBtn: `やり直し（${KEY_REDO}）`, findBtn: `検索と置換（${KEY_FIND}）`,
+  revertCmd: '最後に保存した状態に戻す…', revertTitle: '最後に保存した状態に戻す', revertBody: '保存してからの変更をすべて取り消します。元に戻すで戻せます', revertGo: '戻す',
+  revertUndo: '最後に保存した状態に戻す', revertDone: '最後に保存した状態に戻しました', revertNone: '保存してからの変更はありません',
+  histSource: 'HTML の編集', histNarr: '台本の編集',
+  find: {
+    title: '検索と置換', find: '検索', with: '置換後の文字列', scope: '範囲', all: 'スライドと台本', slides: 'スライドだけ', script: '台本だけ', matchCase: '大文字と小文字を区別する',
+    count: (n, s, t) => `${n} 件（スライド ${s} 枚・台本 ${t} か所）`, none: '見つかりませんでした',
+    next: '次へ', prev: '前へ', replace: '置換', replaceAll: 'すべて置換', close: '閉じる',
+    confirmAll: (n) => `${n} 件を置換します。元に戻すで戻せます`, undo: '置換', done: (n) => `${n} 件を置換しました`,
+  },
   themeSwitchCmd: 'テーマを変更…', themeSwitchTitle: 'テーマを変更', themeSwitchGo: '変更', themeSwitchCancel: 'キャンセル', themeSwitchNow: '（今のテーマ）', themeMineGroup: '自分のテーマ',
   themeSwitchLead: 'スライドの中身はそのままで、色・書体・ロゴが変わります。',
   themeSwitchNoRebuild: 'このファイルではテーマを変更できません（台本・音声・タイミングだけを編集できます）',
@@ -419,9 +433,9 @@ const ja = {
     ['スライドを編集する', ['<kbd>e</kbd> か「編集 (e)」で編集モード。文字の上をダブルクリックすると、エディタの欄にその部分の HTML（deck.html）が表示されます。⌘/Ctrl+Enter か「保存」で保存',
       'プレビュー（スライド）は「どこを修正したいか」を示すだけで、書き込みはエディタの欄のボタンを押したときだけです',
       '保存すると、元のファイルのバックアップを <code>.cache/edits/</code> に保存します（新しい 30 個）']],
-    ['スライド一覧', ['「スライド一覧」で、左にスライドをサムネイルと見出しで並べます。「スライドの挿入 ▾」（または「スライド ▾」の「スライドの挿入…」）で選んだスライドの後ろにテンプレート（見出しと本文・2 列・図・章の扉・引用）か対話型の生成 AI（ChatGPT・Gemini・Claude など）で作成したスライドを挿入し、「複製」「削除」（「スライド ▾」にもあります）、ドラッグか <kbd>Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> で並べ替えます',
+    ['スライド一覧', ['「スライド一覧」で、左にスライドをサムネイルと見出しで並べます。「スライドの挿入 ▾」（または「スライド ▾」の「スライドの挿入…」）で選んだスライドの後ろにテンプレート（見出しと本文・2 列・図・章の扉・引用・出典の行）か対話型の生成 AI（ChatGPT・Gemini・Claude など）で作成したスライドを挿入し、「複製」「削除」（「スライド ▾」にもあります）、ドラッグか <kbd>Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> で並べ替えます',
       'id（s-xxxxxx）はエディタが付けます。台本の節も一緒に追加・コピー・削除・並べ替えします。複製は音声をコピーせず、削除するとそのスライドの音声も削除されます（確認があります）',
-      '直後なら「元に戻す」で戻せます（次のスライドの操作か、Egatari ファイルの保存まで）。操作の後は再ビルドして品質チェックを表示します。Egatari ファイルは次の「保存」で再ビルドします']],
+      `「元に戻す」（${KEY_UNDO}）で戻せます。操作の後は再ビルドして品質チェックを表示します。Egatari ファイルは次の「保存」で再ビルドします`]],
     ['台本', ['<kbd>n</kbd> か「台本」で、表示中のステップの台本（narration.md）を開きます。話者・順番も変えられます']],
     ['コメント', [`スライドの上で <kbd>${MOD}</kbd>+クリックすると、修正したいことのコメントを comments.json に保存します。<kbd>c</kbd> で一覧`,
       'AI エージェント（Claude Code・Codex・Gemini CLI など）に「comments.json のコメントに対応して」と依頼すると修正されます。外でファイルが変わると、ここで自動で再ビルドします']],
@@ -524,9 +538,9 @@ const ja = {
   sl: {
     title: 'スライド', close: 'スライド一覧を閉じる', toolsLabel: 'スライドの操作', listLabel: 'スライド（順番どおり）', thumbsTitle: 'スライドのサムネイル',
     add: 'スライドの挿入 ▾', fromTpl: 'テンプレートから', byAi: '対話型 AI で作成…', dup: '複製', dupTip: '選んだスライドを複製します（台本もコピーします。音声はコピーしません）',
-    del: '削除', delTip: '選んだスライドを削除します（確認があります）', upTip: '前へ移動（Alt+↑）', downTip: '後ろへ移動（Alt+↓）', undo: '元に戻す',
+    del: '削除', delTip: '選んだスライドを削除します（確認があります）', upTip: '前へ移動（Alt+↑）', downTip: '後ろへ移動（Alt+↓）',
     keys: '↑↓ で選ぶ · Alt+↑↓ で移動 · Delete で削除 · ドラッグで並べ替え',
-    tpl: { 'title-body': '見出しと本文', 'two-cols': '2 列', figure: '図', section: '章の扉', quote: '引用' },
+    tpl: { 'title-body': '見出しと本文', 'two-cols': '2 列', figure: '図', section: '章の扉', quote: '引用', source: '出典の行' },
     untitled: '（見出しなし）', slideName: (n, h) => `スライド ${n}${quoteJa(h)}`,
     optionLabel: (n, N, h, d) => `${n} / ${N}：${h}${d ? '。' + d : ''}`,
     needAudio: (n) => `音声が要るステップ ${n}`, staleAudio: (n) => `音声の更新が必要なステップ ${n}`,
@@ -541,10 +555,10 @@ const ja = {
     delNarr: (n) => `台本の節（ステップ ${n} 個）`, delAudio: (n, f) => n ? `音声の記録 ${n} 個（audio/ の音声のファイル ${f} 個）` : '音声はありません',
     delTakes: (n) => `録音してまだ使っていない音声 ${n} 個`,
     delWarn: 'このスライドの音声は、録音済み・未使用の音声を含めて削除されます。録音し直すか作り直すまで、音声は戻りません。ほかのスライドの音声はそのままです',
-    delUndo: 'すぐ後なら「元に戻す」で、スライド・台本・音声をまとめて戻せます（次のスライドの操作か、Egatari ファイルの保存まで）。バックアップは .cache/edits/ にも保存されます',
+    delUndo: '「元に戻す」で、スライド・台本・音声をまとめて戻せます。バックアップは .cache/edits/ にも保存されます',
     delGo: '削除', cancel: 'キャンセル',
     undoAdd: (h) => `${quoteJa(h)}の追加`, undoDup: (name) => `${name}の複製`, undoDel: (name) => `${name}の削除`, undoMove: (name) => `${name}の移動`,
-    undone: (what) => `${what}を元に戻しました`, undoChanged: 'その後にファイルが変わったので、元に戻せません（バックアップは .cache/edits/ にあります）',
+    undone: (what) => `元に戻しました：${what}`, redone: (what) => `やり直しました：${what}`, undoChanged: 'その後にファイルが変わったので、元に戻せません（バックアップは .cache/edits/ にあります）',
   },
 };
 const en = {
@@ -860,6 +874,17 @@ const en = {
   tierAOnlyNoSlides: 'The slides of this file cannot be edited (script, audio and timing only)',
   bmAddCmd: 'Add bookmark…', bmRenameCmd: 'Rename bookmark…', bmRemoveCmd: 'Remove bookmark', bmTitle: 'Add bookmark', bmField: 'Bookmark name (up to 20 characters)', bmDefault: 'Q&A',
   bmDesc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the toolbar or q, and use “Back to where you were” or Backspace to return', bmGo: 'Add', bmUndo: 'changing the bookmark',
+  // Undo, redo, find and replace (handoff #86): the arrow and magnifier buttons in the toolbar, and “Revert to last saved…” in File ▾
+  undoBtn: `Undo (${KEY_UNDO})`, redoBtn: `Redo (${KEY_REDO})`, findBtn: `Find and replace (${KEY_FIND})`,
+  revertCmd: 'Revert to last saved…', revertTitle: 'Revert to last saved', revertBody: 'This undoes every change since the last save. You can undo it', revertGo: 'Revert',
+  revertUndo: 'reverting to last saved', revertDone: 'Reverted to the last save', revertNone: 'No changes since the last save',
+  histSource: 'editing the HTML', histNarr: 'editing the script',
+  find: {
+    title: 'Find and replace', find: 'Find', with: 'Replace with', scope: 'Search in', all: 'Slides and script', slides: 'Slides only', script: 'Script only', matchCase: 'Match case',
+    count: (n, s, t) => `${n} ${plural(n, 'match', 'matches')} (${s} ${plural(s, 'slide')}, ${t} ${plural(t, 'place')} in the script)`, none: 'No matches',
+    next: 'Next', prev: 'Previous', replace: 'Replace', replaceAll: 'Replace all', close: 'Close',
+    confirmAll: (n) => `Replace ${n} ${plural(n, 'match', 'matches')}? You can undo it`, undo: 'replacing', done: (n) => `Replaced ${n} ${plural(n, 'match', 'matches')}`,
+  },
   themeSwitchCmd: 'Change theme…', themeSwitchTitle: 'Change theme', themeSwitchGo: 'Change', themeSwitchCancel: 'Cancel', themeSwitchNow: '(current)', themeMineGroup: 'My themes',
   themeSwitchLead: 'The slides stay as they are; the colors, fonts and logo change.',
   themeSwitchNoRebuild: 'You cannot change theme for this file (only the script, audio and timing can be edited)',
@@ -923,9 +948,9 @@ const en = {
     ['Edit slides', ['Press <kbd>e</kbd> or “Edit (e)” for edit mode. Double-click text to open that part of the HTML (deck.html) in the editor’s own card. ⌘/Ctrl+Enter or “Save” saves.',
       'The preview (the slides) only points at what to edit; writes happen only when you press a button in the editor’s card.',
       'Each save keeps a backup of the previous file in <code>.cache/edits/</code> (the newest 30).']],
-    ['Slide list', ['“Slides” lists the slides on the left with thumbnails and headings. “Insert slide ▾” (or “Insert slide…” in “Slide ▾”) inserts a template (title and body, two columns, figure, section divider, quote) or a slide created with an AI chatbot such as ChatGPT, Gemini or Claude after the selected slide; “Duplicate”, “Delete” (also in “Slide ▾”), and drag or <kbd>Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> reorder.',
+    ['Slide list', ['“Slides” lists the slides on the left with thumbnails and headings. “Insert slide ▾” (or “Insert slide…” in “Slide ▾”) inserts a template (title and body, two columns, figure, section divider, quote, source line) or a slide created with an AI chatbot such as ChatGPT, Gemini or Claude after the selected slide; “Duplicate”, “Delete” (also in “Slide ▾”), and drag or <kbd>Alt</kbd>+<kbd>↑</kbd> <kbd>↓</kbd> reorder.',
       'The editor assigns the ids (s-xxxxxx). The script sections are added, copied, deleted and reordered with the slides. Duplicating does not copy audio; deleting removes the slide’s audio too (it asks first).',
-      'Right after, Undo brings it back (until the next slide action, or saving an Egatari file). After each action the slides are rebuilt and the quality check is shown. An Egatari file is rebuilt at the next Save.']],
+      `Undo (${KEY_UNDO}) brings it back. After each action the slides are rebuilt and the quality check is shown. An Egatari file is rebuilt at the next Save.`]],
     ['Script', ['Press <kbd>n</kbd> or “Script” to edit the script (narration.md) of the step on screen, including speakers and order.']],
     ['Comments', [`<kbd>${MOD}</kbd>+click on a slide leaves a comment on what to change in comments.json. <kbd>c</kbd> lists them.`,
       'Ask your AI agent (Claude Code, Codex, Gemini CLI …) to “handle the comments in comments.json”. When files change outside, the editor rebuilds automatically.']],
@@ -1026,9 +1051,9 @@ const en = {
   sl: {
     title: 'Slides', close: 'Close the slide list', toolsLabel: 'Slide actions', listLabel: 'Slides (in order)', thumbsTitle: 'Slide thumbnails',
     add: 'Insert slide ▾', fromTpl: 'From a template', byAi: 'Create with an AI chatbot…', dup: 'Duplicate', dupTip: 'Duplicate the selected slide (the script is copied, the audio is not)',
-    del: 'Delete', delTip: 'Delete the selected slide (asks to confirm)', upTip: 'Move up (Alt+↑)', downTip: 'Move down (Alt+↓)', undo: 'Undo',
+    del: 'Delete', delTip: 'Delete the selected slide (asks to confirm)', upTip: 'Move up (Alt+↑)', downTip: 'Move down (Alt+↓)',
     keys: '↑↓ select · Alt+↑↓ move · Delete deletes · drag to reorder',
-    tpl: { 'title-body': 'Title and body', 'two-cols': 'Two columns', figure: 'Figure', section: 'Section divider', quote: 'Quote' },
+    tpl: { 'title-body': 'Title and body', 'two-cols': 'Two columns', figure: 'Figure', section: 'Section divider', quote: 'Quote', source: 'Source line' },
     untitled: '(no heading)', slideName: (n, h) => `slide ${n} “${h}”`,
     optionLabel: (n, N, h, d) => `${n} of ${N}: ${h}${d ? '. ' + d : ''}`,
     needAudio: (n) => `${n} step${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} audio`, staleAudio: (n) => `${n} step${n === 1 ? '' : 's'}: audio needs updating`,
@@ -1043,10 +1068,10 @@ const en = {
     delNarr: (n) => `its script section (${n} step${n === 1 ? '' : 's'})`, delAudio: (n, f) => n ? `${n} audio entr${n === 1 ? 'y' : 'ies'} (${f} audio file${f === 1 ? '' : 's'} in audio/)` : 'no audio',
     delTakes: (n) => `${n} recorded take${n === 1 ? '' : 's'} not used yet`,
     delWarn: 'This slide’s audio is removed, recorded takes included (used or not). It does not come back unless you record or make it again. Other slides keep their audio',
-    delUndo: 'Right after, Undo brings back the slide, its script and its audio together (until the next slide action, or saving an Egatari file). Backups also stay in .cache/edits/',
+    delUndo: 'Undo brings back the slide, its script and its audio together. Backups are also saved in .cache/edits/',
     delGo: 'Delete', cancel: 'Cancel',
     undoAdd: (h) => `adding “${h}”`, undoDup: (name) => `duplicating ${name}`, undoDel: (name) => `deleting ${name}`, undoMove: (name) => `moving ${name}`,
-    undone: (what) => `Undid ${what}`, undoChanged: 'Files changed since then, so it cannot be undone (backups are in .cache/edits/)',
+    undone: (what) => `Undone: ${what}`, redone: (what) => `Redone: ${what}`, undoChanged: 'Files changed since then, so it cannot be undone (backups are in .cache/edits/)',
   },
 };
 export const T = EN ? en : ja;

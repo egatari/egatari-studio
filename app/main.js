@@ -15,6 +15,8 @@ import { createRecMode } from './rec-mode.js';
 import { createAttachPanel } from './attachments-panel.js';
 import { createLivePanel } from './live-panel.js';
 import { createSlidesPanel } from './slides-panel.js';
+import { createHistory } from './history.js';
+import { createFindPanel } from './find-panel.js';
 import { createThemeSwitch, themeOf, withTheme } from './theme-switch.js';
 import { createImageInsert } from './image-insert.js';
 import { addLive, liveRuntime } from '../kit/core/live.mjs';
@@ -335,6 +337,10 @@ function resetDeck(ws, portable) {
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
+  // 元に戻す・やり直し（handoff #86）：開いている間の履歴は、別の文書・フォルダを開いたら消す。1 ファイルは開いたときの中身を「最後に保存した状態」にする
+  hist.clear();
+  if (portable) portable.savedFiles = ws.refs ? ws.refs() : null;
+  if (find) find.close();
   if (book) book.reset();
   engine.setWorkspace(ws);
   rec.reset();
@@ -944,9 +950,23 @@ function startPoll() {
 }
 function stopPoll() { clearInterval(S.poll); S.poll = 0; }
 
+// ---------------------------------------------------------------- 元に戻す・やり直し（handoff #86。app/history.js）
+// スライドの操作（app/slides-panel.js）・原稿と台本の確定（devapi の onWrite）・置換・最後に保存した状態に戻すを、開いている間記録する。保存しても消さない
+const hist = createHistory({ onChange: () => syncHistoryButtons() });
+function syncHistoryButtons() {
+  const u = $('b-undo'), r = $('b-redo');
+  if (!u || !r) return;
+  u.disabled = !hist.canUndo(); r.disabled = !hist.canRedo();
+}
+const histAt = () => (S.pos && Number.isFinite(S.pos.i) ? S.pos.i : undefined);
+let find = null;
+
 // ---------------------------------------------------------------- 編集の画面（このページ）と、デッキの iframe とのやり取り
 // 書き込みの口（devapi）を呼ぶのは編集の画面だけ。プレビューからの知らせ（edit-hint・deck-pos）は欄を開くだけで、書き込みにはならない
 const api = createDevApi({
+  // 原稿（HTML の編集）と台本の確定を履歴に。台本の保存の後の「この台本のすべてに」の読み方は、直前の台本の記録に足す（1 回で戻る）
+  onWrite: (w) => hist.record({ label: w.kind === 'source' ? T.histSource : T.histNarr, kind: 'text', at: histAt(), merge: w.kind === 'readings',
+    files: [{ rel: w.file, before: w.before, after: w.after, max: w.max }] }),
   get ws() { return S.ws; },
   generation: () => S.gen,
   beforeWrite: async (kind) => {
@@ -1116,6 +1136,7 @@ const slidesPanel = createSlidesPanel({
   rebuild: async () => { const failed = await rebuild('save'); updateName(); return failed; },
   check: () => quickCheck(), ask, toast, audio, stale: () => S.stale || [],
   aiInsert: (after) => llm.insertWithAi(after),
+  history: hist,
   onToggle: (on, byUser) => { const b = $('b-slides'); b.setAttribute('aria-expanded', on ? 'true' : 'false'); if (!on && byUser) b.focus(); },
 });
 // テーマを変更…（スライド ▾。app/theme-switch.js）：スライド一覧と同じ流れ（apply）で原稿の data-theme と egatari.json の themes を書き、組み直す。
@@ -1137,6 +1158,51 @@ function themeItem() {
   b.setAttribute('aria-disabled', w ? 'true' : 'false');
   b.title = w || '';
 }
+// 検索と置換（app/find-panel.js。handoff #86）：スライドと台本をまたぐ 1 つの窓。置換はスライドの操作と同じ流れ（slidesPanel.apply）
+find = createFindPanel({
+  T: T.find, el, cancel: T.cancel, ws: () => S.ws, deckFile: () => S.deckFile, apply: (fn) => slidesPanel.apply(fn), ask, toast,
+  at: () => slideAt() || 0, enabled: () => !!(S.ws && S.base && !$('deck').hidden),
+  goSlide: (i) => ui.goIndex(i, 9999), goStep: (key, step) => ui.goStep(key, step),
+});
+// 最後に保存した状態に戻す…（ファイル ▾。Egatari ファイルだけ）：開いた・保存したときの中身（P.savedFiles）と今の中身の違うファイルを書き戻す。
+// 履歴に 1 つ記録するので、元に戻すで戻せる。作業フォルダは編集のたびにファイルに書くので、この項目を出さない（index.html の only-portable）
+async function revertToSaved() {
+  const P = S.portable;
+  if (!P || !P.savedFiles || !S.ws || !S.ws.refs) return;
+  if (P.readOnly) { toast(P.earlier ? T.earlierNoSave : T.readOnlyNoSave, true); return; }
+  const v = await ask({ title: T.revertTitle, kind: 'warn', body: [el('p', { id: 'revert-body', text: T.revertBody })],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'revert', label: T.revertGo, pri: true }] });
+  if (v !== 'revert' || S.portable !== P) return;
+  let none = false;
+  await slidesPanel.applyFiles(async (ws) => {
+    const now = ws.refs(), saved = P.savedFiles, files = [];
+    const keep = (rel) => !rel.startsWith('.cache/') && (!ws.isContent || ws.isContent(rel));
+    for (const rel of new Set([...now.keys(), ...saved.keys()])) {
+      if (!keep(rel)) continue;
+      const a = now.get(rel) || null, b = saved.get(rel) || null;
+      if (a && b && a.byteLength === b.byteLength && a.every((x, i) => x === b[i])) continue;
+      files.push({ rel, before: a, after: b });
+    }
+    if (!files.length) { none = true; return null; }
+    return { files, label: T.revertUndo, done: T.revertDone, at: histAt(), kind: 'revert' };
+  });
+  if (none) toast(T.revertNone);
+}
+// ⌘Z・⇧⌘Z（Windows・Linux は Ctrl+Z・Ctrl+Shift+Z・Ctrl+Y）：入力の欄の中は欄の元に戻すに任せる。プレビューの中のキーはこのページに届かない（ブラウザに任せる）。
+// ⌘F・Ctrl+F：文書を開いていて、フォーカスが編集アプリの中（原稿の欄・台本・一覧など）のときだけ検索と置換の窓を開く。
+// 欄の中のキーを欄が止める（原稿の欄の stopPropagation）前に受けるため、窓で捕まえる（capture）
+const IS_MAC = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+const histStep = (dir) => { if (S.ws && !$('deck').hidden) slidesPanel.step(dir); };
+window.addEventListener('keydown', (e) => {
+  const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+  if (!mod || e.altKey || e.defaultPrevented) return;
+  const k = (e.key || '').toLowerCase(), t = e.target;
+  if (!S.ws || !S.base || $('deck').hidden || $('dlg').open) return;
+  if (k === 'f' && !e.shiftKey) { if (find.open()) e.preventDefault(); return; }
+  if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+  if (k === 'z') { e.preventDefault(); histStep(e.shiftKey ? 'redo' : 'undo'); }
+  else if (k === 'y' && !IS_MAC && !e.shiftKey) { e.preventDefault(); histStep('redo'); }
+}, true);
 // 信頼する編集の板（#dev-side：編集モードの札・原稿の欄・コメント・口述原稿）は、プレビューの隣、横の板（#panel）の前に置く
 new MutationObserver(() => { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }).observe($('deck'), { childList: true });
 { const d = $('dev-side'), p = $('panel'); if (d && d.nextSibling !== p) $('deck').insertBefore(d, p); }
@@ -2202,7 +2268,9 @@ async function savePortableBound(mode) {
     // 本当に保存した：このブラウザに残した変更を消す。保存の途中で編集があった：新しい元のファイルで残し直す
     if (keeper) { if (clean) keeper.saved(); else keeper.savedDirty(); }
     P.index = index; P.deckMeta = deckMeta; P.saved = html; P.original = html; P.lastTier = tier; P.sourceMatches = true;
-    slidesPanel.saved();   // スライド一覧の「元に戻す」は保存まで
+    // 最後に保存した状態（ファイル ▾ の「最後に保存した状態に戻す…」。元に戻すの履歴は保存しても消さない。handoff #86）：
+    // 途中で編集がなければ今の中身（写さない）、あれば保存し始めたときの写し
+    P.savedFiles = clean && ws.refs ? ws.refs() : files;
     P.saveWarnings = saveWarnings;
     // 段 A の元の口述原稿：保存したもの（保存の途中の編集は入れない）。段 B は組み始めの作業場所から組んだので、そのときのもの
     const nb = files.get('narration.md');
@@ -2669,6 +2737,10 @@ $('w-parts').href = partsIndexHref(location);
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();
+$('b-undo').onclick = () => histStep('undo');
+$('b-redo').onclick = () => histStep('redo');
+$('b-find').onclick = () => find.open();
+$('b-revert').onclick = () => revertToSaved().catch((e) => toast(String(e.message || e), true));
 $('b-narr').onclick = () => ui.toggleNarr();
 $('w-openfile').onclick = async () => openPortable(await pickPortable());
 $('b-openfile').onclick = async () => openPortable(await pickPortable());
@@ -2861,6 +2933,8 @@ window.__APP_TEST = {
   exportPortable: async (opts) => { const r = await engine.exportPortable(S.deckFile, opts || {}); return { html: r.html, fontSubset: !!r.fontSubset }; },
   rebuild: () => rebuild('test'),
   slides: () => slidesPanel.state(),
+  history: () => hist.state(),
+  find: () => find.state(),
   reloadPreview: () => loadFrame(),
   ui: () => ui.state(),
   audio: () => audio.state(),

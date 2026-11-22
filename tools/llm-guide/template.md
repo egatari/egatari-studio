@@ -76,6 +76,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 ### 2.2 Slides
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
+<!--paid-->- On a slide that uses numbers, a figure or a quotation, write a source line above the conclusion (`<p class="source">Source: …</p>`)<!--/paid-->
 - Optional kicker (a short line above the heading): one `<p class="kicker">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.

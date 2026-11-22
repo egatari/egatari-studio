@@ -101,5 +101,10 @@ export function memoryWorkspace(name, files = {}, opts = {}) {
     stamps() { return new Map([...store].map(([k, e]) => [k, e.m])); },
     // すべてのファイル（外すものも含む）：Map(rel → Uint8Array の写し)
     snapshot() { return new Map([...store].map(([k, e]) => [k, e.bytes.slice()])); },
+    // すべてのファイルの今の中身（写さない。書き込みはいつも新しいバイト列に置き換えるので、後の書き込みで変わらない。受け取った側も書き換えないこと）。
+    // 最後に保存した状態（app/main.js の revertToSaved）を、開いたときと保存したときに覚える
+    refs() { return new Map([...store].map(([k, e]) => [k, e.bytes])); },
+    // 保存するファイルに入る場所か（comments.json・控えは入らない）
+    isContent: (rel) => !!content(rel),
   };
 }
