@@ -202,7 +202,13 @@ try {
     ok(await page.isVisible('#info-error') && (await page.textContent('#info-error')) === 'ライセンスの名前を入力してください', 'info: Other without a name → error');
     await page.fill('#info-license-other', 'All rights reserved');
     await page.click('#info-save');
-    ok((await page.textContent('#info-error')) === 'ライセンスは SPDX の名前（例：MIT、CC-BY-4.0）で入力してください', 'info: Other that is not an SPDX name → error');
+    // 知らせが出るのを待つ（macOS の CI で、すぐ読むと前の知らせのままのことが 1 度あった）。合わなければ、そのときの欄と知らせを出す
+    const want = 'ライセンスは SPDX の名前（例：MIT、CC-BY-4.0）で入力してください';
+    const got = await page.waitForFunction((w) => document.getElementById('info-error').textContent === w, want, { timeout: scaled(5000) }).then(() => true, () => false);
+    ok(got, 'info: Other that is not an SPDX name → error' + (got ? '' : ' ' + JSON.stringify(await page.evaluate(() => ({
+      error: document.getElementById('info-error') && document.getElementById('info-error').textContent, hidden: document.getElementById('info-error') && document.getElementById('info-error').hidden,
+      license: document.getElementById('info-license') && document.getElementById('info-license').value, other: document.getElementById('info-license-other') && document.getElementById('info-license-other').value,
+      forms: document.querySelectorAll('#info-form').length, toast: document.getElementById('toast').textContent, active: document.activeElement && document.activeElement.id })))));
     ok(!(await page.evaluate(() => window.__APP_TEST.state().portable.dirty)), 'info: nothing changed after the errors');
     // キャンセル：欄を今の値に戻す
     await page.fill('#info-title', 'Changed');
