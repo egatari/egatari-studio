@@ -76,7 +76,7 @@ All of it is stored only in the browser and is not sent anywhere. Clearing the b
 |---|---|---|---|
 | localStorage (the `.ega.html` player) | `deck-capsize` | Caption size (S / M / L) | Clear site data |
 | localStorage (the `.ega.html` player) | `<format>-player-bar-hint-v1` | That the controls hint was shown | Same |
-| localStorage (the `.ega.html` player) | `<format>-player-progress:<file>` | Progress per file (which steps were played or read, and whether it was finished) | Same |
+| localStorage (the `.ega.html` player) | `<format>-player-progress:<file>` | Progress per file (which steps were played or read, which questions in parts were answered and answered correctly, and whether it was finished) | Same |
 | localStorage (the `.ega.html` player) | `<format>-player-resume:<file>` | The place reached in each file, for "Resumed where you left off" (slide, step, place in the book pane) | Same |
 | localStorage (the `.ega.html` player) | `<format>-player-layout:<file>`, `<format>-player-split`, `<format>-player-read-size` / `-read-lh` / `-read-bg` | The chosen layout, the divider position, and the book pane's text size, line spacing and background | Same |
 | localStorage / sessionStorage (an `.ega.html` with Live) | `egatari-live-pid:<Live ID>`, `egatari-live-joined:<Live ID>` | A random ID made on the device, and whether the participant joined (the joined mark lasts only while the tab is open) | Clear site data, or close the tab |
@@ -99,7 +99,7 @@ Notes:
   - The participant presses "Join" once.
 - "Send feedback", in the ? key list and the presenter view, opens GitHub in a new window only when pressed.
 - Links to other sites in a file show the destination and ask before opening. A file whose creator added an embed (YouTube, Vimeo, Google Maps, OpenStreetMap) allows those destinations to be shown, and they may load from there when the file is opened.
-- Progress: opened inside an LMS (SCORM 1.2), the player passes progress (started, finished, the place reached, which steps were seen, session time) to that LMS. Embedded in another page (`?embed=1`), it tells the embedding page the same events. Otherwise it only stores them on the device of the person who opened the file (see the table above).
+- Progress: opened inside an LMS (SCORM 1.2), the player passes progress (started, finished, the place reached, which steps were seen, session time, and, when parts ask questions, which questions were answered and answered correctly and the share answered correctly as a score) to that LMS. Embedded in another page (`?embed=1`), it tells the embedding page the same events, including each answer (the question, whether it was right and the choice made). Otherwise it only stores them on the device of the person who opened the file (see the table above).
 
 ## Checking it at a school
 
@@ -139,11 +139,11 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 
 ### Studio page (studio.egatari.org)
 - CSP meta: `app/index.html` line 10 (`default-src 'self'`; `connect-src 'self'`; `frame-src 'none'`; `worker-src blob:`; `form-action 'none'`). Referrer: line 11 (`no-referrer`). No `_headers` for the Studio site; deploy is GitHub Pages: `.github/workflows/pages.yml` lines 15–17, 112, 129.
-- Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 162; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` line 269).
+- Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 162; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` lines 234, 304).
 - Same-origin fetches only: lazy fonts `app/main.js` line 72; examples line 237; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 48–54, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 14–18 (skipped on file:, line 13), copied by `tools/build-app.mjs` lines 256–261; the font subsetter `font-subset.js` (only when an Egatari file is exported) `app/font-subset-loader.js` line 18 (from the page itself on file:, line 17), written by `tools/build-app.mjs` line 234.
 - Offline single-file `editor.html`: `tools/build-app.mjs` lines 310–321; no TTS window on file: `app/tts-client.js` lines 50, 90.
 - No service worker in Studio (`serviceWorker` appears only in `play/main.js` lines 404–457). A web manifest is written: `tools/build-app.mjs` lines 218–222, 246.
-- No analytics: a grep for analytics/beacon/plausible/gtag/googletagmanager/cloudflareinsights/sentry/telemetry/sendBeacon over `app kit play server lab tools/build-app.mjs tools/build-play.mjs` finds no call outside `kit/vendor/`: the only other match is a comment in `kit/track.js` line 162 that describes how ILIAS itself sends its data (Egatari does not call `sendBeacon`); inside `kit/vendor/` (the bundled third-party book tools, where the only matches are the top-level domain "analytics" in linkify's list and "gTag" inside the SVG helper `adjustTokenSVGTagName`). Page templates: `app/index.html` lines 1–14, `tools/build-app.mjs` lines 243–244, 287–299, 316–319, `play/index.html` lines 1–10.
+- No analytics: a grep for analytics/beacon/plausible/gtag/googletagmanager/cloudflareinsights/sentry/telemetry/sendBeacon over `app kit play server lab tools/build-app.mjs tools/build-play.mjs` finds no call outside `kit/vendor/`: the only other match is a comment in `kit/track.js` line 187 that describes how ILIAS itself sends its data (Egatari does not call `sendBeacon`); inside `kit/vendor/` (the bundled third-party book tools, where the only matches are the top-level domain "analytics" in linkify's list and "gTag" inside the SVG helper `adjustTokenSVGTagName`). Page templates: `app/index.html` lines 1–14, `tools/build-app.mjs` lines 243–244, 287–299, 316–319, `play/index.html` lines 1–10.
 
 ### AI voice on this computer
 - Window and trigger: `app/tts-client.js` lines 71–83 (opens `lab/tts-helper.html`, window `studio-tts`); confirmation before first use lines 99–102; only text and voice name go in, PCM comes out, lines 10–13, 107. Sizes shown lines 21–22, labels lines 42–46.
@@ -194,7 +194,7 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 ### Storage and progress (player)
 - `deck-capsize`: `kit/deck.js` lines 1403, 1536. `<format>-player-bar-hint-v1`: `kit/tools.js` lines 802, 946–958. Live pid and joined: `kit/live.js` lines 100–111, 540–569. Position in the address: `kit/deck.js` lines 1764, 2073.
 - Layout, divider, reading settings and "Resumed where you left off": `kit/panes.js` lines 11–14, 28, 38–41, 338, 840–852, 927–955 (not used when embedded, in an LMS or in the preview: lines 941–947).
-- Progress: `kit/track.js` lines 1–14; SCORM 1.2 lines 114–172 (`cmi.core.lesson_status`, `lesson_location`, `suspend_data`, `session_time`); postMessage to the embedding page lines 173–182; this device lines 183–190; choice of one lines 278, 305.
+- Progress: `kit/track.js` lines 1–18; SCORM 1.2 lines 131–196 (`cmi.core.lesson_status`, `lesson_location`, `suspend_data`, `session_time`, `score`); postMessage to the embedding page lines 198–208; this device lines 209–216; answers from parts lines 232–240 (`kit/deck.js` `answerer`); choice of one lines 315, 343.
 - Viewer: `play/recents.mjs` lines 1–3, 9–14, 19–52, 57– (OPFS `recent/`, IndexedDB `egatari-viewer`, up to 10); keep on by default `play/main.js` lines 331–340, 368–374, `SHARED_DEVICE_DEFAULT = false` line 23; clearing on a shared device lines 384–386; install hint line 469; language `play/i18n.mjs` lines 129–135.
 - Viewer service worker caches only its own files: `play/sw.js` lines 1–9, 21–27, 64–82; headers `tools/build-play.mjs` lines 40–66; Worker `play/worker.js` lines 5–22; `play/wrangler.production.toml` lines 20–21 (`observability enabled = false`), 12 (custom domain). Share target keeps the file in memory for 60 s: `play/sw.js` lines 10–11, 50–62.
 

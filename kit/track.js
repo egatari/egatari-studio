@@ -1,7 +1,7 @@
 // 進み具合の記録（track.js）：Player P6 の記録の口（tracking adapter）、format spec §9.2 の終えた判定、SCORM 1.2 の包み方（spec bindings/scorm12.md）
 // - 口は 1 つだけ、この順に探す：SCORM 1.2 の API（自分と親の窓を 7 段まで、次に opener）→ 親の窓への postMessage（埋め込み ?embed=1 の枠の中。
 //   埋め込みでない枠には {egatari: …} を送らない：Player P8）→ この端末（localStorage）
-// - 出来事：started（見る人の最初の操作）・step {slideKey, stepKey, index, total, via}・completed・suspend {location, data}
+// - 出来事：started（見る人の最初の操作）・step {slideKey, stepKey, index, total, via}・answer {slideKey, id, correct, value?}・completed・suspend {location, data}
 //   via "stage"：舞台で再生した（スライド・スライドと本・「スライドで見る」の重ね。本だけの並べ方では台本で読むの縮図で再生している間だけ）。
 //   舞台が本の窓に付いていっただけ（本の窓のスクロールで動いた：DECK.panes.state().fromText）の所は再生したことにしない（Player P6、spec 9873b9a）。
 //   再生したことになるのは、舞台の再生・送り・舞台のクリック・ステップへのリンクで来た所
@@ -9,7 +9,11 @@
 //   舞台の step は位置が変わるたび（舞台が見えているとき）、本の step はそのステップを初めて読んだときに送る
 // - 舞台で再生したステップと読んだステップは別々に持つ。終えた判定（deck-meta.completion。なければ索引の metadata.completion）：
 //   既定は全ステップ、{visitedFraction} はその割合、{reachedEnd} は最後のステップ。played: true なら舞台で再生したものだけを数える
-// - SCORM の再開データ（cmi.suspend_data）：{"v":1,"n","h","seen","stage","text"}。seen は再生か読んだかのどちらか（包み方 §2.2 のまま）、
+// - 確認問題（format spec §8.4 ctx.answer・§9.2 checks）：ファイルの問いは開いたときにパーツの宣言（questions）から数える（kit/deck.js の DECK.questions）。
+//   パーツの答え（kit/deck.js の deck:answer）を問いの鍵ごとに持つ（kit/core/checks.mjs の DECK.Checks）。宣言にない問いの答えは使わない。
+//   checks: "answered" / "correct" はステップの決まりに加えて満たす。SCORM では正解のある問いがあれば cmi.core.score.*（min 0・max 100・raw は正解した割合）。
+//   答えた・正解した問いは再開データの qa・qc（包み方 §2.1）。4096 字に収まらなければ qa・qc を省く（stage・text は省かない）
+// - SCORM の再開データ（cmi.suspend_data）：{"v":1,"n","h","seen","stage","text","qa"?,"qc"?}。seen は再生か読んだかのどちらか（包み方 §2.2 のまま）、
 //   stage・text はその内訳（同じ bitset の形。省かない：spec 9873b9a）
 // - 動画・発表者ビュー（とその中の画面）・編集のプレビュー（DECK_DEV）では何もしない。習う人のデータはファイルに書かない（format spec §9.1B）
 (function(){
@@ -68,6 +72,8 @@ function unpackBits(s, n){
 
 // ---------------------------------------------------------------- 状態
 var TL = [], ORD = Object.create(null), N = 0, H8 = "", stage = null, text = null, rule = {}, done = false, began = false;
+var CK = DECK.Checks, answers = CK ? CK.newAnswers() : null, early = [];   // answers は init でファイルの問いから作り直す
+var SUSPEND_MAX = 4096;   // cmi.suspend_data の上限（SCORM 1.2 の CMIString4096）
 var adapter = null, lastStageKey = null, lastSlide = -1;
 function slideOf(j){ return TL[j] ? TL[j].i : -1; }
 function stepParts(j){ var key = TL[j].key, c = key.lastIndexOf(":"); return {slideKey: key.slice(0, c), stepKey: key.slice(c + 1)}; }
@@ -83,20 +89,30 @@ function readRule(){
     if (c.reachedEnd === true) r.reachedEnd = true;
     else if (typeof c.visitedFraction === "number" && c.visitedFraction > 0 && c.visitedFraction <= 1) r.visitedFraction = c.visitedFraction;
     if (c.played === true) r.played = true;
+    var ck = CK ? CK.checksRule(c) : null;
+    if (ck) r.checks = ck;
   }
   return r;
 }
 function counted(j){ return !!(stage[j] || (!rule.played && text[j])); }
-function complete(){
+function stepsDone(){
   if (!N) return false;
   if (rule.reachedEnd) return counted(N - 1);
   var c = 0; for (var j = 0; j < N; j++) if (counted(j)) c++;
   return c >= Math.ceil((rule.visitedFraction || 1) * N - 1e-9);
 }
+// ステップの決まりと、確認問題の決まり（checks があるとき）の両方
+function complete(){ return stepsDone() && (!rule.checks || !answers || CK.checksMet(rule.checks, answers)); }
 function suspendData(){
   var seen = new Uint8Array(N); for (var j = 0; j < N; j++) seen[j] = stage[j] | text[j];
   // 内訳（stage・text）は省かない：包み手が 3 つの bitset で 4096 字を超えうる教材を断る（包み方 §2.2）
-  return JSON.stringify({v: 1, n: N, h: H8, seen: packBits(seen), stage: packBits(stage), text: packBits(text)});
+  var d = {v: 1, n: N, h: H8, seen: packBits(seen), stage: packBits(stage), text: packBits(text)}, s = JSON.stringify(d);
+  // 答えた・正解した問い（包み方 §2.1 の qa・qc）。答えがなければ書かない。収まらなければ省く（その分は再開で戻らない）
+  if (answers){
+    var qa = CK.keysText(answers.answered), qc = CK.keysText(answers.correct);
+    if (qa){ d.qa = qa; if (qc) d.qc = qc; var w = JSON.stringify(d); if (w.length <= SUSPEND_MAX) s = w; }
+  }
+  return s;
 }
 // 再開データを読む：v・n・h が今の教材と合うときだけ（合わなければ教材が変わった：使わない）。内訳がなければ seen を舞台で再生したものとする
 function restore(s){
@@ -105,6 +121,7 @@ function restore(s){
   var seen = unpackBits(d.seen, N), st = d.stage !== undefined ? unpackBits(d.stage, N) : null, tx = d.text !== undefined ? unpackBits(d.text, N) : null;
   if (!seen) return false;
   for (var j = 0; j < N; j++){ stage[j] |= st && tx ? st[j] : seen[j]; text[j] |= st && tx ? tx[j] : 0; }
+  if (answers) CK.restoreAnswers(answers, d.qa, d.qc);
   return true;
 }
 function locationOf(){ var st = DECK.state && DECK.state(), j = st ? ORD[st.key] : undefined; return "#" + (j === undefined ? 0 : j); }
@@ -158,6 +175,14 @@ function scormAdapter(api){
       if (sl !== lastSlide){ lastSlide = sl; commit(); } else if (Date.now() - commitAt >= COMMIT_GAP) commit(); else later();
     },
     completed: function(){ if (review || lmsDone) return; lmsDone = true; set("cmi.core.lesson_status", "completed"); commit(); },
+    // 答え（包み方 §2.1）：正解のある問いがあれば点数（min 0・max 100・raw は正解した割合の整数）。合格・不合格は使わない。次の保存で送る
+    answer: function(){
+      if (review) return;
+      var sc = CK.scoreOf(answers);
+      if (sc !== null){ set("cmi.core.score.min", "0"); set("cmi.core.score.max", "100"); set("cmi.core.score.raw", String(sc)); }
+      set("cmi.suspend_data", suspendData());
+      later();
+    },
     hidden: function(){ commit(); },
     // beforeunload：pagehide より先に来る。ILIAS は Chrome でこの出来事の中なら sendBeacon で送る（basisAPI.js の useSendBeacon）。終えるのは pagehide のまま
     leaving: function(){ commit(); },
@@ -176,6 +201,7 @@ function postAdapter(){
   return {name: "postmessage", init: function(){},
     started: function(){ post({egatari: "started"}); },
     step: function(j, via){ var p = stepParts(j); post({egatari: "step", slideKey: p.slideKey, stepKey: p.stepKey, index: j, total: N, via: via}); },
+    answer: function(d){ var m = {egatari: "answer", slideKey: d.slideKey, id: d.id, correct: d.correct}; if ("value" in d) m.value = d.value; post(m); },
     completed: function(){ post({egatari: "completed"}); },
     hidden: function(){ post({egatari: "suspend", location: locationOf(), data: suspendData()}); },
     end: function(){ post({egatari: "suspend", location: locationOf(), data: suspendData()}); }};
@@ -186,7 +212,7 @@ function localAdapter(){
   var save = function(){ try { var d = JSON.parse(suspendData()); if (done) d.done = true; localStorage.setItem(key, JSON.stringify(d)); } catch (e) {} };
   return {name: "local", key: key,
     init: function(){ var s = null; try { s = localStorage.getItem(key); } catch (e) {} if (s && restore(s)){ try { if (JSON.parse(s).done) done = true; } catch (e) {} } if (!done && complete()) done = true; },
-    started: function(){}, step: save, completed: save, hidden: save, end: save};
+    started: function(){}, step: save, answer: save, completed: save, hidden: save, end: save};
 }
 
 // ---------------------------------------------------------------- 記録する
@@ -203,6 +229,15 @@ function credit(j, via){
   adapter.step(j, via);
   if (!done && complete()){ done = true; adapter.completed(); }
 }
+// パーツの答え（kit/deck.js の deck:answer）：同じ問いは最後の答えで置き換え（答えた・正解したは残る）、口に渡し、終えたかを見直す
+function onAnswer(d){
+  if (!answers || !d || typeof d.slideKey !== "string" || window.DECK_DEV) return;
+  if (!adapter){ if (early.length < 100) early.push(d); return; }   // 記録の口を決める前（読み込みの直後）の答えは、決めてから
+  if (!CK.recordAnswer(answers, CK.questionKey(d.slideKey, d.index, d.id), d.correct, d.value)) return;   // 宣言にない問い
+  adapter.answer(d);
+  if (!done && complete()){ done = true; adapter.completed(); }
+}
+document.addEventListener("deck:answer", function(e){ onAnswer(e.detail); });
 // 舞台が見えているか（kit/panes.js の並べ方。窓がなければ舞台だけ）
 function stageShown(){
   if (document.visibilityState === "hidden") return false;
@@ -274,10 +309,13 @@ function init(){
   H8 = sha256Hex(TL.map(function(g){ return g.key + "\n"; }).join("")).slice(0, 8);
   stage = new Uint8Array(N); text = new Uint8Array(N);
   rule = readRule();
+  // ファイルの問い（§9.2）：開いたときに、まだ見ていないスライドのパーツも含めて数える
+  if (CK) answers = CK.newAnswers(DECK.questions ? DECK.questions().map(function(q){ return CK.questionKey(q.slideKey, q.index, q.id); }) : []);
   var api = LMS_API;
   adapter = api ? scormAdapter(api) : window.parent !== window && Q.get("embed") === "1" ? postAdapter() : localAdapter();
   adapter.init();
   if (adapter.resumeAt !== null && adapter.resumeAt !== undefined){ var g = TL[adapter.resumeAt]; DECK.go(g.i, g.k, false); }
+  early.splice(0).forEach(onAnswer);
   ["pointerdown", "keydown"].forEach(function(n){ window.addEventListener(n, begin, {capture: true, passive: true}); });
   document.addEventListener("deck:pos", function(e){
     if (e.detail && e.detail.auto) begin();
@@ -305,7 +343,10 @@ var LMS_API = (function(){ var a = findAPI(window); if (!a && window.opener) try
 DECK.trackingAdapter = function(){ return window.DECK_DEV ? null : LMS_API ? "scorm12" : window.parent !== window && Q.get("embed") === "1" ? "postmessage" : "local"; };
 DECK.tracking = function(){
   var list = function(a){ var o = []; if (a) for (var j = 0; j < a.length; j++) if (a[j]) o.push(j); return o; };
+  var keys = function(o){ return o ? Object.keys(o).sort() : []; };
   return {adapter: adapter ? adapter.name : null, total: N, hash: H8, rule: rule, stage: list(stage), text: list(text), completed: done, started: began,
+    questions: keys(answers && answers.declared), answered: keys(answers && answers.answered), correct: keys(answers && answers.correct), score: answers ? CK.scoreOf(answers) : null,
+    latest: answers ? JSON.parse(JSON.stringify(answers.latest)) : {},
     suspendData: N ? suspendData() : null, reading: readingView()};
 };
 // 試験の手前の口：読む単位を見る間（3 秒）

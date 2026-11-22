@@ -78,7 +78,10 @@ const ja = {
     const which = kind === 'fraction' ? `ステップの ${pct}% 以上` : 'すべてのステップ';
     return played ? `${which}をスライドで再生すると「完了」になります（${read}だけでは数えません）` : `${which}を、スライドで再生するか${read}と「完了」になります`;
   },
-  scormHint: '完了の条件は、ファイルの設定（egatari.json の metadata.completion）に書かれたものです。点数（合格・不合格）は記録されません',
+  // 確認問題（パーツの問い、format spec §8.4・§9.2）：完了の条件にするか（metadata.completion.checks）。位置づけ（試験ではない）は scormHint に
+  scormChecksLabel: '確認問題',
+  scormChecks: { none: '完了の条件にしない', answered: 'すべて答えたら完了', correct: 'すべて正解したら完了' },
+  scormHint: '完了の条件は、ファイルの設定（egatari.json の metadata.completion）に書かれたものです。確認問題は「予想と答え」などのパーツの問いで、正解した割合を点数として記録します（合格・不合格は記録しません）。答えはファイルの中にあり、学習者の端末で判定するので、ファイルの中身を見れば分かります。確認問題は理解を確かめるためのもので、試験には使えません。成績を付けるときは LMS の小テストを使ってください',
   scormGo: 'ダウンロード',
   scormUnsaved: '保存していない変更があります。LMS 用（SCORM）は保存したものから作るので、先に「保存」してください',
   scormToast: (n) => `${n} をダウンロードしました。LMS で「SCORM パッケージ」として追加してください`,
@@ -606,7 +609,9 @@ const en = {
     const which = kind === 'fraction' ? `at least ${pct}% of the steps are` : 'every step is';
     return played ? `It is “completed” when ${which} played on the slides (steps only ${read} do not count)` : `It is “completed” when ${which} played on the slides or ${read}`;
   },
-  scormHint: 'The completion rule is what the file’s settings say (metadata.completion in egatari.json). No score (passed or failed) is recorded',
+  scormChecksLabel: 'Questions',
+  scormChecks: { none: 'Not required for completion', answered: 'Completed when all are answered', correct: 'Completed when all are answered correctly' },
+  scormHint: 'The completion rule is what the file’s settings say (metadata.completion in egatari.json). Questions are those asked by parts such as Predict and check; the share answered correctly is recorded as the score (no passed or failed). The answers are in the file and are judged on the learner’s device, so anyone can find them by looking inside the file. Questions are for checking understanding and cannot be used as a test. For grades, use the LMS’s own quizzes',
   scormGo: 'Download',
   scormUnsaved: 'There are unsaved changes. The LMS copy is made from the saved file, so Save first.',
   scormToast: (n) => `Downloaded ${n}. In the LMS, add it as a “SCORM package”.`,

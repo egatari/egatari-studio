@@ -79,6 +79,15 @@ ok(po.status === 0, `build --play-only (${po.stderr.trim().slice(0, 200)})`);
 const playFile = fs.readdirSync(D).find((f) => f.endsWith('.play.ega.html'));
 const r1 = cli(D, '--scorm');
 ok(r1.status === 0 && /scorm: SCORM 1\.2 package \(imsmanifest\.xml \+ index\.html\), 12 steps/.test(r1.stdout) && /completed when every step is reached/.test(r1.stdout), `build --scorm says what it wrote and the completion rule (${(r1.stdout + r1.stderr).trim().split('\n').pop()})`);
+{
+  // 確認問題の条件（metadata.completion.checks）も言い、包みの index.html の deck-meta に写る
+  const Q = makeFolder('checks', { reachedEnd: true, checks: 'correct' });
+  const rq = cli(Q, '--scorm');
+  const zq = (await readZip(new Uint8Array(fs.readFileSync(path.join(Q, zipName(Q)))), { maxMembers: 10, maxMemberBytes: () => 64 * 1048576, maxTotalBytes: 128 * 1048576, accept: () => true })).files.get('index.html');
+  const mq = JSON.parse(/<script type="application\/json" id="deck-meta">([\s\S]*?)<\/script>/.exec(new TextDecoder().decode(zq))[1]);
+  ok(rq.status === 0 && /completed when the last step is reached and every question is answered correctly/.test(rq.stdout) && /the player also sends a score/.test(rq.stdout) && JSON.stringify(mq.completion) === '{"reachedEnd":true,"checks":"correct"}',
+    `build --scorm with completion.checks says so, and deck-meta carries it (${(rq.stdout + rq.stderr).trim().split('\n').pop()})`);
+}
 const zn = zipName(D);
 ok(zn === '季節の 教材 & SCORM.scorm.zip', `the zip is named after the title, <title>${SCORM_EXT} (${zn})`);
 const zip1 = fs.readFileSync(path.join(D, zn));

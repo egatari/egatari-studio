@@ -686,7 +686,7 @@ function animDur(i, k){
 // 部品に渡す ctx.mode（format spec §8.4："talk" | "video"）：内部の "lecture" は talk（preview は別に渡す）
 // ctx.slide はスライドの鍵（文字列。format spec §8.1・§8.4）。要素は渡さない（部品が要るなら自分で探す）
 function ctxMode(){ return DECK.mode === "lecture" ? "talk" : DECK.mode; }
-// ctx の残りの欄（format spec §8.4）：lang・slides・go・report・visited。1.x の部品にも渡す（読まないだけ）。ctx.deck は 1.x の部品にだけ
+// ctx の残りの欄（format spec §8.4）：lang・slides・go・report・answer・visited。1.x の部品にも渡す（読まないだけ）。ctx.deck は 1.x の部品にだけ
 var CTX_SLIDES = null, CTX_LANG = "ja";
 var REPORT_CODES = {data: 1, attr: 1, range: 1, size: 1, layout: 1, theme: 1, error: 1};
 var REPORT_ERRORS = {data: 1, attr: 1, error: 1};   // 品質チェックの誤り（ほかは DECK.componentReports にだけ。見た目の知らせ）
@@ -724,6 +724,36 @@ function reporter(c){
     console.warn("[deck] " + tag + " (" + (s.id || s._key) + ") " + cd + ": " + msg);
   };
 }
+// ctx.answer(id, correct, value?)（format spec §8.4）：問いを持つパーツが見る人の答えを知らせる。見る人の状態でファイルには書かない。
+// 記録（kit/track.js、Player P6 の answer）に deck:answer で渡す：{slideKey, index（スライドの中のパーツの番号）, id, correct, value?}。
+// 動画・横に置く描画・発表者ビューなどの写し（DECK.view）・始まる前は渡さない。形の違う知らせ（correct が true・false・null でない）は捨てる。
+// クラスの questions（format spec §8.4）にない id の答えは使わない（仕様：宣言していない id への答えは無視する）
+function questionsOf(c){
+  var q = c && c.constructor && c.constructor.questions;
+  return Array.isArray(q) ? q.filter(function(x, j){ return typeof x === "string" && x !== "" && q.indexOf(x) === j; }) : [];
+}
+function answerer(c){
+  return function(id, correct, value){
+    var s = c._slide;
+    if (!s || !started || ASIDE || DECK.mode === "video" || DECK.view) return;
+    var a = DECK.Checks ? DECK.Checks.answerValue(correct, value) : null, ix = s._comps ? s._comps.indexOf(c) : -1;
+    if (!a || ix < 0 || id === undefined || id === null || String(id) === ""){ console.warn("[deck] " + c.tagName.toLowerCase() + ": ctx.answer: not an answer (" + String(id) + ", " + String(correct) + ")"); return; }
+    if (questionsOf(c).indexOf(String(id)) < 0){ console.warn("[deck] " + c.tagName.toLowerCase() + ": ctx.answer: \"" + String(id) + "\" is not in the part's questions; ignored"); return; }
+    var d = {slideKey: s._key, index: ix, id: String(id).slice(0, 200), correct: a.correct};
+    if ("value" in a) d.value = a.value;
+    document.dispatchEvent(new CustomEvent("deck:answer", {detail: d}));
+  };
+}
+// ファイルの問い（format spec §9.2）：どのスライドのパーツの要素も、クラスが宣言した questions を 1 組ずつ持つ（見たかどうかによらない）。
+// 読み込めなかったパーツ（登録簿の失敗：要素が定義されず s._comps に入らない）と、包んだ失敗（c._bad：描けず最後の状態の代わりを出す）は問いを持たない。
+// 返すもの：[{slideKey, index（スライドの中のパーツの番号）, id}]（kit/track.js が開いたときに数える）
+DECK.questions = function(){
+  var out = [];
+  (slides || []).forEach(function(s){
+    (s._comps || []).forEach(function(c, ix){ if (!c._bad) questionsOf(c).forEach(function(id){ out.push({slideKey: s._key, index: ix, id: id}); }); });
+  });
+  return out;
+};
 // Viewer input (format §8.4): totals belong to slide steps, never to duration()/the authored timeline.
 var viewerStep = null, stepExtensions = Object.create(null), liveRun = null;
 var inputEntry = 0, mirrorEntry = null, inputRendering = 0, inputMirroring = false;
@@ -871,7 +901,7 @@ document.addEventListener("deck:live", function(){
 });
 function ctxFor(c, s, o){
   var x = {mode: ctxMode(), preview: previewOn() && !c._ctxNoPrev, slide: s._key, lang: CTX_LANG, slides: CTX_SLIDES,
-    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), visited: ctxVisited, extend: function(seconds){ return ctxExtend(s, seconds, c); },
+    go: ctxGo, report: c._reportFn || (c._reportFn = reporter(c)), answer: c._answerFn || (c._answerFn = answerer(c)), visited: ctxVisited, extend: function(seconds){ return ctxExtend(s, seconds, c); },
     live: viewerInput() && !DECK.view && DECK.live && typeof DECK.live.poll === "function" ? CTX_LIVE : null};
   for (var k in o) x[k] = o[k];
   if (!c._v2) x.deck = DECK;
