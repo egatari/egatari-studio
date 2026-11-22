@@ -3,8 +3,8 @@
 // test-all: platform（WebKit の分は CI の macOS で）
 // 確かめること：
 //  - 初めて開いたときは最初の段階で、知らせは出ない
-//  - 段階を進めて閉じ、開き直すと、その段階から開き（ready に seek を返す）、「前に見ていた所（スライドの題）から開きました」と「最初から」
-//  - 「最初から」で最初の段階へ戻り、最初の段階では覚えた位置を消す（次に開くと知らせなし）
+//  - 段階を進めて閉じ、開き直すと、その段階から開き（ready に seek を返す）、「前に見ていた所（スライドの題）から開きました」と「最初から見る」
+//  - 「最初から見る」で最初の段階へ戻り、最初の段階では覚えた位置を消す（次に開くと知らせなし）
 //  - × で知らせだけ閉じる（位置はそのまま）。英語の文言
 //  - 共有の端末をオンにすると覚えた位置を消し、共有の端末では覚えず、開き直しても最初から
 //  - 覚えた位置が壊れていても（形の違う値）最初から開き、エラーにならない
@@ -104,9 +104,10 @@ ok(await until(async () => (await pos(p)) === AT), `reopening: the lesson opens 
 const title = await (await lessonFrame(p)).evaluate(() => DECK.timeline().find((x) => DECK.stepKey(x.i, 0).split(':')[0] === DECK.state().key.split(':')[0]).title);
 ok(await until(async () => (await notice(p)).includes('前に見ていた所') && (await notice(p)).includes(title)), `a notice says so, with the slide's title (${await notice(p)})`);
 if (args.includes('--shots')) { await p.screenshot({ path: path.join(work, 'resume.png') }); await p.setViewportSize({ width: 375, height: 740 }); await sleep(300); await p.screenshot({ path: path.join(work, 'resume-375.png') }); await p.setViewportSize({ width: 1180, height: 820 }); }
-ok(await p.evaluate(() => { const b = document.getElementById('b-resume-start'); return !!b && b.offsetParent !== null && b.textContent === '最初から'; }), 'the notice has 最初から');
+ok(await p.evaluate(() => { const b = document.getElementById('b-resume-start'); return !!b && b.offsetParent !== null && b.textContent === '最初から見る'; }), 'the notice has 最初から見る');
 await p.click('#b-resume-start');
-ok(await until(async () => (await pos(p)) === FIRST) && (await notice(p)) === '', `最初から goes to the first step and closes the notice (${await pos(p)})`);
+ok(await until(async () => (await pos(p)) === FIRST) && (await notice(p)) === '', `最初から見る goes to the first step and closes the notice (${await pos(p)})`);
+ok(await until(() => p.evaluate(() => document.getElementById('sr').textContent === '最初に戻りました')), 'a screen reader hears 最初に戻りました');
 ok(await until(async () => Object.keys(await kept(p)).length === 0), `at the first step nothing is kept (${JSON.stringify(await kept(p))})`);
 await close(p);
 await open(p, LESSON);
@@ -120,7 +121,7 @@ await close(p);
 await p.click('#b-lang');
 await open(p, LESSON);
 ok(await until(async () => (await pos(p)) === AT2) && await until(async () => (await notice(p)).startsWith('Opened where you left off')), `English: ${await notice(p)}`);
-ok(await p.evaluate(() => document.getElementById('b-resume-start').textContent === 'From the start' && document.getElementById('b-resume-x').getAttribute('aria-label') === 'Close this notice'), 'English: From the start, and the close button\'s name');
+ok(await p.evaluate(() => document.getElementById('b-resume-start').textContent === 'Start over' && document.getElementById('b-resume-x').getAttribute('aria-label') === 'Close this notice'), 'English: Start over, and the close button\'s name');
 await p.click('#b-resume-x');
 ok((await notice(p)) === '' && (await pos(p)) === AT2, '× closes the notice and stays where it is');
 await p.click('#b-lang');
