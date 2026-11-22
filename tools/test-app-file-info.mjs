@@ -78,8 +78,16 @@ async function openPage(label, html, { lang = 'ja', init = null, fresh = false }
   if (init) await ctx.addInitScript(init.fn, init.arg);
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errs.push(`${label}: ${e.message}`));
+  // 落ちたときの手がかり（CI の Windows・node 22 で 3 つ目の場面が止まった）：場面の始まりからの時間・ページの console・止まったときの表示
+  const t0 = Date.now(), con = [];
+  page.on('console', (m) => con.push(`${((Date.now() - t0) / 1000).toFixed(1)}s ${m.type()}: ${m.text().slice(0, 200)}`));
+  page.__diag = async (what) => {
+    console.log(`       ${label}: stuck at ${what} after ${((Date.now() - t0) / 1000).toFixed(1)} s; console:\n         ` + (con.slice(-15).join('\n         ') || '(none)'));
+    await page.screenshot({ path: path.join(work, `stuck-${label}.png`), timeout: 5000 }).catch((e) => console.log('       (no screenshot: ' + e.message.split('\n')[0] + ')'));
+  };
   await page.goto(`${HOST}?lang=${lang}`);
-  await page.waitForFunction(() => !!window.__APP_TEST);
+  await page.waitForFunction(() => !!window.__APP_TEST).catch(async (e) => { await page.__diag('the editor starting'); throw e; });
+  console.log(`       ${label}: the editor started in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await page.evaluate(async (n) => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle(n, { create: true }); }, `${label}.ega.html`);
   const opened = await page.evaluate(({ data, fresh }) => { const bin = atob(data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'lesson.ega.html', fresh: data.fresh }); }, { data: Buffer.from(html).toString('base64'), fresh });
   ok(opened === true, `${label}: opens`);
@@ -168,7 +176,7 @@ try {
     ok(await editScript(page, '（直した 3）'), 'first save (licensed): the script is edited');
     const sv = page.evaluate(() => window.__APP_TEST.save('save'));
     await page.waitForSelector('#dlg[open] #edit-role-creator', { timeout: scaled(15000) });
-    await page.check('#edit-role-creator');
+    await page.check('#edit-role-creator').catch(async (e) => { await page.__diag('choosing 「はい」'); throw e; });
     ok(!(await page.$('#edit-own')) && !(await page.isDisabled('#dlg-save')), 'first save, licensed file: no license question, Save is enabled');
     await clickDlg(page, '#dlg-cancel');
     await sv;
