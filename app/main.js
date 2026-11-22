@@ -27,6 +27,7 @@ import { writeFile, cancelledError, hasPermission, askPermission, recentList, re
 import { folderWorkspace, memoryWorkspace } from './workspace.js';
 import { readInWorker, probeWorker, workspaceFromPortable, archiveFiles, writeToDirectory, registryProblems, staleSteps } from './portable.js';
 import { rightsOf, requiresChangeNote, addEdit } from './rights.js';
+import { LICENSES, FIRST_SAVE_LICENSES, licenseChoice, fileInfoPatch, changedOnly } from './file-info.js';
 import { LIMITS, newDocId, playOnly, exportedState, FORMAT_VERSION, readPortable, excludedReason, sha256Hex, sameJson } from '../kit/core/portable.mjs';
 import { playerShowsEdits, parsePlayerJson, PLAYER_JSON } from '../kit/core/player.mjs';
 import { normalize as normPosix } from '../kit/core/path-posix.mjs';
@@ -1926,7 +1927,9 @@ async function themeOnlyChange(P, a, files) {
   } catch { return false; }
 }
 // ---------------------------------------------------------------- 編集の記録（format spec §3.6.1・§7.3）
-// エディタには、だれが編集しているかが分からないので聞く。内容を変えて初めて保存するとき、この教材の作成者か、ほかの人の教材を編集しているかを聞く。
+// エディタには、だれが編集しているかが分からないので聞く。内容を変えて初めて保存するとき、このファイルを自分で作ったか、ほかの人のファイルを直しているかを聞く。
+// 自分で作ったファイルにライセンスがなければ、同じ窓でライセンス（CC BY 4.0・CC BY-SA 4.0・CC BY-NC 4.0・付けない）・作成者・著作権の表示を書ける
+// （handoff #88。ほかは「ファイルの情報…」で）。選んだものは設定のファイルの metadata に書く（変わった項目だけ）
 // 答えはこの端末に教材（docId）ごとに覚える（ファイルには書かない）。ファイルに書くのは、使う人が入力した名前と内容だけ。
 // ほかの人の教材なら metadata.edits に 1 件足す（同じ名前があれば内容だけ新しくする。app/rights.js の addEdit）。ライセンスが変更を示すよう求め
 // （Creative Commons の 4.0）、名前が空なら名前なしの項目を足す。今ある項目は消さず、変えない。
@@ -1946,6 +1949,23 @@ async function askEditRole(P, ws, live) {
   const required = requiresChangeNote(R.license);
   const radio = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-role', value, id: 'edit-role-' + value }), el('span', { text: label })]);
   const mine = radio('creator', T.editRoleMine), other = radio('other', T.editRoleOther);
+  // ライセンスのないファイルを自分で作った：ライセンスを選ぶ（黙って既定を選ばない）・作成者・著作権の表示
+  let own = null;
+  if (!R.license) {
+    const lr = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-license', value, id: 'edit-license-' + value }), el('span', { text: label })]);
+    const lics = [...LICENSES.filter((x) => FIRST_SAVE_LICENSES.includes(x.id)).map((x) => lr(x.id, x.label)), lr('none', T.infoLicNone)];
+    const creators = el('textarea', { id: 'edit-creators', rows: '2' });
+    creators.value = R.creators.join('\n');
+    const copyright = el('input', { type: 'text', id: 'edit-copyright', maxlength: '300' });
+    copyright.value = R.copyright || '';
+    own = { lics, creators, copyright, box: el('div', { id: 'edit-own' }, [
+      el('p', { cls: 'label', id: 'edit-license-title', text: T.editLicTitle }), ...lics,
+      el('p', { cls: 'hint', id: 'edit-license-help', text: T.infoLicHelp }),
+      el('p', { cls: 'hint', id: 'edit-license-later', text: T.editLicLater }),
+      el('label', { for: 'edit-creators', text: T.infoFCreators }), creators,
+      el('label', { for: 'edit-copyright', text: T.infoFCopyright }), copyright]) };
+    own.box.hidden = true;
+  }
   const by = el('input', { type: 'text', id: 'edit-by', maxlength: '120', placeholder: T.editByPh, autocomplete: 'organization' });
   const note = el('input', { type: 'text', id: 'edit-note', maxlength: '300', placeholder: T.editNotePh });
   const fields = el('div', { id: 'edit-fields' }, [
@@ -1957,15 +1977,38 @@ async function askEditRole(P, ws, live) {
   fields.hidden = true;
   const pending = ask({ title: T.editRoleTitle, body: [
     R.creators.length ? el('p', { id: 'edit-role-creators', text: T.editRoleCreators(R.creators.join(EN ? ', ' : '、')) }) : null,
-    mine, other, fields, el('p', { cls: 'hint', text: T.editRemember })],
+    mine, own ? own.box : null, other, fields, el('p', { cls: 'hint', text: T.editRemember })],
   buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: true }] });
-  // どちらかを選ぶまで保存できない（黙って既定を選ばない）
+  // どちらかを選ぶまで保存できない（黙って既定を選ばない）。自分で作ったファイルにライセンスがなければ、ライセンスも選ぶまで
   const go = $('dlg-save');
-  go.disabled = true;
-  for (const r of [mine, other]) r.querySelector('input').addEventListener('change', () => { go.disabled = false; fields.hidden = !other.querySelector('input').checked; });
+  const picked = (list) => { const x = list.map((l) => l.querySelector('input')).find((i) => i.checked); return x ? x.value : null; };
+  const sync = () => {
+    const isOther = other.querySelector('input').checked, isMine = mine.querySelector('input').checked;
+    fields.hidden = !isOther;
+    if (own) own.box.hidden = !isMine;
+    go.disabled = !(isOther || (isMine && (!own || picked(own.lics))));
+  };
+  sync();
+  for (const r of [mine, other, ...(own ? own.lics : [])]) r.querySelector('input').addEventListener('change', sync);
   const v = await pending;
   if (v !== 'save' || !live()) return false;
   const role = other.querySelector('input').checked ? 'other' : 'creator';
+  if (role === 'creator' && own) {
+    const CFG = FORMAT.CONFIG_FILE;
+    let old = null;
+    try { old = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { old = null; }
+    if (!live()) return false;
+    try {
+      const cm = configObject(old).metadata;
+      const base = cm && typeof cm === 'object' ? cm : md;
+      const r = fileInfoPatch({ license: picked(own.lics) || 'none', creators: own.creators.value, copyright: own.copyright.value }, base);
+      const patch = r.patch ? changedOnly(base, r.patch) : {};
+      if (Object.keys(patch).length) {
+        await ws.writeText(CFG, updateConfig(old, { metadata: configMerge(patch) }), { live });
+        if (!live()) return false;
+      }
+    } catch (e) { toast(String((e && e.message) || e), true); return false; }
+  }
   if (role === 'other') {
     const CFG = FORMAT.CONFIG_FILE;
     let old = null;
@@ -2397,19 +2440,23 @@ async function participantExport() {
   await exportPlayOnlyFile(room, room ? { oneWay: livePanel.oneWay() } : {});
 }
 
-// ---------------------------------------------------------------- 教材の情報…（題・ライセンス・作成者・添付）
-// 題・ライセンス・作成者は設定のファイル（egatari.json の metadata）から読むだけ（ここでは書き換えない）。1 ファイルで設定のファイルになければ索引の metadata
+// ---------------------------------------------------------------- ファイルの情報…（タイトル・作成者・著作権・ライセンス・クレジット・添付）
+// 設定のファイル（egatari.json の metadata）から読み、ここで書き換える（handoff #88。入力から値にするのは app/file-info.js）。
+// 1 ファイルで設定のファイルになければ索引の metadata。書く先はどちらも作業場所の egatari.json：作業フォルダはすぐに、
+// Egatari ファイルはメモリの上の作業場所に書くので「保存していない変更」になり、次の保存でファイルに入る（索引と deck-meta は組み直しで）
 let INFO = null;
 async function readInfo() {
   let m = null;
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); if (c && typeof c.metadata === 'object') m = c.metadata; } catch { m = null; }
   if (!m && S.portable) m = S.portable.index.metadata || null;
   const R = rightsOf(m || {});
+  // ほかの人のファイルを直している（初めての保存の問いで「いいえ」と答えた。#31）なら、作成者の欄に 1 行を添える
+  const P = S.portable, role = P ? (P.editRole || editRoleKnown(P.index.docId)) : null;
   // 形式の版（ファイルの version。作業フォルダはこの Studio が書く版）と、作った Studio（ファイルの generator.version。作業フォルダはこの Studio）
   const ix = S.portable ? S.portable.index : null;
   const v = ix && ix.version && Number.isInteger(ix.version.major) ? ix.version : FORMAT_VERSION;
   const gen = ix && ix.generator && typeof ix.generator.version === 'string' ? ix.generator.version : null;
-  return { ...R, title: R.title || (S.base ? titleOf(S.base) : ''), format: T.infoFormat(FORMAT.DISPLAY_NAME, `${v.major}.${Number.isInteger(v.minor) ? v.minor : 0}`, snapshotText(RES.specSnapshot)),
+  return { ...R, md: m && typeof m === 'object' ? m : {}, deckTitle: S.base ? titleOf(S.base) : '', other: role === 'other', format: T.infoFormat(FORMAT.DISPLAY_NAME, `${v.major}.${Number.isInteger(v.minor) ? v.minor : 0}`, snapshotText(RES.specSnapshot)),
     studio: S.portable ? (gen ? T.infoMadeWith(gen) : T.infoMadeUnknown) : T.infoThisStudio(RES.version) };
 }
 // 仕様の写しの版：文字列（"WD 2026-10-24"）か {status|stage, date}。なければ null（形式は「Egatari 1.0」だけ）
@@ -2419,17 +2466,95 @@ function snapshotText(sn) {
   if (typeof sn === 'object') { const st = sn.status || sn.stage || '', d = sn.date || ''; return `${st} ${d}`.trim() || null; }
   return null;
 }
+// ライセンスの選択（SPDX の名前で保存。「付けない」は license を書かない）と、その他の名前の欄。choices：見せる SPDX の名前（既定はすべて）
+function licenseSelect(id, cur, choices = LICENSES.map((x) => x.id)) {
+  const c = licenseChoice(cur);
+  const sel = el('select', { id }, [
+    ...LICENSES.filter((x) => choices.includes(x.id)).map((x) => el('option', { value: x.id, text: x.label })),
+    el('option', { value: 'none', text: T.infoLicNone }), el('option', { value: 'other', text: T.infoLicOther })]);
+  sel.value = c.choice;
+  const other = el('input', { type: 'text', id: id + '-other', maxlength: '200', placeholder: T.infoLicOtherPh, 'aria-label': T.infoLicOther, autocomplete: 'off' });
+  other.value = c.other;
+  other.hidden = sel.value !== 'other';
+  sel.addEventListener('change', () => { other.hidden = sel.value !== 'other'; if (!other.hidden) other.focus(); });
+  return { sel, other };
+}
 function infoSection() {
   const R = INFO || {};
-  const rows = [[T.rTitle, R.title], [T.rLicense, R.license], [T.rCreators, (R.creators || []).join(', ')], [T.rCopyright, R.copyright], [T.rAttribution, R.attribution]];
+  const md = R.md || {};
+  const field = (id, label, node) => [el('label', { for: id, text: label }), node];
+  const title = el('input', { type: 'text', id: 'info-title', maxlength: '300', placeholder: R.deckTitle || '' });
+  title.value = typeof md.title === 'string' ? md.title : '';
+  const creators = el('textarea', { id: 'info-creators', rows: '3' });
+  creators.value = (R.creators || []).join('\n');
+  const copyright = el('input', { type: 'text', id: 'info-copyright', maxlength: '300' });
+  copyright.value = R.copyright || '';
+  const lic = licenseSelect('info-license', R.license);
+  const attribution = el('input', { type: 'text', id: 'info-attribution', maxlength: '300' });
+  attribution.value = R.attribution || '';
+  const error = el('p', { id: 'info-error', cls: 'note bad', role: 'alert' });
+  error.hidden = true;
+  const form = el('form', { id: 'info-form', cls: 'info-form' }, [
+    ...field('info-title', T.infoFTitle, title),
+    ...field('info-creators', T.infoFCreators, creators),
+    R.other && R.creators && R.creators.length ? el('p', { id: 'info-other-creator', cls: 'hint', text: T.infoOtherCreator(R.creators.join(EN ? ', ' : '、')) }) : null,
+    ...field('info-copyright', T.infoFCopyright, copyright),
+    ...field('info-license', T.infoFLicense, lic.sel), lic.other,
+    el('p', { id: 'info-license-help', cls: 'hint', text: T.infoLicHelp }),
+    ...field('info-attribution', T.infoFAttribution, attribution),
+    error,
+    el('div', { cls: 'row' }, [
+      el('button', { type: 'button', id: 'info-cancel', text: T.cancel, onclick: () => { replaceInfo(); } }),
+      el('button', { type: 'submit', id: 'info-save', cls: 'pri', text: T.save })]),
+  ]);
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveInfo({ title: title.value, creators: creators.value, copyright: copyright.value, license: lic.sel.value, other: lic.other.value, attribution: attribution.value }, error);
+  });
   return el('div', { id: 'info-panel' }, [
     el('p', { cls: 'hint', text: T.infoLead }),
-    el('dl', { id: 'info-list', cls: 'info-list' }, rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { cls: v ? '' : 'none', text: v || T.infoNone })])),
-    el('p', { cls: 'hint', text: S.portable ? T.infoEditFile : T.infoEditFolder }),
+    form,
     el('p', { id: 'info-format', text: R.format || '' }),
     el('p', { id: 'info-studio', text: R.studio || '' }),
     el('p', { cls: 'hint', id: 'info-player', text: T.infoPlayer }),
   ]);
+}
+// 情報の欄を、今の INFO で描き直す（キャンセル・保存の後）
+function replaceInfo() {
+  const old = $('info-panel');
+  if (old) old.replaceWith(infoSection());
+}
+// 保存：入力を metadata の値にし（app/file-info.js）、変わった項目だけを egatari.json に書く（ほかの項目はバイトのまま。kit/core/config-file.mjs）
+async function saveInfo(form, error) {
+  if (!S.ws) return;
+  if (earlierWhy()) { toast(earlierWhy(), true); return; }
+  if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; }
+  const R = INFO || {};
+  const r = fileInfoPatch(form, R.md);
+  if (r.error) {
+    error.textContent = r.error === 'license-empty' ? T.infoLicEmpty : T.infoLicFormat; error.hidden = false;
+    const o = $('info-license-other'); if (o) o.focus();
+    return;
+  }
+  error.hidden = true;
+  const patch = changedOnly(R.md, r.patch);
+  if (Object.keys(patch).length) {
+    // Egatari ファイルは、ほかの編集と同じに、最初の変更の前に権利の表示を確かめる（改変を認めないライセンスなど。format spec §7.3）
+    if (S.portable && !(await ensureRights())) return;
+    const ws = S.ws, g = S.gen, live = () => S.ws === ws && S.gen === g;
+    const CFG = FORMAT.CONFIG_FILE;
+    try {
+      const text = updateConfig(await ws.readText(CFG, { max: READ_LIMITS.json }), { metadata: configMerge(patch) });
+      await ws.writeText(CFG, text, { live });
+    } catch (e) { toast(String((e && e.message) || e), true); return; }
+    if (!live()) return;
+    await rebuild('save');
+    updateName();
+    if (!live()) return;
+    INFO = await readInfo();
+  }
+  replaceInfo();
+  toast(T.infoSaved);
 }
 async function lessonInfo() {
   if (!S.ws) return;
@@ -2695,7 +2820,7 @@ window.__APP_TEST = {
   open: (h) => openFolder(h),
   saveHandle: null,
   dirHandle: null,
-  editRole: window.__APP_TEST_EDIT_ROLE || null,   // 試験：保存の前の「この教材の作成者ですか」に答えたことにする（'creator' | 'other'）
+  editRole: window.__APP_TEST_EDIT_ROLE || null,   // 試験：保存の前の「このファイルは、あなたが作ったものですか。」に答えたことにする（'creator' | 'other'）
   state: () => ({ building: !!S.building, earlier: S.earlier ? { ...S.earlier } : null, deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0, lastQuickCheck: S.lastQuickCheck ? { ...S.lastQuickCheck } : null,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),

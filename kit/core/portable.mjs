@@ -1502,8 +1502,10 @@ function carryUnknown(index, carry, opts) {
   // player は写さない：作り直しは再生器を替える（§4.1）ので、前の再生器の記録の項目はこの再生器のことではない
   for (const k of ['version', 'contracts', 'generator']) copyUnknown(index[k], carry[k], KNOWN[k]);
   if (isObj(carry.metadata)) {
-    // 知っている項目でも、この書き手が作らなかったもの（ほかの書き手が書いた description など）は残す
-    for (const k of Object.keys(carry.metadata)) if (k !== 'derivedFrom' && !own(index.metadata, k)) index.metadata[k] = carry.metadata[k];
+    // 知っている項目でも、この書き手が作らなかったもの（ほかの書き手が書いた description など）は残す。
+    // 権利の表示と作成者（license・copyright・attribution・creators）は写さない：開いたときに設定のファイルへ写してあり（folderConfig）、
+    // 設定のファイルにないのは消したということ（「ファイルの情報…」の「ライセンスを付けない」・空の欄。handoff #88）。写すと deck-meta と食い違う
+    for (const k of Object.keys(carry.metadata)) if (k !== 'derivedFrom' && !DECK_META_RIGHTS.includes(k) && !own(index.metadata, k)) index.metadata[k] = carry.metadata[k];
     if (!opts.identity) {
       if (own(carry.metadata, 'derivedFrom')) index.metadata.derivedFrom = carry.metadata.derivedFrom;
       else delete index.metadata.derivedFrom;
