@@ -200,6 +200,10 @@ const steps = [
   ['test-viewer-ink', ['tools/test-viewer-ink.mjs', path.join(tmp, 'viewer-ink')]],
   // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
   ['test-viewer-ink-webkit', ['tools/test-viewer-ink.mjs', path.join(tmp, 'viewer-ink-webkit'), '--webkit']],
+  // Viewer の前に見ていた所から開く（play/resume.mjs、handoff #94）：ready に seek、知らせと「最初から」、最初の段階で忘れる、共有の端末、壊れた値
+  ['test-viewer-resume', ['tools/test-viewer-resume.mjs', path.join(tmp, 'viewer-resume')]],
+  // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-resume-webkit', ['tools/test-viewer-resume.mjs', path.join(tmp, 'viewer-resume-webkit'), '--webkit']],
   // サイトのプレーヤー（play/site-player.mjs、tools/build-site-player.mjs）：見出しなしの置き場所で、lock との照合・opaque な枠・リンクの箱・枠の中を断る
   ['test-site-player', ['tools/test-site-player.mjs', path.join(tmp, 'site-player')]],
   // Viewer のページの WCAG 2.2 AA の自動の検査（axe-core）：最初の画面・教材・本・マークアップ・ダイアログ・ライブの参加の画面・作成と編集。教材の枠の中は一覧にするだけ

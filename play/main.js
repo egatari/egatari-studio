@@ -7,6 +7,7 @@
 import { WORDS, initialLang, saveLang, apply } from './i18n.mjs';
 import { lessonDocument, makeFrame } from './frame.mjs';
 import { openRecents } from './recents.mjs';
+import * as resume from './resume.mjs';
 import { startLive } from './live-host.mjs';
 import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
@@ -334,7 +335,43 @@ function setInk(on) {
   applyLayout();
 }
 
+// ---------------------------------------------------------------- reopening where the viewer left off (player spec P5, handoff #94)
+// The player's ready (spec P8) lists the timeline; the last position kept for this lesson (play/resume.mjs) is sent back as a seek,
+// and a notice offers 「最初から」. Not on a shared device, not for lessons with a Live (the host leads), not for an older player that
+// sends no ready. Untrusted: only slide keys and step keys that are strings are read from the timeline, and a kept position is used
+// only when the timeline has it.
+const RESUME = { timer: 0 };
+function onReady(timeline) {
+  const P = S.playing;
+  if (!P || P.timeline) return;
+  P.timeline = timeline.filter((x) => x && isStr(x.slideKey, 200) && isStr(String(x.stepKey), 16)).map((x) => ({ s: x.slideKey, k: String(x.stepKey), title: isStr(x.slideTitle, 300) ? x.slideTitle : '' }));
+  if ($('shared').checked || P.live || P.liveFrom || !P.timeline.length) return;
+  const r = resume.get(inkDoc());
+  if (!r) return;
+  const at = P.timeline.findIndex((x) => x.s === r.slideKey && x.k === r.stepKey);
+  if (at <= 0) return;
+  P.resumed = true;
+  seekTo(r.slideKey, r.stepKey);
+  showResume(P.timeline[at].title);
+}
+function seekTo(slide, step) { if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egatari: 'seek', slide, step, t: null }, '*'); }
+function keepPosition(slideKey, stepKey) {
+  const P = S.playing;
+  if (!P || !P.timeline || $('shared').checked || P.live || P.liveFrom) return;
+  const first = P.timeline[0];
+  resume.set(inkDoc(), slideKey, stepKey, !!first && first.s === slideKey && first.k === stepKey);
+}
+function showResume(title) {
+  const el = $('resume');
+  $('resume-text').textContent = title ? W().resumedAt(title.slice(0, 80)) : W().resumed;
+  el.hidden = false;
+  clearTimeout(RESUME.timer);
+  RESUME.timer = setTimeout(hideResume, 12000);
+}
+function hideResume() { clearTimeout(RESUME.timer); $('resume').hidden = true; }
+
 function closeLesson(quiet) {
+  hideResume();
   setInk(false); S.slideKey = ''; S.posEvents = false;
   if (M) M.close();
   if ($('cred-box').open) $('cred-box').close();
@@ -382,7 +419,8 @@ window.addEventListener('message', (e) => {
   // spec §9.4 openLink: {egatari, href, text, download?}; text at most 200 characters; download only as true.
   // Untrusted: links.request applies §11 and asks for a tap; a download is refused (the frame cannot save files)
   if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
-  else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { S.posEvents = true; S.slideKey = m.slideKey; inkPage(m.slideKey); if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); }
+  else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { S.posEvents = true; S.slideKey = m.slideKey; inkPage(m.slideKey); if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); keepPosition(m.slideKey, m.stepKey); }
+  else if (m.egatari === 'ready' && Array.isArray(m.timeline) && m.timeline.length <= 5000) onReady(m.timeline);
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) {
     // an older player inside the file sends only these: the slide key is the part before ':'
     if (!S.posEvents) { S.slideKey = m.key.split(':')[0]; inkPage(S.slideKey); }
@@ -497,7 +535,7 @@ function initKeep() {
     if ((n.highlights > 0 || k > 0) && !(await M.ask(W().mSharedAsk(n.lessons, n.highlights, k), W().mSharedYes))) {
       $('shared').checked = false; setPref(SHARED_KEY, '0'); syncKeep(); $('shared').focus(); return;
     }
-    await clearRecents(); await clearAllRecords(); await clearInk(); announce(W().sharedOn);
+    await clearRecents(); await clearAllRecords(); await clearInk(); resume.clear(); announce(W().sharedOn);
   });
 }
 async function clearRecents() { if (S.recents) { try { await S.recents.clear(); } catch { /* nothing kept */ } } await renderRecents(); }
@@ -637,6 +675,8 @@ async function main() {
   $('b-cred-close').addEventListener('click', () => $('cred-box').close());
   $('cred-box').addEventListener('close', () => { if (S.playing && !$('lesson-credit').hidden) $('lesson-credit').focus(); });
   $('b-ink').addEventListener('click', () => setInk(!INK.on));
+  $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
+  $('b-resume-x').addEventListener('click', hideResume);
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });
   window.addEventListener('popstate', () => { if (S.playing) closeLesson(); });
   $('b-live').addEventListener('click', focusLive);
@@ -651,7 +691,7 @@ async function main() {
   window.addEventListener('orientationchange', onResize);
   document.addEventListener('keydown', forwardKey);
   $('live').addEventListener('keydown', (e) => { if (e.key !== 'Escape') return; e.preventDefault(); if ($('live').classList.contains('poll-open')) { setPollView(false); $('b-poll').focus(); } else if (!$('b-live').hidden) $('b-live').focus(); });
-  const clearAll = async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); await renderRecents(); $('file').focus(); };
+  const clearAll = async () => { if (!window.confirm(W().clearConfirm)) return; await S.recents.clear(); resume.clear(); await renderRecents(); $('file').focus(); };
   $('b-clear').addEventListener('click', clearAll);
   $('b-keep-clear').addEventListener('click', clearAll);
   // the "home" link: back to the start without reloading while a lesson plays
