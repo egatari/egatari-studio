@@ -55,6 +55,8 @@
       <button type="button" id="b-slidemenu" aria-haspopup="menu" aria-expanded="false" aria-controls="m-slide" data-t="slideMenu"></button>
       <div id="m-slide" class="menu-list" role="menu" aria-labelledby="b-slidemenu" hidden>
         <button type="button" id="b-insert" role="menuitem" data-t="insertCmd"></button>
+        <!-- 画像を挿入…（app/image-insert.js。handoff #85）：対象のスライドの本文に画像を 1 つ足す -->
+        <button type="button" id="b-image" role="menuitem" data-t="imgCmd"></button>
         <button type="button" id="b-dup" role="menuitem" data-t="dupCmd"></button>
         <button type="button" id="b-del" role="menuitem" data-t="delCmd"></button>
         <!-- しおり（format spec §8.0）：開くたびに、対象のスライドにしおりがあるかで言葉と「しおりを外す」の有無を変える（app/main.js の syncBookmarkItems） -->

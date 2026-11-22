@@ -1,7 +1,7 @@
 // 埋め込んだ画像の大きさ（data: URI を戻したバイト数）。組み立てた HTML をコマンド版と編集アプリで同じように調べる
 import { parse } from 'parse5';
 
-const MAX_IMAGE_BYTES = 1048576;
+export const MAX_IMAGE_BYTES = 1048576;   // 1 つの画像の目安（1 MiB）。編集アプリの「画像を挿入」の知らせも同じ値（kit/core/image-insert.mjs）
 const attr = (n, name) => (n.attrs || []).find((a) => a.name === name)?.value || '';
 function dataBytes(src) {
   const m = /^data:([^,]*),([\s\S]*)$/i.exec(src.trim());
