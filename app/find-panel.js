@@ -34,7 +34,7 @@ export function createFindPanel(ctx) {
       el('div', { cls: 'row find-buttons' }, [btn('find-prev', T.prev, () => move(-1)), btn('find-next', T.next, () => move(1)), btn('find-replace', T.replace, () => replaceOne()), btn('find-all', T.replaceAll, () => replaceAll())]),
     ]);
     document.body.append(dlg);
-    const later = () => { clearTimeout(timer); timer = setTimeout(() => { cur = -1; refresh(); }, 120); };
+    const later = () => { clearTimeout(timer); timer = setTimeout(() => { timer = 0; cur = -1; refresh(); }, 120); };
     q.addEventListener('input', later);
     cs.addEventListener('change', later);
     dlg.querySelector('#find-scope').addEventListener('change', later);
@@ -74,7 +74,10 @@ export function createFindPanel(ctx) {
     if (m.file === 'deck') { if (Number.isFinite(m.slide)) ctx.goSlide(m.slide); }
     else if (m.slideKey != null && m.slide != null) ctx.goStep(m.slideKey, m.stepKey);
   }
+  // 打った直後に押されたとき：待っている数え直し（later）を先に済ませる。後から走って選んだ一致を消さないように
+  function settle() { if (timer) { clearTimeout(timer); timer = 0; cur = -1; } }
   async function move(d) {
+    settle();
     await refresh();
     const n = res.matches.length;
     if (!n) return;
@@ -90,6 +93,7 @@ export function createFindPanel(ctx) {
   // 1 つ置換：選んでいる一致（まだなければ、次の一致を選ぶだけ）
   async function replaceOne() {
     if (busy) return;
+    settle();
     await refresh();
     if (cur < 0 || !res.matches[cur]) { await move(1); return; }
     const want = res.matches[cur], o = opts(), rep = r.value, i = cur;
@@ -103,6 +107,7 @@ export function createFindPanel(ctx) {
   }
   async function replaceAll() {
     if (busy) return;
+    settle();
     await refresh();
     const n = res.matches.length;
     if (!n) return;
