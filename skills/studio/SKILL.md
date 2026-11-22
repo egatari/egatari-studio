@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 <!-- generated: instruction-version -->
 **指示のバージョン：2a06805c**
-**スキルのバージョン：0.6.18-rc.2**
+**スキルのバージョン：0.6.18-rc.3**
 <!-- /generated: instruction-version -->
 
 make の「スキルのバージョン」の行（前のバージョンでは「スキルの版」）と違えば、両方のプラグインを更新するよう利用者に伝える。
@@ -141,7 +141,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
      logos/cover.png
      LICENSE      ロゴ・フォントの使用の条件（Egatari ファイルに一緒に含まれる）
    ```
-   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.18-rc.2/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
+   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.18-rc.3/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
    - フォントを替えるなら `theme.json` の `fonts`（Studio が含められる一覧から）。
    - 表紙の背景に画像を敷くには、画像をテーマのフォルダに置き、`tokens.css` で相対の `url()` を書く（例：`--cover-bg: url(cover.png) center/cover no-repeat;`）。ビルドが画像を埋め込み、テーマの hash と Egatari ファイルにも含まれる。テーマのフォルダの外のファイルは使えない（警告が出て拒まれる）。ないファイルは警告が出て `url()` のまま残る。ロゴは `theme.json` の `logos`。
 3. **確認する**：サンプルを `--theme <名前>` でビルドし、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。

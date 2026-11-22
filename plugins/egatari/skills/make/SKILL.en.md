@@ -12,7 +12,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
 **Instruction version: 2a06805c**
-**Skill version: 0.6.18-rc.2**
+**Skill version: 0.6.18-rc.3**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
 In Claude Code, use `/plugin update egatari@egatari`. In Codex, use `npx egatari@0.6.x skills update`. If a tool has no update path, leave out the instruction and tell the user the version from `egatari --version`.
