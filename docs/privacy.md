@@ -62,7 +62,7 @@ All of it is stored only in the browser and is not sent anywhere. Clearing the b
 | localStorage (Studio) | `egatari-rec-keep-recording` | A recording setting (one on/off switch) | Same |
 | localStorage (Studio) | `egatari-slides-open` | Whether the slide list was open | Same |
 | localStorage (Studio) | `egatari-studio-live-results-notice` | That the note about importing Live results was shown | Same |
-| localStorage (Studio) | `egatari-edit-role:<file ID>` | The answer to "Are you a creator of this file?" before saving, per file. The name and note given are written into the file, not here | Same |
+| localStorage (Studio) | `egatari-edit-role:<file ID>` | The answer to "Did you make this file?" before saving, per file. The name and note given are written into the file, not here | Same |
 | sessionStorage (Studio) | `motion-editor-reopen` | A mark to reopen the file right after changing the language (gone when the tab is closed) | Close the tab |
 | IndexedDB (Studio) | `motion-slides-editor` | "Handles" to recently opened working folders and Egatari files (markers pointing to their location; up to 8). The file contents are not stored | Clear site data |
 | IndexedDB (Studio) | `egatari-drafts` | Unsaved changes (while an Egatari file is being edited, the original file and the changed files, kept every few seconds; up to 10, removed 30 days after the last change; not used for working folders) | "Discard changes" or "Discard all" under "Unsaved changes" on the start screen, or clear site data |

@@ -291,17 +291,23 @@
     },
     {
       "file": "app/i18n.js",
-      "line": "editRoleTitle:",
+      "line": "infoLead:",
       "term": "created-by",
-      "reason": "The question before the first save (format spec §7.3) asks whether the person is one of the creators; en says “a creator of this lesson”.",
+      "reason": "The File info lead lists the fields that can be written (handoff #88); en says “creators”, the name of the field.",
       "pairs": true
     },
     {
       "file": "app/i18n.js",
-      "line": "editRoleMine:",
+      "line": "infoFCreators:",
       "term": "created-by",
-      "reason": "The answer to that question; en says “I am a creator of this lesson”.",
+      "reason": "The Creators field in File info (metadata.creators, handoff #88); en says “Creators (one per line)”.",
       "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "pattern": "編集した人として名前を残す",
+      "term": "draft-autosave",
+      "reason": "Approved wording of handoff #88: keeping your name in the file as the editor (metadata.edits), not the browser's kept unsaved changes."
     },
     {
       "file": "app/i18n.js",

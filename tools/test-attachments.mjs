@@ -553,8 +553,8 @@ const browser = answerCreator(await launch());
   ok(!(await page.$('#b-attach')) && (await page.textContent('#b-info')) === 'ファイルの情報…', 'editor: attachments are under File ▾ → ファイルの情報… (no toolbar button)');
   await clickCommand(page, '#b-info');
   await page.waitForSelector('#attach-list');
-  ok((await page.textContent('#panel-title')) === 'ファイルの情報' && /試行/.test(await page.textContent('#panel-body .info-h')) && !!(await page.$('#info-list')), 'editor: File info shows title/license/creators, then the attachments marked experimental (試行)');
-  ok((await page.$$eval('#info-list dt', (x) => x.map((e) => e.textContent))).slice(0, 3).join() === 'タイトル,ライセンス,作成者', 'editor: File info lists the title, the license and the creators');
+  ok((await page.textContent('#panel-title')) === 'ファイルの情報' && /試行/.test(await page.textContent('#panel-body .info-h')) && !!(await page.$('#info-form')), 'editor: File info shows the title/creators/license form, then the attachments marked experimental (試行)');
+  ok((await page.$$eval('#info-form > label', (x) => x.map((e) => e.textContent))).slice(0, 4).join() === 'タイトル,作成者（1 行に 1 人）,著作権の表示（例：© 2026 名前）,ライセンス', 'editor: File info has the title, the creators, the copyright notice and the license (handoff #88)');
   // 形式の版（ファイルの version と仕様の写しの版）と、作った Studio（generator.version）。再生器の添え書き
   const ixA = JSON.parse(scanDocument(HTML).byId.get(FORMAT.INDEX_ID).text);
   const snap = (() => { try { const j = JSON.parse(fs.readFileSync(path.join(ROOT, 'vendor', 'egatari-spec', 'SOURCE.json'), 'utf8')); return j.snapshot; } catch { return undefined; } })();

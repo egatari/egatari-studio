@@ -225,8 +225,10 @@ const steps = [
   ['test-app-earlier', ['tools/test-app-earlier.mjs', path.join(tmp, 'earlier')]],
   // 保存の前にプレーヤーが変わることを知らせる（format spec §4.1。exportPortable の playerChange）
   ['test-app-player-change', ['tools/test-app-player-change.mjs', path.join(tmp, 'player-change')]],
-  // 編集の記録 metadata.edits（format spec §3.6.1・§7.3）：組み立てが索引と deck-meta に写す・段 A の保存・プレーヤーのファイルの情報の「編集」・保存の前の「この教材の作成者ですか」
+  // 編集の記録 metadata.edits（format spec §3.6.1・§7.3）：組み立てが索引と deck-meta に写す・段 A の保存・プレーヤーのファイルの情報の「編集」・保存の前の「このファイルは、あなたが作ったものですか。」
   ['test-metadata-edits', ['tools/test-metadata-edits.mjs', path.join(tmp, 'metadata-edits')]],
+  // 「ファイルの情報…」でタイトル・作成者・著作権・ライセンス・クレジットを書く（handoff #88）と、初めての保存の問いでライセンスを選ぶ
+  ['test-app-file-info', ['tools/test-app-file-info.mjs', path.join(tmp, 'app-file-info')]],
   // 古いプレーヤー（1.9.0 より前）のファイルに段 A で編集の記録を足すときの知らせと「プレーヤーを新しくして保存」（段 B。handoff #53）
   ['test-app-old-player', ['tools/test-app-old-player.mjs', path.join(tmp, 'old-player')]],
   // 編集アプリの本（format spec §9C。v0.6.5 E2〜E5）：あとで読み込む本の道具・本の表示・本文の欄・合っていないかもしれない組・本だけを組み直す保存・印刷
@@ -374,7 +376,7 @@ const HINT_S = {
   'test-theme-metrics': 59, 'test-themes': 58, 'test-portable': 58, 'test-security': 56, 'test-check-svg-overlap': 47, 'test-layout-tate': 45, 'test-edit-modes': 44,
   'test-touch': 42, 'test-colab-app': 41, 'test-app-exported-marker': 39, 'test-app-drafts': 60, 'test-theme-version': 37, 'test-abcjs-browser': 37, 'test-app-save-rebuild': 35, 'test-app-mp4': 30, 'test-app-copyshot': 30, 'test-render-audio': 35,
   'test-check-overflow': 33, 'test-check-parity': 30, 'test-dev-server': 33, 'test-a11y': 30, 'check kokugo': 30, 'test-parts-host': 30, 'test-links': 29, 'test-config-preserve': 28,
-  'test-app-player-change': 27, 'test-bar-hint': 26, 'test-yanked': 26, 'test-llm': 26, 'test-live-results': 25, 'test-app-earlier': 24, 'test-exported-from': 24,
+  'test-app-player-change': 27, 'test-app-file-info': 60, 'test-bar-hint': 26, 'test-yanked': 26, 'test-llm': 26, 'test-live-results': 25, 'test-app-earlier': 24, 'test-exported-from': 24,
   'test-controls': 24, 'test-read-aloud': 24, 'test-file-shape': 23, 'test-viewer-input-browser': 21, 'test-extlinks': 21, 'test-shape': 20, 'test-ref-voice': 20,
   'test-colab': 17, 'test-blackout': 17, 'test-ink-comments': 16, 'check tmlr2026': 16, 'test-tools': 16, 'test-preview': 15, 'test-embed': 15, 'check pitch': 15, 'test-favicon': 12,
   'test-sheet': 12, 'test-extension-versions': 10, 'test-mount-hidden': 10,

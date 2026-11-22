@@ -5,7 +5,7 @@
 //    検査器（validateIndex・validateDeckMeta）は形の合わない edits を断る
 // 3. 段 A の保存：設定のファイルの edits が変わったら索引と deck-meta を同じ値に（組み直さない）。edits を消した設定のファイルは断る
 // 4. プレーヤーのファイルの情報（? の窓）：作成者の後に「編集：名前（内容）」、名前のない項目は「元の教材から編集されています」（日本語と英語）
-// 5. 編集アプリ：ほかの人の教材を初めて保存するとき「この教材の作成者ですか」と聞き、編集なら edits に足す（段 A のまま）。
+// 5. 編集アプリ：ほかの人の教材を初めて保存するとき「このファイルは、あなたが作ったものですか。」と聞き、編集なら edits に足す（段 A のまま）。
 //    名前が空でもライセンスが求めれば名前なしの項目。作成者と答えれば足さない。答えはこの端末で覚え、次からは聞かない
 import fs from 'node:fs';
 import os from 'node:os';
@@ -174,7 +174,7 @@ try {
     if (answer) {
       ok(asked, `${label}: before the first save, the editor asks whether you are a creator`);
       if (asked) {
-        ok((await page.textContent('#dlg-title')) === 'このファイルの作成者ですか' && (await page.textContent('#edit-role-creators')) === '作成者：Test Author', `${label}: the question names the creators`);
+        ok((await page.textContent('#dlg-title')) === 'このファイルは、あなたが作ったものですか。' && (await page.textContent('#edit-role-creators')) === '作成者：Test Author', `${label}: the question names the creators`);
         ok(await page.isDisabled('#dlg-save'), `${label}: Save is disabled until one answer is chosen`);
         await page.check('#edit-role-' + answer.role);
         if (answer.role === 'other') {
@@ -227,7 +227,7 @@ try {
   const sv = pe.evaluate(() => window.__APP_TEST.save('save'));
   await pe.waitForSelector('#dlg[open] #edit-role-other', { timeout: scaled(15000) });
   await pe.check('#edit-role-other');
-  ok((await pe.textContent('#dlg-title')) === 'Are you a creator of this file?' && (await pe.textContent('#edit-required')).startsWith('The license of this file (CC-BY-4.0) asks you to indicate changes.'), 'en: the question and the license note');
+  ok((await pe.textContent('#dlg-title')) === 'Did you make this file?' && (await pe.textContent('#edit-required')).startsWith('The license of this file (CC-BY-4.0) asks you to indicate changes.'), 'en: the question and the license note');
   await clickDlg(pe, '#dlg-cancel');
   await sv;
   ok((await pe.evaluate(() => window.__APP_TEST.state().portable.dirty)) && (await pe.evaluate(() => window.__APP_TEST.saved())) === null, 'en: Cancel → nothing saved, still unsaved');

@@ -62,7 +62,7 @@ Studio とプレーヤーは、次のものを送信しません。
 | localStorage（Studio） | `egatari-rec-keep-recording` | 録音の設定（1 つのオンとオフ） | 同上 |
 | localStorage（Studio） | `egatari-slides-open` | スライド一覧を開いていたか | 同上 |
 | localStorage（Studio） | `egatari-studio-live-results-notice` | ライブの結果を取り込む説明を表示した印 | 同上 |
-| localStorage（Studio） | `egatari-edit-role:<ファイルの ID>` | 保存の前の「このファイルの作成者ですか」の答え（ファイルごと）。答えた名前や内容はファイルに書き、ここには保存しない | 同上 |
+| localStorage（Studio） | `egatari-edit-role:<ファイルの ID>` | 保存の前の「このファイルは、あなたが作ったものですか。」の答え（ファイルごと）。答えた名前や内容はファイルに書き、ここには保存しない | 同上 |
 | sessionStorage（Studio） | `motion-editor-reopen` | 言語を切り替えた直後に、ファイルを開き直すための印（タブを閉じると消える） | タブを閉じる |
 | IndexedDB（Studio） | `motion-slides-editor` | 最近開いた作業フォルダや Egatari ファイルの「ハンドル」（場所を指す目印。最大 8 件）。ファイルの中身は保存しない | サイトデータを削除する |
 | IndexedDB（Studio） | `egatari-drafts` | 保存していない変更（Egatari ファイルを編集している間、数秒ごとに一時保存する元のファイルと変わったファイル。最大 10 件、最後の変更から 30 日で削除。作業フォルダでは使わない） | スタート画面の「保存していない変更」の「変更を破棄」か「すべて破棄」、またはサイトデータを削除する |

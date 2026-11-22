@@ -235,11 +235,14 @@ main{flex:1;min-height:0;display:flex}
 #dlg ul.my-themes li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 0;border-bottom:1px solid var(--line)}
 #dlg ul.my-themes button{padding:2px 10px;font-size:13px}
 #dlg .confirm{display:flex;gap:8px;align-items:flex-start;margin:10px 0}
-/* 保存の前の「この教材の作成者ですか」の名前と内容の欄（app/main.js の askEditRole） */
-#edit-fields{display:grid;gap:4px;margin:4px 0 0 26px}
-#edit-fields[hidden]{display:none}
+/* 保存の前の「このファイルは、あなたが作ったものですか。」の欄（app/main.js の askEditRole） */
+#edit-fields,#edit-own{display:grid;gap:4px;margin:4px 0 0 26px}
+#edit-fields[hidden],#edit-own[hidden]{display:none}
 #edit-fields label{margin-top:6px}
-#edit-fields input{width:100%;box-sizing:border-box;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+#edit-own .confirm{margin:2px 0}
+#edit-own .label{margin:6px 0 0;font-weight:600}
+#edit-own > label:not(.confirm){margin-top:6px}
+#edit-own textarea,#edit-own input[type=text],#edit-fields input{width:100%;box-sizing:border-box;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
 #dlg pre.tech{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--muted);background:var(--bg);padding:8px 10px;border-radius:8px;max-height:30vh;overflow:auto}
 /* 道具の列の一覧（「開く ▾」「保存 ▾」「書き出す ▾」）：まとめて、1280 px 以上で 1 行に収める */
 .menu{position:relative;display:inline-flex}
@@ -409,10 +412,14 @@ main{flex:1;min-height:0;display:flex}
 #dlg #live-panel textarea{min-height:0;font:12px/1.4 ui-monospace,Menlo,monospace}
 #dlg .choices-grid h3{font-size:14px;margin:10px 0 4px}
 #dlg .choices-grid .row{justify-content:flex-start;flex-wrap:wrap;gap:6px}
-#panel .info-list{display:grid;grid-template-columns:max-content 1fr;gap:4px 12px;margin:8px 0}
-#panel .info-list dt{color:var(--muted)}
-#panel .info-list dd{margin:0;overflow-wrap:anywhere}
-#panel .info-list dd.none{color:var(--muted);font-style:italic}
+/* ファイルの情報…の欄（handoff #88。app/main.js の infoSection） */
+#panel .info-form{display:grid;gap:4px;margin:8px 0}
+#panel .info-form label{margin-top:6px;color:var(--muted)}
+#panel .info-form input,#panel .info-form select,#panel .info-form textarea{width:100%;box-sizing:border-box;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+#panel .info-form textarea{resize:vertical}
+#panel .info-form [hidden]{display:none}
+#panel .info-form .hint{margin:2px 0}
+#panel .info-form .row{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 #panel .info-h{margin:16px 0 6px;font-size:15px;border-top:1px solid var(--line);padding-top:12px}
 #panel .buildwarn{margin:8px 0;padding:6px 10px;border:1px solid var(--line);border-radius:8px}
 #panel .buildwarn summary{cursor:pointer;font-weight:600}
