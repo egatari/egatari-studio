@@ -1096,7 +1096,18 @@ export function setupLlm(app) {
   const canReplace = () => !!(S.ws && S.deckFile && !(S.portable && (S.portable.readOnly || S.portable.tierAOnly)));
   // mode：'new'（新規作成）| 'insert'（スライドの挿入。opts.after）| 'replace'（修正。opts.results：品質チェックの結果があれば）。
   // opts.focusPaste：貼り付けの欄から始める（修正依頼をもう写したとき）。戻り値：作成・挿入・置き換えをしたか
+  // 2 度押し（ダブルクリック・遅い端末での押し直し）：開く途中（③ のテーマの一覧・原稿を読む間）か、この窓（#ai-howto）が開いていれば何もしない。
+  // 共通の窓（ask）は開き直すと本体を作り直すので、遅れて終わった 2 度目が入力の途中の欄を消していた。窓が出たら次を受ける
+  // （閉じた後の作成・挿入の後始末を待たない：構成案の続きの窓は、前の窓の後始末の途中で開く）
+  let aiOpening = null;
   async function aiDialog(mode, opts = {}) {
+    if (aiOpening || document.querySelector('#dlg[open] #ai-howto')) return false;
+    const me = {};
+    aiOpening = me;
+    const shown = () => { if (aiOpening === me) aiOpening = null; };
+    try { return await aiDialogRun(mode, opts, shown); } finally { shown(); }
+  }
+  async function aiDialogRun(mode, opts, opened) {
     if (mode !== 'new' && !canReplace()) { toast(T.readOnlyNoEdit, true); return false; }
     const titles = opts.batch ? X.steps.batch : X.steps[mode];
     outlineRows = null; batchNow = null; newChoice = null;
@@ -1267,6 +1278,7 @@ export function setupLlm(app) {
         buttons: [{ id: 'cancel', label: X.cancel }, { id: 'import', label: X.go[mode], pri: true }],
         // 押せる［作成］［置き換える］：窓が閉じる前に覆う（閉じた窓の後ろの、はじめの画面を 1 こまも見せない）
         validate: (id) => { if (id === 'import' && covers(mode) && !unanswered() && !outlinePhase() && fields.ready()) startCover(mode); return true; } });
+      opened();
       syncGo();
       if (focusPaste) setTimeout(() => { fields.focus(); }, 0);
       else if (focusTitle) { const f = focusTitle; focusTitle = null; setTimeout(f, 0); }

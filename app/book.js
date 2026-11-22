@@ -183,12 +183,16 @@ export function createBook(ctx) {
   // ---------------------------------------------------------------- 「本」の板（E3・E4）
   const panelShown = () => !!$('book-panel') && !$('panel').hidden;
   function closeBookPanel() { if (panelShown()) $('panel').hidden = true; }
+  // 開く途中（本文を読んでいる間）の 2 度押しは何もしない：2 度目も「開く」になり、遅れて終わった描き直しが入力の途中の欄を作り直して消していた
+  let opening = false;
   async function togglePanel(on) {
+    if (opening) return;
     if (on === undefined) on = !panelShown();
     if (!on) { if (B.dirty && !(await discardOk())) return; closeBookPanel(); return; }
     if (!B.present) { ctx.toast(T.noBook, true); return; }
     if (!B.file || !(B.last && B.last.files.includes(B.file))) B.file = B.last && B.last.files.length ? B.last.files[0] : null;
-    await loadText();
+    opening = true;
+    try { await loadText(); } finally { opening = false; }
     drawPanel();
   }
   async function discardOk() {
@@ -212,6 +216,8 @@ export function createBook(ctx) {
   }
   function drawPanel() {
     const r = B.last;
+    // 組み直しのたびの描き直し（開いた直後の本の道具の読み込みでも組み直す）：保存していない入力は欄に残す
+    const was = $('book-text'), typed = B.dirty && was ? was.value : null;
     const body = [];
     if (B.error) body.push(el('p', { cls: 'bad', id: 'book-error', text: T.renderFailed(B.error) }));
     // E3：合っていないかもしれない組
@@ -252,7 +258,7 @@ export function createBook(ctx) {
       B.file = sel.value; await loadText(); drawPanel();
     };
     const ta = el('textarea', { id: 'book-text', spellcheck: 'false', 'aria-label': T.textLabel(B.file || ''), lang: deckLang() });
-    ta.value = B.loaded === null ? '' : B.loaded;
+    ta.value = typed !== null ? typed : B.loaded === null ? '' : B.loaded;
     if (B.loaded === null) ta.disabled = true;
     const save = el('button', { type: 'button', id: 'book-save', cls: 'pri', text: T.save, onclick: () => saveText(ta.value) });
     const revert = el('button', { type: 'button', id: 'book-revert', text: T.revert, title: T.revertTip, onclick: () => { ta.value = B.loaded || ''; B.dirty = false; mark(); } });

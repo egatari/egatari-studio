@@ -1000,7 +1000,7 @@ const ui = createEditorUI({
     { name: 'panel', isOpen: () => !$('panel').hidden, close: () => closePanel() }],
   onPos: () => audio.onPos(),
   // 編集パネルの HTML の欄への画像のドロップ：「画像を挿入」の窓をそのファイルで開く（app/image-insert.js）
-  imageDrop: { label: T.imgDropHere, open: (f) => imageInsert.open(f).catch((e) => toast(String(e.message || e), true)) },
+  imageDrop: { label: T.imgDropHere, open: (f) => openImage(f).catch((e) => toast(String(e.message || e), true)) },
   // 読み方の欄（#101）：入れた読みでその語だけを、端末の声（#89 と同じ readAloud）か、この PC の AI 音声で試す
   pronounce: {
     readAloud: (text, lang) => readAloud(text, lang, { terms: (RES.yomi && RES.yomi.terms) || [] }),
@@ -1153,6 +1153,7 @@ const imageInsert = createImageInsert({
   T, el, ask, toast, apply: (fn) => slidesPanel.apply(fn), at: () => slideAt(), pos: () => S.pos, guard: slideGuard,
   readDeck: () => (S.ws ? S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) : null),
 });
+const openImage = once((f) => imageInsert.open(f));   // 「画像を挿入…」と HTML の欄へのドロップで同じ 2 度押しの止め
 function themeItem() {
   const b = $('b-theme-switch'), w = themeSwitchWhy();
   b.setAttribute('aria-disabled', w ? 'true' : 'false');
@@ -1581,6 +1582,19 @@ async function saveWithPicker(name, html, startIn, live = () => true) {
 // buttons：[{id, label, pri, needsConfirm}]。confirmText があればチェックボックス（入れるまで needsConfirm のボタンは押せない）
 // 前の確かめが開いたまま次を聞くとき（別の作業場所を開いたなど）は、前のものを「取り消し」で終える（待ったままにしない）
 let askPending = null;
+// 窓を開く項目の 2 度押し（ダブルクリック・遅い端末での押し直し・試験の押し直し）：前の呼び出しが終わるまで（開く前の await・開いた窓・閉じた後の書き込み）、
+// 2 度目は何もしない（false）。ask は、開いている間にもう一度呼ぶと本体を作り直す（前の呼び出しは取り消し）ので、遅れて終わった 2 度目が
+// 入力の途中の欄を作り直して消していた（「ファイルの情報…」と同じ。e0e14271）
+function once(fn) {
+  let busy = false;
+  return async (...a) => {
+    if (busy) return false;
+    busy = true;
+    try { return await fn(...a); } finally { busy = false; }
+  };
+}
+// 道具の列の項目の onclick：once で包み、失敗は知らせに
+const guarded = (fn) => { const g = once(fn); return () => g().catch((e) => toast(String(e.message || e), true)); };
 // validate(id)：押したボタンで閉じてよいか（false なら開いたまま。「参加者用（再生のみ）…」のライブの直すことなど）
 function ask({ title, body, buttons, confirmText = null, kind = '', validate = null }) {
   if (askPending) { const r = askPending; askPending = null; r('cancel'); }
@@ -2556,10 +2570,12 @@ async function participantExport() {
   if (S.portable && S.ws.dirty) { toast(T.playOnlyUnsaved, true); return; }
   const box = el('div', { id: 'play-live-box', hidden: '' });
   const cb = el('input', { type: 'checkbox', id: 'play-live' });
+  let liveOpening = false;
   cb.addEventListener('change', async () => {
     box.hidden = !cb.checked;
     $('dlg').classList.toggle('wide', cb.checked);
-    if (cb.checked && !box.firstChild) { liveHost = box; await livePanel.open(); }
+    // 入れて・外して・また入れたとき、読み込みの途中の 2 度目の open で、入力の途中の欄を作り直さない
+    if (cb.checked && !box.firstChild && !liveOpening) { liveOpening = true; liveHost = box; try { await livePanel.open(); } finally { liveOpening = false; } }
   });
   let v;
   try {
@@ -2820,23 +2836,23 @@ async function saveAsDialog() {
     buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.saveAsGo, pri: true }] });
   if (v === 'save') await savePortable(cb.checked ? 'new' : 'copy');
 }
-$('b-saveas').onclick = () => saveAsDialog().catch((e) => toast(String(e.message || e), true));
+$('b-saveas').onclick = guarded(saveAsDialog);
 $('b-unpack').onclick = () => exportFolder();
 $('b-export-portable').onclick = exportPortableFile;
-$('b-export-play').onclick = () => participantExport().catch((e) => toast(String(e.message || e), true));
-$('b-export-mp4').onclick = () => mp4Dialog().catch((e) => toast(String(e.message || e), true));
-$('b-export-scorm').onclick = () => scormExport().catch((e) => toast(String(e.message || e), true));
+$('b-export-play').onclick = guarded(participantExport);
+$('b-export-mp4').onclick = guarded(mp4Dialog);
+$('b-export-scorm').onclick = guarded(scormExport);
 $('b-info').onclick = () => lessonInfo().catch((e) => toast(String(e.message || e), true));
-$('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message || e), true));
-$('b-image').onclick = () => imageInsert.open().catch((e) => toast(String(e.message || e), true));
+$('b-insert').onclick = guarded(insertDialog);
+$('b-image').onclick = () => openImage().catch((e) => toast(String(e.message || e), true));
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
 $('b-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.removeAt(i); };
-$('b-bookmark').onclick = () => bookmarkDialog().catch((e) => toast(String(e.message || e), true));
+$('b-bookmark').onclick = guarded(bookmarkDialog);
 $('b-bookmark-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } setBookmarkAt(i, null).catch((e) => toast(String(e.message || e), true)); };
 // スライド ▾ を開く前に（クリック・↓↑）、対象のスライドのしおりに合わせる（一覧の項目は開いたときに数える：menuItems）
 for (const ev of ['click', 'keydown']) $('b-slidemenu').addEventListener(ev, syncBookmarkItems, true);
 $('b-revise-cmd').onclick = () => llm.revise();
-$('b-theme-switch').onclick = () => themeSwitch.open().catch((e) => toast(String(e.message || e), true));
+$('b-theme-switch').onclick = guarded(() => themeSwitch.open());
 $('b-videomode').onclick = () => setPreviewMode(S.previewMode === 'video' ? 'talk' : 'video');
 $('b-lecturemode').onclick = () => setPreviewMode(S.previewMode === 'lecture' ? 'talk' : 'lecture');
 $('b-comments').onclick = () => ui.toggleComments();
