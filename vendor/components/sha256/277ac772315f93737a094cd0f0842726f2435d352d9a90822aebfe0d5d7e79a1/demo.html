@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m-contrast の見本</title>
+<!-- 組み方：node kit/build.mjs components/contrast/demo.html -o components/contrast/out/demo.html（研究と値はすべて架空） -->
+<style>
+</style>
+</head>
+<body>
+<div id="stage">
+
+<section class="slide">
+  <h2>通学時間と成績の研究の位置づけ（架空）</h2>
+  <div class="body">
+    <m-contrast style="height:440px">
+      <script type="application/json">{
+        "kind": "answers",
+        "rows": [
+          {"q": "通学が長いと成績は下がるか", "before": {"text": "下がる（1 時間で 3 点）", "by": "[1]"},
+           "after": "睡眠をそろえると差は消える", "basis": "2 千人の 3 年分の記録"},
+          {"q": "睡眠はどれだけ効くか", "before": {"unknown": true, "near": "大人では 1 時間で 5 %（[2]）"},
+           "after": "1 時間で 4 点", "basis": "同じ記録"}
+        ]
+      }</script>
+    </m-contrast>
+  </div>
+  <div class="concl"><span>→ 従来の答えを、睡眠を通して言い直した</span></div>
+</section>
+
+<section class="slide">
+  <h2>記述式の自動採点の仮定（架空）</h2>
+  <div class="body">
+    <m-contrast style="height:440px">
+      <script type="application/json">{
+        "kind": "assumptions",
+        "studies": [
+          {"label": "[1]", "chips": ["正答は 1 つ", "採点者は 1 人"], "result": "正答率"},
+          {"label": "[2]", "chips": ["正答は 1 つ", "採点者は 3 人"], "result": "採点者のずれ"}
+        ],
+        "self": {"kept": ["採点者は 3 人"], "dropped": ["正答は 1 つ"], "added": ["部分点がある"], "result": "部分点の付け方のずれ"}
+      }</script>
+    </m-contrast>
+  </div>
+  <div class="concl"><span>→ 正答が 1 つという仮定を外し、部分点を加えた</span></div>
+</section>
+
+<section class="slide">
+  <h2>Earlier and our answers (fictional)</h2>
+  <div class="body" lang="en">
+    <m-contrast order="row" style="height:440px">
+      <script type="application/json">{
+        "kind": "answers",
+        "heads": ["Question", "Before", "Our study"],
+        "selfLabel": "Our study",
+        "rows": [
+          {"q": "Does a long commute lower grades?", "before": {"text": "Yes, 3 points an hour", "by": "[1]"}, "after": "Not once sleep is equal", "basis": "2,000 pupils, 3 years"},
+          {"q": "How much does sleep matter?", "before": {"unknown": true, "near": "Adults: 5% an hour [2]"}, "after": "4 points an hour", "basis": "Same records"}
+        ]
+      }</script>
+    </m-contrast>
+  </div>
+  <div class="concl"><span>→ One row per step with order="row"</span></div>
+</section>
+
+</div>
+</body>
+</html>

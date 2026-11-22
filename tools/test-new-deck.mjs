@@ -117,7 +117,7 @@ ok('parts list (#124): grouped by what to convey, the subject forms last (first 
   assert.deepEqual(partsOfSet('stats').sort(), ['m-boxplot', 'm-heatmap', 'm-hist', 'm-seq']);
 });
 ok('a part set without a receiver (univ, owner 11/17): its parts are in the parts list without a set name and not ticked at first; only the paid plan describes them', () => {
-  assert.deepEqual(PAID_ONLY, ['m-ctable', 'm-matrix', 'm-vector']);   // m-matrix：パーツ集 2.17.0（univ、受け皿なし）
+  assert.deepEqual(PAID_ONLY, ['m-contrast', 'm-ctable', 'm-matrix', 'm-vector']);   // m-matrix：パーツ集 2.17.0（univ、受け皿なし）
   for (const t of PAID_ONLY) { assert.equal(TIERS.parts[t].tier, 'specialized', t); assert.equal(TIERS.parts[t].set, undefined, t); assert.ok(partsList(null).some((g) => g.parts.includes(t)), t); }
   assert.ok(!initialParts([]).some((t) => PAID_ONLY.includes(t)));
   // 軽量の指示（free）の ④ には出さない（印を付けても指示に入らないので）。詳細の指示（paid）とプランなしでは出す
@@ -127,8 +127,8 @@ ok('a part set without a receiver (univ, owner 11/17): its parts are in the part
   assert.ok(!SET_LABELS.some((x) => x.set === 'univ') && !PACK_DATA.sets.includes('univ'));
   for (const lang of ['en', 'ja']) {
     const free = buildPack({ sets: [], lang, plan: 'free' }), paid = buildPack({ sets: [], lang, plan: 'paid' });
-    assert.ok(!/m-ctable|m-matrix|m-vector/.test(free), lang + ': not in the free plan');
-    assert.ok(['m-ctable', 'm-matrix', 'm-vector'].every((t) => paid.includes('### `<' + t + '>`')), lang + ': described on the paid plan');
+    assert.ok(!/m-contrast|m-ctable|m-matrix|m-vector/.test(free), lang + ': not in the free plan');
+    assert.ok(['m-contrast', 'm-ctable', 'm-matrix', 'm-vector'].every((t) => paid.includes('### `<' + t + '>`')), lang + ': described on the paid plan');
   }
 });
 ok('initial ticks: every standard part, and the parts of the given sets (the command\'s part-set instructions)', () => {

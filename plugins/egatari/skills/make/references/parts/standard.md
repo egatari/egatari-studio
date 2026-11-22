@@ -1,27 +1,28 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示のバージョン：2a06805c
+指示のバージョン：ee044521
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|
 | `<m-bars>` | 棒をステップごとに 0 から伸ばす（縦棒・横棒・組の棒・積み上げ棒）。値の軸の上限をステップで広げて「軸を突き抜ける伸び」も見せられる | 組の step と scale の step の最大（既定は組 1 つ = 1 ステップ。per-step で n 組ずつ） | `{groups:[{label?,value?:num,values?:num[],err?:num\|any[],step?,at?,tone?} (value or values),…],sig?:{from:int,to:int,group?:int,label?,step?}[],series?:{label?,tone?}[],scale?:{step,max?:num,at?}[],max?:num}` |
 | `<m-cards>` | カード（番号の丸・アイコン・見出し・説明）を横一列か 2 段に並べ、ステップごとに出す。矢印で順を、枠の色で強調を見せる | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{n?:str,icon?:str,title:str,text?:str,step?,tone?}[]}` |
 | `<m-compare>` | 2 つ（3 つまで）を横に並べて比べる表。一方の列、もう一方の列、それから行ごとの違い | 列の数 + 1（違いのステップ。diff も better もなければ列の数だけ） | `{sides:{label,tone?,step?}[],rows:{label?,values:(str\|num)[],diff?:str,better?:int}[]}` |
+| `<m-contrast>` | 研究の位置づけの図。問いごとに従来の答え（不明は破線）と本研究の答えを並べるか、近い研究の仮定の札と本研究の札（外した・加えた）を並べ、ステップで出す | answers は 問い → 従来の答え → 矢印と本研究の答え（order="row" で行ごと）。assumptions は 近い研究 → 本研究の行（残した・外した）→ 加えた → 得られること。order="whole" で 1 | `{kind?:"answers"\|"assumptions",heads?:[str,str,str],selfLabel?:str,rows?:{q:str,after:str,basis?:str,before:{text?:str,by?:str,unknown?:bool,near?:str}}[],studies?:{label,chips:str[],result:str}[],self?:{dropped?:str[],kept?:str[],added?:str[],result:str}}` — answers：rows は [{"q", "before": {"text", "by"} か {"unknown": true, "near"}, "after", "basis"?}]。assumptions：studies は [{"label", "chips", "result"}]、self は {"kept", "dropped", "added", "result"} |
 | `<m-ctable>` | 分散分析表・分割表・潜在結果の表を、ステップごとに埋める。使ったセルと埋めたセルを示し、表の下に式。計算を確かめる | 埋めるステップの数（anova は値の列の数、contingency は計・期待度数・χ²・オッズ比、po は 3） | `{kind:"anova"\|"contingency"\|"po"\|"table",rows?:(object\|str\|any[])[],cols?:str[],n?:num[][],margins?:bool,expected?:num[][],chi2?:num,or?:num,units?:{id?:str,t:0\|1,y0:num,y1:num}[],ate?:num,naive?:num,header?:str[],note?}` |
 | `<m-curves>` | 同じ座標軸に線を 1 本ずつ引く（線の名前は凡例でなく線の端に直接書く） | step の最大（既定は系列の数） | `[{label?,f?:str,pts?:[num,num][],tone?,step?,labelAt?:num,color?:str,dash?:bool,xr?:[num,num],area?:any[],areaLabel?:str\|any[],at?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom"\|"start"\|"middle"\|"end",dx?:num,dy?:num,ly?:num} (f or pts),…]` — データは配列そのもの（{"series": […]} ではない）。軸は属性に書く（xr="[0,10]" xl="…"）。式の欄は f で、変数は x（fn・u ではない） |
 | `<m-cycle>` | 循環の図。項目の箱を円の上に 12 時から時計回りに並べ、円に沿った矢印でつなぐ（最後から最初へ戻る矢印も） | ステップの数（既定は 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,step?,at?}[],center?:{label?,tex?,note?,tone?,step?,at?},edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` |
 | `<m-fishbone>` | 原因と結果の図（特性要因図・フィッシュボーン図）を、大骨 1 本ずつ組み立て、最後に結果（頭）を出す。座標は書かず、配置はパーツが決める | 大骨の数 + 1（頭）。節と edges の step があればその最大 | `{effect:{label?,tex?,note?,tone?,step?,at?},nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — parent のない節が大骨（分類）、その子が原因、孫が細かい原因（3 段まで） |
 | `<m-flow>` | 流れ図の箱と矢印をステップごとに出して、図を組み立てる | nodes と edges の step の最大 | `{nodes:{id:str\|int,label?,tex?,x:num,y:num,w:num,h:num,step?,tone?,at?,shape?:str}[],edges?:{from:str\|int,to:str\|int,step?,label?,tone?,dash?:bool,kind?:"money"\|"service"\|"data",amount?:str\|num,shift?:num,pulse?:bool\|any[],pulseAt?:num,offset?:num,at?,loop?:bool\|str}[]}` |
 | `<m-kpi>` | 大きな数字のカード（KPI）をステップごとに出す。数字は数え上げ、下に増減の矢印と一言 | カードの step の最大（既定はカード 1 枚 = 1 ステップ。per-step で n 枚ずつ） | `{cards:{label?,value:num,digits?:int,unit?:str,prefix?:str,from?:num,tone?,delta?:{dir?:"up"\|"down",text?:str,good?:bool},note?,step?,at?}[]}` |
-| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で結論の 1 文と、空きマスは — と注、下に設計の行）か、研究 × 要素の表（✓ △ × や短い字、列の上に要件の出どころ）を、ステップで埋める | cross は 軸と空の表 → 従来の研究（と設計の行の従来）→ 本研究（と設計の行の本研究）→ 注（order="whole" で 1）。attributes は 列・行ごと（order）＋本研究の枠 | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],design?:{cols:str[],rows:{label?,self?:bool,cells:str[]}[]},self?:str}` — cross：rows・cols は {"axis", "values"}、cells[r][c] は研究の名前の並び・{"self": true か "結論"}・{"none": "理由"}、design は {"cols", "rows"}。attributes：cols は名前か {"name", "source"}、rows は {"label", "cells", "self"?} |
+| `<m-matrix>` | 研究の位置づけの表。2 本の軸の交差の表（マスに研究の名前、本研究のマスを枠で結論の 1 文と、空きマスは — と注、下に設計の行）か、研究 × 要素の表（✓ △ × や短い字、列の上に要件の出どころ）を、ステップで埋める | cross は 軸と空の表（0）→ 従来（1）→ 本研究（2）→ 注（3、none のマスがあるときだけ）、order="whole" で 1。attributes は whole で 1、col・row で 列・行の数 + 1（枠） | `{kind?:"cross"\|"attributes",rows?:object\|any[],cols?:object\|any[],cells?:(any[]\|object)[][],marks?:{mark:str,text:str}[],design?:{cols:str[],rows:{label?,self?:bool,cells:str[]}[]},self?:str}` — cross：rows・cols は {"axis", "values"}、cells[r][c] は研究の名前の並び・{"self": true か "結論"}・{"none": "理由"}、design は {"cols", "rows"}。attributes：cols は名前か {"name", "source"}、rows は {"label", "cells", "self"?} |
 | `<m-menu>` | スライドへのリンクのカードを格子に並べる（目次・単元の選び方）。カードは <a href="#<スライドの id>">、行ったスライドに「見た」の印 | ceil(カードの数 / per-step)（既定の per-step="0" なら 0：初めから全部） | 子の `<a href>`（JSON ではない） |
 | `<m-pie>` | 円グラフとドーナツグラフ。切れの名前と値・割合は、大きい切れなら中に、小さい切れなら外に引き出し線で書く | 既定は 1（全部を一度に）。per-step で n 切れずつ、切れの step で直接 | `{slices:{label?,value:num,tone?,step?,place?:"auto"\|"in"\|"out"}[],center?:str}` — 切れは "slices" に書く（"data" や "groups" ではない）。value は数（"26%" のような字ではない）。12 時の位置から時計回りに、書いた順に並ぶ |
 | `<m-predict>` | 予想してから答えを開く。選択肢ごとの人数を棒で見せ、答えのステップで正解に枠 | 0 問いと選択肢、1 人数の棒、answer-step（既定 2）で答え | `{question?:str,choices:{label,tone?}[],answer:int,counts?:int[],note?,labels?:{correct?:str}}` — choices は {"label": …} の並び（字の並びではない）。answer は正しい選択肢の番号（0 から数える）。counts（省略可）は選択肢ごとに 0 以上の整数を 1 つずつ |
 | `<m-quad>` | 2 軸の位置づけ（ポジショニングマップ・SWOT 風の 4 象限）に、点をステップごとに 1 つずつ置く | 点の step と to.step の最大（既定は点 1 つ = 1 ステップ） | `{x?:{lo?:str,hi?:str},y?:{lo?:str,hi?:str},quads?:{tr?:str,tl?:str,bl?:str,br?:str,fill?:str},items:{label?,x:num,y:num,step?,at?,tone?,anchor?:"right"\|"left"\|"above"\|"below",r?:num,self?:bool,to?:{x:num,y:num,label?,step?,at?}}[]}` |
 | `<m-scatter>` | 散布図。点の組（系列）をステップごとに出し、そのあと傾向の線（最小二乗の直線か、書いた 2 点）を引く | 系列の数 ＋ 傾向の線（既定は系列 1 つ = 1 ステップ、そのあと線をまとめて 1 ステップ。系列・線の step で直接） | `{series:{label?,tone?,step?,at?,points:([num,num]\|{x:num,y:num,label?,anchor?:"right"\|"left"\|"above"\|"below"\|"top"\|"bottom",tone?})[]}[],trend?:str\|{fit?:"linear",pts?:[[num,num],[num,num]],series?:int\|any[],label?,tone?,dash?:bool,step?,at?,digits?:int}\|[the same {…},…]}` — 点は [x, y] か {"x", "y", "label"}。軸は属性に書く（xr="[0,10]" xl="…"）。trend は "linear" か {"fit": "linear", "label": "…"} か {"pts": [[x0, y0], [x1, y1]]} |
 | `<m-timeline>` | 年表。出来事を時間の軸の上に 1 つずつ出す。期間は軸に沿って長さのとおりに描き、重なれば段を分ける。end は含まない（"1912" は 1912 年の初め） | 出来事の数（既定は時刻の順に 1 つ = 1 ステップ。per-step で n 個ずつ、`node` の step が優先） | `{nodes:{id?:str\|int,label?,tex?,note?,tone?,when:num\|str,whenLabel?:str,end?:num\|str,lane?:str,step?,at?,after?:(str\|int)[],progress?:num}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[]}` — when / end: a number or "YYYY", "YYYY-MM", "YYYY-MM-DD"; end is exclusive ("1912" is the start of 1912). whenLabel: the date text shown instead of the computed one (when still sets the position). A `node` with end is a period (a band); lane groups bands into named lanes |
-| `<m-tree>` | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置はパーツが決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | `{nodes:{id:str\|int,label?,tex?,note?,tone?,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — parent のない節（根）はちょうど 1 つ |
+| `<m-tree>` | 階層・分類の木（組織図、生物の分類など）を、根から 1 段ずつ組み立てる。座標は書かず、配置はパーツが決める | 節の深さの数（by="level"、既定）か節の数（by="node"）。節と edges の step があればその最大 | `{nodes:{id:str\|int,label?,tex?,note?,tone?,dash?:bool,parent?:str\|int,branch?:str,step?,at?}[],edges?:{from:str\|int,to:str\|int,label?,tone?,dash?:bool,step?,at?}[],path?:(str\|int)[],pathStep?:int,pathNote?:str}` — parent のない節（根）はちょうど 1 つ |
 | `<m-vector>` | 平面のベクトルの和・差・スカラー倍・正射影・内積と、2 × 2 の行列の 1 次変換・固有ベクトル・基底の取り替えを 1 ステップずつ。右に式 | ベクトル → ops を 1 つずつ → 行列の変換（matrix があれば）→ 新しい基底（basis があれば） | `{range?:[num,num,num,num],vectors:{id:str,v:[num,num],label?,from?:[num,num]}[],ops?:[{sum?:[str,str],diff?:[str,str],scale?:[str\|num,str\|num],proj?:[str,str],dot?:[str,str],as?:str,label?,value?:num\|num[],note?} (sum or diff or scale or proj or dot),…],matrix?:[[num,num],[num,num]],basis?:[[num,num],[num,num]],basisLabels?:[str,str],show?:("grid"\|"unit"\|"eigen"\|"det")[]}` |
 | `<m-venn>` | 2 つか 3 つの集合の円（ベン図）。集合を 1 つずつ出し、最後に重なりを強めてその中の項目を出す | 集合の数 + 1（overlaps="each" なら 集合の数 + 項目のある重なりの数。項目のある重なりがなければ重なりすべての数：2 集合で 1、3 集合で 4） | `{sets:{label,tone?}[],regions?:{A?:str[]\|str,B?:str[]\|str,C?:str[]\|str,AB?:str[]\|str,AC?:str[]\|str,BC?:str[]\|str,ABC?:str[]\|str}}` |
 
@@ -117,6 +118,22 @@
 - 見せ方（`variant`）：`fade`・`slide`・`reveal`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 字は `size`（既定 28 px）から 24 px まで縮めて要素の箱に収める。表は上にそろえ、余った高さは行に少し分ける
 
+### `<m-contrast>`
+
+データ（子の `<script type="application/json">`）の例: `{"kind":"answers","rows":[{"q":"差はどこにあるか","before":{"unknown":true,"near":"国の間の差は [2]"},"after":"7 割は学校の間","basis":"3 年分の全数データ"}]}`
+
+| 値 | 型 | 既定 | 意味 |
+|---|---|---|---|
+| `order` | string | `""` | 出し方：build（既定。answers は列ごと、assumptions は研究 → 本研究）・row（answers の行ごと）・whole |
+| `size` | number | `28` | 字の大きさ（px、24 以上。入らなければ 24 まで縮める） |
+
+新しさが答えの値や見方にあるとき（m-matrix の表にならないとき）の図。`kind` を子の JSON に書く。
+
+- `answers`（既定、問いと答え）：`rows` は 1〜3 個の `{"q": "問い", "before": {"text": "従来の答え", "by": "[1]"}, "after": "本研究の答え", "basis": "根拠"}`。従来の答えがないときは `"before": {"unknown": true, "near": "近い条件で分かっていること [2]"}`（破線の箱に「不明」）
+- `assumptions`（仮定の差分）：`studies` は 1〜3 個の `{"label": "[2]", "chips": ["仮定", …], "result": "得られること"}`、`self` は `{"kept": [...], "dropped": [...], "added": [...], "result": "新しく得たこと"}`。外した札は「外した」と書いて取り消し線、加えた札は「加えた」と書いて `--emph`
+- 本研究は字で書いて `--emph` の枠で囲む。`selfLabel` で名前を替え（既定「本研究」）、`heads` で 3 つの列の見出しを替える（answers は 問い・従来・本研究、assumptions は 研究・仮定・得られること）
+- 最も近い従来研究を `by` か `label` で名指しする。前提ごとの対比は m-tree（`dash: true`）
+
 ### `<m-ctable>`
 
 データ（子の `<script type="application/json">`）の例: `{"kind":"anova","rows":[{"name":"要因 A","ss":120,"df":2,"ms":60,"f":7.5},{"name":"誤差","ss":96,"df":12,"ms":8},{"name":"全体","ss":216,"df":14}]}`
@@ -162,7 +179,7 @@
 | `area` / `areaLabel` | 塗る区間 `[a, b]`（複数可、null は端）とラベル |
 | `labelAt` / `anchor` / `dx` / `dy` / `ly` | 名前の位置：横軸の値 `labelAt` の点に置く（既定は線の端）。`anchor` は向き（`right` `left` `above` `below`）。`ly` は縦軸の値で高さを決める |
 
-`size="40"`：字の大きさ（24 以上）。
+`size="40"`：字の大きさ（24 以上）。`xt` に字の目盛り：`xt='["4月","5月","6月"]'`（x = 1, 2, 3）か `[[0, "2023年度"], …]`。
 
 `f` は算術の式で、コードとしては実行しない：数、`x`、`Math` の関数と定数（`sin(x)` とも `Math.sin(x)` とも書ける。`Math.random` は使えない）、`N(x, 平均, 標準偏差)`、`+ - * / % **`、比較（`< <= > >= == !=`）、`&& || !`、`? :`、括弧。べき乗は `**`（`^` は書けない）。書けない式はエラーの表示になる。
 
@@ -284,7 +301,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - attributes：`cols` は要素の名前か `{"name", "source"}`（要件が来た応用の必要）、`rows` は `{"label", "cells", "self"}`（本研究を先頭に）。空のマスは「—」。記号の意味は `marks`（● 満たす・× 満たさない・— 記載なし）
 - 本研究は「本研究」と字で書いて `--emph` の枠で囲む（色だけで分けない）
 
-型の選び方（新しさの在りか）：問題の記述（目的・設定・入力・出力・評価基準）なら cross（問いと対象なら結論の 1 文、観測・識別なら design も）、応用の要件を満たす手法なら attributes に出どころと ● × —。答えの値や見方が新しいなら、この表にしない。どれも最も近い従来研究 1〜2 件を表の中で名指しする
+型の選び方（新しさの在りか）：問題の記述（目的・設定・入力・出力・評価基準）なら cross（問いと対象なら結論の 1 文、観測・識別なら design も）、応用の要件を満たす手法なら attributes に出どころと ● × —。答えの値や見方が新しいなら、この表にしない（m-contrast、前提ごとなら m-tree の `dash`）。どれも最も近い従来研究 1〜2 件を表の中で名指しする
 
 注意
 
@@ -479,6 +496,7 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 子の JSON の並び：`edges` は省いてよい。
 
 - node：`id`、`label`（`\n` で改行）か `tex`（KaTeX）、`parent`（親の `id`。`parent` のない節（根）はちょうど 1 つ）、`note`（箱の**下**に小さな一言、`--muted`）、`tone`（`term`（既定）・`emph`・`muted`・`accent2`・`series-1..4`）、`step`、`at`（ステップの中の開始秒）
+- `node` の `dash: true`：箱の枠を破線にし、地を塗らない（外した前提・まだないものなど。意味は `note` か本文で言う）
 - 子は配列の順に並ぶ。親は子の並びの中央に置く
 - edge：親子のほかのつながり（`from` `to` `label` `tone` `dash` `step`）。破線で矢印つき、木の外側（`down` は下、`right` は右）へふくらむ。同じ深さの節どうしに向く。ステップは既定で両端の遅いほう
 - 子の `branch`：線の字（確率など）。`path`：根からの `id` の道を順に強調（`pathStep` で一度に。`pathNote`：末尾の一言）
@@ -492,6 +510,8 @@ PDCA、水の循環、細胞周期、学習のサイクルなど、同じ順で�
 - 見せ方（`variant`）：`fade`・`draw`・`grow`。書かなければ資料のシード値で選ばれる（書かなくてよい）
 - 動きの上限：どの見せ方でも箱が動くのは 12 px まで（箱の中心で測る）、時間も `fade` の長さの中（共通の決まり §1.2）
 - 先のステップを薄く見せる表示（`ctx.preview`）では、後のステップの箱と線をテーマの薄さで出しておく
+
+前提の対比（研究の位置づけ）：根に問い、子に立場（本研究は `tone: emph`）、その下に前提、さらに下に言えること（`note` に「前提」「言えること」）。本研究が外した前提は `dash: true` に `note: "外した前提"`。
 
 ### `<m-vector>`
 

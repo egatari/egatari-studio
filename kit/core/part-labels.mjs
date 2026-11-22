@@ -73,6 +73,7 @@ const LOCAL = {
   'm-contour': { icon: 'heatmap', desc: { ja: '2 変数の関数の等高線と勾配、勾配降下法の道', en: 'Contours of a two-variable function, its gradient and a descent path' } },
   'm-ctable': { icon: 'compare', desc: { ja: '分散分析表・分割表を計算のステップごとに埋める', en: 'ANOVA and contingency tables, filled in step by step' } },
   'm-vector': { icon: 'matrix', desc: { ja: '平面のベクトルと 2 × 2 の行列の変換を 1 ステップずつ', en: 'Plane vectors and 2 × 2 matrix maps, one step at a time' } },
+  'm-contrast': { icon: 'compare', desc: { ja: '問いごとに従来の答えと本研究の答えを並べて、研究の位置づけを示す', en: 'Positions the work by setting earlier answers and this work side by side, question by question' } },
   'm-matrix': { icon: 'compare', desc: { ja: '研究の位置づけを、2 本の軸の表か研究 × 要素の表でステップごとに埋める', en: 'Positions studies in a two-axis table or a studies × elements table, filled step by step' } },
   'm-scroll': { icon: 'timeline', desc: { ja: '縦に長い図を枠に入れ、ステップごとに決めた所までスクロールする', en: 'A tall figure in a fixed frame, scrolled to set places step by step' } },
 };

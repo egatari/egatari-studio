@@ -97,6 +97,12 @@
         },
         "played": {
           "const": true
+        },
+        "checks": {
+          "enum": [
+            "answered",
+            "correct"
+          ]
         }
       },
       "description": "At most one of visitedFraction and reachedEnd, optionally with played (count only steps played on a stage, spec §9.2). Unknown future rules are preserved by editors; players that do not know the rule fall back to every-step-visited.",

@@ -179,9 +179,16 @@ export function frontmatterEn(text) {
   return o;
 }
 // The pack-visible text a translation replaces, in paste units (UTF-16 code units, LF line ends): the README body outside
-// llm: omit blocks and without the lines Studio drops (demo.html, examples/, tools/, the skill), summary, steps, the prop
+// llm: omit blocks, without the lines Studio drops (demo.html, examples/, tools/, the skill) and with the 見せ方 bullet cut to
+// its names as Studio cuts it; summary, steps, the prop
 // docs and the data example. Studio's gen:check compares the assembled entries exactly; this is the cheap pre-check
-const packBody = (t) => t.replace(/\r\n?/g, '\n').replace(/^---\n[\s\S]*?\n---\n/, '').replace(/<!-- llm: omit -->[\s\S]*?<!-- llm: end -->/g, '')
+// Studio cuts the Japanese 見せ方（`variant`） bullet to the variant names (make-llm-guide.mjs shortVariants) before it counts
+const VARIANT_LINE = /^- 見せ方（`variant`[^）\n]*）：(.*)$/gm;
+const shortVariants = (t) => t.replace(VARIANT_LINE, (_, rest) => {
+  const names = [...rest.split('書かなければ')[0].matchAll(/`([a-z][a-z0-9-]*)`(?=（)/g)].map((m) => '`' + m[1] + '`');
+  return `- 見せ方（\`variant\`）：${names.join('・')}。書かなければ資料のシード値で選ばれる（書かなくてよい）`;
+});
+const packBody = (t) => shortVariants(t.replace(/\r\n?/g, '\n').replace(/^---\n[\s\S]*?\n---\n/, '').replace(/<!-- llm: omit -->[\s\S]*?<!-- llm: end -->/g, ''))
   .split('\n').filter((l) => !/demo\.html|examples\/|tools\/|motion-components/.test(l)).join('\n').trim();
 export function packUnits({ body, summary, steps, docs, example }) {
   return packBody(body).length + (summary || '').length + (steps || '').length + docs.join('').length + (example === undefined ? 0 : JSON.stringify(example).length);
