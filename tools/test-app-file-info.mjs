@@ -195,6 +195,13 @@ try {
     ok(same(opts, ['CC BY 4.0', 'CC BY-SA 4.0', 'CC BY-NC 4.0', 'CC BY-NC-SA 4.0', 'CC BY-ND 4.0', 'CC BY-NC-ND 4.0', 'CC0 1.0', 'ライセンスを付けない（すべての権利を留保）', 'その他（SPDX の名前を入力）']), 'info: the license choices ' + JSON.stringify(opts));
     ok((await page.textContent('#info-license-help')) === 'ほかの人が使ったり手を加えたりできる範囲です。迷ったら CC BY 4.0（名前を表示すれば、だれでも使ったり手を加えたりできる）', 'info: the license help');
     ok((await page.textContent('#info-save')) === '保存' && (await page.textContent('#info-cancel')) === 'キャンセル' && !(await page.$('#info-other-creator')), 'info: Save / Cancel, no note about another creator');
+    // 2 度押し：開いている途中・開いた後にもう一度押しても、入力の途中の欄を作り直さない（遅い CI で押し直しが入力を消した）
+    await page.evaluate(() => { const b = document.getElementById('b-info'); b.click(); b.click(); });
+    await page.fill('#info-attribution', '二度押しの確かめ');
+    await page.evaluate(() => document.getElementById('b-info').click());
+    await page.waitForTimeout(scaled(1500));
+    ok((await page.inputValue('#info-attribution')) === '二度押しの確かめ' && (await page.$$('#info-form')).length === 1, 'info: pressing File info… again keeps what is being typed');
+    await page.click('#info-cancel');
     // その他：名前がない・SPDX でない
     await page.selectOption('#info-license', 'other');
     ok(await page.isVisible('#info-license-other'), 'info: Other shows the name field');

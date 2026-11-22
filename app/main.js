@@ -2644,13 +2644,15 @@ function infoSection() {
     e.preventDefault();
     saveInfo({ title: title.value, creators: creators.value, copyright: copyright.value, license: lic.sel.value, other: lic.other.value, attribution: attribution.value }, error);
   });
-  return el('div', { id: 'info-panel' }, [
+  const panel = el('div', { id: 'info-panel' }, [
     el('p', { cls: 'hint', text: T.infoLead }),
     form,
     el('p', { id: 'info-format', text: R.format || '' }),
     el('p', { id: 'info-studio', text: R.studio || '' }),
     el('p', { cls: 'hint', id: 'info-player', text: T.infoPlayer }),
   ]);
+  panel.__gen = S.gen;
+  return panel;
 }
 // 情報の欄を、今の INFO で描き直す（キャンセル・保存の後）
 function replaceInfo() {
@@ -2689,12 +2691,21 @@ async function saveInfo(form, error) {
   replaceInfo();
   toast(T.infoSaved);
 }
+// 2 度押し（ダブルクリック・遅い端末での押し直し）で開き直さない：開いている途中か、同じファイルの欄が開いていれば、そのままにする。
+// 後から終わった 2 度目の描き直しが、入力の途中の欄を作り直して消していた（CI の遅いランナーで test-app-file-info が 4 度落ちた）
+let infoOpening = false;
 async function lessonInfo() {
   if (!S.ws) return;
   if (earlierWhy()) { toast(earlierWhy(), true); return; }
   if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; }
-  INFO = await readInfo();
-  await attach.open();
+  if (infoOpening) return;
+  const open = $('info-panel');
+  if (open && !$('panel').hidden && open.__gen === S.gen) return;
+  infoOpening = true;
+  try {
+    INFO = await readInfo();
+    await attach.open();
+  } finally { infoOpening = false; }
 }
 
 // ---------------------------------------------------------------- スライド ▾（挿入・複製・削除・修正）
