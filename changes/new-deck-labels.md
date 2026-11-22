@@ -1,9 +1,0 @@
-### Changed
-
-- New… step 4 asks for labels instead of a list of parts to tick (handoff #43 ④, owner's decision 2026-11-19): **What do you want to show?** (purpose tiles, any number or none), **Subject (optional)** (ticked at first when its words appear in step 2, with the reason), **School level** (only for a school lesson; otherwise the audience comes from step 1) and **Which AI will you paste it into?** (a free AI, or not sure / a paid AI, or as a file). The labels come from the default parts catalogue's manifest only (`PACK.tiers`, which now also copies each purpose's `tile` and `reserved`, the reserved subjects, and how many samples use each part). The part list, part sets, the size meter, the limit and **Untick these** are gone; one foldable line counts the parts that are described and those named only.
-- The instructions are built from a ranking of the parts (`rankParts` in `kit/core/new-deck.mjs`): matching purpose, then subject, then audience, then use in the samples; a part whose subject or audience labels exclude the choice goes last. The light and the detailed instructions use the same ranking: descriptions are added from the top while they fit the limit (light: 45 KB and a paste length of 31,000; detailed: 150 KB), and the rest appear only by name in the purposes table, which tells the AI not to use them (`newDeckPack` in `kit/core/new-deck-pack.mjs`). Starting from a sample chooses its labels and puts its parts first; `node kit/llm-pack.mjs --from-sample` prints the same bytes.
-- `studio.newDeck` in `egatari.json` stores `purposes`, `subjects` and `audience` instead of `parts`; the `parts` of an older record are ignored.
-
-### Changed (API)
-
-- `buildPack(data, opts)` (`kit/llm-pack.mjs`) takes `named`: parts listed by name only in the purposes table (the ranked instructions of New… put the parts that do not fit there)

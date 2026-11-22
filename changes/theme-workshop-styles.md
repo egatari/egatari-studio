@@ -1,3 +1,0 @@
-### Added
-
-- Theme workshop (New…, step ③, **Custom**; backlog #58 stage 2): start from any bundled theme, then choose the font (gothic, mincho or rounded gothic), the background (white, off-white or a pale main colour) and the heading, cover and conclusion line styles, besides the main colour. The choices are the same CSS fragments the bundled themes use (`kit/core/theme-shapes.mjs`); the preview follows each change, a theme started from a bundled theme and left unchanged looks the same as that theme, and the saved `theme.json` records the choices (`look`, `background`, `fontKind`) so that reopening the theme restores them. A new check: white heading text on the main colour needs a contrast ratio of 4.5:1.

@@ -8,6 +8,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.18] - 2026-11-22
+
+### Added
+
+- Slide bookmarks (format §8.0 `data-bookmark`, Player P4.3, handoff #67): in a talk, jump to a bookmarked slide's final state from the toolbar, the presenter view or `q`, and return with “Back to where you were” or Backspace. In Studio, the Slide menu has Add bookmark… / Rename bookmark… / Remove bookmark
+- Quality check: a bookmark name used on more than one slide (`bookmarkDup`) and a name over 20 characters (`bookmarkLong`), in the command line and in Studio
+- Theme workshop (New…, step ③, **Custom**; backlog #58 stage 2): start from any bundled theme, then choose the font (gothic, mincho or rounded gothic), the background (white, off-white or a pale main colour) and the heading, cover and conclusion line styles, besides the main colour. The choices are the same CSS fragments the bundled themes use (`kit/core/theme-shapes.mjs`); the preview follows each change, a theme started from a bundled theme and left unchanged looks the same as that theme, and the saved `theme.json` records the choices (`look`, `background`, `fontKind`) so that reopening the theme restores them. A new check: white heading text on the main colour needs a contrast ratio of 4.5:1.
+
+### Changed (API)
+
+- `buildPack(data, opts)` (`kit/llm-pack.mjs`) takes `named`: parts listed by name only in the purposes table (the ranked instructions of New… put the parts that do not fit there)
+
+### Changed
+
+- Parts library 2.16.0 is now the default (release d31cc5b, tarball 1298668c…, manifest c44e58d5…), imported beside 2.15.0. Fourteen more parts mark what they draw (`data-part`), so the R-geometry check covers them (handoff #45): `m-callout`, `m-collect`, `m-kakijun`, `m-map-japan`, `m-map-world`, `m-market`, `m-numberline`, `m-pie`, `m-scatter`, `m-seq`, `m-tape`, `m-vector`, `m-venn` and `m-codetree`. Drawing changes: `m-codetree` 2.1.0 no longer lets the bits collide in a dense summary, and `m-folds` 2.1.2 centres a group's name in its frame and never draws a negative corner radius. The manifest now labels parts by subject and audience (`subjects.json`, `audiences.json`; handoff #43), and the READMEs and `icons` words follow the 2026-11-20 wording (Egatari file, 対話型の生成 AI; handoff #36, #60), so the AI instructions change. The parts gallery is re-synced to the 2.16.0 release
+- Parts library 2.17.0 is now the default (release d1dd24e, tarball 7bbfc09c…, manifest aba30c35…), imported beside 2.16.0. Two new parts: `m-matrix` (比較の行列 / Comparison matrix: a two-axis positioning table or a studies × elements table, filled step by step; set univ, so described on the paid plan only) and `m-scroll` (縦に送る図 / Scrolling figure: a tall figure in a fixed frame, scrolled to set places by step; set tools). New… lists them with a one-line description and picture; the parts gallery is re-synced to the 2.17.0 release
+- Parts library 2.18.0 is now the default (release faddacb, tarball d4568b35…, manifest 51fb3abb…), imported beside 2.17.0. The words that New… uses to tick a subject from step 2 now come from the manifest (`subjects[].keywords`, handoff #69) instead of a table in Studio; the guesses are the same. `m-matrix` 2.1.0. The parts gallery is re-synced to the 2.18.0 release
+- Bundled samples synced to egatari/examples a3ddee5: nineteen samples carry their labels (`purposes`, `subjects`, `audiences`; handoff #43, #59). With the six samples kept only in Studio, every sample with a `sample.json` (25) is labelled.
+- AI instructions, 国語 (kokugo) set (handoff #70, owner 2026-11-21): keep one file vertical or horizontal. A file that reads a classical or modern Japanese text puts its explanation slides in vertical writing too; only slides with a figure or table that works only horizontally are horizontal, kept together, never alternating
+- Quality check (R-style, a warning in the command-line check and the editor; handoff #70): `tateMixed` when vertical (`layout-tate`) and horizontal slides switch three or more times, not counting the cover and dividers. It names the count and says to keep one direction and put horizontal figure or table slides together. `kit/core/tate-mix.mjs`, `tools/test-tate-mix.mjs`
+- AI instructions, 国語 (kokugo) set (handoff #83): the body of a vertical slide is kept to 15 columns (about 18 characters each, some 270 in all); an item longer than 18 characters takes two columns; if it does not fit, split the slide. Measured: 16 columns fit, the 17th runs into the conclusion column (`bodyConclCol`)
+- New… step 4 asks for labels instead of a list of parts to tick (handoff #43 ④, owner's decision 2026-11-19): **What do you want to show?** (purpose tiles, any number or none), **Subject (optional)** (ticked at first when its words appear in step 2, with the reason), **School level** (only for a school lesson; otherwise the audience comes from step 1) and **Which AI will you paste it into?** (a free AI, or not sure / a paid AI, or as a file). The labels come from the default parts catalogue's manifest only (`PACK.tiers`, which now also copies each purpose's `tile` and `reserved`, the reserved subjects, and how many samples use each part). The part list, part sets, the size meter, the limit and **Untick these** are gone; one foldable line counts the parts that are described and those named only.
+- The instructions are built from a ranking of the parts (`rankParts` in `kit/core/new-deck.mjs`): matching purpose, then subject, then audience, then use in the samples; a part whose subject or audience labels exclude the choice goes last. The light and the detailed instructions use the same ranking: descriptions are added from the top while they fit the limit (light: 45 KB and a paste length of 31,000; detailed: 150 KB), and the rest appear only by name in the purposes table, which tells the AI not to use them (`newDeckPack` in `kit/core/new-deck-pack.mjs`). Starting from a sample chooses its labels and puts its parts first; `node kit/llm-pack.mjs --from-sample` prints the same bytes.
+- `studio.newDeck` in `egatari.json` stores `purposes`, `subjects` and `audience` instead of `parts`; the `parts` of an older record are ignored.
+- Egatari Player 1.10.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. Slide bookmarks (format §8.0, Player P4.3): in a talk, a slide with `data-bookmark` gets a button with its name in the toolbar and in the presenter view; it jumps to that slide's final state, `q` goes to the next bookmark (after the last one, back to where you were), and “Back to where you were” or Backspace returns. The slide overview shows the bookmark name after the title. Nothing is shown in video mode or in print; slides, steps and timing are unchanged
+- AI instructions, R-steps (handoff #65): how a table appears depends on how it compares. Items explained one at a time show their rows in the order spoken; a matrix (things compared down the side, criteria across) or a table crossing two axes is shown whole and then the column or cell under discussion is marked, or it is filled one axis value at a time; in a research-positioning table, the author's own cell says 「本研究」 / “This work” in words (not by colour or bold alone). No part is named in the rule: where `m-matrix` is described, its own description says when to use it
+- Samples (`sample.json`) may carry labels: `purposes`, `subjects` and `audiences`, each a list of ids (empty = fits every one; handoff #43). The ids are not written in Studio: they come from the default parts catalogue's manifest (parts library 2.16.0: 25 purposes, 11 subjects, 5 audiences), which `tools/make-llm-guide.mjs` copies into the AI instruction data with each part's subjects and audiences. The six samples kept only in Studio (heikin-chuouchi, kokugo-kanbun, minimal, pitch-fictional, rashomon, tmlr2026-calibration) are labelled.
+- Egatari Viewer: the 「マークアップ」 button shows a highlighter instead of a pencil, so on narrow screens, where only the icon is shown, it no longer looks like a drawing tool. Its name is unchanged.
+- Japanese wording (handoff #60, owner 2026-11-20): long vowels follow Google's Japanese style word by word (ブラウザ, フォルダ, エディタ, ライブラリ are not lengthened; プレーヤー, ユーザー are), and a half-width space separates full-width characters from half-width letters and digits (生成 AI, 対話型 AI, AI エージェント), but not next to brackets or punctuation. The glossary avoids the other forms, so `npm run lint:terms` reports them
+
+### Fixed
+
+- Egatari Viewer: a handwriting stroke drawn just after opening a lesson, before the player has said which slide it shows, is no longer dropped; it goes onto that slide and is kept. `tools/test-viewer-ink.mjs` draws before the slide key arrives, and waits for the surface to be painted before drawing instead of drawing again.
+
 ## [0.6.17] - 2026-11-20
 
 ### Fixed
@@ -1653,7 +1687,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.17...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.18...HEAD
+[0.6.18]: https://github.com/egatari/egatari-studio/compare/v0.6.17...v0.6.18
 [0.6.17]: https://github.com/egatari/egatari-studio/compare/v0.6.16...v0.6.17
 [0.6.16]: https://github.com/egatari/egatari-studio/compare/v0.6.15...v0.6.16
 [0.6.15]: https://github.com/egatari/egatari-studio/compare/v0.6.14...v0.6.15
