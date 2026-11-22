@@ -331,19 +331,19 @@ CSS はほかのフォント（端末に入っているフォントなど）も�
 | `{egatari:"preview", id?, on}` | 先のステップを薄く見せる（`true`）・見せない（`false`）。`l` キーと同じ。`{egatari:"preview", id?, on}` で答える。動画では使えない |
 | `{egatari:"controls", id?, visible}` | プレーヤー自身の操作を出す・隠す：ツールバー・取っ手・出し方の 1 行・本の再生と表示のボタン（`controls=0` と同じもの）。キーは効いたまま。`{egatari:"controls", id?, visible}` で答える。`controls=0` で開いた後の `visible:true` はツールバーを作って出す |
 | `{egatari:"links", id?, follow}` | スライドへのリンクで動くか。`{egatari:"links", id?, follow}` で答える |
-| `{egatari:"prefs", id?, prefs}` | ホストが覚えていた見る人の設定を当てる（Player P5）：`layout`（`slides`・`flow`・`split`）、`textSize`（本の字の倍率。0.85・1・1.15・1.3・1.5・1.75 の一番近いもの）、`textBackground`（`white`・`sepia`・`black`）、`captions`（`true`・`false`）、`captionSize`（`s`・`m`・`l`）のどれでも。知らない名前と値は無視し、`prefs` がオブジェクトでなければ失敗。今の設定を `{egatari:"prefs", id?, prefs}` で答える |
+| `{egatari:"prefs", id?, prefs}` | ホストが覚えていた学習者の設定を当てる（Player P5）：`layout`（`slides`・`flow`・`split`）、`textSize`（本の字の倍率。0.85・1・1.15・1.3・1.5・1.75 の一番近いもの）、`textBackground`（`white`・`sepia`・`black`）、`captions`（`true`・`false`）、`captionSize`（`s`・`m`・`l`）のどれでも。知らない名前と値は無視し、`prefs` がオブジェクトでなければ失敗。今の設定を `{egatari:"prefs", id?, prefs}` で答える |
 | `{egatari:"snapshot", id, …}` | 作っていない（Player P8 では OPTIONAL）：`{egatari:"error", id, code:"unsupported"}` を答える |
 
 | 知らせ（プレーヤー → 親） | いつ |
 |---|---|
-| `{egatari:"ready", version, formats, player, commands, docId, sourceSha256?, timeline}` | 読み込んだ文書ごとに 1 度、初めの `position` より前（[URL の引数](#url-の引数)の `?embed=1`）。`formats` は `["1.0"]`、`player` は従う Egatari Player の文書の版 `"1.0"`、`commands` は受け取る上の命令 |
+| `{egatari:"ready", version, formats, player, commands, docId, sourceSha256?, timeline}` | 読み込んだ文書ごとに 1 度、初めの `position` より前（[URL の引数](#url-の引数)の `?embed=1`）。`formats` は `["1.0"]`、`player` は従う Egatari Player の文書のバージョン `"1.0"`、`commands` は受け取る上の命令 |
 | `{egatari:"position", slideKey, stepKey, t, cause}` | ステップが変わるたび。`cause` は `play`・`seek`・`control`・`link` |
 | `{egatari:"stepEnded", slideKey, stepKey}` | 再生がそのステップを終わりまで流した。飛ばしたステップ（次へ・跳ぶ・`seek`）や、終わる前に一時停止・停止したときは送らない |
 | `{egatari:"ended"}` | 再生がタイムラインの最後のステップを終わりまで流した。そのステップの `stepEnded` と、`playing: false` の `state` の後に来る |
 | `{egatari:"state", playing, rate}` | 再生の状態か速さが変わるたび |
 | `{egatari:"playBlocked"}` | 利用者の操作がないので音声を始められなかった |
 | `{egatari:"linkRefused", slideKey, stepKey}` | スライドへのリンクで動かなかった（`?links=0` か `links` の `follow:false`） |
-| `{egatari:"prefs", prefs}` | 見る人がプレーヤー自身の操作で設定（並べ方・本の字の大きさと背景・字幕とその大きさ）を変えた。`prefs` の命令と同じ 5 つすべて。命令で変わったときは送らない |
+| `{egatari:"prefs", prefs}` | 学習者がプレーヤー自身の操作で設定（並べ方・本の字の大きさと背景・字幕とその大きさ）を変えた。`prefs` の命令と同じ 5 つすべて。命令で変わったときは送らない |
 | `{egatari:"error", id?, code, message}` | 命令が失敗した。`snapshot` と知らない命令は `unsupported`、使えない引数はその命令の名前（`seek`・`preview`・`controls`・`mode`・`rate`・`layout`・`links`・`prefs`）で、プレーヤーは動かない |
 
 台本の話の切り替わり（`turn`、Player P8 では OPTIONAL）は送らない。`postMessage` の口の進行状況の出来事は[再生と進行状況](#再生と進行状況)にある。
