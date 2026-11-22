@@ -102,12 +102,13 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     switch (m.egaViewer) {
       case 'markup-hello':
         if (!keys(m, ['egaViewer', 'supported', 'article', 'shown']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean') break;
-        // the button is there whenever the browser can do markup, so a learner finds it with the slides alone too; the bar then says
-        // where highlights go (the book) and that the script cannot take them yet, or that this lesson has no book
+        // the button is there only when this lesson has a book (a tool that depends on the content shows only when it can be used,
+        // like the player's bookmark buttons; handoff #78, 11/22). With the slides alone showing, the bar says where highlights go
+        // (the book) and that the script cannot take them yet
         L.supported = m.supported; L.available = m.supported && m.article; L.shown = m.shown;
-        els.button.hidden = !L.supported;
-        if (!L.supported && L.bar) toggle(false);
-        else if (!L.available && L.recall) { L.recall = false; pushView(); }
+        els.button.hidden = !L.available;
+        if (!L.available && L.bar) toggle(false);
+        if (!L.available && L.recall) { L.recall = false; pushView(); }
         renderBar();
         if (L.available && L.loaded) pushAll();
         break;

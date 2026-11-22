@@ -10,6 +10,7 @@
 //  - 共有の端末をオンにすると、手書きも消すか聞いてから消す。共有の端末では保存しない
 //  - 枠の中から来た形の違う ink-bg は無視する
 //  - 開いた直後、スライドの鍵が届く前に描いた線も残り、届いたスライドに保存される（handoff #73）
+//  - 手書きの間はボタンが「手書きを終了」（押された見た目）、上の「ファイルを閉じる」と取り違えない（handoff #78）
 //  - スライドだけの表示でだけ：教材で「スライドと本」にすると手書きを閉じ（線は残る）、手書きを押すとスライドだけに戻す（11/20 の作者の iPad の確かめ）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -125,6 +126,9 @@ const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame
   ok(await p.evaluate(() => !document.getElementById('b-ink').hidden), 'the 手書き button is shown for a lesson without a Live');
   await p.click('#b-ink');
   ok(await until(() => p.evaluate(() => document.getElementById('b-ink').getAttribute('aria-pressed') === 'true' && !!document.querySelector('.ink-surf'))), 'pressing it shows the surface');
+  // 手書きの間は「手書きを終了」と読め、上のもう一つのボタンは「ファイルを閉じる」（取り違えない。handoff #78、作者の iPad 11/22）。名前は見えている字のまま（axe の label-content-name-mismatch）
+  const words = () => p.evaluate(() => { const b = document.getElementById('b-ink'); return { ink: b.innerText.trim(), name: b.getAttribute('aria-label'), pressed: b.getAttribute('aria-pressed'), close: document.getElementById('b-close').innerText.trim() }; });
+  { const w = await words(); ok(w.ink === '手書きを終了' && w.name === null && w.pressed === 'true' && w.close === 'ファイルを閉じる', 'while handwriting: 手書きを終了 (pressed) and ファイルを閉じる ' + JSON.stringify(w)); }
   const g = await p.evaluate(() => {
     const f = document.getElementById('stage-wrap').getBoundingClientRect(), s = document.querySelector('.ink-surf').getBoundingClientRect(), b = document.querySelector('.ink-bar').getBoundingClientRect();
     return { fh: f.height, sw: s.width, sh: s.height, st: s.top, ft: f.top, bt: b.top, sb: s.bottom, vh: innerHeight, sx: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth };
@@ -196,6 +200,7 @@ const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame
   // turning it off gives the frame its full height back
   await p.click('#b-ink');
   ok(await until(() => p.evaluate(() => !document.querySelector('.ink-surf') && document.getElementById('stage-wrap').getBoundingClientRect().height > 0)), 'turning 手書き off removes the surface');
+  { const w = await words(); ok(w.ink === '手書き' && w.close === 'ファイルを閉じる', 'after handwriting: the button reads 手書き again ' + JSON.stringify(w)); }
   await p.click('#b-close');
   await sleep(500);
   await p.close();
