@@ -1,10 +1,14 @@
 // 編集アプリの「ファイル ▾ → エクスポート ▸ → LMS 用（SCORM）…」（app/main.js の scormExport、kit/core/scorm.mjs）の確認
 //   node tools/test-app-scorm.mjs [作業用のフォルダ]
-// 1. 窓：題・説明（何ができるか）・完了の決まり（metadata.completion を平たい言葉で。本のない教材は「台本で読む」）・点数を送らないこと、ボタンは「キャンセル」と「ダウンロード」。
+// 1. 窓：題・説明（何ができるか）・完了の決まり（metadata.completion を平たい言葉で。本のない教材は「台本で読む」）・確認問題の選択（完了の条件にしない・
+//    すべて答えたら・すべて正解したら。始めは metadata.completion.checks）・確認問題の位置づけ（試験ではない）、ボタンは「キャンセル」と「ダウンロード」。
 //    ja と en。キャンセルでは何もダウンロードしない
 // 2. ダウンロード：<ファイルの名前>.scorm.zip（開いたファイルの参加者用（再生専用）と同じ名前の付け方。作業フォルダからは題名）。中身は imsmanifest.xml（docId と題）と index.html。index.html は開いたファイルの再生専用の写し
 //    （kit/core/portable.mjs の playOnly）とバイトまで同じ。知らせは「… をダウンロードしました」
+//    確認問題で「すべて正解したら完了」を選ぶと、index.html は再生専用の写しの deck-meta.completion に checks: "correct" を足したもの（ほかの規則は残る。kit/core/scorm.mjs の withChecks）
 // 3. 保存していない変更があるとき：参加者用（再生専用）と同じく、窓を開かずに「先に保存」を知らせる
+// 4. 作業フォルダ（ja）：選んだ確認問題の条件を egatari.json の metadata.completion.checks にも書き（ほかの項目は残す）、次に開く窓はその値から。
+//    「完了の条件にしない」に戻すと checks だけを消す
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +20,7 @@ import { buildPortable } from '../kit/build.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { playOnly } from '../kit/core/portable.mjs';
 import { readZip } from '../kit/core/zip-read.mjs';
-import { scormManifest } from '../kit/core/scorm.mjs';
+import { scormManifest, withChecks } from '../kit/core/scorm.mjs';
 import { clickCommand, clickDlg } from './click-retry.mjs';
 import { scaled } from './wait-scale.mjs';
 
@@ -54,7 +58,9 @@ const WANT = {
     title: 'LMS 用（SCORM）にエクスポート', item: 'LMS 用（SCORM）…',
     lead: 'Moodle などの LMS に「SCORM パッケージ」として追加できる ZIP ファイル（SCORM 1.2）をダウンロードします。',
     rule: 'ステップの 90% 以上をスライドで再生すると「完了」になります（台本で読むだけでは数えません）',
-    hint: '点数（合格・不合格）は記録されません', buttons: 'キャンセル,ダウンロード',
+    hint: '確認問題は理解の確認と完了の条件のためのもので、試験ではありません。答えはファイルの中にあり、学習者の端末で判定するので、ソースから分かります。成績を付ける試験には LMS の小テストを使ってください',
+    checksLabel: '確認問題', checks: '完了の条件にしない,すべて答えたら完了,すべて正解したら完了',
+    buttons: 'キャンセル,ダウンロード',
     toast: (n) => `${n} をダウンロードしました。LMS で「SCORM パッケージ」として追加してください`,
     unsaved: '保存していない変更があります。LMS 用（SCORM）は保存したものから作るので、先に「保存」してください',
   },
@@ -62,7 +68,9 @@ const WANT = {
     title: 'Export for an LMS (SCORM)', item: 'For an LMS (SCORM)…',
     lead: 'Downloads a ZIP file (SCORM 1.2) that you can add to an LMS such as Moodle as a “SCORM package”.',
     rule: 'It is “completed” when at least 90% of the steps are played on the slides (steps only read with script do not count)',
-    hint: 'No score (passed or failed) is recorded', buttons: 'Cancel,Download',
+    hint: 'Questions are for checking understanding and for completion, not a test: the answers are in the file and are judged on the learner’s device, so they can be read in the source. For graded tests, use the LMS’s own quizzes',
+    checksLabel: 'Questions', checks: 'Not a condition for completion,Completed when all are answered,Completed when all are answered correctly',
+    buttons: 'Cancel,Download',
     toast: (n) => `Downloaded ${n}. In the LMS, add it as a “SCORM package”.`,
     unsaved: 'There are unsaved changes. The LMS copy is made from the saved file, so Save first.',
   },
@@ -115,7 +123,11 @@ try {
       buttons: [...document.querySelectorAll('#dlg[open] button')].filter((b) => b.offsetParent && b.id.startsWith('dlg-')).map((b) => b.textContent).join(',') }));
     ok(d.title === W.title && d.lead.startsWith(W.lead), `${lang}: the dialog says what it makes (${d.title} / ${d.lead.slice(0, 60)}…)`);
     ok(d.rule === W.rule, `${lang}: the dialog says how completion is decided, from metadata.completion (${d.rule})`);
-    ok(d.hint.includes(W.hint), `${lang}: and that no score is sent (${d.hint})`);
+    ok(d.hint.includes(W.hint), `${lang}: and that questions check understanding, not a test (${d.hint})`);
+    const ck = await page.evaluate(() => { const s = document.getElementById('scorm-checks'), l = document.querySelector('label[for="scorm-checks"]');
+      return { label: l && l.textContent, options: s && [...s.options].map((o) => o.textContent).join(','), values: s && [...s.options].map((o) => o.value).join(','), value: s && s.value }; });
+    ok(ck.label === W.checksLabel && ck.options === W.checks && ck.values === 'none,answered,correct' && ck.value === 'none',
+      `${lang}: a labelled choice of whether questions count for completion, starting from metadata.completion (none) (${JSON.stringify(ck)})`);
     ok(d.buttons === W.buttons, `${lang}: buttons are cancel and download (${d.buttons})`);
     await clickDlg(page, '#dlg-cancel');
     await page.waitForTimeout(300);
@@ -135,6 +147,17 @@ try {
     ok(new TextDecoder().decode(files.get('imsmanifest.xml')) === scormManifest({ docId: DOC_ID, title }), `${lang}: imsmanifest.xml carries the lesson's docId and title`);
     await page.waitForFunction((t) => [...document.querySelectorAll('.toast, #toast, [role=status]')].some((e) => e.textContent.includes(t)), W.toast(name), { timeout: scaled(10000) }).then(() => true, () => false)
       .then((v) => ok(v, `${lang}: the notice says it was downloaded and what to do in the LMS`));
+    // 確認問題：すべて正解したら完了
+    await clickCommand(page, '#b-export-scorm');
+    await page.waitForSelector('#dlg[open] #scorm-checks');
+    await page.selectOption('#scorm-checks', 'correct');
+    const [dl2] = await Promise.all([page.waitForEvent('download', { timeout: scaled(60000) }), clickDlg(page, '#dlg-download')]);
+    const zp2 = path.join(work, `${lang}-correct.zip`);
+    await dl2.saveAs(zp2);
+    const idx2 = (await readZip(new Uint8Array(fs.readFileSync(zp2)), { maxMembers: 10, maxMemberBytes: () => 64 * 1048576, maxTotalBytes: 128 * 1048576, accept: () => true })).files.get('index.html');
+    const meta2 = JSON.parse(/<script type="application\/json" id="deck-meta">([\s\S]*?)<\/script>/.exec(new TextDecoder().decode(idx2))[1]);
+    ok(Buffer.compare(Buffer.from(idx2), Buffer.from(withChecks(playOnly(ega), 'correct'))) === 0 && JSON.stringify(meta2.completion) === '{"visitedFraction":0.9,"played":true,"checks":"correct"}',
+      `${lang}: "all answered correctly": index.html is the play-only copy with checks "correct" added to deck-meta.completion (${JSON.stringify(meta2.completion)})`);
 
     // 3. 保存していない変更
     if (lang === 'ja') {
@@ -144,6 +167,47 @@ try {
       const shown = await page.waitForFunction((t) => [...document.querySelectorAll('.toast, #toast, [role=status], [role=alert]')].some((e) => e.textContent.includes(t)), W.unsaved, { timeout: scaled(10000) }).then(() => true, () => false);
       ok(shown && !(await page.$('#dlg[open] #scorm-rule')) && downloads === before, 'unsaved changes: no dialog, a notice to save first (the same rule as For participants (play-only)…)');
     }
+    await ctx.close();
+  }
+
+  // 4. 作業フォルダ：選んだ条件を egatari.json にも書く
+  {
+    const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP', acceptDownloads: true });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errs.push(`folder: ${e.message}`));
+    await page.goto(`${HOST}?lang=ja`);
+    await page.waitForFunction(() => !!window.__APP_TEST);
+    const ff = {};
+    for (const f of ['deck.html', 'narration.md', FORMAT.CONFIG_FILE]) ff[f] = fs.readFileSync(path.join(src, f)).toString('base64');
+    await page.evaluate(async (files) => {
+      const root = await navigator.storage.getDirectory();
+      await root.removeEntry('scormdeck', { recursive: true }).catch(() => {});
+      const d = await root.getDirectoryHandle('scormdeck', { create: true });
+      for (const [rel, b64] of Object.entries(files)) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); const w = await (await d.getFileHandle(rel, { create: true })).createWritable(); await w.write(u); await w.close(); }
+      window.__fd = d;
+      window.__APP_TEST.open(d);
+    }, ff);
+    await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.kind === 'folder' && !s.building; }, null, { timeout: scaled(60000) });
+    const conf = async () => JSON.parse(await page.evaluate(async (n) => (await (await window.__fd.getFileHandle(n)).getFile()).text(), FORMAT.CONFIG_FILE));
+    const exportWith = async (v) => {
+      await clickCommand(page, '#b-export-scorm');
+      await page.waitForSelector('#dlg[open] #scorm-checks');
+      const before = await page.inputValue('#scorm-checks');
+      await page.selectOption('#scorm-checks', v);
+      const [dl] = await Promise.all([page.waitForEvent('download', { timeout: scaled(90000) }), clickDlg(page, '#dlg-download')]);
+      const zp = path.join(work, `folder-${v}.zip`);
+      await dl.saveAs(zp);
+      const idx = (await readZip(new Uint8Array(fs.readFileSync(zp)), { maxMembers: 10, maxMemberBytes: () => 64 * 1048576, maxTotalBytes: 128 * 1048576, accept: () => true })).files.get('index.html');
+      return { before, meta: JSON.parse(/<script type="application\/json" id="deck-meta">([\s\S]*?)<\/script>/.exec(new TextDecoder().decode(idx))[1]) };
+    };
+    const a = await exportWith('answered');
+    const c1 = await conf();
+    ok(a.before === 'none' && JSON.stringify(c1.metadata.completion) === '{"visitedFraction":0.9,"played":true,"checks":"answered"}' && c1.docId === DOC_ID && a.meta.completion.checks === 'answered',
+      `folder: "all answered" is written to egatari.json metadata.completion.checks (other members kept) and into the package (${JSON.stringify(c1.metadata.completion)})`);
+    const b = await exportWith('none');
+    const c2 = await conf();
+    ok(b.before === 'answered' && JSON.stringify(c2.metadata.completion) === '{"visitedFraction":0.9,"played":true}' && !('checks' in b.meta.completion),
+      `folder: the next dialog starts from the saved choice; "not a condition" removes only checks (${b.before}; ${JSON.stringify(c2.metadata.completion)})`);
     await ctx.close();
   }
 } catch (e) {

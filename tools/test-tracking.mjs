@@ -5,6 +5,9 @@
 // 記録：舞台で再生したステップ（via stage）と本で読んだステップ（via text：節が 3 秒見えていた。読み飛ばしは数えない。縦書きも。台本で読むも）を別々に持つ・
 //   終えた判定（既定・visitedFraction・reachedEnd・played: true）・postMessage の出来事・SCORM 1.2 の模型が受ける呼び出し（初め・位置・再開データ・
 //   終えた・終わり・再開・振り返り・教材が変わったとき）・1 ファイルの deck-meta.tracking と completion
+// 確認問題（format spec §8.4 ctx.answer・§9.2 checks、包み方 §2.1）：m-predict（パーツ集 2.20.0）の答えのステップで answer の出来事・
+//   checks: "correct" は正解するまで終えない・"answered" は答えれば終える・SCORM の cmi.core.score.*（min 0・max 100・raw）と再開データの qa・qc・再開で戻る・
+//   postMessage の answer {slideKey, id, correct, value}
 // --shots：作業フォルダに画面の PNG を残す（目で見る用）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -507,6 +510,158 @@ f.src = 'deck.html' + location.search;
   const t = await tr(p);
   ok(t.rule.visitedFraction === 0.9 && t.rule.played === true, 'the player reads the rule from the single file');
   await p.context().close();
+}
+
+// ---------------------------------------------------------------- 8. 確認問題（m-predict の ctx.answer）
+{
+  const QS = [['s-ck2aaa', '予想する'], ['s-ck3bbb', 'まとめ']];
+  const makeQuiz = (name, completion) => {
+    const dir = path.join(work, name);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html>
+<html lang="ja" data-theme="default">
+<head><meta charset="utf-8"><title>確認問題の試験</title></head>
+<body>
+<div id="stage">
+<section class="slide" id="${QS[0][0]}">
+  <h2>${QS[0][1]}</h2>
+  <div class="body">
+    <m-predict style="height:330px" aria-label="どちらが先に落ちるかを選ぶ問い。答えは同時">
+      <script type="application/json">{"question":"重い球と軽い球、どちらが先に落ちる？","choices":[{"label":"重い球"},{"label":"軽い球"},{"label":"同時"}],"answer":2,"counts":[14,3,9]}</script>
+    </m-predict>
+  </div>
+</section>
+<section class="slide" id="${QS[1][0]}">
+  <h2>${QS[1][1]}</h2>
+  <div class="body"><p data-step="1">同時に落ちる。</p></div>
+</section>
+</div>
+</body>
+</html>
+`);
+    fs.writeFileSync(path.join(dir, 'egatari.json'), JSON.stringify({ componentsCatalogue: '2', docId: '7f9c2a1e-4b3d-4c8a-9e21-0c5d7a3b9e42', metadata: completion ? { completion } : {} }, null, 1));
+    const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html')], { encoding: 'utf8' });
+    if (r.status !== 0) { console.error(r.stdout, r.stderr); process.exit(1); }
+    return path.join(dir, 'out', 'deck.html');
+  };
+  const CORRECT = makeQuiz('quiz-correct', { checks: 'correct' });
+  const ANSWERED = makeQuiz('quiz-answered', { checks: 'answered' });
+  const KEY = `${QS[0][0]}/0/q`;
+  // 予想を選び（i 番目の選択肢）、フォーカスを外して最後まで送る。答えのステップは 2（スライド 1 の最後）
+  const pickAndGo = async (p, i, n = 4) => {
+    await p.click('#stage', { position: { x: 1200, y: 100 } });
+    await p.keyboard.press('ArrowRight'); await wait(p, 200);
+    await p.click(`${'m-predict'} .pd-pick >> nth=${i}`);
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    for (let j = 0; j < n; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
+  };
+  const listen = (p) => p.evaluate(() => { window.__ans = []; document.addEventListener('deck:answer', (e) => window.__ans.push(e.detail)); });
+  // checks "correct"：外したまま最後まで見ても終えない。戻って正解を選び直し、答えのステップにまた着くと終える
+  {
+    const p = await open(CORRECT, { q: '?layout=slides' });
+    await listen(p);
+    ok((await tr(p)).rule.checks === 'correct', 'the player reads completion.checks from deck-meta');
+    await pickAndGo(p, 0);
+    const t1 = await tr(p), a1 = await p.evaluate(() => window.__ans);
+    ok(a1.length === 1 && a1[0].slideKey === QS[0][0] && a1[0].id === 'q' && a1[0].correct === false && a1[0].value === '重い球' && a1[0].index === 0,
+      `reaching the answer step with a guess: one answer {slideKey, index, id, correct, value} (${JSON.stringify(a1)})`);
+    ok(t1.stage.length === t1.total && t1.completed === false && t1.answered.join() === KEY && t1.correct.length === 0 && t1.score === 0,
+      `checks "correct": every step reached but the answer is wrong, not completed; score 0 (${JSON.stringify({ c: t1.completed, a: t1.answered, s: t1.score })})`);
+    await p.evaluate(() => DECK.go(0, 1));
+    await wait(p, 200);
+    await p.click('m-predict .pd-pick >> nth=0');   // 選び直す：一度外す
+    await p.click('m-predict .pd-pick >> nth=2');
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await p.keyboard.press('ArrowRight'); await wait(p, 200);
+    const t2 = await tr(p), a2 = await p.evaluate(() => window.__ans);
+    ok(a2.length === 2 && a2[1].correct === true && a2[1].value === '同時' && t2.completed === true && t2.correct.join() === KEY && t2.score === 100 && t2.latest[KEY].correct === true,
+      `answering again correctly replaces the latest answer and completes; score 100 (${JSON.stringify({ a: a2.length, c: t2.completed, s: t2.score, l: t2.latest })})`);
+    // その後で外しても、正解した（少なくとも 1 回）は残る
+    await p.evaluate(() => DECK.go(0, 1)); await wait(p, 200);
+    await p.click('m-predict .pd-pick >> nth=1');
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    await p.keyboard.press('ArrowRight'); await wait(p, 200);
+    const t3 = await tr(p);
+    ok(t3.correct.join() === KEY && t3.score === 100 && t3.latest[KEY].correct === false && t3.completed === true, `a later wrong answer keeps "answered correctly at least once" (${JSON.stringify({ s: t3.score, l: t3.latest })})`);
+    await p.context().close();
+  }
+  // checks "answered"：外しても答えれば終える。予想を選ばずに答えのステップに着いても答えにならない
+  {
+    const p = await open(ANSWERED, { q: '?layout=slides' });
+    await listen(p);
+    await p.click('#stage', { position: { x: 1200, y: 100 } });
+    for (let j = 0; j < 2; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
+    ok((await p.evaluate(() => window.__ans)).length === 0, 'reaching the answer step without a guess sends no answer');
+    await p.evaluate(() => DECK.go(0, 1)); await wait(p, 200);
+    await p.click('m-predict .pd-pick >> nth=1');
+    await p.evaluate(() => document.activeElement && document.activeElement.blur());
+    for (let j = 0; j < 3; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
+    const t = await tr(p);
+    ok(t.completed === true && t.answered.join() === KEY && t.correct.length === 0, `checks "answered": a wrong answer still counts as answered; completed (${JSON.stringify({ c: t.completed, a: t.answered })})`);
+    await p.context().close();
+  }
+  // SCORM：点数（min 0・max 100・raw）と再開データの qa・qc。再開で戻り、正解した問いは終えた判定に数える
+  {
+    const mock = { fn: (v) => {
+      window.__calls = [];
+      const store = Object.assign({}, v);
+      const log = (x) => window.__calls.push(x);
+      window.API = { LMSInitialize: () => 'true', LMSGetValue: (k) => (k in store ? store[k] : ''), LMSSetValue: (k, x) => { log([k, x]); store[k] = x; return 'true'; },
+        LMSCommit: () => { log(['commit']); return 'true'; }, LMSFinish: () => 'true', LMSGetLastError: () => '0', LMSGetErrorString: () => '', LMSGetDiagnostic: () => '' };
+    } };
+    const base = { 'cmi.core.lesson_mode': 'normal', 'cmi.core.lesson_status': 'not attempted', 'cmi.core.entry': 'ab-initio', 'cmi.core.lesson_location': '', 'cmi.suspend_data': '' };
+    const p = await open(CORRECT, { q: '?layout=slides', init: { ...mock, arg: base } });
+    await pickAndGo(p, 0, 2);
+    await p.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+    const C = await p.evaluate(() => window.__calls);
+    const val = (k) => C.filter((x) => x[0] === k).map((x) => x[1]);
+    ok(val('cmi.core.score.min').pop() === '0' && val('cmi.core.score.max').pop() === '100' && val('cmi.core.score.raw').pop() === '0', `SCORM: score min 0, max 100, raw 0 after a wrong answer (${val('cmi.core.score.raw')})`);
+    const ri = C.findIndex((x) => x[0] === 'cmi.core.score.raw');
+    ok(ri >= 0 && C.slice(ri).some((x) => x[0] === 'commit'), 'SCORM: the score is committed');
+    ok(!val('cmi.core.lesson_status').includes('completed') && !val('cmi.core.lesson_status').some((x) => x === 'passed' || x === 'failed'), 'SCORM: not completed, and passed / failed are never written');
+    const sd = JSON.parse(val('cmi.suspend_data').pop());
+    ok(sd.qa === KEY && !('qc' in sd) && sd.v === 1, `SCORM: suspend_data carries qa (answered) and no qc yet (${JSON.stringify(sd)})`);
+    await p.context().close();
+    // 再開：正解した問い（qc）があり、ステップも全部見ていれば、開いたときに終えている
+    const all = Buffer.from([0x1f]).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const done = { ...sd, seen: all, stage: all, qc: KEY };
+    const p2 = await open(CORRECT, { q: '?layout=slides', init: { ...mock, arg: { ...base, 'cmi.core.lesson_status': 'incomplete', 'cmi.core.entry': 'resume', 'cmi.core.lesson_location': '#4', 'cmi.suspend_data': JSON.stringify(done) } } });
+    const t = await tr(p2);
+    ok(t.answered.join() === KEY && t.correct.join() === KEY && t.score === 100 && t.completed === true, `SCORM resume: qa and qc restored; the question answered correctly counts (${JSON.stringify({ a: t.answered, c: t.correct, s: t.score, done: t.completed })})`);
+    await p2.context().close();
+    // 再開：答えた（qa）だけの問いは正解のある問いとみなす（点数 0、"correct" は満たさない）
+    const p3 = await open(CORRECT, { q: '?layout=slides', init: { ...mock, arg: { ...base, 'cmi.core.lesson_status': 'incomplete', 'cmi.core.entry': 'resume', 'cmi.core.lesson_location': '#4', 'cmi.suspend_data': JSON.stringify({ ...sd, seen: all, stage: all }) } } });
+    const t3 = await tr(p3);
+    ok(t3.answered.join() === KEY && t3.correct.length === 0 && t3.score === 0 && t3.completed === false, `SCORM resume: a question only in qa counts as having a right answer not yet given (${JSON.stringify({ s: t3.score, done: t3.completed })})`);
+    await p3.context().close();
+  }
+  // postMessage：answer {slideKey, id, correct, value}
+  {
+    const host = path.join(path.dirname(CORRECT), 'host.html');
+    fs.writeFileSync(host, `<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="width:1280px;height:720px;border:0"></iframe>
+<script>
+window.msgs = [];
+var f = document.getElementById('f');
+window.addEventListener('message', function(e){ if (e.source === f.contentWindow && e.data && e.data.egatari) window.msgs.push(e.data); });
+f.src = 'deck.html' + location.search;
+</script>`);
+    const c = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const p = await c.newPage();
+    p.on('pageerror', (e) => errors.push('quiz host: ' + e.message));
+    await p.goto(fileUrl(host) + '?embed=1&layout=slides');
+    const fr = () => p.frame({ url: /deck\.html/ });
+    await p.waitForFunction(() => window.msgs.some((m) => m.egatari === 'step'), null, { timeout: scaled(10000) });
+    const f = fr();
+    await f.click('#stage', { position: { x: 1200, y: 100 } });
+    await f.evaluate(() => DECK.go(0, 1)); await wait(p, 200);
+    await f.click('m-predict .pd-pick >> nth=2');
+    await f.evaluate(() => { document.activeElement && document.activeElement.blur(); DECK.next(); });
+    await wait(p, 300);
+    const m = await p.evaluate(() => window.msgs.filter((x) => x.egatari === 'answer'));
+    ok(m.length === 1 && JSON.stringify(m[0]) === JSON.stringify({ egatari: 'answer', slideKey: QS[0][0], id: 'q', correct: true, value: '同時' }), `postMessage: answer {slideKey, id, correct, value} (${JSON.stringify(m)})`);
+    await c.close();
+  }
 }
 
 ok(errors.length === 0, 'no page errors' + (errors.length ? ': ' + errors.join(' | ') : ''));

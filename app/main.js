@@ -49,7 +49,7 @@ import { FORMAT } from '../kit/core/format.mjs';
 import { colabVideoUrl } from '../kit/core/colab-core.mjs';
 import { updateConfig, merge as configMerge, configObject } from '../kit/core/config-file.mjs';
 import { exportName, titleOf } from '../kit/core/export-name.mjs';
-import { scormPackage, completionRule, SCORM_EXT } from '../kit/core/scorm.mjs';
+import { scormPackage, completionRule, SCORM_EXT, CHECKS } from '../kit/core/scorm.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { TEMPLATES, setBookmark } from '../kit/core/slide-ops.mjs';
@@ -2460,12 +2460,31 @@ async function scormExport() {
   let meta = null;
   try { const c = JSON.parse((await S.ws.readText(FORMAT.CONFIG_FILE, { max: READ_LIMITS.json })) || 'null'); if (c && typeof c.metadata === 'object') meta = c.metadata; } catch { meta = null; }
   if (!meta && S.portable) meta = S.portable.index.metadata || null;
+  // 確認問題（パーツの問い）を完了の条件にするか（metadata.completion.checks、format spec §9.2）。始めは設定のファイルの値。
+  // 選んだものを LMS 用の写しの deck-meta に書く（scormPackage の checks）。作業フォルダでは設定のファイルにも残す（次も同じ選択から）
+  const cur = completionRule(meta && meta.completion).checks || 'none';
+  const checks = el('select', { id: 'scorm-checks' }, ['none', ...CHECKS].map((x) => el('option', { value: x, text: T.scormChecks[x] })));
+  checks.value = cur;
   const v = await ask({ title: T.scormTitle,
-    body: [el('p', { id: 'scorm-lead', text: T.scormLead }), el('p', { id: 'scorm-rule', text: scormRuleText(meta && meta.completion) }), el('p', { cls: 'hint', id: 'scorm-hint', text: T.scormHint })],
+    body: [el('p', { id: 'scorm-lead', text: T.scormLead }), el('p', { id: 'scorm-rule', text: scormRuleText(meta && meta.completion) }),
+      el('p', { id: 'scorm-checks-row' }, [el('label', { for: 'scorm-checks', text: T.scormChecksLabel }), ' ', checks]),
+      el('p', { cls: 'hint', id: 'scorm-hint', text: T.scormHint })],
     buttons: [{ id: 'cancel', label: T.cancel }, { id: 'download', label: T.scormGo, pri: true }] });
   if (v !== 'download') return;
+  const pick = checks.value === 'none' ? null : checks.value;
   const ws0 = S.ws, g0 = S.gen;
   const live = () => S.ws === ws0 && S.gen === g0;
+  if (!S.portable && pick !== (cur === 'none' ? null : cur)) {
+    // 作業フォルダ：設定のファイルの metadata.completion.checks を書き換える（ほかの項目はバイトのまま。規則が checks だけなら completion ごと消す）
+    const c = meta && meta.completion && typeof meta.completion === 'object' ? meta.completion : {};
+    const rest = Object.keys(c).filter((k) => k !== 'checks');
+    try {
+      const CFG = FORMAT.CONFIG_FILE;
+      const completion = pick ? configMerge({ checks: pick }) : rest.length ? configMerge({ checks: undefined }) : undefined;
+      await ws0.writeText(CFG, updateConfig(await ws0.readText(CFG, { max: READ_LIMITS.json }), { metadata: configMerge({ completion }) }), { live });
+    } catch (e) { toast(String((e && e.message) || e), true); return; }
+    if (!live()) return;
+  }
   if (!(await leftoverGate('export'))) return;
   if (!live()) return;
   status(T.exporting);
@@ -2473,7 +2492,7 @@ async function scormExport() {
   try {
     const c = await playOnlyCopy();
     writes = c.writes;
-    pkg = scormPackage(c.html);
+    pkg = scormPackage(c.html, { checks: pick });
     const base = c.name.toLowerCase().endsWith(FORMAT.FILE_EXT) ? c.name.slice(0, -FORMAT.FILE_EXT.length) : c.name.replace(/\.html?$/i, '');
     name = exportName(base, deckBase(), SCORM_EXT);
   } catch (e) { status(''); toast(T.exportFailed + ': ' + (e && T.scormRefused[e.code] ? T.scormRefused[e.code] : failText(e)), true); return; }

@@ -392,7 +392,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     if (pkg) {
       const c = completionRule(pkg.completion);
       const rule = c.kind === 'end' ? 'the last step is reached' : c.kind === 'fraction' ? `${c.percent}% of the steps are reached` : 'every step is reached';
-      console.log(`scorm: SCORM 1.2 package (imsmanifest.xml + index.html), ${pkg.steps} ${plural(pkg.steps, 'step')}, ${(pkg.zip.length / 1024).toFixed(0)} KB; completed when ${rule}${c.played ? ' (played on the slides; reading in the book does not count)' : ''}`);
+      console.log(`scorm: SCORM 1.2 package (imsmanifest.xml + index.html), ${pkg.steps} ${plural(pkg.steps, 'step')}, ${(pkg.zip.length / 1024).toFixed(0)} KB; completed when ${rule}${c.played ? ' (played on the slides; reading in the book does not count)' : ''}${c.checks === 'answered' ? ' and every question is answered' : c.checks === 'correct' ? ' and every question is answered correctly' : ''}; when parts ask questions, the player also sends a score (the share answered correctly; no passed or failed)`);
     }
     for (const w of r.warnings) console.warn('  ⚠ ' + w);
     if (r.stats.citeproc) console.log(CITEPROC_CREDIT);   // citeproc-js の帰属の表示（CPAL-1.0 の Exhibit B。NOTICE）

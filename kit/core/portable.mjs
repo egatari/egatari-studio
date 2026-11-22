@@ -578,6 +578,7 @@ function completionCheck(c, w, e) {
   if (own(c, 'played') && c.played !== true) e.push(`${w}.played: not true`);
   if (own(c, 'visitedFraction') && !(typeof c.visitedFraction === 'number' && c.visitedFraction > 0 && c.visitedFraction <= 1)) e.push(`${w}.visitedFraction: not in (0, 1]`);
   if (own(c, 'reachedEnd') && c.reachedEnd !== true) e.push(`${w}.reachedEnd: not true`);
+  if (own(c, 'checks') && c.checks !== 'answered' && c.checks !== 'correct') e.push(`${w}.checks: not "answered" or "correct"`);
 }
 // 実行系の deck-meta（仕様の写し（FORMAT.VENDOR_DIR）の schema/deck-meta.schema.json）
 // opts.preDraft：1.0 の形より前の草案の文書（player がない。§7.1）を読むとき、player がないことは問わない（読むのは今までどおり。書くものは必ず持つ）
