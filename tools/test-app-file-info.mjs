@@ -200,7 +200,9 @@ try {
     await page.fill('#info-attribution', '二度押しの確かめ');
     await page.evaluate(() => document.getElementById('b-info').click());
     await page.waitForTimeout(scaled(1500));
-    ok((await page.inputValue('#info-attribution')) === '二度押しの確かめ' && (await page.$$('#info-form')).length === 1, 'info: pressing File info… again keeps what is being typed');
+    const kept = await page.evaluate(() => ({ value: (document.getElementById('info-attribution') || {}).value, forms: document.querySelectorAll('#info-form').length, panelHidden: document.getElementById('panel').hidden, active: document.activeElement && document.activeElement.id }));
+    const keptOk = kept.value === '二度押しの確かめ' && kept.forms === 1;
+    ok(keptOk, 'info: pressing File info… again keeps what is being typed' + (keptOk ? '' : ' ' + JSON.stringify(kept)));
     await page.click('#info-cancel');
     // その他：名前がない・SPDX でない
     await page.selectOption('#info-license', 'other');
