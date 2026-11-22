@@ -201,6 +201,13 @@ body.headless #bar { display: none; }
 #b-markup { display: inline-flex; align-items: center; gap: 6px; }
 #b-markup .ic { flex: none; }
 #b-markup[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+/* 手書きの間は「手書きを終了」と押された見た目（上の「ファイルを閉じる」と取り違えない。handoff #78、作者の iPad の確かめ 11/22） */
+#b-ink[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+#b-ink .ink-on, #b-ink[aria-pressed=true] .ink-off { display: none; }
+#b-ink[aria-pressed=true] .ink-on { display: inline; }
+/* a phone has no handwriting (so nothing to mistake it for) and no room: there it stays 「閉じる」 */
+#b-close .c-short { display: none; }
+@media (max-width: 599px) { #b-close .c-long { display: none; } #b-close .c-short { display: inline; } }
 #markup-bar { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
 #bar.markup #lesson-info, #bar.markup #b-close, #bar.markup #b-lang, #bar.markup #b-live { display: none !important; }
 #b-recall { display: inline-flex; align-items: center; gap: 6px; }
@@ -221,7 +228,9 @@ body.headless #bar { display: none; }
 /* one row on a phone (the header's height never changes, so the lesson's frame does not move): no logo, no counts, smaller swatches */
 @media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n, .rc-l { display: none !important; }
   #markup-bar { gap: 4px; } #markup-bar > button, #b-markup { padding: 4px 8px; } .csw { width: 32px; } #recall-colours { gap: 3px; } }
-@media (max-width: 560px) { #b-markup span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
+/* below 760 px the マークアップ button is its highlighter icon only (the name stays for screen readers): 「手書きを終了」 and
+   「ファイルを閉じる」 (handoff #78) would otherwise leave the lesson's title no room on an iPad mini or a narrow window */
+@media (max-width: 759px) { #b-markup span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); } }
 
 #m-list, #m-confirm { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
 #m-list { width: min(560px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); }
