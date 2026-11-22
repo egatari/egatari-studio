@@ -8,6 +8,7 @@ import { WORDS, initialLang, saveLang, apply } from './i18n.mjs';
 import { lessonDocument, makeFrame } from './frame.mjs';
 import { openRecents } from './recents.mjs';
 import * as resume from './resume.mjs';
+import * as prefs from './prefs.mjs';
 import { startLive } from './live-host.mjs';
 import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
@@ -335,16 +336,22 @@ function setInk(on) {
   applyLayout();
 }
 
-// ---------------------------------------------------------------- reopening where the viewer left off (player spec P5, handoff #94)
+// ---------------------------------------------------------------- reopening where the viewer left off, with the viewer's preferences (player spec P5, handoff #94)
 // The player's ready (spec P8) lists the timeline; the last position kept for this lesson (play/resume.mjs) is sent back as a seek,
 // and a notice offers 「最初から見る」. Not on a shared device, not for lessons with a Live (the host leads), not for an older player that
 // sends no ready. Untrusted: only slide keys and step keys that are strings are read from the timeline, and a kept position is used
 // only when the timeline has it.
 const RESUME = { timer: 0 };
-function onReady(timeline) {
+function onReady(timeline, commands) {
   const P = S.playing;
   if (!P || P.timeline) return;
   P.timeline = timeline.filter((x) => x && isStr(x.slideKey, 200) && isStr(String(x.stepKey), 16)).map((x) => ({ s: x.slideKey, k: String(x.stepKey), title: isStr(x.slideTitle, 300) ? x.slideTitle : '' }));
+  // preferences first (spec P5: sent before the first step), only to a player that lists the prefs command (an older one would answer unsupported)
+  P.prefs = commands.includes('prefs');
+  if (P.prefs && !$('shared').checked) {
+    const kept = prefs.get(inkDoc());
+    if (Object.keys(kept).length && S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egatari: 'prefs', prefs: kept }, '*');
+  }
   if ($('shared').checked || P.live || P.liveFrom || !P.timeline.length) return;
   const r = resume.get(inkDoc());
   if (!r) return;
@@ -420,7 +427,9 @@ window.addEventListener('message', (e) => {
   // Untrusted: links.request applies §11 and asks for a tap; a download is refused (the frame cannot save files)
   if (m.egatari === 'openLink' && isStr(m.href, 4096) && isStr(m.text, 200) && openLinkShape(m)) links.request({ href: m.href, text: m.text, download: m.download === true });
   else if (m.egatari === 'position' && isStr(m.slideKey, 200) && isStr(m.stepKey, 16)) { S.posEvents = true; S.slideKey = m.slideKey; inkPage(m.slideKey); if (S.live) S.live.setStep(m.slideKey + ':' + m.stepKey); keepPosition(m.slideKey, m.stepKey); }
-  else if (m.egatari === 'ready' && Array.isArray(m.timeline) && m.timeline.length <= 5000) onReady(m.timeline);
+  else if (m.egatari === 'ready' && Array.isArray(m.timeline) && m.timeline.length <= 5000) onReady(m.timeline, Array.isArray(m.commands) ? m.commands : []);
+  // the viewer changed a preference in the player (spec P5, P8): kept on this page for this lesson and device (play/prefs.mjs)
+  else if (m.egatari === 'prefs' && S.playing && S.playing.prefs && !$('shared').checked) prefs.keep(inkDoc(), m.prefs);
   else if (m.type === 'deck-pos' && isStr(m.key, 220)) {
     // an older player inside the file sends only these: the slide key is the part before ':'
     if (!S.posEvents) { S.slideKey = m.key.split(':')[0]; inkPage(S.slideKey); }
@@ -535,7 +544,7 @@ function initKeep() {
     if ((n.highlights > 0 || k > 0) && !(await M.ask(W().mSharedAsk(n.lessons, n.highlights, k), W().mSharedYes))) {
       $('shared').checked = false; setPref(SHARED_KEY, '0'); syncKeep(); $('shared').focus(); return;
     }
-    await clearRecents(); await clearAllRecords(); await clearInk(); resume.clear(); announce(W().sharedOn);
+    await clearRecents(); await clearAllRecords(); await clearInk(); resume.clear(); prefs.clear(); announce(W().sharedOn);
   });
 }
 async function clearRecents() { if (S.recents) { try { await S.recents.clear(); } catch { /* nothing kept */ } } await renderRecents(); }

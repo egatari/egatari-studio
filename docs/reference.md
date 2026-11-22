@@ -331,18 +331,20 @@ A host page that puts a file in an `<iframe>` with `?embed=1` drives it with `po
 | `{egatari:"preview", id?, on}` | show later steps faintly (`true`) or not (`false`), as the `l` key; replies `{egatari:"preview", id?, on}`. Not in video mode |
 | `{egatari:"controls", id?, visible}` | show or hide the player's own controls: the toolbar, its handle and hint line, and the play and View buttons of the book (the same things as `controls=0`). Keys still work. Replies `{egatari:"controls", id?, visible}`; `visible:true` after `controls=0` builds the toolbar |
 | `{egatari:"links", id?, follow}` | let links to slides move the player or not; replies `{egatari:"links", id?, follow}` |
+| `{egatari:"prefs", id?, prefs}` | apply the viewer's preferences a host kept (Player P5): any of `layout` (`slides`, `flow`, `split`), `textSize` (the book's type scale; the nearest of 0.85, 1, 1.15, 1.3, 1.5, 1.75), `textBackground` (`white`, `sepia`, `black`), `captions` (`true`, `false`), `captionSize` (`s`, `m`, `l`). Unknown members and values are ignored; a `prefs` that is not an object is an error. Replies `{egatari:"prefs", id?, prefs}` with the preferences now in effect |
 | `{egatari:"snapshot", id, …}` | not implemented (OPTIONAL in Player P8): replies `{egatari:"error", id, code:"unsupported"}` |
 
 | Event (player → host) | When |
 |---|---|
-| `{egatari:"ready", version, docId, sourceSha256?, timeline}` | once per loaded document, before the first `position` (see `?embed=1` in [URL parameters](#url-parameters)) |
+| `{egatari:"ready", version, formats, player, commands, docId, sourceSha256?, timeline}` | once per loaded document, before the first `position` (see `?embed=1` in [URL parameters](#url-parameters)). `formats` is `["1.0"]`, `player` `"1.0"` (the Egatari Player document it follows), `commands` the commands above it accepts |
 | `{egatari:"position", slideKey, stepKey, t, cause}` | on every step change; `cause` is `play`, `seek`, `control` or `link` |
 | `{egatari:"stepEnded", slideKey, stepKey}` | playback has played that step to its end. Not for steps that were skipped (next, jump, `seek`), nor when playback was paused or stopped first |
 | `{egatari:"ended"}` | playback has played the last step of the timeline to its end; it comes after that step's `stepEnded` and the `state` with `playing: false` |
 | `{egatari:"state", playing, rate}` | whenever the playing state or the rate changes |
 | `{egatari:"playBlocked"}` | audio could not start without a user gesture |
 | `{egatari:"linkRefused", slideKey, stepKey}` | a link to a slide was not followed (`?links=0` or `links` `follow:false`) |
-| `{egatari:"error", id?, code, message}` | a command failed: `unsupported` for `snapshot` and for an unknown command; otherwise the command's name (`seek`, `preview`, `controls`, `mode`, `rate`, `layout`, `links`) for arguments it cannot use, and the player stays as it was |
+| `{egatari:"prefs", prefs}` | the viewer changed a preference with the player's own controls (layout, text size or background, captions or their size): all five preferences as in the `prefs` command. Not sent when a command changed them |
+| `{egatari:"error", id?, code, message}` | a command failed: `unsupported` for `snapshot` and for an unknown command; otherwise the command's name (`seek`, `preview`, `controls`, `mode`, `rate`, `layout`, `links`, `prefs`) for arguments it cannot use, and the player stays as it was |
 
 Narration turns (`turn`, OPTIONAL in Player P8) are not sent. The progress events of the `postMessage` adapter are in [Playback and progress](#playback-and-progress).
 

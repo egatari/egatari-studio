@@ -336,6 +336,8 @@ function setLayout(name, o){
   P.layout = name;
   html.setAttribute("data-deck-layout", name);
   if (o.persist) store(docKey(), name);
+  // 見る人が自分で選んだ並べ方は、埋め込みのホストにも知らせる（Player P5・P8 prefs。kit/deck.js）
+  if (o.persist && before !== name && DECK.prefsChanged) DECK.prefsChanged();
   if (P.pane){
     P.pane.hidden = name === "slides";
     P.div.hidden = name !== "split";
@@ -848,7 +850,8 @@ function applyReading(){
   P.pane.setAttribute("data-dx-lh", P.rs.lh);
   P.pane.setAttribute("data-dx-bg", P.rs.bg);
 }
-function setReading(k, v){
+function setReading(k, v, quiet){
+  if (!P.body){ P.rs[k] = v; store("read-" + k, String(v)); return; }
   var a = readAnchor(), b = rectOf(P.body), d = a ? (P.vertical ? b.width : b.height) * .25 - along(a.el, b) : 0;
   P.rs[k] = v;
   store("read-" + k, String(v));
@@ -857,6 +860,7 @@ function setReading(k, v){
   // 字の大きさが変わっても、読んでいた所を窓に残す
   if (a) scrollAlong(a.el, d);
   progress();
+  if (!quiet && DECK.prefsChanged) DECK.prefsChanged();
 }
 function openText(anchor){
   openPop("reading", T.text, anchor, function(m){
@@ -1271,6 +1275,18 @@ DECK.panes = {
   // 選べる並べ方（deck-meta.offer.faces と画面の幅から。kit/tools.js の「表示」のボタンと ? の r の行）
   offered: function(){ return offered(); },
   watch: function(i, k){ if (T) openOverlay(i, k || 0, null); },
+  // 見る人の設定（Player P5・P8 prefs。kit/deck.js が captions・captionSize と合わせる）：今の値と、ホストが覚えていた値を当てる（知らない値は無視）
+  prefs: function(){ return {layout: SPEC_OUT[P.layout], textSize: P.rs.size, textBackground: P.rs.bg}; },
+  applyPrefs: function(p){
+    if (!T) return;
+    var n = typeof p.layout === "string" && Object.prototype.hasOwnProperty.call(SPEC_IN, p.layout) ? SPEC_IN[p.layout] : null;
+    if (n && n !== P.layout) setLayout(n, {focus: false});
+    if (typeof p.textSize === "number" && isFinite(p.textSize) && p.textSize > 0){
+      var near = SIZES.reduce(function(a, b){ return Math.abs(b - p.textSize) < Math.abs(a - p.textSize) ? b : a; });
+      if (near !== P.rs.size) setReading("size", near, true);
+    }
+    if ((p.textBackground === "white" || p.textBackground === "sepia" || p.textBackground === "black") && p.textBackground !== P.rs.bg) setReading("bg", p.textBackground, true);
+  },
   close: function(){ closeOverlay(); },
   // 読んだかを見る所（kit/track.js。Player P6 の via "text"）：本の窓の本文の欄と、読む単位 {el, steps: [[i, k]…]}。
   // 本文：スライドの節（§9C.5）ごとに、その節のスライドの全ステップ。台本で読む：各ステップの台本、台本のないステップはそのスライドの縮図

@@ -1977,7 +1977,8 @@ var readySent = false;
 function postReady(){
   if (!EMBED || readySent) return;
   readySent = true;
-  var m = DECK.META, msg = {egatari: "ready", version: DECK.VERSION, docId: typeof m.docId === "string" ? m.docId : null};
+  var m = DECK.META, msg = {egatari: "ready", version: DECK.VERSION, formats: ((FMT && FMT.versions) || ["1.0"]).slice(), player: (FMT && FMT.playerSpec) || "1.0",
+    commands: EMBED_CMDS.slice(), docId: typeof m.docId === "string" ? m.docId : null};
   if (typeof m.sourceSha256 === "string") msg.sourceSha256 = m.sourceSha256;
   // タイムラインを作れなくても起動は止めない（空のタイムラインで知らせる）
   try { msg.timeline = DECK.timeline().map(function(x){
@@ -2071,6 +2072,11 @@ window.addEventListener("message", function(e){
     if (typeof m.visible !== "boolean"){ post({egatari: "error", id: m.id, code: "controls", message: "visible must be true or false"}); return; }
     setControls(m.visible);
     post({egatari: "controls", id: m.id, visible: m.visible});
+  } else if (EMBED && e.source === window.parent && m.egatari === "prefs"){
+    // 見る人の設定をホストから（Player P5・P8）：{egatari:"prefs", id?, prefs}。当てたら同じ形で今の値を答える
+    if (!m.prefs || typeof m.prefs !== "object" || Array.isArray(m.prefs)){ post({egatari: "error", id: m.id, code: "prefs", message: "prefs must be an object"}); return; }
+    applyPrefs(m.prefs);
+    post({egatari: "prefs", id: m.id, prefs: prefsNow()});
   } else if (EMBED && e.source === window.parent && m.egatari === "snapshot"){
     // 位置の画像（Player P8 では OPTIONAL）：このプレーヤーは作らない
     post({egatari: "error", id: m.id, code: "unsupported", message: "snapshot is not supported by this player"});
@@ -2092,7 +2098,38 @@ window.addEventListener("message", function(e){
 });
 
 // 埋め込みの命令（Player P8）。layout は kit/panes.js が受ける。ほかの名前には error（unsupported）で答える
-var EMBED_CMDS = ["seek", "play", "pause", "rate", "mode", "layout", "preview", "controls", "snapshot", "links"];
+var EMBED_CMDS = ["seek", "play", "pause", "rate", "mode", "layout", "preview", "controls", "prefs", "snapshot", "links"];
+// 見る人の設定（Player P5・P8 prefs）：layout・textSize・textBackground は kit/panes.js（DECK.panes.prefs / applyPrefs）、captions・captionSize はここ。
+// 値：layout "slides"|"flow"|"split"、textSize は本の窓の字の倍率（持つ段の一番近いもの）、textBackground "white"|"sepia"|"black"、captions true|false、captionSize "s"|"m"|"l"
+// （egatari-spec 3d3cdde、Player P8 の表の下の段落）。知らない名前も、知らない値の名前も無視する。見る人が自分で変えたときだけ {egatari:"prefs", prefs} を送る（ホストの命令で変えたときは送らない。同じ値は 2 度送らない）
+var prefsQuiet = 0, prefsSent = "";
+function prefsNow(){
+  var p = {};
+  if (DECK.panes && DECK.panes.prefs) { var q = DECK.panes.prefs(); for (var x in q) p[x] = q[x]; }
+  if (CAP_LIVE){ p.captions = !!CAP.on; p.captionSize = CAP.size || "m"; }
+  return p;
+}
+function postPrefs(){
+  if (!EMBED || !DECK.ready || prefsQuiet) return;
+  var p = prefsNow(), j = JSON.stringify(p);
+  if (j === prefsSent) return;
+  prefsSent = j;
+  post({egatari: "prefs", prefs: p});
+}
+DECK.prefsChanged = postPrefs;
+document.addEventListener("deck:captions", postPrefs);
+function applyPrefs(p){
+  prefsQuiet++;
+  try {
+    if (DECK.panes && DECK.panes.applyPrefs) DECK.panes.applyPrefs(p);
+    if (CAP_LIVE && typeof p.captionSize === "string" && Object.prototype.hasOwnProperty.call(CAP_SIZES, p.captionSize)){
+      if (CAP.on) capSize(p.captionSize);
+      else { CAP.size = p.captionSize; try { localStorage.setItem("deck-capsize", CAP.size); } catch (e) {} capApplySize(); }
+    }
+    if (CAP_LIVE && typeof p.captions === "boolean" && p.captions !== CAP.on) setCaptions(p.captions);
+  } finally { prefsQuiet--; }
+  prefsSent = JSON.stringify(prefsNow());
+}
 // seek の slide（スライドの鍵か 0 からの番号）・step（段階の鍵。数字でもよい。なければ 0）・t（秒。null・なしは ∞）を {i, k, t} に。読めなければ {error}
 function resolveSeek(m){
   var i = typeof m.slide === "string" ? slideIndexOf(m.slide) : typeof m.slide === "number" && Math.floor(m.slide) === m.slide && m.slide >= 0 && m.slide < slides.length ? m.slide : -2;

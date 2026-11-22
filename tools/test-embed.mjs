@@ -5,6 +5,9 @@
 //   seek → position（cause seek）と seeked（slide はスライドの鍵か 0 からの番号、step は段階の鍵、t は秒か null = ∞）。再生中の seek は再生を保つ
 //   preview on/off → 同じ形の答えと薄く見せる表示。controls visible false/true → 同じ形の答えと帯の出し入れ（?controls=0 で作らなかった帯も出せる）
 //   再生（play）で段階を終わりまで流すたびに stepEnded、タイムラインの最後の後に ended。飛ばした段階には stepEnded を送らない
+//   ready に formats（["1.0"]）・player（"1.0"）・commands（prefs を含む）
+//   prefs（Player P5・P8、spec 3d3cdde）→ 当てて今の値を同じ形で答える。知らない名前・知らない値は無視、オブジェクトでなければ code prefs。
+//     ホストの命令で変えたときは prefs の知らせを出さず、見る人が自分で変えたとき（字幕・並べ方・字の大きさ）だけ出す
 //   snapshot → {egatari:"error", id, code:"unsupported"}。知らない命令 → code unsupported。悪い引数 → code はその命令の名前（mode・rate・layout と同じ）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -77,6 +80,35 @@ const fstate = () => frame().evaluate(() => ({ key: DECK.state().key, playing: D
 await load();
 const ready = await hp.evaluate(() => window.msgs.find((m) => m.egatari === 'ready'));
 ok(ready && ready.timeline.length === SL.length * 2 && ready.timeline.every((x) => x.dur === DUR), `ready carries the short timeline (${ready && ready.timeline.length} steps)`);
+ok(ready && J(ready.formats) === J(['1.0']) && ready.player === '1.0' && Array.isArray(ready.commands) && ['seek', 'play', 'pause', 'rate', 'mode', 'layout', 'preview', 'controls', 'prefs'].every((c) => ready.commands.includes(c)),
+  `ready carries formats, player and commands (${J({ formats: ready && ready.formats, player: ready && ready.player, commands: ready && ready.commands })})`);
+
+// ---------------------------------------------------------------- prefs
+{
+  let { reply, ms } = await cmd({ egatari: 'prefs', id: 'q1', prefs: { layout: 'flow', textSize: 1.2, textBackground: 'sepia', captions: true, captionSize: 'l', lineHeight: 'wide', extra: 1 } });
+  const want = { layout: 'flow', textSize: 1.15, textBackground: 'sepia', captions: true, captionSize: 'l' };
+  ok(reply && reply.egatari === 'prefs' && reply.id === 'q1' && J(reply.prefs) === J(want), `prefs is applied and answered with the preferences now in effect; textSize goes to the nearest size (${J(reply)})`);
+  const fs1 = await frame().evaluate(() => ({ layout: DECK.panes.state().layout, reading: DECK.panes.state().reading, captions: DECK.captions(), size: DECK.captionSize(), bg: document.querySelector('[data-dx-bg]') && document.querySelector('[data-dx-bg]').getAttribute('data-dx-bg') }));
+  ok(fs1.layout === 'book' && fs1.reading.size === 1.15 && fs1.reading.bg === 'sepia' && fs1.bg === 'sepia' && fs1.captions === true && fs1.size === 'l', `the player shows them: the book, its size and background, captions L (${J(fs1)})`);
+  ok(!ms.some((m) => m.egatari === 'prefs' && !('id' in m)), 'a prefs command sends no prefs event (only the reply)');
+  ({ reply } = await cmd({ egatari: 'prefs', id: 'q2', prefs: { layout: 'sideways', textSize: 'big', textBackground: 'pink', captions: 'yes', captionSize: 'xl' } }));
+  ok(reply && reply.egatari === 'prefs' && J(reply.prefs) === J(want), `members with values the player does not know are ignored (${J(reply)})`);
+  for (const [v, why] of [[null, 'null'], ['flow', 'a string'], [[1], 'an array']]) {
+    ({ reply } = await cmd({ egatari: 'prefs', id: 'qb-' + why, prefs: v }));
+    ok(reply && reply.egatari === 'error' && reply.code === 'prefs', `prefs as ${why} replies error code prefs (${J(reply)})`);
+  }
+  ({ reply } = await cmd({ egatari: 'prefs', id: 'q3', prefs: { captions: false, captionSize: 's' } }));
+  ok(reply && reply.prefs.captions === false && reply.prefs.captionSize === 's' && (await frame().evaluate(() => DECK.captions() === false)), `captionSize can change while captions stay off (${J(reply)})`);
+  // the viewer's own controls: each change sends one prefs event with all the preferences
+  const since = await hp.evaluate(() => window.msgs.length);
+  await frame().evaluate(() => DECK.captions(true));
+  await frame().evaluate(() => DECK.panes.layout('slides'));
+  await hp.waitForTimeout(150);
+  const ev = (await hp.evaluate((n) => window.msgs.slice(n), since)).filter((m) => m.egatari === 'prefs');
+  ok(ev.length === 2 && ev.every((m) => !('id' in m)) && ev[0].prefs.captions === true && ev[0].prefs.layout === 'flow' && ev[1].prefs.layout === 'slides' && ev[1].prefs.captionSize === 's',
+    `the viewer turning captions on and choosing the slides send prefs events (${J(ev)})`);
+  await cmd({ egatari: 'prefs', id: 'q4', prefs: { captions: false, captionSize: 'm', textSize: 1, textBackground: 'white' } });
+}
 
 // ---------------------------------------------------------------- seek
 {

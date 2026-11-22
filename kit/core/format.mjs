@@ -25,6 +25,8 @@ export const FORMAT = Object.freeze({
   SCHEMA_PREFIX: `${NAME}-`,                          // 仕様の Schema のファイル名の前置（<prefix>index.schema.json など）
   SCHEMA_BASE: 'https://egatari.org/schema/',         // Schema の $id の前置（試験は写しを $id で引く。ネットワークは使わない）
   SPEC_URL: 'https://github.com/egatari/egatari-spec',
+  VERSIONS: Object.freeze(['1.0']),                   // 再生できる形式の版（major.minor。埋め込みの ready の formats、Player P8）
+  PLAYER_SPEC: '1.0',                                 // 従うプレーヤーの文書（Egatari Player）の版（ready の player）
   VENDOR_DIR: `vendor/${NAME}-spec`,                  // 仕様の Schema と試験用の入力の写し（リポジトリの根から）
   // 授業の部屋（拡張 live。仕様の extensions/live.md）：既定の部屋のサービス・通信の約束（egatari/live の protocol/）の写し・再生器の記憶の鍵の前置
   LIVE_ENDPOINT: `https://live.${NAME}.org`,
@@ -35,4 +37,5 @@ export const FORMAT = Object.freeze({
 });
 // 実行系（kit/deck.js）に渡す分（build-core が DECK.FORMAT として埋め込む）
 export const RUNTIME_FORMAT = Object.freeze({ id: FORMAT.FORMAT_ID, displayName: FORMAT.DISPLAY_NAME, blobPrefix: FORMAT.BLOB_PREFIX, uriScheme: FORMAT.URI_SCHEME, readableId: FORMAT.READABLE_ID,
-  indexId: FORMAT.INDEX_ID, attachKey: FORMAT.ATTACH_KEY, attachDir: FORMAT.ATTACH_DIR, attachRoles: FORMAT.ATTACH_ROLES });
+  indexId: FORMAT.INDEX_ID, attachKey: FORMAT.ATTACH_KEY, attachDir: FORMAT.ATTACH_DIR, attachRoles: FORMAT.ATTACH_ROLES,
+  versions: FORMAT.VERSIONS, playerSpec: FORMAT.PLAYER_SPEC });

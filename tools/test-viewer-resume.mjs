@@ -7,6 +7,8 @@
 //  - 「最初から見る」で最初の段階へ戻り、最初の段階では覚えた位置を消す（次に開くと知らせなし）
 //  - × で知らせだけ閉じる（位置はそのまま）。英語の文言
 //  - 共有の端末をオンにすると覚えた位置を消し、共有の端末では覚えず、開き直しても最初から
+//  - 見る人の設定（player spec P5・P8 prefs）：教材で字幕と並べ方（本）と字の大きさを変えると覚え（並べ方は教材ごと、ほかは端末で 1 つ）、
+//    開き直すとプレーヤーに送って同じ見え方で開く。共有の端末では覚えず、オンにすると消す
 //  - 覚えた位置が壊れていても（形の違う値）最初から開き、エラーにならない
 import fs from 'node:fs';
 import os from 'node:os';
@@ -126,19 +128,39 @@ await p.click('#b-resume-x');
 ok((await notice(p)) === '' && (await pos(p)) === AT2, '× closes the notice and stays where it is');
 await p.click('#b-lang');
 
-// a shared device: turning it on clears the kept positions; nothing is kept there
+// the viewer's preferences: changed in the player, kept by the page, sent back on reopening
+const keptPrefs = () => p.evaluate(() => { try { return JSON.parse(localStorage.getItem('egatari-viewer-prefs') || 'null'); } catch { return 'bad'; } });
+const looks = async () => (await lessonFrame(p)).evaluate(() => ({ captions: DECK.captions(), size: DECK.captionSize(), layout: DECK.panes.state().layout, text: DECK.panes.state().reading.size }));
+await close(p);
+await open(p, LESSON);
+await (await lessonFrame(p)).evaluate(() => { DECK.captions(true); DECK.captionSize('l'); DECK.panes.layout('flow'); });
+await until(async () => { const k = await keptPrefs(); return k && k.device && k.device.captionSize === 'l' && Object.values(k.layouts || {}).some((e) => e.l === 'flow'); });
+const kp = await keptPrefs();
+ok(kp && kp.device.captions === true && kp.device.captionSize === 'l' && Object.values(kp.layouts).some((e) => e.l === 'flow'), `the viewer's choices in the player are kept: captions and their size for the device, the book for this lesson (${JSON.stringify(kp)})`);
+await close(p);
+await open(p, LESSON);
+ok(await until(async () => { const l = await looks(); return l.captions === true && l.size === 'l' && l.layout === 'book'; }), `reopening: the player opens with them (${JSON.stringify(await looks())})`);
+ok(errors.length === 0, `no page errors so far (${errors.join(' | ')})`);
+await (await lessonFrame(p)).evaluate(() => { DECK.captions(false); DECK.captionSize('m'); DECK.panes.layout('slides'); });
+await until(async () => { const k = await keptPrefs(); return k && k.device.captions === false && k.device.captionSize === 'm'; });
+
+// a shared device: turning it on clears the kept positions and preferences; nothing is kept there
 await close(p);
 await p.check('#shared');
 await until(() => p.evaluate(() => !document.querySelector('dialog[open]')), 1000);
 const dlg = await p.$('dialog[open] button.pri, dialog[open] #b-mconfirm-yes');
 if (dlg) await dlg.click();
 ok(await until(async () => Object.keys(await kept(p)).length === 0), `shared device on: the kept positions are gone (${JSON.stringify(await kept(p))})`);
+ok((await keptPrefs()) === null, `shared device on: the kept preferences are gone (${JSON.stringify(await keptPrefs())})`);
 await open(p, LESSON);
 await sleep(scaled(800));
 ok((await pos(p)) === FIRST && (await notice(p)) === '', 'shared device: opens from the start');
 await forward(p, 2);
 await sleep(scaled(500));
 ok(Object.keys(await kept(p)).length === 0, 'shared device: moving on keeps nothing');
+await (await lessonFrame(p)).evaluate(() => DECK.captions(true));
+await sleep(scaled(400));
+ok((await keptPrefs()) === null, 'shared device: a preference changed in the player is not kept');
 await close(p);
 await p.uncheck('#shared');
 
