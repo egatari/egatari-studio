@@ -2007,16 +2007,81 @@ async function themeOnlyChange(P, a, files) {
 // 答えはこの端末に教材（docId）ごとに覚える（ファイルには書かない）。ファイルに書くのは、使う人が入力した名前と内容だけ。
 // ほかの人の教材なら metadata.edits に 1 件足す（同じ名前があれば内容だけ新しくする。app/rights.js の addEdit）。ライセンスが変更を示すよう求め
 // （Creative Commons の 4.0）、名前が空なら名前なしの項目を足す。今ある項目は消さず、変えない。
-// 聞かないもの：この Studio で作った（AI の返事から・deck.html だけを開いた）教材、だれの教材とも書かれていない教材（作成者・著作権・ライセンス・クレジット・編集の記録がない）
+// 聞かないもの：この Studio で作った（AI の返事から・deck.html だけを開いた）教材、だれの教材とも書かれていない教材（作成者・著作権・ライセンス・クレジット・編集の記録がない）。
+// そのうちライセンスのないものは、作ったかを聞かずに、ライセンスの部分だけを初めての保存で一度聞く（handoff #88、規格化 11/22。作業フォルダは聞かない：
+// ここは Egatari ファイルの保存だけ）。「付けない」ならファイルは変えない（license がない＝すべての権利を留保）。聞いたことは教材（docId）ごとに覚える
 const EDIT_ROLE_KEY = 'egatari-edit-role:';
+const LICENSE_ASKED_KEY = 'egatari-license-asked:';
 function editRoleKnown(docId) { try { return localStorage.getItem(EDIT_ROLE_KEY + docId); } catch { return null; } }
 function editRoleRemember(docId, v) { try { localStorage.setItem(EDIT_ROLE_KEY + docId, v); } catch { /* 使えない環境：開いている間だけ覚える */ } }
+function licenseAskedKnown(docId) { try { return localStorage.getItem(LICENSE_ASKED_KEY + docId) === '1'; } catch { return false; } }
+function licenseAskedRemember(docId) { try { localStorage.setItem(LICENSE_ASKED_KEY + docId, '1'); } catch { /* 使えない環境：開いている間だけ覚える */ } }
+// ライセンス（CC BY 4.0・CC BY-SA 4.0・CC BY-NC 4.0・付けない）・作成者・著作権の表示の欄（黙って既定を選ばない）
+function licenseFields(R) {
+  const lr = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-license', value, id: 'edit-license-' + value }), el('span', { text: label })]);
+  const lics = [...LICENSES.filter((x) => FIRST_SAVE_LICENSES.includes(x.id)).map((x) => lr(x.id, x.label)), lr('none', T.infoLicNone)];
+  const creators = el('textarea', { id: 'edit-creators', rows: '2' });
+  creators.value = R.creators.join('\n');
+  const copyright = el('input', { type: 'text', id: 'edit-copyright', maxlength: '300' });
+  copyright.value = R.copyright || '';
+  const title = el('p', { cls: 'label', id: 'edit-license-title', text: T.editLicTitle });
+  return { lics, creators, copyright, title, box: el('div', { id: 'edit-own' }, [
+    title, ...lics,
+    el('p', { cls: 'hint', id: 'edit-license-help', text: T.infoLicHelp }),
+    el('p', { cls: 'hint', id: 'edit-license-later', text: T.editLicLater }),
+    el('label', { for: 'edit-creators', text: T.infoFCreators }), creators,
+    el('label', { for: 'edit-copyright', text: T.infoFCopyright }), copyright]) };
+}
+const pickedOf = (list) => { const x = list.map((l) => l.querySelector('input')).find((i) => i.checked); return x ? x.value : null; };
+// 選んだライセンス・作成者・著作権の表示を設定のファイルの metadata に書く（変わった項目だけ。「付けない」で今もないなら何も書かない）→ true（続ける）
+async function writeLicenseFields(ws, md, own, live) {
+  const CFG = FORMAT.CONFIG_FILE;
+  let old = null;
+  try { old = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { old = null; }
+  if (!live()) return false;
+  try {
+    const cm = configObject(old).metadata;
+    const base = cm && typeof cm === 'object' ? cm : md;
+    const r = fileInfoPatch({ license: pickedOf(own.lics) || 'none', creators: own.creators.value, copyright: own.copyright.value }, base);
+    const patch = r.patch ? changedOnly(base, r.patch) : {};
+    if (Object.keys(patch).length) {
+      await ws.writeText(CFG, updateConfig(old, { metadata: configMerge(patch) }), { live });
+      if (!live()) return false;
+    }
+  } catch (e) { toast(String((e && e.message) || e), true); return false; }
+  return true;
+}
+// ライセンスのない、作ったかを聞かない教材：ライセンスの部分だけを聞く → true（保存を続ける）・false（キャンセルした）
+async function askLicenseOnly(P, ws, live, md, R) {
+  const docId = P.index.docId;
+  if (P.licenseAsked || licenseAskedKnown(docId)) return true;
+  // 試験：自動操作のブラウザでは、ほかの保存の試験が止まらないよう既定で聞かない（window.__APP_TEST.licenseAsk = true で聞く。tools/test-app-file-info.mjs）
+  const t = window.__APP_TEST && window.__APP_TEST.licenseAsk;
+  if (t === false || (t == null && navigator.webdriver)) return true;
+  const own = licenseFields(R);
+  own.title.hidden = true;   // 窓の題と同じ
+  const pending = ask({ title: T.editLicTitle, body: [own.box, el('p', { cls: 'hint', text: T.editRemember })],
+    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: true }] });
+  // ライセンスを選ぶまで保存できない（黙って既定を選ばない）
+  const go = $('dlg-save');
+  const sync = () => { go.disabled = !pickedOf(own.lics); };
+  sync();
+  for (const r of own.lics) r.querySelector('input').addEventListener('change', sync);
+  const v = await pending;
+  if (v !== 'save' || !live()) return false;
+  if (!(await writeLicenseFields(ws, md, own, live))) return false;
+  P.licenseAsked = true;
+  licenseAskedRemember(docId);
+  return true;
+}
 // → true（保存を続ける）・false（キャンセルした）
 async function askEditRole(P, ws, live) {
-  if (P.editRole || P.fresh || P.sourceOnly || P.neverSaved || !ws.dirty) return true;
+  if (P.editRole) return true;
   const md = P.index && P.index.metadata && typeof P.index.metadata === 'object' ? P.index.metadata : {};
   const R = rightsOf(md);
-  if (!R.creators.length && !R.copyright && !R.license && !R.attribution && !Array.isArray(md.edits)) return true;
+  const unnamed = !R.creators.length && !R.copyright && !R.license && !R.attribution && !Array.isArray(md.edits);
+  if (P.fresh || P.sourceOnly || P.neverSaved || unnamed) return R.license ? true : askLicenseOnly(P, ws, live, md, R);
+  if (!ws.dirty) return true;
   const docId = P.index.docId;
   const known = (window.__APP_TEST && window.__APP_TEST.editRole) || editRoleKnown(docId);
   if (known === 'creator' || known === 'other') { P.editRole = known; return true; }
@@ -2026,18 +2091,7 @@ async function askEditRole(P, ws, live) {
   // ライセンスのないファイルを自分で作った：ライセンスを選ぶ（黙って既定を選ばない）・作成者・著作権の表示
   let own = null;
   if (!R.license) {
-    const lr = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-license', value, id: 'edit-license-' + value }), el('span', { text: label })]);
-    const lics = [...LICENSES.filter((x) => FIRST_SAVE_LICENSES.includes(x.id)).map((x) => lr(x.id, x.label)), lr('none', T.infoLicNone)];
-    const creators = el('textarea', { id: 'edit-creators', rows: '2' });
-    creators.value = R.creators.join('\n');
-    const copyright = el('input', { type: 'text', id: 'edit-copyright', maxlength: '300' });
-    copyright.value = R.copyright || '';
-    own = { lics, creators, copyright, box: el('div', { id: 'edit-own' }, [
-      el('p', { cls: 'label', id: 'edit-license-title', text: T.editLicTitle }), ...lics,
-      el('p', { cls: 'hint', id: 'edit-license-help', text: T.infoLicHelp }),
-      el('p', { cls: 'hint', id: 'edit-license-later', text: T.editLicLater }),
-      el('label', { for: 'edit-creators', text: T.infoFCreators }), creators,
-      el('label', { for: 'edit-copyright', text: T.infoFCopyright }), copyright]) };
+    own = licenseFields(R);
     own.box.hidden = true;
   }
   const by = el('input', { type: 'text', id: 'edit-by', maxlength: '120', placeholder: T.editByPh, autocomplete: 'organization' });
@@ -2055,34 +2109,18 @@ async function askEditRole(P, ws, live) {
   buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: true }] });
   // どちらかを選ぶまで保存できない（黙って既定を選ばない）。自分で作ったファイルにライセンスがなければ、ライセンスも選ぶまで
   const go = $('dlg-save');
-  const picked = (list) => { const x = list.map((l) => l.querySelector('input')).find((i) => i.checked); return x ? x.value : null; };
   const sync = () => {
     const isOther = other.querySelector('input').checked, isMine = mine.querySelector('input').checked;
     fields.hidden = !isOther;
     if (own) own.box.hidden = !isMine;
-    go.disabled = !(isOther || (isMine && (!own || picked(own.lics))));
+    go.disabled = !(isOther || (isMine && (!own || pickedOf(own.lics))));
   };
   sync();
   for (const r of [mine, other, ...(own ? own.lics : [])]) r.querySelector('input').addEventListener('change', sync);
   const v = await pending;
   if (v !== 'save' || !live()) return false;
   const role = other.querySelector('input').checked ? 'other' : 'creator';
-  if (role === 'creator' && own) {
-    const CFG = FORMAT.CONFIG_FILE;
-    let old = null;
-    try { old = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { old = null; }
-    if (!live()) return false;
-    try {
-      const cm = configObject(old).metadata;
-      const base = cm && typeof cm === 'object' ? cm : md;
-      const r = fileInfoPatch({ license: picked(own.lics) || 'none', creators: own.creators.value, copyright: own.copyright.value }, base);
-      const patch = r.patch ? changedOnly(base, r.patch) : {};
-      if (Object.keys(patch).length) {
-        await ws.writeText(CFG, updateConfig(old, { metadata: configMerge(patch) }), { live });
-        if (!live()) return false;
-      }
-    } catch (e) { toast(String((e && e.message) || e), true); return false; }
-  }
+  if (role === 'creator' && own && !(await writeLicenseFields(ws, md, own, live))) return false;
   if (role === 'other') {
     const CFG = FORMAT.CONFIG_FILE;
     let old = null;
@@ -2921,6 +2959,7 @@ window.__APP_TEST = {
   saveHandle: null,
   dirHandle: null,
   editRole: window.__APP_TEST_EDIT_ROLE || null,   // 試験：保存の前の「このファイルは、あなたが作ったものですか。」に答えたことにする（'creator' | 'other'）
+  licenseAsk: null,   // 試験：ライセンスの部分だけの問い（askLicenseOnly）を、true で聞く・false で聞かない。null なら自動操作のブラウザでは聞かない
   state: () => ({ building: !!S.building, earlier: S.earlier ? { ...S.earlier } : null, deckFile: S.deckFile, builds: S.builds, loads: S.loads, gen: S.gen, error: S.error, warn: S.warn.slice(), pos: S.pos, open: !!S.ws, kind: S.ws ? S.ws.kind : null,
     allowed: !!S.allowed, presenter: !!(S.presWin && !S.presWin.closed), presLoads: S.presLoads || 0, frameLoaded: S.frameLoaded || 0, lastQuickCheck: S.lastQuickCheck ? { ...S.lastQuickCheck } : null,
     portable: S.portable ? { components: (S.portable.index.components || []).map((c) => ({ tag: c.tag, version: c.version, sha256: c.sha256 })), themes: (S.portable.index.themes || []).map((t) => ({ name: t.name, version: t.version, sha256: t.sha256 })), themePins: S.portable.themePins || null, docId: S.portable.index.docId, profile: S.portable.index.profile, extended: !!S.portable.extended, mislabelled: !!S.portable.mislabelled, codeReasons: (S.portable.codeReasons || []).slice(), readOnly: S.portable.readOnly, tierAOnly: S.portable.tierAOnly, rightsOk: S.portable.rightsOk, dirty: S.ws.dirty, name: S.portable.name, stale: (S.stale || []).slice(),
