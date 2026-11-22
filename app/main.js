@@ -16,6 +16,7 @@ import { createAttachPanel } from './attachments-panel.js';
 import { createLivePanel } from './live-panel.js';
 import { createSlidesPanel } from './slides-panel.js';
 import { createThemeSwitch, themeOf, withTheme } from './theme-switch.js';
+import { createImageInsert } from './image-insert.js';
 import { addLive, liveRuntime } from '../kit/core/live.mjs';
 import { parseNarration } from '../kit/core/narration-core.mjs';
 import LIVE_POLICY_SRC from '../kit/core/live-policy.mjs?text';
@@ -977,6 +978,8 @@ const ui = createEditorUI({
     { name: 'rec', isOpen: () => rec.isOpen(), close: () => rec.close() },
     { name: 'panel', isOpen: () => !$('panel').hidden, close: () => closePanel() }],
   onPos: () => audio.onPos(),
+  // 編集パネルの HTML の欄への画像のドロップ：「画像を挿入」の窓をそのファイルで開く（app/image-insert.js）
+  imageDrop: { label: T.imgDropHere, open: (f) => imageInsert.open(f).catch((e) => toast(String(e.message || e), true)) },
   // 読み方の欄（#101）：入れた読みでその語だけを、端末の声（#89 と同じ readAloud）か、この PC の AI 音声で試す
   pronounce: {
     readAloud: (text, lang) => readAloud(text, lang, { terms: (RES.yomi && RES.yomi.terms) || [] }),
@@ -1122,6 +1125,11 @@ const themeSwitch = createThemeSwitch({
   ws: () => S.ws, deckFile: () => S.deckFile, portable: () => S.portable,
   themeOptions: () => themeOptions(), loadOtherTheme: () => loadThemeDialog(), userThemes: () => userThemesWs(),
   bundled: (p) => (p in RES.text ? RES.text[p] : null), why: themeSwitchWhy,
+});
+// 画像を挿入…（スライド ▾。app/image-insert.js）：スライドの操作と同じ流れ（apply）で対象のスライドの本文に <img src="data:…"> を書く
+const imageInsert = createImageInsert({
+  T, el, ask, toast, apply: (fn) => slidesPanel.apply(fn), at: () => slideAt(), pos: () => S.pos, guard: slideGuard,
+  readDeck: () => (S.ws ? S.ws.readText(S.deckFile, { max: READ_LIMITS.source }) : null),
 });
 function themeItem() {
   const b = $('b-theme-switch'), w = themeSwitchWhy();
@@ -2555,6 +2563,7 @@ $('b-export-mp4').onclick = () => mp4Dialog().catch((e) => toast(String(e.messag
 $('b-export-scorm').onclick = () => scormExport().catch((e) => toast(String(e.message || e), true));
 $('b-info').onclick = () => lessonInfo().catch((e) => toast(String(e.message || e), true));
 $('b-insert').onclick = () => insertDialog().catch((e) => toast(String(e.message || e), true));
+$('b-image').onclick = () => imageInsert.open().catch((e) => toast(String(e.message || e), true));
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
 $('b-del').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.removeAt(i); };
 $('b-bookmark').onclick = () => bookmarkDialog().catch((e) => toast(String(e.message || e), true));

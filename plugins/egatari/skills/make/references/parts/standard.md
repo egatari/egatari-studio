@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard のパーツ
 
-指示のバージョン：ee044521
+指示のバージョン：0eb3d143
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

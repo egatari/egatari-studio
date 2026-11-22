@@ -2835,6 +2835,21 @@
    "note": "#223 (owner 2026-11-15, rule 6b)"
   },
   {
+   "id": "alt-text",
+   "group": "Slides",
+   "en": "Alt text",
+   "ja": "代替テキスト",
+   "definition": "A short sentence that describes an image for people who cannot see it (read aloud by screen readers). A decorative image is marked 飾りの画像 and has empty alt text.",
+   "avoid": {
+    "ja": [],
+    "en": []
+   },
+   "internal": "alt",
+   "decided": "2026-11-22",
+   "by": "owner",
+   "note": "handoff #85 (規格化 2026-11-22, owner OK): the established word in Google Slides and Office."
+  },
+  {
    "id": "backup",
    "group": "Format and files",
    "en": "Backup",

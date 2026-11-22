@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: ee044521**
+**Instruction version: 0eb3d143**
 **Skill version: 0.6.18**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -80,7 +80,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `ee044521`
+Pack version: `0eb3d143`
 
 You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -154,6 +154,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 ### 2.6 Parts
 
 - **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Formulas are arithmetic only (`Math.exp(x)`, `x**2`), never run as code. Use parts only where motion explains something; most slides need none.
+- Where a photo is needed, write a figure box (the Figure template) with a description of the photo; the author adds the image later
 
 ### 2.7 Choosing a representation
 

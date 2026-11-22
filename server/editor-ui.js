@@ -22,6 +22,8 @@
 //     pronounce?: {readAloud(text, lang) → Promise<{ok, reason?}>, ai?: {available(lang) → bool, say(text, lang) → Promise<{ok, reason?}>}}
 //                                                  読み方の欄（#101）の「読み上げで聞く」「AI 音声で聞く」（編集アプリ。開発サーバーには無い：ボタンを出さない）
 //     onRecord?: () => void,                       r（このページでもデッキからでも）：録音モードを開く（編集アプリ app/rec-mode.js。開発サーバーには無い）
+//     imageDrop?: {label, open(file)},             原稿の欄に画像のファイルを持ってきたとき label（「画像をここにドロップすると挿入します」）を出し、落としたら
+//                                                  欄を閉じて（変えていなければ）open(file)（編集アプリの「画像を挿入」の窓 app/image-insert.js。開発サーバーには無い）
 //   })
 // 信頼する編集の道具（編集モードの札・原稿の欄・コメントの欄と一覧・口述原稿の引き出し）は、どれもプレビューの外の横の板（#dev-side、
 // drawerHost の中で iframe の隣）に出す。スライドの場所に重ねる欄はない。板の上には、デッキが自分の枠の外に描けない印（色の帯）を付ける。
@@ -131,6 +133,7 @@ const CSS = [
   '#dev-editor textarea{width:100%;min-height:96px;max-height:50vh;padding:8px 10px;font:13.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical;white-space:pre-wrap}',
   '.dev-foot{display:flex;align-items:center;gap:8px;margin-top:8px}.dev-foot .dv-hint{color:#6b7385;font-size:12px;flex:1}',
   '.dev-msg{display:none;margin-top:8px;padding:6px 10px;border-radius:6px;font-size:13px}',
+  '.dev-drop{display:none;margin-top:8px;padding:6px 10px;border:2px dashed #2563eb;border-radius:6px;font-size:13px;color:#1d4ed8;background:#eff6ff}.dev-drop.on{display:block}',
   '.dev-msg.dv-err{display:block;background:#fde8e8;color:#9b1c1c;border:1px solid #f5b5b5}.dev-msg.dv-ok{display:block;background:#e7f6ec;color:#16632f}',
   '#dev-comment{padding:12px 14px}',
   '#dev-comment .dv-q{color:#4b5363;background:#f4f5f8;border-left:3px solid #f59e0b;padding:4px 8px;margin-bottom:8px;font-size:12.5px;max-height:4.6em;overflow:hidden}',
@@ -498,13 +501,30 @@ export function createEditorUI(o) {
     const tag = /^[a-z][a-z0-9-]{0,20}$/.test(String(hint.tag || '')) ? hint.tag : 'element';
     const ta = h('textarea', { spellcheck: 'false' });
     const msg = h('div', { cls: 'dev-msg' });
+    // 画像のドロップ（o.imageDrop があるときだけ）：持ってきている間は知らせを出し、落としたら「画像を挿入」の窓へ（欄には字を入れない）
+    const drop = o.imageDrop ? h('div', { cls: 'dev-drop', id: 'dev-drop', role: 'status', text: o.imageDrop.label }) : null;
+    if (drop) {
+      const files = (e) => !!(e.dataTransfer && [...e.dataTransfer.types].includes('Files'));
+      const isImage = (f) => !!f && (/^image\//.test(f.type || '') || /\.(png|jpe?g|webp|svg)$/i.test(f.name || ''));
+      ta.addEventListener('dragover', (e) => { if (!files(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; drop.classList.add('on'); });
+      ta.addEventListener('dragleave', () => drop.classList.remove('on'));
+      ta.addEventListener('drop', (e) => {
+        drop.classList.remove('on');
+        if (!files(e)) return;
+        e.preventDefault();
+        const f = [...e.dataTransfer.files].find(isImage);
+        if (!f) return;
+        closeEditor();
+        o.imageDrop.open(f);
+      });
+    }
     const save = h('button', { cls: 'dv-pri', text: L.save });
     const cancel = h('button', { text: L.cancel });
     const card = h('div', { id: 'dev-editor', cls: 'edit-ui dev-card', role: 'dialog', 'aria-label': L.editSrc }, [
       h('div', { cls: 'dev-head' }, [h('span', { cls: 'dv-t', text: L.editSrc }), h('span', { cls: 'dv-m', text: '<' + tag + '> ' + range }), h('span', { cls: 'dv-sp' }),
         h('button', { cls: 'dv-ghost', text: '✕', title: L.closeEsc, on: { click: () => closeEditor(true) } })]),
       whereLine(),
-      ta, msg,
+      ta, ...(drop ? [drop] : []), msg,
       h('div', { cls: 'dev-foot' }, [h('span', { cls: 'dv-hint', text: L.editHint }), cancel, save]),
       h('div', { cls: 'dev-lock', text: L.locked }),
     ]);

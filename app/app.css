@@ -551,3 +551,12 @@ main{flex:1;min-height:0;display:flex}
 #dlg .shop-save{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:flex-end;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 #dlg .shop-save .shop-field{flex:1 1 200px}
 #dlg .shop-save .hint{flex-basis:100%;margin:0}
+/* 画像を挿入…（app/image-insert.js。handoff #85） */
+#dlg .img-dialog{display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+#dlg .img-file-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-start}
+#dlg #img-preview{display:block;max-width:240px;max-height:120px;border:1px solid var(--line);border-radius:4px;background:var(--bg)}
+#dlg #img-preview[hidden],#dlg .img-dialog .note[hidden],#dlg #img-go-note[hidden]{display:none}
+#dlg .img-dialog .note.warn{background:var(--warn-bg);color:var(--warn-fg);padding:8px 12px;border-radius:8px;font-size:13px}
+#dlg #img-alt{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+#dlg #img-alt:disabled{opacity:.55}
+#dlg .img-step-row{display:flex;gap:8px;align-items:center}

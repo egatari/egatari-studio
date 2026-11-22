@@ -36,7 +36,7 @@ import { readRegularText, READ_LIMITS } from '../kit/bounded-read.mjs';
 import { writeZip } from '../kit/core/zip-write.mjs';
 import { parseLock, resolveCatalogueContent, LOCK_FILE } from '../kit/core/components-lock.mjs';
 import { renderedFieldNames } from '../kit/core/parts2.mjs';
-import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, partSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
+import { assemble, commonOf, partOf, membersOf, requestOf, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, partSpans, planSpans, STANDARD, FREE_CORE, fitPack, packOptsOf } from '../kit/core/llm-pack-assemble.mjs';
 import { purposesFrom } from '../kit/core/purposes.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -657,7 +657,7 @@ export function skillFiles(data, lang = 'ja', local = []) {
       files[`${MAKE_SKILL_DIR}/${refDir}local.md`] = skillTerms(head + `# ${ja ? 'local のパーツ' : 'local parts'}\n\n${intro}\n\n` + [...local].sort((a, b) => (a.tag < b.tag ? -1 : 1)).map(body).join('\n\n') + '\n');
     }
     const links = [...sets.keys(), ...(local.length ? ['local'] : [])].map((set) => `- [${set}](${refDir}${set}.md)`).join('\n');
-    const common = partSpans(D.common
+    const common = partSpans(planSpans(D.common, 'paid')
       .replace('{{CATALOG}}', ja ? 'パーツは上のセットごとの参照ファイルから、必要なものだけ読む。' : 'Read only the parts you need from the set references above.')
       .replace('{{PURPOSES}}', ja ? 'パーツの候補はセットごとの参照ファイルで選ぶ。' : 'Choose candidate parts from the set references.'));
     const book = splitStamp(read('docs', ja ? 'llm-book.ja.md' : 'llm-book.md')).body.trim();

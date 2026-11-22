@@ -106,6 +106,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 ### 2.6 Parts
 
 - **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Formulas are arithmetic only (`Math.exp(x)`, `x**2`), never run as code. Use parts only where motion explains something; most slides need none.
+<!--paid-->- Where a photo is needed, write a figure box (the Figure template) with a description of the photo; the author adds the image later<!--/paid-->
 
 ### 2.7 Choosing a representation
 

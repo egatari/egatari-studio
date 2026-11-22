@@ -109,6 +109,12 @@
       "reason": "印刷 (print), 矢印 (arrow) and 目印 are other words that contain 印."
     },
     {
+      "file": "app/i18n.js",
+      "pattern": "「飾りの画像」に印を付け",
+      "term": "emphasis",
+      "reason": "Marking the 「飾りの画像」 checkbox is a checkbox mark, not emphasis (handoff #85, approved wording)."
+    },
+    {
       "file": "**",
       "pattern": "開く|[Oo]pen\\w*",
       "term": "create",
@@ -711,6 +717,20 @@
       "pattern": "時系列",
       "term": "subjects",
       "reason": "時系列 (time series) is an established word; the 系列 inside it is not the content-area sense this term avoids (m-matrix demo, parts library 2.18.0)."
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "imgStep: '出すステップ'",
+      "term": "step",
+      "reason": "The step chooser of Insert image (handoff #85, approved wording): en labels it “Show at” and its options say “Step 1…”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "imgStepStart: '最初から'",
+      "term": "start-over",
+      "reason": "最初から here means the image is shown from the start of the slide (no step), not starting over; en says “From the start” (handoff #85, approved wording).",
+      "pairs": true
     }
   ]
 }

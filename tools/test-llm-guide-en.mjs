@@ -222,7 +222,9 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     const follow = (x) => FOLLOW.reduce((t, [from, to]) => t.replaceAll(from, to), x);
     // 部品庫から来る字の言い換え（make-llm-guide の JA_WORDS。#223）は、古い側にも掛けて比べる（新しい側に掛け直しても変わらない）
     for (const D of [cur, oldData]) for (const [tag, c] of Object.entries(D.ja.components)) for (const k of ['row', 'entry', 'free']) if (typeof c[k] === 'string') c[k] = jaWords(tag, c[k]).replace('）の見本: ', '）の例: ').replace('書き方の見本: ', '書き方の例: ');
-    const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow);
+    // v0.6.19：写真が要る所は図の枠と説明（handoff #85）。R-components の次の 1 行で、有料のプランだけ（jaDump の並びの 3 つ目ごと）
+    const PAID_ONLY = ['動きが説明になる所だけに使う（たいていのスライドには要らない）\n', '動きが説明になる所だけに使う（たいていのスライドには要らない）\n- 写真が要る所は、図の枠（テンプレートの「図」）と内容の説明を書き、画像は作成者が後で入れる\n'];
+    const a = jaDump(cur).map(norm), b = jaDump(oldData).map(norm).map(follow).map((x, i) => (i % 3 === 2 ? x.replaceAll(...PAID_ONLY) : x));
     assert.equal(a.length, b.length);
     assert.ok(a.every((x, i) => x === b[i]), `ja packs differ from v0.6.6 (${firstDiff(a, b)})`);
     assert.ok(a.some((x) => x.includes('<version>')) && a.some((x) => x.includes('<partsSrc>')));

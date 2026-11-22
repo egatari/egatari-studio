@@ -222,6 +222,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | caution-box | Caution | 注意 | A caution box in slide body text, marked with an amber bar and information icon. |  | .caution | 2026-11-15 (owner) |
 | warning-box | Warning | 警告 | A warning box in slide body text, marked with a red-orange frame and warning icon. |  | .caution.warn | 2026-11-15 (owner) |
 | font | Font | フォント | A typeface; the subset of a font embedded in a file is フォントのサブセット. #223 (owner 2026-11-15, rule 6b) | 字体 ・ 字の切り出し |  | 2026-11-15 (owner) |
+| alt-text | Alt text | 代替テキスト | A short sentence that describes an image for people who cannot see it (read aloud by screen readers). A decorative image is marked 飾りの画像 and has empty alt text. handoff #85 (規格化 2026-11-22, owner OK): the established word in Google Slides and Office. |  | alt | 2026-11-22 (owner) |
 
 ## Spelling (long vowels)
 

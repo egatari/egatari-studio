@@ -70,6 +70,8 @@ export function normalizeSets(sets, data) {
 export const langOf = (data, lang) => data[lang === 'ja' ? 'ja' : 'en'];
 const tidy = (s) => s.replace(/\n{3,}/g, '\n\n').trim();
 // 部品に結び付いた文：exclude の部品があれば除き、なければ印だけを外す
+// 有料のプランだけの文（<!--paid-->…<!--/paid-->）：無料のプランでは除き、有料のプランでは印だけを外す（無料のプランの貼り付けの長さに入らない行。handoff #85）
+export const planSpans = (text, plan) => text.replace(/<!--paid-->([\s\S]*?)<!--\/paid-->/g, (_, inner) => (planName(plan) === 'paid' ? inner : ''));
 export const partSpans = (text, exclude = []) => text.replace(/<!--part:([a-z0-9,-]+)-->([\s\S]*?)<!--\/part-->/g, (_, tags, inner) => (tags.split(',').some((t) => exclude.includes(t)) ? '' : inner));
 
 // gone：組み立てに入らない部品（説明の中でその名前を出す所を除く。<!--part:…--> は make-llm-guide の markRefs が付ける）。
@@ -105,7 +107,7 @@ export function commonOf(data, lang, { exclude: exclude0 = [], sets = [], off = 
   const ss = sets === null ? [...data.sets] : normalizeSets(sets, data);
   const gone = goneParts(data, lang, exclude, ss);
   const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, sets: ss, off, ...(ranked ? { named } : {}) }) : '');
-  return tidy(partSpans(D.common, exclude).replace('{{PURPOSES}}', table)
+  return tidy(partSpans(planSpans(D.common, plan), exclude).replace('{{PURPOSES}}', table)
     .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, ranked ? [] : briefParts(data, plan, short, full), planName(plan) === 'free')));
 }
 // 1 つの束の指示。sets：一緒に入る束（説明の中の名前を残す部品を決める。既定はこの束だけ）
