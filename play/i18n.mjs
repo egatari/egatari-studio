@@ -36,7 +36,7 @@ const JA = {
   inkClosedView: '手書きを閉じました。手書きはスライドだけの表示で使えます（書いた線は残っています）',
   resumed: '前に見ていた所から開きました',
   resumedAt: (t) => `前に見ていた所（${t}）から開きました`,
-  resumeStart: '最初から見る',
+  resumeStart: '最初から再生',
   resumeDismiss: 'この案内を閉じる',
   resumeFromStart: '最初に戻りました',
   inkSurface: (n) => `スライドとメモ欄の手書き（${n} 本の線）。Apple Pencil かマウスで書きます`,

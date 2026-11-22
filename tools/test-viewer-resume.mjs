@@ -3,8 +3,8 @@
 // test-all: platform（WebKit の分は CI の macOS で）
 // 確かめること：
 //  - 初めて開いたときは最初の段階で、知らせは出ない
-//  - 段階を進めて閉じ、開き直すと、その段階から開き（ready に seek を返す）、「前に見ていた所（スライドの題）から開きました」と「最初から見る」
-//  - 「最初から見る」で最初の段階へ戻り、最初の段階では覚えた位置を消す（次に開くと知らせなし）
+//  - 段階を進めて閉じ、開き直すと、その段階から開き（ready に seek を返す）、「前に見ていた所（スライドの題）から開きました」と「最初から再生」
+//  - 「最初から再生」で最初の段階へ戻り、最初の段階では覚えた位置を消す（次に開くと知らせなし）
 //  - × で知らせだけ閉じる（位置はそのまま）。英語の文言
 //  - 共有の端末をオンにすると覚えた位置を消し、共有の端末では覚えず、開き直しても最初から
 //  - 見る人の設定（player spec P5・P8 prefs）：教材で字幕と並べ方（本）と字の大きさを変えると覚え（並べ方は教材ごと、ほかは端末で 1 つ）、
@@ -40,6 +40,7 @@ async function portable(name, extraCss) {
   fs.cpSync(path.join(ROOT, 'examples', 'minimal'), dir, { recursive: true, filter: (x) => !/[\\/]out([\\/]|$)/.test(path.relative(ROOT, x)) });
   if (extraCss) { const f = path.join(dir, 'deck.html'); fs.writeFileSync(f, fs.readFileSync(f, 'utf8').replace('</head>', `<style>${extraCss}</style>\n</head>`)); }
   const out = path.join(work, name + FORMAT.FILE_EXT);
+  fs.rmSync(out, { force: true });   // a lesson left in a reused folder may carry an older player
   const b = await buildPortable(path.join(dir, 'deck.html'), { out, subset: false });
   if (!fs.existsSync(out)) fs.writeFileSync(out, b.html);
   return out;
@@ -106,9 +107,9 @@ ok(await until(async () => (await pos(p)) === AT), `reopening: the lesson opens 
 const title = await (await lessonFrame(p)).evaluate(() => DECK.timeline().find((x) => DECK.stepKey(x.i, 0).split(':')[0] === DECK.state().key.split(':')[0]).title);
 ok(await until(async () => (await notice(p)).includes('前に見ていた所') && (await notice(p)).includes(title)), `a notice says so, with the slide's title (${await notice(p)})`);
 if (args.includes('--shots')) { await p.screenshot({ path: path.join(work, 'resume.png') }); await p.setViewportSize({ width: 375, height: 740 }); await sleep(300); await p.screenshot({ path: path.join(work, 'resume-375.png') }); await p.setViewportSize({ width: 1180, height: 820 }); }
-ok(await p.evaluate(() => { const b = document.getElementById('b-resume-start'); return !!b && b.offsetParent !== null && b.textContent === '最初から見る'; }), 'the notice has 最初から見る');
+ok(await p.evaluate(() => { const b = document.getElementById('b-resume-start'); return !!b && b.offsetParent !== null && b.textContent === '最初から再生'; }), 'the notice has 最初から再生');
 await p.click('#b-resume-start');
-ok(await until(async () => (await pos(p)) === FIRST) && (await notice(p)) === '', `最初から見る goes to the first step and closes the notice (${await pos(p)})`);
+ok(await until(async () => (await pos(p)) === FIRST) && (await notice(p)) === '', `最初から再生 goes to the first step and closes the notice (${await pos(p)})`);
 ok(await until(() => p.evaluate(() => document.getElementById('sr').textContent === '最初に戻りました')), 'a screen reader hears 最初に戻りました');
 ok(await until(async () => Object.keys(await kept(p)).length === 0), `at the first step nothing is kept (${JSON.stringify(await kept(p))})`);
 await close(p);

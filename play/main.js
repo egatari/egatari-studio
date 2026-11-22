@@ -338,7 +338,7 @@ function setInk(on) {
 
 // ---------------------------------------------------------------- reopening where the viewer left off, with the viewer's preferences (player spec P5, handoff #94)
 // The player's ready (spec P8) lists the timeline; the last position kept for this lesson (play/resume.mjs) is sent back as a seek,
-// and a notice offers 「最初から見る」. Not on a shared device, not for lessons with a Live (the host leads), not for an older player that
+// and a notice offers 「最初から再生」. Not on a shared device, not for lessons with a Live (the host leads), not for an older player that
 // sends no ready. Untrusted: only slide keys and step keys that are strings are read from the timeline, and a kept position is used
 // only when the timeline has it.
 const RESUME = { timer: 0 };

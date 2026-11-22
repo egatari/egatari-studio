@@ -757,12 +757,6 @@
       "term": "start-over",
       "reason": "最初から here means the image is shown from the start of the slide (no step), not starting over; en says “From the start” (handoff #85, approved wording).",
       "pairs": true
-    },
-    {
-      "file": "**",
-      "pattern": "最初から見る",
-      "term": "play-sample",
-      "reason": "The resume notice's button (handoff #94, wording by standards 11/23): it goes back to the first step, it is not a sample's Play button."
     }
   ]
 }
