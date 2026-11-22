@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # extra のパーツ
 
-指示のバージョン：18a79335
+指示のバージョン：2a06805c
 
 ### `<m-codetree>`
 

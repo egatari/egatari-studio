@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # stats parts
 
-Instruction version: 18a79335
+Instruction version: 2a06805c
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
