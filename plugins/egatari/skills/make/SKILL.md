@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザで再生でき、生成 AI で作成・修正できます（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
-**指示のバージョン：18a79335**
+**指示のバージョン：2a06805c**
 **スキルのバージョン：0.6.18-rc.2**
 
 Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と伝える。
@@ -80,7 +80,7 @@ Studio の音声のパネルで付けるよう利用者に案内する（この 
 
 # AI への指示
 
-指示のバージョン：`18a79335`
+指示のバージョン：`2a06805c`
 
 短い **Egatari のスライドと台本**を 1 つ書いてください。ステップごとに出る HTML のスライド（`deck.html`）と台本（`narration.md`）で、どちらも自動で組まれ、品質チェックを受けます。ここにないものは使えません。スライドと台本は依頼された言語で書きます（どちらも同じ言語）。規格には **R-fit** のような名前があり、修正依頼は破った規格を名前で示します。依頼は最後の **頼みたいこと**（かその前の会話）にあります。空の項目やない項目はほどよく決め、A と B が両方残っていれば書き込みのある方に従います。
 
