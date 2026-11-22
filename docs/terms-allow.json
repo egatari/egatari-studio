@@ -638,7 +638,7 @@
     },
     {
       "file": "**",
-      "pattern": "試験では(ない|ありません)|成績を付ける試験",
+      "pattern": "試験では(ない|ありません)|成績を付ける試験|試験には使えません",
       "term": "software-test",
       "reason": "Questions in parts are not an exam (handoff #84, format §9.2): 試験 is an exam in teaching, which the glossary keeps as 試験."
     },
