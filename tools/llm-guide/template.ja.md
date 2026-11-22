@@ -76,6 +76,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 ### 2.2 スライド
 
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
+- 数字・図・引用を使ったスライドには、結論の行の上に出典の行（`<p class="source">出典：…</p>`）を書く
 - 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。
 - 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`

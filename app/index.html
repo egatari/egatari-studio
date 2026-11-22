@@ -31,6 +31,8 @@
         <button type="button" id="b-save" role="menuitem" data-t="save"></button>
         <button type="button" id="b-saveas" class="only-portable" role="menuitem" data-t="saveAs"></button>
         <button type="button" id="b-export-portable" class="only-folder" role="menuitem" data-t="saveAs"></button>
+        <!-- 最後に保存した状態に戻す…（handoff #86）：Egatari ファイルだけ（作業フォルダは編集のたびに書くので、戻す「保存」がない） -->
+        <button type="button" id="b-revert" class="only-portable" role="menuitem" data-t="revertCmd"></button>
         <div class="sub" role="none">
           <button type="button" id="b-exportmenu" role="menuitem" aria-haspopup="menu" aria-expanded="false" aria-controls="m-export" data-t="exportMenu"></button>
           <div id="m-export" class="menu-list sub-list" role="menu" aria-labelledby="b-exportmenu" hidden>
@@ -69,6 +71,12 @@
         <button type="button" id="b-theme-switch" role="menuitem" data-t="themeSwitchCmd"></button>
       </div>
     </div>
+    <!-- 元に戻す・やり直し・検索と置換（handoff #86。Google スライドと同じ矢印のボタン）：押せないときは disabled（灰色） -->
+    <span class="sep"></span>
+    <button type="button" id="b-undo" class="icon-btn" data-t-label="undoBtn" disabled>↶</button>
+    <button type="button" id="b-redo" class="icon-btn" data-t-label="redoBtn" disabled>↷</button>
+    <button type="button" id="b-find" class="icon-btn" data-t-label="findBtn"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true" focusable="false"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 10l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+    <span class="sep"></span>
     <button type="button" id="b-check"><span data-t="check"></span><span id="b-check-badge" class="badge" hidden></span></button>
     <!-- 段階 2 で右の板の見出し（タブ）になる。それまでの仮の群 -->
     <span class="sep"></span>

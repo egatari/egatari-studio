@@ -166,10 +166,9 @@ try {
     ok(await memFile(page, 'deck.html') === deck0, 'ja: 「しおりを外す」 restores the source byte for byte');
     ok((await menuItems(page)).del === null, 'ja: after removing, 「しおりを外す」 is gone');
     // 元に戻す
-    if (!(await page.evaluate(() => window.__APP_TEST.slides().open))) await page.click('#b-slides');
-    await page.waitForSelector('#sl-undo-row:not([hidden])');
+    await page.waitForSelector('#b-undo:not([disabled])');
     n = await loads(page);
-    await page.click('#sl-undo');
+    await page.click('#b-undo');
     await waitLoads(page, n);
     ok(await memFile(page, 'deck.html') === deck2, 'ja: undo brings the bookmark back');
   });

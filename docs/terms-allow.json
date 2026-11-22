@@ -291,6 +291,20 @@
     },
     {
       "file": "app/i18n.js",
+      "line": "findBtn:",
+      "term": "search",
+      "reason": "The toolbar button for Find and replace (handoff #86, approved wording); en says “Find and replace”, the usual name. The glossary’s Search is the book pane’s search box.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
+      "line": "title: '検索と置換', find: '検索'",
+      "term": "search",
+      "reason": "The Find and replace dialog (handoff #86, approved wording): its title and the Find field; en says “Find and replace” and “Find”.",
+      "pairs": true
+    },
+    {
+      "file": "app/i18n.js",
       "line": "editRoleTitle:",
       "term": "created-by",
       "reason": "The question before the first save (format spec §7.3) asks whether the person is one of the creators; en says “a creator of this lesson”.",

@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it ([specification](https://github.com/egatari/egatari-spec)). Egatari Studio is its editor: <https://studio.egatari.org/>.
 
-**Instruction version: ee044521**
+**Instruction version: df0bd6e6**
 **Skill version: 0.6.18**
 
 If this differs from the version of the instructions copied in Studio, tell the user “new parts are available”.
@@ -80,7 +80,7 @@ Do not create files that were not asked for (a README, explanatory documents, he
 
 # Instructions for the AI
 
-Pack version: `ee044521`
+Pack version: `df0bd6e6`
 
 You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
@@ -124,6 +124,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 ### 2.2 Slides
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
+- On a slide that uses numbers, a figure or a quotation, write a source line above the conclusion (`<p class="source">Source: …</p>`)
 - Optional kicker (a short line above the heading): one `<p class="kicker">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).
 - Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.

@@ -285,14 +285,24 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         ok(!keys(after.deck).includes(victim) && keys(after.deck).length === keys(before.deck).length - 1, `${tag}: delete removes the slide`);
         ok(!sections(after.narr).includes(victim) && sections(after.narr).length === sections(before.narr).length - 1, `${tag}: delete removes its narration section`);
         ok(segKeys(after.man).every((x) => !x.startsWith(victim + ':')) && (await Promise.all(vFiles.map(exists))).every((x) => !x), `${tag}: delete removes its audio entries and files`);
-        ok(/削除しました/.test(await announced()) && (await sl()).undo && await page.isVisible('#sl-undo'), `${tag}: the delete is announced and Undo is offered`);
+        ok(/削除しました/.test(await announced()) && (await sl()).undo && /の削除$/.test((await sl()).undo.label) && !(await page.isDisabled('#b-undo')), `${tag}: the delete is announced and Undo (↶ in the toolbar) is offered`);
         if (mode === 'folder') await shot('slides-undo.png');
         const b1 = (await state()).builds;
-        await page.click('#sl-undo');
+        await page.click('#b-undo');
         await settle(b1);
         const back = await snap();
         ok(back.deck === before.deck && back.narr === before.narr && back.man === before.man, `${tag}: Undo restores the slide, the narration and the audio manifest byte for byte`);
-        ok((await Promise.all(vFiles.map(exists))).every(Boolean) && !(await sl()).undo && (await sl()).sel === 1, `${tag}: Undo restores the audio files and selects the slide again`);
+        ok((await Promise.all(vFiles.map(exists))).every(Boolean) && (await sl()).redo && (await sl()).sel === 1, `${tag}: Undo restores the audio files, selects the slide again and offers Redo`);
+        // やり直し（↷）でもう一度消え、元に戻すでまた戻る（多段の履歴。handoff #86）
+        const b2 = (await state()).builds;
+        await page.click('#b-redo');
+        await settle(b2);
+        const again = await snap();
+        ok(again.deck === after.deck && again.narr === after.narr && again.man === after.man && (await Promise.all(vFiles.map(exists))).every((x) => !x), `${tag}: Redo deletes the slide, its narration and audio again`);
+        const b3 = (await state()).builds;
+        await page.click('#b-undo');
+        await settle(b3);
+        ok((await snap()).deck === before.deck && (await Promise.all(vFiles.map(exists))).every(Boolean), `${tag}: Undo after Redo brings it back again`);
       }
 
       // ---------------------------------------------------------------- 5. 並べ替え
@@ -340,7 +350,7 @@ export async function testAppSlides({ browser, BASE, ok, watch, work, shotDir })
         await save;
         const st = await state();
         ok(st.portable.lastTier === 'B' && st.portable.lastRefusal && st.portable.lastRefusal.code === 'source-changed' && !st.portable.dirty, `${tag}: saved by rebuilding (tier B, tier A refused: source-changed)`);
-        ok(!(await sl()).undo, `${tag}: Undo is cleared by the save`);
+        ok(!!(await sl()).undo, `${tag}: the Undo history is kept after the save (handoff #86)`);
         const html = await page.evaluate(async () => { const h = window.__APP_TEST.saveHandle; return await (await h.getFile()).text(); });
         const r = await readPortable(html);
         const deck2 = new TextDecoder().decode(r.files.get ? r.files.get('deck.html') : r.files['deck.html']);

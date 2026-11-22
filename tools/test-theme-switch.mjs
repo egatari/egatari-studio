@@ -121,11 +121,11 @@ async function switchTo(page, name, { expectCurrent } = {}) {
   if (rights) await clickDlg(page, '#dlg-ok');
   await waitLoads(page, n);
 }
+// 道具の列の「元に戻す」（↶。handoff #86 の多段の履歴）
 async function undo(page) {
-  if (!(await page.evaluate(() => window.__APP_TEST.slides().open))) await page.click('#b-slides');
-  await page.waitForSelector('#sl-undo-row:not([hidden])');
+  await page.waitForSelector('#b-undo:not([disabled])');
   const n = await loads(page);
-  await page.click('#sl-undo');
+  await page.click('#b-undo');
   await waitLoads(page, n);
 }
 

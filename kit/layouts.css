@@ -34,6 +34,14 @@
 :where(.slide) :where(a[href]){color:var(--term);text-decoration:underline;text-decoration-thickness:.06em;text-underline-offset:.16em}
 :where(.slide) :where(a[href]):focus-visible{outline:3px solid var(--term);outline-offset:2px;border-radius:3px}
 .cite{font-size:20px;color:var(--muted)}
+/* 出典の行（<p class="source">出典：…</p>）：数字・図・引用の出どころ。スライドの直下に置けば結論の行のすぐ上（下端をそろえ、2 行なら上へ伸びる）に小さく灰色で。
+   本文はその分だけ短くする。本文の中に置けば本文の終わりに。字の大きさの最小は見ない（.cite と同じ。kit/core/layout-scan.mjs） */
+.source{font-size:20px;line-height:1.35;color:var(--muted);margin:0}
+.slide > .source{position:absolute;left:48px;right:48px;bottom:157px}
+.slide:has(> .source) .body{bottom:192px}
+.slide.noconcl > .source{bottom:40px}
+.slide.noconcl:has(> .source) .body{bottom:96px}
+.body .source{margin-top:8px}
 .arrow{text-align:center;font-size:32px;line-height:1.1;margin:2px 0;color:var(--term)}
 .cols{display:flex;gap:32px;align-items:flex-start}
 .cols>*{flex:1;min-width:0}

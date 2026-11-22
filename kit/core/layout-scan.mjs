@@ -200,7 +200,7 @@ export function layoutScan(s, o) {
         if (!n.textContent.trim()) continue;
         const e = n.parentElement;
         // ルビ（rt）の振り仮名は本文の半分の大きさが決まり（docs/reference.md「Japanese language arts」）
-        if (e.closest('svg') || e.closest('.katex') || e.closest('[' + ANNOT + ']') || e.closest('.cite') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
+        if (e.closest('svg') || e.closest('.katex') || e.closest('[' + ANNOT + ']') || e.closest('.cite') || e.closest('.source') || e.closest('.pn') || e.closest('.figcap') || e.closest('rt')) continue;
         if (hiddenEl(e)) continue;   // 読み上げ用の隠し方の中の字（.sr-only の形の 1×1 の箱・clip-path: inset(50%) など）は見えない
         const f = parseFloat(getComputedStyle(e).fontSize);
         const lim2 = e.closest('table,.plot') ? 23.9 : 26.6;

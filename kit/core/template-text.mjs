@@ -24,6 +24,7 @@ export const TEMPLATE_TEXT = Object.freeze({
     figure: { h: '図の題', fig: '図をここに', cap: '図 1：図の説明', concl: '→ 図から読み取れること', n: '図を指しながら話すことを書く', nc: '結論の行で話すことを書く' },
     section: { h: '新しい章の題', lead: 'この章で話すこと', n: 'この章で話すことを書く' },
     quote: { h: '引用の題', q: '「引用する文をここに書く」', cite: '— 出典', n: '引用を読み上げ、何を言っているかを書く' },
+    source: { h: '出典のあるスライドの見出し', li: ['数字や図を使う項目'], src: '出典：資料の名前（発行者、年）', concl: '⇒ このスライドの結論', n: 'このスライドで話すことを書く', ni: ['項目で話すことを書く'], nc: '結論の行で話すことを書く' },
   },
   en: {
     'title-body': { h: 'New slide heading', li: ['First point', 'Second point'], concl: '⇒ The point of this slide', n: 'Write what you say on this slide', ni: ['Write what you say with the first point', 'Write what you say with the second point'], nc: 'Write what you say with the conclusion line' },
@@ -31,6 +32,7 @@ export const TEMPLATE_TEXT = Object.freeze({
     figure: { h: 'Figure title', fig: 'Figure goes here', cap: 'Figure 1: what it shows', concl: '→ What the figure shows', n: 'Write what you say while pointing at the figure', nc: 'Write what you say with the conclusion line' },
     section: { h: 'New chapter title', lead: 'What this chapter covers', n: 'Write what this chapter covers' },
     quote: { h: 'Quote title', q: '“Write the quoted text here.”', cite: '— Source', n: 'Read the quote and write what it means' },
+    source: { h: 'Slide heading with a source', li: ['A point with a number or a figure'], src: 'Source: name of the document (publisher, year)', concl: '⇒ The point of this slide', n: 'Write what you say on this slide', ni: ['Write what you say with the point'], nc: 'Write what you say with the conclusion line' },
   },
 });
 const NARR_KEYS = new Set(['n', 'ni', 'nc']);

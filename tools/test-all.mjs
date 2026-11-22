@@ -278,6 +278,7 @@ steps.push(
   ['test-bookmarks', ['tools/test-bookmarks.mjs', path.join(tmp, 'bookmarks')]],
   ['test-bookmark-check', ['tools/test-bookmark-check.mjs', path.join(tmp, 'bookmark-check')]],
   ['test-app-bookmark', ['tools/test-app-bookmark.mjs', path.join(tmp, 'app-bookmark')]],
+  ['test-app-undo', ['tools/test-app-undo.mjs', path.join(tmp, 'app-undo')]],
   // テーマの CSS を体裁（layouts.css）の後に読む（backlog #75）：組み立ての口ごとの順と、html を付けないテーマの規則が体裁に勝つこと・--marker・--bar・--bar-h
   ['test-theme-order', ['tools/test-theme-order.mjs', path.join(tmp, 'theme-order')]],
   // テーマの寸法の宣言（theme.json の metrics、backlog #76）：検証と継承、同一性の hash、同梱のテーマの描いた箱が宣言どおり（厳しく）、

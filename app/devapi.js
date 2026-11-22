@@ -25,6 +25,7 @@ function rid() {
 //   途中の await（権利の確認・控え）の間に替わったら、何も書かずに 410（取り消し）で終える（替わった先の作業場所には書かない）
 // 書き込みは 1 つずつ（前の保存が終わってから次）。書く直前に原稿をもう一度読み、確かめたときと違えば 409（上書きしない）。
 // 書き込みそのものにも live を渡す（書いている途中で替われば、フォルダのファイルは入れ替えずに取り消す）
+// onWrite?({kind: 'source' | 'narration' | 'readings', file, before, after, max})：原稿・台本を書いた後（元に戻すの履歴。app/history.js）。before が null ならファイルはなかった
 export function createDevApi(ctx) {
   const M = ctx.msg;
   const ok = (body) => ({ ...body, _status: 200 });
@@ -84,6 +85,7 @@ export function createDevApi(ctx) {
           if ((await ws.readText(file, SRC)) !== src) return err(409, M.conflict);
           if (!live()) return CANCEL();
           await ws.writeText(file, next, { live });
+          if (live() && ctx.onWrite) ctx.onWrite({ kind: 'source', file, before: src, after: next, max: SRC.max });
           const failed = live() ? await ctx.afterWrite() : false;
           return ok({ ok: true, error: failed ? M.savedButFailed : null });
         });
@@ -119,6 +121,7 @@ export function createDevApi(ctx) {
             if ((await ws.readText('narration.md', NARR)) !== cur) return err(409, M.narrConflict);
             if (!live()) return CANCEL();
             await ws.writeText('narration.md', out, { live });
+            if (live() && ctx.onWrite) ctx.onWrite({ kind: 'narration', file: 'narration.md', before: cur, after: out, max: NARR.max });
             if (live()) await ctx.afterWrite();
           }
           return ok({ ok: true, changed: out !== text, rev: narrationRev(out, sk, st) });
@@ -152,6 +155,7 @@ export function createDevApi(ctx) {
             if ((await ws.readText('narration.md', NARR)) !== cur) return err(409, M.narrConflict);
             if (!live()) return CANCEL();
             await ws.writeText('narration.md', r.text, { live });
+            if (live() && ctx.onWrite) ctx.onWrite({ kind: 'readings', file: 'narration.md', before: cur, after: r.text, max: NARR.max });
             if (live()) await ctx.afterWrite();
           }
           return ok({ ok: true, n: r.n });

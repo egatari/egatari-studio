@@ -5,16 +5,17 @@
 // 書き換えは原稿（deck.html）・口述原稿（narration.md）・音声の記録（audio/manifest.json）と、消したスライドの音声のファイルだけ
 // （文字列の操作は kit/core/slide-ops.mjs）。書く前に .cache/edits/ に控え（音声のファイルも remove が控える）、読んだときから変わっていれば書かない。
 // 書いた後は組み直し（段 B：1 ファイルは次の「保存」で組み直す。スライドの原稿が変わると段 A は断るので）、プレビューをその枚へ動かし、品質チェックを出す
-// 元に戻す：直前の 1 つの操作を、メモリの上の前の中身（3 つのファイルと消した音声のバイト・音声の板の使っていない取り直し）で戻す。
-// 次のスライドの操作・作業場所を替える・1 ファイルの保存までで、その間に 3 つのファイルがほかの編集で変わっていれば戻さない（控えは .cache/edits/ に残る）
-// 設定のファイル（egatari.json）は、それを書き換える操作（テーマを変更。app/theme-switch.js。fn が cfg を返したとき）でだけ比べ、書いて戻す
+// 元に戻す・やり直し（handoff #86）：操作ごとに、変えたファイルの前と後の中身（消した音声のバイトも）を履歴（app/history.js。ctx.history）に記録する。
+// 戻す・やり直すのもこの板の流れ（step：確かめ・組み直し・その枚へ）。その間に触るファイルがほかの編集で変わっていれば戻さない（控えは .cache/edits/ に残る）
+// 設定のファイル（egatari.json）は、それを書き換える操作（テーマを変更。app/theme-switch.js。fn が cfg を返したとき）でだけ記録する
 //
 //   createSlidesPanel(ctx)
 //     ctx = {T（app/i18n.js の T.sl）, el, host（#slides）, ws(), generation(), deckFile(), slides()（組み立ての {key, id, heading}）, pos()（{i}）,
 //            go(i)（プレビューをその枚へ）, goAfter(i)（組み直した後の読み込みでその枚へ）, thumbsDoc(cfg)（縮図の文書。動かしてよくなければ null）,
 //            guard() → 断る理由 | null, building() → Promise | null, rebuild() → 失敗なら true, check()（品質チェック）, ask, toast, lang,
-//            audio（音声の板：takeOut(key)・putBack(x)・pendingFor(key)）, stale()（音声が古い段階の鍵）}
-//   panel.toggle(on?)・isOpen()・refresh()（組み直した後）・onPos()・reset()（作業場所を替えた）・saved()（1 ファイルを保存した）・state()（試験）
+//            audio（音声の板：takeOut(key)・putBack(x)・pendingFor(key)）, stale()（音声が古い段階の鍵）, history（app/history.js の履歴）}
+//   panel.toggle(on?)・isOpen()・refresh()（組み直した後）・onPos()・reset()（作業場所を替えた）・state()（試験）
+//   panel.step('undo' | 'redo')（履歴で戻す・やり直す）・panel.applyFiles(fn)（ほかのファイルの書き換えを同じ流れで。最後に保存した状態に戻す）
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
 import { headingLine, parseNarration } from '../kit/core/narration-core.mjs';
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
@@ -23,6 +24,7 @@ import {
   slideChunks, insertSlide, duplicateSlide, deleteSlide, moveSlide, slideTemplate, TEMPLATES, newIdFor,
   insertSection, copySections, removeSections, reorderSections, stepsIn, removeAudio, audioEntries,
 } from '../kit/core/slide-ops.mjs';
+import { filesMatch, writeFiles } from './history.js';
 
 export const ROW = 84, THUMB_W = 128;
 const OPEN_KEY = 'egatari-slides-open';
@@ -32,7 +34,7 @@ const CFG = FORMAT.CONFIG_FILE;
 export function createSlidesPanel(ctx) {
   const { T, el, host } = ctx;
   let want = null;
-  let open = false, sel = 0, busy = false, undo = null, lastDoc = null, info = new Map(), drag = null, infoSeq = 0;
+  let open = false, sel = 0, busy = false, lastDoc = null, info = new Map(), drag = null, infoSeq = 0;
   const frame = () => host.querySelector('#sl-thumbs');
   const list = () => host.querySelector('#sl-list');
   const live = (msg) => { const r = host.querySelector('#sl-live'); if (!r) return; r.textContent = ''; setTimeout(() => { r.textContent = msg; }, 30); };
@@ -57,7 +59,6 @@ export function createSlidesPanel(ctx) {
       el('button', { type: 'button', id: 'sl-up', text: '↑', title: T.upTip, 'aria-label': T.upTip, onclick: () => move(sel, sel - 1) }),
       el('button', { type: 'button', id: 'sl-down', text: '↓', title: T.downTip, 'aria-label': T.downTip, onclick: () => move(sel, sel + 1) }),
     ]),
-    el('div', { id: 'sl-undo-row', cls: 'sl-undo', hidden: '' }, [el('span', { id: 'sl-undo-what' }), el('button', { type: 'button', id: 'sl-undo', text: T.undo, onclick: () => undoLast() })]),
     el('div', { id: 'sl-scroll' }, [el('div', { id: 'sl-wrap' }, [
       el('ul', { id: 'sl-list', role: 'listbox', tabindex: '0', 'aria-label': T.listLabel, 'aria-describedby': 'sl-keys' }),
     ])]),
@@ -147,7 +148,6 @@ export function createSlidesPanel(ctx) {
     host.querySelector('#sl-up').disabled = dis || sel <= 0;
     host.querySelector('#sl-down').disabled = dis || sel >= n - 1;
     addBtn.disabled = busy;
-    host.querySelector('#sl-undo').disabled = busy;
     host.setAttribute('aria-busy', busy ? 'true' : 'false');
   }
 
@@ -171,9 +171,6 @@ export function createSlidesPanel(ctx) {
       ]));
     });
     if (slides[sel]) ul.setAttribute('aria-activedescendant', 'sl-o-' + sel); else ul.removeAttribute('aria-activedescendant');
-    const u = host.querySelector('#sl-undo-row');
-    u.hidden = !undo;
-    if (undo) { const w = host.querySelector('#sl-undo-what'); w.textContent = undo.label; w.title = undo.label; }
     updateButtons();
     drawThumbs();
   }
@@ -219,8 +216,9 @@ export function createSlidesPanel(ctx) {
   }
 
   // ---------------------------------------------------------------- 操作の共通の流れ
-  // fn(before) → {deck, narr, man, cfg?（設定のファイル。省けば変えない）, files: [audio/ の下の消すファイル], at（操作の後に見せる枚）, label（元に戻すの説明）, done（知らせ）, takeOut?: 鍵,
-  //               applied?()（書いた後、組み直す前に。メモリの上の状態を変える）, revert?()（元に戻すとき、組み直す前に）} | null（やめた）
+  // fn(before) → {deck, narr, man, cfg?（設定のファイル。省けば変えない）, files: [audio/ の下の消すファイル], at（操作の後に見せる枚）, undoAt（元に戻した後に見せる枚）,
+  //               label（元に戻すの操作の名前）, done（知らせ）, takeOut?: 鍵, quiet?（品質チェックを出さず、キーボードの位置を動かさない。置換）,
+  //               applied?()（書いた後、組み直す前に。メモリの上の状態を変える。やり直しでも）, revert?()（元に戻すとき、組み直す前に）} | null（やめた）
   async function run(fn) {
     if (busy) { ctx.toast(T.busy, true); return false; }
     const why = await ctx.guard();
@@ -250,11 +248,18 @@ export function createSlidesPanel(ctx) {
       }
       await writeAll(ws, file, before, r, alive);
       for (const x of files) await ws.remove(x.rel, { live: alive, max: AUDIO_LIMITS.fileBytes });
-      const takes = r.takeOut && ctx.audio ? ctx.audio.takeOut(r.takeOut) : null;
+      let takes = r.takeOut && ctx.audio ? ctx.audio.takeOut(r.takeOut) : null;
       if (r.applied) r.applied();
-      undo = { label: r.label, file, before, after: { deck: r.deck, narr: r.narr, man: r.man, cfg: r.cfg }, files, takes, revert: r.revert || null, at: r.undoAt };
+      if (ctx.history) {
+        const tf = [[file, 'deck', SRC], ['narration.md', 'narr', NARR], ['audio/manifest.json', 'man', JSONL], [CFG, 'cfg', JSONL]]
+          .filter(([, k]) => r[k] !== undefined).map(([rel, k, lim]) => ({ rel, before: before[k], after: r[k], max: lim.max }));
+        ctx.history.record({ label: r.label, kind: 'slides', at: r.undoAt, redoAt: r.at,
+          files: [...tf, ...files.map((x) => ({ rel: x.rel, before: x.bytes, after: null, max: AUDIO_LIMITS.fileBytes }))],
+          undo: () => { if (takes && ctx.audio) ctx.audio.putBack(takes); takes = null; if (r.revert) r.revert(); },
+          redo: () => { takes = r.takeOut && ctx.audio ? ctx.audio.takeOut(r.takeOut) : null; if (r.applied) r.applied(); } });
+      }
       sel = r.at;
-      await afterChange(r.at, r.done);
+      await afterChange(r.at, r.done, r.quiet);
       return true;
     } catch (e) {
       if (e && e.name === 'Cancelled') { ctx.toast(T.cancelled, true); return false; }
@@ -273,13 +278,14 @@ export function createSlidesPanel(ctx) {
       await ws.writeText(rel, b, { live: alive });
     }
   }
-  async function afterChange(at, msg) {
+  async function afterChange(at, msg, quiet) {
     await ctx.rebuild();
-    ctx.goAfter(at);
+    if (Number.isFinite(at)) ctx.goAfter(at);
     render();
     loadInfo();
     if (msg) { live(msg); ctx.toast(msg); }
     const o = ul.querySelector(`[data-i="${at}"]`); if (o) o.scrollIntoView({ block: 'nearest' });
+    if (quiet) return;
     await ctx.check();
     // 品質チェックの板が開いても、キーボードの位置は一覧に戻す（続けて操作できるように）
     if (open) ul.focus();
@@ -346,10 +352,12 @@ export function createSlidesPanel(ctx) {
       return { deck, narr, man: b.man, at: to, undoAt: from, label: T.undoMove(nameOf(s, from)), done: T.moved(s.heading || T.untitled, from + 1, to + 1, n) };
     });
   }
-  // ---------------------------------------------------------------- 元に戻す
-  async function undoLast() {
-    const u = undo;
-    if (!u) return false;
+  // ---------------------------------------------------------------- 元に戻す・やり直し（履歴。app/history.js）
+  // 操作と同じ確かめ（ほかの操作の途中・開いている編集の欄）の後、履歴が触るファイルを書き戻し、組み直してその枚へ。
+  // スライドの操作の記録だけ品質チェックを出す（原稿・台本の確定と置換は、確定のときにも出さない）
+  async function step(dir) {
+    const h = ctx.history;
+    if (!h || !(dir === 'undo' ? h.canUndo() : h.canRedo())) return false;
     if (busy) { ctx.toast(T.busy, true); return false; }
     const why = await ctx.guard();
     if (why) { ctx.toast(why, true); return false; }
@@ -358,18 +366,42 @@ export function createSlidesPanel(ctx) {
     const alive = () => ctx.ws() === ws && ctx.generation() === g;
     try {
       const b = ctx.building(); if (b) await b;
-      const now = { deck: await ws.readText(u.file, SRC), narr: await ws.readText('narration.md', NARR), man: await ws.readText('audio/manifest.json', JSONL), cfg: await ws.readText(CFG, JSONL) };
-      if (now.deck !== u.after.deck || now.narr !== u.after.narr || now.man !== u.after.man || (u.after.cfg !== undefined && now.cfg !== u.after.cfg)) { undo = null; render(); ctx.toast(T.undoChanged, true); return false; }
-      await writeAll(ws, u.file, now, u.after.cfg === undefined ? { ...u.before, cfg: undefined } : u.before, alive);
-      for (const x of u.files) await ws.writeBytes(x.rel, x.bytes, { live: alive });
-      if (u.takes && ctx.audio) ctx.audio.putBack(u.takes);
-      if (u.revert) u.revert();
-      undo = null;
-      sel = u.at;
-      await afterChange(u.at, T.undone(u.label));
+      if (!alive()) return false;
+      const r = await h[dir](ws, { live: alive });
+      if (!r.ok) { if (r.why === 'changed') ctx.toast(T.undoChanged, true); return false; }
+      const e = r.entry, at = dir === 'undo' ? e.at : e.redoAt;
+      if (Number.isFinite(at)) sel = at;
+      await afterChange(at, (dir === 'undo' ? T.undone : T.redone)(e.label), e.kind !== 'slides');
       return true;
     } catch (e) {
-      console.warn('[editor] undo failed', e);
+      if (e && e.name === 'Cancelled') { ctx.toast(T.cancelled, true); return false; }
+      console.warn('[editor] ' + dir + ' failed', e);
+      ctx.toast(T.failed(String((e && e.message) || e)), true);
+      return false;
+    } finally { busy = false; updateButtons(); }
+  }
+  // ほかのファイルの書き換えを、スライドの操作と同じ流れ（確かめ・書く・履歴・組み直し）で。fn(ws) → {files: [{rel, before, after, max}], label, done, at?} | null
+  // 書く直前に、どのファイルも fn が読んだとき（before）のままかを確かめる
+  async function applyFiles(fn) {
+    if (busy) { ctx.toast(T.busy, true); return false; }
+    const why = await ctx.guard();
+    if (why) { ctx.toast(why, true); return false; }
+    busy = true; updateButtons();
+    const ws = ctx.ws(), g = ctx.generation();
+    const alive = () => ctx.ws() === ws && ctx.generation() === g;
+    try {
+      const b = ctx.building(); if (b) await b;
+      const r = await fn(ws);
+      if (!r || !alive() || !r.files.length) return false;
+      if (!(await filesMatch(ws, r.files, 'before'))) { ctx.toast(T.changed, true); return false; }
+      if (!alive()) return false;
+      await writeFiles(ws, r.files, 'before', 'after', alive);
+      if (ctx.history) ctx.history.record({ label: r.label, kind: r.kind || 'files', files: r.files, at: r.at });
+      await afterChange(r.at, r.done, true);
+      return true;
+    } catch (e) {
+      if (e && e.name === 'Cancelled') { ctx.toast(T.cancelled, true); return false; }
+      console.warn('[editor] file change failed', e);
       ctx.toast(T.failed(String((e && e.message) || e)), true);
       return false;
     } finally { busy = false; updateButtons(); }
@@ -393,7 +425,7 @@ export function createSlidesPanel(ctx) {
     toggle, isOpen: () => open, wantOpen,
     // 外からの操作（スライドの挿入…）：選んだスライド（一覧を開いていなければ null）・雛形から足す・同じ流れで書き換える（fn は run と同じ形）
     selected: () => (open && (ctx.slides() || []).length ? sel : null),
-    add: (kind, after) => add(kind, after), apply: (fn) => run(fn),
+    add: (kind, after) => add(kind, after), apply: (fn) => run(fn), applyFiles: (fn) => applyFiles(fn), step: (dir) => step(dir), busy: () => busy,
     // 道具の列の「スライド ▾」の複製・削除：この番号のスライド（一覧を開いていれば選んだもの、閉じていればプレビューの枚）
     duplicateAt: (i) => { sel = i; return duplicate(); }, removeAt: (i) => { sel = i; return remove(); },
     refresh: () => { if (open) { render(); loadInfo(); } },
@@ -403,8 +435,8 @@ export function createSlidesPanel(ctx) {
       if (want) { if (p.i === want.i || Date.now() > want.until) want = null; else return; }
       if (p.i !== sel) select(p.i, false);
     },
-    reset: () => { undo = null; sel = 0; info = new Map(); lastDoc = null; const f = frame(); if (f) f.remove(); if (open) render(); },
-    saved: () => { if (undo) { undo = null; if (open) render(); } },
-    state: () => ({ open, sel, busy, undo: undo ? { label: undo.label, files: undo.files.map((x) => x.rel) } : null, rows: [...ul.querySelectorAll('[role=option]')].map((o) => ({ key: o.dataset.key, label: o.getAttribute('aria-label'), selected: o.getAttribute('aria-selected') === 'true' })) }),
+    reset: () => { sel = 0; info = new Map(); lastDoc = null; const f = frame(); if (f) f.remove(); if (open) render(); },
+    state: () => { const u = ctx.history && ctx.history.peek('undo'), r = ctx.history && ctx.history.peek('redo'); return { open, sel, busy,
+      undo: u ? { label: u.label, files: u.files.map((x) => x.rel) } : null, redo: r ? { label: r.label, files: r.files.map((x) => x.rel) } : null, rows: [...ul.querySelectorAll('[role=option]')].map((o) => ({ key: o.dataset.key, label: o.getAttribute('aria-label'), selected: o.getAttribute('aria-selected') === 'true' })) }; },
   };
 }
