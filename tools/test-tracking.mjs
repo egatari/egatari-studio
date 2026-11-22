@@ -5,9 +5,10 @@
 // 記録：舞台で再生したステップ（via stage）と本で読んだステップ（via text：節が 3 秒見えていた。読み飛ばしは数えない。縦書きも。台本で読むも）を別々に持つ・
 //   終えた判定（既定・visitedFraction・reachedEnd・played: true）・postMessage の出来事・SCORM 1.2 の模型が受ける呼び出し（初め・位置・再開データ・
 //   終えた・終わり・再開・振り返り・教材が変わったとき）・1 ファイルの deck-meta.tracking と completion
-// 確認問題（format spec §8.4 ctx.answer・§9.2 checks、包み方 §2.1）：m-predict（パーツ集 2.20.0）の答えのステップで answer の出来事・
-//   checks: "correct" は正解するまで終えない・"answered" は答えれば終える・SCORM の cmi.core.score.*（min 0・max 100・raw）と再開データの qa・qc・再開で戻る・
-//   postMessage の answer {slideKey, id, correct, value}
+// 確認問題（format spec §8.4 ctx.answer・questions・§9.2 checks、包み方 §2.1）：m-predict 2.2.0（パーツ集 2.20.0）に、組んだ写しの中で
+//   static questions = ["q"] を足して使う（宣言する 2.3.0 はまだない）。宣言のない 2.2.0 の答えは無視する・開いたときに問いを数える（見ていないスライドも）・
+//   答えのステップで answer の出来事・checks: "correct" は正解するまで終えない・"answered" は答えずに最後まで見ても終えず、答えれば終える・
+//   SCORM の cmi.core.score.*（min 0・max 100・raw、分母は宣言した問い）と再開データの qa・qc・再開で戻る・postMessage の answer {slideKey, id, correct, value}
 // --shots：作業フォルダに画面の PNG を残す（目で見る用）
 import fs from 'node:fs';
 import os from 'node:os';
@@ -515,7 +516,7 @@ f.src = 'deck.html' + location.search;
 // ---------------------------------------------------------------- 8. 確認問題（m-predict の ctx.answer）
 {
   const QS = [['s-ck2aaa', '予想する'], ['s-ck3bbb', 'まとめ']];
-  const makeQuiz = (name, completion) => {
+  const makeQuiz = (name, completion, { declare = true } = {}) => {
     const dir = path.join(work, name);
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'deck.html'), `<!DOCTYPE html>
@@ -542,8 +543,16 @@ f.src = 'deck.html' + location.search;
     fs.writeFileSync(path.join(dir, 'egatari.json'), JSON.stringify({ componentsCatalogue: '2', docId: '7f9c2a1e-4b3d-4c8a-9e21-0c5d7a3b9e42', metadata: completion ? { completion } : {} }, null, 1));
     const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html')], { encoding: 'utf8' });
     if (r.status !== 0) { console.error(r.stdout, r.stderr); process.exit(1); }
-    return path.join(dir, 'out', 'deck.html');
+    const out = path.join(dir, 'out', 'deck.html');
+    if (declare) {
+      // 試験のためだけ：組んだ写しの m-predict 2.2.0 のクラスに問いの宣言を足す（format spec §8.4 questions）
+      const h = fs.readFileSync(out, 'utf8'), mark = 'static preview = "none";';
+      if (h.split(mark).length !== 2) { console.error('m-predict: the preview declaration was not found once'); process.exit(1); }
+      fs.writeFileSync(out, h.replace(mark, mark + ' static questions = ["q"];'));
+    }
+    return out;
   };
+  const UNDECLARED = makeQuiz('quiz-undeclared', { checks: 'answered' }, { declare: false });
   const CORRECT = makeQuiz('quiz-correct', { checks: 'correct' });
   const ANSWERED = makeQuiz('quiz-answered', { checks: 'answered' });
   const KEY = `${QS[0][0]}/0/q`;
@@ -556,11 +565,21 @@ f.src = 'deck.html' + location.search;
     for (let j = 0; j < n; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
   };
   const listen = (p) => p.evaluate(() => { window.__ans = []; document.addEventListener('deck:answer', (e) => window.__ans.push(e.detail)); });
+  // 宣言のないパーツ（今の 2.2.0）：問いはなく、答えは無視する。checks があってもステップだけで終える
+  {
+    const p = await open(UNDECLARED, { q: '?layout=slides' });
+    await listen(p);
+    await pickAndGo(p, 2);
+    const t = await tr(p), a = await p.evaluate(() => window.__ans);
+    ok(t.questions.length === 0 && a.length === 0 && t.answered.length === 0 && t.completed === true, `a part without questions: no questions, its answers are ignored, completion by steps (${JSON.stringify({ q: t.questions, a: a.length, c: t.completed })})`);
+    await p.context().close();
+  }
   // checks "correct"：外したまま最後まで見ても終えない。戻って正解を選び直し、答えのステップにまた着くと終える
   {
     const p = await open(CORRECT, { q: '?layout=slides' });
     await listen(p);
-    ok((await tr(p)).rule.checks === 'correct', 'the player reads completion.checks from deck-meta');
+    const t0 = await tr(p);
+    ok(t0.rule.checks === 'correct' && t0.questions.join() === KEY && t0.score === 0, `the player reads completion.checks and counts the declared questions when the file opens (${JSON.stringify({ q: t0.questions, s: t0.score })})`);
     await pickAndGo(p, 0);
     const t1 = await tr(p), a1 = await p.evaluate(() => window.__ans);
     ok(a1.length === 1 && a1[0].slideKey === QS[0][0] && a1[0].id === 'q' && a1[0].correct === false && a1[0].value === '重い球' && a1[0].index === 0,
@@ -585,17 +604,19 @@ f.src = 'deck.html' + location.search;
     ok(t3.correct.join() === KEY && t3.score === 100 && t3.latest[KEY].correct === false && t3.completed === true, `a later wrong answer keeps "answered correctly at least once" (${JSON.stringify({ s: t3.score, l: t3.latest })})`);
     await p.context().close();
   }
-  // checks "answered"：外しても答えれば終える。予想を選ばずに答えのステップに着いても答えにならない
+  // checks "answered"：予想を選ばずに最後まで見ても終えない。外しても答えれば終える
   {
     const p = await open(ANSWERED, { q: '?layout=slides' });
     await listen(p);
     await p.click('#stage', { position: { x: 1200, y: 100 } });
-    for (let j = 0; j < 2; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
-    ok((await p.evaluate(() => window.__ans)).length === 0, 'reaching the answer step without a guess sends no answer');
+    for (let j = 0; j < 4; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
+    const t0 = await tr(p);
+    ok((await p.evaluate(() => window.__ans)).length === 0 && t0.stage.length === t0.total && t0.completed === false,
+      `checks "answered": every step reached without a guess sends no answer and does not complete (${JSON.stringify({ steps: t0.stage.length, c: t0.completed })})`);
     await p.evaluate(() => DECK.go(0, 1)); await wait(p, 200);
     await p.click('m-predict .pd-pick >> nth=1');
     await p.evaluate(() => document.activeElement && document.activeElement.blur());
-    for (let j = 0; j < 3; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
+    await p.keyboard.press('ArrowRight'); await wait(p, 150);
     const t = await tr(p);
     ok(t.completed === true && t.answered.join() === KEY && t.correct.length === 0, `checks "answered": a wrong answer still counts as answered; completed (${JSON.stringify({ c: t.completed, a: t.answered })})`);
     await p.context().close();

@@ -1,8 +1,8 @@
 // test-all: unit
 // 確認問題（format spec §8.4 ctx.answer・§9.2 completion.checks、spec bindings/scorm12.md §2.1・§3。handoff #84）の純ロジック（Node だけ）
 //   node tools/test-checks.mjs
-// - kit/core/checks.mjs：問いの鍵（<slideKey>/<番号>/<id>、ASCII）・知らせの形・同じ問いは最後の答えで置き換え、答えた・正解したは残る（少なくとも 1 回）・
-//   checks の決まり・点数（正解のある問いのうち正解した割合、四捨五入、正解のある問いがなければ null）・qa・qc の字と再開・再生器に入る形（classicNamespace）
+// - kit/core/checks.mjs：問いの鍵（<slideKey>/<番号>/<id>、ASCII）・知らせの形・宣言した問いだけを記録・同じ問いは最後の答えで置き換え、答えた・正解したは残る（少なくとも 1 回）・
+//   checks の決まり（宣言した問いに答えるまで・正解するまで止める）・点数（正解のある問い（答えていない問いを含む）のうち正解した割合、四捨五入、なければ null）・qa・qc の字と再開・再生器に入る形（classicNamespace）
 // - kit/core/scorm.mjs：completionRule の checks・withChecks（deck-meta.completion.checks だけを書き換え、ほかはバイトのまま）・scormPackage の checks
 // - kit/core/portable.mjs：deck-meta.completion.checks の形（"answered" か "correct"）
 import assert from 'node:assert/strict';
@@ -44,9 +44,11 @@ await test('answerValue: correct is true, false or null; value a string or numbe
   assert.equal(answerValue(true, 'x'.repeat(2000)).value.length, 1000);
 });
 
-await test('recordAnswer: the latest answer replaces earlier ones; answered and correct stay (at least once)', () => {
-  const s = newAnswers(), k = 's-a/0/q';
-  recordAnswer(s, k, false, '重い球');
+await test('recordAnswer: only declared questions; the latest answer replaces earlier ones; answered and correct stay (at least once)', () => {
+  const k = 's-a/0/q', s = newAnswers([k]);
+  assert.equal(recordAnswer(s, 's-a/0/other', true, 'x'), false);   // 宣言にない id は無視する（§8.4）
+  assert.deepEqual(Object.keys(s.answered), []);
+  assert.equal(recordAnswer(s, k, false, '重い球'), true);
   assert.deepEqual({ ...s.latest[k] }, { correct: false, value: '重い球' });
   assert.equal(scoreOf(s), 0);
   recordAnswer(s, k, true, '同時');
@@ -58,52 +60,62 @@ await test('recordAnswer: the latest answer replaces earlier ones; answered and 
   assert.equal(scoreOf(s), 100);
 });
 
-await test('checksMet: "correct" needs every question with a right answer answered correctly; questions without one do not count', () => {
-  const s = newAnswers();
-  assert.equal(checksMet('correct', s), true);   // 知っている問いがない
+await test('checksMet: declared questions hold back completion until answered / answered correctly; null answers have no right answer', () => {
+  const s = newAnswers(['s-a/0/q', 's-b/0/q']);
   assert.equal(checksMet(null, s), true);
+  assert.equal(checksMet('answered', s), false);   // 答えていない問いがある
+  assert.equal(checksMet('correct', s), false);
   recordAnswer(s, 's-a/0/q', false, 'x');
+  assert.equal(checksMet('answered', s), false);
   recordAnswer(s, 's-b/0/q', null, 'opinion');
   assert.equal(checksMet('answered', s), true);
-  assert.equal(checksMet('correct', s), false);
+  assert.equal(checksMet('correct', s), false);   // s-b は正解のない問い、s-a はまだ外したまま
   recordAnswer(s, 's-a/0/q', true, 'y');
   assert.equal(checksMet('correct', s), true);
+  // 宣言した問いがなければ、どちらの決まりも止めない
+  assert.equal(checksMet('answered', newAnswers()), true);
+  assert.equal(checksMet('correct', newAnswers([])), true);
 });
 
-await test('scoreOf: share of questions with a right answer answered correctly, rounded; null without such questions', () => {
-  const s = newAnswers();
-  assert.equal(scoreOf(s), null);
+await test('scoreOf: correct / declared questions with a right answer (unanswered ones count), rounded; null without such questions', () => {
+  assert.equal(scoreOf(newAnswers()), null);
+  const s = newAnswers(['s-n/0/q', 's-a/0/q', 's-b/0/q', 's-c/0/q']);
+  assert.equal(scoreOf(s), 0);   // 答えていない問いも正解のある問いに数える
   recordAnswer(s, 's-n/0/q', null);
-  assert.equal(scoreOf(s), null);
-  recordAnswer(s, 's-a/0/q', true); recordAnswer(s, 's-b/0/q', false); recordAnswer(s, 's-c/0/q', false);
-  assert.equal(scoreOf(s), 33);
-  recordAnswer(s, 's-b/0/q', true);
+  assert.equal(scoreOf(s), 0);
+  recordAnswer(s, 's-a/0/q', true);
+  assert.equal(scoreOf(s), 33);   // 1 / 3（s-n は正解がない）
+  recordAnswer(s, 's-b/0/q', false); recordAnswer(s, 's-b/0/q', true);
   assert.equal(scoreOf(s), 67);
+  const only = newAnswers(['s-n/0/q']); recordAnswer(only, 's-n/0/q', null);
+  assert.equal(scoreOf(only), null);
 });
 
-await test('keysText / keysFrom / restoreAnswers: qa and qc of the suspend data', () => {
-  const s = newAnswers();
+await test('keysText / keysFrom / restoreAnswers: qa and qc of the suspend data (undeclared keys dropped)', () => {
+  const s = newAnswers(['s-a/0/q', 's-b/1/q']);
   recordAnswer(s, 's-b/1/q', false); recordAnswer(s, 's-a/0/q', true);
   assert.equal(keysText(s.answered), 's-a/0/q,s-b/1/q');
   assert.equal(keysText(s.correct), 's-a/0/q');
   assert.deepEqual(keysFrom('s-a/0/q,bad key,s-b/x/q,,s-c/3/q'), ['s-a/0/q', 's-c/3/q']);
   assert.deepEqual(keysFrom(undefined), []);
-  const r = restoreAnswers(newAnswers(), 's-a/0/q,s-b/1/q', 's-a/0/q');
+  const r = restoreAnswers(newAnswers(['s-a/0/q', 's-b/1/q']), 's-a/0/q,s-b/1/q,s-z/9/q', 's-a/0/q,s-y/0/q');
   assert.deepEqual(Object.keys(r.answered).sort(), ['s-a/0/q', 's-b/1/q']);
   assert.deepEqual(Object.keys(r.correct), ['s-a/0/q']);
-  // qa にだけある問いは正解のある問いとみなす（点数を上げない）
+  // qa にだけある問いは true か false で答えたとみなす（点数を上げない）
   assert.equal(scoreOf(r), 50);
   assert.equal(checksMet('correct', r), false);
+  assert.equal(checksMet('answered', r), true);
   // qc だけ（qa がない）でも答えたことにする
-  assert.deepEqual(Object.keys(restoreAnswers(newAnswers(), undefined, 's-z/0/q').answered), ['s-z/0/q']);
+  assert.deepEqual(Object.keys(restoreAnswers(newAnswers(['s-z/0/q']), undefined, 's-z/0/q').answered), ['s-z/0/q']);
 });
 
 await test('the player gets it as DECK.Checks (classicNamespace)', () => {
   assert.equal(RUNTIME_NAMESPACES['core/checks.mjs'], 'Checks');
   const ctx = { DECK: {} };
   vm.runInNewContext(classicNamespace(fs.readFileSync(new URL('../kit/core/checks.mjs', import.meta.url), 'utf8'), 'Checks'), ctx);
-  const C = ctx.DECK.Checks, s = C.newAnswers();
-  C.recordAnswer(s, C.questionKey('s-a', 0, 'q'), true, 'v');
+  const C = ctx.DECK.Checks, k = C.questionKey('s-a', 0, 'q'), s = C.newAnswers([k]);
+  assert.equal(C.scoreOf(s), 0);
+  C.recordAnswer(s, k, true, 'v');
   assert.equal(C.scoreOf(s), 100);
   assert.equal(C.checksRule({ checks: 'correct' }), 'correct');
 });

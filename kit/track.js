@@ -9,7 +9,8 @@
 //   舞台の step は位置が変わるたび（舞台が見えているとき）、本の step はそのステップを初めて読んだときに送る
 // - 舞台で再生したステップと読んだステップは別々に持つ。終えた判定（deck-meta.completion。なければ索引の metadata.completion）：
 //   既定は全ステップ、{visitedFraction} はその割合、{reachedEnd} は最後のステップ。played: true なら舞台で再生したものだけを数える
-// - 確認問題（format spec §8.4 ctx.answer・§9.2 checks）：パーツの答え（kit/deck.js の deck:answer）を問いの鍵ごとに持つ（kit/core/checks.mjs の DECK.Checks）。
+// - 確認問題（format spec §8.4 ctx.answer・§9.2 checks）：ファイルの問いは開いたときにパーツの宣言（questions）から数える（kit/deck.js の DECK.questions）。
+//   パーツの答え（kit/deck.js の deck:answer）を問いの鍵ごとに持つ（kit/core/checks.mjs の DECK.Checks）。宣言にない問いの答えは使わない。
 //   checks: "answered" / "correct" はステップの決まりに加えて満たす。SCORM では正解のある問いがあれば cmi.core.score.*（min 0・max 100・raw は正解した割合）。
 //   答えた・正解した問いは再開データの qa・qc（包み方 §2.1）。4096 字に収まらなければ qa・qc を省く（stage・text は省かない）
 // - SCORM の再開データ（cmi.suspend_data）：{"v":1,"n","h","seen","stage","text","qa"?,"qc"?}。seen は再生か読んだかのどちらか（包み方 §2.2 のまま）、
@@ -71,7 +72,7 @@ function unpackBits(s, n){
 
 // ---------------------------------------------------------------- 状態
 var TL = [], ORD = Object.create(null), N = 0, H8 = "", stage = null, text = null, rule = {}, done = false, began = false;
-var CK = DECK.Checks, answers = CK ? CK.newAnswers() : null, early = [];
+var CK = DECK.Checks, answers = CK ? CK.newAnswers() : null, early = [];   // answers は init でファイルの問いから作り直す
 var SUSPEND_MAX = 4096;   // cmi.suspend_data の上限（SCORM 1.2 の CMIString4096）
 var adapter = null, lastStageKey = null, lastSlide = -1;
 function slideOf(j){ return TL[j] ? TL[j].i : -1; }
@@ -232,7 +233,7 @@ function credit(j, via){
 function onAnswer(d){
   if (!answers || !d || typeof d.slideKey !== "string" || window.DECK_DEV) return;
   if (!adapter){ if (early.length < 100) early.push(d); return; }   // 記録の口を決める前（読み込みの直後）の答えは、決めてから
-  CK.recordAnswer(answers, CK.questionKey(d.slideKey, d.index, d.id), d.correct, d.value);
+  if (!CK.recordAnswer(answers, CK.questionKey(d.slideKey, d.index, d.id), d.correct, d.value)) return;   // 宣言にない問い
   adapter.answer(d);
   if (!done && complete()){ done = true; adapter.completed(); }
 }
@@ -308,6 +309,8 @@ function init(){
   H8 = sha256Hex(TL.map(function(g){ return g.key + "\n"; }).join("")).slice(0, 8);
   stage = new Uint8Array(N); text = new Uint8Array(N);
   rule = readRule();
+  // ファイルの問い（§9.2）：開いたときに、まだ見ていないスライドのパーツも含めて数える
+  if (CK) answers = CK.newAnswers(DECK.questions ? DECK.questions().map(function(q){ return CK.questionKey(q.slideKey, q.index, q.id); }) : []);
   var api = LMS_API;
   adapter = api ? scormAdapter(api) : window.parent !== window && Q.get("embed") === "1" ? postAdapter() : localAdapter();
   adapter.init();
@@ -342,7 +345,7 @@ DECK.tracking = function(){
   var list = function(a){ var o = []; if (a) for (var j = 0; j < a.length; j++) if (a[j]) o.push(j); return o; };
   var keys = function(o){ return o ? Object.keys(o).sort() : []; };
   return {adapter: adapter ? adapter.name : null, total: N, hash: H8, rule: rule, stage: list(stage), text: list(text), completed: done, started: began,
-    answered: keys(answers && answers.answered), correct: keys(answers && answers.correct), score: answers ? CK.scoreOf(answers) : null,
+    questions: keys(answers && answers.declared), answered: keys(answers && answers.answered), correct: keys(answers && answers.correct), score: answers ? CK.scoreOf(answers) : null,
     latest: answers ? JSON.parse(JSON.stringify(answers.latest)) : {},
     suspendData: N ? suspendData() : null, reading: readingView()};
 };
