@@ -1,10 +1,10 @@
 // しおり（format spec §8.0）の編集：スライド ▾ の「しおりを付ける…」・「しおりの名前を変更…」・「しおりを外す」の試験
 //   node tools/test-app-bookmark.mjs [作業用のフォルダ] [--shots <フォルダ>]
 // 1. 文字列の操作（ブラウザなし）：setBookmark は <section> の開始タグの data-bookmark だけを書き、外すときは前の空白ごと。ほかのバイトは変えない
-// 2. 開いた 1 ファイル（examples/minimal）：しおりのないスライドでは「しおりを付ける…」だけ（「しおりを外す」はない）。窓の題・欄の名前・既定の「質疑用」・説明・ボタン。
-//    「付ける」で deck.html の 2 枚目の <section> に data-bookmark="質疑用" が付き、プレビューの帯にボタンが出る。開き直すと「しおりの名前を変更…」と「しおりを外す」、
+// 2. 開いた 1 ファイル（examples/minimal）：しおりのないスライドでは「しおりを付ける…」だけ（「しおりを外す」はない）。窓の題・欄の名前・既定の名前（そのスライドの見出し「何を最小化するか」。handoff #89）・説明・ボタン。
+//    「付ける」で deck.html の 2 枚目の <section> に data-bookmark="何を最小化するか" が付き、プレビューの帯にボタンが出る。開き直すと「しおりの名前を変更…」と「しおりを外す」、
 //    窓には今の名前。21 字の名前では閉じない。名前を変えると属性の値だけが変わる。「しおりを外す」で元の原稿にバイトまで戻る。元に戻すも効く
-// 3. 英語の画面：項目と窓の言葉、既定の「Q&A」
+// 3. 英語の画面：項目と窓の言葉、既定の名前は 1 枚目の見出し。2 枚目に付けると 2 枚目の見出し（同じ名前が並ばない：bookmarkDup が出ない）
 // --shots <フォルダ> があれば（手引きの画像。日本語・幅 1280）：2. でしおりを付けた後、プレビューの 4 枚目でツールバーにしおりの名前のボタン（bookmark-bar-1280.png）、
 //   押して飛んだ後の「元の位置に戻る」（bookmark-back-1280.png）。撮った後はプレビューを 2 枚目に戻す
 import fs from 'node:fs';
@@ -19,6 +19,7 @@ import { nodeEnv } from '../kit/build.mjs';
 import { exportPortable } from '../kit/core/portable.mjs';
 import { FORMAT } from '../kit/core/format.mjs';
 import { setBookmark } from '../kit/core/slide-ops.mjs';
+import { bookmarkFindings } from '../kit/core/bookmark.mjs';
 import { clickCommand, clickDlg, clickMenuOpen } from './click-retry.mjs';
 import { scaled } from './wait-scale.mjs';
 
@@ -120,11 +121,11 @@ try {
     const m0 = await menuItems(page);
     ok(m0.add === 'しおりを付ける…' && m0.del === null, `ja: without a bookmark the menu has only 「しおりを付ける…」 ${JSON.stringify(m0)}`);
     const shown = await bookmarkVia(page, undefined);
-    ok(JSON.stringify(shown) === JSON.stringify({ title: 'しおりを付ける', label: 'しおりの名前（20 字まで）', value: '質疑用',
-      desc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときはツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', ok: '付ける', cancel: 'キャンセル' }), 'ja: the dialog words and the default name ' + JSON.stringify(shown));
+    ok(JSON.stringify(shown) === JSON.stringify({ title: 'しおりを付ける', label: 'しおりの名前（20 字まで）', value: '何を最小化するか',
+      desc: '本編の要所や付録の扉に付けると、このスライドの最終状態へすぐ飛べます。発表のときはツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', ok: '付ける', cancel: 'キャンセル' }), 'ja: the dialog words and the default name ' + JSON.stringify(shown));
     const deck1 = await memFile(page, 'deck.html');
-    ok(deck1 === setBookmark(deck0, 1, '質疑用') && slideTag(deck1, 1).includes('data-bookmark="質疑用"'), 'ja: 「付ける」 writes data-bookmark on the second <section> and nothing else');
-    ok(await frame(page).evaluate(() => [...document.querySelectorAll('#dt-cb [data-bm]')].map((b) => b.textContent).join()) === '質疑用', 'ja: the preview control bar has the bookmark button');
+    ok(deck1 === setBookmark(deck0, 1, '何を最小化するか') && slideTag(deck1, 1).includes('data-bookmark="何を最小化するか"'), 'ja: 「付ける」 writes data-bookmark on the second <section> and nothing else');
+    ok(await frame(page).evaluate(() => [...document.querySelectorAll('#dt-cb [data-bm]')].map((b) => b.textContent).join()) === '何を最小化するか', 'ja: the preview control bar has the bookmark button');
     if (SHOTS) {
       const vp = page.viewportSize();
       await page.setViewportSize({ width: 1280, height: 800 });
@@ -150,7 +151,7 @@ try {
     // 21 字では閉じない
     await clickCommand(page, '#b-bookmark');
     await page.waitForSelector('#dlg[open] #bookmark-name');
-    ok(await page.inputValue('#bookmark-name') === '質疑用', 'ja: renaming shows the current name');
+    ok(await page.inputValue('#bookmark-name') === '何を最小化するか', 'ja: renaming shows the current name');
     await page.fill('#bookmark-name', 'あいうえおかきくけこさしすせそたちつてとな');
     await page.click('#dlg-ok');
     ok(await page.evaluate(() => document.getElementById('dlg').open) && await page.getAttribute('#bookmark-name', 'aria-invalid') === 'true', 'ja: a 21-character name keeps the dialog open (aria-invalid)');
@@ -158,7 +159,7 @@ try {
     ok(await memFile(page, 'deck.html') === deck1, 'ja: cancel changes nothing');
     await bookmarkVia(page, '結果の表');
     const deck2 = await memFile(page, 'deck.html');
-    ok(deck2 === deck1.replace('data-bookmark="質疑用"', 'data-bookmark="結果の表"'), 'ja: renaming changes only the value');
+    ok(deck2 === deck1.replace('data-bookmark="何を最小化するか"', 'data-bookmark="結果の表"'), 'ja: renaming changes only the value');
     // しおりを外す
     let n = await loads(page);
     await clickCommand(page, '#b-bookmark-del');
@@ -179,11 +180,18 @@ try {
     await goSlide(page, 0);
     ok((await menuItems(page)).add === 'Add bookmark…', 'en: 「Add bookmark…」');
     const shown = await bookmarkVia(page, undefined);
-    ok(JSON.stringify(shown) === JSON.stringify({ title: 'Add bookmark', label: 'Bookmark name (up to 20 characters)', value: 'Q&A',
-      desc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the toolbar or q, and use “Back to where you were” or Backspace to return', ok: 'Add', cancel: 'Cancel' }), 'en: the dialog words and the default name ' + JSON.stringify(shown));
-    ok(slideTag(await memFile(page, 'deck.html'), 0).includes('data-bookmark="Q&amp;A"'), 'en: the first <section> carries data-bookmark="Q&amp;A"');
+    ok(JSON.stringify(shown) === JSON.stringify({ title: 'Add bookmark', label: 'Bookmark name (up to 20 characters)', value: '勾配降下法の基本',
+      desc: 'Put one on an important slide or the appendix divider to jump straight to this slide’s final state: in a talk, press its button in the toolbar or q, and use “Back to where you were” or Backspace to return', ok: 'Add', cancel: 'Cancel' }), 'en: the dialog words and the default name ' + JSON.stringify(shown));
+    ok(slideTag(await memFile(page, 'deck.html'), 0).includes('data-bookmark="勾配降下法の基本"'), 'en: the first <section> carries data-bookmark with its heading');
     const m = await menuItems(page);
     ok(m.add === 'Rename bookmark…' && m.del === 'Remove bookmark', `en: 「Rename bookmark…」 and 「Remove bookmark」 ${JSON.stringify(m)}`);
+    // 2 つ目：2 枚目の見出しが既定の名前（同じ名前が並ばない）
+    await goSlide(page, 1);
+    const shown2 = await bookmarkVia(page, undefined);
+    ok(shown2.value === '何を最小化するか', 'en: a second bookmark defaults to that slide’s heading ' + JSON.stringify(shown2.value));
+    const deck2 = await memFile(page, 'deck.html');
+    const names = [...deck2.matchAll(/data-bookmark="([^"]*)"/g)].map((x) => x[1]);
+    ok(JSON.stringify(names) === JSON.stringify(['勾配降下法の基本', '何を最小化するか']) && !bookmarkFindings(deck2).some((f) => f.code === 'bookmarkDup'), 'en: two bookmarks, two names, no bookmarkDup ' + JSON.stringify(names));
   });
   ok(!errs.length, 'no page errors ' + JSON.stringify(errs));
 } finally { await browser.close(); srv.close(); }

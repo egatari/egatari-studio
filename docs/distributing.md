@@ -1,4 +1,4 @@
-<!-- i18n: pair=distributing.ja.md sha256=a151dc783ff8df2a -->
+<!-- i18n: pair=distributing.ja.md sha256=6fd99cb84d5615dc -->
 # Handing an Egatari file to participants
 
 English | [日本語](distributing.ja.md)
@@ -51,7 +51,7 @@ To see in the LMS who started and who completed a file, hand it out as a **SCORM
 - **Order.** Open the presenter view first (`p`), then move the audience window to the projector and make it fullscreen (`f`). The presenter view stays on your own screen.
 - **Leaving the presenter view.** In the presenter view, Esc (when no drawing tool is on), `p` or **Close presenter view (p)** close it and return focus to the main window; if it is fullscreen, they only leave fullscreen. `p` in the main window also closes it. While the presenter window does not have focus, a large “Click here to control” overlay takes the first click.
 - **Stuck in the presenter view?** If it covers the screen and its keys do not respond, on a Mac press cmd+Tab to get back to the main window and press `p` (on Windows, Alt+Tab; not yet verified on Windows). The key list (<kbd>?</kbd>) shows the same tip.
-- **Bookmarks.** A slide with `data-bookmark="Q&A"` (a name of up to 20 characters) gets a button with that name in the toolbar and the presenter view. It jumps to the slide's final state, for example the results table to show again in questions; `q` goes to the next bookmark, and **Back to where you were** or Backspace returns. In Studio: **Slide ▾ → Add bookmark…**
+- **Bookmarks.** A slide with `data-bookmark="Results table"` (a name of up to 20 characters, after what the slide shows) gets a button with that name in the toolbar and the presenter view. It jumps to the slide's final state. There are two uses: jump to the final state of an important slide in the talk and back (for example to show the results table again in questions), and jump to the appendix divider (`data-bookmark="Appendix"`). `q` goes to the next bookmark, and **Back to where you were** or Backspace returns. When the bookmark buttons do not fit the toolbar, they collapse into one **Bookmarks ▾** button that opens a list of the names. In Studio: **Slide ▾ → Add bookmark…**
 - **Black screen.** `b` turns the whole window black. A faint “Black screen — press b or Esc to return” hint shows in the corner for 2 s, and again when you move the mouse. `b`, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End end the black screen without moving the slide; press the key again to go on.
 
 ## Live (questions and polls in class, draft)

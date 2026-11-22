@@ -278,6 +278,8 @@ steps.push(
   ['test-caution', ['tools/test-caution.mjs', path.join(tmp, 'caution')]],
   // しおり（format spec §8.0、Player P4.3）：帯と発表者ビューのボタン・q・元の位置に戻る・一覧の名前・動画と印刷には出ない／品質チェック（コマンド版と編集アプリ）／スライド ▾ の編集
   ['test-bookmarks', ['tools/test-bookmarks.mjs', path.join(tmp, 'bookmarks')]],
+  // しおりが多いとき（handoff #90）：入りきらない名前のボタンを「しおり ▾」にまとめる（幅 768・390 px でツールバーがはみ出さない・一覧で飛ぶ・キーボード）
+  ['test-bookmark-menu', ['tools/test-bookmark-menu.mjs', path.join(tmp, 'bookmark-menu')]],
   ['test-bookmark-check', ['tools/test-bookmark-check.mjs', path.join(tmp, 'bookmark-check')]],
   ['test-app-bookmark', ['tools/test-app-bookmark.mjs', path.join(tmp, 'app-bookmark')]],
   // 画像を挿入…（handoff #85）：窓の言葉・押せないわけ・大きさの知らせ・貼り付けとドロップ・原稿とプレビュー・元に戻す・編集パネルの HTML の欄へのドロップ
