@@ -51,10 +51,14 @@ export function flags(js) {
     || /createElement\(\s*["'](a|button|input|select|textarea)["']/.test(code)
     || /static\s+shape\s*=\s*\{\s*links\s*:\s*true/.test(code);
   const g = code.match(/static\s+group\s*=\s*"([a-z][a-z0-9-]*)"\s*;/), pv = code.match(/static\s+preview\s*=\s*"([^"]*)"\s*;/), tm = code.match(/static\s+tile\s*=\s*(\{.*\})\s*;\s*$/m);
+  const qm = code.match(/static\s+questions\s*=\s*(\[[^\]]*\])\s*;/);
+  let questions = null;
+  if (qm) { try { questions = JSON.parse(qm[1]); } catch { questions = null; } }
   let tile = null, tileError = null;
   if (tm) { try { tile = JSON.parse(tm[1]); } catch (e) { tileError = e.message; } }
   return { interactive: /static\s+interactive\s*=\s*true\s*;/.test(code), viewerInput: /static\s+viewerInput\s*=\s*true\s*;/.test(code), clock: /static\s+clock\s*=\s*true\s*;/.test(code), operable,
-    group: g ? g[1] : null, preview: pv ? pv[1] : null, previewWritten: !!pv || /static\s+preview\s*=/.test(code), tile, tileError, tileWritten: !!tm || /static\s+tile\s*=/.test(code) };
+    group: g ? g[1] : null, preview: pv ? pv[1] : null, previewWritten: !!pv || /static\s+preview\s*=/.test(code), tile, tileError, tileWritten: !!tm || /static\s+tile\s*=/.test(code),
+    questions, questionsWritten: /static\s+questions\s*=/.test(code), answered: [...code.matchAll(/answer\(\s*"([^"]*)"/g)].map((m) => m[1]) };
 }
 // SPDX ids a part may name in its README frontmatter license: (with the licence text it must carry)
 export const LICENSES = { MIT: {}, 'OFL-1.1': { file: 'OFL.txt' } };
@@ -467,6 +471,10 @@ export function lint(root, warns = []) {
     if (fl.previewWritten && fl.preview !== 'none') errs.push(`components/${name}/index.js: static preview must be "none" (the only value; leave it out for a part that previews its later steps)`);
     if (fl.tileWritten && !fl.tile) errs.push(`components/${name}/index.js: static tile must be one line of JSON ({"label": {"ja", "en"}, "examples": {"ja", "en"}, "icon"})${fl.tileError ? ': ' + fl.tileError : ''}`);
     if (fl.group === 'tool' && !(fl.tile && fl.tile.label && fl.tile.label.ja && fl.tile.label.en && fl.tile.examples && fl.tile.examples.ja && fl.tile.examples.en && /^[a-z][a-z0-9-]*$/.test(fl.tile.icon || ''))) errs.push(`components/${name}/index.js: a tool (static group = "tool") needs static tile with label.{ja,en}, examples.{ja,en} and icon`);
+    // questions a part asks (spec §8.4 questions, §9.2): one line of JSON, an array of distinct id strings; every literal id passed to answer() is declared
+    if (fl.questionsWritten && !(Array.isArray(fl.questions) && fl.questions.length && fl.questions.every((q) => typeof q === 'string' && q) && new Set(fl.questions).size === fl.questions.length)) errs.push(`components/${name}/index.js: static questions must be one line of JSON, a non-empty array of distinct id strings (leave it out for a part that asks none)`);
+    for (const id of fl.answered) if (!(fl.questions || []).includes(id)) errs.push(`components/${name}/index.js: answer("${id}", …) names a question not in static questions (players ignore undeclared ids, spec §8.4)`);
+    if (fl.questionsWritten && !fl.viewerInput) errs.push(`components/${name}/index.js: static questions needs static viewerInput = true (a question takes the viewer's input)`);
     if (fl.viewerInput && !fl.interactive) errs.push(`components/${name}/index.js: static viewerInput = true needs static interactive = true`);
     for (const [k, s] of [['interactive', 'interactive'], ['viewer-input', 'viewerInput'], ['clock', 'clock']]) if (k in f) errs.push(`components/${name}/README.md: ${k} belongs in index.js (static ${s} = true), not in the README`);
     const sv = js.match(/static\s+variants\s*=\s*\[([^\]]*)\]/);

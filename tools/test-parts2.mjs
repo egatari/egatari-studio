@@ -728,9 +728,14 @@ for (const [code, what] of [
   ok(Object.keys(v2170.parts).every((n) => n in v2180.parts), '2.18.0: nothing removed since 2.17.0');
   // 2.20.0：m-contrast（対比の図）、m-predict 2.2.0（答えの知らせ、#84）ほか。既定（v0.6.19 から）
   const v2200 = lock2.catalogues['2.20.0'];
-  ok(lock2.default === '2.20.0' && v2200 && v2200.tag === 'v2.20.0' && v2200.tarballSha256 === 'e493891cf3e50e83075e9588f0c16ec5be9455047804aaae1cbf1993cca3ede5' && v2200.manifestSha256 === 'cc528b6982a0e56cb24a0ae65662f023f7ae34b0f01525cda2c56b05cb51dcd5',
-    '2.20.0: the default; pinned to the released tarball and manifest (v2.20.0)');
+  ok(v2200 && v2200.tag === 'v2.20.0' && v2200.tarballSha256 === 'e493891cf3e50e83075e9588f0c16ec5be9455047804aaae1cbf1993cca3ede5' && v2200.manifestSha256 === 'cc528b6982a0e56cb24a0ae65662f023f7ae34b0f01525cda2c56b05cb51dcd5',
+    '2.20.0: pinned to the released tarball and manifest (v2.20.0)');
   ok(Object.keys(v2180.parts).every((n) => n in v2200.parts) && 'contrast' in v2200.parts, '2.20.0: nothing removed since 2.18.0; m-contrast is new');
+  // 2.21.0：m-predict 2.3.0（問いの宣言 static questions、仕様 638f99a、#84）。既定（v0.6.19 から）
+  const v2210 = lock2.catalogues['2.21.0'];
+  ok(lock2.default === '2.21.0' && v2210 && v2210.tag === 'v2.21.0' && v2210.tarballSha256 === '96fcf97ef859af99f3b787ed799dcc24030592bb3120ef79578e107d4d47b468' && v2210.manifestSha256 === '646e758ef38eb3dec0417a58f99f18ac896e90c49e278d287164df8077f1a0a8',
+    '2.21.0: the default; pinned to the released tarball and manifest (v2.21.0)');
+  ok(Object.keys(v2200.parts).every((n) => n in v2210.parts) && v2210.parts.predict === '2.3.0', '2.21.0: nothing removed since 2.20.0; m-predict 2.3.0');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);

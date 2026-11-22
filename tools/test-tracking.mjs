@@ -5,8 +5,8 @@
 // 記録：舞台で再生したステップ（via stage）と本で読んだステップ（via text：節が 3 秒見えていた。読み飛ばしは数えない。縦書きも。台本で読むも）を別々に持つ・
 //   終えた判定（既定・visitedFraction・reachedEnd・played: true）・postMessage の出来事・SCORM 1.2 の模型が受ける呼び出し（初め・位置・再開データ・
 //   終えた・終わり・再開・振り返り・教材が変わったとき）・1 ファイルの deck-meta.tracking と completion
-// 確認問題（format spec §8.4 ctx.answer・questions・§9.2 checks、包み方 §2.1）：m-predict 2.2.0（パーツ集 2.20.0）に、組んだ写しの中で
-//   static questions = ["q"] を足して使う（宣言する 2.3.0 はまだない）。宣言のない 2.2.0 の答えは無視する・開いたときに問いを数える（見ていないスライドも）・
+// 確認問題（format spec §8.4 ctx.answer・questions・§9.2 checks、包み方 §2.1）：m-predict 2.3.0（パーツ集 2.21.0、問いを宣言する）と 2.2.0（2.20.0、宣言しない）で
+//   確かめる。宣言のない 2.2.0 の答えは無視する・開いたときに問いを数える（見ていないスライドも）・
 //   答えのステップで answer の出来事・checks: "correct" は正解するまで終えない・"answered" は答えずに最後まで見ても終えず、答えれば終える・
 //   SCORM の cmi.core.score.*（min 0・max 100・raw、分母は宣言した問い）と再開データの qa・qc・再開で戻る・postMessage の answer {slideKey, id, correct, value}
 // --shots：作業フォルダに画面の PNG を残す（目で見る用）
@@ -540,16 +540,10 @@ f.src = 'deck.html' + location.search;
 </body>
 </html>
 `);
-    fs.writeFileSync(path.join(dir, 'egatari.json'), JSON.stringify({ componentsCatalogue: '2', docId: '7f9c2a1e-4b3d-4c8a-9e21-0c5d7a3b9e42', metadata: completion ? { completion } : {} }, null, 1));
+    fs.writeFileSync(path.join(dir, 'egatari.json'), JSON.stringify({ componentsCatalogue: declare ? '2' : '2.20.0', docId: '7f9c2a1e-4b3d-4c8a-9e21-0c5d7a3b9e42', metadata: completion ? { completion } : {} }, null, 1));
     const r = spawnSync(process.execPath, [path.join(ROOT, 'kit/build.mjs'), path.join(dir, 'deck.html')], { encoding: 'utf8' });
     if (r.status !== 0) { console.error(r.stdout, r.stderr); process.exit(1); }
     const out = path.join(dir, 'out', 'deck.html');
-    if (declare) {
-      // 試験のためだけ：組んだ写しの m-predict 2.2.0 のクラスに問いの宣言を足す（format spec §8.4 questions）
-      const h = fs.readFileSync(out, 'utf8'), mark = 'static preview = "none";';
-      if (h.split(mark).length !== 2) { console.error('m-predict: the preview declaration was not found once'); process.exit(1); }
-      fs.writeFileSync(out, h.replace(mark, mark + ' static questions = ["q"];'));
-    }
     return out;
   };
   const UNDECLARED = makeQuiz('quiz-undeclared', { checks: 'answered' }, { declare: false });
@@ -565,7 +559,7 @@ f.src = 'deck.html' + location.search;
     for (let j = 0; j < n; j++) { await p.keyboard.press('ArrowRight'); await wait(p, 150); }
   };
   const listen = (p) => p.evaluate(() => { window.__ans = []; document.addEventListener('deck:answer', (e) => window.__ans.push(e.detail)); });
-  // 宣言のないパーツ（今の 2.2.0）：問いはなく、答えは無視する。checks があってもステップだけで終える
+  // 宣言のないパーツ（パーツ集 2.20.0 の m-predict 2.2.0）。宣言するのは 2.21.0 の 2.3.0（既定のカタログ）：問いはなく、答えは無視する。checks があってもステップだけで終える
   {
     const p = await open(UNDECLARED, { q: '?layout=slides' });
     await listen(p);

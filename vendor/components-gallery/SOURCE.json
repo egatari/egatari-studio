@@ -1,6 +1,6 @@
 {
   "repository": "https://github.com/egatari/components",
-  "commit": "2ec42acf4c2ad89d72067ef9eb706b99668563cd",
+  "commit": "102c308c89894d69fbb043858362dc235d93d824",
   "files": {
     "LICENSE": "f1717a356695a824284d59d104d414008be27e4706b15eb217c1452be37b79c5",
     "tools/gallery.mjs": "2d9542aa4ce07977968ee8a975fef6454072c4f5281eb05b2d1bbfdc8b6256bd",
@@ -10,7 +10,7 @@
     "tools/parts.mjs": "7cf206b69d8eceee9ceca857215e96ce795e766decacf376a501ebcb08867b3c",
     "tools/tar.mjs": "963674c1e8f6d6ef9c80bfba21b84299723cb231475ef92891945089b45f2f18",
     "tools/identity.mjs": "1be7af70bd0f8399d0fefa0cdaa96c75ef5014d357eda21ad5535b2648480975",
-    "tools/lint.mjs": "7d3e5c81306ade382dfc21987e104629c8d7418a53e4e36ef842eb0350b1c783",
+    "tools/lint.mjs": "79455f121a0346c236faa64ec18e2f691da42599d203708ec7aae9e37b5aa947",
     "tools/katex-produce.mjs": "5e55b15ed5b676c8bbbda74cfa4f60bd2cbbb3dca5c39a28686143c784f9be39",
     "tools/subset-produce.mjs": "301f9c4764ec8f1b6668d21394d3f2ca294154bb357adb0ba07ec2d8256115aa"
   },
