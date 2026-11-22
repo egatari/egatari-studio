@@ -46,7 +46,9 @@ export async function checkViewerKeys({ ctx, p, f, ok, until, engine }) {
   const lang = await p.evaluate(() => document.documentElement.lang);
   await p.focus('#b-lang');
   await p.keyboard.press('Space');
-  ok(await until(() => p.evaluate((l) => document.documentElement.lang !== l, lang), scaled(2000)) && same(await pos(), { i: 0, k: 0 }), `${engine} keys: Space on a Viewer button presses the button and does not move the lesson`);
+  const pressed = await until(() => p.evaluate((l) => document.documentElement.lang !== l, lang), scaled(2000));
+  const after = await pos();
+  ok(pressed && same(after, { i: 0, k: 0 }), `${engine} keys: Space on a Viewer button presses the button and does not move the lesson (lang ${lang} → ${await p.evaluate(() => document.documentElement.lang)}, at ${JSON.stringify(after)})`);
   await p.click('#b-lang');
   const box = await (await p.$('#lesson')).boundingBox();
   await p.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.25);
