@@ -168,14 +168,12 @@ try {
     }, null, { timeout: scaled(10000) }).then((h) => h.jsonValue()).catch(() => null);
     ok(pv && pv.alt === '勾配の向きを示す図' && pv.nw === 80 && Math.abs(pv.ratio - 0.5) < 0.01 && Math.abs(pv.aspect - 2) < 0.05 && pv.step === '1' && Number(pv.op) > 0.9,
       'ja: the preview shows the image at half the body width, aspect kept, at step 1 ' + JSON.stringify(pv));
-    if (!(await page.evaluate(() => window.__APP_TEST.slides().open))) await page.click('#b-slides');
-    await page.waitForSelector('#sl-undo-row:not([hidden])');
-    ok(await page.textContent('#sl-undo-what') === '画像の挿入', 'ja: the undo entry is 「画像の挿入」');
+    await page.waitForFunction(() => { const b = document.getElementById('b-undo'); return b && !b.disabled; }, null, { timeout: scaled(10000) });
+    ok(await page.evaluate(() => (window.__APP_TEST.slides().undo || {}).label) === '画像の挿入', 'ja: the undo entry is 「画像の挿入」');
     const n2 = await loads(page);
-    await page.click('#sl-undo');
+    await page.click('#b-undo');
     await waitLoads(page, n2);
-    ok(await memFile(page, 'deck.html') === deck0, 'ja: undo restores the source byte for byte');
-    await page.click('#sl-close');
+    ok(await memFile(page, 'deck.html') === deck0, 'ja: undo (↶ in the toolbar) restores the source byte for byte');
     // ---------------------------------------------------------------- 4. 編集パネルの HTML の欄へのドロップ
     await goSlide(page, 1);
     await page.click('#b-edit');
