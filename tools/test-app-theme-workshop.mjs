@@ -122,10 +122,24 @@ try {
       }
       return prev;
     };
+    // 2 つのプレビューの中のすべての要素の計算された見た目（getComputedStyle の全部の値）。テーマの CSS が同じ見た目を作るかを、描かれる時機に左右されずに比べる
+    const computed = () => page.evaluate(() => [...document.querySelectorAll('.shop-slide')].map((host) => [...host.shadowRoot.querySelectorAll('*')].filter((e) => e.tagName !== 'STYLE').map((e) => {
+      const cs = getComputedStyle(e), out = [e.tagName];
+      for (let i = 0; i < cs.length; i++) out.push(cs[i] + ':' + cs.getPropertyValue(cs[i]));
+      return out.join(';');
+    })));
+    const firstDiff = (a, b) => {
+      for (let h = 0; h < Math.max(a.length, b.length); h++) for (let i = 0; i < Math.max((a[h] || []).length, (b[h] || []).length); i++) {
+        const x = (a[h] || [])[i] || '', y = (b[h] || [])[i] || '';
+        if (x !== y) { const xs = x.split(';'), ys = y.split(';'); const k = xs.findIndex((v, j) => v !== ys[j]); return { slide: h, element: i, tag: xs[0], generated: xs[k], bundled: ys[k] }; }
+      }
+      return null;
+    };
     for (const theme of CHOOSABLE) {
       await page.selectOption('#shop-start', theme.name);
       const preview = page.locator('.shop-preview');
       const generated = await settled(preview);
+      const genStyles = await computed();
       const css = fs.readFileSync(path.join(ROOT, 'themes', theme.name, 'tokens.css'), 'utf8');
       const styles = await page.evaluate((css) => [...document.querySelectorAll('.shop-slide')].map((host) => {
         const style = host.shadowRoot.querySelector('style'), original = style.textContent;
@@ -133,7 +147,11 @@ try {
         return original;
       }), css);
       const bundled = await settled(preview);
-      ok(generated.equals(bundled), `ja: ${theme.name} starts with pixel-identical cover and body previews`);
+      const bundledStyles = await computed();
+      const same = JSON.stringify(genStyles) === JSON.stringify(bundledStyles);
+      ok(same, `ja: ${theme.name} starts with the same cover and body previews (every element's computed style)` + (same ? '' : ' ' + JSON.stringify(firstDiff(genStyles, bundledStyles))));
+      // 画素の比べは記録だけ（字の描かれる時機で 1 画素ずれることがある。CI の macOS で default と kokugo が 1 度ずつ）
+      if (!generated.equals(bundled)) console.log(`       ${theme.name}: the screenshots differ although the computed styles are ${same ? 'the same' : 'different'}`);
       await page.evaluate((styles) => [...document.querySelectorAll('.shop-slide')].forEach((host, i) => { host.shadowRoot.querySelector('style').textContent = styles[i]; }), styles);
     }
     await page.selectOption('#shop-start', 'default');
