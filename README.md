@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=c5ab07dbd39dbb27 -->
+<!-- i18n: pair=README.ja.md sha256=f94c36ad04cb67fe -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -11,6 +11,11 @@
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
 
 English | [日本語](README.ja.md)
+
+<p align="center">
+  <a href="https://egatari.org/assets/video/egatari-intro-30s.mp4"><img src="https://egatari.org/assets/video/egatari-intro-30s-poster.jpg" width="640" alt="Egatari in 30 seconds (video, Japanese)"></a><br>
+  <sub>Egatari in 30 seconds (video, Japanese). Click to play.</sub>
+</p>
 
 Egatari is a format that bundles slides, script, audio and a book into a single HTML file. It plays in any browser, and generative AI can write and edit it. Egatari Studio is the tool that makes and edits Egatari files.
 

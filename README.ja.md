@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.md sha256=f4d702f8466fb1cf -->
+<!-- i18n: pair=README.md sha256=6892ffbbfa4fa175 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">
@@ -11,6 +11,11 @@
 [![test](https://github.com/egatari/egatari-studio/actions/workflows/test.yml/badge.svg)](https://github.com/egatari/egatari-studio/actions/workflows/test.yml)
 
 [English](README.md) | 日本語
+
+<p align="center">
+  <a href="https://egatari.org/assets/video/egatari-intro-30s.mp4"><img src="https://egatari.org/assets/video/egatari-intro-30s-poster.jpg" width="640" alt="30 秒でわかる Egatari（動画）"></a><br>
+  <sub>30 秒でわかる Egatari（動画）。押すと再生します。</sub>
+</p>
 
 Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザで再生でき、生成 AI で作成・修正できます。Egatari Studio は、その Egatari ファイルを作成・編集するツール。
 
