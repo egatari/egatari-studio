@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.ja.md sha256=7168113161a920ab -->
+<!-- i18n: pair=template.ja.md sha256=9196b3eb859d8b54 -->
 {{GENERATED}}
 # Writing Egatari slides and script with an AI chatbot
 
@@ -76,11 +76,11 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 ### 2.2 Slides
 
 - Normal slide: `<h2>` heading, `<div class="body">…</div>`, then `<div class="concl"><span>…</span></div>` (the conclusion line: one short sentence).
-<!--paid-->- On a slide that uses numbers, a figure or a quotation, write a source line above the conclusion (`<p class="source">Source: …</p>`)<!--/paid-->
-- Optional kicker (a short line above the heading): one `<p class="kicker">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).
-- Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
+<!--paid-->- On a slide that uses numbers, a figure or a quotation, write a source line above the conclusion (`<p class="source">Source: …</p>`)
+<!--/paid--><!--paid-->- Optional kicker (a short line above the heading): one `<p class="kicker">` just before the `<h2>` (ordinary slides only, not `layout-tate`); shown at step 0, not part of the heading. Type it normally, not in capitals (the theme capitalizes English).
+<!--/paid-->- Cover: `<section class="slide cover noconcl static">` with optional `<div class="venue">…</div>`, `<h1>title</h1>`, optional `<div class="au">…</div>`.
 - Chapter divider: `<section class="slide sec noconcl static"><h1>chapter title</h1></section>`.
-- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it), and the `data-morph` attribute (§2.5).
+- Classes on `<section>`: `noconcl` (no conclusion line), `static` (no steps), `nostep` (all list items visible from the start), `layout-tate` (Japanese vertical writing; only with the kokugo part set, which describes it)<!--paid-->, and the `data-morph` attribute (§2.5)<!--/paid-->.
 - Inside `.body`: `<p class="sub">` sub-heading, `<div class="big">` main equation, `<p class="note">` note, `<div class="thm">` theorem box, `<div class="cols">` side-by-side columns, ordinary `<p>`, `<ul>`, `<ol>`, `<table>`.
 - **R-caution** In `.body`: `<div class="caution">…</div>` for caution; add `warn` for warning. Labels are automatic.
 - Inline emphasis (the only way to color text): `term` (term or question), `emph` (conclusion, problem, goal), `muted` (known result, de-emphasized), `b` (bold).
@@ -89,7 +89,7 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 
 ### 2.3 Steps (reveal order = speaking order)
 
-- **R-steps** Step 0 is the slide as it first appears: context only (heading, sub-heading, one framing sentence). An element with `data-step="k"` (k = 1, 2, …) appears at step k; material (list items, equations, table rows, figure parts) appears in the order you talk about it. An equation and the sentence that introduces it share one step (wrap both in `<div data-step="k">`). About 5 steps per slide at most. Choose how a table appears by how it compares. When the script takes items one at a time, show rows in the order spoken. For a matrix (things compared down the side, criteria across) or a table crossing two axes, show the whole table and then mark the column or cell under discussion, or fill it one axis value at a time. In a research-positioning table, write "This work" in your own cell (do not mark it by colour or bold alone).
+- **R-steps** Step 0 is the slide as it first appears: context only (heading, sub-heading, one framing sentence). An element with `data-step="k"` (k = 1, 2, …) appears at step k; material (list items, equations, table rows, figure parts) appears in the order you talk about it. An equation and the sentence that introduces it share one step (wrap both in `<div data-step="k">`). About 5 steps per slide at most. Choose how a table appears by how it compares. When the script takes items one at a time, show rows in the order spoken. For a matrix (things compared down the side, criteria across) or a table crossing two axes, show the whole table and then mark the column or cell under discussion, or fill it one axis value at a time.<!--paid--> In a research-positioning table, write "This work" in your own cell (do not mark it by colour or bold alone).<!--/paid-->
 - The conclusion line automatically becomes the **last step**, `concl`; never put `data-step` on it.
 - If a slide has **no** `data-step` anywhere, its top-level list items (`.body > ul > li`, `.body > ol > li`) are numbered 1, 2, … automatically. As soon as any element has `data-step`, nothing is automatic: give every revealed element its `data-step`.
 - A part adds its own steps (§3), starting at its `data-from` (default 1).
@@ -97,13 +97,13 @@ You will write one short **Egatari file**: HTML slides with step-by-step reveals
 
 ### 2.4 Math (KaTeX, rendered at build time)
 
-- **R-math** Inline `\( … \)`, display `\[ … \]`. Write `<` as `\lt` and `>` as `\gt` inside math. Allowed macros besides standard KaTeX: `\hlE{…}` (emph) `\hlT{…}` (term) `\hlM{…}` (muted), `\htmlId{ID}{…}`, `\htmlData{mark=ID}{…}`, `\htmlClass{…}{…}`, `\morph{ID}{…}`. No `\newcommand`, no `\color`. To label a term, use `\underbrace{…}_{\text{…}}` or `\overbrace{…}^{…}`. Never `$$`. Define each symbol where it is first used (`\(\mu\)`: the mean).
+- **R-math** Inline `\( … \)`, display `\[ … \]`. Write `<` as `\lt` and `>` as `\gt` inside math. Allowed macros besides standard KaTeX: `\hlE{…}` (emph) `\hlT{…}` (term) `\hlM{…}` (muted), `\htmlId{ID}{…}`, `\htmlData{mark=ID}{…}`, `\htmlClass{…}{…}`<!--paid-->, `\morph{ID}{…}`<!--/paid-->. No `\newcommand`, no `\color`. To label a term, use `\underbrace{…}_{\text{…}}` or `\overbrace{…}^{…}`. Never `$$`. Define each symbol where it is first used (`\(\mu\)`: the mean).
 
-### 2.5 Attention marks and morphs
+### 2.5 Attention marks<!--paid--> and morphs<!--/paid-->
 
 - **R-marks** The script’s `{mark:ID}` (§4) marks a target on the **same slide**. {{contract §7 "Targets:"}}
-- Morph (optional): `<section class="slide" data-morph>` slides elements from the previous slide into place; pair elements with the same `data-id="…"` on both slides, or equation parts with `\morph{ID}{…}` on both. Only elements visible at step 0 move.
-
+<!--paid-->- Morph (optional): `<section class="slide" data-morph>` slides elements from the previous slide into place; pair elements with the same `data-id="…"` on both slides, or equation parts with `\morph{ID}{…}` on both. Only elements visible at step 0 move.
+<!--/paid-->
 ### 2.6 Parts
 
 - **R-components** Animated figures are the Web Components `<m-…>` of the catalog (§3), used inside `.body`. Give each a height (`style="height:380px"`) and an `aria-label`. Data goes in **one** child `<script type="application/json">…</script>` written inline (never `{{JSON:…}}`). **Numbers in figures must be correct** (compute them; never invent values for looks; label made-up business figures as fictional). Formulas are arithmetic only (`Math.exp(x)`, `x**2`), never run as code. Use parts only where motion explains something; most slides need none.
@@ -162,7 +162,7 @@ When the user pastes a **fix request** (a list of findings with the ids of the s
 
 ## 6. Worked example
 
-A small example, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only. Some part sets end with an example of their own.
+A small example, fictional, showing the structure only (do not copy its content). Note how the steps add up: the list of 2 items gives steps 1–2 and `[concl]`<!--part:m-flow-->; the `m-flow` with 4 boxes gives steps 1–4<!--/part-->. The static cover has `[0]` only.<!--paid--> Some part sets end with an example of their own.<!--/paid-->
 
 {{WORKED common "Common (English, default theme, marks<!--part:m-flow-->, m-flow<!--/part-->)"}}
 

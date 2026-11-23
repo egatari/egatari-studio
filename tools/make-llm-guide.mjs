@@ -481,7 +481,38 @@ function withoutBuilt(schema, build) {
   }
   return s;
 }
-function shapeBrief(c, lang) {
+// 無料のプランの一覧の欄（handoff #95、規格化 11/23 の (c)）：step・at・tone を 3 つとも受け付ける項目（任意で、型が決まりの型）だけ、その 3 つを欄から外し、
+// 項目の後ろに印（FIELDS_MARK）を付ける。一覧の上の 1 行（fieldsNote）が「印の項目は step・at・tone も書ける」と言う。
+// 3 つそろわない項目は外さない（受け付けない欄を書かせると品質チェックの「知らない欄」になる）。label は外さない（見える字そのもの）。
+// 項目の欄がその 3 つだけなら外さない。行を字で探さず、static shape から欄を作るところで外す
+export const FIELDS_MARK = '†';
+const MARKED = ['step', 'at', 'tone'];
+const MARK_KEY = '__egatari_fields_mark__';
+function withoutCommon(schema) {
+  const s = JSON.parse(JSON.stringify(schema));
+  const walk = (o) => {
+    if (!o || typeof o !== 'object') return;
+    if (o.properties) {
+      for (const v of Object.values(o.properties)) walk(v);
+      const names = Object.keys(o.properties);
+      const takes = (n) => o.properties[n] && !(o.required || []).includes(n) && SH.brief(o.properties[n], SHAPE_CONV) === SHAPE_CONV[n];
+      if (MARKED.every(takes) && names.length > MARKED.length) {
+        for (const n of MARKED) delete o.properties[n];
+        o.properties[MARK_KEY] = { type: 'string' };   // 印の置き場（brief の後で FIELDS_MARK にする）
+      }
+    }
+    if (o.items) (Array.isArray(o.items) ? o.items : [o.items]).forEach(walk);
+    for (const k of ['anyOf', 'oneOf']) if (Array.isArray(o[k])) o[k].forEach(walk);
+  };
+  walk(s);
+  return s;
+}
+const markOf = (brief) => {
+  const out = brief.split(`,${MARK_KEY}?:str}`).join('}' + FIELDS_MARK);
+  if (out.includes(MARK_KEY)) throw new Error(`the free data shape kept its mark key: ${brief}`);
+  return out;
+};
+function shapeBrief(c, lang, free = false) {
   const sh = c.shape;
   if (!sh) return '';
   const ja = lang === 'ja';
@@ -493,7 +524,8 @@ function shapeBrief(c, lang) {
   }
   // note は {en, ja} か、1 つの言語の字（部品庫 v1.2.0 の m-tree など）
   const note = !sh.note ? '' : typeof sh.note === 'string' ? sh.note : sh.note[lang] || sh.note.en || sh.note.ja || '';
-  return '`' + SH.brief(withoutBuilt(sh.schema, c.build), SHAPE_CONV) + '`' + (note ? ' — ' + note : '');
+  const schema = withoutBuilt(sh.schema, c.build);
+  return '`' + (free ? markOf(SH.brief(withoutCommon(schema), SHAPE_CONV)) : SH.brief(schema, SHAPE_CONV)) + '`' + (note ? ' — ' + note : '');
 }
 // パーツの static shape（データの形と例）。vm で読んだクラスにないとき、仮の物（Proxy の関数）が返ることがあるので、
 // ふつうのオブジェクトでなければ「no static shape」と言って止める（パーツ集 2.17 の候補の m-scroll で .replace の中で落ちた。handoff #64）
@@ -513,7 +545,8 @@ function shapeExample(c, lang) {
 }
 const TIMING = /秒数|（秒）/;
 const TABLE_HEAD = { ja: '| パーツ | 内容 | steps | データの形 |\n|---|---|---|---|', en: '| part | what it shows | steps | data shape |\n|---|---|---|---|' };
-const rowOf = (c, lang) => jaWords(c.fm.name, applyRowEdits(c.fm.name, `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang))} |`, lang));
+// free：無料のプランの行（データの形の欄から、どの項目にも付く欄を外す。shapeBrief）
+const rowOf = (c, lang, free = false) => jaWords(c.fm.name, applyRowEdits(c.fm.name, `| \`<${c.fm.name}>\` | ${cell(c.fm.summary)} | ${cell(c.fm.steps)} | ${cell(shapeBrief(c, lang, free))} |`, lang));
 // README の見出し（## 書き方 など）は、この部品の節（###）の下に下げる
 const demote = (s) => s.replace(/^(#{1,4}) /gm, (_, h) => '#'.repeat(Math.min(6, h.length + 2)) + ' ');
 function entryOf(c, lang, shown = new Set()) {
@@ -848,7 +881,8 @@ export function generate(opts = {}) {
       if (nsecs.length !== secs.length) throw new Error(`tools/llm-guide/worked/${name}/narration.md: no section for each slide with <${tag}>`);
       const note = ja ? '（そのパーツを使うスライドだけ。`deck.html` の骨組みは §6 の例と同じ）' : '(only the slides with the part; the rest of `deck.html` is as in §6)';
       // 部品を外した組み立てでは、この見本ごと除く（<!--part:…-->）
-      return `<!--part:${tag}-->### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\`<!--/part-->`;
+      // 無料のプランでは束の見本を載せない（見本は §6 の共通の見本 1 つ。handoff #95）：<!--paid-->
+      return `<!--paid--><!--part:${tag}-->### ${title}\n\n${note}\n\n\`\`\`deck.html\n${secs.join('\n\n')}\n\`\`\`\n\n\`\`\`narration.md\n${nsecs.map((x) => x.trim()).join('\n\n')}\n\`\`\`<!--/part--><!--/paid-->`;
     };
     // 見本の全体：部品を使うスライドとその口述原稿の節を <!--part:m-x--> で囲む（その部品を外した組み立てでは、そのスライドがなくなる）
     const worked = (name, title) => {
@@ -882,6 +916,8 @@ export function generate(opts = {}) {
       common: full.slice(i, j).trim(), request: full.slice(j).trim(), sets: {}, components: {}, tableHead: TABLE_HEAD[lang],
       supNote: ja ? '（* はこの指示が補った説明）' : '(* = description added by this guide)',
       // 無料のプランで一覧の 1 行だけの部品（kit/core/llm-pack-assemble.mjs の briefParts）
+      // 無料のプランの共通の本体の一覧の上の 1 行（一覧の行は freeRow。kit/core/llm-pack-assemble.mjs の catalog。handoff #95）
+      fieldsNote: ja ? `${FIELDS_MARK} の項目には step・at・tone も書ける。` : `Items marked ${FIELDS_MARK} also take step, at and tone.`,
       briefNote: ja ? '下に説明の節がないパーツは、表の「データの形」のとおりに子の JSON か属性を書き、ほかの属性は既定のままにする。' : 'For a part without a section below, write the child JSON or attributes as its “data shape” column says and leave the other attributes at their defaults.',
       extHead: ja ? '### `<{name}>`：このセットの拡張（パーツの説明は §3）' : '### `<{name}>`: extension for this part set (the part is described in §3)',
     };
@@ -894,7 +930,8 @@ export function generate(opts = {}) {
       const e = entryOf(c, lang, shownInWorked);
       const ext = Object.fromEntries(Object.entries(c.ext).map(([s, x]) => [s, markRefs(demote(stripRepoRefs(x)), c.fm.name, known)]));
       const freeEntry = freeEntryOf(c.fm.name, lang === 'en' && c.enSource ? 'en' : 'ja', e.entry, c.fm.version, warnings);
-      D.components[c.fm.name] = { set: c.set, row: markRefs(rowOf(c, lang), c.fm.name, known), entry: markRefs(e.entry, c.fm.name, known), ...(freeEntry ? { free: markRefs(freeEntry, c.fm.name, known) } : {}), ...(e.sup ? { sup: true } : {}), ...(c0.paidOnly ? { paidOnly: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
+      const row = rowOf(c, lang), freeRow = rowOf(c, lang, true);
+      D.components[c.fm.name] = { set: c.set, row: markRefs(row, c.fm.name, known), ...(freeRow !== row ? { freeRow: markRefs(freeRow, c.fm.name, known) } : {}), entry: markRefs(e.entry, c.fm.name, known), ...(freeEntry ? { free: markRefs(freeEntry, c.fm.name, known) } : {}), ...(e.sup ? { sup: true } : {}), ...(c0.paidOnly ? { paidOnly: true } : {}), ...(Object.keys(ext).length ? { ext } : {}) };
     }
     for (const s of SETS) {
       const f = `tools/llm-guide/sets/${s}${ja ? '.ja' : ''}.md`;

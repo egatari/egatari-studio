@@ -1,4 +1,4 @@
-<!-- i18n: pair=template.md sha256=4d32d0c4deb9bdbe -->
+<!-- i18n: pair=template.md sha256=0d439319de044c0d -->
 {{GENERATED}}
 # 対話型 AI で Egatari のスライドと台本を書く
 
@@ -77,10 +77,10 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 - 普通のスライド：`<h2>` の見出し、`<div class="body">…</div>`、`<div class="concl"><span>…</span></div>`（結論の行。短い 1 文）
 - 数字・図・引用を使ったスライドには、結論の行の上に出典の行（`<p class="source">出典：…</p>`）を書く
-- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。
-- 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
+<!--paid-->- 肩見出し（見出しの上の短い言葉）を添えるなら、`<h2>` の直前に `<p class="kicker">` を 1 つ置く（普通のスライドだけ。`layout-tate` には置かない）。見出しには含めず、ステップ 0 で見せる。英語はテーマが大文字で表示するので、大文字で書かない。
+<!--/paid-->- 表紙：`<section class="slide cover noconcl static">` に、あれば `<div class="venue">…</div>`、`<h1>題名</h1>`、あれば `<div class="au">…</div>`
 - 章の扉：`<section class="slide sec noconcl static"><h1>章の題</h1></section>`
-- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo のセットがあるときだけ）、属性 `data-morph`（§2.5）
+- `<section>` の class：`noconcl`（結論の行なし）、`static`（ステップなし）、`nostep`（箇条書きも初めから全部）、`layout-tate`（縦書き。kokugo のセットがあるときだけ）<!--paid-->、属性 `data-morph`（§2.5）<!--/paid-->
 - `.body` の中：`<p class="sub">` 小見出し、`<div class="big">` 主要な式、`<p class="note">` 補足、`<div class="thm">` 定理の枠、`<div class="cols">` 横並び、普通の `<p>` `<ul>` `<ol>` `<table>`
 - **R-caution** `.body` に注意は `<div class="caution">…</div>`、警告は `class="caution warn"`。ラベルは自動で付く。
 - 字の強調（色を付ける唯一の方法）：`term`（用語・問い）、`emph`（結論・問題・目標）、`muted`（既知の結果・控えめ）、`b`（太字）
@@ -89,7 +89,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 ### 2.3 ステップ（出す順 = 話す順）
 
-- **R-steps** ステップ 0 は現れたときの姿で、文脈だけ（見出し・小見出し・導入の 1 文）。`data-step="k"`（k = 1, 2, …）の要素はステップ k で現れる。材料（箇条書きの項目・式・表の行・図の部分）は話す順に出す。式とそれを導く 1 文は同じステップ（`<div data-step="k">` で一緒に囲む）。1 枚のステップの数は 5 前後まで。表は、比べ方で見せ方を選ぶ。項目を 1 つずつ説明するなら行を話す順に出す。行列（縦に比べるもの、横に評価基準）や 2 本の軸の交差の表は、全体を見せてから注目する列・マスに印を付けるか、軸の列ごとに埋める。研究の位置づけの表では、本研究のマスに字で「本研究」と書く（色や太字だけで区別しない）。
+- **R-steps** ステップ 0 は現れたときの姿で、文脈だけ（見出し・小見出し・導入の 1 文）。`data-step="k"`（k = 1, 2, …）の要素はステップ k で現れる。材料（箇条書きの項目・式・表の行・図の部分）は話す順に出す。式とそれを導く 1 文は同じステップ（`<div data-step="k">` で一緒に囲む）。1 枚のステップの数は 5 前後まで。表は、比べ方で見せ方を選ぶ。項目を 1 つずつ説明するなら行を話す順に出す。行列（縦に比べるもの、横に評価基準）や 2 本の軸の交差の表は、全体を見せてから注目する列・マスに印を付けるか、軸の列ごとに埋める。<!--paid-->研究の位置づけの表では、本研究のマスに字で「本研究」と書く（色や太字だけで区別しない）。<!--/paid-->
 - 結論の行は自動で**最後のステップ** `concl` になる（`data-step` を付けない）
 - `data-step` が 1 つもないスライドでは、上の階層の箇条書きの項目（`.body > ul > li`・`.body > ol > li`）に 1, 2, … が自動で付く。1 つでもあれば自動にならないので、出すものすべてに付ける
 - パーツは自分のステップを追加する（§3）。`data-from`（既定 1）から始まる
@@ -97,13 +97,13 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 ### 2.4 数式（KaTeX）
 
-- **R-math** 行内は `\( … \)`、別行は `\[ … \]`。式の中の `<` は `\lt`、`>` は `\gt`。標準のほかに使えるマクロ：`\hlE{…}`（emph）`\hlT{…}`（term）`\hlM{…}`（muted）、`\htmlId{ID}{…}`、`\htmlData{mark=ID}{…}`、`\htmlClass{…}{…}`、`\morph{ID}{…}`。`\newcommand` と `\color` は使わない。項の説明は `\underbrace{…}_{\text{…}}`・`\overbrace{…}^{…}`。`$$` は使わない。記号は最初に使う所で定義する（`\(\mu\)`：母平均）
+- **R-math** 行内は `\( … \)`、別行は `\[ … \]`。式の中の `<` は `\lt`、`>` は `\gt`。標準のほかに使えるマクロ：`\hlE{…}`（emph）`\hlT{…}`（term）`\hlM{…}`（muted）、`\htmlId{ID}{…}`、`\htmlData{mark=ID}{…}`、`\htmlClass{…}{…}`<!--paid-->、`\morph{ID}{…}`<!--/paid-->。`\newcommand` と `\color` は使わない。項の説明は `\underbrace{…}_{\text{…}}`・`\overbrace{…}^{…}`。`$$` は使わない。記号は最初に使う所で定義する（`\(\mu\)`：母平均）
 
-### 2.5 強調とモーフ
+### 2.5 強調<!--paid-->とモーフ<!--/paid-->
 
 - **R-marks** 台本の `{mark:ID}`（§4）は、**同じスライド**の目印に印を付ける。{{contract §7 "目印："}}
-- モーフ（なくてよい）：`<section class="slide" data-morph>` は前のスライドの要素を今の位置へ滑らせる。両方のスライドの要素に同じ `data-id="…"`、式の一部は両方に `\morph{ID}{…}`。ステップ 0 で見えている要素だけが動く
-
+<!--paid-->- モーフ（なくてよい）：`<section class="slide" data-morph>` は前のスライドの要素を今の位置へ滑らせる。両方のスライドの要素に同じ `data-id="…"`、式の一部は両方に `\morph{ID}{…}`。ステップ 0 で見えている要素だけが動く
+<!--/paid-->
 ### 2.6 パーツ
 
 - **R-components** パーツは一覧（§3）の Web Components `<m-…>` で、`.body` の中に置く。どれにも高さ（`style="height:380px"`）と `aria-label` を付ける。データは子の `<script type="application/json">…</script>` **1 つ**にその場で書く。**図の数字は正しく**（計算する。見た目のために値を作らない。架空の数字は架空と書く）。関数の式は算術の式だけで、コードとしては実行されない（`Math.exp(x)`・`x**2`）。動きが説明になる所だけに使う（たいていのスライドには要らない）
@@ -162,7 +162,7 @@ R-dialogue の Expert と Novice の掛け合い（依頼されたときだけ�
 
 ## 6. 例
 
-小さな例（架空。形を見るためで、中身はコピーしない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`<!--part:m-flow-->、箱が 4 つの `m-flow` はステップ 1〜4<!--/part-->。いくつかのセットの指示の最後にも例がある。
+小さな例（架空。形を見るためで、中身はコピーしない）。ステップの数え方：2 項目の箇条書きはステップ 1〜2 と `[concl]`<!--part:m-flow-->、箱が 4 つの `m-flow` はステップ 1〜4<!--/part-->。<!--paid-->いくつかのセットの指示の最後にも例がある。<!--/paid-->
 
 {{WORKED common "共通（英語・default テーマ・強調<!--part:m-flow-->・m-flow<!--/part-->）"}}
 
