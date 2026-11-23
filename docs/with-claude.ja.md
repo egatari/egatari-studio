@@ -50,4 +50,4 @@ Claude の質問に答え、構成案を承認して、studio で品質チェッ
 
 ## うまくいかないとき
 
-[GitHub の issue](https://github.com/egatari/egatari-studio/issues) に書いてください。Claude Code では「感想を送って」と言うと、スキルが issue の下書きを作り、確認してから送信します。
+[GitHub の issue](https://github.com/egatari/egatari-studio/issues) に書いてください。Claude Code では「感想を送って」と言うと、make と studio のスキルが同じ報告がないかを探してから issue の下書きを作り、確認してから送信します。報告は公開の issue になります。うまくいったこと（種類 Insight）の報告も歓迎します。AI への指示の改善に使います。
