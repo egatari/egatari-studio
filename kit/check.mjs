@@ -66,7 +66,7 @@ import { kickerFindings } from './core/kicker.mjs';
 import { cautionFindings } from './core/caution.mjs';
 import { bookmarkFindings } from './core/bookmark.mjs';
 import { tateMixFindings } from './core/tate-mix.mjs';
-import { scriptUnclosedFindings } from './core/script-unclosed.mjs';
+import { scriptUnclosedFindings, withoutSwallowed } from './core/script-unclosed.mjs';
 import { imageSizeFindings } from './core/image-size.mjs';
 import { predictStepProblems } from './core/predict-steps.mjs';
 import { FONTS_EXTRA_WARN, FONTS_EXTRA_PKG, FONTS_EXTRA_INSTALL } from './core/build-core.mjs';
@@ -156,7 +156,9 @@ for (const f of imageSizeFindings(built.html)) report(f.i, f.sev, f.code, f.a);
 const themeInfo = built.theme || { name: built.stats.theme, metrics: null, declared: false };
 const metricsWarn = [];
 const extraMissing = [];   // 別の包み @egatari/fonts-extra の字体で、その包みがないので入らなかったもの（kit/core/build-core.mjs の fontCss）
-for (const w of built.stats.warn) {
+// 閉じていない <script>（#96）：飲み込まれたスライドの節の「スライドが見つからない」は出さない（直し方は </script>。編集アプリと同じ関数）
+const unclosed = scriptUnclosedFindings(readRegular(src, { max: READ_LIMITS.source }).toString('utf8'));
+for (const w of withoutSwallowed(built.stats.warn, unclosed)) {
   if (w.startsWith(FONTS_EXTRA_WARN)) { const m = w.match(/「([^」]+)」/); if (m) extraMissing.push(m[1]); continue; }
   // 目印の有無は F で、部品が作った要素も含めて実際の画面で調べる（build は原稿の文字列だけを見る）
   if (/^mark: 目印/.test(w)) continue;
@@ -204,7 +206,7 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   { const text = readRegular(src, { max: READ_LIMITS.source }).toString('utf8');
     for (const f of bookmarkFindings(text)) report(f.i, f.sev, f.code, f.a);
     for (const f of tateMixFindings(text)) report(f.i, f.sev, f.code, f.a);   // 縦と横の入れ替わり（#70。kit/core/tate-mix.mjs）
-    for (const f of scriptUnclosedFindings(text)) report(f.i, f.sev, f.code, f.a); }   // 閉じていない <script>（#96。kit/core/script-unclosed.mjs）
+    for (const f of unclosed) report(f.i, f.sev, f.code, f.a); }   // 閉じていない <script>（#96。kit/core/script-unclosed.mjs）
   // {#id} で指したスライドの見出しと、narration.md の見出しの文字列が違う（id が勝つので、知らせるだけ）
   const byKey = new Map(built.slides.map((s, i) => [s.key, { ...s, i }]));
   for (const sec of built.segs.sections || []) {
