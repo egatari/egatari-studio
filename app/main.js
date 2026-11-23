@@ -43,6 +43,7 @@ import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { sourceFindings } from '../kit/core/check-source.mjs';
+import { scriptUnclosedFindings, withoutSwallowed } from '../kit/core/script-unclosed.mjs';
 import { imageSizeFindings } from '../kit/core/image-size.mjs';
 import { createBuildClient, BUILD_TIMEOUT_MS } from './build-client.js';
 import { FORMAT } from '../kit/core/format.mjs';
@@ -612,6 +613,7 @@ async function rebuild(reason) {
         } else r = await builder.build(S.ws, listing, S.deckFile, { dev: true, previewAudio: true, ...themeOpts(), ...(book.wantInPreview() ? { book: true } : {}) }, reasonsPrefix(), { timeout: buildTimeout() });
         // コードの確かめ（codeConsent）は、この組み立ての文書（表示するバイト）から決める。確かめが済むまで S.base（プレビューと
         // 発表者ビューが読むもの）を替えない（確かめている間に別の読み込みが新しい文書を読み込まないように）
+        const warn0 = await swallowFree(r.stats.warn, ws0);   // 飲み込まれたスライドの「スライドが見つからない」を除く（#96）
         const reasons = [...new Set([...r.reasons, ...jsFiles(listing)])];
         S.reasons = reasons;
         const allow = await codeConsent(reasons);
@@ -620,7 +622,7 @@ async function rebuild(reason) {
         S.builds++;
         const wasError = !!S.error;
         S.error = null; failed = false;
-        S.slides = r.slides; S.warn = r.stats.warn.slice(); S.yanked = r.stats.yanked || []; S.themePinned = r.stats.themePinned || []; S.theme = r.theme || null;
+        S.slides = r.slides; S.warn = warn0; S.yanked = r.stats.yanked || []; S.themePinned = r.stats.themePinned || []; S.theme = r.theme || null;
         if (S.portable) {
           // 読み取りの知らせと、音声が古い段階（§5.4。作り直さず、消さず、知らせるだけ）
           S.warn.push(...S.portable.warnings);
@@ -1463,6 +1465,12 @@ async function copyShotFallback(r) {
     ]),
     area,
   ], buttons: [{ id: 'cancel', label: T.close }] });
+}
+// 組み立ての警告から、閉じていない <script> に飲み込まれたスライドの節の「スライドが見つからない」を除く（#96。kit/check.mjs と同じ関数）。
+// 警告の箱・数・決まりの数え上げ・AI への修正依頼（app/llm.js）がこの S.warn を読む。その節があるときだけ原稿を読む
+async function swallowFree(warns, ws) {
+  if (!ws || !warns.some((w) => /^narration: スライドが見つからない/.test(w))) return warns.slice();
+  try { return withoutSwallowed(warns, scriptUnclosedFindings((await ws.readText(S.deckFile, { max: READ_LIMITS.source })) || '')); } catch { return warns.slice(); }
 }
 // 原稿の文字列だけで決まる品質チェックの指摘（kit/core/check-source.mjs）：作業場所の deck.html・narration.md・voice.json の lang から。読めなければなし
 async function sourceChecks() {

@@ -287,6 +287,9 @@ steps.push(
   // しおりが多いとき（handoff #90）：入りきらない名前のボタンを「しおり ▾」にまとめる（幅 768・390 px でツールバーがはみ出さない・一覧で飛ぶ・キーボード）
   ['test-bookmark-menu', ['tools/test-bookmark-menu.mjs', path.join(tmp, 'bookmark-menu')]],
   ['test-bookmark-check', ['tools/test-bookmark-check.mjs', path.join(tmp, 'bookmark-check')]],
+  // 閉じていない <script>（handoff #96）：指摘・言葉、飲み込まれたスライドの「スライドが見つからない」を出さない（コマンド版・編集アプリ・修正依頼）
+  ['test-script-unclosed', ['tools/test-script-unclosed.mjs', path.join(tmp, 'script-unclosed')]],
+  ['test-app-script-unclosed', ['tools/test-app-script-unclosed.mjs', path.join(tmp, 'app-script-unclosed')]],
   ['test-app-bookmark', ['tools/test-app-bookmark.mjs', path.join(tmp, 'app-bookmark')]],
   // 画像を挿入…（handoff #85）：窓の言葉・押せないわけ・大きさの知らせ・貼り付けとドロップ・原稿とプレビュー・元に戻す・編集パネルの HTML の欄へのドロップ
   ['test-app-image-insert', ['tools/test-app-image-insert.mjs', path.join(tmp, 'app-image-insert')]],

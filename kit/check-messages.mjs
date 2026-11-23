@@ -401,8 +401,8 @@ export const MESSAGES = {
     en: (a) => `${compName(a, false)} has data it cannot draw: ${compWhat(a, false)}${compHow(a, false) ? `. Write it like this: ${compHow(a, false)}` : ''}` },
   // 閉じていない <script>（kit/core/script-unclosed.mjs、handoff #96）：後ろのスライドが <script> の中の文字になる。見出しは 4 つまで並べる
   scriptUnclosed: { rule: 'R-components',
-    ja: (a) => `${a.line} 行目の <script> に </script> がない：その後ろの${a.n ? `スライド ${a.n} 枚（${(a.headings || []).slice(0, 4).map((h) => quoteJa(h || '見出しなし')).join('')}${a.n > 4 ? '…' : ''}）` : 'すべて'}が <script> の中の文字になり、スライドとして読めない（台本の節も結べない）。<script> の中身（JSON など）のすぐ後ろに </script> を書く`,
-    en: (a) => `the <script> on line ${a.line} has no </script>: everything after it${a.n ? `, including ${a.n} slide${a.n === 1 ? '' : 's'} (${(a.headings || []).slice(0, 4).map((h) => `“${h || 'no heading'}”`).join(', ')}${a.n > 4 ? ', …' : ''}),` : ''} is read as script text, not as slides (and their sections in narration.md match no slide). Write </script> right after the script's content (the JSON)` },
+    ja: (a) => `${a.line} 行目の <script> に </script> がない。そのため後ろの${a.n ? `スライド ${a.n} 枚（${(a.headings || []).slice(0, 4).map((h) => quoteJa(h || '見出しなし')).join('')}${a.n > 4 ? '…' : ''}）` : 'すべて'}が <script> の中の文字になり、スライドとして読めない（台本の節も結べない）。<script> の中身（JSON など）のすぐ後ろに </script> を書く`,
+    en: (a) => `the <script> on line ${a.line} has no </script>. So ${a.n ? `the ${a.n === 1 ? '' : `${a.n} `}${plural(a.n, 'slide')} after it (${(a.headings || []).slice(0, 4).map((h) => `“${h || 'no heading'}”`).join(', ')}${a.n > 4 ? ', …' : ''}) ${a.n === 1 ? 'is' : 'are'}` : 'everything after it is'} read as script text, ${a.n === 1 ? 'not as a slide (and its section in narration.md matches no slide)' : 'not as slides (and their sections in narration.md match no slide)'}. Write </script> right after the script's content (the JSON)` },
   consoleError: { ja: (a) => `コンソールエラー：${a.e}（スライドのパーツやスクリプトを修正する）`, en: (a) => `console error: ${a.e} (fix the slides’ part or script)` },
 };
 
