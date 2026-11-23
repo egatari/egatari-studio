@@ -40,6 +40,7 @@ import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
 import { draftStore, createDraftKeeper, noteStore, createNoteKeeper } from './drafts.js';
 import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
+import { sourceChanges, pngDiffers, oldShooter, LOOK_MAX } from './look-change.js';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { sourceFindings } from '../kit/core/check-source.mjs';
@@ -1486,6 +1487,7 @@ async function quickCheck() {
     el('div', { cls: 'where', text: r.i === null ? T.wholeDeck : T.slideN(r.i + 1, r.title) }),
   ]));
   const rules = S.lastRules = await checkRules(results);
+  const lookBox = el('section', { id: 'look-change', cls: 'look-change' });
   openPanel(T.checkTitle, [
     el('div', { id: 'check-panel', cls: 'sum', text: T.checkSummary(errs, warns) }),
     buildWarnBox(),
@@ -1496,7 +1498,64 @@ async function quickCheck() {
     el('button', { type: 'button', id: 'b-copyshot', cls: 'fixreq', text: T.copyShot, 'aria-describedby': 'copyshot-hint', onclick: copyShot }),
     el('p', { id: 'copyshot-hint', cls: 'hint', text: T.copyShotHint }),
     ...items,
+    lookBox,
   ]);
+  lookChange(lookBox, f).catch((e) => { console.warn('[editor] cannot compare the look of the slides', e); lookBox.remove(); })
+    .finally(() => { if (window.__APP_TEST) window.__APP_TEST.lookRuns = (window.__APP_TEST.lookRuns || 0) + 1; });
+}
+// ---------------------------------------------------------------- 保存で見え方が変わるスライド（handoff #100 の 7。app/look-change.js）
+// 次の保存がスライドを組み直す（段 B）とき、開いたときのファイル（P.original）とプレビュー（このエディタの組み直し）で、各スライドの
+// 最後のステップの画像を比べ、違うスライドを品質チェックの板の終わりに出す（保存は止めない）。編集したスライドは数えない。スライドの外
+// （<head>・テーマなど）を直したとき・まだ保存していない文書・旧形式・依存不足（プレビューが元のファイル）・コードを確かめていないときは比べない。
+// 板の後ろで少しずつ。組み直し（S.loads）・別の文書（S.gen）・板が閉じたら止める。古いプレーヤーで写せなければ何も出さない
+let lookSeq = 0;
+async function lookChange(box, frame) {
+  const P = S.portable, ws = S.ws, gen = S.gen, load = S.loads, seq = ++lookSeq;
+  if (window.__APP_TEST) window.__APP_TEST.lastLookChange = null;
+  if (!P || !ws || !S.allowed || P.readOnly || P.earlier || P.requiresMissing || typeof P.original !== 'string' || ((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved)) { box.remove(); return; }
+  const live = () => seq === lookSeq && S.portable === P && S.ws === ws && S.gen === gen && S.loads === load && box.isConnected && $('preview').contentWindow === frame;
+  const a = await tierA(P.original, ws.snapshot(), { fonts: engine.fonts });
+  if (!live() || a.ok) { box.remove(); return; }
+  const entry = P.index && P.index.entry;
+  const oldBytes = entry ? (await readPortable(P.original)).files[entry] : null;
+  const now = await ws.readText(S.deckFile, { max: READ_LIMITS.source });
+  if (!live() || !oldBytes || !now) { box.remove(); return; }
+  const oldSrc = new TextDecoder().decode(oldBytes);
+  const ch = sourceChanges(oldSrc, now);
+  if (ch.outside) { box.remove(); return; }
+  const oldIndex = new Map(analyzeSlideIds(oldSrc).slides.map((x) => [x.key, x.index]));
+  const todo = (S.slides || []).map((x, i) => ({ i, key: x.key, heading: x.heading || '', o: oldIndex.get(x.key) })).filter((x) => x.o !== undefined && !ch.edited.has(x.key));
+  if (!todo.length) { box.remove(); return; }
+  const list = todo.slice(0, LOOK_MAX);
+  const status1 = el('p', { id: 'look-status', cls: 'hint', text: T.lookChecking });
+  box.replaceChildren(status1);
+  const old = oldShooter({ html: withShim(P.original, { dev: true, load: -1, query: '?mode=' + (S.previewMode || 'talk') }) });
+  const found = [], trace = [];
+  try {
+    for (const x of list) {
+      if (!live()) return;
+      const [b, n] = [await old.shot(x.o), await askFrame('app-shot', { i: x.i })];
+      if (!live()) return;
+      // 古いプレーヤーで写せない（slideShot に要るものがない）：比べずに何も出さない
+      if (!b) { if (x === list[0]) { box.remove(); return; } continue; }
+      if (!n || !(n.png instanceof Blob) || b.key !== x.key || n.key !== x.key) { trace.push([x.key, 'skip', b.key, n && n.key]); continue; }
+      const d = await pngDiffers(b.png, n.png);
+      trace.push([x.key, d, b.png.size, n.png.size]);
+      if (d) found.push(x);
+    }
+  } finally { old.close(); }
+  if (!live()) return;
+  if (window.__APP_TEST) window.__APP_TEST.lastLookChange = { compared: list.length, of: todo.length, slides: found.map((x) => x.key), trace };
+  if (!found.length) { box.remove(); return; }
+  box.replaceChildren(
+    el('h3', { id: 'look-title', text: T.lookTitle }),
+    el('p', { cls: 'hint', text: T.lookLead }),
+    ...(todo.length > list.length ? [el('p', { cls: 'hint', text: T.lookCapped(list.length, todo.length) })] : []),
+    ...found.map((x) => el('div', { cls: 'res info look-slide', 'data-key': x.key, onclick: () => frame.postMessage({ type: 'app-go', i: x.i, k: 0 }, '*') }, [
+      el('span', { cls: 'sev', text: T.sevInfo }),
+      el('span', { text: T.lookItem }),
+      el('div', { cls: 'where', text: T.slideN(x.i + 1, x.heading) }),
+    ])));
 }
 // 品質チェックの「スライドの画像と確認の依頼をコピー」（backlog #227）：今のスライドを最後のステップにした画像（PNG。プレビューの中で描く、
 // app/frame-shim.js の slideShot）と、図と結論の行を確かめてもらう依頼の文を、1 回でクリップボードに書く（image/png と text/plain の 1 つの
