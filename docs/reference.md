@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=12c99e51b4e21596 -->
+<!-- i18n: pair=reference.ja.md sha256=2e62ac6f9162d889 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -285,7 +285,7 @@ For 国語 files (kanbun, classical and modern Japanese). The example is [`examp
 | a | play / pause from the current step (audio if any). Pause and play again continue from the same point. Any navigation key stops playback |
 | < / > | playback speed slower / faster (0.75, 1, 1.25, 1.5, 2×) |
 | l | show later steps faintly (on/off) |
-| q | next bookmark (`data-bookmark`): jumps to that slide's final state; after the last one, back to where you were. The bookmarks also have buttons with their names in the toolbar and the presenter view, with **Back to where you were** (or Backspace) after a jump. Not in video mode or print |
+| q | next bookmark (`data-bookmark`): jumps to that slide's final state; after the last one, back to where you were. The bookmarks also have buttons with their names in the toolbar and the presenter view (when they do not fit the toolbar, one **Bookmarks ▾** button with a list of the names), with **Back to where you were** (or Backspace) after a jump. Not in video mode or print |
 | b | black screen (turns the whole window black, with a faint hint in the corner for 2 s and on mouse move; b again, Esc, a click, the arrows, Space, PageUp/PageDown or Home/End bring it back without moving the slide; the presenter view shows "Black screen", and b there toggles it on the main window; the arrows, Space and PageUp/PageDown there also only end it) |
 | s | captions on/off: the current step's script (display text) at the bottom of the slide |
 | Shift+s | caption size: S → M → L (22 / 27 / 34px), with a brief notice; the last choice is remembered (localStorage) |

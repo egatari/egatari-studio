@@ -178,6 +178,11 @@ css(
   "#dt-cb .dt-bm{display:flex;align-items:center;gap:2px}" +
   "#dt-cb .dt-bm button{width:auto;max-width:16em;padding:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;line-height:32px;font:600 12px/32px -apple-system,BlinkMacSystemFont,'Hiragino Sans',sans-serif}" +
   "#dt-cb .dt-bm button[hidden]{display:none}#dt-cb .dt-bm button[aria-current=true]{box-shadow:inset 0 -2px 0 rgba(255,255,255,.7)}" +
+  // ツールバーに入りきらないときは、名前のボタンを 1 つの「しおり ▾」にまとめる（dt-bmc。入るかどうかは placeBar で測る）。押すと名前の一覧（帯の上に開く）
+  "#dt-cb .dt-bm{flex:none}#dt-cb .dt-bm.dt-bmc>[data-bm]{display:none}#dt-cb .dt-bm:not(.dt-bmc)>[data-b=bmmenu]{display:none}" +
+  "#dt-bml{position:absolute;bottom:calc(100% + 6px);left:0;z-index:1;box-sizing:border-box;min-width:10em;max-width:calc(100vw - 16px);overflow-y:auto;padding:4px;border-radius:10px;" +
+  " background:rgba(20,20,20,.92);box-shadow:0 4px 16px rgba(0,0,0,.35)}#dt-bml[hidden]{display:none}" +
+  "#dt-cb #dt-bml button{width:100%;max-width:none;text-align:left;border-radius:6px}" +
   // 再生速度：字で今の速さを見せる
   "#dt-cb button[data-b=rate]{width:auto;min-width:40px;padding:0 4px;font:600 12px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-variant-numeric:tabular-nums}" +
   // 編集モードの間は、発表の道具（再生・再生速度・レーザー・ペン・消えるペン・色・消す・一覧・全画面）のボタンを隠す
@@ -883,7 +888,7 @@ function buildBar(){
     act(b, e.detail === 0);
   });
   function act(b, keyboard){
-    if (typeof b._act === "function") b._act(b); else press(b._act);
+    if (typeof b._act === "function") b._act(b, keyboard); else press(b._act);
     // マウス・指で押したらフォーカスを残さない（矢印キーがそのまま効く）。キーボード（Enter / Space、detail = 0）なら残す
     if (!keyboard){
       b.blur();
@@ -915,8 +920,8 @@ function buildBar(){
 }
 // しおり（format spec §8.0、Player P4.3）：しおりの名前のボタン（押すとそのスライドの最終状態へ）と、しおりで来ている間だけの「元の位置に戻る」。
 // しおりがなければ作らない（false）。動画ではこの道具ごと作らない。印刷では帯ごと隠れる
-var BM_T = JA ? {group: "しおり", one: function(n){ return "しおり：" + n; }, back: "元の位置に戻る"}
-  : {group: "Bookmarks", one: function(n){ return "Bookmark: " + n; }, back: "Back to where you were"};
+var BM_T = JA ? {group: "しおり", one: function(n){ return "しおり：" + n; }, back: "元の位置に戻る", menu: "しおり ▾"}
+  : {group: "Bookmarks", one: function(n){ return "Bookmark: " + n; }, back: "Back to where you were", menu: "Bookmarks ▾"};
 function bmGroup(){
   var L = DECK.bookmarks ? DECK.bookmarks() : [];
   if (!L.length) return false;
@@ -928,12 +933,93 @@ function bmGroup(){
     e._act = function(){ DECK.bookmark(n); };
     g.appendChild(e);
   });
+  // 入りきらないときの「しおり ▾」と、その名前の一覧（role=menu。項目は開くたびに作る）
+  var mb = document.createElement("button"); mb.type = "button";
+  mb.setAttribute("data-b", "bmmenu"); mb.textContent = BM_T.menu; mb.title = BM_T.group; mb.setAttribute("aria-label", BM_T.group);
+  mb.setAttribute("aria-haspopup", "menu"); mb.setAttribute("aria-expanded", "false"); mb.setAttribute("aria-controls", "dt-bml");
+  mb._act = function(b, keyboard){ bmMenu(mb.getAttribute("aria-expanded") !== "true", keyboard); };
+  g.appendChild(mb);
+  var ml = document.createElement("div"); ml.id = "dt-bml"; ml.setAttribute("role", "menu"); ml.setAttribute("aria-label", BM_T.group); ml.hidden = true;
+  g.appendChild(ml);
   var r = document.createElement("button"); r.type = "button";
   r.setAttribute("data-b", "bmback"); r.textContent = "↩ " + BM_T.back; r.hidden = true;
   r.title = BM_T.back + kk("Backspace"); r.setAttribute("aria-label", BM_T.back); r.setAttribute("aria-keyshortcuts", "Backspace");
   r._act = function(){ DECK.bookmarkBack(); };
   g.appendChild(r);
   cb.appendChild(g);
+  // 帯の外を押したら一覧を閉じる
+  window.addEventListener("pointerdown", function(e){ if (mb.getAttribute("aria-expanded") === "true" && !(e.target && e.target.closest && (e.target.closest("#dt-bml") || e.target.closest('[data-b="bmmenu"]')))) bmMenu(false); }, true);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ placeBar(); });
+  return true;
+}
+// 名前のボタンがツールバーの 1 行に入るか測り、入らなければ「しおり ▾」にまとめる（数では決めない。窓の大きさが変わるたびに placeBar から）
+function bmFit(){
+  var g = cb && cb.querySelector(".dt-bm");
+  if (!g) return;
+  var was = g.classList.contains("dt-bmc"), cs = getComputedStyle(cb);
+  g.classList.remove("dt-bmc");
+  var room = (parseFloat(cb.style.maxWidth) || innerWidth - 16) - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  var fold = g.getBoundingClientRect().width > room + 0.5;
+  g.classList.toggle("dt-bmc", fold);
+  if (was && !fold) bmMenu(false);
+  if (!was && fold && g.contains(document.activeElement) && document.activeElement.hasAttribute("data-bm")) g.querySelector('[data-b="bmmenu"]').focus();
+}
+// 名前の一覧を開く・閉じる。キーボードで開いたら、今いるしおり（なければ最初）の項目へ
+function bmMenu(open, keyboard, last){
+  var mb = cb && cb.querySelector('[data-b="bmmenu"]'), ml = document.getElementById("dt-bml");
+  if (!mb || !ml) return;
+  var was = mb.getAttribute("aria-expanded") === "true";
+  if (!open){
+    if (!was) return;
+    var inside = ml.contains(document.activeElement);
+    mb.setAttribute("aria-expanded", "false"); ml.hidden = true; ml.textContent = "";
+    if (inside) mb.focus();
+    return;
+  }
+  var L = DECK.bookmarks ? DECK.bookmarks() : [], act = DECK.bookmarkActive && DECK.bookmarkActive(), st = DECK.state();
+  ml.textContent = "";
+  L.forEach(function(x, n){
+    var e = document.createElement("button"); e.type = "button"; e.className = "dt-bmi";
+    e.setAttribute("role", "menuitem"); e.setAttribute("data-bm", n); e.tabIndex = -1; e.textContent = x.name; e.title = BM_T.one(x.name);
+    if (act && x.i === st.slide - 1) e.setAttribute("aria-current", "true");
+    e._act = function(){ bmMenu(false); DECK.bookmark(n); };
+    ml.appendChild(e);
+  });
+  mb.setAttribute("aria-expanded", "true"); ml.hidden = false;
+  if (hint){ hint.remove(); hint = null; }   // 出し方の 1 行が一覧に重ならないように
+  // 帯の上に開き、画面の左右からはみ出さない。高さは帯の上の余白まで
+  var cr = cb.getBoundingClientRect(), br = mb.getBoundingClientRect();
+  ml.style.maxHeight = Math.max(80, Math.floor(cr.top - 12)) + "px";
+  ml.style.left = Math.round(br.left - cr.left) + "px";
+  var r = ml.getBoundingClientRect(), dx = 0;
+  if (r.right > innerWidth - 8) dx = innerWidth - 8 - r.right;
+  if (r.left + dx < 8) dx = 8 - r.left;
+  if (dx) ml.style.left = Math.round(br.left - cr.left + dx) + "px";
+  if (keyboard){
+    var items = ml.querySelectorAll('[role="menuitem"]'), cur = ml.querySelector('[aria-current="true"]');
+    var f = last ? items[items.length - 1] : cur || items[0];
+    if (f) f.focus();
+  }
+}
+// 一覧と「しおり ▾」のキー：↓↑ で動く（端で回る）、Home / End、Esc で閉じて「しおり ▾」へ、Tab で閉じる。「しおり ▾」の上の ↓↑ でも開く
+function bmMenuKey(e){
+  var ml = document.getElementById("dt-bml"), a = document.activeElement;
+  if (!ml || !a) return false;
+  var k = e.key;
+  if (a.getAttribute("data-b") === "bmmenu"){
+    if (k === "ArrowDown" || k === "ArrowUp"){ bmMenu(true, true, k === "ArrowUp"); return true; }
+    if (k === "Escape" && a.getAttribute("aria-expanded") === "true"){ bmMenu(false); return true; }
+    return false;
+  }
+  if (!ml.contains(a)) return false;
+  var items = [].slice.call(ml.querySelectorAll('[role="menuitem"]')), j = items.indexOf(a);
+  if (k === "ArrowDown") items[(j + 1) % items.length].focus();
+  else if (k === "ArrowUp") items[(j - 1 + items.length) % items.length].focus();
+  else if (k === "Home") items[0].focus();
+  else if (k === "End") items[items.length - 1].focus();
+  else if (k === "Escape") bmMenu(false);
+  else if (k === "Tab"){ bmMenu(false); return false; }
+  else return k !== "Enter" && k !== " ";   // Enter / Space は項目の click に任せる。ほかのキー（スライドを送るなど）は一覧の間は止める
   return true;
 }
 // 舞台の下に 44px 以上の余白があれば余白の真ん中に、なければ下端に重ねる
@@ -944,6 +1030,7 @@ function placeBar(){
   var sb = sbox(), k = Math.min(sb.w / W, sb.h / H), m = (sb.h - H * k) / 2;
   cb.style.left = Math.round(sb.x + sb.w / 2) + "px";
   cb.style.maxWidth = Math.max(160, sb.w - 16) + "px";
+  bmFit();
   // 帯の高さ（狭い画面では 2 行になる）。隠れていても大きさは測れる
   cb.classList.remove("dt-wrap");
   var bh = cb.offsetHeight || 38;
@@ -976,6 +1063,7 @@ function wake(e){
   hideT = setTimeout(function hide(){
     if ((!touchLast && cb.matches(":hover")) || cb.contains(document.activeElement) || (handle && handle === document.activeElement)){ hideT = setTimeout(hide, 800); return; }
     cb.classList.remove("show");
+    bmMenu(false);
     if (hint){ hint.remove(); hint = null; }
     showHandle(true);
     liftCaptions();
@@ -1202,6 +1290,7 @@ window.addEventListener("keydown", function(e){
     return;
   }
   if (!layer || typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (bmMenuKey(e)){ e.preventDefault(); e.stopImmediatePropagation(); return; }
   // 暗転の間（kit/deck.js の b）：道具のキーは使わない（b・Esc・クリックで戻すのは deck.js）
   if (document.documentElement.classList.contains("blackout")) return;
   var k = e.key, done = true;

@@ -359,8 +359,8 @@ const ja = {
   tierAOnlyNoSlides: 'このファイルではスライドを編集できません（台本・音声・秒数だけ）',
   // テーマを変更…（スライド ▾。app/theme-switch.js）
   // しおり（format spec §8.0。スライド ▾）
-  bmAddCmd: 'しおりを付ける…', bmRenameCmd: 'しおりの名前を変更…', bmRemoveCmd: 'しおりを外す', bmTitle: 'しおりを付ける', bmField: 'しおりの名前（20 字まで）', bmDefault: '質疑用',
-  bmDesc: '発表の後の質疑などで、このスライドにすぐ戻れます。発表のときはツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', bmGo: '付ける', bmUndo: 'しおりの変更',
+  bmAddCmd: 'しおりを付ける…', bmRenameCmd: 'しおりの名前を変更…', bmRemoveCmd: 'しおりを外す', bmTitle: 'しおりを付ける', bmField: 'しおりの名前（20 字まで）', bmDefault: (n) => `スライド ${n}`,
+  bmDesc: '発表のとき、このスライドへすぐ飛べます（ステップは最後まで出た状態で）。本編の要所や付録の扉に付けます。ツールバーのボタンか q キーで飛び、「元の位置に戻る」か Backspace で戻ります', bmGo: '付ける', bmUndo: 'しおりの変更',
   // 元に戻す・やり直し・検索と置換（handoff #86）：道具の列の矢印と虫眼鏡のボタン、ファイル ▾ の「最後に保存した状態に戻す…」
   undoBtn: `元に戻す（${KEY_UNDO}）`, redoBtn: `やり直し（${KEY_REDO}）`, findBtn: `検索と置換（${KEY_FIND}）`,
   revertCmd: '最後に保存した状態に戻す…', revertTitle: '最後に保存した状態に戻す', revertBody: '保存してからの変更をすべて取り消します。元に戻すで戻せます', revertGo: '戻す',
@@ -877,8 +877,8 @@ const en = {
   tierAOnlyTitle: 'Cannot save without rebuilding', tierAOnlySave: (w) => `This file cannot be rebuilt (${w}), so only changes to script, audio and timing can be saved. The current changes go beyond that.`,
   tierAOnlyNotice: (w) => `This file cannot be rebuilt, so only script, audio and timing can be edited (not the slides): ${w}`,
   tierAOnlyNoSlides: 'The slides of this file cannot be edited (script, audio and timing only)',
-  bmAddCmd: 'Add bookmark…', bmRenameCmd: 'Rename bookmark…', bmRemoveCmd: 'Remove bookmark', bmTitle: 'Add bookmark', bmField: 'Bookmark name (up to 20 characters)', bmDefault: 'Q&A',
-  bmDesc: 'For questions after a talk, jump straight back to this slide: in a talk, press its button in the toolbar or q, and use “Back to where you were” or Backspace to return', bmGo: 'Add', bmUndo: 'changing the bookmark',
+  bmAddCmd: 'Add bookmark…', bmRenameCmd: 'Rename bookmark…', bmRemoveCmd: 'Remove bookmark', bmTitle: 'Add bookmark', bmField: 'Bookmark name (up to 20 characters)', bmDefault: (n) => `Slide ${n}`,
+  bmDesc: 'Jump straight to this slide during a talk, with all its steps shown. Put one on an important slide or the appendix divider. Jump with the toolbar button or by pressing q; go back with “Back to where you were” or Backspace', bmGo: 'Add', bmUndo: 'changing the bookmark',
   // Undo, redo, find and replace (handoff #86): the arrow and magnifier buttons in the toolbar, and “Revert to last saved…” in File ▾
   undoBtn: `Undo (${KEY_UNDO})`, redoBtn: `Redo (${KEY_REDO})`, findBtn: `Find and replace (${KEY_FIND})`,
   revertCmd: 'Revert to last saved…', revertTitle: 'Revert to last saved', revertBody: 'This undoes every change since the last save. You can undo it', revertGo: 'Revert',

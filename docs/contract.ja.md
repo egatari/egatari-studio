@@ -1,4 +1,4 @@
-<!-- i18n: pair=contract.md sha256=7e14b6ffedb64569 -->
+<!-- i18n: pair=contract.md sha256=afed4e9381d45a47 -->
 # 規約（作るときの記法についての Studio の注）
 
 [English](contract.md) | 日本語
@@ -111,7 +111,7 @@ canon へのエクスポート（Marp 形式のスライド一式）は 0.4.2 �
 - 埋め込み（`?embed=1`）の知らせは Player P8（`prefs` の値は仕様の表の下の段落。[リファレンス](reference.ja.md#埋め込み-1)）。プレーヤー自身の設定（並べ方・本の字の大きさと背景・字幕とその大きさ）は、学習者が変えたときだけ `prefs` で知らせ、Egatari Viewer のようなホストが覚えられるようにする（Player P5）。Studio の内部の `deck-pos` の知らせ（発表者ビュー・編集アプリ）は `cause` と `back` も運ぶ。発表者ビューのウィンドウは本体のウィンドウについていき、Backspace・Alt+← を本体に送る
 - 実行時の API：`DECK.resolveFragment(f)` → `{i, k, key, id}` か `{error}`、`DECK.fragment(i, k)`、`DECK.follow(f)`、`DECK.back()`、`DECK.links()` → `{depth, follow, back}`、`DECK.visited(i | key)`（`m-menu` が使う）
 - 品質チェック：ないスライドへのリンク、範囲の外のステップ、結論の行のないスライドの `concl`、最後より後のスライドの番号は**エラー**。`#N` のリンク、id のないスライドへのリンク、ない相手のファイルへの相対リンクは警告
-- **しおり**（形式 §8.0 の `data-bookmark`、Player P4.3）：`talk` のモード（動画・発表者ビューの中の画面・印刷を除く）で、しおりごとに名前のボタンをツールバーと発表者ビューに出し、そのスライドの最終状態（`concl`、結論の行のないスライドは最後のステップ）へのリンクをたどる。戻るの積み上げの項目にしおりの印を付け、いちばん上がしおりの間は、続けて飛んでも（ボタン・`q`）項目を足さず、**元の位置に戻る**（ツールバーのボタン・左上のボタン・Backspace）は最初に飛ぶ前の位置へ戻る。`q` は今の位置より後の次のしおりへ。最後の後は、しおりを使っている間は戻り、そうでなければ最初のしおりへ。`deck-pos` は `bookmarks`（`[{i, name}]`）と `bm` も運び、発表者ビューは `{cmd: "bookmark", n}` か `{cmd: "bookmark", next: true}` を送る。実行時の API：`DECK.bookmarks()`、`DECK.bookmark(n)`、`DECK.nextBookmark()`、`DECK.bookmarkActive()`、`DECK.bookmarkBack()`。品質チェック（コマンド版と Studio）：同じ名前が 2 枚以上（`bookmarkDup`）と、code point で数えて 20 字を超える名前（`bookmarkLong`）は警告
+- **しおり**（形式 §8.0 の `data-bookmark`、Player P4.3）：`talk` のモード（動画・発表者ビューの中の画面・印刷を除く）で、しおりごとに名前のボタンをツールバーと発表者ビューに出し（ツールバーの 1 行に入りきらないときは、ツールバーのボタンを 1 つの **しおり ▾** にまとめ、押すと名前の一覧（`role=menu`）が開く。入るかどうかは測って決め、窓の大きさが変わるたびに測り直す）、そのスライドの最終状態（`concl`、結論の行のないスライドは最後のステップ）へのリンクをたどる。戻るの積み上げの項目にしおりの印を付け、いちばん上がしおりの間は、続けて飛んでも（ボタン・`q`）項目を足さず、**元の位置に戻る**（ツールバーのボタン・左上のボタン・Backspace）は最初に飛ぶ前の位置へ戻る。`q` は今の位置より後の次のしおりへ。最後の後は、しおりを使っている間は戻り、そうでなければ最初のしおりへ。`deck-pos` は `bookmarks`（`[{i, name}]`）と `bm` も運び、発表者ビューは `{cmd: "bookmark", n}` か `{cmd: "bookmark", next: true}` を送る。実行時の API：`DECK.bookmarks()`、`DECK.bookmark(n)`、`DECK.nextBookmark()`、`DECK.bookmarkActive()`、`DECK.bookmarkBack()`。品質チェック（コマンド版と Studio）：同じ名前が 2 枚以上（`bookmarkDup`）と、code point で数えて 20 字を超える名前（`bookmarkLong`）は警告
 
 ### 授業の外へ出るリンク
 

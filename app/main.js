@@ -53,7 +53,7 @@ import { scormPackage, completionRule, SCORM_EXT, CHECKS } from '../kit/core/sco
 import { AUDIO_LIMITS } from '../kit/core/audio-core.mjs';
 import { readFileBounded, fetchBounded, READ_LIMITS } from './bounded-read.js';
 import { TEMPLATES, setBookmark } from '../kit/core/slide-ops.mjs';
-import { BOOKMARK_MAX, bookmarkName, bookmarkLength } from '../kit/core/bookmark.mjs';
+import { BOOKMARK_MAX, bookmarkName, bookmarkLength, bookmarkDefault } from '../kit/core/bookmark.mjs';
 import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
 import { choosableOf, themeLabel, themeNote } from '../kit/core/themes-list.mjs';
@@ -2778,7 +2778,9 @@ async function bookmarkDialog() {
   if (i === null) { toast(T.noSlide, true); return; }
   const cur = bookmarkOf(i);
   const input = el('input', { type: 'text', id: 'bookmark-name', autocomplete: 'off', spellcheck: 'false', 'aria-describedby': 'bookmark-desc' });
-  input.value = cur || T.bmDefault;
+  // 既定の名前：そのスライドの見出しを 20 字で切ったもの（見出しのないスライドは「スライド 3」）。ほかのスライドのしおりと同じなら後ろに番号（bookmarkDefault）
+  const taken = (S.slides || []).filter((s, j) => j !== i).map((s) => bookmarkName(s.bookmark)).filter(Boolean);
+  input.value = cur || bookmarkDefault((S.slides[i] && S.slides[i].heading) || T.bmDefault(i + 1), taken);
   // 名前は空でなく 20 字（code point）まで。合わなければ閉じない
   const good = () => { const n = bookmarkName(input.value); return !!n && bookmarkLength(n) <= BOOKMARK_MAX; };
   input.addEventListener('input', () => input.setAttribute('aria-invalid', good() ? 'false' : 'true'));
