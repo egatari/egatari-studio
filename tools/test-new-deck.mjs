@@ -53,10 +53,13 @@ const SINGLE_SET_EXPECTED = {
   // 注意の枠の 1 行（R-caution）を足しても、この並びのまま（v0.6.13 の統合で計り直した）
   // v0.6.18：R-steps に表の見せ方の文（#65）を足して計り直した。data・business・tools は m-fishbone、maps は m-quad、math は m-compare・m-cards、
   // kokugo は m-cycle、science は m-tree を 1 つ多く外す
-  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline'], data: ['m-fishbone'],
-    math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-kpi', 'm-compare', 'm-cards'],
-    maps: ['m-fishbone', 'm-quad'], kokugo: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'], business: ['m-fishbone'], tools: ['m-fishbone'],   // kokugo：#70 の 1 行で m-venn、#83 の文で m-tree も
-    science: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'],
+  // v0.6.20：無料のプランを短くした（handoff #95：束の見本は有料のプランだけ、step・at・tone を 3 つとも受け付ける項目は欄から外して印 †、§2 の一部を有料のプランだけ）。
+  // stats は m-timeline、math は m-tree・m-timeline・m-kpi・m-compare・m-cards、kokugo は m-quad・m-cycle・m-venn・m-tree、science は m-venn・m-tree、
+  // data・maps・business・tools は外さずに収まる
+  en: { stats: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree'],
+    math: ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn'],
+    kokugo: ['m-fishbone'],
+    science: ['m-fishbone', 'm-quad', 'm-cycle'],
     algo: [], ml: [] },
   ja: { algo: [], ml: [] },
 };
@@ -555,8 +558,9 @@ ok(`pack ${PACK_VERSION}: the purpose table is built at assembly from the includ
   assert.doesNotMatch(buildPack({ sets: [], lang: 'en' }), /^\| spread \|/mi);
   assert.match(buildPack({ sets: ['stats'], lang: 'en' }), /^\| spread \| `m-boxplot`, `m-hist`, `m-seq` \| whole at once \|$/mi);
   assert.match(en, /Lists, KPI cards and pies are shown whole; do not reveal them line by line unless the script discusses each item in turn/);
-  // 束の見本は抜き出し（部品を使うスライドだけ。骨組みは共通の見本）
-  const biz = setPart('business', 'en');
+  // 束の見本は抜き出し（部品を使うスライドだけ。骨組みは共通の見本）。有料のプランだけ（handoff #95）
+  const biz = setPart('business', 'en', { plan: 'paid' });
+  assert.ok(!setPart('business', 'en').includes('```deck.html'), 'the free plan has no set example');
   assert.ok(biz.includes('```deck.html\n<section class="slide">') && !biz.includes('<!DOCTYPE html>') && biz.includes('<m-kpi') && !biz.includes('<m-bars orient'));
   assert.ok(!/<!--\/?part/.test(en), 'no part markers left');
 });

@@ -24,19 +24,19 @@ This file and the part set packs together are the **full pack**: the standards, 
 
 | Pack | Size | Cap | Paste length | Cap |
 |---|---:|---:|---:|---:|
-| Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 30.0 KB | 45 KB | 30,811 | 31,000 |
-| Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline left out) | 32.6 KB | 45 KB | 30,919 | 31,000 |
-| Light instructions: standard + data (the core four shortened too; m-fishbone left out) | 30.0 KB | 45 KB | 30,761 | 31,000 |
-| Light instructions: standard + algo (the core four shortened too) | 27.7 KB | 45 KB | 28,360 | 31,000 |
-| Light instructions: standard + ml (the core four shortened too) | 29.4 KB | 45 KB | 30,094 | 31,000 |
-| Light instructions: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree, m-timeline, m-kpi, m-compare, m-cards left out) | 32.7 KB | 45 KB | 30,894 | 31,000 |
-| Light instructions: standard + maps (the core four shortened too; m-fishbone, m-quad left out) | 32.0 KB | 45 KB | 30,999 | 31,000 |
-| Light instructions: standard + kokugo (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree left out) | 34.3 KB | 45 KB | 30,748 | 31,000 |
-| Light instructions: standard + english (the core four shortened too) | 27.6 KB | 45 KB | 27,899 | 31,000 |
-| Light instructions: standard + music (the core four shortened too) | 29.3 KB | 45 KB | 29,029 | 31,000 |
-| Light instructions: standard + business (the core four shortened too; m-fishbone left out) | 31.4 KB | 45 KB | 30,844 | 31,000 |
-| Light instructions: standard + tools (the core four shortened too; m-fishbone left out) | 30.8 KB | 45 KB | 30,889 | 31,000 |
-| Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree left out) | 35.9 KB | 45 KB | 30,828 | 31,000 |
+| Light instructions: every standard part (only one catalogue line each, except `m-bars`, `m-flow`, `m-menu`, `m-predict`) | 29.1 KB | 45 KB | 29,853 | 31,000 |
+| Light instructions: standard + stats (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn, m-tree left out) | 32.6 KB | 45 KB | 30,869 | 31,000 |
+| Light instructions: standard + data (the core four shortened too) | 29.6 KB | 45 KB | 30,327 | 31,000 |
+| Light instructions: standard + algo (the core four shortened too) | 26.8 KB | 45 KB | 27,402 | 31,000 |
+| Light instructions: standard + ml (the core four shortened too) | 28.5 KB | 45 KB | 29,136 | 31,000 |
+| Light instructions: standard + math (the core four shortened too; m-fishbone, m-quad, m-cycle, m-venn left out) | 32.8 KB | 45 KB | 30,920 | 31,000 |
+| Light instructions: standard + maps (the core four shortened too) | 31.9 KB | 45 KB | 30,843 | 31,000 |
+| Light instructions: standard + kokugo (the core four shortened too; m-fishbone left out) | 33.9 KB | 45 KB | 30,811 | 31,000 |
+| Light instructions: standard + english (the core four shortened too) | 26.7 KB | 45 KB | 26,941 | 31,000 |
+| Light instructions: standard + music (the core four shortened too) | 28.4 KB | 45 KB | 28,071 | 31,000 |
+| Light instructions: standard + business (the core four shortened too) | 29.5 KB | 45 KB | 29,251 | 31,000 |
+| Light instructions: standard + tools (the core four shortened too) | 30.4 KB | 45 KB | 30,455 | 31,000 |
+| Light instructions: standard + science (the core four shortened too; m-fishbone, m-quad, m-cycle left out) | 35.9 KB | 45 KB | 30,810 | 31,000 |
 | Detailed instructions: every standard part | 54.1 KB | 150 KB | — | — |
 | Detailed instructions: every part set (this file and every set pack) | 128.9 KB | 150 KB | — | — |
 
@@ -48,7 +48,7 @@ The Expert/Novice dialogue of R-dialogue (written only when asked for) follows t
 
 # Instructions for the AI
 
-Pack version: `1e62bc92`
+Pack version: `79c82ff6`
 
 You will write one short **Egatari file**: HTML slides with step-by-step reveals (`deck.html`) and a spoken script for it (`narration.md`). Both are built and quality-checked automatically; only what is described here is available. Write slides and script in the language the user asks for. Standards have ids such as **R-fit**; a fix request names the standards a draft broke. The user's request is in **What I want** at the end (or in the conversation before it): choose sensibly for any field that is empty or missing, and if both A and B are left, follow the one with content.
 
