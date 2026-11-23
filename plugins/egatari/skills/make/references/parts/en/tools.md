@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # tools parts
 
-Instruction version: 027f5293
+Instruction version: 1e62bc92
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
@@ -23,7 +23,7 @@ Data example (child `<script type="application/json">`): `{"callouts":[{"x":0.12
 
 For training and how-to guides: where to click, in order.
 
-The screenshot is a child `<img src alt width height>` (the build inlines it).
+The screenshot is a child `<img src="figs/…" alt width height>` (inlined at build) or a `data:` URL. Without the screenshot, write a figure frame and the steps instead; place circles once it is in.
 
 - **Never show real personal data on a screenshot** (names, ID numbers, resident or patient records). Use made-up data, or blur it.
 - `alt`, `width` and `height` (px) are required (else data); an image over 1 MiB is size.

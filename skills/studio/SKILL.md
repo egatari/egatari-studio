@@ -10,7 +10,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 書き方の決まりは `egatari:make` に従う（先に読む）。make をインストールしていなければ、Claude Code は `/plugin install egatari@egatari`、Codex は `codex plugin add egatari@egatari` を案内する。
 
 <!-- generated: instruction-version -->
-**指示のバージョン：027f5293**
+**指示のバージョン：1e62bc92**
 **スキルのバージョン：0.6.19-rc.2**
 <!-- /generated: instruction-version -->
 

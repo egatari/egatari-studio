@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: 027f5293
+Instruction version: 1e62bc92
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
@@ -237,9 +237,9 @@ Data example (child `<script type="application/json">`): `{"nodes":[{"id":"a","l
 | `pulse-n` | number | `3` | pulse dots |
 | `label-gap` | number | `12` | min label–box gap px |
 
-; px; `x`, `y` = box top-left, `w`, `h` = size.
+; px; `x`, `y` = box top-left, `w`, `h` = size; 40+ px gaps.
 
-- node: `id`, `label` (`\n`) or `tex` (KaTeX), `step`, `tone` (`term`/`emph`/`muted`), `at` (start s), `shape:"diamond"` (decision; ~2× text width)
+- node: `id`, `label` (`\n`) or `tex` (KaTeX), `step`, `tone` (`term`/`emph`/`muted`), `at` (start s), `shape:"diamond"` (decision, ~2× text width)
 - edge: `from` `to` `step` (default: later end), `label`, `tone`, `dash`, `offset` (label gap), `at`, `loop` (back edge: `"left"` `"right"` `"top"` `"bottom"` or `true` = auto)
 
 ### `<m-kpi>`

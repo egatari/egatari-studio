@@ -300,7 +300,7 @@ const FREE_EDITS = {
     version: '2.1.1',   // この版のための行。古い版（行がない）には掛けない。新しい版では警告して見直す
     en: ['- err: ± number or `[low, high]`; per series for `values`',
       '- sig: `[{"from": 0, "to": 2, "label": "**"}]` brackets groups 0 and 2 (`group`: series in a group); vertical, unstacked only'],
-    ja: ['- `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか脚注に書く',
+    ja: ['- `err`：± 数か `[下, 上]`（区間の端）。`values` の組では系列ごと。何の区間かは見出しか図の下の文に書く（スライドに脚注はない）',
       '- `sig`：`[{"from": 0, "to": 2, "label": "**"}]` で組 0 と組 2 を括弧でつなぐ（`group` で組の中の系列どうし）。縦棒の、積み上げでない棒だけ'],
   },
 };
@@ -329,15 +329,21 @@ const EN_EDITS = {
     { find: '| live poll id |', to: '| poll id (no live counts yet) |' },
     { find: '- `poll="p1"`: live poll totals', to: '- `poll="p1"`: reserved; no live reveals yet (`ctx.live.poll(id)` is null), so viewer/author counts are used' },
   ],
+  // m-flow 2.1.2（パーツ集 2.22.0）：箱の間隔の目安が足され、英語の無料のパックが上限を 1 超えた（31,001）。同じ中身で短く
+  // （規格化 11/23、#95 で無料の指示を短くするまでのつなぎ）。version：この版の README の行。ほかの版（古い見本の組み立て）には掛けない
+  'm-flow': [
+    { version: '2.1.2', find: '; boxes 40+ px apart.', to: '; 40+ px gaps.' },
+  ],
   'm-menu': [
     { find: 'Contents; choosing where to start.', to: 'Contents; choosing where to start. Add the menu after import; in the first draft use a plain list.' },
     { find: 'ids from `npm run ids`', to: 'ids are added on import' },
     { find: '  <a href="lesson2.ega.html" data-sub="Next">Drill</a>\n', to: '' },
   ],
 };
-function applyEnEdits(name, body) {
+function applyEnEdits(name, body, version) {
   let out = body;
   for (const e of EN_EDITS[name] || []) {
+    if (e.version && e.version !== version) continue;   // その版の README のための言い換え
     if (!out.includes(e.find)) throw new Error(`EN_EDITS ${name}: ${JSON.stringify(e.find)} is not in the README.en.md entry any more (review tools/make-llm-guide.mjs)`);
     out = out.replace(e.find, () => e.to);
   }
@@ -528,7 +534,7 @@ function entryOf(c, lang, shown = new Set()) {
     : c.enSource ? c.body.replace(/^Child JSON: `[^`\n]*`\.?[ \t]*(.*)$/gm, (_, rest) => rest)   // README.en.md の同じ行
     : c.body.replace(/^子の JSON：`[^`\n]*`[。.]?(?:（([^）\n]*)）。?)?[ \t]*(.*)$/gm, (_, paren, rest) => [paren ? `子の JSON の並び：${paren}。` : '', rest].filter(Boolean).join(''));
   const details = (rows.length ? `| ${H.join(' | ')} |\n|---|---|---|---|\n${rows.join('\n')}\n\n` : '') + body;
-  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + demote(stripRepoRefs(c.enSource ? applyEnEdits(c.fm.name, details) : applyPackEdits(c.fm.name, details, lang)));
+  const entry = `### \`<${c.fm.name}>\`\n\n` + (ex ? ex + '\n\n' : '') + demote(stripRepoRefs(c.enSource ? applyEnEdits(c.fm.name, details, c.fm.version) : applyPackEdits(c.fm.name, details, lang)));
   return { entry: jaWords(c.fm.name, entry.trim()), sup };
 }
 
