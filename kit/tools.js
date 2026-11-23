@@ -822,6 +822,46 @@ var OPEN_MS = 5000, openUntil = 0, hint = null, handle = null, touchAct = 0;
 var revealedAt = 0, REVEAL_GUARD = 350;
 function justRevealed(){ return Date.now() - revealedAt < REVEAL_GUARD; }
 // マウスの動き・指のタップで帯が隠れた状態から出たときだけ、その時刻を覚える（開いたときに出すのと Tab で出すのは除く：すぐ押してよい）
+// 指で進める（handoff #97。Kindle・PDF の閲覧ソフトと同じ）：舞台の上で横に払う（左へ＝次・右へ＝前。横に 60 px 以上、縦の 2 倍以上、0.8 秒以内。
+// Egatari Viewer の手書きの面と同じ基準）か、舞台の左右の端（幅の 15%）をタップすると、帯の前へ・次へと同じに 1 ステップ（再生の状態は保つ。DECK.playStep）。
+// 左＝前・右＝次はキーボードと同じで、縦組みでも変えない。進めたときは帯を出さない（スライドを隠さない）。真ん中のタップは今どおり帯を出す。
+// 指だけ（マウス・ペンは今のまま）。効かせないとき：押した所がリンク・ボタン・入力欄・パーツ（名前に - のある要素）・帯・取っ手・一覧・本の窓、
+// 字を選んでいる途中、ピンチで拡大している間、2 本以上の指、ペンなどの道具を使っている間、暗転の間（暗転はタップで戻すだけ）、
+// 埋め込みで操作を隠したとき（controls=0・deck-nocontrols。ホストが操作を持つ）、動画・発表者ビュー
+var gst = null, touchesDown = 0;
+var GESTURE_SKIP = "a[href], button, input, textarea, select, label, summary, details, [contenteditable], [role=button], [role=slider], [tabindex], #dt-cb, #dt-handle, #dt-ov, #deck-text, #deck-black";
+function gestureOff(t){
+  if (DECK.mode === "video" || DECK.view || mode || document.getElementById("deck-black")) return true;
+  if (document.documentElement.classList.contains("deck-nocontrols")) return true;
+  if (window.visualViewport && window.visualViewport.scale > 1.01) return true;
+  var st = document.getElementById("stage");
+  if (!st || !t || !t.closest || !st.contains(t)) return true;
+  var hit = t.closest(GESTURE_SKIP);
+  if (hit && hit !== st && !(hit.classList && hit.classList.contains("slide"))) return true;   // 舞台と各スライドの tabindex（フォーカスを受けるため）は除く
+  for (var n = t; n && n !== st; n = n.parentElement) if (n.localName && n.localName.indexOf("-") > 0) return true;   // パーツ（カスタム要素）の中
+  var sel = window.getSelection && window.getSelection();
+  return !!(sel && !sel.isCollapsed && String(sel).trim());
+}
+function gestureDown(e){
+  if (e.pointerType !== "touch") return;
+  touchesDown++;
+  gst = touchesDown === 1 && e.isPrimary && !gestureOff(e.target) ? {id: e.pointerId, x: e.clientX, y: e.clientY, t: e.timeStamp} : null;
+}
+// 指を離したとき：進めたら true（帯は出さない）
+function gestureUp(e){
+  var g = gst; gst = null;
+  if (!g || e.pointerId !== g.id || !DECK.ready || gestureOff(e.target)) return false;
+  var dx = e.clientX - g.x, dy = e.clientY - g.y, dt = e.timeStamp - g.t, d = 0;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 800) d = dx < 0 ? 1 : -1;
+  else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 500){
+    var r = document.getElementById("stage").getBoundingClientRect(), edge = r.width * 0.15;
+    if (e.clientX < r.left + edge) d = -1; else if (e.clientX > r.right - edge) d = 1;
+  }
+  if (!d) return false;
+  touchAct = Date.now();   // 後から届く click で帯のボタンを押さない
+  playStep(d);
+  return true;
+}
 function wakeByPointer(e){ var was = !!cb && cb.classList.contains("show"); wake(e); if (cb && !was && cb.classList.contains("show")) revealedAt = Date.now(); }   // touchAct：指で押した時刻（後から届く click を捨てる）
 var HINT_KEY = ((DECK.FORMAT && DECK.FORMAT.id) || "deck") + "-player-bar-hint-v1";
 
@@ -903,7 +943,10 @@ function buildBar(){
   // 最後に押したのが指か（指で押した後の :hover は残ることがあるので、隠すかどうかの判断に使わない）
   window.addEventListener("pointerdown", function(e){ touchLast = e.pointerType === "touch"; }, {capture: true, passive: true});
   // 指のタップは pointermove を送らない：帯の外をタップしたら帯を出す（送らない。舞台に重ねるときも、下のほうに限らない）
-  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))) wakeByPointer(); }, {passive: true});
+  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch" && !(e.target && e.target.closest && e.target.closest("#dt-cb"))){ if (gestureUp(e)) return; wakeByPointer(); } }, {passive: true});
+  window.addEventListener("pointerdown", gestureDown, {capture: true, passive: true});
+  window.addEventListener("pointerup", function(e){ if (e.pointerType === "touch") touchesDown = Math.max(0, touchesDown - 1); }, {capture: true, passive: true});
+  window.addEventListener("pointercancel", function(e){ if (e.pointerType === "touch"){ touchesDown = Math.max(0, touchesDown - 1); gst = null; } }, {passive: true});
   window.addEventListener("resize", placeBar);
   document.addEventListener("fullscreenchange", function(){ placeBar(); syncBar(); });
   document.addEventListener("webkitfullscreenchange", function(){ if (!("onfullscreenchange" in document)){ placeBar(); syncBar(); } });   // 古い iPadOS の Safari

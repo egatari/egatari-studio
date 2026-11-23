@@ -108,7 +108,7 @@ The service worker (`play/sw.js`) caches only the page's own files, listed by th
 
 ## Touch
 
-The file's own player (`kit/tools.js`) takes touch itself, so the page adds nothing for it: a tap on the slide wakes the toolbar (前へ, 次へ, 字幕, 読み上げで聞く …), a tap that wakes it does not press a button under it (`REVEAL_GUARD`, 350 ms), the bar is shown for 5 seconds when the file opens, and a small handle brings it back when it is hidden. The file shim (`play/lesson-shim.js`) only sets the embedding mode and hands links out of the file to the page. `tools/test-viewer-webkit.mjs` checks the bar, captions and read-aloud in Playwright's WebKit with iPad sizes.
+The file's own player (`kit/tools.js`) takes touch itself, so the page adds nothing for it: a tap on the slide wakes the toolbar (前へ, 次へ, 字幕, 読み上げで聞く …), a tap that wakes it does not press a button under it (`REVEAL_GUARD`, 350 ms), the bar is shown for 5 seconds when the file opens, and a small handle brings it back when it is hidden. A swipe across the slide, or a tap on its left or right edge, goes back or on one step ([reference](reference.md), handoff #97); in handwriting the page's surface lies over the file, and its own finger swipe does the same. The file shim (`play/lesson-shim.js`) only sets the embedding mode and hands links out of the file to the page. `tools/test-viewer-webkit.mjs` checks the bar, captions and read-aloud in Playwright's WebKit with iPad sizes.
 
 ## Accessibility
 

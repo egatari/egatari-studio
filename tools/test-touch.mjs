@@ -7,6 +7,8 @@
 // - 帯のボタンは指のタップで 1 回だけ効く（次へ・前へ・字幕。ブラウザが click も送っても 2 回にならない）
 // - 指で押した後も、帯は決まった時間で隠れる（:hover が残っても）
 // - マウスのクリックは今までどおり 1 回
+// - 指で進める（handoff #97）：舞台の上で横に払う（左へ＝次・右へ＝前）か、左右の端（幅の 15%）のタップで 1 ステップ。帯は出さない。
+//   リンク・パーツ（カスタム要素）・縦の払い・2 本の指・暗転・操作を隠したとき（deck-nocontrols）・ペンの間は動かない。マウスで払っても動かない
 // - 帯を起こすタップ（隠れた帯の「読み上げで聞く」・次への場所、取っ手）と、出てくる途中のマウスのクリックはボタンを押さない
 // - スマートフォンの幅（390×844 の縦と 844×390 の横。Chromium は isMobile も）：ページが広がらず、スライドは画面の幅に収まり、
 //   帯は画面からはみ出さない（縦では 2 行に折り返す）。出し方の 1 行はタップの言い方。iPad の幅では帯は 1 行
@@ -85,6 +87,62 @@ async function run(name, browser) {
   const h0 = await pos();
   await p.tap('#dt-handle'); await p.waitForTimeout(800);
   ok(await shown() && await pos() === h0 && !(await p.evaluate(() => DECK.tools.readAloud())), `${name}: a tap on the faint handle only wakes the bar`);
+  // ---- 指で進める（handoff #97）。指のイベントを合成する（pointerType touch。舞台の上の点 fx, fy は舞台の幅・高さの割合）
+  const finger = (from, to, o = {}) => p.evaluate(([from, to, o]) => {
+    const r = document.getElementById('stage').getBoundingClientRect(), at = ([fx, fy]) => [r.left + fx * r.width, r.top + fy * r.height];
+    const [x0, y0] = at(from), [x1, y1] = at(to), t = o.target ? document.querySelector(o.target) : document.elementFromPoint(x0, y0);
+    const ev = (type, x, y, id = 11, primary = true) => t.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: o.type || 'touch', isPrimary: primary, bubbles: true, cancelable: true, buttons: type === 'pointerup' ? 0 : 1, clientX: x, clientY: y }));
+    ev('pointerdown', x0, y0);
+    if (o.second) ev('pointerdown', x0 + 40, y0 + 40, 12, false);
+    for (let i = 1; i <= 5; i++) ev('pointermove', x0 + (x1 - x0) * i / 5, y0 + (y1 - y0) * i / 5);
+    if (o.second) ev('pointerup', x0 + 40, y0 + 40, 12, false);
+    ev('pointerup', x1, y1);
+  }, [from, to, o]);
+  const hideBar = async () => { await p.evaluate(() => { const c = document.getElementById('dt-cb'); if (c) c.classList.remove('show'); }); };
+  await hideBar();
+  // 位置はタイムラインの何番目か（ステップの番号はスライドごとに 0 に戻るので、pos() の +1 では比べない）
+  const at = () => p.evaluate(() => { const k = DECK.state().key; return DECK.timeline().findIndex((x) => DECK.stepKey(x.i, x.k) === k); });
+  const posAt = pos;
+  const g0 = await at();
+  await finger([0.7, 0.5], [0.3, 0.52]); await p.waitForTimeout(600);
+  ok(await at() === g0 + 1 && !(await shown()), `${name}: a finger swipe to the left is the next step, and the bar stays hidden (${g0} → ${await at()})`);
+  await finger([0.3, 0.5], [0.7, 0.5]); await p.waitForTimeout(600);
+  ok(await at() === g0, `${name}: a swipe to the right is the step before (${await at()})`);
+  await finger([0.95, 0.5], [0.95, 0.5]); await p.waitForTimeout(600);
+  ok(await at() === g0 + 1 && !(await shown()), `${name}: a tap on the right edge (15%) is the next step (${await at()})`);
+  await finger([0.04, 0.5], [0.04, 0.5]); await p.waitForTimeout(600);
+  ok(await at() === g0, `${name}: a tap on the left edge is the step before (${await at()})`);
+  await finger([0.5, 0.5], [0.5, 0.5]); await p.waitForTimeout(600);
+  ok(await at() === g0 && await shown(), `${name}: a tap in the middle still only wakes the bar`);
+  await hideBar();
+  await finger([0.5, 0.3], [0.55, 0.8]); await p.waitForTimeout(500);
+  ok(await at() === g0, `${name}: a vertical swipe does not move`);
+  await finger([0.7, 0.5], [0.3, 0.5], { second: true }); await p.waitForTimeout(500);
+  ok(await at() === g0, `${name}: a swipe with two fingers (a pinch) does not move`);
+  await finger([0.7, 0.5], [0.3, 0.5], { type: 'mouse' }); await p.waitForTimeout(500);
+  ok(await at() === g0, `${name}: a mouse drag does not move (fingers only)`);
+  // リンクとパーツの上では動かない：今のスライドに足して確かめる
+  await p.evaluate(() => {
+    const s = document.querySelector('#stage .slide.active') || document.querySelector('#stage .slide');
+    const a = document.createElement('a'); a.id = 'g-link'; a.href = '#zz'; a.textContent = 'link'; a.style.cssText = 'position:absolute;right:0;top:40%;width:20%;height:20%;display:block;z-index:9';
+    const m = document.createElement('m-gesture-probe'); m.id = 'g-part'; m.style.cssText = 'position:absolute;left:0;top:40%;width:20%;height:20%;display:block;z-index:9';
+    s.appendChild(a); s.appendChild(m);
+  });
+  await finger([0.95, 0.5], [0.95, 0.5], { target: '#g-link' }); await p.waitForTimeout(500);
+  await finger([0.04, 0.5], [0.04, 0.5], { target: '#g-part' }); await p.waitForTimeout(500);
+  await finger([0.1, 0.5], [0.0, 0.5], { target: '#g-part' }); await p.waitForTimeout(500);
+  ok(await at() === g0, `${name}: taps and swipes on a link or inside a part do not move (${await at()})`);
+  await p.evaluate(() => { document.getElementById('g-link').remove(); document.getElementById('g-part').remove(); });
+  await p.evaluate(() => document.documentElement.classList.add('deck-nocontrols'));
+  await finger([0.95, 0.5], [0.95, 0.5]); await finger([0.7, 0.5], [0.3, 0.5]); await p.waitForTimeout(500);
+  ok(await at() === g0, `${name}: with the controls hidden by a host (deck-nocontrols), neither moves`);
+  await p.evaluate(() => document.documentElement.classList.remove('deck-nocontrols'));
+  await p.keyboard.press('b'); await p.waitForTimeout(300);
+  await finger([0.7, 0.5], [0.3, 0.5]); await p.waitForTimeout(500);
+  const blk = await p.evaluate(() => !!document.getElementById('deck-black'));
+  ok(await at() === g0, `${name}: during a blackout a swipe does not move (it only ends the blackout: ${!blk})`);
+  if (blk) { await p.keyboard.press('b'); await p.waitForTimeout(300); }
+  await hideBar();
   // マウス：出てくる途中（隠れた帯の場所）のクリックは押したことにしない。出た後のクリックは効く
   await p.mouse.move(512, 300); await p.waitForTimeout(3300);
   const m0 = await pos();
