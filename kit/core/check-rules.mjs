@@ -68,7 +68,7 @@ export const RULES = Object.freeze([
   { id: 'R-dialogue', kind: 'authoring', phase: 'B 台本', codes: ['turnLong'], applies: needs('narration', 'noNarration') },
   { id: 'R-marks', kind: 'authoring', phase: 'F 強調', codes: ['markMissing'], applies: needs('marks', 'noMarks') },
   { id: 'R-steps', kind: 'authoring', phase: 'E タイムライン', codes: ['predictAnswerWithCount', 'predictAnswerNeverShown'], applies: (f) => ((f.parts || []).includes('m-predict') ? null : 'noParts') },
-  { id: 'R-components', kind: 'authoring', phase: 'E タイムライン', codes: ['compReport', 'compData'], applies: (f) => ((f.parts || []).length ? null : 'noParts') },
+  { id: 'R-components', kind: 'authoring', phase: 'E タイムライン', codes: ['compReport', 'compData', 'scriptUnclosed'], applies: (f) => ((f.parts || []).length ? null : 'noParts') },
   // ---- 検査器の族（C-*）
   { id: 'C-build', kind: 'checker', phase: '読み込み', codes: ['build', 'consoleError', 'extensionVersion', 'component-requires-missing', 'component-not-in-catalogue'] },
   // しおり（format spec §8.0）の名前もスライドの宛先なので、id と同じ族（bookmarkDup・bookmarkLong）

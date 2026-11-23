@@ -96,7 +96,7 @@ ok(Object.keys(CLI_ONLY_PREFIX).every((p) => Object.keys(MESSAGES).some((c) => c
   for (const c of codes) for (const k of classes(c)) counts[k]++;
   console.log('  info inventory: ' + Object.entries(counts).map(([k, v]) => `${k} ${v}`).join(', '));
   // 道筋：編集アプリが code を出すファイル（プレビューの中・原稿の文字列・作業場所の台本と音声）に、その code が文字列で現れる
-  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs', 'kit/core/caution.mjs', 'kit/core/bookmark.mjs', 'kit/core/tate-mix.mjs', 'kit/core/image-size.mjs']
+  const src = ['app/frame-shim.js', 'app/main.js', 'app/llm.js', 'kit/core/layout-scan.mjs', 'kit/core/geometry-check.mjs', 'kit/core/check-source.mjs', 'kit/core/legacy-vocab.mjs', 'kit/core/kicker.mjs', 'kit/core/caution.mjs', 'kit/core/bookmark.mjs', 'kit/core/tate-mix.mjs', 'kit/core/script-unclosed.mjs', 'kit/core/image-size.mjs']
     .map((f) => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n');
   const unreached = IN_EDITOR.filter((c) => !new RegExp(`["'\`]${c}["'\`]`).test(src));
   ok(!unreached.length, `inventory: every IN_EDITOR code (${IN_EDITOR.length}) appears as a string in the editor's check path` + (unreached.length ? ': not found ' + unreached.join(', ') : ''));
