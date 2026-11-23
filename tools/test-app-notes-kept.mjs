@@ -146,7 +146,7 @@ try {
   await a.click('#b-help');
   await a.waitForSelector('#notes-help-info li', { timeout: scaled(10000) });
   const info = await a.$eval('#notes-help-info', (e) => e.textContent);
-  ok(/1 件の教材/.test(info), `help counts the other file only (${info.slice(0, 40)})`);
+  ok(/1 件のファイル/.test(info), `help counts the other file only (${info.slice(0, 40)})`);
   await a.click('#b-notes-delete');
   await a.waitForSelector('#dlg[open]');
   await a.click('#dlg [data-id="delete"], #dlg button.pri');
