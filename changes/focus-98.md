@@ -1,0 +1,3 @@
+### Fixed
+
+- Editor: a dialog or panel opened from a toolbar menu now puts focus on its first field however it was opened (click, double click, Enter, Enter twice), so text typed right away lands there. **File info…** no longer leaves focus on the page, the menu button or the preview, and a second Enter no longer reopens the **File ▾** menu on **New…**; a double click no longer moves focus to the dialog itself (**Add bookmark…**, **Change theme…**, **For an LMS (SCORM)…**, **Save as…**, the rights confirmation); the bookmark name opens with its suggested value selected, so typing replaces it. A menu item that opens nothing still returns keyboard focus to the menu button (handoff #98)
