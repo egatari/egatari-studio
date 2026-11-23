@@ -2710,13 +2710,17 @@ async function saveInfo(form, error) {
 // 2 度押し（ダブルクリック・遅い端末での押し直し）で開き直さない：開いている途中か、同じファイルの欄が開いていれば、そのままにする。
 // 後から終わった 2 度目の描き直しが、入力の途中の欄を作り直して消していた（CI の遅いランナーで test-app-file-info が 4 度落ちた）
 let infoOpening = false;
+// 試験の手がかり：開いた・止めた回数と、開き直したわけ（__APP_TEST.infoRuns）
+const infoRuns = { ran: 0, busy: 0, open: 0, why: [] };
 async function lessonInfo() {
   if (!S.ws) return;
   if (earlierWhy()) { toast(earlierWhy(), true); return; }
   if (S.portable && S.portable.readOnly) { toast(T.readOnlyNoEdit, true); return; }
-  if (infoOpening) return;
+  const n = infoRuns;
+  if (infoOpening) { n.busy++; return; }
   const open = $('info-panel');
-  if (open && !$('panel').hidden && open.__gen === S.gen) return;
+  if (open && !$('panel').hidden && open.__gen === S.gen) { n.open++; return; }
+  n.ran++; n.why.push(open ? (($('panel').hidden ? 'hidden' : '') + (open.__gen !== S.gen ? 'gen ' + open.__gen + '→' + S.gen : '')) : 'none');
   infoOpening = true;
   try {
     INFO = await readInfo();
@@ -2982,6 +2986,7 @@ drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' '
 
 // 確かめ方（tools/test-app.mjs）：OPFS などのフォルダのハンドルを渡して開く・状態を読む・書き出し先を渡す
 window.__APP_TEST = {
+  infoRuns: () => infoRuns,
   open: (h) => openFolder(h),
   saveHandle: null,
   dirHandle: null,
