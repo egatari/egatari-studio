@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.ja.md sha256=92da9ed830e43e67 -->
+<!-- i18n: pair=privacy.ja.md sha256=49ca594567a31ae6 -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
@@ -66,6 +66,7 @@ All of it is stored only in the browser and is not sent anywhere. Clearing the b
 | sessionStorage (Studio) | `motion-editor-reopen` | A mark to reopen the file right after changing the language (gone when the tab is closed) | Close the tab |
 | IndexedDB (Studio) | `motion-slides-editor` | "Handles" to recently opened working folders and Egatari files (markers pointing to their location; up to 8). The file contents are not stored | Clear site data |
 | IndexedDB (Studio) | `egatari-drafts` | Unsaved changes (while an Egatari file is being edited, the original file and the changed files, kept every few seconds; up to 10, removed 30 days after the last change; not used for working folders) | "Discard changes" or "Discard all" under "Unsaved changes" on the start screen, or clear site data |
+| IndexedDB (Studio) | `egatari-comments` | The comments of Egatari files (they are not saved in the file, so they are kept for each file by its `docId` and come back when it is opened again; removed 90 days after the last change; not used for working folders) | "Delete all" under "Comments kept in this browser" in Help (?), or clear site data |
 | IndexedDB (Studio) | `egatari-theme-folder` | The handle of the theme folder. "My themes" (`my:<name>`) are stored together with the theme files' contents | "Delete" in the "My themes" window, or clear site data |
 | Cache Storage (Studio's AI voice window) | `irodori-lab-<version>`, `transformers-cache` | The AI voice models (about 1.3 GB for Japanese, about 330 MB for English) | "Delete models" in the "How to use" panel |
 | In the creator's folder | `.cache/edits/` | Backups before edits (up to 30) | Delete them from the folder |

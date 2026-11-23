@@ -38,7 +38,7 @@ import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
-import { draftStore, createDraftKeeper } from './drafts.js';
+import { draftStore, createDraftKeeper, noteStore, createNoteKeeper } from './drafts.js';
 import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
@@ -138,6 +138,20 @@ async function stopKeeper(discard = false) {
   const k = keeper; keeper = null; S.draftKept = false;
   if (k) await k.close({ discard });
 }
+// コメント（comments.json）：1 ファイルの教材では保存するファイルに入らないので、教材（docId）ごとにこのブラウザに残し、開き直したら戻す（handoff #100 の 1）。
+// 保存しても、保存していない変更を捨てても消さない（使い方の板の「このブラウザに残したコメント」で消せる）
+const notes = noteStore();
+let noteKeeper = null;
+function startNoteKeeper(ws, P) {
+  if (!ws || ws.kind !== 'memory' || !P || !ws.stamps) return;
+  try {
+    noteKeeper = createNoteKeeper({ store: notes, ws,
+      limits: (window.__APP_TEST && window.__APP_TEST.noteLimits) || undefined,
+      doc: () => (S.portable === P && S.ws === ws && !P.readOnly && P.index && typeof P.index.docId === 'string' ? { docId: P.index.docId, name: P.name } : null),
+      onError: () => { if (S.ws === ws) toast(T.notesKept.failed, true); } });
+  } catch (e) { console.warn('[editor] cannot keep the comments in this browser', e); noteKeeper = null; }
+}
+function stopNoteKeeper() { const k = noteKeeper; noteKeeper = null; if (k) k.close(); }
 const draftWhen = (t) => new Date(t).toLocaleString(EN ? 'en-US' : 'ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 const draftSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
 
@@ -335,6 +349,7 @@ async function openFolder(handle) {
 function resetDeck(ws, portable) {
   autoSeq++; clearTimeout(autoTimer); showBadge(0, 0, 0);
   if (keeper) stopKeeper(false);
+  stopNoteKeeper();
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
@@ -351,7 +366,7 @@ function resetDeck(ws, portable) {
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
   blankPreview();
   // 1 ファイル：開いた直後の中身を基準にして、保存していない変更を残し始める（作業フォルダはその場で書くので残さない）
-  if (portable) startKeeper(ws, portable);
+  if (portable) { startKeeper(ws, portable); startNoteKeeper(ws, portable); }
 }
 // プレビューを空にする：iframe を新しいもの（何も読み込まない）に取り替える。srcdoc を変えるだけでは、新しい文書が読み込まれるまで
 // 前のデッキが見え、そのコードも動き続ける。取り替えれば前の文書はすぐに消え、確かめの窓の後ろには何も出ない
@@ -1585,9 +1600,32 @@ function showHelp() {
     el('p', { id: 'help-format', cls: 'muted', text: T.helpFormat(RES.specSnapshot) }),   // 従う仕様の版（vendor/egatari-spec/SOURCE.json の snapshot。ビルド時に読む）
     modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
     draftsSection(),                              // このブラウザに残した、保存していない変更：件数と「すべて捨てる」（#29）
+    notesSection(),                               // このブラウザに残したコメント：件数と「すべて削除」（#100 の 1）
   ]);
 }
 
+// 使い方の板の節：このブラウザに残したコメント（教材ごと。今開いている教材のものは消さない）
+function notesSection() {
+  const L = T.notesKept;
+  const box = el('section', { id: 'notes-help', cls: 'model-cache' });
+  const cur = () => (S.portable && S.portable.index && noteKeeper ? S.portable.index.docId : null);
+  async function render() {
+    let list = [];
+    try { list = (await notes.list()).filter((m) => m.docId !== cur()); } catch { /* 使えない環境 */ }
+    const btn = el('button', { type: 'button', id: 'b-notes-delete', text: L.deleteAll });
+    btn.disabled = !list.length;
+    btn.onclick = async () => {
+      const v = await ask({ title: L.deleteAllTitle, kind: 'warn', body: [el('p', { text: L.deleteAllBody(list.length) })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'delete', label: L.deleteAll, pri: true }] });
+      if (v !== 'delete') return;
+      try { toast(L.deletedAll(await notes.removeAll({ except: cur() }))); } catch (e) { toast(String(e.message || e), true); }
+      await render();
+    };
+    box.replaceChildren(el('h3', { text: L.helpTitle }), el('ul', { id: 'notes-help-info' }, [el('li', { text: L.helpCount(list.length) }), el('li', { text: L.helpNote })]), el('div', { cls: 'row' }, [btn]));
+  }
+  box.append(el('h3', { text: L.helpTitle }));
+  render().catch(() => {});
+  return box;
+}
 // 使い方の板の節：このブラウザに残した、保存していない変更（件数・大きさ・残し方）と「すべて捨てる」（ほかのタブで開いているもの・今の文書のものは消さない）
 function draftsSection() {
   const L = T.drafts;
@@ -1897,6 +1935,8 @@ async function openPortableNow(input) {
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
   if (handle) recentAdd(handle);   // ファイルのハンドルがあれば「最近開いたもの」に（Safari などで <input> から開いたものにはない）
+  // このブラウザに残したこの教材のコメントを戻す（handoff #100 の 1）
+  if (noteKeeper && S.portable === P) { try { const n = await noteKeeper.restore(); if (n) toast(T.notesKept.restored(n)); } catch (e) { console.warn('[editor] cannot restore the comments', e); } }
   showDeck(name, name);
   if (P.requiresMissing) {
     // 依存不足は新しく組むときだけ断る。既存のファイルは自分の再生器で、残るパーツを再生する。
@@ -3108,6 +3148,8 @@ window.__APP_TEST = {
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),
   workerProbe: (name) => probeWorker(name),
   drafts: () => drafts.list(),
+  notesKept: () => notes.list(),
+  notesFlush: () => (noteKeeper ? noteKeeper.flush() : null),
   draftState: () => (keeper ? { ...keeper.state(), kept: !!S.draftKept } : null),
   draftFlush: () => (keeper ? keeper.flush() : null),
   draftLimits: null,  // 試験：保存していない変更を残す間隔など（app/drafts.js の DRAFT_LIMITS を上書き）。開く前に入れる

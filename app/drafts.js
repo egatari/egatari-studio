@@ -282,3 +282,112 @@ export function createDraftKeeper(opts) {
     state: () => ({ id, savedRev, revision: ws.revision, stored: [...stored.keys()].sort(), error: lastError, stopped }),
   };
 }
+
+// ---------------------------------------------------------------- コメント（comments.json。handoff #100 の 1）
+// コメントは保存するファイルに入らない（kit/core/portable.mjs の excludedReason）。1 ファイルの教材では閉じると消えていたので、
+// 教材（docId）ごとにこのブラウザに残し、同じ教材を開いたら戻す。保存しても消さない（保存していない変更とは別：保存で消える draft には入れない）。
+// 別の DB：凍結した写し（/vX.Y.Z/）の古い版が egatari-drafts を版 1 で開くので、版を上げずに分ける
+const NOTES_DB = 'egatari-comments', NOTES = 'notes';
+export const NOTES_REL = 'comments.json';
+export const NOTES_LIMITS = { days: 90, tickMs: 1000 };
+export function noteStore({ idb = globalThis.indexedDB, now = () => Date.now() } = {}) {
+  let dbp = null;
+  const open = () => dbp || (dbp = new Promise((res, rej) => {
+    if (!idb) { rej(Object.assign(new Error('IndexedDB is not available'), { code: 'no-idb' })); return; }
+    const r = idb.open(NOTES_DB, 1);
+    r.onupgradeneeded = () => { const d = r.result; if (!d.objectStoreNames.contains(NOTES)) d.createObjectStore(NOTES, { keyPath: 'docId' }); };
+    r.onsuccess = () => { const d = r.result; d.onversionchange = () => { d.close(); dbp = null; }; res(d); };
+    r.onerror = () => { dbp = null; rej(r.error); };
+    r.onblocked = () => { dbp = null; rej(Object.assign(new Error('IndexedDB is blocked'), { code: 'blocked' })); };
+  }));
+  const req = async (mode, fn) => {
+    const d = await open();
+    return new Promise((res, rej) => {
+      let t;
+      try { t = d.transaction([NOTES], mode); } catch (e) { rej(e); return; }
+      const q = fn(t.objectStore(NOTES));
+      t.oncomplete = () => res(q && 'result' in q ? q.result : undefined);
+      t.onerror = () => rej(t.error);
+      t.onabort = () => rej(t.error || Object.assign(new Error('aborted'), { name: 'AbortError' }));
+    });
+  };
+  const store = {
+    // → {docId, name, text, count, updated} か null
+    async get(docId) { return (await req('readonly', (st) => st.get(docId))) || null; },
+    async put(docId, name, text, count) { await req('readwrite', (st) => st.put({ docId, name, text, count, updated: now() })); },
+    async remove(docId) { await req('readwrite', (st) => st.delete(docId)); },
+    async list() { return ((await req('readonly', (st) => st.getAll())) || []).sort((a, b) => b.updated - a.updated); },
+    // 最後に変えてから days 日を過ぎたもの（except は消さない）→ 消した docId
+    async prune({ days = NOTES_LIMITS.days, except = null } = {}) {
+      const gone = (await store.list()).filter((m) => m.docId !== except && now() - m.updated > days * DAY).map((m) => m.docId);
+      for (const id of gone) await store.remove(id);
+      return gone;
+    },
+    async removeAll({ except = null } = {}) {
+      let n = 0;
+      for (const m of await store.list()) if (m.docId !== except) { await store.remove(m.docId); n++; }
+      return n;
+    },
+  };
+  return store;
+}
+
+const noteCount = (text) => { try { const j = JSON.parse(text); return Array.isArray(j) ? j.length : 0; } catch { return 0; } };
+
+// コメントの見張り（1 つの開いた 1 ファイルの教材に 1 つ）。opts：
+//   store        noteStore()
+//   ws           作業場所（memoryWorkspace。stamps()・readText・writeText・exists を持つ）
+//   doc()        → {docId, name} か null（今の文書でなければ null：何もしない）
+//   onError(e)   残せなかった（1 度だけ知らせる）
+// restore()：残したコメントがあり、作業場所に comments.json がなければ書き戻す（comments.json は保存するファイルに入らないので「保存していない変更」にならない）→ 戻した件数
+// 以後 1 秒ごとに comments.json の時刻を見て、変わったら残す（空・消えたら残したものも消す）。タブが隠れた・閉じるときもすぐ
+export function createNoteKeeper(opts) {
+  const { store, ws, doc, onError = () => {} } = opts;
+  const L = { ...NOTES_LIMITS, ...(opts.limits || {}) };
+  let seen = ws.stamps().get(NOTES_REL), busy = null, stopped = false, failed = false;
+  async function flush() {
+    if (busy) await busy;
+    const d = doc();
+    if (stopped || !d || !d.docId) return;
+    const m = ws.stamps().get(NOTES_REL);
+    if (m === seen) return;
+    busy = (async () => {
+      try {
+        const text = m === undefined ? null : await ws.readText(NOTES_REL);
+        const n = text === null ? 0 : noteCount(text);
+        if (n) await store.put(d.docId, d.name, text, n); else await store.remove(d.docId);
+        seen = m; failed = false;
+      } catch (e) {
+        seen = m;   // 次の変更でまた試す
+        console.warn('[editor] cannot keep the comments in this browser', e);
+        if (!failed) onError(e);
+        failed = true;
+      } finally { busy = null; }
+    })();
+    await busy;
+  }
+  const timer = setInterval(() => { if (!stopped && !busy) flush(); }, L.tickMs);
+  const onHide = () => { if (document.visibilityState === 'hidden') flush(); };
+  const onPageHide = () => flush();
+  if (typeof document !== 'undefined') { document.addEventListener('visibilitychange', onHide); window.addEventListener('pagehide', onPageHide); }
+  return {
+    flush,
+    async restore() {
+      const d = doc();
+      if (!d || !d.docId) return 0;
+      let m = null;
+      try { m = await store.get(d.docId); } catch { return 0; }
+      if (!m || typeof m.text !== 'string' || stopped || !doc()) return 0;
+      if (await ws.exists(NOTES_REL)) return 0;
+      await ws.writeText(NOTES_REL, m.text);
+      seen = ws.stamps().get(NOTES_REL);
+      store.prune({ except: d.docId }).catch(() => {});
+      return noteCount(m.text);
+    },
+    async close() {
+      try { await flush(); } catch { /* 済み */ }
+      stopped = true; clearInterval(timer);
+      if (typeof document !== 'undefined') { document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', onPageHide); }
+    },
+  };
+}

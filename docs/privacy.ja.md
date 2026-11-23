@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.md sha256=be3b59246bbaae45 -->
+<!-- i18n: pair=privacy.md sha256=ad986dd00e0bb8e3 -->
 # プライバシー
 
 [English](privacy.md) | 日本語
@@ -66,6 +66,7 @@ Studio とプレーヤーは、次のものを送信しません。
 | sessionStorage（Studio） | `motion-editor-reopen` | 言語を切り替えた直後に、ファイルを開き直すための印（タブを閉じると消える） | タブを閉じる |
 | IndexedDB（Studio） | `motion-slides-editor` | 最近開いた作業フォルダや Egatari ファイルの「ハンドル」（場所を指す目印。最大 8 件）。ファイルの中身は保存しない | サイトデータを削除する |
 | IndexedDB（Studio） | `egatari-drafts` | 保存していない変更（Egatari ファイルを編集している間、数秒ごとに一時保存する元のファイルと変わったファイル。最大 10 件、最後の変更から 30 日で削除。作業フォルダでは使わない） | スタート画面の「保存していない変更」の「変更を破棄」か「すべて破棄」、またはサイトデータを削除する |
+| IndexedDB（Studio） | `egatari-comments` | Egatari ファイルのコメント（ファイルには保存されないので、教材（`docId`）ごとに残し、同じ教材を開くと戻す。最後の変更から 90 日で削除。作業フォルダでは使わない） | 使い方（？）の「このブラウザに残したコメント」の「すべて削除」、またはサイトデータを削除する |
 | IndexedDB（Studio） | `egatari-theme-folder` | テーマのフォルダのハンドル。「自分のテーマ」（`my:<名前>`）は、テーマのファイルの中身ごと保存する | 「自分のテーマ」の「削除」、またはサイトデータを削除する |
 | Cache Storage（Studio の AI 音声のウィンドウ） | `irodori-lab-<バージョン>`、`transformers-cache` | AI 音声のモデル（日本語は約 1.3 GB、英語は約 330 MB） | 「使い方」にある「モデルを削除」 |
 | 作成者のフォルダの中 | `.cache/edits/` | 編集する前のバックアップ（上限 30 個） | フォルダから削除する |
