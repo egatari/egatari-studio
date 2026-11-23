@@ -78,6 +78,10 @@ In both cases, do not write slide ids in a first draft (R-noids). Studio or the 
 
 Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
 
+## Report feedback
+
+When the user says “send feedback” or “report a bug”, or at the end of the work when the quality check passed the first time or only after many fixes, read and follow [the feedback steps](references/en/feedback.md) (the same text as the studio skill). Gather no material for the report until the user agrees to send it. Never send without consent.
+
 # Instructions for the AI
 
 Pack version: `027f5293`

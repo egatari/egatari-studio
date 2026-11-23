@@ -1,5 +1,5 @@
 name: Feedback
-description: "Bug, something confusing, an idea, or praise / 不具合・わかりにくい点・提案・感想"
+description: "Bug, something confusing, an idea, praise, or what worked / 不具合・わかりにくい点・提案・感想・うまくいったこと"
 title: "[feedback] "
 labels: ["feedback"]
 body:
@@ -21,23 +21,45 @@ body:
         - "Confusing / わかりにくい"
         - "Idea / 提案"
         - "Praise / よかった点"
+        - "Insight / うまくいったこと"
     validations:
       required: true
   - type: textarea
     id: did
     attributes:
       label: What you did
-      description: "何をしたか（コマンド、押したキー、Claude Code への指示など）"
+      description: "何をしたか（コマンド、押したキー、Claude Code への指示など）。Insight では空でよい"
       placeholder: "e.g. node kit/build.mjs talks/intro/deck.html, then pressed p"
-    validations:
-      required: true
   - type: textarea
     id: happened
     attributes:
       label: What happened (and what you expected)
-      description: "何が起きたか、どうなってほしかったか。スクリーンショットも歓迎"
-    validations:
-      required: true
+      description: "何が起きたか、どうなってほしかったか。スクリーンショットも歓迎。Insight では空でよい"
+  - type: markdown
+    attributes:
+      value: |
+        **For Insight only** (what worked while making something). Generalize; no private content.
+        **うまくいったこと（Insight）のときだけ。** 一般化して書いてください。私的な内容は入れないでください。
+  - type: textarea
+    id: made
+    attributes:
+      label: What you were making
+      description: "何を作っていたか（一般化して。例：15 分の統計の講義、数式の多いスライド）"
+  - type: textarea
+    id: worked
+    attributes:
+      label: What worked
+      description: "効いた書き方やパーツ"
+  - type: textarea
+    id: didnt
+    attributes:
+      label: What did not work
+      description: "効かなかったもの"
+  - type: textarea
+    id: why
+    attributes:
+      label: Why you think so
+      description: "なぜそう思うか"
   - type: input
     id: version
     attributes:

@@ -1,0 +1,3 @@
+### Changed
+
+- The feedback steps now live in one text (docs/llm-feedback.md and .ja.md) that both the make skill (ja and en) and the studio skill read, so the two cannot drift. The skills gather nothing for a report until the user agrees to send, look for the same issue first (`gh issue list --state all`) and suggest commenting there, include the Studio, instruction and parts library versions, say once that the report becomes a public issue, and, without gh, give a form URL with the fields filled in by field id (falling back to the draft and the empty form over 6,000 characters). The feedback form gains the type Insight / うまくいったこと with fields for what was being made, what worked, what did not and why; What you did and What happened are no longer required (handoff #91)

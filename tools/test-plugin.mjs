@@ -65,7 +65,7 @@ assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari')).sort(), ['.c
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'plugins/egatari/skills')), ['make']);
 assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills')).sort(), ['studio']);   // 旧名 motion-* の移動のお知らせは v0.6.6 で消した（egatari doctor は ~/.claude/skills/motion-* を見続ける）
 for (const dir of ['make', 'parts', 'video']) assert.ok(!fs.existsSync(path.join(ROOT, 'skills', dir)));
-assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'parts.md', 'video.md']);
+assert.deepEqual(fs.readdirSync(path.join(ROOT, 'skills/studio/references')).sort(), ['audio-local.md', 'feedback.md', 'parts.md', 'video.md']);
 for (const [f, name, triggers] of [
   [`${MAKE_SKILL_DIR}/SKILL.md`, 'make', ['動きのあるスライドを作って', '教材を作って']],
   ['skills/studio/SKILL.md', 'studio', ['動画にして', 'パーツを作って', 'この図をパーツにして', 'checking and building Egatari working folders locally']],
@@ -181,7 +181,7 @@ export function studioCommandHits(text) {
 for (const f of walk('skills/studio')) assert.deepEqual(studioCommandHits(read(f)), [], `${f}: commands go through ${cli}`);
 for (const bad of ['node <repo>/kit/build.mjs x', 'npm ci', 'npm run sheet -- x', 'uv run --project tts python tts/synth.py x', 'npx egatari build x', 'npx egatari@0.5.x build x']) assert.ok(studioCommandHits(bad).length, bad);
 for (const f of ['README.md', 'README.ja.md', 'docs/with-claude.md', 'docs/with-claude.ja.md']) assert.ok(read(f).includes(`${cli} doctor`), `${f}: ${cli} doctor`);
-for (const ref of ['audio-local', 'video', 'parts']) assert.ok(studio.includes(`(references/${ref}.md)`));
+for (const ref of ['audio-local', 'video', 'parts', 'feedback']) assert.ok(studio.includes(`(references/${ref}.md)`));
 assert.ok(make.includes('egatari-studio') && make.includes('https://studio.egatari.org/') && make.includes('Safari'));
 for (const tag of Object.keys(data.ja.components)) assert.ok(Object.entries(generated).some(([f, t]) => f.startsWith(`${MAKE_SKILL_DIR}/references/parts/`) && t.includes(`### \`<${tag}>\``)), tag);
 // 束（セット）ごとの参照ファイル：標準・材料の束（manifest の set）・特殊。特殊は README への道だけで、本文や props を複製しない（backlog #125）

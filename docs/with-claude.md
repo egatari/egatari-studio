@@ -50,4 +50,4 @@ Answer Claude's questions, approve the outline, and use studio for the quality c
 
 ## Problems
 
-Report them in [GitHub issues](https://github.com/egatari/egatari-studio/issues). In Claude Code you can also say "send feedback"; the skill drafts the issue and sends it only after you confirm.
+Report them in [GitHub issues](https://github.com/egatari/egatari-studio/issues). In Claude Code you can also say "send feedback"; the make and studio skills look for the same report first, draft the issue, and send it only after you confirm. Reports become public issues. What worked well is welcome too (type Insight): it feeds back into the AI instructions.

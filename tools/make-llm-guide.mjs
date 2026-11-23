@@ -622,6 +622,9 @@ export function studioVersion(text, version, skill = skillVersion()) {
   return text.replace(marker, `**指示のバージョン：${version}**\n**スキルのバージョン：${skill}**`);
 }
 
+// 使い終わりの感想を報告する手順（handoff #91）。make の references/feedback.md（en は references/en/feedback.md）と studio の references/feedback.md に同じ文を書く
+export const feedbackRef = (language) => skillTerms('<!-- generated; do not edit by hand -->\n' + splitStamp(read('docs', language === 'ja' ? 'llm-feedback.ja.md' : 'llm-feedback.md')).body.trim() + '\n');
+
 // local：ローカル（CLI）向けのパーツ [{tag, ja, en, src}]（#213）。references/parts/local.md に README の本文を書く（なければ書かない）
 export function skillFiles(data, lang = 'ja', local = []) {
   if (!['ja', 'en'].includes(lang)) throw new Error(`invalid skill language: ${lang}`);
@@ -662,6 +665,8 @@ export function skillFiles(data, lang = 'ja', local = []) {
       .replace('{{PURPOSES}}', ja ? 'パーツの候補はセットごとの参照ファイルで選ぶ。' : 'Choose candidate parts from the set references.'));
     const book = splitStamp(read('docs', ja ? 'llm-book.ja.md' : 'llm-book.md')).body.trim();
     files[`${MAKE_SKILL_DIR}/references/${ja ? '' : 'en/'}book.md`] = skillTerms(head + docLinks(splitStamp(read('docs', ja ? 'llm-book-ref.ja.md' : 'llm-book-ref.md')).body.trim()) + '\n');
+    // 使い終わりの感想を報告する手順（handoff #91）：make と studio のスキルが同じ文を読む（2 か所で食い違わないように、正本は docs/llm-feedback(.ja).md の 1 つ）
+    files[`${MAKE_SKILL_DIR}/references/${ja ? '' : 'en/'}feedback.md`] = feedbackRef(language);
     const text = ja ? `---
 name: make
 description: Egatari Studio で、構成案から Egatari のスライド・ステップ・パーツ・台本・本を作る。「動きのあるスライドを作って」「Egatari にして」「Egatari ファイルを作って」「教材を作って」で使う。Use for making Egatari slides, scripts and books.
@@ -720,6 +725,10 @@ Studio の音声のパネルで付けるよう利用者に案内する（この 
 どちらの場合も、初稿にスライドの id を書かない（R-noids）。Studio か id を付けるツールが後で付ける。修正では今ある id を変えない。
 
 依頼されていないファイル（README・説明の文書・補助のフォルダ）は作らない。作るのは deck.html・narration.md・egatari.json と、数値や図に要るときだけ scripts/・data/・figs/。
+
+## 使い終わりの感想を報告する
+
+利用者が「感想を送って」「不具合を報告して」と言ったとき、または作業の終わりに品質チェックが一度で通った・何度も直した、という場面では、[報告の手順](references/feedback.md) を読んで従う（studio のスキルと同じ文）。利用者が送ると決めるまで、報告のための材料を集めない。同意なしに送らない。
 
 ${common}
 ` : `---
@@ -780,6 +789,10 @@ If you cannot write files, return the two code blocks \`deck.html\` and \`narrat
 In both cases, do not write slide ids in a first draft (R-noids). Studio or the ids tool adds them later. Preserve existing ids when fixing a file.
 
 Do not create files that were not asked for (a README, explanatory documents, helper folders). Create only deck.html, narration.md and egatari.json, and scripts/, data/ and figs/ only when numbers or figures need them.
+
+## Report feedback
+
+When the user says “send feedback” or “report a bug”, or at the end of the work when the quality check passed the first time or only after many fixes, read and follow [the feedback steps](references/en/feedback.md) (the same text as the studio skill). Gather no material for the report until the user agrees to send it. Never send without consent.
 
 ${common}
 `;
@@ -959,6 +972,7 @@ export function generate(opts = {}) {
   Object.assign(files, skillFiles(data, opts.skillLang, localParts));
   files['kit/instruction-version.json'] = JSON.stringify({ instruction: data.version }, null, 2) + '\n';   // egatari doctor が、入れたスキルの指示の版と比べる
   files['skills/studio/SKILL.md'] = studioDocs(studioVersion(read('skills/studio/SKILL.md'), data.version));
+  files['skills/studio/references/feedback.md'] = feedbackRef('ja');   // studio のスキルは日本語で書く（make の ja と同じ文）
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && PLACEHOLDER.test(text)) throw new Error(`unreplaced placeholder in ${f}: ${text.match(PLACEHOLDER)[0]}`);
   for (const [f, text] of Object.entries(files)) if (f !== DATA_FILE && /<!--\/?part/.test(text)) throw new Error(`a <!--part:…--> marker is left in ${f} (unbalanced in tools/llm-guide/)`);
   return { files, sizes, data, warnings, enParts: comps.filter((c) => c.en).map((c) => c.fm.name) };
