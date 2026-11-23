@@ -179,7 +179,7 @@ ${turns(T.s3.n, T.s3.nc)}
 ${turns(T.s4.n)}
 `;
 if (opts.blank) {
-  // 白紙から（編集アプリの「新規作成…」→「白紙から」）：表紙だけ。見本のスライドとその口述原稿は入れない
+  // blank：表紙だけ。見本のスライドとその口述原稿は入れない（編集アプリの新規作成の「白紙から」は 0.6.x でなくなった。ライブラリの選択肢として残す）
   const a = deck.indexOf('</section>') + '</section>'.length, z = deck.lastIndexOf('</div>\n</body>');
   const n = narration.indexOf('\n\n## ', narration.indexOf('{#' + ID[0] + '}'));
   return { 'deck.html': deck.slice(0, a) + '\n\n' + deck.slice(z), 'narration.md': narration.slice(0, n) + '\n' };
