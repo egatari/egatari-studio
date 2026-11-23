@@ -38,8 +38,9 @@ import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 import { catalogueMessage, NOT_IN_CATALOGUE, fixableBy2 } from '../kit/core/parts2.mjs';
 import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
-import { draftStore, createDraftKeeper } from './drafts.js';
+import { draftStore, createDraftKeeper, noteStore, createNoteKeeper } from './drafts.js';
 import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
+import { sourceChanges, pngDiffers, oldShooter, LOOK_MAX } from './look-change.js';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { sourceFindings } from '../kit/core/check-source.mjs';
@@ -138,6 +139,20 @@ async function stopKeeper(discard = false) {
   const k = keeper; keeper = null; S.draftKept = false;
   if (k) await k.close({ discard });
 }
+// コメント（comments.json）：1 ファイルの教材では保存するファイルに入らないので、教材（docId）ごとにこのブラウザに残し、開き直したら戻す（handoff #100 の 1）。
+// 保存しても、保存していない変更を捨てても消さない（使い方の板の「このブラウザに残したコメント」で消せる）
+const notes = noteStore();
+let noteKeeper = null;
+function startNoteKeeper(ws, P) {
+  if (!ws || ws.kind !== 'memory' || !P || !ws.stamps) return;
+  try {
+    noteKeeper = createNoteKeeper({ store: notes, ws,
+      limits: (window.__APP_TEST && window.__APP_TEST.noteLimits) || undefined,
+      doc: () => (S.portable === P && S.ws === ws && !P.readOnly && P.index && typeof P.index.docId === 'string' ? { docId: P.index.docId, name: P.name } : null),
+      onError: () => { if (S.ws === ws) toast(T.notesKept.failed, true); } });
+  } catch (e) { console.warn('[editor] cannot keep the comments in this browser', e); noteKeeper = null; }
+}
+function stopNoteKeeper() { const k = noteKeeper; noteKeeper = null; if (k) k.close(); }
 const draftWhen = (t) => new Date(t).toLocaleString(EN ? 'en-US' : 'ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 const draftSize = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
 
@@ -335,6 +350,7 @@ async function openFolder(handle) {
 function resetDeck(ws, portable) {
   autoSeq++; clearTimeout(autoTimer); showBadge(0, 0, 0);
   if (keeper) stopKeeper(false);
+  stopNoteKeeper();
   S.ws = ws; S.portable = portable; S.base = null; S.preview = null; S.error = null; S.sig = ''; S.pos = null; S.fresh = true; S.ranges = new Set(); S.yanked = []; S.yankedDone = null; S.themePinned = []; S.themeDone = null; S.codeOk = null; S.allowed = false; S.codeAsking = null; S.earlier = null; S.gen = (S.gen || 0) + 1;
   closePresenter();
   slidesPanel.reset();
@@ -351,7 +367,7 @@ function resetDeck(ws, portable) {
   // 前のデッキのプレビューを消す（次のデッキのコードは、確かめてから読み込む）
   blankPreview();
   // 1 ファイル：開いた直後の中身を基準にして、保存していない変更を残し始める（作業フォルダはその場で書くので残さない）
-  if (portable) startKeeper(ws, portable);
+  if (portable) { startKeeper(ws, portable); startNoteKeeper(ws, portable); }
 }
 // プレビューを空にする：iframe を新しいもの（何も読み込まない）に取り替える。srcdoc を変えるだけでは、新しい文書が読み込まれるまで
 // 前のデッキが見え、そのコードも動き続ける。取り替えれば前の文書はすぐに消え、確かめの窓の後ろには何も出ない
@@ -1196,10 +1212,18 @@ async function revertToSaved() {
 // 欄の中のキーを欄が止める（原稿の欄の stopPropagation）前に受けるため、窓で捕まえる（capture）
 const IS_MAC = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
 const histStep = (dir) => { if (S.ws && !$('deck').hidden) slidesPanel.step(dir); };
+// ⌘S・Ctrl+S（handoff #100 の 2）：ブラウザの「ページを保存」の代わりに、ファイル ▾ → 保存と同じ（入力の欄の中でも。欄の中の書きかけは、メニューから保存したときと同じく欄に残る）。
+// 窓が開いている間・文書を開いていないときは何もしない（ページの保存も出さない）
 window.addEventListener('keydown', (e) => {
   const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   if (!mod || e.altKey || e.defaultPrevented) return;
   const k = (e.key || '').toLowerCase(), t = e.target;
+  if (k === 's' && !e.shiftKey) {
+    e.preventDefault();
+    if (!S.ws || $('deck').hidden || $('dlg').open || e.repeat) return;
+    $('b-save').click();
+    return;
+  }
   if (!S.ws || !S.base || $('deck').hidden || $('dlg').open) return;
   if (k === 'f' && !e.shiftKey) { if (find.open()) e.preventDefault(); return; }
   if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
@@ -1463,6 +1487,7 @@ async function quickCheck() {
     el('div', { cls: 'where', text: r.i === null ? T.wholeDeck : T.slideN(r.i + 1, r.title) }),
   ]));
   const rules = S.lastRules = await checkRules(results);
+  const lookBox = el('section', { id: 'look-change', cls: 'look-change' });
   openPanel(T.checkTitle, [
     el('div', { id: 'check-panel', cls: 'sum', text: T.checkSummary(errs, warns) }),
     buildWarnBox(),
@@ -1473,7 +1498,64 @@ async function quickCheck() {
     el('button', { type: 'button', id: 'b-copyshot', cls: 'fixreq', text: T.copyShot, 'aria-describedby': 'copyshot-hint', onclick: copyShot }),
     el('p', { id: 'copyshot-hint', cls: 'hint', text: T.copyShotHint }),
     ...items,
+    lookBox,
   ]);
+  lookChange(lookBox, f).catch((e) => { console.warn('[editor] cannot compare the look of the slides', e); lookBox.remove(); })
+    .finally(() => { if (window.__APP_TEST) window.__APP_TEST.lookRuns = (window.__APP_TEST.lookRuns || 0) + 1; });
+}
+// ---------------------------------------------------------------- 保存で見え方が変わるスライド（handoff #100 の 7。app/look-change.js）
+// 次の保存がスライドを組み直す（段 B）とき、開いたときのファイル（P.original）とプレビュー（このエディタの組み直し）で、各スライドの
+// 最後のステップの画像を比べ、違うスライドを品質チェックの板の終わりに出す（保存は止めない）。編集したスライドは数えない。スライドの外
+// （<head>・テーマなど）を直したとき・まだ保存していない文書・旧形式・依存不足（プレビューが元のファイル）・コードを確かめていないときは比べない。
+// 板の後ろで少しずつ。組み直し（S.loads）・別の文書（S.gen）・板が閉じたら止める。古いプレーヤーで写せなければ何も出さない
+let lookSeq = 0;
+async function lookChange(box, frame) {
+  const P = S.portable, ws = S.ws, gen = S.gen, load = S.loads, seq = ++lookSeq;
+  if (window.__APP_TEST) window.__APP_TEST.lastLookChange = null;
+  if (!P || !ws || !S.allowed || P.readOnly || P.earlier || P.requiresMissing || typeof P.original !== 'string' || ((P.sourceOnly || P.neverSaved) && !P.handle && !P.saved)) { box.remove(); return; }
+  const live = () => seq === lookSeq && S.portable === P && S.ws === ws && S.gen === gen && S.loads === load && box.isConnected && $('preview').contentWindow === frame;
+  const a = await tierA(P.original, ws.snapshot(), { fonts: engine.fonts });
+  if (!live() || a.ok) { box.remove(); return; }
+  const entry = P.index && P.index.entry;
+  const oldBytes = entry ? (await readPortable(P.original)).files[entry] : null;
+  const now = await ws.readText(S.deckFile, { max: READ_LIMITS.source });
+  if (!live() || !oldBytes || !now) { box.remove(); return; }
+  const oldSrc = new TextDecoder().decode(oldBytes);
+  const ch = sourceChanges(oldSrc, now);
+  if (ch.outside) { box.remove(); return; }
+  const oldIndex = new Map(analyzeSlideIds(oldSrc).slides.map((x) => [x.key, x.index]));
+  const todo = (S.slides || []).map((x, i) => ({ i, key: x.key, heading: x.heading || '', o: oldIndex.get(x.key) })).filter((x) => x.o !== undefined && !ch.edited.has(x.key));
+  if (!todo.length) { box.remove(); return; }
+  const list = todo.slice(0, LOOK_MAX);
+  const status1 = el('p', { id: 'look-status', cls: 'hint', text: T.lookChecking });
+  box.replaceChildren(status1);
+  const old = oldShooter({ html: withShim(P.original, { dev: true, load: -1, query: '?mode=' + (S.previewMode || 'talk') }) });
+  const found = [], trace = [];
+  try {
+    for (const x of list) {
+      if (!live()) return;
+      const [b, n] = [await old.shot(x.o), await askFrame('app-shot', { i: x.i })];
+      if (!live()) return;
+      // 古いプレーヤーで写せない（slideShot に要るものがない）：比べずに何も出さない
+      if (!b) { if (x === list[0]) { box.remove(); return; } continue; }
+      if (!n || !(n.png instanceof Blob) || b.key !== x.key || n.key !== x.key) { trace.push([x.key, 'skip', b.key, n && n.key]); continue; }
+      const d = await pngDiffers(b.png, n.png);
+      trace.push([x.key, d, b.png.size, n.png.size]);
+      if (d) found.push(x);
+    }
+  } finally { old.close(); }
+  if (!live()) return;
+  if (window.__APP_TEST) window.__APP_TEST.lastLookChange = { compared: list.length, of: todo.length, slides: found.map((x) => x.key), trace };
+  if (!found.length) { box.remove(); return; }
+  box.replaceChildren(
+    el('h3', { id: 'look-title', text: T.lookTitle }),
+    el('p', { cls: 'hint', text: T.lookLead }),
+    ...(todo.length > list.length ? [el('p', { cls: 'hint', text: T.lookCapped(list.length, todo.length) })] : []),
+    ...found.map((x) => el('div', { cls: 'res info look-slide', 'data-key': x.key, onclick: () => frame.postMessage({ type: 'app-go', i: x.i, k: 0 }, '*') }, [
+      el('span', { cls: 'sev', text: T.sevInfo }),
+      el('span', { text: T.lookItem }),
+      el('div', { cls: 'where', text: T.slideN(x.i + 1, x.heading) }),
+    ])));
 }
 // 品質チェックの「スライドの画像と確認の依頼をコピー」（backlog #227）：今のスライドを最後のステップにした画像（PNG。プレビューの中で描く、
 // app/frame-shim.js の slideShot）と、図と結論の行を確かめてもらう依頼の文を、1 回でクリップボードに書く（image/png と text/plain の 1 つの
@@ -1585,9 +1667,32 @@ function showHelp() {
     el('p', { id: 'help-format', cls: 'muted', text: T.helpFormat(RES.specSnapshot) }),   // 従う仕様の版（vendor/egatari-spec/SOURCE.json の snapshot。ビルド時に読む）
     modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
     draftsSection(),                              // このブラウザに残した、保存していない変更：件数と「すべて捨てる」（#29）
+    notesSection(),                               // このブラウザに残したコメント：件数と「すべて削除」（#100 の 1）
   ]);
 }
 
+// 使い方の板の節：このブラウザに残したコメント（教材ごと。今開いている教材のものは消さない）
+function notesSection() {
+  const L = T.notesKept;
+  const box = el('section', { id: 'notes-help', cls: 'model-cache' });
+  const cur = () => (S.portable && S.portable.index && noteKeeper ? S.portable.index.docId : null);
+  async function render() {
+    let list = [];
+    try { list = (await notes.list()).filter((m) => m.docId !== cur()); } catch { /* 使えない環境 */ }
+    const btn = el('button', { type: 'button', id: 'b-notes-delete', text: L.deleteAll });
+    btn.disabled = !list.length;
+    btn.onclick = async () => {
+      const v = await ask({ title: L.deleteAllTitle, kind: 'warn', body: [el('p', { text: L.deleteAllBody(list.length) })], buttons: [{ id: 'cancel', label: T.cancel }, { id: 'delete', label: L.deleteAll, pri: true }] });
+      if (v !== 'delete') return;
+      try { toast(L.deletedAll(await notes.removeAll({ except: cur() }))); } catch (e) { toast(String(e.message || e), true); }
+      await render();
+    };
+    box.replaceChildren(el('h3', { text: L.helpTitle }), el('ul', { id: 'notes-help-info' }, [el('li', { text: L.helpCount(list.length) }), el('li', { text: L.helpNote })]), el('div', { cls: 'row' }, [btn]));
+  }
+  box.append(el('h3', { text: L.helpTitle }));
+  render().catch(() => {});
+  return box;
+}
 // 使い方の板の節：このブラウザに残した、保存していない変更（件数・大きさ・残し方）と「すべて捨てる」（ほかのタブで開いているもの・今の文書のものは消さない）
 function draftsSection() {
   const L = T.drafts;
@@ -1631,6 +1736,11 @@ function downloadAiSkill() {
   document.body.append(a); a.click(); a.remove();
   if (packed) setTimeout(() => URL.revokeObjectURL(href), 60000);
 }
+// 保存がダウンロードになることを言ったか（このブラウザで一度だけ。覚えられない環境では開いている間だけ）
+const DL_SAVE_KEY = 'egatari-download-save-told';
+let dlSaveToldNow = false;
+function downloadSaveTold() { if (dlSaveToldNow) return true; try { return localStorage.getItem(DL_SAVE_KEY) === '1'; } catch { return false; } }
+function downloadSaveRemember() { dlSaveToldNow = true; try { localStorage.setItem(DL_SAVE_KEY, '1'); } catch { /* 開いている間だけ */ } }
 const portableTypes = () => [{ description: T.portableType, accept: { 'text/html': [FORMAT.FILE_EXT, '.html'] } }];
 // 名前を付けて保存：ファイルを選ぶ画面（Chrome / Edge）か、なければダウンロード。返すもの：書いたハンドル（ダウンロードなら null）
 // live()：選ぶ画面を待つ間に作業場所が替わったら書かない（書き込みの中でも確かめる）
@@ -1897,6 +2007,8 @@ async function openPortableNow(input) {
   }
   if (P.tierAOnly && !r.sourceMatches && !P.readOnly) P.readOnly = T.roNoTier(P.tierAOnly);
   if (handle) recentAdd(handle);   // ファイルのハンドルがあれば「最近開いたもの」に（Safari などで <input> から開いたものにはない）
+  // このブラウザに残したこの教材のコメントを戻す（handoff #100 の 1）
+  if (noteKeeper && S.portable === P) { try { const n = await noteKeeper.restore(); if (n) toast(T.notesKept.restored(n)); } catch (e) { console.warn('[editor] cannot restore the comments', e); } }
   showDeck(name, name);
   if (P.requiresMissing) {
     // 依存不足は新しく組むときだけ断る。既存のファイルは自分の再生器で、残るパーツを再生する。
@@ -2370,6 +2482,15 @@ async function savePortableBound(mode) {
       if (!live()) throw cancelledError();
       const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
       const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
+      // 保存先を選べないブラウザ（Safari・Firefox）：最初の保存のときに一度だけ、保存のたびにダウンロードに新しいファイルができることを言う（handoff #100 の 6）
+      if (!th && !window.showSaveFilePicker && !downloadSaveTold()) {
+        status('');
+        const v = await ask({ title: T.dlSaveTitle, body: [el('p', { id: 'dl-save-note', text: T.dlSaveBody }), el('p', { cls: 'hint', text: T.dlSaveHint })],
+          buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.dlSaveGo, pri: true }] });
+        if (v !== 'save') return;
+        if (!live()) throw cancelledError();
+        downloadSaveRemember();
+      }
       h = th ? (await writeFile(th, html, live), th) : await saveWithPicker(name, html, null, live);
       if (!live()) throw cancelledError();
       if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Egatari Studio'; recentAdd(h); }
@@ -3108,6 +3229,8 @@ window.__APP_TEST = {
   files: () => (S.ws && S.ws.snapshot ? Object.fromEntries([...S.ws.snapshot()].map(([k, v]) => [k, bytesToBase64(v)])) : null),
   workerProbe: (name) => probeWorker(name),
   drafts: () => drafts.list(),
+  notesKept: () => notes.list(),
+  notesFlush: () => (noteKeeper ? noteKeeper.flush() : null),
   draftState: () => (keeper ? { ...keeper.state(), kept: !!S.draftKept } : null),
   draftFlush: () => (keeper ? keeper.flush() : null),
   draftLimits: null,  // 試験：保存していない変更を残す間隔など（app/drafts.js の DRAFT_LIMITS を上書き）。開く前に入れる
