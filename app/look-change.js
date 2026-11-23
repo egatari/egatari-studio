@@ -3,12 +3,14 @@
 // 編集したスライド（原稿の <section> の文字列が違うもの）は数えない。スライドの外（<head>・テーマなど）を直したときは、どのスライドも
 // 変わって当然なので比べない。
 //   sourceChanges(oldSrc, newSrc) → {outside: bool, edited: Set(鍵)}
-//   pngDiffers(a, b, tol)          → Promise<bool>（Blob 2 つ。はっきり違う画素が tol を超えるか）
+//   pngDiff(a, b)                  → Promise<{differs, n}>（Blob 2 つ。1/4 に縮めて、はっきり違う画素の数 n が面積の LOOK_FRAC を超えるか）
 //   oldShooter({html, onError})    → {shot(i) → Promise<{png,key}|null>, count() → Promise<n|null>, close()}（隠した枠で開いたときのファイルを描く）
 import { analyzeSlideIds } from '../kit/core/build-core.mjs';
 
-// はっきり違う画素（RGB の差の和が STRONG を超える）が TOL を超えたら「違う」。kit/render-compare.mjs の今までの基準（strong 48・LEGACY_TOL 40）と同じ
-export const LOOK_STRONG = 48, LOOK_TOL = 40, LOOK_MAX = 60;
+// 比べ方：両方の画像を 1/4（320×180）に縮めてから、はっきり違う画素（RGB の差の和が STRONG を超える）を数え、縮めた面積の FRAC を超えたら「違う」。
+// 等倍の画素の数で比べると、Linux・Windows の Chrome では同じ文書でも字の縁のアンチエイリアスがずれ、変えていないスライドまで「違う」になった
+// （CI 45275755968。macOS では画像がバイトまで同じ）。縮めると縁の 1 px の揺れは平らになり、色や形の変わった所は残る
+export const LOOK_STRONG = 48, LOOK_FRAC = 0.01, LOOK_MAX = 60, LOOK_W = 320, LOOK_H = 180;
 
 function sections(src) {
   const { slides } = analyzeSlideIds(src);
@@ -36,22 +38,22 @@ export function sourceChanges(oldSrc, newSrc) {
 
 async function pixels(blob) {
   const bm = await createImageBitmap(blob);
-  const c = document.createElement('canvas'); c.width = bm.width; c.height = bm.height;
+  const c = document.createElement('canvas'); c.width = LOOK_W; c.height = LOOK_H;
   const g = c.getContext('2d', { willReadFrequently: true });
-  g.drawImage(bm, 0, 0);
+  g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  g.drawImage(bm, 0, 0, LOOK_W, LOOK_H);
   if (bm.close) bm.close();
-  return g.getImageData(0, 0, c.width, c.height);
+  return g.getImageData(0, 0, LOOK_W, LOOK_H);
 }
-export async function pngDiffers(a, b, tol = LOOK_TOL) {
+// → {differs, n}（n：縮めた画像で、はっきり違う画素の数）
+export async function pngDiff(a, b) {
   const [A, B] = await Promise.all([pixels(a), pixels(b)]);
-  if (A.width !== B.width || A.height !== B.height) return true;
   const x = A.data, y = B.data;
   let n = 0;
-  for (let i = 0; i < x.length; i += 4) {
-    if (Math.abs(x[i] - y[i]) + Math.abs(x[i + 1] - y[i + 1]) + Math.abs(x[i + 2] - y[i + 2]) > LOOK_STRONG && ++n > tol) return true;
-  }
-  return false;
+  for (let i = 0; i < x.length; i += 4) if (Math.abs(x[i] - y[i]) + Math.abs(x[i + 1] - y[i + 1]) + Math.abs(x[i + 2] - y[i + 2]) > LOOK_STRONG) n++;
+  return { differs: n > LOOK_W * LOOK_H * LOOK_FRAC, n };
 }
+export async function pngDiffers(a, b) { return (await pngDiff(a, b)).differs; }
 
 // 開いたときのファイルを、見えない枠（sandbox。プレビューと同じ仲立ち）で描く。html はもう仲立ちを入れた文書
 export function oldShooter({ html, timeout = 20000 }) {

@@ -40,7 +40,7 @@ import { earlierFile, earlierFolder, draftLinks } from './earlier-draft.js';
 import { modelCacheSection } from './model-cache-ui.js';
 import { draftStore, createDraftKeeper, noteStore, createNoteKeeper } from './drafts.js';
 import { tierA, FONT_FALLBACK_WARN } from '../kit/core/tier-a.mjs';
-import { sourceChanges, pngDiffers, oldShooter, LOOK_MAX } from './look-change.js';
+import { sourceChanges, pngDiff, oldShooter, LOOK_MAX } from './look-change.js';
 import { createFontSubsetLoader } from './font-subset-loader.js';
 import { draftLeftovers } from '../kit/core/template-text.mjs';
 import { sourceFindings } from '../kit/core/check-source.mjs';
@@ -1539,8 +1539,8 @@ async function lookChange(box, frame) {
       // 古いプレーヤーで写せない（slideShot に要るものがない）：比べずに何も出さない
       if (!b) { if (x === list[0]) { box.remove(); return; } continue; }
       if (!n || !(n.png instanceof Blob) || b.key !== x.key || n.key !== x.key) { trace.push([x.key, 'skip', b.key, n && n.key]); continue; }
-      const d = await pngDiffers(b.png, n.png);
-      trace.push([x.key, d, b.png.size, n.png.size]);
+      const r = await pngDiff(b.png, n.png), d = r.differs;
+      trace.push([x.key, d, r.n]);
       if (d) found.push(x);
     }
   } finally { old.close(); }
