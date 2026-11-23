@@ -2246,7 +2246,13 @@ try {
     const l1 = await p1.evaluate(() => window.__APP_TEST.state().loads);
     ok(await p1.evaluate(([b64, ext]) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'dl' + ext }); }, [Buffer.from(pmin.html).toString('base64'), FORMAT.FILE_EXT]) === true, 'single file: opened a portable file from bytes on file:// (reader worker from a blob URL)');
     await p1.waitForFunction((n) => window.__APP_TEST.state().loads > n, l1, { timeout: scaled(20000) });
-    const [dl] = await Promise.all([p1.waitForEvent('download'), clickCommand(p1, '#b-save')]);
+    // 保存先を選べないブラウザの最初の保存：一度だけ「保存はダウンロードになります」（handoff #100 の 6）→「保存」
+    const dlWait = p1.waitForEvent('download');
+    await clickCommand(p1, '#b-save');
+    await p1.waitForSelector('#dlg[open] #dl-save-note', { timeout: scaled(20000) });
+    ok(true, 'single file: the first save says once that saving downloads the file');
+    await p1.click('#dlg button.pri');
+    const dl = await dlWait;
     const dlr = await readPortable(new Uint8Array(fs.readFileSync(await dl.path())));
     ok(dl.suggestedFilename() === 'dl' + FORMAT.FILE_EXT && dlr.docId === pmin.index.docId, `single file: Save without a file handle or picker downloads ${dl.suggestedFilename()} (same docId)`);
     // 英語の単体版も、サイトの ZIP を読まずにダウンロードできる。
