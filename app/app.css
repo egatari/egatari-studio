@@ -577,3 +577,4 @@ main{flex:1;min-height:0;display:flex}
 #dlg #img-alt{font:inherit;padding:4px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
 #dlg #img-alt:disabled{opacity:.55}
 #dlg .img-step-row{display:flex;gap:8px;align-items:center}
+.guide-link{margin:.5em 0 0}.guide-link a{font-weight:600}

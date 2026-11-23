@@ -255,6 +255,9 @@ try {
       ok(order.every(Boolean) && !(await page.$('#welcome #kinds')) && !(await page.$('#newform')), 'welcome: New, Open, Recent files, Samples, the Claude Code / Cowork link, then Work in a folder…; no file-kinds table and no blank-deck form');
       ok((await page.textContent('#w-claude')) === 'Claude Code・Cowork で作る（上級）' && /docs\/with-claude/.test(await page.getAttribute('#w-claude', 'href')) && (await page.textContent('#recent h2')) === '最近のファイル' && await page.isVisible('#recent-none'), 'welcome: the advanced link (one placeholder target) and Recent files with a placeholder');
     }
+    // はじめての方へ：ガイドブックへのリンク（handoff #99）。最初の画面の上（新規作成より前）と、使い方の板
+    ok(await page.isVisible('#w-guide') && (await page.textContent('#w-guide')) === 'はじめての方へ：ガイドブック『Studio で始める絵語り』' && (await page.getAttribute('#w-guide', 'href')) === 'https://egatari.org/gallery/play/?id=studio-howto' && (await page.getAttribute('#w-guide', 'target')) === '_blank'
+      && await page.evaluate(() => !!(document.getElementById('w-guide').compareDocumentPosition(document.getElementById('new-block')) & Node.DOCUMENT_POSITION_FOLLOWING)), 'welcome: the guidebook link for first-time users, above New');
     ok((await page.textContent('#welcome h1')) === 'Egatari Studio' && (await page.textContent('#w-openfile')) === 'ファイルを開く（.ega.html）…' && (await page.textContent('#drop')).includes('.ega.html ファイルをここにドラッグ＆ドロップ') && !(await page.textContent('#drop')).includes('作業フォルダ'), 'welcome: Japanese UI for ja locale (heading, open button, drop text without the folder)');
     ok(!(await page.isVisible('#unsupported')), 'welcome: File System Access available (no "unsupported" note)');
     // パーツの一覧（/parts/）：サンプルのすぐ後の行。新しいタブ。サイトでは根からの相対（凍結した写し /vX.Y.Z/ では ../parts/）、file:// では公開のサイト
@@ -1537,6 +1540,7 @@ try {
         await pt.click('#b-help');
         await pt.waitForSelector('#help-download-skill');
         await checkSkillDownload(pt, { lang, selector: '#help-download-skill', ok, base: BASE });
+        ok((await pt.getAttribute('#help-guide', 'href')) === 'https://egatari.org/gallery/play/?id=studio-howto' && (await pt.textContent('#help-guide')) === (lang === 'en' ? 'New to Studio? The guidebook “Studio で始める絵語り” (in Japanese)' : 'はじめての方へ：ガイドブック『Studio で始める絵語り』'), `help (${lang}): the guidebook link, saying it is in Japanese in English`);
         await clickUntil(pt, '#panel-close', () => pt.waitForSelector('#panel[hidden]', { state: 'attached', timeout: scaled(2500) }));
         await clickMenuOpen(pt, '#b-filemenu');
         await pt.waitForSelector('#m-file:not([hidden])');

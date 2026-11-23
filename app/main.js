@@ -1578,6 +1578,7 @@ function showHelp() {
   const kinds = el('table', { id: 'help-kinds', cls: 'kinds' }, [['kindFolder', 'kindFolderText'], ['kindFile', 'kindFileText'], ['kindPlay', 'kindPlayText'], ['kindBuilt', 'kindBuiltText']]
     .map(([k, t]) => el('tr', {}, [el('th', { scope: 'row', text: T[k] }), el('td', { text: T[t] })])));
   openPanel(T.helpTitle, [
+    el('p', { cls: 'guide-link' }, [el('a', { id: 'help-guide', href: GUIDE_URL, target: '_blank', rel: 'noopener', text: T.guideLink })]),
     el('button', { type: 'button', id: 'help-download-skill', text: T.downloadAiSkill, 'aria-describedby': 'help-download-skill-hint', onclick: downloadAiSkill }),
     el('p', { id: 'help-download-skill-hint', cls: 'hint', text: T.downloadAiSkillHint }),   // 新規作成… と同じ添え書き（Studio が新しくなったら入れ直す）
     el('h3', { text: T.kindsTitle }), kinds,
@@ -2894,6 +2895,9 @@ $('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e)
 $('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('w-claude').href = WITH_CLAUDE_URL;
 $('w-parts').href = partsIndexHref(location);
+// ガイドブック『Studio で始める絵語り』（examples の lessons/studio-howto を egatari.org のギャラリーで再生。英語版はまだないので英語の表示でも同じ所へ。handoff #99）
+const GUIDE_URL = 'https://egatari.org/gallery/play/?id=studio-howto';
+$('w-guide').href = GUIDE_URL;
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();

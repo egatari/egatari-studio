@@ -1,9 +1,9 @@
-<!-- i18n: pair=editor.ja.md sha256=3b3c917216c8439b -->
+<!-- i18n: pair=editor.ja.md sha256=19693f78fb5243a2 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
 
-A web page that opens a working folder directly and does what the [dev server](dev-server.md) does: preview, edit the source and the script on the slide, and leave comments. It also opens an [Egatari file (`.ega.html`)](reference.md#single-file---portable) (one HTML file that carries its source, following the [Egatari format](https://github.com/egatari/egatari-spec)) without any folder, edits it in memory and saves it again. There is nothing to install and no terminal to use. The start screen puts Egatari files first (“Open a file (.ega.html)…”, “New…”; working folders through “Work in a folder…”).
+A web page that opens a working folder directly and does what the [dev server](dev-server.md) does: preview, edit the source and the script on the slide, and leave comments. It also opens an [Egatari file (`.ega.html`)](reference.md#single-file---portable) (one HTML file that carries its source, following the [Egatari format](https://github.com/egatari/egatari-spec)) without any folder, edits it in memory and saves it again. There is nothing to install and no terminal to use. The start screen puts Egatari files first (“Open a file (.ega.html)…”, “New…”; working folders through “Work in a folder…”). For first-time users, the start screen and **? (Help)** link to the guidebook 「Studio で始める絵語り」 (in Japanese), which plays in the egatari.org gallery.
 
 | Form | What it is | Here |
 |---|---|---|

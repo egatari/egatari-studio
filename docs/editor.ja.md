@@ -1,9 +1,9 @@
-<!-- i18n: pair=editor.md sha256=0f99f8a5d243599f -->
+<!-- i18n: pair=editor.md sha256=7b45559b39c14636 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
 
-作業フォルダを直接開き、[開発サーバー](dev-server.ja.md)と同じこと（プレビュー、スライドの上での原稿・台本の編集、コメント）をするウェブページ。[Egatari ファイル（`.ega.html`）](reference.ja.md#1-ファイル--portable)（原稿も中に持つ 1 つの HTML。[Egatari の形式](https://github.com/egatari/egatari-spec)に従う）も、フォルダなしで開き、メモリの上で編集して保存し直せる。インストールもターミナルも要らない。スタート画面は Egatari ファイルを先に置く（「ファイルを開く（.ega.html）…」「新規作成…」。作業フォルダは「フォルダで作業する…」）。
+作業フォルダを直接開き、[開発サーバー](dev-server.ja.md)と同じこと（プレビュー、スライドの上での原稿・台本の編集、コメント）をするウェブページ。[Egatari ファイル（`.ega.html`）](reference.ja.md#1-ファイル--portable)（原稿も中に持つ 1 つの HTML。[Egatari の形式](https://github.com/egatari/egatari-spec)に従う）も、フォルダなしで開き、メモリの上で編集して保存し直せる。インストールもターミナルも要らない。スタート画面は Egatari ファイルを先に置く（「ファイルを開く（.ega.html）…」「新規作成…」。作業フォルダは「フォルダで作業する…」）。はじめての人のために、スタート画面と **？（使い方）** に、ガイドブック『Studio で始める絵語り』（egatari.org のギャラリーで再生する）へのリンクがある。
 
 | 形 | 中身 | ここで |
 |---|---|---|

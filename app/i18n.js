@@ -318,6 +318,7 @@ const ja = {
   saveAsFile: `Egatari ファイル（${FX}）に保存…`, saveToFolder: '作業フォルダにエクスポート…',
   // はじめの画面のパーツの一覧（/parts/ を新しいタブで。app/parts-gallery.js の partsIndexHref）
   allParts: 'パーツの一覧',
+  guideLink: 'はじめての方へ：ガイドブック『Studio で始める絵語り』',
   // はじめの画面のサンプル（サイトに置いた 1 ファイル。tools/build-app.mjs）。「再生」で大きく再生する窓（app/main.js の playExample。backlog #130）
   examples: 'サンプル', examplesLead: 'Egatari で作ったサンプルです。再生して、同じ作り方で自分のファイルを作れます。', exampleView: '再生',
   exampleBack: '戻る', exampleDoors: 'サンプルの種類', exampleThumbAlt: (t) => `${t}のサムネイル`, exampleCount: (n) => `${n} 件`, examplePartHint: 'タグを押すと、そのパーツを使ったサンプルだけを並べます。', exampleClearFilter: '絞り込みを外す', examplePartNone: 'このパーツを使ったサンプルは、まだありません。', exampleParts: 'タグ（使っているパーツ）',
@@ -840,6 +841,7 @@ const en = {
   saveWhereTitle: 'Choose where to save', saveWhereLead: `This file has not been saved yet. Save it as an Egatari file (${FX}), or export it to an empty folder as a working folder.`,
   saveAsFile: `Save as an Egatari file (${FX})…`, saveToFolder: 'Export working folder…',
   allParts: 'All parts',
+  guideLink: 'New to Studio? The guidebook “Studio で始める絵語り” (in Japanese)',
   examples: 'Samples', examplesLead: 'Samples made with Egatari. Play one, then make your own the same way.', exampleView: 'Play',
   exampleBack: 'Back', exampleDoors: 'Kind of sample', exampleThumbAlt: (t) => `Thumbnail of ${t}`, exampleCount: (n) => `${n} sample${n === 1 ? '' : 's'}`, examplePartHint: 'Click a tag to see only the samples that use that part.', exampleClearFilter: 'Clear filter', examplePartNone: 'No samples use this part yet.', exampleParts: 'Tags (parts used)',
   examplePartTitle: (p) => `Show only the samples that use ${p}`, examplePartHeading: (p, n) => `Samples that use ${p} (${n})`, exampleMore: (n) => `+${n} more`, exampleMoreLabel: (n) => `${n} more part${n === 1 ? '' : 's'}`,
