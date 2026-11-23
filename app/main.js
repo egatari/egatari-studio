@@ -1211,10 +1211,18 @@ async function revertToSaved() {
 // 欄の中のキーを欄が止める（原稿の欄の stopPropagation）前に受けるため、窓で捕まえる（capture）
 const IS_MAC = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
 const histStep = (dir) => { if (S.ws && !$('deck').hidden) slidesPanel.step(dir); };
+// ⌘S・Ctrl+S（handoff #100 の 2）：ブラウザの「ページを保存」の代わりに、ファイル ▾ → 保存と同じ（入力の欄の中でも。欄の中の書きかけは、メニューから保存したときと同じく欄に残る）。
+// 窓が開いている間・文書を開いていないときは何もしない（ページの保存も出さない）
 window.addEventListener('keydown', (e) => {
   const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   if (!mod || e.altKey || e.defaultPrevented) return;
   const k = (e.key || '').toLowerCase(), t = e.target;
+  if (k === 's' && !e.shiftKey) {
+    e.preventDefault();
+    if (!S.ws || $('deck').hidden || $('dlg').open || e.repeat) return;
+    $('b-save').click();
+    return;
+  }
   if (!S.ws || !S.base || $('deck').hidden || $('dlg').open) return;
   if (k === 'f' && !e.shiftKey) { if (find.open()) e.preventDefault(); return; }
   if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;

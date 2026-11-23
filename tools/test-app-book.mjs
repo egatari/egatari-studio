@@ -138,7 +138,7 @@ try {
   await page.waitForTimeout(500);
   let b = await bk(page);
   ok(!b.present && !b.loaded.tools && !fetched.includes('/article-tools.js'), 'plain lesson: the book tools are not loaded');
-  ok(await page.isHidden('#b-book') && (await page.textContent('#b-print-book')) === '台本を印刷' && (await page.textContent('#b-print')) === 'スライドを印刷', 'plain lesson: no 本 button; the print items are スライドを印刷 / 台本を印刷');
+  ok(await page.isHidden('#b-book') && (await page.textContent('#b-print-book')) === '台本を印刷' && (await page.textContent('#b-print')) === 'スライドを印刷・PDF に保存', 'plain lesson: no 本 button; the print items are スライドを印刷・PDF に保存 / 台本を印刷');
   {
     const pf = await (await page.$('#preview')).contentFrame();
     await pf.evaluate(() => { window.__printed = null; window.print = () => { const b = document.getElementById('egatari-print-script'); window.__printed = b ? { n: b.querySelectorAll('.eps-item').length, thumbs: b.querySelectorAll('.eps-thumb .slide').length, text: b.textContent.slice(0, 400) } : { n: -1 }; }; });
