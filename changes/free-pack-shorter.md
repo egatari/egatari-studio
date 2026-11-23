@@ -1,0 +1,3 @@
+### Changed
+
+- AI instructions: the light (free-plan) instructions are shorter, so more parts get a full description when part sets are added. They keep only the common worked example (the part-set examples are in the detailed instructions only), the "data shape" column no longer repeats `step?` `at?` `tone?` `label?` (one line above the catalog says every item may have them), and the kicker, morph and research-positioning-table notes are in the detailed instructions only. English standard: 30,994 → 29,790 paste units; Japanese standard: 39,431 → 38,079 bytes. The detailed instructions are unchanged (handoff #95)

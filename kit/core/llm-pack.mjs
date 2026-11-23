@@ -58,7 +58,8 @@ export const PACK_VERSION = PACK.version;   // 指示のバージョン（指示
 export const buildPack = (opts) => assemble(PACK, opts);
 // sets：入っている束（表が指す部品。省くと [] = 標準だけ）。off：外した札。plan：'free'（既定）| 'paid'
 export const commonBody = (lang = 'en', { exclude = [], sets = [], off = [], plan = 'free' } = {}) => commonOf(PACK, lang, { exclude, sets, off, plan }) + '\n';
-export const setPart = (name, lang = 'en', { exclude = [] } = {}) => partOf(PACK, name, lang, { exclude }) + '\n';
+// plan：既定は 'free'（無料のプランでは束の見本を除く。handoff #95）。docs/llm-parts/*.md と同じ中身は plan: 'paid'
+export const setPart = (name, lang = 'en', { exclude = [], plan = 'free' } = {}) => partOf(PACK, name, lang, { exclude, plan }) + '\n';
 export const PURPOSES = PACK.purposes;   // 言いたいこと（kit/core/purposes.mjs の形。source が 'manifest' か 'fallback'）
 export const requestBody = (lang = 'en') => requestOf(PACK, lang) + '\n';
 

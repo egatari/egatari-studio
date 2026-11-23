@@ -140,6 +140,13 @@ ok(`ja packs byte-identical to v0.6.6 (${V066.slice(0, 8)}) apart from the versi
     assert.match(PACK.partsSrc, /\/v2\.22\.0\//);
     // 部品庫 2.5.0（候補）で m-cards の README（日本語）が変わった（箇条書きの代わりにカードを使う手引き）。その部品の日本語の指示だけは v0.6.6 のものに揃えて比べる
     const cur = structuredClone(P262);
+    // v0.6.20：無料のプランを短くした（handoff #95。束の見本・§2 の一部を <!--paid--> に、一覧の欄の共通の項目を 1 行に）。この比べはそれより前の変化を見るので、
+    // その印（写真の行のほか）を外し、無料のプランの行（freeRow）と一覧の上の 1 行（fieldsNote）を除いてから比べる（新しい形は tools/test-llm-free-short.mjs）
+    const unpaid = (t, keep = '') => t.replace(/<!--paid-->([\s\S]*?)<!--\/paid-->/g, (m, inner) => (keep && inner.includes(keep) ? m : inner));
+    cur.ja.common = unpaid(cur.ja.common, '写真が要る所');
+    for (const s of Object.keys(cur.ja.sets)) cur.ja.sets[s] = unpaid(cur.ja.sets[s]);
+    delete cur.ja.fieldsNote;
+    for (const c of Object.values(cur.ja.components)) delete c.freeRow;
     cur.ja.components['m-cards'] = oldData.ja.components['m-cards'];
     // v0.6.8 で science の束の指示に光 --lit の 1 行を足した（format spec §8.4）。その 1 行だけは除いて比べる（共通の本体はそのまま）
     const LIT_JA = '\n\n色は R-colors のものに加えて `--lit` も使える：光と、光が照らすもの。輪郭線を付けた塗りに使う。';

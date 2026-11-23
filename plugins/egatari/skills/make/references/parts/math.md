@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # math のパーツ
 
-指示のバージョン：1e62bc92
+指示のバージョン：3d6c1ba0
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

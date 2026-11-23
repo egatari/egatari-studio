@@ -77,13 +77,15 @@ export const partSpans = (text, exclude = []) => text.replace(/<!--part:([a-z0-9
 // gone：組み立てに入らない部品（説明の中でその名前を出す所を除く。<!--part:…--> は make-llm-guide の markRefs が付ける）。
 // brief：一覧の 1 行だけの部品（説明の節を出さない）
 // free：無料のプラン。部品に無料のプランの説明（free。tools/make-llm-guide.mjs の FREE_EDITS）があればそれを使う
-function catalog(D, names, gone = [], brief = [], free = false) {
+// freeRows：無料のプランの一覧の行（freeRow：「データの形」の欄から、どの項目にも付く step?・at?・tone?・label? を外した行。handoff #95）を使う
+// fieldsNote：一覧の上に、その決まりの 1 行（材料の fieldsNote）を書く（共通の本体の一覧だけ。束の一覧は §3 の決まりに従う）
+function catalog(D, names, gone = [], brief = [], { free = false, freeRows = false, fieldsNote = false } = {}) {
   if (!names.length) return '';
-  const rows = names.map((n) => partSpans(D.components[n].row, gone)).join('\n');
+  const rows = names.map((n) => partSpans((freeRows && D.components[n].freeRow) || D.components[n].row, gone)).join('\n');
   const full = names.filter((n) => !brief.includes(n));
   const sup = full.some((n) => D.components[n].sup);
   const short = names.length > full.length;
-  return D.tableHead + '\n' + rows + '\n\n' + (short ? D.briefNote + '\n\n' : '') + (sup ? D.supNote + '\n\n' : '') + full.map((n) => partSpans((free && D.components[n].free) || D.components[n].entry, gone)).join('\n\n');
+  return (fieldsNote && D.fieldsNote ? D.fieldsNote + '\n\n' : '') + D.tableHead + '\n' + rows + '\n\n' + (short ? D.briefNote + '\n\n' : '') + (sup ? D.supNote + '\n\n' : '') + full.map((n) => partSpans((free && D.components[n].free) || D.components[n].entry, gone)).join('\n\n');
 }
 function extensions(D, set, exclude = [], gone = exclude) {
   return Object.keys(D.components).sort().filter((n) => !exclude.includes(n) && D.components[n].ext && D.components[n].ext[set])
@@ -108,14 +110,17 @@ export function commonOf(data, lang, { exclude: exclude0 = [], sets = [], off = 
   const gone = goneParts(data, lang, exclude, ss);
   const table = () => (data.purposes ? purposesTable(data.purposes, data.parts || [], lang, data.partsSrc || '', { exclude, sets: ss, off, ...(ranked ? { named } : {}) }) : '');
   return tidy(partSpans(planSpans(D.common, plan), exclude).replace('{{PURPOSES}}', table)
-    .replace('{{CATALOG}}', () => catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, ranked ? [] : briefParts(data, plan, short, full), planName(plan) === 'free')));
+    .replace('{{CATALOG}}', () => { const free = planName(plan) === 'free'; const cat = catalog(D, membersOf(D, STANDARD).filter((n) => !exclude.includes(n)), gone, ranked ? [] : briefParts(data, plan, short, full), { free, freeRows: free, fieldsNote: free });
+      // 標準のパーツがすべて外れても、束の一覧（freeRow）のために 1 行は書く
+      return cat || (free && ss.length && D.fieldsNote ? D.fieldsNote : ''); }));
 }
-// 1 つの束の指示。sets：一緒に入る束（説明の中の名前を残す部品を決める。既定はこの束だけ）
-export function partOf(data, name, lang, { exclude = [], sets = [name] } = {}) {
+// 1 つの束の指示。sets：一緒に入る束（説明の中の名前を残す部品を決める。既定はこの束だけ）。
+// plan：既定は 'paid'（docs/llm-parts の全体の指示）。'free' では束の見本（<!--paid-->）を除き、一覧は無料のプランの行（freeRow）にする（handoff #95）
+export function partOf(data, name, lang, { exclude = [], sets = [name], plan = 'paid' } = {}) {
   const D = langOf(data, lang);
   if (!D.sets[name]) throw new Error(`llm-pack: unknown part set "${name}"`);
   const gone = goneParts(data, lang, exclude, [...new Set([name, ...sets])]);
-  return tidy(partSpans(D.sets[name], exclude).replace('{{CATALOG}}', () => catalog(D, membersOf(D, name).filter((n) => !exclude.includes(n)), gone)).replace('{{EXTENSIONS}}', () => extensions(D, name, exclude, gone)));
+  return tidy(partSpans(planSpans(D.sets[name], plan), exclude).replace('{{CATALOG}}', () => catalog(D, membersOf(D, name).filter((n) => !exclude.includes(n)), gone, [], { freeRows: planName(plan) === 'free' })).replace('{{EXTENSIONS}}', () => extensions(D, name, exclude, gone)));
 }
 
 // 利用者が埋める「頼みたいこと」（記入欄の付いた頼み方。新しく作る／渡した資料と話し合いの内容で）。いちばん最後に付く
@@ -124,7 +129,7 @@ export const requestOf = (data, lang) => tidy(langOf(data, lang).request || '');
 // sets：選んだ束（'a,b'・配列・'all'）。plan：'free'（既定）| 'paid'（詳しさだけが変わる）
 export function packParts(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null, named = null } = {}) {
   const ss = normalizeSets(sets, data);
-  return [commonOf(data, lang, { exclude, sets: ss, off, plan, short, full, named }), ...ss.map((s) => partOf(data, s, lang, { exclude, sets: ss }))];
+  return [commonOf(data, lang, { exclude, sets: ss, off, plan, short, full, named }), ...ss.map((s) => partOf(data, s, lang, { exclude, sets: ss, plan: planName(plan) }))];
 }
 export function assemble(data, { sets = [], lang = 'en', exclude = [], off = [], plan = 'free', short = false, full = null, named = null } = {}) {
   const parts = [...packParts(data, { sets, lang, exclude, off, plan, short, full, named }), requestOf(data, lang)].filter(Boolean);
