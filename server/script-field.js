@@ -17,7 +17,7 @@ export function createScriptField(doc, o = {}) {
   el.setAttribute('contenteditable', 'true');
   el.setAttribute('role', 'textbox');
   el.setAttribute('aria-multiline', 'false');
-  el.setAttribute('spellcheck', 'false');
+  el.setAttribute('spellcheck', 'true');   // 台本は文章なのでスペルチェックを入れる（英語の教材。handoff #100 の 4。lang の言葉で）
   if (o.label) el.setAttribute('aria-label', o.label);
   if (o.placeholder) el.setAttribute('data-ph', o.placeholder);
   if (o.lang) el.setAttribute('lang', o.lang);

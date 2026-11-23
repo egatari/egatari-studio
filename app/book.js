@@ -257,7 +257,7 @@ export function createBook(ctx) {
       if (B.dirty && !(await discardOk())) { sel.value = B.file; return; }
       B.file = sel.value; await loadText(); drawPanel();
     };
-    const ta = el('textarea', { id: 'book-text', spellcheck: 'false', 'aria-label': T.textLabel(B.file || ''), lang: deckLang() });
+    const ta = el('textarea', { id: 'book-text', spellcheck: 'true', 'aria-label': T.textLabel(B.file || ''), lang: deckLang() });
     ta.value = typed !== null ? typed : B.loaded === null ? '' : B.loaded;
     if (B.loaded === null) ta.disabled = true;
     const save = el('button', { type: 'button', id: 'book-save', cls: 'pri', text: T.save, onclick: () => saveText(ta.value) });

@@ -129,6 +129,7 @@ try {
     const { ctx, page, errs, go, selectText, field, save, readNarr } = await openApp('ja');
     const segs = parseNarration(NARR);
     await go(1, 1);   // 何を最小化するか [1]：学習とは、損失を小さくするパラメータ θ を探すことです。
+    ok(await page.evaluate(() => [...document.querySelectorAll('#dev-narr .dv-text')].every((e) => e.spellcheck && e.getAttribute('lang'))), 'the script fields are spell-checked in the file\'s language (handoff #100 の 4)');
     ok((await page.textContent('#dev-pron-btn')) === '読み方…', 'ja: the script drawer has 「読み方…」');
     // 断る選び方
     await selectText('θ を');

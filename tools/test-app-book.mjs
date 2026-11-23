@@ -230,6 +230,7 @@ try {
 
   // E4：本文の欄で直す（保存は作業場所へ。本が組み直る）
   ok((await page.inputValue('#book-file')) === 'article/00-preface.md' && (await page.inputValue('#book-text')).startsWith('---'), 'panel: the first book file in a plain text field');
+  ok(await page.$eval('#book-text', (e) => e.spellcheck && !!e.lang), 'panel: the book text is spell-checked in the file\'s language (handoff #100 の 4)');
   await page.selectOption('#book-file', 'article/01.md');
   await page.waitForFunction(() => /2 つの代表値/.test(document.getElementById('book-text').value));
   const before = await page.inputValue('#book-text');
