@@ -1,6 +1,7 @@
 // ⌘S・Ctrl+S がブラウザの「ページを保存」でなく、ファイル ▾ → 保存と同じになる（handoff #100 の 2）
 //   node tools/test-app-shortcut-save.mjs [作業用のフォルダ]
 //   文書を開く前：既定の動き（ページの保存）を止めるだけ・スライドを直して ⌘S で保存される・入力の欄（検索の欄）の中でも・窓が開いている間は保存しない
+// 保存先を選べないブラウザ（showSaveFilePicker がない）：最初の保存のときに一度だけ「保存はダウンロードになります」（handoff #100 の 6）。キャンセルなら保存しない
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -42,7 +43,7 @@ const HOST = `http://127.0.0.1:${srv.address().port}/`;
 
 const browser = await launch();
 const errs = [];
-const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP' });
+const ctx = await browser.newContext({ viewport: { width: 1440, height: 860 }, locale: 'ja-JP', acceptDownloads: true });
 
 async function newTab(label) {
   const page = await ctx.newPage();
@@ -127,6 +128,42 @@ try {
   await a.waitForTimeout(500);
   ok((await state(a)).portable.dirty, 'while a dialog is open, ⌘S / Ctrl+S does not save');
   await a.evaluate(() => document.getElementById('dlg').close());
+
+  // 4. 保存先を選べないブラウザ：最初の保存で一度だけ案内する
+  const b = await ctx.newPage();
+  b.on('pageerror', (e) => errs.push(`B: ${e.message}`));
+  await b.addInitScript(() => { delete window.showSaveFilePicker; });
+  await b.goto(`${HOST}?lang=ja`);
+  await b.waitForFunction(() => !!window.__APP_TEST);
+  await b.evaluate(() => { window.__APP_TEST.mp3 = 'off'; window.__APP_TEST.editRole = 'creator'; window.__APP_TEST.licenseAsk = false; });
+  await open(b);
+  ok(await editText(b, '（四）'), 'B: edit a slide');
+  const dlSave = async (page) => {
+    const saving = page.evaluate(() => window.__APP_TEST.save('save'));
+    const r = await Promise.race([saving.then(() => 'done'), page.waitForSelector('#dlg[open] #dl-save-note', { timeout: scaled(60000) }).then(() => 'note'), page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(60000) }).then(() => 'rebuild')]);
+    return { r, saving };
+  };
+  let s1 = await dlSave(b);
+  if (s1.r === 'rebuild') { await clickDlg(b, '#dlg-rebuild'); s1 = { r: await Promise.race([s1.saving.then(() => 'done'), b.waitForSelector('#dlg[open] #dl-save-note', { timeout: scaled(60000) }).then(() => 'note')]), saving: s1.saving }; }
+  ok(s1.r === 'note', `B: the first save says that saving downloads a new file each time (${s1.r})`);
+  ok(/Chrome か Edge/.test(await b.textContent('#dl-save-note')), 'B: and that Chrome or Edge overwrite the same file');
+  await clickDlg(b, '#dlg [data-id="cancel"], #dlg button:not(.pri)');
+  await s1.saving;
+  ok((await state(b)).portable.dirty, 'B: Cancel does not save');
+  s1 = await dlSave(b);
+  if (s1.r === 'rebuild') { await clickDlg(b, '#dlg-rebuild'); s1 = { r: await Promise.race([s1.saving.then(() => 'done'), b.waitForSelector('#dlg[open] #dl-save-note', { timeout: scaled(60000) }).then(() => 'note')]), saving: s1.saving }; }
+  ok(s1.r === 'note', 'B: after Cancel, the next save says it again');
+  const dl1 = b.waitForEvent('download', { timeout: scaled(60000) });
+  await clickDlg(b, '#dlg button.pri');
+  await s1.saving;
+  ok(!!(await dl1), 'B: Save downloads the file');
+  ok(await editText(b, '（五）'), 'B: edit again');
+  const dl2 = b.waitForEvent('download', { timeout: scaled(60000) });
+  s1 = await dlSave(b);
+  if (s1.r === 'rebuild') { await clickDlg(b, '#dlg-rebuild'); s1 = { r: await Promise.race([s1.saving.then(() => 'done'), b.waitForSelector('#dlg[open] #dl-save-note', { timeout: 3000 }).then(() => 'note', () => 'done')]), saving: s1.saving }; }
+  ok(s1.r === 'done', `B: the second save does not say it again (${s1.r})`);
+  await s1.saving;
+  ok(!!(await dl2), 'B: and downloads the file');
 } catch (e) {
   console.log('  FAIL ' + (e.stack || e));
   fails++;

@@ -1677,6 +1677,11 @@ function downloadAiSkill() {
   document.body.append(a); a.click(); a.remove();
   if (packed) setTimeout(() => URL.revokeObjectURL(href), 60000);
 }
+// 保存がダウンロードになることを言ったか（このブラウザで一度だけ。覚えられない環境では開いている間だけ）
+const DL_SAVE_KEY = 'egatari-download-save-told';
+let dlSaveToldNow = false;
+function downloadSaveTold() { if (dlSaveToldNow) return true; try { return localStorage.getItem(DL_SAVE_KEY) === '1'; } catch { return false; } }
+function downloadSaveRemember() { dlSaveToldNow = true; try { localStorage.setItem(DL_SAVE_KEY, '1'); } catch { /* 開いている間だけ */ } }
 const portableTypes = () => [{ description: T.portableType, accept: { 'text/html': [FORMAT.FILE_EXT, '.html'] } }];
 // 名前を付けて保存：ファイルを選ぶ画面（Chrome / Edge）か、なければダウンロード。返すもの：書いたハンドル（ダウンロードなら null）
 // live()：選ぶ画面を待つ間に作業場所が替わったら書かない（書き込みの中でも確かめる）
@@ -2418,6 +2423,15 @@ async function savePortableBound(mode) {
       if (!live()) throw cancelledError();
       const th = window.__APP_TEST && window.__APP_TEST.saveHandle;
       const name = mode === 'new' ? T.newLessonName(P.name) : P.name;
+      // 保存先を選べないブラウザ（Safari・Firefox）：最初の保存のときに一度だけ、保存のたびにダウンロードに新しいファイルができることを言う（handoff #100 の 6）
+      if (!th && !window.showSaveFilePicker && !downloadSaveTold()) {
+        status('');
+        const v = await ask({ title: T.dlSaveTitle, body: [el('p', { id: 'dl-save-note', text: T.dlSaveBody }), el('p', { cls: 'hint', text: T.dlSaveHint })],
+          buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.dlSaveGo, pri: true }] });
+        if (v !== 'save') return;
+        if (!live()) throw cancelledError();
+        downloadSaveRemember();
+      }
       h = th ? (await writeFile(th, html, live), th) : await saveWithPicker(name, html, null, live);
       if (!live()) throw cancelledError();
       if (h) { P.handle = h; P.name = h.name; S.label = h.name; document.title = h.name + ' — Egatari Studio'; recentAdd(h); }

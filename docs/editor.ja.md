@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=63c0cc68c00a4649 -->
+<!-- i18n: pair=editor.md sha256=3133833ef606d668 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -12,7 +12,7 @@
 | 再生専用（`--play-only`） | 原稿を持たない Egatari ファイル | 編集できない（元の Egatari ファイルか作業フォルダを開く） |
 | ビルドした HTML（`out/deck.html`） | コマンド（`node kit/build.mjs`）の発表用の出力（編集アプリからはエクスポートしない） | 編集できない（作業フォルダを開く） |
 
-- **ブラウザ：** パソコンの Google Chrome か Microsoft Edge（Windows・macOS・Linux・ChromeOS）。フォルダは File System Access API（`showDirectoryPicker`）を使うので、Safari と Firefox では開けない（スタート画面にそう出て、そこで新しく作る道として「新規作成…」（対話型の生成 AI（ChatGPT・Gemini・Claude など）で作成）を示す）。Egatari ファイルは今のどのブラウザでも開いて編集できる（ファイルを選ぶダイアログがなければ、保存はダウンロードになり、保存のたびにダウンロードに新しいファイルができる。スタート画面と保存の知らせにそう出る：次はいちばん新しいものを開く）
+- **ブラウザ：** パソコンの Google Chrome か Microsoft Edge（Windows・macOS・Linux・ChromeOS）。フォルダは File System Access API（`showDirectoryPicker`）を使うので、Safari と Firefox では開けない（スタート画面にそう出て、そこで新しく作る道として「新規作成…」（対話型の生成 AI（ChatGPT・Gemini・Claude など）で作成）を示す）。Egatari ファイルは今のどのブラウザでも開いて編集できる（ファイルを選ぶダイアログがなければ、保存はダウンロードになり、保存のたびにダウンロードに新しいファイルができる。スタート画面にそう出る。そのブラウザでの最初の保存では一度だけ「保存はダウンロードになります」と聞き、Chrome か Edge なら同じファイルに上書きできることも言う。キャンセルなら保存しない：次はいちばん新しいものを開く）
 - **通信：** アプリ自身の読み込みのほかは無い。作業フォルダやファイルはブラウザの中で読み書きし、どこにもアップロードしない。「AI 音声をこの PC で作る」（[音声のパネル](#台本の音声音声のパネル)）を使うときだけ、編集アプリのサイトの別の TTS のウィンドウがモデルを取る（編集アプリのページそのものは、そのときもどこにも繋がらない）
 
 ## アプリの入手

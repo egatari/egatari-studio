@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=e9f5188f3c5662e7 -->
+<!-- i18n: pair=editor.ja.md sha256=a95a4e3ae879bef3 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -12,7 +12,7 @@ A web page that opens a working folder directly and does what the [dev server](d
 | Play-only (`--play-only`) | An Egatari file without the source | Cannot be edited (open the original Egatari file or the working folder) |
 | Built HTML (`out/deck.html`) | The presentation output of the command line (`node kit/build.mjs`; the editor no longer exports it) | Cannot be edited (open the working folder) |
 
-- **Browsers:** Google Chrome or Microsoft Edge on a computer (Windows, macOS, Linux, ChromeOS). Folders use the File System Access API (`showDirectoryPicker`), which Safari and Firefox do not have; on other browsers the start screen says so, together with the way to make a new file there: **New… → Have an AI chatbot write it**. An Egatari file can be opened and edited in any current browser; without the file pickers, saving downloads the file, and each save makes a new file in the downloads (the start screen and the save notice say so: open the newest one next time).
+- **Browsers:** Google Chrome or Microsoft Edge on a computer (Windows, macOS, Linux, ChromeOS). Folders use the File System Access API (`showDirectoryPicker`), which Safari and Firefox do not have; on other browsers the start screen says so, together with the way to make a new file there: **New… → Have an AI chatbot write it**. An Egatari file can be opened and edited in any current browser; without the file pickers, saving downloads the file, and each save makes a new file in the downloads (the start screen says so, and the first save in such a browser asks once, **Saving downloads the file**, noting that Chrome or Edge overwrite the same file; Cancel does not save: open the newest one next time).
 - **Network:** none, apart from loading the editor itself. The working folder or file is read and written in the browser and is never uploaded. Only if you use **Make AI voice on this computer** (in the [Audio panel](#script-audio-audio-panel)), a separate TTS window of the editor's site downloads the model; the editor page itself still connects nowhere.
 
 ## Getting the editor
