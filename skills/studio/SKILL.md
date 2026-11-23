@@ -11,7 +11,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 
 <!-- generated: instruction-version -->
 **指示のバージョン：1e62bc92**
-**スキルのバージョン：0.6.19-rc.2**
+**スキルのバージョン：0.6.19**
 <!-- /generated: instruction-version -->
 
 make の「スキルのバージョン」の行（前のバージョンでは「スキルの版」）と違えば、両方のプラグインを更新するよう利用者に伝える。
@@ -35,7 +35,6 @@ Codex へのインストール（Codex のターミナルで）：`codex plugin 
 - [音声を付ける](references/audio-local.md)
 - [動画にする](references/video.md)（既存の音声を使う）
 - [パーツを書く・修正する・提案する](references/parts.md)
-- [使い終わりの感想を報告する](references/feedback.md)
 
 CLI では R-output の灰色の枠（コードブロック）の代わりに作業フォルダへ書き、画像・JSON・macros.tex も同梱できる。
 
@@ -142,7 +141,7 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
      logos/cover.png
      LICENSE      ロゴ・フォントの使用の条件（Egatari ファイルに一緒に含まれる）
    ```
-   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.19-rc.2/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
+   - 色は変数だけで決める（`docs/reference.ja.md`「テーマ」の変数の表：<!-- generated: doc reference.ja.md#テーマ -->https://github.com/egatari/egatari-studio/blob/v0.6.19/docs/reference.ja.md#テーマ<!-- /generated: doc -->）。箱の位置を動かす CSS は書かない（書くなら `metrics` を宣言する）。
    - フォントを替えるなら `theme.json` の `fonts`（Studio が含められる一覧から）。
    - 表紙の背景に画像を敷くには、画像をテーマのフォルダに置き、`tokens.css` で相対の `url()` を書く（例：`--cover-bg: url(cover.png) center/cover no-repeat;`）。ビルドが画像を埋め込み、テーマの hash と Egatari ファイルにも含まれる。テーマのフォルダの外のファイルは使えない（警告が出て拒まれる）。ないファイルは警告が出て `url()` のまま残る。ロゴは `theme.json` の `logos`。
 3. **確認する**：サンプルを `--theme <名前>` でビルドし、`npx egatari@0.6.x check` の `textContrast` が出ないこと（役割の色と地のコントラスト 4.5:1）、表紙のロゴの大きさを目で見る。
@@ -188,4 +187,25 @@ CLI では R-output の灰色の枠（コードブロック）の代わりに作
 
 ## CLI： 使い終わりの感想（フィードバックを送信）
 
-利用者が「感想を送って」「フィードバックして」「不具合を報告して」と言ったとき、または作業の終わりに品質チェックが一度で通った・何度も直した、という場面では、[報告の手順](references/feedback.md) を読んで従う（make のスキルと同じ文）。利用者が送ると決めるまで、報告のための材料を集めない。同意なしに送らない。
+ユーザーが「感想を送って」「フィードバックして」「不具合を報告して」と言ったとき、または長い作業の終わりで、ユーザーが前もって送ってよいと言っていたときに行う。勝手には送信しない。
+
+1. この作業で困ったこと・不具合・わかりにくかった手順・よかった点を、箇条書きで短くまとめる（何をして、何が起きて、どうなってほしかったか）
+2. **私的な内容を入れない**：スライドの本文・台本・論文の中身・音声・参照音声の名前・個人のパスやアドレス・ユーザー名。要るなら「数式の多いスライドで」のように一般化する
+3. `.github/ISSUE_TEMPLATE/feedback.yml` の欄に合わせて下書きを書き、**全文をユーザーに見せる**：
+   ```
+   ### Type
+   Bug / 不具合            ← Bug / Confusing / Idea / Praise のどれか
+   ### What you did
+   ### What happened (and what you expected)
+   ### Version
+   現在のバージョン             ← npx egatari@0.6.x --version の出力（と、make・studio の指示のバージョン）
+   ### Browser
+   ### OS
+   ### Context
+   lang=ja, mode=talk, via Claude Code (egatari-studio:studio)
+   ```
+4. ユーザーが「送って」と明示したときだけ作る（修正を依頼されたら修正して見せ直す）：
+   ```bash
+   gh issue create -R egatari/egatari-studio --title "[feedback] 一行の要約" --label feedback --body-file <下書き>
+   ```
+5. 作った issue の URL を伝える。`gh` が使えない・ログインしていないときは、下書きと `https://github.com/egatari/egatari-studio/issues/new?template=feedback.yml` を渡して、ユーザーに貼り付けを依頼する

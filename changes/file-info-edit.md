@@ -1,4 +1,0 @@
-### Added
-
-- File info… can now write the title, creators (one per line), copyright notice, license (seven Creative Commons choices, no license, or another SPDX name) and attribution: a working folder saves them to `metadata` in egatari.json at once, an Egatari file at the next save. The first-save question now asks “Did you make this file?”, and for a file without a license the same dialog offers CC BY 4.0, CC BY-SA 4.0, CC BY-NC 4.0 or no license, with fields for the creators and the copyright notice (handoff #88)
-- The first save of an Egatari file without a license that the “Did you make this file?” question does not cover (made in this Studio, or with no rights information at all) now asks only “Add a license?” with the same choices and fields, once per file: choosing no license leaves the file unchanged and the answer is remembered in the browser for that file (handoff #88)
