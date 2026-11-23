@@ -1,3 +1,0 @@
-### Fixed
-
-- The quality check (command line and editor) now reports a `<script>` with no `</script>` (new code `scriptUnclosed`, R-components) at the slide where it is, with the headings of the slides it swallows. Before, a part's JSON data left unclosed turned every later slide into script text: those slides got no id, their narration sections were reported as "slide not found" (which read like a heading-normalization mismatch for headings such as 「なぜ POS だけを使うのか」), and the narration of earlier slides was reported missing too. Heading keys were already normalized the same way on both sides (handoff #96)

@@ -12,7 +12,7 @@ Always reply in the language the user writes in. Write slides and narration in t
 Egatari は、スライド・台本・音声・本を 1 つの HTML ファイルにまとめる形式です。ブラウザで再生でき、生成 AI で作成・修正できます（[仕様](https://github.com/egatari/egatari-spec)）。Egatari Studio はその編集アプリ <https://studio.egatari.org/>。[English](SKILL.en.md)
 
 **指示のバージョン：027f5293**
-**スキルのバージョン：0.6.19-rc.2**
+**スキルのバージョン：0.6.19**
 
 Studio でコピーした指示書の「指示のバージョン」（前のバージョンの Studio では「指示の版」）と違えば、利用者に「新しいパーツがあります」（new parts are available）と伝える。
 Claude Code では `/plugin update egatari@egatari`。Codex では `npx egatari@0.6.x skills update`。更新の道がないツールでは案内を省き、`egatari --version` のバージョンを利用者に伝える。

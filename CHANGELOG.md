@@ -8,6 +8,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.19] - 2026-11-23
+
+### Added
+
+- Export ▸ For an LMS (SCORM)… now has a Questions choice: not required for completion, completed when all are answered, or completed when all are answered correctly (`metadata.completion.checks`; a working folder also keeps it in egatari.json), and the package reports a score from the questions that parts such as Predict and check ask. The dialog and the docs say that questions check understanding and are not a test: the answers are in the file and judged on the learner's device, and graded tests belong to the LMS's quizzes. `build --scorm` prints the condition (handoff #84)
+- Embedding (Player P5, P8): the `prefs` command applies the viewer's preferences a host kept (layout, the book's text size and background, captions and their size) and replies with those in effect; the player sends a `prefs` event when the viewer changes one with its own controls. `ready` now carries `formats`, `player` and `commands`.
+- Egatari Viewer keeps those preferences (the layout per file, the others for the device; not on a shared device) and sends them back when a file is opened again.
+- File info… can now write the title, creators (one per line), copyright notice, license (seven Creative Commons choices, no license, or another SPDX name) and attribution: a working folder saves them to `metadata` in egatari.json at once, an Egatari file at the next save. The first-save question now asks “Did you make this file?”, and for a file without a license the same dialog offers CC BY 4.0, CC BY-SA 4.0, CC BY-NC 4.0 or no license, with fields for the creators and the copyright notice (handoff #88)
+- The first save of an Egatari file without a license that the “Did you make this file?” question does not cover (made in this Studio, or with no rights information at all) now asks only “Add a license?” with the same choices and fields, once per file: choosing no license leaves the file unchanged and the answer is remembered in the browser for that file (handoff #88)
+- Editor: **Slide ▾ → Insert image…** adds one image to the body of the slide (handoff #85). Choose a PNG, JPEG, WebP or SVG, paste it or drop it into the window (or drop it on the HTML field of the edit panel); pick a placement (in the body at full width, half or one third, or the left or right column, keeping the aspect ratio), alt text (required, or Decorative for `alt=""`) and the step it appears at (`data-step`). It is embedded as `<img src="data:…">` in a `.fig`, with a notice over 1 MB, and can be undone like the other slide operations. The detailed AI instructions (paid plan, and the make skill) now say to write a figure box with a description where a photo is needed; the author adds the image later (the free English pack has no room for the line). Background images are left out until the per-slide background (#226) exists.
+- The editor app has multi-level Undo and Redo (↶ ↷ in the toolbar, ⌘Z / ⇧⌘Z, Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y) across slide actions, HTML edits and script edits while the file is open (saving keeps the history); File ▾ › Revert to last saved… for an Egatari file; Find and replace (magnifier button, ⌘F / Ctrl+F) across the slides and the script, replacing only text so markup stays intact, undoable in one step; a Source line slide template, and one line in the AI instructions asking for a source line on slides with numbers, figures or quotations (handoff #86)
+- Egatari Viewer reopens a file where you left off (player spec P5): the last step is kept on this device per file and sent back as a `seek` after the player's `ready`, with a notice and a 「最初から再生」 (Start over) button. Not on a shared device or for a file with a Live.
+
+### Changed
+
+- Parts library 2.20.0 is now the default (release 0a65daf, tarball e493891c…, manifest cc528b69…), imported beside 2.18.0. New part `m-contrast` 2.0.0 (earlier answers and this work side by side, question by question; paid packs only). `m-curves` 2.4.0 (text ticks on the x axis), `m-predict` 2.2.0 (reports the guess through `ctx.answer` when the player passes one), `m-tree` 2.2.0. The parts gallery is re-synced to the 2.20.0 release
+- Parts library 2.21.0 is now the default (release 102c308, tarball 96fcf97e…, manifest 646e758e…), imported beside 2.20.0. `m-predict` 2.3.0 declares its question (`static questions`), so the player counts it for `completion.checks` and the SCORM score (handoff #84). The parts gallery is re-synced to the 2.21.0 release
+- Egatari Player 1.11.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. Slides can carry a source line, `<p class="source">…</p>`: placed directly in the slide it sits just above the conclusion line, small and grey, and the body is shortened to make room; inside the body it ends the body (handoff #86)
+- Egatari Player 1.11.0 also gives parts `ctx.answer(id, correct, value?)` (format §8.4) and counts, when the file opens, the questions every part element declares in `static questions` (also on slides not yet shown; answers to undeclared ids are ignored, and an unanswered question holds back `checks` and counts as wrong in the score): the answer is recorded per question (`<slide key>/<index of the part on the slide>/<id>`, the latest replacing earlier ones, answered and answered correctly counted at least once), sent as the tracking event `answer` `{slideKey, id, correct, value?}`, and `metadata.completion.checks` (`"answered"` or `"correct"`, §9.2) must hold as well for completion. In an LMS the player sends `cmi.core.score.min` 0, `max` 100 and `raw` (the share of questions with a right answer answered correctly) and keeps the answered and correct questions in `cmi.suspend_data` as `qa` and `qc` (SCORM 1.2 binding §2.1); passed and failed are never sent (handoff #84)
+- Egatari Player 1.12.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. A host can keep the viewer's preferences and give them back with the `prefs` command, and `ready` names the formats, the player and the commands it takes (Player P5, P8; handoff #94)
+- The copy of the spec is now snapshot wd-2026-11-22 (egatari-spec ece85be)
+- Viewer: while handwriting is on, its button reads 「手書きを終了」 (End handwriting) and looks pressed, and the top bar's 閉じる now reads 「ファイルを閉じる」 (Close file), so ending handwriting is not mistaken for closing the file. Below 760 px the マークアップ button shows its icon only.
+- Viewer: the マークアップ (Markup) button shows only for a file with a book; a file without one no longer offers it only to say it has no book.
+
+### Fixed
+
+- Add bookmark…, Insert image…, Change theme…, For an LMS (SCORM)…, For participants (play-only)…, Save as…, Revise… (and the other AI dialogs) and the Book panel: pressing the item again while it opens (a double click, or a second press on a slow computer) no longer rebuilds the dialog a moment later and loses what is being typed; the Book panel also keeps unsaved text when it is redrawn after a rebuild (same fix as File info…)
+- File info…: pressing it again while it opens (a double click, or a second press on a slow computer) no longer rebuilds the form a moment later and loses what is being typed (found by test-app-file-info on slow CI runners, handoff #88)
+- Find and replace: pressing Replace (or Next, Previous, Replace all) right after typing no longer loses the selected match to the recount that was still waiting, which made a second Replace only select again (found by test-app-undo on the Windows CI, handoff #86)
+- The quality check (command line and editor) now reports a `<script>` with no `</script>` (new code `scriptUnclosed`, R-components) at the slide where it is, with the headings of the slides it swallows. Before, a part's JSON data left unclosed turned every later slide into script text: those slides got no id, their narration sections were reported as "slide not found" (which read like a heading-normalization mismatch for headings such as 「なぜ POS だけを使うのか」), and the narration of earlier slides was reported missing too. Heading keys were already normalized the same way on both sides (handoff #96)
+
 ## [0.6.18] - 2026-11-22
 
 ### Added
@@ -1687,7 +1718,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.18...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.19...HEAD
+[0.6.19]: https://github.com/egatari/egatari-studio/compare/v0.6.18...v0.6.19
 [0.6.18]: https://github.com/egatari/egatari-studio/compare/v0.6.17...v0.6.18
 [0.6.17]: https://github.com/egatari/egatari-studio/compare/v0.6.16...v0.6.17
 [0.6.16]: https://github.com/egatari/egatari-studio/compare/v0.6.15...v0.6.16
