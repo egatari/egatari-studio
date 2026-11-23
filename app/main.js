@@ -1281,11 +1281,71 @@ function loadPresenter() {
   f.srcdoc = withShim(S.base, { query: '?presenter=1', opener: true, html: S.base, shim: SHIM, prefix: trustedPrefix() });
 }
 
+// ---------------------------------------------------------------- メニューの項目で開いた窓・板のフォーカス（handoff #98）
+// 道具の列の一覧で項目を選んだら（クリック・ダブルクリック・Enter。picks に 1 つ）、その項目の処理（開く前の await を含む。track）が開いた
+// 窓（ask）・板（openPanel）の最初の欄（なければ最初のボタンなど）にフォーカスを置く。板は、選んだ項目が開いたときだけ（後の描き直しでは動かさない）。
+// 開いた（開いている途中の）ものがあれば、一覧のボタンにフォーカスを返さない（2 度目の Enter で一覧が開き直り「新規作成…」が動きえた）。
+// 何も開かなかった項目をキーボードで選んだときは、前のとおりボタンに返す（処理が終わってから）。
+// ダブルクリックの 2 度目のクリック（detail ≥ 2）は、選んでから PICK_MS の間は捨てる（窓の本体・プレビューにフォーカスが移っていた）。
+// プレビューの iframe の中のクリックは捨てられないので、その間に iframe へ移ったら欄に戻す。開いた直後の Enter（2 度押しの 2 度目）も捨てる（板の欄で保存しない）
+const PICK_MS = 700, REPEAT_MS = 500;
+const picks = new Set();          // 処理の終わっていない選び：{top, kb, t, live, work: [], opened}
+let lastPick = null, lastOpened = null;   // lastOpened：{at, el}（フォーカスを置いた欄）
+// 選んだ項目の処理の約束を、その選びに付ける（一覧のクリックの同じ流れの中で呼ばれたときだけ。once・guarded は自分で付ける）
+function track(p) {
+  for (const x of picks) if (x.live) x.work.push(p);
+  return p;
+}
+const FIELD = 'input:not([type=hidden]):not([disabled]), select:not([disabled]), textarea:not([disabled])';
+const FOCUSABLE = FIELD + ', button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+const TEXT_FIELD = 'input[type=text], input[type=search], input:not([type])';
+const visible = (x) => x.getClientRects().length > 0;
+const selectAll = (f) => { if (f.closest('dialog') && f.matches(TEXT_FIELD)) { try { f.select(); } catch { /* 無視 */ } } };
+// 最初の欄（fieldsOnly でなければ、なければ最初のボタンなど）へ。窓の中の字の欄は、初めの値を全部選ぶ（打てば置き換わる）
+function focusFirst(box, { fieldsOnly = false } = {}) {
+  const f = [...box.querySelectorAll(FIELD)].find(visible) || (fieldsOnly ? null : [...box.querySelectorAll(FOCUSABLE)].find(visible));
+  if (!f) return null;
+  f.focus();
+  selectAll(f);
+  return f;
+}
+// 窓・板が開いた（描いた後）：dialog は毎回（showModal の初めのフォーカスが本文の欄でなければ最初の欄へ。欄のない窓は showModal のまま）、
+// 板は選んだ項目が開いたときだけ
+function uiOpened(box, dialog) {
+  const pending = [...picks].some((x) => !x.opened);
+  let f = null;
+  if (dialog) {
+    const a = document.activeElement;
+    if (a && box.contains(a) && a.matches(FIELD)) { f = a; selectAll(a); } else f = focusFirst(box, { fieldsOnly: true });
+  } else if (pending) f = focusFirst(box);
+  if (!pending) return;
+  for (const x of picks) x.opened = true;
+  lastOpened = { at: Date.now(), el: f || document.activeElement };
+}
+const inPick = () => !!lastPick && Date.now() - lastPick.t < PICK_MS;
+// ダブルクリックの 2 度目（一覧が閉じた後、その下にあるもの・開いた窓の本体へのクリック）
+for (const ev of ['mousedown', 'mouseup', 'click', 'dblclick']) {
+  document.addEventListener(ev, (e) => { if (e.detail >= 2 && inPick()) { e.preventDefault(); e.stopPropagation(); } }, true);
+}
+// 2 度目の Enter：開いた直後の欄で保存・押さない（一覧が開き直らないのは、ボタンにフォーカスを返さないから）
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing && lastOpened && Date.now() - lastOpened.at < REPEAT_MS && inPick()) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+// 2 度目のクリックがプレビューの iframe に入った（親の文書では捨てられない）：開いた欄に戻す
+window.addEventListener('blur', () => {
+  if (!inPick()) return;
+  setTimeout(() => {
+    const a = document.activeElement, o = lastOpened;
+    if (a && a.tagName === 'IFRAME' && o && o.at >= lastPick.t && o.el && o.el.isConnected && o.el !== a) o.el.focus();
+  }, 0);
+});
+
 // ---------------------------------------------------------------- 横の板（検査・警告・使い方）
 function openPanel(title, body) {
   $('panel').hidden = false; $('panel-title').textContent = title;
   ui.mark('panel', true);
   const b = $('panel-body'); b.innerHTML = ''; b.append(...[].concat(body));
+  uiOpened(b, false);
 }
 function closePanel() { $('panel').hidden = true; }
 $('panel-close').onclick = closePanel;
@@ -1598,7 +1658,8 @@ function once(fn) {
   return async (...a) => {
     if (busy) return false;
     busy = true;
-    try { return await fn(...a); } finally { busy = false; }
+    // 一覧の項目から呼ばれたら、その選びに処理を付ける（開いた窓・板へのフォーカス。track）
+    return track((async () => { try { return await fn(...a); } finally { busy = false; } })());
   };
 }
 // 道具の列の項目の onclick：once で包み、失敗は知らせに
@@ -1624,6 +1685,7 @@ function ask({ title, body, buttons, confirmText = null, kind = '', validate = n
     d.returnValue = '';
     d.onclose = () => { if (askPending === resolve) askPending = null; resolve(d.returnValue || 'cancel'); };
     d.showModal();
+    uiOpened(b, true);
   });
 }
 
@@ -2856,7 +2918,7 @@ $('b-export-portable').onclick = exportPortableFile;
 $('b-export-play').onclick = guarded(participantExport);
 $('b-export-mp4').onclick = guarded(mp4Dialog);
 $('b-export-scorm').onclick = guarded(scormExport);
-$('b-info').onclick = () => lessonInfo().catch((e) => toast(String(e.message || e), true));
+$('b-info').onclick = () => track(lessonInfo()).catch((e) => toast(String(e.message || e), true));
 $('b-insert').onclick = guarded(insertDialog);
 $('b-image').onclick = () => openImage().catch((e) => toast(String(e.message || e), true));
 $('b-dup').onclick = () => { const i = slideAt(); if (i === null) { toast(T.noSlide, true); return; } slidesPanel.duplicateAt(i); };
@@ -2962,14 +3024,42 @@ for (const M of [...MENUS, ...SUBS]) {
       if (hit) hit.focus();
     }
   });
-  M.list.addEventListener('click', (e) => {
+  // 選んだ項目（その一覧のもの。入れ子の項目は入れ子の一覧が受ける）
+  const itemOf = (e) => {
     const b = e.target.closest('[role^=menuitem]');
-    if (!b || b.getAttribute('aria-haspopup') === 'menu' || !M.list.contains(b) || (!M.sub && SUBS.some((X) => X.list.contains(b)))) return;
+    if (!b || b.getAttribute('aria-haspopup') === 'menu' || !M.list.contains(b) || (!M.sub && SUBS.some((X) => X.list.contains(b)))) return null;
+    return b;
+  };
+  // 項目の onclick より先に：選びを始める（その onclick の処理・開いた窓と板をこの選びに付ける。handoff #98）
+  M.list.addEventListener('click', (e) => {
+    const b = itemOf(e);
+    if (!b) return;
+    const p = { top: MENUS.find((X) => X.list.contains(b)), kb: e.detail === 0, t: Date.now(), live: true, work: [], opened: false };
+    picks.add(p); lastPick = p;
+  }, true);
+  M.list.addEventListener('click', (e) => {
+    const b = itemOf(e);
+    if (!b) return;
+    const p = lastPick && lastPick.live ? lastPick : null;
+    if (p) p.live = false;
     const top = MENUS.find((X) => X.list.contains(b));
     closeMenus();
-    // キーボードで選んだ（detail = 0）：ボタンに返す（選んだものが窓を開いたら、窓が受ける）。マウス：focus を残さない
-    if (e.detail === 0 && top && !document.querySelector('dialog[open]')) top.btn.focus();
-    else if (document.activeElement === b) b.blur();
+    // キーボードで選んだ（detail = 0）：何も開かなければボタンに返す（開く前に待つ処理は、終わってから）。窓・板を開いたら、その最初の欄が受ける。
+    // マウス：focus を残さない
+    const back = () => {
+      if (p) picks.delete(p);
+      if (p && p.opened) return;
+      if (e.detail === 0 && top && !document.querySelector('dialog[open]')) top.btn.focus();
+      else if (document.activeElement === b) b.blur();
+    };
+    if (p && p.work.length && !p.opened) {
+      if (document.activeElement === b) b.blur();
+      Promise.allSettled(p.work).then(() => {
+        picks.delete(p);
+        const a = document.activeElement;
+        if (!p.opened && p.kb && top && (!a || a === document.body) && !document.querySelector('dialog[open]')) top.btn.focus();
+      });
+    } else back();
   });
 }
 document.addEventListener('click', (e) => { if (!e.target.closest('#tools .menu')) closeMenus(); });
