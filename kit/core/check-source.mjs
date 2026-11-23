@@ -4,7 +4,7 @@
 //     I：id の書式・重なり（slideId）、旧来の鍵（legacyDataKey・legacyIndex）、1.0 の語彙にない書き方（legacyColorClass・legacyStepAttr・legacyLectureMode）、
 //        予想（m-predict）の答えが数の棒と同時（predictAnswerWithCount）・steps が小さく答えが出ない（predictAnswerNeverShown）、
 //        テーマの色の語彙の外の色（colorOutside、情報）、{#id} の見出しとスライドの見出しの違い（narrHeadingDiffers、情報）
-//        肩見出しの長さ・置き場所・スライドの種類（kickerLong・kickerPlace・kickerSlide）
+//        肩見出しの長さ・置き場所・スライドの種類（kickerLong・kickerPlace・kickerSlide）、閉じていない <script>（scriptUnclosed）
 //     B：{note:} の書き損じ（narrNote）、式らしい台本（narrFormula）、長すぎる 1 ターン（turnLong、情報）、台本の言語がスライドと違う（narrLang、情報）
 //   コマンド版は台本の段階を実行系（DECK.NARRATION）から取る。ここは narration.md から取り、どのスライドにも合わない節は見ない（それは組み立ての知らせ）
 import { analyzeSlideIds, isJapanese } from './build-core.mjs';
@@ -14,6 +14,7 @@ import { kickerFindings } from './kicker.mjs';
 import { cautionFindings } from './caution.mjs';
 import { bookmarkFindings } from './bookmark.mjs';
 import { tateMixFindings } from './tate-mix.mjs';
+import { scriptUnclosedFindings } from './script-unclosed.mjs';
 import { predictStepProblems } from './predict-steps.mjs';
 import { parseNarration, normalizeKey, noteProblems } from './narration-parse.mjs';
 import { narrationLang, textLang, formulaLike, formulaText } from './narration-lint.mjs';
@@ -28,6 +29,8 @@ export function sourceFindings({ deck, narration = '', voiceLang } = {}) {
   for (const f of bookmarkFindings(deck)) add(f.i, f.sev, f.code, f.a);
   // 縦と横の入れ替わり（#70。kit/core/tate-mix.mjs、コマンド版と同じ）
   for (const f of tateMixFindings(deck)) add(f.i, f.sev, f.code, f.a);
+  // 閉じていない <script>（#96。kit/core/script-unclosed.mjs、コマンド版と同じ）
+  for (const f of scriptUnclosedFindings(deck)) add(f.i, f.sev, f.code, f.a);
   const ids = analyzeSlideIds(deck);
   for (const p of ids.problems) add(p.slide, p.sev, 'slideId', { msg: p.msg });
   for (const s of ids.slides) {
