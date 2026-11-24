@@ -108,6 +108,31 @@ try {
   ok(fb && fa === fb, 'focus goes back to where it was before blackout ' + JSON.stringify({ fb, fa }));
   await p.evaluate(() => document.activeElement.blur());
 
+  // 発表者ビューの上の帯（handoff #105）：幅 1280・1024・800 で、帯の項目の字が 1 行に収まり（1 字ずつ折り返さない）、横にはみ出さない
+  const headerFits = async (pv, label) => {
+    for (const w of [1280, 1024, 800]) {
+      await pv.setViewportSize({ width: w, height: 800 }); await pv.waitForTimeout(250);
+      const m = await pv.evaluate(() => {
+        const h = document.querySelector('#pv header');
+        const items = [...h.children].filter((e) => !e.hidden && e.className !== 'sp' && e.getClientRects().length);
+        // 折り返し：1 つの字の並び（テキストノード）が 2 行以上にわたるか、項目の高さが 1 行のボタン（34 px）を大きく超える
+        const multi = items.filter((e) => {
+          const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT);
+          for (let t = w.nextNode(); t; t = w.nextNode()) {
+            if (!t.textContent.trim()) continue;
+            const r = document.createRange(); r.selectNodeContents(t);
+            const tops = [...r.getClientRects()].filter((x) => x.width > 0).map((x) => Math.round(x.top));
+            if (tops.length && Math.max(...tops) - Math.min(...tops) > 4) return true;
+          }
+          return e.getBoundingClientRect().height > 48;
+        }).map((e) => e.id || e.className || e.tagName);
+        return { multi, compact: h.classList.contains('pv-compact'), rows: new Set(items.map((e) => Math.round(e.getBoundingClientRect().top / 10))).size, headerOver: h.scrollWidth - h.clientWidth, pageOver: document.documentElement.scrollWidth - innerWidth };
+      });
+      ok(!m.multi.length && m.headerOver <= 1 && m.pageOver <= 1, `presenter view ${label}, ${w} px: every item of the top bar stays on one line and nothing sticks out sideways ` + JSON.stringify(m));
+    }
+    await pv.setViewportSize({ width: 1280, height: 800 }); await pv.waitForTimeout(250);
+  };
+
   // 発表者ビュー
   const [pv] = await Promise.all([ctx.waitForEvent('page'), p.keyboard.press('p')]);
   await pv.waitForSelector('#pv-black', { state: 'attached' });
@@ -133,11 +158,13 @@ try {
     await pv.click('#pv-go-prev'); await moved(k1); await pv.waitForTimeout(300);
   }
   await pv.evaluate(() => document.activeElement && document.activeElement.blur());
+  await headerFits(pv, 'without blackout');
   await p.bringToFront();
   await p.keyboard.press('b');
   await pv.waitForFunction(() => !document.getElementById('pv-black').hidden, null, { timeout: scaled(5000) }).catch(() => {});
   const pv1 = await pv.evaluate(() => { const e = document.getElementById('pv-black'); return { shown: !e.hidden && e.getBoundingClientRect().width > 0, text: e.textContent }; });
   if (outDir) await pv.screenshot({ path: path.join(outDir, 'blackout-presenter.png') });
+  await headerFits(pv, 'during blackout');
   ok(hidden0 && pv1.shown && /暗転中|Black screen/.test(pv1.text), 'the presenter view shows the blacked-out indicator while the main window is black ' + JSON.stringify({ hidden0, ...pv1 }));
   await pv.bringToFront();
   await pv.keyboard.press('b');

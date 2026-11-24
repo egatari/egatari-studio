@@ -54,10 +54,10 @@ DECK.presenterView = function(){
     ' <header><span id="pv-pos"></span><span id="pv-step"></span><span id="pv-black" role="status" title="' + L.blackT + '" hidden>■ ' + L.black + '</span><span class="sp"></span>' +
     '  <button type="button" id="pv-back" aria-label="' + L.back + '" hidden>← ' + L.back + '</button>' +
     '  <span id="pv-bm" role="group" aria-label="' + L.bmGroup + '" hidden></span>' +
-    '  <button type="button" id="pv-auto" title="' + L.autoKey + '" aria-pressed="false">▶ ' + L.auto + '</button>' + tools +
+    '  <button type="button" id="pv-auto" title="' + L.autoKey + '" aria-pressed="false" aria-label="' + L.auto + '">▶ <span class="pv-lb">' + L.auto + '</span></button>' + tools +
     '<button type="button" id="pv-reset" title="' + L.reset + '" aria-label="' + L.reset + '">⟲</button>' +
     '  <span id="pv-timer" role="timer">00:00</span><span id="pv-clock"></span>' +
-    '  <button type="button" id="pv-close">' + L.close + '</button></header>' +
+    '  <button type="button" id="pv-close" title="' + L.close + '" aria-label="' + L.close + '"><span class="pv-lb">' + L.close + '</span></button></header>' +
     ' <main><div id="pv-cur"><iframe id="f-cur" title="' + L.cur + '"></iframe>' +
     // 前へ・次へ（handoff #104）：キーやリモコンのない所（Sidecar の iPad の Apple Pencil・指のタッチ）でも送れる。帯と同じ言葉と絵、添え字にキー
     '  <div id="pv-nav"><button type="button" id="pv-go-prev" aria-label="' + L.goPrev + '">' + (ic.prev || "") + L.goPrev + '<kbd aria-hidden="true">←</kbd></button>' +
@@ -70,7 +70,7 @@ DECK.presenterView = function(){
   st.textContent =
     "html.presenter,html.presenter body{background:#1b1b1b;color:#eee;overflow:hidden;height:100%;margin:0}" +
     "#pv{display:flex;flex-direction:column;height:100vh;font:16px/1.5 var(--font-sans,sans-serif)}" +
-    "#pv header{display:flex;gap:18px;align-items:center;padding:8px 16px;background:#111;font-size:18px}" +
+    "#pv header{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:8px 16px;background:#111;font-size:18px}#pv header>*{white-space:nowrap;flex:none}#pv header>#pv-bm,#pv header>#pv-back{flex:0 1 auto;min-width:0}#pv header>.sp{flex:1 1 0}" +
     "#pv header .sp{flex:1}#pv-timer{font-size:28px;font-variant-numeric:tabular-nums}#pv-clock{color:#aaa;font-variant-numeric:tabular-nums}" +
     "#pv button{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:4px 12px;font-size:15px;cursor:pointer}" +
     "#pv button:focus{outline:none}#pv button:focus-visible{outline:2px solid #9cf;outline-offset:2px}" +
@@ -95,7 +95,7 @@ DECK.presenterView = function(){
     "#pv-text .next{color:#888}#pv-text .next p{font-size:18px}" +
     "#pv-bm{display:flex;gap:4px;min-width:0;flex-wrap:wrap}#pv-bm[hidden],#pv-bm button[hidden]{display:none}" +
     "#pv-bm button{max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-bm button[aria-current=true]{border-color:#ddd}" +
-    "#pv header button{height:34px}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
+    "#pv header button{height:34px}#pv header.pv-compact .pv-lb{display:none}#pv header.pv-compact #pv-step::before{content:'\\B7';margin-right:.5em;color:#888}#pv header.pv-compact #pv-close::before{content:'\\2715'}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
     "#pv .pv-tools{display:flex;gap:4px}" +
     "#pv .pv-tools button{display:flex;align-items:center;gap:5px;padding:0 9px;user-select:none}" +
     "#pv .pv-tools button:hover{background:#3d3d3d}#pv .pv-tools button.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
@@ -128,6 +128,22 @@ DECK.presenterView = function(){
     on = !!on;
     document.getElementById("pv-black").hidden = !on;
     document.getElementById("pv").classList.toggle("pv-black", on);
+    fitHeader();
+  }
+  // 上の帯（handoff #105）：項目は折り返さない（字を 1 字ずつ縦に並べない）。1 行に入らなければ、字を省く（pv-compact：
+  // 「スライド」「ステップ」は数だけ、「自動再生」「発表者ビューを閉じる（p）」は絵だけ。名前は title と aria-label に残す）。それでも入らなければ帯を 2 段にする
+  function fitHeader(){
+    var h = document.querySelector("#pv header"); if (!h) return;
+    var wrapped = function(){
+      var top = null, items = h.children;
+      for (var i = 0; i < items.length; i++){
+        var it = items[i]; if (it.hidden || it.offsetParent === null || it.className === "sp") continue;
+        if (top === null) top = it.offsetTop; else if (it.offsetTop > top + 4) return true;
+      }
+      return h.scrollWidth > h.clientWidth + 1;
+    };
+    h.classList.remove("pv-compact");
+    if (wrapped()) h.classList.add("pv-compact");
   }
   function send(cmd, extra){ if (opener && !opener.closed) opener.postMessage(Object.assign({type: "deck-cmd", cmd: cmd}, extra || {}), "*"); }
   function notes(key){
@@ -146,17 +162,20 @@ DECK.presenterView = function(){
   function esc(s){ return String(s).replace(/[&<>]/g, function(c){ return {"&": "&amp;", "<": "&lt;", ">": "&gt;"}[c]; }); }
   function update(){
     if (!pos) return;
-    document.getElementById("pv-pos").textContent = L.slide + (pos.i + 1) + " / " + pos.n;
+    // 帯の字：「スライド」「ステップ」・ボタンの字は .pv-lb（帯が 1 行に入らないときは省く。fitHeader）。textContent は今までと同じ
+    document.getElementById("pv-pos").innerHTML = '<span class="pv-lb">' + L.slide + '</span>' + (pos.i + 1) + " / " + pos.n;
     var ab = document.getElementById("pv-auto");
-    ab.textContent = (pos.auto ? "■ " : "▶ ") + (pos.auto ? L.stop : L.auto); ab.classList.toggle("on", !!pos.auto);
+    ab.innerHTML = (pos.auto ? "■ " : "▶ ") + '<span class="pv-lb">' + (pos.auto ? L.stop : L.auto) + '</span>'; ab.classList.toggle("on", !!pos.auto);
+    ab.setAttribute("aria-label", pos.auto ? L.stop : L.auto);
     ab.setAttribute("aria-pressed", pos.auto ? "true" : "false");
     syncTools();
-    document.getElementById("pv-step").textContent = L.step + pos.k + " / " + pos.max;
+    document.getElementById("pv-step").innerHTML = '<span class="pv-lb">' + L.step + '</span>' + pos.k + " / " + pos.max;
     syncBookmarks();
     // リンクで来たとき：本体と同じ「戻る」（しおりで来ているときは、しおりの「元の位置に戻る」を出す）
     var bb = document.getElementById("pv-back");
     bb.hidden = !pos.back || !!pos.bm;
     if (pos.back){ var c = DECK.ja === false ? ": " : "："; bb.textContent = "← " + L.back + c + pos.back; bb.title = L.back + c + pos.back + (DECK.ja === false ? " (Backspace / Alt+←)" : "（Backspace / Alt+←）"); bb.setAttribute("aria-label", L.back + c + pos.back); }
+    fitHeader();
     fc.contentWindow && fc.contentWindow.postMessage({type: "deck-goto", i: pos.i, k: pos.k, animate: true, viewer: pos.viewer}, "*");
     // 次のスライド：段階が残っていても次のスライドを、すべてのステップを出した姿で（k は大きく送り、デッキが最後の段階に収める）。
     // 最後のスライドでは「終わり」
@@ -220,6 +239,7 @@ DECK.presenterView = function(){
   }
   DECK.presenterClose = closeView;
   document.getElementById("pv-close").onclick = function(){ closeView(); };
+  window.addEventListener("resize", fitHeader);
   // 開いたらフォーカスを取る。まだキーを受けられなければ、大きな覆いで最初のクリックを受ける
   var tap = document.createElement("button");
   tap.type = "button"; tap.id = "pv-tap"; tap.textContent = L.tap; tap.hidden = true;
