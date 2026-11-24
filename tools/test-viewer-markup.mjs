@@ -221,7 +221,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
     const s = await select(f, a, b);
     ok(!!s, `selected ${what}: ${s && s.text.replace(/\s+/g, ' ')}`);
     let w = null; await until(async () => (w = await popup(f)));
-    ok(w && w.buttons.join() === 'y,p,b' && w.bottom <= s.top + 1, `the small window shows three colours, above the selection (${w && w.bottom} ≤ ${s && s.top})`);
+    ok(w && w.buttons.join() === 'y,p,b,note' && w.bottom <= s.top + 1, `the small window shows three colours and メモ, above the selection (${w && w.bottom} ≤ ${s && s.top})`);
     await press(f, col);
     await until(async () => (await mstate(p)).record.highlights.length >= HL.indexOf(HL.find((x) => x[1] === a)) + 1);
   }
@@ -239,7 +239,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   const [r0] = await highlightRects(f, 'p');
   await tapAt(p, r0.x, r0.y);
   let w = null; await until(async () => (w = await popup(f)));
-  ok(w && w.buttons.join() === 'y,p,b,del', 'a tap on a highlight opens the window with 消す');
+  ok(w && w.buttons.join() === 'y,p,b,note,del', 'a tap on a highlight opens the window with メモ and 消す');
   await press(f, 'b'); await until(async () => (await sizes(f)).b === 2);
   ok((await sizes(f)).p === 0, 'the colour is changed');
   await press(f, 'b').catch(() => {});

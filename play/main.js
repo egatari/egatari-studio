@@ -240,6 +240,11 @@ function applyLayout() {
   const L = computeLayout({ w: vw, h: vh, headerH: vh - P.height, live, polls: S.hasPolls, variant: variant() });
   S.layout = L;
   const place = (el, q) => { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; el.style.width = q.w + 'px'; el.style.height = q.h + 'px'; };
+  if (!$('note-panel').hidden) {
+    const ph = Math.max(160, Math.round(L.frame.h * 0.4));
+    L.frame = { ...L.frame, h: Math.max(120, L.frame.h - ph) };
+    place($('note-panel'), { x: L.frame.x, y: L.frame.y + L.frame.h, w: L.frame.w, h: ph });
+  }
   place($('stage-wrap'), L.frame);
   if (NOTE.view && L.mode === 'none') memoLayout(L, place);
   $('player').setAttribute('data-mode', L.mode);
@@ -392,6 +397,40 @@ function setInk(on, keepView) {
   if (!on && NOTE.byInk) { NOTE.byInk = false; if (!keepView) { setNoteView(false); return; } }
   applyLayout();
 }
+// the note of a section of the book: in this page, below the lesson's frame (the frame gives it room: no sheet over the frame), with
+// the page's own text size. Its words never go into the frame (annotations.md, Note record)
+const PANEL = { at: null, ed: null };
+function openSection(section) {
+  if (!M || !S.frame || S.playing.live) return null;
+  if (NOTE.view) setNoteView(false);
+  const p = $('note-panel'), title = M.sections()[section] || '';
+  if (!PANEL.ed) PANEL.ed = noteEditor({ root: $('note-panel-body'), words: W, onSave: (at, blocks) => M.setNote(at, blocks), onGo: goQuote, onEscape: closeSection, placeholder: () => W().nPlaceholderSection });
+  PANEL.at = { section };
+  $('note-panel-t').textContent = W().nSectionLabel(title);
+  $('note-panel-shared').hidden = !$('shared').checked;
+  PANEL.ed.show(PANEL.at, M.getNote(PANEL.at), W().nSectionLabel(title));
+  const was = !p.hidden;
+  p.hidden = false;
+  if (!was) applyLayout();
+  return PANEL.ed;
+}
+function closeSection() {
+  const p = $('note-panel');
+  if (p.hidden) return;
+  if (PANEL.ed) PANEL.ed.flush();
+  p.hidden = true; PANEL.at = null;
+  applyLayout();
+  try { S.frame.focus(); } catch { /* gone */ }
+}
+// 「メモ」 in the small window: the quote goes into the note of its slide (the memo view opens) or of its section (the panel opens)
+function onQuote(at, block) {
+  let ed = null;
+  if (at.slide != null) { if (!NOTE.view) setNoteView(true); ed = NOTE.ed && NOTE.ed.at && NOTE.ed.at.slide === at.slide ? NOTE.ed : null; }
+  else ed = openSection(at.section);
+  if (ed) ed.addQuote(block);
+  else M.setNote(at, [...M.getNote(at), block]);   // not on screen (the slide moved on): kept all the same
+  announce(W().nQuoted);
+}
 // ↗ on a quote: a quote from another slide goes to that slide first
 function goQuote(q) {
   if (!M) return;
@@ -445,7 +484,7 @@ function hideResume() { clearTimeout(RESUME.timer); $('resume').hidden = true; }
 
 function closeLesson(quiet) {
   hideResume();
-  setInk(false); setNoteView(false); S.slideKey = ''; S.posEvents = false;
+  setInk(false); setNoteView(false); closeSection(); S.slideKey = ''; S.posEvents = false;
   if (M) M.close();
   if ($('cred-box').open) $('cred-box').close();
   if (S.frame && fsElement() === S.frame) fsRequest(false);
@@ -520,6 +559,8 @@ const M = framed ? null : markup({
     note: $('markup-note'), hint: $('markup-hint'), filtered: $('m-filtered'), filteredShow: $('b-mshow'), list: $('m-list'), listBody: $('m-list-body'), listClose: $('b-mlist-close'),
     confirm: $('m-confirm'), confirmText: $('m-confirm-t'), confirmNo: $('b-mconfirm-no'), confirmYes: $('b-mconfirm-yes'), announce: (t) => announce(t) },
   onPersist: () => maybeRequestPersist(),
+  onQuote: (at, block) => onQuote(at, block),
+  onNoteSection: (section) => { const ed = openSection(section); if (ed) ed.focus(); },
 });
 const links = linkBox({ words: W, dlg: { box: $('link-box'), title: $('link-t'), host: $('link-host'), url: $('link-url'), notes: $('link-n'), cancel: $('b-link-cancel'), open: $('a-link-open') } });
 
@@ -752,6 +793,7 @@ async function main() {
   $('cred-box').addEventListener('close', () => { if (S.playing && !$('lesson-credit').hidden) $('lesson-credit').focus(); });
   $('b-ink').addEventListener('click', () => setInk(!INK.on));
   $('b-note').addEventListener('click', () => setNoteView(!NOTE.view));
+  $('b-np-close').addEventListener('click', closeSection);
   $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
   $('b-resume-x').addEventListener('click', hideResume);
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });

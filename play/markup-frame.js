@@ -9,10 +9,14 @@
 //   - The small window next to a selection (or a tapped highlight): three colours, and 消す on a highlight. Above it with a mouse,
 //     below a selection on a touch screen (iPad's own callout is above it).
 //   - 暗記: an opaque band of the colour over the text of the chosen colours; a tap reveals one highlight.
+//   - Notes (handoff #107): 「メモ」 in the small window asks the page to quote the words into the note of their section (the page
+//     adds or reuses the highlight). At the end of each section of the book, a 「メモ」 button opens that section's note in the page,
+//     shown while the markup bar is open or when the section has a note. The notes' words never come into this frame.
 // Messages (all {egaViewer: "markup-…"}; the page checks every one):
 //   to the page   hello {supported, article, shown}  add {color, target}  set {id, color}  del {id}  status {missing:[id], sections:{id: title}}  esc
 //                 widen {list: [{id, target}]}  (records made before the ruby rule, widened to whole ruby segments once re-attached)
-//   from the page load {list, words, view}  view {view}  jump {id}
+//                 quote {color, target}  note {section}
+//   from the page load {list, words, view}  view {view}  jump {id}  goto {target}  notes {sections: [id]}
 //     view = {hidden: ["y"…], recall: bool, recallColors: ["y"…], bar: bool}
 (function markupFrame() {
   "use strict";
@@ -22,10 +26,10 @@
   var supported = typeof Range === "function" && typeof Range.prototype.getClientRects === "function" && typeof Element.prototype.attachShadow === "function";
   function post(m) { m.egaViewer = "markup-" + m.egaViewer; try { parentWin.postMessage(m, "*"); } catch (e) { /* gone */ } }
 
-  var S = { list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
+  var S = { last: "y", noteSections: [], list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
 
   // ---------------------------------------------------------------- the text of a part, without ruby readings or hidden MathML
-  var SKIP = "rt,rp,.katex-mathml,script,style,template,noscript";
+  var SKIP = "rt,rp,.katex-mathml,script,style,template,noscript,[data-egatari-viewer]";
   function textOf(root) {
     var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) { var p = n.parentElement; return p && p.closest(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
     var nodes = [], starts = [], s = "", n;
@@ -123,6 +127,7 @@
   var LAYER_CSS = "@media print{:host{display:none!important}}" +   // stage 1 prints the book as it is; export (stage 2) draws highlights on purpose
     ".h{position:absolute;pointer-events:none;border-radius:2px}.h.mul{mix-blend-mode:multiply}.h.scr{mix-blend-mode:screen}" +
     ".m{position:absolute;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;pointer-events:auto}" +
+    ".fl div{position:absolute;border-radius:3px;pointer-events:none;outline:3px solid #2c63d4;animation:fl 1.2s ease-out forwards}@keyframes fl{0%{opacity:1}70%{opacity:1}100%{opacity:0}}" +
     ".k{all:unset;position:absolute;z-index:1;cursor:pointer;border-radius:2px;pointer-events:auto;-webkit-tap-highlight-color:transparent}.k:focus-visible{outline:3px solid #2c63d4;outline-offset:2px;box-shadow:0 0 0 5px #fff}";
   var L = { host: null, root: null, paint: null, mk: null };
   function layer() {
@@ -331,9 +336,54 @@
     var sections = {};
     if (S.article) Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) { var hd = s.querySelector("h2,h3"); sections[s.getAttribute("data-section-id")] = hd ? textOf(hd).text.trim().slice(0, 200) : ""; });
     post({ egaViewer: "status", missing: missing.slice(0, 2000), sections: sections });
+    noteButtons();
     if (widened.length) post({ egaViewer: "widen", list: widened });
   }
   var stale = function () { for (var id in S.placed) { var r = S.placed[id]; if (!r.startContainer.isConnected || !r.endContainer.isConnected || r.collapsed) return true; } return false; };
+
+  // ---------------------------------------------------------------- going to a place: scrolled to the middle, and the words flash once
+  function goTo(r) {
+    var el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+    try { el.scrollIntoView({ block: "center" }); } catch (x) { el.scrollIntoView(); }
+    setTimeout(function () { flash(r); }, 250);
+  }
+  function flash(r) {
+    var Y = S.article ? layer() : null;
+    if (!Y) return;
+    var o = L.host.getBoundingClientRect(), f = document.createElement("div"), rs = textRects(r);
+    f.className = "fl"; f.setAttribute("aria-hidden", "true");
+    for (var i = 0; i < rs.length; i++) { var d = document.createElement("div"); d.style.cssText = "left:" + (rs[i].left - o.left - 2) + "px;top:" + (rs[i].top - o.top - 2) + "px;width:" + (rs[i].width + 4) + "px;height:" + (rs[i].height + 4) + "px"; f.appendChild(d); }
+    L.root.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1300);
+  }
+
+  // ---------------------------------------------------------------- 「メモ」 at the end of each section of the book
+  // A host element at the end of the section, with the button in its own shadow tree (the lesson's styles cannot reach it, and its
+  // words are not text of the book: SKIP). Shown while the markup bar is open, or when the section has a note
+  function noteButtons() {
+    if (!S.article || !supported) return;
+    var W = words();
+    Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) {
+      var id = s.getAttribute("data-section-id"), b = null;
+      for (var c = s.firstElementChild; c; c = c.nextElementSibling) if (c.getAttribute("data-egatari-viewer") === "note") b = c;
+      var has = S.noteSections.indexOf(id) >= 0, want = !!W.noteOpen && (S.view.bar || has);
+      if (!want) { if (b) b.remove(); return; }
+      if (!b) {
+        b = document.createElement("div"); b.setAttribute("data-egatari-viewer", "note");
+        var sh = b.attachShadow({ mode: "open" }), st = document.createElement("style"), bt = document.createElement("button");
+        st.textContent = ":host{display:block;margin:.6em 0 0;text-align:end}button{font:inherit;font-size:.85em;padding:.25em .9em;border-radius:1em;border:1px solid currentColor;background:transparent;color:inherit;opacity:.8;cursor:pointer}button:hover{opacity:1}button:focus-visible{outline:3px solid #2c63d4;outline-offset:2px}";
+        bt.type = "button";
+        bt.addEventListener("click", function (e) { if (e.isTrusted) { e.stopPropagation(); post({ egaViewer: "note", section: id }); } });
+        sh.appendChild(st); sh.appendChild(bt);
+      }
+      // at the end of the section's own text, before a section inside it
+      var inner = null;
+      for (var k = s.firstElementChild; k; k = k.nextElementSibling) if (k.matches("section[data-section-id]")) { inner = k; break; }
+      if (b.parentNode !== s || b.nextElementSibling !== inner) s.insertBefore(b, inner);
+      var label = has ? W.noteOpen : W.noteWrite, btn = b.shadowRoot.querySelector("button");
+      if (btn.textContent !== label) btn.textContent = label;
+    });
+  }
 
   // ---------------------------------------------------------------- the small window
   var host = null, root = null, pop = null, popFor = null;   // popFor: {range} for a new one, {id} for a highlight
@@ -375,6 +425,7 @@
     pop.setAttribute("aria-label", W.window);
     if (dock) pop.setAttribute("aria-label", W.pick || W.window);   // docked away from the text: say what it is for
     COLORS.forEach(function (c) { var b = document.createElement("button"); b.type = "button"; b.className = "c " + c; b.setAttribute("data-a", c); b.setAttribute("aria-label", W[c]); b.title = W[c]; if (forWhat.id) b.setAttribute("aria-pressed", c === cur ? "true" : "false"); pop.appendChild(b); });
+    if (W.note) { var nb = document.createElement("button"); nb.type = "button"; nb.className = "d n"; nb.setAttribute("data-a", "note"); nb.textContent = W.note; pop.appendChild(nb); }
     if (forWhat.id) { var d = document.createElement("button"); d.type = "button"; d.className = "d"; d.setAttribute("data-a", "del"); d.textContent = W.del; pop.appendChild(d); }
     if (dock) { var x0 = document.createElement("button"); x0.type = "button"; x0.className = "x"; x0.setAttribute("data-a", "close"); x0.setAttribute("aria-label", W.close || "×"); x0.textContent = "×"; pop.appendChild(x0); }
     pop.classList.toggle("dock", !!dock);   // finger-sized buttons (44 px) when docked for a touch selection
@@ -418,10 +469,16 @@
     var f = popFor;
     if (!f) return;
     if (a === "close") { dismissed = f.target ? JSON.stringify(f.target) : null; hidePop(); return; }   // the selection stays
-    if (f.id) {
+    if (a === "note") {
+      // the words of a new selection, or of the tapped highlight: the page quotes them into the note (and keeps or adds the highlight)
+      var h0 = f.id ? S.list.filter(function (h) { return h.id === f.id; })[0] : null, t0 = h0 ? h0.target : f.target;
+      if (t0) post({ egaViewer: "quote", color: h0 ? h0.color : S.last, target: t0 });
+      if (!f.id) { try { window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ } }
+    } else if (f.id) {
       if (a === "del") post({ egaViewer: "del", id: f.id });
-      else if (COLORS.indexOf(a) >= 0) post({ egaViewer: "set", id: f.id, color: a });
+      else if (COLORS.indexOf(a) >= 0) { S.last = a; post({ egaViewer: "set", id: f.id, color: a }); }
     } else if (COLORS.indexOf(a) >= 0 && f.target) {
+      S.last = a;
       post({ egaViewer: "add", color: a, target: f.target });
       try { window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ }
     }
@@ -515,7 +572,7 @@
     var was = S.view.recall;
     S.view = { hidden: okColors(v.hidden), recall: v.recall === true, recallColors: okColors(v.recallColors), bar: v.bar === true };
     if (!S.view.recall || !was) S.revealed = {};
-    paint();
+    paint(); noteButtons();
   }
   window.addEventListener("message", function (e) {
     var m = e.data;
@@ -527,11 +584,15 @@
       placeAll();
       if (popFor && popFor.id && !S.placed[popFor.id]) hidePop();
     } else if (m.egaViewer === "markup-view") setView(m.view);
-    else if (m.egaViewer === "markup-jump" && typeof m.id === "string") {
-      var r = S.placed[m.id];
-      if (!r) return;
-      var el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
-      try { el.scrollIntoView({ block: "center" }); } catch (x) { el.scrollIntoView(); }
+    else if (m.egaViewer === "markup-jump" && typeof m.id === "string") { if (S.placed[m.id]) goTo(S.placed[m.id]); }
+    // ↗ on a quote whose highlight is gone: find the quoted words again (the same way as a highlight)
+    else if (m.egaViewer === "markup-goto" && m.target && typeof m.target === "object" && m.target.quote && typeof m.target.quote.exact === "string" && m.target.quote.exact.length <= MAXQ) {
+      var q = m.target.quote, t = { quote: { exact: q.exact, prefix: typeof q.prefix === "string" ? q.prefix.slice(0, CTX) : "", suffix: typeof q.suffix === "string" ? q.suffix.slice(0, CTX) : "" } };
+      if (typeof m.target.section === "string") { t.section = m.target.section; if (S.article) { var r2 = anchor({ target: t }); if (r2) goTo(r2); } }
+    }
+    else if (m.egaViewer === "markup-notes" && Array.isArray(m.sections) && m.sections.length <= 5000) {
+      S.noteSections = m.sections.filter(function (x) { return typeof x === "string" && x.length <= 200; });
+      noteButtons();
     }
   });
 })();

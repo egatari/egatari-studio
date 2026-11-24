@@ -296,3 +296,11 @@ body.note-narrow .ink-surf, body.note-narrow .ink-live { display: none; }
 .n-quote blockquote { margin: 0; white-space: pre-wrap; }
 .n-qrow { display: flex; gap: .4em; justify-content: flex-end; margin-top: .2em; }
 .n-qrow button { font-size: .75em; min-height: 0; padding: .15em .6em; }
+/* the note of a section of the book: below the lesson's frame (play/main.js openSection), the page's own text size */
+.note-panel { position: absolute; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; background: var(--panel); color: var(--fg);
+  border-top: 1px solid var(--line); padding: 8px 16px 12px; }
+.note-panel[hidden] { display: none; }
+.np-top { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.np-top h2 { font-size: 1rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#note-panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 6px 2px; font-size: 16px; line-height: 1.6; }
+#note-panel-body .n-quote { background: var(--bg); }

@@ -9,7 +9,7 @@
 //   E.show(at, blocks, label)   E.addQuote(block)   E.flush()   E.setReadOnly(on)   E.at   E.clear()
 const SAVE_MS = 500;
 
-export function noteEditor({ root, words, onSave, onGo = () => {}, onEscape = () => {} }) {
+export function noteEditor({ root, words, onSave, onGo = () => {}, onEscape = () => {}, placeholder = () => words().nPlaceholder }) {
   const box = document.createElement('div'); box.className = 'n-blocks';
   root.appendChild(box);
   let at = null, label = '', timer = 0, ro = false;
@@ -19,7 +19,7 @@ export function noteEditor({ root, words, onSave, onGo = () => {}, onEscape = ()
   function textBlock(text) {
     const t = mk('textarea', 'n-text'); t.value = text; t.rows = 1; t.readOnly = ro;
     t.setAttribute('aria-label', label);
-    t.placeholder = box.querySelector('textarea') ? '' : words().nPlaceholder;
+    t.placeholder = box.querySelector('textarea') ? '' : placeholder();
     t.addEventListener('input', () => { grow(t); later(); });
     t.addEventListener('blur', flush);
     t.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.isComposing) { e.preventDefault(); flush(); t.blur(); onEscape(); } });
@@ -71,6 +71,7 @@ export function noteEditor({ root, words, onSave, onGo = () => {}, onEscape = ()
     show(a, blocks, l) { if (at) flush(); at = a; label = l; render(blocks); },
     clear() { if (at) flush(); at = null; box.replaceChildren(); },
     flush,
+    focus() { const t = box.querySelector('textarea:last-of-type') || box.querySelector('textarea'); if (t && !ro) t.focus(); },
     // a quote goes after the last block (an empty last line gives way to it), with an empty line after it to write in, focused
     addQuote(block) {
       const last = box.lastElementChild;

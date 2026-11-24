@@ -42,6 +42,12 @@ async function portable(name, extraCss) {
   return out;
 }
 const LIGHT = await portable('light');
+// the book (tools/fixtures/article-book)
+const bookDir = path.join(work, 'book');
+fs.rmSync(bookDir, { recursive: true, force: true });
+fs.cpSync(path.join(ROOT, 'tools/fixtures/article-book'), bookDir, { recursive: true });
+const BOOK = path.join(work, 'book' + FORMAT.FILE_EXT);
+fs.writeFileSync(BOOK, (await buildPortable(path.join(bookDir, 'deck.html'), { subset: false })).html);
 const DARK = await portable('dark', '.slide{background:#101418 !important}');
 
 // ---------------------------------------------------------------- the Viewer
@@ -122,6 +128,64 @@ const key = (p, k) => p.keyboard.press(k);
   await open(p, LIGHT);
   await p.click('#b-note');
   ok(await until(() => p.evaluate(() => (document.querySelector('#note-area textarea') || {}).value === '最初のメモ。ArrowRight で動かない')), 'opened again: the note is kept');
+  await p.close();
+}
+
+// ---------------------------------------------------------------- the book: a note per section, quotes
+const lessonFrame = async (p) => (await p.$('#lesson')).contentFrame();
+async function select(f, text) {
+  return f.evaluate(async (text) => {
+    const a = document.getElementById('egatari-article');
+    const w = document.createTreeWalker(a, NodeFilter.SHOW_TEXT, { acceptNode: (n) => (n.parentElement.closest('rt,rp,.katex-mathml,[data-egatari-viewer]') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
+    let n; while ((n = w.nextNode())) { const i = n.data.indexOf(text); if (i >= 0) {
+      n.parentElement.scrollIntoView({ block: 'center' });
+      await new Promise((res) => { let last = performance.now(); const on = () => { last = performance.now(); }; addEventListener('scroll', on, true);
+        const tick = () => { if (performance.now() - last > 150) { removeEventListener('scroll', on, true); res(); } else requestAnimationFrame(tick); };
+        requestAnimationFrame(() => requestAnimationFrame(tick)); });
+      const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + text.length);
+      const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); return true; } }
+    return false;
+  }, text);
+}
+const popButtons = (f) => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=markup]'); const w = h && h.shadowRoot.querySelector('.w'); return w && !w.hidden ? [...w.querySelectorAll('button')].map((b) => b.getAttribute('data-a')) : null; });
+const popPress = (f, a) => f.evaluate((a) => { const b = document.querySelector('[data-egatari-viewer=markup]').shadowRoot.querySelector(`.w button[data-a="${a}"]`); b.click(); }, a);
+const noteButtonsIn = (f) => f.evaluate(() => [...document.querySelectorAll('[data-egatari-viewer=note]')].map((h) => ({ section: h.parentElement.getAttribute('data-section-id'), label: h.shadowRoot.querySelector('button').textContent })));
+{
+  const p = await newPage();
+  await open(p, BOOK);
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'book' }, '*'));
+  const f = await lessonFrame(p);
+  ok(await until(() => f.evaluate(() => !!document.getElementById('egatari-article'))), 'the book is shown');
+  ok((await noteButtonsIn(f)).length === 0, 'no section buttons while the markup bar is closed and there is no note');
+  await p.click('#b-markup');
+  ok(await until(async () => (await noteButtonsIn(f)).length > 0), 'markup bar: a メモ button at the end of each section ' + JSON.stringify(await noteButtonsIn(f)));
+  ok(await select(f, '平均は外れ値に'), 'selected words in the book');
+  ok(await until(async () => { const b = await popButtons(f); return b && b.includes('note'); }), 'the small window has メモ ' + JSON.stringify(await popButtons(f)));
+  await popPress(f, 'note');
+  ok(await until(() => p.evaluate(() => !document.getElementById('note-panel').hidden && !!document.querySelector('#note-panel .n-quote'))), 'the section note opens with the quote');
+  ok(await until(async () => { const r = await record(p); return r.highlights.length === 1 && r.notes.length === 1 && r.notes[0].at.section === 'sec-h7q2xz' && r.notes[0].blocks[0].quote.exact === '平均は外れ値に' && r.notes[0].blocks[0].quote.highlight === r.highlights[0].id; }), 'a highlight and a note with the quote ' + JSON.stringify(await record(p)));
+  ok(await p.evaluate(() => document.activeElement && document.activeElement.matches('#note-panel textarea')), 'the line after the quote has the focus');
+  await p.keyboard.type('外れ値の影響を受けやすい');
+  ok(await until(async () => { const n = (await notesOf(p))[0]; return n.blocks.length === 2 && n.blocks[1].text === '外れ値の影響を受けやすい'; }), 'the words after the quote are saved');
+  ok(await f.evaluate(() => !document.getElementById('egatari-article').textContent.includes('外れ値の影響を受けやすい')), 'the words of the note are not in the frame');
+  const geo = await p.evaluate(() => { const a = document.getElementById('note-panel').getBoundingClientRect(), f = document.getElementById('lesson').getBoundingClientRect(); return { a: a.top, f: f.bottom }; });
+  ok(geo.a >= geo.f - 1, 'the panel is below the frame, not over it ' + JSON.stringify(geo));
+  await shot(p, 'notes-book');
+  // ↗: to the highlight
+  await f.evaluate(() => { const sc = document.getElementById('egatari-article').closest('.dx-body'); sc.scrollTop = sc.scrollHeight; });
+  await p.click('#note-panel .n-go');
+  ok(await until(() => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=layer]'); return !!(h && h.shadowRoot.querySelector('.fl div')); })), '↗ goes to the words, which flash');
+  // the section button now says 開く
+  await p.click('#b-np-close');
+  ok(await until(() => p.evaluate(() => document.getElementById('note-panel').hidden)), 'closed');
+  ok(await until(async () => (await noteButtonsIn(f)).some((b) => b.section === 'sec-h7q2xz' && b.label === 'この節のメモを開く')), 'the section with a note: 「この節のメモを開く」');
+  await p.click('#b-markup');
+  ok(await until(async () => { const b = await noteButtonsIn(f); return b.length === 1 && b[0].section === 'sec-h7q2xz'; }), 'bar closed: only the section with a note keeps its button');
+  await f.locator('[data-egatari-viewer=note] button').first().click();   // a real click (the frame takes trusted clicks only)
+  ok(await until(() => p.evaluate(() => !document.getElementById('note-panel').hidden && document.querySelectorAll('#note-panel textarea').length >= 1)), 'the button opens the note');
+  // deleting the quote keeps the highlight
+  await p.click('#note-panel .n-qdel');
+  ok(await until(async () => { const r = await record(p); return r.highlights.length === 1 && r.notes[0].blocks.length === 1 && r.notes[0].blocks[0].text; }), 'quote deleted, highlight kept');
   await p.close();
 }
 
