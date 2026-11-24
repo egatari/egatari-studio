@@ -126,9 +126,11 @@ try {
           }
           return e.getBoundingClientRect().height > 48;
         }).map((e) => e.id || e.className || e.tagName);
-        return { multi, compact: h.classList.contains('pv-compact'), rows: new Set(items.map((e) => Math.round(e.getBoundingClientRect().top / 10))).size, headerOver: h.scrollWidth - h.clientWidth, pageOver: document.documentElement.scrollWidth - innerWidth };
+        return { multi, level: ['pv-c1', 'pv-c2', 'pv-c3'].filter((c) => h.classList.contains(c)).length, labels: [...h.querySelectorAll('.pv-lb')].filter((e) => e.offsetParent !== null).length, rows: new Set(items.map((e) => Math.round(e.getBoundingClientRect().top / 10))).size, headerOver: h.scrollWidth - h.clientWidth, pageOver: document.documentElement.scrollWidth - innerWidth };
       });
       ok(!m.multi.length && m.headerOver <= 1 && m.pageOver <= 1, `presenter view ${label}, ${w} px: every item of the top bar stays on one line and nothing sticks out sideways ` + JSON.stringify(m));
+      // 字を省くのは入りきらない分だけ：幅 1280 では、暗転中でも省くのは閉じるの字まで（「スライド」「ステップ」「自動再生」は残る）
+      if (w === 1280) ok(m.level <= 1 && m.labels >= 3, `presenter view ${label}, 1280 px: only what does not fit loses its words (at most the Close button) ` + JSON.stringify(m));
     }
     await pv.setViewportSize({ width: 1280, height: 800 }); await pv.waitForTimeout(250);
   };

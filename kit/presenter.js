@@ -95,7 +95,7 @@ DECK.presenterView = function(){
     "#pv-text .next{color:#888}#pv-text .next p{font-size:18px}" +
     "#pv-bm{display:flex;gap:4px;min-width:0;flex-wrap:wrap}#pv-bm[hidden],#pv-bm button[hidden]{display:none}" +
     "#pv-bm button{max-width:14em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-bm button[aria-current=true]{border-color:#ddd}" +
-    "#pv header button{height:34px}#pv header.pv-compact .pv-lb{display:none}#pv header.pv-compact #pv-step::before{content:'\\B7';margin-right:.5em;color:#888}#pv header.pv-compact #pv-close::before{content:'\\2715'}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
+    "#pv header button{height:34px}#pv header.pv-c1 #pv-close .pv-lb,#pv header.pv-c2 #pv-auto .pv-lb,#pv header.pv-c3 #pv-pos .pv-lb,#pv header.pv-c3 #pv-step .pv-lb{display:none}#pv header.pv-c3 #pv-step::before{content:'\\B7';margin-right:.5em;color:#888}#pv header.pv-c1 #pv-close::before{content:'\\2715'}#pv-back{max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#pv-back[hidden]{display:none}" +
     "#pv .pv-tools{display:flex;gap:4px}" +
     "#pv .pv-tools button{display:flex;align-items:center;gap:5px;padding:0 9px;user-select:none}" +
     "#pv .pv-tools button:hover{background:#3d3d3d}#pv .pv-tools button.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
@@ -130,20 +130,23 @@ DECK.presenterView = function(){
     document.getElementById("pv").classList.toggle("pv-black", on);
     fitHeader();
   }
-  // 上の帯（handoff #105）：項目は折り返さない（字を 1 字ずつ縦に並べない）。1 行に入らなければ、字を省く（pv-compact：
-  // 「スライド」「ステップ」は数だけ、「自動再生」「発表者ビューを閉じる（p）」は絵だけ。名前は title と aria-label に残す）。それでも入らなければ帯を 2 段にする
+  // 上の帯（handoff #105）：項目は折り返さない（字を 1 字ずつ縦に並べない）。1 行に入らなければ、入りきらない分だけ字を省く
+  // （「発表者ビューを閉じる（p）」は ✕ だけ → 「自動再生」は ▶ だけ → 「スライド」「ステップ」は数だけ。名前は title と aria-label に残す）。それでも入らなければ帯を 2 段にする
   function fitHeader(){
     var h = document.querySelector("#pv header"); if (!h) return;
     var wrapped = function(){
       var top = null, items = h.children;
       for (var i = 0; i < items.length; i++){
         var it = items[i]; if (it.hidden || it.offsetParent === null || it.className === "sp") continue;
-        if (top === null) top = it.offsetTop; else if (it.offsetTop > top + 4) return true;
+        var r = it.getBoundingClientRect();
+        if (top === null) top = r; else if (r.top >= top.bottom - 2 || r.bottom <= top.top + 2) return true;
       }
       return h.scrollWidth > h.clientWidth + 1;
     };
-    h.classList.remove("pv-compact");
-    if (wrapped()) h.classList.add("pv-compact");
+    // 入りきらない分だけ省く。省く順：閉じるの字 → 自動再生の字 → 「スライド」「ステップ」（pv-c1〜pv-c3）
+    var lv = ["pv-c1", "pv-c2", "pv-c3"], n = 0;
+    lv.forEach(function(c){ h.classList.remove(c); });
+    while (n < lv.length && wrapped()) h.classList.add(lv[n++]);
   }
   function send(cmd, extra){ if (opener && !opener.closed) opener.postMessage(Object.assign({type: "deck-cmd", cmd: cmd}, extra || {}), "*"); }
   function notes(key){
