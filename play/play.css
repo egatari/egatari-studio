@@ -232,6 +232,8 @@ body.headless #bar { display: none; }
 #markup-hint { flex: 1 1 14em; min-width: 0; white-space: normal; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 #markup-hint[hidden] { display: none; }
 /* one row on a phone (the header's height never changes, so the lesson's frame does not move): no logo, no counts, smaller swatches */
+#b-mexport { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 760px) { #b-mexport .xl { display: none; } }   /* the icon alone (its name stays: aria-label and the title) */
 @media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n, .rc-l { display: none !important; }
   #markup-bar { gap: 4px; } #markup-bar > button, #b-markup { padding: 4px 8px; } .csw { width: 32px; } #recall-colours { gap: 3px; } }
 /* below 760 px the マークアップ button is its highlighter icon only (the name stays for screen readers): 「手書きを終了」 and

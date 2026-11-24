@@ -273,11 +273,14 @@ async function draw(p, pts) {
 }
 async function download(p, button) {
   const [d] = await Promise.all([p.waitForEvent('download'), p.click(button)]);
-  const f = path.join(work, d.suggestedFilename()); await d.saveAs(f); return f;
+  // WebKit gives the name in NFD (バ as ハ and ゛, as macOS stores names): compare in NFC
+  const f = path.join(work, d.suggestedFilename().normalize('NFC')); await d.saveAs(f); return f;
 }
 let BACKUP = '';
 {
   const p = await newPage();
+  // print() is held in every frame of this page (the print frame included), so its layout can be read
+  await p.addInitScript(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
   await open(p, LIGHT);
   await p.click('#b-ink');
   await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -290,9 +293,7 @@ let BACKUP = '';
   ok(/のメモ（\d{4}-\d\d-\d\d）\.md$/.test(md), 'Markdown file name ' + path.basename(md));
   ok(mdText.startsWith('# 勾配降下法の基本のメモ') && /## スライド 1「/.test(mdText) && mdText.includes('> 勾配降下法') && mdText.includes('最小値へ少しずつ下る') && mdText.includes('手書きもあります'), 'Markdown: slide headings, the quote as >, the note, a line for handwriting\n' + mdText);
   // PDF: the frame made only to print (allow-modals, removed afterwards); print() is held in this test so its layout can be read
-  const framed = new Promise((res) => p.on('frameattached', async (fr) => {
-    try { await fr.waitForLoadState('domcontentloaded'); await fr.evaluate(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; }); res(fr); } catch { /* another frame */ }
-  }));
+  const framed = new Promise((res) => p.on('frameattached', (fr) => res(fr)));
   await p.click('#b-x-pdf');
   const pf = await framed;
   ok(await p.evaluate(() => { const f = document.querySelector('iframe.print-frame'); return !!f && f.getAttribute('sandbox') === 'allow-scripts allow-modals'; }), 'PDF: a print frame (allow-scripts allow-modals)');
