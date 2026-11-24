@@ -189,6 +189,119 @@ const noteButtonsIn = (f) => f.evaluate(() => [...document.querySelectorAll('[da
   await p.close();
 }
 
+// ---------------------------------------------------------------- a slide's text: highlights, quotes into the slide's note, the list
+async function selectOnSlide(f, text) {
+  return f.evaluate((text) => {
+    const el = document.querySelector('#stage > .slide.active');
+    const w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    let n; while ((n = w.nextNode())) { const i = n.data.indexOf(text); if (i >= 0) { const r = document.createRange(); r.setStart(n, i); r.setEnd(n, i + text.length); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); return true; } }
+    return false;
+  }, text);
+}
+const slideBoxes = (f) => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=slide-layer]'); return h ? h.shadowRoot.querySelectorAll('.h').length : 0; });
+{
+  const p = await newPage();
+  await open(p, LIGHT);
+  const f = await lessonFrame(p);
+  ok(await until(() => p.evaluate(() => !document.getElementById('b-markup').hidden)), 'a lesson without a book: マークアップ is there (slides take highlights)');
+  ok(await selectOnSlide(f, '勾配降下法'), 'selected words on the slide');
+  ok(await until(async () => { const b = await popButtons(f); return b && b.join() === 'y,p,b,note'; }), 'the small window on a slide ' + JSON.stringify(await popButtons(f)));
+  await popPress(f, 'p');
+  ok(await until(async () => { const r = await record(p); return r && r.highlights.length === 1 && r.highlights[0].target.slide && r.highlights[0].target.quote.exact === '勾配降下法'; }), 'a highlight on the slide {slide, quote} ' + JSON.stringify((await record(p) || {}).highlights));
+  ok(await until(async () => (await slideBoxes(f)) > 0), 'painted over the slide');
+  await shot(p, 'notes-slide-hl');
+  // 暗記 on a slide: a band over the words; a tap reveals them
+  await p.click('#b-markup'); await p.click('#b-recall');
+  const bands = () => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=slide-bands]'); return h ? h.shadowRoot.querySelectorAll('.g .m').length : 0; });
+  ok(await until(async () => (await bands()) > 0 && (await slideBoxes(f)) === 0), '暗記: a band over the slide words');
+  await f.locator('[data-egatari-viewer=slide-bands] .k').first().click();
+  ok(await until(async () => (await bands()) === 0 && (await slideBoxes(f)) > 0), 'a tap reveals them');
+  await p.click('#b-recall'); await p.click('#b-markup');
+  // quote the same words: the highlight is reused, the memo view opens with the quote
+  ok(await selectOnSlide(f, '勾配降下法'), 'selected again');
+  ok(await until(async () => { const b = await popButtons(f); return b && b.includes('note'); }), 'the window again');
+  await popPress(f, 'note');
+  ok(await until(() => p.evaluate(() => !document.getElementById('note-area').hidden && !!document.querySelector('#note-area .n-quote'))), 'the memo view opens with the quote');
+  ok(await until(async () => { const r = await record(p); const n = r.notes.find((x) => x.at.slide === r.highlights[0].target.slide); return r.highlights.length === 1 && n && n.blocks.some((b) => b.quote && b.quote.highlight === r.highlights[0].id); }), 'the same highlight, quoted into the note of its slide (the first test wrote one there) ' + JSON.stringify(await record(p)));
+  await p.keyboard.type('最小値へ少しずつ下る');
+  await shot(p, 'notes-slide-quote');
+  // to another slide and back with ↗ from the list
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'seek', slide: 2, step: null, t: null }, '*'));
+  ok(await until(async () => (await slideAt(p)) === 2), 'on slide 3');
+  ok(await until(async () => (await slideBoxes(f)) === 0), 'its own (no) highlights');
+  await p.click('#b-markup');
+  await p.click('#b-mlist');
+  ok(await until(() => p.evaluate(() => document.getElementById('m-list').open && [...document.querySelectorAll('#m-list h3')].some((h) => h.textContent.startsWith('スライド 1')))), 'the list groups the slide highlight under its slide');
+  ok(await p.evaluate(() => [...document.querySelectorAll('#m-list .m-note .m-ntext')].some((e) => e.textContent.includes('最初のメモ'))), 'the list has the notes');
+  await p.click('#m-list .m-items .m-q');
+  ok(await until(async () => (await slideAt(p)) === 0), '↗ from the list goes back to slide 1');
+  ok(await until(() => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=slide-bands]'); return !!(h && h.shadowRoot.querySelector('.fl div')); })), 'and the words flash');
+  await p.close();
+}
+
+// ---------------------------------------------------------------- export and read in: Markdown, the backup, another device
+async function draw(p, pts) {
+  const b = await p.evaluate(() => { const r = document.querySelector('.ink-surf').getBoundingClientRect(); return { x: r.left, y: r.top, s: r.width / 1280 }; });
+  const at = ([x, y]) => [b.x + x * b.s, b.y + y * b.s];
+  await p.mouse.move(...at(pts[0])); await p.mouse.down();
+  for (const q of pts.slice(1)) await p.mouse.move(...at(q), { steps: 6 });
+  await p.mouse.up();
+}
+async function download(p, button) {
+  const [d] = await Promise.all([p.waitForEvent('download'), p.click(button)]);
+  const f = path.join(work, d.suggestedFilename()); await d.saveAs(f); return f;
+}
+let BACKUP = '';
+{
+  const p = await newPage();
+  await open(p, LIGHT);
+  await p.click('#b-ink');
+  await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await draw(p, [[200, 900], [400, 950], [600, 900]]);
+  await p.click('#b-ink');
+  await p.click('#b-markup'); await p.click('#b-mexport');
+  ok(await p.evaluate(() => document.getElementById('m-export').open), 'エクスポート opens its dialog');
+  const md = await download(p, '#b-x-md');
+  const mdText = fs.readFileSync(md, 'utf8');
+  ok(/のメモ（\d{4}-\d\d-\d\d）\.md$/.test(md), 'Markdown file name ' + path.basename(md));
+  ok(mdText.startsWith('# 勾配降下法の基本のメモ') && /## スライド 1「/.test(mdText) && mdText.includes('> 勾配降下法') && mdText.includes('最小値へ少しずつ下る') && mdText.includes('手書きもあります'), 'Markdown: slide headings, the quote as >, the note, a line for handwriting\n' + mdText);
+  BACKUP = await download(p, '#b-x-json');
+  const j = JSON.parse(fs.readFileSync(BACKUP, 'utf8'));
+  ok(/のメモの控え（\d{4}-\d\d-\d\d）\.ega-notes\.json$/.test(BACKUP), 'backup file name ' + path.basename(BACKUP));
+  ok(j.format === 'egatari-notes' && j.docId && j.madeOn.fileSha256 && j.highlights.length === 1 && j.notes.length >= 2 && j.ink.length >= 1 && j.ink[0].strokes.length >= 1, 'backup: docId, madeOn, highlights, notes and ink ' + JSON.stringify({ d: j.docId, h: j.highlights.length, n: j.notes.length, k: j.ink.length }));
+  await p.close();
+}
+{
+  // another device: a new browser profile, the same file
+  const ctx2 = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1180, height: 820 }, serviceWorkers: 'block' });
+  await ctx2.route((u) => !u.href.startsWith(URL0), (r) => r.abort());
+  const p = await ctx2.newPage(); p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(URL0); await p.waitForSelector('html[data-ready]');
+  await open(p, BOOK);
+  await p.click('#b-markup'); await p.click('#b-mexport');
+  await p.setInputFiles('#x-file', BACKUP);
+  ok(await until(() => p.evaluate(() => /別のファイル/.test(document.getElementById('x-status').textContent))), 'a backup of another file is refused');
+  await p.click('#b-mexport-close');
+  await open(p, LIGHT);
+  ok(await until(async () => { const r = await record(p); return r && r.notes.length === 0; }), 'the new device has no notes');
+  await p.click('#b-markup'); await p.click('#b-mexport');
+  await p.setInputFiles('#x-file', BACKUP);
+  ok(await until(() => p.evaluate(() => /読み込みました/.test(document.getElementById('x-status').textContent))), 'read in: ' + await p.evaluate(() => document.getElementById('x-status').textContent));
+  ok(await until(async () => { const r = await record(p); return r.highlights.length === 1 && r.notes.length >= 2; }), 'highlights and notes are here');
+  await p.setInputFiles('#x-file', BACKUP);
+  ok(await until(async () => { const r = await record(p); return r.highlights.length === 1 && r.notes.length >= 2 && r.notes.every((n) => new Set(n.blocks.map((b) => JSON.stringify(b))).size === n.blocks.length); }), 'read in twice: nothing doubled');
+  await p.click('#b-mexport-close');
+  await p.click('#b-note');
+  ok(await until(() => p.evaluate(() => (document.querySelector('#note-area textarea') || {}).value === '最初のメモ。ArrowRight で動かない')), 'the slide note is on screen');
+  ok(await until(() => p.evaluate(() => /（[1-9][0-9]* 本の線）/.test(document.querySelector('.ink-surf').getAttribute('aria-label')))), 'and the handwriting');
+  fs.writeFileSync(path.join(work, 'bad.ega-notes.json'), '{"nope": 1}');
+  if (!(await p.isVisible('#b-mexport'))) await p.click('#b-markup');
+  await p.click('#b-mexport');
+  await p.setInputFiles('#x-file', path.join(work, 'bad.ega-notes.json'));
+  ok(await until(() => p.evaluate(() => /読み込めません/.test(document.getElementById('x-status').textContent))), 'a file that is not a backup is refused');
+  await ctx2.close();
+}
+
 ok(errors.length === 0, 'no page errors ' + errors.join(' | '));
 await browser.close(); srv.close();
 console.log(failed ? `${failed} failed` : 'all passed');

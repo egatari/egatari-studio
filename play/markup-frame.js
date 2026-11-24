@@ -86,7 +86,7 @@
   // ---------------------------------------------------------------- a selection → a target
   function targetOf(range) {
     var a = S.article;
-    if (!a || !a.contains(range.commonAncestorContainer)) return null;
+    if (!a || !a.contains(range.commonAncestorContainer)) return null;   // (a slide: slideTargetOf)
     var sec = sectionOf(range.startContainer), secEnd = sectionOf(range.endContainer);
     var root = sec && sec === secEnd ? sec : a, id = root === a ? "" : sec.getAttribute("data-section-id");
     var T = textOf(root), s = offsetOf(T, range.startContainer, range.startOffset), e = offsetOf(T, range.endContainer, range.endOffset);
@@ -173,7 +173,9 @@
     var out = [], root = r.commonAncestorContainer, rubies = [];
     // each piece is tagged with its display equation (if any), so that a whole equation becomes one box below
     var push = function (n, a, b) {
-      var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(), p = n.parentElement;
+      var p = n.parentElement;
+      if (inSlide && !seen(p)) return;   // a step not shown yet: its text is there, but not on screen
+      var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects();
       var g = p && (p.closest(".egatari-math") || p.closest(".katex-display")), rb = rubyOf(n), rt = rb ? rtAfter(rb, n) : null;
       if (rt && rubies.indexOf(rt) < 0) rubies.push(rt);
       for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push({ q: rs[i], g: g, rt: rt });
@@ -230,7 +232,8 @@
   // layer scrolls with the text). At the 2000 cap a full redraw was 130–160 ms in WebKit; this keeps it to what is on screen.
   var ORDER = [], WIN = null;
   function scrollerOf() { return S.article && (S.article.closest(".dx-body") || null); }
-  function vertical() { try { return /^vertical/.test(getComputedStyle(S.article).writingMode); } catch (e) { return false; } }
+  function vertical() { if (inSlide) return false; try { return /^vertical/.test(getComputedStyle(S.article).writingMode); } catch (e) { return false; } }
+  var inSlide = false;   // while the slide's boxes are measured: its text is horizontal whatever the book does
   function nearIds(filter) {
     var sc = scrollerOf(), v = vertical(), vr = sc ? sc.getBoundingClientRect() : { top: 0, bottom: innerHeight, left: 0, right: innerWidth, width: innerWidth, height: innerHeight };
     var m = (v ? vr.width : vr.height) * 0.5;   // half a screen before and after
@@ -245,33 +248,39 @@
     WIN = sc ? { at: v ? sc.scrollLeft : sc.scrollTop, margin: m, v: v } : null;
     return out;
   }
+  // One place to draw in: the book (a layer in its scrolling box, the highlights near the screen) or the slide on screen (a fixed
+  // layer over the page, every highlight of that slide). ctx = {Y: layer, P: placed ranges, ids(filter), o: the layer's origin, bg, MK}
   function paint() {
     var Y = S.article ? layer() : null;
-    if (!Y) return;
+    if (Y) paintIn({ Y: Y, P: S.placed, ids: nearIds, o: L.host.getBoundingClientRect(), bg: bgName(), MK: MK });
+    paintSlide();
+  }
+  function paintIn(ctx) {
+    var Y = ctx.Y, P = ctx.P;
     var t0 = performance.now();
-    var o = L.host.getBoundingClientRect(), bg = bgName(), blend = bg === "black" ? "scr" : "mul";
+    var o = ctx.o, bg = ctx.bg, blend = bg === "black" ? "scr" : "mul";
     var box = function (q, grow) { grow = grow || {}; return "left:" + (q.left - o.left) + "px;top:" + (q.top - o.top - (grow.up || 0)) + "px;width:" + (q.width + (grow.right || 0)) + "px;height:" + (q.height + (grow.up || 0)) + "px;"; };
     var byId = {}; S.list.forEach(function (h) { byId[h.id] = h; });
-    var near = nearIds(function (id) { return byId[id] && !hidden(byId[id].color); });   // ORDER can be one list behind until placeAll
+    var near = ctx.ids(function (id) { return byId[id] && !hidden(byId[id].color); });   // ORDER can be one list behind until placeAll
     // the highlights shown (not hidden by a filter, not under a 暗記 band): all reads first, then one write
     var shown = [];
-    near.forEach(function (id) { var h = byId[id]; if (!masked(h)) shown.push([h, textRects(S.placed[id])]); });
+    near.forEach(function (id) { var h = byId[id]; if (!masked(h)) shown.push([h, textRects(P[id])]); });
     var html = "";
     for (var k = 0; k < shown.length; k++) {
       var h = shown[k][0], rs = shown[k][1];
       for (var i = 0; i < rs.length; i++) html += '<div class="h ' + blend + '" data-id="' + h.id + '" data-c="' + h.color + '" style="' + box(rs[i]) + "background:" + BAND[bg][h.color] + '"></div>';
     }
-    L.paint.innerHTML = html;   // ids are checked on arrival (ID_RE), colours are y/p/b and the numbers are made here
+    Y.paint.innerHTML = html;   // ids are checked on arrival (ID_RE), colours are y/p/b and the numbers are made here
     // 暗記: bands and buttons for the hidden highlights near the screen, kept between redraws so the keyboard's focus stays.
     // Tab moves through them in reading order; focusing the last one scrolls it into view, which draws the next ones
     var ids = S.view.recall ? near.filter(function (id) { return masked(byId[id]); }) : [];
-    var keep = {}, focusedGone = false, act = L.root.activeElement;
+    var keep = {}, focusedGone = false, act = Y.root.activeElement;
     ids.forEach(function (id) { keep[id] = true; });
-    Object.keys(MK).forEach(function (id) { if (keep[id]) return; if (act === MK[id].btn) focusedGone = true; MK[id].btn.remove(); MK[id].bands.remove(); delete MK[id]; });
+    Object.keys(ctx.MK).forEach(function (id) { if (keep[id]) return; if (act === ctx.MK[id].btn) focusedGone = true; ctx.MK[id].btn.remove(); ctx.MK[id].bands.remove(); delete ctx.MK[id]; });
     ids.forEach(function (id, n) {
-      var h = byId[id], r = S.placed[id], e = MK[id];
+      var h = byId[id], r = P[id], e = ctx.MK[id];
       if (!e) {
-        e = MK[id] = { btn: document.createElement("button"), bands: document.createElement("div") };
+        e = ctx.MK[id] = { btn: document.createElement("button"), bands: document.createElement("div") };
         e.btn.type = "button"; e.btn.className = "k"; e.btn.setAttribute("data-id", id);
         e.bands.className = "g"; e.bands.setAttribute("aria-hidden", "true"); e.bands.setAttribute("data-id", id);
       }
@@ -289,17 +298,18 @@
       }
       e.btn.style.cssText = first ? "left:" + (first[0] - o.left) + "px;top:" + (first[1] - o.top) + "px;width:" + (first[2] - first[0]) + "px;height:" + (first[3] - first[1]) + "px" : "left:0;top:0;width:1px;height:1px;opacity:0";
       // reading order: move only what is out of place (moving the focused button would drop the focus)
-      var at = L.mk.children[2 * n];
-      if (at !== e.btn) L.mk.insertBefore(e.btn, at || null);
-      if (e.btn.nextSibling !== e.bands) L.mk.insertBefore(e.bands, e.btn.nextSibling);
+      var at = Y.mk.children[2 * n];
+      if (at !== e.btn) Y.mk.insertBefore(e.btn, at || null);
+      if (e.btn.nextSibling !== e.bands) Y.mk.insertBefore(e.bands, e.btn.nextSibling);
     });
-    if (focusedGone) { var next = revealNext; revealNext = null; if (next && MK[next]) MK[next].btn.focus(); else if (ids.length) MK[ids[0]].btn.focus(); }
-    L.host.setAttribute("data-ms", String(Math.round((performance.now() - t0) * 10) / 10));   // the last redraw's time (docs/viewer.md, measured)
+    if (focusedGone) { var next = revealNext; revealNext = null; if (next && ctx.MK[next]) ctx.MK[next].btn.focus(); else if (ids.length) ctx.MK[ids[0]].btn.focus(); }
+    Y.host.setAttribute("data-ms", String(Math.round((performance.now() - t0) * 10) / 10));   // the last redraw's time (docs/viewer.md, measured)
   }
   var revealNext = null;
   function reveal(id) {
-    var ids = Object.keys(MK).sort(inOrder), i = ids.indexOf(id);
-    revealNext = L.root && L.root.activeElement === (MK[id] && MK[id].btn) ? ids[i + 1] || null : null;
+    var onSlide = !!SL.MK[id], mk = onSlide ? SL.MK : MK, root = onSlide ? SL.root : L.root, P = onSlide ? SL.placed : S.placed;
+    var ids = Object.keys(mk).sort(function (a, b) { try { return P[a].compareBoundaryPoints(Range.START_TO_START, P[b]); } catch (e) { return 0; } }), i = ids.indexOf(id);
+    revealNext = root && root.activeElement === (mk[id] && mk[id].btn) ? ids[i + 1] || null : null;
     S.revealed[id] = true; paint();
   }
   // Enter and Space on a band's button: taken here, before the lesson's player (this script runs first, so its listener does too),
@@ -307,13 +317,13 @@
   window.addEventListener("keydown", function (e) {
     if ((e.key !== "Enter" && e.key !== " ") || !L.root) return;
     var t = e.composedPath ? e.composedPath()[0] : null;
-    if (!t || !t.classList || !t.classList.contains("k") || t.getRootNode() !== L.root) return;
+    if (!t || !t.classList || !t.classList.contains("k") || (t.getRootNode() !== L.root && t.getRootNode() !== SL.root)) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (!e.repeat) reveal(t.getAttribute("data-id"));
   }, true);
   // the text moves without the DOM changing (font size, line spacing, width, rotation): paint again on the next frame
   var queued = false;
-  function queuePaint() { if (queued || !S.article) return; queued = true; requestAnimationFrame(function () { queued = false; paint(); }); }
+  function queuePaint() { if (queued || (!S.article && !SL.el)) return; queued = true; requestAnimationFrame(function () { queued = false; paint(); }); }
   var ro = typeof ResizeObserver === "function" ? new ResizeObserver(queuePaint) : null;
   // the text can also move when fonts, images or math finish loading late, or a <details> in the book opens or closes
   if (document.fonts) { try { document.fonts.ready.then(queuePaint); document.fonts.addEventListener("loadingdone", queuePaint); } catch (e) { /* old browser */ } }
@@ -324,6 +334,7 @@
     var missing = [];
     var widened = [];
     if (S.article) S.list.forEach(function (h) {
+      if (h.target.slide != null) return;   // a slide's highlight: placed only on its slide (placeSlide)
       var r = anchor(h);
       if (!r) { missing.push(h.id); return; }
       S.placed[h.id] = r;
@@ -332,14 +343,105 @@
       if (t && t.quote.exact !== q.exact && t.quote.exact.indexOf(q.exact) >= 0 && widened.length < 2000) widened.push({ id: h.id, target: t });
     });
     ORDER = Object.keys(S.placed).sort(inOrder);
+    placeSlide();
     paint();
     var sections = {};
     if (S.article) Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) { var hd = s.querySelector("h2,h3"); sections[s.getAttribute("data-section-id")] = hd ? textOf(hd).text.trim().slice(0, 200) : ""; });
-    post({ egaViewer: "status", missing: missing.slice(0, 2000), sections: sections });
+    S.bookMissing = missing; S.sections = sections;
+    postStatus();
     noteButtons();
     if (widened.length) post({ egaViewer: "widen", list: widened });
   }
+  // missing: in the book, and on each slide seen so far (a slide not seen yet is not reported)
+  function postStatus() {
+    var ids = {}, missing = (S.bookMissing || []).slice();
+    S.list.forEach(function (h) { ids[h.id] = true; });
+    Object.keys(SL.missing).forEach(function (k) { SL.missing[k].forEach(function (id) { if (ids[id] && missing.indexOf(id) < 0) missing.push(id); }); });
+    post({ egaViewer: "status", missing: missing.slice(0, 2000), sections: S.sections || {} });
+  }
   var stale = function () { for (var id in S.placed) { var r = S.placed[id]; if (!r.startContainer.isConnected || !r.endContainer.isConnected || r.collapsed) return true; } return false; };
+
+  // ---------------------------------------------------------------- the slide on screen (handoff #107: highlights, 暗記 and quotes on a slide's text)
+  // A slide's text is anchored like the book's ({slide: its key, quote}), and only the slide on screen is placed. Its highlights are
+  // drawn in a layer fixed over the page (the stage is scaled to the screen, so boxes are measured where the text is now), again when
+  // a step appears, the stage resizes or an animation ends. Text of a step not shown yet is not painted (seen()).
+  var SL = { el: null, key: "", host: null, root: null, paint: null, mk: null, placed: {}, MK: {}, missing: {} };
+  function activeSlide() { return document.querySelector("#stage > .slide.active"); }
+  function keyOf(el) { var k = el && (el._key || el.getAttribute("data-key") || el.id); if (k) return String(k).slice(0, 200); var all = document.querySelectorAll("#stage > .slide"); return el ? "s" + (Array.prototype.indexOf.call(all, el) + 1) : ""; }
+  function seen(e) {
+    for (; e && e !== SL.el && e.nodeType === 1; e = e.parentElement) {
+      var c = getComputedStyle(e);
+      if (c.visibility === "hidden" || c.display === "none" || parseFloat(c.opacity) < 0.05) return false;
+    }
+    return true;
+  }
+  // Two fixed layers: a fixed element is its own stacking context, so the colour boxes mix with nothing inside it; the layer of the
+  // colours is blended as a whole with the slide under it (multiply, or screen on a dark slide), and the 暗記 bands and their buttons
+  // (opaque, they hide the words) are in a second layer above it
+  function slideLayer() {
+    if (!SL.host) {
+      var mkHost = function (name, z) {
+        var h = document.createElement("div"); h.setAttribute("data-egatari-viewer", name);
+        h.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;margin:0;padding:0;border:0;z-index:" + z;
+        var r = h.attachShadow({ mode: "open" }), st = document.createElement("style"); st.textContent = LAYER_CSS; r.appendChild(st);
+        return [h, r];
+      };
+      var a = mkHost("slide-layer", 2147483645), b = mkHost("slide-bands", 2147483646);
+      SL.host = a[0]; SL.host2 = b[0]; SL.root = b[1];
+      SL.paint = document.createElement("div"); SL.paint.setAttribute("aria-hidden", "true");
+      SL.mk = document.createElement("div"); SL.mk.className = "mk";
+      a[1].appendChild(SL.paint); SL.root.appendChild(SL.mk);
+      SL.root.addEventListener("click", function (e) {
+        var m = e.target.closest ? e.target.closest(".k,.g") : null;
+        if (!m || !e.isTrusted) return;
+        e.preventDefault(); e.stopPropagation();
+        reveal(m.getAttribute("data-id"));
+      });
+    }
+    if (!SL.host.isConnected) document.documentElement.appendChild(SL.host);
+    if (!SL.host2.isConnected) document.documentElement.appendChild(SL.host2);
+    return SL;
+  }
+  // light or dark under the text: the slide's own background (or the page's)
+  function slideBg() {
+    var e = SL.el, m = null;
+    for (; e && !m; e = e.parentElement) { var c = getComputedStyle(e).backgroundColor, x = /rgba?\(([^)]+)\)/.exec(c); if (x) { var v = x[1].split(",").map(Number); if (v.length < 4 || v[3] > 0.5) m = v; } }
+    if (!m) return "white";
+    var l = m.slice(0, 3).map(function (v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2] < 0.25 ? "black" : "white";
+  }
+  function placeSlide() {
+    var el = activeSlide();
+    SL.el = el; SL.key = el ? keyOf(el) : ""; SL.placed = {};
+    if (!el) { if (SL.host) { SL.paint.innerHTML = ""; } return; }
+    var miss = [];
+    S.list.forEach(function (h) {
+      if (h.target.slide !== SL.key) return;
+      var r = findIn(el, h.target.quote);
+      if (r) SL.placed[h.id] = r; else miss.push(h.id);
+    });
+    SL.missing[SL.key] = miss;
+  }
+  function paintSlide() {
+    if (!SL.el) { if (SL.host) { SL.paint.innerHTML = ""; Object.keys(SL.MK).forEach(function (id) { SL.MK[id].btn.remove(); SL.MK[id].bands.remove(); delete SL.MK[id]; }); } return; }
+    var Y = slideLayer(), ids = Object.keys(SL.placed).sort(function (a, b) { try { return SL.placed[a].compareBoundaryPoints(Range.START_TO_START, SL.placed[b]); } catch (e) { return 0; } });
+    var bg = slideBg();
+    Y.host.style.mixBlendMode = bg === "black" ? "screen" : "multiply";
+    inSlide = true;
+    try { paintIn({ Y: Y, P: SL.placed, ids: function (f) { return ids.filter(f); }, o: { left: 0, top: 0 }, bg: bg, MK: SL.MK }); }
+    finally { inSlide = false; }
+  }
+  // a range in the slide on screen → {slide, quote}
+  function slideTargetOf(range) {
+    var el = activeSlide();
+    if (!el || !el.contains(range.commonAncestorContainer)) return null;
+    var T = textOf(el), s = offsetOf(T, range.startContainer, range.startOffset), e = offsetOf(T, range.endContainer, range.endOffset);
+    while (s < e && /\s/.test(T.text.charAt(s))) s++;
+    while (e > s && /\s/.test(T.text.charAt(e - 1))) e--;
+    var w = widen(T, s, e); s = w[0]; e = w[1];
+    if (e <= s || e - s > MAXQ) return null;
+    return { slide: keyOf(el), quote: { exact: T.text.slice(s, e), prefix: T.text.slice(Math.max(0, s - CTX), s), suffix: T.text.slice(e, e + CTX) } };
+  }
 
   // ---------------------------------------------------------------- going to a place: scrolled to the middle, and the words flash once
   function goTo(r) {
@@ -354,6 +456,15 @@
     f.className = "fl"; f.setAttribute("aria-hidden", "true");
     for (var i = 0; i < rs.length; i++) { var d = document.createElement("div"); d.style.cssText = "left:" + (rs[i].left - o.left - 2) + "px;top:" + (rs[i].top - o.top - 2) + "px;width:" + (rs[i].width + 4) + "px;height:" + (rs[i].height + 4) + "px"; f.appendChild(d); }
     L.root.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1300);
+  }
+
+  function flashSlide(r) {
+    var Y = slideLayer(), f = document.createElement("div");
+    inSlide = true; var rs = textRects(r); inSlide = false;
+    f.className = "fl"; f.setAttribute("aria-hidden", "true");
+    for (var i = 0; i < rs.length; i++) { var d = document.createElement("div"); d.style.cssText = "left:" + (rs[i].left - 2) + "px;top:" + (rs[i].top - 2) + "px;width:" + (rs[i].width + 4) + "px;height:" + (rs[i].height + 4) + "px"; f.appendChild(d); }
+    Y.root.appendChild(f);
     setTimeout(function () { f.remove(); }, 1300);
   }
 
@@ -490,10 +601,10 @@
   document.addEventListener("selectionchange", function () {
     clearTimeout(selTimer);
     selTimer = setTimeout(function () {
-      if (!S.article || !supported) return;
+      if (!supported || (!S.article && !activeSlide())) return;
       var sel = window.getSelection();
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { if (popFor && !popFor.id) hidePop(); return; }
-      var r = sel.getRangeAt(0), t = targetOf(r);
+      var r = sel.getRangeAt(0), t = targetOf(r) || slideTargetOf(r);
       if (!t) { if (popFor && !popFor.id) hidePop(); return; }
       if (dismissed === JSON.stringify(t)) return;   // closed with × for this very selection
       dismissed = null;
@@ -505,7 +616,7 @@
   function hitAt(x, y) {
     var hit = null;
     S.list.forEach(function (h) {
-      var r = S.placed[h.id];
+      var r = S.placed[h.id] || SL.placed[h.id];
       if (!r || hidden(h.color)) return;
       var rs = r.getClientRects();
       for (var i = 0; i < rs.length; i++) if (x >= rs[i].left && x <= rs[i].right && y >= rs[i].top && y <= rs[i].bottom) { hit = { h: h, rect: rs[i] }; return; }
@@ -513,7 +624,7 @@
     return hit;
   }
   document.addEventListener("click", function (e) {
-    if (!S.article || !e.isTrusted || !S.article.contains(e.target)) return;
+    if (!e.isTrusted || !((S.article && S.article.contains(e.target)) || (SL.el && SL.el.contains(e.target)))) return;
     var sel = window.getSelection();
     if (sel && !sel.isCollapsed) return;
     var hit = hitAt(e.clientX, e.clientY);
@@ -529,6 +640,7 @@
     if (WIN && sc && e.target === sc && Math.abs((WIN.v ? sc.scrollLeft : sc.scrollTop) - WIN.at) > WIN.margin / 2) queuePaint();
   }, true);
   window.addEventListener("resize", queuePaint);
+  ["transitionend", "animationend"].forEach(function (t) { document.addEventListener(t, function (e) { if (SL.el && e.target && e.target.nodeType === 1 && SL.el.contains(e.target)) queuePaint(); }, true); });
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     if (popFor) { hidePop(); e.preventDefault(); e.stopPropagation(); return; }
@@ -545,19 +657,21 @@
       if (a) placeAll(); else if (L.host) L.host.remove();
     }
     else if (a && stale()) placeAll();
+    var sl = activeSlide();
+    if (sl !== SL.el) { placeSlide(); paint(); if (SL.missing[SL.key] && SL.missing[SL.key].length) postStatus(); }
     // article: the lesson has a book (an article with text; kit/panes.js shows 台本で読む instead when it is empty).
     // shown: the book is on screen (the player's 表示 is 本 or スライドと本); a player without layouts counts as shown
     var lay = document.documentElement.getAttribute("data-deck-layout");
-    var has = !!a && !!(a.textContent || "").trim(), shown = !lay || lay === "book" || lay === "split";
-    var now = supported + ":" + has + ":" + shown;
-    if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: has, shown: shown }); }
+    var has = !!a && !!(a.textContent || "").trim(), shown = !lay || lay === "book" || lay === "split", slides = !!document.getElementById("stage");
+    var now = supported + ":" + has + ":" + shown + ":" + slides;
+    if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: has, shown: shown, slides: slides }); }
   }
   function start() {
     look();
     // a change in the book (rebuilt, or its font size, spacing or background): find the places again, and paint on the next frame
     new MutationObserver(function (recs) {
       var mine = true;
-      for (var i = 0; i < recs.length && mine; i++) if (recs[i].target !== L.host && !(recs[i].addedNodes.length === 1 && recs[i].addedNodes[0] === L.host)) mine = false;
+      for (var i = 0; i < recs.length && mine; i++) if (recs[i].target !== L.host && recs[i].target !== SL.host && recs[i].target !== SL.host2 && !(recs[i].addedNodes.length === 1 && (recs[i].addedNodes[0] === L.host || recs[i].addedNodes[0] === SL.host || recs[i].addedNodes[0] === SL.host2))) mine = false;
       if (mine) return;
       clearTimeout(moTimer); moTimer = setTimeout(look, 150); queuePaint();
     }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "data-dx-bg", "hidden", "data-deck-layout"] });
@@ -584,11 +698,12 @@
       placeAll();
       if (popFor && popFor.id && !S.placed[popFor.id]) hidePop();
     } else if (m.egaViewer === "markup-view") setView(m.view);
-    else if (m.egaViewer === "markup-jump" && typeof m.id === "string") { if (S.placed[m.id]) goTo(S.placed[m.id]); }
+    else if (m.egaViewer === "markup-jump" && typeof m.id === "string") { if (S.placed[m.id]) goTo(S.placed[m.id]); else if (SL.placed[m.id]) flashSlide(SL.placed[m.id]); }
     // ↗ on a quote whose highlight is gone: find the quoted words again (the same way as a highlight)
     else if (m.egaViewer === "markup-goto" && m.target && typeof m.target === "object" && m.target.quote && typeof m.target.quote.exact === "string" && m.target.quote.exact.length <= MAXQ) {
       var q = m.target.quote, t = { quote: { exact: q.exact, prefix: typeof q.prefix === "string" ? q.prefix.slice(0, CTX) : "", suffix: typeof q.suffix === "string" ? q.suffix.slice(0, CTX) : "" } };
       if (typeof m.target.section === "string") { t.section = m.target.section; if (S.article) { var r2 = anchor({ target: t }); if (r2) goTo(r2); } }
+      else if (typeof m.target.slide === "string" && SL.el && m.target.slide === SL.key) { var r3 = findIn(SL.el, t.quote); if (r3) flashSlide(r3); }
     }
     else if (m.egaViewer === "markup-notes" && Array.isArray(m.sections) && m.sections.length <= 5000) {
       S.noteSections = m.sections.filter(function (x) { return typeof x === "string" && x.length <= 200; });

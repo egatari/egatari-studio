@@ -16,8 +16,9 @@ import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { readFileBounded } from '../app/bounded-read.js';
 import { sha256Hex } from './markup.mjs';
-import { ink, countInk, clearInk, W as INK_W, H as INK_H, MEMO_H as INK_MEMO, GAP as INK_GAP } from './ink.mjs';
+import { ink, countInk, clearInk, inkOf, addInk, W as INK_W, H as INK_H, MEMO_H as INK_MEMO, GAP as INK_GAP } from './ink.mjs';
 import { noteEditor } from './notes.mjs';
+import { exchangeOf, readExchange, markdownOf, fileName } from './notes-export.mjs';
 
 /* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
 const VERSION = __PLAY_VERSION__;
@@ -431,13 +432,62 @@ function onQuote(at, block) {
   else M.setNote(at, [...M.getNote(at), block]);   // not on screen (the slide moved on): kept all the same
   announce(W().nQuoted);
 }
+// a note from the list: a slide's opens the memo view on that slide, a section's opens the panel
+function openNote(at) {
+  if (at.slide != null) {
+    const P = S.playing, first = P && P.timeline ? P.timeline.find((x) => x.s === at.slide) : null;
+    if (first && at.slide !== S.slideKey) seekTo(first.s, first.k);
+    if (!NOTE.view) setNoteView(true);
+    setTimeout(() => { if (NOTE.ed) NOTE.ed.focus(); }, 300);
+  } else { const ed = openSection(at.section); if (ed) ed.focus(); }
+}
+// ---------------------------------------------------------------- export and read in (handoff #107, annotations.md "Exchange file")
+// From the markup bar's 「エクスポート」: PDF (play/notes-print.mjs), Markdown, and the backup (.ega-notes.json: highlights, notes and
+// handwriting). The files are made in this page and saved by the browser (a download): nothing is sent anywhere.
+function saveFile(name, type, text) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  $('x-status').textContent = W().xSaved(name);
+}
+const slideList = () => { const P = S.playing; return P && P.timeline ? [...new Set(P.timeline.map((x) => x.s))].map((k) => ({ key: k, name: W().nSlideName(slideNo(k), slideTitle(k)) })) : []; };
+async function exportAs(kind) {
+  const st = M && M.state(), rec = st && st.record, P = S.playing;
+  if (!rec || !P) return;
+  if (NOTE.ed) NOTE.ed.flush(); if (PANEL.ed) PANEL.ed.flush();
+  if (INK.ui) await INK.ui.flush();
+  const ink = $('shared').checked ? [] : await inkOf(inkDoc());
+  if (kind === 'md') saveFile(fileName(P.title, 'md', new Date(), W()), 'text/markdown;charset=utf-8',
+    markdownOf({ title: P.title, record: M.state().record, slides: slideList(), sections: M.sections(), words: W(), inkSlides: ink.map((x) => x.slide) }));
+  else if (kind === 'json') saveFile(fileName(P.title, 'exchange', new Date(), W()), 'application/json',
+    JSON.stringify(exchangeOf({ record: M.state().record, docId: P.docId || '', fileSha256: await P.fileSha, ink }), null, 1));
+}
+async function importFile(file) {
+  const P = S.playing, st = $('x-status');
+  if (!P || !M || !file) return;
+  if (file.size > 20 * 1024 * 1024) { st.textContent = W().xTooBig; return; }
+  let j = null;
+  try { j = JSON.parse(await file.text()); } catch { j = null; }
+  const r = readExchange(j, { docId: P.docId || '', fileSha256: await P.fileSha });
+  if (!r.ok) { st.textContent = r.why === 'other' ? W().xOtherFile : W().xBadFile; return; }
+  if (NOTE.ed) NOTE.ed.flush(); if (PANEL.ed) PANEL.ed.flush();
+  const n = M.importRecord(r) || { highlights: 0, notes: 0 };
+  const k = $('shared').checked ? 0 : await addInk(inkDoc(), r.ink);
+  // what is on screen shows what was read in
+  if (NOTE.view && S.slideKey) { if (NOTE.ed) NOTE.ed.show({ slide: S.slideKey }, M.getNote({ slide: S.slideKey }), slideLabel(S.slideKey)); if (INK.ui) { INK.ui.destroy(); INK.ui = null; newInk(); INK.ui.setPage(inkDoc(), S.slideKey); applyLayout(); } }
+  if (PANEL.at && PANEL.ed) PANEL.ed.show(PANEL.at, M.getNote(PANEL.at), $('note-panel-t').textContent);
+  st.textContent = W().xRead(n.highlights, n.notes, k);
+  announce(st.textContent);
+}
+function openExport() { if (!M || !S.playing) return; $('x-status').textContent = ''; $('m-export').showModal(); }
+
 // ↗ on a quote: a quote from another slide goes to that slide first
 function goQuote(q) {
   if (!M) return;
   if (q.target.slide != null && q.target.slide !== S.slideKey) {
     const P = S.playing, first = P && P.timeline ? P.timeline.find((x) => x.s === q.target.slide) : null;
     if (first) seekTo(first.s, first.k);
-    setTimeout(() => M.goQuote(q), 200);
+    setTimeout(() => M.goQuote(q), 450);   // the frame finds the slide's words once the slide is on screen
   } else M.goQuote(q);
 }
 
@@ -560,6 +610,10 @@ const M = framed ? null : markup({
     confirm: $('m-confirm'), confirmText: $('m-confirm-t'), confirmNo: $('b-mconfirm-no'), confirmYes: $('b-mconfirm-yes'), announce: (t) => announce(t) },
   onPersist: () => maybeRequestPersist(),
   onQuote: (at, block) => onQuote(at, block),
+  slides: () => { const P = S.playing; return P && P.timeline ? [...new Set(P.timeline.map((x) => x.s))] : []; },
+  slideName: (k) => { const n = slideNo(k), t = slideTitle(k); return n ? W().nSlideName(n, t) : k; },
+  onGo: (q) => goQuote(q),
+  onOpenNote: (at) => openNote(at),
   onNoteSection: (section) => { const ed = openSection(section); if (ed) ed.focus(); },
 });
 const links = linkBox({ words: W, dlg: { box: $('link-box'), title: $('link-t'), host: $('link-host'), url: $('link-url'), notes: $('link-n'), cancel: $('b-link-cancel'), open: $('a-link-open') } });
@@ -794,6 +848,12 @@ async function main() {
   $('b-ink').addEventListener('click', () => setInk(!INK.on));
   $('b-note').addEventListener('click', () => setNoteView(!NOTE.view));
   $('b-np-close').addEventListener('click', closeSection);
+  $('b-mexport').addEventListener('click', openExport);
+  $('b-mexport-close').addEventListener('click', () => $('m-export').close());
+  $('b-x-md').addEventListener('click', () => exportAs('md'));
+  $('b-x-json').addEventListener('click', () => exportAs('json'));
+  $('b-x-pdf').addEventListener('click', () => exportAs('pdf'));
+  $('x-file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; importFile(f); });
   $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
   $('b-resume-x').addEventListener('click', hideResume);
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });

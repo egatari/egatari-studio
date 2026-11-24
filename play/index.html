@@ -38,6 +38,7 @@
     <button type="button" id="b-recall" aria-pressed="false"><span class="sw-on" aria-hidden="true"></span><span data-i18n="mRecall">暗記</span></button>
     <span id="recall-colours" role="group" data-i18n-label="mRecallColours" aria-label="暗記する色" hidden><span class="rc-l" data-i18n="mRecallColours" aria-hidden="true">暗記する色</span><button type="button" data-c="y" class="csw m-y" aria-pressed="true"></button><button type="button" data-c="p" class="csw m-p" aria-pressed="true"></button><button type="button" data-c="b" class="csw m-b" aria-pressed="true"></button></span>
     <button type="button" id="b-mlist" data-i18n="mList">一覧</button>
+    <button type="button" id="b-mexport" aria-haspopup="dialog" data-i18n="mExport">エクスポート</button>
     <span id="m-filtered" class="small" hidden><span data-i18n="mFiltered">一部の色を非表示中</span> <button type="button" id="b-mshow" class="linklike" data-i18n="mShowAll">すべて表示</button></span>
     <span id="markup-hint" class="small" role="status" hidden></span>
     <span id="markup-note" class="small" data-i18n="mShared" hidden>共有の端末なので、ハイライトは保存されません。</span>
@@ -143,6 +144,17 @@
 <dialog id="m-list" aria-labelledby="m-list-t">
   <div class="m-top"><h2 id="m-list-t" data-i18n="mListTitle">ハイライトの一覧</h2><button type="button" id="b-mlist-close" data-i18n="linkClose">閉じる</button></div>
   <div id="m-list-body"></div>
+</dialog>
+<dialog id="m-export" aria-labelledby="m-export-t">
+  <div class="m-top"><h2 id="m-export-t" data-i18n="xTitle">メモとハイライトのエクスポート</h2><button type="button" id="b-mexport-close" data-i18n="linkClose">閉じる</button></div>
+  <ul class="x-list">
+    <li><button type="button" id="b-x-pdf" data-i18n="xPdf">PDF（印刷・見返す用）</button><span class="small" data-i18n="xPdfNote">スライドごとに、最後の状態の絵とその下のメモ（字・引用・手書き）。本の節のメモは後ろにまとめます。</span>
+      <label class="small"><input type="checkbox" id="x-all"> <span data-i18n="xAllSlides">メモのないスライドも入れる</span></label></li>
+    <li><button type="button" id="b-x-md" data-i18n="xMd">Markdown（ほかのノートのアプリへ）</button><span class="small" data-i18n="xMdNote">メモと引用、ハイライトの字。手書きは入りません。</span></li>
+    <li><button type="button" id="b-x-json" data-i18n="xJson">控え（別の端末に移す）</button><span class="small" data-i18n="xJsonNote">メモ・ハイライト・手書きを全部。別の端末の Viewer で、同じファイルを開いてから読み込みます。</span></li>
+    <li><label class="pick small-pick" for="x-file"><span data-i18n="xImport">控えを読み込む…</span></label><input type="file" id="x-file" accept=".json,application/json"><span class="small" data-i18n="xImportNote">今開いているファイルの控えだけを読み込みます。同じメモは新しい方を残し、なにも消しません。</span></li>
+  </ul>
+  <p id="x-status" class="small" role="status"></p>
 </dialog>
 <dialog id="m-confirm" aria-describedby="m-confirm-t">
   <p id="m-confirm-t"></p>

@@ -304,3 +304,11 @@ body.note-narrow .ink-surf, body.note-narrow .ink-live { display: none; }
 .np-top h2 { font-size: 1rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #note-panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 6px 2px; font-size: 16px; line-height: 1.6; }
 #note-panel-body .n-quote { background: var(--bg); }
+/* the export dialog (handoff #107) */
+#m-export { max-width: min(560px, calc(100vw - 32px)); width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
+#m-export::backdrop { background: rgba(0, 0, 0, 0.5); }
+#m-export .x-list { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 14px; }
+#m-export .x-list li { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+#m-export #x-file { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#m-export .small-pick { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+#m-export .small-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }

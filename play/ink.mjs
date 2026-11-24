@@ -39,6 +39,44 @@ async function putPage(k, v) { const s = await store('readwrite'); if (s) await 
 export async function countInk() {
   try { const s = await store('readonly'); return s ? await req(s.count()) : 0; } catch { return 0; }
 }
+// the handwriting of one lesson, for the exchange file (annotations.md, Exchange file): [{slide, strokes}] (handoff #107)
+export async function inkOf(doc) {
+  try {
+    const st = await store('readonly'); if (!st) return [];
+    const keys = await req(st.getAllKeys()), out = [];
+    for (const k of keys) {
+      if (typeof k !== 'string' || !k.startsWith(doc + '|')) continue;
+      const v = await getPage(k);
+      if (v && Array.isArray(v.strokes) && v.strokes.length) out.push({ slide: k.slice(doc.length + 1), strokes: v.strokes.filter(strokeOk).map((s) => ({ c: colourOf(s), p: s.p })) });
+    }
+    return out;
+  } catch { return []; }
+}
+// read in: each slide's strokes are added to the kept ones (a stroke already there, the same points, is not added twice)
+export function cleanInk(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const e of list.slice(0, 5000)) {
+    if (!e || typeof e !== 'object' || typeof e.slide !== 'string' || !e.slide || e.slide.length > 200 || !Array.isArray(e.strokes)) continue;
+    const strokes = e.strokes.filter(strokeOk).slice(0, MAX_STROKES).map((s) => ({ c: colourOf(s), p: s.p.map((v) => Math.round(v * 100) / 100) }));
+    if (strokes.length) out.push({ slide: e.slide, strokes });
+  }
+  return out;
+}
+export async function addInk(doc, list) {
+  let n = 0;
+  for (const e of cleanInk(list)) {
+    const k = `${doc}|${e.slide}`;
+    let have = [];
+    try { const v = await getPage(k); if (v && Array.isArray(v.strokes)) have = v.strokes.filter(strokeOk); } catch { /* none */ }
+    const seen = new Set(have.map((s) => JSON.stringify(s.p)));
+    const add = e.strokes.filter((s) => !seen.has(JSON.stringify(s.p)));
+    if (!add.length) continue;
+    n += add.length;
+    try { await putPage(k, { v: 1, strokes: have.concat(add).slice(0, MAX_STROKES), at: Date.now() }); } catch { /* full or blocked */ }
+  }
+  return n;
+}
 export async function clearInk() { try { const s = await store('readwrite'); if (s) await req(s.clear()); } catch { /* nothing kept */ } }
 
 const strokeOk = (s) => s && typeof s === 'object' && Array.isArray(s.p) && s.p.length >= 3 && s.p.length % 3 === 0 && s.p.length <= MAX_PTS * 3

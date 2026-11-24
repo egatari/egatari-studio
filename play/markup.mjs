@@ -11,6 +11,7 @@
 //   const M = markup({els, words, onPersist})
 //   M.open({frame, docId, sourceSha256, fileSha, shared})   fileSha: a promise of the file's SHA-256 (hex), from the bytes play/main.js read   M.close()   M.message(m) → true when it was a markup message
 //   M.setWords(words)   M.toggle(on?)   M.state()
+import { mergeById, mergeNotes } from './notes-export.mjs';
 const COLORS = ['y', 'p', 'b'];
 const MAX = 2000, MAXQ = 1000, CTX = 32;
 const DB = 'egatari-viewer-notes', STORE = 'lessons', NAMES_KEY = 'egatari-viewer-colour-names';
@@ -107,7 +108,8 @@ export async function sha256Hex(bytes) {
   try { const h = await crypto.subtle.digest('SHA-256', bytes); return Array.from(new Uint8Array(h), (x) => x.toString(16).padStart(2, '0')).join(''); } catch { return ''; }
 }
 
-export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, onQuote = () => {}, onNoteSection = () => {}, onNotes = () => {} }) {
+export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, onQuote = () => {}, onNoteSection = () => {}, onNotes = () => {},
+  slides = () => [], slideName = (k) => k, onGo = () => {}, onOpenNote = () => {} }) {
   let W = words;
   const L = { frame: null, docId: '', key: '', sourceSha256: '', fileSha: Promise.resolve(''), shared: false, rec: null, available: false, supported: false, shown: true, bar: false,
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
@@ -168,11 +170,10 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
     const find = (id) => H.find((h) => h.id === id);
     switch (m.egaViewer) {
       case 'markup-hello':
-        if (!keys(m, ['egaViewer', 'supported', 'article', 'shown']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean') break;
-        // the button is there only when this lesson has a book (a tool that depends on the content shows only when it can be used,
-        // like the player's bookmark buttons; handoff #78, 11/22). With the slides alone showing, the bar says where highlights go
-        // (the book) and that the script cannot take them yet
-        L.supported = m.supported; L.available = m.supported && m.article; L.shown = m.shown;
+        if (!keys(m, ['egaViewer', 'supported', 'article', 'shown', 'slides']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean' || typeof m.slides !== 'boolean') break;
+        // the button is there when the lesson has text to mark: a book, or slides (handoff #107: highlights and quotes on a slide's
+        // text too; a tool that depends on the content shows only when it can be used, handoff #78)
+        L.supported = m.supported; L.available = m.supported && (m.article || m.slides); L.shown = m.shown; L.article = m.article;
         els.button.hidden = !L.available;
         if (!L.available && L.bar) toggle(false);
         if (!L.available && L.recall) { L.recall = false; pushView(); }
@@ -297,7 +298,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
     els.listButton.textContent = W().mList;
     if (n) { const c = document.createElement('span'); c.className = 'n'; c.textContent = W().mListCount(n); els.listButton.appendChild(c); }
     els.note.hidden = !L.shared || !L.available;
-    const hint = !L.available ? W().mNoBook : !L.shown ? W().mOpenBook : '';
+    const hint = !L.available ? W().mNoBook : '';
     els.hint.textContent = hint; els.hint.hidden = !hint;
     // with no book on screen the hint takes the bar (a phone has no room for both); 暗記 and the list come back with the book
     els.recall.hidden = !!hint; els.listButton.hidden = !!hint; if (hint) els.recallColours.hidden = true;
@@ -346,14 +347,21 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
     }
     box.appendChild(colours);
     if (L.shared) box.appendChild(mk('p', 'small', W().mShared));
-    // the highlights, by section in the order of the book
+    // the highlights, by slide (in the lesson's order) and then by section of the book. A slide that is no longer in the lesson, or
+    // words not found again, are listed apart (kept, never deleted)
+    const known = new Set(slides());
+    const lostSlide = (t) => t.slide != null && known.size > 0 && !known.has(t.slide);
     const missing = new Set(L.missing);
-    const placed = H.filter((h) => !missing.has(h.id));
+    const isLost = (h) => missing.has(h.id) || lostSlide(h.target);
+    const placed = H.filter((h) => !isLost(h));
     if (!H.length) box.appendChild(mk('p', 'small', W().mEmpty));
-    const order = Object.keys(L.sections);
+    const order = [...slides().map((k) => 's:' + k), ...Object.keys(L.sections).map((k) => 'b:' + k)];
+    const gk = (t) => (t.slide != null ? 's:' + t.slide : 'b:' + t.section);
+    const gname = (k) => (k.startsWith('s:') ? slideName(k.slice(2)) : k === 'b:' ? W().mNoSection : (L.sections[k.slice(2)] || k.slice(2)));
     const groups = new Map();
-    for (const h of placed) { const k = h.target.section; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); }
-    const sorted = [...groups.keys()].sort((a, b) => (a === '' ? -1 : order.indexOf(a)) - (b === '' ? -1 : order.indexOf(b)));
+    for (const h of placed) { const k = gk(h.target); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); }
+    const rank = (k) => { const i = order.indexOf(k); return i < 0 ? (k === 'b:' ? slides().length - 0.5 : order.length) : i; };
+    const sorted = [...groups.keys()].sort((a, b) => rank(a) - rank(b));
     const item = (h, jump) => {
       const li = mk('li', 'm-item');
       li.appendChild(mk('span', 'm-sw m-' + h.color));
@@ -361,7 +369,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
       const t = q.length > 80 ? q.slice(0, 80) + '…' : q;
       if (jump) {
         const b = mk('button', 'm-q', t); b.type = 'button'; b.setAttribute('aria-label', W().mJump(W().mColour[h.color], t));
-        b.addEventListener('click', () => { els.list.close(); send({ egaViewer: 'markup-jump', id: h.id }); });
+        b.addEventListener('click', () => { els.list.close(); onGo({ highlight: h.id, exact: h.target.quote.exact, target: h.target }); });
         li.appendChild(b);
       } else {
         li.appendChild(mk('span', 'm-q', t));
@@ -373,14 +381,48 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
       return li;
     };
     for (const k of sorted) {
-      box.appendChild(mk('h3', null, k === '' ? W().mNoSection : (L.sections[k] || k)));
+      box.appendChild(mk('h3', null, gname(k)));
       const ul = mk('ul', 'm-items'); for (const h of groups.get(k)) ul.appendChild(item(h, true)); box.appendChild(ul);
     }
-    const lost = H.filter((h) => missing.has(h.id));
+    const lost = H.filter(isLost);
     if (lost.length) {
       box.appendChild(mk('h3', null, W().mMissing));
       box.appendChild(mk('p', 'small', W().mMissingNote));
       const ul = mk('ul', 'm-items'); for (const h of lost) ul.appendChild(item(h, false)); box.appendChild(ul);
+    }
+    // the notes: each opens where it belongs; a note whose slide or section is gone is kept and listed apart (annotations.md)
+    const N = L.rec ? L.rec.notes : [];
+    if (N.length) {
+      const sectionsKnown = Object.keys(L.sections).length > 0;
+      const noteLost = (n) => (n.at.slide != null ? lostSlide(n.at) : sectionsKnown && n.at.section !== '' && !(n.at.section in L.sections));
+      const first = (n) => { const b = n.blocks.find((x) => x.text != null) || n.blocks[0]; const v = (b.text != null ? b.text : '“' + b.quote.exact + '”').replace(/\s+/g, ' '); return v.length > 80 ? v.slice(0, 80) + '…' : v; };
+      const nname = (n) => (n.at.slide != null ? slideName(n.at.slide) : n.at.section === '' ? W().mNoSection : (L.sections[n.at.section] || n.at.section));
+      box.appendChild(mk('h3', 'm-notes-h', W().nListTitle(N.length)));
+      const ul = mk('ul', 'm-items');
+      const sortedN = N.filter((n) => !noteLost(n)).sort((a, b) => rank(gk(a.at)) - rank(gk(b.at)));
+      for (const n of sortedN) {
+        const li = mk('li', 'm-item m-note');
+        const b = mk('button', 'm-q'); b.type = 'button';
+        b.append(mk('span', 'm-nwhere', nname(n)), mk('span', 'm-ntext', first(n)));
+        b.addEventListener('click', () => { els.list.close(); onOpenNote(n.at); });
+        li.appendChild(b); ul.appendChild(li);
+      }
+      box.appendChild(ul);
+      const gone = N.filter(noteLost);
+      if (gone.length) {
+        box.appendChild(mk('h3', null, W().nLost));
+        box.appendChild(mk('p', 'small', W().nLostNote));
+        const ul2 = mk('ul', 'm-items');
+        for (const n of gone) {
+          const li = mk('li', 'm-item m-note');
+          const txt = n.blocks.map((x) => (x.text != null ? x.text : '“' + x.quote.exact + '”')).join('\n');
+          li.appendChild(mk('span', 'm-q m-ntext-full', txt));
+          const d = mk('button', null, W().mDelete); d.type = 'button'; d.setAttribute('aria-label', W().nDeleteLost);
+          d.addEventListener('click', async () => { if (!(await ask(W().nDeleteLostAsk))) return; L.rec.notes = L.rec.notes.filter((x) => x !== n); pushNotes(); renderBar(); onNotes(); persist(); renderList(); });
+          li.appendChild(d); ul2.appendChild(li);
+        }
+        box.appendChild(ul2);
+      }
     }
   }
   function showList() { if (!L.frame) return; renderList(); els.list.showModal(); }
@@ -417,6 +459,15 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
   init();
   return {
     open, close, message, toggle, ask, getNote, setNote, goQuote,
+    // an exchange file read in (play/notes-export.mjs readExchange: already checked): merged into this lesson's record
+    importRecord({ highlights, notes }) {
+      if (!L.rec) return null;
+      const h = mergeById(L.rec.highlights, highlights, MAX), n = mergeNotes(L.rec.notes, notes);
+      L.rec.highlights = h.list; L.rec.notes = n.list;
+      changed(); onNotes();
+      return { highlights: h.added + h.changed, notes: n.added + n.changed };
+    },
+    key: () => L.key,
     notes: () => (L.rec ? JSON.parse(JSON.stringify(L.rec.notes)) : []),
     sections: () => ({ ...L.sections }), missing: () => L.missing.slice(),
     setWords(w) { W = w; renderBar(); if (L.available && L.loaded) pushAll(); if (els.list.open) renderList(); },
