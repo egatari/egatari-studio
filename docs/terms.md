@@ -68,7 +68,7 @@ Generated from build_terms.py. Source language: English. `avoid` lists old or wr
 | recall | Recall | 暗記 | Egatari Viewer v0.7: the switch in the markup bar that hides highlighted text; tapping reveals it one by one. Viewer v0.7 term. |  |  | 2026-11-06 (owner) |
 | presenter-view | Presenter view | 発表者ビュー | A second window with the script, next step and tools (key p). |  |  | 2026-10-24 (owner) |
 | bookmark | Bookmark | しおり | A name the author puts on a slide (data-bookmark, up to 20 characters) to jump back to it in a talk: a button with the name in the toolbar and the presenter view, and q for the next one; 元の位置に戻る / Back to where you were returns. Marks that learners keep in the Viewer are a separate thing, to be named later. |  | data-bookmark | 2026-11-20 (standards) |
-| black-screen | Black screen | 黒い画面 | Blank the screen during a presentation (key b). | 暗転 / blackout |  | 2026-10-25 (owner) |
+| black-screen | Black screen | 暗転 | Blank the screen during a presentation (key b). The presenter view says 暗転中. | 黒い画面 / blackout |  | 2026-11-25 (owner) |
 | laser-pointer | Laser pointer | レーザーポインター | A pointer dot during a presentation (key x). | レーザー / laser |  | 2026-10-25 (owner) |
 | pen | Pen | ペン | Draw on the slide during a presentation (key d). Date from the commit that first recorded it (5194262d); no earlier record. |  |  | 2026-10-25 (owner) |
 | marker | Marker | マーカー | In edit mode, circle or point at a place and attach a comment (key m). Not the cue layer. | 手書きメモ ・ 印をつけてメモ / ink note | strokes (§13) | 2026-10-25 (owner) |

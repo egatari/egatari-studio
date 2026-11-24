@@ -1,4 +1,4 @@
-<!-- i18n: pair=README.ja.md sha256=2f238a5f66f28f8d -->
+<!-- i18n: pair=README.ja.md sha256=193f194484ebf127 -->
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/logo/egatari-dark.svg">

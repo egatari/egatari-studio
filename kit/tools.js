@@ -1223,7 +1223,7 @@ function helpHtml(){
       .concat(DECK.bookmarks && DECK.bookmarks().length ? [row(K("q"), j ? "次のしおりへ（最後の次は元の位置へ）" : "Next bookmark (after the last one, back to where you were)")] : [])),
     sec(j ? "表示" : "View", [row(K("a"), PLAY.play + " / " + PLAY.pause), row(K("<") + " " + K(">"), PLAY.rate + (j ? "（遅く / 速く）" : " (slower / faster)"))].concat(DECK.panes && !isDev() && (!DECK.panes.offered || DECK.panes.offered().length > 1) ? [row(K("r"), DECK.panes.order())] : []).concat([row(K("l"), j ? "先のステップを薄く見せる（l）" : "Show later steps faintly (l)"), row(K("s"), j ? "字幕" : "Captions"),
       row(K("Shift") + "+" + K("s"), j ? "字幕の大きさ（S / M / L）" : "Caption size (S / M / L)"),
-      row(K("b"), j ? "黒い画面" : "Black screen")].concat(canFull() ? [row(K("f"), j ? "全画面" : "Fullscreen")] : []).concat([row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
+      row(K("b"), j ? "暗転" : "Black screen")].concat(canFull() ? [row(K("f"), j ? "全画面" : "Fullscreen")] : []).concat([row(K("p"), j ? "発表者ビュー" : "Presenter view")]).concat([
       row(K("?"), j ? "このキーの一覧" : "This help")]))),
     sec(j ? "ツール" : "Tools", [
       row(K("x"), j ? "レーザーポインター" : "Laser pointer"), row(K("d"), j ? "ペン" : "Pen"), row(K("v"), j ? "消えるペン" : "Fading pen"),

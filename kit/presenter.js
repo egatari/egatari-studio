@@ -14,8 +14,8 @@ var L = DECK.ja === false
      legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "black screen"], ["x", "laser pointer"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool / close"], ["p", "close"]]}
   : {cur: "今の画面", nextFrame: "次のスライド", end: "終わり", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次のスライド", notes: "台本", slide: "スライド ", step: "ステップ ", none: "（台本なし）", nextStep: "次のステップ",
      laser: "レーザーポインター（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消去", over: "本体でスライド一覧（o）", lect: "先のステップを薄く見せる（l）",
-     feedback: "フィードバックを送信", goPrev: "前へ", goNext: "次へ", back: "戻る", bmGroup: "しおり", bm: "しおり：", bmBack: "元の位置に戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "黒い画面中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
-     legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "黒い画面"], ["x", "レーザーポインター"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
+     feedback: "フィードバックを送信", goPrev: "前へ", goNext: "次へ", back: "戻る", bmGroup: "しおり", bm: "しおり：", bmBack: "元の位置に戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "暗転中", blackT: "本体の画面を暗転しています（b か、本体の画面のクリックで戻る）",
+     legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "暗転"], ["x", "レーザーポインター"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
 DECK.presenterView = function(){
@@ -107,7 +107,7 @@ DECK.presenterView = function(){
     "#pv .pv-tools kbd{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}" +
     "#pv-auto.on{background:#e8e8e8;color:#151515;border-color:#e8e8e8}" +
     // 暗転中（本体の画面が真っ黒）：見落とさないように、地を反転した札
-    "#pv-black{padding:2px 12px;border-radius:6px;background:#fff;color:#000;font-weight:700;letter-spacing:.04em;box-shadow:0 0 0 2px #e11d48}#pv-black[hidden]{display:none}" +
+    "#pv-black{flex:none;white-space:nowrap;padding:2px 12px;border-radius:6px;background:#fff;color:#000;font-weight:700;letter-spacing:.04em;box-shadow:0 0 0 2px #e11d48}#pv-black[hidden]{display:none}" +
     "#pv.pv-black #pv-cur iframe{opacity:.35}" +
     // まだキーを受けられない（窓にフォーカスがない）ときの覆い：最初のクリックを受けてフォーカスを取り、消える
     "#pv-tap{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.72);color:#fff;font-size:34px;font-weight:700;cursor:pointer;border:0;width:100%;border-radius:0}" +

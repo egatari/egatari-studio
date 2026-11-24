@@ -1,5 +1,5 @@
 {
- "version": "2026-11-19",
+ "version": "2026-11-25",
  "source_language": "en",
  "principles": "handoff/ux-wording-principles.md",
  "terms": [
@@ -913,20 +913,20 @@
    "id": "black-screen",
    "group": "Structure and playback",
    "en": "Black screen",
-   "ja": "黒い画面",
-   "definition": "Blank the screen during a presentation (key b).",
+   "ja": "暗転",
+   "definition": "Blank the screen during a presentation (key b). The presenter view says 暗転中.",
    "avoid": {
     "ja": [
-     "暗転"
+     "黒い画面"
     ],
     "en": [
      "blackout"
     ]
    },
    "internal": "",
-   "decided": "2026-10-25",
+   "decided": "2026-11-25",
    "by": "owner",
-   "note": ""
+   "note": "handoff #105: 黒い画面 → 暗転 (shorter, reads naturally as 暗転中); earlier wording 2026-10-25 (owner)."
   },
   {
    "id": "laser-pointer",

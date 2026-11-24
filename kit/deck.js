@@ -2650,7 +2650,7 @@ function setBlack(on){
     extClose();   // 覆いの下に箱を残すと、キーが箱に取られて b・Esc で戻れない
     var c = document.createElement("div");
     c.id = "deck-black"; c.tabIndex = -1;
-    c.setAttribute("role", "img"); c.setAttribute("aria-label", L10N("黒い画面中（b・クリック・Esc で戻る）", "Blacked out (b, click or Esc to return)"));
+    c.setAttribute("role", "img"); c.setAttribute("aria-label", L10N("暗転中（b・クリック・Esc で戻る）", "Blacked out (b, click or Esc to return)"));
     var prev = document.activeElement;
     BLACK = {el: c, prev: prev && prev !== document.body ? prev : null};
     // 押した点では送らない・描かない：押したら戻すだけ
@@ -2659,7 +2659,7 @@ function setBlack(on){
     // 隅の薄い知らせ（約 2 秒）。入ったときと、暗転の間にマウスを動かしたときに出す
     var hint = document.createElement("div");
     hint.id = "deck-black-hint"; hint.setAttribute("aria-hidden", "true");
-    hint.textContent = L10N("黒い画面中 — b か Esc で戻ります", "Black screen — press b or Esc to return");
+    hint.textContent = L10N("暗転中 — b か Esc で戻る", "Black screen — press b or Esc to return");
     c.appendChild(hint);
     BLACK.hint = hint;
     c.addEventListener("pointermove", function(ev){ if (ev.pointerType !== "touch") blackHint(); });
