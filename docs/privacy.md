@@ -82,14 +82,14 @@ All of it is stored only in the browser and is not sent anywhere. Clearing the b
 | localStorage (the `.ega.html` player) | `<format>-player-layout:<file>`, `<format>-player-split`, `<format>-player-read-size` / `-read-lh` / `-read-bg` | The chosen layout, the divider position, and the book pane's text size, line spacing and background | Same |
 | localStorage / sessionStorage (an `.ega.html` with Live) | `egatari-live-pid:<Live ID>`, `egatari-live-joined:<Live ID>` | A random ID made on the device, and whether the participant joined (the joined mark lasts only while the tab is open) | Clear site data, or close the tab |
 | Egatari Viewer: OPFS (IndexedDB if not available) | `recent/`, database `egatari-viewer` | Copies of recently opened Egatari files (up to 10), on that device only | "Delete" in the list, "Delete all", or turn on "Shared device" |
-| Egatari Viewer: IndexedDB | `egatari-viewer-notes` | Highlights in the book, per file, on that device only (never written into the file) | "Delete all of this colour" in the list, or turn on "Shared device" |
+| Egatari Viewer: IndexedDB | `egatari-viewer-notes` | Highlights in the book and on slides, and notes per slide and per section of the book, per file, on that device only (never written into the file; exported only when the learner chooses to, onto that device) | "Delete all of this colour" in the list, deleting a note's text or a detached note, or turn on "Shared device" |
 | Egatari Viewer: IndexedDB | `egatari-viewer-ink` | Handwriting on the slide and the memo area, per file and slide, on that device only (never written into the file) | The eraser, or turn on "Shared device" |
 | Egatari Viewer: localStorage | `egatari-viewer-keep`, `egatari-viewer-shared`, `egatari-viewer-lang`, `egatari-viewer-install-hint`, `egatari-viewer-colour-names` | Whether to store copies, whether it is a shared device, the language, whether the install hint was closed, the meanings given to highlight colours | Clear site data |
 | Egatari Viewer: Cache Storage | `egatari-viewer-<version>` | The Viewer's own files (so it opens offline). No Egatari files | Clear site data |
 
 Notes:
 - While playing, the address after `#` is rewritten to the current place (the slide ID and the step). For "Resumed where you left off", the place reached in each file is stored on the device of the person who opened the file (see the table above). Not when embedded, inside an LMS, or in Studio's preview.
-- By default, Egatari Viewer stores copies of recently opened files. Turning on "Shared device" stores no copies, highlights or handwriting and deletes the existing ones. On devices shared at a school, please ask people to turn it on.
+- By default, Egatari Viewer stores copies of recently opened files. Turning on "Shared device" stores no copies, highlights, notes or handwriting and deletes the existing ones. On devices shared at a school, please ask people to turn it on.
 
 ## Files handed out to learners (the player)
 

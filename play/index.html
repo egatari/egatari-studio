@@ -151,8 +151,8 @@
     <li><button type="button" id="b-x-pdf" data-i18n="xPdf">PDF（印刷・見返す用）</button><span class="small" data-i18n="xPdfNote">スライドごとに、最後の状態の絵とその下のメモ（字・引用・手書き）。本の節のメモは後ろにまとめます。</span>
       <label class="small"><input type="checkbox" id="x-all"> <span data-i18n="xAllSlides">メモのないスライドも入れる</span></label></li>
     <li><button type="button" id="b-x-md" data-i18n="xMd">Markdown（ほかのノートのアプリへ）</button><span class="small" data-i18n="xMdNote">メモと引用、ハイライトの字。手書きは入りません。</span></li>
-    <li><button type="button" id="b-x-json" data-i18n="xJson">控え（別の端末に移す）</button><span class="small" data-i18n="xJsonNote">メモ・ハイライト・手書きを全部。別の端末の Viewer で、同じファイルを開いてから読み込みます。</span></li>
-    <li><label class="pick small-pick" for="x-file"><span data-i18n="xImport">控えを読み込む…</span></label><input type="file" id="x-file" accept=".json,application/json"><span class="small" data-i18n="xImportNote">今開いているファイルの控えだけを読み込みます。同じメモは新しい方を残し、なにも消しません。</span></li>
+    <li><button type="button" id="b-x-json" data-i18n="xJson">バックアップ（別の端末に移す）</button><span class="small" data-i18n="xJsonNote">メモ・ハイライト・手書きを全部。別の端末の Egatari Viewer で同じファイルを開いてから、読み込みます。</span></li>
+    <li><label class="pick small-pick" for="x-file"><span data-i18n="xImport">バックアップを読み込む…</span></label><input type="file" id="x-file" accept=".json,application/json"><span class="small" data-i18n="xImportNote">今開いているファイルのバックアップだけを読み込みます。同じメモは新しい方を残し、なにも消しません。</span></li>
   </ul>
   <p id="x-status" class="small" role="status"></p>
 </dialog>

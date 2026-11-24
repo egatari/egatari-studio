@@ -312,7 +312,7 @@ let BACKUP = '';
   await p.evaluate(() => { const f = document.querySelector('iframe.print-frame'); f.remove(); });
   BACKUP = await download(p, '#b-x-json');
   const j = JSON.parse(fs.readFileSync(BACKUP, 'utf8'));
-  ok(/のメモの控え（\d{4}-\d\d-\d\d）\.ega-notes\.json$/.test(BACKUP), 'backup file name ' + path.basename(BACKUP));
+  ok(/のメモのバックアップ（\d{4}-\d\d-\d\d）\.ega-notes\.json$/.test(BACKUP), 'backup file name ' + path.basename(BACKUP));
   ok(j.format === 'egatari-notes' && j.docId && j.madeOn.fileSha256 && j.highlights.length === 1 && j.notes.length >= 2 && j.ink.length >= 1 && j.ink[0].strokes.length >= 1, 'backup: docId, madeOn, highlights, notes and ink ' + JSON.stringify({ d: j.docId, h: j.highlights.length, n: j.notes.length, k: j.ink.length }));
   await p.close();
 }

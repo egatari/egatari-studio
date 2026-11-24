@@ -4,7 +4,7 @@
 //   readExchange(json, {docId, fileSha256}) → {ok: true, highlights, notes, ink, madeOn} | {ok: false, why: 'format' | 'other'}
 //   mergeById(have, add) → have with add merged: an id on both sides keeps the later `modified`; new ids are added
 //   markdownOf({title, record, slides: [{key, name}], sections: {id: title}, words}) → the text of a .md file
-//   fileName(title, kind, date) → 「（題名）のメモ（2026-11-25）.md」 or 「…のメモの控え（…）.ega-notes.json」
+//   fileName(title, kind, date) → 「（題名）のメモ（2026-11-25）.md」 or 「…のメモのバックアップ（…）.ega-notes.json」
 import { cleanTarget, cleanNote, MAXN } from './markup.mjs';
 
 export const EXCHANGE = 'egatari-notes';   // the exchange file's own name inside it (format), with its version
