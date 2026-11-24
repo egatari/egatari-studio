@@ -94,7 +94,13 @@ const saveDance = async (page, press) => {
   await press();
   const seen = await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(20000) }).then(() => true, () => false);
   if (seen) await clickDlg(page, '#dlg-rebuild');
-  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
+  await page.waitForFunction(() => !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) }).catch(async (e) => {
+    // 手がかり（CI の Windows で 2 度、保存が終わらずに切れた。handoff #80）：開いている窓・知らせ・状態・フォーカス
+    const d = await page.evaluate(() => { const g = document.querySelector('#dlg[open]'); const st = window.__APP_TEST.state(); return { seen: undefined, dialog: g ? { text: g.textContent.slice(0, 200), buttons: [...g.querySelectorAll('button')].map((b) => b.id || b.textContent) } : null, toast: (document.getElementById('toast') || {}).textContent, portable: st.portable && { dirty: st.portable.dirty, saving: st.portable.saving }, building: st.building, active: document.activeElement && (document.activeElement.id || document.activeElement.tagName) }; }).catch((x) => String(x));
+    if (d && typeof d === 'object') d.seen = seen;
+    console.log('       save did not finish: ' + JSON.stringify(d));
+    throw e;
+  });
 };
 
 try {
