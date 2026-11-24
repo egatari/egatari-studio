@@ -102,7 +102,7 @@ const JA = {
   mMissing: '場所が見つからないハイライト', mMissingNote: 'ファイルが修正されて、元の文が見つかりません。',
   mNoBook: 'このファイルでは、ハイライトは引けません。',
   mShared: '共有の端末なので、ハイライトは保存されません。', mReveal: (c) => `隠したハイライトを表示（${c}）`,
-  mSharedAsk: (l, n, k) => `この端末に保存した${[n ? `ハイライト（${l} つのファイル、${n} 件）` : '', k ? `手書き（${k} 枚のスライド）` : ''].filter(Boolean).join('と')}も削除します。元に戻せません。`, mSharedYes: '削除して切り替える', mFiltered: '一部の色を非表示中', mShowAll: 'すべて表示',
+  mSharedAsk: (l, n, k, m = 0) => `この端末に保存した${[n ? `ハイライト（${l} つのファイル、${n} 件）` : '', m ? `メモ（${m} 件）` : '', k ? `手書き（${k} 枚のスライド）` : ''].filter(Boolean).join('・')}も削除します。元に戻せません。`, mSharedYes: '削除して切り替える', mFiltered: '一部の色を非表示中', mShowAll: 'すべて表示',
   mAdded: (c) => `${c}のハイライトを引きました`, mDeleted: 'ハイライトを削除しました', mRecallOn: '暗記：ハイライトの字を隠しました。押すと 1 つずつ表示されます', mRecallOff: '暗記を終えました',
   mFull: (n) => `ハイライトは 1 つのファイルに ${n} 件までです。不要なものを削除してから引いてください。`,
 };
@@ -116,7 +116,7 @@ const EN = {
   mMissing: 'Highlights whose place can\'t be found', mMissingNote: 'The file was revised and the original text can\'t be found.',
   mNoBook: 'This file can\'t take highlights.',
   mShared: 'This is a shared device, so highlights are not saved.', mReveal: (c) => `Show the hidden highlight (${c})`,
-  mSharedAsk: (l, n, k) => `This also deletes ${[n ? `the highlights (${l} file${l === 1 ? '' : 's'}, ${n} highlight${n === 1 ? '' : 's'})` : '', k ? `the handwriting (${k} slide${k === 1 ? '' : 's'})` : ''].filter(Boolean).join(' and ')} saved on this device. This can't be undone.`, mSharedYes: 'Delete and switch', mFiltered: 'Some colours hidden', mShowAll: 'Show all',
+  mSharedAsk: (l, n, k, m = 0) => `This also deletes ${[n ? `the highlights (${l} file${l === 1 ? '' : 's'}, ${n} highlight${n === 1 ? '' : 's'})` : '', m ? `the notes (${m})` : '', k ? `the handwriting (${k} slide${k === 1 ? '' : 's'})` : ''].filter(Boolean).join(', ')} saved on this device. This can't be undone.`, mSharedYes: 'Delete and switch', mFiltered: 'Some colours hidden', mShowAll: 'Show all',
   mAdded: (c) => `${c} highlight added`, mDeleted: 'Highlight deleted', mRecallOn: 'Recall: highlighted text is hidden. Tap to reveal one at a time', mRecallOff: 'Recall ended',
   mFull: (n) => `A file can have up to ${n} highlights. Delete some you don't need, then highlight again.`,
   skip: 'Skip to content', live: 'Live', close: 'Close',

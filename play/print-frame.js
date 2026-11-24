@@ -15,6 +15,14 @@
   "use strict";
   var parentWin = window.parent, W = 1280, H = 720, GAP = 12, MEMO = 468, K = 0.55, FONT = 26;
   function post(m) { try { parentWin.postMessage(m, "*"); } catch (e) { /* gone */ } }
+  // nothing here plays: no fullscreen (the player asks whether it may; WebKit reports a refused permission check as an error)
+  (function noFullscreen() {
+    var off = function () { return false; }, none = function () { return null; }, no = function () { return Promise.reject(new TypeError("Fullscreen is not available")); };
+    var def = function (o, n, d) { try { Object.defineProperty(o, n, d); } catch (x) { /* kept */ } };
+    ["fullscreenEnabled", "webkitFullscreenEnabled"].forEach(function (n) { def(Document.prototype, n, { configurable: true, get: off }); });
+    ["fullscreenElement", "webkitFullscreenElement", "webkitCurrentFullScreenElement"].forEach(function (n) { def(Document.prototype, n, { configurable: true, get: none }); });
+    ["requestFullscreen", "webkitRequestFullscreen", "webkitRequestFullScreen"].forEach(function (n) { def(Element.prototype, n, { configurable: true, writable: true, value: no }); });
+  })();
   var SHADE = { k: "#1f1f1f", r: "#d22a3a", b: "#1f5fbf" };
   function num(v) { return typeof v === "number" && isFinite(v) ? v : 0; }
   // strokes {c, p: [x, y, pressure, …]} → one SVG, over the part y0…y0+h of the surface

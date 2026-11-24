@@ -131,6 +131,30 @@ const key = (p, k) => p.keyboard.press(k);
   await p.close();
 }
 
+// ---------------------------------------------------------------- m, and a phone
+{
+  const p = await newPage();
+  await open(p, LIGHT);
+  await (await p.$('#lesson')).focus();
+  await p.keyboard.press('m');
+  ok(await until(() => p.evaluate(() => !document.getElementById('note-area').hidden)), 'm in the lesson opens the memo view');
+  await p.click('#b-close');
+  await p.close();
+  const ctxP = await browser.newContext({ locale: 'ja-JP', viewport: { width: 390, height: 780 }, serviceWorkers: 'block', hasTouch: true, isMobile: !WEBKIT });
+  await ctxP.route((u) => !u.href.startsWith(URL0), (r) => r.abort());
+  const q = await ctxP.newPage(); q.on('pageerror', (e) => errors.push(e.message));
+  await q.goto(URL0); await q.waitForSelector('html[data-ready]');
+  await open(q, LIGHT);
+  ok(await q.isVisible('#b-note'), 'a phone: the メモ button');
+  await q.click('#b-note');
+  ok(await until(() => q.evaluate(() => { const a = document.getElementById('note-area'); return !a.hidden && a.classList.contains('narrow') && parseFloat(getComputedStyle(a).fontSize) === 16 && !a.style.transform; })), 'a phone: the memo area keeps the page text size (16 px, not scaled)');
+  await q.tap('#note-area textarea'); await q.keyboard.type('スマホのメモ');
+  ok(await until(async () => { const n = await notesOf(q); return n && n.some((x) => x.blocks.some((b) => b.text === 'スマホのメモ')); }), 'a phone: typed and saved');
+  ok(!(await q.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'a phone: no sideways scroll');
+  await shot(q, 'notes-phone');
+  await ctxP.close();
+}
+
 // ---------------------------------------------------------------- the book: a note per section, quotes
 const lessonFrame = async (p) => (await p.$('#lesson')).contentFrame();
 async function select(f, text) {

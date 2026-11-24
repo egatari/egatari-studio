@@ -202,7 +202,15 @@ for (const t of ['fullscreenerror', 'webkitfullscreenerror']) document.addEventL
 // button or link, which it presses. Keys pressed in the frame never reach this page.
 const NAV_KEYS = new Set(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
 const ARROW_WIDGET = '[role=radiogroup],[role=listbox],[role=menu],[role=menubar],[role=tablist],[role=slider],[role=grid],[role=tree],dialog';
+// m in this page (not in a field): the memo view (handoff #107). The same key pressed in the lesson comes as {egaViewer: "note-key"}
+function noteKey(e) {
+  if (e.key !== 'm' || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || e.isComposing || !S.frame || $('b-note').hidden) return false;
+  const t = e.target;
+  if (t && t.nodeType === 1 && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.closest('dialog'))) return false;
+  e.preventDefault(); setNoteView(!NOTE.view); return true;
+}
 function forwardKey(e) {
+  if (noteKey(e)) return;
   const f = S.frame;
   if (!f || !f.contentWindow || !NAV_KEYS.has(e.key) || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || e.isComposing) return;
   if ($('link-box').open) return;
@@ -375,7 +383,8 @@ function setNoteView(on) {
   const a = $('note-area');
   if (on) {
     a.hidden = false;
-    NOTE.ed = noteEditor({ root: a, words: W, onSave: (at, blocks) => M.setNote(at, blocks), onGo: goQuote, onEscape: () => $('b-note').focus() });
+    NOTE.ed = noteEditor({ root: a, words: W, onSave: (at, blocks) => M.setNote(at, blocks), onGo: goQuote, onEscape: () => $('b-note').focus(),
+      placeholder: () => ($('shared').checked ? W().nShared : W().nPlaceholder) });
     newInk();   // the handwriting of this slide is shown with the note; 「手書き」 lets the pen draw
     if (S.slideKey) inkPage(S.slideKey);
     askSlidesView();
@@ -632,6 +641,8 @@ window.addEventListener('message', (e) => {
     if (!S.posEvents) { S.slideKey = m.key.split(':')[0]; inkPage(S.slideKey); }
     if (S.live) S.live.setStep(m.key);
   }
+  // m in the lesson (play/lesson-shim.js 7): the memo view, like the 「メモ」 button. Untrusted: exactly {egaViewer}
+  else if (m.egaViewer === 'note-key' && Object.keys(m).length === 1) { if (!$('b-note').hidden) setNoteView(!NOTE.view); }
   else if (m.egaViewer === 'ink-bg' && Object.keys(m).length === 2 && rgbOk(m.rgb)) { if (NOTE.view) setMemoBackground(m.rgb); }
   // the player's view changed (play/lesson-shim.js 6): handwriting is drawn over the slide as the slides view shows it, so in the
   // book or 「スライドと本」 it would lie off the slide; it closes (the strokes stay on this device). Untrusted: exactly {egaViewer, layout}
@@ -744,7 +755,7 @@ function initKeep() {
     // none saved → switch at once.
     // やめる turns the switch back off before anything is deleted
     const n = await countRecords(), k = await countInk();
-    if ((n.highlights > 0 || k > 0) && !(await M.ask(W().mSharedAsk(n.lessons, n.highlights, k), W().mSharedYes))) {
+    if ((n.highlights > 0 || n.notes > 0 || k > 0) && !(await M.ask(W().mSharedAsk(n.lessons, n.highlights, k, n.notes), W().mSharedYes))) {
       $('shared').checked = false; setPref(SHARED_KEY, '0'); syncKeep(); $('shared').focus(); return;
     }
     await clearRecents(); await clearAllRecords(); await clearInk(); resume.clear(); prefs.clear(); announce(W().sharedOn);

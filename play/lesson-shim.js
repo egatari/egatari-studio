@@ -19,6 +19,8 @@
 //   5. Handwriting (play/ink.mjs): the page asks {egaViewer: "ink-bg"} and this answers {egaViewer: "ink-bg", rgb: [r, g, b]}, the
 //      background colour of the slide on screen (or of the document), so the memo area below the slide takes the same colour.
 //      Numbers only; the page checks them.
+//   7. m (no modifier, not in a field): the page's memo view (handoff #107), as {egaViewer: "note-key"}. Only m, and the player
+//      inside the file gives m no meaning (kit/tools.js uses it only while editing in Studio, where this shim is not loaded).
 //   6. Handwriting needs the slides view (handoff #27): the player keeps its view on <html data-deck-layout> (kit/panes.js:
 //      slides, book or split). When it changes (the viewer chose 「スライドと本」 or the book in the player's own menu, or pressed r),
 //      this tells the page {egaViewer: "layout", layout}, and the page closes the handwriting outside the slides view. The page
@@ -77,6 +79,13 @@
     var m = e.data;
     if (e.source !== parentWin || !m || m.egaViewer !== "key" || typeof m.key !== "string" || !NAV.test(m.key)) return;
     try { document.dispatchEvent(new KeyboardEvent("keydown", { key: m.key, shiftKey: m.shift === true, bubbles: true, cancelable: true })); } catch (x) { /* an old browser */ }
+  });
+  // 7. m → the page's memo view
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "m" || e.metaKey || e.ctrlKey || e.altKey || e.isComposing || e.defaultPrevented) return;
+    var t = e.target;
+    if (t && t.nodeType === 1 && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    try { parentWin.postMessage({ egaViewer: "note-key" }, "*"); } catch (x) { /* gone */ }
   });
   // 4. Fullscreen through the page. Until the page reports (when the frame has loaded), it is available when this browser has
   //    element fullscreen at all (iPhone Safari has none: the player then hides its button). Requests made by lesson script
