@@ -4,8 +4,8 @@
 // draws only when 「指でも書く」 is on (no Pencil), otherwise a finger never draws (the palm) and a swipe on the surface moves a step.
 // Three fixed pen colours (no free colours, §3.2A): black, red and blue, each kept as a word ('k', 'r', 'b') and painted in the
 // shade that reads on the slide's background (light or dark), so a stroke keeps its meaning when the background changes.
-// The memo area takes the slide's own background (the lesson's shim reports it: play/lesson-shim.js 5), set off from the slide by
-// a small gap and a line, so a dark lesson gets a dark memo and a light lesson a light one whatever the Viewer's own theme.
+// The memo area is the page's element under this surface (play/main.js #note-area, which also holds the typed note): it takes the
+// slide's own background (play/lesson-shim.js 5), set off from the slide by a small gap and a line, so a dark lesson gets a dark memo.
 // An eraser (whole strokes it touches; also the Pencil's own eraser end, buttons 32), undo.
 // Strokes are kept on this device only (IndexedDB "egatari-viewer-ink"), per lesson docId and slide key, never in the file and
 // never sent anywhere; nothing is kept on a shared device (play/main.js clears them when 「共有の端末」 is turned on).
@@ -139,10 +139,7 @@ export function ink({ root, words, shared, send }) {
   function redraw() {
     if (!rect) return;
     const x = ctxOf(surf); x.clearRect(0, 0, W, H + MEMO_H);
-    // the memo area: the slide's background, after a gap, with a line round it (the boundary reads on any page theme)
-    x.fillStyle = `rgb(${bg.join(',')})`; x.fillRect(0, H + GAP, W, MEMO_H - GAP);
-    x.strokeStyle = tone === 'dark' ? 'rgba(255,255,255,.35)' : 'rgba(0,0,0,.3)'; x.lineWidth = 1.5 / scale;
-    x.strokeRect(0, H + GAP, W, MEMO_H - GAP);
+    // the memo area itself (its background and the line round it) is the page's element under this surface (play/main.js #note-area)
     for (const s of strokes) drawStroke(x, s);
     ctxOf(live).clearRect(0, 0, W, H + MEMO_H);
     labelSurface();
@@ -245,8 +242,10 @@ export function ink({ root, words, shared, send }) {
     if (undoStack.length) save();
   }
   setTool('pen'); relabel();
+  // not active: the strokes are shown, but the surface takes no input (a tap reaches the slide or the note under it)
+  function setActive(on) { surf.style.pointerEvents = on ? '' : 'none'; bar.hidden = !on; if (!on) { cur = null; erasing = false; swipe = null; } }
   return {
-    place, setPage, setBackground, relabel, flush,
+    place, setPage, setBackground, relabel, flush, setActive,
     async destroy() { await flush(); surf.remove(); live.remove(); bar.remove(); },
     get barEl() { return bar; },
   };

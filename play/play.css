@@ -278,3 +278,21 @@ button.pri.danger { background: var(--err); border-color: var(--err); color: #ff
 .ink-bar[data-tone=dark] .ink-k { background: #f2f2f2; } .ink-bar[data-tone=dark] .ink-r { background: #ff7b88; } .ink-bar[data-tone=dark] .ink-b { background: #7db8ff; }
 /* a phone: the memo area would be too small to write in, and the header needs the room (the markup hint) */
 @media (max-width: 599px) { #b-ink { display: none; } }
+/* the memo area under the slide (handoff #107, play/notes.mjs): in stage units, scaled with the slide (play/main.js memoLayout), so a
+   note's lines break at the same words on every screen and handwriting over it stays in place. Its background is the slide's own */
+#b-note[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.note-area { position: absolute; z-index: 4; box-sizing: border-box; transform-origin: 0 0; overflow-y: auto; overscroll-behavior: contain;
+  border: 1.5px solid rgba(0, 0, 0, .3); background: #fff; color: #1f1f1f; padding: .6em .8em; line-height: 1.55; }
+.note-area.dark { border-color: rgba(255, 255, 255, .35); color: #f2f2f2; }
+.note-area.narrow { font-size: 16px; padding: 8px 10px; }
+body.note-narrow .ink-surf, body.note-narrow .ink-live { display: none; }
+.n-blocks { display: flex; flex-direction: column; gap: .4em; }
+.n-text { display: block; width: 100%; box-sizing: border-box; resize: none; overflow: hidden; border: 0; background: transparent; color: inherit;
+  font: inherit; line-height: inherit; padding: 0; margin: 0; min-height: 1.55em; }
+.n-text:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.n-text::placeholder { color: inherit; opacity: .55; }
+.n-quote { margin: 0; padding: .3em .6em; border-left: .25em solid #e0b400; background: rgba(0, 0, 0, .04); border-radius: .2em; }
+.note-area.dark .n-quote { background: rgba(255, 255, 255, .08); }
+.n-quote blockquote { margin: 0; white-space: pre-wrap; }
+.n-qrow { display: flex; gap: .4em; justify-content: flex-end; margin-top: .2em; }
+.n-qrow button { font-size: .75em; min-height: 0; padding: .15em .6em; }

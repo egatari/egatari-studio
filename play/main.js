@@ -16,7 +16,8 @@ import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { readFileBounded } from '../app/bounded-read.js';
 import { sha256Hex } from './markup.mjs';
-import { ink, countInk, clearInk, W as INK_W, H as INK_H, MEMO_H as INK_MEMO } from './ink.mjs';
+import { ink, countInk, clearInk, W as INK_W, H as INK_H, MEMO_H as INK_MEMO, GAP as INK_GAP } from './ink.mjs';
+import { noteEditor } from './notes.mjs';
 
 /* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
 const VERSION = __PLAY_VERSION__;
@@ -136,6 +137,7 @@ function startFrame() {
   S.playing.started = true;
   S.frame = makeFrame(S.doc, S.title);
   $('b-ink').hidden = !!(S.playing && S.playing.live);
+  $('b-note').hidden = !!(S.playing && S.playing.live);
   S.doc = null;
   applyLayout();                       // everything around the frame is placed first
   $('stage-wrap').appendChild(S.frame);
@@ -239,7 +241,7 @@ function applyLayout() {
   S.layout = L;
   const place = (el, q) => { el.style.left = q.x + 'px'; el.style.top = q.y + 'px'; el.style.width = q.w + 'px'; el.style.height = q.h + 'px'; };
   place($('stage-wrap'), L.frame);
-  if (INK.on && L.mode === 'none') inkLayout(L, place);
+  if (NOTE.view && L.mode === 'none') memoLayout(L, place);
   $('player').setAttribute('data-mode', L.mode);
   $('b-live').hidden = !live || headless;
   if (L.live) { place($('live'), L.live); $('live').hidden = false; } else $('live').hidden = true;
@@ -298,42 +300,106 @@ function fillCredits() {
   row(w.credLicense, c.license || w.credLicenseNone);
 }
 function openCredits() { fillCredits(); $('cred-box').showModal(); $('b-cred-close').focus(); }
-// ---------------------------------------------------------------- handwriting (handoff #27; play/ink.mjs)
-// 「手書き」: the frame shrinks to the slide's height and the slide plus a memo area below it become one surface over the page.
+// ---------------------------------------------------------------- the memo view: notes and handwriting (handoff #27, #107; play/ink.mjs, play/notes.mjs)
+// 「メモ」 and 「手書き」: the frame shrinks to the slide's height and a memo area appears below the slide. The slide (1280×720) and the
+// memo area are one surface in stage units: the typed note of this slide is laid out in the memo area at a size in stage units, so
+// its lines break at the same words on every screen and handwriting over it (an arrow from a word up into the slide) stays where it
+// was drawn. 「メモ」 alone: the note can be typed, and the handwriting is shown. 「手書き」: the pen draws over both (the note cannot
+// be typed then). On a screen narrower than NARROW the memo area keeps the page's own text size (no handwriting there).
 // Only in the player's slides view: turning it on asks the player for that view, and choosing the book or 「スライドと本」 in the
 // player closes it (play/lesson-shim.js 6; the owner's iPad check 11/20: the strokes lay off the shrunk slide and over the book).
-// Not for lessons with a Live (the Live pane needs the room). Kept per lesson (its docId, or the file's SHA-256 when it has none)
-// and slide key, on this device only; nothing is kept on a shared device. The memo area takes the slide's background, which the
-// lesson's shim reports on request (play/lesson-shim.js 5): untrusted, so only three whole numbers 0–255 are taken.
+// Not for lessons with a Live (the Live pane needs the room). Notes and handwriting are kept per lesson (its docId, or the file's
+// SHA-256 when it has none) and slide key, on this device only; nothing is kept on a shared device. The memo area takes the slide's
+// background, which the lesson's shim reports on request (play/lesson-shim.js 5): untrusted, so only three whole numbers 0–255 are taken.
 const INK = { on: false, ui: null };
+const NOTE = { view: false, byInk: false, ed: null, bg: [255, 255, 255], narrow: false };
+const NARROW = 600, NOTE_FONT = 26;
 const inkDoc = () => (S.playing.docId ? 'doc:' + S.playing.docId : 'file:' + S.playing.fileSha);
+function slideTitle(key) { const P = S.playing, t = P && P.timeline ? P.timeline.find((x) => x.s === key) : null; return t ? t.title : ''; }
+function slideNo(key) { const P = S.playing; if (!P || !P.timeline) return 0; const seen = []; for (const x of P.timeline) { if (!seen.includes(x.s)) seen.push(x.s); if (x.s === key) return seen.length; } return 0; }
+function slideLabel(key) { const n = slideNo(key), t = slideTitle(key); return W().nSlideLabel(n, t); }
 function inkPage(slideKey) {
-  if (!INK.on) return;
-  INK.ui.setPage(inkDoc(), slideKey);
+  if (!NOTE.view) return;
+  if (INK.ui) INK.ui.setPage(inkDoc(), slideKey);
+  if (NOTE.ed && M && (!NOTE.ed.at || NOTE.ed.at.slide !== slideKey)) NOTE.ed.show({ slide: slideKey }, M.getNote({ slide: slideKey }), slideLabel(slideKey));
   if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egaViewer: 'ink-bg' }, '*');
 }
 const rgbOk = (v) => Array.isArray(v) && v.length === 3 && v.every((n) => Number.isInteger(n) && n >= 0 && n <= 255);
-function inkLayout(L, place) {
-  const ratio = (INK_H + INK_MEMO) / INK_W, barH = 52;
+function setMemoBackground(rgb) {
+  NOTE.bg = rgb;
+  const a = $('note-area'), dark = toneDark(rgb);
+  a.style.background = `rgb(${rgb.join(',')})`;
+  a.classList.toggle('dark', dark);
+  if (INK.ui) INK.ui.setBackground(rgb);
+}
+function toneDark(rgb) {
+  const l = rgb.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+  return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2] < 0.25;
+}
+function memoLayout(L, place) {
+  const ratio = (INK_H + INK_MEMO) / INK_W, barH = INK.on ? 52 : 0;
   const sw = Math.floor(Math.min(L.frame.w, (L.frame.h - barH) / ratio)), sh = Math.round(sw * INK_H / INK_W);
   place($('stage-wrap'), { x: L.frame.x, y: L.frame.y, w: L.frame.w, h: sh });
   const r = { x: L.frame.x + Math.round((L.frame.w - sw) / 2), y: L.frame.y, w: sw, h: Math.round(sw * ratio) };
-  INK.ui.place(r);
-  Object.assign(INK.ui.barEl.style, { left: '50%', top: (r.y + r.h + 4) + 'px' });
+  const k = sw / INK_W, a = $('note-area');
+  NOTE.narrow = sw < NARROW;
+  a.classList.toggle('narrow', NOTE.narrow); document.body.classList.toggle('note-narrow', NOTE.narrow);
+  // the memo area: below the slide and its gap, in stage units scaled to the slide (or, narrow, in page units with the page's text size)
+  const top = r.y + Math.round((INK_H + INK_GAP) * k), h = r.y + r.h - top;
+  if (NOTE.narrow) Object.assign(a.style, { left: r.x + 'px', top: top + 'px', width: sw + 'px', height: (L.frame.y + L.frame.h - barH - top) + 'px', transform: '', fontSize: '' });
+  else Object.assign(a.style, { left: r.x + 'px', top: top + 'px', width: INK_W + 'px', height: Math.round(h / k) + 'px', transform: `scale(${k})`, fontSize: NOTE_FONT + 'px' });
+  if (INK.ui) {
+    INK.ui.place(r);
+    Object.assign(INK.ui.barEl.style, { left: '50%', top: (r.y + r.h + 4) + 'px' });
+  }
 }
-function setInk(on) {
+function askSlidesView() { if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*'); }
+function newInk() {
+  INK.ui = ink({ root: $('player'), words: W, shared: () => $('shared').checked,
+    send: (key, shift) => { if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egaViewer: 'key', key, shift: !!shift }, '*'); } });
+  INK.ui.setBackground(NOTE.bg);
+  INK.ui.setActive(INK.on);
+}
+function setNoteView(on) {
+  if (on === NOTE.view || (on && (!M || !S.frame))) return;
+  NOTE.view = on;
+  $('b-note').setAttribute('aria-pressed', String(on));
+  document.body.classList.toggle('noting', on);
+  const a = $('note-area');
+  if (on) {
+    a.hidden = false;
+    NOTE.ed = noteEditor({ root: a, words: W, onSave: (at, blocks) => M.setNote(at, blocks), onGo: goQuote, onEscape: () => $('b-note').focus() });
+    newInk();   // the handwriting of this slide is shown with the note; 「手書き」 lets the pen draw
+    if (S.slideKey) inkPage(S.slideKey);
+    askSlidesView();
+  } else {
+    if (INK.on) setInk(false, true);
+    if (INK.ui) { INK.ui.destroy(); INK.ui = null; }
+    if (NOTE.ed) { NOTE.ed.clear(); NOTE.ed = null; }
+    a.replaceChildren(); a.hidden = true; document.body.classList.remove('note-narrow');
+  }
+  applyLayout();
+}
+// 「手書き」 opens the memo view when it was closed, and closes it again when it ends
+function setInk(on, keepView) {
   if (on === INK.on) return;
   INK.on = on;
   $('b-ink').setAttribute('aria-pressed', String(on));
   document.body.classList.toggle('inking', on);
-  if (on) {
-    INK.ui = ink({ root: $('player'), words: W, shared: () => $('shared').checked,
-      send: (key, shift) => { if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egaViewer: 'key', key, shift: !!shift }, '*'); } });
-    if (S.slideKey) inkPage(S.slideKey);
-    // the slides view (spec §9.4 embedding: the player answers with the same message, which this page ignores)
-    if (S.frame && S.frame.contentWindow) S.frame.contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*');
-  } else if (INK.ui) { INK.ui.destroy(); INK.ui = null; }
+  if (on && !NOTE.view) { setNoteView(true); NOTE.byInk = true; }
+  if (INK.ui) INK.ui.setActive(on);
+  if (NOTE.ed) { NOTE.ed.flush(); NOTE.ed.setReadOnly(on); }
+  if (!on && NOTE.byInk) { NOTE.byInk = false; if (!keepView) { setNoteView(false); return; } }
   applyLayout();
+}
+// ↗ on a quote: a quote from another slide goes to that slide first
+function goQuote(q) {
+  if (!M) return;
+  if (q.target.slide != null && q.target.slide !== S.slideKey) {
+    const P = S.playing, first = P && P.timeline ? P.timeline.find((x) => x.s === q.target.slide) : null;
+    if (first) seekTo(first.s, first.k);
+    setTimeout(() => M.goQuote(q), 200);
+  } else M.goQuote(q);
 }
 
 // ---------------------------------------------------------------- reopening where the viewer left off, with the viewer's preferences (player spec P5, handoff #94)
@@ -379,7 +445,7 @@ function hideResume() { clearTimeout(RESUME.timer); $('resume').hidden = true; }
 
 function closeLesson(quiet) {
   hideResume();
-  setInk(false); S.slideKey = ''; S.posEvents = false;
+  setInk(false); setNoteView(false); S.slideKey = ''; S.posEvents = false;
   if (M) M.close();
   if ($('cred-box').open) $('cred-box').close();
   if (S.frame && fsElement() === S.frame) fsRequest(false);
@@ -398,6 +464,7 @@ function closeLesson(quiet) {
   $('lesson-info').hidden = true;
   $('b-close').hidden = true;
   $('b-ink').hidden = true;
+  $('b-note').hidden = true;
   $('start').hidden = false;
   renderRecents();
   try { $('main').focus(); } catch { /* ignore */ }
@@ -435,11 +502,11 @@ window.addEventListener('message', (e) => {
     if (!S.posEvents) { S.slideKey = m.key.split(':')[0]; inkPage(S.slideKey); }
     if (S.live) S.live.setStep(m.key);
   }
-  else if (m.egaViewer === 'ink-bg' && Object.keys(m).length === 2 && rgbOk(m.rgb)) { if (INK.on) INK.ui.setBackground(m.rgb); }
+  else if (m.egaViewer === 'ink-bg' && Object.keys(m).length === 2 && rgbOk(m.rgb)) { if (NOTE.view) setMemoBackground(m.rgb); }
   // the player's view changed (play/lesson-shim.js 6): handwriting is drawn over the slide as the slides view shows it, so in the
   // book or 「スライドと本」 it would lie off the slide; it closes (the strokes stay on this device). Untrusted: exactly {egaViewer, layout}
   else if (m.egaViewer === 'layout' && Object.keys(m).length === 2 && (m.layout === 'book' || m.layout === 'split' || m.layout === 'slides')) {
-    if (INK.on && m.layout !== 'slides') { setInk(false); announce(W().inkClosedView); }
+    if (NOTE.view && m.layout !== 'slides') { setNoteView(false); announce(W().noteClosedView); }
   }
   // the lesson's shim asks for fullscreen (play/lesson-shim.js 4): exactly {egaViewer, on}. Untrusted: the browser enters it only
   // on the viewer's own activation, and only the frame element goes fullscreen
@@ -684,6 +751,7 @@ async function main() {
   $('b-cred-close').addEventListener('click', () => $('cred-box').close());
   $('cred-box').addEventListener('close', () => { if (S.playing && !$('lesson-credit').hidden) $('lesson-credit').focus(); });
   $('b-ink').addEventListener('click', () => setInk(!INK.on));
+  $('b-note').addEventListener('click', () => setNoteView(!NOTE.view));
   $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
   $('b-resume-x').addEventListener('click', hideResume);
   $('b-close').addEventListener('click', () => { if (history.state && history.state.egaViewer) history.back(); else closeLesson(); });
