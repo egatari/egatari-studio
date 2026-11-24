@@ -1315,6 +1315,7 @@ function loadPresenter() {
 const PICK_MS = 700, REPEAT_MS = 500;
 const picks = new Set();          // 処理の終わっていない選び：{top, kb, t, live, work: [], opened}
 let lastPick = null, lastOpened = null;   // lastOpened：{at, el}（フォーカスを置いた欄）
+let lastBack = null;              // 何も開かなかった選びでフォーカスを返した一覧のボタン：{at, btn}
 // 選んだ項目の処理の約束を、その選びに付ける（一覧のクリックの同じ流れの中で呼ばれたときだけ。once・guarded は自分で付ける）
 function track(p) {
   for (const x of picks) if (x.live) x.work.push(p);
@@ -1355,6 +1356,12 @@ for (const ev of ['mousedown', 'mouseup', 'click', 'dblclick']) {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.isComposing && lastOpened && Date.now() - lastOpened.at < REPEAT_MS && inPick()) { e.preventDefault(); e.stopPropagation(); }
 }, true);
+// 2 度目の Enter：何も開かなかった項目（知らせだけ。保存していない変更があるときの参加者用…・LMS 用…など）で一覧のボタンに戻った直後は、
+// その Enter で一覧を開き直さない（3 度目で「新規作成…」が動きえた。handoff #98 の 2）
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing && lastBack && document.activeElement === lastBack.btn && Date.now() - lastBack.at < REPEAT_MS) { e.preventDefault(); e.stopPropagation(); }
+}, true);
+const backTo = (btn) => { btn.focus(); lastBack = { at: Date.now(), btn }; };
 // 2 度目のクリックがプレビューの iframe に入った（親の文書では捨てられない）：開いた欄に戻す
 window.addEventListener('blur', () => {
   if (!inPick()) return;
@@ -3174,7 +3181,7 @@ for (const M of [...MENUS, ...SUBS]) {
     const back = () => {
       if (p) picks.delete(p);
       if (p && p.opened) return;
-      if (e.detail === 0 && top && !document.querySelector('dialog[open]')) top.btn.focus();
+      if (e.detail === 0 && top && !document.querySelector('dialog[open]')) backTo(top.btn);
       else if (document.activeElement === b) b.blur();
     };
     if (p && p.work.length && !p.opened) {
@@ -3182,7 +3189,7 @@ for (const M of [...MENUS, ...SUBS]) {
       Promise.allSettled(p.work).then(() => {
         picks.delete(p);
         const a = document.activeElement;
-        if (!p.opened && p.kb && top && (!a || a === document.body) && !document.querySelector('dialog[open]')) top.btn.focus();
+        if (!p.opened && p.kb && top && (!a || a === document.body) && !document.querySelector('dialog[open]')) backTo(top.btn);
       });
     } else back();
   });

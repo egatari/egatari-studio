@@ -98,6 +98,27 @@ async function closeAll(page, it) {
   await page.mouse.move(5, 5);
 }
 
+// スライドの文を 1 か所直す（保存していない変更を作る。test-app-notes-kept と同じ）
+async function editText(page) {
+  const t0 = Date.now();
+  let range = null;
+  while (!range && Date.now() - t0 < scaled(30000)) {
+    const f = page.frames().find((x) => x.parentFrame() === page.mainFrame() && x.name() !== 'sl-thumbs');
+    try { range = f && await f.evaluate(() => { const e = document.querySelector('#stage .slide h2[data-src], #stage .slide p[data-src], #stage .slide li[data-src]'); return e ? e.getAttribute('data-src') : null; }); } catch { /* 読み込み中 */ }
+    if (!range) await page.waitForTimeout(150);
+  }
+  let src = null;
+  for (let i = 0; i < 60 && !(src && src.text); i++) { src = await page.evaluate((r) => window.__APP_TEST.api('GET', `/__dev/source?range=${r}`), range); if (!(src && src.text)) await page.waitForTimeout(150); }
+  const next = /<[^>]*>/.test(src.text) ? src.text.replace(/>([^<]+)</, '>$1（直し）<') : src.text + '（直し）';
+  const call = page.evaluate(([r, h, text]) => window.__APP_TEST.api('POST', '/__dev/edit', { range: r, h, text }), [range, src.h, next]);
+  const rights = await Promise.race([call.then(() => null), page.waitForSelector('#dlg[open] #rights-list', { timeout: scaled(30000) }).catch(() => null)]);
+  if (rights) await page.click('#dlg-ok');
+  await call;
+  await page.waitForFunction(() => window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(30000) });
+  await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return !s.building && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
+  return true;
+}
+
 async function check(page, it, way) {
   const label = `${it.name} by ${way}`;
   await pick(page, it, way);
@@ -159,6 +180,24 @@ try {
     const a = await page.evaluate(() => document.activeElement.id);
     ok(a === 'b-previewmenu', `an item that opens nothing (keyboard): focus goes back to the menu button (${a})`);
     await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return !s.building && s.frameLoaded === s.loads; }, null, { timeout: scaled(30000) });
+  }
+  // 知らせだけの項目（保存していない変更があるときの LMS 用（SCORM）…）をキーボードで選び、すばやく Enter をもう 1 回・2 回：
+  // 一覧が開き直らず、「新規作成…」も動かない（handoff #98 の 2）
+  ok(await editText(page), 'make an unsaved change');
+  for (const times of [2, 3]) {
+    await page.focus('#b-filemenu');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('#b-exportmenu', { state: 'visible', timeout: scaled(5000) });
+    for (let i = 0; i < 20 && (await page.evaluate(() => document.activeElement.id)) !== 'b-exportmenu'; i++) await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    for (let i = 0; i < 20 && (await page.evaluate(() => document.activeElement.id)) !== 'b-export-scorm'; i++) await page.keyboard.press('ArrowDown');
+    for (let i = 0; i < times; i++) await page.keyboard.press('Enter');
+    await page.waitForTimeout(scaled(300));
+    const st = await page.evaluate(() => ({ active: document.activeElement.id, menus: [...document.querySelectorAll('#tools .menu-list')].filter((m) => !m.hidden).map((m) => m.id), dlg: document.getElementById('dlg').open ? document.getElementById('dlg-title').textContent : null }));
+    ok(st.menus.length === 0 && !st.dlg && st.active === 'b-filemenu', `a notice-only item (SCORM with unsaved changes) by Enter ${times} times quickly: no menu reopens and nothing else runs (${JSON.stringify(st)})`);
+    for (let i = 0; i < 3 && st.menus.length; i++) await page.keyboard.press('Escape');
+    if (st.dlg) await page.evaluate(() => document.getElementById('dlg').close('cancel'));
+    await page.waitForTimeout(scaled(600));
   }
   await ctx.close();
 } finally {
