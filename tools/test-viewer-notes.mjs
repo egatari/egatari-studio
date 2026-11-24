@@ -265,6 +265,27 @@ let BACKUP = '';
   const mdText = fs.readFileSync(md, 'utf8');
   ok(/のメモ（\d{4}-\d\d-\d\d）\.md$/.test(md), 'Markdown file name ' + path.basename(md));
   ok(mdText.startsWith('# 勾配降下法の基本のメモ') && /## スライド 1「/.test(mdText) && mdText.includes('> 勾配降下法') && mdText.includes('最小値へ少しずつ下る') && mdText.includes('手書きもあります'), 'Markdown: slide headings, the quote as >, the note, a line for handwriting\n' + mdText);
+  // PDF: the frame made only to print (allow-modals, removed afterwards); print() is held in this test so its layout can be read
+  const framed = new Promise((res) => p.on('frameattached', async (fr) => {
+    try { await fr.waitForLoadState('domcontentloaded'); await fr.evaluate(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; }); res(fr); } catch { /* another frame */ }
+  }));
+  await p.click('#b-x-pdf');
+  const pf = await framed;
+  ok(await p.evaluate(() => { const f = document.querySelector('iframe.print-frame'); return !!f && f.getAttribute('sandbox') === 'allow-scripts allow-modals'; }), 'PDF: a print frame (allow-scripts allow-modals)');
+  ok(await p.evaluate(() => document.getElementById('lesson').getAttribute('sandbox') === 'allow-scripts'), 'the playing frame keeps allow-scripts only');
+  ok(await until(() => pf.evaluate(() => window.__printed === 1)), 'it prints once');
+  const pl = await pf.evaluate(() => ({ memos: document.querySelectorAll('.ega-pmemo:not(.ega-off)').length, off: document.querySelectorAll('#stage > .slide.ega-off').length,
+    text: [...document.querySelectorAll('.ega-pmemo:not(.ega-off) .ega-area')].map((a) => a.textContent).join('|'), ink: document.querySelectorAll('.ega-pmemo svg.ega-pink path').length, slideInk: document.querySelectorAll('.slide > svg.ega-pink path').length }));
+  ok(pl.memos === 2 && pl.off > 0 && pl.text.includes('最初のメモ') && pl.text.includes('勾配降下法') && pl.ink >= 1 && pl.slideInk >= 1, 'the handout: the slides with a note, their notes and handwriting; the others left out ' + JSON.stringify(pl));
+  if (SHOTS) {
+    const html = await pf.content();
+    const ctx3 = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 900, height: 1200 } });
+    const q = await ctx3.newPage(); await q.setContent(html); await q.emulateMedia({ media: 'print' });
+    await q.screenshot({ path: path.join(work, 'notes-print.png'), fullPage: true });
+    if (!WEBKIT) await q.pdf({ path: path.join(work, 'notes-print.pdf'), preferCSSPageSize: true, printBackground: true });
+    await ctx3.close();
+  }
+  await p.evaluate(() => { const f = document.querySelector('iframe.print-frame'); f.remove(); });
   BACKUP = await download(p, '#b-x-json');
   const j = JSON.parse(fs.readFileSync(BACKUP, 'utf8'));
   ok(/のメモの控え（\d{4}-\d\d-\d\d）\.ega-notes\.json$/.test(BACKUP), 'backup file name ' + path.basename(BACKUP));

@@ -20,7 +20,7 @@ import { ink, countInk, clearInk, inkOf, addInk, W as INK_W, H as INK_H, MEMO_H 
 import { noteEditor } from './notes.mjs';
 import { exchangeOf, readExchange, markdownOf, fileName } from './notes-export.mjs';
 
-/* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__ */
+/* global __PLAY_VERSION__, __PLAY_LIVE__, __PLAY_DEV__, __LESSON_SHIM__, __PRINT_SHIM__ */
 const VERSION = __PLAY_VERSION__;
 const LIVE_ALLOWED = new Set(__PLAY_LIVE__);
 const LP = LivePolicy({ allowLoopback: __PLAY_DEV__ === true });
@@ -101,6 +101,7 @@ function play(text, r, info, fileSha = Promise.resolve('')) {
   const title = r.meta.title || info.name;
   S.playing = { kind: r.kind, title, live: !!live, liveFrom: r.liveFrom, keyless: !!r.live && !live, docId: r.meta.docId, sourceSha256: r.meta.sourceSha256 || '', fileSha, started: false, credits: r.meta.credits || null, lang: r.meta.lang || '' };
   S.doc = lessonDocument(text, { shim: __LESSON_SHIM__, hideLive: !!r.live });
+  S.playing.text = text;   // for the frame that prints the notes (printNotes)
   S.title = title;
   document.body.classList.add('playing');
   $('start').hidden = true;
@@ -479,6 +480,39 @@ async function importFile(file) {
   st.textContent = W().xRead(n.highlights, n.notes, k);
   announce(st.textContent);
 }
+// PDF: a frame made only to print (play/print-frame.js): the lesson again, with the notes and handwriting laid out under each slide.
+// Its sandbox adds allow-modals (print() needs it); it has the same policy as the playing frame (connect-src 'none'), and it is
+// removed once printing ends. The playing frame never gets allow-modals (annotations.md, Note record: the printing exception)
+const PRINT = { frame: null, data: null, timer: 0 };
+function endPrint(msg) {
+  clearTimeout(PRINT.timer);
+  if (PRINT.frame) { PRINT.frame.remove(); PRINT.frame = null; }
+  PRINT.data = null;
+  if (msg) $('x-status').textContent = msg;
+}
+async function printNotes() {
+  const P = S.playing;
+  if (!P || !M || !P.text) return;
+  endPrint();
+  if (NOTE.ed) NOTE.ed.flush(); if (PANEL.ed) PANEL.ed.flush();
+  if (INK.ui) await INK.ui.flush();
+  const ink = $('shared').checked ? [] : await inkOf(inkDoc());
+  const notes = M.notes(), secs = M.sections();
+  const pages = slideList().map(({ key }) => { const n = notes.find((x) => x.at.slide === key), k = ink.find((x) => x.slide === key); return { slide: key, blocks: n ? n.blocks : [], ink: k ? k.strokes : [] }; });
+  const sections = notes.filter((n) => n.at.section != null).map((n) => ({ title: n.at.section === '' ? W().mdNoSection : (secs[n.at.section] || W().mdLost), blocks: n.blocks }));
+  PRINT.data = { egaViewer: 'print', pages, sections, all: $('x-all').checked, title: fileName(P.title, 'pdf', new Date(), W()).replace(/\.pdf$/, ''),
+    words: { slide: W().pSlide, sections: W().pSections } };
+  const f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-scripts allow-modals');
+  f.setAttribute('referrerpolicy', 'no-referrer');
+  f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+  f.className = 'print-frame';
+  f.srcdoc = lessonDocument(P.text, { shim: __PRINT_SHIM__ });
+  PRINT.frame = f;
+  document.body.appendChild(f);
+  $('x-status').textContent = W().pPreparing;
+  PRINT.timer = setTimeout(() => endPrint(W().pFailed), 60000);   // the lesson never got ready
+}
 function openExport() { if (!M || !S.playing) return; $('x-status').textContent = ''; $('m-export').showModal(); }
 
 // ↗ on a quote: a quote from another slide goes to that slide first
@@ -534,7 +568,7 @@ function hideResume() { clearTimeout(RESUME.timer); $('resume').hidden = true; }
 
 function closeLesson(quiet) {
   hideResume();
-  setInk(false); setNoteView(false); closeSection(); S.slideKey = ''; S.posEvents = false;
+  setInk(false); setNoteView(false); closeSection(); endPrint(); S.slideKey = ''; S.posEvents = false;
   if (M) M.close();
   if ($('cred-box').open) $('cred-box').close();
   if (S.frame && fsElement() === S.frame) fsRequest(false);
@@ -574,6 +608,13 @@ function focusLive() {
 const isStr = (v, n) => typeof v === 'string' && v.length <= n;
 const openLinkShape = (m) => { const k = Object.keys(m); return k.every((x) => x === 'egatari' || x === 'href' || x === 'text' || (x === 'download' && m.download === true)) && k.length === (m.download === true ? 4 : 3); };
 window.addEventListener('message', (e) => {
+  // the print frame (printNotes): only from it, only these three shapes
+  if (PRINT.frame && e.source === PRINT.frame.contentWindow && e.origin === 'null') {
+    const m = e.data, k = m && typeof m === 'object' ? m.egaViewer : '';
+    if (k === 'print-ready' && PRINT.data) { PRINT.frame.contentWindow.postMessage(PRINT.data, '*'); clearTimeout(PRINT.timer); PRINT.timer = setTimeout(() => endPrint(), 600000); }
+    else if (k === 'print-done') endPrint(m.empty === true ? W().pEmpty : m.failed === true ? W().pFailed : W().pDone);
+    return;
+  }
   const f = S.frame;
   if (!f || e.source !== f.contentWindow || e.origin !== 'null') return;
   const m = e.data;
@@ -852,7 +893,7 @@ async function main() {
   $('b-mexport-close').addEventListener('click', () => $('m-export').close());
   $('b-x-md').addEventListener('click', () => exportAs('md'));
   $('b-x-json').addEventListener('click', () => exportAs('json'));
-  $('b-x-pdf').addEventListener('click', () => exportAs('pdf'));
+  $('b-x-pdf').addEventListener('click', () => printNotes());
   $('x-file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; importFile(f); });
   $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
   $('b-resume-x').addEventListener('click', hideResume);

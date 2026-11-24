@@ -312,3 +312,5 @@ body.note-narrow .ink-surf, body.note-narrow .ink-live { display: none; }
 #m-export #x-file { position: absolute; width: 1px; height: 1px; opacity: 0; }
 #m-export .small-pick { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 #m-export .small-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* the frame made only to print notes (play/print-frame.js): off screen, the size of a slide */
+.print-frame { position: fixed; left: -20000px; top: 0; width: 1280px; height: 720px; border: 0; visibility: hidden; }
