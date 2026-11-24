@@ -2867,6 +2867,8 @@ function infoSection() {
     el('p', { cls: 'hint', id: 'info-player', text: T.infoPlayer }),
   ]);
   panel.__gen = S.gen;
+  // 試験の手がかり：欄を作った回数と、作らせた所（呼び出しの 2 段上まで）
+  infoRuns.built++; infoRuns.by.push(String(new Error().stack || '').split('\n').slice(2, 4).map((x) => x.trim().replace(/^at /, '').replace(/\(?https?:\/\/[^/]+\//, '(')).join(' < ').slice(0, 160));
   return panel;
 }
 // 情報の欄を、今の INFO で描き直す（キャンセル・保存の後）
@@ -2910,7 +2912,7 @@ async function saveInfo(form, error) {
 // 後から終わった 2 度目の描き直しが、入力の途中の欄を作り直して消していた（CI の遅いランナーで test-app-file-info が 4 度落ちた）
 let infoOpening = false;
 // 試験の手がかり：開いた・止めた回数と、開き直したわけ（__APP_TEST.infoRuns）
-const infoRuns = { ran: 0, busy: 0, open: 0, why: [] };
+const infoRuns = { ran: 0, busy: 0, open: 0, why: [], built: 0, by: [] };
 async function lessonInfo() {
   if (!S.ws) return;
   if (earlierWhy()) { toast(earlierWhy(), true); return; }
