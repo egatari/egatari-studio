@@ -122,6 +122,10 @@ const key = (p, k) => p.keyboard.press(k);
   await shot(p, 'notes-ink');
   await p.click('#b-ink');
   ok(await until(() => p.evaluate(() => !document.querySelector('#note-area textarea').readOnly && !document.getElementById('note-area').hidden)), 'handwriting off: the note again, still open');
+  // English: the note's label and the button follow, the text stays
+  await p.click('#b-lang');
+  ok(await until(() => p.evaluate(() => { const t = document.querySelector('#note-area textarea'); return /^Note on slide 1/.test(t.getAttribute('aria-label')) && t.value.startsWith('最初のメモ') && document.getElementById('b-note').textContent.trim() === 'Notes'; })), 'English: the note is labelled in English, its text kept');
+  await p.click('#b-lang');
   await p.click('#b-note');
   ok(await until(() => p.evaluate(() => document.getElementById('note-area').hidden)), 'メモ off: the memo area closes');
   // opened again

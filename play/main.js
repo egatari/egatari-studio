@@ -51,6 +51,9 @@ function setLang(l) {
   renderInstallHint();
   if (M) M.setWords(W);
   if (INK.ui) INK.ui.relabel();
+  // the open notes: their labels and placeholders in the new language (what is typed is saved first)
+  if (NOTE.ed && NOTE.ed.at && M) NOTE.ed.show(NOTE.ed.at, (NOTE.ed.flush(), M.getNote(NOTE.ed.at)), slideLabel(NOTE.ed.at.slide));
+  if (PANEL.ed && PANEL.at && M) { const t = W().nSectionLabel(M.sections()[PANEL.at.section] || ''); $('note-panel-t').textContent = t; PANEL.ed.show(PANEL.at, (PANEL.ed.flush(), M.getNote(PANEL.at)), t); }
 }
 
 // ---------------------------------------------------------------- reading a file (in a Worker: play/reader-worker.mjs)
