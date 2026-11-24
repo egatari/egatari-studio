@@ -113,6 +113,26 @@ try {
   await pv.waitForSelector('#pv-black', { state: 'attached' });
   await pv.waitForTimeout(900);
   const hidden0 = await pv.evaluate(() => document.getElementById('pv-black').hidden);
+  // 前へ・次へのボタン（handoff #104）：押すとキーの → ← と同じに 1 つ送る・戻る。マウスで押した後はフォーカスを残さない。フォーカスのあるボタンの Enter・Space は 1 度だけ
+  const pos = () => p.evaluate(() => { const s = DECK.state(); return s.slide + ':' + s.step; });
+  const moved = (from) => p.waitForFunction((f) => { const s = DECK.state(); return s.slide + ':' + s.step !== f; }, from, { timeout: scaled(5000) }).catch(() => {});
+  const navSize = await pv.evaluate(() => ['pv-go-prev', 'pv-go-next'].map((id) => { const r = document.getElementById(id).getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height)]; }));
+  ok(navSize.every(([w, h]) => w >= 44 && h >= 44), 'the presenter view has Previous and Next buttons at least 44 px ' + JSON.stringify(navSize));
+  const n0 = await pos();
+  await pv.click('#pv-go-next'); await moved(n0); await pv.waitForTimeout(300);
+  const n1 = await pos();
+  const fNext = await pv.evaluate(() => document.activeElement && document.activeElement.id);
+  await pv.click('#pv-go-prev'); await moved(n1); await pv.waitForTimeout(300);
+  const n2 = await pos();
+  ok(n1 !== n0 && n2 === n0 && fNext !== 'pv-go-next', 'Next and Previous in the presenter view move the main window one step on and back, and leave no focus on the button ' + JSON.stringify({ n0, n1, n2, focus: fNext }));
+  for (const k of ['Enter', 'Space']) {
+    await pv.focus('#pv-go-next');
+    await pv.keyboard.press(k); await moved(n0); await pv.waitForTimeout(400);
+    const k1 = await pos();
+    ok(k1 === n1, `${k} on the focused Next button moves one step, not two ` + JSON.stringify({ from: n0, to: k1, once: n1 }));
+    await pv.click('#pv-go-prev'); await moved(k1); await pv.waitForTimeout(300);
+  }
+  await pv.evaluate(() => document.activeElement && document.activeElement.blur());
   await p.bringToFront();
   await p.keyboard.press('b');
   await pv.waitForFunction(() => !document.getElementById('pv-black').hidden, null, { timeout: scaled(5000) }).catch(() => {});
@@ -139,6 +159,18 @@ try {
     await pv.waitForFunction(() => document.getElementById('pv-black').hidden, null, { timeout: scaled(3000) }).catch(() => {});
     const ind = await pv.evaluate(() => document.getElementById('pv-black').hidden);
     ok(on && !z.black && ind && z.st.slide === a.slide && z.st.step === a.step, `${k} in the presenter view ends blackout on the main window and leaves the slide and step unchanged ` + JSON.stringify({ before: [a.slide, a.step], after: [z.st.slide, z.st.step], on, black: z.black, indicatorHidden: ind }));
+    await pv.keyboard.press('b');
+    await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: scaled(3000) }).catch(() => {});
+  }
+  // 暗転の間の前へ・次へのボタン：キーと同じく暗転を終えるだけ
+  for (const id of ['pv-go-next', 'pv-go-prev']) {
+    const a = await pos();
+    const on = await p.evaluate(() => document.documentElement.classList.contains('blackout'));
+    await pv.click('#' + id);
+    await p.waitForFunction(() => !document.documentElement.classList.contains('blackout'), null, { timeout: scaled(3000) }).catch(() => {});
+    await p.waitForTimeout(300);
+    const z = { pos: await pos(), black: await p.evaluate(() => document.documentElement.classList.contains('blackout')) };
+    ok(on && !z.black && z.pos === a, `the ${id === 'pv-go-next' ? 'Next' : 'Previous'} button during blackout only ends it ` + JSON.stringify({ before: a, after: z.pos, on, black: z.black }));
     await pv.keyboard.press('b');
     await p.waitForFunction(() => document.documentElement.classList.contains('blackout'), null, { timeout: scaled(3000) }).catch(() => {});
   }

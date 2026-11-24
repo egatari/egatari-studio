@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=2e62ac6f9162d889 -->
+<!-- i18n: pair=reference.ja.md sha256=3c2cf531255f9c83 -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -281,7 +281,7 @@ For 国語 files (kanbun, classical and modern Japanese). The example is [`examp
 | Home / End | first / last slide |
 | digits + Enter | go to that slide (while playing, playback goes on from there) |
 | f | fullscreen (where the browser has element fullscreen; on iPhone Safari, or framed without the fullscreen permission, the bar has no fullscreen button and the key list leaves f out; when the browser refuses, the player says “Could not go fullscreen”) |
-| p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen) |
+| p | presenter view (p again closes it; in the presenter view, Esc or p closes it, or only leaves fullscreen). Under the current slide, the presenter view has **Previous** and **Next** buttons that move like ← and → (during a black screen they only end it), so it can be moved on without keys (an Apple Pencil on an iPad with Sidecar, or a finger) |
 | a | play / pause from the current step (audio if any). Pause and play again continue from the same point. Any navigation key stops playback |
 | < / > | playback speed slower / faster (0.75, 1, 1.25, 1.5, 2×) |
 | l | show later steps faintly (on/off) |

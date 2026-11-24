@@ -10,11 +10,11 @@ var DECK = window.DECK;
 var L = DECK.ja === false
   ? {cur: "Current slide", nextFrame: "Next slide", end: "End", auto: "Autoplay", stop: "Stop", autoKey: "Autoplay (a)", reset: "Reset timer", next: "Next slide", notes: "Script", slide: "Slide ", step: "Step ", none: "(no script)", nextStep: "Next step",
      laser: "Laser pointer (x)", pen: "Pen (d)", color: "Pen color", vpen: "Fading pen (v)", clear: "Clear ink", over: "Overview on the main window (o)", lect: "Show later steps faintly (l)",
-     feedback: "Send feedback", back: "Back", bmGroup: "Bookmarks", bm: "Bookmark: ", bmBack: "Back to where you were", close: "Close presenter view (p)", tap: "Click here to control", black: "Black screen", blackT: "The audience screen is black (b, or click it, to return)",
+     feedback: "Send feedback", goPrev: "Previous", goNext: "Next", back: "Back", bmGroup: "Bookmarks", bm: "Bookmark: ", bmBack: "Back to where you were", close: "Close presenter view (p)", tap: "Click here to control", black: "Black screen", blackT: "The audience screen is black (b, or click it, to return)",
      legend: [["→/Space", "next"], ["←", "prev"], ["a", "autoplay"], ["b", "black screen"], ["x", "laser pointer"], ["d", "pen"], ["v", "fading pen"], ["o", "overview"], ["Esc", "exit tool / close"], ["p", "close"]]}
   : {cur: "今の画面", nextFrame: "次のスライド", end: "終わり", auto: "自動再生", stop: "停止", autoKey: "自動再生（a）", reset: "経過時間を戻す", next: "次のスライド", notes: "台本", slide: "スライド ", step: "ステップ ", none: "（台本なし）", nextStep: "次のステップ",
      laser: "レーザーポインター（x）", pen: "ペン（d）", color: "ペンの色", vpen: "消えるペン（v）", clear: "書き込みを消去", over: "本体でスライド一覧（o）", lect: "先のステップを薄く見せる（l）",
-     feedback: "フィードバックを送信", back: "戻る", bmGroup: "しおり", bm: "しおり：", bmBack: "元の位置に戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "黒い画面中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
+     feedback: "フィードバックを送信", goPrev: "前へ", goNext: "次へ", back: "戻る", bmGroup: "しおり", bm: "しおり：", bmBack: "元の位置に戻る", close: "発表者ビューを閉じる（p）", tap: "ここを押すと操作できます", black: "黒い画面中", blackT: "本体の画面は真っ黒です（b か、本体の画面のクリックで戻る）",
      legend: [["→/Space", "次"], ["←", "前"], ["a", "自動再生"], ["b", "黒い画面"], ["x", "レーザーポインター"], ["d", "ペン"], ["v", "消えるペン"], ["o", "一覧"], ["Esc", "解除・閉じる"], ["p", "閉じる"]]};
 // 道具のボタン：[絵の名前, キー（DECK.ptools.key に渡す）, 表示するキー]
 var TOOLS = [["laser", "x", "x"], ["pen", "d", "d"], ["vpen", "v", "v"], ["clear", "clear", "⌫"], ["over", "o", "o"], ["lect", "l", "l"]];
@@ -58,7 +58,10 @@ DECK.presenterView = function(){
     '<button type="button" id="pv-reset" title="' + L.reset + '" aria-label="' + L.reset + '">⟲</button>' +
     '  <span id="pv-timer" role="timer">00:00</span><span id="pv-clock"></span>' +
     '  <button type="button" id="pv-close">' + L.close + '</button></header>' +
-    ' <main><div id="pv-cur"><iframe id="f-cur" title="' + L.cur + '"></iframe></div>' +
+    ' <main><div id="pv-cur"><iframe id="f-cur" title="' + L.cur + '"></iframe>' +
+    // 前へ・次へ（handoff #104）：キーやリモコンのない所（Sidecar の iPad の Apple Pencil・指のタッチ）でも送れる。帯と同じ言葉と絵、添え字にキー
+    '  <div id="pv-nav"><button type="button" id="pv-go-prev" aria-label="' + L.goPrev + '">' + (ic.prev || "") + L.goPrev + '<kbd aria-hidden="true">←</kbd></button>' +
+    '<button type="button" id="pv-go-next" aria-label="' + L.goNext + '">' + L.goNext + (ic.next || "") + '<kbd aria-hidden="true">→</kbd></button></div></div>' +
     '  <aside><div id="pv-next"><div class="lab">' + L.next + '</div><iframe id="f-next" title="' + L.nextFrame + '" tabindex="-1"></iframe><div id="pv-end" hidden>' + L.end + '</div></div>' +
     '   <div id="pv-notes"><div class="lab">' + L.notes + '</div><div id="pv-text"></div></div></aside></main>' +
     ' <footer id="pv-keys">' + legend + '</footer>' +
@@ -72,7 +75,12 @@ DECK.presenterView = function(){
     "#pv button{background:#333;color:#eee;border:1px solid #555;border-radius:6px;padding:4px 12px;font-size:15px;cursor:pointer}" +
     "#pv button:focus{outline:none}#pv button:focus-visible{outline:2px solid #9cf;outline-offset:2px}" +
     "#pv main{flex:1;display:flex;gap:14px;padding:14px;min-height:0}" +
-    "#pv-cur{flex:0 0 62%;display:flex;align-items:center}#pv-cur iframe{width:100%;aspect-ratio:16/9;border:0;background:#000}" +
+    "#pv-cur{flex:0 0 62%;display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:0}#pv-cur iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;min-height:0}" +
+    // 前へ・次へ：指・ペンで押しやすい大きさ（高さ 48 px）。次へを広く
+    "#pv-nav{display:flex;gap:12px}#pv #pv-nav button{flex:1 1 0;min-height:48px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:18px;user-select:none;-webkit-user-select:none;touch-action:manipulation}" +
+    "#pv #pv-nav #pv-go-next{flex-grow:2}#pv #pv-nav button:hover{background:#3d3d3d}" +
+    "#pv-nav svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}" +
+    "#pv-nav kbd{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;opacity:.6}" +
     "#pv aside{flex:1;display:flex;flex-direction:column;gap:12px;min-width:0}" +
     // 「次」の画面は見るだけ：押しても中にフォーカスを入れない（中のデッキはキーを受けないので、キーが止まってしまう）。押すと発表者ビューに残る
     "#pv-next iframe{width:100%;aspect-ratio:16/9;border:0;background:#000;opacity:.85;pointer-events:none}" +
@@ -249,6 +257,9 @@ DECK.presenterView = function(){
   // マウスで押したらフォーカスを残さない（キーボードで押したとき、detail = 0、は残す）
   document.getElementById("pv-auto").onclick = function(e){ send("auto"); if (e.detail !== 0) this.blur(); };
   document.getElementById("pv-back").onclick = function(e){ send("back"); if (e.detail !== 0) this.blur(); };
+  // 前へ・次へ：キーの ← → と同じ（暗転の間は暗転を終えるだけ。deck.js の deck-cmd）。フォーカスのあるときの Enter・Space はボタンだけが受ける（上の keydown）
+  document.getElementById("pv-go-prev").onclick = function(e){ send("prev"); if (e.detail !== 0) this.blur(); };
+  document.getElementById("pv-go-next").onclick = function(e){ send("next"); if (e.detail !== 0) this.blur(); };
   // 道具のボタン：キーと同じ（tools.js の DECK.ptools.key）。フォーカスを奪わないので、押した後も矢印で送れる
   [].forEach.call(document.querySelectorAll("#pv button"), function(b){ b.addEventListener("mousedown", function(e){ e.preventDefault(); }); });
   [].forEach.call(document.querySelectorAll("#pv .pv-tools button"), function(b){
