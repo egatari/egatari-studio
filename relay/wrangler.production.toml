@@ -25,7 +25,7 @@ ISSUE_LABEL = "request"
 # test token, which only a test secret accepts (offline development). Secrets are never here:
 # `npx wrangler secret put TURNSTILE_SECRET` and `npx wrangler secret put GITHUB_TOKEN`
 # (for local development put test values in .dev.vars, see .dev.vars.example).
-TURNSTILE_SITEKEY = ""   # put the site key of the widget for request.egatari.org here before deploying
+TURNSTILE_SITEKEY = "0x4AAAAAAGTFk-byvrYk6WBt"   # the widget for request.egatari.org
 
 # Per-sender limit on POST /api/request (keyed by CF-Connecting-IP): 3 requests per 60 s.
 # namespace_id is any integer unique to this limiter within the account (egatari/live uses 1001).
