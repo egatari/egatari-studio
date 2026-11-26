@@ -304,7 +304,8 @@ console.log('no network');
   ok(!(await o.p.$('#live-pane')), 'a lesson without extensions.live: no pane'); quiet(o.net, 'a lesson without extensions.live'); await o.close(); }
 // 編集アプリのプレビュー：信頼する先頭部分（CSP connect-src 'none'）+ 文書を、sandbox の srcdoc の枠に
 { fake.reset(); const o = await open(null);
-  await o.p.setContent('<!doctype html><html><body><iframe id="f" sandbox="allow-scripts allow-modals" style="width:1600px;height:700px"></iframe></body></html>');
+  // 外側は data: の頁にする（setContent の about:blank の頁に sandbox の srcdoc の枠を置くと、Chrome 158 はブラウザごと落ちる：FATAL site_instance_impl.cc has_site_。http・file・data の頁なら落ちない。編集アプリは http(s) の頁）
+  await o.p.goto('data:text/html,' + encodeURIComponent('<!doctype html><html><body><iframe id="f" sandbox="allow-scripts allow-modals" style="width:1600px;height:700px"></iframe></body></html>'));
   await o.p.$eval('#f', (f, d) => { f.srcdoc = d; }, previewDocument(L));
   const fr = await (await o.p.$('#f')).contentFrame();
   await until(async () => fr.evaluate(() => !!(window.DECK && DECK.ready)).catch(() => false), 8000);
