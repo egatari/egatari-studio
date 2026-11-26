@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.md sha256=0e203c8a9f4759ee -->
+<!-- i18n: pair=privacy.md sha256=9440a3b8c226be97 -->
 # プライバシー
 
 [English](privacy.md) | 日本語
@@ -63,6 +63,8 @@ Studio とプレーヤーは、次のものを送信しません。
 | localStorage（Studio） | `egatari-rec-keep-recording` | 録音の設定（1 つのオンとオフ） | 同上 |
 | localStorage（Studio） | `egatari-slides-open` | スライド一覧を開いていたか | 同上 |
 | localStorage（Studio） | `egatari-studio-live-results-notice` | ライブの結果を取り込む説明を表示した印 | 同上 |
+| localStorage（Studio） | `egatari-license-asked:<ファイルの ID>` | 初めての保存の「配布したこのファイルを、ほかの人が使ったり直したりしてもよいですか」を聞いた印（ファイルごと）。答えはファイルに書く | 同上 |
+| localStorage（Studio） | `egatari-license-ask-off` | 同じ問いの「今後は表示しない」（この端末のどのファイルでも聞かない） | 使い方（？）の「ライセンスの確認」の「また表示する」、またはサイトデータを削除する |
 | localStorage（Studio） | `egatari-edit-role:<ファイルの ID>` | 保存の前の「このファイルは、あなたが作ったものですか。」の答え（ファイルごと）。答えた名前や内容はファイルに書き、ここには保存しない | 同上 |
 | sessionStorage（Studio） | `motion-editor-reopen` | 言語を切り替えた直後に、ファイルを開き直すための印（タブを閉じると消える） | タブを閉じる |
 | IndexedDB（Studio） | `motion-slides-editor` | 最近開いた作業フォルダや Egatari ファイルの「ハンドル」（場所を指す目印。最大 8 件）。ファイルの中身は保存しない | サイトデータを削除する |

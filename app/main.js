@@ -1677,9 +1677,18 @@ function showHelp() {
     modelCacheSection({ el, EN, ask, toast }),   // ブラウザの TTS のモデル：使用量と「モデルを消す」（app/model-cache-ui.js）
     draftsSection(),                              // このブラウザに残した、保存していない変更：件数と「すべて捨てる」（#29）
     notesSection(),                               // このブラウザに残したコメント：件数と「すべて削除」（#100 の 1）
+    licenseAskSection(),                          // 初めての保存のライセンスの確認を「今後は表示しない」にしたときだけ：また表示する（#112）
   ]);
 }
 
+// 使い方の板の節：初めての保存のライセンスの確認（askLicenseOnly）を「今後は表示しない」にしていれば、それを知らせて「また表示する」（handoff #112）
+function licenseAskSection() {
+  if (!licenseAskOff()) return null;
+  const box = el('section', { id: 'license-ask-help', cls: 'model-cache' });
+  const btn = el('button', { type: 'button', id: 'b-license-ask-on', text: T.licAskOn, onclick: () => { setLicenseAskOff(false); box.replaceChildren(el('h3', { text: T.licAskHelpTitle }), el('p', { id: 'license-ask-info', text: T.licAskOnDone })); } });
+  box.append(el('h3', { text: T.licAskHelpTitle }), el('p', { id: 'license-ask-info', text: T.licAskOffNote }), el('div', { cls: 'row' }, [btn]));
+  return box;
+}
 // 使い方の板の節：このブラウザに残したコメント（教材ごと。今開いている教材のものは消さない）
 function notesSection() {
   const L = T.notesKept;
@@ -2238,8 +2247,8 @@ function licenseFields(R) {
     el('label', { for: 'edit-copyright', text: T.infoFCopyright }), copyright]) };
 }
 const pickedOf = (list) => { const x = list.map((l) => l.querySelector('input')).find((i) => i.checked); return x ? x.value : null; };
-// 選んだライセンス・作成者・著作権の表示を設定のファイルの metadata に書く（変わった項目だけ。「付けない」で今もないなら何も書かない）→ true（続ける）
-async function writeLicenseFields(ws, md, own, live) {
+// 選んだライセンス・作成者・著作権の表示（{ license, creators, copyright }。fileInfoPatch の形）を設定のファイルの metadata に書く（変わった項目だけ。「付けない」で今もないなら何も書かない）→ true（続ける）
+async function writeLicenseFields(ws, md, values, live) {
   const CFG = FORMAT.CONFIG_FILE;
   let old = null;
   try { old = await ws.readText(CFG, { max: READ_LIMITS.json }); } catch { old = null; }
@@ -2247,7 +2256,7 @@ async function writeLicenseFields(ws, md, own, live) {
   try {
     const cm = configObject(old).metadata;
     const base = cm && typeof cm === 'object' ? cm : md;
-    const r = fileInfoPatch({ license: pickedOf(own.lics) || 'none', creators: own.creators.value, copyright: own.copyright.value }, base);
+    const r = fileInfoPatch(values, base);
     const patch = r.patch ? changedOnly(base, r.patch) : {};
     if (Object.keys(patch).length) {
       await ws.writeText(CFG, updateConfig(old, { metadata: configMerge(patch) }), { live });
@@ -2256,28 +2265,59 @@ async function writeLicenseFields(ws, md, own, live) {
   } catch (e) { toast(String((e && e.message) || e), true); return false; }
   return true;
 }
-// ライセンスのない、作ったかを聞かない教材：ライセンスの部分だけを聞く → true（保存を続ける）・false（キャンセルした）
+// ライセンスのない、作ったかを聞かない教材：初めての保存で、2 段に分けて聞く（handoff #112。研修で「CC BY が分からない」「付けない人には手間」）
+//   1 段目：専門の言葉なしに、配布したファイルをほかの人が使ったり直したりしてよいか。［いいえ、このまま保存］（主）はライセンスを書かずに保存（すべての権利を留保）
+//          「今後は表示しない」：この端末では、どのファイルでも聞かない（使い方の板の「ライセンスの確認」で戻す）
+//   2 段目：使ってよい条件を言葉で選ぶ（ライセンスの名前は後ろに小さく。初めから CC BY 4.0）。表示する名前を 1 つ入れ、作成者に書き、著作権の表示「© 年 名前」を作る
+//   黙って既定を選ばない：どちらの段も押すまで保存しない。聞いたことは教材（docId）ごとに覚える
+const LICENSE_ASK_OFF_KEY = 'egatari-license-ask-off';
+function licenseAskOff() { try { return localStorage.getItem(LICENSE_ASK_OFF_KEY) === '1'; } catch { return false; } }
+function setLicenseAskOff(on) { try { if (on) localStorage.setItem(LICENSE_ASK_OFF_KEY, '1'); else localStorage.removeItem(LICENSE_ASK_OFF_KEY); } catch { /* 使えない環境 */ } }
+// 2 段目の条件（言葉と、後ろに小さく添えるライセンスの名前）。順は FIRST_SAVE_LICENSES
+const licenseTerms = () => FIRST_SAVE_LICENSES.map((id) => ({ id, text: T.licTerms[id], name: LICENSES.find((x) => x.id === id).label }));
 async function askLicenseOnly(P, ws, live, md, R) {
   const docId = P.index.docId;
-  if (P.licenseAsked || licenseAskedKnown(docId)) return true;
+  if (P.licenseAsked || licenseAskedKnown(docId) || licenseAskOff()) return true;
   // 試験：自動操作のブラウザでは、ほかの保存の試験が止まらないよう既定で聞かない（window.__APP_TEST.licenseAsk = true で聞く。tools/test-app-file-info.mjs）
   const t = window.__APP_TEST && window.__APP_TEST.licenseAsk;
   if (t === false || (t == null && navigator.webdriver)) return true;
-  const own = licenseFields(R);
-  own.title.hidden = true;   // 窓の題と同じ
-  const pending = ask({ title: T.editLicTitle, body: [own.box, el('p', { cls: 'hint', text: T.editRemember })],
-    buttons: [{ id: 'cancel', label: T.cancel }, { id: 'save', label: T.save, pri: true }] });
-  // ライセンスを選ぶまで保存できない（黙って既定を選ばない）
-  const go = $('dlg-save');
-  const sync = () => { go.disabled = !pickedOf(own.lics); };
-  sync();
-  for (const r of own.lics) r.querySelector('input').addEventListener('change', sync);
-  const v = await pending;
-  if (v !== 'save' || !live()) return false;
-  if (!(await writeLicenseFields(ws, md, own, live))) return false;
-  P.licenseAsked = true;
-  licenseAskedRemember(docId);
-  return true;
+  const done = () => { P.licenseAsked = true; licenseAskedRemember(docId); return true; };
+  for (;;) {
+    const never = el('input', { type: 'checkbox', id: 'lic-never' });
+    const v1 = await ask({ title: T.licAskTitle, body: [
+      el('p', { cls: 'hint', id: 'lic-later', text: T.editLicLater }),
+      el('label', { cls: 'confirm' }, [never, el('span', { text: T.licNever })])],
+    buttons: [{ id: 'yes', label: T.licYes }, { id: 'no', label: T.licNo, pri: true }] });
+    if (!live() || (v1 !== 'yes' && v1 !== 'no')) return false;
+    if (never.checked) setLicenseAskOff(true);
+    if (v1 === 'no') return done();   // ライセンスを書かない（ファイルは変えない）
+    // 2 段目
+    const radios = licenseTerms().map((x) => el('label', { cls: 'confirm' }, [
+      el('input', { type: 'radio', name: 'lic-terms', value: x.id, id: 'lic-' + x.id, ...(x.id === 'CC-BY-4.0' ? { checked: '' } : {}) }),
+      el('span', { text: x.text }), EN ? ' ' : '', el('small', { cls: 'muted', text: EN ? `(${x.name})` : `（${x.name}）` })]));
+    const one = R.creators.length === 1 ? R.creators[0] : '';
+    const name = el('input', { type: 'text', id: 'lic-name', maxlength: '120', placeholder: T.editByPh, autocomplete: 'organization' });
+    name.value = one;
+    const pending = ask({ title: T.licTermsTitle, body: [
+      el('p', { id: 'lic-lead', text: T.licTermsLead }), el('div', { id: 'lic-terms' }, radios),
+      el('label', { for: 'lic-name', text: T.licName }), name,
+      el('p', { cls: 'hint', id: 'lic-later2', text: T.editLicLater }),
+      el('p', { cls: 'hint' }, [el('a', { id: 'lic-about', href: EN ? 'https://creativecommons.org/licenses/' : 'https://creativecommons.org/licenses/?lang=ja', target: '_blank', rel: 'noopener', text: T.licAbout })])],
+    buttons: [{ id: 'back', label: T.licBack }, { id: 'save', label: T.save, pri: true }] });
+    // 名前を入れるまで保存できない（どの条件も、作成者の名前を表示する）
+    const go = $('dlg-save');
+    const sync = () => { go.disabled = !name.value.trim(); };
+    sync();
+    name.addEventListener('input', sync);
+    const v2 = await pending;
+    if (v2 === 'back') continue;
+    if (v2 !== 'save' || !live()) return false;
+    const who = name.value.trim();
+    const license = (radios.map((l) => l.querySelector('input')).find((x) => x.checked) || {}).value || 'CC-BY-4.0';
+    const values = { license, creators: who, copyright: R.copyright || `© ${new Date().getFullYear()} ${who}` };
+    if (!(await writeLicenseFields(ws, md, values, live))) return false;
+    return done();
+  }
 }
 // → true（保存を続ける）・false（キャンセルした）
 async function askEditRole(P, ws, live) {
@@ -2325,7 +2365,7 @@ async function askEditRole(P, ws, live) {
   const v = await pending;
   if (v !== 'save' || !live()) return false;
   const role = other.querySelector('input').checked ? 'other' : 'creator';
-  if (role === 'creator' && own && !(await writeLicenseFields(ws, md, own, live))) return false;
+  if (role === 'creator' && own && !(await writeLicenseFields(ws, md, { license: pickedOf(own.lics) || 'none', creators: own.creators.value, copyright: own.copyright.value }, live))) return false;
   if (role === 'other') {
     const CFG = FORMAT.CONFIG_FILE;
     let old = null;

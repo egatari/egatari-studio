@@ -55,8 +55,9 @@ prepare(FDIR, FOLDER_CONF);
 // 権利の表示がまったくないファイル（2 つ：docId が別）と、権利の表示がなくライセンスだけあるファイル
 const pBare1 = await buildPortable(prepare(path.join(work, 'src-bare1'), { metadata: {} }), { out: path.join(work, 'bare1' + FORMAT.FILE_EXT) });
 const pBare2 = await buildPortable(prepare(path.join(work, 'src-bare2'), { metadata: {} }), { out: path.join(work, 'bare2' + FORMAT.FILE_EXT) });
+const pBare3 = await buildPortable(prepare(path.join(work, 'src-bare3'), { metadata: {} }), { out: path.join(work, 'bare3' + FORMAT.FILE_EXT) });
 const pLicOnly = await buildPortable(prepare(path.join(work, 'src-liconly'), { metadata: { license: 'CC-BY-4.0' } }), { out: path.join(work, 'liconly' + FORMAT.FILE_EXT) });
-for (const x of [pBare1, pBare2, pLicOnly]) NKEY[x.html] = await keyOf(x.html);
+for (const x of [pBare1, pBare2, pBare3, pLicOnly]) NKEY[x.html] = await keyOf(x.html);
 
 execFileSync(process.execPath, [path.join(ROOT, 'tools/build-app.mjs'), '--out', DIST, '--no-examples'], { stdio: 'inherit' });
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.woff2': 'font/woff2', '.json': 'application/json' };
@@ -314,9 +315,9 @@ try {
   const readSaved = async (page) => readPortable(await page.evaluate(async () => new TextDecoder().decode(new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()))));
   const waitSaved = (page) => page.waitForFunction(() => window.__APP_TEST.state().portable && !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
   // 保存して、問いが出るか（出たら呼んだ側が答える）
-  const startSave = async (page) => {
+  const startSave = async (page, sel = '#dlg[open] #edit-own') => {
     const sv = page.evaluate(() => window.__APP_TEST.save('save'));
-    const shown = await Promise.race([sv.then(() => false), page.waitForSelector('#dlg[open] #edit-own', { timeout: scaled(15000) }).then(() => true, () => false)]);
+    const shown = await Promise.race([sv.then(() => false), page.waitForSelector(sel, { timeout: scaled(15000) }).then(() => true, () => false)]);
     return { sv, shown };
   };
   const finish = async (page, sv) => {
@@ -326,31 +327,28 @@ try {
     await waitSaved(page);
   };
   {
-    // Studio 製（AI の返事から作ったのと同じ扱い）のライセンスのないファイル
+    // Studio 製（AI の返事から作ったのと同じ扱い）のライセンスのないファイル：1 段目の「いいえ、このまま保存」（handoff #112）
     const { ctx, page } = await openPage('lic-only-fresh', pBare1.html, { fresh: true });
     await page.evaluate(() => { window.__APP_TEST.licenseAsk = true; });
     const docId = await page.evaluate(() => window.__APP_TEST.state().portable.docId);
     ok(await editScript(page, '（直した 5）'), 'license only (Studio-made): the script is edited');
-    const { sv, shown } = await startSave(page);
+    const { sv, shown } = await startSave(page, '#dlg[open] #lic-never');
     ok(shown, 'license only (Studio-made): the first save asks');
     if (shown) {
-      ok((await page.textContent('#dlg-title')) === 'ライセンスを付けますか' && !(await page.$('#dlg[open] #edit-role-creator')) && !(await page.$('#dlg[open] #edit-fields')), 'license only: the title is 「ライセンスを付けますか」, no 「このファイルは、あなたが作ったものですか。」 and no edit fields');
-      const lics = await page.$$eval('#edit-own input[name=edit-license]', (xs) => xs.map((x) => x.value + '=' + x.closest('label').textContent));
-      ok(same(lics, ['CC-BY-4.0=CC BY 4.0', 'CC-BY-SA-4.0=CC BY-SA 4.0', 'CC-BY-NC-4.0=CC BY-NC 4.0', 'none=ライセンスを付けない（すべての権利を留保）']), 'license only: the four choices ' + JSON.stringify(lics));
-      ok(await page.isVisible('#edit-license-help') && (await page.textContent('#edit-license-later')) === 'あとで「ファイルの情報…」で変えられます' && await page.isVisible('#edit-creators') && await page.isVisible('#edit-copyright'), 'license only: the help, the note that it can be changed later, the creators and copyright fields');
-      ok(!(await page.isVisible('#edit-license-title')), 'license only: the heading inside is not repeated under the same title');
-      ok(await page.isDisabled('#dlg-save') && !(await page.$$eval('#edit-own input[name=edit-license]', (xs) => xs.some((x) => x.checked))), 'license only: nothing preselected, Save disabled');
-      await page.screenshot({ path: path.join(work, 'license-only.png') });
-      await page.check('#edit-license-none');
-      ok(!(await page.isDisabled('#dlg-save')), 'license only: Save is enabled once a choice is made');
-      await clickDlg(page, '#dlg-save');
+      ok((await page.textContent('#dlg-title')) === '配布したこのファイルを、ほかの人が使ったり直したりしてもよいですか' && !(await page.$('#dlg[open] #edit-role-creator')) && !(await page.$('#dlg[open] input[type=radio]')), 'step 1: the plain question, no 「作ったものですか」 and no license names or choices');
+      const btns = await page.$$eval('#dlg-buttons button', (xs) => xs.map((x) => x.textContent + (x.classList.contains('pri') ? '*' : '')));
+      ok(same(btns, ['はい', 'いいえ、このまま保存*']), 'step 1: Yes and No, just save (primary) ' + JSON.stringify(btns));
+      ok((await page.textContent('#lic-later')) === 'あとで「ファイルの情報…」で変えられます' && (await page.textContent('#dlg label.confirm')) === '今後は表示しない' && !(await page.isChecked('#lic-never')), 'step 1: can be changed later, and an unticked 「今後は表示しない」');
+      ok(!/CC/.test(await page.textContent('#dlg')), 'step 1: no license name');
+      await page.screenshot({ path: path.join(work, 'license-step1.png') });
+      await clickDlg(page, '#dlg-no');
       await finish(page, sv);
       const saved = await readSaved(page);
       const st = await page.evaluate(() => window.__APP_TEST.state().portable);
-      ok(saved.index.metadata.license === undefined && saved.deckMeta.license === undefined && st.lastTier === 'A', `license only, no license: the file has no license and is saved without rebuilding (tier ${st.lastTier})`);
-      ok(await page.evaluate((k) => localStorage.getItem(k), 'egatari-license-asked:' + docId) === '1', 'license only: that it was asked is remembered for the docId');
+      ok(saved.index.metadata.license === undefined && saved.deckMeta.license === undefined && st.lastTier === 'A', `step 1, No: the file has no license and is saved without rebuilding (tier ${st.lastTier})`);
+      ok(await page.evaluate((k) => localStorage.getItem(k), 'egatari-license-asked:' + docId) === '1' && await page.evaluate(() => localStorage.getItem('egatari-license-ask-off')) === null, 'step 1, No: remembered for the docId only (not for the device)');
       ok(await editScript(page, '（直した 6）'), 'license only: edited again');
-      const second = await startSave(page);
+      const second = await startSave(page, '#dlg[open] #lic-never');
       ok(!second.shown, 'license only: the second save does not ask');
       if (second.shown) await clickDlg(page, '#dlg-cancel');
       await finish(page, second.sv);
@@ -358,27 +356,61 @@ try {
     await ctx.close();
   }
   {
-    // 権利の表示がない別のファイル（docId が別）：CC BY 4.0 を選ぶと書く。キャンセルは保存しない
+    // 権利の表示がない別のファイル（docId が別）：Esc は保存しない。はい → 2 段目（既定は条件なし＝CC BY 4.0）、戻る、名前を入れて保存
     const { ctx, page } = await openPage('lic-only-bare', pBare2.html);
     await page.evaluate(() => { window.__APP_TEST.licenseAsk = true; });
     ok(await editScript(page, '（直した 7）'), 'license only (no rights info): the script is edited');
-    const c = await startSave(page);
+    const c = await startSave(page, '#dlg[open] #lic-never');
     ok(c.shown, 'license only (another docId, no rights info): asked');
     if (c.shown) {
-      await clickDlg(page, '#dlg-cancel');
+      await page.keyboard.press('Escape');
       await c.sv;
-      ok(await page.evaluate(() => window.__APP_TEST.state().portable.dirty), 'license only: Cancel cancels the save (still unsaved)');
+      ok(await page.evaluate(() => window.__APP_TEST.state().portable.dirty), 'step 1: Esc cancels the save (still unsaved)');
     } else await c.sv;
-    const { sv, shown } = await startSave(page);
-    ok(shown, 'license only: asked again after Cancel');
+    const { sv, shown } = await startSave(page, '#dlg[open] #lic-never');
+    ok(shown, 'license only: asked again after Esc');
     if (shown) {
-      await page.check('#edit-own input[value="CC-BY-4.0"]');
-      await page.fill('#edit-creators', '山田 花子');
+      await clickDlg(page, '#dlg-yes');
+      await page.waitForSelector('#dlg[open] #lic-name', { timeout: scaled(10000) });
+      ok((await page.textContent('#dlg-title')) === '使ってよい条件を選んでください' && (await page.textContent('#lic-lead')) === 'どれを選んでも、作成者としてあなたの名前が表示されます', 'step 2: the title and the line under it');
+      const terms = await page.$$eval('#lic-terms label', (xs) => xs.map((x) => x.querySelector('input').value + '=' + x.textContent + (x.querySelector('input').checked ? '*' : '')));
+      ok(same(terms, ['CC-BY-4.0=条件なし（CC BY 4.0）*', 'CC-BY-SA-4.0=直したものを配布するときは、同じ条件にする（CC BY-SA 4.0）', 'CC-BY-NC-4.0=営利目的では使わない（CC BY-NC 4.0）']), 'step 2: three conditions in words, license names after, 条件なし chosen ' + JSON.stringify(terms));
+      ok((await page.textContent('label[for=lic-name]')) === '表示する名前（学校名でもよい）' && (await page.textContent('#lic-later2')) === 'あとで「ファイルの情報…」で変えられます' && /creativecommons\.org/.test(await page.getAttribute('#lic-about', 'href')), 'step 2: the name field, can be changed later, About licenses');
+      ok(await page.isDisabled('#dlg-save'), 'step 2: Save waits for a name');
+      await page.screenshot({ path: path.join(work, 'license-step2.png') });
+      await clickDlg(page, '#dlg-back');
+      await page.waitForSelector('#dlg[open] #lic-never', { timeout: scaled(10000) });
+      ok((await page.textContent('#dlg-title')) === '配布したこのファイルを、ほかの人が使ったり直したりしてもよいですか', 'step 2, Back: step 1 again');
+      await clickDlg(page, '#dlg-yes');
+      await page.waitForSelector('#dlg[open] #lic-name', { timeout: scaled(10000) });
+      await page.check('#lic-CC-BY-SA-4\\.0');
+      await page.fill('#lic-name', '山田 花子');
+      ok(!(await page.isDisabled('#dlg-save')), 'step 2: Save is enabled once a name is typed');
       await clickDlg(page, '#dlg-save');
       await finish(page, sv);
       const m = (await readSaved(page)).index.metadata;
-      ok(m.license === 'CC-BY-4.0' && same(m.creators, ['山田 花子']) && m.copyright === undefined, 'license only, CC BY 4.0: license and creators are written ' + JSON.stringify(m));
+      const y = new Date().getFullYear();
+      ok(m.license === 'CC-BY-SA-4.0' && same(m.creators, ['山田 花子']) && m.copyright === `© ${y} 山田 花子`, 'step 2: the license, the creator and 「© 年 名前」 are written ' + JSON.stringify(m));
     } else await sv;
+    await ctx.close();
+  }
+  {
+    // 「今後は表示しない」：この端末では、どのファイルでも聞かない。使い方の板の「また表示する」で戻る
+    const { ctx, page } = await openPage('lic-never', pBare3.html);
+    await page.evaluate(() => { window.__APP_TEST.licenseAsk = true; });
+    ok(await editScript(page, '（直した 9）'), 'never again: the script is edited');
+    const { sv, shown } = await startSave(page, '#dlg[open] #lic-never');
+    if (shown) {
+      await page.check('#lic-never');
+      await clickDlg(page, '#dlg-no');
+      await finish(page, sv);
+      ok(await page.evaluate(() => localStorage.getItem('egatari-license-ask-off')) === '1', 'never again: kept for this device');
+      await page.click('#b-help');
+      await page.waitForSelector('#license-ask-help', { timeout: scaled(10000) });
+      ok(/表示しない設定/.test(await page.textContent('#license-ask-info')), 'never again: the help panel says so');
+      await page.click('#b-license-ask-on');
+      ok(await page.evaluate(() => localStorage.getItem('egatari-license-ask-off')) === null && /また表示します/.test(await page.textContent('#license-ask-info')), 'Show it again: turned back on');
+    } else { ok(false, 'never again: asked'); await sv; }
     await ctx.close();
   }
   {
@@ -418,7 +450,7 @@ try {
     await page.waitForFunction(() => { const s = window.__APP_TEST.state(); return s.kind === 'folder' && !s.building; }, null, { timeout: scaled(30000) });
     // 作業フォルダは保存の命令でファイルを書かない（変更はすぐ書かれる）。Egatari ファイルの保存の問いは出ない
     await page.evaluate(() => window.__APP_TEST.save('save'));
-    ok(!(await page.waitForSelector('#dlg[open] #edit-own', { timeout: scaled(3000) }).then(() => true, () => false)), 'working folder: not asked');
+    ok(!(await page.waitForSelector('#dlg[open] #lic-never', { timeout: scaled(3000) }).then(() => true, () => false)), 'working folder: not asked');
     await ctx.close();
   }
 } catch (e) {

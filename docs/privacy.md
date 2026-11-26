@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.ja.md sha256=9e0b568186a11944 -->
+<!-- i18n: pair=privacy.ja.md sha256=adbfa95858d02bf0 -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
@@ -63,6 +63,8 @@ All of it is stored only in the browser and is not sent anywhere. Clearing the b
 | localStorage (Studio) | `egatari-rec-keep-recording` | A recording setting (one on/off switch) | Same |
 | localStorage (Studio) | `egatari-slides-open` | Whether the slide list was open | Same |
 | localStorage (Studio) | `egatari-studio-live-results-notice` | That the note about importing Live results was shown | Same |
+| localStorage (Studio) | `egatari-license-asked:<file ID>` | That the first-save question “Once you share this file, may others use and change it?” was asked, per file. The answer is written into the file | Same |
+| localStorage (Studio) | `egatari-license-ask-off` | “Don’t show this again” for that question (not asked for any file on this device) | **Show it again** under “License question” in the help (**?**), or clear the site data |
 | localStorage (Studio) | `egatari-edit-role:<file ID>` | The answer to "Did you make this file?" before saving, per file. The name and note given are written into the file, not here | Same |
 | sessionStorage (Studio) | `motion-editor-reopen` | A mark to reopen the file right after changing the language (gone when the tab is closed) | Close the tab |
 | IndexedDB (Studio) | `motion-slides-editor` | "Handles" to recently opened working folders and Egatari files (markers pointing to their location; up to 8). The file contents are not stored | Clear site data |
