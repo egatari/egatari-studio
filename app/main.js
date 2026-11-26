@@ -3014,6 +3014,8 @@ function fullScreen() { const f = $('preview'); (f.requestFullscreen ? f.request
 async function newChoice() { await llm.newWithAi(); }   // 引数なし：サンプルから始めない
 // Claude Code・Cowork で作る人への案内の行き先（説明のページか README かは未定。ここだけを直す）
 const WITH_CLAUDE_URL = 'https://github.com/egatari/egatari-studio/blob/main/docs/' + (EN ? 'with-claude.md' : 'with-claude.ja.md');
+// スタート画面のプライバシーの注記のリンク（何をどこへ送信するかの一覧。handoff #113）
+const PRIVACY_URL = 'https://github.com/egatari/egatari-studio/blob/main/docs/' + (EN ? 'privacy.md' : 'privacy.ja.md');
 
 // ---------------------------------------------------------------- つなぎ
 applyTexts();
@@ -3025,6 +3027,7 @@ $('b-open').onclick = async () => { const h = await pickFolder(); if (h) openFol
 $('w-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('b-new').onclick = () => newChoice().catch((e) => toast(String(e.message || e), true));
 $('w-claude').href = WITH_CLAUDE_URL;
+$('w-privacy').href = PRIVACY_URL;
 $('w-parts').href = partsIndexHref(location);
 // ガイドブック『Studio で始める絵語り』（examples の lessons/studio-howto を egatari.org のギャラリーで再生。英語版はまだないので英語の表示でも同じ所へ。handoff #99）
 const GUIDE_URL = 'https://egatari.org/gallery/play/?id=studio-howto';

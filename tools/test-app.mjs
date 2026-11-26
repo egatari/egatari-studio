@@ -253,6 +253,8 @@ try {
     {
       const order = await page.evaluate(() => ['new-block', 'drop', 'recent', 'examples', 'w-claude', 'w-open'].map((id) => document.getElementById(id)).map((e, i, a) => i === 0 || !!(a[i - 1].compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING)));
       ok(order.every(Boolean) && !(await page.$('#welcome #kinds')) && !(await page.$('#newform')), 'welcome: New, Open, Recent files, Samples, the Claude Code / Cowork link, then Work in a folder…; no file-kinds table and no blank-deck form');
+      // プライバシーの注記（handoff #113）：作ったものはこの端末だけ・送信しない、と、プライバシーのページへのリンク
+      ok((await page.textContent('.privacy-note span')) === '作ったものは、このパソコンにだけ保存されます。Egatari のサーバーなどに送信されることはありません。' && (await page.textContent('#w-privacy')) === 'プライバシーについて' && /\/docs\/privacy\.ja\.md$/.test(await page.getAttribute('#w-privacy', 'href')) && (await page.getAttribute('#w-privacy', 'target')) === '_blank', 'welcome: the privacy note and its link to the privacy page');
       ok((await page.textContent('#w-claude')) === 'Claude Code・Cowork で作る（上級）' && /docs\/with-claude/.test(await page.getAttribute('#w-claude', 'href')) && (await page.textContent('#recent h2')) === '最近のファイル' && await page.isVisible('#recent-none'), 'welcome: the advanced link (one placeholder target) and Recent files with a placeholder');
     }
     // はじめての方へ：ガイドブックへのリンク（handoff #99）。最初の画面の上（新規作成より前）と、使い方の板

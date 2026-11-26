@@ -457,10 +457,10 @@
     },
     {
       "file": "app/i18n.js",
-      "line": "どこにもアップロードしません。「${AI_VOICE_LABELS.ja.local}",
+      "line": "It is never sent to Egatari's servers or anywhere else.",
       "term": "no-upload",
       "pairs": true,
-      "reason": "The English privacy line says 'nothing is uploaded' (owner-decided wording) for ja アップロードしません."
+      "reason": "The start-screen privacy note (owner-decided wording 2026-11-26, handoff #113): 送信されることはありません / never sent, to answer whether files go to a server."
     },
     {
       "file": "app/slides-panel.js",
