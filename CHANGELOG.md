@@ -8,6 +8,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.20] - 2026-11-26
+
+### Added
+
+- Studio: the start screen and **? (Help)** link to the guidebook 「Studio で始める絵語り」 for first-time users (it plays in the egatari.org gallery; in Japanese, and the English link says so).
+- Studio: the quality check lists **Slides that will look different after saving** when the next Save of an Egatari file rebuilds the slides: slides you did not edit whose final step looks different in the file as it was opened (its own player and parts) and in this editor's rebuild. It does not block saving; click an entry to go to the slide.
+- Touch screens: a swipe across the slide, or a tap on its left or right edge (15 % of its width), goes to the step before or after, as the toolbar's previous and next do; a tap in the middle still shows the toolbar. Not on links, parts, the book, the toolbar, while pinch-zoomed, in a blackout, or when a host hides the controls.
+
+### Changed
+
+- Editor: **Slide ▾ → Add bookmark…** now suggests the slide's heading, cut to 20 characters, instead of **Q&A**, so a second bookmark no longer gets the same name (a number is added if another slide already has it; a slide without a heading gets "Slide 3"). The dialog text and the docs describe the two uses: jump to the final state of an important slide in the talk and back, and jump to the appendix divider (handoff #89)
+- Parts library 2.22.0 is now the default (release 98ee1af, tarball e5860e13…, manifest 7d18a779…), imported beside 2.21.0: README corrections only (m-bars error bars are explained under the figure, m-code colours only python, r, shell and js, m-flow box spacing, m-kobun and m-callout notes; handoff #92). In the free English pack the new m-flow spacing note is shortened to stay under the paste limit. The parts gallery is re-synced to the 2.22.0 release
+- Studio: in a browser that cannot choose where to save (Safari, Firefox), the first save of an Egatari file says once, before downloading, that each save makes a new file in the downloads and that Chrome or Edge overwrite the same file (**Saving downloads the file**; Cancel does not save).
+- The feedback steps now live in one text (docs/llm-feedback.md and .ja.md) that both the make skill (ja and en) and the studio skill read, so the two cannot drift. The skills gather nothing for a report until the user agrees to send, look for the same issue first (`gh issue list --state all`) and suggest commenting there, include the Studio, instruction and parts library versions, say once that the report becomes a public issue, and, without gh, give a form URL with the fields filled in by field id (falling back to the draft and the empty form over 6,000 characters). The feedback form gains the type Insight / うまくいったこと with fields for what was being made, what worked, what did not and why; What you did and What happened are no longer required (handoff #91)
+- AI instructions: the light (free-plan) instructions are shorter, so more parts get a full description when part sets are added. They keep only the common worked example (the part-set examples are in the detailed instructions only); in the "data shape" column, items that take all of `step` `at` `tone` no longer list them and are marked † (one line above the catalog says so; `label` is always listed); and the kicker, morph and research-positioning-table notes are in the detailed instructions only. English standard: 30,994 → 30,036 paste units; Japanese standard: 39,431 → 38,361 bytes. The detailed instructions are unchanged (handoff #95)
+- Egatari Player 1.13.0 (the bundled player that files carry, `player` in the index and `deck-meta`): minor release. When the bookmark buttons do not fit the toolbar, they collapse into one **Bookmarks ▾** button that opens a list of the names (handoff #90). On a touch screen, a sideways swipe on the stage or a tap near its left or right edge goes to the previous or next step (handoff #97). The presenter view has **Previous** and **Next** buttons under the current slide, so it can be moved on with a click, an Apple Pencil (Sidecar on an iPad) or a finger; during a blackout they only end it, as the keys do (handoff #104). In Japanese, the blackout is now called 暗転: the presenter view says 暗転中 (was 黒い画面中), and so do the corner notice, the key list and the docs; the English wording is unchanged (handoff #105). The items of the presenter view's top bar no longer wrap inside: when they do not fit on one line, the bar drops only as many words as it must, in this order: Close presenter view becomes an icon, then Autoplay, then the words “Slide” and “Step” (showing 2 / 6 · 0 / 4); the names stay as tooltips, and if that is still too wide it wraps onto a second row (handoff #105)
+- README (en and ja): a 30-second introduction video (Japanese) at the top, as a poster linking to the video on egatari.org
+- Studio: ⌘S / Ctrl+S saves the open Egatari file, as **File ▾ → Save** does (also while typing in a field), instead of the browser's “Save page”.
+- Studio: **File ▾ → Export ▸ → Print slides** is now **Print slides / Save as PDF**. The editor guide says how to make handouts (several slides on one sheet): save as PDF, then print the PDF from a PDF viewer with several pages per sheet.
+- The `scriptUnclosed` finding now reads as two sentences (what is missing, then why the later slides are lost, then how to fix it), and the narration sections of the slides an unclosed `<script>` swallows are no longer also reported as "slide not found" (R-headings) — in the command-line check, the editor's build warnings and the AI fix request alike — so the fix request asks only to close the `<script>`. Other sections that match no slide are still reported (handoff #96)
+- Studio: the script fields and the book text are spell-checked in the file's language (the HTML source field still is not).
+
+### Fixed
+
+- Player: with many bookmarks the toolbar no longer runs off the screen (20 bookmarks on a portrait iPad overflowed by about 90 px). When the bookmark buttons do not fit, they collapse into one **Bookmarks ▾** menu button with a list of the names; whether they fit is measured, not counted, and measured again when the window is resized. The list items, `q` and **Back to where you were** work as before, and the menu works from the keyboard (Enter or Space opens, arrow keys move, Esc closes). The presenter view keeps its buttons (handoff #90)
+- Studio: the comments of an Egatari file are no longer lost when the file is closed. They are not saved in the file, so Studio keeps them in this browser for each file (by its `docId`) and brings them back when the same file is opened again, also after it was saved. Comments not changed for 90 days are deleted; **? → Comments kept in this browser** shows how many files have them, with **Delete all**.
+- Editor: a dialog or panel opened from a toolbar menu now puts focus on its first field however it was opened (click, double click, Enter, Enter twice), so text typed right away lands there. **File info…** no longer leaves focus on the page, the menu button or the preview, and a second Enter no longer reopens the **File ▾** menu on **New…**; a double click no longer moves focus to the dialog itself (**Add bookmark…**, **Change theme…**, **For an LMS (SCORM)…**, **Save as…**, the rights confirmation); the bookmark name opens with its suggested value selected, so typing replaces it. A menu item that opens nothing still returns keyboard focus to the menu button (handoff #98). An item that only shows a notice (such as **For an LMS (SCORM)…** with unsaved changes) also ignores a quick second Enter, so it no longer reopens the **File ▾** menu on **New…** (handoff #98)
+
 ## [0.6.19] - 2026-11-23
 
 ### Added
@@ -1718,7 +1746,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.19...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.20...HEAD
+[0.6.20]: https://github.com/egatari/egatari-studio/compare/v0.6.19...v0.6.20
 [0.6.19]: https://github.com/egatari/egatari-studio/compare/v0.6.18...v0.6.19
 [0.6.18]: https://github.com/egatari/egatari-studio/compare/v0.6.17...v0.6.18
 [0.6.17]: https://github.com/egatari/egatari-studio/compare/v0.6.16...v0.6.17
