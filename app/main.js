@@ -2219,7 +2219,7 @@ async function themeOnlyChange(P, a, files) {
 }
 // ---------------------------------------------------------------- 編集の記録（format spec §3.6.1・§7.3）
 // エディタには、だれが編集しているかが分からないので聞く。内容を変えて初めて保存するとき、このファイルを自分で作ったか、ほかの人のファイルを直しているかを聞く。
-// 自分で作ったファイルにライセンスがなければ、同じ窓でライセンス（CC BY 4.0・CC BY-SA 4.0・CC BY-NC 4.0・付けない）・作成者・著作権の表示を書ける
+// 自分で作ったファイルにライセンスがなければ、同じ窓でライセンス（CC BY 4.0・CC BY-NC 4.0・付けない。FIRST_SAVE_LICENSES、#112）・作成者・著作権の表示を書ける
 // （handoff #88。ほかは「ファイルの情報…」で）。選んだものは設定のファイルの metadata に書く（変わった項目だけ）
 // 答えはこの端末に教材（docId）ごとに覚える（ファイルには書かない）。ファイルに書くのは、使う人が入力した名前と内容だけ。
 // ほかの人の教材なら metadata.edits に 1 件足す（同じ名前があれば内容だけ新しくする。app/rights.js の addEdit）。ライセンスが変更を示すよう求め
@@ -2233,7 +2233,7 @@ function editRoleKnown(docId) { try { return localStorage.getItem(EDIT_ROLE_KEY 
 function editRoleRemember(docId, v) { try { localStorage.setItem(EDIT_ROLE_KEY + docId, v); } catch { /* 使えない環境：開いている間だけ覚える */ } }
 function licenseAskedKnown(docId) { try { return localStorage.getItem(LICENSE_ASKED_KEY + docId) === '1'; } catch { return false; } }
 function licenseAskedRemember(docId) { try { localStorage.setItem(LICENSE_ASKED_KEY + docId, '1'); } catch { /* 使えない環境：開いている間だけ覚える */ } }
-// ライセンス（CC BY 4.0・CC BY-SA 4.0・CC BY-NC 4.0・付けない）・作成者・著作権の表示の欄（黙って既定を選ばない）
+// ライセンス（CC BY 4.0・CC BY-NC 4.0・付けない）・作成者・著作権の表示の欄（黙って既定を選ばない）
 function licenseFields(R) {
   const lr = (value, label) => el('label', { cls: 'confirm' }, [el('input', { type: 'radio', name: 'edit-license', value, id: 'edit-license-' + value }), el('span', { text: label })]);
   const lics = [...LICENSES.filter((x) => FIRST_SAVE_LICENSES.includes(x.id)).map((x) => lr(x.id, x.label)), lr('none', T.infoLicNone)];

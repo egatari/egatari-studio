@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # standard parts
 
-Instruction version: 79c82ff6
+Instruction version: da7ac17a
 
 | part | what it shows | steps | data shape |
 |---|---|---|---|
@@ -333,6 +333,7 @@ Data example (child `<script type="application/json">`): `{"question":"Which fal
 | `poll` | string | `""` | poll id (no live counts yet) |
 | `ticks` | bool | `true` | grid |
 
+- Only for a real vote or guess; not asides or answer-only
 - 2–6 choices. Video/print/start show `counts` (or 0)
 - Script uses `counts`; vote at `{note:hands up}` (parens get read)
 - `poll="p1"`: reserved; no live reveals yet (`ctx.live.poll(id)` is null), so viewer/author counts are used
