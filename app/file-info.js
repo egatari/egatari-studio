@@ -17,7 +17,7 @@ export const LICENSES = [
   { id: 'CC0-1.0', label: 'CC0 1.0' },
 ];
 // 初めての保存の問い（このファイルは、あなたが作ったものですか）で選べるもの。ほかは「ファイルの情報…」で
-export const FIRST_SAVE_LICENSES = ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0'];
+export const FIRST_SAVE_LICENSES = ['CC-BY-4.0', 'CC-BY-NC-4.0'];   // 初めての保存で選べるもの（作者 11/26、handoff #112）。ほかは「ファイルの情報…」で
 
 const str = (v) => (typeof v === 'string' && v.trim() ? v.trim() : '');
 const SPDX = /^[A-Za-z0-9.+-]+( (AND|OR|WITH) [A-Za-z0-9.+-]+)*$/;

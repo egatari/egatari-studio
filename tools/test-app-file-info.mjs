@@ -135,10 +135,10 @@ try {
     await page.check('#edit-role-creator');
     ok(await page.isVisible('#edit-own') && (await page.textContent('#edit-license-title')) === 'ライセンスを付けますか' && (await page.textContent('#edit-license-later')) === 'あとで「ファイルの情報…」で変えられます', 'first save, yes: the license question with the note that it can be changed later');
     const lics = await page.$$eval('#edit-own input[name=edit-license]', (xs) => xs.map((x) => x.value + '=' + x.closest('label').textContent));
-    ok(same(lics, ['CC-BY-4.0=CC BY 4.0', 'CC-BY-SA-4.0=CC BY-SA 4.0', 'CC-BY-NC-4.0=CC BY-NC 4.0', 'none=ライセンスを付けない（すべての権利を留保）']), 'first save, yes: CC BY 4.0, CC BY-SA 4.0, CC BY-NC 4.0 and no license ' + JSON.stringify(lics));
+    ok(same(lics, ['CC-BY-4.0=CC BY 4.0', 'CC-BY-NC-4.0=CC BY-NC 4.0', 'none=ライセンスを付けない（すべての権利を留保）']), 'first save, yes: CC BY 4.0, CC BY-NC 4.0 and no license ' + JSON.stringify(lics));
     ok(await page.isDisabled('#dlg-save'), 'first save, yes: Save stays disabled until a license is chosen (no silent default)');
     ok((await page.inputValue('#edit-creators')) === 'Test Author' && (await page.inputValue('#edit-copyright')) === '', 'first save, yes: the creators and copyright fields show the current values');
-    await page.check('#edit-own input[value="CC-BY-SA-4.0"]');
+    await page.check('#edit-own input[value="CC-BY-NC-4.0"]');
     await page.fill('#edit-creators', 'Test Author\n\n  Second Author ');
     await page.fill('#edit-copyright', '© 2026 Test Author');
     ok(!(await page.isDisabled('#dlg-save')), 'first save, yes: Save is enabled once a license is chosen');
@@ -150,8 +150,8 @@ try {
     await page.waitForFunction(() => window.__APP_TEST.state().portable && !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
     const saved = await readPortable(await page.evaluate(async () => new TextDecoder().decode(new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()))));
     const m = saved.index.metadata;
-    ok(m.license === 'CC-BY-SA-4.0' && m.copyright === '© 2026 Test Author' && same(m.creators, ['Test Author', 'Second Author']) && m.attribution === 'Test Lab', 'first save, yes: license, creators and copyright are in the saved index (attribution kept) ' + JSON.stringify(m));
-    ok(saved.deckMeta.license === 'CC-BY-SA-4.0' && same(saved.deckMeta.creators, ['Test Author', 'Second Author']), 'first save, yes: and in deck-meta (what the player shows)');
+    ok(m.license === 'CC-BY-NC-4.0' && m.copyright === '© 2026 Test Author' && same(m.creators, ['Test Author', 'Second Author']) && m.attribution === 'Test Lab', 'first save, yes: license, creators and copyright are in the saved index (attribution kept) ' + JSON.stringify(m));
+    ok(saved.deckMeta.license === 'CC-BY-NC-4.0' && same(saved.deckMeta.creators, ['Test Author', 'Second Author']), 'first save, yes: and in deck-meta (what the player shows)');
     ok(m.edits === undefined, 'first save, yes: no edit entry');
     await ctx.close();
   }
@@ -372,9 +372,9 @@ try {
     if (shown) {
       await clickDlg(page, '#dlg-yes');
       await page.waitForSelector('#dlg[open] #lic-name', { timeout: scaled(10000) });
-      ok((await page.textContent('#dlg-title')) === '使ってよい条件を選んでください' && (await page.textContent('#lic-lead')) === 'どれを選んでも、作成者としてあなたの名前が表示されます', 'step 2: the title and the line under it');
+      ok((await page.textContent('#dlg-title')) === '使ってよい範囲を選んでください' && (await page.textContent('#lic-lead')) === 'どちらを選んでも、作成者としてあなたの名前が表示されます', 'step 2: the title and the line under it');
       const terms = await page.$$eval('#lic-terms label', (xs) => xs.map((x) => x.querySelector('input').value + '=' + x.textContent + (x.querySelector('input').checked ? '*' : '')));
-      ok(same(terms, ['CC-BY-4.0=条件なし（CC BY 4.0）*', 'CC-BY-SA-4.0=直したものを配布するときは、同じ条件にする（CC BY-SA 4.0）', 'CC-BY-NC-4.0=営利目的では使わない（CC BY-NC 4.0）']), 'step 2: three conditions in words, license names after, 条件なし chosen ' + JSON.stringify(terms));
+      ok(same(terms, ['CC-BY-4.0=修正も再配布もしてよい（CC BY 4.0）*', 'CC-BY-NC-4.0=修正も再配布もしてよい。ただし、営利目的では使わない（CC BY-NC 4.0）']), 'step 2: two choices in words (no CC BY-SA), license names after, CC BY chosen ' + JSON.stringify(terms));
       ok((await page.textContent('label[for=lic-name]')) === '表示する名前（学校名でもよい）' && (await page.textContent('#lic-later2')) === 'あとで「ファイルの情報…」で変えられます' && /creativecommons\.org/.test(await page.getAttribute('#lic-about', 'href')), 'step 2: the name field, can be changed later, About licenses');
       ok(await page.isDisabled('#dlg-save'), 'step 2: Save waits for a name');
       await page.screenshot({ path: path.join(work, 'license-step2.png') });
@@ -383,14 +383,14 @@ try {
       ok((await page.textContent('#dlg-title')) === '配布したこのファイルを、ほかの人が使ったり直したりしてもよいですか', 'step 2, Back: step 1 again');
       await clickDlg(page, '#dlg-yes');
       await page.waitForSelector('#dlg[open] #lic-name', { timeout: scaled(10000) });
-      await page.check('#lic-CC-BY-SA-4\\.0');
+      await page.check('#lic-CC-BY-NC-4\\.0');
       await page.fill('#lic-name', '山田 花子');
       ok(!(await page.isDisabled('#dlg-save')), 'step 2: Save is enabled once a name is typed');
       await clickDlg(page, '#dlg-save');
       await finish(page, sv);
       const m = (await readSaved(page)).index.metadata;
       const y = new Date().getFullYear();
-      ok(m.license === 'CC-BY-SA-4.0' && same(m.creators, ['山田 花子']) && m.copyright === `© ${y} 山田 花子`, 'step 2: the license, the creator and 「© 年 名前」 are written ' + JSON.stringify(m));
+      ok(m.license === 'CC-BY-NC-4.0' && same(m.creators, ['山田 花子']) && m.copyright === `© ${y} 山田 花子`, 'step 2: the license, the creator and 「© 年 名前」 are written ' + JSON.stringify(m));
     } else await sv;
     await ctx.close();
   }
