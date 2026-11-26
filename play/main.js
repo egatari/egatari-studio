@@ -210,7 +210,7 @@ function noteKey(e) {
   if (e.key !== 'm' || e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented || e.isComposing || !S.frame || $('b-note').hidden) return false;
   const t = e.target;
   if (t && t.nodeType === 1 && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.closest('dialog'))) return false;
-  e.preventDefault(); setNoteView(!NOTE.view); return true;
+  e.preventDefault(); toggleNote(); return true;
 }
 function forwardKey(e) {
   if (noteKey(e)) return;
@@ -378,6 +378,14 @@ function newInk() {
   INK.ui.setBackground(NOTE.bg);
   INK.ui.setActive(INK.on);
 }
+// 「メモ」 (or m): with the slides on screen, the slide's memo area; with the book on screen (the player's book or 「スライドと本」
+// view), the note of the section being read, below the frame (it does not switch the view back to the slides)
+function toggleNote() {
+  if (NOTE.view) { setNoteView(false); return; }
+  if (PANEL.at) { closeSection(); return; }
+  if (M && (S.deckLayout === 'book' || S.deckLayout === 'split')) { M.noteHere(); return; }
+  setNoteView(true);
+}
 function setNoteView(on) {
   if (on === NOTE.view || (on && (!M || !S.frame))) return;
   NOTE.view = on;
@@ -492,38 +500,153 @@ async function importFile(file) {
   st.textContent = W().xRead(n.highlights, n.notes, k);
   announce(st.textContent);
 }
-// PDF: a frame made only to print (play/print-frame.js): the lesson again, with the notes and handwriting laid out under each slide.
-// Its sandbox adds allow-modals (print() needs it); it has the same policy as the playing frame (connect-src 'none'), and it is
-// removed once printing ends. The playing frame never gets allow-modals (annotations.md, Note record: the printing exception)
-const PRINT = { frame: null, data: null, timer: 0 };
+// PDF (handoff #107, standards 11/27): only the page prints (on an iPad, print() in a frame prints the whole page). A frame with the
+// lesson again (play/print-frame.js; sandbox "allow-scripts" like the playing frame, connect-src 'none') lays out the slides; the
+// notes and the handwriting never go into it: the page draws them in #print-root, shown only in print, and calls print() itself.
+// Two ways to show the slides, both tried on a real iPad (the one that prints stays):
+//   A ('stack'): that one frame, the slides one under another, one A4 page apart; the page lays its memo areas over it
+//   B ('snap'): that frame makes a still copy of each slide; the page checks it and shows it in a frame with sandbox="" (no scripts)
+const PR = { W: 1280, H: 720, GAP: 12, MEMO: 468, FONT: 26, K: 0.549, PAGE: '273mm' };   // A4 portrait, 12 mm margins: 186 × 273 mm
+const PRINT = { frame: null, root: null, mode: '', data: null, timer: 0 };
 function endPrint(msg) {
   clearTimeout(PRINT.timer);
-  if (PRINT.frame) { PRINT.frame.remove(); PRINT.frame = null; }
-  PRINT.data = null;
+  if (PRINT.root) { PRINT.root.remove(); PRINT.root = null; }
+  PRINT.frame = null; PRINT.data = null; PRINT.mode = '';
+  document.documentElement.classList.remove('printing');
   if (msg) $('x-status').textContent = msg;
 }
-async function printNotes() {
+const INKC = { k: '#1f1f1f', r: '#d22a3a', b: '#1f5fbf' };
+function inkSvg(strokes, y0, h, cls) {
+  const NS = 'http://www.w3.org/2000/svg', s = document.createElementNS(NS, 'svg');
+  s.setAttribute('viewBox', `0 ${y0} ${PR.W} ${h}`); s.setAttribute('class', cls); s.setAttribute('aria-hidden', 'true');
+  for (const st of strokes || []) {
+    const p = st && Array.isArray(st.p) ? st.p : [];
+    if (p.length < 3) continue;
+    let d = '';
+    for (let i = 0; i + 2 < p.length; i += 3) d += (i ? 'L' : 'M') + (+p[i] || 0).toFixed(1) + ' ' + (+p[i + 1] || 0).toFixed(1);
+    if (p.length === 3) d += 'l0.1 0';
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d); path.setAttribute('fill', 'none'); path.setAttribute('stroke', INKC[st.c] || INKC.r);
+    path.setAttribute('stroke-width', '3.5'); path.setAttribute('stroke-linecap', 'round'); path.setAttribute('stroke-linejoin', 'round');
+    s.appendChild(path);
+  }
+  return s;
+}
+function blocksEl(blocks, cls) {
+  const box = document.createElement('div'); box.className = cls;
+  for (const b of blocks || []) {
+    if (b && typeof b.text === 'string') { const p = document.createElement('p'); p.textContent = b.text; box.appendChild(p); }
+    else if (b && b.quote && typeof b.quote.exact === 'string') { const q = document.createElement('blockquote'); q.textContent = b.quote.exact; box.appendChild(q); }
+  }
+  return box;
+}
+// one page of the handout: the slide's place (A: empty, over the frame; B: the copy goes in), its label, its memo area
+function printBlock(pg) {
+  const b = document.createElement('div'); b.className = 'pr-block';
+  const slide = document.createElement('div'); slide.className = 'pr-slide';
+  if (pg.ink.length) slide.appendChild(inkSvg(pg.ink, 0, PR.H, 'pr-ink'));
+  const head = document.createElement('p'); head.className = 'pr-head'; head.textContent = W().pSlide.replace('{n}', String(pg.n));
+  const area = blocksEl(pg.blocks, 'pr-memo');
+  if (pg.ink.length) area.appendChild(inkSvg(pg.ink, PR.H + PR.GAP, PR.MEMO, 'pr-ink'));
+  b.append(slide, head, area);
+  return b;
+}
+function printSections(sections) {
+  const box = document.createElement('div'); box.className = 'pr-secs';
+  if (!sections.length) return box;
+  const h1 = document.createElement('h1'); h1.textContent = W().pSections; box.appendChild(h1);
+  for (const s of sections) { const h2 = document.createElement('h2'); h2.textContent = s.title; box.append(h2, blocksEl(s.blocks, 'pr-sec')); }
+  return box;
+}
+// a slide's still copy (B): untrusted HTML. Parsed inert here, stripped of what could load or run, then shown with sandbox="" and a
+// policy that loads nothing but data: images and fonts
+const NAME = /^[a-zA-Z][a-zA-Z0-9_:.-]*$/;
+const attrStr = (o) => (o && typeof o === 'object' ? Object.entries(o) : []).filter(([k, v]) => NAME.test(k) && !/^on/i.test(k) && typeof v === 'string' && v.length < 100000)
+  .map(([k, v]) => ` ${k}="${v.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;')}"`).join('');
+function cleanSlide(html) {
+  const d = new DOMParser().parseFromString('<!doctype html><body>' + html, 'text/html');
+  d.querySelectorAll('script,iframe,frame,frameset,object,embed,meta,base,link,portal,noscript').forEach((x) => x.remove());
+  for (const el of d.body.querySelectorAll('*')) for (const a of [...el.attributes]) if (/^on/i.test(a.name)) el.removeAttribute(a.name);
+  return d.body.innerHTML;
+}
+function snapDoc(r, html) {
+  const css = String(r.css).replace(/<\/style/gi, '<\\/style');
+  const fix = `html,body{margin:0!important;padding:0!important;overflow:hidden!important;width:${PR.W}px;height:${PR.H}px}` +
+    `#stage{position:static!important;transform:none!important;width:${PR.W}px!important;height:${PR.H}px!important;margin:0!important}` +
+    `#stage>.slide{position:relative!important;left:0!important;top:0!important;display:block!important;visibility:visible!important;opacity:1!important;transform:none!important;width:${PR.W}px!important;height:${PR.H}px!important}`;
+  return `<!doctype html><html${attrStr(r.attrs.html)}><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:">` +
+    `<style>${css}</style><style>${fix}</style></head><body${attrStr(r.attrs.body)}><div${attrStr(Object.assign({}, r.attrs.stage, { id: 'stage' }))}>${cleanSlide(html)}</div></body></html>`;
+}
+const frameLoaded = (f) => new Promise((res) => { f.addEventListener('load', res, { once: true }); setTimeout(res, 8000); });
+async function printNow() {
+  if (!PRINT.root) return;
+  await document.fonts.ready.catch(() => {});
+  await new Promise((r) => setTimeout(r, 300));
+  if (!PRINT.root) return;
+  if ($('m-export').open) $('m-export').close();
+  document.documentElement.classList.add('printing');
+  clearTimeout(PRINT.timer);
+  window.addEventListener('afterprint', () => endPrint(W().pDone), { once: true });
+  try { window.print(); } catch { endPrint(W().pFailed); }
+}
+async function printNotes(mode) {
   const P = S.playing;
   if (!P || !M || !P.text) return;
   endPrint();
   if (NOTE.ed) NOTE.ed.flush(); if (PANEL.ed) PANEL.ed.flush();
   if (INK.ui) await INK.ui.flush();
   const ink = $('shared').checked ? [] : await inkOf(inkDoc());
-  const notes = M.notes(), secs = M.sections();
-  const pages = slideList().map(({ key }) => { const n = notes.find((x) => x.at.slide === key), k = ink.find((x) => x.slide === key); return { slide: key, blocks: n ? n.blocks : [], ink: k ? k.strokes : [] }; });
+  const notes = M.notes(), secs = M.sections(), all = $('x-all').checked;
+  const pages = slideList().map(({ key }, i) => { const n = notes.find((x) => x.at.slide === key), k = ink.find((x) => x.slide === key); return { slide: key, n: i + 1, blocks: n ? n.blocks : [], ink: k ? k.strokes : [] }; })
+    .filter((p) => all || p.blocks.length || p.ink.length);
   const sections = notes.filter((n) => n.at.section != null).map((n) => ({ title: n.at.section === '' ? W().mdNoSection : (secs[n.at.section] || W().mdLost), blocks: n.blocks }));
-  PRINT.data = { egaViewer: 'print', pages, sections, all: $('x-all').checked, title: fileName(P.title, 'pdf', new Date(), W()).replace(/\.pdf$/, ''),
-    words: { slide: W().pSlide, sections: W().pSections } };
+  if (!pages.length && !sections.length) { $('x-status').textContent = W().pEmpty; return; }
+  const root = document.createElement('div'); root.id = 'print-root'; root.setAttribute('aria-hidden', 'true');
+  root.style.setProperty('--pr-k', String(PR.K)); root.style.setProperty('--pr-page', PR.PAGE);
   const f = document.createElement('iframe');
-  f.setAttribute('sandbox', 'allow-scripts allow-modals');
-  f.setAttribute('referrerpolicy', 'no-referrer');
-  f.setAttribute('aria-hidden', 'true'); f.tabIndex = -1;
+  f.setAttribute('sandbox', 'allow-scripts');
+  f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1;
   f.className = 'print-frame';
+  PRINT.root = root; PRINT.frame = f; PRINT.mode = mode === 'snap' ? 'snap' : 'stack'; PRINT.data = { pages, sections };
+  if (PRINT.mode === 'stack') {
+    // A: the frame under the blocks, as tall as all the pages
+    const stack = document.createElement('div'); stack.className = 'pr-stack';
+    f.style.height = `calc(${PR.PAGE} * ${pages.length})`;
+    stack.appendChild(f);
+    pages.forEach((pg, i) => { const b = printBlock(pg); b.style.top = `calc(${PR.PAGE} * ${i})`; stack.appendChild(b); });
+    stack.style.height = `calc(${PR.PAGE} * ${pages.length} - 2px)`;   // a hair under the pages, so no empty page follows
+    if (!pages.length) f.style.display = 'none';
+    root.appendChild(stack);
+  } else {
+    // B: the frame only makes the copies; it stays off the printed page
+    f.classList.add('pr-maker');
+    root.appendChild(f);
+  }
+  root.appendChild(printSections(sections));
+  document.body.appendChild(root);
   f.srcdoc = lessonDocument(P.text, { shim: __PRINT_SHIM__ });
-  PRINT.frame = f;
-  document.body.appendChild(f);
   $('x-status').textContent = W().pPreparing;
   PRINT.timer = setTimeout(() => endPrint(W().pFailed), 60000);   // the lesson never got ready
+  if (!pages.length) { f.remove(); PRINT.frame = null; printNow(); }
+}
+async function printSnaps(r) {
+  const { pages } = PRINT.data, before = PRINT.root.querySelector('.pr-secs'), waits = [];
+  for (const pg of pages) {
+    const html = typeof r.html[pg.slide] === 'string' ? r.html[pg.slide] : '';
+    const b = printBlock(pg);
+    if (html) {
+      const fr = document.createElement('iframe');
+      fr.setAttribute('sandbox', ''); fr.setAttribute('referrerpolicy', 'no-referrer'); fr.tabIndex = -1; fr.className = 'pr-copy';
+      fr.srcdoc = snapDoc(r, html);
+      waits.push(frameLoaded(fr));
+      b.querySelector('.pr-slide').prepend(fr);
+    }
+    PRINT.root.insertBefore(b, before);
+  }
+  const blocks = PRINT.root.querySelectorAll(':scope > .pr-block'); if (blocks.length && !PRINT.data.sections.length) blocks[blocks.length - 1].classList.add('pr-last');
+  if (PRINT.frame) { PRINT.frame.remove(); PRINT.frame = null; }   // the lesson is no longer needed
+  await Promise.all(waits);
+  printNow();
 }
 function openExport() { if (!M || !S.playing) return; $('x-status').textContent = ''; $('m-export').showModal(); }
 
@@ -586,7 +709,7 @@ function closeLesson(quiet) {
   if (S.frame && fsElement() === S.frame) fsRequest(false);
   if (S.live) { S.live.stop(); S.live = null; }
   if (S.frame) { S.frame.remove(); S.frame = null; }
-  S.doc = null; S.layout = null; S.hasPolls = false;
+  S.doc = null; S.layout = null; S.deckLayout = ''; S.hasPolls = false;
   $('live').hidden = true;
   $('live-start').hidden = true;
   $('b-live').hidden = true;
@@ -620,11 +743,18 @@ function focusLive() {
 const isStr = (v, n) => typeof v === 'string' && v.length <= n;
 const openLinkShape = (m) => { const k = Object.keys(m); return k.every((x) => x === 'egatari' || x === 'href' || x === 'text' || (x === 'download' && m.download === true)) && k.length === (m.download === true ? 4 : 3); };
 window.addEventListener('message', (e) => {
-  // the print frame (printNotes): only from it, only these three shapes
+  // the print frame (printNotes): only from it, only these shapes
   if (PRINT.frame && e.source === PRINT.frame.contentWindow && e.origin === 'null') {
     const m = e.data, k = m && typeof m === 'object' ? m.egaViewer : '';
-    if (k === 'print-ready' && PRINT.data) { PRINT.frame.contentWindow.postMessage(PRINT.data, '*'); clearTimeout(PRINT.timer); PRINT.timer = setTimeout(() => endPrint(), 600000); }
-    else if (k === 'print-done') endPrint(m.empty === true ? W().pEmpty : m.failed === true ? W().pFailed : W().pDone);
+    const keys = PRINT.data ? PRINT.data.pages.map((p) => p.slide) : [];
+    if (k === 'print-ready' && PRINT.data) {
+      clearTimeout(PRINT.timer); PRINT.timer = setTimeout(() => endPrint(W().pFailed), 120000);
+      PRINT.frame.contentWindow.postMessage(PRINT.mode === 'snap' ? { egaViewer: 'print-snap', slides: keys } : { egaViewer: 'print-stack', slides: keys, k: PR.K, page: PR.PAGE }, '*');
+    } else if (k === 'print-stacked' && PRINT.mode === 'stack' && Number.isInteger(m.n)) {
+      if (m.n > 0) printNow(); else endPrint(W().pFailed);
+    } else if (k === 'print-snaps' && PRINT.mode === 'snap' && typeof m.css === 'string' && m.css.length <= 40e6 && m.html && typeof m.html === 'object' && m.attrs && typeof m.attrs === 'object') {
+      printSnaps(m);
+    }
     return;
   }
   const f = S.frame;
@@ -645,11 +775,12 @@ window.addEventListener('message', (e) => {
     if (S.live) S.live.setStep(m.key);
   }
   // m in the lesson (play/lesson-shim.js 7): the memo view, like the 「メモ」 button. Untrusted: exactly {egaViewer}
-  else if (m.egaViewer === 'note-key' && Object.keys(m).length === 1) { if (!$('b-note').hidden) setNoteView(!NOTE.view); }
+  else if (m.egaViewer === 'note-key' && Object.keys(m).length === 1) { if (!$('b-note').hidden) toggleNote(); }
   else if (m.egaViewer === 'ink-bg' && Object.keys(m).length === 2 && rgbOk(m.rgb)) { if (NOTE.view) setMemoBackground(m.rgb); }
   // the player's view changed (play/lesson-shim.js 6): handwriting is drawn over the slide as the slides view shows it, so in the
   // book or 「スライドと本」 it would lie off the slide; it closes (the strokes stay on this device). Untrusted: exactly {egaViewer, layout}
   else if (m.egaViewer === 'layout' && Object.keys(m).length === 2 && (m.layout === 'book' || m.layout === 'split' || m.layout === 'slides')) {
+    S.deckLayout = m.layout;
     if (NOTE.view && m.layout !== 'slides') { setNoteView(false); announce(W().noteClosedView); }
   }
   // the lesson's shim asks for fullscreen (play/lesson-shim.js 4): exactly {egaViewer, on}. Untrusted: the browser enters it only
@@ -901,13 +1032,14 @@ async function main() {
   $('b-cred-close').addEventListener('click', () => $('cred-box').close());
   $('cred-box').addEventListener('close', () => { if (S.playing && !$('lesson-credit').hidden) $('lesson-credit').focus(); });
   $('b-ink').addEventListener('click', () => setInk(!INK.on));
-  $('b-note').addEventListener('click', () => setNoteView(!NOTE.view));
+  $('b-note').addEventListener('click', toggleNote);
   $('b-np-close').addEventListener('click', closeSection);
   $('b-mexport').addEventListener('click', openExport);
   $('b-mexport-close').addEventListener('click', () => $('m-export').close());
   $('b-x-md').addEventListener('click', () => exportAs('md'));
   $('b-x-json').addEventListener('click', () => exportAs('json'));
-  $('b-x-pdf').addEventListener('click', () => printNotes());
+  $('b-x-pdf').addEventListener('click', () => printNotes('stack'));
+  $('b-x-pdf2').addEventListener('click', () => printNotes('snap'));
   $('x-file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; importFile(f); });
   $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
   $('b-resume-x').addEventListener('click', hideResume);

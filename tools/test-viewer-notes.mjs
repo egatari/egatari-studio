@@ -185,13 +185,21 @@ const noteButtonsIn = (f) => f.evaluate(() => [...document.querySelectorAll('[da
   const f = await lessonFrame(p);
   ok(await until(() => f.evaluate(() => !!document.getElementById('egatari-article'))), 'the book is shown');
   ok((await noteButtonsIn(f)).length === 0, 'no section buttons while the markup bar is closed and there is no note');
+  // 「メモ」 with the book on screen: the note of the section being read, below the frame; the view stays the book
+  await p.click('#b-note');
+  ok(await until(() => p.evaluate(() => !document.getElementById('note-panel').hidden && document.getElementById('note-area').hidden)), 'メモ in the book: the section note, not the slide memo area');
+  ok(await f.evaluate(() => document.documentElement.getAttribute('data-deck-layout') === 'book'), 'the view stays the book');
+  await p.click('#b-note');
+  ok(await until(() => p.evaluate(() => document.getElementById('note-panel').hidden)), 'メモ again closes it');
   await p.click('#b-markup');
   ok(await until(async () => (await noteButtonsIn(f)).length > 0), 'markup bar: a メモ button at the end of each section ' + JSON.stringify(await noteButtonsIn(f)));
   ok(await select(f, '平均は外れ値に'), 'selected words in the book');
   ok(await until(async () => { const b = await popButtons(f); return b && b.includes('note'); }), 'the small window has メモ ' + JSON.stringify(await popButtons(f)));
   await popPress(f, 'note');
   ok(await until(() => p.evaluate(() => !document.getElementById('note-panel').hidden && !!document.querySelector('#note-panel .n-quote'))), 'the section note opens with the quote');
-  ok(await until(async () => { const r = await record(p); return r.highlights.length === 1 && r.notes.length === 1 && r.notes[0].at.section === 'sec-h7q2xz' && r.notes[0].blocks[0].quote.exact === '平均は外れ値に' && r.notes[0].blocks[0].quote.highlight === r.highlights[0].id; }), 'a highlight and a note with the quote ' + JSON.stringify(await record(p)));
+  ok(await until(async () => { const r = await record(p); return r.highlights.length === 0 && r.notes.length === 1 && r.notes[0].at.section === 'sec-h7q2xz' && r.notes[0].blocks[0].quote.exact === '平均は外れ値に' && !('highlight' in r.notes[0].blocks[0].quote); }), 'a note with the quote, and no highlight (the owner 11/27: ア) ' + JSON.stringify(await record(p)));
+  const quoteMarks = () => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=layer]'); return h ? h.shadowRoot.querySelectorAll('.u').length : 0; });
+  ok(await until(async () => (await quoteMarks()) > 0), 'the quoted words have a dotted underline of their own')
   ok(await p.evaluate(() => document.activeElement && document.activeElement.matches('#note-panel textarea')), 'the line after the quote has the focus');
   await p.keyboard.type('外れ値の影響を受けやすい');
   ok(await until(async () => { const n = (await notesOf(p))[0]; return n.blocks.length === 2 && n.blocks[1].text === '外れ値の影響を受けやすい'; }), 'the words after the quote are saved');
@@ -213,7 +221,8 @@ const noteButtonsIn = (f) => f.evaluate(() => [...document.querySelectorAll('[da
   ok(await until(() => p.evaluate(() => !document.getElementById('note-panel').hidden && document.querySelectorAll('#note-panel textarea').length >= 1)), 'the button opens the note');
   // deleting the quote keeps the highlight
   await p.click('#note-panel .n-qdel');
-  ok(await until(async () => { const r = await record(p); return r.highlights.length === 1 && r.notes[0].blocks.length === 1 && r.notes[0].blocks[0].text; }), 'quote deleted, highlight kept');
+  ok(await until(async () => { const r = await record(p); return r.highlights.length === 0 && r.notes[0].blocks.length === 1 && r.notes[0].blocks[0].text; }), 'quote deleted');
+  ok(await until(async () => (await quoteMarks()) === 0), 'and its underline is gone');
   await p.close();
 }
 
@@ -237,6 +246,11 @@ const slideBoxes = (f) => f.evaluate(() => { const h = document.querySelector('[
   await popPress(f, 'p');
   ok(await until(async () => { const r = await record(p); return r && r.highlights.length === 1 && r.highlights[0].target.slide && r.highlights[0].target.quote.exact === '勾配降下法'; }), 'a highlight on the slide {slide, quote} ' + JSON.stringify((await record(p) || {}).highlights));
   ok(await until(async () => (await slideBoxes(f)) > 0), 'painted over the slide');
+  // the book view: the slide is hidden, so are its highlights (the owner's iPad 11/27: a slide's box stayed over the book)
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'book' }, '*'));
+  ok(await until(async () => (await slideBoxes(f)) === 0), 'book view: the slide\'s highlights are not drawn');
+  await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'slides' }, '*'));
+  ok(await until(async () => (await slideBoxes(f)) > 0), 'slides again: drawn again');
   await shot(p, 'notes-slide-hl');
   // 暗記 on a slide: a band over the words; a tap reveals them
   await p.click('#b-markup'); await p.click('#b-recall');
@@ -252,6 +266,11 @@ const slideBoxes = (f) => f.evaluate(() => { const h = document.querySelector('[
   ok(await until(() => p.evaluate(() => !document.getElementById('note-area').hidden && !!document.querySelector('#note-area .n-quote'))), 'the memo view opens with the quote');
   ok(await until(async () => { const r = await record(p); const n = r.notes.find((x) => x.at.slide === r.highlights[0].target.slide); return r.highlights.length === 1 && n && n.blocks.some((b) => b.quote && b.quote.highlight === r.highlights[0].id); }), 'the same highlight, quoted into the note of its slide (the first test wrote one there) ' + JSON.stringify(await record(p)));
   await p.keyboard.type('最小値へ少しずつ下る');
+  const slideMarks = () => f.evaluate(() => { const h = document.querySelector('[data-egatari-viewer=slide-layer]'); return h ? h.shadowRoot.querySelectorAll('.u').length : 0; });
+  ok(await until(async () => (await slideMarks()) > 0), 'the quoted words on the slide have their underline');
+  await p.click('#b-markup'); await p.click('#b-recall');
+  ok(await until(async () => (await bands()) > 0 && (await slideMarks()) > 0), '暗記 hides the highlight, not the quote mark');
+  await p.click('#b-recall'); await p.click('#b-markup');
   await shot(p, 'notes-slide-quote');
   // to another slide and back with ↗ from the list
   await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'seek', slide: 2, step: null, t: null }, '*'));
@@ -284,7 +303,8 @@ let BACKUP = '';
 {
   const p = await newPage();
   // print() is held in every frame of this page (the print frame included), so its layout can be read
-  await p.addInitScript(() => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; });
+  const holdPrint = () => { window.print = () => { window.__printed = (window.__printed || 0) + 1; }; };
+  await p.addInitScript(holdPrint); await p.evaluate(holdPrint);   // the page is already loaded: also now
   await open(p, LIGHT);
   await p.click('#b-ink');
   await p.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
@@ -296,25 +316,44 @@ let BACKUP = '';
   const mdText = fs.readFileSync(md, 'utf8');
   ok(/のメモ（\d{4}-\d\d-\d\d）\.md$/.test(md), 'Markdown file name ' + path.basename(md));
   ok(mdText.startsWith('# 勾配降下法の基本のメモ') && /## スライド 1「/.test(mdText) && mdText.includes('> 勾配降下法') && mdText.includes('最小値へ少しずつ下る') && mdText.includes('手書きもあります'), 'Markdown: slide headings, the quote as >, the note, a line for handwriting\n' + mdText);
-  // PDF: the frame made only to print (allow-modals, removed afterwards); print() is held in this test so its layout can be read
+  // PDF (standards 11/27): only the page prints. A frame with the lesson (allow-scripts only) lays out the slides; the notes and the
+  // handwriting are drawn by the page. print() is held in this test so the layout can be read
+  const printed = (n) => until(() => p.evaluate((n) => window.__printed === n, n));
+  const sandboxes = () => p.evaluate(() => [...document.querySelectorAll('iframe')].map((f) => f.getAttribute('sandbox')));
+  const printShot = async (name) => {
+    if (!SHOTS) return;
+    await p.emulateMedia({ media: 'print' });
+    await p.screenshot({ path: path.join(work, name + '.png'), fullPage: true });
+    if (!WEBKIT) await p.pdf({ path: path.join(work, name + '.pdf'), preferCSSPageSize: true, printBackground: true });
+    await p.emulateMedia({ media: 'screen' });
+  };
+  // A: one frame, the slides one page apart, the page's memo areas over it
   const framed = new Promise((res) => p.on('frameattached', (fr) => res(fr)));
   await p.click('#b-x-pdf');
   const pf = await framed;
-  ok(await p.evaluate(() => { const f = document.querySelector('iframe.print-frame'); return !!f && f.getAttribute('sandbox') === 'allow-scripts allow-modals'; }), 'PDF: a print frame (allow-scripts allow-modals)');
+  ok(await printed(1), 'A: the page prints once');
+  ok(await p.evaluate(() => { const f = document.querySelector('#print-root iframe.print-frame'); return !!f && f.getAttribute('sandbox') === 'allow-scripts' && document.documentElement.classList.contains('printing') && !document.getElementById('m-export').open; }), 'A: the slides frame is allow-scripts only; the export dialog closed for printing');
+  ok((await sandboxes()).every((x) => x === 'allow-scripts' || x === ''), 'no frame has more than allow-scripts ' + JSON.stringify(await sandboxes()));
   ok(await p.evaluate(() => document.getElementById('lesson').getAttribute('sandbox') === 'allow-scripts'), 'the playing frame keeps allow-scripts only');
-  ok(await until(() => pf.evaluate(() => window.__printed === 1)), 'it prints once');
-  const pl = await pf.evaluate(() => ({ memos: document.querySelectorAll('.ega-pmemo:not(.ega-off)').length, off: document.querySelectorAll('#stage > .slide.ega-off').length,
-    text: [...document.querySelectorAll('.ega-pmemo:not(.ega-off) .ega-area')].map((a) => a.textContent).join('|'), ink: document.querySelectorAll('.ega-pmemo svg.ega-pink path').length, slideInk: document.querySelectorAll('.slide > svg.ega-pink path').length }));
-  ok(pl.memos === 2 && pl.off > 0 && pl.text.includes('最初のメモ') && pl.text.includes('勾配降下法') && pl.ink >= 1 && pl.slideInk >= 1, 'the handout: the slides with a note, their notes and handwriting; the others left out ' + JSON.stringify(pl));
-  if (SHOTS) {
-    const html = await pf.content();
-    const ctx3 = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 900, height: 1200 } });
-    const q = await ctx3.newPage(); await q.setContent(html); await q.emulateMedia({ media: 'print' });
-    await q.screenshot({ path: path.join(work, 'notes-print.png'), fullPage: true });
-    if (!WEBKIT) await q.pdf({ path: path.join(work, 'notes-print.pdf'), preferCSSPageSize: true, printBackground: true });
-    await ctx3.close();
-  }
-  await p.evaluate(() => { const f = document.querySelector('iframe.print-frame'); f.remove(); });
+  const pa = await p.evaluate(() => ({ blocks: document.querySelectorAll('#print-root .pr-stack > .pr-block').length, text: [...document.querySelectorAll('#print-root .pr-memo')].map((a) => a.textContent).join('|'),
+    ink: document.querySelectorAll('#print-root .pr-memo svg.pr-ink path').length, slideInk: document.querySelectorAll('#print-root .pr-slide svg.pr-ink path').length,
+    tops: [...document.querySelectorAll('#print-root .pr-stack > .pr-block')].map((b) => Math.round(b.offsetTop)), fh: document.querySelector('#print-root iframe.print-frame').offsetHeight }));
+  const fa = await pf.evaluate(() => ({ on: document.querySelectorAll('#stage > .slide.ega-on').length, all: document.querySelectorAll('#stage > .slide').length, notes: document.body.innerText.includes('最初のメモ') }));
+  ok(pa.blocks === 2 && pa.text.includes('最初のメモ') && pa.text.includes('勾配降下法') && pa.ink >= 1 && pa.slideInk >= 1 && pa.tops[0] === 0 && Math.abs(pa.tops[1] - 1032) <= 1 && Math.abs(pa.fh - 2063) <= 2, 'A: the page draws the notes and handwriting, one A4 page apart ' + JSON.stringify(pa));
+  ok(fa.on === 2 && fa.all > 2 && !fa.notes, 'A: the frame shows only the slides with a note, and has no note text ' + JSON.stringify(fa));
+  await printShot('notes-print-a');
+  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  ok(await until(() => p.evaluate(() => !document.getElementById('print-root') && !document.documentElement.classList.contains('printing'))), 'A: removed after printing');
+  // B: still copies of the slides in frames without scripts
+  await p.click('#b-mexport'); await p.click('#b-x-pdf2');
+  ok(await printed(2), 'B: the page prints once');
+  const pb = await p.evaluate(() => ({ copies: [...document.querySelectorAll('#print-root iframe.pr-copy')].map((f) => f.getAttribute('sandbox')), maker: !!document.querySelector('#print-root iframe.print-frame'),
+    blocks: document.querySelectorAll('#print-root > .pr-block').length, text: [...document.querySelectorAll('#print-root .pr-memo')].map((a) => a.textContent).join('|'),
+    inCopy: [...document.querySelectorAll('#print-root iframe.pr-copy')].map((f) => f.srcdoc.length), scripts: [...document.querySelectorAll('#print-root iframe.pr-copy')].some((f) => /<script/i.test(f.srcdoc)) }));
+  ok(pb.copies.length === 2 && pb.copies.every((x) => x === '') && !pb.maker && pb.blocks === 2 && pb.text.includes('最初のメモ') && !pb.scripts && pb.inCopy.every((n) => n > 1000), 'B: two copies with sandbox="", no script in them, the lesson frame gone ' + JSON.stringify(pb));
+  await printShot('notes-print-b');
+  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  await p.click('#b-mexport');   // printing closed the dialog
   BACKUP = await download(p, '#b-x-json');
   const j = JSON.parse(fs.readFileSync(BACKUP, 'utf8'));
   ok(/のメモのバックアップ（\d{4}-\d\d-\d\d）\.ega-notes\.json$/.test(BACKUP), 'backup file name ' + path.basename(BACKUP));

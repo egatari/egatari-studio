@@ -86,9 +86,13 @@ export function cleanBlocks(list) {
     if (!b || typeof b !== 'object') continue;
     if (keys(b, ['text']) && typeof b.text === 'string') {
       const text = b.text.slice(0, Math.max(0, MAXT - chars)); chars += text.length; out.push({ text });
-    } else if (keys(b, ['quote']) && b.quote && typeof b.quote === 'object' && keys(b.quote, ['highlight', 'exact', 'target'])) {
-      const q = b.quote, t = cleanTarget(q.target);
-      if (t && isStr(q.highlight, 40) && (q.highlight === '' || ID_H.test(q.highlight)) && isStr(q.exact, MAXQ) && q.exact.trim()) out.push({ quote: { highlight: q.highlight, exact: q.exact, target: t } });
+    } else if (keys(b, ['quote']) && b.quote && typeof b.quote === 'object' && (keys(b.quote, ['highlight', 'exact', 'target']) || keys(b.quote, ['exact', 'target']))) {
+      // highlight: the id of the highlight the quote was taken from, when one exists (annotations.md Note record; a quote made
+      // from 「メモ」 on words without a highlight has none)
+      const q = b.quote, t = cleanTarget(q.target), hl = 'highlight' in q;
+      if (!t || !isStr(q.exact, MAXQ) || !q.exact.trim()) continue;
+      if (hl && !(isStr(q.highlight, 40) && (q.highlight === '' || ID_H.test(q.highlight)))) continue;
+      out.push({ quote: hl && q.highlight ? { highlight: q.highlight, exact: q.exact, target: t } : { exact: q.exact, target: t } });
     }
   }
   return out;
@@ -124,7 +128,9 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
   const pushAll = () => { send({ egaViewer: 'markup-load', list: L.rec ? L.rec.highlights : [], words: frameWords(), view: view() }); pushNotes(); };
   const pushView = () => send({ egaViewer: 'markup-view', view: view() });
   // the frame learns only which sections have a note (to name its button), never what is written in it
-  const pushNotes = () => send({ egaViewer: 'markup-notes', sections: L.rec ? [...new Set(L.rec.notes.filter((n) => n.at.section != null).map((n) => n.at.section))] : [] });
+  // and the quoted words' places (the file's own words), to mark them
+  const pushNotes = () => send({ egaViewer: 'markup-notes', sections: L.rec ? [...new Set(L.rec.notes.filter((n) => n.at.section != null).map((n) => n.at.section))] : [],
+    quotes: L.rec ? L.rec.notes.flatMap((n) => n.blocks.filter((b) => b.quote).map((b) => b.quote.target)).slice(0, MAXB * 10) : [] });
 
   // ---------------------------------------------------------------- notes
   const noteOf = (at) => { const k = atKey(at); return L.rec ? L.rec.notes.find((n) => atKey(n.at) === k) || null : null; };
@@ -143,6 +149,8 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
     return true;
   }
   // ↗ on a quote: to its highlight when it is still there, else to the quoted words
+  // the note of the section of the book on screen (the frame answers with markup-note)
+  function noteHere() { send({ egaViewer: 'markup-note-here' }); }
   function goQuote(q) {
     if (!L.rec || !q || !q.target) return;
     if (L.rec.highlights.some((h) => h.id === q.highlight)) send({ egaViewer: 'markup-jump', id: q.highlight });
@@ -222,17 +230,15 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
         if (els.list.open) renderList();
         break;
       }
-      // 「メモ」 in the small window (handoff #107): the words get a highlight (the one already on them, or a new one in the colour the
-      // frame sends: the last one used), and the note of their slide or section gets a quote of them
+      // 「メモ」 in the small window (handoff #107): the note of the words' slide or section gets a quote of them. No highlight is made
+      // (the owner 11/27: a quote is not something to hide in 暗記); the words get a mark of their own (a dotted underline, unlike
+      // the red lines a slide may have). When they already have a highlight, the quote keeps its id (annotations.md: "when one exists")
       case 'markup-quote': {
         if (!keys(m, ['egaViewer', 'color', 'target']) || !COLORS.includes(m.color) || !L.rec) break;
         const t = cleanTarget(m.target); if (!t) break;
-        let h = H.find((x) => JSON.stringify(x.target) === JSON.stringify(t));
-        if (!h) {
-          if (H.length >= MAX) { els.announce(W().mFull(MAX)); break; }
-          h = { id: newId(), color: m.color, target: t, created: now, modified: now }; H.push(h); changed();
-        }
-        onQuote(t.slide != null ? { slide: t.slide } : { section: t.section }, { quote: { highlight: h.id, exact: t.quote.exact, target: t } });
+        const h = H.find((x) => JSON.stringify(x.target) === JSON.stringify(t));
+        const quote = { exact: t.quote.exact, target: t }; if (h) quote.highlight = h.id;
+        onQuote(t.slide != null ? { slide: t.slide } : { section: t.section }, { quote });
         break;
       }
       // the 「メモ」 button at the end of a section of the book: the note opens in this page (its words never go into the frame)
@@ -458,7 +464,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
   }
   init();
   return {
-    open, close, message, toggle, ask, getNote, setNote, goQuote,
+    open, close, message, toggle, ask, getNote, setNote, goQuote, noteHere,
     // an exchange file read in (play/notes-export.mjs readExchange: already checked): merged into this lesson's record
     importRecord({ highlights, notes }) {
       if (!L.rec) return null;

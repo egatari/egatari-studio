@@ -26,7 +26,7 @@
   var supported = typeof Range === "function" && typeof Range.prototype.getClientRects === "function" && typeof Element.prototype.attachShadow === "function";
   function post(m) { m.egaViewer = "markup-" + m.egaViewer; try { parentWin.postMessage(m, "*"); } catch (e) { /* gone */ } }
 
-  var S = { last: "y", noteSections: [], list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
+  var S = { last: "y", noteSections: [], quotes: [], qPlaced: [], list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
 
   // ---------------------------------------------------------------- the text of a part, without ruby readings or hidden MathML
   var SKIP = "rt,rp,.katex-mathml,script,style,template,noscript,[data-egatari-viewer]";
@@ -125,6 +125,7 @@
   var masked = function (h) { return S.view.recall && S.view.recallColors.indexOf(h.color) >= 0 && !S.revealed[h.id]; };
   var BAND = { white: { y: "#fff066", p: "#ff9eb0", b: "#79b8ff" }, sepia: { y: "#f5e04a", p: "#f797a8", b: "#70aae6" }, black: { y: "#7d6800", p: "#a5304a", b: "#1f4f94" } };
   var LAYER_CSS = "@media print{:host{display:none!important}}" +   // stage 1 prints the book as it is; export (stage 2) draws highlights on purpose
+    ".u{position:absolute;pointer-events:none;height:0;border-bottom:2px dotted #6a4fd6}.u.dk{border-bottom-color:#b8a8ff}" +
     ".h{position:absolute;pointer-events:none;border-radius:2px}.h.mul{mix-blend-mode:multiply}.h.scr{mix-blend-mode:screen}" +
     ".m{position:absolute;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;pointer-events:auto}" +
     ".fl div{position:absolute;border-radius:3px;pointer-events:none;outline:3px solid #2c63d4;animation:fl 1.2s ease-out forwards}@keyframes fl{0%{opacity:1}70%{opacity:1}100%{opacity:0}}" +
@@ -252,7 +253,7 @@
   // layer over the page, every highlight of that slide). ctx = {Y: layer, P: placed ranges, ids(filter), o: the layer's origin, bg, MK}
   function paint() {
     var Y = S.article ? layer() : null;
-    if (Y) paintIn({ Y: Y, P: S.placed, ids: nearIds, o: L.host.getBoundingClientRect(), bg: bgName(), MK: MK });
+    if (Y) paintIn({ Y: Y, P: S.placed, Q: S.qPlaced, ids: nearIds, o: L.host.getBoundingClientRect(), bg: bgName(), MK: MK });
     paintSlide();
   }
   function paintIn(ctx) {
@@ -269,6 +270,12 @@
     for (var k = 0; k < shown.length; k++) {
       var h = shown[k][0], rs = shown[k][1];
       for (var i = 0; i < rs.length; i++) html += '<div class="h ' + blend + '" data-id="' + h.id + '" data-c="' + h.color + '" style="' + box(rs[i]) + "background:" + BAND[bg][h.color] + '"></div>';
+    }
+    // quoted words (handoff #107, ア): a dotted underline, always shown (暗記 hides highlights only)
+    var Q = ctx.Q || [];
+    for (var qi = 0; qi < Q.length; qi++) {
+      var qr = textRects(Q[qi]);
+      for (var qj = 0; qj < qr.length; qj++) { var u = qr[qj]; html += '<div class="u' + (bg === "black" ? " dk" : "") + '" style="left:' + (u.left - o.left) + "px;top:" + (u.bottom - o.top - 1) + "px;width:" + u.width + 'px"></div>'; }
     }
     Y.paint.innerHTML = html;   // ids are checked on arrival (ID_RE), colours are y/p/b and the numbers are made here
     // 暗記: bands and buttons for the hidden highlights near the screen, kept between redraws so the keyboard's focus stays.
@@ -343,6 +350,8 @@
       if (t && t.quote.exact !== q.exact && t.quote.exact.indexOf(q.exact) >= 0 && widened.length < 2000) widened.push({ id: h.id, target: t });
     });
     ORDER = Object.keys(S.placed).sort(inOrder);
+    S.qPlaced = [];
+    if (S.article) S.quotes.forEach(function (t) { if (t.section == null) return; var r = anchor({ target: t }); if (r) S.qPlaced.push(r); });
     placeSlide();
     paint();
     var sections = {};
@@ -365,7 +374,7 @@
   // A slide's text is anchored like the book's ({slide: its key, quote}), and only the slide on screen is placed. Its highlights are
   // drawn in a layer fixed over the page (the stage is scaled to the screen, so boxes are measured where the text is now), again when
   // a step appears, the stage resizes or an animation ends. Text of a step not shown yet is not painted (seen()).
-  var SL = { el: null, key: "", host: null, root: null, paint: null, mk: null, placed: {}, MK: {}, missing: {} };
+  var SL = { qPlaced: [], el: null, key: "", host: null, root: null, paint: null, mk: null, placed: {}, MK: {}, missing: {} };
   function activeSlide() { return document.querySelector("#stage > .slide.active"); }
   function keyOf(el) { var k = el && (el._key || el.getAttribute("data-key") || el.id); if (k) return String(k).slice(0, 200); var all = document.querySelectorAll("#stage > .slide"); return el ? "s" + (Array.prototype.indexOf.call(all, el) + 1) : ""; }
   function seen(e) {
@@ -421,14 +430,23 @@
       if (r) SL.placed[h.id] = r; else miss.push(h.id);
     });
     SL.missing[SL.key] = miss;
+    SL.qPlaced = [];
+    S.quotes.forEach(function (t) { if (t.slide !== SL.key) return; var r = findIn(el, t.quote); if (r) SL.qPlaced.push(r); });
+  }
+  // the slide is on screen: not under the player's book view (the stage stays in the document, hidden), not of no size
+  function slideShown() {
+    if (!SL.el || document.documentElement.getAttribute("data-deck-layout") === "book") return false;
+    var r = SL.el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    return typeof SL.el.checkVisibility === "function" ? SL.el.checkVisibility({ visibilityProperty: true, opacityProperty: true }) : true;
   }
   function paintSlide() {
-    if (!SL.el) { if (SL.host) { SL.paint.innerHTML = ""; Object.keys(SL.MK).forEach(function (id) { SL.MK[id].btn.remove(); SL.MK[id].bands.remove(); delete SL.MK[id]; }); } return; }
+    if (!SL.el || !slideShown()) { if (SL.host) { SL.paint.innerHTML = ""; Object.keys(SL.MK).forEach(function (id) { SL.MK[id].btn.remove(); SL.MK[id].bands.remove(); delete SL.MK[id]; }); } return; }
     var Y = slideLayer(), ids = Object.keys(SL.placed).sort(function (a, b) { try { return SL.placed[a].compareBoundaryPoints(Range.START_TO_START, SL.placed[b]); } catch (e) { return 0; } });
     var bg = slideBg();
     Y.host.style.mixBlendMode = bg === "black" ? "screen" : "multiply";
     inSlide = true;
-    try { paintIn({ Y: Y, P: SL.placed, ids: function (f) { return ids.filter(f); }, o: { left: 0, top: 0 }, bg: bg, MK: SL.MK }); }
+    try { paintIn({ Y: Y, P: SL.placed, Q: SL.qPlaced, ids: function (f) { return ids.filter(f); }, o: { left: 0, top: 0 }, bg: bg, MK: SL.MK }); }
     finally { inSlide = false; }
   }
   // a range in the slide on screen → {slide, quote}
@@ -581,7 +599,7 @@
     if (!f) return;
     if (a === "close") { dismissed = f.target ? JSON.stringify(f.target) : null; hidePop(); return; }   // the selection stays
     if (a === "note") {
-      // the words of a new selection, or of the tapped highlight: the page quotes them into the note (and keeps or adds the highlight)
+      // the words of a new selection, or of the tapped highlight: the page quotes them into the note (no highlight is made; one already there is named in the quote)
       var h0 = f.id ? S.list.filter(function (h) { return h.id === f.id; })[0] : null, t0 = h0 ? h0.target : f.target;
       if (t0) post({ egaViewer: "quote", color: h0 ? h0.color : S.last, target: t0 });
       if (!f.id) { try { window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ } }
@@ -657,7 +675,9 @@
       if (a) placeAll(); else if (L.host) L.host.remove();
     }
     else if (a && stale()) placeAll();
-    var sl = activeSlide();
+    var sl = activeSlide(), lay0 = document.documentElement.getAttribute("data-deck-layout");
+    // the player's view changed (slides, book, スライドと本): the slide's highlights are drawn only while the slide is on screen
+    if (lay0 !== SL.lay) { SL.lay = lay0; if (sl === SL.el) paint(); }
     if (sl !== SL.el) { placeSlide(); paint(); if (SL.missing[SL.key] && SL.missing[SL.key].length) postStatus(); }
     // article: the lesson has a book (an article with text; kit/panes.js shows 台本で読む instead when it is empty).
     // shown: the book is on screen (the player's 表示 is 本 or スライドと本); a player without layouts counts as shown
@@ -705,9 +725,27 @@
       if (typeof m.target.section === "string") { t.section = m.target.section; if (S.article) { var r2 = anchor({ target: t }); if (r2) goTo(r2); } }
       else if (typeof m.target.slide === "string" && SL.el && m.target.slide === SL.key) { var r3 = findIn(SL.el, t.quote); if (r3) flashSlide(r3); }
     }
+    // 「メモ」 (or m) pressed while the book is on screen: the note of the section being read (the last one whose start is above the
+    // upper third of the frame and that is still on screen)
+    else if (m.egaViewer === "markup-note-here") {
+      if (!S.article) return;
+      var vh = window.innerHeight || 0, here = null, first = null;
+      Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (sec) {
+        var r = sec.getBoundingClientRect();
+        if (r.bottom <= 0 || r.top >= vh || !r.height) return;
+        if (!first) first = sec;
+        if (r.top <= vh / 3) here = sec;
+      });
+      var at = here || first;
+      if (at) post({ egaViewer: "note", section: at.getAttribute("data-section-id") });
+    }
     else if (m.egaViewer === "markup-notes" && Array.isArray(m.sections) && m.sections.length <= 5000) {
       S.noteSections = m.sections.filter(function (x) { return typeof x === "string" && x.length <= 200; });
+      S.quotes = (isList(m.quotes) ? m.quotes : []).filter(function (t) {
+        return t && typeof t === "object" && (typeof t.section === "string" || typeof t.slide === "string") && t.quote && typeof t.quote.exact === "string" && t.quote.exact.length <= MAXQ;
+      }).map(function (t) { var q = t.quote, c = { quote: { exact: q.exact, prefix: typeof q.prefix === "string" ? q.prefix.slice(0, CTX) : "", suffix: typeof q.suffix === "string" ? q.suffix.slice(0, CTX) : "" } }; if (typeof t.section === "string") c.section = t.section.slice(0, 200); else c.slide = t.slide.slice(0, 200); return c; });
       noteButtons();
+      placeAll();
     }
   });
 })();
