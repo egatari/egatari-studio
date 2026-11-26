@@ -1188,7 +1188,8 @@ export function setupLlm(app) {
         if (!titleOk()) { return { text: X.needTopic, focus: () => { F.open(1, { focus: false }); Qs[1].node.scrollIntoView({ block: 'start' }); Qs[1].titleIn.focus(); } }; }
         return null;
       };
-      send = sendStep(titles[3], copyMsg, { request, missing, onCopied: () => { F.done(3); F.open(4); }, onChange: () => F.open(3) });
+      // onCopied はボタンの「✓ コピーしました」を見せた後（約 1 秒後）に来る。その間にほかの段を開いていたら、たたまない（表示を勝手に動かさない）
+      send = sendStep(titles[3], copyMsg, { request, missing, onCopied: () => { if (F.current !== 3) return; F.done(3); F.open(4); }, onChange: () => F.open(3) });
       newChoice = send.choice;
       five = fiveStep(titles, fields, pasteKids, () => syncGo());
       outlinePhase = () => !direct && five.waiting();
@@ -1257,7 +1258,7 @@ export function setupLlm(app) {
       const req = { request: () => (B ? batchRequest({ rows: B.rows, from: B.from, to: B.to, deck, narration, lang: LANG })
         : insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG })) };
       batchNow = B;
-      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, savedMsg: X.insertSaved, onCopied: () => { F.done(0); F.done(1); F.open(2); }, onChange: () => F.open(1) });
+      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, savedMsg: X.insertSaved, onCopied: () => { if (F.current !== 1) return; F.done(0); F.done(1); F.open(2); }, onChange: () => F.open(1) });
       ins.node.addEventListener('input', pack.update);
       const three = step('paste-step-paste', titles[2], pasteKids());
       // 挿入も 1 つだけ開く流れ（① ② に必ず答えるものはないので、どの見出しからも開ける）
@@ -1268,7 +1269,7 @@ export function setupLlm(app) {
       body = [ins.node, pack.node, three];
     } else {
       let F = null;
-      const r = reviseStep(copyMsg, titles, opts.results || null, { onNext: () => { F.done(0); F.open(1); }, onCopied: () => { F.done(0); F.done(1); F.open(2); }, onChange: (k) => F.open(k) });
+      const r = reviseStep(copyMsg, titles, opts.results || null, { onNext: () => { F.done(0); F.open(1); }, onCopied: () => { if (F.current !== 1) return; F.done(0); F.done(1); F.open(2); }, onChange: (k) => F.open(k) });
       const three = step('paste-step-paste', titles[2], pasteKids());
       F = flow([{ node: r.s1, summary: r.sum1, can: () => true }, { node: r.s2, summary: r.sum2, can: () => true }, { node: three, can: () => true, focus: () => fields.focus() }]);
       openPaste = () => F.open(2, { focus: false });

@@ -2,7 +2,9 @@
 // Studio のどの［コピー］も、作るときに copyButton(ボタン) を通し、写せたときだけ copied(ボタン) を呼ぶ：ボタンの字を約 2 秒「✓ コピーしました」に替えて元に戻す。
 // 写せなかったとき（字の欄を出して選んでもらうとき）は呼ばない（写していないのに「コピーしました」と言わない）。
 // 読み上げは知らせの欄（role="status" など）だけ。ボタンには aria-live を付けず、字の替わりを読み上げに重ねない。
-import { T } from './i18n.js';
+// i18n.js は読み込まない：live-panel.js（言葉を呼び出し元から受け取る）が node の試験からも読まれるため。言葉は main.js が setCopiedText で渡す
+let DONE = '✓';
+export function setCopiedText(text) { DONE = text; }
 
 // 間隔（ms）：showMs はボタンに「✓ コピーしました」を出しておく間、foldMs は段をたたむ前に見せる間（新規作成の ④・挿入と修正の ②）。
 // 試験は window.__APP_TEST.copyLimits で上書きする（app/drafts.js の DRAFT_LIMITS と同じ）
@@ -29,7 +31,7 @@ export function copyButton(btn) {
   const ro = new ResizeObserver(() => {
     if (btn.dataset.copyWidth) { ro.disconnect(); return; }
     if (btn.dataset.copyLabel != null) return;   // 「✓ コピーしました」を出している間は測らない
-    holdWidth(btn, btn.textContent, T.copiedButton);
+    holdWidth(btn, btn.textContent, DONE);
     if (btn.dataset.copyWidth) ro.disconnect();
   });
   ro.observe(btn);
@@ -49,7 +51,7 @@ function restore(btn) {
 export function copied(btn) {
   const L = limits();
   if (!btn) return new Promise((r) => setTimeout(r, L.foldMs));
-  const done = T.copiedButton;
+  const done = DONE;
   // 続けて押したとき：元の字は最初に覚えたもの（「✓ コピーしました」を元の字にしない）
   const label = btn.dataset.copyLabel != null ? btn.dataset.copyLabel : btn.textContent;
   btn.dataset.copyLabel = label;
