@@ -19,6 +19,7 @@ import { updateConfig, merge as configMerge } from '../kit/core/config-file.mjs'
 import { LivePolicy } from '../kit/core/live-policy.mjs';
 import { parseRoomBlock, lessonLive, activitiesText, localToRfc3339, stepLabel, stepText, newLiveSetup, liveSetupString } from '../kit/core/live.mjs';
 import { READ_LIMITS } from '../kit/core/bounded-read-core.mjs';
+import { copied, copyButton } from './copy-button.js';
 
 const LP = LivePolicy();
 const CFG = FORMAT.CONFIG_FILE;
@@ -276,7 +277,7 @@ export function createLivePanel(o) {
       el('label', {}, [el('span', { text: X.room }), input('live-room', M.room, (v) => { M.room = v.trim(); M.setup = ''; }, { spellcheck: 'false', placeholder: 'r-xxxxxxxx' })]),
       el('label', {}, [el('span', { text: X.key }), input('live-key', M.key, (v) => { M.key = v.trim(); M.setup = ''; }, { spellcheck: 'false', autocomplete: 'off' })]),
       el('h4', { text: X.copy }), jsonBox,
-      el('div', { cls: 'row' }, [el('button', { type: 'button', id: 'live-copy', text: X.copyBtn, onclick: copyActivities })]),
+      el('div', { cls: 'row' }, [copyButton(el('button', { type: 'button', id: 'live-copy', text: X.copyBtn, onclick: copyActivities }))]),
     ]);
     const body = [
       el('div', { id: 'live-panel' }, [
@@ -297,7 +298,7 @@ export function createLivePanel(o) {
           el('p', { text: X.setupHelp }),
           setupNote, setupBox,
           el('div', { cls: 'row' }, [
-            el('button', { type: 'button', id: 'live-setup-copy', cls: 'pri', text: X.copySetup, onclick: copySetup }),
+            copyButton(el('button', { type: 'button', id: 'live-setup-copy', cls: 'pri', text: X.copySetup, onclick: copySetup })),
             el('button', { type: 'button', id: 'live-setup-save', text: X.saveSetup, onclick: saveSetupFile }),
             el('a', { id: 'live-host-link', href: hostPage(), target: '_blank', rel: 'noopener noreferrer', text: LANG === 'ja' ? `${X.hostLink}（${hostPage().replace(/\/$/, '')}）` : `${X.hostLink} (${hostPage().replace(/\/$/, '')})` }),
           ]),
@@ -330,15 +331,16 @@ export function createLivePanel(o) {
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     o.toast(X.savedSetup(setupFileName()));
   }
-  async function copySetup() {
-    const t = setupText();
+  // 写せたらボタン自体にも「✓ コピーしました」（app/copy-button.js。handoff #110）。写せなければ替えない
+  async function copySetup(e) {
+    const btn = e && e.currentTarget, t = setupText();
     if (!t) return;
-    try { await navigator.clipboard.writeText(t); o.toast(X.copiedSetup); }
+    try { await navigator.clipboard.writeText(t); o.toast(X.copiedSetup); copied(btn); }
     catch { o.toast(X.copyFallback, true); if (setupBox) { setupBox.focus(); setupBox.select(); } }
   }
-  async function copyActivities() {
-    const t = activitiesText({ activities: activities() });
-    try { await navigator.clipboard.writeText(t); o.toast(X.copied); }
+  async function copyActivities(e) {
+    const btn = e && e.currentTarget, t = activitiesText({ activities: activities() });
+    try { await navigator.clipboard.writeText(t); o.toast(X.copied); copied(btn); }
     catch { o.toast(X.copyFallback, true); if (jsonBox) { jsonBox.focus(); jsonBox.select(); } }
   }
   // 教材に残す（鍵なし。設定のファイルのほかの項目はそのまま）

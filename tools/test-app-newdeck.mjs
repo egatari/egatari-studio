@@ -99,6 +99,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p.evaluate(() => { window.__APP_TEST.lastCopy = null; const m = document.getElementById('paste-copied'); m.hidden = true; m.textContent = ''; });
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => window.__APP_TEST.lastCopy !== null && !document.getElementById('paste-copied').hidden && document.getElementById('paste-copied').textContent);
+    // 段は、ボタンの「✓ コピーしました」を約 1 秒見せてからたたむ（handoff #110）：たたみ終わるまで待つ
+    await p.waitForFunction(() => document.getElementById('paste-copy-guide').closest('section.paste-step').querySelector('.paste-step-h').getAttribute('aria-current') !== 'step', null, { timeout: scaled(5000) }).catch(() => {});
     return p.evaluate(() => window.__APP_TEST.lastCopy.replace(/\r\n/g, '\n'));
   };
   const tailOf = (c, lang) => c.slice(c.indexOf(lang === 'ja' ? '# 頼みたいこと' : '# What I want'));

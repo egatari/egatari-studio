@@ -58,6 +58,7 @@ import { TEMPLATES, setBookmark } from '../kit/core/slide-ops.mjs';
 import { BOOKMARK_MAX, bookmarkName, bookmarkLength, bookmarkDefault } from '../kit/core/bookmark.mjs';
 import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
+import { copied, copyButton } from './copy-button.js';
 import { choosableOf, themeLabel, themeNote } from '../kit/core/themes-list.mjs';
 import { setupLlm } from './llm.js';
 import { warnView } from './build-warnings.js';
@@ -1503,7 +1504,7 @@ async function quickCheck() {
     el('p', { id: 'check-rules', cls: 'hint', text: T.checkRules(rules.summary) }),
     // 修正…（チャットの AI に直してもらう。app/llm.js）：結果がなくても出す（① に直してほしいことを書ける）。道具の列は 1 行に収める決まりなので、ここに置く
     el('div', { cls: 'fixrow' }, [llm.reviseButton(), ...(fixable ? [llm.fixButton(results)] : [])]),
-    el('button', { type: 'button', id: 'b-copyshot', cls: 'fixreq', text: T.copyShot, 'aria-describedby': 'copyshot-hint', onclick: copyShot }),
+    copyButton(el('button', { type: 'button', id: 'b-copyshot', cls: 'fixreq', text: T.copyShot, 'aria-describedby': 'copyshot-hint', onclick: copyShot })),
     el('p', { id: 'copyshot-hint', cls: 'hint', text: T.copyShotHint }),
     ...items,
     lookBox,
@@ -1577,7 +1578,8 @@ const shotLabel = (r) => {
 const shotText = (r) => T.copyShotRequest(shotLabel(r));
 const canCopyImage = () => typeof ClipboardItem === 'function' && !!navigator.clipboard && typeof navigator.clipboard.write === 'function'
   && (typeof ClipboardItem.supports !== 'function' || ClipboardItem.supports('image/png'));
-function copyShot() {
+function copyShot(e) {
+  const btn = e && e.currentTarget;   // 写せたらボタン自体にも「✓ コピーしました」（app/copy-button.js。handoff #110）
   const i = S.pos && Number.isFinite(S.pos.i) ? S.pos.i : 0;
   const shot = askFrame('app-shot', { i }).then((r) => (r && r.png instanceof Blob ? r : null));
   let wrote = Promise.resolve(false);
@@ -1591,7 +1593,7 @@ function copyShot() {
   return Promise.all([shot, wrote]).then(([r, ok]) => {
     if (!r) { toast(T.copyShotNoImage, true); return; }
     if (window.__APP_TEST) window.__APP_TEST.lastCopy = shotText(r);
-    if (ok) { toast(T.copyShotDone(r.i + 1)); return; }
+    if (ok) { toast(T.copyShotDone(r.i + 1)); copied(btn); return; }
     return copyShotFallback(r);
   });
 }
@@ -1602,16 +1604,17 @@ async function copyShotFallback(r) {
   area.value = text;
   const lead = el('p', { id: 'copyshot-lead', role: 'status', text: T.copyShotFailLead });
   const save = () => download(`${deckBase()}-${L.n}.png`, r.png, 'image/png');
-  const copyText = async () => {
-    try { await navigator.clipboard.writeText(text); lead.textContent = T.copyShotTextCopied; return; } catch { /* 下へ */ }
-    try { area.focus(); area.select(); if (document.execCommand('copy')) { lead.textContent = T.copyShotTextCopied; return; } } catch { /* 下へ */ }
+  const copyText = async (e) => {
+    const btn = e && e.currentTarget;
+    try { await navigator.clipboard.writeText(text); lead.textContent = T.copyShotTextCopied; copied(btn); return; } catch { /* 下へ */ }
+    try { area.focus(); area.select(); if (document.execCommand('copy')) { lead.textContent = T.copyShotTextCopied; copied(btn); return; } } catch { /* 下へ */ }
     lead.textContent = T.copyShotTextFailed;
   };
   await ask({ title: T.copyShotFailTitle, kind: 'paste', body: [
     lead,
     el('div', { cls: 'paste-guide' }, [
       el('button', { type: 'button', id: 'copyshot-save', text: T.copyShotSave, onclick: save }),
-      el('button', { type: 'button', id: 'copyshot-copy', cls: 'pri', text: T.copyShotCopyText, onclick: copyText }),
+      copyButton(el('button', { type: 'button', id: 'copyshot-copy', cls: 'pri', text: T.copyShotCopyText, onclick: copyText })),
     ]),
     area,
   ], buttons: [{ id: 'cancel', label: T.close }] });
@@ -3255,6 +3258,7 @@ window.__APP_TEST = {
   draftState: () => (keeper ? { ...keeper.state(), kept: !!S.draftKept } : null),
   draftFlush: () => (keeper ? keeper.flush() : null),
   draftLimits: null,  // 試験：保存していない変更を残す間隔など（app/drafts.js の DRAFT_LIMITS を上書き）。開く前に入れる
+  copyLimits: null,   // 試験：コピーのボタンの「✓ コピーしました」を出す間と、段をたたむ前の間（{showMs, foldMs}。app/copy-button.js の COPY_LIMITS を上書き）。押す前に入れる
   welcome: () => showWelcome(),
   help: () => showHelp(),
   buildWorkerProbe: (name) => builder.probe(name),
