@@ -3,12 +3,13 @@
 // test-all: unit
 // 1. relay/test/relay.test.mjs（中継の Worker を偽の env と偽の fetch で呼ぶ：検査・Turnstile・GitHub への形・枠のページの CSP・設定）
 // 2. 編集アプリ：中継の場所（PART_REQUEST_RELAY）と app/index.html の CSP の frame-src が合うこと（空なら 'none'）。connect-src は 'self' のまま
-// 3. 窓の言葉（ja・en の組）・送れるかの判定（中継なし・オフライン版のエディタ）・枠の URL・誤りの言葉
+//    Studio の origin（PART_REQUEST_ORIGINS）が relay/wrangler.production.toml の STUDIO_ORIGINS と同じこと
+// 3. 窓の言葉（ja・en の組）・送信できるかの判定（中継なし・オフライン版のエディタ・ほかの origin）・枠の URL・誤りの言葉
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { PART_REQUEST_RELAY, PROPOSAL_URL, STR, availability, relayOrigin, widgetUrl, errorText } from '../app/part-request.js';
+import { PART_REQUEST_RELAY, PART_REQUEST_ORIGINS, PROPOSAL_URL, STR, availability, relayOrigin, widgetUrl, errorText } from '../app/part-request.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 let fails = 0;
@@ -28,6 +29,10 @@ const want = PART_REQUEST_RELAY ? relayOrigin(PART_REQUEST_RELAY) : "'none'";
 ok(frameSrc === want, `app/index.html frame-src is ${want} (PART_REQUEST_RELAY ${PART_REQUEST_RELAY ? 'set' : 'empty'})`);
 ok(/(?:^|; )connect-src 'self'(;|$)/.test(csp) && !/challenges\.cloudflare\.com/.test(csp), 'the editor page still connects only to itself and never names Turnstile (Turnstile runs inside the relay\'s frame)');
 ok(!PART_REQUEST_RELAY || /^https:\/\/[a-z0-9.-]+$/.test(PART_REQUEST_RELAY), 'PART_REQUEST_RELAY is empty or an https origin without a path');
+const prodToml = fs.readFileSync(path.join(ROOT, 'relay', 'wrangler.production.toml'), 'utf8');
+const prodOrigins = ((/^STUDIO_ORIGINS\s*=\s*"([^"]*)"/m.exec(prodToml) || [])[1] || '').split(',').map((x) => x.trim()).filter(Boolean);
+ok(prodOrigins.length > 0 && [...PART_REQUEST_ORIGINS].sort().join() === [...prodOrigins].sort().join(), `PART_REQUEST_ORIGINS matches STUDIO_ORIGINS in relay/wrangler.production.toml (${prodOrigins.join(', ')})`);
+ok(PART_REQUEST_ORIGINS.every((o) => /^https:\/\/[a-z0-9.-]+$/.test(o)), 'PART_REQUEST_ORIGINS are https origins without a path');
 
 // 3. 窓
 const keys = (o) => Object.keys(o).sort().join();
@@ -36,7 +41,10 @@ ok(Object.values(STR.ja).every((v) => typeof v === 'function' || !/見本|作り
 ok(/egatari\/components/.test(STR.ja.consent) && /公開/.test(STR.ja.consent) && /egatari\/components/.test(STR.en.consent) && /public/.test(STR.en.consent), 'the consent line names the destination and says it is public');
 const loc = (href) => { const u = new URL(href); return { protocol: u.protocol, origin: u.origin }; };
 ok(availability('', loc('https://studio.egatari.org/')) === 'unset', 'no relay yet: unset');
-ok(availability('https://request.egatari.org', loc('https://studio.egatari.org/')) === 'ok' && availability('https://request.egatari.org', loc('http://127.0.0.1:8080/')) === 'ok', 'relay set, Studio on http(s): ok');
+ok(availability('https://request.egatari.org', loc('https://studio.egatari.org/v0.6.21/')) === 'ok', 'relay set, the published Studio (and its frozen copies): ok');
+ok(availability('https://request.egatari.org', loc('http://127.0.0.1:8080/')) === 'offline' && availability('https://request.egatari.org', loc('https://example.org/')) === 'offline', 'another origin (a local server, a Studio hosted elsewhere): offline, as the relay would not serve the frame there');
+ok(availability('https://request.egatari.org', loc('http://127.0.0.1:8080/'), ['http://127.0.0.1:8080']) === 'ok', 'the origins can be passed (the tests\' local relay)');
+ok(/studio\.egatari\.org/.test(STR.ja.offline) && /studio\.egatari\.org/.test(STR.en.offline), 'the offline words name studio.egatari.org');
 ok(availability('https://request.egatari.org', { protocol: 'file:', origin: 'null' }) === 'offline', 'the offline editor (file:): offline');
 ok(widgetUrl('https://request.egatari.org/', 'https://studio.egatari.org', 'ja') === 'https://request.egatari.org/widget?parent=https%3A%2F%2Fstudio.egatari.org&lang=ja', 'the frame\'s address names the parent origin and the language');
 ok(PROPOSAL_URL === 'https://github.com/egatari/components/issues/new/choose', 'the GitHub way: the components issue chooser');

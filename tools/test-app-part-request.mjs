@@ -2,14 +2,16 @@
 //   node tools/test-app-part-request.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // 編集アプリを tools/build-app.mjs で組んで 127.0.0.1 で配り、中継の Worker の fetch を Node の http で 127.0.0.1 の別のポートに立てる
 // （Turnstile は Cloudflare の試験用の秘密の値で手元で通し、GitHub への要求は偽の fetch が受ける。Turnstile のスクリプトは偽物に差し替える）。
-// 製品の中継（PART_REQUEST_RELAY＝https://request.egatari.org）には繋がない：試験では __APP_TEST.partRequestRelay で手元の中継（または '' で中継なし）を渡し、
+// 製品の中継（PART_REQUEST_RELAY＝https://request.egatari.org）には繋がない：試験では __APP_TEST.partRequestRelay で手元の中継（または '' で中継なし）を、
+// __APP_TEST.partRequestOrigins でこのページの origin（127.0.0.1。製品では studio.egatari.org だけ：PART_REQUEST_ORIGINS）を渡し、
 // ページの CSP（frame-src は製品の中継だけ）は外す。本物の中継への要求は止めて数え、0 件であることを確かめる
 // P1 中継がないとき（ja。'' を渡す）：はじめの画面の「こんなパーツが欲しい…」→ 窓は「まだ準備中」と GitHub での提案のリンクだけ。欄も枠もない
 // P2 中継があるとき（ja）：確認が済むまで「送る」は押せない。「見せたいもの」が空なら知らせる。送ると Issue のリンクが出る。
 //    中継に届いたのは欄の字と parent（Studio の origin）・確認の答えだけ。GitHub には題・本文・ラベルだけ。編集アプリのページ自身は中継にも他所にも要求を出さない
 // P3 誤り（GitHub が断る）：「送れませんでした」。確認をやり直すまで送れない
 // P4 新規作成の窓のパーツのステップからも開け、新規作成の窓の上に重なる（en）
-// P5 差し替えないとき：枠は製品の中継（PART_REQUEST_RELAY）の /widget を、parent にこのページの origin を付けて指す（その要求は止める）
+// P5 差し替えないとき（製品の中継と Studio の origin）：127.0.0.1 のページは中継が枠を出さない origin なので、枠を読み込まずに、すぐにオフライン版と同じ知らせと GitHub のリンク
+// P6 origin だけ差し替えたとき：枠は製品の中継（PART_REQUEST_RELAY）の /widget を、parent にこのページの origin を付けて指す（その要求は止める）
 // 画像（--shots）：part-request-ja.png（送る前）・part-request-sent-ja.png・part-request-unset-ja.png
 import fs from 'node:fs';
 import os from 'node:os';
@@ -131,7 +133,7 @@ try {
   // P2 中継があるとき
   {
     const { ctx, p, mainReqs } = await open('ja', 'P2');
-    await p.evaluate((r) => { window.__APP_TEST.partRequestRelay = r; }, RELAY);
+    await p.evaluate(([r, o]) => { window.__APP_TEST.partRequestRelay = r; window.__APP_TEST.partRequestOrigins = [o]; }, [RELAY, new URL(BASE).origin]);
     await p.click('#w-request');
     await p.waitForSelector('#part-request[open] #pr-check');
     ok(await p.isDisabled('#pr-send'), 'P2: Send is disabled before the check');
@@ -192,14 +194,25 @@ try {
     ok(await p.evaluate(() => document.getElementById('dlg').open), 'P4: closing it leaves New… open');
     await ctx.close();
   }
-  // P5 差し替えないとき（製品の中継。要求は止める）
+  // P5 差し替えないとき：127.0.0.1 は Studio の origin でないので、枠なしで GitHub のリンク
   {
     const { ctx, p } = await open('ja', 'P5');
     await p.click('#w-request');
+    await p.waitForSelector('#part-request[open] #pr-unavailable', { timeout: scaled(5000) });
+    ok((await p.textContent('#pr-unavailable')) === STR.ja.offline && (await p.getAttribute('#pr-proposal', 'href')) === PROPOSAL_URL, 'P5: another origin: the offline words and the GitHub link at once');
+    ok(!(await p.$('#pr-check')) && !(await p.$('#pr-what')), 'P5: no frame and no fields');
+    await p.click('#pr-close');
+    await ctx.close();
+  }
+  // P6 origin だけ差し替える（製品の中継。要求は止める）
+  {
+    const { ctx, p } = await open('ja', 'P6');
+    await p.evaluate((o) => { window.__APP_TEST.partRequestOrigins = [o]; }, new URL(BASE).origin);
+    await p.click('#w-request');
     await p.waitForSelector('#part-request[open] #pr-check');
     const src = await p.getAttribute('#pr-check', 'src');
-    ok(src === `${REAL}/widget?parent=${encodeURIComponent(new URL(BASE).origin)}&lang=ja`, 'P5: by default the check frame points at the product relay: ' + src);
-    ok(await p.isDisabled('#pr-send'), 'P5: Send stays disabled (the frame did not load)');
+    ok(src === `${REAL}/widget?parent=${encodeURIComponent(new URL(BASE).origin)}&lang=ja`, 'P6: by default the check frame points at the product relay: ' + src);
+    ok(await p.isDisabled('#pr-send'), 'P6: Send stays disabled (the frame did not load)');
     await p.click('#pr-cancel');
     await ctx.close();
   }
@@ -211,8 +224,8 @@ try {
   srv.close();
   relaySrv.close();
 }
-const leaked = realRelay.filter((r) => r.tag !== 'P5');
-ok(!!REAL && !leaked.length, `the product relay (${REAL || 'unset'}) was never reached (P5's frame request is stopped)` + (leaked.length ? ': ' + leaked.map((r) => r.tag + ' ' + r.url).join(' ') : ''));
+const leaked = realRelay.filter((r) => r.tag !== 'P6');
+ok(!!REAL && !leaked.length, `the product relay (${REAL || 'unset'}) was never reached (P6's frame request is stopped)` + (leaked.length ? ': ' + leaked.map((r) => r.tag + ' ' + r.url).join(' ') : ''));
 ok(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
 console.log(fails ? `\n${fails} failed` : '\nall ok');
 process.exit(fails ? 1 : 0);

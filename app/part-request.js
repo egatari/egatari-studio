@@ -5,8 +5,10 @@
 //   その枠（中継の origin）の中だけで動き、このページは他所のスクリプトを読み込まず、他所に接続もしない（CSP の connect-src 'self' はそのまま。
 //   frame-src にだけ中継の origin を足す）。このページと枠のやりとりは postMessage（形は relay/src/widget.js の先頭）
 // - 中継の場所は PART_REQUEST_RELAY の 1 か所。app/index.html の CSP の frame-src と合わせる（tools/test-relay.mjs が確かめる）。
-//   空のとき（中継を止めたとき）と、オフライン版のエディタ（file:// などでは枠を出せない）は、送れないことと、GitHub での提案のリンクを出す
-// - 試験は __APP_TEST.partRequestRelay で中継を差し替える（手元の中継。'' なら「まだ準備中」）。本物の中継には繋がない
+//   空のとき（中継を止めたとき）は「まだ準備中」。オフライン版のエディタ（file:// などでは枠を出せない）と、中継が枠を出す Studio の origin
+//   （PART_REQUEST_ORIGINS）でないページ（ローカルのサーバー・ほかに置いた Studio）は、枠を読み込まずに、送信できないことと GitHub での提案のリンクを出す
+// - 試験は __APP_TEST.partRequestRelay で中継を、__APP_TEST.partRequestOrigins で Studio の origin を差し替える（手元の中継と 127.0.0.1。
+//   中継に '' なら「まだ準備中」）。本物の中継には繋がない
 //
 //   const pr = createPartRequest({ lang: 'ja' | 'en', el })   pr.open() → 窓を出す（ほかの窓の上にも重ねられるよう、#dlg とは別の <dialog>）
 import { LIMITS, MSG_TYPE, checkRequest, RequestError } from '../relay/src/request.js';
@@ -14,14 +16,17 @@ import { LIMITS, MSG_TYPE, checkRequest, RequestError } from '../relay/src/reque
 // 中継の URL（v0.6.21 から request.egatari.org に置いた。handoff #35）。app/index.html の CSP の frame-src はこの origin だけ（tools/test-relay.mjs が照らす）。
 // 空にすると窓は「まだ準備中」に戻る（そのときは frame-src も 'none' に戻す）
 export const PART_REQUEST_RELAY = 'https://request.egatari.org';
+// 中継が枠を出す Studio の origin（relay/wrangler.production.toml の STUDIO_ORIGINS と同じ。tools/test-relay.mjs が照らす）。ほかの origin では枠を読み込まない
+export const PART_REQUEST_ORIGINS = Object.freeze(['https://studio.egatari.org']);
 // GitHub のアカウントがある人の道：egatari/components の Issue の選び場所（提案の様式）
 export const PROPOSAL_URL = 'https://github.com/egatari/components/issues/new/choose';
 // 枠が「読み込めた」と知らせてくるまで待つ時間（ms）。越えたら読み込めなかったと出す
 export const READY_TIMEOUT_MS = 20000;
 
 export const relayOrigin = (relay) => { try { return relay ? new URL(relay).origin : ''; } catch { return ''; } };
-// 送れるか：'ok' | 'unset'（中継がまだない）| 'offline'（このページが http(s) でない：オフライン版のエディタ）
-export const availability = (relay, loc) => (!relayOrigin(relay) ? 'unset' : /^https?:$/.test(loc.protocol) && loc.origin && loc.origin !== 'null' ? 'ok' : 'offline');
+// 送信できるか：'ok' | 'unset'（中継がない）| 'offline'（このページが http(s) でない：オフライン版のエディタ。または origins にない origin：中継が枠を出さない）
+export const availability = (relay, loc, origins = PART_REQUEST_ORIGINS) => (!relayOrigin(relay) ? 'unset'
+  : /^https?:$/.test(loc.protocol) && loc.origin && loc.origin !== 'null' && origins.includes(loc.origin) ? 'ok' : 'offline');
 export const widgetUrl = (relay, parent, lang) => `${relayOrigin(relay)}/widget?parent=${encodeURIComponent(parent)}&lang=${lang === 'ja' ? 'ja' : 'en'}`;
 
 export const STR = {
@@ -46,7 +51,7 @@ export const STR = {
     sent: '送信しました。Issue のページ：',
     sentNote: 'このページで、開発者からの返事を読めます（GitHub のアカウントがなくても読めます）。',
     unset: 'この機能はまだ準備中で、今は送信できません。GitHub のアカウントがあれば、パーツの提案の Issue を書けます。',
-    offline: 'オフライン版のエディタからは送信できません。https://studio.egatari.org/ で開いて送信してください。GitHub のアカウントがあれば、パーツの提案の Issue を書けます。',
+    offline: 'オフライン版のエディタや、studio.egatari.org 以外のページからは送信できません。https://studio.egatari.org/ で開いて送信してください。GitHub のアカウントがあれば、パーツの提案の Issue を書けます。',
     proposal: 'GitHub でパーツを提案する',
     loadFail: '確認の枠を読み込めませんでした。ネットワークを確かめて、窓を開き直してください。',
     errRate: '続けて送信しすぎました。1 分ほど待ってから、もう一度送信してください。',
@@ -75,7 +80,7 @@ export const STR = {
     sent: 'Done. Your request is on GitHub:',
     sentNote: 'Replies from the developers appear on that page (you can read it without a GitHub account).',
     unset: 'This feature is not available yet. If you have a GitHub account, you can write a part proposal issue.',
-    offline: 'Requests do not work in the offline editor. Open https://studio.egatari.org/ and make the request there. If you have a GitHub account, you can write a part proposal issue.',
+    offline: 'Requests do not work in the offline editor or on pages outside studio.egatari.org. Open https://studio.egatari.org/ and make the request there. If you have a GitHub account, you can write a part proposal issue.',
     proposal: 'Propose a part on GitHub',
     loadFail: 'The check could not be loaded. Check the network and open this dialog again.',
     errRate: 'Too many requests in a row. Wait about a minute and send again.',
@@ -93,13 +98,14 @@ export function errorText(code, X) {
   return X.errFail;
 }
 
-export function createPartRequest({ lang, el, relay = () => (window.__APP_TEST && typeof window.__APP_TEST.partRequestRelay === 'string' ? window.__APP_TEST.partRequestRelay : PART_REQUEST_RELAY), loc = () => location }) {
+export function createPartRequest({ lang, el, relay = () => (window.__APP_TEST && typeof window.__APP_TEST.partRequestRelay === 'string' ? window.__APP_TEST.partRequestRelay : PART_REQUEST_RELAY),
+  origins = () => (window.__APP_TEST && Array.isArray(window.__APP_TEST.partRequestOrigins) ? window.__APP_TEST.partRequestOrigins : PART_REQUEST_ORIGINS), loc = () => location }) {
   const X = STR[lang === 'ja' ? 'ja' : 'en'];
   function open() {
     const prev = document.getElementById('part-request');
     if (prev) prev.remove();
     const r = relay(), l = loc();
-    const state = availability(r, l);
+    const state = availability(r, l, origins());
     const d = el('dialog', { id: 'part-request', cls: 'app-dlg', 'aria-labelledby': 'pr-title' });
     const closeBtn = (text, pri) => el('button', { type: 'button', id: 'pr-close', cls: pri ? 'pri' : '', text, onclick: () => d.close() });
     const proposal = () => el('p', {}, [el('a', { id: 'pr-proposal', href: PROPOSAL_URL, target: '_blank', rel: 'noopener noreferrer', text: X.proposal })]);
