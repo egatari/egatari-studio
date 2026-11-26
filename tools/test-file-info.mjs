@@ -14,7 +14,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 // 選べるもの
 ok(same(LICENSES.map((x) => x.id), ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0', 'CC-BY-NC-SA-4.0', 'CC-BY-ND-4.0', 'CC-BY-NC-ND-4.0', 'CC0-1.0']), 'LICENSES: the seven Creative Commons choices as SPDX names');
-ok(same(FIRST_SAVE_LICENSES, ['CC-BY-4.0', 'CC-BY-SA-4.0', 'CC-BY-NC-4.0']) && FIRST_SAVE_LICENSES.every((id) => LICENSES.some((x) => x.id === id)), 'FIRST_SAVE_LICENSES: CC BY, CC BY-SA, CC BY-NC');
+ok(same(FIRST_SAVE_LICENSES, ['CC-BY-4.0', 'CC-BY-NC-4.0']) && FIRST_SAVE_LICENSES.every((id) => LICENSES.some((x) => x.id === id)), 'FIRST_SAVE_LICENSES: CC BY, CC BY-SA, CC BY-NC');
 ok(LICENSES.filter((x) => isNoDerivatives(x.id)).map((x) => x.id).join() === 'CC-BY-ND-4.0,CC-BY-NC-ND-4.0', 'the ND choices are the ones rightsOf treats as no-derivatives (ND handling unchanged)');
 
 // SPDX

@@ -2268,12 +2268,12 @@ async function writeLicenseFields(ws, md, values, live) {
 // ライセンスのない、作ったかを聞かない教材：初めての保存で、2 段に分けて聞く（handoff #112。研修で「CC BY が分からない」「付けない人には手間」）
 //   1 段目：専門の言葉なしに、配布したファイルをほかの人が使ったり直したりしてよいか。［いいえ、このまま保存］（主）はライセンスを書かずに保存（すべての権利を留保）
 //          「今後は表示しない」：この端末では、どのファイルでも聞かない（使い方の板の「ライセンスの確認」で戻す）
-//   2 段目：使ってよい条件を言葉で選ぶ（ライセンスの名前は後ろに小さく。初めから CC BY 4.0）。表示する名前を 1 つ入れ、作成者に書き、著作権の表示「© 年 名前」を作る
+//   2 段目：使ってよい範囲を言葉で選ぶ（CC BY 4.0・CC BY-NC 4.0 の 2 つ。ライセンスの名前は後ろに小さく。初めから CC BY 4.0）。表示する名前を 1 つ入れ、作成者に書き、著作権の表示「© 年 名前」を作る
 //   黙って既定を選ばない：どちらの段も押すまで保存しない。聞いたことは教材（docId）ごとに覚える
 const LICENSE_ASK_OFF_KEY = 'egatari-license-ask-off';
 function licenseAskOff() { try { return localStorage.getItem(LICENSE_ASK_OFF_KEY) === '1'; } catch { return false; } }
 function setLicenseAskOff(on) { try { if (on) localStorage.setItem(LICENSE_ASK_OFF_KEY, '1'); else localStorage.removeItem(LICENSE_ASK_OFF_KEY); } catch { /* 使えない環境 */ } }
-// 2 段目の条件（言葉と、後ろに小さく添えるライセンスの名前）。順は FIRST_SAVE_LICENSES
+// 2 段目の範囲（言葉と、後ろに小さく添えるライセンスの名前。CC BY 4.0 と CC BY-NC 4.0 の 2 つ）。順は FIRST_SAVE_LICENSES
 const licenseTerms = () => FIRST_SAVE_LICENSES.map((id) => ({ id, text: T.licTerms[id], name: LICENSES.find((x) => x.id === id).label }));
 async function askLicenseOnly(P, ws, live, md, R) {
   const docId = P.index.docId;
