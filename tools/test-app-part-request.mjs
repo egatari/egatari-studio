@@ -2,12 +2,14 @@
 //   node tools/test-app-part-request.mjs [作業用のフォルダ] [--shots 画像のフォルダ]
 // 編集アプリを tools/build-app.mjs で組んで 127.0.0.1 で配り、中継の Worker の fetch を Node の http で 127.0.0.1 の別のポートに立てる
 // （Turnstile は Cloudflare の試験用の秘密の値で手元で通し、GitHub への要求は偽の fetch が受ける。Turnstile のスクリプトは偽物に差し替える）。
-// 中継の場所は製品ではまだ空（PART_REQUEST_RELAY）なので、試験では __APP_TEST.partRequestRelay で渡し、ページの CSP（frame-src 'none'）は外す
-// P1 中継がないとき（ja）：はじめの画面の「こんなパーツが欲しい…」→ 窓は「まだ準備中」と GitHub での提案のリンクだけ。欄も枠もない
+// 製品の中継（PART_REQUEST_RELAY＝https://request.egatari.org）には繋がない：試験では __APP_TEST.partRequestRelay で手元の中継（または '' で中継なし）を渡し、
+// ページの CSP（frame-src は製品の中継だけ）は外す。本物の中継への要求は止めて数え、0 件であることを確かめる
+// P1 中継がないとき（ja。'' を渡す）：はじめの画面の「こんなパーツが欲しい…」→ 窓は「まだ準備中」と GitHub での提案のリンクだけ。欄も枠もない
 // P2 中継があるとき（ja）：確認が済むまで「送る」は押せない。「見せたいもの」が空なら知らせる。送ると Issue のリンクが出る。
 //    中継に届いたのは欄の字と parent（Studio の origin）・確認の答えだけ。GitHub には題・本文・ラベルだけ。編集アプリのページ自身は中継にも他所にも要求を出さない
 // P3 誤り（GitHub が断る）：「送れませんでした」。確認をやり直すまで送れない
 // P4 新規作成の窓のパーツのステップからも開け、新規作成の窓の上に重なる（en）
+// P5 差し替えないとき：枠は製品の中継（PART_REQUEST_RELAY）の /widget を、parent にこのページの origin を付けて指す（その要求は止める）
 // 画像（--shots）：part-request-ja.png（送る前）・part-request-sent-ja.png・part-request-unset-ja.png
 import fs from 'node:fs';
 import os from 'node:os';
@@ -18,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 import { launch } from '../kit/browser.mjs';
 import { scaled } from './wait-scale.mjs';
 import worker from '../relay/src/index.js';
-import { STR, PROPOSAL_URL } from '../app/part-request.js';
+import { STR, PROPOSAL_URL, PART_REQUEST_RELAY, relayOrigin } from '../app/part-request.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const args = process.argv.slice(2);
@@ -85,9 +87,13 @@ const FAKE_TURNSTILE = `(() => {
 
 const browser = await launch();
 const errs = [];
+// 製品の中継への要求（どの枠からでも）：止めて数える。0 件のはず
+const realRelay = [];
+const REAL = relayOrigin(PART_REQUEST_RELAY);
 const open = async (lang, tag) => {
   const ctx = await browser.newContext({ viewport: { width: 1200, height: 860 }, locale: lang === 'ja' ? 'ja-JP' : 'en-US', bypassCSP: true });
   await ctx.route('https://challenges.cloudflare.com/**', (route) => route.fulfill({ status: 200, contentType: 'text/javascript', body: FAKE_TURNSTILE }));
+  if (REAL) await ctx.route(REAL + '/**', (route) => { realRelay.push({ tag, url: route.request().url() }); return route.abort(); });
   const p = await ctx.newPage();
   p.on('pageerror', (e) => errs.push(`${tag} pageerror: ${e.message}`));
   p.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errs.push(`${tag} console: ${m.text()}`); });
@@ -104,6 +110,7 @@ try {
   // P1 中継がないとき
   {
     const { ctx, p } = await open('ja', 'P1');
+    await p.evaluate(() => { window.__APP_TEST.partRequestRelay = ''; });
     ok((await p.textContent('#w-request')) === STR.ja.entry, 'P1: the start screen has 「こんなパーツが欲しい…」 next to the parts list');
     await p.click('#w-request');
     await p.waitForSelector('#part-request[open] #pr-unavailable');
@@ -173,6 +180,7 @@ try {
   // P4 新規作成の窓から（en）
   {
     const { ctx, p } = await open('en', 'P4');
+    await p.evaluate(() => { window.__APP_TEST.partRequestRelay = ''; });
     await p.click('#w-new');
     await p.waitForSelector('#dlg[open] #paste-part-request', { state: 'attached' });
     ok((await p.textContent('#paste-part-request')) === STR.en.entry, 'P4: New… has "Request a part…" in the parts step');
@@ -184,6 +192,17 @@ try {
     ok(await p.evaluate(() => document.getElementById('dlg').open), 'P4: closing it leaves New… open');
     await ctx.close();
   }
+  // P5 差し替えないとき（製品の中継。要求は止める）
+  {
+    const { ctx, p } = await open('ja', 'P5');
+    await p.click('#w-request');
+    await p.waitForSelector('#part-request[open] #pr-check');
+    const src = await p.getAttribute('#pr-check', 'src');
+    ok(src === `${REAL}/widget?parent=${encodeURIComponent(new URL(BASE).origin)}&lang=ja`, 'P5: by default the check frame points at the product relay: ' + src);
+    ok(await p.isDisabled('#pr-send'), 'P5: Send stays disabled (the frame did not load)');
+    await p.click('#pr-cancel');
+    await ctx.close();
+  }
 } catch (e) {
   fails++;
   console.log('  FAIL ' + (e.stack || e));
@@ -192,6 +211,8 @@ try {
   srv.close();
   relaySrv.close();
 }
+const leaked = realRelay.filter((r) => r.tag !== 'P5');
+ok(!!REAL && !leaked.length, `the product relay (${REAL || 'unset'}) was never reached (P5's frame request is stopped)` + (leaked.length ? ': ' + leaked.map((r) => r.tag + ' ' + r.url).join(' ') : ''));
 ok(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.join(' | ') : ''));
 console.log(fails ? `\n${fails} failed` : '\nall ok');
 process.exit(fails ? 1 : 0);

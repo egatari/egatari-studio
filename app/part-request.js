@@ -5,13 +5,15 @@
 //   その枠（中継の origin）の中だけで動き、このページは他所のスクリプトを読み込まず、他所に接続もしない（CSP の connect-src 'self' はそのまま。
 //   frame-src にだけ中継の origin を足す）。このページと枠のやりとりは postMessage（形は relay/src/widget.js の先頭）
 // - 中継の場所は PART_REQUEST_RELAY の 1 か所。app/index.html の CSP の frame-src と合わせる（tools/test-relay.mjs が確かめる）。
-//   空のあいだ（中継を置くまで）と、オフライン版のエディタ（file:// などでは枠を出せない）は、送れないことと、GitHub での提案のリンクを出す
+//   空のとき（中継を止めたとき）と、オフライン版のエディタ（file:// などでは枠を出せない）は、送れないことと、GitHub での提案のリンクを出す
+// - 試験は __APP_TEST.partRequestRelay で中継を差し替える（手元の中継。'' なら「まだ準備中」）。本物の中継には繋がない
 //
 //   const pr = createPartRequest({ lang: 'ja' | 'en', el })   pr.open() → 窓を出す（ほかの窓の上にも重ねられるよう、#dlg とは別の <dialog>）
 import { LIMITS, MSG_TYPE, checkRequest, RequestError } from '../relay/src/request.js';
 
-// 中継の URL（例 'https://request.egatari.org'）。置いたら app/index.html の CSP の frame-src 'none' を、この origin に替える
-export const PART_REQUEST_RELAY = '';
+// 中継の URL（v0.6.21 から request.egatari.org に置いた。handoff #35）。app/index.html の CSP の frame-src はこの origin だけ（tools/test-relay.mjs が照らす）。
+// 空にすると窓は「まだ準備中」に戻る（そのときは frame-src も 'none' に戻す）
+export const PART_REQUEST_RELAY = 'https://request.egatari.org';
 // GitHub のアカウントがある人の道：egatari/components の Issue の選び場所（提案の様式）
 export const PROPOSAL_URL = 'https://github.com/egatari/components/issues/new/choose';
 // 枠が「読み込めた」と知らせてくるまで待つ時間（ms）。越えたら読み込めなかったと出す
@@ -91,7 +93,7 @@ export function errorText(code, X) {
   return X.errFail;
 }
 
-export function createPartRequest({ lang, el, relay = () => (window.__APP_TEST && window.__APP_TEST.partRequestRelay) || PART_REQUEST_RELAY, loc = () => location }) {
+export function createPartRequest({ lang, el, relay = () => (window.__APP_TEST && typeof window.__APP_TEST.partRequestRelay === 'string' ? window.__APP_TEST.partRequestRelay : PART_REQUEST_RELAY), loc = () => location }) {
   const X = STR[lang === 'ja' ? 'ja' : 'en'];
   function open() {
     const prev = document.getElementById('part-request');
