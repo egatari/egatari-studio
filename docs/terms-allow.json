@@ -463,6 +463,12 @@
       "reason": "The start-screen privacy note (owner-decided wording 2026-11-26, handoff #113): 送信されることはありません / never sent, to answer whether files go to a server."
     },
     {
+      "file": "docs/editor.md",
+      "line": "It is never sent to Egatari's servers or anywhere else.",
+      "term": "no-upload",
+      "reason": "docs/editor.md quotes the start-screen privacy note (owner-decided wording 2026-11-26, handoff #113): 送信されることはありません / never sent, to answer whether files go to a server."
+    },
+    {
       "file": "app/slides-panel.js",
       "pattern": "sl-badge stale",
       "term": "book-may-not-match",
