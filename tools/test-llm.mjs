@@ -150,6 +150,26 @@ ok('組み立て：docs と同じ文章・束の指定（配列・"a,b"・all・
   }
   const badOpt = node('kit/llm-pack.mjs', '--sest', 'stats');
   assert.ok(badOpt.status === 2 && /unknown option --sest/.test(badOpt.stderr) && /usage:/.test(badOpt.stderr), badOpt.stderr);
+  // --category・--purposes（新規作成の ①・④。handoff #108）：授業・研修か「予想してから確かめる」なら m-predict も詳しく（無料のプランだけ）。ほかは一覧の 1 行だけ
+  for (const lang of ['ja', 'en']) {
+    const base = node('kit/llm-pack.mjs', '--lang', lang).stdout;
+    assert.ok(base.includes('| `<m-predict>` |') && !base.includes('### `<m-predict>`'), `${lang}: m-predict has only its catalogue line`);
+    assert.equal(node('kit/llm-pack.mjs', '--lang', lang, '--category', 'research').stdout, base, `${lang}: research is the plain light pack`);
+    for (const args of [['--category', 'teaching'], ['--purposes', 'compare,predict']]) {
+      const r = node('kit/llm-pack.mjs', '--lang', lang, ...args);
+      assert.ok(r.status === 0 && r.stdout === packWithRequest({ ...partsPackOpts(initialParts([]), 'free', { full: [...FREE_CORE, 'm-predict'] }), lang }) && r.stdout.includes('### `<m-predict>`'), `${lang} ${args.join(' ')}: m-predict described (${r.stderr})`);
+      assert.ok(fitSize(r.stdout, 'free') <= capKb('free') * 1024, `${lang} ${args.join(' ')}: ${packSize(r.stdout)} B, paste length ${pasteUnits(r.stdout)}`);
+      assert.equal(node('kit/llm-pack.mjs', '--lang', lang, '--plan', 'paid', ...args).stdout, buildPack({ lang, plan: 'paid' }), `${lang} ${args.join(' ')}: the paid plan describes every part anyway`);
+    }
+    // 束を足して短くするときは、m-predict も中核の 4 つと一緒に一覧の 1 行だけ
+    const st = node('kit/llm-pack.mjs', '--lang', lang, '--sets', 'stats', '--category', 'teaching');
+    assert.ok(st.status === 0 && !st.stdout.includes('### `<m-predict>`') && st.stderr.includes('and m-predict get only their catalogue line'), `${lang} stats teaching: ${st.stderr}`);
+  }
+  const badCat = node('kit/llm-pack.mjs', '--category', 'school');
+  assert.ok(badCat.status === 2 && /--category must be one of teaching/.test(badCat.stderr), badCat.stderr);
+  const badPur = node('kit/llm-pack.mjs', '--purposes', 'guess');
+  assert.ok(badPur.status === 2 && /unknown purpose "guess"/.test(badPur.stderr), badPur.stderr);
+  assert.ok(node('kit/llm-pack.mjs', '--from-sample', 'bayes', '--category', 'teaching').status === 2, '--from-sample takes the category from the sample');
 });
 ok('部品の居場所：どの部品もちょうど 1 か所（標準は共通の本体、専門はその束。manifest の tier・set）。特殊はどこにもない。manifest の専門の部品に set がなければ作れない', () => {
   const m = JSON.parse(read('vendor', 'components-2', `manifest-${PACK.tiers.catalogue}.json`));

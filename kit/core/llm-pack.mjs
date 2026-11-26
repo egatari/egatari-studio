@@ -20,6 +20,8 @@
 //   packSize(text)                               UTF-8 のバイト数
 //   kbOf(bytes)・packKb(text)                    大きさの表示（KB、小数 1 桁。CLI の --list と編集アプリが同じ計算）
 //   PLANS・FREE_CORE・BRIEF                      お使いの AI のプラン・無料のプランでも詳しく書く中核の 4 つ・無料のプランで一覧の 1 行だけの標準の部品
+//   TEACHING_FULL・teachingFull({category, purposes})・freeFull(choice)  授業・研修か「予想してから確かめる」に印のときだけ詳しく書く標準の部品（m-predict）・
+//                                                そのときか・無料のプランで詳しく書く標準の部品（中核の 4 つ＋授業なら m-predict。partsPackOpts の full に渡す。handoff #108）
 //   PACK_CAP_KB・PAID_PACK_KB                   指示の大きさの上限（{free, paid}。kit/core/llm-pack-assemble.mjs）
 //   FREE_PASTE_UNITS・pasteUnits(text)          無料のプランのもう 1 つの上限：貼り付けの長さ（UTF-16 の単位の数＋改行の数）が 31,000 まで
 //   fitSize(text, plan)                          目安に収める物差し（fitPlan・fitPack の sizeOf に使う）：無料のプランは 45 KB と 31,000 の近いほう（バイトに換算）
@@ -32,9 +34,9 @@
 //   partsPackOpts(tags, plan, {short, full})     選んだパーツだけの指示の組み立ての引数 {sets, exclude, plan, short?, full?}（buildPack・packWithRequest に渡す。
 //                                                選んだ専門のパーツの束を入れ、選ばないパーツは除く。プランは詳しさだけを変える。short：無料のプランで中核の 4 つも短く）
 import { PACK } from './llm-pack-data.mjs';
-import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, SINGLE_SET_DROP_ORDER, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf, rankedOpts as rankedOptsOf, rankedPack as rankedPackOf } from './llm-pack-assemble.mjs';
+import { assemble, normalizeSets as norm, commonOf, partOf, requestOf, membersOf, langOf, partSpans, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, TEACHING_FULL, teachingFull, freeFull, STANDARD, briefParts, planName, trimCandidates as trimCandidatesOf, SINGLE_SET_DROP_ORDER, fitPlan as fitPlanOf, fitPack as fitPackOf, packOptsOf, rankedOpts as rankedOptsOf, rankedPack as rankedPackOf } from './llm-pack-assemble.mjs';
 
-export { assemble, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, STANDARD, SINGLE_SET_DROP_ORDER };
+export { assemble, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, PLANS, FREE_CORE, TEACHING_FULL, teachingFull, freeFull, STANDARD, SINGLE_SET_DROP_ORDER };
 export const BRIEF = briefParts(PACK, 'free');   // 無料のプランで一覧の 1 行だけの標準の部品
 export const SETS = PACK.sets;
 export const TIERS = PACK.tiers;

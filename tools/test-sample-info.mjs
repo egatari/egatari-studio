@@ -169,7 +169,7 @@ ok(CHOOSABLE.every((t) => sampleTheme(t.name) === t.name) && RETIRED.every((n) =
   const g = sampleChoice({ ...K, subjects: [] }, { title: '統計の授業', lang: 'ja' });
   ok(g.subjects.includes('statistics'), 'sampleChoice: a subject guessed from the title of step 2 is added: ' + g.subjects.join(', '));
   const p = sampleChoice(P, { lang: 'en' });
-  ok(p.school === null && p.audience === audienceOf(P.category, P.subcategory) && JSON.stringify(p.order) === JSON.stringify(rankParts({ purposes: P.purposes, subjects: P.subjects, audience: p.audience, first: P.parts })),
+  ok(p.school === null && p.audience === audienceOf(P.category, P.subcategory) && JSON.stringify(p.order) === JSON.stringify(rankParts({ purposes: P.purposes, subjects: P.subjects, audience: p.audience, first: P.parts, category: P.category })),
     `sampleChoice (pitch-fictional, business): the audience comes from step 1 (${p.audience}), the order is rankParts with the sample's parts first`);
 }
 // 同梱のサンプルはどれも、どの言語・プランでも目安に収まり、サンプルのパーツが順位の一番上（上から説明つきで入る。詳細の指示では全部。

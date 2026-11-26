@@ -745,7 +745,7 @@ Claude Code では \`/plugin update egatari@egatari\`。Codex では \`npx egata
 
 ## パーツを選ぶ
 
-構成案のパーツは標準（standard）と専門（セットごと）から選ぶ。標準はいつも、専門はファイルの内容に合うセットだけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。
+構成案のパーツは標準（standard）と専門（セットごと）から選ぶ。標準はいつも、専門はファイルの内容に合うセットだけを読む。特殊（extra）は README への道だけを載せる：材料にその形がはっきり要るときだけ、その README を読んで使う。大きさの上限や軽量・詳細の絞り込みは貼り付ける指示書だけのもので、このスキルには掛けない。予想してから確かめる（\`m-predict\`）は、授業・研修のファイルか、作者が聞き手に予想させたいと言ったときだけ構成案に入れる（SCORM の確認問題になる）。
 
 ${links}
 
@@ -809,7 +809,7 @@ Follow the shared writing rules below. When finished, use “When you finish” 
 
 ## Choose parts
 
-Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the content. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill.
+Choose the parts for the outline from the standard parts and the specialized sets. Always read standard; read only the specialized sets that fit the content. Extra parts have README pointers only: read an extra part's README and use it only when the material clearly needs it. Size caps and light/detailed filtering apply only to pasted instruction packs, not to this skill. Put \`m-predict\` (predict, then check) in the outline only for teaching or training files, or when the author wants the audience to predict (it becomes a SCORM check question).
 
 ${links}
 

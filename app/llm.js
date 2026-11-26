@@ -841,7 +841,7 @@ export function setupLlm(app) {
     structCb.addEventListener('change', () => { draft.useStructure = structCb.checked; update(); });
     const structRow = draft.from ? el('label', { id: 'paste-structure-row', cls: 'paste-with-pack', for: 'paste-use-structure' }, [structCb, el('span', { text: X.useStructure(draft.from.title, draft.from.structure.length) })]) : null;
     // 写す指示：順位で組む（kit/core/new-deck-pack.mjs の newDeckPack。コマンドの --from-sample と同じ）
-    const order = () => rankParts({ purposes: draft.purposes, subjects: draft.subjects, audience: audience(), first: fromParts });
+    const order = () => rankParts({ purposes: draft.purposes, subjects: draft.subjects, audience: audience(), first: fromParts, category: draft.category });   // ① が授業・研修なら m-predict を上に（handoff #108）
     const packNow = () => newDeckPack({ order: order(), plan: draft.plan, lang: LANG, request: request() });
     const showWhy = () => {
       const lines = guessed.filter((g) => draft.subjects.includes(g.subject) && !touched.has(g.subject))
