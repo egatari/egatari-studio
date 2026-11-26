@@ -64,6 +64,7 @@ import { warnView } from './build-warnings.js';
 import { slowWait, createWaitOverlay } from './wait-logo.js';
 import { mountVersionUi } from './version-ui.js';
 import { partsIndexHref } from './parts-gallery.js';
+import { createPartRequest } from './part-request.js';
 import { createExamplesGallery } from './examples-gallery.js';
 import { account as accountRules, factsFromSource } from '../kit/core/check-rules.mjs';
 import { EDITOR_ALIAS, BUILD_WARN } from '../kit/core/check-parity.mjs';
@@ -3028,6 +3029,10 @@ $('w-parts').href = partsIndexHref(location);
 // ガイドブック『Studio で始める絵語り』（examples の lessons/studio-howto を egatari.org のギャラリーで再生。英語版はまだないので英語の表示でも同じ所へ。handoff #99）
 const GUIDE_URL = 'https://egatari.org/gallery/play/?id=studio-howto';
 $('w-guide').href = GUIDE_URL;
+// 「こんなパーツが欲しい…」（app/part-request.js。handoff Issue #35）：パーツの一覧の隣
+const partRequest = createPartRequest({ lang: EN ? 'en' : 'ja', el });
+$('w-request').textContent = partRequest.label;
+$('w-request').onclick = () => partRequest.open();
 $('b-slides').onclick = () => slidesPanel.toggle();
 $('b-slides').title = T.slidesTip;
 $('b-edit').onclick = () => ui.toggleEdit();

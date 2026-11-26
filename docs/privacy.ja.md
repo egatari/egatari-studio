@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.md sha256=ad986dd00e0bb8e3 -->
+<!-- i18n: pair=privacy.md sha256=7b080077d39e12ad -->
 # プライバシー
 
 [English](privacy.md) | 日本語
@@ -31,12 +31,13 @@
 | AI 音声を Google Colab で作る（操作。初回は確認の画面が出る） | 作成者がエクスポートした `tts-job.json` を、作成者が Colab の画面で選ぶ。Colab は Google のサービス | `tts-job.json` の中身：台本の文（読みの辞書を通したもの）、声の名前、ファイルのタイトル（120 字まで）、ファイルの ID、バージョン。スライドとほかのファイルは含まれない。声をまねるために自分の参照音声を選んだ場合は、それも Colab にアップロードする | 「クラウドで作る」を使わず、録音か「この PC」を選ぶ |
 | Colab の中（Colab が自動で行う） | GitHub（Studio のプログラム）、PyPI と npm（ライブラリ）、Hugging Face と GitHub のリリース（モデル） | ファイルを取得する要求だけ。Google のサーバーの中で起きる通信 | 同上 |
 | 「フィードバックを送信」を押す（操作） | github.com/egatari/egatari-studio/issues/new（新しいウィンドウで開く。フォームは、押した人が送信するまで送信されない） | フォームに最初から入っている欄：バージョン、ブラウザの名前と主なバージョン番号、OS の種類、言語、モード。ファイルの中身は含まれない | ボタンを押さない。`.ega.html` をエクスポートするときに `data-feedback="off"` を付けると、ボタン自体が出ない |
+| 「こんなパーツが欲しい…」の窓を開き、「送信」を押す（操作。v0.6.21 から。オフライン版のエディタと、studio.egatari.org 以外のページでは、窓は GitHub へのリンクを出すだけで、どこにも接続しない） | Egatari の開発者が動かす、パーツの依頼の中継（request.egatari.org。Cloudflare Worker）と、Cloudflare Turnstile（challenges.cloudflare.com）。「送信」を押すと、中継が github.com/egatari/components に**公開の Issue** を作る。Issue の作成者の表示は Egatari の開発者の GitHub のアカウントで、送った人の名前は出ない | 窓を開いたとき：確認の枠（中継のページを出した iframe）を request.egatari.org から、その中で Turnstile を challenges.cloudflare.com から読み込む。枠のアドレスには、表示の言語と Studio のサイトのアドレスが入る（枠をその言語で出し、Studio とだけやりとりするため）。確認のため、Turnstile がブラウザの情報と IP アドレスを受け取る（Cloudflare の決まりに従う）。「送信」を押したとき：窓に書いた文字だけ（見せたいもの、書いたときだけ分野と学年・対象）と、確認の答え。Issue の題は「見せたいもの」の 1 行目（80 字まで）、本文は 3 つの欄の文字と、Studio から送られたという決まった 1 行。ファイルの中身、名前、メールアドレス、画像、バージョン、端末の情報は含めない。Issue は誰でも読める。中継は IP アドレスを、送り手ごとの回数の上限（1 分に 3 回）と、Cloudflare に Turnstile の答えを確かめてもらうことに使い、何も保存しない | 窓を開かない。学校のネットワークで `request.egatari.org` を止める |
 | 手引きやパーツの例などのリンクを押す（操作） | github.com、studio.egatari.org、ライブのホストのページなど | ふつうのリンクを開くときと同じ（行き先のサーバーが受け取るもの） | リンクを押さない |
 | ライブ（質問・投票）を使う（参加者が「参加する」を 1 回押す） | ファイルに書いてあるライブのサーバー（既定は https://live.egatari.org。作成者が別のサーバーを指定できる） | 参加者が送信した質問と投票、入力したときだけ名前、端末で作った乱数の ID、接続を保つための ping、参加コード（v0.6.6 から、接続のアドレスには含めず、接続した後の最初のやりとりで送信する）。表示中の位置や時間は送信しない | ライブを付けずにエクスポートする。学校のネットワークで、そのサーバーだけを止める |
 
 補足：
 - アクセス解析：Studio とプレーヤーには、アクセス解析のプログラムを含めていません。サイトを置いている GitHub と Cloudflare が残すアクセスの記録は、下の「サイトの記録」のとおりです。
-- 外のサーバーからスクリプトを読み込むのは、音声のモデルを取得するウィンドウだけです（バージョンと中身を固定しています）。Studio 本体のページは、外のスクリプトを読み込みません。
+- 外のサーバーからスクリプトを読み込むのは、音声のモデルを取得するウィンドウだけです（バージョンと中身を固定しています）。Studio 本体のページは、外のスクリプトを読み込みません。「こんなパーツが欲しい…」の確認の枠は、中継のページを出した iframe です。Cloudflare Turnstile のスクリプトはその枠の中で動き、Studio のページでは動きません。
 
 ## 送信しないもの
 
@@ -109,12 +110,12 @@ CSP（通信を許す相手の設定）で確認する方法：
 1. `.ega.html` をテキストエディタで開きます。`<head>` の最初のほうに、`Content-Security-Policy` の `<meta>` が 1 つあります。
 2. その中の `connect-src` が `'none'` なら、そのファイルは外部へ接続しません。ライブ付きのファイルなら、接続するのは `connect-src` に書かれた 1 つのサーバー（`https://…` と `wss://…`）だけです。
 3. `frame-src` に YouTube などが追加されていれば、そのファイルは埋め込みを使っています。
-4. Studio（studio.egatari.org）のページの設定は、`default-src 'self'`、`connect-src 'self'`、`frame-src 'none'` です。AI 音声のウィンドウ（`lab/tts-helper.html`）だけが、`cdn.jsdelivr.net`、`huggingface.co`、`us.aws.cdn.hf.co` に接続します。
+4. Studio（studio.egatari.org）のページの設定は、`default-src 'self'`、`connect-src 'self'`、`frame-src https://request.egatari.org` です（`frame-src` の中継は、「こんなパーツが欲しい…」の確認の枠のためだけです。v0.6.20 までは `frame-src 'none'`）。AI 音声のウィンドウ（`lab/tts-helper.html`）だけが、`cdn.jsdelivr.net`、`huggingface.co`、`us.aws.cdn.hf.co` に接続します。
 5. Egatari Viewer は、通信を許す相手を HTTP ヘッダー（`_headers`）で指定しています。接続するのは Viewer 自身と、ライブのサーバー（既定は live.egatari.org）だけです。
 
 通信を止めたい場合：
 
-- 学校のフィルタで、`cdn.jsdelivr.net`、`huggingface.co`、`us.aws.cdn.hf.co`、`colab.research.google.com`、`live.egatari.org` を止めてください。止めても、編集・保存・再生はできます。使えなくなるのは「AI 音声をこの PC で作る」、Colab、ライブだけです。
+- 学校のフィルタで、`cdn.jsdelivr.net`、`huggingface.co`、`us.aws.cdn.hf.co`、`colab.research.google.com`、`live.egatari.org`、`request.egatari.org` を止めてください。止めても、編集・保存・再生はできます。使えなくなるのは「AI 音声をこの PC で作る」、Colab、ライブ、「こんなパーツが欲しい…」だけです。
 - 通信なしで使うなら、`editor.html`（オフライン版のエディタ。1 つの HTML ファイル）を配布してください。AI 音声の「この PC」は使えませんが、録音と、前もって作った音声は使えます。
 - 作った音声と、エクスポートした `.ega.html` は、通信なしで動きます（ライブを付けていない場合）。
 
@@ -131,3 +132,5 @@ CSP（通信を許す相手の設定）で確認する方法：
 削除された後も、サーバーを置いている Cloudflare の仕組みの中に、最大 30 日分のバックアップが残ります。バックアップに含まれるのは、上に書いたライブの中身だけで、IP アドレスなど、もともと保存していないものは含まれません。このバックアップから戻すには、私たちがそのためのプログラムを作って動かす必要があり、私たちはそれをしません。30 日を過ぎると、バックアップもなくなります。気になる場合は、ライブを付けずにエクスポートするか、自分で用意したライブのサーバーをファイルに指定してください。
 
 IP アドレス、ブラウザの情報、アクセスの記録は保存しません（リクエストの記録も切ってあります）。ライブを作るときだけ、作りすぎを防ぐために IP アドレスを使いますが、保存はしません（Cloudflare の確認の仕組み Turnstile と、回数の上限に使います）。ファイルに別のライブのサーバーが書いてあるときは、そのサーバーの決まりに従います。
+
+パーツの依頼の中継（request.egatari.org）は何も保存しません。文字を検査し、Turnstile の確認を確かめ、GitHub に Issue を作ったら、依頼を忘れます。リクエストの記録も切ってあり、IP アドレスも保存しません。残るのは GitHub の Issue だけです。Issue は公開で、開発者が消すまで残ります。公開するつもりのないことを送ってしまったときは、GitHub の「非公開で報告する」（「問い合わせ」の節）で、Issue のアドレスを添えて削除を頼んでください。

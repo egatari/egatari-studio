@@ -1,0 +1,5 @@
+### Added
+
+- Editor: **Request a part…** (next to **All parts** on the start screen, and in step 4 of **New…** under the parts sample link) now sends a request: what a creator wants to show, and optionally the subject and grade, becomes a public issue in egatari/components with the label `request`, without a GitHub account. The dialog shows the link to the new issue, where the developers reply (handoff #35)
+  - Only the typed text is sent, through the part-request relay at request.egatari.org (`relay/`, a Cloudflare Worker with Turnstile; see relay/README.md); drawings and photos are not sent. The relay stores nothing and keeps no request logs. The check box is a frame of the relay's page, so the editor page still loads no script from elsewhere and keeps `connect-src 'self'`; its CSP's `frame-src` changes from `'none'` to `https://request.egatari.org`. What is sent and to whom: docs/privacy.md
+  - In the offline editor, and on pages outside studio.egatari.org (where the relay does not serve its check box), the dialog says requests do not work there and links to the components issue page on GitHub, without loading the frame

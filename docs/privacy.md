@@ -1,4 +1,4 @@
-<!-- i18n: pair=privacy.ja.md sha256=49ca594567a31ae6 -->
+<!-- i18n: pair=privacy.ja.md sha256=dfe29bc32b72a002 -->
 # Privacy
 
 English | [日本語](privacy.ja.md)
@@ -31,12 +31,13 @@ This page is written by us, the developers of Egatari, and explains what Egatari
 | Making AI voice in Google Colab (on click; a confirmation the first time) | The creator exports `tts-job.json` and chooses it in Colab. Colab is a Google service | `tts-job.json`: the script text (after the reading dictionary), voice names, the file title (up to 120 characters), the file ID and the version. No slides or other files. If the creator chooses their own reference voice for voice cloning, that also goes to Colab | Don't use "Make in the cloud". Record, or use "This computer" |
 | Inside Colab (Colab does this itself) | GitHub (Studio's code), PyPI and npm (libraries), Hugging Face and GitHub releases (models) | Download requests, inside Google's servers | Same as above |
 | Pressing "Send feedback" (on click) | github.com/egatari/egatari-studio/issues/new (opens in a new window; nothing is sent until the person who pressed it submits the form) | Fields filled in in advance: version, browser name and major version, OS type, language, mode. No file content | Don't press it. Export the `.ega.html` with `data-feedback="off"` and the button is not shown |
+| Opening "Request a part…" and pressing **Send** in it (on click; from v0.6.21. In the offline editor and on pages outside studio.egatari.org the window only links to GitHub and connects nowhere) | The part-request relay run by the Egatari developers (request.egatari.org, a Cloudflare Worker) and Cloudflare Turnstile (challenges.cloudflare.com). On **Send**, the relay creates a **public issue** in github.com/egatari/components. The issue shows an Egatari developer's GitHub account as its author, not the sender's name | When the window opens: the check box (a frame of the relay's page) loads from request.egatari.org, and Turnstile loads inside it from challenges.cloudflare.com. The frame's address carries the display language and the Studio site's address, so that the box shows in that language and talks only to Studio. For the check, Turnstile receives the browser's information and IP address (Cloudflare's own rules apply). On **Send**: only the text typed in the window (what to show, and optionally the subject or field and the grade or audience) and the check's answer. The issue title is the first line of "what to show" (up to 80 characters); the body is the text of the three fields and one fixed line saying it was sent from Studio. No file content, name, e-mail address, image, version or device information. Anyone can read the issue. The relay uses the IP address for a per-sender limit (3 per minute) and to have Cloudflare verify the Turnstile answer, and stores nothing | Don't open the window. Block `request.egatari.org` on the school network |
 | Following links such as the guide or the parts gallery (on click) | github.com, studio.egatari.org, a Live host page and so on | The same as any link (what the destination server receives) | Don't follow the link |
 | Using Live (questions and polls) (participant's action; press "Join" once) | The Live server written in the file (by default https://live.egatari.org; the file's creator can choose another) | Questions and votes the participant chooses to send, a name only if they type one, a random ID made on the device, pings to keep the connection, and the join code (from v0.6.6, sent in the first message after connecting, not in the connection address). The viewing position and timing are not sent | Export without Live. Block only that server on the school network |
 
 Notes:
 - Analytics: we have not added analytics code to Studio or the player. For the access logs that GitHub and Cloudflare, which host the sites, keep, see "Site logs" below.
-- Only the window that downloads the voice models loads scripts from other servers (pinned by version and content). The main Studio page does not.
+- Only the window that downloads the voice models loads scripts from other servers (pinned by version and content). The main Studio page does not. The check box in "Request a part…" is a frame of the relay's own page: Cloudflare Turnstile's script runs inside that frame, not in the Studio page.
 
 ## What is not sent
 
@@ -109,12 +110,12 @@ Checking with the CSP (the connection policy):
 1. Open the `.ega.html` in a text editor. Near the top of `<head>` there is one `<meta>` with `Content-Security-Policy`.
 2. If its `connect-src` is `'none'`, the file does not connect anywhere. With Live, it connects only to the one server listed in `connect-src` (`https://…` and `wss://…`).
 3. If YouTube or others are added to `frame-src`, the file uses embeds.
-4. The Studio page (studio.egatari.org) has `default-src 'self'`, `connect-src 'self'`, `frame-src 'none'`. Only the AI voice window (`lab/tts-helper.html`) connects, and only to `cdn.jsdelivr.net`, `huggingface.co` and `us.aws.cdn.hf.co`.
+4. The Studio page (studio.egatari.org) has `default-src 'self'`, `connect-src 'self'`, `frame-src https://request.egatari.org` (the relay is in `frame-src` only for the check box of "Request a part…"; up to v0.6.20 it was `frame-src 'none'`). Only the AI voice window (`lab/tts-helper.html`) connects, and only to `cdn.jsdelivr.net`, `huggingface.co` and `us.aws.cdn.hf.co`.
 5. Egatari Viewer sets its connection policy in HTTP headers (`_headers`). It connects only to itself and to Live servers (by default live.egatari.org).
 
 To block connections:
 
-- In the school filter, block `cdn.jsdelivr.net`, `huggingface.co`, `us.aws.cdn.hf.co`, `colab.research.google.com` and `live.egatari.org`. Editing, saving and playing still work. Only "Make AI voice on this computer", Colab and Live stop working.
+- In the school filter, block `cdn.jsdelivr.net`, `huggingface.co`, `us.aws.cdn.hf.co`, `colab.research.google.com`, `live.egatari.org` and `request.egatari.org`. Editing, saving and playing still work. Only "Make AI voice on this computer", Colab, Live and "Request a part…" stop working.
 - To work without a network, hand out `editor.html` (the offline editor, one HTML file). AI voice "on this computer" is not available there, but recording and audio made beforehand work.
 - Audio already made and exported `.ega.html` files work without a network (when they have no Live).
 
@@ -132,6 +133,8 @@ After that, Cloudflare's platform, where the server runs, still keeps backups fo
 
 IP addresses, browser information and access logs are not stored (request logging is turned off). The IP address is used only when a Live is created, to prevent mass creation (Cloudflare's Turnstile check and a rate limit), and is not stored. If the file names a different Live server, that server's own rules apply.
 
+The part-request relay (request.egatari.org) stores nothing: it checks the text, verifies the Turnstile check, creates the issue on GitHub and forgets the request. Its request logs are turned off, and it does not store IP addresses. What stays is the issue itself, on GitHub: it is public and remains until the developers delete it. If you sent something you did not mean to make public, ask us to delete the issue through GitHub's private reporting (see "Contact"); quote the issue's address.
+
 ---
 
 ## Appendix: evidence in the code (for maintainers)
@@ -139,7 +142,7 @@ IP addresses, browser information and access logs are not stored (request loggin
 Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live server was read in egatari/live at cb66c3e. Recheck the line numbers before each release.
 
 ### Studio page (studio.egatari.org)
-- CSP meta: `app/index.html` line 10 (`default-src 'self'`; `connect-src 'self'`; `frame-src 'none'`; `worker-src blob:`; `form-action 'none'`). Referrer: line 11 (`no-referrer`). No `_headers` for the Studio site; deploy is GitHub Pages: `.github/workflows/pages.yml` lines 15–17, 112, 129.
+- CSP meta: `app/index.html` line 10 (`default-src 'self'`; `connect-src 'self'`; `frame-src https://request.egatari.org` from v0.6.21, `'none'` before; `worker-src blob:`; `form-action 'none'`). Referrer: line 11 (`no-referrer`). No `_headers` for the Studio site; deploy is GitHub Pages: `.github/workflows/pages.yml` lines 15–17, 112, 129.
 - Preview: CSP `connect-src 'none'`, `app/preview-doc.js` lines 13–15; the preview frame is sandboxed without `allow-same-origin`, `app/index.html` line 162; `server/hints.js` line 38 sets `DECK_DEV` there, so the player keeps nothing (`kit/track.js` lines 234, 304).
 - Same-origin fetches only: lazy fonts `app/main.js` line 72; examples line 237; bounded fetch `app/bounded-read.js` line 44; `versions.json` `app/version-ui.js` lines 48–54, 73–78 (http(s) only, line 73); MP3 encoder from `vendor/lame-wasm` `app/mp3-loader.js` lines 14–18 (skipped on file:, line 13), copied by `tools/build-app.mjs` lines 256–261; the font subsetter `font-subset.js` (only when an Egatari file is exported) `app/font-subset-loader.js` line 18 (from the page itself on file:, line 17), written by `tools/build-app.mjs` line 234.
 - Offline single-file `editor.html`: `tools/build-app.mjs` lines 310–321; no TTS window on file: `app/tts-client.js` lines 50, 90.
@@ -175,6 +178,11 @@ Checked against branch v0.6.6-privacy (after the merge of v0.6.5-rc.2). The Live
 - What a participant record holds: `src/room.js` line 292 (`pid`, status, name, count, first time). No IP or user agent is read in the room.
 - IP only at creation: `src/index.js` lines 68–71 (rate limit keyed by `cf-connecting-ip`, not stored) and line 95 (Turnstile, `src/turnstile.js` lines 24, 33).
 - No request logs: `wrangler.production.toml` lines 44–45 (`observability enabled = false`).
+
+### Request a part (relay)
+- Dialog and what it sends: `app/part-request.js` (`createPartRequest`: the three fields, the consent line `STR.*.consent`, `checkRequest` before sending; no file field). Only `PART_REQUEST_RELAY` (`https://request.egatari.org` from v0.6.21; empty before) and `frame-src` in `app/index.html` name the relay; `tools/test-relay.mjs` checks they agree and that `connect-src` stays `'self'`. Unset, not on http(s), or an origin outside `PART_REQUEST_ORIGINS` (`https://studio.egatari.org`, checked against `STUDIO_ORIGINS` in `relay/wrangler.production.toml`): the not-available text and a link only, no frame (`availability`).
+- The frame page and its messages: `relay/src/widget.js` (Turnstile rendered there; posts to `/api/request` on its own origin; messages only to and from the `parent` origin). The page is served only when `parent` is one of `STUDIO_ORIGINS` (`relay/wrangler.production.toml`: `https://studio.egatari.org` only). Its CSP: `relay/src/index.js` `widgetCsp` (`frame-ancestors` = the Studio origins).
+- The request's shape and the issue: `relay/src/request.js` (`checkRequest` refuses any other field, an image included; `issueTitle`, `issueBody` with the text in fences; no version, browser or time added). Relay: `relay/src/index.js` `handleRequest` (own-origin `Origin` only, rate limit keyed by `cf-connecting-ip` and not stored, Turnstile last, with the IP passed to Cloudflare's siteverify as `remoteip` in `relay/src/turnstile.js`, then `POST /repos/egatari/components/issues` with label `request`). No console output, `[observability] enabled = false` in `relay/wrangler.production.toml`. Tests: `relay/test/relay.test.mjs`, `tools/test-app-part-request.mjs`.
 
 ### Gallery and doc links
 - `app/parts-gallery.js` lines 6–8; `app/llm.js` line 807; `app/earlier-draft.js` lines 18–22, 65; `app/main.js` lines 1736, 2248; `app/i18n.js` lines 392–394, 843–845 (all user-click links, `rel=noopener`).

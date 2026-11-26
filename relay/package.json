@@ -1,0 +1,22 @@
+{
+  "name": "egatari-part-request",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Egatari part-request relay: \"Request a part…\" from Egatari Studio becomes an issue in egatari/components (Cloudflare Worker + Turnstile)",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "node test/relay.test.mjs",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy -c wrangler.production.toml"
+  },
+  "engines": {
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
+  },
+  "devDependencies": {
+    "wrangler": "4.151.1"
+  },
+  "overrides": {
+    "undici": "7.30.1"
+  }
+}

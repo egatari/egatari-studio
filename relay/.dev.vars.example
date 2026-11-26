@@ -1,0 +1,7 @@
+# Copy to .dev.vars for `npx wrangler dev`. These are not secrets:
+# TURNSTILE_SECRET is Cloudflare's documented test secret (1x…AA always passes, 2x…AA always fails); the relay answers
+# test secrets locally, so development works offline.
+# GITHUB_TOKEN: leave the placeholder to see the request refused at GitHub (502 github_failed), or put a token for a
+# private test repository and change GITHUB_REPO in wrangler.toml. Never commit a real token.
+TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+GITHUB_TOKEN=placeholder-not-a-token
