@@ -4,11 +4,7 @@
 // handwriting itself and calls print() (standards 11/27: on an iPad, print() in a frame prints the whole page, so only the page prints).
 // This script is the frame's whole trusted prefix (the lesson shim and the markup script are not in it: nothing here plays).
 //   1. when the player is ready, it tells the page {egaViewer: "print-ready"}
-//   2a. {egaViewer: "print-stack", slides: [key…], k, page}: one frame for the whole handout (the page's choice 「A」). The slides
-//      asked for are shown one under another, each at its last step, scaled by k, at the top of a block `page` tall (CSS length,
-//      one A4 page), and the rest are hidden. It answers {egaViewer: "print-stacked", n}. The page puts its memo areas over the
-//      blocks, makes the frame as tall as all of them and prints itself.
-//   2b. {egaViewer: "print-snap", slides: [key…]}: a still copy of each slide (the page's choice 「B」). It answers
+//   2. {egaViewer: "print-snap", slides: [key…]}: a still copy of each slide. It answers
 //      {egaViewer: "print-snaps", css, html: {key: "<html…>"}, attrs}: the document's styles, each slide's HTML at its last step
 //      (a canvas as an image), the attributes of <html>, <body> and the stage. The page checks them and puts each copy in a frame
 //      with sandbox="" (no scripts at all).
@@ -33,23 +29,6 @@
   function keyOf(sl, i) { return String(sl._key || sl.getAttribute("data-key") || sl.id || "s" + (i + 1)); }
   function slides() { var st = document.getElementById("stage"); return st ? [].slice.call(st.querySelectorAll(":scope > .slide")) : []; }
   function wanted(m) { var w = {}; (Array.isArray(m.slides) ? m.slides : []).forEach(function (k) { if (typeof k === "string") w[k] = 1; }); return w; }
-
-  function stack(m) {
-    var k = typeof m.k === "number" && m.k > 0.1 && m.k <= 1 ? m.k : 0.55, page = typeof m.page === "string" && /^\d+(\.\d+)?(mm|px)$/.test(m.page) ? m.page : "273mm";
-    var w = wanted(m), n = 0, stage = document.getElementById("stage");
-    if (!stage) return 0;
-    var st = document.createElement("style");
-    st.textContent = LAST + "html,body{margin:0!important;padding:0!important;background:#fff!important;overflow:visible!important;height:auto!important;width:auto!important}" +
-      "body>*:not(#stage){display:none!important}" +
-      "#stage{position:static!important;transform:none!important;width:auto!important;height:auto!important;margin:0!important;display:block!important}" +
-      "#stage>*{display:none!important}" +
-      "#stage>.slide.ega-on{display:block!important;position:relative!important;visibility:visible!important;opacity:1!important;width:" + W + "px!important;height:" + H + "px!important;" +
-      "zoom:" + k + ";margin:0 0 calc(" + page + " / " + k + " - " + H + "px)!important;box-shadow:0 0 0 2px #aaa;-webkit-print-color-adjust:exact;print-color-adjust:exact;break-after:auto!important;page-break-after:auto!important;overflow:hidden}" +
-      "@page{margin:0}";
-    document.head.appendChild(st);
-    slides().forEach(function (sl, i) { if (w[keyOf(sl, i)]) { sl.classList.add("ega-on"); n++; } });
-    return n;
-  }
 
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
   function attrsOf(el) {
@@ -106,13 +85,7 @@
   window.addEventListener("message", function (e) {
     var m = e.data;
     if (e.source !== parentWin || !m || typeof m !== "object") return;
-    if (m.egaViewer === "print-stack") {
-      var n = 0;
-      try { n = stack(m); } catch (x) { n = 0; }
-      // a timer, not animation frames: a frame off screen gets none
-      var done = function () { setTimeout(function () { post({ egaViewer: "print-stacked", n: n }); }, 100); };
-      if (document.fonts && document.fonts.ready) document.fonts.ready.then(done, done); else done();
-    } else if (m.egaViewer === "print-snap") {
+    if (m.egaViewer === "print-snap") {
       var go = function () { var r; try { r = snap(m); } catch (x) { r = { egaViewer: "print-snaps", n: 0, css: "", html: {}, attrs: {} }; } post(r); };
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
     }

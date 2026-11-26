@@ -327,34 +327,23 @@ let BACKUP = '';
     if (!WEBKIT) await p.pdf({ path: path.join(work, name + '.pdf'), preferCSSPageSize: true, printBackground: true });
     await p.emulateMedia({ media: 'screen' });
   };
-  // A: one frame, the slides one page apart, the page's memo areas over it
+  // the slides as still copies in frames without scripts; the notes and handwriting drawn by the page
   const framed = new Promise((res) => p.on('frameattached', (fr) => res(fr)));
   await p.click('#b-x-pdf');
   const pf = await framed;
-  ok(await printed(1), 'A: the page prints once');
-  ok(await p.evaluate(() => { const f = document.querySelector('#print-root iframe.print-frame'); return !!f && f.getAttribute('sandbox') === 'allow-scripts' && document.documentElement.classList.contains('printing') && !document.getElementById('m-export').open; }), 'A: the slides frame is allow-scripts only; the export dialog closed for printing');
-  ok(await p.evaluate(() => /^勾配降下法の基本のメモ（\d{4}-\d\d-\d\d）$/.test(document.title)), 'while printing, the page is titled for the PDF\'s name: ' + await p.evaluate(() => document.title));
+  ok(await p.evaluate(() => /^勾配降下法の基本のメモ（\d{4}-\d\d-\d\d）$/.test(document.title)), 'from 「PDF」 on, the page is titled for the PDF\'s name: ' + await p.evaluate(() => document.title));
+  ok(await until(() => p.evaluate(() => !document.querySelector('#print-root iframe.print-frame') || document.querySelector('#print-root iframe.print-frame').getAttribute('sandbox') === 'allow-scripts')), 'the frame that makes the copies is allow-scripts only');
+  ok(await pf.evaluate(() => !document.body.innerText.includes('最初のメモ')).catch(() => true), 'and has no note text');
+  ok(await printed(1), 'the page prints once');
   ok((await sandboxes()).every((x) => x === 'allow-scripts' || x === ''), 'no frame has more than allow-scripts ' + JSON.stringify(await sandboxes()));
-  ok(await p.evaluate(() => document.getElementById('lesson').getAttribute('sandbox') === 'allow-scripts'), 'the playing frame keeps allow-scripts only');
-  const pa = await p.evaluate(() => ({ blocks: document.querySelectorAll('#print-root .pr-stack > .pr-block').length, text: [...document.querySelectorAll('#print-root .pr-memo')].map((a) => a.textContent).join('|'),
-    ink: document.querySelectorAll('#print-root .pr-memo svg.pr-ink path').length, slideInk: document.querySelectorAll('#print-root .pr-slide svg.pr-ink path').length,
-    tops: [...document.querySelectorAll('#print-root .pr-stack > .pr-block')].map((b) => Math.round(b.offsetTop)), fh: document.querySelector('#print-root iframe.print-frame').offsetHeight }));
-  const fa = await pf.evaluate(() => ({ on: document.querySelectorAll('#stage > .slide.ega-on').length, all: document.querySelectorAll('#stage > .slide').length, notes: document.body.innerText.includes('最初のメモ') }));
-  ok(pa.blocks === 2 && pa.text.includes('最初のメモ') && pa.text.includes('勾配降下法') && pa.ink >= 1 && pa.slideInk >= 1 && pa.tops[0] === 0 && Math.abs(pa.tops[1] - 1032) <= 1 && Math.abs(pa.fh - 2063) <= 2, 'A: the page draws the notes and handwriting, one A4 page apart ' + JSON.stringify(pa));
-  ok(fa.on === 2 && fa.all > 2 && !fa.notes, 'A: the frame shows only the slides with a note, and has no note text ' + JSON.stringify(fa));
-  await printShot('notes-print-a');
-  await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
-  ok(await until(() => p.evaluate(() => !document.getElementById('print-root') && !document.documentElement.classList.contains('printing'))), 'A: removed after printing');
-  ok(await p.evaluate(() => !/のメモ（/.test(document.title)), 'and the page has its own title again: ' + await p.evaluate(() => document.title));
-  // B: still copies of the slides in frames without scripts
-  await p.click('#b-mexport'); await p.click('#b-x-pdf2');
-  ok(await printed(2), 'B: the page prints once');
+  ok(await p.evaluate(() => document.getElementById('lesson').getAttribute('sandbox') === 'allow-scripts' && document.documentElement.classList.contains('printing') && !document.getElementById('m-export').open), 'the playing frame keeps allow-scripts only; the export dialog closed for printing');
   const pb = await p.evaluate(() => ({ copies: [...document.querySelectorAll('#print-root iframe.pr-copy')].map((f) => f.getAttribute('sandbox')), maker: !!document.querySelector('#print-root iframe.print-frame'),
     blocks: document.querySelectorAll('#print-root > .pr-block').length, text: [...document.querySelectorAll('#print-root .pr-memo')].map((a) => a.textContent).join('|'),
     inCopy: [...document.querySelectorAll('#print-root iframe.pr-copy')].map((f) => f.srcdoc.length), scripts: [...document.querySelectorAll('#print-root iframe.pr-copy')].some((f) => /<script/i.test(f.srcdoc)) }));
-  ok(pb.copies.length === 2 && pb.copies.every((x) => x === '') && !pb.maker && pb.blocks === 2 && pb.text.includes('最初のメモ') && !pb.scripts && pb.inCopy.every((n) => n > 1000), 'B: two copies with sandbox="", no script in them, the lesson frame gone ' + JSON.stringify(pb));
-  await printShot('notes-print-b');
+  ok(pb.copies.length === 2 && pb.copies.every((x) => x === '') && !pb.maker && pb.blocks === 2 && pb.text.includes('最初のメモ') && !pb.scripts && pb.inCopy.every((n) => n > 1000), 'two copies with sandbox="", no script in them, the lesson frame gone ' + JSON.stringify(pb));
+  await printShot('notes-print');
   await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
+  ok(await until(() => p.evaluate(() => !document.getElementById('print-root') && !document.documentElement.classList.contains('printing') && !/のメモ（/.test(document.title))), 'removed after printing; the page has its own title again: ' + await p.evaluate(() => document.title));
   await p.click('#b-mexport');   // printing closed the dialog
   BACKUP = await download(p, '#b-x-json');
   const j = JSON.parse(fs.readFileSync(BACKUP, 'utf8'));

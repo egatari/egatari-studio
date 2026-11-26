@@ -505,15 +505,15 @@ async function importFile(file) {
 // PDF (handoff #107, standards 11/27): only the page prints (on an iPad, print() in a frame prints the whole page). A frame with the
 // lesson again (play/print-frame.js; sandbox "allow-scripts" like the playing frame, connect-src 'none') lays out the slides; the
 // notes and the handwriting never go into it: the page draws them in #print-root, shown only in print, and calls print() itself.
-// Two ways to show the slides, both tried on a real iPad (the one that prints stays):
-//   A ('stack'): that one frame, the slides one under another, one A4 page apart; the page lays its memo areas over it
-//   B ('snap'): that frame makes a still copy of each slide; the page checks it and shows it in a frame with sandbox="" (no scripts)
-const PR = { W: 1280, H: 720, GAP: 12, MEMO: 468, FONT: 26, K: 0.549, PAGE: '273mm' };   // A4 portrait, 12 mm margins: 186 × 273 mm
-const PRINT = { frame: null, root: null, mode: '', data: null, timer: 0, title: '' };
+// The slides: that frame makes a still copy of each slide (HTML at its last step); the page checks it and shows it in a frame with
+// sandbox="" (no scripts), one page each. (Tried on the owner's iPad 11/27 against one tall frame with the slides one page apart: that
+// one depended on the page's height matching the system's paper exactly and left an empty page; the copies paginate on their own.)
+const PR = { W: 1280, H: 720, GAP: 12, MEMO: 468, FONT: 26, K: 0.549 };   // A4 portrait, 12 mm margins: 186 mm wide
+const PRINT = { frame: null, root: null, data: null, timer: 0, title: '' };
 function endPrint(msg) {
   clearTimeout(PRINT.timer);
   if (PRINT.root) { PRINT.root.remove(); PRINT.root = null; }
-  PRINT.frame = null; PRINT.data = null; PRINT.mode = '';
+  PRINT.frame = null; PRINT.data = null;
   document.documentElement.classList.remove('printing');
   if (PRINT.title) { document.title = PRINT.title; PRINT.title = ''; }
   if (msg) $('x-status').textContent = msg;
@@ -588,13 +588,11 @@ async function printNow() {
   if (!PRINT.root) return;
   if ($('m-export').open) $('m-export').close();
   document.documentElement.classList.add('printing');
-  // the PDF is named after the page's title (Safari and Chrome): 「（題名）のメモ（日付）」 while printing, the page's own after
-  PRINT.title = document.title; document.title = PRINT.data.title;
   clearTimeout(PRINT.timer);
   window.addEventListener('afterprint', () => endPrint(W().pDone), { once: true });
   try { window.print(); } catch { endPrint(W().pFailed); }
 }
-async function printNotes(mode) {
+async function printNotes() {
   const P = S.playing;
   if (!P || !M || !P.text) return;
   endPrint();
@@ -607,25 +605,18 @@ async function printNotes(mode) {
   const sections = notes.filter((n) => n.at.section != null).map((n) => ({ title: n.at.section === '' ? W().mdNoSection : (secs[n.at.section] || W().mdLost), blocks: n.blocks }));
   if (!pages.length && !sections.length) { $('x-status').textContent = W().pEmpty; return; }
   const root = document.createElement('div'); root.id = 'print-root'; root.setAttribute('aria-hidden', 'true');
-  root.style.setProperty('--pr-k', String(PR.K)); root.style.setProperty('--pr-page', PR.PAGE);
+  root.style.setProperty('--pr-k', String(PR.K));
   const f = document.createElement('iframe');
   f.setAttribute('sandbox', 'allow-scripts');
   f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1;
   f.className = 'print-frame';
-  PRINT.root = root; PRINT.frame = f; PRINT.mode = mode === 'snap' ? 'snap' : 'stack'; PRINT.data = { pages, sections, title: fileName(P.title, 'pdf', new Date(), W()).replace(/\.pdf$/, '') };
-  if (PRINT.mode === 'stack') {
-    // A: the frame under the blocks, as tall as all the pages
-    const stack = document.createElement('div'); stack.className = 'pr-stack';
-    f.style.height = `calc(${PR.PAGE} * ${pages.length})`;
-    stack.appendChild(f);
-    pages.forEach((pg, i) => { const b = printBlock(pg); b.style.top = `calc(${PR.PAGE} * ${i})`; stack.appendChild(b); });
-    stack.style.height = `calc(${PR.PAGE} * ${pages.length} - 2px)`;   // a hair under the pages, so no empty page follows
-    if (pages.length) root.appendChild(stack);   // none: only the notes on sections print, from the first page
-  } else {
-    // B: the frame only makes the copies; it stays off the printed page
-    f.classList.add('pr-maker');
-    root.appendChild(f);
-  }
+  PRINT.root = root; PRINT.frame = f; PRINT.data = { pages, sections };
+  // the PDF is named after the page's title (Safari, Chrome): 「（題名）のメモ（日付）」 from now until printing ends (set this early:
+  // an iPad's print sheet reads the title before print() is called), the page's own after
+  PRINT.title = document.title; document.title = fileName(P.title, 'pdf', new Date(), W()).replace(/\.pdf$/, '');
+  // the frame only makes the copies; it stays off the printed page
+  f.classList.add('pr-maker');
+  root.appendChild(f);
   root.appendChild(printSections(sections));
   document.body.appendChild(root);
   f.srcdoc = lessonDocument(P.text, { shim: __PRINT_SHIM__ });
@@ -753,10 +744,8 @@ window.addEventListener('message', (e) => {
     const keys = PRINT.data ? PRINT.data.pages.map((p) => p.slide) : [];
     if (k === 'print-ready' && PRINT.data) {
       clearTimeout(PRINT.timer); PRINT.timer = setTimeout(() => endPrint(W().pFailed), 120000);
-      PRINT.frame.contentWindow.postMessage(PRINT.mode === 'snap' ? { egaViewer: 'print-snap', slides: keys } : { egaViewer: 'print-stack', slides: keys, k: PR.K, page: PR.PAGE }, '*');
-    } else if (k === 'print-stacked' && PRINT.mode === 'stack' && Number.isInteger(m.n)) {
-      if (m.n > 0) printNow(); else endPrint(W().pFailed);
-    } else if (k === 'print-snaps' && PRINT.mode === 'snap' && typeof m.css === 'string' && m.css.length <= 40e6 && m.html && typeof m.html === 'object' && m.attrs && typeof m.attrs === 'object') {
+      PRINT.frame.contentWindow.postMessage({ egaViewer: 'print-snap', slides: keys }, '*');
+    } else if (k === 'print-snaps' && typeof m.css === 'string' && m.css.length <= 40e6 && m.html && typeof m.html === 'object' && m.attrs && typeof m.attrs === 'object') {
       printSnaps(m);
     }
     return;
@@ -1042,8 +1031,7 @@ async function main() {
   $('b-mexport-close').addEventListener('click', () => $('m-export').close());
   $('b-x-md').addEventListener('click', () => exportAs('md'));
   $('b-x-json').addEventListener('click', () => exportAs('json'));
-  $('b-x-pdf').addEventListener('click', () => printNotes('stack'));
-  $('b-x-pdf2').addEventListener('click', () => printNotes('snap'));
+  $('b-x-pdf').addEventListener('click', () => printNotes());
   $('x-file').addEventListener('change', (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; importFile(f); });
   $('b-resume-start').addEventListener('click', () => { const P = S.playing; hideResume(); if (P && P.timeline && P.timeline[0]) { seekTo(P.timeline[0].s, P.timeline[0].k); announce(W().resumeFromStart); } });
   $('b-resume-x').addEventListener('click', hideResume);

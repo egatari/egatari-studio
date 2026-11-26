@@ -317,16 +317,13 @@ body.note-narrow .ink-surf, body.note-narrow .ink-live { display: none; }
 /* PDF of the notes (play/main.js printNotes): #print-root is built off screen and is the only thing printed */
 #print-root { position: fixed; left: -30000px; top: 0; width: calc(1280px * var(--pr-k)); visibility: hidden; color: #1f1f1f; background: #fff;
   font-family: system-ui, -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif; }
-#print-root .print-frame { display: block; border: 0; width: calc(1280px * var(--pr-k)); height: calc(720px * var(--pr-k)); }
-#print-root .print-frame.pr-maker { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; }
-#print-root .pr-stack { position: relative; }
-#print-root .pr-stack > .pr-block { position: absolute; left: 0; width: 100%; }
+#print-root .print-frame.pr-maker { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; }
 #print-root .pr-block { break-after: page; page-break-after: always; break-inside: avoid; }
 #print-root .pr-block.pr-last { break-after: auto; page-break-after: auto; }
 #print-root .pr-secs:empty { display: none; }
-#print-root .pr-stack + .pr-secs:not(:empty) { break-before: page; page-break-before: always; }
+
 #print-root .pr-slide { position: relative; width: calc(1280px * var(--pr-k)); height: calc(720px * var(--pr-k)); overflow: hidden; }
-#print-root .pr-block:not(.pr-stack > *) .pr-slide { box-shadow: 0 0 0 2px #aaa; }
+#print-root .pr-slide { box-shadow: 0 0 0 2px #aaa; }
 #print-root .pr-copy { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform: scale(var(--pr-k)); transform-origin: 0 0; }
 #print-root .pr-slide > svg.pr-ink { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 1; }
 #print-root .pr-head { margin: 4px 0 4px; font-size: 11px; color: #555; }
