@@ -218,6 +218,14 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.click('#live-copy');
     await page.waitForTimeout(200);
     ok((await page.textContent('#live-copy')) === '投票の設定をコピー', 'copy activities JSON: when the clipboard refuses, the button keeps “投票の設定をコピー”');
+    // 写せた直後（「✓」を出している 2 秒のうち）に押して写せなかった：前の「✓ コピーしました」を残さず、元の字に戻す（規格化 11/27）
+    await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => {} } }); });
+    await page.click('#live-copy');
+    await page.waitForFunction(() => document.getElementById('live-copy').textContent === '✓ コピーしました', null, { timeout: scaled(3000) }).catch(() => {});
+    await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new DOMException('denied', 'NotAllowedError'); } } }); });
+    await page.click('#live-copy');
+    await page.waitForTimeout(200);
+    ok((await page.textContent('#live-copy')) === '投票の設定をコピー', 'copy activities JSON: a refused copy right after a successful one does not leave “✓ コピーしました”');
     await page.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied = t; } } }); });
     await shot(page, 'live-poll-labels.png');
     // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）
