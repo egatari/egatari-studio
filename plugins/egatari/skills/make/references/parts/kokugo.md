@@ -1,7 +1,7 @@
 <!-- generated; do not edit by hand -->
 # kokugo のパーツ
 
-指示のバージョン：79c82ff6
+指示のバージョン：da7ac17a
 
 | パーツ | 内容 | steps | データの形 |
 |---|---|---|---|

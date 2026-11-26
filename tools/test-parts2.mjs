@@ -738,9 +738,14 @@ for (const [code, what] of [
   ok(Object.keys(v2200.parts).every((n) => n in v2210.parts) && v2210.parts.predict === '2.3.0', '2.21.0: nothing removed since 2.20.0; m-predict 2.3.0');
   // 2.22.0：README の直し（m-bars の err は図の下の文に、m-code・m-kobun・m-flow の目安。#92）。m-flow 2.1.2。既定（v0.6.20 から）
   const v2220 = lock2.catalogues['2.22.0'];
-  ok(lock2.default === '2.22.0' && v2220 && v2220.tag === 'v2.22.0' && v2220.tarballSha256 === 'e5860e130a0b6389e163dc6ee17da26c98ba0475afde91f5c8eee2020e4eda1d' && v2220.manifestSha256 === '7d18a779f37b2a283a9172bc9fe55f98d0cd41d95805a73b8554ed303dbd97cc',
-    '2.22.0: the default; pinned to the released tarball and manifest (v2.22.0)');
+  ok(v2220 && v2220.tag === 'v2.22.0' && v2220.tarballSha256 === 'e5860e130a0b6389e163dc6ee17da26c98ba0475afde91f5c8eee2020e4eda1d' && v2220.manifestSha256 === '7d18a779f37b2a283a9172bc9fe55f98d0cd41d95805a73b8554ed303dbd97cc',
+    '2.22.0: pinned to the released tarball and manifest (v2.22.0)');
   ok(Object.keys(v2210.parts).every((n) => n in v2220.parts), '2.22.0: nothing removed since 2.21.0');
+  // 2.23.0：README の直し（m-predict の使う場面の 1 行。handoff #108・#109）。パーツの版は変わらない。既定（v0.6.21 から）
+  const v2230 = lock2.catalogues['2.23.0'];
+  ok(lock2.default === '2.23.0' && v2230 && v2230.tag === 'v2.23.0' && v2230.tarballSha256 === '5d442c2d77edb2ebe2444b75443467af935e32182178cbad6e6fa1f3c7600199' && v2230.manifestSha256 === '02a06cf22a1cf853de409720f4d4b30eec5c5151c9a830ba34bdcc74d4e2f5bd',
+    '2.23.0: the default; pinned to the released tarball and manifest (v2.23.0)');
+  ok(JSON.stringify(v2230.parts) === JSON.stringify(v2220.parts), '2.23.0: the same part versions as 2.22.0 (README only)');
   // 2.0 のパーツは再生器のグローバル（DECK）を使わない（注釈の外）
   const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:"'\\])\/\/.*$/gm, '$1');
   const uses = Object.entries(rc.parts).filter(([n, v]) => /\bDECK\s*\./.test(strip(fs.readFileSync(partFile(n, v), 'utf8')))).map(([n]) => n);
