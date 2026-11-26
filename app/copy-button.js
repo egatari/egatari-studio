@@ -23,6 +23,8 @@ function holdWidth(btn, label, done) {
 
 // コピーのボタンを作ったときに通す：見えて大きさが付いたとき（ResizeObserver）に幅を測って止める。押してから測ると、広いほうの字のときに 1 度だけ幅が替わるため
 export function copyButton(btn) {
+  // 押したらまず元の字に戻す：写せなかったとき（copied を呼ばない）に、前に写せたときの「✓ コピーしました」を残さない（規格化 11/27）
+  btn.addEventListener('click', () => restore(btn), { capture: true });
   if (typeof ResizeObserver !== 'function') return btn;
   const ro = new ResizeObserver(() => {
     if (btn.dataset.copyWidth) { ro.disconnect(); return; }
@@ -32,6 +34,15 @@ export function copyButton(btn) {
   });
   ro.observe(btn);
   return btn;
+}
+
+// 「✓ コピーしました」を出していれば、すぐに元の字に戻す
+function restore(btn) {
+  if (btn.dataset.copyLabel == null) return;
+  clearTimeout(btn._copyTimer);
+  btn.textContent = btn.dataset.copyLabel;
+  btn.classList.remove('copied');
+  delete btn.dataset.copyLabel;
 }
 
 // 写せたときに呼ぶ。返す Promise は foldMs の後に解ける（段をたたむのは、ボタンの字を見せてから）
