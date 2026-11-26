@@ -24,10 +24,16 @@ const SKIP = [
   /^vendor\//, /^lab\/vendor\//, /^node_modules\//, /^dist\//,   // 写し・依存・組んだもの（このリポジトリのコードでない）
   /^tools\/test-[^/]*\.mjs$/,          // 試験：自分で作った一時のファイルと、リポジトリの試験用のデータ・examples だけを読む
   /^tools\/test-raw-reads\.mjs$/,      // この試験（形を文字列に持つ）
+  /^relay\/test\//,                    // 中継の試験：中継の Worker が返した答えと、relay/ の設定のファイルだけを読む
 ];
 
 // 許し：[ファイル, その行に含まれる文字列, 理由]
 const ALLOW = [
+  // 「こんなパーツが欲しい…」の中継（relay/。Cloudflare Worker）
+  ['relay/src/index.js', 'const reader = request.body.getReader();', '中継の上限つきの読み取りの口（readCapped）：BODY_MAX_BYTES を越えたところで読むのをやめる'],
+  ['relay/src/index.js', 'const data = await res.json();', '中継：GitHub の API の答え（Issue を作った結果。html_url と number だけを使い、形を確かめる）'],
+  ['relay/src/turnstile.js', 'data = await res.json();', '中継：Cloudflare の siteverify の答え（egatari/live と同じ）'],
+  ['relay/src/widget.js', 'try { data = await res.json(); } catch { data = null; }', '中継の確認の枠：同じ origin の中継の答え（url と error だけを使う）'],
   ['tools/examples-portable.mjs', "JSON.parse(fs.readFileSync(file, 'utf8'))", 'サンプルの組み立て：リポジトリの examples/<名前>/sample.json を読む（backlog #130）'],
   ['tools/examples-portable.mjs', 'readFileSync(path.join(path.dirname(path.dirname(fileURLToPath(import.meta.url)))', 'サンプルの組み立て：リポジトリの components2.lock.json と、写した manifest（パーツの札と段）を読む'],
   ['tools/examples-portable.mjs', 'h.update(fs.readFileSync(abs))', '組んだサンプルの置き場の鍵：リポジトリの examples/・kit/・vendor/・themes/・package-lock.json の中身の sha256（試験の間だけ）'],

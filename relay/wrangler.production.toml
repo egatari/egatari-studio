@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: MIT
+# Egatari part-request relay: production config: `CLOUDFLARE_ACCOUNT_ID=… npx wrangler deploy -c wrangler.production.toml`.
+# Keep it in step with wrangler.toml (the development and test config).
+name = "egatari-part-request"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+# account_id is passed at deploy time (CLOUDFLARE_ACCOUNT_ID=…), not committed.
+workers_dev = false
+
+# A Custom Domain: `wrangler deploy` creates the DNS record and the certificate itself (the egatari.org zone must be in
+# this account, as for live.egatari.org).
+routes = [{ pattern = "request.egatari.org", custom_domain = true }]
+
+[vars]
+# This relay's own origin (the widget page posts to it). Empty in development: the request's origin is used.
+PUBLIC_ORIGIN = "https://request.egatari.org"
+# The Studio origins that may frame the widget page and receive its messages (comma-separated). Production: the
+# published Studio only.
+STUDIO_ORIGINS = "https://studio.egatari.org"
+# The repository the issues are created in, and their label. The token (secret GITHUB_TOKEN) must be limited to this
+# repository with Issues: Read and write only.
+GITHUB_REPO = "egatari/components"
+ISSUE_LABEL = "request"
+# Turnstile site key (public) of the widget for this relay's hostname. Empty = no widget: the page sends Cloudflare's dummy
+# test token, which only a test secret accepts (offline development). Secrets are never here:
+# `npx wrangler secret put TURNSTILE_SECRET` and `npx wrangler secret put GITHUB_TOKEN`
+# (for local development put test values in .dev.vars, see .dev.vars.example).
+TURNSTILE_SITEKEY = "0x4AAAAAAGTFk-byvrYk6WBt"   # the widget for request.egatari.org
+
+# Per-sender limit on POST /api/request (keyed by CF-Connecting-IP): 3 requests per 60 s.
+# namespace_id is any integer unique to this limiter within the account (egatari/live uses 1001).
+[[ratelimits]]
+name = "REQUEST_LIMITER"
+namespace_id = "1101"
+simple = { limit = 3, period = 60 }
+
+[observability]
+enabled = false              # no request logs: the relay keeps nothing about senders

@@ -6,7 +6,8 @@
 <!-- 読み込めるのはアプリ自身だけ。デッキ（sandbox の iframe）もこの決まりを受け継ぎ、外へは繋がらない。frame-src 'none'：プレビューは srcdoc だけで、
      デッキが自分の iframe をアプリの origin（の URL に何かを載せて）や data: に移すことも止める。
      このページは文字列の eval を許さない（CSP の script-src に eval の許可を置かない）（部品庫 v1.0.0・1.0.1 の m-sweep・m-curves の式が new Function を使うので、その版は取り下げられた。format spec §6：取り下げた版の再生は
-     エディタの origin の外（sandbox の枠）でだけ、このページの決まりを緩めない）。srcdoc の枠はこのページの決まりを受け継ぐので、取り下げた版の式は枠の中でも eval できず、図の代わりの表示になる。'wasm-unsafe-eval' は MP3 のエンコーダ（LAME の WebAssembly。app/mp3-loader.js）のためだけで、文字列の eval（eval・new Function）は許さない。worker-src blob: は持ち運べる 1 ファイルを読む Worker（アプリに同梱） -->
+     エディタの origin の外（sandbox の枠）でだけ、このページの決まりを緩めない）。srcdoc の枠はこのページの決まりを受け継ぐので、取り下げた版の式は枠の中でも eval できず、図の代わりの表示になる。'wasm-unsafe-eval' は MP3 のエンコーダ（LAME の WebAssembly。app/mp3-loader.js）のためだけで、文字列の eval（eval・new Function）は許さない。worker-src blob: は持ち運べる 1 ファイルを読む Worker（アプリに同梱）。
+     「こんなパーツが欲しい…」の中継（app/part-request.js の PART_REQUEST_RELAY）を置いたら、frame-src 'none' をその origin だけに替える（確認の枠。connect-src は 'self' のまま。tools/test-relay.mjs が照らす） -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self'; frame-src 'none'; worker-src blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="referrer" content="no-referrer">
 <title>Egatari Studio</title>
@@ -160,7 +161,8 @@
       <div id="examples-gallery"></div>
     </div>
     <!-- パーツの一覧（/parts/。新しいタブ。行き先は app/parts-gallery.js の partsIndexHref：サイトでは根からの相対、file:// では公開のサイト） -->
-    <p class="note parts-link"><a id="w-parts" target="_blank" rel="noopener" data-t="allParts"></a></p>
+    <!-- 「こんなパーツが欲しい…」（app/part-request.js）：一覧にないパーツを、GitHub を使わずに開発者に頼む窓 -->
+    <p class="note parts-link"><a id="w-parts" target="_blank" rel="noopener" data-t="allParts"></a> <button type="button" id="w-request" class="linkish"></button></p>
     <p id="save-note" class="note" hidden data-t="saveNote"></p>
     <!-- Claude Code・Cowork で作る人への案内（行き先は main.js の WITH_CLAUDE_URL の 1 か所。説明のページか README かは未定） -->
     <p class="note with-claude"><a id="w-claude" target="_blank" rel="noopener" data-t="withClaude"></a></p>
