@@ -24,7 +24,7 @@ import { newDeckFiles } from '../kit/templates/new-deck.mjs';
 import { TILES, purposesFrom, componentsOff } from '../kit/core/purposes.mjs';
 import { assemble } from '../kit/core/llm-pack-assemble.mjs';
 import { generate, LIMITS, overMessage, sizeReport, pairsOf } from './make-llm-guide.mjs';
-import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, SINGLE_SET_DROP_ORDER, FREE_CORE, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack, rankedOpts } from '../kit/core/llm-pack.mjs';
+import { buildPack, setPart, PURPOSES, SETS, PACK_VERSION, PACK_CAP_KB, PAID_PACK_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, SINGLE_SET_DROP_ORDER, FREE_CORE, TEACHING_FULL, teachingFull, freeFull, BRIEF, STANDARD, loadedParts, TIERS, partsPackOpts, packSize, fitPack, rankedOpts } from '../kit/core/llm-pack.mjs';
 import { rankedPack as rankedPackOf } from '../kit/core/llm-pack-assemble.mjs';
 import { sampleUsage } from './make-llm-guide.mjs';
 import { packWithRequest } from '../kit/core/llm-request.mjs';
@@ -221,6 +221,28 @@ ok('ranking: purpose (binary), then subject, then audience, then use in samples,
   assert.deepEqual([...all].sort(), Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier !== 'extra').sort());
   assert.deepEqual(all.slice(0, 3), ['m-bars', 'm-cards', 'm-flow'], 'no choice: the parts the samples use most come first');
   assert.deepEqual(usageOf([{ parts: ['m-bars', 'm-bars', 'm-flow'] }, { parts: ['m-bars'] }, {}]), { 'm-bars': 2, 'm-flow': 1 });
+  // m-predict（handoff #108）：① が授業・研修か「予想してから確かめる」に印なら一番上（サンプルのパーツの後）、ほかは一番後ろ
+  assert.equal(all.at(-1), 'm-predict', 'no choice: m-predict goes last');
+  assert.equal(rankParts({ category: 'research', audience: 'university', purposes: ['compare'] }).at(-1), 'm-predict', 'research: m-predict goes last');
+  assert.equal(rankParts({ category: 'teaching', audience: 'high-school' })[0], 'm-predict', 'teaching: m-predict first');
+  assert.equal(rankParts({ category: 'teaching', audience: 'working-adult' })[0], 'm-predict', 'training: m-predict first');
+  assert.equal(rankParts({ category: 'business', purposes: ['predict'] })[0], 'm-predict', 'predict ticked: m-predict first');
+  assert.deepEqual(rankParts({ category: 'teaching', first: ['m-flow', 'm-bars'] }).slice(0, 3), ['m-bars', 'm-flow', 'm-predict'], 'teaching from a sample: after the sample parts');
+  assert.ok(rankParts({ first: ['m-predict'] })[0] === 'm-predict', 'a sample that uses m-predict keeps it on top');
+});
+ok('m-predict in New… (handoff #108): described in full for teaching/training or with “Predict, then check” ticked, on both plans; otherwise only by name in the free plan', () => {
+  for (const lang of ['en', 'ja']) {
+    for (const c of [{ category: 'teaching', audience: 'high-school' }, { category: 'teaching', audience: 'working-adult' }, { category: 'research', audience: 'university', purposes: ['predict'] }, { purposes: ['predict'] }]) {
+      for (const plan of ['free', 'paid']) {
+        const r = newDeckPack({ order: rankParts(c), plan, lang });
+        assert.ok(r.described[0] === 'm-predict' && r.text.includes('### `<m-predict>`') && !r.over, `${lang} ${plan} ${JSON.stringify(c)}: m-predict described`);
+      }
+    }
+    for (const c of [{}, { category: 'research', audience: 'university' }, { category: 'business', audience: 'working-adult', purposes: ['compare'] }, { category: 'guides', audience: 'general' }]) {
+      const r = newDeckPack({ order: rankParts(c), plan: 'free', lang });
+      assert.ok(r.named.includes('m-predict') && !r.text.includes('### `<m-predict>`') && !r.text.includes('| `<m-predict>` |'), `${lang} free ${JSON.stringify(c)}: m-predict by name only`);
+    }
+  }
 });
 ok('instructions by ranking: free and paid use the same order; the top parts are described up to the cap (45 KB and a paste length of 31,000 / 150 KB), the rest only by name in the purposes table', () => {
   const choices = [{}, { purposes: ['compare'], subjects: ['statistics'], audience: 'high-school' }, { purposes: ['model'], subjects: ['statistics'], audience: 'university' },
@@ -328,7 +350,15 @@ ok('fitting the free plan (#125): over 45 KB or a paste length of 31,000, the co
   }
 });
 ok('free plan (#125): every standard part fits 45 KB, with only the four core parts described; extra parts are in no pack; specialized parts only when their set is ticked; m-cards and m-orbit are described', () => {
-  assert.deepEqual([...FREE_CORE], ['m-bars', 'm-flow', 'm-menu', 'm-predict']);
+  // 中核の 4 つ（作者の決定 2026-10-21・2026-11-26。handoff #108）：m-predict は中核でなく、授業・研修か「予想してから確かめる」に印のときだけ詳しく
+  assert.deepEqual([...FREE_CORE], ['m-bars', 'm-compare', 'm-flow', 'm-menu']);
+  assert.deepEqual([...TEACHING_FULL], ['m-predict']);
+  assert.ok(BRIEF.includes('m-predict') && !BRIEF.includes('m-compare'), 'm-predict gets only its catalogue line by default; m-compare is described');
+  for (const [c, want] of [[{}, false], [{ category: 'teaching' }, true], [{ purposes: ['predict'] }, true], [{ category: 'research', purposes: ['compare', 'predict'] }, true],
+    [{ category: 'research', purposes: ['compare'] }, false], [{ category: 'business' }, false], [{ category: 'other', purposes: [] }, false]]) {
+    assert.equal(teachingFull(c), want, JSON.stringify(c));
+    assert.deepEqual(freeFull(c), want ? ['m-bars', 'm-compare', 'm-flow', 'm-menu', 'm-predict'] : [...FREE_CORE], 'freeFull ' + JSON.stringify(c));
+  }
   assert.deepEqual(STD, Object.keys(TIERS.parts).filter((t) => TIERS.parts[t].tier === 'standard').sort(), 'the standard parts of the pack are the standard tier of the manifest');
   assert.deepEqual(BRIEF, STD.filter((t) => !FREE_CORE.includes(t)));
   assert.deepEqual(initialParts([]).sort(), STD, 'New… ticks every standard part at first');
@@ -338,6 +368,18 @@ ok('free plan (#125): every standard part fits 45 KB, with only the four core pa
     assert.ok(packSize(start) <= capKb('free') * 1024, `${lang}: the free pack of every standard part is ${packSize(start)} B, over ${capKb('free')} KB`);
     assert.ok(fitSize(start, 'free') <= capKb('free') * 1024, `${lang}: the free pack of every standard part has a paste length of ${pasteUnits(start)}, over ${FREE_PASTE_UNITS}`);
     assert.deepEqual(described(start), [...FREE_CORE].sort(), lang + ': only the core four are described on the free plan');
+    assert.ok(start.includes('| `<m-predict>` |') && !start.includes('### `<m-predict>`'), lang + ': m-predict has only its catalogue line');
+    // 授業・研修か「予想してから確かめる」に印（freeFull）：m-predict も詳しく（今の詳しさのまま：説明の節は無料のプランの説明と同じ）。それでも目安の中
+    for (const c of [{ category: 'teaching' }, { purposes: ['predict'] }]) {
+      const teach = packWithRequest({ ...partsPackOpts(initialParts([]), 'free', { full: freeFull(c) }), lang });
+      assert.deepEqual(described(teach), [...FREE_CORE, 'm-predict'].sort(), `${lang} ${JSON.stringify(c)}: the core four and m-predict are described`);
+      const entry = PACK_DATA[lang].components['m-predict'];
+      assert.ok(teach.includes((entry.free || entry.entry).replace(/<!--\/?part[^>]*-->/g, '').slice(0, 400)), `${lang} ${JSON.stringify(c)}: m-predict's whole section`);
+      assert.deepEqual(rowsOf(teach), STD, `${lang} ${JSON.stringify(c)}: every standard part has its catalogue line`);
+      assert.ok(fitSize(teach, 'free') <= capKb('free') * 1024, `${lang} ${JSON.stringify(c)}: ${packSize(teach)} B, paste length ${pasteUnits(teach)}, within the free cap`);
+      // short（中核の 4 つを短くする）なら m-predict も一覧の 1 行だけ（full は渡さない）
+      assert.deepEqual(described(packWithRequest({ ...partsPackOpts(initialParts([]), 'free', { short: true }), lang })), [], lang + ': short describes no standard part');
+    }
     assert.deepEqual(rowsOf(start), STD, lang + ': every standard part has its catalogue line');
     assert.ok(start.includes(PACK_DATA[lang].briefNote), lang + ': the note on the parts without a section');
     assert.ok(packSize(buildPack({ lang })) <= LIMITS.fail * 1024, lang + ': buildPack with no set ≤ 45 KB');
@@ -376,7 +418,7 @@ ok('part labels: every part of the list has a ja/en name, an icon and a one-line
   const iconsBlock = llmSrc.slice(llmSrc.indexOf('const ICONS = {'), llmSrc.indexOf('};', llmSrc.indexOf('const ICONS = {')));
   const ICON_KEYS = new Set([...iconsBlock.matchAll(/^\s+'?([\w-]+)'?: '</gm)].map((m) => m[1]));
   for (const [t, x] of Object.entries(PART_LABELS)) assert.ok(ICON_KEYS.has(x.icon), `${t}: icon "${x.icon}" is drawn in app/llm.js ICONS`);
-  assert.deepEqual(standardParts('ja'), ['棒グラフ', '流れ図', '目次', '予想と答え']);
+  assert.deepEqual(standardParts('ja'), ['棒グラフ', '比べる表', '流れ図', '目次']);
   assert.equal(partLabel('m-new-thing', 'ja'), 'm-new-thing');
   assert.equal(partDesc('m-new-thing', 'ja'), '');
   assert.deepEqual(partOrder(['m-venn', 'm-menu', 'm-bars', 'm-zzz', 'm-flow']), ['m-bars', 'm-flow', 'm-menu', 'm-venn', 'm-zzz']);
@@ -592,10 +634,12 @@ ok('caps per AI plan with all purposes on: free with no set ≤ 45 KB; paid with
 // Some browsers paste with CRLF, so each line feed counts 2: UTF-16 units + line feeds <= 31,000 (decided with the maintainers 2026-11-06;
 // en ~30.85K, ja ~22K). When this trips: first trim the common pack text (with eval A on the result), and only if that is not enough
 // the parts' English descriptions in the parts library (egatari/components).
-ok('the single-set drop order: the maintainers\' list, every standard part outside the core four', () => {
+ok('the single-set drop order: the maintainers\' list, every standard part outside the core four and m-predict', () => {
   assert.deepEqual([...SINGLE_SET_DROP_ORDER], ['m-fishbone', 'm-quad', 'm-cycle', 'm-venn', 'm-tree', 'm-timeline', 'm-menu', 'm-kpi', 'm-compare', 'm-cards', 'm-pie', 'm-scatter', 'm-curves']);
-  const outside = STD.filter((t) => !FREE_CORE.includes(t));
+  // m-predict（TEACHING_FULL）は中核だったころと同じに外さない（並びにない。handoff #108 で中核を出たが、外す順は maintainers が決めるまで今のまま）
+  const outside = STD.filter((t) => !FREE_CORE.includes(t) && !TEACHING_FULL.includes(t));
   assert.deepEqual(outside.filter((t) => !SINGLE_SET_DROP_ORDER.includes(t)), []);
+  assert.ok(TEACHING_FULL.every((t) => !SINGLE_SET_DROP_ORDER.includes(t)));
   assert.ok(SINGLE_SET_DROP_ORDER.every((t) => STD.includes(t)));
 });
 // The free plan's fitter (fitSize in kit/core/llm-pack-assemble.mjs) caps every free pack at min(45 KB, 31,000 of these) (2026-11-06), so the

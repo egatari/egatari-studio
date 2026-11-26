@@ -95,7 +95,7 @@ export function sampleChoice(sample, { title = '', content = '', lang = 'en' } =
   const purposes = Array.isArray(sample.purposes) ? [...sample.purposes] : [];
   const school = asksSchool(sample.category, sample.subcategory ?? null) ? (Array.isArray(sample.audiences) ? sample.audiences : []).find((a) => SCHOOL_AUDIENCES.includes(a)) || null : null;
   const audience = audienceOf(sample.category, sample.subcategory ?? null, school);
-  return { purposes, subjects, school, audience, order: rankParts({ purposes, subjects, audience, first: Array.isArray(sample.parts) ? sample.parts : [] }) };
+  return { purposes, subjects, school, audience, order: rankParts({ purposes, subjects, audience, first: Array.isArray(sample.parts) ? sample.parts : [], category: sample.category }) };
 }
 
 // 「このサンプルを参考に作る」：① ③ ④ はサンプルから、② は second（タイトルと内容。ほかの項目は AI に任せる。言語は画面の言語、話す人は 1 人）。

@@ -18,10 +18,11 @@
 //   guessSubjects({text, lang})        → [{subject, word}]（② の言葉に当たった題材と、当たった言葉。題材の順）
 //   SCHOOL_AUDIENCES・asksSchool(category, sub)  授業（小・中・高）だけ「どの学校向けですか」（小中・高校）
 //   audienceOf(category, sub, school)  → 読み手の id | null（授業（小・中・高）は school、大学の講義・研究発表は大学、研修・ビジネスは社会人、手引きは一般、その他はなし）
-//   rankParts({purposes, subjects, audience, usage, first})  → パーツの順位 [タグ]（特殊の段を除くすべて）。
+//   rankParts({purposes, subjects, audience, usage, first, category})  → パーツの順位 [タグ]（特殊の段を除くすべて）。
 //                                        ① 伝えたいことが合うか（2 値。札の into も含む）② 題材が合うか ③ 読み手が合うか ④ サンプルで使う数（usage。既定は PACK.tiers.usage）、名前の順。
 //                                        題材か読み手のラベルがあって選んだものを含まないパーツは、合わないパーツとして、ほかのパーツの後ろ（伝えたいことが合っても）。
 //                                        first（サンプルから始めたときのサンプルのパーツ）は、この順のまま一番上に
+//                                        m-predict は、① が授業・研修（category）か「予想してから確かめる」に印なら first のすぐ後、ほかは一番後ろ（handoff #108）
 //   usageOf(samples)                   → {タグ: サンプルの数}（sample.json の parts から。PACK.tiers.usage と同じ数え方）
 //   AI_PLANS・DEFAULT_PLAN             どの AI に貼るか：'free'（無料の AI・わからない＝軽量の指示。既定）| 'paid'（有料の AI・ファイルで渡す＝詳細の指示）
 //   planOf(choice)                     → 'free' | 'paid'（ない・知らない値は 'free'）
@@ -37,7 +38,7 @@
 //
 // 見せ方（variant。format spec §8.4）は名前だけで選ぶ。教材のシード値（data-egatari-seed）はなくなった：書かない。前の原稿にあれば、そのまま残す（誰も読まない）
 import { updateConfig, merge, configObject } from './config-file.mjs';
-import { TIERS, PACK_CAP_KB } from './llm-pack.mjs';
+import { TIERS, PACK_CAP_KB, TEACHING_FULL, teachingFull } from './llm-pack.mjs';
 import { PACK } from './llm-pack-data.mjs';
 import { partOrder } from './part-labels.mjs';
 import { componentsOff } from './purposes.mjs';
@@ -200,7 +201,9 @@ export function usageOf(samples = []) {
   return n;
 }
 // 順位（作者の決定 2026-11-19）：合わない（題材か読み手のラベルがあり、選んだものを含まない）パーツは後ろ。その中と外で、伝えたいこと → 題材 → 読み手 → サンプルで使う数 → 名前
-export function rankParts({ purposes = [], subjects = [], audience = null, usage = TIERS.usage || {}, first = [] } = {}) {
+// category（① の大分類）：授業・研修か、伝えたいこと「予想してから確かめる」に印があれば、m-predict（TEACHING_FULL）を first のすぐ後に上げて説明を載せる。
+// ほかでは m-predict を一番後ろに下げる（first にあればそのまま）：説明は上限に余りがあるときだけで、ふつうは言いたいことの表に名前だけ（handoff #108）
+export function rankParts({ purposes = [], subjects = [], audience = null, usage = TIERS.usage || {}, first = [], category = null } = {}) {
   const want = new Set(purposes);
   for (const p of known(TIERS.purposes)) if (p.into && want.has(p.into)) want.add(p.id);   // 札に入る id（順位 → 比べる）
   const subs = new Set(subjects);
@@ -215,7 +218,9 @@ export function rankParts({ purposes = [], subjects = [], audience = null, usage
   const cmp = (a, b) => { for (let i = 0; i < 5; i++) if (keys[a][i] !== keys[b][i]) return keys[a][i] - keys[b][i]; return a < b ? -1 : a > b ? 1 : 0; };
   const order = tags.sort(cmp);
   const top = new Set(first);
-  return [...order.filter((t) => top.has(t)), ...order.filter((t) => !top.has(t))];
+  const teach = TEACHING_FULL.filter((t) => order.includes(t) && !top.has(t));
+  const rest = order.filter((t) => !top.has(t) && !teach.includes(t));
+  return [...order.filter((t) => top.has(t)), ...(teachingFull({ category, purposes }) ? [...teach, ...rest] : [...rest, ...teach])];
 }
 
 const catOf = (id) => CATEGORIES.find((c) => c.id === id) || null;

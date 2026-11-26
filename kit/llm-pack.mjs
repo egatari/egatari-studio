@@ -2,6 +2,9 @@
 //   node kit/llm-pack.mjs --sets stats,math --lang ja         共通の本体（標準の部品）+ 束（'all' で全部、指定なしで共通の本体だけ）
 //   node kit/llm-pack.mjs --plan paid [--sets …]             有料のプラン（どの部品も詳しく。--sets all --plan paid で指示の全体）
 //   node kit/llm-pack.mjs --no-fit [--sets …]                無料のプランで目安に収めない（下の fit をしない。比べる・調べる用）
+//   node kit/llm-pack.mjs --category teaching | --purposes predict [--sets …]
+//                                                            新規作成の ① の大分類・④ の伝えたいこと（無料のプランの詳しさだけに効く）：授業・研修か「予想してから確かめる」なら
+//                                                            m-predict も中核の 4 つと同じに詳しく書く（kit/core/llm-pack-assemble.mjs の freeFull。handoff #108。毎晩の評価が授業の題材で使う）
 //   node kit/llm-pack.mjs --from-sample <名前> [--request <文|ファイル>] [--plan …] [--lang …]
 //                                                            「このサンプルを参考に作る」で ② を書いて ④ で写す指示と同じバイト（backlog #130。kit/core/new-deck-pack.mjs の fromSamplePack）：
 //                                                            examples/<名前>/sample.json の場面・テーマ・ラベル（伝えたいこと・題材・読み手）と構成。--request の 1 行目は ② のタイトル、
@@ -17,13 +20,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fromSamplePack, sampleProblems } from './core/new-deck-pack.mjs';
+import { CATEGORIES } from './core/new-deck.mjs';
 import { readRegularText, READ_LIMITS } from './bounded-read.mjs';
-import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, loadedParts, partsPackOpts, fitPack, normalizeSets, SINGLE_SET_DROP_ORDER } from './core/llm-pack.mjs';
+import { buildPack, SETS, membersOfSet, packKb, kbOf, packSize, BRIEF, STANDARD, FREE_CORE, TEACHING_FULL, freeFull, TIERS, PACK_CAP_KB, FREE_PASTE_UNITS, pasteUnits, fitSize, loadedParts, partsPackOpts, fitPack, normalizeSets, SINGLE_SET_DROP_ORDER } from './core/llm-pack.mjs';
 
 // 前の系列 → 束
 const SERIES_SETS = { academic: ['stats', 'math'], business: ['business'], kokugo: ['kokugo'], english: ['english'], info: [], social: ['maps'], music: ['music'] };
 
 const USAGE = `usage: node kit/llm-pack.mjs [--sets <name,…|all>] [--lang en|ja] [--plan free|paid] [--no-fit]
+                         [--category <id>] [--purposes <id,…>]
        node kit/llm-pack.mjs --from-sample <name> [--request <text|file>] [--lang en|ja] [--plan free|paid]
        node kit/llm-pack.mjs --list [--lang en|ja]
        node kit/llm-pack.mjs --help
@@ -45,6 +50,10 @@ plus the packs of the chosen part sets (${SETS.join(', ')};
          never the set's own parts; with two or more sets, specialized parts
          are left out, largest first. stderr says what was shortened or left out
 --no-fit the light instructions as assembled, without fitting it to the limit
+--category, --purposes  the answers to New… step 1 (${CATEGORIES.map((c) => c.id).join(', ')})
+         and step 4 (purposes, e.g. predict). They change only the light
+         instructions: with --category teaching or --purposes predict,
+         ${TEACHING_FULL.join(', ')} is described in full like the core four
 --from-sample  exactly what the editor copies in New… after “Make one based on
          this sample” (examples/<name>/sample.json): its setting, theme and parts (never
          suggested for unticking, described in full), plus its structure; fitted to
@@ -73,16 +82,26 @@ const langArg = arg('--lang');
 if (langArg !== undefined && !['en', 'ja'].includes(langArg)) { console.error(`--lang must be en or ja (got ${langArg})\n\n${USAGE}`); process.exit(2); }
 const planArg = arg('--plan');
 if (planArg !== undefined && !['free', 'paid'].includes(planArg)) { console.error(`--plan must be free or paid (got ${planArg})\n\n${USAGE}`); process.exit(2); }
-const VALUED = ['--sets', '--series', '--tools', '--lang', '--plan', '--from-sample', '--request'];
+const VALUED = ['--sets', '--series', '--tools', '--lang', '--plan', '--from-sample', '--request', '--category', '--purposes'];
 const known = new Set([...VALUED, '--list', '--no-fit']);
 const bad = argv.filter((a, i) => a.startsWith('-') && !known.has(a.split('=')[0]) && !(i > 0 && VALUED.includes(argv[i - 1])));
 if (bad.length) { console.error(`unknown option ${bad[0]}\n\n${USAGE}`); process.exit(2); }
+// 新規作成の ① の大分類と ④ の伝えたいこと（無料のプランの詳しく書く標準の部品だけに効く。handoff #108）
+const categoryArg = arg('--category');
+if (categoryArg !== undefined && !CATEGORIES.some((c) => c.id === categoryArg)) { console.error(`--category must be one of ${CATEGORIES.map((c) => c.id).join(', ')} (got ${categoryArg})\n\n${USAGE}`); process.exit(2); }
+const purposesArg = arg('--purposes') === undefined ? [] : String(arg('--purposes')).split(',').map((x) => x.trim()).filter(Boolean);
+const purposeIds = (TIERS.purposes || []).map((p) => p.id);
+const badPurpose = purposesArg.find((x) => !purposeIds.includes(x));
+if (badPurpose) { console.error(`--purposes: unknown purpose "${badPurpose}" (known: ${purposeIds.join(', ')})\n\n${USAGE}`); process.exit(2); }
+const FULL = freeFull({ category: categoryArg || null, purposes: purposesArg });
 
-// 無料のプランの指示を目安に収める（編集アプリと同じ fitPack。頼みたいことは記入欄のまま）→ {text, fit}
-function fittedPack(sets, lang) {
-  const sizeOf = (tags, short) => fitSize(buildPack({ ...partsPackOpts(tags, 'free', { short }), lang }), 'free');
+// 無料のプランの指示を目安に収める（編集アプリと同じ fitPack。頼みたいことは記入欄のまま）→ {text, fit}。
+// full：詳しく書く標準の部品（既定は中核の 4 つ。授業なら m-predict も。short のときは中核の 4 つと一緒に短くする）
+function fittedPack(sets, lang, full = null) {
+  const opts = (tags, short) => partsPackOpts(tags, 'free', short || !full ? { short } : { full });
+  const sizeOf = (tags, short) => fitSize(buildPack({ ...opts(tags, short), lang }), 'free');
   const fit = fitPack(loadedParts(sets), 'free', { sizeOf, capBytes: PACK_CAP_KB.free * 1024 });
-  return { text: buildPack({ ...partsPackOpts(fit.tags, 'free', { short: fit.short }), lang }), fit };
+  return { text: buildPack({ ...opts(fit.tags, fit.short), lang }), fit };
 }
 
 // 「このサンプルを参考に作る」の指示（編集アプリの新規作成 ④ と同じ組み立て）
@@ -107,7 +126,7 @@ function samplePack(name, lang, plan) {
 
 if (argv.includes('--from-sample')) {
   try {
-    if (argv.includes('--no-fit') || arg('--sets') !== undefined || argv.includes('--list')) throw new Error('--from-sample cannot be used with --sets, --list or --no-fit');
+    if (argv.includes('--no-fit') || arg('--sets') !== undefined || argv.includes('--list') || categoryArg !== undefined || purposesArg.length) throw new Error('--from-sample cannot be used with --sets, --list, --no-fit, --category or --purposes (the sample gives them)');
     const lang = langArg || 'en', plan = planArg || 'free';
     const r = samplePack(String(arg('--from-sample') || ''), lang, plan);
     // 順位で組む（kit/core/new-deck-pack.mjs の newDeckPack）：説明つきのパーツと名前だけのパーツの数を stderr に
@@ -145,11 +164,12 @@ if (argv.includes('--from-sample')) {
     }
     sets = sets === undefined ? [] : sets;
     const lang = langArg || 'en', plan = planArg || 'free';
-    if (plan === 'paid' || argv.includes('--no-fit')) process.stdout.write(buildPack({ sets, lang, plan }));
+    if (plan === 'paid') process.stdout.write(buildPack({ sets, lang, plan }));
+    else if (argv.includes('--no-fit')) process.stdout.write(buildPack({ sets, lang, plan, full: FULL }));
     else {
-      const { text, fit } = fittedPack(sets, lang);
+      const { text, fit } = fittedPack(sets, lang, FULL);
       const limit = `${PACK_CAP_KB.free} KB or a paste length of ${FREE_PASTE_UNITS} (UTF-16 code units + line feeds)`;
-      if (fit.short) console.error(`note: light instructions: over ${limit}, so the core four (${FREE_CORE.join(', ')}) get only their catalogue line too (--no-fit for the pack as assembled)`);
+      if (fit.short) console.error(`note: light instructions: over ${limit}, so the core four (${FREE_CORE.join(', ')})${FULL.length > FREE_CORE.length ? ` and ${FULL.filter((t) => !FREE_CORE.includes(t)).join(', ')}` : ''} get only their catalogue line too (--no-fit for the pack as assembled)`);
       // 束が 1 つなら中核の 4 つのほかの標準のパーツを決まった順に、2 つ以上なら専門のパーツを大きい順に（kit/core/llm-pack-assemble.mjs の fitPlan）
       if (fit.dropped.length) console.error(normalizeSets(sets).length === 1
         ? `note: light instructions: still over ${limit}, so these standard parts were left out, in the fixed order: ${fit.dropped.join(', ')} (the ${normalizeSets(sets)[0]} parts and the core four are kept; --no-fit keeps them all)`

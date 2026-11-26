@@ -98,7 +98,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
   await page.waitForFunction(() => window.__APP_TEST.lastCopy);
   const c0 = await page.evaluate(() => window.__APP_TEST.lastCopy);
   await page.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
-  const want0 = newDeckPack({ order: rankParts({}), plan: 'free', lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }).text;
+  const want0 = newDeckPack({ order: rankParts({ category: 'teaching' }), plan: 'free', lang: 'en', request: c0.slice(c0.indexOf('# What I want')) }).text;
   if (c0 !== want0) { let i = 0; while (i < c0.length && c0[i] === want0[i]) i++; console.log('    first difference at ' + i + ': ' + JSON.stringify(c0.slice(Math.max(0, i - 80), i + 80)) + ' vs ' + JSON.stringify(want0.slice(Math.max(0, i - 80), i + 80))); }
   ok(!(await page.$('#paste-pack-size')) && (await page.textContent('#paste-copied')).startsWith(`Copied (${packKb(c0)} KB).`) && c0.startsWith('# Instructions for the AI') && !c0.includes('For people.')
     && c0 === want0,
@@ -256,7 +256,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.check('#paste-subject-statistics');
     const c1 = await copy();
     const tail = (c) => c.slice(c.indexOf('# 頼みたいこと'));
-    const r1 = newDeckPack({ order: rankParts({ purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'free', lang: 'ja', request: tail(c1) });
+    const r1 = newDeckPack({ order: rankParts({ category: 'research', purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'free', lang: 'ja', request: tail(c1) });
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1 === r1.text && c1.includes('### `<m-seq>`') && !c1.includes('使わない言いたいこと'),
       `new copy: the request has the setting and its structure; the instructions are ranked by spread, statistics and university (${r1.described.join(', ')} described)`);
     // コピーすると ⑤ が開く。④ は［変更］で開き直す
@@ -266,7 +266,7 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.check('#paste-plan-paid');
     const c3 = await copy();
     // 詳細の指示：同じ順位で、上限 150 KB まで説明を載せる（軽量より多い）
-    const r3 = newDeckPack({ order: rankParts({ purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'paid', lang: 'ja', request: tail(c3) });
+    const r3 = newDeckPack({ order: rankParts({ category: 'research', purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'paid', lang: 'ja', request: tail(c3) });
     ok(c3 === r3.text && r3.described.length > r1.described.length && r3.described.slice(0, r1.described.length).join() === r1.described.join() && c3.length > c1.length,
       `new plan: the paid AI copies the same order with more parts described (${r1.described.length} → ${r3.described.length})`);
     // 写した後に印を変えても、egatari.json に残すのは写したときの選び方

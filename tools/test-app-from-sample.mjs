@@ -154,7 +154,7 @@ try {
   ok(await p1.isChecked('#paste-use-structure') && (await text(p1, '#paste-structure-row')) === `サンプル「漢文を読む――返り点から書き下し文へ」の構成（${KS.structure.length} 枚の見出しと要点）を指示に添える`,
     'F1 ④: 「…の構成…を指示に添える」 is ticked');
   const c1 = await copy(p1);
-  const r1 = newDeckPack({ order: rankParts({ purposes: KS.purposes, subjects: KS.subjects, audience: audienceOf(KS.category, KS.subcategory, school1), first: KS.parts }), plan: 'free', lang: 'ja', request: c1.slice(c1.indexOf('# 頼みたいこと')) });
+  const r1 = newDeckPack({ order: rankParts({ purposes: KS.purposes, subjects: KS.subjects, audience: audienceOf(KS.category, KS.subcategory, school1), first: KS.parts, category: KS.category }), plan: 'free', lang: 'ja', request: c1.slice(c1.indexOf('# 頼みたいこと')) });
   ok(c1 === r1.text && KS.parts.every((t) => r1.described.includes(t)), `F1 ④: the copied instructions put the sample’s parts first, described (${r1.described.join(', ')})`);
   const tail = c1.slice(c1.indexOf('# 頼みたいこと'));
   ok(tail.includes('- タイトル（表紙にそのまま使う）：論語を読む') && tail.includes('- テーマ：kokugo') && tail.includes('- 場面：授業・研修／授業（小・中・高）') && tail.includes('## 倣うサンプルの構成')

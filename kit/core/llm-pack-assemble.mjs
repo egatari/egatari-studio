@@ -11,7 +11,7 @@
 //   plan：お使いの AI のプラン。'free'（既定）では、標準の部品のうち中核の 4 つ（FREE_CORE）だけを詳しく書き、ほかの標準の部品は一覧の 1 行だけにする
 //     （標準すべてが無料のプランの上限に収まるように。backlog #125）。'paid' はどの部品も詳しく書く。専門の部品はどちらのプランでも詳しく書く
 //   short：無料のプランで、中核の 4 つも一覧の 1 行だけにする（束を足して上限を越えたとき、新規作成が外す候補より先に使う。kit/core/new-deck.mjs の fitPlan）
-//   full：無料のプランで詳しく書く標準の部品（既定は中核の 4 つ。short なら []）。渡せば short より先に読む
+//   full：無料のプランで詳しく書く標準の部品（既定は中核の 4 つ。short なら []）。渡せば short より先に読む。授業・研修のときは freeFull が m-predict も足す（handoff #108）
 //   named：順位で組む指示（新規作成 ④。handoff #43）。配列なら、exclude にない部品はどれも詳しく書き（プランで paidOnly を除かず、一覧の 1 行だけにしない）、
 //     named の部品は言いたいことの表に名前だけ載せる（説明・一覧の行はない。表の下の 1 文が「使わない」と言う）。rankedPack が順位から決める
 import { purposesTable } from './purposes.mjs';
@@ -49,9 +49,16 @@ export function fitSize(text, plan = 'free') {
 // 標準の部品の段の名前（材料の部品の set）
 export const STANDARD = 'standard';
 export const PLANS = Object.freeze(['free', 'paid']);
-// 中核の 4 つ：無料のプランでも詳しく書く標準の部品
-export const FREE_CORE = Object.freeze(['m-bars', 'm-flow', 'm-menu', 'm-predict']);
+// 中核の 4 つ：無料のプランでも詳しく書く標準の部品（作者の決定 2026-10-21・2026-11-26：棒グラフ・流れ図・比べる表と、共通の部品の目次。handoff #108）
+export const FREE_CORE = Object.freeze(['m-bars', 'm-compare', 'm-flow', 'm-menu']);
 export const planName = (plan) => (plan === 'paid' ? 'paid' : 'free');
+// 授業のときだけ詳しく書く標準の部品（handoff #108、作者の決定 2026-11-26）：予想と答え（m-predict）。SCORM の確認問題に使うので、説明は今の詳しさのまま。
+// 新規作成の ① が授業・研修（category 'teaching'）か、④ の伝えたいこと「予想してから確かめる」（'predict'）に印があるとき。ほかは一覧の 1 行だけ
+export const TEACHING_FULL = Object.freeze(['m-predict']);
+export const PREDICT_PURPOSE = 'predict';
+export const teachingFull = ({ category = null, purposes = [] } = {}) => category === 'teaching' || (Array.isArray(purposes) && purposes.includes(PREDICT_PURPOSE));
+// 無料のプランで詳しく書く標準の部品（briefParts・packOptsOf の full に渡す）：中核の 4 つと、teachingFull なら TEACHING_FULL。short のときは渡さない（中核の 4 つと同じに短くする）
+export const freeFull = (choice = {}) => [...new Set([...FREE_CORE, ...(teachingFull(choice) ? TEACHING_FULL : [])])].sort();
 // 一覧の 1 行だけにする部品（無料のプランの、中核の 4 つ以外の標準の部品。short なら中核の 4 つも）
 export function briefParts(data, plan = 'free', short = false, full = null) {
   if (planName(plan) === 'paid') return [];
@@ -188,7 +195,7 @@ export function trimCandidates(ticked, { sizeOf, capBytes, keep = new Set() }) {
   return out;
 }
 
-// 目安に収める（backlog #125）：無料のプランで目安を越えたら、まず中核の 4 つ（棒グラフ・流れ図・目次・予想と答え）の説明も短くする（short）。
+// 目安に収める（backlog #125）：無料のプランで目安を越えたら、まず中核の 4 つ（棒グラフ・比べる表・流れ図・目次）の説明も短くする（short）。
 // それでも越えるなら、束が 1 つのときは中核の 4 つのほかの標準のパーツを SINGLE_SET_DROP_ORDER の順に（選んだ束のパーツは外さない）、
 // 束が 2 つ以上のときは印の付いた専門のパーツだけ（外したときに減る大きさの大きい順。標準のパーツは候補にしない）。
 // sizeOf(tags, short) は選んだパーツで組んだ指示のバイト数。keep：ほかに候補にしないパーツ（サンプルから引き継いだパーツ。backlog #130。束が 1 つのときも外さない）。→ {short, candidates}
@@ -201,7 +208,8 @@ export function fitPlan(data, ticked, plan, { sizeOf, capBytes, keep: also = [] 
 }
 
 // 束を 1 つだけ選んだ無料のプランの指示で、中核の 4 つを短くしても越えるときに外す標準のパーツと、その順（maintainers の決定、2026-11-06）。
-// 選んだ束のパーツと中核の 4 つ（FREE_CORE。この並びの m-menu は飛ばす）は外さない。この順に 1 つずつ外し、収まったところで止める。
+// 選んだ束のパーツと中核の 4 つ（FREE_CORE。この並びの m-menu・m-compare は飛ばす）は外さない。この順に 1 つずつ外し、収まったところで止める。
+// m-predict（TEACHING_FULL）は並びにない：中核だったころと同じに外さない（handoff #108 で中核を出た。外すかどうかは決めていない）
 // 図表（m-pie・m-scatter・m-curves）を最後にするのは、教科の束（stats・data・math・maps・science）が図表に頼るから（stats では m-scatter と m-curves が
 // m-hist の隣で使われる）。m-kpi はビジネスの札なので早めに、m-cards は何にでも使う形なので図表のすぐ前に。
 // maintainers の順の 1 番目「選んでいない束のパーツを先に外す」は、今は起きない（新規作成もコマンドも、指示に入る専門のパーツはどれも選んだ束のもの）

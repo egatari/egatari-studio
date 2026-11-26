@@ -225,9 +225,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await checkSkillDownload(p1, { lang: 'ja', selector: '#paste-download-skill', ok, base: BASE });
     const c1 = await copy(p1);
     const t1 = tailOf(c1, 'ja'), cls = sub('teaching', 'class');
-    const r1 = ranked({ purposes: ['cause-effect'], subjects: ['science'], audience: 'primary-junior' }, 'free', 'ja', t1);
+    const r1 = ranked({ category: 'teaching', purposes: ['cause-effect'], subjects: ['science'], audience: 'primary-junior' }, 'free', 'ja', t1);
     ok(t1 === `# 頼みたいこと\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：てこのはたらき\n- 長さ（枚数か分）：6 枚\n- 言語：日本語\n- 話者：1 人\n- テーマ：default（<html data-theme="default">）\n- 場面：授業・研修／授業（小・中・高）\n- 構成の型：${cls.structure.ja}\n- 見せ方：${cls.show.ja}\n`
-      && c1 === r1.text && r1.described.slice(0, 3).includes('m-fishbone') && r1.described.includes('m-orbit') && (await labels(p1)).sum === sumOf(r1, 'ja'),
+      && c1 === r1.text && r1.described[0] === 'm-predict' && r1.described.slice(1, 4).includes('m-fishbone') && r1.described.includes('m-orbit') && (await labels(p1)).sum === sumOf(r1, 'ja'),
       `S1 ④: the copied instructions are ranked by the labels (${r1.described.join(', ')} described, ${r1.named.length} by name only), with the request at the end; the fields left to the AI are not written; the line counts them`);
     ok((await flowState(p1)) === 'kind:shut:-:-:body:answer content:shut:-:-:body:answer theme:shut:-:-:body:answer send:shut:-:-:nobody:answer paste:open:step:-:body:-'
       && (await answer(p1, 'send')) === '指示：軽量・コピーしました' && await p1.evaluate(() => document.activeElement && document.activeElement.id === 'paste-deck'),
@@ -392,7 +392,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const free3 = (await labels(p3)).sum;
     await p3.check('#paste-plan-paid');
     const c3 = await copy(p3);
-    const r3 = ranked({ purposes: ['change', 'key-number'], audience: 'working-adult' }, 'paid', 'en', tailOf(c3, 'en'));
+    const r3 = ranked({ category: 'business', purposes: ['change', 'key-number'], audience: 'working-adult' }, 'paid', 'en', tailOf(c3, 'en'));
     ok(c3.includes('# First, send only the outline') && c3.includes('- Length (slides or minutes): 20 minutes') && c3 === r3.text && r3.described.slice(0, 3).sort().join() === 'm-bars,m-curves,m-kpi' && c3.includes('### `<m-curves>`')
       && /When the outline is out, go to step 5\.$/.test(await text(p3, '#paste-copied')),
       `S3 ④: the paid instructions are ranked by the labels (key number and change first: ${r3.described.slice(0, 4).join(', ')}…) with the outline request; the message says to go to step 5 when the outline is out`);
@@ -475,9 +475,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     await p4.check('#paste-school-high-school');
     const c4 = await copy(p4);
     const t4 = tailOf(c4, 'ja');
-    const r4 = ranked({ subjects: ['japanese'], audience: 'high-school' }, 'free', 'ja', t4);
+    const r4 = ranked({ category: 'teaching', subjects: ['japanese'], audience: 'high-school' }, 'free', 'ja', t4);
     ok(t4.startsWith('# 頼みたいこと\n\n**A. 新しく作る**\n\n- タイトル（表紙にそのまま使う）：臥薪嘗胆（漢文）\n- 言語：日本語\n- 話者：2 人（Expert と Novice の掛け合い）\n- そのほかの希望：書き下し文を先に\n- テーマ：default') && t4.includes('\n## 内容（要点・メモ・元の資料）\n\n漢文「臥薪嘗胆」の書き下し文と現代語訳\n')
-      && c4 === r4.text && c4.includes('### `<m-kanbun>`') && r4.described.slice(0, 3).sort().join() === 'm-gendai,m-kanbun,m-kobun',
+      && c4 === r4.text && c4.includes('### `<m-kanbun>`') && r4.described[0] === 'm-predict' && r4.described.slice(1, 4).sort().join() === 'm-gendai,m-kanbun,m-kobun',
       'S4 ④: the request has the title, language, two speakers and the wishes; the content goes after it; with no purpose, the Japanese parts come first and are described');
     // ⑤ コードブロックを 1 つずつ（それぞれ正しい欄へ）
     const kdeck = worked('kokugo', 'deck.html'), knarr = worked('kokugo', 'narration.md');
@@ -567,9 +567,9 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(!(await p8.isChecked('#paste-purpose-compare')), 'S8 ④: Space twice leaves it off');
     await p8.check('#paste-school-high-school');
     const c8 = await copy(p8);
-    const r8 = ranked({ purposes: ['spread'], subjects: ['statistics', 'mathematics'], audience: 'high-school' }, 'free', 'ja', tailOf(c8, 'ja'));
+    const r8 = ranked({ category: 'teaching', purposes: ['spread'], subjects: ['statistics', 'mathematics'], audience: 'high-school' }, 'free', 'ja', tailOf(c8, 'ja'));
     l8 = await labels(p8);
-    ok(c8 === r8.text && r8.described[0] === 'm-boxplot' && r8.described.includes('m-hist') && l8.sum === sumOf(r8, 'ja') && r8.named.every((t) => c8.includes('`' + t + '`') && !c8.includes('### `<' + t + '>`'))
+    ok(c8 === r8.text && r8.described[0] === 'm-predict' && r8.described[1] === 'm-boxplot' && r8.described.includes('m-hist') && l8.sum === sumOf(r8, 'ja') && r8.named.every((t) => c8.includes('`' + t + '`') && !c8.includes('### `<' + t + '>`'))
       && c8.includes('この表には、名前だけで説明のないパーツもある。使わない。'),
       `S8 ④: the copied instructions describe the top of the ranking (${r8.described.join(', ')}); the rest are only named in the purposes table, with the rule not to use them: ${l8.sum}`);
     // 自分で外した題材は、推し直しで戻さない
@@ -584,7 +584,7 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     const free8 = l8.sum;
     await p8.check('#paste-plan-paid');
     const c8p = await copy(p8);
-    const r8p = ranked({ purposes: ['spread'], subjects: ['mathematics'], audience: 'high-school' }, 'paid', 'ja', tailOf(c8p, 'ja'));
+    const r8p = ranked({ category: 'teaching', purposes: ['spread'], subjects: ['mathematics'], audience: 'high-school' }, 'paid', 'ja', tailOf(c8p, 'ja'));
     ok(c8p === r8p.text && (await labels(p8)).sum === sumOf(r8p, 'ja') && free8 !== sumOf(r8p, 'ja') && r8p.described.length > r8.described.length,
       `S8 ④: the paid AI keeps the order and describes more parts (${free8} → ${sumOf(r8p, 'ja')})`);
     await p8.click('#paste-change-send');
@@ -629,8 +629,8 @@ export async function testNewDeckFlow({ browser, BASE, ok, watch, shotDir }) {
     ok(!(await labels(p10)).schoolShown, 'S10 ④: Training and how-to asks no school level');
     await p10.check('#paste-purpose-process');
     const c10 = await copy(p10);
-    const r10 = ranked({ purposes: ['process'], audience: 'working-adult' }, 'free', 'en', tailOf(c10, 'en'));
-    ok(c10 === r10.text && r10.described.slice(0, 2).sort().join() === 'm-callout,m-checklist' && c10.includes('### `<m-callout>`') && c10.includes('### `<m-flow>`'),
+    const r10 = ranked({ category: 'teaching', purposes: ['process'], audience: 'working-adult' }, 'free', 'en', tailOf(c10, 'en'));
+    ok(c10 === r10.text && r10.described[0] === 'm-predict' && r10.described.slice(1, 3).sort().join() === 'm-callout,m-checklist' && c10.includes('### `<m-callout>`') && c10.includes('### `<m-flow>`'),
       'S10 ④: the process parts for working adults come first and are described: ' + r10.described.join(', '));
     ok((await answer(p10, 'send')) === 'Instructions: Light · copied', 'S10 ④: the answered line');
 
