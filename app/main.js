@@ -58,7 +58,8 @@ import { TEMPLATES, setBookmark } from '../kit/core/slide-ops.mjs';
 import { BOOKMARK_MAX, bookmarkName, bookmarkLength, bookmarkDefault } from '../kit/core/bookmark.mjs';
 import { outlineOf, remaining as outlineLeft, nextBatch as outlineNext } from '../kit/core/llm-outline.mjs';
 import { T, EN, LANG_KEY, applyTexts } from './i18n.js';
-import { copied, copyButton } from './copy-button.js';
+import { copied, copyButton, setCopiedText } from './copy-button.js';
+setCopiedText(T.copiedButton);   // コピーのボタンの「✓ コピーしました」（copy-button.js は i18n.js を読まない）
 import { choosableOf, themeLabel, themeNote } from '../kit/core/themes-list.mjs';
 import { setupLlm } from './llm.js';
 import { warnView } from './build-warnings.js';
