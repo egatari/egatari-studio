@@ -1,0 +1,3 @@
+### Changed
+
+- Copy buttons: every copy button in Studio (New… step 4, step 2 of Insert slide… and Revise…, the outline batch, the resend request, the quality check’s fix request, the slide image and check request with its fallback, and Live’s string and poll settings) now shows “✓ Copied” on itself for about 2 seconds when the copy worked, then its own label again, at the same width (one shared function, `app/copy-button.js`). The longer message about where to paste stays, and only it is announced; when the copy fails and the text box is shown, the label does not change. Steps that fold after a copy (New… step 4, step 2 of Insert slide… and Revise…) now wait about 1 second so the “✓ Copied” is seen first (handoff #110)

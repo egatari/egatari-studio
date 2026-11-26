@@ -45,6 +45,7 @@ export async function answerNew(p, { cat = 'teaching', sub = 'class', title = 'H
 
 // クリップボードに書けないとき（writeText を断る・execCommand もだめ）：［コピー］の知らせの下に全文の字の欄が出て、全部が選ばれ、段はたたまない。戻すと欄は消える
 //   button・msg・box：ボタンと知らせと欄（既定は段の［コピー］）。change：ボタンが隠れていれば押して開く。stepBtn：開いたままの段の見出し（なければ見ない）
+const DONE_LABEL = ['✓ Copied', '✓ コピーしました'];   // コピーのボタン自体に出す結果（app/copy-button.js。handoff #110）
 const FAILED = { en: 'Could not copy automatically. Select the text below and copy it.', ja: '自動ではコピーできませんでした。下の文字を選んでコピーしてください' };
 export async function refusedCopy(p, ok, { want, change = null, stepBtn = null, what, shot = null, button = '#paste-copy-guide', msg = 'paste-copied', box = 'paste-copy-text', lang = 'en', copied = /^(Copied|コピーしました)/ }) {
   await p.evaluate(() => {
@@ -52,9 +53,14 @@ export async function refusedCopy(p, ok, { want, change = null, stepBtn = null, 
     navigator.clipboard.writeText = () => Promise.reject(new DOMException('denied', 'NotAllowedError'));
     document.execCommand = () => false;
   });
+  // 前に写せたときの「✓ コピーしました」が元の字に戻ってから（約 2 秒）
+  await p.waitForFunction(([b, d]) => !d.includes(document.querySelector(b).textContent), [button, DONE_LABEL], { timeout: scaled(5000) });
   if (change && await p.isHidden(button)) await p.click(change);
+  const label0 = await p.textContent(button);
   await p.click(button);
   await p.waitForSelector(`#dlg[open] #${box}:not([hidden])`);
+  // 写せなかったときは、ボタンの字を「✓ コピーしました」に替えない（handoff #110）
+  ok((await p.textContent(button)) === label0 && !(await p.$eval(button, (b) => b.classList.contains('copied'))), `${what}: when the clipboard is refused, the button keeps its label “${label0}” (no “✓ Copied”)`);
   const r = await p.evaluate(([box, msg]) => { const b = document.getElementById(box), m = document.getElementById(msg);
     return { value: b.value, start: b.selectionStart, end: b.selectionEnd, len: b.value.length, focused: document.activeElement === b, ro: b.readOnly, label: b.getAttribute('aria-label'), msg: m.hidden ? '' : m.textContent, under: m.nextElementSibling === b, visible: !!b.getClientRects().length }; }, [box, msg]);
   ok(r.value.replace(/\r\n/g, '\n') === want && r.start === 0 && r.end === r.len && r.focused && r.ro && r.label && r.under && r.visible,
@@ -66,6 +72,8 @@ export async function refusedCopy(p, ok, { want, change = null, stepBtn = null, 
   await p.click(button);
   await p.waitForFunction(([msg, src, flags]) => new RegExp(src, flags).test(document.getElementById(msg).textContent), [msg, copied.source, copied.flags]);
   ok(await p.isHidden('#' + box), `${what}: once copying works again, the text box is hidden`);
+  ok(DONE_LABEL.includes(await p.textContent(button)), `${what}: once copying works again, the button shows “✓ Copied”: ${await p.textContent(button)}`);
+  await p.waitForFunction(([b, l]) => document.querySelector(b).textContent === l, [button, label0], { timeout: 10000 });
 }
 
 export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
@@ -207,6 +215,14 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await page.waitForFunction(() => window.__APP_TEST.lastCopy && document.getElementById('fix-lead').textContent);
     ok((await page.evaluate(() => window.__APP_TEST.lastCopy)) === req && (await clip()) === req && leadRe.test(await page.textContent('#fix-lead')), `llm: “Copy the fix request” copies the request again (round ${round})`);
   }
+  // ボタン自体に「✓ Copied」を約 2 秒出して元に戻す。幅は替えない（handoff #110）
+  {
+    const w = await page.$eval('#fix-copy', (b) => ({ text: b.textContent, w: b.getBoundingClientRect().width, min: b.style.minWidth, live: b.getAttribute('aria-live') }));
+    ok(w.text === '✓ Copied' && w.live === null && /px$/.test(w.min), `llm: after copying, the fix request button says “✓ Copied” (no aria-live) with a measured min-width: ${JSON.stringify(w)}`);
+    await page.waitForFunction(() => document.getElementById('fix-copy').textContent === 'Copy the fix request', null, { timeout: 5000 });
+    const w2 = await page.$eval('#fix-copy', (b) => b.getBoundingClientRect().width);
+    ok(Math.abs(w2 - w.w) < 0.5, `llm: the fix request button goes back to “Copy the fix request” at the same width (${w.w} → ${w2})`);
+  }
   await shot('fix-request.png');
   F = await files();
   const sid = F['deck.html'].match(/<section class="slide" id="(s-[a-z2-7]{6})">\s*<h2>新しい仕分け/)[1];
@@ -245,7 +261,10 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     await pk.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied = t; }, readText: async () => window.__copied || '' } }); });
     await pk.click('#w-new');
     await answerNew(pk, { cat: 'research', sub: 'conference', title: '研究の進め方' });
-    const copy = async () => { await pk.evaluate(() => { window.__copied = null; }); await pk.click('#paste-copy-guide'); await pk.waitForFunction(() => window.__copied !== null); return pk.evaluate(() => window.__copied); };
+    // fold：④ がたたむまで待つ（ボタンの「✓ コピーしました」を約 1 秒見せてからたたむ。handoff #110）
+    const copy = async (fold = true) => { await pk.evaluate(() => { window.__copied = null; }); await pk.click('#paste-copy-guide'); await pk.waitForFunction(() => window.__copied !== null);
+      if (fold) await pk.waitForFunction(() => document.getElementById('paste-step-send-btn').getAttribute('aria-current') !== 'step', null, { timeout: scaled(5000) });
+      return pk.evaluate(() => window.__copied); };
     // ④ のラベル（handoff #43）：学会の口頭発表は学校を聞かない（読み手は大学）。何も選ばなくても写せる
     ok(await pk.isHidden('#paste-school') && !(await pk.$('#paste-parts-why')) && !(await pk.$('#paste-parts-hint')) && !(await pk.$('#paste-parts-count')),
       'new labels: a conference talk asks no school level; no reason, hint or count of ticked parts');
@@ -254,13 +273,22 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
       'new labels: links to the samples of all parts on studio.egatari.org (absolute, new tab) ' + JSON.stringify(gl));
     await pk.check('#paste-purpose-spread');
     await pk.check('#paste-subject-statistics');
-    const c1 = await copy();
+    const c1 = await copy(false);
     const tail = (c) => c.slice(c.indexOf('# 頼みたいこと'));
     const r1 = newDeckPack({ order: rankParts({ category: 'research', purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'free', lang: 'ja', request: tail(c1) });
     ok(c1.includes('- 場面：研究発表／学会の口頭発表\n- 構成の型：背景 → 目的') && c1 === r1.text && c1.includes('### `<m-seq>`') && !c1.includes('使わない言いたいこと'),
       `new copy: the request has the setting and its structure; the instructions are ranked by spread, statistics and university (${r1.described.join(', ')} described)`);
-    // コピーすると ⑤ が開く。④ は［変更］で開き直す
-    ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer'), 'new copy: copying opens ⑤ and folds ④ to its answer');
+    // コピーすると、ボタン自体に「✓ コピーしました」を約 1 秒見せてから（④ はまだ開いたまま）、⑤ が開く（handoff #110）。④ は［変更］で開き直す
+    {
+      const b0 = await pk.evaluate(() => { const b = document.getElementById('paste-copy-guide'); return { text: b.textContent, w: b.getBoundingClientRect().width, open: document.getElementById('paste-step-send-btn').getAttribute('aria-current'), live: b.getAttribute('aria-live') }; });
+      ok(b0.text === '✓ コピーしました' && b0.open === 'step' && b0.live === null && await pk.isVisible('#paste-copy-guide'),
+        `new copy: right after copying, the button says “✓ コピーしました” (no aria-live) and ④ is still open: ${JSON.stringify(b0)}`);
+      await pk.waitForTimeout(400);
+      ok((await pk.getAttribute('#paste-step-send-btn', 'aria-current')) === 'step', 'new copy: ④ is still open 0.4 s after copying (it folds after about 1 s)');
+      await pk.waitForFunction(() => document.getElementById('paste-step-paste-btn').getAttribute('aria-current') === 'step', null, { timeout: 5000 });
+    }
+    ok((await pk.getAttribute('#paste-step-paste-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-step-send-answer') && (await pk.textContent('#paste-step-send-answer .paste-answer-text')).endsWith('軽量・コピーしました'),
+      'new copy: after the wait, copying opens ⑤ and folds ④ to its answer (… 軽量・コピーしました)');
     await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
     if (shotDir) { await pk.evaluate(() => document.getElementById('paste-parts').scrollIntoView({ block: 'start' })); await pk.screenshot({ path: path.join(shotDir, 'new-parts-ja.png') }); }
     await pk.check('#paste-plan-paid');
@@ -426,7 +454,10 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       'llm quality check: with no results, the note says the fix request button appears when there are errors: ' + note0);
 
     // ② の［コピー］は主ボタンで、何度でも写し直せる（クリップボードが上書きされた後に［変更］で開き直して、もう一度）。新規作成の ④ と同じ
+    // コピーした段は、ボタンの「✓ Copied」を約 1 秒見せてからたたむ（handoff #110）：たたみ終わるまで待つ
+    const folded2 = () => p.waitForFunction(() => document.getElementById('paste-step2-btn').getAttribute('aria-current') !== 'step', null, { timeout: scaled(5000) });
     const copyAgain = async (want, label, what) => {
+      await p.waitForFunction((l) => document.getElementById('paste-copy-guide').textContent === l, label, { timeout: scaled(5000) }).catch(() => {});
       ok(await p.$eval('#paste-copy-guide', (b) => b.classList.contains('pri')) && (await p.textContent('#paste-copy-guide')) === label, `llm ${what}: step 2 has the primary “${label}” button`);
       for (const round of [1, 2]) {
         await p.evaluate(() => navigator.clipboard.writeText('something else').catch(() => {}));
@@ -436,6 +467,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
         await p.waitForFunction(() => /^Copied \(\d+(\.\d)? KB/.test(document.getElementById('paste-copied').textContent), null, { timeout: scaled(20000) });
         const again = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
         ok(again === want, `llm ${what}: “${label}” copies the same text again after the clipboard was overwritten (round ${round})`);
+        await folded2();
       }
     };
     // ---------------------------------------------------------------- 5c. 修正…：① 直してほしいこと・開いているメモ（comments.json）が修正依頼に入る。直すことがなければそう言う
@@ -458,6 +490,7 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
       'llm revise: “Next” folds step 1 to its answer and opens step 2');
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent), null, { timeout: scaled(20000) });
+    await folded2();
     const rev = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
     ok(rev.includes('## What I want changed\n\nMake the second slide shorter') && rev.includes('## Open notes (comments)') && rev.includes('“3 か月”: Use a bar chart here') && !rev.includes('Already done') && rev.includes('````deck.html') && /\b1 comment\b(?!s)/.test(await p.textContent('#paste-copied')),
       'llm revise: the fix request has what to change, the open notes (not resolved ones) and the current files');
@@ -485,6 +518,8 @@ async function testReplace({ ctx, BASE, ok, watch, bdeck, bnarr, shotDir }) {
     await clickShows(p, '#paste-next-1', '#paste-copy-guide');
     await p.click('#paste-copy-guide');
     await p.waitForFunction(() => /^Copied/.test(document.getElementById('paste-copied').textContent));
+    ok((await p.textContent('#paste-copy-guide')) === '✓ Copied' && (await p.getAttribute('#paste-step2-btn', 'aria-current')) === 'step', 'llm insert: right after copying, the button says “✓ Copied” and step 2 is still open (handoff #110)');
+    await folded2();
     const insReq = (await p.evaluate(() => navigator.clipboard.readText().catch(() => ''))).replace(/\r\n/g, '\n');
     const other = (i) => D3.match(new RegExp(`<section class="slide[^"]*" id="${ids3[i]}">[\\s\\S]*?</section>`))[0];
     ok(insReq.startsWith('# Please add slides') && insReq.includes(`the next 2 slides, after slide 1, “${heads3[0]}”`) && insReq.includes('- What to add: one worked example') && heads3.every((h, i) => insReq.includes(`${i + 1}. ${h}`))

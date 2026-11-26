@@ -99,9 +99,15 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
       await setWindow(f1, new Date(t1.getTime() + 30 * 60e3));
       const str2 = await page.inputValue('#live-setup');
       ok(str2 !== str && parseLiveSetupString(str2).key === key, 'one-way: the string follows the live time (same ids)');
+      const w0 = await page.$eval('#live-setup-copy', (b) => b.getBoundingClientRect().width);
       await page.click('#live-setup-copy');
       await page.waitForFunction(() => window.__copied !== null, null, { timeout: scaled(3000) }).catch(() => {});
       ok(await page.evaluate(() => window.__copied) === str2 && /文字列をコピーしました/.test(await page.textContent('#toast')), 'one-way: Copy puts exactly the string on the clipboard');
+      // ボタン自体にも「✓ コピーしました」を約 2 秒出して戻す。「文字列をコピー」より長い字でも幅は替えない（handoff #110）
+      const wb = await page.$eval('#live-setup-copy', (b) => ({ text: b.textContent, w: b.getBoundingClientRect().width, live: b.getAttribute('aria-live') }));
+      ok(wb.text === '✓ コピーしました' && Math.abs(wb.w - w0) < 0.5 && wb.live === null, `one-way: the Copy button says “✓ コピーしました” at the same width, without aria-live (${w0} → ${JSON.stringify(wb)})`);
+      await page.waitForFunction(() => document.getElementById('live-setup-copy').textContent === '文字列をコピー', null, { timeout: scaled(5000) }).catch(() => {});
+      ok((await page.textContent('#live-setup-copy')) === '文字列をコピー' && Math.abs((await page.$eval('#live-setup-copy', (b) => b.getBoundingClientRect().width)) - w0) < 0.5, 'one-way: after about 2 s the Copy button says “文字列をコピー” again, at the same width');
       // 設定の文字列を保存する：小さな .txt のダウンロード（中身は文字列だけ）
       ok(/この文字列でライブが作られます。ホスト用リンクと同じように大事に扱い、参加者には決して渡さないでください/.test(await page.textContent('#live-setup-warn')), 'one-way: a one-line warning next to the string (keep it like the host link, never give it to participants)');
       ok(/貼る前に.*閉じると.*誰も作れないライブを指したままになります/.test(await page.textContent('#live-setup-lost')), 'one-way: the panel says that closing before pasting leaves handed-out files pointing at a Live nobody can create, unless the string was saved');
@@ -205,6 +211,14 @@ export async function testAppLive({ page, ctx, BASE, ok, opfs, menuClick, frame,
     await page.click('#live-copy');
     await page.waitForFunction(() => window.__copied !== null, null, { timeout: scaled(3000) }).catch(() => {});
     { const c = JSON.parse((await page.evaluate(() => window.__copied)) || '{}'); ok(c[step] && c[step][0].label === label && c[step][0].id === 'p1', 'copy activities JSON: the copied text carries the labels'); }
+    ok((await page.textContent('#live-copy')) === '✓ コピーしました', 'copy activities JSON: the button says “✓ コピーしました” (handoff #110)');
+    // 写せないとき（クリップボードが断る）：知らせだけで、ボタンの字は替えない
+    await page.waitForFunction(() => document.getElementById('live-copy').textContent === '投票の設定をコピー', null, { timeout: scaled(5000) }).catch(() => {});
+    await page.evaluate(() => { Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new DOMException('denied', 'NotAllowedError'); } } }); });
+    await page.click('#live-copy');
+    await page.waitForTimeout(200);
+    ok((await page.textContent('#live-copy')) === '投票の設定をコピー', 'copy activities JSON: when the clipboard refuses, the button keeps “投票の設定をコピー”');
+    await page.evaluate(() => { window.__copied = null; Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (t) => { window.__copied = t; } } }); });
     await shot(page, 'live-poll-labels.png');
     // endpoint は https: だけ（ループバックの http: も断る。開発版でない書き出し）
     await page.fill('#live-endpoint', 'http://127.0.0.1:8787');

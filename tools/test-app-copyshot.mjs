@@ -112,6 +112,9 @@ try {
     await page.click('#b-copyshot');
     await page.waitForFunction((t) => document.getElementById('toast').textContent === t, T.done(I + 1), { timeout: scaled(30000) }).catch(() => {});
     ok((await page.textContent('#toast')) === T.done(I + 1), `ja: the notice says it copied (${await page.textContent('#toast')})`);
+    ok((await page.textContent('#b-copyshot')) === '✓ コピーしました', `ja: the button itself says “✓ コピーしました” (handoff #110): ${await page.textContent('#b-copyshot')}`);
+    await page.waitForFunction((t) => document.getElementById('b-copyshot').textContent === t, T.btn, { timeout: scaled(5000) }).catch(() => {});
+    ok((await page.textContent('#b-copyshot')) === T.btn, 'ja: after about 2 s the button has its label again');
     const clip = await page.evaluate(async () => {
       const items = await navigator.clipboard.read();
       const out = { n: items.length, types: items.map((x) => x.types.join(',')) };
@@ -158,6 +161,7 @@ try {
     await page.click('#copyshot-copy');
     await page.waitForFunction((t) => document.getElementById('copyshot-lead').textContent === t, T.copied, { timeout: scaled(10000) }).catch(() => {});
     ok((await page.textContent('#copyshot-lead')) === T.copied, `en: Copy request says it copied (${await page.textContent('#copyshot-lead')})`);
+    ok((await page.textContent('#copyshot-copy')) === '✓ Copied' && (await page.textContent('#b-copyshot')) === T.btn, 'en: Copy request itself says “✓ Copied”; the panel button (no image copied) keeps its label (handoff #110)');
     // Windows のクリップボードは改行を CRLF で返す（テキストの欄は LF）
     const text = (await page.evaluate(() => navigator.clipboard.readText())).replace(/\r\n/g, '\n');
     ok(/^Look at the image of this slide/.test(text) && /^Image: slide 3 “.+” \(id: s-[a-z0-9]+\), at its last step \(step \d+\)$/m.test(text) && text === await page.inputValue('#copyshot-text'),

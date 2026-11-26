@@ -83,6 +83,10 @@ export async function testAppOutline({ browser, BASE, ok, watch, shotDir }) {
     await page.click('#paste-outline-copy');
     await page.waitForFunction(() => (window.__APP_TEST.lastCopy || '').includes('構成案の 1〜6 枚目'));
     c = await copied();
+    // 写せると、ボタン自体に「✓ コピーしました」を約 2 秒出してから元の字に戻る（handoff #110）
+    await page.waitForFunction(() => document.getElementById('paste-outline-copy').textContent === '✓ コピーしました', null, { timeout: scaled(5000) }).catch(() => {});
+    ok((await page.textContent('#paste-outline-copy')) === '✓ コピーしました', 'outline: after copying, 「1〜6 枚目の指示をコピー」 says 「✓ コピーしました」');
+    await page.waitForFunction(() => document.getElementById('paste-outline-copy').textContent === '1〜6 枚目の指示をコピー', null, { timeout: scaled(5000) }).catch(() => {});
     ok((await page.textContent('#paste-outline-copy')) === '1〜6 枚目の指示をコピー' && c.includes('ちょうど 6 枚') && c.includes('| 24 | 見出し 24 | 要点 24 |') && c.includes('<!DOCTYPE html>'), 'outline: 「1〜6 枚目の指示をコピー」 asks for slides 1–6 (a whole deck.html), with the outline');
     await refusedCopy(page, ok, { want: c.replace(/\r\n/g, '\n'), what: 'outline 1〜6', button: '#paste-outline-copy', msg: 'paste-outline-copied', box: 'paste-outline-copy-text', lang: 'ja', shot: shotDir && path.join(shotDir, 'copy-refused-outline.png') });
     await page.evaluate(() => document.getElementById('paste-step-paste').scrollIntoView({ block: 'start' }));

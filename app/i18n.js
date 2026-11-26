@@ -128,6 +128,8 @@ const ja = {
   lookTitle: '保存で見え方が変わるスライド', lookChecking: '保存で見え方が変わるスライドを探しています…', lookLead: '次の保存では、スライドをこのエディタの今のバージョンで再ビルドします。編集していないのに、開いたときのファイルと見え方が違うスライドです（保存はできます）。プレビューで確かめてください。', lookItem: '開いたときのファイルと見え方が違います', lookCapped: (n, all) => `最初の ${n} 枚だけを比べました（全 ${all} 枚）。`,
   checkTitle: '品質チェック', checking: '確認しています…', checkFailed: '確認できませんでした（プレビューが応答しません）',
   checkSummary: (e, w) => `エラー ${e} · 警告 ${w}`, checkRules: (x) => `品質チェックの項目：見た ${x.checked}・当てはまらない ${x.excused}・ここでは確認しない ${x.skipped}・落ちた ${x.failed}（${x.total} のうち）`, checkNote: (fix, any) => `ブラウザ版の品質チェックです（大きさ・長さ・数式・台本・リンク・色の差など）。${any ? `エラーがあれば、下の「${fix}」を使って AI で修正できます。` : `エラーがあると、ここに「${fix}」のボタンが表示され、AI で修正できます。`}`,
+  // コピーのボタン自体に出す結果（約 2 秒。app/copy-button.js の copied。handoff #110）
+  copiedButton: '✓ コピーしました',
   // 品質チェックの「スライドの画像と確認の依頼をコピー」（app/main.js の copyShot）
   copyShot: 'スライドの画像と確認の依頼をコピー',
   copyShotHint: '表示中のスライドを最後のステップまで進めた画像と、図と結論の行が合っているかの確認を依頼する文をコピーします。対話型の生成 AI（ChatGPT・Gemini・Claude など）に貼り付けてください（Studio からはどこにもアップロードしません）',
@@ -663,6 +665,8 @@ const en = {
   lookTitle: 'Slides that will look different after saving', lookChecking: 'Looking for slides that will look different after saving…', lookLead: 'The next save rebuilds the slides with this version of the editor. These slides were not edited, but they look different from the file as it was opened (you can still save). Check them in the preview.', lookItem: 'Looks different from the file as it was opened', lookCapped: (n, all) => `Only the first ${plural(n, 'slide')} were compared (of ${all}).`,
   checkTitle: 'Quality check', checking: 'Checking…', checkFailed: 'Could not run the quality check (the preview did not answer)',
   checkSummary: (e, w) => `${e} ${plural(e, 'error')} · ${w} ${plural(w, 'warning')}`, checkRules: (x) => `Quality check items: ${x.checked} done · ${x.excused} not applicable · ${x.skipped} not run here · ${x.failed} failed (of ${x.total})`, checkNote: (fix, any) => `The browser quality checker (size, length, math, script, links, color contrast and more). ${any ? `If there are errors, press “${fix}” below to have your AI fix them.` : `If there are errors, a “${fix}” button appears here, so your AI can fix them.`}`,
+  // shown on a copy button itself for about 2 s (copied in app/copy-button.js; handoff #110)
+  copiedButton: '✓ Copied',
   // the quality check's "Copy slide image and check request" (copyShot in app/main.js)
   copyShot: 'Copy slide image and check request',
   copyShotHint: 'Copies a picture of the current slide at its last step, with a request asking an AI chatbot to check that the figure agrees with the conclusion line. Paste it into an AI chatbot such as ChatGPT, Gemini or Claude (the image and text are not uploaded anywhere by Studio).',
