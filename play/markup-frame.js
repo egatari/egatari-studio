@@ -666,7 +666,7 @@
   }, true);
 
   // ---------------------------------------------------------------- the book appearing, or being rebuilt
-  var said = null, moTimer = 0;
+  var said = null, saidSlides = null, moTimer = 0;
   function look() {
     var a = document.getElementById("egatari-article");
     if (a !== S.article) {
@@ -684,6 +684,10 @@
     var lay = document.documentElement.getAttribute("data-deck-layout");
     var has = !!a && !!(a.textContent || "").trim(), shown = !lay || lay === "book" || lay === "split", slides = !!document.getElementById("stage");
     var now = supported + ":" + has + ":" + shown + ":" + slides;
+    // the slides (key, first heading), once and when they change: the page's list when the player gives it no timeline
+    var sk = Array.prototype.map.call(document.querySelectorAll("#stage > .slide"), function (el) { var hd = el.querySelector("h1,h2,h3"); return { k: keyOf(el), t: hd ? (hd.textContent || "").replace(/\s+/g, " ").trim().slice(0, 300) : "" }; });
+    var skS = JSON.stringify(sk);
+    if (skS !== saidSlides && sk.length <= 5000) { saidSlides = skS; post({ egaViewer: "slides", list: sk }); }
     if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: has, shown: shown, slides: slides }); }
   }
   function start() {

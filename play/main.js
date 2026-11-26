@@ -333,8 +333,10 @@ const INK = { on: false, ui: null };
 const NOTE = { view: false, byInk: false, ed: null, bg: [255, 255, 255], narrow: false };
 const NARROW = 600, NOTE_FONT = 26;
 const inkDoc = () => (S.playing.docId ? 'doc:' + S.playing.docId : 'file:' + S.playing.fileSha);
-function slideTitle(key) { const P = S.playing, t = P && P.timeline ? P.timeline.find((x) => x.s === key) : null; return t ? t.title : ''; }
-function slideNo(key) { const P = S.playing; if (!P || !P.timeline) return 0; const seen = []; for (const x of P.timeline) { if (!seen.includes(x.s)) seen.push(x.s); if (x.s === key) return seen.length; } return 0; }
+// the slides: the player's timeline (ready), or, when the player gave none, the list the markup script finds in the frame
+const slideKeys = () => { const P = S.playing; if (P && P.timeline && P.timeline.length) return [...new Set(P.timeline.map((x) => x.s))]; return M ? M.frameSlides().map((x) => x.key) : []; };
+function slideTitle(key) { const P = S.playing, t = P && P.timeline ? P.timeline.find((x) => x.s === key) : null; if (t) return t.title; const f = M ? M.frameSlides().find((x) => x.key === key) : null; return f ? f.title : ''; }
+function slideNo(key) { return slideKeys().indexOf(key) + 1; }
 function slideLabel(key) { const n = slideNo(key), t = slideTitle(key); return W().nSlideLabel(n, t); }
 function inkPage(slideKey) {
   if (!NOTE.view) return;
@@ -471,7 +473,7 @@ function saveFile(name, type, text) {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
   $('x-status').textContent = W().xSaved(name);
 }
-const slideList = () => { const P = S.playing; return P && P.timeline ? [...new Set(P.timeline.map((x) => x.s))].map((k) => ({ key: k, name: W().nSlideName(slideNo(k), slideTitle(k)) })) : []; };
+const slideList = () => slideKeys().map((k, i) => ({ key: k, name: W().nSlideName(i + 1, slideTitle(k)) }));
 async function exportAs(kind) {
   const st = M && M.state(), rec = st && st.record, P = S.playing;
   if (!rec || !P) return;
@@ -507,12 +509,13 @@ async function importFile(file) {
 //   A ('stack'): that one frame, the slides one under another, one A4 page apart; the page lays its memo areas over it
 //   B ('snap'): that frame makes a still copy of each slide; the page checks it and shows it in a frame with sandbox="" (no scripts)
 const PR = { W: 1280, H: 720, GAP: 12, MEMO: 468, FONT: 26, K: 0.549, PAGE: '273mm' };   // A4 portrait, 12 mm margins: 186 × 273 mm
-const PRINT = { frame: null, root: null, mode: '', data: null, timer: 0 };
+const PRINT = { frame: null, root: null, mode: '', data: null, timer: 0, title: '' };
 function endPrint(msg) {
   clearTimeout(PRINT.timer);
   if (PRINT.root) { PRINT.root.remove(); PRINT.root = null; }
   PRINT.frame = null; PRINT.data = null; PRINT.mode = '';
   document.documentElement.classList.remove('printing');
+  if (PRINT.title) { document.title = PRINT.title; PRINT.title = ''; }
   if (msg) $('x-status').textContent = msg;
 }
 const INKC = { k: '#1f1f1f', r: '#d22a3a', b: '#1f5fbf' };
@@ -585,6 +588,8 @@ async function printNow() {
   if (!PRINT.root) return;
   if ($('m-export').open) $('m-export').close();
   document.documentElement.classList.add('printing');
+  // the PDF is named after the page's title (Safari and Chrome): 「（題名）のメモ（日付）」 while printing, the page's own after
+  PRINT.title = document.title; document.title = PRINT.data.title;
   clearTimeout(PRINT.timer);
   window.addEventListener('afterprint', () => endPrint(W().pDone), { once: true });
   try { window.print(); } catch { endPrint(W().pFailed); }
@@ -607,7 +612,7 @@ async function printNotes(mode) {
   f.setAttribute('sandbox', 'allow-scripts');
   f.setAttribute('referrerpolicy', 'no-referrer'); f.tabIndex = -1;
   f.className = 'print-frame';
-  PRINT.root = root; PRINT.frame = f; PRINT.mode = mode === 'snap' ? 'snap' : 'stack'; PRINT.data = { pages, sections };
+  PRINT.root = root; PRINT.frame = f; PRINT.mode = mode === 'snap' ? 'snap' : 'stack'; PRINT.data = { pages, sections, title: fileName(P.title, 'pdf', new Date(), W()).replace(/\.pdf$/, '') };
   if (PRINT.mode === 'stack') {
     // A: the frame under the blocks, as tall as all the pages
     const stack = document.createElement('div'); stack.className = 'pr-stack';
@@ -615,8 +620,7 @@ async function printNotes(mode) {
     stack.appendChild(f);
     pages.forEach((pg, i) => { const b = printBlock(pg); b.style.top = `calc(${PR.PAGE} * ${i})`; stack.appendChild(b); });
     stack.style.height = `calc(${PR.PAGE} * ${pages.length} - 2px)`;   // a hair under the pages, so no empty page follows
-    if (!pages.length) f.style.display = 'none';
-    root.appendChild(stack);
+    if (pages.length) root.appendChild(stack);   // none: only the notes on sections print, from the first page
   } else {
     // B: the frame only makes the copies; it stays off the printed page
     f.classList.add('pr-maker');
@@ -796,7 +800,7 @@ const M = framed ? null : markup({
     confirm: $('m-confirm'), confirmText: $('m-confirm-t'), confirmNo: $('b-mconfirm-no'), confirmYes: $('b-mconfirm-yes'), announce: (t) => announce(t) },
   onPersist: () => maybeRequestPersist(),
   onQuote: (at, block) => onQuote(at, block),
-  slides: () => { const P = S.playing; return P && P.timeline ? [...new Set(P.timeline.map((x) => x.s))] : []; },
+  slides: () => slideKeys(),
   slideName: (k) => { const n = slideNo(k), t = slideTitle(k); return n ? W().nSlideName(n, t) : k; },
   onGo: (q) => goQuote(q),
   onOpenNote: (at) => openNote(at),

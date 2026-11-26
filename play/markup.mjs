@@ -177,6 +177,11 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
     const H = L.rec ? L.rec.highlights : [];
     const find = (id) => H.find((h) => h.id === id);
     switch (m.egaViewer) {
+      // the slides of the file as its frame finds them (key and first heading): used when the player's ready gave no timeline
+      case 'markup-slides':
+        if (!keys(m, ['egaViewer', 'list']) || !Array.isArray(m.list) || m.list.length > 5000) break;
+        L.slides = m.list.filter((x) => x && typeof x === 'object' && isStr(x.k, 200) && x.k && isStr(x.t, 300)).map((x) => ({ key: x.k, title: x.t }));
+        break;
       case 'markup-hello':
         if (!keys(m, ['egaViewer', 'supported', 'article', 'shown', 'slides']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean' || typeof m.slides !== 'boolean') break;
         // the button is there when the lesson has text to mark: a book, or slides (handoff #107: highlights and quotes on a slide's
@@ -255,7 +260,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
   // ---------------------------------------------------------------- opening and closing a lesson
   async function open({ frame, docId, sourceSha256 = '', fileSha = Promise.resolve(''), shared = false }) {
     close();
-    Object.assign(L, { frame, docId: String(docId || ''), sourceSha256: String(sourceSha256 || ''), fileSha: Promise.resolve(fileSha).catch(() => ''), shared, loaded: false, missing: [], sections: {} });
+    Object.assign(L, { frame, docId: String(docId || ''), sourceSha256: String(sourceSha256 || ''), fileSha: Promise.resolve(fileSha).catch(() => ''), shared, loaded: false, missing: [], sections: {}, slides: [] });
     // the record's key: the lesson's docId, or for a file with none the SHA-256 of its bytes ("file:…", as for handwriting)
     L.key = L.docId || '';
     if (!L.key) { const h = await L.fileSha; if (L.frame !== frame) return; L.key = h ? 'file:' + h : ''; }
@@ -465,6 +470,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, 
   init();
   return {
     open, close, message, toggle, ask, getNote, setNote, goQuote, noteHere,
+    frameSlides: () => (L.slides || []).slice(),
     // an exchange file read in (play/notes-export.mjs readExchange: already checked): merged into this lesson's record
     importRecord({ highlights, notes }) {
       if (!L.rec) return null;

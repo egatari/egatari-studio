@@ -333,6 +333,7 @@ let BACKUP = '';
   const pf = await framed;
   ok(await printed(1), 'A: the page prints once');
   ok(await p.evaluate(() => { const f = document.querySelector('#print-root iframe.print-frame'); return !!f && f.getAttribute('sandbox') === 'allow-scripts' && document.documentElement.classList.contains('printing') && !document.getElementById('m-export').open; }), 'A: the slides frame is allow-scripts only; the export dialog closed for printing');
+  ok(await p.evaluate(() => /^勾配降下法の基本のメモ（\d{4}-\d\d-\d\d）$/.test(document.title)), 'while printing, the page is titled for the PDF\'s name: ' + await p.evaluate(() => document.title));
   ok((await sandboxes()).every((x) => x === 'allow-scripts' || x === ''), 'no frame has more than allow-scripts ' + JSON.stringify(await sandboxes()));
   ok(await p.evaluate(() => document.getElementById('lesson').getAttribute('sandbox') === 'allow-scripts'), 'the playing frame keeps allow-scripts only');
   const pa = await p.evaluate(() => ({ blocks: document.querySelectorAll('#print-root .pr-stack > .pr-block').length, text: [...document.querySelectorAll('#print-root .pr-memo')].map((a) => a.textContent).join('|'),
@@ -344,6 +345,7 @@ let BACKUP = '';
   await printShot('notes-print-a');
   await p.evaluate(() => window.dispatchEvent(new Event('afterprint')));
   ok(await until(() => p.evaluate(() => !document.getElementById('print-root') && !document.documentElement.classList.contains('printing'))), 'A: removed after printing');
+  ok(await p.evaluate(() => !/のメモ（/.test(document.title)), 'and the page has its own title again: ' + await p.evaluate(() => document.title));
   // B: still copies of the slides in frames without scripts
   await p.click('#b-mexport'); await p.click('#b-x-pdf2');
   ok(await printed(2), 'B: the page prints once');
