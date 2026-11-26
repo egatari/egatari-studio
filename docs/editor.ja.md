@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.md sha256=95fe79ed265b2a4a -->
+<!-- i18n: pair=editor.md sha256=9304cc7d575ac7a9 -->
 # 編集アプリ（インストール不要）
 
 [English](editor.md) | 日本語
@@ -286,10 +286,10 @@ Egatari ファイルを編集している間、保存していない変更をこ
 
 ## パーツを頼む
 
-**こんなパーツが欲しい…**（最初の画面の **パーツの一覧** の隣の小さいボタンと、**新規作成…** の ④ のパーツの一覧の下）で、一覧にないパーツを、GitHub のアカウントなしで Egatari の開発者に頼める（handoff Issue #35）。窓の欄は 3 つ：**見せたいもの**（必須。2000 字まで）、**分野** と **学年・対象**（任意。それぞれ 60 字まで）。絵や写真は送れない（窓に「言葉で書いてください」と出す）。何をどこへ送るかを 1 つの段落で示す：書いた文字だけを、GitHub のリポジトリ [egatari/components](https://github.com/egatari/components/issues) の公開の Issue（ラベル `request`）として載せる。教材の中身・名前・メールアドレスは含めない。**送る** の前に、窓の中の枠で Cloudflare Turnstile の確認をする。送ると、できた Issue へのリンクを出す。開発者はそこに返事を書く（サインインしなくても誰でも読める）。
+**こんなパーツが欲しい…**（スタート画面の **パーツの一覧** の隣の小さいボタンと、**新規作成…** の ④ のパーツの一覧の下）で、一覧にないパーツを、GitHub のアカウントなしで Egatari の開発者に頼める（v0.6.21 から。handoff Issue #35）。窓の欄は 3 つ：**見せたいもの**（必須。2000 字まで）、**分野** と **学年・対象**（任意。それぞれ 60 字まで）。絵や写真は送れない（窓に「言葉で書いてください」と出す）。何をどこへ送るかを 1 つの段落で示す：書いた文字だけを、GitHub のリポジトリ [egatari/components](https://github.com/egatari/components/issues) の公開の Issue（ラベル `request`）として載せる。教材の中身・名前・メールアドレスは含めない。Issue の作成者の表示は Egatari の開発者の GitHub のアカウントで、送った人の名前は出ない。**送る** の前に、窓の中の枠で Cloudflare Turnstile の確認をする。送ると、できた Issue へのリンクを出す。開発者はそこに返事を書く（サインインしなくても誰でも読める）。
 
 - **作り。** 枠は中継（`relay/`。Cloudflare Worker：[relay/README.md](../relay/README.md)）のページで、iframe に出す。Turnstile のスクリプトと中継への送信はその枠の中（中継の origin）だけで動き、編集アプリのページは他所のスクリプトを読み込まず、`connect-src 'self'` のまま。CSP で中継を名指すのは `frame-src` だけ。編集アプリと枠は `postMessage` でやりとりし、どちらも相手の origin を確かめる（`app/part-request.js`・`relay/src/widget.js`）。中継は文字をもう一度検査し、Turnstile の答えを確かめてから、egatari/components の Issue の読み書きだけができるトークンで Issue を作る。何も保存せず、ログも残さない。
-- **中継を置く前。** 中継の場所は `app/part-request.js` の定数 `PART_REQUEST_RELAY` の 1 か所で、置くまでは空。`app/index.html` の CSP の `frame-src` も同じ origin にする（`tools/test-relay.mjs` が照らす）。空のあいだと、オフライン版のエディタ（ローカルで開いたページでは枠を使えない）ではいつも、窓は「まだ準備中」（オフライン版のエディタでは「ここからは送れない」）と出し、GitHub のアカウントがある人のために [egatari/components の Issue の選び場所](https://github.com/egatari/components/issues/new/choose) へのリンクを出す。書き込み済みの GitHub の様式を開く方法は取らない。egatari/components は Issue の様式からしか受け付けず（空の Issue は切ってある）、パーツの提案の様式は教員が埋めにくい項目を求めるため。
+- **中継の場所。** `app/part-request.js` の定数 `PART_REQUEST_RELAY` の 1 か所で、`https://request.egatari.org`。`app/index.html` の CSP の `frame-src` はこの origin だけ（`tools/test-relay.mjs` が照らす）。中継の枠のページは、`parent` が許す Studio の origin（本番は `https://studio.egatari.org` だけ。`relay/wrangler.production.toml` の `STUDIO_ORIGINS`）のときだけ出るので、ほかの場所に置いた Studio（手元のサーバーなど）では枠が読み込めず、しばらくして「確認の枠を読み込めませんでした」と出る。オフライン版のエディタ（ローカルで開いたページでは枠を使えない）ではいつも、定数を空にしたとき（中継を止めるとき。`frame-src` も `'none'` に戻す）も、窓は「ここからは送れない」（空のときは「まだ準備中」）と出し、GitHub のアカウントがある人のために [egatari/components の Issue の選び場所](https://github.com/egatari/components/issues/new/choose) へのリンクを出す。書き込み済みの GitHub の様式を開く方法は取らない。egatari/components は Issue の様式からしか受け付けず（空の Issue は切ってある）、パーツの提案の様式は教員が埋めにくい項目を求めるため。
 
 ## 書き換えるファイル
 
