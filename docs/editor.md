@@ -1,4 +1,4 @@
-<!-- i18n: pair=editor.ja.md sha256=ec64bae2e971ba3f -->
+<!-- i18n: pair=editor.ja.md sha256=5b6318452c8a7859 -->
 # Editor app (no install)
 
 English | [日本語](editor.ja.md)
@@ -228,6 +228,13 @@ The editor cannot know who is editing, so the first time you save changes to a f
 - **No, I’m changing someone else’s file**: type a name (such as your school) and, optionally, what you changed. The save adds an entry to `metadata.edits`, and the player's **File info** shows it after the creators: “Edited by: name (what you changed)”. When an entry with the same name is already there, only its note is replaced. When the license asks you to indicate changes (every Creative Commons 4.0 license, such as CC BY 4.0) and you leave the name empty, an entry without a name is added and shows “Edited from the original file”.
 
 The answer is remembered on this device for that file (its `docId`, in the browser's storage, not in the file), so it is asked once. Only the name and note you type go into the file. Files you made in this editor (from the AI's output, or a `deck.html` opened on its own) are not asked about. Saving never removes or changes existing entries of `edits`; **Save as a new file** keeps them. Cancel keeps the changes unsaved.
+
+**The first save of a file with no license (two steps).** Files made in this editor, and files that name no one (no creators, copyright, license, attribution or edit record), are not asked “Did you make this file?”; when they have no license, the first save asks in two steps instead (from v0.6.21, handoff #112: at a teacher training, “CC BY” meant nothing to people, and the question was only a chore for those who did not want a license). Neither step saves until a button is pressed (nothing is chosen silently). Esc cancels the save.
+
+- **Step 1**, “**Once you share this file, may others use and change it?**”, names no license. **Yes** and **No, just save** (the primary button: saves without a license, all rights reserved). Below, small, “You can change this later in File info…” and a checkbox **Don’t show this again** (not asked for any file on this device; **Show it again** under “License question” in the help (**?**) turns it back on. That section appears only while it is off).
+- **Step 2**, “**Choose the conditions for use**”, with “Whichever you choose, your name is shown under “Created by”.” under the title. The conditions are in words, with the license name small after each: “No conditions (CC BY 4.0)” (chosen at first), “Changed copies must be shared on the same conditions (CC BY-SA 4.0)” and “Not for commercial use (CC BY-NC 4.0)”. One field, “**Name to show (your school is fine)**”; **Save** stays disabled until it is filled (it starts with the creator when exactly one is named). Saving writes the license, the name as the creator and “© year name” as the copyright notice (an existing notice is kept). Small, “You can change this later in File info…” and a link **About licenses** to Creative Commons' explanation. Buttons: **Back** (to step 1) and **Save**.
+
+That it was asked is remembered on this device per file (`docId`), so the same file is not asked again (working folders are not asked).
 
 Saving without rebuilding (rewriting only script, audio and timing) keeps the file's player. The edit record is shown from Egatari Player 1.9.0 on (`EDITS_SHOWN_SINCE` in `kit/core/player.mjs`), so when such a save adds an edit record to a file with an earlier player (or another player), the editor says **“The player of this Egatari file is old: the edit record is saved in the file, but it is not shown when the file is played.”** and names the file's player and its version:
 
