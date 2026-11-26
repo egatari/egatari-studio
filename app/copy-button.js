@@ -28,12 +28,20 @@ export function copyButton(btn) {
   // 押したらまず元の字に戻す：写せなかったとき（copied を呼ばない）に、前に写せたときの「✓ コピーしました」を残さない（規格化 11/27）
   btn.addEventListener('click', () => restore(btn), { capture: true });
   if (typeof ResizeObserver !== 'function') return btn;
-  const ro = new ResizeObserver(() => {
-    if (btn.dataset.copyWidth) { ro.disconnect(); return; }
-    if (btn.dataset.copyLabel != null) return;   // 「✓ コピーしました」を出している間は測らない
+  // 字体を読み込んでいる間に測ったら、読み終えてから測り直す（代わりの字体で測ると、後で字が広くなり幅が替わる。macOS の CI 45899862481）。
+  // 和文の字体は字の範囲ごとに読むので、「✓ コピーしました」に替えて測ったときに初めて読み始めることもある
+  const measure = () => {
+    if (btn.dataset.copyWidth || btn.dataset.copyLabel != null) return;   // 測った後・「✓ コピーしました」を出している間は測らない
     holdWidth(btn, btn.textContent, DONE);
-    if (btn.dataset.copyWidth) ro.disconnect();
-  });
+    if (!btn.dataset.copyWidth) return;
+    if (document.fonts && document.fonts.status === 'loading') {
+      delete btn.dataset.copyWidth; btn.style.minWidth = '';
+      document.fonts.ready.then(measure);
+      return;
+    }
+    ro.disconnect();
+  };
+  const ro = new ResizeObserver(() => { if (btn.dataset.copyWidth) ro.disconnect(); else measure(); });
   ro.observe(btn);
   return btn;
 }
