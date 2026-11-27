@@ -14,7 +14,7 @@
     "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
   },
   "devDependencies": {
-    "wrangler": "4.151.1"
+    "wrangler": "4.165.0"
   },
   "overrides": {
     "undici": "7.30.1"
