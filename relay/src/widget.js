@@ -26,7 +26,7 @@ export function widgetHtml({ sitekey, lang }) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
-<title>${ja ? '送る前の確認' : 'Check before sending'}</title>
+<title>${ja ? '送信前の確認' : 'Check before sending'}</title>
 <link rel="stylesheet" href="/widget.css">
 </head>
 <body>
@@ -98,4 +98,8 @@ function widgetMain(MSG, DUMMY, ACTION, API) {
 }
 
 export const TURNSTILE_API = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-export const WIDGET_JS = `(${widgetMain})(${[MSG_TYPE, DUMMY_TOKEN, TURNSTILE_ACTION, TURNSTILE_API].map((v) => JSON.stringify(v)).join(', ')});\n`;
+// Wrangler bundles with esbuild's keepNames, which wraps the arrow functions inside widgetMain in __name(…); its source
+// then calls a helper the page does not have (the first const threw a ReferenceError and the widget never said ready,
+// handoff #35). keep_names = false in both wrangler configs stops the wrapping; the page also defines __name as a
+// no-op, so the source works whatever the bundler does.
+export const WIDGET_JS = `var __name = (f) => f;\n(${widgetMain})(${[MSG_TYPE, DUMMY_TOKEN, TURNSTILE_ACTION, TURNSTILE_API].map((v) => JSON.stringify(v)).join(', ')});\n`;

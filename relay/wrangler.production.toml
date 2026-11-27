@@ -4,6 +4,8 @@
 name = "egatari-part-request"
 main = "src/index.js"
 compatibility_date = "2026-08-01"
+# No __name(…) wrappers from esbuild: the widget's script is a function's source served as text (src/widget.js)
+keep_names = false
 # account_id is passed at deploy time (CLOUDFLARE_ACCOUNT_ID=…), not committed.
 workers_dev = false
 

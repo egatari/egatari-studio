@@ -167,7 +167,7 @@ const errOf = async (res) => { try { return (await res.json()).error; } catch { 
   ok(js.status === 200 && /javascript/.test(js.headers.get('content-type')), '/widget.js is served as JavaScript');
   let parsed = true;
   try { new vm.Script(src); } catch { parsed = false; }
-  ok(parsed && src === WIDGET_JS && src.includes("'/api/request'") && src.includes('render=explicit'), '/widget.js parses and posts to /api/request; Turnstile rendered explicitly');
+  ok(parsed && src === WIDGET_JS && src.startsWith('var __name = (f) => f;\n') && src.includes("'/api/request'") && src.includes('render=explicit'), '/widget.js parses and posts to /api/request; Turnstile rendered explicitly');
   ok(widgetCsp({ STUDIO_ORIGINS: '' }).endsWith("frame-ancestors 'none'"), 'no Studio origins configured: nobody may frame the widget');
   ok(!widgetHtml({ sitekey: '', lang: 'en' }).includes('challenges.cloudflare.com'), 'without a site key the page loads nothing from Cloudflare (development)');
   ok((await worker.fetch(new Request(ORIGIN + '/nope'), env)).status === 404 && (await (await worker.fetch(new Request(ORIGIN + '/api/health'), env)).json()).ok === true, '404 elsewhere; /api/health');
@@ -179,6 +179,7 @@ const errOf = async (res) => { try { return (await res.json()).error; } catch { 
   const prod = fs.readFileSync(path.join(DIR, 'wrangler.production.toml'), 'utf8');
   for (const [n, t] of [['wrangler.toml', dev], ['wrangler.production.toml', prod]]) {
     ok(/\[observability\]\s*\nenabled = false/.test(t), `${n}: observability (request logs) off`);
+    ok(/^keep_names = false$/m.test(t), `${n}: keep_names = false (the widget's script is served from a function's source)`);
     ok(/name = "REQUEST_LIMITER"/.test(t) && /GITHUB_REPO = "egatari\/components"/.test(t) && /ISSUE_LABEL = "request"/.test(t), `${n}: rate limiter, repository and label`);
     ok(!/^\s*(GITHUB_TOKEN|TURNSTILE_SECRET)\s*=/m.test(t) && !/ghp_|github_pat_/.test(t), `${n}: no secret in the config`);
   }

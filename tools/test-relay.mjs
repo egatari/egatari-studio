@@ -5,9 +5,15 @@
 // 2. 編集アプリ：中継の場所（PART_REQUEST_RELAY）と app/index.html の CSP の frame-src が合うこと（空なら 'none'）。connect-src は 'self' のまま
 //    Studio の origin（PART_REQUEST_ORIGINS）が relay/wrangler.production.toml の STUDIO_ORIGINS と同じこと
 // 3. 窓の言葉（ja・en の組）・送信できるかの判定（中継なし・オフライン版のエディタ・ほかの origin）・枠の URL・誤りの言葉
+// 4. 組んだ後の中継：esbuild の keepNames（wrangler の既定）で組んだ Worker の /widget.js を偽の DOM で動かし、親に ready を送る（handoff #35：
+//    本番の widget.js が定義のない __name(…) を呼んで最初の const で止まり、窓が「確認の枠を読み込めませんでした」になった）
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import vm from 'node:vm';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
+import * as esbuild from 'esbuild';
 import { fileURLToPath } from 'node:url';
 import { PART_REQUEST_RELAY, PART_REQUEST_ORIGINS, PROPOSAL_URL, STR, availability, relayOrigin, widgetUrl, errorText } from '../app/part-request.js';
 
@@ -49,6 +55,33 @@ ok(availability('https://request.egatari.org', { protocol: 'file:', origin: 'nul
 ok(widgetUrl('https://request.egatari.org/', 'https://studio.egatari.org', 'ja') === 'https://request.egatari.org/widget?parent=https%3A%2F%2Fstudio.egatari.org&lang=ja', 'the frame\'s address names the parent origin and the language');
 ok(PROPOSAL_URL === 'https://github.com/egatari/components/issues/new/choose', 'the GitHub way: the components issue chooser');
 ok(errorText('rate_limited', STR.ja) === STR.ja.errRate && errorText('turnstile_failed', STR.en) === STR.en.errCheck && errorText('unknown_field', STR.ja) === STR.ja.errInput && errorText('github_failed', STR.ja) === STR.ja.errFail && errorText(undefined, STR.en) === STR.en.errFail, 'relay error codes map to the dialog\'s words');
+
+// 4. 組んだ後の中継の /widget.js
+for (const keepNames of [true, false]) {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'relay-bundle-'));
+  try {
+    const out = path.join(tmp, 'worker.mjs');
+    await esbuild.build({ entryPoints: [path.join(ROOT, 'relay', 'src', 'index.js')], bundle: true, format: 'esm', platform: 'neutral', keepNames, outfile: out, logLevel: 'silent' });
+    const worker = (await import(pathToFileURL(out).href)).default;
+    const env = { PUBLIC_ORIGIN: 'https://request.egatari.org', STUDIO_ORIGINS: 'https://studio.egatari.org', GITHUB_REPO: 'egatari/components', ISSUE_LABEL: 'request', TURNSTILE_SITEKEY: '', TURNSTILE_SECRET: 'x', GITHUB_TOKEN: 'x', REQUEST_LIMITER: { async limit() { return { success: true }; } } };
+    const src = await (await worker.fetch(new Request('https://request.egatari.org/widget.js'), env)).text();
+    // 枠のページ（ページの中、親は Studio）。Turnstile のない開発の形：サイトキーなし
+    const posted = [];
+    const parentWin = { postMessage: (m, origin) => posted.push({ m, origin }) };
+    const box = { getAttribute: (n) => (n === 'data-sitekey' ? '' : null) };
+    const win = { parent: parentWin, addEventListener() {} };
+    const ctx = vm.createContext({
+      window: win, location: { search: '?parent=' + encodeURIComponent('https://studio.egatari.org') }, URLSearchParams,
+      document: { getElementById: (id) => (id === 'turnstile' ? box : null), documentElement: { scrollHeight: 120 }, head: { append() {} }, createElement: () => ({}) },
+      ResizeObserver: class { observe() {} },
+    });
+    let err = null;
+    try { vm.runInContext(src, ctx); } catch (e) { err = e; }
+    const ready = posted.find((p) => p.m && p.m.t === 'ready');
+    ok(!err && ready && ready.origin === 'https://studio.egatari.org' && ready.m.check === false,
+      `bundled relay (esbuild keepNames: ${keepNames}): /widget.js runs and posts ready to the Studio (${err ? err.message : posted.map((p) => p.m.t).join(',')})`);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+}
 
 console.log(fails ? `\n${fails} failed` : '\nall passed');
 process.exit(fails ? 1 : 0);
