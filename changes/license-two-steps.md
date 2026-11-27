@@ -1,3 +1,0 @@
-### Changed
-
-- First save of a file with no license (made in Studio, or naming no one): the question now comes in two steps. Step 1 asks, without license names, “Once you share this file, may others use and change it?” with **No, just save** (primary; no license) and **Yes**, plus **Don’t show this again** for this device (turned back on from the help). Step 2 offers two choices in words with the license name small after each (they may change and share it: CC BY 4.0, chosen at first; the same but not for commercial use: CC BY-NC 4.0) and one field, the name to show, written as the creator and as “© year name”. The first-save license list under **Yes, I made it** is now the same two plus no license; CC BY-SA 4.0 and the others stay in File info… (handoff #112)

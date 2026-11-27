@@ -8,6 +8,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.21] - 2026-11-27
+
+### Added
+
+- Editor: **Request a part…** (next to **All parts** on the start screen, and in step 4 of **New…** under the parts sample link) now sends a request: what a creator wants to show, and optionally the subject and grade, becomes a public issue in egatari/components with the label `request`, without a GitHub account. The dialog shows the link to the new issue, where the developers reply (handoff #35)
+  - Only the typed text is sent, through the part-request relay at request.egatari.org (`relay/`, a Cloudflare Worker with Turnstile; see relay/README.md); drawings and photos are not sent. The relay stores nothing and keeps no request logs. The check box is a frame of the relay's page, so the editor page still loads no script from elsewhere and keeps `connect-src 'self'`; its CSP's `frame-src` changes from `'none'` to `https://request.egatari.org`. What is sent and to whom: docs/privacy.md
+  - In the offline editor, and on pages outside studio.egatari.org (where the relay does not serve its check box), the dialog says requests do not work there and links to the components issue page on GitHub, without loading the frame
+
+### Changed
+
+- Parts library 2.23.0 is the default catalogue (no part version changes; README updates only). The `m-predict` description given to the AI now says when to use it: only when the audience really raises hands or guesses, not for asides or answer-only slides (handoff #108, #109). English light instructions for Teaching: 30,988 of 31,000 paste units
+- Copy buttons: every copy button in Studio (New… step 4, step 2 of Insert slide… and Revise…, the outline batch, the resend request, the quality check’s fix request, the slide image and check request with its fallback, and Live’s string and poll settings) now shows “✓ Copied” on itself for about 2 seconds when the copy worked, then its own label again, at the same width (one shared function, `app/copy-button.js`). The longer message about where to paste stays, and only it is announced; when the copy fails and the text box is shown, the label does not change. Steps that fold after a copy (New… step 4, step 2 of Insert slide… and Revise…) now wait about 1 second so the “✓ Copied” is seen first (handoff #110)
+- AI instructions: in the light (free-plan) instructions, `m-predict` (predict, then check) leaves the core four and `m-compare` takes its place (core: `m-bars`, `m-compare`, `m-flow`, `m-menu`). `m-predict` keeps its full description only when New… step 1 is Teaching or “Predict, then check” is ticked in step 4 (New… then ranks it first; otherwise last, so on both plans it is named only unless every part fits, as in the English detailed instructions); in `kit/llm-pack.mjs` it otherwise gets one catalogue line. English standard: 29,853 → 30,183 paste units (30,928 for Teaching); Japanese standard: 38,158 → 39,001 bytes (40,476 for Teaching). Japanese standard + data and + maps now shorten the core four to fit. The make skill proposes `m-predict` only for teaching or training, or when the author wants the audience to predict (handoff #108)
+- `kit/llm-pack.mjs` takes `--category` and `--purposes` (New… steps 1 and 4): `--category teaching` or `--purposes predict` describes `m-predict` in full in the light instructions, as New… does (handoff #108)
+- First save of a file with no license (made in Studio, or naming no one): the question now comes in two steps. Step 1 asks, without license names, “Once you share this file, may others use and change it?” with **No, just save** (primary; no license) and **Yes**, plus **Don’t show this again** for this device (turned back on from the help). Step 2 offers two choices in words with the license name small after each (they may change and share it: CC BY 4.0, chosen at first; the same but not for commercial use: CC BY-NC 4.0) and one field, the name to show, written as the creator and as “© year name”. The first-save license list under **Yes, I made it** is now the same two plus no license; CC BY-SA 4.0 and the others stay in File info… (handoff #112)
+- Start screen: the privacy note now reads "What you make is saved only on this computer. It is never sent to Egatari's servers or anywhere else." and links to the privacy page (**About privacy**), which lists what is sent where. The AI voice explanation left the note, as the audio panel already gives it (handoff #113)
+
+### Fixed
+
+- npm package: `egatari tts` failed because `tools/narration-json.mjs`, which `tts/synth.py` runs to read the script, was not in the package. It is now included, and the package test checks that every `tools/*.mjs` named by the packaged scripts is in the package (handoff #115)
+- Studio: when the preview finished reloading after an edit, it took the keyboard focus from the field being typed in (File info…, the script, search and the like) and from an open dialog, so the next keys went to the slides. It now keeps the focus there; it still moves to the preview after opening a file or pressing a toolbar button, so the arrow keys reach the slides (handoff #112)
+
 ## [0.6.20] - 2026-11-26
 
 ### Added
@@ -1746,7 +1768,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.20...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.21...HEAD
+[0.6.21]: https://github.com/egatari/egatari-studio/compare/v0.6.20...v0.6.21
 [0.6.20]: https://github.com/egatari/egatari-studio/compare/v0.6.19...v0.6.20
 [0.6.19]: https://github.com/egatari/egatari-studio/compare/v0.6.18...v0.6.19
 [0.6.18]: https://github.com/egatari/egatari-studio/compare/v0.6.17...v0.6.18
