@@ -62,12 +62,28 @@ await t('npm pack：bin・kit・字の写し（OFL つき）は入り、試験�
   for (const f of ['bin/egatari.mjs', 'kit/build.mjs', 'kit/vendor/book-tools.mjs', 'kit/check.mjs', 'server/dev.mjs', 'render/render.mjs', 'tts/synth.py', 'tools/new.mjs', 'tools/ids.mjs', 'tools/ids-of.mjs', 'tools/portable.mjs', 'tools/sheet.mjs', 'tools/comment-shots.mjs', 'tools/video.mjs',
     'components.lock.json', 'themes.lock.json', 'kit/player.lock.json', 'LICENSE', 'NOTICE', 'fonts/OFL.txt',
     'fonts/@fontsource/biz-udpgothic/400.css', 'fonts/@fontsource/biz-udpgothic/LICENSE', 'vendor/csl/styles/apa.csl', 'vendor/csl/locales/locales-ja-JP.xml', 'vendor/csl/SOURCE.json', 'fonts/@fontsource/source-sans-3/700-italic.css']) assert.ok(files.has(f), 'missing ' + f);
-  const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|ids-of|portable|sheet|comment-shots|video)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
+  const bad = [...files].filter((f) => /^(tools\/(?!(new|ids|ids-of|portable|sheet|comment-shots|video|narration-json)\.mjs$)|examples\/|dist\/|app\/|colab\/|docs\/|node_modules\/|vendor\/egatari-spec\/fixtures\/|\.github\/)|__pycache__|\.ttf$|\.woff$|(^|\/)out\//.test(f));
   assert.deepEqual(bad, []);
 });
 
 // アイコンの名前の言葉（icons/en.json・ja.json、部品庫 2.3.0 から。合わせて約 580 KB）は編集アプリのアイコンの検索だけが使い、
 // 組み立て・dev・check（CLI）は読まない。リポジトリとサイトには残し、包みからは外す（package.json の files の "!vendor/components/sha256/*/en.json"・ja.json）
+// 包みに入れたファイルが名指す tools/*.mjs は、すべて包みにある（tts/synth.py が呼ぶ tools/narration-json.mjs が抜けていて、egatari tts が失敗した。handoff #115）。
+// 拾うのは tts/*.py・bin/egatari.mjs の中の「tools/….mjs」と、包みの tools/*.mjs の相対の import（'./….mjs'）。試験（tools/test-*.mjs）は説明の中の名前なので除く
+await t('npm pack：tts/*.py・bin/egatari.mjs・包みの tools/*.mjs が名指す tools/*.mjs が、すべて包みにある（handoff #115）', () => {
+  const files = new Set(packed.files.map((f) => f.path));
+  const want = new Set();
+  for (const f of files) {
+    const text = /^(tts\/[^/]+\.py|bin\/egatari\.mjs|tools\/[^/]+\.mjs)$/.test(f) ? fs.readFileSync(path.join(ROOT, f), 'utf8') : null;
+    if (text == null) continue;
+    for (const m of text.matchAll(/tools\/([a-z0-9-]+\.mjs)/g)) want.add(`tools/${m[1]}`);
+    if (f.startsWith('tools/')) for (const m of text.matchAll(/(?:from|import)\s*\(?\s*['"]\.\/([a-z0-9-]+\.mjs)['"]/g)) want.add(`tools/${m[1]}`);
+  }
+  const missing = [...want].filter((f) => !/^tools\/test-/.test(f) && !files.has(f)).sort();
+  assert.ok(want.has('tools/narration-json.mjs'), 'tts/synth.py should name tools/narration-json.mjs');
+  assert.deepEqual(missing, []);
+});
+
 await t('npm pack：icons の en.json・ja.json は入らず、icons の index.js は入る（リポジトリには残る）', () => {
   const files = new Set(packed.files.map((f) => f.path));
   const lock2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'components2.lock.json'), 'utf8'));
@@ -179,6 +195,13 @@ await t('egatari new deck（cwd から解く）：deck.html と narration.md と
   assert.ok(fs.existsSync(path.join(user, 'deck', 'deck.html')) && fs.existsSync(path.join(user, 'deck', 'narration.md')));
   assert.equal(JSON.parse(fs.readFileSync(path.join(user, 'deck', 'egatari.json'), 'utf8')).componentsCatalogue, '2');
   assert.match(r.stdout, /egatari build deck\/deck\.html/);
+});
+
+// egatari tts の原稿の解析（tts/synth.py が包みの tools/narration-json.mjs を node で呼ぶ）。合成は Python と声が要るので、解析が通るところまで（handoff #115）
+await t('包みの tools/narration-json.mjs が、作った narration.md の段階を JSON で返す（egatari tts の入口）', () => {
+  const r = must(sh(process.execPath, [path.join(pkgDir, 'tools', 'narration-json.mjs'), path.join(user, 'deck', 'narration.md')], user), 'narration-json');
+  const j = JSON.parse(r.stdout);
+  assert.ok(Array.isArray(j.segments) && j.segments.length > 0 && j.segments.every((s) => s.key && /^[0-9a-f]{64}$/.test(s.inputHash)), r.stdout.slice(0, 500));
 });
 
 await t('egatari check deck/deck.html：エラー 0', () => {

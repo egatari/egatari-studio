@@ -44,6 +44,7 @@
     "tools/sheet.mjs",
     "tools/comment-shots.mjs",
     "tools/video.mjs",
+    "tools/narration-json.mjs",
     "components.lock.json",
     "components2.lock.json",
     "themes.lock.json",
