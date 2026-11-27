@@ -297,8 +297,16 @@ export async function testLlm({ browser, BASE, ok, watch, shotDir }) {
     const r3 = newDeckPack({ order: rankParts({ category: 'research', purposes: ['spread'], subjects: ['statistics'], audience: 'university' }), plan: 'paid', lang: 'ja', request: tail(c3) });
     ok(c3 === r3.text && r3.described.length > r1.described.length && r3.described.slice(0, r1.described.length).join() === r1.described.join() && c3.length > c1.length,
       `new plan: the paid AI copies the same order with more parts described (${r1.described.length} → ${r3.described.length})`);
-    // 写した後に印を変えても、egatari.json に残すのは写したときの選び方
+    // コピーしてから約 1 秒の間に、ほかの段へ行って ④ に戻った：遅れたたたみは来ない（④ は開いたまま。macOS の CI 45933097256 の test-app-outline）
     await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
+    await copy(false);
+    await pk.click('#paste-step-paste-btn');
+    await pk.click('#paste-step-send-btn');
+    await pk.waitForTimeout(scaled(1500));
+    ok((await pk.getAttribute('#paste-step-send-btn', 'aria-current')) === 'step' && await pk.isVisible('#paste-copy-guide'),
+      'new copy: going to ⑤ and back to ④ within the second after copying keeps ④ open (the late fold does not come)');
+    // 写した後に印を変えても、egatari.json に残すのは写したときの選び方
+    if (!(await pk.isVisible('#paste-copy-guide'))) await clickShows(pk, '#paste-change-send', '#paste-copy-guide');
     await pk.uncheck('#paste-purpose-spread');
     await clickShows(pk, '#paste-step-paste-btn', '#paste-narr');
     await pk.fill('#paste-narr', replyOf(worked('kokugo', 'deck.html').replace('<html ', '<html data-egatari-seed="42" '), worked('kokugo', 'narration.md')));

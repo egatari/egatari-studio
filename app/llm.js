@@ -457,7 +457,7 @@ export function setupLlm(app) {
   //   items：[{node（step() の section）, q?（question() の Q：答えた 1 行と本体を Q が切り替える）, summary?（summaryLine）, can?(), focus?()}]
   //   open(i, {focus})：その段だけ開き、見えるところへ動かし、最初の操作に印。done(i)：答えた（1 行にたたむ）
   function flow(items, { onOpen } = {}) {
-    let cur = -1;
+    let cur = -1, opens = 0;   // opens：段を開いた回数（コピーの後の遅れたたたみが、その間に開き直されていないかを見る）
     const seen = items.map(() => false), done = items.map(() => false);
     const canOpen = (i) => seen[i] || !!(items[i].can && items[i].can());
     const render = () => items.forEach((it, i) => {
@@ -474,9 +474,10 @@ export function setupLlm(app) {
     const firstControl = (it) => [...it.node.acc.body.querySelectorAll('input:not([type=hidden]), select, textarea, button')].find((x) => !x.disabled && x.getClientRects().length);
     const F = {
       get current() { return cur; },
+      get opens() { return opens; },
       isDone: (i) => done[i],
       open(i, { focus = true } = {}) {
-        cur = i; seen[i] = true; render();
+        cur = i; opens++; seen[i] = true; render();
         if (onOpen) onOpen(i);
         if (!focus) return;
         const it = items[i];
@@ -489,6 +490,8 @@ export function setupLlm(app) {
     items.forEach((it, i) => it.node.acc.btn.addEventListener('click', () => { if (i !== cur && canOpen(i)) F.open(i); }));
     return F;
   }
+  // コピーの後、ボタンの字を見せてから（shown）段をたたむ。その間に段を開いていたら（ほかの段でも、出て戻った同じ段でも）たたまない
+  const foldAfter = async (F, shown, at, next) => { const n = F.opens; await shown; if (F.current !== at || F.opens !== n) return; next(); };
   const readDeck = async () => ({ deck: (await S.ws.readText(S.deckFile, { max: READ_LIMITS.source })) || '', narration: (await S.ws.readText('narration.md', { max: READ_LIMITS.narration })) || '' });
 
   // ---------------------------------------------------------------- 新規作成の問い（① 場面 → ② 内容 → ③ 見た目）。答えた問いは 1 行にたたみ、［変更］で開き直す
@@ -895,7 +898,7 @@ export function setupLlm(app) {
       copyMsg.classList.remove('bad'); copyMsg.hidden = false;
       copyMsg.textContent = ok ? (longN() ? X.outlineCopied(kb(text)) : (draft.plan === 'paid' ? X.copiedPaid(kb(text)) : X.copied(kb(text)))) : X.fixCopyFailed;
       // ボタンに「✓ コピーしました」を見せてから（約 1 秒）④ をたたみ、⑤ を開く（チャットのタブから戻ったら、貼る欄がある）。handoff #110
-      if (ok) { const shown = copiedOn(copy); if (onCopied) { await shown; onCopied(); } }
+      if (ok) { const shown = copiedOn(copy); if (onCopied) onCopied(shown); }
     } }));
     const save = el('button', { type: 'button', id: 'paste-save-guide', cls: 'pri', text: X.saveGuide, hidden: '', onclick: () => {
       const miss = missing();
@@ -942,7 +945,7 @@ export function setupLlm(app) {
       const text = await textNow();
       const ok = await copyInStep(text, copyMsg, title);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? copiedMsg(kb(text)) : X.fixCopyFailed;
-      if (ok) { const shown = copiedOn(copy); if (onCopied) { await shown; onCopied(); } }   // ボタンの字を見せてから ② をたたむ（④ と同じ）
+      if (ok) { const shown = copiedOn(copy); if (onCopied) onCopied(shown); }   // ボタンの字を見せてから ② をたたむ（④ と同じ）
     } }));
     const save = el('button', { type: 'button', id: 'paste-save-guide', cls: 'pri', text: X.saveGuide, hidden: '', onclick: async () => {
       const text = await textNow();
@@ -974,7 +977,7 @@ export function setupLlm(app) {
       if (!r) { copyMsg.box.hidden = true; copyMsg.hidden = false; copyMsg.classList.add('bad'); copyMsg.textContent = X.reviseNothing; onChange(0); return; }
       const ok = await copyInStep(r.text, copyMsg, title[1]);
       copyMsg.classList.remove('bad'); copyMsg.hidden = false; copyMsg.textContent = ok ? X.revised(kb(r.text), r.problems, r.notes) : X.fixCopyFailed;
-      if (ok) { const shown = copiedOn(copy); if (onCopied) { await shown; onCopied(); } }   // ボタンの字を見せてから ② をたたむ（④ と同じ）
+      if (ok) { const shown = copiedOn(copy); if (onCopied) onCopied(shown); }   // ボタンの字を見せてから ② をたたむ（④ と同じ）
     } }));
     const sum2 = summaryLine('paste-step2', X.sendQ, () => X.copiedShort, () => onChange(1));
     const s2 = step('paste-step2', title[1], [el('div', { cls: 'paste-guide' }, [copy])], [sum2, copyMsg, copyMsg.box]);
@@ -1188,8 +1191,9 @@ export function setupLlm(app) {
         if (!titleOk()) { return { text: X.needTopic, focus: () => { F.open(1, { focus: false }); Qs[1].node.scrollIntoView({ block: 'start' }); Qs[1].titleIn.focus(); } }; }
         return null;
       };
-      // onCopied はボタンの「✓ コピーしました」を見せた後（約 1 秒後）に来る。その間にほかの段を開いていたら、たたまない（表示を勝手に動かさない）
-      send = sendStep(titles[3], copyMsg, { request, missing, onCopied: () => { if (F.current !== 3) return; F.done(3); F.open(4); }, onChange: () => F.open(3) });
+      // onCopied(shown)：ボタンの「✓ コピーしました」を見せた後（shown、約 1 秒後）にたたむ。その間に段を開いていたら（ほかの段でも、出て戻った同じ段でも）、たたまない（表示を勝手に動かさない）。
+      // 保存（有料のプラン）は shown なしで呼ぶので、すぐたたむ
+      send = sendStep(titles[3], copyMsg, { request, missing, onCopied: (shown) => foldAfter(F, shown, 3, () => { F.done(3); F.open(4); }), onChange: () => F.open(3) });
       newChoice = send.choice;
       five = fiveStep(titles, fields, pasteKids, () => syncGo());
       outlinePhase = () => !direct && five.waiting();
@@ -1258,7 +1262,7 @@ export function setupLlm(app) {
       const req = { request: () => (B ? batchRequest({ rows: B.rows, from: B.from, to: B.to, deck, narration, lang: LANG })
         : insertRequest({ deck, narration, after: at, n: ins.count(), wish: ins.wish(), lang: LANG })) };
       batchNow = B;
-      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, savedMsg: X.insertSaved, onCopied: () => { if (F.current !== 1) return; F.done(0); F.done(1); F.open(2); }, onChange: () => F.open(1) });
+      const pack = await packStep(copyMsg, req, { title: titles[1], copyLabel: X.copyInsert, copiedMsg: X.insertCopied, savedMsg: X.insertSaved, onCopied: (shown) => foldAfter(F, shown, 1, () => { F.done(0); F.done(1); F.open(2); }), onChange: () => F.open(1) });
       ins.node.addEventListener('input', pack.update);
       const three = step('paste-step-paste', titles[2], pasteKids());
       // 挿入も 1 つだけ開く流れ（① ② に必ず答えるものはないので、どの見出しからも開ける）
@@ -1269,7 +1273,7 @@ export function setupLlm(app) {
       body = [ins.node, pack.node, three];
     } else {
       let F = null;
-      const r = reviseStep(copyMsg, titles, opts.results || null, { onNext: () => { F.done(0); F.open(1); }, onCopied: () => { if (F.current !== 1) return; F.done(0); F.done(1); F.open(2); }, onChange: (k) => F.open(k) });
+      const r = reviseStep(copyMsg, titles, opts.results || null, { onNext: () => { F.done(0); F.open(1); }, onCopied: (shown) => foldAfter(F, shown, 1, () => { F.done(0); F.done(1); F.open(2); }), onChange: (k) => F.open(k) });
       const three = step('paste-step-paste', titles[2], pasteKids());
       F = flow([{ node: r.s1, summary: r.sum1, can: () => true }, { node: r.s2, summary: r.sum2, can: () => true }, { node: three, can: () => true, focus: () => fields.focus() }]);
       openPaste = () => F.open(2, { focus: false });
