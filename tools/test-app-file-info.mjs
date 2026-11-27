@@ -34,7 +34,9 @@ const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); i
 // lic-only-bare で Esc を押したところでページが応えなくなり、900 秒の打ち切りまで止まったことが Linux の CI で 3 回（45886650827・45908107887・45915635439）。
 // Playwright の keyboard.press と page.evaluate には時間切れがないので、時間切れは外から見る
 // cdp は場面の始めに開いて Debugger を有効にしておく（ページが止まってから開く・有効にするのでは届かない。手元で確かめた）
-function watchdog(cdp, what, ms, consoleTail = () => []) {
+let lastStep = '';   // 見張りが出す「最後に始めた手順」
+const stepNote = (s) => { lastStep = `${s} (${new Date().toISOString().slice(11, 19)})`; };
+function watchdog(cdp, page, what, ms, consoleTail = () => []) {
   const timer = setTimeout(async () => {
     console.log(`  FAIL ${what}: still running after ${ms / 1000} s; the page's JavaScript at that moment:`);
     try {
@@ -51,6 +53,21 @@ function watchdog(cdp, what, ms, consoleTail = () => []) {
         }
       }
     } catch (e) { console.log('       (CDP failed: ' + e.message + ')'); }
+    console.log('       last step: ' + (lastStep || '(none)'));
+    // 止めた JavaScript を戻して、本体の様子（CDP から直接。Playwright の evaluate は止まることがある）と、どの frame が応えるかを見る
+    try {
+      await cdp.send('Debugger.resume').catch(() => {});
+      const r = await Promise.race([cdp.send('Runtime.evaluate', { returnByValue: true, expression: `(() => { const d = document.getElementById('dlg'), a = document.activeElement;
+        return { dialog: d && d.open ? document.getElementById('dlg-title').textContent : null, buttons: d && d.open ? [...d.querySelectorAll('#dlg-buttons button')].map((b) => b.id) : [],
+          active: a ? (a.id || a.tagName) + (a.tagName === 'IFRAME' ? ' ' + (a.title || a.name || '') : '') : null, hasFocus: document.hasFocus(), dirty: !!(window.__APP_TEST && window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty) }; })()` }),
+        new Promise((r) => setTimeout(() => r(null), 5000))]);
+      console.log('       page (CDP): ' + (r ? JSON.stringify(r.result.value) : 'no answer in 5 s'));
+    } catch (e) { console.log('       (page state failed: ' + e.message + ')'); }
+    for (const f of page.frames()) {
+      const t0 = Date.now();
+      const a = await Promise.race([f.evaluate(() => 1).then(() => 'answers', (e) => 'error: ' + e.message.split('\n')[0]), new Promise((r) => setTimeout(() => r('no answer in 5 s'), 5000))]);
+      console.log(`       frame ${f === page.mainFrame() ? '(main)' : (f.name() || '') + ' ' + f.url().slice(0, 80)}: ${a} (${Date.now() - t0} ms)`);
+    }
     console.log('       console:\n         ' + (consoleTail().join('\n         ') || '(none)'));
     process.exit(1);
   }, ms);
@@ -115,7 +132,7 @@ async function openPage(label, html, { lang = 'ja', init = null, fresh = false }
   // 場面ごとの見張り（watchdog）。ctx.close で止める
   const cdp = await ctx.newCDPSession(page);
   await cdp.send('Debugger.enable');
-  const stop = watchdog(cdp, label, scaled(300000), () => con.slice(-15));
+  const stop = watchdog(cdp, page, label, scaled(300000), () => con.slice(-15));
   const close = ctx.close.bind(ctx);
   ctx.close = async (...a) => { stop(); return close(...a); };
   await page.goto(`${HOST}?lang=${lang}`);
@@ -409,8 +426,11 @@ try {
     const c = await startSave(page, '#dlg[open] #lic-never');
     ok(c.shown, 'license only (another docId, no rights info): asked');
     if (c.shown) {
+      stepNote('lic-only-bare: pressing Escape on step 1');
       await page.keyboard.press('Escape');
+      stepNote('lic-only-bare: Escape pressed, waiting for the save to end');
       await c.sv;
+      stepNote('lic-only-bare: the save ended after Escape');
       ok(await page.evaluate(() => window.__APP_TEST.state().portable.dirty), 'step 1: Esc cancels the save (still unsaved)');
     } else await c.sv;
     const { sv, shown } = await startSave(page, '#dlg[open] #lic-never');
