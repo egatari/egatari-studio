@@ -30,6 +30,32 @@ const DIST = path.join(work, 'dist');
 const CFG = FORMAT.CONFIG_FILE;
 let fails = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ok   ' : '  FAIL ') + msg); if (!cond) fails++; };
+// 見張り：場面が ms を過ぎても終わらなければ、ページの JavaScript を CDP で止めて、そのときの呼び出しの並びを出し、すぐ落とす。
+// lic-only-bare で Esc を押したところでページが応えなくなり、900 秒の打ち切りまで止まったことが Linux の CI で 3 回（45886650827・45908107887・45915635439）。
+// Playwright の keyboard.press と page.evaluate には時間切れがないので、時間切れは外から見る
+// cdp は場面の始めに開いて Debugger を有効にしておく（ページが止まってから開く・有効にするのでは届かない。手元で確かめた）
+function watchdog(cdp, what, ms, consoleTail = () => []) {
+  const timer = setTimeout(async () => {
+    console.log(`  FAIL ${what}: still running after ${ms / 1000} s; the page's JavaScript at that moment:`);
+    try {
+      const paused = new Promise((resolve) => cdp.once('Debugger.paused', resolve));
+      await cdp.send('Debugger.pause');
+      const ev = await Promise.race([paused, new Promise((r) => setTimeout(() => r(null), 10000))]);
+      if (!ev) console.log('       (no JavaScript ran within 10 s: the page is not stuck in a script)');
+      else {
+        for (const f of ev.callFrames.slice(0, 15)) {
+          const { scriptId, lineNumber, columnNumber } = f.location;
+          let line = '';
+          try { const src = (await cdp.send('Debugger.getScriptSource', { scriptId })).scriptSource.split('\n')[lineNumber] || ''; line = src.slice(Math.max(0, columnNumber - 80), columnNumber + 80); } catch { /* 読めない */ }
+          console.log(`       at ${f.functionName || '(anonymous)'} ${(f.url || '').split('/').pop()}:${lineNumber + 1}:${columnNumber + 1}  ${line.replace(/\s+/g, ' ')}`);
+        }
+      }
+    } catch (e) { console.log('       (CDP failed: ' + e.message + ')'); }
+    console.log('       console:\n         ' + (consoleTail().join('\n         ') || '(none)'));
+    process.exit(1);
+  }, ms);
+  return () => clearTimeout(timer);
+}
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const dec = new TextDecoder();
 
@@ -86,11 +112,17 @@ async function openPage(label, html, { lang = 'ja', init = null, fresh = false }
     console.log(`       ${label}: stuck at ${what} after ${((Date.now() - t0) / 1000).toFixed(1)} s; console:\n         ` + (con.slice(-15).join('\n         ') || '(none)'));
     await page.screenshot({ path: path.join(work, `stuck-${label}.png`), timeout: 5000 }).catch((e) => console.log('       (no screenshot: ' + e.message.split('\n')[0] + ')'));
   };
+  // 場面ごとの見張り（watchdog）。ctx.close で止める
+  const cdp = await ctx.newCDPSession(page);
+  await cdp.send('Debugger.enable');
+  const stop = watchdog(cdp, label, scaled(300000), () => con.slice(-15));
+  const close = ctx.close.bind(ctx);
+  ctx.close = async (...a) => { stop(); return close(...a); };
   await page.goto(`${HOST}?lang=${lang}`);
   await page.waitForFunction(() => !!window.__APP_TEST).catch(async (e) => { await page.__diag('the editor starting'); throw e; });
   console.log(`       ${label}: the editor started in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await page.evaluate(async (n) => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle(n, { create: true }); }, `${label}.ega.html`);
-  const opened = await page.evaluate(({ data, fresh }) => { const bin = atob(data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'lesson.ega.html', fresh: data.fresh }); }, { data: Buffer.from(html).toString('base64'), fresh });
+  const opened = await page.evaluate(({ data, fresh }) => { const bin = atob(data), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return window.__APP_TEST.openFile({ bytes: u, name: 'lesson.ega.html', fresh }); }, { data: Buffer.from(html).toString('base64'), fresh });
   ok(opened === true, `${label}: opens`);
   await page.waitForFunction(() => !window.__APP_TEST.state().building, null, { timeout: scaled(30000) });
   page.__key = NKEY[html];
