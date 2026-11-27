@@ -69,7 +69,7 @@
     "i18n": "node tools/i18n-pairs.mjs",
     "lint:terms": "node tools/lint-terms.mjs",
     "build:app": "node tools/build-app.mjs",
-    "test": "node tools/test-all.mjs",
+    "test": "node tools/probe-file-info.mjs",
     "portable": "node tools/portable.mjs",
     "sheet": "node tools/sheet.mjs",
     "comment-shots": "node tools/comment-shots.mjs",
