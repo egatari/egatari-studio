@@ -383,12 +383,16 @@ function blankPreview() {
 function focusPreview() { try { $('preview').focus(); } catch { /* 無視 */ } }
 // 読み込み終わったプレビューに focus を移す（キーがデッキに届くように）。ただし道具の列の一覧（開く・保存・書き出す ▾）にある focus は
 // 奪わない：読み込みが終わるのは一覧を開いた後のことがあり（大きなデッキ・遅い端末）、奪うと ↑↓・Esc がデッキへ行き、一覧が開いたまま残る。
-// 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）
+// 音声の板・録音モードの focus も奪わない（音声を書くと組み直して読み込み直す。録音モードを閉じて板の「● 録音」に戻した focus が飛ばないように）。
+// 字を打つ欄（ファイルの情報…・台本・検索など）と、開いている窓の中の focus も奪わない：直すたびに組み直して読み込み直すので、
+// 打っている途中で focus がプレビューへ移り、続きの字がデッキへ行っていた（handoff #112 の CI で見つけた。11/25 の「ファイルの情報…」で打った字が消えた揺れも同じ）
+const keepsFocus = (a) => !!a && !!a.closest && (!!a.closest('.menu, #dev-audio, #rec-mode, dialog[open]')
+  || a.isContentEditable || (a.tagName === 'TEXTAREA') || (a.tagName === 'SELECT')
+  || (a.tagName === 'INPUT' && !/^(button|submit|reset|checkbox|radio|file|image|range|color)$/i.test(a.type)));
 function onPreviewLoad(e) {
   if (e.target.hasAttribute('srcdoc')) { S.frameLoaded = S.loads; sendPreviewAudio(e.target, S.baseAudio, S.loads); scheduleAutoCheck(); if (book) book.view(); }   // 何回目の読み込みまで表示し終えたか（空の iframe の load は数えない）
   sendSoundSilence(rec.isOpen());
-  const a = document.activeElement;
-  if (a && a.closest && a.closest('.menu, #dev-audio, #rec-mode')) return;
+  if (keepsFocus(document.activeElement)) return;
   focusPreview();
 }
 // プレビューの音声（backlog #49）：組み立てが置いた印（refs：[{src, rel, size}]、app/engine.js の previewAudio）の音声を作業場所から読み、

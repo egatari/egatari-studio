@@ -254,6 +254,12 @@ try {
     const kept = await page.evaluate((filled) => ({ filled, runs: window.__APP_TEST.infoRuns && window.__APP_TEST.infoRuns(), value: (document.getElementById('info-attribution') || {}).value, forms: document.querySelectorAll('#info-form').length, panelHidden: document.getElementById('panel').hidden, active: document.activeElement && document.activeElement.id }), filled);
     const keptOk = kept.value === '二度押しの確かめ' && kept.forms === 1;
     ok(keptOk, 'info: pressing File info… again keeps what is being typed' + (keptOk ? '' : ' ' + JSON.stringify(kept)));
+    // 打っている欄の focus を、読み込み直したプレビューが奪わない（app/main.js の onPreviewLoad・keepsFocus）
+    await page.focus('#info-attribution');
+    // 同じ中身では組み直さないので、プレビューの iframe を読み込み直す（直したときと同じ load が来る）
+    await page.evaluate(() => new Promise((resolve) => { const f = document.getElementById('preview'); f.addEventListener('load', () => setTimeout(resolve, 50), { once: true }); f.srcdoc = f.srcdoc; }));
+    const act = await page.evaluate(() => (document.activeElement || {}).id || (document.activeElement || {}).tagName);
+    ok(act === 'info-attribution', 'info: a reloaded preview does not take the focus from the field being typed in (' + act + ')');
     await page.click('#info-cancel');
     // その他：名前がない・SPDX でない
     await page.selectOption('#info-license', 'other');
@@ -423,6 +429,10 @@ try {
     const { ctx, page } = await openPage('lic-only-bare', pBare2.html);
     await page.evaluate(() => { window.__APP_TEST.licenseAsk = true; });
     ok(await editScript(page, '（直した 7）'), 'license only (no rights info): the script is edited');
+    // Esc の前に、プレビューから focus を外しておく：窓が閉じると focus は開く前の所（プレビュー）へ戻り、Playwright が送る Esc の keyup が
+    // プレビューの frame へ行く。Linux の CI ではその keyup の返事が来ず、keyboard.press が戻らなかった（probe 45929264271：node 22・24 の 24 回中 9 回。アプリは動いていた）
+    await page.waitForFunction(() => !window.__APP_TEST.state().building, null, { timeout: scaled(30000) });
+    await page.evaluate(() => { const a = document.activeElement; if (a && a.tagName === 'IFRAME') a.blur(); });
     const c = await startSave(page, '#dlg[open] #lic-never');
     ok(c.shown, 'license only (another docId, no rights info): asked');
     if (c.shown) {
