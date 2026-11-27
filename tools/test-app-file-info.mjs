@@ -315,8 +315,22 @@ try {
   const readSaved = async (page) => readPortable(await page.evaluate(async () => new TextDecoder().decode(new Uint8Array(await (await window.__APP_TEST.saveHandle.getFile()).arrayBuffer()))));
   const waitSaved = (page) => page.waitForFunction(() => window.__APP_TEST.state().portable && !window.__APP_TEST.state().portable.dirty, null, { timeout: scaled(60000) });
   // 保存して、問いが出るか（出たら呼んだ側が答える）
+  // 保存の終わりを待つのは 120 秒まで（CI で 900 秒の打ち切りまで止まったことが 2 回：45886650827 test (22)・45908107887 test (24)、どちらも lic-only-bare）。
+  // 切れたら、開いている窓・フォーカス・状態を出して落とす（どこで止まったかを残す）
+  const bounded = (page, p, what) => {
+    let timer;
+    const late = new Promise((resolve) => { timer = setTimeout(async () => {
+      const at = await page.evaluate(() => { const d = document.getElementById('dlg'); const a = document.activeElement;
+        return { dialog: d && d.open ? document.getElementById('dlg-title').textContent : null, buttons: d && d.open ? [...d.querySelectorAll('#dlg-buttons button')].map((b) => b.id + (b.disabled ? '(disabled)' : '')) : [],
+          active: a ? (a.id || a.tagName) : null, dirty: window.__APP_TEST.state().portable && window.__APP_TEST.state().portable.dirty };
+      }).catch((e) => ({ evaluateFailed: String(e) }));
+      ok(false, `${what}: the save did not finish in ${scaled(120000) / 1000} s ${JSON.stringify(at)}`);
+      resolve(undefined);
+    }, scaled(120000)); });
+    return Promise.race([p.finally(() => clearTimeout(timer)), late]);
+  };
   const startSave = async (page, sel = '#dlg[open] #edit-own') => {
-    const sv = page.evaluate(() => window.__APP_TEST.save('save'));
+    const sv = bounded(page, page.evaluate(() => window.__APP_TEST.save('save')), sel);
     const shown = await Promise.race([sv.then(() => false), page.waitForSelector(sel, { timeout: scaled(15000) }).then(() => true, () => false)]);
     return { sv, shown };
   };
