@@ -100,6 +100,9 @@
     ],
     "C-images": [
       "imgTooLarge"
+    ],
+    "C-keys": [
+      "keyLike"
     ]
   },
   "alsoAllowed": {

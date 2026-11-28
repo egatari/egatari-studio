@@ -762,6 +762,12 @@
       "term": "start-over",
       "reason": "最初から here means the image is shown from the start of the slide (no step), not starting over; en says “From the start” (handoff #85, approved wording).",
       "pairs": true
+    },
+    {
+      "file": "kit/check-messages.mjs",
+      "line": "may contain an API key",
+      "term": "join-code",
+      "reason": "An API key of a TTS service (the C-keys check, handoff #116), not the join code of a live session."
     }
   ]
 }
