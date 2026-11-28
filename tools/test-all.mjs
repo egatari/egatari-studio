@@ -200,6 +200,10 @@ const steps = [
   ['test-viewer-ink', ['tools/test-viewer-ink.mjs', path.join(tmp, 'viewer-ink')]],
   // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
   ['test-viewer-ink-webkit', ['tools/test-viewer-ink.mjs', path.join(tmp, 'viewer-ink-webkit'), '--webkit']],
+  // Viewer のメモ（スライドごと・本の節ごと、play/notes.mjs、handoff #107）：メモ欄・保存・手書きとの重ね・m・スマートフォン・本の節のメモ・引用（本とスライドの字）・暗記・一覧・PDF の枠・Markdown・バックアップと読み込み
+  ['test-viewer-notes', ['tools/test-viewer-notes.mjs', path.join(tmp, 'viewer-notes')]],
+  // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）
+  ['test-viewer-notes-webkit', ['tools/test-viewer-notes.mjs', path.join(tmp, 'viewer-notes-webkit'), '--webkit']],
   // Viewer の前に見ていた所から開く（play/resume.mjs、handoff #94）：ready に seek、知らせと「最初から」、最初の段階で忘れる、共有の端末、壊れた値
   ['test-viewer-resume', ['tools/test-viewer-resume.mjs', path.join(tmp, 'viewer-resume')]],
   // 同じ確かめを WebKit で（WebKit が入っていなければ skip で通る）

@@ -114,8 +114,11 @@ export async function buildPlay(opts) {
   // the shim is inlined in a <script> of the trusted prefix: "</script" or "<!--" in it would end or change that element.
   // Refused here at build time (app/preview-doc.js trustedPrefix() also refuses it, but only when a lesson is opened)
   for (const bad of [/<\/script/i, /<!--/]) if (bad.test(shim)) throw new Error(`build-play: play/lesson-shim.js or play/markup-frame.js contains ${bad.source}`);
+  // the trusted prefix of the frame made only to print notes (play/print-frame.js, handoff #107)
+  const printShim = fs.readFileSync(rel('play', 'print-frame.js'), 'utf8');
+  for (const bad of [/<\/script/i, /<!--/]) if (bad.test(printShim)) throw new Error(`build-play: play/print-frame.js contains ${bad.source}`);
   const common = { bundle: true, write: false, platform: 'browser', target: ['es2020', 'safari15'], legalComments: 'none', minify: true, logLevel: 'silent' };
-  const define = (v) => ({ __PLAY_VERSION__: JSON.stringify(v), __PLAY_LIVE__: JSON.stringify(endpoints), __PLAY_DEV__: String(!!opts.devLoopback), __LESSON_SHIM__: JSON.stringify(shim) });
+  const define = (v) => ({ __PLAY_VERSION__: JSON.stringify(v), __PLAY_LIVE__: JSON.stringify(endpoints), __PLAY_DEV__: String(!!opts.devLoopback), __LESSON_SHIM__: JSON.stringify(shim), __PRINT_SHIM__: JSON.stringify(printShim) });
   const bundleMain = async (v) => (await esbuild.build({ ...common, entryPoints: [rel('play', 'main.js')], format: 'esm', define: define(v) })).outputFiles[0].text;
   const worker = await esbuild.build({ ...common, entryPoints: [rel('play', 'reader-worker.mjs')], format: 'iife' });
   files['reader.js'] = Buffer.from(worker.outputFiles[0].text);

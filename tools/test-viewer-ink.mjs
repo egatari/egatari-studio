@@ -98,6 +98,8 @@ const inkAt = (p, x, y, bg) => p.evaluate(([x, y, bg]) => {
   for (let i = 0; i < d.length; i += 4) { const f = Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]); if (d[i + 3] > 200 && f > far) { far = f; best = [d[i], d[i + 1], d[i + 2]]; } }
   return best;
 }, [x, y, bg]);
+// the memo area's background: the page's element under the surface (#note-area, play/main.js), not the surface
+const memoBg = (p) => p.evaluate(() => { const a = document.getElementById('note-area'), m = a && !a.hidden && /rgba?\(([^)]+)\)/.exec(getComputedStyle(a).backgroundColor); return m ? m[1].split(',').map(Number).slice(0, 3) : null; });
 const near = (a, b, t = 24) => a && b && Math.abs(a[0] - b[0]) <= t && Math.abs(a[1] - b[1]) <= t && Math.abs(a[2] - b[2]) <= t;
 // a mouse line on the surface, logical coordinates
 async function draw(p, pts) {
@@ -140,7 +142,7 @@ const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame
   ok(await p.evaluate(() => document.querySelector('.ink-bar').getAttribute('aria-label') === '手書きのツール' && document.querySelector('.ink-bar button[data-k="undo"]').disabled), 'the toolbar is named; undo is off with nothing to undo');
   // the memo area takes the slide's background (white here)
   const slideBg = await (await (await p.$('#lesson')).contentFrame()).evaluate(() => getComputedStyle(document.querySelector('#stage > .slide.active')).backgroundColor.match(/\d+/g).slice(0, 3).map(Number));
-  ok(await until(async () => near(await pixel(p, 640, 1000), slideBg, 2)), `the memo area is the slide's background ${JSON.stringify(slideBg)} → ${JSON.stringify(await pixel(p, 640, 1000))}`);
+  ok(await until(async () => near(await memoBg(p), slideBg, 2)), `the memo area is the slide's background ${JSON.stringify(slideBg)} → ${JSON.stringify(await memoBg(p))}`);
   ok((await pixel(p, 640, 726))[3] === 0, 'a gap between the slide and the memo area');
   ok(await p.evaluate(() => document.querySelector('.ink-bar').dataset.tone === 'light'), 'a light slide: the light shades');
 
@@ -177,7 +179,7 @@ const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame
   // and the pixels read just after it are final (「指でも書く」 below draws the same way and is counted the same way)
   const before = await slideAt(p);
   await finger(p, [600, 950], [620, 1100]);
-  ok(await slideAt(p) === before && await strokes(p) === 2 && near(await inkAt(p, 610, 1025, slideBg), slideBg, 8), 'a finger does not draw ' + JSON.stringify([await strokes(p), await inkAt(p, 610, 1025, slideBg)]));
+  ok(await slideAt(p) === before && await strokes(p) === 2 && (await inkAt(p, 610, 1025, slideBg)) === null, 'a finger does not draw ' + JSON.stringify([await strokes(p), await inkAt(p, 610, 1025, slideBg)]));
   await finger(p, [900, 400], [300, 420]);
   ok(await until(async () => (await slideAt(p)) !== before), 'a finger swipe moves on');
   ok(await until(async () => (await strokes(p)) === 0), 'another slide: its own (empty) page');
@@ -196,7 +198,7 @@ const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame
   // untrusted: an ink-bg of the wrong shape from the frame is ignored
   await (await (await p.$('#lesson')).contentFrame()).evaluate(() => { parent.postMessage({ egaViewer: 'ink-bg', rgb: [0, 0, 'x'] }, '*'); parent.postMessage({ egaViewer: 'ink-bg', rgb: [0, 0, 999] }, '*'); parent.postMessage({ egaViewer: 'ink-bg', rgb: [0, 0, 0], more: 1 }, '*'); });
   await sleep(300);
-  ok(near(await pixel(p, 640, 1150), slideBg, 2), 'malformed ink-bg messages are ignored');
+  ok(near(await memoBg(p), slideBg, 2), 'malformed ink-bg messages are ignored');
   // turning it off gives the frame its full height back
   await p.click('#b-ink');
   ok(await until(() => p.evaluate(() => !document.querySelector('.ink-surf') && document.getElementById('stage-wrap').getBoundingClientRect().height > 0)), 'turning 手書き off removes the surface');
@@ -226,7 +228,7 @@ const painted = (p) => p.evaluate(() => new Promise((r) => requestAnimationFrame
   await open(p, DARK);
   ok(await until(() => p.evaluate(() => !document.getElementById('b-ink').hidden)), 'the dark lesson: the button again');
   if (await p.evaluate(() => document.getElementById('b-ink').getAttribute('aria-pressed') !== 'true')) await p.click('#b-ink');
-  ok(await until(async () => near(await pixel(p, 640, 1000), [0x10, 0x14, 0x18], 3)), 'a dark slide: the memo area is dark ' + JSON.stringify(await pixel(p, 640, 1000)));
+  ok(await until(async () => near(await memoBg(p), [0x10, 0x14, 0x18], 3)), 'a dark slide: the memo area is dark ' + JSON.stringify(await memoBg(p)));
   ok(await p.evaluate(() => document.querySelector('.ink-bar').dataset.tone === 'dark'), 'a dark slide: the light shades');
   ok(await strokes(p) === 0, 'another lesson: its own pages');
   // 描く前に手書きが入っていることを待ち、描いた後は線が記録されるまで待つ（遅い macOS の CI では、すぐ見ると線がまだなく、

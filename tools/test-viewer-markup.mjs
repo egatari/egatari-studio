@@ -163,14 +163,17 @@ const HL = [
 
 // ---------------------------------------------------------------- 1. the Markup button with the slides alone, and with no book
 // The button is there only for a lesson with a book (handoff #78, 11/22); with the slides alone showing, the bar says where highlights
-// go (stage 1: the book only, not the script)
+// go (stage 1: the book only; handoff #107: the slides too)
 console.log('button');
 const hintOf = (p) => p.evaluate(() => { const h = document.getElementById('markup-hint'); return h.hidden ? '' : h.textContent; });
 { const { c, p } = await page();
   await p.setInputFiles('#file', FIX['nobook.play.ega.html']); await lesson(p);
-  await until(() => p.isVisible('#b-close'));
-  await sleep(1500);
-  ok(!(await p.isVisible('#b-markup')), 'a lesson without a book: no Markup button');
+  await until(() => p.isVisible('#b-markup'));
+  // handoff #107: a slide's text takes highlights too, so a lesson without a book has the button, and the bar has no hint
+  ok(await p.isVisible('#b-markup'), 'a lesson without a book: the Markup button (slides take highlights)');
+  await p.click('#b-markup');
+  await until(() => p.isVisible('#b-recall'));
+  ok((await hintOf(p)) === '' && await p.isVisible('#b-recall') && await p.isVisible('#b-mlist'), 'its bar: 暗記 and the list, no hint');
   await c.close(); }
 { const { c, p } = await page();
   await p.setInputFiles('#file', FIX['book.ega.html']); const f = await lesson(p);
@@ -178,15 +181,14 @@ const hintOf = (p) => p.evaluate(() => { const h = document.getElementById('mark
   await until(() => p.isVisible('#b-markup'));
   const box0 = await (await p.$('#lesson')).boundingBox();
   await p.click('#b-markup');
-  await until(async () => /台本にはまだ/.test(await hintOf(p)));
+  await until(() => p.isVisible('#b-recall'));
   const box1 = await (await p.$('#lesson')).boundingBox();
-  ok(box1.y === box0.y && box1.height === box0.height, `the hint does not move the lesson's frame (${box0.y}/${box0.height} → ${box1.y}/${box1.height})`);
-  ok(/「表示」で「本」/.test(await hintOf(p)) && !(await p.isVisible('#b-recall')), 'with the slides alone: the bar says highlights go in the book (表示 → 本) and not yet in the script');
+  ok(box1.y === box0.y && box1.height === box0.height, `the bar does not move the lesson's frame (${box0.y}/${box0.height} → ${box1.y}/${box1.height})`);
+  ok((await hintOf(p)) === '' && await p.isVisible('#b-recall') && await p.isVisible('#b-mlist'), 'with the slides alone: 暗記 and the list (the slides take highlights)');
   await p.evaluate(() => document.getElementById('lesson').contentWindow.postMessage({ egatari: 'layout', layout: 'book' }, '*'));
   await f.waitForSelector('#egatari-article');
-  await until(async () => (await hintOf(p)) === '');
-  ok(await p.isVisible('#b-recall') && await p.isVisible('#b-mlist'), 'the hint goes once the book is shown, and 暗記 and the list come back');
-  ok(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'no sideways scroll with the hint');
+  ok(await p.isVisible('#b-recall') && await p.isVisible('#b-mlist'), 'the book shown: 暗記 and the list stay');
+  ok(!(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'no sideways scroll');
   await c.close(); }
 { const { c, p } = await page(await browser.newContext({ locale: 'ja-JP', viewport: { width: 375, height: 700 }, serviceWorkers: 'block' }));
   await p.setInputFiles('#file', FIX['book.ega.html']); await lesson(p);
@@ -194,11 +196,10 @@ const hintOf = (p) => p.evaluate(() => { const h = document.getElementById('mark
   await until(() => p.isVisible('#b-markup'));
   const box0 = await (await p.$('#lesson')).boundingBox();
   await p.click('#b-markup');
-  await until(async () => (await hintOf(p)) !== '');
+  await until(() => p.isVisible('#b-recall'));
   const box1 = await (await p.$('#lesson')).boundingBox();
-  ok(await p.isVisible('#markup-hint') && box1.y === box0.y && !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)),
-    `on a phone the hint is shown, the frame stays (${box0.y} → ${box1.y}) and nothing scrolls sideways`);
-  ok(await p.evaluate(() => { const h = document.getElementById('markup-hint'); return h.scrollHeight <= h.clientHeight + 1; }), 'on a phone the whole hint fits (not cut)');
+  ok(box1.y === box0.y && !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)),
+    `on a phone the bar opens, the frame stays (${box0.y} → ${box1.y}) and nothing scrolls sideways`);
   // narrower than 560 px the button shows only its icon: a highlighter, not the pencil of a drawing tool (handoff #62); its name stays
   ok(await p.evaluate(() => { const b = document.getElementById('b-markup'), d = b.querySelector('svg path').getAttribute('d');
     return !d.startsWith('M4 20h4L19 9') && d.includes('M3 21h8') && b.textContent.trim() === 'マークアップ'; }), 'on a phone the button is a highlighter icon, still named 「マークアップ」');
@@ -221,7 +222,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
     const s = await select(f, a, b);
     ok(!!s, `selected ${what}: ${s && s.text.replace(/\s+/g, ' ')}`);
     let w = null; await until(async () => (w = await popup(f)));
-    ok(w && w.buttons.join() === 'y,p,b' && w.bottom <= s.top + 1, `the small window shows three colours, above the selection (${w && w.bottom} ≤ ${s && s.top})`);
+    ok(w && w.buttons.join() === 'y,p,b,note' && w.bottom <= s.top + 1, `the small window shows three colours and メモ, above the selection (${w && w.bottom} ≤ ${s && s.top})`);
     await press(f, col);
     await until(async () => (await mstate(p)).record.highlights.length >= HL.indexOf(HL.find((x) => x[1] === a)) + 1);
   }
@@ -239,7 +240,7 @@ const ctx = await browser.newContext({ locale: 'ja-JP', viewport: { width: 1280,
   const [r0] = await highlightRects(f, 'p');
   await tapAt(p, r0.x, r0.y);
   let w = null; await until(async () => (w = await popup(f)));
-  ok(w && w.buttons.join() === 'y,p,b,del', 'a tap on a highlight opens the window with 消す');
+  ok(w && w.buttons.join() === 'y,p,b,note,del', 'a tap on a highlight opens the window with メモ and 消す');
   await press(f, 'b'); await until(async () => (await sizes(f)).b === 2);
   ok((await sizes(f)).p === 0, 'the colour is changed');
   await press(f, 'b').catch(() => {});

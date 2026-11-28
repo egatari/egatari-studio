@@ -232,6 +232,8 @@ body.headless #bar { display: none; }
 #markup-hint { flex: 1 1 14em; min-width: 0; white-space: normal; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
 #markup-hint[hidden] { display: none; }
 /* one row on a phone (the header's height never changes, so the lesson's frame does not move): no logo, no counts, smaller swatches */
+#b-mexport { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 760px) { #b-mexport .xl { display: none; } }   /* the icon alone (its name stays: aria-label and the title) */
 @media (max-width: 560px) { #markup-note, #m-filtered > span, #bar.markup #home, #b-mlist .n, .rc-l { display: none !important; }
   #markup-bar { gap: 4px; } #markup-bar > button, #b-markup { padding: 4px 8px; } .csw { width: 32px; } #recall-colours { gap: 3px; } }
 /* below 760 px the マークアップ button is its highlighter icon only (the name stays for screen readers): 「手書きを終了」 and
@@ -278,3 +280,63 @@ button.pri.danger { background: var(--err); border-color: var(--err); color: #ff
 .ink-bar[data-tone=dark] .ink-k { background: #f2f2f2; } .ink-bar[data-tone=dark] .ink-r { background: #ff7b88; } .ink-bar[data-tone=dark] .ink-b { background: #7db8ff; }
 /* a phone: the memo area would be too small to write in, and the header needs the room (the markup hint) */
 @media (max-width: 599px) { #b-ink { display: none; } }
+/* the memo area under the slide (handoff #107, play/notes.mjs): in stage units, scaled with the slide (play/main.js memoLayout), so a
+   note's lines break at the same words on every screen and handwriting over it stays in place. Its background is the slide's own */
+#b-note[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.note-area { position: absolute; z-index: 4; box-sizing: border-box; transform-origin: 0 0; overflow-y: auto; overscroll-behavior: contain;
+  border: 1.5px solid rgba(0, 0, 0, .3); background: #fff; color: #1f1f1f; padding: .6em .8em; line-height: 1.55; }
+.note-area.dark { border-color: rgba(255, 255, 255, .35); color: #f2f2f2; }
+.note-area.narrow { font-size: 16px; padding: 8px 10px; }
+body.note-narrow .ink-surf, body.note-narrow .ink-live { display: none; }
+.n-blocks { display: flex; flex-direction: column; gap: .4em; }
+.n-text { display: block; width: 100%; box-sizing: border-box; resize: none; overflow: hidden; border: 0; background: transparent; color: inherit;
+  font: inherit; line-height: inherit; padding: 0; margin: 0; min-height: 1.55em; }
+.n-text:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+.n-text::placeholder { color: inherit; opacity: .55; }
+.n-quote { margin: 0; padding: .3em .6em; border-left: .25em solid #e0b400; background: rgba(0, 0, 0, .04); border-radius: .2em; }
+.note-area.dark .n-quote { background: rgba(255, 255, 255, .08); }
+.n-quote blockquote { margin: 0; white-space: pre-wrap; }
+.n-qrow { display: flex; gap: .4em; justify-content: flex-end; margin-top: .2em; }
+.n-qrow button { font-size: .75em; min-height: 0; padding: .15em .6em; }
+/* the note of a section of the book: below the lesson's frame (play/main.js openSection), the page's own text size */
+.note-panel { position: absolute; z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; background: var(--panel); color: var(--fg);
+  border-top: 1px solid var(--line); padding: 8px 16px 12px; }
+.note-panel[hidden] { display: none; }
+.np-top { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.np-top h2 { font-size: 1rem; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#note-panel-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 6px 2px; font-size: 16px; line-height: 1.6; }
+#note-panel-body .n-quote { background: var(--bg); }
+/* the export dialog (handoff #107) */
+#m-export { max-width: min(560px, calc(100vw - 32px)); width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 12px; background: var(--bg); color: var(--fg); padding: 16px 20px; }
+#m-export::backdrop { background: rgba(0, 0, 0, 0.5); }
+#m-export .x-list { list-style: none; padding: 0; margin: 8px 0; display: flex; flex-direction: column; gap: 14px; }
+#m-export .x-list li { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+#m-export #x-file { position: absolute; width: 1px; height: 1px; opacity: 0; }
+#m-export .small-pick { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+#m-export .small-pick:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* PDF of the notes (play/main.js printNotes): #print-root is built off screen and is the only thing printed */
+#print-root { position: fixed; left: -30000px; top: 0; width: calc(1280px * var(--pr-k)); visibility: hidden; color: #1f1f1f; background: #fff;
+  font-family: system-ui, -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif; }
+#print-root .print-frame.pr-maker { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; }
+#print-root .pr-block { break-after: page; page-break-after: always; break-inside: avoid; }
+#print-root .pr-block.pr-last { break-after: auto; page-break-after: auto; }
+#print-root .pr-secs:empty { display: none; }
+
+#print-root .pr-slide { position: relative; width: calc(1280px * var(--pr-k)); height: calc(720px * var(--pr-k)); overflow: hidden; }
+#print-root .pr-slide { box-shadow: 0 0 0 2px #aaa; }
+#print-root .pr-copy { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform: scale(var(--pr-k)); transform-origin: 0 0; }
+#print-root .pr-slide > svg.pr-ink { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 1; }
+#print-root .pr-head { margin: 4px 0 4px; font-size: 11px; color: #555; }
+#print-root .pr-memo { position: relative; box-sizing: border-box; min-height: calc(468px * var(--pr-k)); border: 1px solid #999;
+  padding: calc(15.6px * var(--pr-k)) calc(20.8px * var(--pr-k)); font-size: calc(26px * var(--pr-k)); line-height: 1.55; }
+#print-root .pr-memo > svg.pr-ink { position: absolute; left: 0; top: 0; width: 100%; height: calc(468px * var(--pr-k)); }
+#print-root .pr-memo p, #print-root .pr-sec p { margin: 0 0 .4em; white-space: pre-wrap; }
+#print-root .pr-memo blockquote, #print-root .pr-sec blockquote { margin: 0 0 .4em; padding: .3em .6em; border-left: .25em solid #e0b400; background: #f4f4f4; white-space: pre-wrap; }
+#print-root .pr-secs { font-size: 12pt; line-height: 1.6; }
+#print-root .pr-secs h1 { font-size: 15pt; } #print-root .pr-secs h2 { font-size: 12.5pt; margin: 1.2em 0 .4em; }
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  html.printing, html.printing body { background: #fff !important; height: auto !important; overflow: visible !important; }
+  html.printing body > *:not(#print-root) { display: none !important; }
+  html.printing #print-root { position: static; left: auto; visibility: visible; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

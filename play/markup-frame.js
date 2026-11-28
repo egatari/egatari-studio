@@ -9,10 +9,14 @@
 //   - The small window next to a selection (or a tapped highlight): three colours, and 消す on a highlight. Above it with a mouse,
 //     below a selection on a touch screen (iPad's own callout is above it).
 //   - 暗記: an opaque band of the colour over the text of the chosen colours; a tap reveals one highlight.
+//   - Notes (handoff #107): 「メモ」 in the small window asks the page to quote the words into the note of their section (the page
+//     adds or reuses the highlight). At the end of each section of the book, a 「メモ」 button opens that section's note in the page,
+//     shown while the markup bar is open or when the section has a note. The notes' words never come into this frame.
 // Messages (all {egaViewer: "markup-…"}; the page checks every one):
 //   to the page   hello {supported, article, shown}  add {color, target}  set {id, color}  del {id}  status {missing:[id], sections:{id: title}}  esc
 //                 widen {list: [{id, target}]}  (records made before the ruby rule, widened to whole ruby segments once re-attached)
-//   from the page load {list, words, view}  view {view}  jump {id}
+//                 quote {color, target}  note {section}
+//   from the page load {list, words, view}  view {view}  jump {id}  goto {target}  notes {sections: [id]}
 //     view = {hidden: ["y"…], recall: bool, recallColors: ["y"…], bar: bool}
 (function markupFrame() {
   "use strict";
@@ -22,10 +26,10 @@
   var supported = typeof Range === "function" && typeof Range.prototype.getClientRects === "function" && typeof Element.prototype.attachShadow === "function";
   function post(m) { m.egaViewer = "markup-" + m.egaViewer; try { parentWin.postMessage(m, "*"); } catch (e) { /* gone */ } }
 
-  var S = { list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
+  var S = { last: "y", noteSections: [], quotes: [], qPlaced: [], list: [], placed: {}, view: { hidden: [], recall: false, recallColors: COLORS.slice(), bar: false }, revealed: {}, words: null, article: null };
 
   // ---------------------------------------------------------------- the text of a part, without ruby readings or hidden MathML
-  var SKIP = "rt,rp,.katex-mathml,script,style,template,noscript";
+  var SKIP = "rt,rp,.katex-mathml,script,style,template,noscript,[data-egatari-viewer]";
   function textOf(root) {
     var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) { var p = n.parentElement; return p && p.closest(SKIP) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; } });
     var nodes = [], starts = [], s = "", n;
@@ -82,7 +86,7 @@
   // ---------------------------------------------------------------- a selection → a target
   function targetOf(range) {
     var a = S.article;
-    if (!a || !a.contains(range.commonAncestorContainer)) return null;
+    if (!a || !a.contains(range.commonAncestorContainer)) return null;   // (a slide: slideTargetOf)
     var sec = sectionOf(range.startContainer), secEnd = sectionOf(range.endContainer);
     var root = sec && sec === secEnd ? sec : a, id = root === a ? "" : sec.getAttribute("data-section-id");
     var T = textOf(root), s = offsetOf(T, range.startContainer, range.startOffset), e = offsetOf(T, range.endContainer, range.endOffset);
@@ -121,8 +125,10 @@
   var masked = function (h) { return S.view.recall && S.view.recallColors.indexOf(h.color) >= 0 && !S.revealed[h.id]; };
   var BAND = { white: { y: "#fff066", p: "#ff9eb0", b: "#79b8ff" }, sepia: { y: "#f5e04a", p: "#f797a8", b: "#70aae6" }, black: { y: "#7d6800", p: "#a5304a", b: "#1f4f94" } };
   var LAYER_CSS = "@media print{:host{display:none!important}}" +   // stage 1 prints the book as it is; export (stage 2) draws highlights on purpose
+    ".u{position:absolute;pointer-events:none;height:0;border-bottom:2px dotted #6a4fd6}.u.dk{border-bottom-color:#b8a8ff}" +
     ".h{position:absolute;pointer-events:none;border-radius:2px}.h.mul{mix-blend-mode:multiply}.h.scr{mix-blend-mode:screen}" +
     ".m{position:absolute;border-radius:2px;cursor:pointer;-webkit-tap-highlight-color:transparent;pointer-events:auto}" +
+    ".fl div{position:absolute;border-radius:3px;pointer-events:none;outline:3px solid #2c63d4;animation:fl 1.2s ease-out forwards}@keyframes fl{0%{opacity:1}70%{opacity:1}100%{opacity:0}}" +
     ".k{all:unset;position:absolute;z-index:1;cursor:pointer;border-radius:2px;pointer-events:auto;-webkit-tap-highlight-color:transparent}.k:focus-visible{outline:3px solid #2c63d4;outline-offset:2px;box-shadow:0 0 0 5px #fff}";
   var L = { host: null, root: null, paint: null, mk: null };
   function layer() {
@@ -168,7 +174,9 @@
     var out = [], root = r.commonAncestorContainer, rubies = [];
     // each piece is tagged with its display equation (if any), so that a whole equation becomes one box below
     var push = function (n, a, b) {
-      var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects(), p = n.parentElement;
+      var p = n.parentElement;
+      if (inSlide && !seen(p)) return;   // a step not shown yet: its text is there, but not on screen
+      var x = document.createRange(); x.setStart(n, a); x.setEnd(n, b); var rs = x.getClientRects();
       var g = p && (p.closest(".egatari-math") || p.closest(".katex-display")), rb = rubyOf(n), rt = rb ? rtAfter(rb, n) : null;
       if (rt && rubies.indexOf(rt) < 0) rubies.push(rt);
       for (var i = 0; i < rs.length; i++) if (rs[i].width >= 0.5 && rs[i].height >= 0.5) out.push({ q: rs[i], g: g, rt: rt });
@@ -225,7 +233,8 @@
   // layer scrolls with the text). At the 2000 cap a full redraw was 130–160 ms in WebKit; this keeps it to what is on screen.
   var ORDER = [], WIN = null;
   function scrollerOf() { return S.article && (S.article.closest(".dx-body") || null); }
-  function vertical() { try { return /^vertical/.test(getComputedStyle(S.article).writingMode); } catch (e) { return false; } }
+  function vertical() { if (inSlide) return false; try { return /^vertical/.test(getComputedStyle(S.article).writingMode); } catch (e) { return false; } }
+  var inSlide = false;   // while the slide's boxes are measured: its text is horizontal whatever the book does
   function nearIds(filter) {
     var sc = scrollerOf(), v = vertical(), vr = sc ? sc.getBoundingClientRect() : { top: 0, bottom: innerHeight, left: 0, right: innerWidth, width: innerWidth, height: innerHeight };
     var m = (v ? vr.width : vr.height) * 0.5;   // half a screen before and after
@@ -240,33 +249,45 @@
     WIN = sc ? { at: v ? sc.scrollLeft : sc.scrollTop, margin: m, v: v } : null;
     return out;
   }
+  // One place to draw in: the book (a layer in its scrolling box, the highlights near the screen) or the slide on screen (a fixed
+  // layer over the page, every highlight of that slide). ctx = {Y: layer, P: placed ranges, ids(filter), o: the layer's origin, bg, MK}
   function paint() {
     var Y = S.article ? layer() : null;
-    if (!Y) return;
+    if (Y) paintIn({ Y: Y, P: S.placed, Q: S.qPlaced, ids: nearIds, o: L.host.getBoundingClientRect(), bg: bgName(), MK: MK });
+    paintSlide();
+  }
+  function paintIn(ctx) {
+    var Y = ctx.Y, P = ctx.P;
     var t0 = performance.now();
-    var o = L.host.getBoundingClientRect(), bg = bgName(), blend = bg === "black" ? "scr" : "mul";
+    var o = ctx.o, bg = ctx.bg, blend = bg === "black" ? "scr" : "mul";
     var box = function (q, grow) { grow = grow || {}; return "left:" + (q.left - o.left) + "px;top:" + (q.top - o.top - (grow.up || 0)) + "px;width:" + (q.width + (grow.right || 0)) + "px;height:" + (q.height + (grow.up || 0)) + "px;"; };
     var byId = {}; S.list.forEach(function (h) { byId[h.id] = h; });
-    var near = nearIds(function (id) { return byId[id] && !hidden(byId[id].color); });   // ORDER can be one list behind until placeAll
+    var near = ctx.ids(function (id) { return byId[id] && !hidden(byId[id].color); });   // ORDER can be one list behind until placeAll
     // the highlights shown (not hidden by a filter, not under a 暗記 band): all reads first, then one write
     var shown = [];
-    near.forEach(function (id) { var h = byId[id]; if (!masked(h)) shown.push([h, textRects(S.placed[id])]); });
+    near.forEach(function (id) { var h = byId[id]; if (!masked(h)) shown.push([h, textRects(P[id])]); });
     var html = "";
     for (var k = 0; k < shown.length; k++) {
       var h = shown[k][0], rs = shown[k][1];
       for (var i = 0; i < rs.length; i++) html += '<div class="h ' + blend + '" data-id="' + h.id + '" data-c="' + h.color + '" style="' + box(rs[i]) + "background:" + BAND[bg][h.color] + '"></div>';
     }
-    L.paint.innerHTML = html;   // ids are checked on arrival (ID_RE), colours are y/p/b and the numbers are made here
+    // quoted words (handoff #107, ア): a dotted underline, always shown (暗記 hides highlights only)
+    var Q = ctx.Q || [];
+    for (var qi = 0; qi < Q.length; qi++) {
+      var qr = textRects(Q[qi]);
+      for (var qj = 0; qj < qr.length; qj++) { var u = qr[qj]; html += '<div class="u' + (bg === "black" ? " dk" : "") + '" style="left:' + (u.left - o.left) + "px;top:" + (u.bottom - o.top - 1) + "px;width:" + u.width + 'px"></div>'; }
+    }
+    Y.paint.innerHTML = html;   // ids are checked on arrival (ID_RE), colours are y/p/b and the numbers are made here
     // 暗記: bands and buttons for the hidden highlights near the screen, kept between redraws so the keyboard's focus stays.
     // Tab moves through them in reading order; focusing the last one scrolls it into view, which draws the next ones
     var ids = S.view.recall ? near.filter(function (id) { return masked(byId[id]); }) : [];
-    var keep = {}, focusedGone = false, act = L.root.activeElement;
+    var keep = {}, focusedGone = false, act = Y.root.activeElement;
     ids.forEach(function (id) { keep[id] = true; });
-    Object.keys(MK).forEach(function (id) { if (keep[id]) return; if (act === MK[id].btn) focusedGone = true; MK[id].btn.remove(); MK[id].bands.remove(); delete MK[id]; });
+    Object.keys(ctx.MK).forEach(function (id) { if (keep[id]) return; if (act === ctx.MK[id].btn) focusedGone = true; ctx.MK[id].btn.remove(); ctx.MK[id].bands.remove(); delete ctx.MK[id]; });
     ids.forEach(function (id, n) {
-      var h = byId[id], r = S.placed[id], e = MK[id];
+      var h = byId[id], r = P[id], e = ctx.MK[id];
       if (!e) {
-        e = MK[id] = { btn: document.createElement("button"), bands: document.createElement("div") };
+        e = ctx.MK[id] = { btn: document.createElement("button"), bands: document.createElement("div") };
         e.btn.type = "button"; e.btn.className = "k"; e.btn.setAttribute("data-id", id);
         e.bands.className = "g"; e.bands.setAttribute("aria-hidden", "true"); e.bands.setAttribute("data-id", id);
       }
@@ -284,17 +305,18 @@
       }
       e.btn.style.cssText = first ? "left:" + (first[0] - o.left) + "px;top:" + (first[1] - o.top) + "px;width:" + (first[2] - first[0]) + "px;height:" + (first[3] - first[1]) + "px" : "left:0;top:0;width:1px;height:1px;opacity:0";
       // reading order: move only what is out of place (moving the focused button would drop the focus)
-      var at = L.mk.children[2 * n];
-      if (at !== e.btn) L.mk.insertBefore(e.btn, at || null);
-      if (e.btn.nextSibling !== e.bands) L.mk.insertBefore(e.bands, e.btn.nextSibling);
+      var at = Y.mk.children[2 * n];
+      if (at !== e.btn) Y.mk.insertBefore(e.btn, at || null);
+      if (e.btn.nextSibling !== e.bands) Y.mk.insertBefore(e.bands, e.btn.nextSibling);
     });
-    if (focusedGone) { var next = revealNext; revealNext = null; if (next && MK[next]) MK[next].btn.focus(); else if (ids.length) MK[ids[0]].btn.focus(); }
-    L.host.setAttribute("data-ms", String(Math.round((performance.now() - t0) * 10) / 10));   // the last redraw's time (docs/viewer.md, measured)
+    if (focusedGone) { var next = revealNext; revealNext = null; if (next && ctx.MK[next]) ctx.MK[next].btn.focus(); else if (ids.length) ctx.MK[ids[0]].btn.focus(); }
+    Y.host.setAttribute("data-ms", String(Math.round((performance.now() - t0) * 10) / 10));   // the last redraw's time (docs/viewer.md, measured)
   }
   var revealNext = null;
   function reveal(id) {
-    var ids = Object.keys(MK).sort(inOrder), i = ids.indexOf(id);
-    revealNext = L.root && L.root.activeElement === (MK[id] && MK[id].btn) ? ids[i + 1] || null : null;
+    var onSlide = !!SL.MK[id], mk = onSlide ? SL.MK : MK, root = onSlide ? SL.root : L.root, P = onSlide ? SL.placed : S.placed;
+    var ids = Object.keys(mk).sort(function (a, b) { try { return P[a].compareBoundaryPoints(Range.START_TO_START, P[b]); } catch (e) { return 0; } }), i = ids.indexOf(id);
+    revealNext = root && root.activeElement === (mk[id] && mk[id].btn) ? ids[i + 1] || null : null;
     S.revealed[id] = true; paint();
   }
   // Enter and Space on a band's button: taken here, before the lesson's player (this script runs first, so its listener does too),
@@ -302,13 +324,13 @@
   window.addEventListener("keydown", function (e) {
     if ((e.key !== "Enter" && e.key !== " ") || !L.root) return;
     var t = e.composedPath ? e.composedPath()[0] : null;
-    if (!t || !t.classList || !t.classList.contains("k") || t.getRootNode() !== L.root) return;
+    if (!t || !t.classList || !t.classList.contains("k") || (t.getRootNode() !== L.root && t.getRootNode() !== SL.root)) return;
     e.preventDefault(); e.stopImmediatePropagation();
     if (!e.repeat) reveal(t.getAttribute("data-id"));
   }, true);
   // the text moves without the DOM changing (font size, line spacing, width, rotation): paint again on the next frame
   var queued = false;
-  function queuePaint() { if (queued || !S.article) return; queued = true; requestAnimationFrame(function () { queued = false; paint(); }); }
+  function queuePaint() { if (queued || (!S.article && !SL.el)) return; queued = true; requestAnimationFrame(function () { queued = false; paint(); }); }
   var ro = typeof ResizeObserver === "function" ? new ResizeObserver(queuePaint) : null;
   // the text can also move when fonts, images or math finish loading late, or a <details> in the book opens or closes
   if (document.fonts) { try { document.fonts.ready.then(queuePaint); document.fonts.addEventListener("loadingdone", queuePaint); } catch (e) { /* old browser */ } }
@@ -319,6 +341,7 @@
     var missing = [];
     var widened = [];
     if (S.article) S.list.forEach(function (h) {
+      if (h.target.slide != null) return;   // a slide's highlight: placed only on its slide (placeSlide)
       var r = anchor(h);
       if (!r) { missing.push(h.id); return; }
       S.placed[h.id] = r;
@@ -327,13 +350,169 @@
       if (t && t.quote.exact !== q.exact && t.quote.exact.indexOf(q.exact) >= 0 && widened.length < 2000) widened.push({ id: h.id, target: t });
     });
     ORDER = Object.keys(S.placed).sort(inOrder);
+    S.qPlaced = [];
+    if (S.article) S.quotes.forEach(function (t) { if (t.section == null) return; var r = anchor({ target: t }); if (r) S.qPlaced.push(r); });
+    placeSlide();
     paint();
     var sections = {};
     if (S.article) Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) { var hd = s.querySelector("h2,h3"); sections[s.getAttribute("data-section-id")] = hd ? textOf(hd).text.trim().slice(0, 200) : ""; });
-    post({ egaViewer: "status", missing: missing.slice(0, 2000), sections: sections });
+    S.bookMissing = missing; S.sections = sections;
+    postStatus();
+    noteButtons();
     if (widened.length) post({ egaViewer: "widen", list: widened });
   }
+  // missing: in the book, and on each slide seen so far (a slide not seen yet is not reported)
+  function postStatus() {
+    var ids = {}, missing = (S.bookMissing || []).slice();
+    S.list.forEach(function (h) { ids[h.id] = true; });
+    Object.keys(SL.missing).forEach(function (k) { SL.missing[k].forEach(function (id) { if (ids[id] && missing.indexOf(id) < 0) missing.push(id); }); });
+    post({ egaViewer: "status", missing: missing.slice(0, 2000), sections: S.sections || {} });
+  }
   var stale = function () { for (var id in S.placed) { var r = S.placed[id]; if (!r.startContainer.isConnected || !r.endContainer.isConnected || r.collapsed) return true; } return false; };
+
+  // ---------------------------------------------------------------- the slide on screen (handoff #107: highlights, 暗記 and quotes on a slide's text)
+  // A slide's text is anchored like the book's ({slide: its key, quote}), and only the slide on screen is placed. Its highlights are
+  // drawn in a layer fixed over the page (the stage is scaled to the screen, so boxes are measured where the text is now), again when
+  // a step appears, the stage resizes or an animation ends. Text of a step not shown yet is not painted (seen()).
+  var SL = { qPlaced: [], el: null, key: "", host: null, root: null, paint: null, mk: null, placed: {}, MK: {}, missing: {} };
+  function activeSlide() { return document.querySelector("#stage > .slide.active"); }
+  function keyOf(el) { var k = el && (el._key || el.getAttribute("data-key") || el.id); if (k) return String(k).slice(0, 200); var all = document.querySelectorAll("#stage > .slide"); return el ? "s" + (Array.prototype.indexOf.call(all, el) + 1) : ""; }
+  function seen(e) {
+    for (; e && e !== SL.el && e.nodeType === 1; e = e.parentElement) {
+      var c = getComputedStyle(e);
+      if (c.visibility === "hidden" || c.display === "none" || parseFloat(c.opacity) < 0.05) return false;
+    }
+    return true;
+  }
+  // Two fixed layers: a fixed element is its own stacking context, so the colour boxes mix with nothing inside it; the layer of the
+  // colours is blended as a whole with the slide under it (multiply, or screen on a dark slide), and the 暗記 bands and their buttons
+  // (opaque, they hide the words) are in a second layer above it
+  function slideLayer() {
+    if (!SL.host) {
+      var mkHost = function (name, z) {
+        var h = document.createElement("div"); h.setAttribute("data-egatari-viewer", name);
+        h.style.cssText = "position:fixed;left:0;top:0;width:0;height:0;overflow:visible;pointer-events:none;margin:0;padding:0;border:0;z-index:" + z;
+        var r = h.attachShadow({ mode: "open" }), st = document.createElement("style"); st.textContent = LAYER_CSS; r.appendChild(st);
+        return [h, r];
+      };
+      var a = mkHost("slide-layer", 2147483645), b = mkHost("slide-bands", 2147483646);
+      SL.host = a[0]; SL.host2 = b[0]; SL.root = b[1];
+      SL.paint = document.createElement("div"); SL.paint.setAttribute("aria-hidden", "true");
+      SL.mk = document.createElement("div"); SL.mk.className = "mk";
+      a[1].appendChild(SL.paint); SL.root.appendChild(SL.mk);
+      SL.root.addEventListener("click", function (e) {
+        var m = e.target.closest ? e.target.closest(".k,.g") : null;
+        if (!m || !e.isTrusted) return;
+        e.preventDefault(); e.stopPropagation();
+        reveal(m.getAttribute("data-id"));
+      });
+    }
+    if (!SL.host.isConnected) document.documentElement.appendChild(SL.host);
+    if (!SL.host2.isConnected) document.documentElement.appendChild(SL.host2);
+    return SL;
+  }
+  // light or dark under the text: the slide's own background (or the page's)
+  function slideBg() {
+    var e = SL.el, m = null;
+    for (; e && !m; e = e.parentElement) { var c = getComputedStyle(e).backgroundColor, x = /rgba?\(([^)]+)\)/.exec(c); if (x) { var v = x[1].split(",").map(Number); if (v.length < 4 || v[3] > 0.5) m = v; } }
+    if (!m) return "white";
+    var l = m.slice(0, 3).map(function (v) { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2] < 0.25 ? "black" : "white";
+  }
+  function placeSlide() {
+    var el = activeSlide();
+    SL.el = el; SL.key = el ? keyOf(el) : ""; SL.placed = {};
+    if (!el) { if (SL.host) { SL.paint.innerHTML = ""; } return; }
+    var miss = [];
+    S.list.forEach(function (h) {
+      if (h.target.slide !== SL.key) return;
+      var r = findIn(el, h.target.quote);
+      if (r) SL.placed[h.id] = r; else miss.push(h.id);
+    });
+    SL.missing[SL.key] = miss;
+    SL.qPlaced = [];
+    S.quotes.forEach(function (t) { if (t.slide !== SL.key) return; var r = findIn(el, t.quote); if (r) SL.qPlaced.push(r); });
+  }
+  // the slide is on screen: not under the player's book view (the stage stays in the document, hidden), not of no size
+  function slideShown() {
+    if (!SL.el || document.documentElement.getAttribute("data-deck-layout") === "book") return false;
+    var r = SL.el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    return typeof SL.el.checkVisibility === "function" ? SL.el.checkVisibility({ visibilityProperty: true, opacityProperty: true }) : true;
+  }
+  function paintSlide() {
+    if (!SL.el || !slideShown()) { if (SL.host) { SL.paint.innerHTML = ""; Object.keys(SL.MK).forEach(function (id) { SL.MK[id].btn.remove(); SL.MK[id].bands.remove(); delete SL.MK[id]; }); } return; }
+    var Y = slideLayer(), ids = Object.keys(SL.placed).sort(function (a, b) { try { return SL.placed[a].compareBoundaryPoints(Range.START_TO_START, SL.placed[b]); } catch (e) { return 0; } });
+    var bg = slideBg();
+    Y.host.style.mixBlendMode = bg === "black" ? "screen" : "multiply";
+    inSlide = true;
+    try { paintIn({ Y: Y, P: SL.placed, Q: SL.qPlaced, ids: function (f) { return ids.filter(f); }, o: { left: 0, top: 0 }, bg: bg, MK: SL.MK }); }
+    finally { inSlide = false; }
+  }
+  // a range in the slide on screen → {slide, quote}
+  function slideTargetOf(range) {
+    var el = activeSlide();
+    if (!el || !el.contains(range.commonAncestorContainer)) return null;
+    var T = textOf(el), s = offsetOf(T, range.startContainer, range.startOffset), e = offsetOf(T, range.endContainer, range.endOffset);
+    while (s < e && /\s/.test(T.text.charAt(s))) s++;
+    while (e > s && /\s/.test(T.text.charAt(e - 1))) e--;
+    var w = widen(T, s, e); s = w[0]; e = w[1];
+    if (e <= s || e - s > MAXQ) return null;
+    return { slide: keyOf(el), quote: { exact: T.text.slice(s, e), prefix: T.text.slice(Math.max(0, s - CTX), s), suffix: T.text.slice(e, e + CTX) } };
+  }
+
+  // ---------------------------------------------------------------- going to a place: scrolled to the middle, and the words flash once
+  function goTo(r) {
+    var el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
+    try { el.scrollIntoView({ block: "center" }); } catch (x) { el.scrollIntoView(); }
+    setTimeout(function () { flash(r); }, 250);
+  }
+  function flash(r) {
+    var Y = S.article ? layer() : null;
+    if (!Y) return;
+    var o = L.host.getBoundingClientRect(), f = document.createElement("div"), rs = textRects(r);
+    f.className = "fl"; f.setAttribute("aria-hidden", "true");
+    for (var i = 0; i < rs.length; i++) { var d = document.createElement("div"); d.style.cssText = "left:" + (rs[i].left - o.left - 2) + "px;top:" + (rs[i].top - o.top - 2) + "px;width:" + (rs[i].width + 4) + "px;height:" + (rs[i].height + 4) + "px"; f.appendChild(d); }
+    L.root.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1300);
+  }
+
+  function flashSlide(r) {
+    var Y = slideLayer(), f = document.createElement("div");
+    inSlide = true; var rs = textRects(r); inSlide = false;
+    f.className = "fl"; f.setAttribute("aria-hidden", "true");
+    for (var i = 0; i < rs.length; i++) { var d = document.createElement("div"); d.style.cssText = "left:" + (rs[i].left - 2) + "px;top:" + (rs[i].top - 2) + "px;width:" + (rs[i].width + 4) + "px;height:" + (rs[i].height + 4) + "px"; f.appendChild(d); }
+    Y.root.appendChild(f);
+    setTimeout(function () { f.remove(); }, 1300);
+  }
+
+  // ---------------------------------------------------------------- 「メモ」 at the end of each section of the book
+  // A host element at the end of the section, with the button in its own shadow tree (the lesson's styles cannot reach it, and its
+  // words are not text of the book: SKIP). Shown while the markup bar is open, or when the section has a note
+  function noteButtons() {
+    if (!S.article || !supported) return;
+    var W = words();
+    Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (s) {
+      var id = s.getAttribute("data-section-id"), b = null;
+      for (var c = s.firstElementChild; c; c = c.nextElementSibling) if (c.getAttribute("data-egatari-viewer") === "note") b = c;
+      var has = S.noteSections.indexOf(id) >= 0, want = !!W.noteOpen && (S.view.bar || has);
+      if (!want) { if (b) b.remove(); return; }
+      if (!b) {
+        b = document.createElement("div"); b.setAttribute("data-egatari-viewer", "note");
+        var sh = b.attachShadow({ mode: "open" }), st = document.createElement("style"), bt = document.createElement("button");
+        st.textContent = ":host{display:block;margin:.6em 0 0;text-align:end}button{font:inherit;font-size:.85em;padding:.25em .9em;border-radius:1em;border:1px solid currentColor;background:transparent;color:inherit;opacity:.8;cursor:pointer}button:hover{opacity:1}button:focus-visible{outline:3px solid #2c63d4;outline-offset:2px}";
+        bt.type = "button";
+        bt.addEventListener("click", function (e) { if (e.isTrusted) { e.stopPropagation(); post({ egaViewer: "note", section: id }); } });
+        sh.appendChild(st); sh.appendChild(bt);
+      }
+      // at the end of the section's own text, before a section inside it
+      var inner = null;
+      for (var k = s.firstElementChild; k; k = k.nextElementSibling) if (k.matches("section[data-section-id]")) { inner = k; break; }
+      if (b.parentNode !== s || b.nextElementSibling !== inner) s.insertBefore(b, inner);
+      var label = has ? W.noteOpen : W.noteWrite, btn = b.shadowRoot.querySelector("button");
+      if (btn.textContent !== label) btn.textContent = label;
+    });
+  }
 
   // ---------------------------------------------------------------- the small window
   var host = null, root = null, pop = null, popFor = null;   // popFor: {range} for a new one, {id} for a highlight
@@ -375,6 +554,7 @@
     pop.setAttribute("aria-label", W.window);
     if (dock) pop.setAttribute("aria-label", W.pick || W.window);   // docked away from the text: say what it is for
     COLORS.forEach(function (c) { var b = document.createElement("button"); b.type = "button"; b.className = "c " + c; b.setAttribute("data-a", c); b.setAttribute("aria-label", W[c]); b.title = W[c]; if (forWhat.id) b.setAttribute("aria-pressed", c === cur ? "true" : "false"); pop.appendChild(b); });
+    if (W.note) { var nb = document.createElement("button"); nb.type = "button"; nb.className = "d n"; nb.setAttribute("data-a", "note"); nb.textContent = W.note; pop.appendChild(nb); }
     if (forWhat.id) { var d = document.createElement("button"); d.type = "button"; d.className = "d"; d.setAttribute("data-a", "del"); d.textContent = W.del; pop.appendChild(d); }
     if (dock) { var x0 = document.createElement("button"); x0.type = "button"; x0.className = "x"; x0.setAttribute("data-a", "close"); x0.setAttribute("aria-label", W.close || "×"); x0.textContent = "×"; pop.appendChild(x0); }
     pop.classList.toggle("dock", !!dock);   // finger-sized buttons (44 px) when docked for a touch selection
@@ -418,10 +598,16 @@
     var f = popFor;
     if (!f) return;
     if (a === "close") { dismissed = f.target ? JSON.stringify(f.target) : null; hidePop(); return; }   // the selection stays
-    if (f.id) {
+    if (a === "note") {
+      // the words of a new selection, or of the tapped highlight: the page quotes them into the note (no highlight is made; one already there is named in the quote)
+      var h0 = f.id ? S.list.filter(function (h) { return h.id === f.id; })[0] : null, t0 = h0 ? h0.target : f.target;
+      if (t0) post({ egaViewer: "quote", color: h0 ? h0.color : S.last, target: t0 });
+      if (!f.id) { try { window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ } }
+    } else if (f.id) {
       if (a === "del") post({ egaViewer: "del", id: f.id });
-      else if (COLORS.indexOf(a) >= 0) post({ egaViewer: "set", id: f.id, color: a });
+      else if (COLORS.indexOf(a) >= 0) { S.last = a; post({ egaViewer: "set", id: f.id, color: a }); }
     } else if (COLORS.indexOf(a) >= 0 && f.target) {
+      S.last = a;
       post({ egaViewer: "add", color: a, target: f.target });
       try { window.getSelection().removeAllRanges(); } catch (e) { /* ignore */ }
     }
@@ -433,10 +619,10 @@
   document.addEventListener("selectionchange", function () {
     clearTimeout(selTimer);
     selTimer = setTimeout(function () {
-      if (!S.article || !supported) return;
+      if (!supported || (!S.article && !activeSlide())) return;
       var sel = window.getSelection();
       if (!sel || sel.rangeCount === 0 || sel.isCollapsed) { if (popFor && !popFor.id) hidePop(); return; }
-      var r = sel.getRangeAt(0), t = targetOf(r);
+      var r = sel.getRangeAt(0), t = targetOf(r) || slideTargetOf(r);
       if (!t) { if (popFor && !popFor.id) hidePop(); return; }
       if (dismissed === JSON.stringify(t)) return;   // closed with × for this very selection
       dismissed = null;
@@ -448,7 +634,7 @@
   function hitAt(x, y) {
     var hit = null;
     S.list.forEach(function (h) {
-      var r = S.placed[h.id];
+      var r = S.placed[h.id] || SL.placed[h.id];
       if (!r || hidden(h.color)) return;
       var rs = r.getClientRects();
       for (var i = 0; i < rs.length; i++) if (x >= rs[i].left && x <= rs[i].right && y >= rs[i].top && y <= rs[i].bottom) { hit = { h: h, rect: rs[i] }; return; }
@@ -456,7 +642,7 @@
     return hit;
   }
   document.addEventListener("click", function (e) {
-    if (!S.article || !e.isTrusted || !S.article.contains(e.target)) return;
+    if (!e.isTrusted || !((S.article && S.article.contains(e.target)) || (SL.el && SL.el.contains(e.target)))) return;
     var sel = window.getSelection();
     if (sel && !sel.isCollapsed) return;
     var hit = hitAt(e.clientX, e.clientY);
@@ -472,6 +658,7 @@
     if (WIN && sc && e.target === sc && Math.abs((WIN.v ? sc.scrollLeft : sc.scrollTop) - WIN.at) > WIN.margin / 2) queuePaint();
   }, true);
   window.addEventListener("resize", queuePaint);
+  ["transitionend", "animationend"].forEach(function (t) { document.addEventListener(t, function (e) { if (SL.el && e.target && e.target.nodeType === 1 && SL.el.contains(e.target)) queuePaint(); }, true); });
   document.addEventListener("keydown", function (e) {
     if (e.key !== "Escape") return;
     if (popFor) { hidePop(); e.preventDefault(); e.stopPropagation(); return; }
@@ -479,7 +666,7 @@
   }, true);
 
   // ---------------------------------------------------------------- the book appearing, or being rebuilt
-  var said = null, moTimer = 0;
+  var said = null, saidSlides = null, moTimer = 0;
   function look() {
     var a = document.getElementById("egatari-article");
     if (a !== S.article) {
@@ -488,19 +675,27 @@
       if (a) placeAll(); else if (L.host) L.host.remove();
     }
     else if (a && stale()) placeAll();
+    var sl = activeSlide(), lay0 = document.documentElement.getAttribute("data-deck-layout");
+    // the player's view changed (slides, book, スライドと本): the slide's highlights are drawn only while the slide is on screen
+    if (lay0 !== SL.lay) { SL.lay = lay0; if (sl === SL.el) paint(); }
+    if (sl !== SL.el) { placeSlide(); paint(); if (SL.missing[SL.key] && SL.missing[SL.key].length) postStatus(); }
     // article: the lesson has a book (an article with text; kit/panes.js shows 台本で読む instead when it is empty).
     // shown: the book is on screen (the player's 表示 is 本 or スライドと本); a player without layouts counts as shown
     var lay = document.documentElement.getAttribute("data-deck-layout");
-    var has = !!a && !!(a.textContent || "").trim(), shown = !lay || lay === "book" || lay === "split";
-    var now = supported + ":" + has + ":" + shown;
-    if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: has, shown: shown }); }
+    var has = !!a && !!(a.textContent || "").trim(), shown = !lay || lay === "book" || lay === "split", slides = !!document.getElementById("stage");
+    var now = supported + ":" + has + ":" + shown + ":" + slides;
+    // the slides (key, first heading), once and when they change: the page's list when the player gives it no timeline
+    var sk = Array.prototype.map.call(document.querySelectorAll("#stage > .slide"), function (el) { var hd = el.querySelector("h1,h2,h3"); return { k: keyOf(el), t: hd ? (hd.textContent || "").replace(/\s+/g, " ").trim().slice(0, 300) : "" }; });
+    var skS = JSON.stringify(sk);
+    if (skS !== saidSlides && sk.length <= 5000) { saidSlides = skS; post({ egaViewer: "slides", list: sk }); }
+    if (now !== said) { said = now; post({ egaViewer: "hello", supported: supported, article: has, shown: shown, slides: slides }); }
   }
   function start() {
     look();
     // a change in the book (rebuilt, or its font size, spacing or background): find the places again, and paint on the next frame
     new MutationObserver(function (recs) {
       var mine = true;
-      for (var i = 0; i < recs.length && mine; i++) if (recs[i].target !== L.host && !(recs[i].addedNodes.length === 1 && recs[i].addedNodes[0] === L.host)) mine = false;
+      for (var i = 0; i < recs.length && mine; i++) if (recs[i].target !== L.host && recs[i].target !== SL.host && recs[i].target !== SL.host2 && !(recs[i].addedNodes.length === 1 && (recs[i].addedNodes[0] === L.host || recs[i].addedNodes[0] === SL.host || recs[i].addedNodes[0] === SL.host2))) mine = false;
       if (mine) return;
       clearTimeout(moTimer); moTimer = setTimeout(look, 150); queuePaint();
     }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "data-dx-bg", "hidden", "data-deck-layout"] });
@@ -515,7 +710,7 @@
     var was = S.view.recall;
     S.view = { hidden: okColors(v.hidden), recall: v.recall === true, recallColors: okColors(v.recallColors), bar: v.bar === true };
     if (!S.view.recall || !was) S.revealed = {};
-    paint();
+    paint(); noteButtons();
   }
   window.addEventListener("message", function (e) {
     var m = e.data;
@@ -527,11 +722,34 @@
       placeAll();
       if (popFor && popFor.id && !S.placed[popFor.id]) hidePop();
     } else if (m.egaViewer === "markup-view") setView(m.view);
-    else if (m.egaViewer === "markup-jump" && typeof m.id === "string") {
-      var r = S.placed[m.id];
-      if (!r) return;
-      var el = r.startContainer.nodeType === 1 ? r.startContainer : r.startContainer.parentElement;
-      try { el.scrollIntoView({ block: "center" }); } catch (x) { el.scrollIntoView(); }
+    else if (m.egaViewer === "markup-jump" && typeof m.id === "string") { if (S.placed[m.id]) goTo(S.placed[m.id]); else if (SL.placed[m.id]) flashSlide(SL.placed[m.id]); }
+    // ↗ on a quote whose highlight is gone: find the quoted words again (the same way as a highlight)
+    else if (m.egaViewer === "markup-goto" && m.target && typeof m.target === "object" && m.target.quote && typeof m.target.quote.exact === "string" && m.target.quote.exact.length <= MAXQ) {
+      var q = m.target.quote, t = { quote: { exact: q.exact, prefix: typeof q.prefix === "string" ? q.prefix.slice(0, CTX) : "", suffix: typeof q.suffix === "string" ? q.suffix.slice(0, CTX) : "" } };
+      if (typeof m.target.section === "string") { t.section = m.target.section; if (S.article) { var r2 = anchor({ target: t }); if (r2) goTo(r2); } }
+      else if (typeof m.target.slide === "string" && SL.el && m.target.slide === SL.key) { var r3 = findIn(SL.el, t.quote); if (r3) flashSlide(r3); }
+    }
+    // 「メモ」 (or m) pressed while the book is on screen: the note of the section being read (the last one whose start is above the
+    // upper third of the frame and that is still on screen)
+    else if (m.egaViewer === "markup-note-here") {
+      if (!S.article) return;
+      var vh = window.innerHeight || 0, here = null, first = null;
+      Array.prototype.forEach.call(S.article.querySelectorAll("section[data-section-id]"), function (sec) {
+        var r = sec.getBoundingClientRect();
+        if (r.bottom <= 0 || r.top >= vh || !r.height) return;
+        if (!first) first = sec;
+        if (r.top <= vh / 3) here = sec;
+      });
+      var at = here || first;
+      if (at) post({ egaViewer: "note", section: at.getAttribute("data-section-id") });
+    }
+    else if (m.egaViewer === "markup-notes" && Array.isArray(m.sections) && m.sections.length <= 5000) {
+      S.noteSections = m.sections.filter(function (x) { return typeof x === "string" && x.length <= 200; });
+      S.quotes = (isList(m.quotes) ? m.quotes : []).filter(function (t) {
+        return t && typeof t === "object" && (typeof t.section === "string" || typeof t.slide === "string") && t.quote && typeof t.quote.exact === "string" && t.quote.exact.length <= MAXQ;
+      }).map(function (t) { var q = t.quote, c = { quote: { exact: q.exact, prefix: typeof q.prefix === "string" ? q.prefix.slice(0, CTX) : "", suffix: typeof q.suffix === "string" ? q.suffix.slice(0, CTX) : "" } }; if (typeof t.section === "string") c.section = t.section.slice(0, 200); else c.slide = t.slide.slice(0, 200); return c; });
+      noteButtons();
+      placeAll();
     }
   });
 })();

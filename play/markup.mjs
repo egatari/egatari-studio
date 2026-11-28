@@ -11,6 +11,7 @@
 //   const M = markup({els, words, onPersist})
 //   M.open({frame, docId, sourceSha256, fileSha, shared})   fileSha: a promise of the file's SHA-256 (hex), from the bytes play/main.js read   M.close()   M.message(m) → true when it was a markup message
 //   M.setWords(words)   M.toggle(on?)   M.state()
+import { mergeById, mergeNotes } from './notes-export.mjs';
 const COLORS = ['y', 'p', 'b'];
 const MAX = 2000, MAXQ = 1000, CTX = 32;
 const DB = 'egatari-viewer-notes', STORE = 'lessons', NAMES_KEY = 'egatari-viewer-colour-names';
@@ -38,12 +39,13 @@ export async function saveRecord(rec) {
 }
 // what is saved on this device: {lessons, highlights} (asked before 「共有の端末」 deletes it)
 export async function countRecords() {
-  const d = await db(); if (!d) return { lessons: 0, highlights: 0 };
+  const d = await db(); if (!d) return { lessons: 0, highlights: 0, notes: 0 };
+  const len = (a) => (Array.isArray(a) ? a.length : 0);
   try {
     const all = await req(d.transaction(STORE, 'readonly').objectStore(STORE).getAll());
-    const withAny = all.filter((r) => r && Array.isArray(r.highlights) && r.highlights.length);
-    return { lessons: withAny.length, highlights: withAny.reduce((n, r) => n + r.highlights.length, 0) };
-  } catch { return { lessons: 0, highlights: 0 }; }
+    const withAny = all.filter((r) => r && (len(r.highlights) || len(r.notes)));
+    return { lessons: withAny.length, highlights: withAny.reduce((n, r) => n + len(r.highlights), 0), notes: withAny.reduce((n, r) => n + len(r.notes), 0) };
+  } catch { return { lessons: 0, highlights: 0, notes: 0 }; }
 }
 export async function clearAllRecords() { const d = await db(); if (!d) return; try { await req(d.transaction(STORE, 'readwrite').objectStore(STORE).clear()); } catch { /* nothing */ } }
 const getNames = () => { try { const v = JSON.parse(localStorage.getItem(NAMES_KEY) || '{}'); return COLORS.reduce((o, c) => ((o[c] = typeof v[c] === 'string' ? v[c].slice(0, 40) : ''), o), {}); } catch { return { y: '', p: '', b: '' }; } };
@@ -52,22 +54,68 @@ const setNames = (n) => { try { localStorage.setItem(NAMES_KEY, JSON.stringify(n
 // ---------------------------------------------------------------- checking requests from the frame
 const isStr = (v, n) => typeof v === 'string' && v.length <= n;
 const keys = (m, list) => Object.keys(m).every((k) => list.includes(k));
-function cleanTarget(t) {
-  if (!t || typeof t !== 'object' || !keys(t, ['section', 'quote']) || !isStr(t.section, 200)) return null;
+// a text range: {section, quote} in the book (data-section-id, "" outside any section) or {slide, quote} on a slide (its key)
+export function cleanTarget(t) {
+  if (!t || typeof t !== 'object') return null;
+  const onSlide = keys(t, ['slide', 'quote']) && isStr(t.slide, 200) && t.slide !== '';
+  if (!onSlide && !(keys(t, ['section', 'quote']) && isStr(t.section, 200))) return null;
   const q = t.quote;
   if (!q || typeof q !== 'object' || !keys(q, ['exact', 'prefix', 'suffix'])) return null;
   if (!isStr(q.exact, MAXQ) || !q.exact.trim() || !isStr(q.prefix, CTX) || !isStr(q.suffix, CTX)) return null;
-  return { section: t.section, quote: { exact: q.exact, prefix: q.prefix, suffix: q.suffix } };
+  const quote = { exact: q.exact, prefix: q.prefix, suffix: q.suffix };
+  return onSlide ? { slide: t.slide, quote } : { section: t.section, quote };
 }
-const newId = () => { const b = crypto.getRandomValues(new Uint8Array(8)); return 'h-' + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''); };
+// ---------------------------------------------------------------- notes (handoff #107, textbook-reader-memo §3.2B)
+// One note per slide ({slide: key}) and per section of the book ({section: id}). Its blocks are typed text ({text}) and quotes
+// ({quote: {highlight, exact, target}}): the quoted words are copied, so they stay when the lesson changes and the place is gone.
+// Notes are kept in the page only (never sent to the lesson's frame) and come from this page or from a file the learner reads in
+// (untrusted): every one is checked here.
+export const MAXN = 1000, MAXT = 20000, MAXB = 200;
+const ID_N = /^n-[0-9a-f]{1,32}$/, ID_H = /^h-[0-9a-f]{1,32}$/;
+export function cleanAt(a) {
+  if (!a || typeof a !== 'object') return null;
+  if (keys(a, ['slide']) && isStr(a.slide, 200) && a.slide !== '') return { slide: a.slide };
+  if (keys(a, ['section']) && isStr(a.section, 200)) return { section: a.section };
+  return null;
+}
+export const atKey = (a) => (a.slide != null ? 's:' + a.slide : 'b:' + a.section);
+export function cleanBlocks(list) {
+  if (!Array.isArray(list)) return null;
+  const out = []; let chars = 0;
+  for (const b of list.slice(0, MAXB)) {
+    if (!b || typeof b !== 'object') continue;
+    if (keys(b, ['text']) && typeof b.text === 'string') {
+      const text = b.text.slice(0, Math.max(0, MAXT - chars)); chars += text.length; out.push({ text });
+    } else if (keys(b, ['quote']) && b.quote && typeof b.quote === 'object' && (keys(b.quote, ['highlight', 'exact', 'target']) || keys(b.quote, ['exact', 'target']))) {
+      // highlight: the id of the highlight the quote was taken from, when one exists (annotations.md Note record; a quote made
+      // from 「メモ」 on words without a highlight has none)
+      const q = b.quote, t = cleanTarget(q.target), hl = 'highlight' in q;
+      if (!t || !isStr(q.exact, MAXQ) || !q.exact.trim()) continue;
+      if (hl && !(isStr(q.highlight, 40) && (q.highlight === '' || ID_H.test(q.highlight)))) continue;
+      out.push({ quote: hl && q.highlight ? { highlight: q.highlight, exact: q.exact, target: t } : { exact: q.exact, target: t } });
+    }
+  }
+  return out;
+}
+const isTime = (v) => isStr(v, 40) && !Number.isNaN(Date.parse(v));
+export function cleanNote(n) {
+  if (!n || typeof n !== 'object' || !isStr(n.id, 40) || !ID_N.test(n.id)) return null;
+  const at = cleanAt(n.at), blocks = cleanBlocks(n.blocks);
+  if (!at || !blocks || !isTime(n.created) || !isTime(n.modified)) return null;
+  return { id: n.id, at, blocks, created: n.created, modified: n.modified };
+}
+// a note with nothing in it (only blank text) is not kept
+export const emptyNote = (blocks) => blocks.every((b) => b.text != null && !b.text.trim());
+const newId = (p = 'h-') => { const b = crypto.getRandomValues(new Uint8Array(8)); return p + Array.from(b, (x) => x.toString(16).padStart(2, '0')).join(''); };
 // the SHA-256 of bytes already read (play/main.js reads the file once, through app/bounded-read.js)
 export async function sha256Hex(bytes) {
   try { const h = await crypto.subtle.digest('SHA-256', bytes); return Array.from(new Uint8Array(h), (x) => x.toString(16).padStart(2, '0')).join(''); } catch { return ''; }
 }
 
-export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }) {
+export function markup({ els, words, onPersist = () => {}, onToggle = () => {}, onQuote = () => {}, onNoteSection = () => {}, onNotes = () => {},
+  slides = () => [], slideName = (k) => k, onGo = () => {}, onOpenNote = () => {} }) {
   let W = words;
-  const L = { frame: null, docId: '', sourceSha256: '', fileSha: Promise.resolve(''), shared: false, rec: null, available: false, supported: false, shown: true, bar: false,
+  const L = { frame: null, docId: '', key: '', sourceSha256: '', fileSha: Promise.resolve(''), shared: false, rec: null, available: false, supported: false, shown: true, bar: false,
     hidden: [], recall: false, recallColors: COLORS.slice(), missing: [], sections: {}, saveChain: Promise.resolve(), loaded: false };
   const view = () => ({ hidden: L.hidden.slice(), recall: L.recall, recallColors: L.recallColors.slice(), bar: L.bar });
   const send = (m) => { const f = L.frame; if (f && f.contentWindow) f.contentWindow.postMessage(m, '*'); };
@@ -75,18 +123,47 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   // a lesson's frame
   const C = (c) => W().mColour[c];
   const frameWords = () => ({ y: C('y'), p: C('p'), b: C('b'), del: W().mDelete, window: W().mHighlight, pick: W().mPick, close: W().mPickClose,
-    reveal: { y: W().mReveal(C('y')), p: W().mReveal(C('p')), b: W().mReveal(C('b')) } });
+    reveal: { y: W().mReveal(C('y')), p: W().mReveal(C('p')), b: W().mReveal(C('b')) }, note: W().nQuote, noteOpen: W().nOpenSection, noteWrite: W().nWriteSection });
   const colourLabel = (c) => { const n = getNames()[c]; return n ? `${W().mColour[c]}（${n}）` : W().mColour[c]; };
-  const pushAll = () => send({ egaViewer: 'markup-load', list: L.rec ? L.rec.highlights : [], words: frameWords(), view: view() });
+  const pushAll = () => { send({ egaViewer: 'markup-load', list: L.rec ? L.rec.highlights : [], words: frameWords(), view: view() }); pushNotes(); };
   const pushView = () => send({ egaViewer: 'markup-view', view: view() });
+  // the frame learns only which sections have a note (to name its button), never what is written in it
+  // and the quoted words' places (the file's own words), to mark them
+  const pushNotes = () => send({ egaViewer: 'markup-notes', sections: L.rec ? [...new Set(L.rec.notes.filter((n) => n.at.section != null).map((n) => n.at.section))] : [],
+    quotes: L.rec ? L.rec.notes.flatMap((n) => n.blocks.filter((b) => b.quote).map((b) => b.quote.target)).slice(0, MAXB * 10) : [] });
+
+  // ---------------------------------------------------------------- notes
+  const noteOf = (at) => { const k = atKey(at); return L.rec ? L.rec.notes.find((n) => atKey(n.at) === k) || null : null; };
+  function getNote(at) { const n = cleanAt(at) && noteOf(at); return n ? JSON.parse(JSON.stringify(n.blocks)) : []; }
+  function setNote(at, blocks) {
+    const a = cleanAt(at);
+    if (!L.rec || !a) return false;
+    const c = cleanBlocks(blocks) || [], n = noteOf(a), now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+    if (emptyNote(c)) { if (!n) return true; L.rec.notes = L.rec.notes.filter((x) => x !== n); }
+    else if (n) { if (JSON.stringify(n.blocks) === JSON.stringify(c)) return true; n.blocks = c; n.modified = now; }
+    else {
+      if (L.rec.notes.length >= MAXN) { els.announce(W().nFull(MAXN)); return false; }
+      L.rec.notes.push({ id: newId('n-'), at: a, blocks: c, created: now, modified: now });
+    }
+    pushNotes(); renderBar(); if (els.list.open) renderList(); onNotes(); persist();
+    return true;
+  }
+  // ↗ on a quote: to its highlight when it is still there, else to the quoted words
+  // the note of the section of the book on screen (the frame answers with markup-note)
+  function noteHere() { send({ egaViewer: 'markup-note-here' }); }
+  function goQuote(q) {
+    if (!L.rec || !q || !q.target) return;
+    if (L.rec.highlights.some((h) => h.id === q.highlight)) send({ egaViewer: 'markup-jump', id: q.highlight });
+    else send({ egaViewer: 'markup-goto', target: q.target });
+  }
 
   async function persist() {
-    if (L.shared || !L.docId || !L.rec) return;
+    if (L.shared || !L.key || !L.rec) return;
     const rec = L.rec;
     L.saveChain = L.saveChain.then(async () => {
       if (!rec.madeOn.fileSha256) rec.madeOn.fileSha256 = await L.fileSha;
       const ok = await saveRecord(JSON.parse(JSON.stringify(rec)));
-      if (ok && rec.highlights.length) onPersist();
+      if (ok && (rec.highlights.length || rec.notes.length)) onPersist();
     });
     await L.saveChain;
   }
@@ -100,12 +177,16 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     const H = L.rec ? L.rec.highlights : [];
     const find = (id) => H.find((h) => h.id === id);
     switch (m.egaViewer) {
+      // the slides of the file as its frame finds them (key and first heading): used when the player's ready gave no timeline
+      case 'markup-slides':
+        if (!keys(m, ['egaViewer', 'list']) || !Array.isArray(m.list) || m.list.length > 5000) break;
+        L.slides = m.list.filter((x) => x && typeof x === 'object' && isStr(x.k, 200) && x.k && isStr(x.t, 300)).map((x) => ({ key: x.k, title: x.t }));
+        break;
       case 'markup-hello':
-        if (!keys(m, ['egaViewer', 'supported', 'article', 'shown']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean') break;
-        // the button is there only when this lesson has a book (a tool that depends on the content shows only when it can be used,
-        // like the player's bookmark buttons; handoff #78, 11/22). With the slides alone showing, the bar says where highlights go
-        // (the book) and that the script cannot take them yet
-        L.supported = m.supported; L.available = m.supported && m.article; L.shown = m.shown;
+        if (!keys(m, ['egaViewer', 'supported', 'article', 'shown', 'slides']) || typeof m.supported !== 'boolean' || typeof m.article !== 'boolean' || typeof m.shown !== 'boolean' || typeof m.slides !== 'boolean') break;
+        // the button is there when the lesson has text to mark: a book, or slides (handoff #107: highlights and quotes on a slide's
+        // text too; a tool that depends on the content shows only when it can be used, handoff #78)
+        L.supported = m.supported; L.available = m.supported && (m.article || m.slides); L.shown = m.shown; L.article = m.article;
         els.button.hidden = !L.available;
         if (!L.available && L.bar) toggle(false);
         if (!L.available && L.recall) { L.recall = false; pushView(); }
@@ -154,6 +235,21 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
         if (els.list.open) renderList();
         break;
       }
+      // 「メモ」 in the small window (handoff #107): the note of the words' slide or section gets a quote of them. No highlight is made
+      // (the owner 11/27: a quote is not something to hide in 暗記); the words get a mark of their own (a dotted underline, unlike
+      // the red lines a slide may have). When they already have a highlight, the quote keeps its id (annotations.md: "when one exists")
+      case 'markup-quote': {
+        if (!keys(m, ['egaViewer', 'color', 'target']) || !COLORS.includes(m.color) || !L.rec) break;
+        const t = cleanTarget(m.target); if (!t) break;
+        const h = H.find((x) => JSON.stringify(x.target) === JSON.stringify(t));
+        const quote = { exact: t.quote.exact, target: t }; if (h) quote.highlight = h.id;
+        onQuote(t.slide != null ? { slide: t.slide } : { section: t.section }, { quote });
+        break;
+      }
+      // the 「メモ」 button at the end of a section of the book: the note opens in this page (its words never go into the frame)
+      case 'markup-note':
+        if (keys(m, ['egaViewer', 'section']) && isStr(m.section, 200)) onNoteSection(m.section);
+        break;
       case 'markup-esc':
         if (keys(m, ['egaViewer']) && L.bar) { toggle(false); els.button.focus(); }
         break;
@@ -164,13 +260,18 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   // ---------------------------------------------------------------- opening and closing a lesson
   async function open({ frame, docId, sourceSha256 = '', fileSha = Promise.resolve(''), shared = false }) {
     close();
-    Object.assign(L, { frame, docId: String(docId || ''), sourceSha256: String(sourceSha256 || ''), fileSha: Promise.resolve(fileSha).catch(() => ''), shared, loaded: false, missing: [], sections: {} });
-    let rec = shared ? null : await loadRecord(L.docId);
+    Object.assign(L, { frame, docId: String(docId || ''), sourceSha256: String(sourceSha256 || ''), fileSha: Promise.resolve(fileSha).catch(() => ''), shared, loaded: false, missing: [], sections: {}, slides: [] });
+    // the record's key: the lesson's docId, or for a file with none the SHA-256 of its bytes ("file:…", as for handwriting)
+    L.key = L.docId || '';
+    if (!L.key) { const h = await L.fileSha; if (L.frame !== frame) return; L.key = h ? 'file:' + h : ''; }
+    let rec = shared || !L.key ? null : await loadRecord(L.key);
     if (L.frame !== frame) return;
-    if (!rec || !Array.isArray(rec.highlights)) rec = { docId: L.docId, madeOn: {}, highlights: [] };
+    if (!rec || !Array.isArray(rec.highlights)) rec = { docId: L.key, madeOn: {}, highlights: [], notes: [] };
     rec.madeOn = { ...(L.sourceSha256 ? { sourceSha256: L.sourceSha256 } : {}), fileSha256: '' };   // the version now open; computed on the next save
     rec.highlights = rec.highlights.filter((h) => h && isStr(h.id, 40) && COLORS.includes(h.color) && cleanTarget(h.target)).slice(0, MAX);
+    rec.notes = (Array.isArray(rec.notes) ? rec.notes : []).map(cleanNote).filter(Boolean).slice(0, MAXN);
     L.rec = rec; L.loaded = true;
+    onNotes();
     if (L.available) pushAll();
     renderBar();
   }
@@ -208,7 +309,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     els.listButton.textContent = W().mList;
     if (n) { const c = document.createElement('span'); c.className = 'n'; c.textContent = W().mListCount(n); els.listButton.appendChild(c); }
     els.note.hidden = !L.shared || !L.available;
-    const hint = !L.available ? W().mNoBook : !L.shown ? W().mOpenBook : '';
+    const hint = !L.available ? W().mNoBook : '';
     els.hint.textContent = hint; els.hint.hidden = !hint;
     // with no book on screen the hint takes the bar (a phone has no room for both); 暗記 and the list come back with the book
     els.recall.hidden = !!hint; els.listButton.hidden = !!hint; if (hint) els.recallColours.hidden = true;
@@ -257,14 +358,21 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
     }
     box.appendChild(colours);
     if (L.shared) box.appendChild(mk('p', 'small', W().mShared));
-    // the highlights, by section in the order of the book
+    // the highlights, by slide (in the lesson's order) and then by section of the book. A slide that is no longer in the lesson, or
+    // words not found again, are listed apart (kept, never deleted)
+    const known = new Set(slides());
+    const lostSlide = (t) => t.slide != null && known.size > 0 && !known.has(t.slide);
     const missing = new Set(L.missing);
-    const placed = H.filter((h) => !missing.has(h.id));
+    const isLost = (h) => missing.has(h.id) || lostSlide(h.target);
+    const placed = H.filter((h) => !isLost(h));
     if (!H.length) box.appendChild(mk('p', 'small', W().mEmpty));
-    const order = Object.keys(L.sections);
+    const order = [...slides().map((k) => 's:' + k), ...Object.keys(L.sections).map((k) => 'b:' + k)];
+    const gk = (t) => (t.slide != null ? 's:' + t.slide : 'b:' + t.section);
+    const gname = (k) => (k.startsWith('s:') ? slideName(k.slice(2)) : k === 'b:' ? W().mNoSection : (L.sections[k.slice(2)] || k.slice(2)));
     const groups = new Map();
-    for (const h of placed) { const k = h.target.section; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); }
-    const sorted = [...groups.keys()].sort((a, b) => (a === '' ? -1 : order.indexOf(a)) - (b === '' ? -1 : order.indexOf(b)));
+    for (const h of placed) { const k = gk(h.target); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(h); }
+    const rank = (k) => { const i = order.indexOf(k); return i < 0 ? (k === 'b:' ? slides().length - 0.5 : order.length) : i; };
+    const sorted = [...groups.keys()].sort((a, b) => rank(a) - rank(b));
     const item = (h, jump) => {
       const li = mk('li', 'm-item');
       li.appendChild(mk('span', 'm-sw m-' + h.color));
@@ -272,7 +380,7 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
       const t = q.length > 80 ? q.slice(0, 80) + '…' : q;
       if (jump) {
         const b = mk('button', 'm-q', t); b.type = 'button'; b.setAttribute('aria-label', W().mJump(W().mColour[h.color], t));
-        b.addEventListener('click', () => { els.list.close(); send({ egaViewer: 'markup-jump', id: h.id }); });
+        b.addEventListener('click', () => { els.list.close(); onGo({ highlight: h.id, exact: h.target.quote.exact, target: h.target }); });
         li.appendChild(b);
       } else {
         li.appendChild(mk('span', 'm-q', t));
@@ -284,14 +392,48 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
       return li;
     };
     for (const k of sorted) {
-      box.appendChild(mk('h3', null, k === '' ? W().mNoSection : (L.sections[k] || k)));
+      box.appendChild(mk('h3', null, gname(k)));
       const ul = mk('ul', 'm-items'); for (const h of groups.get(k)) ul.appendChild(item(h, true)); box.appendChild(ul);
     }
-    const lost = H.filter((h) => missing.has(h.id));
+    const lost = H.filter(isLost);
     if (lost.length) {
       box.appendChild(mk('h3', null, W().mMissing));
       box.appendChild(mk('p', 'small', W().mMissingNote));
       const ul = mk('ul', 'm-items'); for (const h of lost) ul.appendChild(item(h, false)); box.appendChild(ul);
+    }
+    // the notes: each opens where it belongs; a note whose slide or section is gone is kept and listed apart (annotations.md)
+    const N = L.rec ? L.rec.notes : [];
+    if (N.length) {
+      const sectionsKnown = Object.keys(L.sections).length > 0;
+      const noteLost = (n) => (n.at.slide != null ? lostSlide(n.at) : sectionsKnown && n.at.section !== '' && !(n.at.section in L.sections));
+      const first = (n) => { const b = n.blocks.find((x) => x.text != null) || n.blocks[0]; const v = (b.text != null ? b.text : '“' + b.quote.exact + '”').replace(/\s+/g, ' '); return v.length > 80 ? v.slice(0, 80) + '…' : v; };
+      const nname = (n) => (n.at.slide != null ? slideName(n.at.slide) : n.at.section === '' ? W().mNoSection : (L.sections[n.at.section] || n.at.section));
+      box.appendChild(mk('h3', 'm-notes-h', W().nListTitle(N.length)));
+      const ul = mk('ul', 'm-items');
+      const sortedN = N.filter((n) => !noteLost(n)).sort((a, b) => rank(gk(a.at)) - rank(gk(b.at)));
+      for (const n of sortedN) {
+        const li = mk('li', 'm-item m-note');
+        const b = mk('button', 'm-q'); b.type = 'button';
+        b.append(mk('span', 'm-nwhere', nname(n)), mk('span', 'm-ntext', first(n)));
+        b.addEventListener('click', () => { els.list.close(); onOpenNote(n.at); });
+        li.appendChild(b); ul.appendChild(li);
+      }
+      box.appendChild(ul);
+      const gone = N.filter(noteLost);
+      if (gone.length) {
+        box.appendChild(mk('h3', null, W().nLost));
+        box.appendChild(mk('p', 'small', W().nLostNote));
+        const ul2 = mk('ul', 'm-items');
+        for (const n of gone) {
+          const li = mk('li', 'm-item m-note');
+          const txt = n.blocks.map((x) => (x.text != null ? x.text : '“' + x.quote.exact + '”')).join('\n');
+          li.appendChild(mk('span', 'm-q m-ntext-full', txt));
+          const d = mk('button', null, W().mDelete); d.type = 'button'; d.setAttribute('aria-label', W().nDeleteLost);
+          d.addEventListener('click', async () => { if (!(await ask(W().nDeleteLostAsk))) return; L.rec.notes = L.rec.notes.filter((x) => x !== n); pushNotes(); renderBar(); onNotes(); persist(); renderList(); });
+          li.appendChild(d); ul2.appendChild(li);
+        }
+        box.appendChild(ul2);
+      }
     }
   }
   function showList() { if (!L.frame) return; renderList(); els.list.showModal(); }
@@ -327,7 +469,19 @@ export function markup({ els, words, onPersist = () => {}, onToggle = () => {} }
   }
   init();
   return {
-    open, close, message, toggle, ask,
+    open, close, message, toggle, ask, getNote, setNote, goQuote, noteHere,
+    frameSlides: () => (L.slides || []).slice(),
+    // an exchange file read in (play/notes-export.mjs readExchange: already checked): merged into this lesson's record
+    importRecord({ highlights, notes }) {
+      if (!L.rec) return null;
+      const h = mergeById(L.rec.highlights, highlights, MAX), n = mergeNotes(L.rec.notes, notes);
+      L.rec.highlights = h.list; L.rec.notes = n.list;
+      changed(); onNotes();
+      return { highlights: h.added + h.changed, notes: n.added + n.changed };
+    },
+    key: () => L.key,
+    notes: () => (L.rec ? JSON.parse(JSON.stringify(L.rec.notes)) : []),
+    sections: () => ({ ...L.sections }), missing: () => L.missing.slice(),
     setWords(w) { W = w; renderBar(); if (L.available && L.loaded) pushAll(); if (els.list.open) renderList(); },
     state: () => ({ available: L.available, bar: L.bar, recall: L.recall, recallColors: L.recallColors.slice(), hidden: L.hidden.slice(), shared: L.shared,
       docId: L.docId, missing: L.missing.slice(), record: L.rec ? JSON.parse(JSON.stringify(L.rec)) : null }),

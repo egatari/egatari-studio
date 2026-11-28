@@ -38,6 +38,7 @@
     <button type="button" id="b-recall" aria-pressed="false"><span class="sw-on" aria-hidden="true"></span><span data-i18n="mRecall">暗記</span></button>
     <span id="recall-colours" role="group" data-i18n-label="mRecallColours" aria-label="暗記する色" hidden><span class="rc-l" data-i18n="mRecallColours" aria-hidden="true">暗記する色</span><button type="button" data-c="y" class="csw m-y" aria-pressed="true"></button><button type="button" data-c="p" class="csw m-p" aria-pressed="true"></button><button type="button" data-c="b" class="csw m-b" aria-pressed="true"></button></span>
     <button type="button" id="b-mlist" data-i18n="mList">一覧</button>
+    <button type="button" id="b-mexport" aria-haspopup="dialog" data-i18n-label="mExport" aria-label="エクスポート"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="xl" data-i18n="mExport">エクスポート</span></button>
     <span id="m-filtered" class="small" hidden><span data-i18n="mFiltered">一部の色を非表示中</span> <button type="button" id="b-mshow" class="linklike" data-i18n="mShowAll">すべて表示</button></span>
     <span id="markup-hint" class="small" role="status" hidden></span>
     <span id="markup-note" class="small" data-i18n="mShared" hidden>共有の端末なので、ハイライトは保存されません。</span>
@@ -46,6 +47,7 @@
     <button type="button" id="b-live" class="live-btn" hidden aria-controls="live"><span class="dot" aria-hidden="true"></span><span data-i18n="live">ライブ</span><span class="sr-only" id="b-live-state"></span></button>
     <button type="button" id="b-markup" hidden aria-pressed="false" aria-controls="markup-bar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path d="M9 11l6-6a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L14 16z M9 11l-2.5 4.5 2.5 2.5 4.5-2.5 M3 21h8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="mMarkup">マークアップ</span></button>
     <button type="button" id="b-ink" hidden aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path d="M3 17c3-6 5-9 7-9s-1 8 2 8 4-6 6-6 2 3 3 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ink-off" data-i18n="inkButton">手書き</span><span class="ink-on" data-i18n="inkEnd">手書きを終了</span></button>
+    <button type="button" id="b-note" hidden aria-pressed="false" aria-controls="note-area"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path d="M5 3h10l4 4v14H5z M15 3v4h4 M8 11h8 M8 15h8 M8 19h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="noteButton">メモ</span></button>
     <button type="button" id="b-close" hidden><span class="c-long" data-i18n="closeLesson">ファイルを閉じる</span><span class="c-short" data-i18n="close">閉じる</span></button>
     <button type="button" id="b-lang" lang="en">English</button>
   </div>
@@ -88,6 +90,8 @@
   </section>
   <section id="player" hidden aria-label="Egatari ファイル">
     <div id="stage-wrap"></div>
+    <div id="note-area" class="note-area" role="group" hidden></div>
+    <section id="note-panel" class="note-panel" hidden aria-labelledby="note-panel-t"><div class="np-top"><h2 id="note-panel-t"></h2><button type="button" id="b-np-close" data-i18n="nSectionClose">閉じる</button></div><p id="note-panel-shared" class="small" data-i18n="nShared" hidden>共有の端末なので、メモは保存されません。</p><div id="note-panel-body"></div></section>
     <p id="resume" class="notice" role="status" hidden><span id="resume-text"></span><button type="button" id="b-resume-start" data-i18n="resumeStart">最初から再生</button><button type="button" id="b-resume-x" class="x" data-i18n-label="resumeDismiss" aria-label="この案内を閉じる">×</button></p>
     <section id="live-start" hidden aria-labelledby="live-start-h">
       <h2 id="live-start-h" data-i18n="startTitle2">このファイルにはライブ（質問・投票）があります</h2>
@@ -140,6 +144,17 @@
 <dialog id="m-list" aria-labelledby="m-list-t">
   <div class="m-top"><h2 id="m-list-t" data-i18n="mListTitle">ハイライトの一覧</h2><button type="button" id="b-mlist-close" data-i18n="linkClose">閉じる</button></div>
   <div id="m-list-body"></div>
+</dialog>
+<dialog id="m-export" aria-labelledby="m-export-t">
+  <div class="m-top"><h2 id="m-export-t" data-i18n="xTitle">メモとハイライトのエクスポート</h2><button type="button" id="b-mexport-close" data-i18n="linkClose">閉じる</button></div>
+  <ul class="x-list">
+    <li><button type="button" id="b-x-pdf" data-i18n="xPdf">PDF（印刷・見返す用）</button><span class="small" data-i18n="xPdfNote">スライドごとに、最後の状態の絵とその下のメモ（字・引用・手書き）。本の節のメモは後ろにまとめます。</span>
+      <label class="small"><input type="checkbox" id="x-all"> <span data-i18n="xAllSlides">メモのないスライドも入れる</span></label></li>
+    <li><button type="button" id="b-x-md" data-i18n="xMd">Markdown（ほかのノートのアプリへ）</button><span class="small" data-i18n="xMdNote">メモと引用、ハイライトの字。手書きは入りません。</span></li>
+    <li><button type="button" id="b-x-json" data-i18n="xJson">バックアップ（別の端末に移す）</button><span class="small" data-i18n="xJsonNote">メモ・ハイライト・手書きを全部。別の端末の Egatari Viewer で同じファイルを開いてから、読み込みます。</span></li>
+    <li><label class="pick small-pick" for="x-file"><span data-i18n="xImport">バックアップを読み込む…</span></label><input type="file" id="x-file" accept=".json,application/json"><span class="small" data-i18n="xImportNote">今開いているファイルのバックアップだけを読み込みます。同じメモは新しい方を残し、なにも消しません。</span></li>
+  </ul>
+  <p id="x-status" class="small" role="status"></p>
 </dialog>
 <dialog id="m-confirm" aria-describedby="m-confirm-t">
   <p id="m-confirm-t"></p>

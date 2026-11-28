@@ -191,6 +191,28 @@ for (const [suffix, opt] of [['', {}], [', dark', { scheme: 'dark' }]]) {
   await check(`handwriting${suffix}`, p, f);
   await c.close();
 }
+console.log('notes');
+// handoff #107: the memo view (typed note with a quote), the note of a section of the book, the export dialog; light and dark
+for (const [suffix, opt] of [['', {}], [', dark', { scheme: 'dark' }]]) {
+  const { c, p } = await page(opt);
+  const f = await open(p, 'book.play.ega.html');
+  await p.click('#b-note');
+  ok(await until(() => p.isVisible('#note-area textarea')), `notes${suffix}: the memo area is shown`);
+  await p.click('#note-area textarea'); await p.keyboard.type('メモ');
+  await check(`notes (slide${suffix})`, p, f);
+  await p.click('#b-note');
+  await toBook(p, f);
+  await p.click('#b-markup');
+  await until(() => p.isVisible('#markup-bar'));
+  await f.locator('[data-egatari-viewer=note] button').first().click();
+  ok(await until(() => p.isVisible('#note-panel')), `notes${suffix}: the note of a section opens`);
+  await check(`notes (section${suffix})`, p, f);
+  await p.click('#b-np-close');
+  await p.click('#b-mexport');
+  ok(await until(() => p.isVisible('#m-export'), 3000), `notes${suffix}: the export dialog opens`);
+  await check(`export dialog${suffix}`, p, f);
+  await c.close();
+}
 console.log('live');
 { const { c, p } = await page();
   await p.setInputFiles('#file', FIX['live.play.ega.html']);

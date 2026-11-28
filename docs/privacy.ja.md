@@ -85,14 +85,14 @@ Studio とプレーヤーは、次のものを送信しません。
 | localStorage（`.ega.html` のプレーヤー） | `<形式名>-player-layout:<ファイル>`、`<形式名>-player-split`、`<形式名>-player-read-size`・`-read-lh`・`-read-bg` | 選んだ並べ方、仕切りの位置、本のパネルの文字の大きさ・行間・背景 | 同上 |
 | localStorage / sessionStorage（ライブのある `.ega.html`） | `egatari-live-pid:<ライブ ID>`、`egatari-live-joined:<ライブ ID>` | 端末で作った乱数の ID と、参加したかの印（参加の印はタブを開いている間だけ） | サイトデータを削除する、タブを閉じる |
 | Egatari Viewer：OPFS（使えなければ IndexedDB） | `recent/`、DB `egatari-viewer` | 最近開いた Egatari ファイルのコピー（最大 10 件。その端末の中だけ） | 一覧の「削除」か「すべて削除」、または「共有の端末」をオンにする |
-| Egatari Viewer：IndexedDB | `egatari-viewer-notes` | 本に引いたハイライト（ファイルごと。その端末の中だけで、ファイルには書かない） | 一覧の「この色をすべて削除」、または「共有の端末」をオンにする |
+| Egatari Viewer：IndexedDB | `egatari-viewer-notes` | 本とスライドに引いたハイライトと、スライド・本の節ごとのメモ（ファイルごと。その端末の中だけで、ファイルには書かない。エクスポートは学習者が選んだときだけ、その端末に保存する） | 一覧の「この色をすべて削除」・メモの字を消す・場所が分からないメモの「削除」、または「共有の端末」をオンにする |
 | Egatari Viewer：IndexedDB | `egatari-viewer-ink` | スライドとメモ欄の手書き（ファイルとスライドごと。その端末の中だけで、ファイルには書かない） | 消しゴム、または「共有の端末」をオンにする |
 | Egatari Viewer：localStorage | `egatari-viewer-keep`、`egatari-viewer-shared`、`egatari-viewer-lang`、`egatari-viewer-install-hint`、`egatari-viewer-colour-names` | コピーを保存するか、共有の端末か、言語、インストールの案内を閉じたか、ハイライトの色に付けた意味 | サイトデータを削除する |
 | Egatari Viewer：Cache Storage | `egatari-viewer-<バージョン>` | Viewer 自身のファイル（オフラインでも開けるようにするため）。Egatari ファイルは含めない | サイトデータを削除する |
 
 補足：
 - 再生中は、アドレスの `#` の後ろが、表示中の所（スライドの ID とステップ）に書き替わります。また「前回の続きから」開けるように、ファイルごとに読んでいた所を、ファイルを開いた人の端末に保存します（上の表）。埋め込んだとき、LMS の中、Studio のプレビューでは保存しません。
-- Egatari Viewer は、初めの設定のままだと、最近開いたファイルのコピーを保存します。「共有の端末」をオンにするとコピー・ハイライト・手書きを保存せず、すでにあるものも削除します。学校で共用する端末では、オンにするよう案内してください。
+- Egatari Viewer は、初めの設定のままだと、最近開いたファイルのコピーを保存します。「共有の端末」をオンにするとコピー・ハイライト・メモ・手書きを保存せず、すでにあるものも削除します。学校で共用する端末では、オンにするよう案内してください。
 
 ## 学習者に配布したファイル（プレーヤー）
 
