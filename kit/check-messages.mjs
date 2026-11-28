@@ -159,6 +159,10 @@ export const MESSAGES = {
     ja: (a) => `参照音声「${a.path}」（voice.json の声の元の録音）が${{ slides: 'スライドで使われている：Egatari ファイルには参照音声を含めないので、Egatari ファイル（.ega.html）へのエクスポートは断る。スライドから削除する', audio: ' audio/manifest.json でステップの音声になっている：Egatari ファイル（.ega.html）には含めない（そのステップは音声なし）。その声で作った音声に置き換える', attachments: '添付の場所（attachments/）にある：Egatari ファイル（.ega.html）には含めない', folder: '作業フォルダの中にある：Egatari ファイル（.ega.html）には含めないが、作業フォルダごと人に渡すと一緒に渡る' }[a.where]}。録音は作業フォルダの外に置き、voice.json にはその場所か名前を書く（Egatari ファイルには、その声で作った音声だけが含まれる）`,
     en: (a) => `the reference voice “${a.path}” (the recording a voice in voice.json imitates) ${{ slides: 'is used by the slides: an Egatari file does not carry reference voices, so export to an Egatari file (.ega.html) is refused. Remove it from the slides', audio: 'is a step\'s audio in audio/manifest.json: it is left out of the Egatari file (.ega.html) and that step has no audio. Replace it with audio made with the voice', attachments: 'is in the attachments folder (attachments/): it is left out of the Egatari file (.ega.html)', folder: 'is inside the working folder: it is left out of the Egatari file (.ega.html), but goes along if you share the whole working folder' }[a.where]}. Keep the recording outside the working folder and give its location or name in voice.json (an Egatari file carries only the audio made with the voice)`,
   },
+  keyLike: {
+    ja: (a) => `${a.file} ${a.line} 行目に API キーらしい文字があります`,
+    en: (a) => `${a.file} line ${a.line} may contain an API key`,
+  },
   // ---------------------------------------------------------------- 添付（attachments/。format spec §3.8）
   extensionVersion: { ja: (a) => `拡張 ${a.name} の v${a.v} には未対応（対応は v${a.supported}）：拡張を使わず、そのまま保持する。使うには対応するバージョンで開く`, en: (a) => `extension ${a.name} v${a.v} is not supported (implements v${a.supported}): ignore and preserve it; open in a supporting version to use it` },
   attachBadConfig: { ja: (a) => `egatari.json の attachments が読めない（${a.why}）：[{"path": "attachments/…", "role": "pdf", "title": "…"}] の形にする`, en: (a) => `attachments in egatari.json cannot be read (${a.why}): use [{"path": "attachments/…", "role": "pdf", "title": "…"}]` },

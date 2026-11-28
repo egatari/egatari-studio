@@ -12,7 +12,9 @@ marp2mp4（main_irodori.py）の関数を移したもの。ffmpeg のフィル�
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 import hashlib
+from ipaddress import ip_address
 import json
 import os
 import re
@@ -54,8 +56,14 @@ def ref_dir(cli: str | None = None) -> Path:
     return Path(d).expanduser() if d else DEFAULT_REF_DIR
 
 
-def server_is_local() -> bool:
-    return urlparse(IRODORI_URL).hostname in ("localhost", "127.0.0.1", "::1")
+def server_is_local(url: str = IRODORI_URL) -> bool:
+    host = urlparse(url).hostname
+    if host in ("localhost", "localhost."):
+        return True
+    try:
+        return ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def _default_refs(refs: Path) -> bool:
@@ -71,22 +79,24 @@ def voice_available(name: str, refs: Path) -> bool:
     return (refs / f"{name}.wav").exists() or (_default_refs(refs) and R.is_default(f"{name}.wav"))
 
 
-def resolve_voice(voice: str, refs: Path, base: Path | None = None) -> Path:
+def resolve_voice(voice: str, refs: Path, base: Path | None = None, *, local: bool | None = None) -> Path:
     """声の指定 → 参照音声のパス。名前（bob）なら <refs>/<名前>.wav、
     パス（/ を含むか .wav で終わる）ならそのファイル（相対なら base から）。
     既定のフォルダ（tts/voices）にない既定の声は、取り寄せたキャッシュのパス（refvoices.default_voice。取り寄せられなければ VoiceFetchError）。
 
     サーバーが別のマシンのときはパスはサーバー側のものなので、有無を確かめない。
     """
+    if local is None:
+        local = server_is_local()
     if "/" in voice or voice.endswith(".wav"):
         p = Path(voice).expanduser()
         if not p.is_absolute() and base is not None:
             p = base / p
     else:
         p = refs / f"{voice}.wav"
-        if server_is_local() and not p.exists() and _default_refs(refs) and R.is_default(p.name):
+        if local and not p.exists() and _default_refs(refs) and R.is_default(p.name):
             return R.default_voice(p.name)
-    if server_is_local() and not p.exists():
+    if local and not p.exists():
         raise FileNotFoundError(f"参照音声が見つかりません: {p}"
                                 "（IRODORI_REF_DIR か --ref-dir、または voice.json にパスで書く）")
     return p
@@ -95,13 +105,15 @@ def resolve_voice(voice: str, refs: Path, base: Path | None = None) -> Path:
 REF_RATE = 48000  # TTS のモデル（Irodori・VoxCPM2）が前提にする参照音声のサンプリング周波数
 
 
-def ref_at_model_rate(path: Path, cache_dir: Path) -> Path:
+def ref_at_model_rate(path: Path, cache_dir: Path, *, local: bool | None = None) -> Path:
     """参照音声が 48 kHz・モノラルでなければ、変換したものを cache_dir に作ってそのパスを返す。
 
     16 kHz のまま渡すと、mlx のサーバーでは読む速さが変わった（ブラウザ版より 2〜4 割速い）。
     サーバーが別のマシンのときはパスが向こうのものなので、何もしない。
     """
-    if not server_is_local() or not path.exists():
+    if local is None:
+        local = server_is_local()
+    if not local or not path.exists():
         return path
     info = subprocess.run(
         ["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate,channels",
@@ -120,33 +132,67 @@ def ref_at_model_rate(path: Path, cache_dir: Path) -> Path:
     return out
 
 
-def ping(timeout: float = 5):
-    requests.get(f"{IRODORI_URL}/v1/models", timeout=timeout).raise_for_status()
+@dataclass(frozen=True)
+class SpeechServer:
+    url: str = IRODORI_URL
+    model: str = TTS_MODEL
+    voice_by: str = "ref"
+    api_key: str = field(default="", repr=False)
+    configured: bool = False
+
+    def authorize(self, request):
+        if self.api_key:
+            request.headers["Authorization"] = f"Bearer {self.api_key}"
+        return request
+
+    def request(self, method: str, endpoint: str, timeout: float, **kwargs):
+        # HTTP の例外に入る URL・ヘッダー・応答の本文や理由は表示しない。
+        try:
+            resp = requests.request(
+                method, f"{self.url}{endpoint}", timeout=timeout,
+                auth=self.authorize if self.configured else None,
+                allow_redirects=not self.configured, **kwargs)
+        except requests.RequestException as e:
+            raise RuntimeError(f"{method} {endpoint}: {type(e).__name__}") from None
+        if not 200 <= resp.status_code < 300:
+            raise RuntimeError(f"{method} {endpoint}: HTTP {resp.status_code}")
+        return resp
+
+    def ping(self, timeout: float = 5):
+        self.request("GET", "/v1/models", timeout)
 
 
-def synthesize_line(text: str, ref: Path, out_path: Path, retries: int = 2, model: str = TTS_MODEL):
+def synthesize_line(text: str, voice: Path | str, out_path: Path, server: SpeechServer):
     """1 行を合成して WAV に保存する。
 
     response_format="wav" の明示は必須（省略すると mp3 が返り、拡張子と中身が食い違う）。
     """
     payload = {
-        "model": model,
+        "model": server.model,
         "input": text,
-        "ref_audio": str(ref),
+        "ref_audio" if server.voice_by == "ref" else "voice": str(voice),
         "response_format": "wav",
     }
-    last_err = None
+    retries = 0 if server.configured else 2
     for attempt in range(retries + 1):
         try:
-            resp = requests.post(f"{IRODORI_URL}/v1/audio/speech", json=payload, timeout=600)
-            resp.raise_for_status()
-            out_path.write_bytes(resp.content)
-            return
-        except Exception as e:
-            last_err = e
-            if attempt < retries:
-                time.sleep(2 * (attempt + 1))
-    raise RuntimeError(f"TTS合成に失敗しました: {last_err}")
+            resp = server.request("POST", "/v1/audio/speech", 600, json=payload)
+        except RuntimeError:
+            if attempt == retries:
+                raise
+            time.sleep(2 * (attempt + 1))
+        else:
+            break
+    audio = resp.content
+    if audio.startswith(b"RIFF") and audio[8:12] == b"WAVE":
+        out_path.write_bytes(audio)
+    else:
+        result = subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-protocol_whitelist", "pipe", "-i", "pipe:0",
+             "-map", "0:a:0", "-map_metadata", "-1", "-c:a", "pcm_s16le", str(out_path)],
+            input=audio, capture_output=True)
+        if result.returncode != 0:
+            raise RuntimeError("応答の音声を WAV に変換できません")
 
 
 def trim_silence(path: Path):
@@ -164,7 +210,7 @@ def trim_silence(path: Path):
         capture_output=True,
     )
     if result.returncode != 0:
-        print(f"  ⚠ 無音除去に失敗（元の音声を使用）: {result.stderr.decode()[-500:]}")
+        print("  ⚠ 無音除去に失敗（元の音声を使用）")
         tmp_out.unlink(missing_ok=True)
         return
     tmp_out.replace(path)
@@ -199,7 +245,7 @@ def normalize_level(path: Path):
         ["ffmpeg", "-y", "-i", str(path), "-af", af, "-ar", "44100", str(tmp_out)],
         capture_output=True)
     if result.returncode != 0:
-        print(f"  ⚠ 音量調整に失敗（元の音声を使用）: {result.stderr.decode()[-300:]}")
+        print("  ⚠ 音量調整に失敗（元の音声を使用）")
         tmp_out.unlink(missing_ok=True)
         return
     tmp_out.replace(path)
@@ -247,7 +293,6 @@ def concat_audio_with_pauses(seg_paths: list[Path], out_path: Path, pause_ms: in
     ]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
-        print(f"  ⚠ 音声結合エラー:\n{result.stderr.decode()[-2000:]}")
         result.check_returncode()
 
 

@@ -144,7 +144,7 @@ catch (e) {
     await new Promise((resolve) => process.stdout.write('', resolve));
     process.exit(1);
   }
-  console.error('ビルド失敗: ' + e.message); process.exit(1);
+  console.error('ビルド失敗: ' + (e instanceof SyntaxError ? '書式を確認してください / invalid syntax' : e.message)); process.exit(1);
 }
 // 言語：<html lang> が ja か、lang が無ければ日本語の規則。それ以外（英語など）は英語の規則
 const lang = built.html.match(/<html[^>]*\slang="([^"]*)"/)?.[1] || '';
@@ -248,7 +248,7 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
   const aDir = path.join(deckDir, FORMAT.ATTACH_DIR);
   let conf = null;
   const cfgPath = path.join(deckDir, FORMAT.CONFIG_FILE);
-  try { if (fs.existsSync(cfgPath)) conf = JSON.parse(readRegular(cfgPath, { max: READ_LIMITS.json }).toString('utf8')); } catch (e) { report(null, 'warn', 'attachBadConfig', { why: `${FORMAT.CONFIG_FILE}: ${e.message}` }); }
+  try { if (fs.existsSync(cfgPath)) conf = JSON.parse(readRegular(cfgPath, { max: READ_LIMITS.json }).toString('utf8')); } catch (e) { report(null, 'warn', 'attachBadConfig', { why: `${FORMAT.CONFIG_FILE}: ${e instanceof SyntaxError ? 'invalid JSON' : e.message}` }); }
   for (const name of ['live', 'embed']) {
     const v = conf?.extensions?.[name]?.v;
     if (Number.isInteger(v) && v > 1) report(null, 'info', 'extensionVersion', { name, v, supported: 1 });
@@ -310,6 +310,22 @@ if (extraMissing.length) report(null, 'error', 'fontsExtraMissing', { fonts: ext
       if (excludedReason(r.rel)) continue;   // 隠しフォルダ（.cache など）・out/ など：エクスポートも作業フォルダの写しも見ない所
       const where = usedBySlides.has(r.rel) ? 'slides' : inAudio.has(r.rel) ? 'audio' : r.rel.startsWith(FORMAT.ATTACH_DIR + '/') ? 'attachments' : 'folder';
       report(null, where === 'slides' ? 'error' : where === 'folder' ? 'info' : 'warn', 'refVoice', { path: r.rel, where });
+    }
+  }
+}
+
+// 作業フォルダ直下の設定。鍵らしい文字がある行だけを知らせる。
+{
+  const deckDir = path.dirname(path.resolve(src));
+  const keyLike = /\b(?:sk-[\w-]{20,}|AIza[\w-]{35}(?![\w-])|[Bb][Ee][Aa][Rr][Ee][Rr]\s+[\w.~+/=-]{20,}|gh[pousr]_[A-Za-z0-9]{36,})/;
+  for (const entry of fs.readdirSync(deckDir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const file = entry.name;
+    if (!entry.isFile() || (file !== '.env' && !file.toLowerCase().endsWith('.json'))) continue;
+    let text;
+    try { text = readRegular(path.join(deckDir, file), { max: READ_LIMITS.json }).toString('utf8'); }
+    catch { continue; }
+    for (const [i, line] of text.split(/\r?\n/).entries()) {
+      if (keyLike.test(line)) report(null, 'warn', 'keyLike', { file, line: i + 1 });
     }
   }
 }

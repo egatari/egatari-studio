@@ -15,7 +15,7 @@
   名前は <参照音声のフォルダ>/<名前>.wav（--ref-dir > IRODORI_REF_DIR > tts/voices）、パスも書ける。
   既定の声（tts/voices.json）が tts/voices/ になければ（npm の包み）、初めて使うときに取り寄せる（refvoices.py）
 - 読み辞書：--yomi > MOTION_YOMI > tts/yomi.yaml
-- サーバー：IRODORI_URL（既定 http://localhost:8882）
+- サーバー：tts.json（作業フォルダの外）。既定のエンジンは IRODORI_URL（既定 http://localhost:8882）
 - 録音・取り込みの音声（manifest の kind が recorded か imported。編集アプリの音声の板が書く）は作り直さず、そのまま残す
   （--replace-recorded で TTS に替える）。manifest の各段階には kind と inputHash（その段階の口述原稿の hash。format spec §5.4）も書く
 """
@@ -33,16 +33,17 @@ import sys
 import tempfile
 import wave
 from pathlib import Path
+from urllib.parse import urlparse
 
 TTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(TTS_DIR))
 
 import core as M  # noqa: E402  （synthesize_line, trim_silence, normalize_level, …）
+from engine_config import api_key, engine_definitions, read_voice_config  # noqa: E402
 import yomi as Y  # noqa: E402
 
 REPO = TTS_DIR.parent
 CHARS_PER_SEC = 7.5
-MODEL = M.TTS_MODEL   # main() でエンジンに合わせて決める
 SR = 44100
 ROLE_LABEL = {"expert": "Expert", "novice": "Novice"}
 
@@ -52,28 +53,30 @@ def parse_args():
     p.add_argument("deckdir")
     p.add_argument("--voices", default=None, help="expert=bob,novice=alice")
     p.add_argument("--ref-dir", default=None, help="参照音声（<名前>.wav）のフォルダ（既定 IRODORI_REF_DIR か tts/voices）")
-    p.add_argument("--engine", default=None, choices=sorted(M.ENGINES), help="TTS のエンジン（既定：英語のデッキは voxcpm2、それ以外は irodori）")
+    p.add_argument("--engine", help="TTS のエンジン（irodori、voxcpm2、または tts.json の名前）")
+    p.add_argument("--tts-url", help="今回だけ使う TTS サーバーの URL")
+    p.add_argument("--tts-model", help="今回だけ使う TTS モデルの名前")
     p.add_argument("--yomi", default=None, help="読み辞書（既定 MOTION_YOMI か tts/yomi.yaml）")
     p.add_argument("--only", default=None, help="この鍵（slideKey:stepKey）の段階だけ作る。カンマ区切り")
     p.add_argument("--dry-run", action="store_true", help="TTS を呼ばず、推定の長さの無音を作る")
     p.add_argument("--force", action="store_true", help="キャッシュを無視して作り直す")
     p.add_argument("--replace-recorded", action="store_true", help="録音・取り込みの音声（kind が recorded か imported）も TTS で作り直す")
-    return p.parse_args()
+    return p, p.parse_args()
 
 
 DEFAULT_VOICES = {"expert": "bob", "novice": "alice"}
 
 
-def resolve_voices(deckdir: Path, cli: str | None) -> tuple[dict[str, str], list[str], dict[str, str]]:
-    """{role: 声の名前}, 既定を使った role, どこから来たか。"""
+def resolve_voices(config: dict, cli: str | None) -> tuple[dict[str, str], dict[str, str]]:
+    """{role: 声の名前}, どこから来たか。"""
     src: dict[str, str] = {}
     voices: dict[str, str] = {}
-    vj = deckdir / "voice.json"
-    if vj.exists():
-        for k, v in json.loads(vj.read_text(encoding="utf-8")).items():
-            if k.lower() in ROLE_LABEL and v:
-                voices[k.lower()] = v
-                src[k.lower()] = "voice.json"
+    for k, v in config.items():
+        if k.lower() in ROLE_LABEL and v:
+            if not isinstance(v, str):
+                sys.exit("voice.json の expert と novice には声の名前を書いてください")
+            voices[k.lower()] = v
+            src[k.lower()] = "voice.json"
     if cli:
         for item in cli.split(","):
             if not item.strip():
@@ -81,24 +84,70 @@ def resolve_voices(deckdir: Path, cli: str | None) -> tuple[dict[str, str], list
             k, _, v = item.partition("=")
             k = k.strip().lower()
             if k not in ROLE_LABEL or not v.strip():
-                sys.exit(f"--voices の書式が不正です: {item!r}（例: expert=bob,novice=alice）")
+                sys.exit("--voices の書式が不正です（例: expert=bob,novice=alice）")
             if k in voices and voices[k] != v.strip():
-                print(f"  --voices が voice.json を上書き: {k} {voices[k]} → {v.strip()}")
+                print(f"  --voices が voice.json を上書き: {k}")
             voices[k] = v.strip()
             src[k] = "--voices"
     # 既定の声：1 人モードは bob、掛け合いは bob（Expert）× alice（Novice）。
     # 既定を使っても警告はしない（既定は決まった声で、尺が黙ってずれることはない）
-    defaulted = []
     for role in ROLE_LABEL:
         if role not in voices:
             voices[role] = DEFAULT_VOICES[role]
             src[role] = "既定"
-    return voices, defaulted, src
+    return voices, src
 
 
 def voice_file(v: str) -> str:
     """digest と表示に使う参照音声のファイル名（名前なら <名前>.wav、パスならファイル名）。"""
-    return Path(v).name if ("/" in v or v.endswith(".wav")) else v + ".wav"
+    return re.split(r"[/\\]", v)[-1] if ("/" in v or "\\" in v or v.endswith(".wav")) else v + ".wav"
+
+
+def select_server(args, engine: str, cfg: dict | None, config_path: Path, deckdir: Path) -> M.SpeechServer:
+    if cfg is None:
+        cfg = {"url": M.IRODORI_URL, "model": M.ENGINES[engine], "voiceBy": "ref"}
+        configured = False
+    else:
+        configured = True
+    for field in ("url", "model", "voiceBy", "apiKeyEnv", "apiKeyFile"):
+        if field in ("url", "model", "voiceBy") or field in cfg:
+            if not isinstance(cfg.get(field), str) or not cfg[field].strip():
+                sys.exit(f"tts.json の {field} には文字列を書いてください")
+    if cfg["voiceBy"] not in ("ref", "name"):
+        sys.exit('tts.json の voiceBy には "ref" か "name" を書いてください')
+    if "yomi" in cfg and not isinstance(cfg["yomi"], bool):
+        sys.exit("tts.json の yomi には true か false を書いてください")
+    url = (args.tts_url if args.tts_url is not None else cfg["url"]).rstrip("/")
+    model = args.tts_model if args.tts_model is not None else cfg["model"]
+    if not model.strip():
+        sys.exit("--tts-model にモデルの名前を書いてください")
+    try:
+        parsed = urlparse(url)
+        valid = (parsed.scheme in ("http", "https") and parsed.hostname and parsed.username is None
+                 and not parsed.query and not parsed.fragment and not parsed.params
+                 and not any(c.isspace() or ord(c) < 32 for c in url))
+        parsed.port  # ポート番号の書式も確かめる
+    except ValueError:
+        valid = False
+    if not valid:
+        sys.exit("TTS サーバーの URL には HTTP(S) のベース URL を指定してください")
+    if configured or args.tts_url is not None:
+        url = url.removesuffix("/v1") if parsed.path.endswith("/v1") else url
+    return M.SpeechServer(url, model, cfg["voiceBy"], api_key(cfg, config_path, deckdir, dry_run=args.dry_run), configured)
+
+
+def recipe_of(voice: dict) -> dict:
+    # Egatari の recipe には公開の声の名前だけを書く（kit/core/portable.mjs の voiceName と同じ書式）。
+    names = {}
+    for role in ROLE_LABEL:
+        name = voice[role]
+        if voice.get("voiceBy", "ref") == "ref" and name.lower().endswith(".wav"):
+            name = name[:-4]
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", name):
+            names[role] = name
+    return {"engine": voice["engine"], "model": voice["model"], "voice": names,
+            "seed": None, "dictionary": voice["yomi"],
+            "processing": f"trim={voice['trim']};norm={voice['norm']};pause_ms={voice['pause_ms']}"}
 
 
 def file_hash(*paths: Path) -> str:
@@ -183,7 +232,8 @@ def plan(seg: dict, terms, watch_kanji, watch, stats) -> list[list[str]]:
     return turns
 
 
-def synth_segment(seg: dict, turns: list[list[str]], out: Path, dry: bool, refs: dict[str, Path]) -> tuple[float, list[float]]:
+def synth_segment(seg: dict, turns: list[list[str]], out: Path, dry: bool,
+                  voices: dict[str, Path | str], server: M.SpeechServer) -> tuple[float, list[float]]:
     """1 段階分を合成して out に書く。(長さ, cues) を返す。"""
     pause_s = M.PAUSE_MS / 1000.0
     if dry:
@@ -206,7 +256,7 @@ def synth_segment(seg: dict, turns: list[list[str]], out: Path, dry: bool, refs:
         cues: list[float] = []
         t = 0.0
         for ti, parts in enumerate(turns):
-            ref = refs.get(seg["turns"][ti]["role"])
+            voice = voices[seg["turns"][ti]["role"]]
             if ti > 0 and pause_s > 0:
                 pieces.append(sil)
                 t += pause_s
@@ -216,7 +266,7 @@ def synth_segment(seg: dict, turns: list[list[str]], out: Path, dry: bool, refs:
                 if not p.strip():
                     continue
                 f = tmp / f"t{ti:02d}_p{pi:02d}.wav"
-                M.synthesize_line(p, ref, f, model=MODEL)
+                M.synthesize_line(p, voice, f, server)
                 if M.TRIM_SILENCE:
                     M.trim_silence(f)
                 M.normalize_level(f)
@@ -232,7 +282,7 @@ def synth_segment(seg: dict, turns: list[list[str]], out: Path, dry: bool, refs:
 
 
 def main():
-    args = parse_args()
+    parser, args = parse_args()
     deckdir = Path(args.deckdir).resolve()
     deck_html = None
     if deckdir.is_file():                     # <deck>/foo.html を渡してもよい
@@ -242,65 +292,88 @@ def main():
     else:
         cands = sorted(p for p in deckdir.glob("*.html"))
         deck_html = cands[0] if len(cands) == 1 else None
+    vjson = read_voice_config(deckdir)
+    config_path, engines = engine_definitions(deckdir)
+    choices = sorted(M.ENGINES.keys() | engines.keys())
+    if args.engine is not None and args.engine not in choices:
+        parser.error("--engine には次の名前を使えます: " + ", ".join(choices))
     narr = deckdir / "narration.md"
     if not narr.exists():
         sys.exit(f"narration.md がありません: {narr}")
-    audio_dir = no_link(deckdir, deckdir / "audio")
-    audio_dir.mkdir(exist_ok=True)
-
-    voices, _, src = resolve_voices(deckdir, args.voices)
-    # 言語とエンジン：--engine > voice.json の "engine" > デッキの <html lang>（en なら voxcpm2）
-    global MODEL
-    vjson = json.loads((deckdir / "voice.json").read_text(encoding="utf-8")) if (deckdir / "voice.json").exists() else {}
-    m_lang = re.search(r'<html[^>]*\blang="([^"]+)"', deck_html.read_text(encoding="utf-8")) if deck_html else None
-    lang = (vjson.get("lang") or (m_lang.group(1) if m_lang else "ja")).lower()
+    voices, src = resolve_voices(vjson, args.voices)
+    # --engine > voice.json の "engine" > 台本の言語（既定はデッキの <html lang>）。
+    m_lang = re.search(r"""<html\b[^>]*\slang=(["'])([^"']+)\1""",
+                       deck_html.read_text(encoding="utf-8"), re.IGNORECASE) if deck_html else None
+    deck_lang = (m_lang.group(2) if m_lang else "ja").lower()
+    lang = vjson.get("lang") or deck_lang
+    if not isinstance(lang, str):
+        sys.exit("voice.json の lang には言語を書いてください")
+    lang = lang.lower()
     engine = args.engine or vjson.get("engine") or ("irodori" if lang.startswith("ja") else "voxcpm2")
-    MODEL = M.ENGINES[engine]
-    use_yomi = lang.startswith("ja")
-    ref_dir = M.ref_dir(args.ref_dir)
+    if not isinstance(engine, str) or engine not in choices:
+        sys.exit("voice.json の engine には次の名前を使えます: " + ", ".join(choices))
+    cfg = engines.get(engine)
+    server = select_server(args, engine, cfg, config_path, deckdir)
+    use_yomi = lang.startswith("ja") and (cfg or {}).get("yomi", engine in M.ENGINES)
+    ref_dir = M.ref_dir(args.ref_dir) if server.voice_by == "ref" else None
     yomi_src = args.yomi or os.environ.get("MOTION_YOMI")
     yomi_path = Path(yomi_src).expanduser().resolve() if yomi_src else TTS_DIR / "yomi.yaml"
-    if yomi_src and not yomi_path.exists():
+    if use_yomi and yomi_src and not yomi_path.exists():
         sys.exit(f"読み辞書がありません: {yomi_path}")
     # 日本語以外のデッキでは、名前で指定した声に <名前>_<言語>.wav（例：alice_en.wav）があればそちらを使う
     # （日本語の参照音声で英語を読ませると訛りが出るため。ファイルの有無はこの PC の参照音声のフォルダで見る）
-    if not lang.startswith("ja"):
+    if ref_dir is not None and not lang.startswith("ja"):
         suffix = "_" + lang.split("-")[0]
         for r, v in list(voices.items()):
-            if not ("/" in v or v.endswith(".wav")) and M.voice_available(v + suffix, ref_dir):
+            if not ("/" in v or "\\" in v or v.endswith(".wav")) and M.voice_available(v + suffix, ref_dir):
                 voices[r] = v + suffix
+    if ref_dir is None and any("/" in v or "\\" in v for v in voices.values()):
+        sys.exit('voiceBy が "name" のエンジンには声の名前を指定してください')
+    # expert・novice の順に並べる（digest は JSON の並びで変わる。今までの音声の digest を保つ）
+    display_voices = {r: (voice_file(voices[r]) if ref_dir is not None else voices[r]) for r in ROLE_LABEL}
     voice = {
         "engine": "dry-run" if args.dry_run else engine,
-        "model": MODEL,
-        "expert": voice_file(voices["expert"]),
-        "novice": voice_file(voices["novice"]),
+        "model": server.model,
+        # voiceBy は "name" のときだけ入れる（"ref" で入れると、今までの音声の digest がすべて替わり作り直しになる）
+        **({"voiceBy": "name"} if server.voice_by == "name" else {}),
+        **display_voices,
         "norm": f"{M.TARGET_LUFS}/{M.TARGET_TP_DB}/{M.TARGET_LRA}",
         "pause_ms": M.PAUSE_MS,
         "trim": f"{M.TRIM_SILENCE}/{M.TRIM_THRESHOLD}/{M.TRIM_KEEP_S}",
         # 実際に使う読み辞書と適用規則（yomi.py）が変われば作り直す
         "yomi": file_hash(yomi_path, TTS_DIR / "yomi.py") if use_yomi else None,
     }
+    if args.dry_run:
+        voice["selectedEngine"] = engine
+    recipe = recipe_of(voice)
+    audio_dir = no_link(deckdir, deckdir / "audio")
+    audio_dir.mkdir(exist_ok=True)
     segs = narration_json(narr, voice)
     used_roles = sorted({t["role"] for s in segs for t in s["turns"]})
     print(f"口述原稿: {len(segs)} 段階 / {sum(len(s['turns']) for s in segs)} ターン"
           f"（{'dry-run' if args.dry_run else engine}・言語 {lang}）")
     for r in used_roles:
-        print(f"  {ROLE_LABEL[r]} → {voice_file(voices[r])}（{src[r]}）")
-    print(f"  読み辞書の場所: {yomi_path}" if use_yomi else "  読み辞書：使わない（日本語以外）")
+        print(f"  {ROLE_LABEL[r]} → {display_voices[r]}（{src[r]}）")
+    print(f"  読み辞書の場所: {yomi_path}" if use_yomi else "  読み辞書：使わない")
 
-    refs: dict[str, Path] = {}
+    speech_voices: dict[str, Path | str] = dict(voices)
+    local = M.server_is_local(server.url)
     if not args.dry_run:
         try:
-            M.ping()
-        except Exception as e:
-            sys.exit(f"⚠ TTS のサーバーに接続できません: {M.IRODORI_URL} ({e})\n"
-                     "  サーバーを起動するか IRODORI_URL を確かめてください（オフラインで流れを試すなら --dry-run）")
-        for r in used_roles:
-            try:
-                refs[r] = M.resolve_voice(voices[r], ref_dir, deckdir)   # 参照音声が無ければここで止める
-                refs[r] = M.ref_at_model_rate(refs[r], no_link(deckdir, deckdir / ".cache" / "voices"))   # 48 kHz・モノラルにそろえる
-            except (FileNotFoundError, PermissionError, M.VoiceFetchError) as e:
-                sys.exit(f"⚠ {e}")
+            server.ping()
+        except RuntimeError as e:
+            if server.configured:
+                print(f"⚠ TTS の起動を確認できません（{e}）。音声の合成を試します", file=sys.stderr)
+            else:
+                sys.exit(f"⚠ TTS のサーバーに接続できません（{e}）\n"
+                         "  サーバーを起動するか IRODORI_URL または --tts-url を確かめてください（オフラインで流れを試すなら --dry-run）")
+        if ref_dir is not None:
+            for r in used_roles:
+                try:
+                    ref = M.resolve_voice(voices[r], ref_dir, deckdir, local=local)
+                    speech_voices[r] = M.ref_at_model_rate(ref, no_link(deckdir, deckdir / ".cache" / "voices"), local=local)
+                except (FileNotFoundError, PermissionError, M.VoiceFetchError) as e:
+                    sys.exit(f"⚠ {e}")
 
     only = set(k.strip() for k in args.only.split(",")) if args.only else None
     if only:
@@ -328,6 +401,7 @@ def main():
 
     made = cached = kept = 0
     failed: list[tuple[str, str]] = []
+    announce_host = not local and not args.dry_run
     for n, seg in enumerate(segs):
         key = seg["key"]
         if only and key not in only:
@@ -346,16 +420,21 @@ def main():
             cached += 1
             print(f"  [{n+1}/{len(segs)}] {key}: キャッシュ使用 ({fname}, {info['dur']:.2f}s)")
         else:
+            if announce_host and any(part.strip() for parts in turns for part in parts):
+                print(f"原稿の文を {urlparse(server.url).hostname} へ送ります", flush=True)
+                announce_host = False
             print(f"  [{n+1}/{len(segs)}] {key}: {len(turns)} ターン合成中…", end="")
             tmp_out = no_link(deckdir, out.with_suffix(".tmp.wav"))
             try:
-                dur, cues = synth_segment(seg, turns, tmp_out, args.dry_run, refs)
+                dur, cues = synth_segment(seg, turns, tmp_out, args.dry_run, speech_voices, server)
             except Exception as e:
                 tmp_out.unlink(missing_ok=True)
                 print(f"\n    ✗ 合成に失敗: {e}")
                 failed.append((key, str(e)))
                 # 前の版の音声（違う原稿・声のもの）を使い続けないよう、manifest から外す
                 manifest["segments"].pop(key, None)
+                if server.configured:
+                    break
                 continue
             tmp_out.replace(out)
             info = {"dur": dur, "cues": cues, "voice": voice, "tts": turns}
@@ -363,7 +442,7 @@ def main():
             made += 1
             print(f" {dur:.2f}s" + (f", cues {cues}" if cues else ""))
         manifest["segments"][key] = {"file": fname, "dur": info["dur"], "cues": info["cues"], "digest": seg["digest"],
-                                     "engine": info.get("voice", {}).get("engine", voice["engine"]),
+                                     "engine": voice["engine"], "recipe": recipe,
                                      "kind": "tts", "inputHash": seg.get("inputHash")}
 
     # 原稿の順に並べ直して書く
@@ -385,8 +464,9 @@ def main():
         print(f"✗ 失敗 {len(failed)} 段階（新規 {made} / キャッシュ {cached} / 録音を残した {kept}）→ {man_path}", file=sys.stderr)
         for k, e in failed:
             print(f"    {k}: {e}", file=sys.stderr)
-        print("  失敗した段階は manifest から外した（音声なしになる）。サーバーを確かめて、"
-              f"--only {','.join(k for k, _ in failed)} でやり直すこと", file=sys.stderr)
+        retry = "同じコマンド" if server.configured else f"--only {','.join(k for k, _ in failed)}"
+        print(f"  失敗した段階は manifest から外した（音声なしになる）。サーバーを確かめて、{retry} でやり直すこと",
+              file=sys.stderr)
         sys.exit(1)
     print(f"完了: 新規 {made} / キャッシュ {cached}" + (f" / 録音を残した {kept}" if kept else "") + f" → {man_path}")
     # egatari コマンドから呼ばれたら（EGATARI_CLI）そのコマンドの形で

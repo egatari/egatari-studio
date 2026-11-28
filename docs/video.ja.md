@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.md sha256=45f61a1eb3f41f8d -->
+<!-- i18n: pair=video.md sha256=f7e8a836f6bbd58b -->
 # 動画にする（TTS → エクスポート）
 
 [English](video.md) | 日本語
@@ -24,11 +24,35 @@ TTS・動画のエクスポートの選択肢と環境変数の一覧は [refere
 
 ## TTS のサーバー（Mac・Windows・Linux）
 
-`tts/synth.py` は、上の 2 つの要求に答えるサーバーならどれとでも動く。試しているのは [mlx-audio](https://github.com/Blaizzy/mlx-audio) で、これは Apple シリコンの Mac でだけ動く。ほかの道：
+`tts/synth.py` は、組み込みのエンジンで上の 2 つの API を使う。試しているのは [mlx-audio](https://github.com/Blaizzy/mlx-audio) で、これは Apple シリコンの Mac でだけ動く。ほかの道：
 
-- **ほかの OpenAI 互換の TTS サーバー**（Windows・Linux、同じネットワークの GPU のあるパソコン）：`GET /v1/models` に答え、`POST /v1/audio/speech` で上の JSON を受け取って WAV を返すこと。`IRODORI_URL` をそのサーバーに向ける。別のパソコンで動くなら、`ref_audio` はそのパソコンの上のパス（`--ref-dir`）。`model` は Irodori-TTS か VoxCPM2 のモデル名（`tts/core.py` の `ENGINES`）で、同じモデルを別の名前で持つサーバーには名前を読み替える小さな中継が要る。`ref_audio` の声をまねて話すサーバーなら指定した声になり、無視するサーバーはそのサーバーの声で話す
 - **サーバーなし**：編集アプリの音声のパネルの「AI 音声をこの PC で作る」で、ステップごとにブラウザの中で音声を作る（WebGPU が要る）か、マイクで録音する（[editor.ja.md](editor.ja.md#台本の音声音声のパネル)）
 - **Google Colab**：「AI 音声をクラウドで作る（Google Colab）」のためのノートブックと、その結果を編集アプリに取り込む機能を用意している。それまでは上のどれかを使う
+
+## CLI でほかの TTS エンジンを使う（tts.json）
+
+既定の Irodori-TTS と VoxCPM2 は Studio が選んだエンジン。CLI の `egatari tts` ではほかの OpenAI 互換の音声合成サーバーも使える。編集アプリは台本を外へ送信しない（Colab で作るときは作成者が台本を含むファイルをエクスポートする）。
+
+作業フォルダの外に次のような `tts.json` を置く。macOS と Linux では `~/.config/egatari/tts.json`（`XDG_CONFIG_HOME` があればその下の `egatari/tts.json`）、Windows では `%APPDATA%\egatari\tts.json`。場所を変えるには `EGATARI_TTS_CONFIG` を使う。
+
+```json
+{
+  "engines": {
+    "studio-voice": {
+      "url": "https://speech.example.com",
+      "model": "studio-tts",
+      "voiceBy": "name",
+      "apiKeyEnv": "STUDIO_TTS_KEY"
+    }
+  }
+}
+```
+
+この例なら `egatari tts <作業フォルダ> --engine studio-voice` で選ぶか、`voice.json` に `"engine": "studio-voice"` と書く。同じ名前の定義を置くと、組み込みのエンジンも上書きできる。サーバーには `POST /v1/audio/speech` で合成を頼む。`GET /v1/models` で起動を確認できなければ警告して合成を試す。WAV 以外の応答は ffmpeg で WAV にする。
+
+- `voiceBy: "name"` なら `voice.json` の `expert` と `novice` にサーバーが受け付ける声の名前を書き、`voice` として送る。`voiceBy: "ref"` なら今までどおり参照音声のパスを `ref_audio` として送る。別のパソコンで動くサーバーには、そのパソコンで読めるパスを使う（`--ref-dir`）。
+- API キーは `apiKeyEnv` に書いた名前の環境変数から読む。`apiKeyFile` で作業フォルダの外のファイルを指定することもできる（相対パスは `tts.json` のあるフォルダから）。API キーだけを 1 行で書くか、`apiKeyEnv` も指定して dotenv ファイルの同じ名前の変数から読む。CLI は API キーを Bearer トークンとして送る。`voice.json` には API キーを書かない。
+- 新しいエンジンの読み辞書は既定では使わない。`"yomi": true` を書くと日本語の台本に使う。組み込みと同じ名前を使う場合は日本語で引き続き有効で、`"yomi": false` で止められる。
 
 ## 手順
 
@@ -79,7 +103,7 @@ node kit/build.mjs $D --portable      # 参加者に配る再生専用のコピ�
 
 ## エンジンと言語
 
-`--engine` > `voice.json` の `"engine"` > スライドの `<html lang>`（`ja` なら `irodori`、それ以外は `voxcpm2`）。どちらも同じ mlx-audio のサーバーで、モデル名だけが違う（`tts/core.py` の `ENGINES`）。日本語以外では読み辞書を使わない。
+`--engine`、`voice.json` の `"engine"`、台本の言語の順で決める（`ja` なら `irodori`、それ以外は `voxcpm2`）。組み込みのエンジンは `IRODORI_URL` のサーバーを使う。今回だけ URL やモデルを変えるには `--tts-url` と `--tts-model` を使う。台本の言語はスライドの `<html lang>` が既定で、`voice.json` の `"lang"` で指定できる。読み辞書は日本語だけに使う。
 
 ```json
 {"lang": "en", "engine": "voxcpm2", "expert": "me"}
@@ -87,7 +111,7 @@ node kit/build.mjs $D --portable      # 参加者に配る再生専用のコピ�
 
 ## キャッシュ
 
-- **音声**：`seg_<digest>.wav` があれば合成しない。digest は `segDigest`（kit/narration.mjs）に、話者・TTS 用の文字列・声・モデル・音量の目標・行間・無音除去の設定・読み辞書と適用規則（実際に使った辞書と `tts/yomi.py`）のハッシュを入れたもの。どれかが変われば作り直す（辞書を修正すると全ステップが作り直しになる）。dry-run は別の digest なので本番の音声と混ざらない。`--force` で作り直し
+- **音声**：`seg_<digest>.wav` があれば合成しない。digest は `segDigest`（kit/narration.mjs）に、話者・TTS 用の文字列・声・エンジン・モデル・`voiceBy`（`"name"` のときだけ）・音量の目標・行間・無音除去の設定・読み辞書と適用規則（実際に使った辞書と `tts/yomi.py`）のハッシュを入れたもの。どれかが変われば作り直す（辞書を修正すると全ステップが作り直しになる）。dry-run は別の digest なので本番の音声と混ざらない。`--force` で作り直し
 - **動画**：ステップごとに「最終状態の画素・動きの途中の 1 コマの画素・1 本の音声のうちそのクリップの区間（ステップの音声・パーツの音・背景の音楽）・dur・lead・anim・fps・scale」のハッシュを `<out>/.render-cache.json` にバックアップし、同じなら作らない。画面を撮って比べるので、CSS・パーツ・テーマを編集しても正しく作り直される（使う字が増えて字の埋め込みが変わると、見た目が同じでも作り直しになることがある）。`--force` で全部作り直し
 - ステップが減ると、余った `clip_NNNN.*` は削除する（連番がずれないように）
 

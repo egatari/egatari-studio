@@ -1,4 +1,4 @@
-<!-- i18n: pair=video.ja.md sha256=b91ea5c8aaac9681 -->
+<!-- i18n: pair=video.ja.md sha256=758a7b12f987a8e0 -->
 # Making a video (TTS → render)
 
 English | [日本語](video.ja.md)
@@ -24,11 +24,35 @@ The list of TTS and render options and environment variables is in [reference.md
 
 ## TTS server (Mac, Windows, Linux)
 
-`tts/synth.py` works with any server that answers the two requests above. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
+`tts/synth.py` uses the two endpoints above with its built-in engines. The one we test with is [mlx-audio](https://github.com/Blaizzy/mlx-audio), which runs only on a Mac with Apple silicon. Other ways:
 
-- **Another OpenAI-compatible TTS server** (Windows, Linux, a GPU computer on your network): it must answer `GET /v1/models`, take the JSON body above at `POST /v1/audio/speech` and return WAV. Point `IRODORI_URL` at it; if it runs on another machine, `ref_audio` must be a path on that machine (`--ref-dir`). `model` is the Irodori-TTS or VoxCPM2 model name (`ENGINES` in `tts/core.py`); a server that knows the model under another name needs a small wrapper that maps the name. A server that clones the voice from `ref_audio` gives the intended voices; one that ignores it speaks in its own voice
 - **No server**: in the editor app, the Audio panel's **Make AI voice on this computer** makes each step's audio in the browser (needs WebGPU) or records it from the microphone ([editor.md](editor.md#script-audio-audio-panel))
 - **Google Colab**: a notebook for **Make AI voice in the cloud (Google Colab)**, and an editor import for what it returns, are coming. Until then, use one of the ways above
+
+## Other TTS engines from the CLI (tts.json)
+
+Irodori-TTS and VoxCPM2 are the defaults Studio chose. Use `egatari tts` to send your narration to another OpenAI-compatible speech server. The editor app keeps narration on your computer (for Colab, you export the file containing the script yourself).
+
+Put `tts.json` outside the working folder. On macOS and Linux it goes in `~/.config/egatari/tts.json` (or `egatari/tts.json` under `XDG_CONFIG_HOME` if set). On Windows it goes in `%APPDATA%\egatari\tts.json`. Set `EGATARI_TTS_CONFIG` to use a different location.
+
+```json
+{
+  "engines": {
+    "studio-voice": {
+      "url": "https://speech.example.com",
+      "model": "studio-tts",
+      "voiceBy": "name",
+      "apiKeyEnv": "STUDIO_TTS_KEY"
+    }
+  }
+}
+```
+
+Select this engine with `egatari tts <folder> --engine studio-voice` or put `"engine": "studio-voice"` in `voice.json`. A definition with the same name as a built-in takes precedence. The CLI sends synthesis requests to `POST /v1/audio/speech`. If `GET /v1/models` fails, it warns and tries synthesis. ffmpeg converts non-WAV responses to WAV.
+
+- With `voiceBy: "name"`, put the server's voice names in `expert` and `novice` in `voice.json`. The CLI sends each name as `voice`. With `voiceBy: "ref"`, it sends the reference recording's path as `ref_audio`. If the server runs on another computer, use a path on that computer (`--ref-dir`).
+- `apiKeyEnv` names the environment variable that holds the API key. To read a key from a file, set `apiKeyFile` to a path outside the working folder (relative paths start at the folder containing `tts.json`). The file can contain a single bare key or dotenv assignments. For dotenv, set `apiKeyEnv` to the name to read from the file. The CLI sends the key as a Bearer token. Keep API keys out of `voice.json`.
+- New engine names have the reading dictionary off by default. Set `"yomi": true` to use it with Japanese narration. Built-in names keep it enabled for Japanese unless you set `"yomi": false`.
 
 ## Steps
 
@@ -79,7 +103,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 
 ## Engine and language
 
-`--engine` > `"engine"` in `voice.json` > the slides' `<html lang>` (`irodori` for `ja`, `voxcpm2` otherwise). Both run on the same mlx-audio server; only the model name differs (`ENGINES` in `tts/core.py`). The reading dictionary is not used for languages other than Japanese.
+The CLI chooses the engine from `--engine`, then `"engine"` in `voice.json`, then the narration language (`irodori` for `ja`, `voxcpm2` otherwise). Built-in engines use the server at `IRODORI_URL`. Use `--tts-url` and `--tts-model` to change the URL or model for one run. The narration language defaults to the slides’ `<html lang>` and can be set with `"lang"` in `voice.json`. The reading dictionary applies only to Japanese.
 
 ```json
 {"lang": "en", "engine": "voxcpm2", "expert": "me"}
@@ -87,7 +111,7 @@ After each line is synthesized, the silence before and after is trimmed (-45 dB,
 
 ## Caching
 
-- **Audio**: if `seg_<digest>.wav` exists, it is not synthesized again. The digest is `segDigest` (kit/narration.mjs), a hash of the speaker, the text for TTS, the voice, the model, the loudness target, the gap between lines, the silence-trimming settings, and the reading dictionary and its rules (the dictionary actually used and `tts/yomi.py`). If any of these changes, it is rebuilt (fixing the dictionary rebuilds every step). Dry-run uses a different digest, so it never mixes with real audio. `--force` rebuilds
+- **Audio**: if `seg_<digest>.wav` exists, it is not synthesized again. The digest is `segDigest` (kit/narration.mjs), a hash of the speaker, the text for TTS, the voice, engine, model, `voiceBy` (only when it is `"name"`), the loudness target, the gap between lines, the silence-trimming settings, and the reading dictionary and its rules (the dictionary actually used and `tts/yomi.py`). If any of these changes, it is rebuilt (fixing the dictionary rebuilds every step). Dry-run uses a different digest, so it never mixes with real audio. `--force` rebuilds
 - **Video**: for each step, a hash of "the pixels of the final state, the pixels of one frame in the middle of the motion, the clip's slice of the audio track (its step's audio, sounds from parts and the background music), dur, lead, anim, fps and scale" is recorded in `<out>/.render-cache.json`, and if it is the same the clip is not made again. Because it captures and compares the screen, the clip is correctly rebuilt even after you change CSS, parts or the theme (if more characters are used and the embedded font changes, a clip may be rebuilt even though it looks the same). `--force` rebuilds everything
 - When the number of steps decreases, the leftover `clip_NNNN.*` files are deleted (so that the serial numbers do not shift)
 

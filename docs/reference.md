@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.ja.md sha256=79d72ec9c85833ec -->
+<!-- i18n: pair=reference.ja.md sha256=3d70d744fae9bfec -->
 # Reference
 
 English | [日本語](reference.ja.md)
@@ -604,7 +604,8 @@ Attachments are archive entries, so adding, removing or renaming files under `at
 |---|---|
 | `--voices expert=a,novice=b` | voices (over `voice.json`) |
 | `--ref-dir DIR` | reference voice folder (over `IRODORI_REF_DIR`; default `tts/voices/`, where the npm package downloads a missing default voice to the cache on first use; `tts/voices.json`) |
-| `--engine irodori\|voxcpm2` | over `voice.json` `engine` and the file language |
+| `--engine NAME` | built-in or `tts.json` engine name (over `voice.json` and the slide language) |
+| `--tts-url URL`, `--tts-model NAME` | override the server URL and model for this run |
 | `--yomi FILE` | reading dictionary (over `MOTION_YOMI`; default `tts/yomi.yaml`). Japanese only |
 | `--only key,…` | only these steps (`slideKey:step`) |
 | `--dry-run` | no TTS: silence of estimated length (7.5 characters/s Japanese, 2.5 words/s English); separate cache |
@@ -613,9 +614,9 @@ Attachments are archive entries, so adding, removing or renaming files under `at
 
 | `voice.json` field | Meaning |
 |---|---|
-| `expert`, `novice` | a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the working folder). Defaults `bob`, `alice`. The reference voice is never packed into the Egatari file (.ega.html): keep it outside the working folder |
+| `expert`, `novice` | the server’s voice name with `voiceBy: "name"`. With `voiceBy: "ref"`, a name (`<ref dir>/<name>.wav`) or a path (contains `/` or ends in `.wav`; relative to the working folder). Defaults `bob`, `alice`. The reference voice is never packed into the Egatari file (.ega.html): keep it outside the working folder |
 | `lang` | language (default: `lang` of the slides' HTML — the file you pass, `<deckdir>/deck.html`, or the only `*.html` in the folder — else `ja`) |
-| `engine` | `irodori` (default for Japanese) or `voxcpm2` (default otherwise) |
+| `engine` | a built-in (`irodori` for Japanese narration, `voxcpm2` for other languages by default) or a name in `tts.json` |
 
 Writes `audio/seg_<digest>.wav`, `audio/seg_<digest>.json` and `audio/manifest.json` (steps removed from the script are dropped from the manifest; their wav files stay). Each manifest entry also carries `kind: "tts"` and `inputHash`, the hash of the step's script (format spec §5.4), so the editor app and the quality checker can tell when the script changed afterwards. Recorded and imported takes are kept (see `--replace-recorded`). The editor app can also record, import or regenerate one step at a time in the browser ([editor](editor.md#script-audio-audio-panel)); its post-processing uses the same numbers as `tts/core.py`. Warns if dry-run audio remains. When the server is not localhost, voice paths are not checked locally. Rebuild afterwards.
 
@@ -680,6 +681,7 @@ Outputs: `clip_NNNN.mp4`, `clip_NNNN.png`, `timeline.out.json` (`source, fps, sa
 |---|---|---|---|
 | `CHROME_PATH` | check, pdf, shot, render, tests | browser executable | Google Chrome, then Microsoft Edge, then Playwright's Chromium |
 | `IRODORI_URL` | TTS | OpenAI-compatible speech server | `http://localhost:8882` (default) |
+| `EGATARI_TTS_CONFIG` | CLI TTS | engine configuration file outside the working folder | [tts.json location by OS](video.md#other-tts-engines-from-the-cli-ttsjson) |
 | `IRODORI_REF_DIR` | TTS | reference voice folder (`--ref-dir` wins) | `tts/voices/` |
 | `MOTION_YOMI` | TTS | reading dictionary (`--yomi` wins) | `tts/yomi.yaml` |
 | `EGATARI_THEMES` | build, check, dev server, Egatari file | your theme folders, searched after the working folder and before the bundled `themes/` ([Themes](#themes)); separated by `:` (`;` on Windows) | none; `~/.egatari/themes` is searched after them when it exists |

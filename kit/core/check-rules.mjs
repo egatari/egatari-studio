@@ -79,6 +79,7 @@ export const RULES = Object.freeze([
   { id: 'C-font', kind: 'checker', phase: 'A 体裁', codes: ['themeMetricsDrift', 'metricsFontLoad', 'themeMetricsInvalid', 'fontsExtraMissing', 'fontNotCovered', 'fontNotEmbedded'] },
   { id: 'C-links', kind: 'checker', phase: 'J リンク', codes: ['linkFileMissing', 'linkEmpty', 'linkUnknown', 'linkNumberRange', 'linkNoConcl', 'linkStepRange', 'linkBadStep', 'linkNumber', 'linkNoId', 'linkCount'], applies: needs('links', 'noLinks') },
   { id: 'C-audio', kind: 'checker', phase: '読み込み', codes: ['audioStale', 'refVoice'], applies: needs('audio', 'noAudio') },
+  { id: 'C-keys', kind: 'checker', phase: '読み込み', codes: ['keyLike'] },
   { id: 'C-attach', kind: 'checker', phase: '読み込み', codes: ATTACH, applies: needs('attachments', 'noAttachments') },
   { id: 'C-book', kind: 'checker', phase: 'M 本文', codes: ARTICLE, applies: needs('book', 'noBook') },
   { id: 'C-a11y', kind: 'checker', phase: 'H 読み上げ', codes: ['imgAlt', 'svgName', 'compName'] },

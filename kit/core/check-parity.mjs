@@ -49,6 +49,7 @@ export const CLI_ONLY = Object.freeze({
   linkFileMissing: 'needs the filesystem: checks that a linked file exists next to the deck',
   fontsExtraMissing: 'needs the @egatari/fonts-extra npm package on disk; the editor bundles its fonts',
   extensionVersion: 'info; reads extension versions from egatari.json on disk',
+  keyLike: 'scans configuration files on disk for possible API keys',
   'component-requires-missing': 'the build stops; the editor shows the same message as a build error',
   'component-not-in-catalogue': 'the build stops; the editor shows the same message (catalogueMessage) as a build error',
 });

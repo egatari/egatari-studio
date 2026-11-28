@@ -1,4 +1,4 @@
-<!-- i18n: pair=reference.md sha256=57b20f364e593c5f -->
+<!-- i18n: pair=reference.md sha256=ac1050211f095e6f -->
 # リファレンス
 
 [English](reference.md) | 日本語
@@ -603,7 +603,8 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 |---|---|
 | `--voices expert=a,novice=b` | 声（`voice.json` より優先） |
 | `--ref-dir DIR` | 参照音声のフォルダ（`IRODORI_REF_DIR` より優先。既定 `tts/voices/`。npm の包みでは、ない既定の声を初めて使うときにキャッシュへ取り寄せる。`tts/voices.json`） |
-| `--engine irodori\|voxcpm2` | `voice.json` の `engine` とスライドの言語より優先 |
+| `--engine NAME` | 組み込みか `tts.json` の名前。`voice.json` の `engine` とスライドの言語より優先 |
+| `--tts-url URL`、`--tts-model NAME` | 今回だけサーバーの URL、モデルを上書き |
 | `--yomi FILE` | 読み辞書（`MOTION_YOMI` より優先。既定 `tts/yomi.yaml`）。日本語だけ |
 | `--only キー,…` | このステップ（`スライドの id:ステップ`）だけ |
 | `--dry-run` | TTS を呼ばず、推定の長さの無音（日本語 7.5 字/秒、英語 2.5 語/秒）。キャッシュは別 |
@@ -612,9 +613,9 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 
 | `voice.json` の項目 | 意味 |
 |---|---|
-| `expert`、`novice` | 名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対なら作業フォルダから）。既定 `bob`、`alice`。参照音声は Egatari ファイル（.ega.html）に入らない：作業フォルダの外に置く |
+| `expert`、`novice` | `voiceBy: "name"` ではサーバーの声の名前。`voiceBy: "ref"` では名前（`<参照音声のフォルダ>/<名前>.wav`）かパス（`/` を含むか `.wav` で終わる。相対なら作業フォルダから）。既定 `bob`、`alice`。参照音声は Egatari ファイル（.ega.html）に入らない：作業フォルダの外に置く |
 | `lang` | 言語（既定はスライドの HTML の `lang`。渡したファイル、`<deckdir>/deck.html`、フォルダに 1 つだけある `*.html` の順。なければ `ja`） |
-| `engine` | `irodori`（日本語の既定）か `voxcpm2`（それ以外の既定） |
+| `engine` | 組み込みの名前（日本語は `irodori`、それ以外は `voxcpm2` が既定）か `tts.json` の名前 |
 
 `audio/seg_<digest>.wav`、`audio/seg_<digest>.json`、`audio/manifest.json` を書く（台本から消えたステップは manifest から外す。wav は残す）。manifest の各ステップには `kind: "tts"` と、そのステップの台本の hash `inputHash`（format spec §5.4）も書くので、後で台本が変わったことを編集アプリと品質チェックが見分けられる。録音と取り込みの音声は残す（`--replace-recorded` を参照）。編集アプリでも、ブラウザで 1 ステップずつ録音・取り込み・作り直しができる（[編集アプリ](editor.ja.md#台本の音声音声のパネル)）。その後処理は `tts/core.py` と同じ数を使う。dry-run の音声が残っていれば警告する。サーバーが localhost でなければ、声のパスをローカルで確認しない。終わったら build し直す。
 
@@ -679,6 +680,7 @@ Egatari ファイルの読み取り（unpack と[編集アプリ](editor.ja.md#e
 |---|---|---|---|
 | `CHROME_PATH` | 品質チェック・PDF・shot・動画のエクスポート・テスト | ブラウザの実行ファイル | Google Chrome、なければ Microsoft Edge、それもなければ Playwright の Chromium |
 | `IRODORI_URL` | TTS | OpenAI 互換の音声合成サーバー | `http://localhost:8882`（既定） |
+| `EGATARI_TTS_CONFIG` | CLI TTS | 作業フォルダの外のエンジン設定ファイル | [OS ごとの tts.json の場所](video.ja.md#cli-でほかの-tts-エンジンを使うttsjson) |
 | `IRODORI_REF_DIR` | TTS | 参照音声のフォルダ（`--ref-dir` が優先） | `tts/voices/` |
 | `MOTION_YOMI` | TTS | 読み辞書（`--yomi` が優先） | `tts/yomi.yaml` |
 | `EGATARI_THEMES` | ビルド・品質チェック・開発サーバー・Egatari ファイル | 自分のテーマのフォルダ。作業フォルダの後、同梱の `themes/` の前に探す（[テーマ](#テーマ)）。区切りは `:`（Windows は `;`） | なし。あれば、その後に `~/.egatari/themes` を探す |

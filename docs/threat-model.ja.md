@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.md sha256=0e5747f849736e11 -->
+<!-- i18n: pair=threat-model.md sha256=0fe2a0dbbb51ec13 -->
 # 脅威モデル
 
 [English](threat-model.md) | 日本語
@@ -62,6 +62,8 @@ Egatari Studio が何を、誰から、どのコードで守っているかの�
 - ノートブックのリンクは、リリースのタグに固定してある。
 
 **対策の外。** Google と Hugging Face が文章やモデルのファイルをどう扱うか。Colab の確認は、docs に書いた 1 つの環境でしか取れていない。
+
+CLI の `egatari tts` は作成者が選んだ音声合成サーバーへ台本の文章を送り、ローカルでないときは送信先のホストを表示する。
 
 ## 5. サプライチェーン
 

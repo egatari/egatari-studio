@@ -1,4 +1,4 @@
-<!-- i18n: pair=threat-model.ja.md sha256=cfa52eb63f2afd68 -->
+<!-- i18n: pair=threat-model.ja.md sha256=09f1dea388c48c5d -->
 # Threat model
 
 English | [日本語](threat-model.ja.md)
@@ -62,6 +62,8 @@ A short map of what Egatari Studio protects, from whom, and where each protectio
 - The notebook link is pinned to a release tag.
 
 **Not covered.** What Google or Hugging Face do with the text and the model files. The Colab check is verified only for the one environment named in the docs.
+
+The `egatari tts` CLI sends narration text to the speech server the author chooses and displays the destination host for non-local servers.
 
 ## 5. Supply chain
 
