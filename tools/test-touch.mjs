@@ -213,13 +213,29 @@ async function phone(name, browser) {
   }
 }
 
-const cr = await launch();
-await run('chromium', cr);
-await phone('chromium', cr);
-await desktopHelp('chromium', cr);
-await cr.close();
+// 1 つの組（run・phone・desktopHelp）に上限を付ける。WebKit の mouse.click が macOS の CI でたまに返らず、
+// 段の上限（TEST_STEP_TIMEOUT_S）より先に job ごと打ち切られて、どの試験かが一覧に出なかった（handoff #80、CI 46130728439）。
+// 上限を過ぎたら FAIL を出してブラウザを閉じ、そのブラウザの残りの組は飛ばす
+const LEG_MS = Number(process.env.TEST_TOUCH_LEG_MS) > 0 ? Number(process.env.TEST_TOUCH_LEG_MS) : scaled(180000);   // TEST_TOUCH_LEG_MS は止まったときの道を確かめるため
+async function legs(name, browser, list) {
+  for (const [label, fn] of list) {
+    let timer;
+    const stuck = new Promise((resolve) => { timer = setTimeout(() => resolve('stuck'), LEG_MS); });
+    const r = await Promise.race([fn(name, browser).then(() => 'done'), stuck]);
+    clearTimeout(timer);
+    if (r === 'stuck') {
+      ok(false, `${name}: ${label} did not finish within ${LEG_MS / 1000} s (a browser call did not return); the rest of ${name} is skipped`);
+      await Promise.race([browser.close().catch(() => {}), new Promise((resolve) => setTimeout(resolve, 10000))]);
+      return false;
+    }
+  }
+  await browser.close();
+  return true;
+}
+const LEGS = [['the touch toolbar', run], ['the phone widths', phone], ['the ? panel', desktopHelp]];
+await legs('chromium', await launch(), LEGS);
 let wk = null;
 try { wk = await webkit.launch(); } catch (e) { console.log(`skip webkit: not installed (npx playwright-core install webkit): ${String(e.message || e).split('\n')[0]}`); }
-if (wk) { await run('webkit', wk); await phone('webkit', wk); await desktopHelp('webkit', wk); await wk.close(); }
+if (wk) await legs('webkit', wk, LEGS);
 console.log(fails ? `${fails} failed` : 'all passed', '→', outdir);
 process.exit(fails ? 1 : 0);
