@@ -21,6 +21,21 @@ function holdWidth(btn, label, done) {
   btn.textContent = label;
   btn.style.minWidth = Math.ceil(Math.max(w0, w1)) + 'px';
   btn.dataset.copyWidth = '1';
+  held.add(btn);
+}
+
+// 字体を読み終えるたびに、測ったボタンを測り直す（「✓ コピーしました」の字の分の字体を、測った後で読み始めることがある。
+// そのときは代わりの字体の狭い幅を覚えてしまい、本物の字体が届くと字が広がる。macOS の CI 46028102601：120.75 → 137）。
+// 「✓ コピーしました」を出している間のボタンは、元の字に戻るときに測り直す
+const held = new Set();
+function remeasure(btn) {
+  if (!btn.isConnected) { held.delete(btn); return; }
+  if (btn.dataset.copyLabel != null) { btn.dataset.copyStale = '1'; return; }
+  delete btn.dataset.copyWidth; btn.style.minWidth = '';
+  holdWidth(btn, btn.textContent, DONE);
+}
+if (typeof document !== 'undefined' && document.fonts && typeof document.fonts.addEventListener === 'function') {
+  document.fonts.addEventListener('loadingdone', () => { for (const b of [...held]) remeasure(b); });
 }
 
 // コピーのボタンを作ったときに通す：見えて大きさが付いたとき（ResizeObserver）に幅を測って止める。押してから測ると、広いほうの字のときに 1 度だけ幅が替わるため
@@ -53,6 +68,7 @@ function restore(btn) {
   btn.textContent = btn.dataset.copyLabel;
   btn.classList.remove('copied');
   delete btn.dataset.copyLabel;
+  if (btn.dataset.copyStale) { delete btn.dataset.copyStale; remeasure(btn); }
 }
 
 // 写せたときに呼ぶ。返す Promise は foldMs の後に解ける（段をたたむのは、ボタンの字を見せてから）
@@ -71,6 +87,7 @@ export function copied(btn) {
     btn.textContent = label;
     btn.classList.remove('copied');
     delete btn.dataset.copyLabel;
+    if (btn.dataset.copyStale) { delete btn.dataset.copyStale; remeasure(btn); }
   }, L.showMs);
   return new Promise((r) => setTimeout(r, L.foldMs));
 }
