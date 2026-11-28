@@ -379,6 +379,10 @@ let BACKUP = '';
   await p.click('#b-mexport');
   await p.setInputFiles('#x-file', path.join(work, 'bad.ega-notes.json'));
   ok(await until(() => p.evaluate(() => /読み込めません/.test(document.getElementById('x-status').textContent))), 'a file that is not a backup is refused');
+  // 20 MB を越える控えは読まない（上限つきの読み取りの口。test-raw-reads）
+  await p.evaluate(() => { document.getElementById('x-status').textContent = ''; });
+  await p.setInputFiles('#x-file', { name: 'big.ega-notes.json', mimeType: 'application/json', buffer: Buffer.alloc(20 * 1024 * 1024 + 1, 32) });
+  ok(await until(() => p.evaluate(() => /大きすぎます/.test(document.getElementById('x-status').textContent))), 'a backup over 20 MB is refused: ' + await p.evaluate(() => document.getElementById('x-status').textContent));
   await ctx2.close();
 }
 

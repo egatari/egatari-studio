@@ -14,7 +14,7 @@ import { computeLayout, isPhoneLandscape } from './layout.mjs';
 import { linkBox } from './links.mjs';
 import { markup, clearAllRecords, countRecords } from './markup.mjs';
 import { LivePolicy } from '../kit/core/live-policy.mjs';
-import { readFileBounded } from '../app/bounded-read.js';
+import { readFileBounded, readFileBoundedText } from '../app/bounded-read.js';
 import { sha256Hex } from './markup.mjs';
 import { ink, countInk, clearInk, inkOf, addInk, W as INK_W, H as INK_H, MEMO_H as INK_MEMO, GAP as INK_GAP } from './ink.mjs';
 import { noteEditor } from './notes.mjs';
@@ -488,9 +488,10 @@ async function exportAs(kind) {
 async function importFile(file) {
   const P = S.playing, st = $('x-status');
   if (!P || !M || !file) return;
-  if (file.size > 20 * 1024 * 1024) { st.textContent = W().xTooBig; return; }
   let j = null;
-  try { j = JSON.parse(await file.text()); } catch { j = null; }
+  // 控えは上限つきの読み取りの口で読む（20 MB まで。test-raw-reads）
+  try { j = JSON.parse((await readFileBoundedText(file, { max: 20 * 1024 * 1024, what: 'notes' })).text); }
+  catch (e) { if (e && e.code === 'read-over') { st.textContent = W().xTooBig; return; } j = null; }
   const r = readExchange(j, { docId: P.docId || '', fileSha256: await P.fileSha });
   if (!r.ok) { st.textContent = r.why === 'other' ? W().xOtherFile : W().xBadFile; return; }
   if (NOTE.ed) NOTE.ed.flush(); if (PANEL.ed) PANEL.ed.flush();

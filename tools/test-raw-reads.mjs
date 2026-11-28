@@ -57,6 +57,7 @@ const ALLOW = [
   ['tools/build-play.mjs', "files[f] = fs.readFileSync(rel('play', f))", 'Egatari Viewer の組み立て：リポジトリの play/ の決まったファイルを読む'],
   ['tools/build-play.mjs', "fs.readFileSync(rel('assets', 'logo', f))", 'Egatari Viewer の組み立て：リポジトリの assets/logo の画像を読む'],
   ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'sw.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/sw.js を読む'],
+  ['tools/build-play.mjs', "fs.readFileSync(rel('play', 'print-frame.js'), 'utf8')", 'Egatari Viewer の組み立て：リポジトリの play/print-frame.js（メモの PDF の印刷の枠の仲立ち）を読む'],
   ['tools/bun-check.mjs', 'const a = fs.readFileSync(file);', 'Bun の確かめ（CI の bun ジョブ）：自分で作った一時のフォルダで Node が組んだ出力を読んで比べる'],
   ['tools/bun-check.mjs', 'eq(fs.readFileSync(out));', 'Bun の確かめ：同じフォルダで Bun が組んだ out/deck.html を読んで比べる'],
   ['tools/bun-check.mjs', 'eq(fs.readFileSync(path.join(deck, f)));', 'Bun の確かめ：同じフォルダで Bun が組んだ .ega.html を読んで比べる'],
