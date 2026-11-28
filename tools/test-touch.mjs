@@ -225,12 +225,20 @@ async function legs(name, browser, list) {
     clearTimeout(timer);
     if (r === 'stuck') {
       ok(false, `${name}: ${label} did not finish within ${LEG_MS / 1000} s (a browser call did not return); the rest of ${name} is skipped`);
-      await Promise.race([browser.close().catch(() => {}), new Promise((resolve) => setTimeout(resolve, 10000))]);
+      await closeWithin(name, browser);
       return false;
     }
   }
-  await browser.close();
+  await closeWithin(name, browser);
   return true;
+}
+// ブラウザを閉じるのにも上限を付ける（CI 46140651635：WebKit で全部の項目を出したあと browser.close() が返らず、job ごと打ち切られた）。
+// 閉じられなくても試験の結果は出ているので、知らせるだけにして先へ進む（最後は process.exit で終わる）
+async function closeWithin(name, browser) {
+  let timer;
+  const r = await Promise.race([browser.close().then(() => 'closed', () => 'closed'), new Promise((resolve) => { timer = setTimeout(() => resolve('stuck'), scaled(20000)); })]);
+  clearTimeout(timer);
+  if (r === 'stuck') console.log(`note ${name}: the browser did not close within ${scaled(20000) / 1000} s; going on`);
 }
 const LEGS = [['the touch toolbar', run], ['the phone widths', phone], ['the ? panel', desktopHelp]];
 await legs('chromium', await launch(), LEGS);
