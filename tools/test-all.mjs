@@ -1,5 +1,5 @@
 // すべてのテストを順に走らせ、一覧で結果を出す（npm test）
-//   node tools/test-all.mjs [--only 名前,名前] [--platform] [--skip-os-independent] [--jobs N] [--verbose] [--list] [--help]
+//   node tools/test-all.mjs [--only 名前,名前] [--platform] [--skip-os-independent] [--shard K/N] [--jobs N] [--verbose] [--list] [--help]
 //   --help：使い方を出して終わる
 //   --list：走らせる段の名前と引数を出して終わる（一時フォルダは <tmp>）
 // 1. examples/minimal・examples/tmlr2026-calibration・examples/pitch-fictional（部品庫のビジネス向けの部品と business テーマ）を組む（部品の見本は test-components が組む）
@@ -33,7 +33,7 @@ const JOBS_MAX = 6;
 // これより少ないメモリ（GiB）の機械では、メモリを多く使う段どうしを重ねない（下の HEAVY）
 const MEM_HEAVY_GIB = 12;
 if (args.includes('--help') || args.includes('-h')) {
-  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--skip-os-independent] [--jobs N] [--verbose] [--list]
+  console.log(`usage: node tools/test-all.mjs [--only name,name] [--platform] [--skip-os-independent] [--shard K/N] [--jobs N] [--verbose] [--list]
   --only name,name  run only these steps (and the builds they need); "test-components" and "test-app" select all their shards
   --platform        run only the platform-sensitive steps: every step that is not a browser test (builds, checks,
                     generated-file checks, unit tests) and the tests marked "// test-all: platform" (paths, fonts, WebKit, npm pack)
@@ -41,6 +41,8 @@ if (args.includes('--help') || args.includes('-h')) {
                     leave out the tests marked "// test-all: os-independent": heavy steps whose result depends only on file
                     contents and generated output, not on the OS (CI's macOS job sets it except for a v* tag push;
                     Linux and Windows run them every time)
+  --shard K/N       split the selected steps into N groups of about equal estimated time (HINT_S, longest first)
+                    and run group K and the steps it waits for (CI splits the Linux job this way)
   --jobs N          run up to N steps at once, longest first (default: CPUs - 1, at most ${JOBS_MAX}); steps marked
                     "// test-all: serial" run last, one at a time. --jobs 1 runs the steps in table order
   --verbose         stream every step's output (also when CI is set)
@@ -497,7 +499,24 @@ const choose = (name, argv) => {
   chosen.add(name);
   for (const d of depsOf(name, argv)) { const st = steps.find(([n]) => n === d); if (st) choose(...st); }
 };
-for (const [name, argv] of steps) if (picked(name, argv)) choose(name, argv);
+// --shard K/N：選んだ段を目安の時間（HINT_S）で N 組に分け、K 組目とそれが待つ段だけを走らせる（CI の Linux の job を分けるため。handoff #80）。
+// 長い順に、いま一番軽い組へ入れる。組み立ての段は、それを待つ段のある組のどれでも走る（同じ組み立てを 2 つの組で作ることがある）
+const si = args.indexOf('--shard');
+const shard = si >= 0 ? /^(\d+)\/(\d+)$/.exec(args[si + 1] || '') : null;
+if (si >= 0 && !(shard && +shard[1] >= 1 && +shard[1] <= +shard[2])) { console.error('test-all: --shard needs K/N with 1 <= K <= N (e.g. --shard 1/2)'); process.exit(2); }
+const pickedSteps = steps.filter(([name, argv]) => picked(name, argv));
+let mine = pickedSteps;
+if (shard) {
+  const n = +shard[2], load = Array(n).fill(0), bin = new Map();
+  const cost = (name) => HINT_S[name] ?? HINT_DEFAULT_S;
+  for (const [name] of [...pickedSteps].sort((x, y) => cost(y[0]) - cost(x[0]) || steps.indexOf(x) - steps.indexOf(y))) {
+    const k = load.indexOf(Math.min(...load));
+    bin.set(name, k); load[k] += cost(name);
+  }
+  mine = pickedSteps.filter(([name]) => bin.get(name) === +shard[1] - 1);
+  console.log(`test-all: shard ${shard[1]}/${n}: ${mine.length} of ${pickedSteps.length} selected steps (estimated ${load.map((l) => Math.round(l)).join(' / ')} s of step time)`);
+}
+for (const [name, argv] of mine) choose(name, argv);
 const selected = (name) => chosen.has(name);
 // --list（--only・--platform・--skip-os-independent があれば、選んだ段だけ）
 if (args.includes('--list')) {
