@@ -1221,14 +1221,15 @@ const IS_MAC = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.use
 const histStep = (dir) => { if (S.ws && !$('deck').hidden) slidesPanel.step(dir); };
 // ⌘S・Ctrl+S（handoff #100 の 2）：ブラウザの「ページを保存」の代わりに、ファイル ▾ → 保存と同じ（入力の欄の中でも。欄の中の書きかけは、メニューから保存したときと同じく欄に残る）。
 // 窓が開いている間・文書を開いていないときは何もしない（ページの保存も出さない）
+// プレビューの中で押したときも同じ（app/frame-shim.js が知らせる）
+function saveKey() { if (!S.ws || $('deck').hidden || $('dlg').open) return; $('b-save').click(); }
 window.addEventListener('keydown', (e) => {
   const mod = IS_MAC ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
   if (!mod || e.altKey || e.defaultPrevented) return;
   const k = (e.key || '').toLowerCase(), t = e.target;
   if (k === 's' && !e.shiftKey) {
     e.preventDefault();
-    if (!S.ws || $('deck').hidden || $('dlg').open || e.repeat) return;
-    $('b-save').click();
+    if (!e.repeat) saveKey();
     return;
   }
   if (!S.ws || !S.base || $('deck').hidden || $('dlg').open) return;
@@ -1249,6 +1250,8 @@ window.addEventListener('message', (e) => {
     // デッキの p：開いていれば閉じる（kit/deck.js と同じ入り切り。発表者ビューから抜けられないとき、本体の窓に戻って p）
     if (m.type === 'app-layout-changed' && /^(slides|split|book)$/.test(String(m.layout))) { if (book.present() && m.layout !== (S.view || 'slides')) setView(m.layout, false); }
     else if (m.type === 'app-open-presenter') { if (S.presWin && !S.presWin.closed) closePresenter(); else openPresenter(); }
+    // プレビューの中の ⌘S・Ctrl+S（app/frame-shim.js）：このページで押したときと同じ決まりで保存する
+    else if (m.type === 'app-save-key') saveKey();
     else if ((m.type === 'app-check-result' || m.type === 'app-steps-result' || m.type === 'app-readable-result' || m.type === 'app-shot-result') && S.checks.has(m.id)) {
       const w = S.checks.get(m.id);
       if (m.load === w.load && w.load === S.loads) {
