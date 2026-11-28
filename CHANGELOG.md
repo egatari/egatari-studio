@@ -8,6 +8,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 <!-- Unreleased changes are fragments in changes/*.md (see CONTRIBUTING.md "Changelog"); node tools/changelog.mjs --release X.Y.Z moves them here. -->
 
+## [0.6.22] - 2026-11-28
+
+### Added
+
+- Viewer: notes in the learner's own words, one per slide (typed in the memo area under the slide, with handwriting over it; `m` or 「メモ」) and one per section of the book (opened from a button at the section's end, written in the page, never in the file's frame). Kept on the device only, never on a shared device.
+- Viewer: quotes — 「メモ」 in the window for selected words quotes them into the note (a dotted underline marks them; no highlight, so 暗記 does not hide them), with ↗ back to the place. With the book on screen, 「メモ」 opens the note of the section being read. Highlights and 暗記 now work on the slides' text too, so Markup shows for files without a book.
+- Viewer: export of notes as a PDF handout (each slide with its memo area; the page draws the notes and prints, the file's frames never print), as Markdown, and as a backup (`.ega-notes.json`, with highlights and handwriting) that another device can read in for the same file.
+
+### Changed
+
+- Format spec copy (`vendor/egatari-spec`): the snapshot **wd-2026-11-28** (egatari-spec af53dcf). Studio follows Egatari 1.0 WD 2026-11-28, including the annotations (the Note record, `target.slide`, the `.ega-notes.json` exchange file, notes never entering a frame of the file, printing included) that the Viewer's notes implement. The other changes since wd-2026-11-22 (§8.4 declared questions, Player P8 `prefs`, Appendix A 14) do not change what Studio does.
+
+### Fixed
+
+- Editor: a **Copy** button could still grow by a few pixels when it said “✓ Copied” for the first time: if the font for those characters started loading only after the width was measured, the width came from the fallback font. The buttons are measured again whenever fonts finish loading
+- Editor: **⌘S / Ctrl+S** saves the file also when the focus is in the slide preview. After an edit the preview reloads and takes the focus, so the shortcut pressed then reached the preview and did not save (in Chrome it could open the browser's own Save page). The preview now passes the shortcut to the editor, which saves under the same rules as elsewhere (handoff #80)
+- Editor: **Request a part…** could not send from the published editor: after about 20 seconds the dialog said the check frame could not be loaded. The relay's deploy (Wrangler, esbuild `keepNames`) wrapped functions of the frame's script in `__name(…)`, a helper the frame did not have, so the script stopped before it said it was ready. The relay now deploys without `keepNames` and the frame's script defines the helper itself; a test bundles the relay as a deploy does and checks that the frame says ready. Only the relay at request.egatari.org is deployed again (handoff #35)
+
 ## [0.6.21] - 2026-11-27
 
 ### Added
@@ -1768,7 +1786,8 @@ First public release.
 - Docs: README (English and Japanese), the contract (`docs/contract.md`), a reference of every option, syntax and key (`docs/reference.md`, `docs/reference.ja.md`), guides for the dev server and video, CONTRIBUTING, SECURITY, issue forms
 - Tests (`npm test`) and GitHub Actions running them on Node 22 and 24, plus a TTS dry-run through video export
 
-[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.21...HEAD
+[Unreleased]: https://github.com/egatari/egatari-studio/compare/v0.6.22...HEAD
+[0.6.22]: https://github.com/egatari/egatari-studio/compare/v0.6.21...v0.6.22
 [0.6.21]: https://github.com/egatari/egatari-studio/compare/v0.6.20...v0.6.21
 [0.6.20]: https://github.com/egatari/egatari-studio/compare/v0.6.19...v0.6.20
 [0.6.19]: https://github.com/egatari/egatari-studio/compare/v0.6.18...v0.6.19
