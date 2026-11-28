@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     # Linux: npm test now runs past 45 min (test 24 on v0.6-integration was cancelled at 45 min while still passing; test-components alone takes about 545 s), so the job and each test-all step get more time
     # With npm test -- --jobs 3 (backlog #156) the tests took 22-33 min here in the green runs of the v0.6.4-ci-parallel branch (39 min one at a time in run 41300438072); the cap is unchanged
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
