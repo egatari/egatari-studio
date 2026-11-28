@@ -38,6 +38,17 @@ if (cfg.html && cfg.shim && cfg.prefix) {
 if (cfg.strip) { whenReady(function(){ strip(cfg.strip); }); return; }
 if (!cfg.dev) return;
 window.__APP_LOAD = cfg.load;   // 何回目の読み込みか（確かめ方が使う）
+// ⌘S・Ctrl+S：プレビューに focus があるときも、編集アプリの「保存」にする（ブラウザの「ページを保存」は出さない）。読み込み直したプレビューは
+// focus を取るので、直した後に押すとここに来る（handoff #80：CI の Windows で保存が始まらなかった）。頼むだけで、保存するかは編集アプリが決める
+(function(){
+  var mac = /mac|iphone|ipad/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "");
+  window.addEventListener("keydown", function(e){
+    var mod = mac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
+    if (!mod || e.altKey || e.shiftKey || String(e.key || "").toLowerCase() !== "s") return;
+    e.preventDefault();
+    if (!e.repeat) parentWin.postMessage({type: "app-save-key"}, "*");
+  }, true);
+})();
 // デッキのスクリプトのエラー（コンソールのエラーと捕まらなかった例外）を品質チェックに出す。言葉だけ（スタックは持たない。場所は app/llm.js が除く）
 var jsErrors = [];
 var noteError = function(t){ t = String(t || "").split("\n")[0].slice(0, 300); if (t && jsErrors.indexOf(t) < 0 && jsErrors.length < 20) jsErrors.push(t); };

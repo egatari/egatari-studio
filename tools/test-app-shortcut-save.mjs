@@ -90,6 +90,8 @@ async function editText(page, mark) {
 const MOD = process.platform === 'darwin' ? 'Meta' : 'Control';
 // 押したキーの既定の動きが止められたか（ページの中で合成したキーで見る）
 const prevented = (page) => page.evaluate((mac) => { const e = new KeyboardEvent('keydown', { key: 's', metaKey: mac, ctrlKey: !mac, bubbles: true, cancelable: true }); (document.activeElement || document.body).dispatchEvent(e); return e.defaultPrevented; }, MOD === 'Meta');
+// 組み直しとプレビューの読み込みが済むまで待つ
+const settled = (page) => page.waitForFunction(() => { const s = window.__APP_TEST.state(); return !s.building && s.loads > 0 && s.frameLoaded === s.loads; }, null, { timeout: scaled(60000) });
 const saveDance = async (page, press) => {
   await press();
   const seen = await page.waitForSelector('#dlg[open] #dlg-rebuild', { timeout: scaled(20000) }).then(() => true, () => false);
@@ -108,12 +110,20 @@ try {
   ok(await prevented(a), 'before a file is open, ⌘S / Ctrl+S does not save the page');
   await open(a);
   await a.evaluate(async () => { const root = await navigator.storage.getDirectory(); window.__APP_TEST.saveHandle = await root.getFileHandle('saved-shortcut.html', { create: true }); });
-  // 1. フォーカスがツールの列（欄の外）
+  // 1. フォーカスがツールの列（欄の外）。直した後の組み直しとプレビューの読み込みが済んでから置く（読み込み直したプレビューは focus を取る。handoff #80）
   ok(await editText(a, '（一）'), 'edit a slide');
+  await settled(a);
   await a.focus('#b-help');
   await saveDance(a, () => a.keyboard.press(`${MOD}+s`));
   const size1 = await a.evaluate(async () => { const root = await navigator.storage.getDirectory(); return (await (await root.getFileHandle('saved-shortcut.html')).getFile()).size; });
   ok(size1 > 1000, `⌘S / Ctrl+S saves the file (${size1} bytes)`);
+  // 1b. フォーカスがプレビューの中（直した後、読み込み直したプレビューが focus を取る）：中の仲立ちが知らせ、同じ保存になる（handoff #80）
+  ok(await editText(a, '（一b）'), 'edit, and the focus is in the preview');
+  await settled(a);
+  await a.focus('#preview');
+  ok(await a.evaluate(() => document.activeElement && document.activeElement.id === 'preview'), 'the preview has the focus');
+  await saveDance(a, () => a.keyboard.press(`${MOD}+s`));
+  ok(!(await state(a)).portable.dirty, '⌘S / Ctrl+S in the preview saves the file');
   // 2. 入力の欄（検索と置換の欄）の中
   ok(await editText(a, '（二）'), 'edit again');
   await a.keyboard.press(`${MOD}+f`);
